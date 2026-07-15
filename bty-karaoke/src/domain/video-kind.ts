@@ -6,28 +6,35 @@
 
 export type VideoKind = 'mr' | 'karaoke' | 'lyrics' | 'official' | 'mv' | 'unknown';
 
-// MR = a backing track with vocals removed (the DEFAULT performance style). It's
-// distinguished from a karaoke video FIRST, on clear "no vocals" evidence, so an
-// MR result shows a 🎹 badge rather than being lumped in with lyric-bearing
-// karaoke clips. Conservative: only obvious MR terms count.
-// Korean terms use no \b — the regex \b is ASCII-word based and never sits
-// beside a Hangul syllable, so \b반주\b would never match.
-const MR = /instrumental|\bmr\b|반주|backing\s*track|minus\s*one|off\s*vocal/i;
-const KARAOKE = /karaoke|가라오케|노래방|sing[\s-]?along/i;
+// Clear "no vocals" backing-track evidence — the STRONGEST MR signal. It wins
+// even over a karaoke-provider tag: "karaoke instrumental" is an MR. Korean terms
+// use no \b (the ASCII \b never sits beside a Hangul syllable).
+const INSTRUMENTAL = /instrumental|반주|backing\s*track|minus\s*one|off\s*vocal/i;
+// Karaoke sing-along / provider signals (on-screen words). A provider (TJ / 금영 /
+// KY) or 노래방 / karaoke means the karaoke version — classified karaoke even when
+// the title ALSO says "MR" (a TJ "MR" is still the sing-along karaoke), UNLESS the
+// title is clearly instrumental (handled above). Reflects real search results.
+const KARAOKE = /karaoke|가라오케|노래방|sing[\s-]?along|\btj\b|티제이|금영|\bky\b/i;
+// A bare MR abbreviation with NO karaoke signal → an MR track.
+const MR_TOKEN = /\bmr\b|엠알|\binst\b|inst\./i;
 const LYRICS = /lyric|가사|자막|lyaerics|字幕/i;
 const MV = /official\s*(music)?\s*video|뮤직비디오|\bm\/v\b|\bmv\b|vevo/i;
 const OFFICIAL = /official\s*audio|\baudio\b|-\s*topic|official\s*lyric/i;
 
 /**
- * Classify a result. Priority: mr → karaoke → lyrics → mv → official → unknown.
- * MR comes first (its own "no vocals" family); karaoke/lyrics next because those
- * are the ones likely to show words on the TV; MV before official so "official
- * music video" isn't mislabelled audio. Anything ambiguous stays 'unknown'.
+ * Classify a result. Priority (V5.2):
+ *   instrumental → karaoke(provider/sing-along) → MR-token → lyrics → mv →
+ *   official → unknown.
+ * Clear instrumental evidence is MR first; a karaoke provider/노래방 tag then
+ * wins over a bare "MR" token (a TJ/금영 "MR" is the karaoke sing-along version);
+ * a bare "MR" with no karaoke signal is an MR. Anything ambiguous stays 'unknown'
+ * so the app never claims a kind it can't see.
  */
 export function classifyVideo(title: string, channel = ''): VideoKind {
   const hay = `${title ?? ''} ${channel ?? ''}`;
-  if (MR.test(hay)) return 'mr';
+  if (INSTRUMENTAL.test(hay)) return 'mr';
   if (KARAOKE.test(hay)) return 'karaoke';
+  if (MR_TOKEN.test(hay)) return 'mr';
   if (LYRICS.test(hay)) return 'lyrics';
   if (MV.test(hay)) return 'mv';
   if (OFFICIAL.test(hay)) return 'official';

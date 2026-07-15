@@ -41,9 +41,12 @@ export function biasStyleQuery(query: string, style: PerformanceStyle): string {
   if (!q) return q;
   if (style === 'original') return q;
   if (style === 'karaoke') return biasKaraokeQuery(q);
-  // style === 'mr'
+  // style === 'mr' — append the standard MR terms so YouTube returns more real
+  // backing tracks (the mode-aware ranker then leads with them). Kept short so
+  // query relevance isn't diluted: KR uses the two common terms "MR 반주",
+  // EN uses "instrumental". Skipped when the singer already typed MR intent.
   if (MR_BIAS.test(q)) return q;
-  return HANGUL.test(q) ? `${q} MR` : `${q} instrumental`;
+  return HANGUL.test(q) ? `${q} MR 반주` : `${q} instrumental`;
 }
 
 export interface StyleCopy {

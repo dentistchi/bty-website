@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
-import { rankResults } from '@/domain/youtube-rank';
+import { rankResults, rankSearchResults, isMrCandidate } from '@/domain/youtube-rank';
 import {
   type PerformanceStyle,
   PERFORMANCE_STYLES,
@@ -103,7 +103,18 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const removeMyRequest = (requestId: string) =>
     persistRequests(myRequests.filter((r) => r.requestId !== requestId));
 
-  const ranked = useMemo(() => rankResults(results, resultQuery), [results, resultQuery]);
+  // Mode-aware ranking (V5.2): the chosen style decides order, so MR mode leads
+  // with real MR/instrumental results instead of popular karaoke videos.
+  const ranked = useMemo(
+    () => rankSearchResults(results, { style, query: resultQuery }),
+    [results, resultQuery, style],
+  );
+  // Honest fallback: in MR mode with results but no MR candidate, say so without
+  // hiding the (karaoke/original) results we did find.
+  const noMrFound = useMemo(
+    () => style === 'mr' && results.length > 0 && !results.some(isMrCandidate),
+    [style, results],
+  );
 
   async function runSearch(e: React.FormEvent | null, mode: PerformanceStyle = style) {
     e?.preventDefault();
@@ -311,6 +322,12 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                 YouTube에서 열기 ↗
               </a>
             )}
+          </p>
+        )}
+
+        {noMrFound && (
+          <p className="muted mr-fallback-note" style={{ marginTop: 10 }}>
+            정확한 MR 영상을 찾지 못했어요. 가까운 노래방·원곡 결과도 함께 보여드려요.
           </p>
         )}
 

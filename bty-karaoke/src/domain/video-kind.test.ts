@@ -14,9 +14,18 @@ describe('classifyVideo', () => {
     expect(classifyVideo('좋은날 반주')).toBe('mr');
   });
 
-  it('MR wins over karaoke when both terms appear', () => {
-    // A "karaoke MR" clip is the vocals-removed one — MR is the stronger signal.
-    expect(classifyVideo('좋은날 노래방 MR')).toBe('mr');
+  it('a karaoke provider / 노래방 tag wins over a bare "MR" token (V5.2)', () => {
+    // A TJ / 금영 / 노래방 "MR" is the sing-along karaoke version → karaoke.
+    expect(classifyVideo('좋은날 노래방 MR')).toBe('karaoke');
+    expect(classifyVideo('이별 MR 노래방 TJ')).toBe('karaoke');
+    expect(classifyVideo('사랑했지만', '금영노래방')).toBe('karaoke');
+  });
+
+  it('but clear instrumental evidence stays MR even with a "karaoke" word', () => {
+    expect(classifyVideo('이별 MR instrumental')).toBe('mr');
+    expect(classifyVideo('좋은날 karaoke instrumental')).toBe('mr');
+    expect(classifyVideo('밤편지 MR')).toBe('mr'); // bare MR, no karaoke signal
+    expect(classifyVideo('좋은날 반주')).toBe('mr');
   });
 
   it('detects lyrics / 가사 / 자막 videos', () => {

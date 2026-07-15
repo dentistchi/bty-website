@@ -44,7 +44,7 @@ describe('searchYoutube — Performance Style bias', () => {
     expect((await searchYoutube('Dancing Queen', { style: 'mr' })).biasedQuery).toBe(
       'Dancing Queen instrumental',
     );
-    expect((await searchYoutube('아이유 밤편지', { style: 'mr' })).biasedQuery).toBe('아이유 밤편지 MR');
+    expect((await searchYoutube('아이유 밤편지', { style: 'mr' })).biasedQuery).toBe('아이유 밤편지 MR 반주');
   });
 
   it('Karaoke style biases toward 노래방 / karaoke', async () => {

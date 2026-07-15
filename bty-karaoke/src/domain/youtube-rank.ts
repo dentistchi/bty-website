@@ -4,6 +4,8 @@
 // title, and splits into the best few (shown first) plus the rest ("결과 더 보기").
 
 import type { YoutubeSearchItem } from './youtube-search';
+import { classifyVideo } from './video-kind';
+import type { PerformanceStyle } from './performance-style';
 
 export const PRIMARY_RESULT_COUNT = 3;
 
@@ -84,6 +86,106 @@ export function rankResults(
 
   const ranked = deduped
     .map(({ item, idx }) => ({ item, idx, score: scoreItem(item, terms) }))
+    .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - b.idx))
+    .map((r) => r.item);
+
+  return { top: ranked.slice(0, primaryCount), more: ranked.slice(primaryCount) };
+}
+
+// ── Mode-aware ranking (V5.2) ──────────────────────────────────────────────
+// The generic rankResults ranks karaoke-friendly clips highest regardless of the
+// chosen style, so an MR search still led with popular TJ/금영 karaoke videos.
+// rankSearchResults re-scores by the SELECTED style using the classifier + text
+// signals, so MR mode leads with real MR/instrumental/반주, karaoke mode with
+// 노래방/karaoke, original with official/MV — while keeping query relevance so a
+// generic off-song backing track never floats to the top.
+
+// Strong "no vocals" evidence — the MR signal we boost hardest in MR mode.
+const INSTRUMENTAL_STRONG = /instrumental|반주|backing\s*track|minus\s*one|off\s*vocal|\binst\b/i;
+// Karaoke sing-along / provider signals we demote in MR mode.
+const KARAOKE_SIGNAL = /karaoke|가라오케|노래방|sing[\s-]?along|\btj\b|티제이|금영|\bky\b/i;
+const LIVE_SIGNAL = /\blive\b|라이브|콘서트|concert|fancam|직캠|live\s*performance/i;
+
+/** True when an item is a plausible MR (backing-track) result. */
+export function isMrCandidate(item: YoutubeSearchItem): boolean {
+  const hay = `${item.title} ${item.channelTitle}`;
+  return classifyVideo(item.title, item.channelTitle) === 'mr' || INSTRUMENTAL_STRONG.test(hay);
+}
+
+/**
+ * Deterministic style-aware score. Higher = better for the chosen style. Query
+ * relevance dominates (an off-song result sinks) so MR-ness only decides order
+ * among results that actually match what the singer searched for.
+ */
+export function styleScore(
+  item: YoutubeSearchItem,
+  terms: string[],
+  style: PerformanceStyle,
+): number {
+  const hay = `${item.title} ${item.channelTitle}`.toLowerCase();
+  const kind = classifyVideo(item.title, item.channelTitle);
+  const matched = terms.filter((t) => hay.includes(t)).length;
+
+  let s = matched * 40; // relevance to the searched song/artist
+  if (terms.length > 0 && matched === 0) s -= 1000; // off-song → bottom (still shown)
+  for (const { re, weight } of PENALTIES) if (re.test(hay)) s -= weight; // shorts/reaction/cover
+
+  if (style === 'mr') {
+    if (kind === 'mr') s += 100;
+    if (INSTRUMENTAL_STRONG.test(hay)) s += 40;
+    if (/off\s*vocal|minus\s*one/i.test(hay)) s += 20;
+    if (kind === 'karaoke') s -= 80;
+    if (KARAOKE_SIGNAL.test(hay)) s -= 60;
+    if (kind === 'official' || kind === 'mv') s -= 100;
+    if (LIVE_SIGNAL.test(hay)) s -= 40;
+  } else if (style === 'karaoke') {
+    if (kind === 'karaoke') s += 100;
+    if (kind === 'lyrics') s += 50;
+    if (KARAOKE_SIGNAL.test(hay)) s += 30;
+    if (kind === 'mr') s -= 20;
+    if (kind === 'official' || kind === 'mv') s -= 40;
+  } else {
+    // original
+    if (kind === 'official' || kind === 'mv') s += 100;
+    if (LIVE_SIGNAL.test(hay)) s += 20;
+    if (kind === 'karaoke') s -= 60;
+    if (kind === 'mr') s -= 60;
+  }
+  return s;
+}
+
+export interface RankSearchOptions {
+  style: PerformanceStyle;
+  query: string;
+}
+
+/**
+ * Rank + limit for a chosen performance style. Stable: equal scores keep the
+ * API's original relevance order (never invent an order). Dedupes like
+ * rankResults. In MR mode, real MR/instrumental results lead — so the first few
+ * shown are MR when any exist, WITHOUT hiding the rest or faking an MR badge.
+ */
+export function rankSearchResults(
+  items: readonly YoutubeSearchItem[],
+  opts: RankSearchOptions,
+  primaryCount = PRIMARY_RESULT_COUNT,
+): RankedResults {
+  const terms = queryTerms(opts.query);
+
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
+  const deduped: { item: YoutubeSearchItem; idx: number }[] = [];
+  items.forEach((item, idx) => {
+    if (!item?.videoId || seenIds.has(item.videoId)) return;
+    const tk = titleKey(item.title);
+    if (tk && seenTitles.has(tk)) return;
+    seenIds.add(item.videoId);
+    if (tk) seenTitles.add(tk);
+    deduped.push({ item, idx });
+  });
+
+  const ranked = deduped
+    .map(({ item, idx }) => ({ item, idx, score: styleScore(item, terms, opts.style) }))
     .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - b.idx))
     .map((r) => r.item);
 

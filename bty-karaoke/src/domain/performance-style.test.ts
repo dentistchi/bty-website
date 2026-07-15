@@ -25,7 +25,7 @@ describe('biasStyleQuery — MR', () => {
     expect(biasStyleQuery('Dancing Queen', 'mr')).toBe('Dancing Queen instrumental');
   });
   it('appends " MR" for Korean queries', () => {
-    expect(biasStyleQuery('아이유 밤편지', 'mr')).toBe('아이유 밤편지 MR');
+    expect(biasStyleQuery('아이유 밤편지', 'mr')).toBe('아이유 밤편지 MR 반주');
   });
   it('never double-appends when intent already present', () => {
     expect(biasStyleQuery('밤편지 MR', 'mr')).toBe('밤편지 MR');
