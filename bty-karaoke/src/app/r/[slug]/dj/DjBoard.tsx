@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -24,7 +24,7 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
-import { moveWithin, orderChanged } from '@/domain/reorder';
+import { moveWithin, orderChanged, reconcileDecision } from '@/domain/reorder';
 import { primaryPlayTarget } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
@@ -72,56 +72,71 @@ function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: numbe
 // ⋯ button still taps. While this card is the one being dragged, it stays in
 // place as a dimmed placeholder (its content rides in the DragOverlay) — the
 // slot never collapses and neighbours slide to open the drop target.
-function SortableQueueCard({
-  r,
-  index,
-  isNew,
-  disabled,
-  onOpenSheet,
-}: {
-  r: KaraokeRequest;
-  index: number;
-  isNew: boolean;
-  disabled: boolean;
-  onOpenSheet: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id: r.id, disabled });
-  const style = { transform: CSS.Translate.toString(transform), transition };
-  const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
-  const song = d.song || requestDisplayTitle(r);
-  return (
-    <div
-      ref={setNodeRef}
-      id={`req-${r.id}`}
-      style={style}
-      className={`q-card singer-first${index === 0 ? ' head' : ''}${isNew ? ' isnew' : ''}${isDragging ? ' placeholder' : ''}`}
-    >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        className="q-handle"
-        aria-label={`${r.guest_name}님 순서 이동 핸들 · 현재 ${index + 1}번 · 끌거나 방향키로 순서 변경`}
-        title="끌어서 순서 변경"
-        {...attributes}
-        {...listeners}
+// Memoized so a routine 4s queue poll (which hands down fresh row objects) does
+// NOT re-render every card mid-drag — the biggest source of touch jank. It
+// re-renders only when a field it actually paints changes. `onOpenSheet` is a
+// stable callback that takes the request, so it never breaks memoization.
+const SortableQueueCard = memo(
+  function SortableQueueCard({
+    r,
+    index,
+    isNew,
+    disabled,
+    onOpenSheet,
+  }: {
+    r: KaraokeRequest;
+    index: number;
+    isNew: boolean;
+    disabled: boolean;
+    onOpenSheet: (r: KaraokeRequest) => void;
+  }) {
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+      useSortable({ id: r.id, disabled });
+    const style = { transform: CSS.Translate.toString(transform), transition };
+    const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
+    const song = d.song || requestDisplayTitle(r);
+    return (
+      <div
+        ref={setNodeRef}
+        id={`req-${r.id}`}
+        style={style}
+        className={`q-card singer-first${index === 0 ? ' head' : ''}${isNew ? ' isnew' : ''}${isDragging ? ' placeholder' : ''}`}
       >
-        ⠿
-      </button>
-      <QueueCardContent r={r} index={index} isNew={isNew} />
-      <div className="q-actions">
         <button
-          className="q-overflow"
-          aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리 · 순서 이동`}
-          aria-haspopup="dialog"
-          onClick={onOpenSheet}
+          ref={setActivatorNodeRef}
+          type="button"
+          className="q-handle"
+          aria-label={`${r.guest_name}님 순서 이동 핸들 · 현재 ${index + 1}번 · 끌거나 방향키로 순서 변경`}
+          title="끌어서 순서 변경"
+          {...attributes}
+          {...listeners}
         >
-          ⋯
+          ⠿
         </button>
+        <QueueCardContent r={r} index={index} isNew={isNew} />
+        <div className="q-actions">
+          <button
+            className="q-overflow"
+            aria-label={`${r.guest_name}님의 신청곡 ${song}${d.artist ? ` — ${d.artist}` : ''} 관리 · 순서 이동`}
+            aria-haspopup="dialog"
+            onClick={() => onOpenSheet(r)}
+          >
+            ⋯
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  },
+  (a, b) =>
+    a.r.id === b.r.id &&
+    a.index === b.index &&
+    a.isNew === b.isNew &&
+    a.disabled === b.disabled &&
+    a.onOpenSheet === b.onOpenSheet &&
+    a.r.guest_name === b.r.guest_name &&
+    a.r.youtube_title === b.r.youtube_title &&
+    a.r.youtube_channel_title === b.r.youtube_channel_title,
+);
 
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
@@ -194,10 +209,14 @@ export default function DjBoard({
   // clobbering). `activeId` is the card currently lifted into the DragOverlay.
   const [override, setOverride] = useState<string[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
   const savingRef = useRef(false);
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
+  // Stable open-sheet callback so memoized rows never re-render just because a
+  // new closure was created on a poll.
+  const openSheet = useCallback((r: KaraokeRequest) => setSheetFor(r), []);
 
   // Resolve the order to render: a pending/frozen `override` wins, else the
   // server's canonical order. Ids no longer present server-side drop out;
@@ -211,19 +230,34 @@ export default function DjBoard({
     return [...head, ...tail];
   }, [queue, override]);
   const displayIds = useCallback(() => displayQueue.map((r) => r.id), [displayQueue]);
+  // The server's canonical waiting order for the current poll — the reconcile
+  // target for a held optimistic order.
+  const serverWaitingIds = useMemo(() => queue.map((r) => r.id), [queue]);
 
   const reordering = busy || savingRef.current;
 
+  // Reconcile a held optimistic order against fresh polls WITHOUT flashing: while
+  // dragging or a save is in flight we hold; once idle, a poll that matches the
+  // optimistic order confirms it (no visual change), a structural change (song
+  // added/removed/finished) adopts the server order once, and a stale pre-reorder
+  // poll (same set, different order) is held until the confirming poll arrives.
+  useEffect(() => {
+    if (!override || activeId || savingRef.current) return;
+    if (reconcileDecision(override, serverWaitingIds) !== 'hold') setOverride(null);
+  }, [serverWaitingIds, override, activeId]);
+
   const sensors = useSensors(
-    // Mouse/trackpad: a tiny move starts the drag. Touch: a short press-hold
-    // starts it (a quick flick still scrolls the list). Keyboard: full a11y DnD.
+    // Mouse/trackpad: a tiny move starts the drag. Touch: the drag is bound to the
+    // grip (touch-action:none) so a short hold starts it while a flick elsewhere
+    // still scrolls; a snappier delay makes the card follow the finger sooner.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   function onDragStart(e: DragStartEvent) {
     if (reordering) return;
+    setReorderError(null);
     setActiveId(String(e.active.id));
     setOverride(displayIds()); // freeze the current order for the drag duration
   }
@@ -233,34 +267,47 @@ export default function DjBoard({
     setActiveId(null);
     const base = displayIds();
     if (!over || over === active) {
-      setOverride(null); // no drop target → unfreeze back to canonical
+      // No drop target: keep whatever order was already visible (an in-flight
+      // optimistic order stays; otherwise the reconcile effect settles it).
       return;
     }
     const next = moveWithin(base, active, over);
     if (orderChanged(next, base)) void applyReorder(next);
-    else setOverride(null);
+    // else: dropped in the same spot → leave the visible order as-is.
   }
   function onDragCancel() {
-    setActiveId(null);
-    setOverride(null); // pointercancel / Escape → snap back to canonical
+    setActiveId(null); // pointercancel / Escape → the reconcile effect settles the order
   }
 
-  // Save a new full waiting order optimistically. The console refetches canonical
-  // truth on every outcome, so we clear the override afterwards: 'ok' matches the
-  // optimistic order (no flicker); 'conflict'/'error' rolls back to the server.
+  // Save a new full waiting order optimistically and HOLD it until a fresh poll
+  // confirms — never snap back to a stale order the instant the mutation resolves
+  // (that was the drop "flash"). On success we keep the optimistic order and pull
+  // a fresh poll; the reconcile effect drops the override once the server matches.
+  // Only a rejected/failed save rolls back (with a clear inline error).
   const applyReorder = useCallback(
     async (nextIds: string[]) => {
       if (savingRef.current) return;
       savingRef.current = true;
-      setOverride(nextIds);
+      setOverride(nextIds); // optimistic — shown immediately, held through the save
+      setReorderError(null);
       try {
-        await onReorder(nextIds);
-      } finally {
+        const result = await onReorder(nextIds);
+        if (result === 'ok') {
+          void onRefresh(); // fetch the confirming poll; reconcile effect settles it
+        } else {
+          setOverride(null); // rejected → roll back to canonical, once
+          setReorderError('순서를 저장하지 못했습니다. 다시 시도하세요.');
+          void onRefresh();
+        }
+      } catch {
         setOverride(null);
+        setReorderError('순서를 저장하지 못했습니다. 다시 시도하세요.');
+        void onRefresh();
+      } finally {
         savingRef.current = false;
       }
     },
-    [onReorder],
+    [onReorder, onRefresh],
   );
 
   // Accessible reorder: move one waiting id up / down / to the top. Produces the
@@ -547,6 +594,11 @@ export default function DjBoard({
             <span className="eyebrow">Up next</span>
             <span className="muted">{displayQueue.length}</span>
           </div>
+          {reorderError && (
+            <div className="banner error reorder-error" role="alert">
+              {reorderError}
+            </div>
+          )}
 
           {displayQueue.length === 0 ? (
             <div className="card empty">
@@ -577,7 +629,7 @@ export default function DjBoard({
                     index={i}
                     isNew={newSet.has(r.id)}
                     disabled={reordering}
-                    onOpenSheet={() => setSheetFor(r)}
+                    onOpenSheet={openSheet}
                   />
                 ))}
               </SortableContext>

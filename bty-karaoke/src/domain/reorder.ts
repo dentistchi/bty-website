@@ -63,3 +63,26 @@ export function orderChanged(a: readonly string[], b: readonly string[]): boolea
   if (a.length !== b.length) return true;
   return a.some((v, i) => v !== b[i]);
 }
+
+/**
+ * Decide what a held optimistic drag order should do when a fresh server queue
+ * arrives (V5.1 drag fluidity). Prevents the drop-flash: we hold the DJ's chosen
+ * order until the server actually reflects it, instead of snapping back to a
+ * stale poll the instant the mutation resolves.
+ *
+ * - 'confirm'   → server order EQUALS the optimistic order → drop the override
+ *                 (no visual change — the list is already right).
+ * - 'reconcile' → the id SET differs (a song was added / removed / force-finished
+ *                 while dragging) → adopt the canonical server order once.
+ * - 'hold'      → same set, different order = a stale pre-reorder poll that raced
+ *                 in → keep the optimistic order and wait for the confirming poll.
+ */
+export function reconcileDecision(
+  optimistic: readonly string[],
+  serverIds: readonly string[],
+): 'confirm' | 'reconcile' | 'hold' {
+  const sameSet =
+    optimistic.length === serverIds.length && optimistic.every((id) => serverIds.includes(id));
+  if (!sameSet) return 'reconcile';
+  return optimistic.every((id, i) => serverIds[i] === id) ? 'confirm' : 'hold';
+}

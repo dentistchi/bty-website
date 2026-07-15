@@ -874,6 +874,18 @@ main.dj-console {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.03);
   margin-bottom: 10px;
+  /* Hint GPU compositing for the dnd-kit translate transform (no top/left). */
+  will-change: transform;
+}
+/* Inline reorder-failure note, above the queue. */
+.reorder-error {
+  margin: 0 0 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* dnd-kit sets an inline transition on neighbours; keep motion minimal here. */
+  .q-card {
+    will-change: auto;
+  }
 }
 .q-card.head {
   border-color: rgba(245, 196, 81, 0.4);

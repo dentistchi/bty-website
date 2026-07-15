@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { planReorder, moveWithin, orderChanged } from './reorder';
+import { planReorder, moveWithin, orderChanged, reconcileDecision } from './reorder';
+
+describe('reconcileDecision — drag optimistic-order settling (V5.1)', () => {
+  it('confirms when the server order equals the optimistic order (no flash, no visual change)', () => {
+    expect(reconcileDecision(['a', 'b', 'c'], ['a', 'b', 'c'])).toBe('confirm');
+  });
+  it('HOLDS a stale pre-reorder poll (same songs, different order) so the drop never flashes back', () => {
+    // Optimistic says [b,a,c]; a stale poll still shows the old [a,b,c] → hold.
+    expect(reconcileDecision(['b', 'a', 'c'], ['a', 'b', 'c'])).toBe('hold');
+  });
+  it('reconciles once when the id SET changed (a song was added / removed / finished mid-drag)', () => {
+    expect(reconcileDecision(['a', 'b'], ['a', 'b', 'c'])).toBe('reconcile'); // new arrival
+    expect(reconcileDecision(['a', 'b', 'c'], ['a', 'b'])).toBe('reconcile'); // removed/finished
+    expect(reconcileDecision(['a', 'b'], ['a', 'x'])).toBe('reconcile'); // swapped id
+  });
+  it('confirms an empty queue against an empty optimistic order', () => {
+    expect(reconcileDecision([], [])).toBe('confirm');
+  });
+});
 
 describe('planReorder', () => {
   const waiting = ['a', 'b', 'c', 'd']; // canonical order
