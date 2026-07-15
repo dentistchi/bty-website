@@ -2094,15 +2094,19 @@ a.btn.block {
   color: var(--gold);
   border-color: rgba(245, 196, 81, 0.4);
 }
-/* The card left behind in the list while its content rides the DragOverlay:
-   a clearly-visible empty slot that keeps full height (never collapses) so the
-   queue doesn't jump. Neighbours slide via dnd-kit's own transition. */
+/* The slot left behind while the card's content rides the DragOverlay. It keeps
+   FULL HEIGHT (never collapses, so the queue never jumps) but reads as a faint
+   ghost — NOT a big empty box competing with the lifted overlay. A whisper of the
+   original outline is all that marks "this row is in flight". Neighbours slide
+   into it via dnd-kit's own (short) transform transition. */
 .q-card.placeholder {
-  opacity: 0.4;
-  border-style: dashed;
-  border-color: rgba(245, 196, 81, 0.5);
-  background: rgba(245, 196, 81, 0.05);
+  opacity: 0.18;
+  border-style: solid;
+  border-color: var(--line);
+  background: transparent;
+  box-shadow: none;
 }
+.q-card.placeholder .q-handle,
 .q-card.placeholder .q-main,
 .q-card.placeholder .q-actions {
   visibility: hidden;

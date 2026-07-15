@@ -58,6 +58,46 @@ export function moveWithin(ids: readonly string[], activeId: string, overId: str
   return next;
 }
 
+/**
+ * Choose the queue row the dragged card is currently over, from vertical geometry,
+ * WITH HYSTERESIS — so a small wobble near a card boundary does not toggle the
+ * order back and forth (the jitter the bare closest-center default produces on
+ * iPad). Pure and deterministic: the tested spec of the drag collision (V5.1.1).
+ *
+ * `candidates` are the droppable rows as { id, center } (vertical centre, px).
+ * Picks the row whose centre is nearest `pointerY` (closest-centre semantics), but
+ * KEEPS `previousOverId` when the new nearest is only marginally closer — the
+ * pointer must move past the midpoint by `hysteresis` px before the target flips,
+ * so neighbours yield once and stay put instead of flickering around a boundary.
+ */
+export function resolveVerticalOverId(input: {
+  pointerY: number;
+  candidates: readonly { id: string; center: number }[];
+  previousOverId?: string | null;
+  hysteresis?: number;
+}): string | null {
+  const { pointerY, candidates, previousOverId = null, hysteresis = 8 } = input;
+  if (candidates.length === 0) return null;
+
+  let best = candidates[0];
+  let bestDist = Math.abs(pointerY - best.center);
+  for (const c of candidates) {
+    const d = Math.abs(pointerY - c.center);
+    if (d < bestDist) {
+      best = c;
+      bestDist = d;
+    }
+  }
+
+  if (previousOverId != null && previousOverId !== best.id) {
+    const prev = candidates.find((c) => c.id === previousOverId);
+    if (prev && Math.abs(pointerY - prev.center) - bestDist < hysteresis) {
+      return previousOverId;
+    }
+  }
+  return best.id;
+}
+
 /** True when two id orders differ (used to skip saving a no-op reorder). */
 export function orderChanged(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return true;

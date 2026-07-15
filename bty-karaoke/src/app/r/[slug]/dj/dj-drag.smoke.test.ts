@@ -74,3 +74,39 @@ describe('CSS avoids layout-thrashing move animations', () => {
     expect(block).not.toMatch(/\btop:\s|\bleft:\s/);
   });
 });
+
+describe('drag motion polish (V5.1.1) — placeholder, collision, drop, transition', () => {
+  it('the source slot is a FAINT ghost, not a heavy empty box', () => {
+    const block = cssBlock('.q-card.placeholder');
+    // Low opacity, transparent background, weak solid border — never the big
+    // dashed/filled box that competed with the lifted overlay.
+    expect(block).toMatch(/opacity:\s*0\.(0|1|2)\d?/); // <= ~0.25
+    expect(block).toMatch(/background:\s*transparent/);
+    expect(block).not.toMatch(/border-style:\s*dashed/);
+    // It keeps its space (height) — content is hidden, the row is NOT display:none.
+    expect(djCode).not.toMatch(/display:\s*['"]?none/);
+  });
+
+  it('displaced neighbours use a short transform transition (not the ~200ms default, not "all")', () => {
+    expect(djCode).toMatch(/transition:\s*\{\s*duration:\s*160/);
+    expect(djCode).toMatch(/cubic-bezier\(0\.2,\s*0\.8,\s*0\.2,\s*1\)/);
+    // The overlay itself carries no position transition (it follows the finger).
+    expect(cssBlock('.q-card.overlay')).not.toMatch(/transition:/);
+  });
+
+  it('collision uses the hysteresis helper (no boundary flicker), not bare closestCenter', () => {
+    expect(djCode).toContain('resolveVerticalOverId(');
+    expect(djCode).toMatch(/collisionDetection=\{collisionDetection\}/);
+    expect(djCode).toContain('overIdRef'); // previous-over kept in a ref (no re-render)
+  });
+
+  it('the drop animation is disabled so the optimistic list lands once (no double landing)', () => {
+    expect(djCode).toMatch(/dropAnimation=\{null\}/);
+  });
+
+  it('the server mutation still fires only on drop end (drop-only sorting preserved)', () => {
+    // No onDragOver reorder — arrayMove/applyReorder happens in onDragEnd only.
+    expect(djCode).not.toMatch(/onDragOver/);
+    expect(djCode).toMatch(/function onDragEnd[\s\S]*applyReorder\(/);
+  });
+});

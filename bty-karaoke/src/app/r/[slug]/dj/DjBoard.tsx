@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
 } from '@dnd-kit/core';
@@ -24,7 +25,7 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { selectStage } from '@/domain/queue';
-import { moveWithin, orderChanged, reconcileDecision } from '@/domain/reorder';
+import { moveWithin, orderChanged, reconcileDecision, resolveVerticalOverId } from '@/domain/reorder';
 import { primaryPlayTarget } from '@/domain/play-flow';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
@@ -91,7 +92,15 @@ const SortableQueueCard = memo(
     onOpenSheet: (r: KaraokeRequest) => void;
   }) {
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-      useSortable({ id: r.id, disabled });
+      useSortable({
+        id: r.id,
+        disabled,
+        // Neighbours yield with a short ease-out slide (not the ~200ms default), so
+        // the row that opens the drop target reads as one smooth motion rather than
+        // a stepwise jump. The overlay itself has no CSS transition (it follows the
+        // finger via DragOverlay), so only displaced rows animate.
+        transition: { duration: 160, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+      });
     const style = { transform: CSS.Translate.toString(transform), transition };
     const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
     const song = d.song || requestDisplayTitle(r);
@@ -251,19 +260,38 @@ export default function DjBoard({
     // grip (touch-action:none) so a short hold starts it while a flick elsewhere
     // still scrolls; a snappier delay makes the card follow the finger sooner.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  // The row currently under the drag — held across pointer moves (a ref, so it
+  // never re-renders anything) to give the collision hysteresis its "previous"
+  // target. Prevents the order from flickering when a finger wobbles at a boundary.
+  const overIdRef = useRef<string | null>(null);
+  const collisionDetection = useCallback<CollisionDetection>((args) => {
+    const { droppableRects, droppableContainers, pointerCoordinates, collisionRect } = args;
+    const pointerY = pointerCoordinates?.y ?? collisionRect.top + collisionRect.height / 2;
+    const candidates: { id: string; center: number }[] = [];
+    for (const c of droppableContainers) {
+      const rect = droppableRects.get(c.id);
+      if (rect) candidates.push({ id: String(c.id), center: rect.top + rect.height / 2 });
+    }
+    const overId = resolveVerticalOverId({ pointerY, candidates, previousOverId: overIdRef.current });
+    overIdRef.current = overId;
+    return overId ? [{ id: overId }] : closestCenter(args);
+  }, []);
 
   function onDragStart(e: DragStartEvent) {
     if (reordering) return;
     setReorderError(null);
+    overIdRef.current = String(e.active.id); // seed hysteresis at the lifted card
     setActiveId(String(e.active.id));
     setOverride(displayIds()); // freeze the current order for the drag duration
   }
   function onDragEnd(e: DragEndEvent) {
     const active = String(e.active.id);
     const over = e.over ? String(e.over.id) : null;
+    overIdRef.current = null;
     setActiveId(null);
     const base = displayIds();
     if (!over || over === active) {
@@ -276,6 +304,7 @@ export default function DjBoard({
     // else: dropped in the same spot → leave the visible order as-is.
   }
   function onDragCancel() {
+    overIdRef.current = null;
     setActiveId(null); // pointercancel / Escape → the reconcile effect settles the order
   }
 
@@ -616,7 +645,7 @@ export default function DjBoard({
           ) : (
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={collisionDetection}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
               onDragCancel={onDragCancel}
@@ -633,7 +662,11 @@ export default function DjBoard({
                   />
                 ))}
               </SortableContext>
-              <DragOverlay>
+              {/* No drop animation: onDragEnd already reorders the optimistic list
+                  so the real card is at the target the instant the finger lifts.
+                  A drop-glide here would land the overlay, vanish, then show the row
+                  moving again — the "double landing". null = one clean landing. */}
+              <DragOverlay dropAnimation={null}>
                 {activeId
                   ? (() => {
                       const i = displayQueue.findIndex((x) => x.id === activeId);

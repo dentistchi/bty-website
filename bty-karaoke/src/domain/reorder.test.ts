@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planReorder, moveWithin, orderChanged, reconcileDecision } from './reorder';
+import { planReorder, moveWithin, orderChanged, reconcileDecision, resolveVerticalOverId } from './reorder';
 
 describe('reconcileDecision — drag optimistic-order settling (V5.1)', () => {
   it('confirms when the server order equals the optimistic order (no flash, no visual change)', () => {
@@ -108,5 +108,43 @@ describe('orderChanged', () => {
     expect(orderChanged(['a', 'b'], ['a', 'b'])).toBe(false);
     expect(orderChanged(['a', 'b'], ['b', 'a'])).toBe(true);
     expect(orderChanged(['a'], ['a', 'b'])).toBe(true);
+  });
+});
+
+describe('resolveVerticalOverId — drag collision with hysteresis (V5.1.1)', () => {
+  // Three rows, height ~70: centres at 50, 120, 190.
+  const rows = [
+    { id: 'a', center: 50 },
+    { id: 'b', center: 120 },
+    { id: 'c', center: 190 },
+  ];
+
+  it('picks the row whose centre is nearest the pointer (closest-centre)', () => {
+    expect(resolveVerticalOverId({ pointerY: 52, candidates: rows })).toBe('a');
+    expect(resolveVerticalOverId({ pointerY: 118, candidates: rows })).toBe('b');
+    expect(resolveVerticalOverId({ pointerY: 188, candidates: rows })).toBe('c');
+  });
+
+  it('flips DOWNWARD stably once the pointer is clearly past the boundary', () => {
+    // From 'a', pointer well into b's half (past midpoint 85 by > hysteresis).
+    expect(resolveVerticalOverId({ pointerY: 100, candidates: rows, previousOverId: 'a' })).toBe('b');
+  });
+
+  it('flips UPWARD stably once the pointer is clearly past the boundary', () => {
+    // From 'c', pointer well into b's half (midpoint 155).
+    expect(resolveVerticalOverId({ pointerY: 140, candidates: rows, previousOverId: 'c' })).toBe('b');
+  });
+
+  it('does NOT toggle on a small wobble right at the boundary (hysteresis holds)', () => {
+    // Midpoint a/b is 85. Just past it (86) the bare nearest is 'b', but the
+    // hysteresis keeps the current 'a' until the pointer moves clearly further.
+    expect(resolveVerticalOverId({ pointerY: 86, candidates: rows, previousOverId: 'a' })).toBe('a');
+    expect(resolveVerticalOverId({ pointerY: 84, candidates: rows, previousOverId: 'a' })).toBe('a');
+    // A tiny jitter around the boundary never flips back and forth.
+    expect(resolveVerticalOverId({ pointerY: 88, candidates: rows, previousOverId: 'a' })).toBe('a');
+  });
+
+  it('returns null when there are no candidates', () => {
+    expect(resolveVerticalOverId({ pointerY: 100, candidates: [] })).toBeNull();
   });
 });
