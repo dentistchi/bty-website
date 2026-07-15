@@ -86,8 +86,11 @@ async function resolveSearchKv(): Promise<SearchKv | null> {
 export async function searchYoutubeWithCache(
   query: string,
   kv: SearchKv | null,
+  opts?: { bias?: boolean },
 ): Promise<YoutubeSearchResponse> {
-  const biasedQuery = biasKaraokeQuery(query);
+  // Default ON: bias toward karaoke/노래방. "Original" mode (bias:false) searches
+  // the raw query so a DJ/guest can find the official version on purpose.
+  const biasedQuery = opts?.bias === false ? query : biasKaraokeQuery(query);
   const fallbackUrl = youtubeSearchUrl(biasedQuery);
   const base = { query, biasedQuery, fallbackUrl, items: [] as YoutubeSearchItem[] };
 
@@ -122,6 +125,9 @@ export async function searchYoutubeWithCache(
 }
 
 /** Search YouTube, using the KV cache when the binding is present. */
-export async function searchYoutube(query: string): Promise<YoutubeSearchResponse> {
-  return searchYoutubeWithCache(query, await resolveSearchKv());
+export async function searchYoutube(
+  query: string,
+  opts?: { bias?: boolean },
+): Promise<YoutubeSearchResponse> {
+  return searchYoutubeWithCache(query, await resolveSearchKv(), opts);
 }

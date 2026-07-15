@@ -1916,3 +1916,142 @@ a.btn.block {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── DJ operational: always-on actions, video badges, add-song, toggles ── */
+.dj-actions-bar {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.dj-actions-bar > button {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
+/* Video-kind badge — "likely has words on the TV" hint. Gold = karaoke/lyrics. */
+.vk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+.vk-badge.vk-karaoke,
+.vk-badge.vk-lyrics {
+  color: #f7d98a;
+  border-color: rgba(245, 196, 81, 0.45);
+  background: rgba(245, 196, 81, 0.1);
+}
+.vk-badge.vk-mv {
+  color: #cbb3ff;
+  border-color: rgba(160, 130, 255, 0.4);
+  background: rgba(160, 130, 255, 0.08);
+}
+
+/* Segmented Original ↔ Karaoke/Lyrics toggle (guest + DJ add). */
+.search-modes,
+.dj-add-modes {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.seg {
+  flex: 1 1 0;
+  min-height: 40px;
+  border-radius: 11px;
+  border: 1px solid var(--line-2);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.seg.on {
+  color: #062430;
+  background: linear-gradient(180deg, #7febff, var(--cyan));
+  border-color: transparent;
+}
+
+/* DJ Add Song sheet */
+.dj-add-sheet {
+  max-width: 560px;
+  width: 100%;
+  max-height: 86dvh;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.dj-add-forwhom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.dj-add-forwhom label {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.dj-add-forwhom input {
+  flex: 1 1 auto;
+}
+.dj-add-searchrow {
+  display: flex;
+  gap: 8px;
+}
+.dj-add-searchrow input {
+  flex: 1 1 auto;
+}
+.dj-add-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dj-add-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+.dj-add-row .thumb {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+}
+.dj-add-row .grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dj-add-row .title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.dj-add-row > button {
+  flex: 0 0 auto;
+  min-height: 40px;
+}
+.banner.ok {
+  border: 1px solid rgba(78, 214, 143, 0.4);
+  background: rgba(78, 214, 143, 0.1);
+  color: #b7f0cf;
+}

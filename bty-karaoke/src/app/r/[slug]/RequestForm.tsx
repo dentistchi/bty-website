@@ -33,6 +33,7 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
   const [editingName, setEditingName] = useState(true);
 
   const [query, setQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'karaoke' | 'original'>('karaoke');
   const [results, setResults] = useState<YoutubeSearchItem[]>([]);
   const [resultQuery, setResultQuery] = useState('');
   const [showMore, setShowMore] = useState(false);
@@ -79,8 +80,8 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
 
   const ranked = useMemo(() => rankResults(results, resultQuery), [results, resultQuery]);
 
-  async function runSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function runSearch(e: React.FormEvent | null, mode: 'karaoke' | 'original' = searchMode) {
+    e?.preventDefault();
     if (query.trim().length < 2) return;
     setError(null);
     setSearchState('searching');
@@ -90,7 +91,9 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
     setFallbackUrl(null);
     setSearchNote(null);
     try {
-      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(
+        `/api/youtube/search?q=${encodeURIComponent(query.trim())}${mode === 'original' ? '&original=1' : ''}`,
+      );
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error ?? '검색에 실패했어요');
@@ -253,6 +256,30 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
             />
             <button type="submit" disabled={query.trim().length < 2 || searchState === 'searching'}>
               {searchState === 'searching' ? '…' : '검색'}
+            </button>
+          </div>
+          <div className="search-modes" role="group" aria-label="검색 종류">
+            <button
+              type="button"
+              className={`seg${searchMode === 'karaoke' ? ' on' : ''}`}
+              aria-pressed={searchMode === 'karaoke'}
+              onClick={() => {
+                setSearchMode('karaoke');
+                if (query.trim().length >= 2) void runSearch(null, 'karaoke');
+              }}
+            >
+              🎤 노래방 / 가사
+            </button>
+            <button
+              type="button"
+              className={`seg${searchMode === 'original' ? ' on' : ''}`}
+              aria-pressed={searchMode === 'original'}
+              onClick={() => {
+                setSearchMode('original');
+                if (query.trim().length >= 2) void runSearch(null, 'original');
+              }}
+            >
+              원곡
             </button>
           </div>
         </form>

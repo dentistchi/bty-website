@@ -38,6 +38,25 @@ export const ReorderQueueSchema = z.object({
 });
 export type ReorderQueueInput = z.infer<typeof ReorderQueueSchema>;
 
+// DJ adds a song on a guest's behalf. Same video fields as a guest request, but
+// the guest name is OPTIONAL (defaults to "DJ" server-side). Auth is the DJ
+// bearer, not a guest identity.
+export const DjAddRequestSchema = z
+  .object({
+    guestName: z.string().trim().min(1).max(40).optional(),
+    searchQuery: z.string().trim().max(MAX_QUERY_LEN).optional(),
+    youtubeVideoId: z.string().trim().min(1).max(20).optional(),
+    youtubeTitle: z.string().trim().max(300).optional(),
+    youtubeChannelTitle: z.string().trim().max(200).optional(),
+    youtubeThumbnailUrl: z.string().url().max(600).optional(),
+    youtubeInput: z.string().trim().max(300).optional(),
+  })
+  .refine((v) => Boolean(v.youtubeVideoId || v.youtubeInput), {
+    message: 'Select a song or paste a YouTube link',
+    path: ['youtubeVideoId'],
+  });
+export type DjAddRequestInput = z.infer<typeof DjAddRequestSchema>;
+
 export const SearchQuerySchema = z.object({
   q: z.string().trim().min(2, 'Enter at least 2 characters').max(MAX_QUERY_LEN),
 });

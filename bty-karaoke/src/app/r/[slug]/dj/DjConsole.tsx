@@ -24,6 +24,27 @@ type Phase = 'loading' | 'unpaired' | 'disconnected' | 'authed';
 const storageKey = (slug: string) => `bty-dj-cred:${slug}`;
 const adminKey = (slug: string) => `bty-admin-cred:${slug}`;
 
+// Last-good queue snapshot (sessionStorage, per-tab). Hydrated on mount so that
+// returning from the YouTube app — which reloads this tab — shows NOW SINGING +
+// Finish Song + the queue INSTANTLY from canonical cache, while we re-verify in
+// the background. Never holds a credential; only the public queue payload.
+const queueCacheKey = (slug: string) => `bty-dj-queue:${slug}`;
+function readQueueCache(slug: string): QueuePayload | null {
+  try {
+    const raw = window.sessionStorage.getItem(queueCacheKey(slug));
+    return raw ? (JSON.parse(raw) as QueuePayload) : null;
+  } catch {
+    return null;
+  }
+}
+function saveQueueCache(slug: string, payload: QueuePayload) {
+  try {
+    window.sessionStorage.setItem(queueCacheKey(slug), JSON.stringify(payload));
+  } catch {
+    /* storage full / disabled — cache is best-effort */
+  }
+}
+
 const POLL_MS = 4000;
 const NEW_HOLD_MS = 4500;
 
@@ -53,6 +74,9 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
 
   const seenRef = useRef<Set<string>>(new Set());
   const initedRef = useRef(false);
+  // Monotonic load counter: a slow older /dj/queue response can never overwrite a
+  // newer one (which would, e.g., briefly drop the playing row and hide Finish).
+  const loadSeqRef = useRef(0);
 
   const authHeader = useCallback((c: string) => ({ authorization: `Bearer ${c}` }), []);
 
@@ -76,6 +100,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
 
   const loadQueue = useCallback(
     async (c: string): Promise<'ok' | 'unauth' | 'neterr'> => {
+      const seq = ++loadSeqRef.current;
       try {
         const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/queue`, {
           headers: authHeader(c),
@@ -84,7 +109,11 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
         if (res.status === 401) return 'unauth';
         if (!res.ok) return 'neterr';
         const payload = (await res.json()) as QueuePayload;
+        // Drop a stale response if a newer load already landed — protects the
+        // canonical playing state (Finish Song) from out-of-order overwrites.
+        if (seq !== loadSeqRef.current) return 'ok';
         setData(payload);
+        saveQueueCache(slug, payload);
         markArrivals(payload.requests ?? []);
         return 'ok';
       } catch {
@@ -108,12 +137,25 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       setPhase('unpaired');
       return;
     }
+    // Instant restore: if this tab has a cached queue (e.g. we just came back
+    // from the YouTube app, which reloaded the page), show the board immediately
+    // with canonical NOW SINGING + Finish Song while we re-verify below. No
+    // loading gap where the stage looks empty.
+    const cached = readQueueCache(slug);
+    if (cached) {
+      setData(cached);
+      setCred(candidates[0].token);
+      setCredSource(candidates[0].source);
+      setReconnecting(true);
+      setPhase('authed');
+    }
     (async () => {
       for (const c of candidates) {
         const r = await loadQueue(c.token);
         if (r === 'ok') {
           setCred(c.token);
           setCredSource(c.source);
+          setReconnecting(false);
           setPhase('authed');
           return;
         }
@@ -128,7 +170,9 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
         setPhase('authed');
         return;
       }
-      setPhase('unpaired');
+      // Every candidate token was definitively rejected (401). If we had shown a
+      // cached board, the device was revoked → disconnected; otherwise unpaired.
+      setPhase(cached ? 'disconnected' : 'unpaired');
     })();
   }, [slug, loadQueue]);
 
@@ -158,16 +202,21 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
   // event-driven refresh per return. The 4s interval above is unchanged.
   useEffect(() => {
     if (phase !== 'authed') return;
+    // Any signal that we're back in front of the DJ (tab visible again, window
+    // refocused, or bfcache restore) triggers ONE canonical refresh so NOW
+    // SINGING / Finish Song / Guest QR / UP NEXT are current with no manual
+    // reload. This is the return path after a YouTube-app handoff.
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) void refresh(); // restored from bfcache (not a fresh load)
-    };
+    const onFocus = () => void refresh();
+    const onPageShow = () => void refresh(); // fresh load AND bfcache restore
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
     window.addEventListener('pageshow', onPageShow);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
       window.removeEventListener('pageshow', onPageShow);
     };
   }, [phase, refresh]);
@@ -241,6 +290,35 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     }
   }
 
+  // DJ adds a song on a guest's behalf. Reuses the DJ credential; the server
+  // appends an ordinary waiting request (tail) to the canonical queue. Refetches
+  // so the new song appears immediately in UP NEXT and guest #N.
+  async function addSong(payload: Record<string, unknown>): Promise<'ok' | 'error'> {
+    if (!cred) return 'error';
+    setError(null);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/requests`, {
+        method: 'POST',
+        headers: { ...authHeader(cred), 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return 'error';
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not add the song.');
+        return 'error';
+      }
+      await loadQueue(cred);
+      return 'ok';
+    } catch {
+      setError('Network error.');
+      return 'error';
+    }
+  }
+
   // End the whole EVENT (distinct from disconnecting this iPad). Uses this
   // device's existing DJ credential — no manager token is created here.
   async function endEvent(): Promise<'ok' | 'error'> {
@@ -267,6 +345,11 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     // via their admin session keeps that session (they manage via the Admin menu),
     // so we never wipe the admin key here.
     window.localStorage.removeItem(storageKey(slug));
+    try {
+      window.sessionStorage.removeItem(queueCacheKey(slug));
+    } catch {
+      /* ignore */
+    }
     setCred(null);
     setCredSource(null);
     setData(null);
@@ -386,6 +469,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       onMoveNext={(id) => mutate(id, 'move_next')}
       onRemove={(id) => mutate(id, 'remove')}
       onReorder={reorder}
+      onAddSong={addSong}
       onRefresh={refresh}
       onDisconnect={disconnectManual}
       onEndEvent={endEvent}

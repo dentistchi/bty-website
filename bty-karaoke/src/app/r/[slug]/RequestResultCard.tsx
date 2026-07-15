@@ -1,6 +1,7 @@
 'use client';
 
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
+import { badgeForVideo } from '@/domain/video-kind';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -45,6 +46,14 @@ export default function RequestResultCard({
         <div className="grow">
           <div className="title">{item.title}</div>
           <div className="muted">{item.channelTitle}</div>
+          {(() => {
+            const badge = badgeForVideo(item.title, item.channelTitle);
+            return badge ? (
+              <span className={`vk-badge vk-${badge.tone}`}>
+                {badge.emoji} {badge.label}
+              </span>
+            ) : null;
+          })()}
         </div>
         <button
           type="button"

@@ -30,9 +30,22 @@ import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
 import { safeYoutubeWatchUrl } from '@/domain/youtube';
+import { badgeForVideo } from '@/domain/video-kind';
 import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
+import DjAddSongSheet from './DjAddSongSheet';
+
+/** Small "likely has words on the TV" badge for a request's video. */
+function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
+  const badge = badgeForVideo(title, channel ?? '');
+  if (!badge) return null;
+  return (
+    <span className={`vk-badge vk-${badge.tone}`}>
+      {badge.emoji} {badge.label}
+    </span>
+  );
+}
 
 // Inner content shared by the in-list sortable card and the lifted drag overlay,
 // so the overlay is a pixel-identical copy of the card being dragged.
@@ -49,6 +62,7 @@ function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: numbe
         </div>
         <div className="q-song">{song}</div>
         {d.artist && <div className="q-artist">{d.artist}</div>}
+        <VideoKindBadge title={r.youtube_title ?? ''} channel={r.youtube_channel_title} />
       </div>
     </>
   );
@@ -136,6 +150,8 @@ interface Props {
   onRemove: (id: string) => void | Promise<void>;
   /** Persist a new waiting-queue order; resolves 'ok' | 'conflict' | 'error'. */
   onReorder: (orderedRequestIds: string[]) => Promise<'ok' | 'conflict' | 'error'>;
+  /** DJ adds a song to the queue; resolves 'ok' | 'error'. */
+  onAddSong: (payload: Record<string, unknown>) => Promise<'ok' | 'error'>;
   onRefresh: () => void | Promise<void>;
   onDisconnect: () => void;
   /** Ends the whole event (distinct from Disconnect); resolves 'ok' on success. */
@@ -156,6 +172,7 @@ export default function DjBoard({
   onMoveNext,
   onRemove,
   onReorder,
+  onAddSong,
   onRefresh,
   onDisconnect,
   onEndEvent,
@@ -163,6 +180,7 @@ export default function DjBoard({
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -425,6 +443,16 @@ export default function DjBoard({
         )}
       </div>
 
+      {/* Always-available DJ actions — never hidden behind the empty state. */}
+      <div className="dj-actions-bar" role="group" aria-label="DJ actions">
+        <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
+          🔳 Guest QR
+        </button>
+        <button className="cyan" onClick={() => setAddOpen(true)}>
+          ＋ Add song
+        </button>
+      </div>
+
       {reconnecting && (
         <div className="reconnecting" role="status">
           <span className="status-dot warn" aria-hidden />
@@ -461,6 +489,7 @@ export default function DjBoard({
                   <>
                     <div className="stage-title">{d.song || requestDisplayTitle(current)}</div>
                     {d.artist && <div className="stage-artist">{d.artist}</div>}
+                    <VideoKindBadge title={current.youtube_title ?? ''} channel={current.youtube_channel_title} />
                   </>
                 );
               })()}
@@ -478,8 +507,8 @@ export default function DjBoard({
                 </button>
               </div>
               <p className="muted playback-help">
-                Opens this song on the iPad for a closer screen. YouTube may keep the iPad connected
-                as the TV remote.
+                “Open on this iPad” opens the song here for a closer screen. When you return to
+                Safari, the console reloads with this NOW SINGING card and Finish song still here.
               </p>
             </div>
           ) : playTarget ? (
@@ -505,6 +534,7 @@ export default function DjBoard({
                   <>
                     <div className="stage-title">{d.song || requestDisplayTitle(playTarget)}</div>
                     {d.artist && <div className="stage-artist">{d.artist}</div>}
+                    <VideoKindBadge title={playTarget.youtube_title ?? ''} channel={playTarget.youtube_channel_title} />
                   </>
                 );
               })()}
@@ -523,9 +553,10 @@ export default function DjBoard({
                 </button>
               </div>
               <p className="muted playback-help">
-                “Play on TV” puts this song on stage. “Open on this iPad” just opens it here for a
-                closer screen — it doesn’t change the queue. YouTube may keep the iPad as the TV
-                remote.
+                “Play on TV” marks this song playing, then opens the YouTube app to cast it to the
+                TV. Come straight back to Safari (app switcher or the back gesture) — the console
+                reloads itself with NOW SINGING and Finish song ready. “Open on this iPad” just
+                opens the video here and doesn’t change the queue.
               </p>
             </div>
           ) : (
@@ -661,6 +692,9 @@ export default function DjBoard({
           onClose={() => setStatusOpen(false)}
         />
       )}
+
+      {/* ── DJ Add Song sheet (always reachable from the top actions) ─── */}
+      {addOpen && <DjAddSongSheet onAddSong={onAddSong} onClose={() => setAddOpen(false)} />}
 
       {/* ── Admin menu (admin role only; secondary to the live surface) ─ */}
       {isAdmin && adminOpen && adminCred && (

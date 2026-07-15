@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const result = await searchYoutube(parsed.data.q);
+  // `?original=1` searches the raw query (no karaoke bias) for the toggle's
+  // "Original" mode; default stays karaoke/노래방-biased.
+  const original = req.nextUrl.searchParams.get('original') === '1';
+  const result = await searchYoutube(parsed.data.q, { bias: !original });
   // result never contains the API key.
   return NextResponse.json(result);
 }
