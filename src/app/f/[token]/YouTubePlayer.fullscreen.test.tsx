@@ -28,77 +28,72 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   delete (window as any).YT;
+  document.body.style.overflow = "";
 });
 
 async function renderPlayer() {
   render(<YouTubePlayer videoId="abcdefghijk" enableResume={false} />);
   await waitFor(() => expect(YTPlayer).toHaveBeenCalledTimes(1));
-  const btn = screen.getByLabelText("Enter fullscreen");
+  const btn = screen.getByLabelText("Enter immersive mode");
   const container = btn.parentElement as HTMLElement;
   return { btn, container };
 }
 
-describe("YouTubePlayer fullscreen — capability strategy", () => {
-  it("uses NATIVE fullscreen when the element supports requestFullscreen", async () => {
+describe("YouTubePlayer — BTY Immersive Mode (no native fullscreen dependency)", () => {
+  it("enters immersive mode IMMEDIATELY on tap, without calling any browser fullscreen API", async () => {
     const { btn, container } = await renderPlayer();
+    // Spy on both fullscreen APIs — neither must ever be invoked.
     const req = vi.fn(() => Promise.resolve());
+    const webkitReq = vi.fn();
     Object.defineProperty(container, "requestFullscreen", { value: req, configurable: true });
+    Object.defineProperty(container, "webkitRequestFullscreen", { value: webkitReq, configurable: true });
 
     fireEvent.click(btn);
-    expect(req).toHaveBeenCalledOnce();
-    // No immersive fallback when native is available.
-    expect(container.getAttribute("data-immersive")).toBeNull();
+
+    // Immediate (synchronous) immersive state — no async wait, no API branch.
+    expect(container.getAttribute("data-immersive")).toBe("true");
+    expect(req).not.toHaveBeenCalled();
+    expect(webkitReq).not.toHaveBeenCalled();
   });
 
-  it("activates the in-app IMMERSIVE fallback when no element-fullscreen API exists (iPhone/WKWebView)", async () => {
+  it("immersive container fills the viewport and covers the whole application", async () => {
     const { btn, container } = await renderPlayer();
-    Object.defineProperty(container, "requestFullscreen", { value: undefined, configurable: true });
-    Object.defineProperty(container, "webkitRequestFullscreen", { value: undefined, configurable: true });
-
     fireEvent.click(btn);
-    await waitFor(() => expect(container.getAttribute("data-immersive")).toBe("true"));
-    // Fills the viewport and covers the page.
     expect(container.className).toContain("fixed");
     expect(container.className).toContain("inset-0");
+    expect(container.style.width).toBe("100vw");
     expect(container.style.height).toBe("100dvh");
-    // Body scroll is locked while immersive.
+    // Highest z-index so header / bottom nav / page chrome are all covered.
+    expect(container.className).toContain("z-[2147483647]");
+    // Body scroll locked.
     expect(document.body.style.overflow).toBe("hidden");
   });
 
   it("does NOT remount the player when entering/exiting immersive (playback preserved)", async () => {
     const { btn, container } = await renderPlayer();
-    Object.defineProperty(container, "requestFullscreen", { value: undefined, configurable: true });
-
-    fireEvent.click(btn); // enter immersive
-    await waitFor(() => expect(container.getAttribute("data-immersive")).toBe("true"));
-    fireEvent.click(btn); // exit immersive
-    await waitFor(() => expect(container.getAttribute("data-immersive")).toBeNull());
-
-    // The YT player was constructed exactly once across both transitions.
-    expect(YTPlayer).toHaveBeenCalledTimes(1);
+    fireEvent.click(btn); // enter
+    expect(container.getAttribute("data-immersive")).toBe("true");
+    fireEvent.click(btn); // exit
+    expect(container.getAttribute("data-immersive")).toBeNull();
+    expect(YTPlayer).toHaveBeenCalledTimes(1); // constructed exactly once
+    expect(YTPlayer.mock.instances[0].destroy).not.toHaveBeenCalled();
   });
 
   it("exit restores the normal layout and releases the body scroll lock", async () => {
     const { btn, container } = await renderPlayer();
-    Object.defineProperty(container, "requestFullscreen", { value: undefined, configurable: true });
-
     fireEvent.click(btn); // enter
-    await waitFor(() => expect(container.getAttribute("data-immersive")).toBe("true"));
+    expect(document.body.style.overflow).toBe("hidden");
     fireEvent.click(btn); // exit
-    await waitFor(() => expect(container.getAttribute("data-immersive")).toBeNull());
-
+    expect(container.getAttribute("data-immersive")).toBeNull();
     expect(container.className).toContain("relative");
     expect(container.className).not.toContain("fixed");
     expect(container.style.aspectRatio).toBe("16 / 9");
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("the fullscreen control is always inside the tap handler (single click, no async gap)", async () => {
-    const { btn, container } = await renderPlayer();
-    const req = vi.fn(() => Promise.resolve());
-    Object.defineProperty(container, "requestFullscreen", { value: req, configurable: true });
+  it("exposes an Exit control while immersive", async () => {
+    const { btn } = await renderPlayer();
     fireEvent.click(btn);
-    // Called synchronously within the click dispatch.
-    expect(req).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText("Exit immersive mode")).toBeTruthy();
   });
 });

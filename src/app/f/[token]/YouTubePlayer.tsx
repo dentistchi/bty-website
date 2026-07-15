@@ -16,12 +16,6 @@ import {
   type CompletionState,
   type WatchCheckpoint,
 } from "@/domain/foundry/watch-integrity";
-import {
-  enterFullscreen,
-  exitNativeFullscreen,
-  currentFullscreenElement,
-  isNativeFullscreenActive,
-} from "@/lib/native/fullscreen";
 
 /**
  * Thin wrapper over the OFFICIAL YouTube IFrame Player API. Loads the API once,
@@ -124,7 +118,6 @@ export function YouTubePlayer({
   enableResume?: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   const startedRef = useRef(false);
   const endedRef = useRef(false);
@@ -148,8 +141,11 @@ export function YouTubePlayer({
   const firedCheckpointsRef = useRef<Set<number>>(new Set());
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  // In-app immersive fallback for platforms without element-fullscreen (iPhone/WKWebView).
+  // BTY Immersive Mode — BTY owns the immersive experience end to end. We do NOT
+  // depend on the browser Fullscreen API (iPhone Safari / WKWebView leave the
+  // address+tab bars visible and only enlarge the iframe — an intermediate broken
+  // state). Tapping the control ALWAYS enters this mode, identically on every
+  // platform. YouTube is only the video renderer.
   const [immersive, setImmersive] = useState(false);
 
   useEffect(() => {
@@ -296,19 +292,7 @@ export function YouTubePlayer({
     };
   }, [videoId, enableResume]);
 
-  // Track NATIVE fullscreen state (standard + webkit) so the control stays in sync
-  // and an OS-level exit (swipe/back) restores our layout.
-  useEffect(() => {
-    const onFsChange = () => setIsFullscreen(isNativeFullscreenActive());
-    document.addEventListener("fullscreenchange", onFsChange);
-    document.addEventListener("webkitfullscreenchange", onFsChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", onFsChange);
-      document.removeEventListener("webkitfullscreenchange", onFsChange);
-    };
-  }, []);
-
-  // While in the in-app immersive fallback, lock body scroll (minimal + reversible).
+  // While immersive, lock body scroll (minimal + reversible).
   useEffect(() => {
     if (!immersive) return;
     const prev = document.body.style.overflow;
@@ -318,58 +302,37 @@ export function YouTubePlayer({
     };
   }, [immersive]);
 
-  // Filling the screen = native fullscreen OR the in-app immersive fallback.
-  const filling = isFullscreen || immersive;
-
-  const toggleFullscreen = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    // Exit path.
-    if (isNativeFullscreenActive()) {
-      exitNativeFullscreen();
-      return;
-    }
-    if (immersive) {
-      setImmersive(false);
-      return;
-    }
-    // Enter path — initiated synchronously (gesture preserved). Native when the
-    // platform supports it; otherwise the in-app immersive fallback activates.
-    void enterFullscreen(el, () => setImmersive(true));
-  };
-
   return (
     <div
-      ref={containerRef}
       className={
         "overflow-hidden bg-black " +
-        (filling
-          ? "fixed inset-0 z-[60] flex items-center justify-center"
+        // BTY Immersive Mode: fixed to the viewport, above ALL app chrome (header,
+        // bottom nav, page controls), covering the entire application. No browser
+        // Fullscreen API involved — the experience is identical on every platform.
+        (immersive
+          ? "fixed inset-0 z-[2147483647] flex items-center justify-center"
           : "relative w-full rounded-xl")
       }
-      style={
-        filling
-          ? { width: "100vw", height: "100dvh" }
-          : { aspectRatio: "16 / 9" }
-      }
+      style={immersive ? { width: "100vw", height: "100dvh" } : { aspectRatio: "16 / 9" }}
       data-immersive={immersive ? "true" : undefined}
     >
-      {/* The player mount fills its box; YouTube letterboxes the video internally,
-          so a portrait viewport still shows the video correctly. Never remounted
-          on a fullscreen transition — playback is preserved. */}
+      {/* The YouTube iframe simply fills the container (YouTube letterboxes the
+          video internally, so a portrait viewport still shows it correctly). The
+          player is NEVER remounted on an immersive transition — playback, wake
+          lock, resume, checkpoints all continue seamlessly. */}
       <div ref={mountRef} className="absolute inset-0 h-full w-full" />
       <button
         type="button"
-        onClick={toggleFullscreen}
-        aria-label={filling ? "Exit fullscreen" : "Enter fullscreen"}
-        className="absolute z-[61] rounded-lg bg-black/45 px-2.5 py-1.5 text-white/90 backdrop-blur-sm transition-opacity hover:bg-black/60"
+        onClick={() => setImmersive((v) => !v)}
+        aria-label={immersive ? "Exit immersive mode" : "Enter immersive mode"}
+        className="absolute z-[10] rounded-lg bg-black/45 px-2.5 py-1.5 text-white/90 backdrop-blur-sm transition-opacity hover:bg-black/60"
         style={{
-          top: filling ? "max(0.75rem, env(safe-area-inset-top))" : "0.5rem",
-          right: filling ? "max(0.75rem, env(safe-area-inset-right))" : "0.5rem",
+          top: immersive ? "max(0.75rem, env(safe-area-inset-top))" : "0.5rem",
+          right: immersive ? "max(0.75rem, env(safe-area-inset-right))" : "0.5rem",
         }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-          {filling ? (
+          {immersive ? (
             <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" strokeLinecap="round" strokeLinejoin="round" />
           ) : (
             <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" strokeLinecap="round" strokeLinejoin="round" />
