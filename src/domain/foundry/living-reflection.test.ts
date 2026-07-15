@@ -89,7 +89,7 @@ describe("validateLivingReflection (the gate)", () => {
     void whatEmerged;
     const res = validateLivingReflection(rest);
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toBe("missing_whatEmerged");
+    if (!res.ok) expect(res.reason).toBe("malformed_shape");
   });
 
   it("rejects an empty section", () => {
@@ -196,6 +196,39 @@ describe("validateLivingReflection — quality guard (V1, live-failure regressio
     );
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.reason).toBe("question_repeated");
+  });
+
+  it("ACCEPTS grounded real-world content that reuses watch-coded words as the person's own subject (recovery false-positive)", () => {
+    // The employee's OWN topic is avoiding a hard conversation — real evidence,
+    // not a viewing verdict. The V1 guard wrongly rejected these; V1.1 accepts.
+    const avoiding = validateLivingReflection(
+      {
+        whatEmerged: "You keep circling the conversation with your office manager that you have been avoiding.",
+        whereYouStretched: "You call it giving her time, yet the team is left without clear expectations.",
+        livingSentence: "The delay you named as patience is quietly becoming everyone else's confusion.",
+        nextInvitation: "The cost has already moved to the people who never chose this wait.",
+      },
+      { questionExcerpt: "what difficult conversation are you postponing" },
+    );
+    expect(avoiding.ok).toBe(true);
+
+    const consciousDecision = validateLivingReflection({
+      whatEmerged: "You made a conscious decision to wait before naming what is true.",
+      whereYouStretched: "There is a pull between comfort and honesty in your words.",
+      livingSentence: "Waiting has a cost that someone else is quietly paying for you.",
+      nextInvitation: "The distinction you drew is still unresolved between you and the team.",
+    });
+    // "conscious decision" (as a life choice) is fine; only "conscious decision/
+    // choice/effort" applied to viewing is caught — and this one carries no video.
+    expect(consciousDecision.ok).toBe(true);
+  });
+
+  it("still rejects the same watch-coded words when they judge the VIEWING", () => {
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "You avoided parts of the video." }).ok).toBe(false);
+    expect(
+      validateLivingReflection({ ...VALID, whatEmerged: "A conscious choice to limit engagement with the video." }).ok,
+    ).toBe(false);
+    expect(validateLivingReflection({ ...VALID, whatEmerged: "You skipped ahead rather than watching." }).ok).toBe(false);
   });
 
   it("accepts meaningful second-person grounding with the question framing ONE section", () => {

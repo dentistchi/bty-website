@@ -86,7 +86,7 @@ function buildLlmMessages(ctx: ReflectionContext): LlmChatMessage[] {
 
   const evidenceLines = [
     ctx.hasResponse
-      ? `The employee's own words (PRIMARY evidence): "${ctx.responseExcerpt}"`
+      ? `The employee's own words (PRIMARY evidence): "${ctx.responseFull}"`
       : "The employee did not leave written words this time.",
     ctx.hasQuestion
       ? `The host's question (the intended frame): "${ctx.questionExcerpt}"`
@@ -108,37 +108,66 @@ function stripJsonFences(text: string): string {
     .trim();
 }
 
+/** Bounded provider timeout — the reflection may never block the earned XP. */
+const LLM_TIMEOUT_MS = 12_000;
+
+/**
+ * Bounded observability for the reflection outcome. Records ONLY the deterministic
+ * outcome and (on rejection) the rule CODE — never the employee response, the host
+ * question, the generated text, participant identity, or any provider payload.
+ */
+function logReflectionOutcome(outcome: string, code?: string): void {
+  console.info(`[livingReflection] ${outcome}${code ? ` code=${code}` : ""}`);
+}
+
 /**
  * Ask the LLM to EXPRESS the meaning. Returns a validated reflection, or null on
- * any failure (unavailable, network error, unparseable, or validation reject) so
- * the caller falls back to the deterministic template.
+ * any failure (unavailable, timeout, network error, unparseable, or validation
+ * reject) so the caller falls back to the deterministic template. Each failure is
+ * logged with a text-free code so over-rejection is observable without leaking data.
  */
 async function expressReflectionWithLlm(ctx: ReflectionContext): Promise<LivingReflection | null> {
   if (!isLlmAvailable()) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
     const client = getLlmClient();
-    const completion = await client.chat.completions.create({
-      model: getLlmModel(),
-      messages: buildLlmMessages(ctx),
-      temperature: 0.7,
-      top_p: 0.9,
-      max_tokens: 500,
-    });
+    const completion = await client.chat.completions.create(
+      {
+        model: getLlmModel(),
+        messages: buildLlmMessages(ctx),
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 500,
+      },
+      { signal: controller.signal },
+    );
     const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
+    if (!raw) {
+      logReflectionOutcome("provider_invalid", "empty_output");
+      return null;
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
+      logReflectionOutcome("provider_invalid", "malformed_shape");
       return null;
     }
     const validated = validateLivingReflection(parsed, {
       questionExcerpt: ctx.questionExcerpt,
       responseExcerpt: ctx.responseExcerpt,
     });
-    return validated.ok ? validated.value : null;
+    if (!validated.ok) {
+      logReflectionOutcome("provider_invalid", validated.reason);
+      return null;
+    }
+    return validated.value;
   } catch {
+    logReflectionOutcome(controller.signal.aborted ? "provider_timeout" : "provider_error");
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -228,6 +257,8 @@ export async function generateLivingReflection(
   // LLM expresses; deterministic template guarantees a result.
   const expressed = await expressReflectionWithLlm(ctx);
   const reflection = expressed ?? renderTemplateReflection(ctx);
+  const producedBy = expressed ? "generated_valid" : "fallback_used";
+  logReflectionOutcome(alreadyGenerated ? "self_healed" : producedBy, alreadyGenerated ? producedBy : undefined);
 
   // Persist MEANING only (never telemetry).
   //  - First generation: claim the slot only if still empty (exactly-once guard).

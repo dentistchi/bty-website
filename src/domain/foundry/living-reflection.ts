@@ -45,15 +45,22 @@ export const REFLECTION_SECTION_KEYS: (keyof LivingReflection)[] = [
 ];
 
 const SECTION_MAX = 600; // per-section hard cap (keeps the mirror brief)
-const EXCERPT_MAX = 160; // how much of the participant's own words we ground with
+const EXCERPT_MAX = 160; // a short one-line snippet of the participant's own words
+const RESPONSE_FULL_MAX = 1000; // full response for grounding + clause selection (no ellipsis)
 const QUESTION_MAX = 200; // how much of the host's completion question we ground with
 
 /** The deterministic meaning distilled from reality — the input the expression uses. */
 export type ReflectionContext = {
   completionState: CompletionState;
   hasResponse: boolean;
-  /** The participant's own words, sanitized + trimmed. Grounding, never invented. */
+  /** A short one-line snippet of the participant's words (may end with "…"). */
   responseExcerpt: string;
+  /**
+   * The participant's full words, sanitized + whitespace-collapsed, hard-capped
+   * but NEVER ellipsis-truncated — the grounding source for the LLM and for
+   * deterministic clause selection. Grounding, never invented.
+   */
+  responseFull: string;
   /** Whether the host attached a completion question worth grounding against. */
   hasQuestion: boolean;
   /**
@@ -69,14 +76,19 @@ export function normalizeReflectionLocale(locale: unknown): ReflectionLocale {
   return locale === "ko" ? "ko" : "en";
 }
 
-/** Collapse whitespace to one line and cap length. Never invents; only trims. */
-function sanitizeText(raw: unknown, max: number): string {
+/**
+ * Collapse whitespace to one line and cap length. Never invents; only trims.
+ * `ellipsis` appends "…" when truncated (for short snippets); pass false to cut
+ * cleanly at the cap without a visible marker (for the grounding source).
+ */
+function sanitizeText(raw: unknown, max: number, ellipsis = true): string {
   if (typeof raw !== "string") return "";
   // Collapse whitespace/newlines to a single line for grounding; strip nothing
   // meaningful. The text was already control-char-stripped at capture.
   const oneLine = raw.replace(/\s+/g, " ").trim();
   if (oneLine.length <= max) return oneLine;
-  return oneLine.slice(0, max).trimEnd() + "…";
+  const cut = oneLine.slice(0, max).trimEnd();
+  return ellipsis ? cut + "…" : cut;
 }
 
 /**
@@ -94,11 +106,13 @@ export function buildReflectionContext(input: {
   locale?: unknown;
 }): ReflectionContext {
   const excerpt = sanitizeText(input.responseText, EXCERPT_MAX);
+  const full = sanitizeText(input.responseText, RESPONSE_FULL_MAX, false);
   const question = sanitizeText(input.questionText, QUESTION_MAX);
   return {
     completionState: input.completionState,
-    hasResponse: excerpt.length > 0,
+    hasResponse: full.length > 0,
     responseExcerpt: excerpt,
+    responseFull: full,
     hasQuestion: question.length > 0,
     questionExcerpt: question,
     locale: normalizeReflectionLocale(input.locale),
@@ -143,46 +157,63 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 ];
 
 /**
- * Quality guard (V1). A Living Reflection is a mirror held up to the person — it
- * speaks to "you", grounds only in their own words + the host's frame, and never
- * turns watch-state into a verdict about who they are. These reject the exact
- * failure modes seen live: third-person reporting ("the participant noted…"),
- * watch-behavior interpreted as intent ("a conscious choice to limit engagement"),
- * generic coaching, praise, character claims, and answer-grading.
+ * Quality guard (V1.1 recovery). A Living Reflection is a mirror — it speaks to
+ * "you", grounds only in the person's own words + the host's frame, and never
+ * turns watch-state into a verdict. Each rule carries a deterministic CODE so the
+ * service can record WHY an expression was rejected without ever logging text.
+ *
+ * RECOVERY NOTE: the first guard banned bare words (avoid/skip/engage/conscious/
+ * effort/lack) to stop watch-behavior judgment. But those words collide with the
+ * employee's OWN subject — a response about avoiding a hard conversation is real
+ * evidence, not a viewing verdict — so grounded output was wrongly rejected and
+ * fell back to generic copy. The watch-judgment guard is now precise: it rejects
+ * references to the ACT OF WATCHING / the video, plus tight viewing composites,
+ * while letting the person's real-world words through. All OTHER proven safety
+ * bans (third person, praise, grading, character claims, generic coaching) stand.
  */
-const QUALITY_FORBIDDEN_PATTERNS: RegExp[] = [
+type QualityRule = { re: RegExp; code: string };
+
+const QUALITY_RULES: QualityRule[] = [
   // Third-person references to the employee — a mirror always speaks to "you".
-  /\bthe (participant|participants|user|users|employee|employees|learner|viewer)\b/i,
-  /\bparticipant(?:'s|s)?\b/i,
-  // Watch-behavior read as motivation / effort / attention / avoidance / engagement.
-  /\bengag(?:e|es|ed|ing|ement)\b/i,
-  /\bconscious(?:ly)?\b/i,
-  /\bchose to\b/i,
-  /\bchoice to\b/i,
-  /\bavoid(?:ed|ing|s)?\b/i,
-  /\bskip(?:ped|ping|s)?\b/i,
-  /\black(?:ed|ing|s)?\b/i,
-  /\beffort\b/i,
-  /\bpay(?:ing)? attention\b/i,
-  /\bnot (?:fully |really )?(?:engaged|present|watching|paying attention)\b/i,
-  /\bwatched? (?:less|more|little|enough)\b/i,
-  // Personality / character claims.
-  /\byour personality\b/i,
-  /\bthis shows (?:that )?you\b/i,
-  /\byou are (?:a|an|the)\b/i,
-  /\byou tend to\b/i,
+  { re: /\bthe (?:participant|participants|user|users|employee|employees|learner|viewer)\b/i, code: "third_person" },
+  { re: /\bparticipant(?:'s|s)?\b/i, code: "third_person" },
+  // The reflection is never ABOUT the act of watching / the video itself.
+  { re: /\b(?:video|clip|footage)\b/i, code: "watch_judgment" },
+  { re: /\bwatch(?:es|ed|ing)?\b/i, code: "watch_judgment" },
+  { re: /\b(?:viewing|playback|rewind)\b/i, code: "watch_judgment" },
+  { re: /\bfast[-\s]?forward/i, code: "watch_judgment" },
+  // Viewing-behavior verdicts that carry no explicit "video" word.
+  { re: /\bnot (?:fully |really )?engaged\b/i, code: "watch_judgment" },
+  { re: /\bskip(?:ped|ping)? ahead\b/i, code: "watch_judgment" },
+  { re: /\black(?:ed|ing|s)?\s+(?:of\s+)?attention\b/i, code: "watch_judgment" },
+  { re: /\bpay(?:ing)? attention\b/i, code: "watch_judgment" },
+  // Personality / character claims — nothing about who they ARE.
+  { re: /\byour personality\b/i, code: "unsupported_claim" },
+  { re: /\bthis shows (?:that )?you\b/i, code: "unsupported_claim" },
+  { re: /\byou are (?:a|an|the)\b/i, code: "unsupported_claim" },
+  { re: /\byou tend to\b/i, code: "unsupported_claim" },
+  { re: /\bbased on your\b/i, code: "unsupported_claim" },
   // Generic praise.
-  /\b(?:great job|well done|good job|good work|excellent|amazing|fantastic|impressive|wonderful|brilliant)\b/i,
-  /\bstrong leader\b/i,
+  { re: /\b(?:great job|well done|good job|good work|excellent|amazing|fantastic|impressive|wonderful|brilliant)\b/i, code: "praise" },
+  { re: /\bstrong leader\b/i, code: "praise" },
   // "Correct answer" framing.
-  /\b(?:correct|right|wrong|incorrect) answer\b/i,
-  /\byou(?:'| a)?re (?:correct|right|wrong|incorrect)\b/i,
-  // Generic coaching / commands that would fit anyone.
-  /\bconsider how\b/i,
-  /\bthink about how\b/i,
-  /\byou should\b/i,
-  /\bmake sure\b/i,
-  /\bclear communication\b/i,
+  { re: /\b(?:correct|right|wrong|incorrect) answer\b/i, code: "answer_grading" },
+  { re: /\byou(?:'| a)?re (?:correct|right|wrong|incorrect)\b/i, code: "answer_grading" },
+  // Generic coaching / commands that would fit anyone — plus the exact generic
+  // filler phrases the deterministic fallback must never emit.
+  { re: /\bconsider how\b/i, code: "generic_coaching" },
+  { re: /\bthink about how\b/i, code: "generic_coaching" },
+  { re: /\byou should\b/i, code: "generic_coaching" },
+  { re: /\bmake sure\b/i, code: "generic_coaching" },
+  { re: /\bclear communication\b/i, code: "generic_coaching" },
+  { re: /\bput language to\b/i, code: "generic_coaching" },
+  { re: /\bisn't simple\b/i, code: "generic_coaching" },
+  { re: /\byou explored\b/i, code: "generic_coaching" },
+  { re: /\byou showed awareness\b/i, code: "generic_coaching" },
+  { re: /\bwhere your leadership begins\b/i, code: "generic_coaching" },
+  { re: /\bwhat the question asked of you\b/i, code: "generic_coaching" },
+  { re: /\blet this stay with you\b/i, code: "generic_coaching" },
+  { re: /\bcarry this forward\b/i, code: "generic_coaching" },
 ];
 
 function normalizeForMatch(s: string): string {
@@ -226,22 +257,22 @@ export function validateLivingReflection(
   const out = {} as LivingReflection;
   for (const key of REFLECTION_SECTION_KEYS) {
     const raw = obj[key];
-    if (typeof raw !== "string") return { ok: false, reason: `missing_${key}` };
+    if (typeof raw !== "string") return { ok: false, reason: "malformed_shape" };
     const trimmed = raw.trim();
-    if (trimmed.length < 1) return { ok: false, reason: `empty_${key}` };
-    if (trimmed.length > SECTION_MAX) return { ok: false, reason: `too_long_${key}` };
+    if (trimmed.length < 1) return { ok: false, reason: "malformed_shape" };
+    if (trimmed.length > SECTION_MAX) return { ok: false, reason: "malformed_shape" };
     for (const pattern of FORBIDDEN_PATTERNS) {
-      if (pattern.test(trimmed)) return { ok: false, reason: `forbidden_${key}` };
+      if (pattern.test(trimmed)) return { ok: false, reason: "metric_leak" };
     }
-    for (const pattern of QUALITY_FORBIDDEN_PATTERNS) {
-      if (pattern.test(trimmed)) return { ok: false, reason: `quality_${key}` };
+    for (const rule of QUALITY_RULES) {
+      if (rule.re.test(trimmed)) return { ok: false, reason: rule.code };
     }
     out[key] = trimmed;
   }
 
   // The living sentence / quoted line must be a real line, never a bare fragment.
   if (wordCount(out.livingSentence) < MIN_SENTENCE_WORDS) {
-    return { ok: false, reason: "quote_fragment" };
+    return { ok: false, reason: "fragment" };
   }
 
   // The four sections must each do their own job — reject near-duplicates.
