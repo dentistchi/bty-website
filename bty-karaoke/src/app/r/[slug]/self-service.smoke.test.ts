@@ -49,38 +49,28 @@ describe('MyRequestsDock — self-service performance card', () => {
     expect(dockCode).not.toMatch(/pauseVideo|stopVideo|postMessage|CastSession|cast\.|player\./i);
   });
 
-  it('exposes exactly the three guest mutation routes (cancel / start / finish)', () => {
-    const routes = (dock.match(/\/(cancel|start|finish)`/g) ?? []).sort();
-    expect(routes).toEqual(['/cancel`', '/finish`', '/start`']);
-    expect((dock.match(/\/finish`/g) ?? []).length).toBe(1);
-    expect((dock.match(/\/start`/g) ?? []).length).toBe(1);
+  it('V6: the guest touches only cancel + ready — NO start / finish routes', () => {
+    const routes = (dock.match(/\/(cancel|start|finish|ready)`/g) ?? []).sort();
+    expect(routes).toEqual(['/cancel`', '/ready`']);
+    expect(dock).not.toMatch(/\/start`/);
+    expect(dock).not.toMatch(/\/finish`/);
+    expect(dockCode).not.toContain('doStart');
+    expect(dockCode).not.toContain('doFinish');
   });
 
-  it('"I’m Ready" is a pure local state setter (no server mutation)', () => {
-    expect(dock).toContain('onClick={() => setReadyId(stageReq.requestId)}');
+  it('V6: Ready is a SHARED server signal (calls the /ready route), not a local flag', () => {
+    expect(dock).toContain('async function doReady');
+    expect(dock).toContain('/ready`');
+    expect(dock).toContain('onClick={() => doReady(stageReq, true)}'); // "준비됐어요"
+    expect(dock).toContain('onClick={() => doReady(stageReq, false)}'); // "준비 상태 취소"
+    // Ready reads from the server status, never a local ready flag.
+    expect(dockCode).not.toContain('setReadyId');
+    expect(dock).toContain('statuses[stageId]?.readyAt');
   });
 
-  it('only "Start My Song" invokes the start action', () => {
-    expect(dock).toContain('onClick={() => doStart(stageReq)}');
-    const startCall = dock.indexOf('async function doStart');
-    const startRoute = dock.indexOf('/start`');
-    const finishFn = dock.indexOf('async function doFinish');
-    expect(startCall).toBeGreaterThan(-1);
-    expect(startRoute).toBeGreaterThan(startCall);
-    expect(startRoute).toBeLessThan(finishFn);
-  });
-
-  it('gates Finish behind a 2-step inline confirmation with honest copy', () => {
-    expect(dock).toContain('setFinishConfirmId(stageReq.requestId)');
-    // First tap only opens the confirm; the second, honest step passes the turn.
-    expect(dock).toContain('TV의 영상도 멈췄나요?');
-    expect(dock).toContain('차례 넘기기');
-    // The playing card tells the singer to stop the TV video themselves.
-    expect(dock).toContain('YouTube에서 영상을 먼저 멈춘');
-  });
-
-  it('the Ready step sets an honest expectation about the YouTube handoff', () => {
-    expect(dock).toContain('시작하면 YouTube 앱이 열립니다');
+  it('V6: the guest never opens YouTube or connects the TV', () => {
+    expect(dockCode).not.toMatch(/safeYoutubeWatchUrl|location\.assign|youtube/i);
+    expect(dock).toContain('Admin이 다음 차례로 넘깁니다'); // playing card: Admin runs the stage
   });
 });
 
@@ -158,22 +148,17 @@ describe('Display polish V4 — hero, LIVE panel, empty stage, data-keyed motion
   });
 });
 
-describe('Guest cards polish V4 — MC-style Ready & Finish heroes', () => {
-  it('Ready hero emphasises "노래 시작" (not "I’m Ready")', () => {
-    expect(dock).toContain('perf-card ready hero');
-    expect(dock).toContain('🎤 노래 시작');
-    expect(dock).not.toContain('내 노래 시작하기');
-  });
-
-  it('greets the singer by name when known', () => {
+describe('Guest cards — MC greeting, Ready-only (V6)', () => {
+  it('greets the singer by name and asks them to Ready (Admin starts)', () => {
     expect(dock).toContain('namePrefix');
     expect(dock).toContain('준비되셨나요?');
+    expect(dock).toContain('준비되면 Admin이 TV에서 노래를 시작합니다');
   });
 
-  it('Finish is framed as passing the stage, kept honest and 2-step', () => {
+  it('the playing card explains the Admin runs the stage (no guest finish)', () => {
     expect(dock).toContain('perf-card playing hero');
-    expect(dock).toContain('노래를 마쳤나요?');
-    expect(dock).toContain('차례 넘기기');
+    expect(dock).toContain('지금 노래하는 중');
+    expect(dock).toContain('TV에서 노래가 재생되고 있어요');
   });
 });
 
@@ -184,21 +169,26 @@ describe('paired iPad defaults to the Display, not the DJ console (V3.1)', () =>
   });
 });
 
-describe('DJ console is an exception surface, not a playback surface (V3.1)', () => {
-  it('has no Play on TV / Open on this iPad in its normal UI', () => {
-    expect(djCode).not.toMatch(/Play on TV/i);
-    expect(djCode).not.toMatch(/Open on this iPad/i);
-    expect(djCode).not.toMatch(/runPlayOnTv|runOpenOnDevice|playOnTv\(|openOnThisIpad\(/);
+describe('Admin console is the SINGLE Player (V6)', () => {
+  it('the Player Hero starts the song then hands off to YouTube (Admin only)', () => {
+    expect(dj).toContain('onPlayOnTv');
+    expect(dj).toContain('▶ YouTube에서 재생');
+    expect(dj).toContain('onReopen');
   });
 
-  it('shows the exception-only note', () => {
-    expect(dj).toContain('정상 운영은 참가자가 각자의 휴대폰에서 진행합니다');
+  it('normal Finish is a 2-step "차례 넘기기" on the playing song', () => {
+    expect(dj).toContain('차례 넘기기');
+    expect(dj).toContain('TV 영상도 멈췄나요?');
+    expect(dj).toContain('onFinish(current.id)');
   });
 
-  it('keeps reorder + force-finish (the real exception tools)', () => {
+  it('shows the guest Ready signal from the shared server field', () => {
+    expect(dj).toContain('playTarget.ready_at');
+    expect(dj).toContain('READY TO PLAY');
+  });
+
+  it('keeps reorder + remove (exception tools) and stays on one canonical event', () => {
     expect(dj).toContain('DndContext');
     expect(dj).toContain('applyReorder');
-    expect(dj).toContain('Force-finish');
-    expect(dj).toContain('onFinish(current.id)');
   });
 });

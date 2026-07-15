@@ -38,6 +38,7 @@ beforeEach(() => {
       videoKind: 'mr',
       thumbnailUrl: null,
       status: 'playing',
+      ready: false,
     },
     next: null,
     waiting: [],

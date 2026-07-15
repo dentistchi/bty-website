@@ -198,6 +198,10 @@ interface Props {
   /** Admin-capable bearer, present only when the authenticated role is admin. */
   adminCred?: string | null;
   onStart: (id: string) => void | Promise<void>;
+  /** V6 Admin Player: start the song then open YouTube on this device (→ TV). */
+  onPlayOnTv?: (id: string, videoId: string) => void | Promise<void>;
+  /** V6 Admin Player: re-open the playing video on the TV (no state change). */
+  onReopen?: (videoId: string) => void;
   onFinish: (id: string) => void | Promise<void>;
   onMoveNext: (id: string) => void | Promise<void>;
   onRemove: (id: string) => void | Promise<void>;
@@ -221,6 +225,8 @@ export default function DjBoard({
   error,
   adminCred,
   onStart,
+  onPlayOnTv,
+  onReopen,
   onFinish,
   onMoveNext,
   onRemove,
@@ -236,6 +242,7 @@ export default function DjBoard({
   const [addOpen, setAddOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [playerFinishConfirm, setPlayerFinishConfirm] = useState(false); // 2-step "차례 넘기기"
   const [copiedLink, setCopiedLink] = useState(false);
   const [nowMs, setNowMs] = useState(() => 0);
 
@@ -299,6 +306,11 @@ export default function DjBoard({
     if (!override || activeId || savingRef.current) return;
     if (reconcileDecision(override, serverWaitingIds) !== 'hold') setOverride(null);
   }, [serverWaitingIds, override, activeId]);
+
+  // Clear a stale "pass the turn" confirmation whenever the playing song changes.
+  useEffect(() => {
+    setPlayerFinishConfirm(false);
+  }, [current?.id]);
 
   const sensors = useSensors(
     // Mouse/trackpad: a tiny move starts the drag. Touch: bound to the grip
@@ -620,19 +632,49 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              <div className="stage-actions">
-                <button className="ok lg" disabled={busy} onClick={() => onFinish(current.id)}>
-                  ✓ Force-finish
-                </button>
-              </div>
+              {/* V6 Admin Player: stop the video on the TV, then pass the turn. */}
               <p className="muted playback-help">
-                Emergency only — use this if a singer left without passing their turn. Normally the
-                singer finishes from their own phone.
+                YouTube에서 영상 재생을 멈춘 뒤 차례를 넘겨주세요.
               </p>
+              <div className="stage-actions">
+                {onReopen && (
+                  <button
+                    className="ghost lg"
+                    disabled={!current.youtube_video_id}
+                    onClick={() => onReopen(current.youtube_video_id)}
+                  >
+                    ▶ YouTube 다시 열기
+                  </button>
+                )}
+                {playerFinishConfirm ? (
+                  <div className="player-confirm">
+                    <span className="player-confirm-q">TV 영상도 멈췄나요?</span>
+                    <div className="player-confirm-row">
+                      <button className="ghost" onClick={() => setPlayerFinishConfirm(false)}>
+                        아직이요
+                      </button>
+                      <button
+                        className="ok"
+                        disabled={busy}
+                        onClick={() => {
+                          setPlayerFinishConfirm(false);
+                          void onFinish(current.id);
+                        }}
+                      >
+                        네, 차례 넘기기
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="ok lg" disabled={busy} onClick={() => setPlayerFinishConfirm(true)}>
+                    ✓ 차례 넘기기
+                  </button>
+                )}
+              </div>
             </div>
           ) : playTarget ? (
             <div className="stage-hero ready" key={playTarget.id}>
-              <div className="eyebrow">Up next</div>
+              <div className="eyebrow">{playTarget.ready_at ? 'READY TO PLAY' : 'UP NEXT'}</div>
               {playTarget.youtube_thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -657,10 +699,22 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              <p className="lead">
-                This singer starts their own song from their phone. Use the queue on the right to
-                reorder or remove if needed.
-              </p>
+              {playTarget.ready_at ? (
+                <p className="lead player-ready">✅ {playTarget.guest_name}님이 준비됐습니다.</p>
+              ) : (
+                <p className="muted playback-help">아직 준비 신호를 기다리고 있습니다.</p>
+              )}
+              {onPlayOnTv && (
+                <div className="stage-actions">
+                  <button
+                    className="primary lg"
+                    disabled={busy || !playTarget.youtube_video_id}
+                    onClick={() => onPlayOnTv(playTarget.id, playTarget.youtube_video_id)}
+                  >
+                    ▶ YouTube에서 재생
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="stage-hero ready">

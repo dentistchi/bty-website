@@ -139,6 +139,8 @@ export interface GuestQueueStatus {
   aheadCount: number;
   isUpNext: boolean;
   isNowPlaying: boolean;
+  /** V6: the guest's shared "I'm ready" signal (null when not readied). */
+  readyAt: string | null;
 }
 
 /** Minimal ordering fields for one queue row. */
@@ -175,16 +177,17 @@ export function resolveGuestStatus(
   requestId: string,
   activeQueue: readonly QueueOrderEntry[],
   targetStatus: RequestStatus | null,
+  readyAt: string | null = null,
 ): GuestQueueStatus {
-  const idle = { requestId, position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false };
-  if (targetStatus === null) return { ...idle, state: 'not_found' };
+  const idle = { requestId, position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false, readyAt };
+  if (targetStatus === null) return { ...idle, state: 'not_found', readyAt: null };
   if (targetStatus === 'playing') return { ...idle, state: 'now_playing', isNowPlaying: true };
-  if (targetStatus === 'completed') return { ...idle, state: 'done' };
-  if (targetStatus === 'skipped' || targetStatus === 'removed') return { ...idle, state: 'removed' };
+  if (targetStatus === 'completed') return { ...idle, state: 'done', readyAt: null };
+  if (targetStatus === 'skipped' || targetStatus === 'removed') return { ...idle, state: 'removed', readyAt: null };
 
   // targetStatus === 'waiting'
   const target = activeQueue.find((e) => e.id === requestId);
-  if (!target) return { ...idle, state: 'not_found' };
+  if (!target) return { ...idle, state: 'not_found', readyAt: null };
   const aheadCount = activeQueue.filter(
     (e) => e.status === 'waiting' && e.id !== target.id && canonicalRank(e, target) < 0,
   ).length;
@@ -196,5 +199,6 @@ export function resolveGuestStatus(
     aheadCount,
     isUpNext,
     isNowPlaying: false,
+    readyAt,
   };
 }

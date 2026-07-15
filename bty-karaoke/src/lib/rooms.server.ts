@@ -44,6 +44,8 @@ export interface KaraokeRequest {
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  /** V6: the guest signalled "I'm ready" while still waiting (Admin Player reads it). */
+  ready_at: string | null;
 }
 
 const PUBLIC_ROOM_COLS = 'id, slug, display_name, status';
@@ -219,7 +221,8 @@ export async function getGuestQueueStatus(
   const target = await getRequestOrderFields(roomId, requestId);
   if (!target) return null;
   const active = await listActiveRequests(roomId);
-  return resolveGuestStatus(requestId, toOrderEntries(active), target.status);
+  const readyAt = active.find((r) => r.id === requestId)?.ready_at ?? null;
+  return resolveGuestStatus(requestId, toOrderEntries(active), target.status, readyAt);
 }
 
 export type GuestCancelOutcome =
@@ -252,7 +255,7 @@ export async function cancelOwnRequest(
   if (data) {
     const status = await getGuestQueueStatus(roomId, requestId);
     // status is non-null here (row exists); fall back defensively.
-    return { outcome: 'ok', status: status ?? { requestId, state: 'removed', position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false } };
+    return { outcome: 'ok', status: status ?? { requestId, state: 'removed', position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false, readyAt: null } };
   }
 
   const cur = await getRequestOrderFields(roomId, requestId);
@@ -517,6 +520,34 @@ export async function finishOwnRequest(
   return { outcome: 'not_playing', from: cur.status };
 }
 
+export type ReadyOutcome = 'ok' | 'not_waiting' | 'not_found';
+
+/**
+ * Set / clear the guest's Ready signal (V6). Only a request that is still
+ * `waiting` can be readied — Ready never touches a playing/finished row and never
+ * occupies the stage. Atomic + status-guarded; ownership is verified by the route.
+ */
+export async function setRequestReady(
+  roomId: string,
+  requestId: string,
+  ready: boolean,
+): Promise<{ outcome: ReadyOutcome }> {
+  const db = karaokeDb();
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ ready_at: ready ? new Date().toISOString() : null })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'waiting')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (data) return { outcome: 'ok' };
+  const cur = await getRequestOrderFields(roomId, requestId);
+  if (!cur) return { outcome: 'not_found' };
+  return { outcome: 'not_waiting' };
+}
+
 // ── Public display / full-queue read model ─────────────────────────────────
 // The single safe projection the iPad Display and the guest full-queue board
 // both render. NEVER exposes session_id, dj_secret, the room UUID, or any
@@ -533,6 +564,7 @@ function toDisplayRequest(r: KaraokeRequest): DisplayRequest {
     videoKind: classifyVideo(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title ?? ''),
     thumbnailUrl: r.youtube_thumbnail_url,
     status: r.status === 'playing' ? 'playing' : 'waiting',
+    ready: r.ready_at != null,
   };
 }
 

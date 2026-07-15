@@ -5,8 +5,7 @@ import type { GuestQueueStatus } from '@/domain/queue';
 import type { DisplayState } from '@/domain/display';
 import { collapsedSummary, isTerminalState, cancelRowAction, type MyRequest } from '@/domain/guest-requests';
 import { displaySong } from '@/domain/song-title';
-import { safeYoutubeWatchUrl } from '@/domain/youtube';
-import { resolvePerfStage, arrivalTrigger, reconcileReady } from '@/domain/self-service';
+import { resolvePerfStage } from '@/domain/self-service';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -56,13 +55,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
   const [stageOpen, setStageOpen] = useState<boolean | null>(null);
   const [nextId, setNextId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
-  // UI-local performance flow (never server state, never a DB column):
-  //  - readyId: this guest tapped "I'm Ready" for a specific request (a psychological
-  //    pre-start step; the server status stays `waiting` until Start is tapped).
-  //  - finishConfirmId: the first tap of a 2-step inline Finish confirmation.
-  //  - arrived: a brief one-time "It's your turn" flash flag.
-  const [readyId, setReadyId] = useState<string | null>(null);
-  const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null);
+  // `arrived`: a brief one-time "It's your turn" flash flag.
   const [arrived, setArrived] = useState(false);
   const arrivedRef = useRef<string | null>(null); // request id we already fired arrival for
   const prevCount = useRef(0);
@@ -79,7 +72,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
           if (res.status === 404) {
             return [
               r.requestId,
-              { requestId: r.requestId, state: 'not_found', position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false } as GuestQueueStatus,
+              { requestId: r.requestId, state: 'not_found', position: 0, aheadCount: 0, isUpNext: false, isNowPlaying: false, readyAt: null } as GuestQueueStatus,
             ] as const;
           }
           if (!res.ok) return null;
@@ -198,74 +191,36 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
     }
   }
 
-  // Start MY song: promote my waiting request to the stage (only when I'm first
-  // and the stage is open — the server enforces this atomically). On success I
-  // hand THIS phone off to the YouTube app to cast to the TV; the iPad Display
-  // shows the same video. Idempotent under double-tap via the acting guard.
-  async function doStart(r: MyRequest) {
+  // READY signal (V6 single Admin Player): tell the ONE Admin Player "I'm ready".
+  // A SHARED server signal — it NEVER opens YouTube, NEVER starts the song, NEVER
+  // touches the stage. The Admin starts on the TV. `ready:false` withdraws it
+  // (only while the request is still waiting). Ownership proven by the capability.
+  async function doReady(r: MyRequest, ready: boolean) {
     if (actingId) return;
     if (!r.cancelToken) {
-      setError('이 신청은 이 기기에서 시작할 수 없어요.');
+      setError('이 신청은 이 기기에서 준비할 수 없어요.');
       return;
     }
     setActingId(r.requestId);
     setError(null);
     try {
       const res = await fetch(
-        `/api/rooms/${encodeURIComponent(slug)}/requests/${encodeURIComponent(r.requestId)}/start`,
+        `/api/rooms/${encodeURIComponent(slug)}/requests/${encodeURIComponent(r.requestId)}/ready`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           cache: 'no-store',
-          body: JSON.stringify({ token: r.cancelToken }),
+          body: JSON.stringify({ token: r.cancelToken, ready }),
         },
       );
       if (res.ok) {
         refreshAll();
-        // Hand off to YouTube on THIS phone to cast to the TV. Same-window
-        // navigation (no popup blocker; iPad Safari opens the YouTube app).
-        const url = safeYoutubeWatchUrl(r.videoId ?? null);
-        if (url) window.location.assign(url);
         return;
       }
-      if (res.status === 403) setError('이 기기에서는 이 곡을 시작할 수 없어요.');
-      else if (res.status === 409) setError('아직 차례가 아니거나 다른 곡이 재생 중이에요.');
+      if (res.status === 403) setError('이 기기에서는 준비할 수 없어요.');
+      else if (res.status === 409) setError('이미 차례가 지나갔어요.');
       else if (res.status === 404) setError('신청곡을 찾을 수 없어요.');
-      else setError('지금은 시작할 수 없어요.');
-      refreshAll();
-    } catch {
-      setError('네트워크 오류 — 다시 시도해 주세요.');
-    } finally {
-      setActingId(null);
-    }
-  }
-
-  // Finish MY song: end the request I'm currently singing. Idempotent server-side.
-  async function doFinish(r: MyRequest) {
-    if (actingId) return;
-    if (!r.cancelToken) {
-      setError('이 신청은 이 기기에서 끝낼 수 없어요.');
-      return;
-    }
-    setActingId(r.requestId);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/rooms/${encodeURIComponent(slug)}/requests/${encodeURIComponent(r.requestId)}/finish`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          cache: 'no-store',
-          body: JSON.stringify({ token: r.cancelToken }),
-        },
-      );
-      if (res.ok) {
-        refreshAll();
-        return;
-      }
-      if (res.status === 403) setError('이 기기에서는 이 곡을 끝낼 수 없어요.');
-      else if (res.status === 409) setError('이 곡은 재생 중이 아니에요.');
-      else setError('지금은 끝낼 수 없어요.');
+      else setError('지금은 준비할 수 없어요.');
       refreshAll();
     } catch {
       setError('네트워크 오류 — 다시 시도해 주세요.');
@@ -302,22 +257,13 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage.kind, stageId]);
 
-  // Reconcile UI-local intent against fresh server truth every poll: drop a stale
-  // Ready selection (e.g. someone else started → NOT_NEXT), and clear a pending
-  // Finish confirmation once the song is no longer on stage.
-  useEffect(() => {
-    setReadyId((prev) => reconcileReady(prev, stage));
-    if (stage.kind !== 'playing') setFinishConfirmId(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage.kind, stageId]);
-
   if (requests.length === 0) return null;
 
-  // The MyRequest backing the current stage (for videoId / cancelToken).
+  // The MyRequest backing the current stage (for cancelToken).
   const stageReq = stageId ? requests.find((r) => r.requestId === stageId) ?? null : null;
-  const isReady = stage.kind === 'my_turn' && readyId === stageId;
+  // Ready is the SHARED server signal (status.readyAt) the Admin Player also sees.
+  const isReady = stage.kind === 'my_turn' && !!(stageId && statuses[stageId]?.readyAt);
   const stageSong = stageReq ? displaySong(stageReq.title, stageReq.artist).song || stageReq.title : '';
-  const stageYoutubeUrl = stageReq ? safeYoutubeWatchUrl(stageReq.videoId ?? null) : null;
 
   const summary = collapsedSummary(
     requests.map((r) => {
@@ -339,53 +285,12 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
             <div className="perf-eyebrow">
               <span className="live-dot" aria-hidden /> {namePrefix ? `${namePrefix} 무대 위` : '지금 무대 위'}
             </div>
-            <div className="perf-title big">노래를 마쳤나요?</div>
+            <div className="perf-title big">지금 노래하는 중</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
-            {/* Honest: this app can't stop the YouTube app or the TV cast. The
-                singer stops the video in YouTube, then passes the turn here. */}
+            {/* V6: the ONE Admin Player runs the TV. The guest neither opens
+                YouTube nor ends the song — the Admin passes the turn. */}
             <div className="perf-sub">
-              노래를 마치면 YouTube에서 영상을 먼저 멈춘 뒤 차례를 넘겨주세요.
-            </div>
-            <div className="perf-actions">
-              {stageYoutubeUrl && (
-                <button
-                  type="button"
-                  className="perf-btn ghost"
-                  onClick={() => window.location.assign(stageYoutubeUrl)}
-                >
-                  ▶ YouTube 열기
-                </button>
-              )}
-              {finishConfirmId === stageReq.requestId ? (
-                <div className="perf-confirm">
-                  <span className="perf-confirm-q">TV의 영상도 멈췄나요?</span>
-                  <div className="perf-confirm-row">
-                    <button
-                      type="button"
-                      className="perf-btn ghost"
-                      onClick={() => setFinishConfirmId(null)}
-                    >
-                      아직이요
-                    </button>
-                    <button
-                      type="button"
-                      className="perf-btn finish"
-                      onClick={() => doFinish(stageReq)}
-                      disabled={actingId === stageReq.requestId}
-                    >
-                      {actingId === stageReq.requestId ? '넘기는 중…' : '네, 차례 넘기기'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="perf-btn finish"
-                  onClick={() => setFinishConfirmId(stageReq.requestId)}
-                >
-                  ✓ 차례 넘기기
-                </button>
-              )}
+              TV에서 노래가 재생되고 있어요. 노래가 끝나면 Admin이 다음 차례로 넘깁니다.
             </div>
           </div>
         )}
@@ -395,14 +300,15 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
             <div className="perf-hero-ico" aria-hidden>🎤</div>
             <div className="perf-eyebrow">It’s your turn</div>
             <div className="perf-title big">{namePrefix ? `${namePrefix}, 준비되셨나요?` : '준비되셨나요?'}</div>
-            <div className="perf-sub">노래를 시작하면 YouTube 앱이 열립니다.</div>
+            <div className="perf-sub">준비되면 Admin이 TV에서 노래를 시작합니다.</div>
             <div className="perf-actions">
               <button
                 type="button"
                 className="perf-btn ready"
-                onClick={() => setReadyId(stageReq.requestId)}
+                onClick={() => doReady(stageReq, true)}
+                disabled={actingId === stageReq.requestId}
               >
-                준비됐어요
+                {actingId === stageReq.requestId ? '알리는 중…' : '준비됐어요'}
               </button>
             </div>
           </div>
@@ -410,24 +316,19 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
 
         {stageReq && stage.kind === 'my_turn' && isReady && (
           <div className="perf-card ready hero" role="status">
-            <div className="perf-hero-ico" aria-hidden>🎤</div>
+            <div className="perf-hero-ico" aria-hidden>✅</div>
             <div className="perf-eyebrow">{namePrefix ? namePrefix : '준비 완료'}</div>
-            <div className="perf-title big">이제 시작할까요?</div>
+            <div className="perf-title big">재생 준비 완료</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
-            <div className="perf-sub">
-              시작하면 YouTube 앱이 열립니다. TV에 연결한 뒤 노래를 시작하세요.
-            </div>
+            <div className="perf-sub">Admin이 잠시 후 TV에서 노래를 시작합니다.</div>
             <div className="perf-actions">
               <button
                 type="button"
-                className="perf-btn start"
-                onClick={() => doStart(stageReq)}
+                className="perf-btn ghost"
+                onClick={() => doReady(stageReq, false)}
                 disabled={actingId === stageReq.requestId}
               >
-                {actingId === stageReq.requestId ? '시작하는 중…' : '🎤 노래 시작'}
-              </button>
-              <button type="button" className="perf-btn ghost" onClick={() => setReadyId(null)}>
-                아직이요
+                준비 상태 취소
               </button>
             </div>
           </div>

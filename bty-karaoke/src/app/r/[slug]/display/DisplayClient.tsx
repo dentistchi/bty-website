@@ -174,7 +174,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
           {/* NEXT — big and unmistakable; slides in only when it changes. */}
           {next ? (
             <div className="kd-next-hero kd-slide" key={next.id}>
-              <span className="kd-next-label">NEXT</span>
+              <span className="kd-next-label">NEXT{next.ready ? ' · READY' : ''}</span>
               <span className="kd-next-singer">{next.guestName}</span>
               <span className="kd-next-song">{next.title}</span>
             </div>

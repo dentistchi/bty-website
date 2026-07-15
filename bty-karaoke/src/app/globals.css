@@ -879,6 +879,26 @@ main.dj-console {
 .reorder-error {
   margin: 0 0 10px;
 }
+/* V6 Admin Player: the "차례 넘기기" 2-step confirm + the guest-ready line. */
+.player-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.player-confirm-q {
+  font-weight: 800;
+  color: var(--text);
+}
+.player-confirm-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+}
+.player-ready {
+  color: #7be3ab;
+  font-weight: 800;
+}
 .q-card.head {
   border-color: rgba(245, 196, 81, 0.4);
   background: rgba(245, 196, 81, 0.06);

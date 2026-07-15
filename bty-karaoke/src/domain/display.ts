@@ -19,6 +19,8 @@ export interface DisplayRequest {
   videoKind: VideoKind;
   thumbnailUrl: string | null;
   status: 'playing' | 'waiting';
+  /** V6: this waiting singer signalled Ready (Display can show "NEXT · READY"). */
+  ready: boolean;
 }
 
 /**

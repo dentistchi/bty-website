@@ -5,6 +5,7 @@ import type { KaraokeRequest } from '@/lib/rooms.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import type { DjEventStatus } from '@/lib/events.server';
 import { newArrivals } from '@/domain/queue';
+import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DjBoard from './DjBoard';
 
@@ -234,8 +235,11 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     };
   }, [phase, restoreView]);
 
-  async function mutate(id: string, action: 'play' | 'complete' | 'skip' | 'remove' | 'move_next') {
-    if (!cred) return;
+  async function mutate(
+    id: string,
+    action: 'play' | 'complete' | 'skip' | 'remove' | 'move_next',
+  ): Promise<boolean> {
+    if (!cred) return false;
     setError(null);
     setBusy(true);
     try {
@@ -249,19 +253,36 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       );
       if (res.status === 401) {
         setPhase('disconnected');
-        return;
+        return false;
       }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         setError(body?.error ?? 'That action failed.');
-        return;
+        return false;
       }
       await loadQueue(cred);
+      return true;
     } catch {
       setError('Network error.');
+      return false;
     } finally {
       setBusy(false);
     }
+  }
+
+  // Admin Player (V6): start the canonical next song, THEN hand off to YouTube on
+  // this ONE device to cast to the TV. Start FIRST so a failure never opens
+  // YouTube; same-window navigation opens the YouTube app (no blank tab).
+  async function playOnTv(id: string, videoId: string) {
+    const ok = await mutate(id, 'play');
+    if (!ok) return;
+    const url = safeYoutubeWatchUrl(videoId);
+    if (url) window.location.assign(url);
+  }
+  // Re-open the playing video on the TV without any state change.
+  function reopenOnTv(videoId: string) {
+    const url = safeYoutubeWatchUrl(videoId);
+    if (url) window.location.assign(url);
   }
 
   // Persist a DJ reorder of the waiting queue. Returns a coarse result so the
@@ -477,10 +498,12 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       error={error}
       dev={dev}
       adminCred={data?.role === 'admin' ? cred : null}
-      onStart={(id) => mutate(id, 'play')}
-      onFinish={(id) => mutate(id, 'complete')}
-      onMoveNext={(id) => mutate(id, 'move_next')}
-      onRemove={(id) => mutate(id, 'remove')}
+      onStart={(id) => { void mutate(id, 'play'); }}
+      onPlayOnTv={playOnTv}
+      onReopen={reopenOnTv}
+      onFinish={(id) => { void mutate(id, 'complete'); }}
+      onMoveNext={(id) => { void mutate(id, 'move_next'); }}
+      onRemove={(id) => { void mutate(id, 'remove'); }}
       onReorder={reorder}
       onAddSong={addSong}
       onRefresh={refresh}

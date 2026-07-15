@@ -15,6 +15,7 @@ function status(over: Partial<GuestQueueStatus> & { state: GuestQueueStatus['sta
     aheadCount: over.aheadCount ?? 0,
     isUpNext: over.isUpNext ?? false,
     isNowPlaying: over.isNowPlaying ?? false,
+    readyAt: over.readyAt ?? null,
   };
 }
 
