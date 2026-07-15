@@ -46,6 +46,7 @@ export const REFLECTION_SECTION_KEYS: (keyof LivingReflection)[] = [
 
 const SECTION_MAX = 600; // per-section hard cap (keeps the mirror brief)
 const EXCERPT_MAX = 160; // how much of the participant's own words we ground with
+const QUESTION_MAX = 200; // how much of the host's completion question we ground with
 
 /** The deterministic meaning distilled from reality — the input the expression uses. */
 export type ReflectionContext = {
@@ -53,6 +54,14 @@ export type ReflectionContext = {
   hasResponse: boolean;
   /** The participant's own words, sanitized + trimmed. Grounding, never invented. */
   responseExcerpt: string;
+  /** Whether the host attached a completion question worth grounding against. */
+  hasQuestion: boolean;
+  /**
+   * The host's completion question, sanitized + trimmed. Grounding evidence only:
+   * the reflection may connect the participant's words to what was asked, but must
+   * never ANSWER it. Empty when the event has no usable question.
+   */
+  questionExcerpt: string;
   locale: ReflectionLocale;
 };
 
@@ -60,29 +69,38 @@ export function normalizeReflectionLocale(locale: unknown): ReflectionLocale {
   return locale === "ko" ? "ko" : "en";
 }
 
-function sanitizeExcerpt(raw: unknown): string {
+/** Collapse whitespace to one line and cap length. Never invents; only trims. */
+function sanitizeText(raw: unknown, max: number): string {
   if (typeof raw !== "string") return "";
   // Collapse whitespace/newlines to a single line for grounding; strip nothing
-  // meaningful. The response was already control-char-stripped at capture.
+  // meaningful. The text was already control-char-stripped at capture.
   const oneLine = raw.replace(/\s+/g, " ").trim();
-  if (oneLine.length <= EXCERPT_MAX) return oneLine;
-  return oneLine.slice(0, EXCERPT_MAX).trimEnd() + "…";
+  if (oneLine.length <= max) return oneLine;
+  return oneLine.slice(0, max).trimEnd() + "…";
 }
 
 /**
  * RULE ENGINE + CONTEXT BUILDER. Deterministically decide the meaning from real
  * evidence. This is the ONLY place "what today meant" is judged.
+ *
+ * Grounding evidence is exactly three things — what was watched (completionState),
+ * what the host asked (questionText), and what the participant answered
+ * (responseText). No metric, no invented fact.
  */
 export function buildReflectionContext(input: {
   completionState: CompletionState;
   responseText?: unknown;
+  questionText?: unknown;
   locale?: unknown;
 }): ReflectionContext {
-  const excerpt = sanitizeExcerpt(input.responseText);
+  const excerpt = sanitizeText(input.responseText, EXCERPT_MAX);
+  const question = sanitizeText(input.questionText, QUESTION_MAX);
   return {
     completionState: input.completionState,
     hasResponse: excerpt.length > 0,
     responseExcerpt: excerpt,
+    hasQuestion: question.length > 0,
+    questionExcerpt: question,
     locale: normalizeReflectionLocale(input.locale),
   };
 }

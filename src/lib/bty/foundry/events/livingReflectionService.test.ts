@@ -16,14 +16,15 @@ vi.mock("./foundryEventService", () => ({
   findParticipantBySession: vi.fn(async () => (resolveState.hasParticipant ? resolveState.participant : null)),
 }));
 
-const llm = { available: false, content: "" as string, throws: false };
+const llm = { available: false, content: "" as string, throws: false, lastMessages: null as unknown };
 vi.mock("@/lib/bty/llm/client", () => ({
   isLlmAvailable: () => llm.available,
   getLlmModel: () => "test-model",
   getLlmClient: () => ({
     chat: {
       completions: {
-        create: async () => {
+        create: async (params: { messages: unknown }) => {
+          llm.lastMessages = params.messages;
           if (llm.throws) throw new Error("llm down");
           return { choices: [{ message: { content: llm.content } }] };
         },
@@ -46,10 +47,13 @@ type ProgressRow = {
 
 let row: ProgressRow;
 let lastUpdate: Record<string, unknown> | null = null;
+let contentPrompt: string | null = null;
 
 function makeAdmin(): SupabaseClient {
+  let table = "";
   const api = {
-    from() {
+    from(t: string) {
+      table = t;
       return api;
     },
     select() {
@@ -58,7 +62,10 @@ function makeAdmin(): SupabaseClient {
     eq() {
       return api;
     },
-    maybeSingle: async () => ({ data: row }),
+    maybeSingle: async () =>
+      table === "foundry_event_training_content"
+        ? { data: { completion_prompt: contentPrompt } }
+        : { data: row },
     update(patch: Record<string, unknown>) {
       lastUpdate = patch;
       // Simulate the conditional `.is('reflection_generated_at', null)` claim.
@@ -92,7 +99,9 @@ beforeEach(() => {
   llm.available = false;
   llm.throws = false;
   llm.content = "";
+  llm.lastMessages = null;
   lastUpdate = null;
+  contentPrompt = null;
   row = {
     id: "pr-1",
     completed_at: "2026-07-14T10:00:00Z",
@@ -194,6 +203,50 @@ describe("generateLivingReflection — LLM expression path", () => {
     const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "pass", "en");
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.reflection.livingSentence).toContain("Presence");
+  });
+});
+
+describe("generateLivingReflection — host-question grounding", () => {
+  it("passes the host completion question to the LLM as evidence", async () => {
+    llm.available = true;
+    llm.content = VALID_JSON;
+    contentPrompt = "What will you protect and what will you change?";
+    const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "pass", "en");
+    expect(r.ok).toBe(true);
+    const messages = llm.lastMessages as { role: string; content: string }[];
+    const userMsg = messages.find((m) => m.role === "user")?.content ?? "";
+    expect(userMsg).toContain("What will you protect and what will you change?");
+    expect(userMsg).toContain("the host");
+  });
+
+  it("omits question evidence when the event has no completion prompt", async () => {
+    llm.available = true;
+    llm.content = VALID_JSON;
+    contentPrompt = null;
+    const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "pass", "en");
+    expect(r.ok).toBe(true);
+    const messages = llm.lastMessages as { role: string; content: string }[];
+    const userMsg = messages.find((m) => m.role === "user")?.content ?? "";
+    expect(userMsg).toContain("no specific reflection question");
+  });
+
+  it("does NOT read the host question on the idempotent restore path", async () => {
+    // Already generated → early return before any content read; the LLM is never called.
+    llm.available = true;
+    llm.content = VALID_JSON;
+    contentPrompt = "Should never be requested on restore.";
+    row.reflection_generated_at = "2026-07-14T11:00:00Z";
+    row.completion_state = "pass";
+    row.reflection = {
+      whatEmerged: "Stored A.",
+      whereYouStretched: "Stored B.",
+      livingSentence: "Stored C.",
+      nextInvitation: "Stored D.",
+    };
+    const r = await generateLivingReflection(makeAdmin(), "tok", "sess", "pass", "en");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.generated).toBe(false);
+    expect(llm.lastMessages).toBeNull();
   });
 });
 

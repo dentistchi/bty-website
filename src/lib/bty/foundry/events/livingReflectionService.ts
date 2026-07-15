@@ -67,7 +67,8 @@ function buildLlmMessages(ctx: ReflectionContext): LlmChatMessage[] {
     "You are the voice of a BTY Living Reflection — a mirror, never a judge.",
     "You do NOT decide what the participant means or felt. You only re-express, in warm natural language, the meaning you are given.",
     "Rules you must obey:",
-    "- Ground everything ONLY in the two pieces of evidence provided. Invent no facts, infer no hidden traits, draw no behavioral conclusions beyond the evidence.",
+    "- Ground everything ONLY in the evidence provided. Invent no facts, infer no hidden traits, draw no behavioral conclusions beyond the evidence.",
+    "- The host's question is context for what mattered here — let the reflection connect the participant's own words to what was asked. Do NOT answer, solve, or grade the question, and do NOT quote or restate it in more than one section.",
     "- Never mention numbers, percentages, metrics, watching statistics, seeking, or coverage. Never grade, score, or assign homework.",
     "- This is reflection, not evaluation. Be kind, specific, and brief.",
     `- Write in ${isKo ? "Korean" : "English"}.`,
@@ -78,6 +79,9 @@ function buildLlmMessages(ctx: ReflectionContext): LlmChatMessage[] {
 
   const evidenceLines = [
     `Watching (meaning, not metrics): ${completionPhrase(ctx.completionState, ctx.locale)}`,
+    ctx.hasQuestion
+      ? `What the host invited them to reflect on: "${ctx.questionExcerpt}"`
+      : "The host left no specific reflection question.",
     ctx.hasResponse
       ? `The participant's own words: "${ctx.responseExcerpt}"`
       : "The participant did not leave written words this time.",
@@ -143,6 +147,20 @@ async function getReflectionRow(
 }
 
 /**
+ * The host's completion question for this event (grounding evidence only). Read on
+ * the generation path only — the idempotent restore never needs it. Returns null
+ * when the event has no content row; the reflection then grounds without it.
+ */
+async function getCompletionPrompt(admin: SupabaseClient, eventId: string): Promise<string | null> {
+  const { data } = await admin
+    .from("foundry_event_training_content")
+    .select("completion_prompt")
+    .eq("event_id", eventId)
+    .maybeSingle<{ completion_prompt: string | null }>();
+  return data?.completion_prompt ?? null;
+}
+
+/**
  * Generate (or return the already-persisted) Living Reflection for the caller's
  * own completed training. Idempotent: once a reflection is stored it is the
  * user's history and is returned verbatim on re-entry (no regeneration, no drift).
@@ -183,9 +201,15 @@ export async function generateLivingReflection(
   const completionState: CompletionState =
     parseCompletionState(clientCompletionState) ?? parseCompletionState(row.completion_state) ?? "pass";
 
+  // The host's completion question — an approved grounding input, read only here
+  // (never on the idempotent restore). Best-effort: a missing question just drops
+  // one line of evidence; it never blocks generation.
+  const completionPrompt = await getCompletionPrompt(admin, resolved.event.id);
+
   const ctx = buildReflectionContext({
     completionState,
     responseText: row.response_text,
+    questionText: completionPrompt,
     locale,
   });
 

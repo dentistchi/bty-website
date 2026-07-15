@@ -37,6 +37,33 @@ describe("buildReflectionContext (rule engine)", () => {
     expect(ctx.locale).toBe("ko");
   });
 
+  it("grounds in the host's completion question when present", () => {
+    const ctx = buildReflectionContext({
+      completionState: "pass",
+      responseText: "I saw my team",
+      questionText: "  What will you do differently tomorrow?  ",
+      locale: "en",
+    });
+    expect(ctx.hasQuestion).toBe(true);
+    expect(ctx.questionExcerpt).toBe("What will you do differently tomorrow?");
+  });
+
+  it("marks a missing/empty host question as no-question", () => {
+    const noArg = buildReflectionContext({ completionState: "pass", responseText: "x" });
+    expect(noArg.hasQuestion).toBe(false);
+    expect(noArg.questionExcerpt).toBe("");
+
+    const blank = buildReflectionContext({ completionState: "pass", responseText: "x", questionText: "   " });
+    expect(blank.hasQuestion).toBe(false);
+  });
+
+  it("truncates a very long host question", () => {
+    const long = "q".repeat(500);
+    const ctx = buildReflectionContext({ completionState: "pass", responseText: "x", questionText: long });
+    expect(ctx.questionExcerpt.length).toBeLessThanOrEqual(201);
+    expect(ctx.questionExcerpt.endsWith("…")).toBe(true);
+  });
+
   it("normalizeReflectionLocale only accepts ko", () => {
     expect(normalizeReflectionLocale("ko")).toBe("ko");
     expect(normalizeReflectionLocale("en")).toBe("en");
