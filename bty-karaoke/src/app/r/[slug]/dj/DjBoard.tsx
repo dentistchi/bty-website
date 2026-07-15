@@ -326,10 +326,22 @@ export default function DjBoard({
     if (url) window.location.assign(url);
   }
 
+  // Drop focus from any text input before we hand off to YouTube. A focused
+  // <input> is (on iOS) in a magnified state; app-switching while focused is what
+  // brings the DJ back to a zoomed console. Blurring first returns Safari to 1.0.
+  function blurActive() {
+    try {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } catch {
+      /* ignore */
+    }
+  }
+
   // "Open on this iPad" — a personal-screen open of the CURRENT/selected video.
   // It ONLY navigates (runOpenOnDevice has no play effect), so it never changes a
   // request's state, never starts/finishes a song, and never disconnects the TV.
   function openOnThisIpad(videoId: string) {
+    blurActive();
     runOpenOnDevice({ openVideo: () => openVideo(videoId) });
   }
 
@@ -339,6 +351,7 @@ export default function DjBoard({
   // shows, we do NOT leave for YouTube, and the song stays waiting for a retry.
   function playOnTv(r: KaraokeRequest) {
     if (busy || startingRef.current) return;
+    blurActive();
     startingRef.current = true;
     void runPlayOnTv({
       play: () => onStart(r.id),
@@ -553,10 +566,11 @@ export default function DjBoard({
                 </button>
               </div>
               <p className="muted playback-help">
-                “Play on TV” marks this song playing, then opens the YouTube app to cast it to the
-                TV. Come straight back to Safari (app switcher or the back gesture) — the console
-                reloads itself with NOW SINGING and Finish song ready. “Open on this iPad” just
-                opens the video here and doesn’t change the queue.
+                “Play on TV” marks the song playing, then opens YouTube to cast it to the TV.
+                YouTube may open as its own screen — just switch back to Safari (app switcher or
+                the tab bar) and the console returns at normal size with NOW SINGING and Finish
+                song ready; no need to pinch or reload. “Open on this iPad” only opens the video
+                here and doesn’t change the queue.
               </p>
             </div>
           ) : (

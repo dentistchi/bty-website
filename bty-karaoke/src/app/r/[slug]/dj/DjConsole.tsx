@@ -197,6 +197,19 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     else setReconnecting(r === 'neterr');
   }, [cred, loadQueue]);
 
+  // Idempotent viewport+state restore for EVERY return path from the YouTube app.
+  // Blurring any focused input snaps iOS Safari back from an auto-zoomed state to
+  // 1.0 scale; then we refetch canonical truth (NOW SINGING / Finish / queue).
+  // Safe to call repeatedly (duplicate return events overlap harmlessly).
+  const restoreView = useCallback(() => {
+    try {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } catch {
+      /* ignore */
+    }
+    void refresh();
+  }, [refresh]);
+
   // Returning from YouTube (foreground/bfcache) refreshes the queue ONCE so the
   // console is immediately current — not a new polling loop, just a single
   // event-driven refresh per return. The 4s interval above is unchanged.
@@ -207,10 +220,10 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
     // SINGING / Finish Song / Guest QR / UP NEXT are current with no manual
     // reload. This is the return path after a YouTube-app handoff.
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
+      if (document.visibilityState === 'visible') restoreView();
     };
-    const onFocus = () => void refresh();
-    const onPageShow = () => void refresh(); // fresh load AND bfcache restore
+    const onFocus = () => restoreView();
+    const onPageShow = () => restoreView(); // fresh load AND bfcache restore
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onFocus);
     window.addEventListener('pageshow', onPageShow);
@@ -219,7 +232,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('pageshow', onPageShow);
     };
-  }, [phase, refresh]);
+  }, [phase, restoreView]);
 
   async function mutate(id: string, action: 'play' | 'complete' | 'skip' | 'remove' | 'move_next') {
     if (!cred) return;

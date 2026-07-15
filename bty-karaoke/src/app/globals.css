@@ -278,6 +278,17 @@ button {
   font: inherit;
 }
 
+/* iOS Safari auto-zooms when a focused control's font-size is < 16px, and that
+   zoom survives the YouTube app hand-off (the DJ returns to a magnified console).
+   Pinning every text control to 16px prevents the zoom at the source — WITHOUT a
+   user-scalable=no / maximum-scale viewport lock (which would harm accessibility
+   and only mask the cause). Buttons never trigger the zoom, so they keep inherit. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
 .btn,
 button {
   cursor: pointer;
