@@ -6,6 +6,7 @@ import type { DisplayState } from '@/domain/display';
 import { collapsedSummary, isTerminalState, cancelRowAction, type MyRequest } from '@/domain/guest-requests';
 import { displaySong } from '@/domain/song-title';
 import { safeYoutubeWatchUrl } from '@/domain/youtube';
+import { resolvePerfStage, arrivalTrigger, reconcileReady } from '@/domain/self-service';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -51,6 +52,15 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
   const [stageOpen, setStageOpen] = useState<boolean | null>(null);
   const [nextId, setNextId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  // UI-local performance flow (never server state, never a DB column):
+  //  - readyId: this guest tapped "I'm Ready" for a specific request (a psychological
+  //    pre-start step; the server status stays `waiting` until Start is tapped).
+  //  - finishConfirmId: the first tap of a 2-step inline Finish confirmation.
+  //  - arrived: a brief one-time "It's your turn" flash flag.
+  const [readyId, setReadyId] = useState<string | null>(null);
+  const [finishConfirmId, setFinishConfirmId] = useState<string | null>(null);
+  const [arrived, setArrived] = useState(false);
+  const arrivedRef = useRef<string | null>(null); // request id we already fired arrival for
   const prevCount = useRef(0);
   const terminalSeen = useRef<Set<string>>(new Set());
 
@@ -260,16 +270,50 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
     }
   }
 
+  // Canonical performance stage for THIS device — derived purely from the server
+  // resolver + the room stage. The UI renders copy/buttons from this; it never
+  // recomputes ordering and never auto-advances (Finish stays a human action).
+  const stage = resolvePerfStage({
+    requestIds: requests.map((r) => r.requestId),
+    statuses,
+    stageOpen,
+    nextId,
+  });
+  const stageId = 'requestId' in stage ? stage.requestId : null;
+
+  // One-time arrival: a single haptic + flash the first time this guest becomes
+  // first-in-line with the stage open. Guarded by request id so repeated 4s polls
+  // never re-fire; re-arms once the stage leaves `my_turn`.
+  useEffect(() => {
+    if (stage.kind === 'my_turn' && stageId && arrivedRef.current !== stageId) {
+      arrivedRef.current = stageId;
+      setArrived(true);
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        try { navigator.vibrate(35); } catch { /* haptics are optional */ }
+      }
+      const t = window.setTimeout(() => setArrived(false), 1200);
+      return () => window.clearTimeout(t);
+    }
+    if (stage.kind !== 'my_turn') arrivedRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.kind, stageId]);
+
+  // Reconcile UI-local intent against fresh server truth every poll: drop a stale
+  // Ready selection (e.g. someone else started → NOT_NEXT), and clear a pending
+  // Finish confirmation once the song is no longer on stage.
+  useEffect(() => {
+    setReadyId((prev) => reconcileReady(prev, stage));
+    if (stage.kind !== 'playing') setFinishConfirmId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage.kind, stageId]);
+
   if (requests.length === 0) return null;
 
-  // Actionable self-service state, surfaced prominently (not hidden in the sheet).
-  const playingMine = requests.find((r) => statuses[r.requestId]?.state === 'now_playing');
-  const startableMine = requests.find(
-    (r) =>
-      statuses[r.requestId]?.state === 'up_next' &&
-      stageOpen === true &&
-      (nextId == null || r.requestId === nextId),
-  );
+  // The MyRequest backing the current stage (for videoId / cancelToken).
+  const stageReq = stageId ? requests.find((r) => r.requestId === stageId) ?? null : null;
+  const isReady = stage.kind === 'my_turn' && readyId === stageId;
+  const stageSong = stageReq ? displaySong(stageReq.title, stageReq.artist).song || stageReq.title : '';
+  const stageYoutubeUrl = stageReq ? safeYoutubeWatchUrl(stageReq.videoId ?? null) : null;
 
   const summary = collapsedSummary(
     requests.map((r) => {
@@ -280,28 +324,110 @@ export default function MyRequestsDock({ slug, requests, onRemoved }: Props) {
 
   return (
     <>
-      {/* Permanent compact pill — with a prominent self-service action when it's
-          this guest's turn (their song is on stage, or they can start it now). */}
+      {/* Permanent performance card — a persistent, stage-aware surface (never a
+          disappearing toast). It walks the guest through WAITING → MY TURN →
+          READY → PLAYING → FINISH. Finish is ALWAYS explicit (2-step inline
+          confirm); nothing here auto-advances or auto-finishes. */}
       <div className="dock">
-        {playingMine ? (
-          <button
-            type="button"
-            className="dock-action finish"
-            onClick={() => doFinish(playingMine)}
-            disabled={actingId === playingMine.requestId}
-          >
-            {actingId === playingMine.requestId ? '끝내는 중…' : '✓ 내 노래 끝내기'}
-          </button>
-        ) : startableMine ? (
-          <button
-            type="button"
-            className="dock-action start"
-            onClick={() => doStart(startableMine)}
-            disabled={actingId === startableMine.requestId}
-          >
-            {actingId === startableMine.requestId ? '시작하는 중…' : '🎤 내 차례 시작하기'}
-          </button>
-        ) : null}
+        {stageReq && stage.kind === 'playing' && (
+          <div className="perf-card playing" role="status">
+            <div className="perf-eyebrow">
+              <span className="live-dot" aria-hidden /> 지금 무대 위
+            </div>
+            <div className="perf-title">🎙️ 지금 노래하는 중</div>
+            {stageSong && <div className="perf-song">{stageSong}</div>}
+            <div className="perf-actions">
+              {stageYoutubeUrl && (
+                <button
+                  type="button"
+                  className="perf-btn ghost"
+                  onClick={() => window.location.assign(stageYoutubeUrl)}
+                >
+                  ▶ YouTube에서 열기
+                </button>
+              )}
+              {finishConfirmId === stageReq.requestId ? (
+                <div className="perf-confirm">
+                  <span className="perf-confirm-q">이 노래를 끝낼까요?</span>
+                  <div className="perf-confirm-row">
+                    <button
+                      type="button"
+                      className="perf-btn ghost"
+                      onClick={() => setFinishConfirmId(null)}
+                    >
+                      아니요
+                    </button>
+                    <button
+                      type="button"
+                      className="perf-btn finish"
+                      onClick={() => doFinish(stageReq)}
+                      disabled={actingId === stageReq.requestId}
+                    >
+                      {actingId === stageReq.requestId ? '끝내는 중…' : '네, 끝내기'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="perf-btn finish"
+                  onClick={() => setFinishConfirmId(stageReq.requestId)}
+                >
+                  ✓ 내 노래 끝내기
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {stageReq && stage.kind === 'my_turn' && !isReady && (
+          <div className={`perf-card myturn${arrived ? ' arrival' : ''}`} role="status">
+            <div className="perf-eyebrow">🎤 It’s your turn</div>
+            <div className="perf-title">내 차례예요</div>
+            <div className="perf-sub">노래할 준비가 되면 시작하세요.</div>
+            <div className="perf-actions">
+              <button
+                type="button"
+                className="perf-btn ready"
+                onClick={() => setReadyId(stageReq.requestId)}
+              >
+                준비됐어요 · I’m Ready
+              </button>
+            </div>
+          </div>
+        )}
+
+        {stageReq && stage.kind === 'my_turn' && isReady && (
+          <div className="perf-card ready" role="status">
+            <div className="perf-eyebrow">🎤 준비 완료</div>
+            <div className="perf-title">시작할까요?</div>
+            {stageSong && <div className="perf-song">{stageSong}</div>}
+            <div className="perf-actions">
+              <button
+                type="button"
+                className="perf-btn start"
+                onClick={() => doStart(stageReq)}
+                disabled={actingId === stageReq.requestId}
+              >
+                {actingId === stageReq.requestId ? '시작하는 중…' : '🎤 내 노래 시작하기'}
+              </button>
+              <button type="button" className="perf-btn ghost" onClick={() => setReadyId(null)}>
+                아직이요
+              </button>
+            </div>
+          </div>
+        )}
+
+        {stage.kind === 'waiting' && (
+          <div className="perf-card waiting" role="status">
+            <span className="perf-wait-ico" aria-hidden>🎶</span>
+            <span className="perf-wait-text">
+              {stage.aheadCount === 0
+                ? '곧 당신 차례예요'
+                : `앞에 ${stage.aheadCount}곡 · 순서를 기다리는 중`}
+            </span>
+          </div>
+        )}
         <button
           type="button"
           className={`dock-pill${pulse ? ' pulse' : ''}`}

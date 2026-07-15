@@ -1316,6 +1316,143 @@ main.dj-console {
     opacity: 1;
   }
 }
+/* ── Persistent performance card (V3) — WAITING → MY TURN → READY → PLAYING ──
+   A stage-aware surface that stays put (never a toast). Finish is always an
+   explicit 2-step action; nothing here auto-advances. */
+.perf-card {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  padding: 14px 16px calc(14px + 2px);
+  border-radius: 18px;
+  border: 1px solid rgba(245, 196, 81, 0.3);
+  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
+  box-shadow: 0 18px 44px -16px rgba(0, 0, 0, 0.85);
+  animation: fade-up 0.24s ease both;
+}
+.perf-card.myturn,
+.perf-card.ready {
+  border-color: rgba(53, 214, 163, 0.5);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(53, 214, 163, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+.perf-card.playing {
+  border-color: rgba(245, 196, 81, 0.5);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(245, 196, 81, 0.16), transparent 60%),
+    linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+/* MY TURN arrival: a single soft ring pulse (fires once — the class is only
+   present briefly on first arrival). */
+.perf-card.myturn.arrival {
+  animation: fade-up 0.24s ease both, arrival 1s ease-out 1;
+}
+.perf-card.waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-color: var(--line-2);
+  background: linear-gradient(180deg, var(--panel-2), var(--stage-1));
+}
+.perf-wait-ico {
+  font-size: 1.1rem;
+}
+.perf-wait-text {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.perf-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.perf-card.myturn .perf-eyebrow,
+.perf-card.ready .perf-eyebrow {
+  color: #6ff0c8;
+}
+.perf-title {
+  margin-top: 4px;
+  font-size: 1.16rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.perf-sub {
+  margin-top: 2px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.perf-song {
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.perf-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.perf-btn {
+  pointer-events: auto;
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 14px;
+  border: none;
+  font-weight: 900;
+  font-size: 1rem;
+  color: #06231b;
+}
+.perf-btn.ready,
+.perf-btn.start {
+  background: linear-gradient(180deg, #8ff0d0, #35d6a3);
+}
+.perf-btn.finish {
+  background: linear-gradient(180deg, #f7d98a, var(--gold, #f5c451));
+  color: #2a1e02;
+}
+.perf-btn.ghost {
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 800;
+}
+.perf-btn:disabled {
+  opacity: 0.6;
+}
+.perf-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.perf-confirm-q {
+  font-weight: 800;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+.perf-confirm-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 8px;
+}
+.perf-confirm-row .perf-btn {
+  margin: 0;
+}
+
 .dock-pill {
   pointer-events: auto;
   display: inline-flex;
