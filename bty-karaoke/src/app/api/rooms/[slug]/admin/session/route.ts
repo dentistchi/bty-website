@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeAdmin, activeRequestStats } from '@/lib/rooms.server';
+import { ensureCanonicalLiveEvent } from '@/lib/events.server';
 import { getActiveSession, startSession, endSession } from '@/lib/sessions.server';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await requireAdmin(req, slug);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Admin Hub init (V5 2A): the ONLY place a room's canonical live Event is
+  // auto-ensured. Opening the Hub silently guarantees exactly one live Event —
+  // no "Create Event" step. Never runs on Guest/Display/DJ/public reads.
+  const event = await ensureCanonicalLiveEvent(auth.room.id, auth.room.display_name);
+
   const [session, stats] = await Promise.all([
     getActiveSession(auth.room.id),
     activeRequestStats(auth.room.id),
@@ -30,6 +36,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     room: { slug: auth.room.slug, display_name: auth.room.display_name, status: auth.room.status },
     session,
     stats,
+    event: { id: event.id, name: event.name, status: event.status },
   });
 }
 

@@ -1,4 +1,5 @@
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
+import { getCanonicalEvent } from '@/lib/events.server';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import RequestForm from './RequestForm';
 import QueueBoard from './QueueBoard';
@@ -19,6 +20,12 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
     );
   }
 
+  // The room's ONE canonical live event (or null for a room whose Admin has not
+  // opened the Hub yet). Threaded to the guest client ONLY to namespace the
+  // ownership localStorage by event — a guest read never creates an event.
+  const event = await getCanonicalEvent(room.id);
+  const eventId = event?.id ?? null;
+
   return (
     <main>
       <div className="brand-head">
@@ -31,10 +38,10 @@ export default async function RoomPage({ params }: { params: Promise<{ slug: str
       </div>
       <p className="muted">노래를 검색해 신청하고, 내 차례가 되면 직접 시작하세요.</p>
 
-      <RequestForm slug={room.slug} roomOpen={room.status === 'open'} />
+      <RequestForm slug={room.slug} roomOpen={room.status === 'open'} eventId={eventId} />
 
       {/* Live full-queue view (canonical /display resolver, my songs highlighted). */}
-      <QueueBoard slug={room.slug} />
+      <QueueBoard slug={room.slug} eventId={eventId} />
     </main>
   );
 }

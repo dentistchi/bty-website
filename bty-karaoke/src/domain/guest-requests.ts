@@ -16,8 +16,23 @@ export interface MyRequest {
   submittedAt: number; // epoch ms
 }
 
-/** localStorage key for retained request IDs, scoped by room slug. */
-export function myRequestsKey(slug: string): string {
+/**
+ * localStorage key for retained request IDs + cancel/owner capabilities. This
+ * holds OWNERSHIP data, so V5 namespaces it by the canonical event when one is
+ * known: `bty-karaoke:{slug}:{eventId}:my-requests`. Without an event id it falls
+ * back to the legacy room-scoped key (V4 behavior) so nothing breaks during the
+ * transition. Ownership must NEVER cross an event boundary — a different eventId
+ * yields a different key, so a new event can never surface a prior event's
+ * requests or capabilities.
+ */
+export function myRequestsKey(slug: string, eventId?: string | null): string {
+  return eventId
+    ? `bty-karaoke:${slug}:${eventId}:my-requests`
+    : `bty-karaoke:${slug}:my-requests`;
+}
+
+/** The legacy room-scoped key (pre-V5) — read once as a transition fallback. */
+export function legacyMyRequestsKey(slug: string): string {
   return `bty-karaoke:${slug}:my-requests`;
 }
 

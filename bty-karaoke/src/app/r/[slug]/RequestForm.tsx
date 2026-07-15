@@ -12,6 +12,7 @@ import {
 import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
 import {
   myRequestsKey,
+  legacyMyRequestsKey,
   pruneMyRequests,
   addMyRequest,
   type MyRequest,
@@ -22,6 +23,8 @@ import MyRequestsDock from './MyRequestsDock';
 interface Props {
   slug: string;
   roomOpen: boolean;
+  /** The room's canonical live event id, or null (namespaces ownership storage). */
+  eventId?: string | null;
   /**
    * Optional: fired after a request is successfully submitted. The event guest
    * screen uses it to refresh live presence immediately; legacy callers omit it
@@ -32,7 +35,7 @@ interface Props {
 
 type SearchState = 'idle' | 'searching' | 'done';
 
-export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
+export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitted }: Props) {
   // Identity — remembered once per room/device (never authentication).
   const [guestName, setGuestName] = useState('');
   const [nameLocked, setNameLocked] = useState(false);
@@ -68,17 +71,30 @@ export default function RequestForm({ slug, roomOpen, onSubmitted }: Props) {
       setEditingName(false);
     }
     try {
-      const raw = window.localStorage.getItem(myRequestsKey(slug));
+      const key = myRequestsKey(slug, eventId);
+      let raw = window.localStorage.getItem(key);
+      // Transition (V5): when this room now has an event, adopt the guest's
+      // legacy room-scoped list ONCE into the event-scoped key. Same room, same
+      // in-flight requests, same still-valid capabilities → safe to carry into
+      // the FIRST event. A different eventId always yields a different key, so a
+      // later event can never inherit a prior event's requests.
+      if (!raw && eventId) {
+        const legacy = window.localStorage.getItem(legacyMyRequestsKey(slug));
+        if (legacy) {
+          window.localStorage.setItem(key, legacy);
+          raw = legacy;
+        }
+      }
       if (raw) setMyRequests(pruneMyRequests(JSON.parse(raw) as MyRequest[], Date.now()));
     } catch {
       /* ignore corrupt storage */
     }
-  }, [slug]);
+  }, [slug, eventId]);
 
   function persistRequests(list: MyRequest[]) {
     setMyRequests(list);
     try {
-      window.localStorage.setItem(myRequestsKey(slug), JSON.stringify(list));
+      window.localStorage.setItem(myRequestsKey(slug, eventId), JSON.stringify(list));
     } catch {
       /* storage full / disabled — presentation only */
     }

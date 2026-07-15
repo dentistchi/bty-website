@@ -9,9 +9,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url)); // src/
-const events = readFileSync(root + 'lib/events.server.ts', 'utf8');
-const guestReq = readFileSync(root + 'app/api/rooms/[slug]/requests/route.ts', 'utf8');
-const displayRoute = readFileSync(root + 'app/api/rooms/[slug]/display/route.ts', 'utf8');
+const R = (p: string) => readFileSync(root + p, 'utf8');
+const events = R('lib/events.server.ts');
+const guestReq = R('app/api/rooms/[slug]/requests/route.ts');
+const displayRoute = R('app/api/rooms/[slug]/display/route.ts');
+const adminSession = R('app/api/rooms/[slug]/admin/session/route.ts');
+const djQueue = R('app/api/rooms/[slug]/dj/queue/route.ts');
+const guestQr = R('app/api/rooms/[slug]/guest-qr/route.ts');
 
 /** Body of a top-level `export async function NAME` up to the next `export`. */
 function fnBody(src: string, name: string): string {
@@ -23,9 +27,14 @@ function fnBody(src: string, name: string): string {
 }
 
 describe('canonical event resolver is deterministic (no recency inference)', () => {
-  it('getCanonicalEvent delegates to the 1:1 room lookup', () => {
+  it('getCanonicalEvent resolves the ONE live event deterministically (room_id + live status, maybeSingle)', () => {
     expect(events).toContain('export async function getCanonicalEvent');
-    expect(fnBody(events, 'getCanonicalEvent')).toContain('getEventByRoomId');
+    const body = fnBody(events, 'getCanonicalEvent');
+    expect(body).toMatch(/\.eq\('room_id'/);
+    expect(body).toMatch(/\.in\('status'/);
+    expect(body).toContain('maybeSingle');
+    expect(body).not.toMatch(/\.order\(/);
+    expect(body).not.toMatch(/\.limit\(/);
   });
 
   it('getEventByRoomId selects by room_id with maybeSingle — no order/limit recency pick', () => {
@@ -60,5 +69,42 @@ describe('honest reject gate runs on operational paths', () => {
   it('the Display read injects the ONE canonical event (never a room-latest guess)', () => {
     expect(displayRoute).toContain('getCanonicalEvent');
     expect(displayRoute).toMatch(/event\s*:\s*event\s*\?/);
+  });
+});
+
+describe('auto-ensure is admin-hub-only (V5 2A)', () => {
+  it('the authenticated Admin Hub init (GET /admin/session) auto-ensures the event', () => {
+    expect(adminSession).toContain('ensureCanonicalLiveEvent(auth.room.id');
+    // The ensure CALL runs only after the admin auth guard.
+    expect(adminSession.indexOf('if (!auth) return')).toBeLessThan(
+      adminSession.indexOf('ensureCanonicalLiveEvent(auth.room.id'),
+    );
+    expect(adminSession).toMatch(/event:\s*\{\s*id:\s*event\.id/);
+  });
+
+  it('NO public/read path (guest / display / DJ / QR) ever ensures (creates) an event', () => {
+    for (const src of [guestReq, displayRoute, djQueue, guestQr]) {
+      expect(src).not.toContain('ensureCanonicalLiveEvent');
+    }
+  });
+});
+
+describe('identity propagation — all four surfaces carry the same event.id', () => {
+  it('Admin, Display, DJ, and Guest reads each expose the canonical event', () => {
+    expect(adminSession).toMatch(/event:\s*\{\s*id:\s*event\.id/);
+    expect(displayRoute).toMatch(/event:\s*event\s*\?/);
+    expect(djQueue).toContain('getCanonicalEvent');
+    expect(djQueue).toMatch(/event:\s*event\s*\?/);
+    expect(guestReq).toContain('getCanonicalEvent');
+    expect(guestReq).toMatch(/event:\s*event\s*\?/);
+  });
+});
+
+describe('QR compatibility decision (V5 2A)', () => {
+  it('the Guest QR always opens the polished /r/<slug> screen (identity resolved server-side)', () => {
+    const guestQrCode = guestQr.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(guestQrCode).toMatch(/\/r\/\$\{encodeURIComponent\(slug\)\}/);
+    expect(guestQrCode).not.toMatch(/\/j\//); // no flip to the event-join screen (code only)
+    expect(guestQrCode).toContain('getCanonicalEvent'); // resolves the event for the name, never creates it
   });
 });

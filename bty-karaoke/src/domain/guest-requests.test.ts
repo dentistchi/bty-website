@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   myRequestsKey,
+  legacyMyRequestsKey,
   isTerminalState,
   pruneMyRequests,
   addMyRequest,
@@ -20,8 +21,17 @@ const req = (id: string, submittedAt = 0): MyRequest => ({
 });
 
 describe('guest-requests model', () => {
-  it('scopes the key per room', () => {
+  it('scopes the key per room (legacy, no event)', () => {
     expect(myRequestsKey('bty-home')).toBe('bty-karaoke:bty-home:my-requests');
+    expect(myRequestsKey('bty-home', null)).toBe('bty-karaoke:bty-home:my-requests');
+    expect(legacyMyRequestsKey('bty-home')).toBe('bty-karaoke:bty-home:my-requests');
+  });
+  it('namespaces ownership by event so it never crosses an event boundary (V5)', () => {
+    expect(myRequestsKey('bty-home', 'evt-1')).toBe('bty-karaoke:bty-home:evt-1:my-requests');
+    // A different event → a different key → a new event can't inherit prior requests.
+    expect(myRequestsKey('bty-home', 'evt-2')).not.toBe(myRequestsKey('bty-home', 'evt-1'));
+    // Event-scoped key differs from the legacy room-scoped key.
+    expect(myRequestsKey('bty-home', 'evt-1')).not.toBe(legacyMyRequestsKey('bty-home'));
   });
   it('classifies terminal states', () => {
     expect(isTerminalState('done')).toBe(true);

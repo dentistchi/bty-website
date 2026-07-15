@@ -143,19 +143,82 @@ export async function getEventById(eventId: string): Promise<KaraokeEvent | null
   return (data as KaraokeEvent) ?? null;
 }
 
+const LIVE_EVENT_STATUSES = ['draft', 'active'] as const;
+
 /**
- * THE single canonical resolver of "which Event is this room's group" (V5).
+ * THE single canonical resolver of "which live Event is this room's group" (V5).
  *
- * An Event owns exactly one room (1:1), so a room maps to at most ONE Event —
- * this is a deterministic lookup, NOT a "latest event" / "first active session"
- * / "current session" inference (those anti-patterns must never exist). Every
- * operational screen (Admin / DJ / Display / Guest) must resolve its Event
- * through THIS function so all four share exactly one `event.id`. Returns null
- * for a legacy room that no Event owns (e.g. a fixed self-service room); callers
- * treat null as "no event bound" and behave exactly as before.
+ * Resolves the room's ONE **live** Event (status draft|active). The partial unique
+ * index `karaoke_events_one_live_per_room` guarantees at most one such row, so this
+ * is a deterministic lookup — NOT a "latest event" / "first active session" /
+ * "current session" recency inference (forbidden). Ended/archived Events are
+ * history and never resolve here. Every operational screen (Admin / DJ / Display /
+ * Guest) resolves through THIS function so all four share exactly one `event.id`.
+ * Returns null for a room with no live Event (a legacy/self-service room, or a
+ * room whose Admin has not yet opened the Hub) — callers treat null as "no event
+ * bound" and behave exactly as V4.
  */
 export async function getCanonicalEvent(roomId: string): Promise<KaraokeEvent | null> {
-  return getEventByRoomId(roomId);
+  const { data, error } = await karaokeDb()
+    .from('karaoke_events')
+    .select(EVENT_COLS)
+    .eq('room_id', roomId)
+    .in('status', LIVE_EVENT_STATUSES as unknown as string[])
+    .maybeSingle();
+  if (error) throw error;
+  return (data as KaraokeEvent) ?? null;
+}
+
+/**
+ * Auto-ensure exactly ONE canonical live Event for an EXISTING room (V5 2A).
+ *
+ * Callable ONLY from the authenticated Admin Hub init (never Guest / QR / Display
+ * / DJ / polling / any public read). Idempotent:
+ *  - a live Event already exists → return it unchanged;
+ *  - none exists → create ONE for this room (NO new room, NO session — the
+ *    request-acceptance/session model is untouched, so the home flow is unchanged);
+ *  - concurrent Admin loads → the partial unique index makes exactly one insert
+ *    win; the loser's 23505 re-reads and returns the winner;
+ *  - an ended Event is NEVER silently reactivated — a fresh live Event is created
+ *    only when NO live Event exists, preserving historical identity.
+ */
+export async function ensureCanonicalLiveEvent(roomId: string, name: string): Promise<KaraokeEvent> {
+  const existing = await getCanonicalEvent(roomId);
+  if (existing) return existing;
+
+  const db = karaokeDb();
+  const eventName = name.trim().slice(0, 80) || 'btyNorebang';
+  for (let attempt = 0; attempt < CODE_RETRY; attempt++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    const publicCode = publicCodeFromBytes(bytes);
+    const guestSlug = buildGuestSlug(eventName, publicCode);
+    const { data, error } = await db
+      .from('karaoke_events')
+      .insert({
+        room_id: roomId,
+        name: eventName,
+        public_code: publicCode,
+        guest_slug: guestSlug,
+        status: 'active',
+        starts_at: new Date().toISOString(),
+        created_by: 'admin-hub',
+      })
+      .select(EVENT_COLS)
+      .single();
+    if (!error) return data as KaraokeEvent;
+    if (isUniqueViolation(error)) {
+      // Either a concurrent ensure won the one-live-per-room race, or a public
+      // code / guest slug collided. If a live event now exists it's the winner;
+      // otherwise it was a code collision — retry with a fresh code.
+      const winner = await getCanonicalEvent(roomId);
+      if (winner) return winner;
+      continue;
+    }
+    throw error;
+  }
+  const winner = await getCanonicalEvent(roomId);
+  if (winner) return winner;
+  throw new Error('Could not ensure a canonical live event');
 }
 
 export type EventAccess =

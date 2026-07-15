@@ -7,7 +7,7 @@ import { parseYoutubeVideoId } from '@/domain/youtube';
 import { CreateRequestSchema } from '@/lib/validation';
 import { addRequest, getPublicRoomBySlug, listActiveRequests } from '@/lib/rooms.server';
 import { requestAcceptance } from '@/lib/sessions.server';
-import { resolveEventAccess } from '@/lib/events.server';
+import { resolveEventAccess, getCanonicalEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
 
 export const dynamic = 'force-dynamic';
@@ -17,8 +17,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   const { slug } = await ctx.params;
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-  const requests = await listActiveRequests(room.id);
-  return NextResponse.json({ room, requests });
+  const [requests, event] = await Promise.all([listActiveRequests(room.id), getCanonicalEvent(room.id)]);
+  // Same canonical event identity the Display / DJ / Admin resolve (or null). A
+  // guest read never creates an event — this is a pure lookup.
+  return NextResponse.json({
+    room,
+    requests,
+    event: event ? { id: event.id, name: event.name, status: event.status } : null,
+  });
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {

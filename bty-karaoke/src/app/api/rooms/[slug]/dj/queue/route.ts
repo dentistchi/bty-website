@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj, listActiveRequests, activeRequestStats } from '@/lib/rooms.server';
 import { getActiveSession } from '@/lib/sessions.server';
-import { getEventStatusForRoom } from '@/lib/events.server';
+import { getEventStatusForRoom, getCanonicalEvent } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,11 +19,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [requests, stats, session, eventStatus] = await Promise.all([
+  const [requests, stats, session, eventStatus, event] = await Promise.all([
     listActiveRequests(auth.room.id),
     activeRequestStats(auth.room.id),
     getActiveSession(auth.room.id),
     getEventStatusForRoom(auth.room.id), // null for legacy non-event rooms
+    getCanonicalEvent(auth.room.id), // the room's ONE canonical live event (or null)
   ]);
 
   return NextResponse.json({
@@ -33,5 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     stats,
     requests,
     eventStatus,
+    // Canonical event identity — same id the Display/Guest/Admin resolve.
+    event: event ? { id: event.id, name: event.name, status: event.status } : null,
   });
 }

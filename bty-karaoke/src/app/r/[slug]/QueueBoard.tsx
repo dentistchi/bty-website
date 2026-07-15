@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState } from '@/domain/display';
 import { badgeForKind } from '@/domain/video-kind';
-import { myRequestsKey } from '@/domain/guest-requests';
+import { myRequestsKey, legacyMyRequestsKey } from '@/domain/guest-requests';
 
 interface Props {
   slug: string;
+  /** The room's canonical live event id, or null (namespaces "my songs"). */
+  eventId?: string | null;
   /** Poll cadence; guests use 4s (the room-wide default). */
   pollMs?: number;
 }
@@ -16,21 +18,25 @@ interface Props {
 // where their OWN songs sit. Nothing here mutates state (that lives in the dock);
 // the numbers come straight from the canonical /display resolver. My-song ids are
 // read from localStorage so no prop coupling to the request form is needed.
-export default function QueueBoard({ slug, pollMs = 4000 }: Props) {
+export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Props) {
   const [state, setState] = useState<DisplayState | null>(null);
   const [mine, setMine] = useState<Set<string>>(new Set());
   const seq = useRef(0);
 
   const readMine = useCallback(() => {
     try {
-      const raw = window.localStorage.getItem(myRequestsKey(slug));
+      // Event-scoped key first; fall back to the legacy room-scoped key during
+      // the V5 transition so highlighting never disappears for existing guests.
+      const raw =
+        window.localStorage.getItem(myRequestsKey(slug, eventId)) ??
+        (eventId ? window.localStorage.getItem(legacyMyRequestsKey(slug)) : null);
       if (!raw) return new Set<string>();
       const list = JSON.parse(raw) as { requestId?: string }[];
       return new Set(list.map((r) => r.requestId).filter(Boolean) as string[]);
     } catch {
       return new Set<string>();
     }
-  }, [slug]);
+  }, [slug, eventId]);
 
   const poll = useCallback(async () => {
     const n = ++seq.current;
