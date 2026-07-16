@@ -65,7 +65,9 @@ export default function LyricsSheet({ request, onSave, onClose }: Props) {
         onKeyDown={onKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sheet-eyebrow">가사 {had ? '편집' : '추가'}</div>
+        <div className="sheet-eyebrow">
+          가사 {had ? '수정' : '직접 입력'} · 자동 검색을 덮어씁니다
+        </div>
         <div className="sheet-singer">{request.guest_name}</div>
         <div className="sheet-song">
           {song}
@@ -78,7 +80,7 @@ export default function LyricsSheet({ request, onSave, onClose }: Props) {
           value={value}
           maxLength={MAX_LYRICS_LEN}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="가사를 붙여넣거나 입력하세요. 비워두고 저장하면 가사가 지워집니다."
+          placeholder="가사는 자동으로 검색됩니다. 자동 결과가 틀렸을 때만 여기서 직접 붙여넣거나 수정하세요. 비워두고 저장하면 직접 입력이 지워지고 다시 자동 검색합니다."
           rows={10}
           disabled={saving}
         />

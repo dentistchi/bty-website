@@ -94,7 +94,9 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
     const fetched = [...display.matchAll(/\/api\/rooms\/[^`]*`/g)].map((m) => m[0]);
     expect(fetched.length).toBeGreaterThan(0);
     for (const url of fetched) {
-      expect(url).toMatch(/\/(display|guest-qr)`$/);
+      // V1.1: the Display opts into automatic lyrics via ?lyrics=1 on the same
+      // public display endpoint — still no DJ/authed endpoint.
+      expect(url).toMatch(/\/(display(\?lyrics=1)?|guest-qr)`$/);
     }
   });
 

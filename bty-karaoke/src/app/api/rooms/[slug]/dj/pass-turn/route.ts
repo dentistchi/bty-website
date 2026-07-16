@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj, passTurnAndPromote } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
+import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,6 +43,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // Scope the next-song lookup to the LIVE event's rows (V7.1).
   const live = await getCanonicalEvent(auth.room.id);
   const result = await passTurnAndPromote(auth.room.id, currentId, live?.id ?? null);
+
+  // A new song was auto-promoted to the stage → resolve its lyrics in the background.
+  if (result.promoted?.id) void scheduleLyricsResolve(auth.room.id, result.promoted.id);
 
   return NextResponse.json(
     {

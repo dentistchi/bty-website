@@ -57,6 +57,20 @@ function prepBadgeText(label: 'ready_queued' | 'ready' | 'queued' | 'none'): str
   }
 }
 
+/** V1.1 — Admin-visible automatic-lyrics status for the song on stage. */
+function LyricsStatusChip({ request }: { request: KaraokeRequest }) {
+  const hasManual = request.lyrics_source === 'admin' && Boolean(request.lyrics_text?.trim());
+  let label: string;
+  let tone: string;
+  if (hasManual) { label = '📝 수동 가사 사용 중'; tone = 'manual'; }
+  else if (request.lyrics_status === 'available') { label = '✅ 자동 가사 찾음'; tone = 'ok'; }
+  else if (request.lyrics_status === 'loading') { label = '⏳ 자동 가사 검색 중'; tone = 'loading'; }
+  else if (request.lyrics_status === 'failed') { label = '⚠ 공급자 일시 오류 · 재시도 예정'; tone = 'warn'; }
+  else if (request.lyrics_resolved_at) { label = '— 일치하는 가사 없음'; tone = 'none'; }
+  else { label = '⏳ 자동 가사 준비 중'; tone = 'loading'; }
+  return <div className={`lyrics-chip lyrics-chip-${tone}`}>{label}</div>;
+}
+
 /** Small "likely has words on the TV" badge for a request's video. */
 function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
   const badge = badgeForVideo(title, channel ?? '');
@@ -811,6 +825,8 @@ export default function DjBoard({
                   </>
                 );
               })()}
+              {/* V1.1: automatic-lyrics status for the song on stage (Admin-only). */}
+              <LyricsStatusChip request={current} />
               {/* V8: the next song's TV-queue readiness — pass-turn auto-starts it. */}
               {playTarget ? (
                 <p className={`muted playback-help next-preview${nextAutoReady ? ' auto' : ''}`}>
@@ -833,10 +849,10 @@ export default function DjBoard({
                     ▶ YouTube 다시 열기
                   </button>
                 )}
-                {/* Lyrics V1: add/edit the words shown on the iPad Display for the
-                    song on stage. Reflects immediately on the Display's next poll. */}
+                {/* Lyrics V1.1: lyrics are fetched automatically; this is the
+                    correction/override path. Reflects on the Display's next poll. */}
                 <button className="ghost lg" onClick={() => setLyricsFor(current)}>
-                  {current.lyrics_text?.trim() ? '📝 가사 편집' : '📝 가사 추가'}
+                  {current.lyrics_text?.trim() ? '📝 가사 수정' : '📝 가사 직접 입력'}
                 </button>
                 {playerFinishConfirm ? (
                   <div className="player-confirm">
@@ -923,6 +939,11 @@ export default function DjBoard({
                   onClick={() => onStartFirst(playTarget.id, playTarget.youtube_video_id)}
                 >
                   ▶ 첫 곡 시작
+                </button>
+                {/* Lyrics V1.1: manual correction/override, reachable even before a
+                    song is on stage (fixes the V1 "button only while playing" gap). */}
+                <button className="ghost lg" onClick={() => setLyricsFor(playTarget)}>
+                  {playTarget.lyrics_text?.trim() ? '📝 가사 수정' : '📝 가사 직접 입력'}
                 </button>
               </div>
             </div>

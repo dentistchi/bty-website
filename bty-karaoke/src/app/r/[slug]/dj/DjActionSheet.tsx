@@ -157,7 +157,7 @@ export default function DjActionSheet({
               onClick={() => onEditLyrics(request.id)}
               aria-label={`${singer} 신청곡 가사 편집`}
             >
-              {request.lyrics_text?.trim() ? '📝 가사 편집' : '📝 가사 추가'}
+              {request.lyrics_text?.trim() ? '📝 가사 수정' : '📝 가사 직접 입력'}
             </button>
             <button type="button" className="sheet-close linkish" onClick={onClose}>
               닫기

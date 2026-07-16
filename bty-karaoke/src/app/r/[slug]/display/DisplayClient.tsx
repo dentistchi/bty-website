@@ -26,7 +26,9 @@ export default function DisplayClient({ slug, roomName }: Props) {
   const poll = useCallback(async () => {
     const n = ++seq.current;
     try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display`, { cache: 'no-store' });
+      // `?lyrics=1` opts THIS Display into automatic server-side lyrics resolution
+      // for the playing song (guest polls omit it and stay lean).
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display?lyrics=1`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as DisplayState;
       if (n !== seq.current) return;

@@ -1863,6 +1863,24 @@ main.dj-console {
   width: 100%;
 }
 
+/* V1.1 — Admin-visible automatic-lyrics status chip on the NOW SINGING hero. */
+.lyrics-chip {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+.lyrics-chip-ok { color: #7ee0a8; border-color: rgba(126, 224, 168, 0.4); }
+.lyrics-chip-loading { color: var(--gold); border-color: rgba(245, 196, 81, 0.4); }
+.lyrics-chip-warn { color: #f2c14e; border-color: rgba(242, 193, 78, 0.45); }
+.lyrics-chip-manual { color: var(--cyan); border-color: rgba(90, 200, 245, 0.4); }
+.lyrics-chip-none { color: var(--muted-2); }
+
 /* ══════════════════════════════════════════════════════════════
    V2.3 — dock cancel note + Admin menu inside DJ console
    ══════════════════════════════════════════════════════════════ */

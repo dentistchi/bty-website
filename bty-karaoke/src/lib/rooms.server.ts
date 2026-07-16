@@ -61,6 +61,10 @@ export interface KaraokeRequest {
   /** 'unavailable' | 'loading' | 'available' | 'failed'. */
   lyrics_status: string | null;
   lyrics_updated_at: string | null;
+  /** V1.1: LRCLIB syncedLyrics (LRC), kept for a future timed view (unused in render). */
+  lyrics_synced: string | null;
+  /** V1.1: when the AUTO resolver last attempted this row (drives retry). */
+  lyrics_resolved_at: string | null;
 }
 
 const PUBLIC_ROOM_COLS = 'id, slug, display_name, status';

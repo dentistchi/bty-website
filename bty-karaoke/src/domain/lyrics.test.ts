@@ -3,6 +3,10 @@ import {
   sanitizeLyrics,
   lyricsViewFor,
   normalizeSongForLyrics,
+  scoreLyricsCandidate,
+  pickBestLyricsCandidate,
+  canonicalTrackKey,
+  LYRICS_MATCH_THRESHOLD,
   MAX_LYRICS_LEN,
   LOW_CONFIDENCE,
 } from './lyrics';
@@ -154,5 +158,76 @@ describe('normalizeSongForLyrics', () => {
   it('handles a malformed / undefined-ish provider input without throwing', () => {
     const r = normalizeSongForLyrics({ youtubeTitle: null, searchQuery: null, channelTitle: null });
     expect(r.confidence).toBe(0);
+  });
+});
+
+describe('scoreLyricsCandidate + pickBestLyricsCandidate', () => {
+  const withLyrics = (o: Record<string, unknown>) => ({ plainLyrics: '가사', instrumental: false, ...o });
+
+  it('scores an exact title+artist match high', () => {
+    const s = scoreLyricsCandidate({ song: 'Love wins all', artist: 'IU' }, withLyrics({ trackName: 'Love wins all', artistName: 'IU' }));
+    expect(s).toBeGreaterThan(0.9);
+  });
+
+  it('matches a bilingual LRCLIB title via substring containment (Korean)', () => {
+    const s = scoreLyricsCandidate({ song: '밤편지', artist: '아이유' }, withLyrics({ trackName: 'Through the Night (밤편지)', artistName: 'IU (아이유)' }));
+    expect(s).toBeGreaterThanOrEqual(LYRICS_MATCH_THRESHOLD);
+  });
+
+  it('gives 0 to an instrumental candidate (no words to show)', () => {
+    const s = scoreLyricsCandidate({ song: '밤편지', artist: '아이유' }, { trackName: '밤편지', artistName: '아이유', instrumental: true, plainLyrics: null, syncedLyrics: null });
+    expect(s).toBe(0);
+  });
+
+  it('gives 0 to a candidate with no lyrics at all', () => {
+    const s = scoreLyricsCandidate({ song: '밤편지', artist: '아이유' }, { trackName: '밤편지', artistName: '아이유', instrumental: false, plainLyrics: null, syncedLyrics: null });
+    expect(s).toBe(0);
+  });
+
+  it('caps the score when the artist clearly mismatches (wrong-artist guard)', () => {
+    const right = scoreLyricsCandidate({ song: '사랑', artist: '김동률' }, withLyrics({ trackName: '사랑', artistName: '김동률' }));
+    const wrong = scoreLyricsCandidate({ song: '사랑', artist: '김동률' }, withLyrics({ trackName: '사랑', artistName: '전혀다른가수' }));
+    expect(wrong).toBeLessThan(right);
+    expect(wrong).toBeLessThanOrEqual(0.55);
+  });
+
+  it('pickBest returns the strongest candidate above threshold', () => {
+    const best = pickBestLyricsCandidate({ song: 'Love wins all', artist: 'IU' }, [
+      withLyrics({ trackName: 'Some other song', artistName: 'IU' }),
+      withLyrics({ trackName: 'Love wins all', artistName: 'IU' }),
+    ]);
+    expect(best?.candidate.trackName).toBe('Love wins all');
+  });
+
+  it('pickBest returns null when nothing clears the bar (never a wrong match)', () => {
+    const best = pickBestLyricsCandidate({ song: '내 노래', artist: '가수A' }, [
+      withLyrics({ trackName: '완전히 다른 곡', artistName: '다른 가수' }),
+    ]);
+    expect(best).toBeNull();
+  });
+
+  it('pickBest returns null for an empty candidate list', () => {
+    expect(pickBestLyricsCandidate({ song: 'x', artist: 'y' }, [])).toBeNull();
+  });
+});
+
+describe('canonicalTrackKey', () => {
+  it('is stable across noise / case / spacing (repeat-song reuse)', () => {
+    const a = canonicalTrackKey('Love Wins All', 'IU');
+    const b = canonicalTrackKey('love   wins all', 'iu');
+    expect(a).toBe(b);
+  });
+
+  it('is identical for the same song regardless of surrounding punctuation', () => {
+    expect(canonicalTrackKey('밤편지!!', '아이유')).toBe(canonicalTrackKey('밤편지', '아이유'));
+  });
+
+  it('uses ? for a missing artist and differs from a known artist', () => {
+    expect(canonicalTrackKey('봄날', null).startsWith('?::')).toBe(true);
+    expect(canonicalTrackKey('봄날', null)).not.toBe(canonicalTrackKey('봄날', 'BTS'));
+  });
+
+  it('separates different songs by the same artist', () => {
+    expect(canonicalTrackKey('봄날', 'BTS')).not.toBe(canonicalTrackKey('Dynamite', 'BTS'));
   });
 });

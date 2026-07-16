@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj, startOwnRequest } from '@/lib/rooms.server';
 import { resolveEventAccess } from '@/lib/events.server';
+import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -45,5 +46,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     const status = result.outcome === 'not_found' ? 404 : 409;
     return NextResponse.json({ error: 'Could not start', code: result.outcome }, { status, headers: NO_STORE });
   }
+  // The song is now on stage → resolve its lyrics server-side, in the background.
+  void scheduleLyricsResolve(auth.room.id, requestId);
   return NextResponse.json({ ok: true, request: result.request ?? null }, { headers: NO_STORE });
 }

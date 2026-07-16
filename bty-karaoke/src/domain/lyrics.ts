@@ -109,8 +109,11 @@ export const LOW_CONFIDENCE = 0.4;
 
 // Karaoke / MR / performance / quality suffixes to strip before a lyrics lookup.
 // Korean terms carry no \b (it never borders a Hangul syllable).
+// NOTE: multi-word "… video" phrases come BEFORE bare `lyrics?` so the phrase wins
+// (else `lyric` is eaten first, orphaning "video"). Bare "video" is NOT stripped —
+// it can be part of a real title (e.g. "Video Games").
 const MODE_NOISE =
-  /\b(?:official|lyrics?|lyric\s*video|karaoke|instrumental|inst\.?|mr|minus\s*one|off\s*vocal|backing\s*track|live|cover|remix|audio|mv|m\/v|hd|hq|4k|8k|full\s*version|clean|explicit)\b|가라오케|노래방|반주|엠알|자막|가사|라이브|커버/gi;
+  /\b(?:lyric\s*video|music\s*video|official\s*video|official\s*audio|official|lyrics?|karaoke|instrumental|inst\.?|mr|minus\s*one|off\s*vocal|backing\s*track|live|cover|remix|audio|mv|m\/v|hd|hq|4k|8k|full\s*version|clean|explicit)\b|가라오케|노래방|반주|엠알|자막|가사|라이브|커버/gi;
 const FEAT = /\s*[([]?\s*(?:feat\.?|ft\.?|featuring|with)\s+[^)\]]*[)\]]?/gi;
 const EMPTY_PARENS = /[([【][\s.,;:/·|-]*[)\]】]/g;
 // A residue that's just a karaoke catalog code or pure punctuation/number — not a
@@ -175,14 +178,118 @@ export function normalizeSongForLyrics(input: {
   } else if (song.length < 2) {
     confidence = 0.3;
     reason = 'too-short';
-  } else {
-    const strippedALot = rawTitle.length > 0 && song.length / rawTitle.length < 0.25;
-    if (strippedALot) {
-      confidence = 0.35;
-      reason = 'over-stripped';
-    }
-    if (!artist) confidence = Math.min(confidence, 0.6);
+  } else if (!artist) {
+    // A real song with no artist is still searchable (many karaoke titles lack a
+    // clean artist); the CANDIDATE scorer, not this step, guards a wrong artist.
+    confidence = Math.min(confidence, 0.6);
   }
 
   return { song, artist, confidence, reason };
+}
+
+// ── Candidate scoring (LRCLIB or any future provider) ──────────────────────
+
+/** One provider result to score against our normalized {song, artist}. */
+export interface LyricsCandidate {
+  trackName?: string | null;
+  artistName?: string | null;
+  albumName?: string | null;
+  duration?: number | null;
+  instrumental?: boolean | null;
+  plainLyrics?: string | null;
+  syncedLyrics?: string | null;
+}
+
+/** Below this a match is treated as too weak → the caller shows 'unavailable'. */
+export const LYRICS_MATCH_THRESHOLD = 0.62;
+
+/** Normalize a name to a comparable form: lowercase, keep Hangul + alphanumerics. */
+function normName(s: string | null | undefined): string {
+  return (s ?? '')
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/[^0-9a-z가-힣㄰-㆏]+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokens(s: string): string[] {
+  const n = normName(s);
+  return n ? n.split(' ') : [];
+}
+
+/**
+ * Recall-oriented overlap: how much of `want` is present in `have`, with a strong
+ * bonus when the whole normalized `want` is a substring of `have` (handles LRCLIB's
+ * bilingual titles like "Through the Night (밤편지)" matching a query of "밤편지").
+ * Returns 0..1. An empty `want` returns a neutral 0.5 (nothing to disprove).
+ */
+function overlap(want: string, have: string): number {
+  const w = tokens(want);
+  if (!w.length) return 0.5;
+  const h = new Set(tokens(have));
+  const hits = w.filter((t) => h.has(t)).length;
+  let score = hits / w.length;
+  const wJoined = normName(want).replace(/\s+/g, '');
+  const hJoined = normName(have).replace(/\s+/g, '');
+  if (wJoined && hJoined.includes(wJoined)) score = Math.max(score, 0.9);
+  return Math.min(1, score);
+}
+
+/**
+ * Score a provider candidate against our normalized query, 0..1. Requirements:
+ *  - The candidate MUST carry usable lyrics (plain or synced) and not be flagged
+ *    instrumental — otherwise it scores 0 (never show an empty/instrumental match).
+ *  - Title match dominates; artist match refines. When we have no query artist,
+ *    the title alone can still clear the bar (many karaoke titles lack a clean
+ *    artist), but the ceiling is lower so a wrong-artist song can't sneak through.
+ */
+export function scoreLyricsCandidate(
+  query: { song: string; artist: string | null },
+  cand: LyricsCandidate,
+): number {
+  const hasLyrics = Boolean(cand.plainLyrics?.trim() || cand.syncedLyrics?.trim());
+  if (!hasLyrics || cand.instrumental) return 0;
+  if (!query.song?.trim()) return 0;
+
+  // The query side (a YouTube title) is messy and often jumbles artist+song
+  // ("IU(아이유) _ Love wins all"); the candidate side (LRCLIB) is clean. So build a
+  // haystack from our derived song+artist and measure BOTH directions: how much of
+  // the clean candidate title appears in our messy query, and vice-versa.
+  const hay = `${query.song} ${query.artist ?? ''}`;
+  const titleScore = Math.max(overlap(cand.trackName ?? '', hay), overlap(query.song, cand.trackName ?? ''));
+  const candArtist = normName(cand.artistName);
+  const artistScore = candArtist ? overlap(cand.artistName ?? '', hay) : 0.5;
+
+  // The candidate's artist IS reflected in our query → confident weighted score.
+  if (artistScore >= 0.34) return titleScore * 0.7 + artistScore * 0.3;
+
+  // The candidate's artist is NOT in our query:
+  //  - we HAD a query artist that disagrees → likely the wrong song, cap hard.
+  //  - we had NO artist to check → accept ONLY a strong title-only match, capped.
+  if (query.artist) return Math.min(titleScore, 0.5);
+  return titleScore >= 0.85 ? Math.min(titleScore, 0.72) : Math.min(titleScore, 0.5);
+}
+
+/** Best scoring candidate at or above the threshold, else null. Stable on ties. */
+export function pickBestLyricsCandidate(
+  query: { song: string; artist: string | null },
+  candidates: readonly LyricsCandidate[],
+): { candidate: LyricsCandidate; score: number } | null {
+  let best: { candidate: LyricsCandidate; score: number } | null = null;
+  for (const candidate of candidates) {
+    const score = scoreLyricsCandidate(query, candidate);
+    if (score > (best?.score ?? -1)) best = { candidate, score };
+  }
+  return best && best.score >= LYRICS_MATCH_THRESHOLD ? best : null;
+}
+
+/**
+ * Stable identity for a song, independent of request id, so a repeated song
+ * reuses a verified result. `artist::song`, each normalized; missing artist → '?'.
+ */
+export function canonicalTrackKey(song: string, artist: string | null | undefined): string {
+  const s = normName(song).replace(/\s+/g, '-');
+  const a = normName(artist).replace(/\s+/g, '-') || '?';
+  return `${a}::${s}`;
 }
