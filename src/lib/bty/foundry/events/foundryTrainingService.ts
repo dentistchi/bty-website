@@ -82,6 +82,7 @@ export type ManagerTrainingSnapshot = {
     id: string;
     title: string;
     status: FoundryEventStatus;
+    content_type: "youtube";
     join_token: string;
     created_at: string;
     closed_at: string | null;
@@ -203,6 +204,7 @@ export async function getOwnerTrainingSnapshot(
       id: base.event.id,
       title: base.event.title,
       status: base.event.status,
+      content_type: "youtube",
       join_token: base.event.join_token,
       created_at: base.event.created_at,
       closed_at: base.event.closed_at,

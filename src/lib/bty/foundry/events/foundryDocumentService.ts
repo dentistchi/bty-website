@@ -32,7 +32,9 @@ import {
   resolvePublic,
   awardTrainingCoreXp,
   outcomeToXpStatus,
+  getOwnerTrainingSnapshot,
   type PublicXpStatus,
+  type ManagerTrainingSnapshot,
 } from "./foundryTrainingService";
 import { deleteFoundryDocument } from "./documentStorage";
 
@@ -296,6 +298,29 @@ export async function createDocumentEvent(
   const snapshot = await getOwnerDocumentSnapshot(admin, ownerUserId, event.id);
   if (!snapshot) return { ok: false, reason: "snapshot_failed" };
   return { ok: true, value: snapshot };
+}
+
+/**
+ * Content-type-aware owner control-room snapshot. Resolves the event's
+ * content_type (owner-scoped) and returns the matching manager snapshot so the
+ * control room (and its poll) always sees the right shape — YouTube training or
+ * PDF document — both carrying event.content_type + join_token. Returns null if
+ * the event is not owned by the caller (route → non-disclosing 404).
+ */
+export async function getOwnerRoomSnapshot(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  eventId: string,
+): Promise<ManagerTrainingSnapshot | ManagerDocumentSnapshot | null> {
+  const { data } = await admin
+    .from("foundry_events")
+    .select("content_type")
+    .eq("id", eventId)
+    .eq("owner_user_id", ownerUserId)
+    .maybeSingle<{ content_type: string | null }>();
+  if (!data) return null;
+  if (data.content_type === "document") return getOwnerDocumentSnapshot(admin, ownerUserId, eventId);
+  return getOwnerTrainingSnapshot(admin, ownerUserId, eventId);
 }
 
 /** Owner control-room snapshot: base event + document meta + roster + counts. */

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
 import type { ManagerSnapshot } from "./types";
 import { useEventSnapshot } from "./useEventSnapshot";
 import { FoundryEventQr } from "./FoundryEventQr";
 import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
+import { FoundryShareControls } from "./FoundryShareControls";
 
 async function postAction(url: string): Promise<ManagerSnapshot | null> {
   try {
@@ -17,27 +18,6 @@ async function postAction(url: string): Promise<ManagerSnapshot | null> {
   } catch {
     return null;
   }
-}
-
-/** Share the join URL via the native share sheet, falling back to clipboard copy. */
-async function shareJoinUrl(url: string): Promise<"shared" | "copied" | "failed"> {
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      await navigator.share({ url });
-      return "shared";
-    }
-  } catch {
-    // user cancelled or share failed → fall through to copy
-  }
-  try {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText(url);
-      return "copied";
-    }
-  } catch {
-    // ignore
-  }
-  return "failed";
 }
 
 export function FoundryEventControlRoom({
@@ -54,10 +34,8 @@ export function FoundryEventControlRoom({
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
   const { snapshot, setSnapshot, refresh } = useEventSnapshot(eventId, initialSnapshot);
 
-  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const event = snapshot?.event ?? null;
   const participants = snapshot?.participants ?? [];
@@ -66,16 +44,6 @@ export function FoundryEventControlRoom({
   const document = event?.document ?? null;
   const joinedCount = snapshot?.joined_count ?? participants.length;
   const completedCount = snapshot?.completed_count ?? 0;
-
-  const onShare = useCallback(async () => {
-    if (!event) return;
-    const result = await shareJoinUrl(event.join_url);
-    if (result === "copied") {
-      setCopied(true);
-      if (copyTimer.current) clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    }
-  }, [event]);
 
   const onRotate = useCallback(async () => {
     if (busy || !isOpen) return;
@@ -159,24 +127,18 @@ export function FoundryEventControlRoom({
 
           {isOpen ? (
             <>
+              {/* Show QR — the canonical join URL, already visible (not duplicated). */}
               <FoundryEventQr url={event.join_url} t={t} />
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={onShare}
-                  className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
-                >
-                  {copied ? t.linkCopied : t.shareLink}
-                </button>
-                <button
-                  type="button"
-                  onClick={onRotate}
-                  disabled={busy}
-                  className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07] disabled:opacity-50"
-                >
-                  {t.rotateQr}
-                </button>
-              </div>
+              {/* Share this room — Copy invitation + Share to Teams (same URL as QR). */}
+              <FoundryShareControls event={event} locale={locale} t={t} />
+              <button
+                type="button"
+                onClick={onRotate}
+                disabled={busy}
+                className="self-start text-sm text-white/40 transition-colors hover:text-white/70 disabled:opacity-50"
+              >
+                {t.rotateQr}
+              </button>
             </>
           ) : (
             <p className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-white/55">

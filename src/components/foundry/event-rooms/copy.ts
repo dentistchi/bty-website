@@ -63,6 +63,17 @@ export type EventRoomsCopy = {
   scanToJoin: string;
   shareLink: string;
   linkCopied: string;
+  // share this room (QR / copy invitation / share to Teams)
+  shareRoomHeader: string;
+  copyInvitation: string;
+  invitationCopied: string;
+  copyFailedManual: string;
+  shareToTeams: string;
+  openingTeams: string;
+  teamsCouldNotOpen: string;
+  readyToPaste: string;
+  openTeams: string;
+  closeFallback: string;
   rotateQr: string;
   rotateConfirm: string;
   joinedHeader: (n: number) => string;
@@ -130,6 +141,16 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     scanToJoin: "Scan to join",
     shareLink: "Share link",
     linkCopied: "Link copied",
+    shareRoomHeader: "Share this room",
+    copyInvitation: "Copy invitation",
+    invitationCopied: "Invitation copied",
+    copyFailedManual: "Couldn’t copy automatically. Select and copy the text below.",
+    shareToTeams: "Share to Teams",
+    openingTeams: "Opening Teams…",
+    teamsCouldNotOpen: "Teams could not be opened. The invitation is ready to paste.",
+    readyToPaste: "Invitation copied. Paste it into Teams.",
+    openTeams: "Open Teams",
+    closeFallback: "Close",
     rotateQr: "Rotate QR",
     rotateConfirm: "Replace the current QR? The old QR will stop working.",
     joinedHeader: (n) => (n === 1 ? "1 person joined" : `${n} people joined`),
@@ -195,6 +216,16 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     scanToJoin: "스캔하여 입장",
     shareLink: "링크 공유",
     linkCopied: "링크가 복사되었습니다",
+    shareRoomHeader: "이 방 공유하기",
+    copyInvitation: "초대장 복사",
+    invitationCopied: "초대장이 복사되었습니다",
+    copyFailedManual: "자동으로 복사하지 못했습니다. 아래 텍스트를 선택해 복사하세요.",
+    shareToTeams: "Teams로 공유",
+    openingTeams: "Teams 여는 중…",
+    teamsCouldNotOpen: "Teams를 열 수 없습니다. 초대장을 붙여넣을 준비가 되었습니다.",
+    readyToPaste: "초대장이 복사되었습니다. Teams에 붙여넣으세요.",
+    openTeams: "Teams 열기",
+    closeFallback: "닫기",
     rotateQr: "QR 재발급",
     rotateConfirm: "현재 QR을 교체할까요? 기존 QR은 더 이상 작동하지 않습니다.",
     joinedHeader: (n) => `${n}명 입장`,
