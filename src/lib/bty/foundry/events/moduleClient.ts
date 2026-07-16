@@ -1,6 +1,7 @@
 import type { ModuleDraftRow, ModuleDraftSummary } from "./foundryModuleService";
 import type { ModuleDraftStatus } from "@/domain/foundry/module/module-draft";
 import { normalizeLearningNeeds, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { previewSupported, participantDeliveryReady, type FileKind } from "@/domain/foundry/module/draft-asset";
 
 /**
  * Client-facing draft serialization for the Guided Module Builder routes.
@@ -20,12 +21,66 @@ export type ClientDraft = {
   parent_module_id: string | null;
   document_asset_ref_present: boolean;
   attachment: ClientAttachment | null;
+  /** Multi-format draft attachments (Slice 2.1.2). Populated by the draft-detail route. */
+  assets: ClientAsset[];
   created_at: string;
   updated_at: string;
 };
 
 /** The list-item shape — a summary already free of owner id and answers. */
 export type ClientDraftSummary = ModuleDraftSummary;
+
+/** The SERVER-owned draft asset row (foundry_module_draft_assets). Server-only. */
+export type DraftAssetRow = {
+  id: string;
+  draft_id: string;
+  original_filename: string;
+  normalized_extension: string;
+  mime_type: string;
+  file_kind: FileKind;
+  byte_size: number;
+  storage_bucket: string;
+  storage_path: string;
+  content_hash: string;
+  page_count: number | null;
+  page_count_verified: boolean;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+};
+
+/** The client-safe asset projection — NO bucket, path, hash, or owner. */
+export type ClientAsset = {
+  id: string;
+  filename: string;
+  file_kind: FileKind;
+  mime_type: string;
+  byte_size: number;
+  page_count: number | null;
+  page_count_verified: boolean;
+  width: number | null;
+  height: number | null;
+  uploaded_at: string;
+  preview_supported: boolean;
+  participant_delivery_ready: boolean;
+};
+
+export function toClientAsset(row: DraftAssetRow): ClientAsset {
+  return {
+    id: row.id,
+    filename: row.original_filename,
+    file_kind: row.file_kind,
+    mime_type: row.mime_type,
+    byte_size: row.byte_size,
+    page_count: row.page_count,
+    page_count_verified: row.page_count_verified,
+    width: row.width,
+    height: row.height,
+    uploaded_at: row.created_at,
+    preview_supported: previewSupported(row.file_kind),
+    participant_delivery_ready: participantDeliveryReady(row.file_kind),
+  };
+}
 
 /**
  * The SERVER-owned draft document reference, stored (as a JSON string) in the
@@ -111,6 +166,7 @@ export function toClientDraft(row: ModuleDraftRow): ClientDraft {
     parent_module_id: row.parent_module_id,
     document_asset_ref_present: ref != null,
     attachment: toClientAttachment(ref),
+    assets: [], // populated by the draft-detail route (listDraftAssets)
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

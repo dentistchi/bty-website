@@ -5,6 +5,7 @@ import {
   updateDraftStep,
   deleteDraft,
 } from "@/lib/bty/foundry/events/foundryModuleService";
+import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch } from "@/domain/foundry/module/module-builder";
 
@@ -40,7 +41,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const draft = await getOwnerDraft(admin, user.id, id);
   if (!draft) return managerJson(base, req, { error: "not_found" }, 404);
-  return managerJson(base, req, { draft: toClientDraft(draft) });
+  const assets = (await listDraftAssets(admin, user.id, id)) ?? [];
+  return managerJson(base, req, { draft: { ...toClientDraft(draft), assets } });
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

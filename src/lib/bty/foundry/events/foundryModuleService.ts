@@ -261,10 +261,19 @@ export async function deleteDraft(
   if (!current) return { ok: false, reason: "draft_not_found" };
   if (!canMutateDraft(current.status)) return { ok: false, reason: "draft_not_mutable" };
 
-  // Remove the draft's private PDF asset first (idempotent; a missing object is
-  // fine) so deleting a draft never leaves an orphaned file in the bucket.
+  // Remove all of the draft's private storage objects first (idempotent; a
+  // missing object is fine) so deleting a draft never leaves orphaned files.
+  // (a) legacy single-doc ref (0 exist in practice, kept for safety);
   const ref = parseDocumentRef(current.document_asset_ref);
   if (ref) await deleteFoundryDocument(admin, ref.bucket, ref.path);
+  // (b) multi-format draft assets — the draft is already owner-confirmed above,
+  //     so scoping the sweep by draft_id is safe. DB cascade removes the rows.
+  const { data: assets } = await admin
+    .from("foundry_module_draft_assets")
+    .select("storage_bucket, storage_path")
+    .eq("draft_id", draftId)
+    .returns<{ storage_bucket: string; storage_path: string }[]>();
+  for (const a of assets ?? []) await deleteFoundryDocument(admin, a.storage_bucket, a.storage_path);
 
   const { error } = await admin
     .from("foundry_module_drafts")

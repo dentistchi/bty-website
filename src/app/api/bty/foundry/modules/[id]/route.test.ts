@@ -25,6 +25,9 @@ vi.mock("@/lib/bty/foundry/events/foundryModuleService", () => ({
   updateDraftStep: (...a: unknown[]) => updateDraftStep(...a),
   deleteDraft: (...a: unknown[]) => deleteDraft(...a),
 }));
+vi.mock("@/lib/bty/foundry/events/draftAssetService", () => ({
+  listDraftAssets: async () => [],
+}));
 
 let GET: typeof import("./route").GET;
 let PATCH: typeof import("./route").PATCH;

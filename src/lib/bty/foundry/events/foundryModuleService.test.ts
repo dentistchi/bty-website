@@ -46,7 +46,7 @@ function makeFakeAdmin(seed: { drafts?: Row[]; modules?: Row[] } = {}) {
   }
 
   function from(table: string) {
-    const rows = tables[table];
+    const rows = tables[table] ?? (tables[table] = []); // tolerate new tables (e.g. draft assets sweep)
     const q = {
       _op: "select" as "select" | "insert" | "update" | "delete",
       _filters: [] as Array<{ c: string; v: unknown }>,

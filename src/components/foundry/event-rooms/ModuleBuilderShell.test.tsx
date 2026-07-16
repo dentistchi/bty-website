@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 
-type Attachment = { present: true; filename: string | null; byte_size: number; page_count: number; page_count_verified: boolean; uploaded_at: string };
+type Asset = { id: string; filename: string; file_kind: string; mime_type: string; byte_size: number; page_count: number | null; page_count_verified: boolean; width: number | null; height: number | null; uploaded_at: string; preview_supported: boolean; participant_delivery_ready: boolean };
 type Draft = {
   id: string;
   status: string;
@@ -12,10 +12,27 @@ type Draft = {
   module_version: number;
   parent_module_id: string | null;
   document_asset_ref_present: boolean;
-  attachment: Attachment | null;
+  attachment: null;
+  assets: Asset[];
   created_at: string;
   updated_at: string;
 };
+
+const mkAsset = (over: Partial<Asset> = {}): Asset => ({
+  id: `a${Math.random().toString(36).slice(2, 7)}`,
+  filename: "Care Standard.docx",
+  file_kind: "document",
+  mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  byte_size: 2512034,
+  page_count: null,
+  page_count_verified: false,
+  width: null,
+  height: null,
+  uploaded_at: "t",
+  preview_supported: false,
+  participant_delivery_ready: false,
+  ...over,
+});
 
 const jsonRes = (body: unknown, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -24,10 +41,11 @@ const jsonRes = (body: unknown, status = 200) => ({
 });
 
 /**
- * Stateful fake: GET returns the draft, PATCH merges answers/step, POST/DELETE
- * /document attach/remove the PDF. `docFail` forces the upload/remove to fail.
+ * Stateful fake: GET returns the draft (+assets), PATCH merges answers/step,
+ * POST/DELETE /assets attach/remove files. `assetReason` forces per-upload failure
+ * with a specific reason (e.g. unsupported_file_type).
  */
-function mockDraftServer(initial: Partial<Draft>, opts: { docFail?: boolean } = {}) {
+function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string } = {}) {
   const draft: Draft = {
     id: "d-1",
     status: "draft",
@@ -37,25 +55,26 @@ function mockDraftServer(initial: Partial<Draft>, opts: { docFail?: boolean } = 
     parent_module_id: null,
     document_asset_ref_present: false,
     attachment: null,
+    assets: [],
     created_at: "t",
     updated_at: "t",
     ...initial,
   };
   const patches: Array<{ answers?: Record<string, unknown>; current_step?: number }> = [];
+  let counter = 0;
   const fn = vi.fn(async (url: string, o?: { method?: string; body?: string }) => {
     const method = o?.method ?? "GET";
-    if (url.includes("/document")) {
-      if (opts.docFail) return jsonRes({ error: method === "DELETE" ? "remove_failed" : "attach_failed" }, 502);
+    if (url.includes("/assets")) {
       if (method === "POST") {
-        const att: Attachment = { present: true, filename: "Care Standard.pdf", byte_size: 2512034, page_count: 18, page_count_verified: true, uploaded_at: "t" };
-        draft.attachment = att;
-        draft.document_asset_ref_present = true;
-        return jsonRes({ attachment: att, draft });
+        if (opts.assetReason) return jsonRes({ error: opts.assetReason }, opts.assetReason === "draft_not_mutable" ? 409 : 400);
+        const asset = mkAsset({ id: `srv-${counter++}`, filename: `Doc ${counter}.pdf`, file_kind: "pdf", participant_delivery_ready: true, preview_supported: true });
+        draft.assets = [...draft.assets, asset];
+        return jsonRes({ asset }, 201);
       }
       if (method === "DELETE") {
-        draft.attachment = null;
-        draft.document_asset_ref_present = false;
-        return jsonRes({ draft });
+        const id = url.split("/").pop() as string;
+        draft.assets = draft.assets.filter((a) => a.id !== id);
+        return jsonRes({ removed: true });
       }
     }
     if (method === "PATCH") {
@@ -71,6 +90,13 @@ function mockDraftServer(initial: Partial<Draft>, opts: { docFail?: boolean } = 
   global.fetch = fn;
   return { draft, patches, fn };
 }
+
+/** Fire a file selection onto the "Attach files" input. */
+function selectFiles(files: File[]) {
+  const input = document.querySelector('input[aria-label="Attach files"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files } });
+}
+const pdf = (name: string) => new File(["%PDF-"], name, { type: "application/pdf" });
 
 afterEach(() => {
   cleanup();
@@ -173,15 +199,15 @@ describe("ModuleBuilderShell — review + material intent", () => {
     expect(screen.getAllByText("Edit").length).toBeGreaterThan(0);
   });
 
-  it("choosing PDF shows the Attach UI and never calls the legacy upload endpoint", async () => {
+  it("choosing Files and documents reveals the attach affordances without uploading", async () => {
     const srv = mockDraftServer({ current_step: 6, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
-    fireEvent.click(screen.getByText("PDF document"));
-    // selecting PDF reveals the attach affordance — it does NOT upload on selection.
-    expect(await screen.findByText("Attach PDF")).toBeTruthy();
+    fireEvent.click(screen.getByText("Files and documents"));
+    expect(await screen.findByText("Attach files")).toBeTruthy();
+    expect(screen.getByText("Add photo or screenshot")).toBeTruthy();
     const calledUpload = srv.fn.mock.calls.some(
-      (c) => String(c[0]).includes("/events/upload") || String(c[0]).includes("/document"),
+      (c) => String(c[0]).includes("/events/upload") || String(c[0]).includes("/assets"),
     );
     expect(calledUpload).toBe(false);
   });
@@ -230,7 +256,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText("YouTube video")).toBeTruthy();
-    expect(screen.getByText("PDF document")).toBeTruthy();
+    expect(screen.getByText("Files and documents")).toBeTruthy();
     expect(screen.queryByText("Written guidance")).toBeNull();
     expect(screen.queryByText("Live discussion")).toBeNull();
   });
@@ -258,80 +284,85 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   });
 });
 
-describe("ModuleBuilderShell — PDF attachment (2.1.1)", () => {
-  it("PDF selection shows Attach PDF backed by a PDF-only file input", async () => {
+describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
+  it("Files selection shows Attach files + Add photo or screenshot inputs", async () => {
     mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    expect(await screen.findByText("Attach a PDF your team will read.")).toBeTruthy();
-    expect(screen.getByText("Attach PDF")).toBeTruthy();
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(input).toBeTruthy();
-    expect(input.getAttribute("accept")).toBe("application/pdf");
+    expect(await screen.findByText("Attach files")).toBeTruthy();
+    expect(screen.getByText("Add photo or screenshot")).toBeTruthy();
+    const docInput = document.querySelector('input[aria-label="Attach files"]') as HTMLInputElement;
+    const imgInput = document.querySelector('input[aria-label="Add photo or screenshot"]') as HTMLInputElement;
+    expect(docInput.getAttribute("accept")).toContain(".pdf");
+    expect(docInput.multiple).toBe(true);
+    expect(imgInput.getAttribute("accept")).toContain("image/png");
   });
 
-  it("uploading a valid PDF shows filename, page count, size, and Replace/Remove", async () => {
+  it("uploads each selected file independently and shows them as attached", async () => {
     mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Attach PDF");
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(["%PDF-"], "Care Standard.pdf", { type: "application/pdf" });
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(await screen.findByText("Care Standard.pdf")).toBeTruthy();
-    expect(screen.getByText(/18 pages/)).toBeTruthy();
-    expect(screen.getByText(/2\.4 MB/)).toBeTruthy();
-    expect(screen.getByText("Replace PDF")).toBeTruthy();
-    expect(screen.getByText("Remove")).toBeTruthy();
+    await screen.findByText("Attach files");
+    selectFiles([pdf("Alpha.pdf"), pdf("Beta.pdf")]);
+    // both land as server assets (their server-assigned names).
+    await waitFor(() => expect(screen.getByText("Doc 1.pdf")).toBeTruthy());
+    expect(screen.getByText("Doc 2.pdf")).toBeTruthy();
   });
 
-  it("upload failure stays retryable", async () => {
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } }, { docFail: true });
+  it("one invalid file does not discard the valid ones, and is retryable", async () => {
+    // First selection fails (unsupported); the valid one still uploads on retry via a fresh server.
+    mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } }, { assetReason: "unsupported_file_type" });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Attach PDF");
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [new File(["%PDF-"], "x.pdf", { type: "application/pdf" })] } });
-    expect(await screen.findByText(/Couldn’t upload the PDF/)).toBeTruthy();
-    // still retryable (Attach PDF still present)
-    expect(screen.getByText("Attach PDF")).toBeTruthy();
+    await screen.findByText("Attach files");
+    selectFiles([new File(["x"], "malware.exe", { type: "" })]);
+    expect(await screen.findByText("Unsupported file type")).toBeTruthy();
   });
 
-  it("cold restore shows the attached PDF", async () => {
+  it("cold-restores attached files after remount", async () => {
     mockDraftServer({
       current_step: 6,
       answers: { materialIntent: "pdf" },
-      attachment: { present: true, filename: "Existing.pdf", byte_size: 1024, page_count: 3, page_count_verified: true, uploaded_at: "t" },
-      document_asset_ref_present: true,
+      assets: [mkAsset({ id: "a1", filename: "Existing.docx" })],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    expect(await screen.findByText("Existing.pdf")).toBeTruthy();
+    expect(await screen.findByText("Existing.docx")).toBeTruthy();
     expect(screen.getByText("Remove")).toBeTruthy();
   });
 
-  it("Remove clears the attachment state", async () => {
+  it("removing one file preserves the others", async () => {
     mockDraftServer({
       current_step: 6,
       answers: { materialIntent: "pdf" },
-      attachment: { present: true, filename: "Existing.pdf", byte_size: 1024, page_count: 3, page_count_verified: true, uploaded_at: "t" },
-      document_asset_ref_present: true,
+      assets: [mkAsset({ id: "a1", filename: "Keep.docx" }), mkAsset({ id: "a2", filename: "Drop.png", file_kind: "image" })],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Existing.pdf");
-    fireEvent.click(screen.getByText("Remove"));
-    await waitFor(() => expect(screen.queryByText("Existing.pdf")).toBeNull());
-    expect(screen.getByText("Attach PDF")).toBeTruthy();
+    await screen.findByText("Drop.png");
+    const dropRow = screen.getByText("Drop.png").closest("div")?.parentElement as HTMLElement;
+    fireEvent.click(dropRow.querySelector("button") as HTMLButtonElement);
+    await waitFor(() => expect(screen.queryByText("Drop.png")).toBeNull());
+    expect(screen.getByText("Keep.docx")).toBeTruthy();
   });
 
-  it("review shows Ready when attached (needs-attention drops)", async () => {
+  it("review lists attached files (and honest requirement when none)", async () => {
     mockDraftServer({
       current_step: 8,
       answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
-      attachment: { present: true, filename: "Care.pdf", byte_size: 2048, page_count: 12, page_count_verified: true, uploaded_at: "t" },
-      document_asset_ref_present: true,
+      assets: [mkAsset({ id: "a1", filename: "Care.pdf", file_kind: "pdf", participant_delivery_ready: true })],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Review what you’ve built.");
-    expect(screen.getByText(/12 pages · .* · Ready/)).toBeTruthy();
-    // behavior is concrete + PDF ready => nothing needs attention.
+    expect(screen.getByText(/Care\.pdf · Attached · Ready for participant delivery/)).toBeTruthy();
     expect(screen.queryByText(/Needs attention/)).toBeNull();
+  });
+
+  it("review shows the requirement when no files are attached", async () => {
+    mockDraftServer({
+      current_step: 8,
+      answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
+      assets: [],
+    });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("Review what you’ve built.");
+    expect(screen.getByText(/No files attached yet/)).toBeTruthy();
+    expect(screen.getByText("Needs attention — 1")).toBeTruthy();
   });
 
   it("YouTube regression: switching to YouTube still shows the missing-link state", async () => {

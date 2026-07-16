@@ -108,6 +108,22 @@ export type ModuleBuilderCopy = {
   removeFailed: string;
   pdfReadyBadge: string;
   pagesLabel: (n: number) => string;
+  // files & documents (multi-format assets)
+  matFiles: string;
+  filesHeader: string;
+  filesLead: string;
+  attachFiles: string;
+  addPhoto: string;
+  assetAttached: string;
+  assetUploading: string;
+  assetRemove: string;
+  errUnsupported: string;
+  errTooLarge: string;
+  errGeneric: string;
+  deliveryReady: string;
+  deliveryDeferred: string;
+  reviewMaterials: string;
+  noFilesYet: string;
   // quick-event discoverability
   quickLead: string;
   // step 7 practice + follow-up
@@ -242,6 +258,21 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     removeFailed: "Couldn’t remove the PDF — Try again",
     pdfReadyBadge: "Ready",
     pagesLabel: (n) => (n === 1 ? "1 page" : `${n} pages`),
+    matFiles: "Files and documents",
+    filesHeader: "FILES AND DOCUMENTS",
+    filesLead: "Add the material your team will use.",
+    attachFiles: "Attach files",
+    addPhoto: "Add photo or screenshot",
+    assetAttached: "Attached",
+    assetUploading: "Uploading…",
+    assetRemove: "Remove",
+    errUnsupported: "Unsupported file type",
+    errTooLarge: "File is too large",
+    errGeneric: "Couldn’t upload — Try again",
+    deliveryReady: "Ready for participant delivery",
+    deliveryDeferred: "Delivery setup will be completed before approval.",
+    reviewMaterials: "LEARNING MATERIALS",
+    noFilesYet: "No files attached yet",
     quickLead: "Need to launch something quickly?",
     s7ArenaQ: "Should people practice this in Arena?",
     s7ArenaRecommended: "Recommended for this kind of change.",
@@ -363,6 +394,21 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     removeFailed: "PDF를 제거하지 못했습니다 — 다시 시도",
     pdfReadyBadge: "준비됨",
     pagesLabel: (n) => `${n}페이지`,
+    matFiles: "파일 및 문서",
+    filesHeader: "파일 및 문서",
+    filesLead: "팀이 사용할 자료를 추가하세요.",
+    attachFiles: "파일 첨부",
+    addPhoto: "사진 또는 스크린샷 추가",
+    assetAttached: "첨부됨",
+    assetUploading: "업로드 중…",
+    assetRemove: "제거",
+    errUnsupported: "지원하지 않는 파일 형식",
+    errTooLarge: "파일이 너무 큽니다",
+    errGeneric: "업로드하지 못했습니다 — 다시 시도",
+    deliveryReady: "참가자 전달 준비됨",
+    deliveryDeferred: "승인 전에 전달 설정이 완료됩니다.",
+    reviewMaterials: "학습 자료",
+    noFilesYet: "아직 첨부된 파일이 없습니다",
     quickLead: "빠르게 시작해야 하나요?",
     s7ArenaQ: "사람들이 Arena에서 연습해야 하나요?",
     s7ArenaRecommended: "이런 변화에 권장됩니다.",
