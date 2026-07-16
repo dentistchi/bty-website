@@ -17,6 +17,8 @@ function statusLabel(status: ManagerRosterStatus, t: EventRoomsCopy): string {
       return t.status_response_pending;
     case "watching":
       return t.status_watching;
+    case "reading":
+      return t.status_reading;
     default:
       return t.status_joined;
   }

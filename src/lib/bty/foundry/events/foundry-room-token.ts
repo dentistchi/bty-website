@@ -57,7 +57,7 @@ export function assertFoundryRoomSecretConfigured(): void {
  * in local/test only, the existing QR secret chain is accepted so no new env var
  * is needed to run tests. Never logs the value; never touches Arena/CRON secrets.
  */
-function resolveFoundryRoomSecret(): string {
+export function resolveFoundryRoomSecret(): string {
   const dedicated = process.env.FOUNDRY_ROOM_QR_SECRET;
   if (isProdEnv()) {
     if (!dedicated?.trim()) {

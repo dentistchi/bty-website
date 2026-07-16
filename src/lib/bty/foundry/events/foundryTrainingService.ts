@@ -331,7 +331,7 @@ function buildPublicSnapshot(
 }
 
 /** Resolve event + participant for a public progress action. */
-async function resolvePublic(
+export async function resolvePublic(
   admin: SupabaseClient,
   token: string,
   sessionToken: string | null | undefined,
@@ -450,7 +450,7 @@ export async function completeVideo(
 export type AwardOutcome = "awarded" | "already_awarded" | "owner_ineligible" | "daily_limit";
 
 /** Map an award outcome to the public xp_status the client renders. */
-function outcomeToXpStatus(outcome: AwardOutcome): PublicXpStatus {
+export function outcomeToXpStatus(outcome: AwardOutcome): PublicXpStatus {
   if (outcome === "owner_ineligible") return "owner_ineligible";
   if (outcome === "daily_limit") return "daily_limit";
   return "awarded"; // awarded | already_awarded (via this or another participant)
@@ -465,7 +465,7 @@ function outcomeToXpStatus(outcome: AwardOutcome): PublicXpStatus {
  *    called ONLY on a fresh 'awarded' result.
  * Never writes an XP total directly; never logs identifiers.
  */
-async function awardTrainingCoreXp(
+export async function awardTrainingCoreXp(
   admin: SupabaseClient,
   userId: string,
   eventId: string,

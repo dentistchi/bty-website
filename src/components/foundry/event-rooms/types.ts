@@ -5,6 +5,7 @@ export type FoundryEventStatus = "open" | "closed";
 export type ManagerRosterStatus =
   | "joined"
   | "watching"
+  | "reading"
   | "response_pending"
   | "complete"
   | "removed";
@@ -23,14 +24,25 @@ export type ManagerTraining = {
   completion_prompt: string;
 };
 
+export type ManagerDocument = {
+  source_type?: "uploaded_pdf" | "google_drive";
+  file_name: string | null;
+  page_count: number;
+  min_read_seconds: number;
+  intro: string | null;
+  completion_prompt: string;
+};
+
 export type ManagerEvent = {
   id: string;
   title: string;
   status: FoundryEventStatus;
+  content_type?: "youtube" | "document";
   join_url: string;
   created_at: string;
   closed_at: string | null;
-  training: ManagerTraining | null;
+  training?: ManagerTraining | null;
+  document?: ManagerDocument | null;
 };
 
 export type ManagerSnapshot = {

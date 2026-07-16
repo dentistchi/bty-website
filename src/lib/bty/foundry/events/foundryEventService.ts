@@ -31,13 +31,16 @@ import {
  * domain module; this layer only orchestrates domain + DB + token crypto.
  */
 
-const EVENT_COLS = "id, owner_user_id, title, status, join_version, created_at, closed_at";
+const EVENT_COLS =
+  "id, owner_user_id, title, status, content_type, join_version, created_at, closed_at";
 
 export type EventRow = {
   id: string;
   owner_user_id: string;
   title: string;
   status: FoundryEventStatus;
+  /** 'youtube' | 'document'. Absent on legacy rows read before the migration → treat as youtube. */
+  content_type?: string | null;
   join_version: number;
   created_at: string;
   closed_at: string | null;

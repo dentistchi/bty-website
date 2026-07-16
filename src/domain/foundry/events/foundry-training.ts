@@ -53,17 +53,30 @@ export function validateResponse(raw: unknown): ValidationResult<string> {
   return { ok: true, value: cleaned };
 }
 
+/** The room's content type. YouTube is the original loop; document is the PDF room. */
+export type FoundryContentType = "youtube" | "document";
+
 /** Progress timestamps the projections read (all nullable, server-owned). */
 export type TrainingProgressMarkers = {
   video_started_at: string | null;
   video_completed_at: string | null;
   completed_at: string | null;
   xp_awarded_at: string | null;
+  // DOCUMENT room only (null/absent for YouTube). `read_started` is any reading
+  // progress at all; `document_read_completed_at` is the reading-gate met marker.
+  document_read_started?: boolean;
+  document_read_completed_at?: string | null;
 };
+
+/** The evidence-completed marker for either content type (video OR reading gate). */
+function engagementCompleted(progress: TrainingProgressMarkers): boolean {
+  return Boolean(progress.video_completed_at) || Boolean(progress.document_read_completed_at);
+}
 
 export type ManagerRosterStatus =
   | "joined"
   | "watching"
+  | "reading"
   | "response_pending"
   | "complete"
   | "removed";
@@ -72,19 +85,22 @@ export type ManagerRosterStatus =
 export function projectManagerRosterStatus(
   participantStatus: FoundryParticipantStatus,
   progress: TrainingProgressMarkers | null,
+  contentType: FoundryContentType = "youtube",
 ): ManagerRosterStatus {
   if (participantStatus === "removed") return "removed";
   if (!progress) return "joined";
   if (progress.completed_at) return "complete";
-  if (progress.video_completed_at) return "response_pending";
+  if (engagementCompleted(progress)) return "response_pending";
+  if (contentType === "document") return progress.document_read_started ? "reading" : "joined";
   if (progress.video_started_at) return "watching";
   return "joined";
 }
 
 export type PublicTrainingStage =
   | "pre_join" // not yet a participant, event open + current QR
-  | "watch" // joined, video not yet completed
-  | "response" // video completed, response not yet submitted
+  | "watch" // joined, video not yet completed (YouTube)
+  | "read" // joined, reading gate not yet met (DOCUMENT)
+  | "response" // engagement completed, response not yet submitted
   | "completed_awarded" // completed + Core XP awarded/claimed
   | "completed_claimable" // completed anonymously, XP not yet claimed
   | "closed_incomplete" // event closed before this participant completed
@@ -98,8 +114,9 @@ export function projectPublicTrainingStage(args: {
   eventStatus: FoundryEventStatus;
   progress: TrainingProgressMarkers | null;
   hasParticipant: boolean;
+  contentType?: FoundryContentType;
 }): PublicTrainingStage {
-  const { participantStatus, eventStatus, progress, hasParticipant } = args;
+  const { participantStatus, eventStatus, progress, hasParticipant, contentType = "youtube" } = args;
 
   if (hasParticipant && participantStatus === "removed") return "removed";
 
@@ -114,11 +131,14 @@ export function projectPublicTrainingStage(args: {
 
   // Joined but not completed.
   if (eventStatus === "closed") return "closed_incomplete";
-  if (progress?.video_completed_at) return "response";
-  return "watch";
+  if (progress && engagementCompleted(progress)) return "response";
+  return contentType === "document" ? "read" : "watch";
 }
 
-/** The completion response may only be submitted once the video is server-marked complete. */
+/**
+ * The completion response may only be submitted once the engagement gate is
+ * server-marked complete (video watched OR reading requirement met).
+ */
 export function canSubmitResponse(progress: TrainingProgressMarkers | null): boolean {
-  return Boolean(progress?.video_completed_at) && !progress?.completed_at;
+  return Boolean(progress) && engagementCompleted(progress!) && !progress?.completed_at;
 }

@@ -1,0 +1,570 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
+
+/**
+ * Foundry PDF Study Room — participant experience.
+ *
+ * A no-instruction flow: scan → name → read (progress saved) → reflect (unlocks
+ * when the reading requirement is met) → complete → credit. Direct language, no
+ * Foundry jargon. Reading progress and completion are server-authoritative; this
+ * client reports and renders, it never awards. Mirrors the YouTube participant
+ * client's shape and visual language but for a document.
+ */
+
+type Locale = "en" | "ko";
+
+type Stage =
+  | "pre_join"
+  | "read"
+  | "response"
+  | "completed_awarded"
+  | "completed_claimable"
+  | "closed_incomplete"
+  | "closed"
+  | "removed"
+  | "inactive";
+
+type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
+
+type DocInfo = {
+  page_count: number;
+  min_read_seconds: number;
+  intro: string | null;
+  last_page: number | null;
+  distinct_pages_viewed: number;
+  active_read_ms: number;
+  reading_complete: boolean;
+  completion_prompt: string | null;
+};
+
+type Snapshot = {
+  content_type: "document";
+  event: { title: string; status: "open" | "closed" } | null;
+  participant: { display_name: string } | null;
+  document: DocInfo | null;
+  stage: Stage;
+  xp_status: XpStatus;
+};
+
+type Copy = {
+  eyebrow: string;
+  enterName: string;
+  namePlaceholder: string;
+  join: string;
+  joining: string;
+  readThis: string;
+  progressSaved: string;
+  pagesProgress: (viewed: number, total: number) => string;
+  keepReading: string;
+  readingDone: string;
+  reflection: string;
+  responsePlaceholder: string;
+  complete: string;
+  completing: string;
+  trainingComplete: string;
+  xpAwarded: string;
+  xpClaimable: string;
+  saveXp: string;
+  saving: string;
+  xpDailyLimit: string;
+  xpOwner: string;
+  closedTitle: string;
+  closedBody: string;
+  endedTitle: string;
+  endedBody: string;
+  removed: string;
+  inactive: string;
+  nameError: string;
+  responseError: string;
+  pdfLoading: string;
+  pdfUnavailable: string;
+  pdfUnavailableHint: string;
+  pageOf: (page: number, total: number) => string;
+  prev: string;
+  next: string;
+  docLoadError: string;
+};
+
+const COPY: Record<Locale, Copy> = {
+  en: {
+    eyebrow: "FOUNDRY",
+    enterName: "Enter your name to join.",
+    namePlaceholder: "Your name",
+    join: "Join",
+    joining: "Joining…",
+    readThis: "Read the document",
+    progressSaved: "Your place is saved.",
+    pagesProgress: (v, t) => `${v} of ${t} pages read`,
+    keepReading: "Read every page to continue.",
+    readingDone: "You’ve read the document.",
+    reflection: "REFLECTION",
+    responsePlaceholder: "Write your reflection…",
+    complete: "Complete training",
+    completing: "Saving…",
+    trainingComplete: "TRAINING COMPLETE",
+    xpAwarded: "+10 Core XP",
+    xpClaimable: "10 Core XP is ready to save.",
+    saveXp: "Save XP to BTY",
+    saving: "Saving…",
+    xpDailyLimit: "Today’s Core XP is already saved. Come back tomorrow.",
+    xpOwner: "Thanks for hosting this training.",
+    closedTitle: "THIS EVENT IS CLOSED",
+    closedBody: "New participants can no longer join.",
+    endedTitle: "EVENT CLOSED",
+    endedBody: "This session has ended.",
+    removed: "Your access to this event has ended.",
+    inactive: "This invitation is no longer active.",
+    nameError: "Please enter your name.",
+    responseError: "Please write your reflection to complete.",
+    pdfLoading: "Loading…",
+    pdfUnavailable: "The document could not be loaded.",
+    pdfUnavailableHint: "Reload the page, or ask the host to check the event.",
+    pageOf: (p, t) => `${p} / ${t}`,
+    prev: "Back",
+    next: "Next",
+    docLoadError: "This document is not available. Ask the host to check the event.",
+  },
+  ko: {
+    eyebrow: "FOUNDRY",
+    enterName: "이름을 입력하고 입장하세요.",
+    namePlaceholder: "이름",
+    join: "입장",
+    joining: "입장 중…",
+    readThis: "문서를 읽어 주세요",
+    progressSaved: "읽던 위치가 저장됩니다.",
+    pagesProgress: (v, t) => `${t}쪽 중 ${v}쪽 읽음`,
+    keepReading: "모든 페이지를 읽으면 계속됩니다.",
+    readingDone: "문서를 모두 읽었습니다.",
+    reflection: "성찰",
+    responsePlaceholder: "성찰을 적어 주세요…",
+    complete: "훈련 완료",
+    completing: "저장 중…",
+    trainingComplete: "훈련 완료",
+    xpAwarded: "+10 Core XP",
+    xpClaimable: "10 Core XP를 저장할 수 있습니다.",
+    saveXp: "BTY에 XP 저장",
+    saving: "저장 중…",
+    xpDailyLimit: "오늘의 Core XP는 이미 저장되었습니다. 내일 다시 오세요.",
+    xpOwner: "이 훈련을 열어 주셔서 감사합니다.",
+    closedTitle: "종료된 이벤트입니다",
+    closedBody: "더 이상 참여할 수 없습니다.",
+    endedTitle: "이벤트 종료",
+    endedBody: "이 세션은 종료되었습니다.",
+    removed: "이 이벤트에 대한 접근이 종료되었습니다.",
+    inactive: "더 이상 유효하지 않은 초대입니다.",
+    nameError: "이름을 입력해 주세요.",
+    responseError: "완료하려면 성찰을 작성해 주세요.",
+    pdfLoading: "불러오는 중…",
+    pdfUnavailable: "문서를 불러오지 못했습니다.",
+    pdfUnavailableHint: "다시 시도하거나 호스트에게 문의하세요.",
+    pageOf: (p, t) => `${p} / ${t}`,
+    prev: "이전",
+    next: "다음",
+    docLoadError: "문서를 사용할 수 없습니다. 호스트에게 확인을 요청하세요.",
+  },
+};
+
+function resolveLocale(): Locale {
+  if (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko")) return "ko";
+  return "en";
+}
+
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <main
+      className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
+      style={{
+        paddingTop: "max(2rem, env(safe-area-inset-top))",
+        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6">{children}</div>
+    </main>
+  );
+}
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return <span className="text-xs font-medium uppercase tracking-[0.18em] text-[#C9A66B]/90">{children}</span>;
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-1 flex-col items-center justify-center text-center">{children}</div>;
+}
+
+const docApi = (token: string, path = "") =>
+  `/api/bty/foundry/public/${encodeURIComponent(token)}/doc${path}`;
+
+export default function FoundryDocumentClient({ token }: { token: string }) {
+  const [locale, setLocale] = useState<Locale>("en");
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState("");
+  const [response, setResponse] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const [responseError, setResponseError] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [fileError, setFileError] = useState(false);
+  const busyRef = useRef(false);
+  const autoClaimedRef = useRef(false);
+  const fileRequestedRef = useRef(false);
+
+  const t = COPY[locale];
+
+  useEffect(() => setLocale(resolveLocale()), []);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(docApi(token, "/snapshot"), { credentials: "include", cache: "no-store" });
+      setSnapshot((await res.json()) as Snapshot);
+    } catch {
+      setSnapshot({ content_type: "document", event: null, participant: null, document: null, stage: "inactive", xp_status: "none" });
+    } finally {
+      setLoaded(true);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const post = useCallback(
+    async (path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown }> => {
+      const res = await fetch(docApi(token, path), {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => null);
+      return { ok: res.ok, status: res.status, data };
+    },
+    [token],
+  );
+
+  const applyResult = useCallback((data: unknown) => {
+    const d = data as (Partial<Snapshot> & { ok?: boolean }) | null;
+    if (d?.ok && d.stage) {
+      setSnapshot({
+        content_type: "document",
+        event: d.event ?? null,
+        participant: d.participant ?? null,
+        document: d.document ?? null,
+        stage: d.stage,
+        xp_status: d.xp_status ?? "none",
+      });
+      return true;
+    }
+    return false;
+  }, []);
+
+  const stage = snapshot?.stage;
+  const showReader = stage === "read" || stage === "response";
+
+  // Fetch a signed url once we're a participant who needs the document.
+  useEffect(() => {
+    if (!showReader || fileRequestedRef.current) return;
+    fileRequestedRef.current = true;
+    (async () => {
+      try {
+        const res = await fetch(docApi(token, "/file"), { credentials: "include", cache: "no-store" });
+        const d = (await res.json()) as { ok?: boolean; url?: string };
+        if (d?.ok && d.url) setFileUrl(d.url);
+        else setFileError(true);
+      } catch {
+        setFileError(true);
+      }
+    })();
+  }, [showReader, token]);
+
+  // --- actions ---
+  const onJoin = useCallback(async () => {
+    if (busyRef.current) return;
+    if (name.trim().length < 1) return setNameError(true);
+    busyRef.current = true;
+    setBusy(true);
+    setNameError(false);
+    try {
+      // Join reuses the content-agnostic public join route.
+      const res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_name: name.trim() }),
+      });
+      const d = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (res.ok) await load();
+      else if (d?.error === "name_required" || d?.error === "name_too_long") setNameError(true);
+      else await load();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [name, token, load]);
+
+  const onHeartbeat = useCallback(
+    (beat: ReadingHeartbeat) => {
+      // Fire-and-forget; apply the returned snapshot so reading_complete unlocks
+      // the reflection without a hard stage switch.
+      void post("/reading", {
+        last_page: beat.lastPage,
+        viewed_pages: beat.viewedPages,
+        active_ms_delta: beat.activeMsDelta,
+      }).then(({ data }) => {
+        applyResult(data);
+      });
+    },
+    [post, applyResult],
+  );
+
+  const onComplete = useCallback(async () => {
+    if (busyRef.current) return;
+    if (response.trim().length < 1) return setResponseError(true);
+    busyRef.current = true;
+    setBusy(true);
+    setResponseError(false);
+    try {
+      const { ok, data } = await post("/complete", { response_text: response.trim() });
+      const d = data as { error?: string } | null;
+      if (ok) applyResult(data);
+      else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
+      else await load();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }, [response, post, applyResult, load]);
+
+  const onClaim = useCallback(
+    async (silent: boolean) => {
+      if (busyRef.current) return;
+      busyRef.current = true;
+      if (!silent) setBusy(true);
+      try {
+        const { ok, status, data } = await post("/claim-xp");
+        if (ok) applyResult(data);
+        else if (status === 401 && !silent) {
+          const next = encodeURIComponent(`/f/${token}`);
+          window.location.href = `/${locale}/bty/login?next=${next}`;
+        }
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [post, applyResult, token, locale],
+  );
+
+  useEffect(() => {
+    if (snapshot?.stage === "completed_claimable" && !autoClaimedRef.current) {
+      autoClaimedRef.current = true;
+      void onClaim(true);
+    }
+  }, [snapshot?.stage, onClaim]);
+
+  // --- render ---
+  if (!loaded || !snapshot) {
+    return <Frame><div className="flex-1" /></Frame>;
+  }
+
+  if (stage === "inactive") {
+    return (
+      <Frame>
+        <Centered>
+          <p className="text-sm text-white/70">{t.inactive}</p>
+        </Centered>
+      </Frame>
+    );
+  }
+  if (stage === "removed") {
+    return (
+      <Frame>
+        <Centered>
+          <p className="text-sm text-white/70">{t.removed}</p>
+        </Centered>
+      </Frame>
+    );
+  }
+  if (stage === "closed") {
+    return (
+      <Frame>
+        <Centered>
+          <Eyebrow>{t.closedTitle}</Eyebrow>
+          <p className="mt-3 text-sm text-white/70">{t.closedBody}</p>
+        </Centered>
+      </Frame>
+    );
+  }
+  if (stage === "closed_incomplete") {
+    return (
+      <Frame>
+        <Centered>
+          <Eyebrow>{t.endedTitle}</Eyebrow>
+          <p className="mt-3 text-sm text-white/70">{t.endedBody}</p>
+        </Centered>
+      </Frame>
+    );
+  }
+
+  // pre_join
+  if (stage === "pre_join") {
+    return (
+      <Frame>
+        <div className="pt-8">
+          <Eyebrow>{t.eyebrow}</Eyebrow>
+          <h1 className="mt-2 text-2xl font-semibold leading-tight">{snapshot.event?.title}</h1>
+          <p className="mt-6 text-sm text-white/70">{t.enterName}</p>
+        </div>
+        <form
+          className="mt-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onJoin();
+          }}
+        >
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameError(false);
+            }}
+            maxLength={60}
+            placeholder={t.namePlaceholder}
+            className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+          />
+          {nameError && <p className="mt-2 text-xs text-red-300">{t.nameError}</p>}
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-4 w-full rounded-xl bg-[#C9A66B] px-4 py-3 font-medium text-[#0B1F3A] disabled:opacity-60"
+          >
+            {busy ? t.joining : t.join}
+          </button>
+        </form>
+        <div className="flex-1" />
+      </Frame>
+    );
+  }
+
+  // completed
+  if (stage === "completed_awarded" || stage === "completed_claimable") {
+    const xp = snapshot.xp_status;
+    return (
+      <Frame>
+        <Centered>
+          <Eyebrow>{t.trainingComplete}</Eyebrow>
+          <h1 className="mt-3 text-xl font-semibold">{snapshot.event?.title}</h1>
+          <div className="mt-8 w-full">
+            {xp === "awarded" && (
+              <p className="text-lg font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
+            )}
+            {xp === "claimable" && (
+              <>
+                <p className="text-sm text-white/80">{t.xpClaimable}</p>
+                <button
+                  type="button"
+                  onClick={() => onClaim(false)}
+                  disabled={busy}
+                  className="mt-4 w-full rounded-xl bg-[#C9A66B] px-4 py-3 font-medium text-[#0B1F3A] disabled:opacity-60"
+                >
+                  {busy ? t.saving : t.saveXp}
+                </button>
+              </>
+            )}
+            {xp === "daily_limit" && <p className="text-sm text-white/70">{t.xpDailyLimit}</p>}
+            {xp === "owner_ineligible" && <p className="text-sm text-white/70">{t.xpOwner}</p>}
+          </div>
+        </Centered>
+      </Frame>
+    );
+  }
+
+  // read / response — reader always visible; reflection unlocks when reading is done.
+  const doc = snapshot.document;
+  const readingComplete = Boolean(doc?.reading_complete);
+  return (
+    <Frame>
+      <div className="pt-2">
+        <Eyebrow>{t.readThis}</Eyebrow>
+        <h1 className="mt-2 text-lg font-semibold leading-tight">{snapshot.event?.title}</h1>
+        {doc?.intro && <p className="mt-2 whitespace-pre-line text-sm text-white/70">{doc.intro}</p>}
+        <p className="mt-1 text-xs text-white/50">{t.progressSaved}</p>
+      </div>
+
+      <div className="mt-4">
+        {fileError ? (
+          <div className="rounded-2xl bg-white/5 px-5 py-8 text-center">
+            <p className="text-sm font-medium text-white">{t.docLoadError}</p>
+          </div>
+        ) : fileUrl ? (
+          <PdfReader
+            fileUrl={fileUrl}
+            initialPage={doc?.last_page ?? 1}
+            onHeartbeat={onHeartbeat}
+            copy={{
+              loading: t.pdfLoading,
+              unavailable: t.pdfUnavailable,
+              unavailableHint: t.pdfUnavailableHint,
+              pageOf: t.pageOf,
+              prev: t.prev,
+              next: t.next,
+            }}
+          />
+        ) : (
+          <div className="flex h-64 items-center justify-center rounded-2xl bg-white/5 text-sm text-white/60">
+            {t.pdfLoading}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs text-white/60">
+          <span>{doc ? t.pagesProgress(doc.distinct_pages_viewed, doc.page_count) : ""}</span>
+          <span>{readingComplete ? t.readingDone : t.keepReading}</span>
+        </div>
+      </div>
+
+      {readingComplete && (
+        <div className="mt-6">
+          <Eyebrow>{t.reflection}</Eyebrow>
+          {doc?.completion_prompt && (
+            <p className="mt-2 text-sm text-white/85">{doc.completion_prompt}</p>
+          )}
+          <form
+            className="mt-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void onComplete();
+            }}
+          >
+            <textarea
+              value={response}
+              onChange={(e) => {
+                setResponse(e.target.value);
+                setResponseError(false);
+              }}
+              maxLength={1000}
+              rows={4}
+              placeholder={t.responsePlaceholder}
+              className="w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+            />
+            {responseError && <p className="mt-2 text-xs text-red-300">{t.responseError}</p>}
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-3 w-full rounded-xl bg-[#C9A66B] px-4 py-3 font-medium text-[#0B1F3A] disabled:opacity-60"
+            >
+              {busy ? t.completing : t.complete}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="flex-1" />
+    </Frame>
+  );
+}

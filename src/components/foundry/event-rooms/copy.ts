@@ -28,9 +28,26 @@ export type EventRoomsCopy = {
   youtubeNotFound: string;
   youtubeCheckFailed: string;
   promptError: string;
+  // content-type choice + document (PDF) create
+  chooseActivity: string;
+  activityVideo: string;
+  activityDocument: string;
+  pdfLabel: string;
+  pdfChoose: string;
+  pdfReplace: string;
+  introLabel: string;
+  introPlaceholder: string;
+  docPromptLabel: string;
+  docPromptPlaceholder: string;
+  pdfError: string;
+  pdfTooLargeError: string;
+  pdfReadError: string;
+  uploadFailedError: string;
+  reading: string; // "Reading the PDF…" progress hint while uploading
   // roster status labels
   status_joined: string;
   status_watching: string;
+  status_reading: string;
   status_response_pending: string;
   status_complete: string;
   completedCount: (done: number, total: number) => string;
@@ -82,8 +99,24 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     youtubeNotFound: "This YouTube video couldn’t be found. Check the link.",
     youtubeCheckFailed: "Couldn’t verify this video right now. Please try again.",
     promptError: "Please enter a completion question.",
+    chooseActivity: "What will participants do?",
+    activityVideo: "Watch a video",
+    activityDocument: "Read a document",
+    pdfLabel: "Upload PDF",
+    pdfChoose: "Choose a PDF",
+    pdfReplace: "Choose a different PDF",
+    introLabel: "Introduction (optional)",
+    introPlaceholder: "A short note for participants before they read.",
+    docPromptLabel: "What should participants reflect on after reading?",
+    docPromptPlaceholder: "e.g. What is one thing from this you will apply this week?",
+    pdfError: "Please choose a PDF file.",
+    pdfTooLargeError: "This PDF is too large. Choose a file under 25 MB.",
+    pdfReadError: "Couldn’t read this PDF. Try another file.",
+    uploadFailedError: "Couldn’t upload the PDF. Please upload it once more.",
+    reading: "Preparing the document…",
     status_joined: "Joined",
     status_watching: "Watching",
+    status_reading: "Reading",
     status_response_pending: "Response pending",
     status_complete: "Complete",
     completedCount: (done, total) => `${done} of ${total} completed`,
@@ -131,8 +164,24 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     youtubeNotFound: "이 YouTube 영상을 찾을 수 없습니다. 링크를 확인해 주세요.",
     youtubeCheckFailed: "지금 영상을 확인할 수 없습니다. 다시 시도해 주세요.",
     promptError: "완료 질문을 입력해 주세요.",
+    chooseActivity: "참가자는 무엇을 하나요?",
+    activityVideo: "영상 보기",
+    activityDocument: "문서 읽기",
+    pdfLabel: "PDF 업로드",
+    pdfChoose: "PDF 선택",
+    pdfReplace: "다른 PDF 선택",
+    introLabel: "소개 (선택)",
+    introPlaceholder: "읽기 전에 참가자에게 전할 짧은 안내.",
+    docPromptLabel: "읽은 후 참가자가 성찰할 질문은 무엇인가요?",
+    docPromptPlaceholder: "예: 이 중에서 이번 주에 적용해볼 한 가지는 무엇인가요?",
+    pdfError: "PDF 파일을 선택해 주세요.",
+    pdfTooLargeError: "PDF가 너무 큽니다. 25MB 미만 파일을 선택하세요.",
+    pdfReadError: "이 PDF를 읽을 수 없습니다. 다른 파일을 시도해 주세요.",
+    uploadFailedError: "PDF를 업로드하지 못했습니다. 다시 시도해 주세요.",
+    reading: "문서를 준비하는 중…",
     status_joined: "입장",
     status_watching: "시청 중",
+    status_reading: "읽는 중",
     status_response_pending: "응답 대기",
     status_complete: "완료",
     completedCount: (done, total) => `${total}명 중 ${done}명 완료`,

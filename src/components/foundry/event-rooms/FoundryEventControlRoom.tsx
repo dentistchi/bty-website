@@ -63,6 +63,7 @@ export function FoundryEventControlRoom({
   const participants = snapshot?.participants ?? [];
   const isOpen = event?.status === "open";
   const training = event?.training ?? null;
+  const document = event?.document ?? null;
   const joinedCount = snapshot?.joined_count ?? participants.length;
   const completedCount = snapshot?.completed_count ?? 0;
 
@@ -146,6 +147,13 @@ export function FoundryEventControlRoom({
                 className="aspect-video w-full object-cover opacity-90"
                 loading="lazy"
               />
+            </div>
+          ) : document ? (
+            <div className="rounded-xl border border-white/8 bg-black/20 px-4 py-3">
+              <p className="truncate text-sm text-white/85">{document.file_name ?? "PDF"}</p>
+              <p className="mt-0.5 text-xs text-white/45">
+                {document.page_count} {document.page_count === 1 ? "page" : "pages"}
+              </p>
             </div>
           ) : null}
 
