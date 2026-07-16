@@ -9,6 +9,7 @@ import type { ClientDraftSummary } from "@/lib/bty/foundry/events/moduleClient";
 import { CreateFoundryEventForm } from "./CreateFoundryEventForm";
 import { FoundryEventControlRoom } from "./FoundryEventControlRoom";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import FoundryHistoryArchive from "./FoundryHistoryArchive";
 
 /**
  * Foundry Event Rooms — the native Foundry tab (replaces the LockedRoom).
@@ -26,6 +27,7 @@ type View =
   | { kind: "home" }
   | { kind: "create" }
   | { kind: "builder"; draftId: string }
+  | { kind: "history" }
   | { kind: "control"; eventId: string; initial?: ManagerSnapshot | null };
 
 export default function FoundryEventRooms({ locale }: { locale: string }) {
@@ -37,7 +39,6 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
-  const [showAllPast, setShowAllPast] = useState(false);
   const startingRef = useRef(false);
   // Host-capability access, resolved from the events list response. A non-host
   // sees a quiet employee-pointer state; an auth/network error is NOT shown as
@@ -161,6 +162,10 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
     return <ModuleBuilderShell draftId={view.draftId} locale={loc} onExit={onBuilderExit} />;
   }
 
+  if (view.kind === "history") {
+    return <FoundryHistoryArchive locale={loc} onBack={backHome} />;
+  }
+
   if (view.kind === "control") {
     return (
       <FoundryEventControlRoom
@@ -238,18 +243,18 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
           <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
             {t.pastHeader}
           </h2>
-          {(showAllPast ? past : past.slice(0, 3)).map((e) => (
+          {past.slice(0, 3).map((e) => (
             <EventRow key={e.id} summary={e} onOpen={openControl} t={t} />
           ))}
-          {past.length > 3 ? (
-            <button
-              type="button"
-              onClick={() => setShowAllPast((v) => !v)}
-              className="self-start pt-1 text-xs text-white/50 hover:text-white/75"
-            >
-              {showAllPast ? t.pastShowLess : t.pastViewAll}
-            </button>
-          ) : null}
+          {/* First-class read-only History archive door (deterministic ordering,
+              token-free, aggregate counts) — always available, not just past 3. */}
+          <button
+            type="button"
+            onClick={() => setView({ kind: "history" })}
+            className="self-start pt-1 text-xs text-white/50 hover:text-white/75"
+          >
+            {t.pastViewAll} →
+          </button>
         </section>
       ) : null}
 

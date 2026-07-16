@@ -26,6 +26,8 @@ function server(initialDrafts: Summary[], events: Ev[] = []) {
   const fn = vi.fn(async (url: string, opts?: { method?: string }) => {
     const method = opts?.method ?? "GET";
     calls.push({ url, method });
+    // Read-only History archive list (must be checked before the generic events match).
+    if (url.includes("/api/bty/foundry/events/history")) return jsonRes({ events: [] });
     if (url.includes("/api/bty/foundry/events")) return jsonRes({ events });
     if (url.endsWith("/api/bty/foundry/modules") && method === "GET") return jsonRes({ drafts });
     if (url.endsWith("/api/bty/foundry/modules") && method === "POST")
@@ -138,7 +140,7 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     await waitFor(() => expect(screen.queryByText("Removable")).toBeNull());
   });
 
-  it("past events show only three by default with a View all / Show less toggle", async () => {
+  it("past section previews only three, with a door into the read-only History archive", async () => {
     const past: Ev[] = Array.from({ length: 5 }, (_, i) => ({
       id: `e-${i}`,
       title: `Closed event ${i}`,
@@ -150,13 +152,13 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     server([], past);
     render(<FoundryEventRooms locale="en" />);
     await screen.findByText("Create team training");
-    // only 3 of 5 shown initially
+    // only 3 of 5 shown as an inline preview on the home surface
     expect(screen.getByText("Closed event 0")).toBeTruthy();
     expect(screen.getByText("Closed event 2")).toBeTruthy();
     expect(screen.queryByText("Closed event 4")).toBeNull();
-    fireEvent.click(screen.getByText("View all past events"));
-    expect(await screen.findByText("Closed event 4")).toBeTruthy();
-    fireEvent.click(screen.getByText("Show less"));
-    await waitFor(() => expect(screen.queryByText("Closed event 4")).toBeNull());
+    // the "view all" affordance now opens the dedicated read-only History archive
+    fireEvent.click(screen.getByText(/View all past events/));
+    expect(await screen.findByText("History")).toBeTruthy();
+    expect(await screen.findByText("No past training yet")).toBeTruthy();
   });
 });
