@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale, EventRoomsCopy } from "./copy";
 import type { ManagerEvent } from "./types";
+import { isNative } from "@/lib/native/isNative";
 import {
   buildFoundryInvitation,
   buildTeamsMessage,
@@ -84,6 +85,25 @@ export function FoundryShareControls({
   const onShareTeams = useCallback(async () => {
     setTeamsState("opening");
     setStatus(t.openingTeams);
+
+    // Native shell (Capacitor WKWebView): window.open to an external URL is
+    // blocked, so open the SAME Teams share URL through the runtime-injected
+    // Browser bridge (system browser → the Teams app can intercept). No
+    // @capacitor/* import; falls through to the web path if the bridge is absent.
+    if (isNative()) {
+      const browser = window.Capacitor?.Plugins?.Browser;
+      if (browser?.open) {
+        try {
+          await browser.open({ url: teamsUrl });
+          setTeamsState("idle");
+          setStatus("");
+          return;
+        } catch {
+          // fall through to web open / fallback
+        }
+      }
+    }
+
     let win: Window | null = null;
     try {
       win = window.open(teamsUrl, "_blank", "noopener,noreferrer");

@@ -41,7 +41,10 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-beforeEach(() => clearClipboard());
+beforeEach(() => {
+  clearClipboard();
+  delete (window as unknown as { Capacitor?: unknown }).Capacitor; // web path by default
+});
 
 describe("FoundryShareControls — Copy invitation", () => {
   it("copies the full invitation (title + URL) and confirms calmly", async () => {
@@ -91,6 +94,23 @@ describe("FoundryShareControls — Share to Teams", () => {
     expect(href).toBe(URL); // exact canonical participant URL
     // Never claims "shared" — no success text asserting completion.
     expect(screen.queryByText(/shared to teams/i)).toBeNull();
+  });
+
+  it("NATIVE shell opens Teams via the Capacitor Browser bridge, not window.open (same URL)", async () => {
+    const browserOpen = vi.fn().mockResolvedValue(undefined);
+    (window as unknown as { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: { Browser: { open: browserOpen } },
+    };
+    const winOpen = vi.fn(() => null);
+    vi.stubGlobal("open", winOpen);
+    render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
+    await waitFor(() => expect(browserOpen).toHaveBeenCalledTimes(1));
+    const arg = browserOpen.mock.calls[0][0] as { url: string };
+    expect(arg.url.startsWith("https://teams.microsoft.com/share?")).toBe(true);
+    expect(new URLSearchParams(arg.url.split("?")[1]).get("href")).toBe(URL);
+    expect(winOpen).not.toHaveBeenCalled(); // native bridge used, not window.open
   });
 
   it("popup BLOCKED → copies invitation + 'ready to paste' fallback (never claims shared)", async () => {
