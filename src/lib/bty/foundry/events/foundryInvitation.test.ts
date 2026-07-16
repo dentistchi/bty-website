@@ -61,6 +61,15 @@ describe("buildFoundryInvitation", () => {
     expect(inv).toContain("line1\n\nline2");
   });
 
+  it("omitUrl drops the open-room/URL section (for the native share sheet's separate url field)", () => {
+    const withUrl = buildFoundryInvitation({ locale: "en", title: "T", contentType: "document", participantUrl: URL });
+    const noUrl = buildFoundryInvitation({ locale: "en", title: "T", contentType: "document", participantUrl: URL, omitUrl: true });
+    expect(withUrl).toContain(URL);
+    expect(noUrl).not.toContain(URL);
+    expect(noUrl).not.toContain("Open the Foundry room:");
+    expect(noUrl).toContain("Read the document and complete the reflection."); // body kept
+  });
+
   it("Korean locale renders localized instruction", () => {
     const inv = buildFoundryInvitation({ locale: "ko", title: "제목", contentType: "document", participantUrl: URL });
     expect(inv).toContain("문서를 읽고 성찰을 완료해 주세요.");

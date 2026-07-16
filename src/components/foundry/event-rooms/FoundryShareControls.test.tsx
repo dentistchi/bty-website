@@ -44,7 +44,16 @@ afterEach(() => {
 beforeEach(() => {
   clearClipboard();
   delete (window as unknown as { Capacitor?: unknown }).Capacitor; // web path by default
+  delete (navigator as unknown as { share?: unknown }).share;
 });
+
+function setNative() {
+  (window as unknown as { Capacitor?: unknown }).Capacitor = { isNativePlatform: () => true };
+}
+function setNativeShare(fn: (d: { title?: string; text?: string; url?: string }) => Promise<void>) {
+  setNative();
+  Object.defineProperty(navigator, "share", { value: fn, configurable: true });
+}
 
 describe("FoundryShareControls — Copy invitation", () => {
   it("copies the full invitation (title + URL) and confirms calmly", async () => {
@@ -96,21 +105,69 @@ describe("FoundryShareControls — Share to Teams", () => {
     expect(screen.queryByText(/shared to teams/i)).toBeNull();
   });
 
-  it("NATIVE shell opens Teams via the Capacitor Browser bridge, not window.open (same URL)", async () => {
-    const browserOpen = vi.fn().mockResolvedValue(undefined);
-    (window as unknown as { Capacitor?: unknown }).Capacitor = {
-      isNativePlatform: () => true,
-      Plugins: { Browser: { open: browserOpen } },
-    };
-    const winOpen = vi.fn(() => null);
+  it("NATIVE opens the iOS share sheet (navigator.share) with the SAME canonical URL — never the web Teams/login URL", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    setNativeShare(share);
+    const winOpen = vi.fn((_u?: string) => null);
     vi.stubGlobal("open", winOpen);
     render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
     fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
-    await waitFor(() => expect(browserOpen).toHaveBeenCalledTimes(1));
-    const arg = browserOpen.mock.calls[0][0] as { url: string };
-    expect(arg.url.startsWith("https://teams.microsoft.com/share?")).toBe(true);
-    expect(new URLSearchParams(arg.url.split("?")[1]).get("href")).toBe(URL);
-    expect(winOpen).not.toHaveBeenCalled(); // native bridge used, not window.open
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    const payload = share.mock.calls[0][0] as { title: string; text: string; url: string };
+    expect(payload.url).toBe(URL); // same canonical URL as the QR
+    expect(payload.title).toBe("Monthly Clinical Update");
+    expect(payload.text).toContain("Read the document and complete the reflection.");
+    expect(payload.text).not.toContain(URL); // URL rides in `url`, not duplicated in text
+    // Never opens the web Teams share / Microsoft login in native.
+    expect(winOpen).not.toHaveBeenCalled();
+    const anyTeamsWeb = winOpen.mock.calls.some((c) => String(c[0]).includes("teams.microsoft.com/share"));
+    expect(anyTeamsWeb).toBe(false);
+    expect(screen.queryByText(/shared to teams/i)).toBeNull();
+  });
+
+  it("NATIVE cancel (AbortError) does NOT claim success and does not fall back", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard(writeText);
+    const abort = Object.assign(new Error("cancel"), { name: "AbortError" });
+    setNativeShare(vi.fn().mockRejectedValue(abort));
+    render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
+    await waitFor(() => expect(screen.queryByText(/opening/i)).toBeNull());
+    expect(screen.queryByText(/shared to teams/i)).toBeNull();
+    expect(writeText).not.toHaveBeenCalled(); // cancel is not a failure → no copy fallback
+  });
+
+  it("NATIVE share API failure → copy/manual invitation fallback (never claims shared)", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    setClipboard(writeText);
+    setNativeShare(vi.fn().mockRejectedValue(new Error("share failed")));
+    render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getAllByText(t.readyToPaste).length).toBeGreaterThan(0));
+    expect(screen.queryByText(/shared to teams/i)).toBeNull();
+  });
+
+  it("QR rotation: a new join_url is the URL shared natively", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    setNativeShare(share);
+    const rotated = "https://bty-arena-staging.ywamer2022.workers.dev/f/btyfr1.ROTATED.XYZ";
+    const { rerender } = render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
+    rerender(<FoundryShareControls event={docEvent({ join_url: rotated })} locale="en" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    expect((share.mock.calls[0][0] as { url: string }).url).toBe(rotated);
+  });
+
+  it("YouTube room shares natively with the SAME canonical URL (content-agnostic)", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    setNativeShare(share);
+    render(<FoundryShareControls event={docEvent({ content_type: "youtube", document: undefined })} locale="en" t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: t.shareToTeams }));
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    const payload = share.mock.calls[0][0] as { text: string; url: string };
+    expect(payload.url).toBe(URL);
+    expect(payload.text).toContain("Watch the training video and complete the reflection.");
   });
 
   it("popup BLOCKED → copies invitation + 'ready to paste' fallback (never claims shared)", async () => {

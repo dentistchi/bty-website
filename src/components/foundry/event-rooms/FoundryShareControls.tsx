@@ -44,6 +44,16 @@ export function FoundryShareControls({
   });
   const teamsMessage = buildTeamsMessage({ locale, title: event.title });
   const teamsUrl = buildTeamsShareUrl({ participantUrl: event.join_url, message: teamsMessage });
+  // Share-sheet body: the URL rides in the native share's separate `url` field, so
+  // it must NOT be duplicated in the text.
+  const shareText = buildFoundryInvitation({
+    locale,
+    title: event.title,
+    contentType,
+    participantUrl: event.join_url,
+    intro: event.document?.intro ?? null,
+    omitUrl: true,
+  });
 
   useEffect(() => () => { if (resetTimer.current) clearTimeout(resetTimer.current); }, []);
 
@@ -83,27 +93,48 @@ export function FoundryShareControls({
   }, [writeClipboard, flashCopied, revealManual]);
 
   const onShareTeams = useCallback(async () => {
-    setTeamsState("opening");
-    setStatus(t.openingTeams);
-
-    // Native shell (Capacitor WKWebView): window.open to an external URL is
-    // blocked, so open the SAME Teams share URL through the runtime-injected
-    // Browser bridge (system browser → the Teams app can intercept). No
-    // @capacitor/* import; falls through to the web path if the bridge is absent.
-    if (isNative()) {
-      const browser = window.Capacitor?.Plugins?.Browser;
-      if (browser?.open) {
-        try {
-          await browser.open({ url: teamsUrl });
+    // NATIVE shell (Capacitor WKWebView): open the iOS SYSTEM SHARE SHEET so the
+    // already-installed, already-signed-in Microsoft Teams app receives the share
+    // — NOT the web teams.microsoft.com/share page (which forces a browser
+    // Microsoft login). The canonical join URL rides in the separate `url` field.
+    if (isNative() && typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      setTeamsState("opening");
+      setStatus(t.chooseTeams);
+      try {
+        await navigator.share({ title: event.title, text: shareText, url: event.join_url });
+        // Sheet handed off to the chosen app. We do NOT assert "Shared to Teams".
+        setTeamsState("idle");
+        setStatus("");
+        return;
+      } catch (err) {
+        // User dismissed the sheet → not an error, and NOT a successful share.
+        if ((err as { name?: string })?.name === "AbortError") {
           setTeamsState("idle");
           setStatus("");
           return;
-        } catch {
-          // fall through to web open / fallback
         }
+        // Share API failed → honest copy fallback.
+        const copied = await writeClipboard();
+        setTeamsState("fallback");
+        setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
+        if (!copied) revealManual();
+        return;
       }
     }
+    if (isNative()) {
+      // Native shell without Web Share support → copy fallback. (A guaranteed
+      // native sheet here would require @capacitor/share in the shell — see report.)
+      setTeamsState("opening");
+      const copied = await writeClipboard();
+      setTeamsState("fallback");
+      setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
+      if (!copied) revealManual();
+      return;
+    }
 
+    // WEB (desktop): Microsoft's official Share-to-Teams dialog (unchanged).
+    setTeamsState("opening");
+    setStatus(t.openingTeams);
     let win: Window | null = null;
     try {
       win = window.open(teamsUrl, "_blank", "noopener,noreferrer");
@@ -111,18 +142,27 @@ export function FoundryShareControls({
       win = null;
     }
     if (win) {
-      // Teams opened in its own window/tab; the user completes the share there.
       setTeamsState("idle");
       setStatus("");
       return;
     }
-    // Popup blocked / unsupported → honest fallback: copy the invitation and tell
-    // the user to paste it. Never claim it was shared.
+    // Popup blocked / unsupported → honest fallback: copy + tell user to paste.
     const copied = await writeClipboard();
     setTeamsState("fallback");
     setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
     if (!copied) revealManual();
-  }, [teamsUrl, writeClipboard, revealManual, t.openingTeams, t.readyToPaste, t.teamsCouldNotOpen]);
+  }, [
+    event.title,
+    event.join_url,
+    shareText,
+    teamsUrl,
+    writeClipboard,
+    revealManual,
+    t.chooseTeams,
+    t.openingTeams,
+    t.readyToPaste,
+    t.teamsCouldNotOpen,
+  ]);
 
   return (
     <section className="flex flex-col gap-2" aria-label={t.shareRoomHeader}>

@@ -70,6 +70,7 @@ export type EventRoomsCopy = {
   copyFailedManual: string;
   shareToTeams: string;
   openingTeams: string;
+  chooseTeams: string;
   teamsCouldNotOpen: string;
   readyToPaste: string;
   openTeams: string;
@@ -147,6 +148,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     copyFailedManual: "Couldn’t copy automatically. Select and copy the text below.",
     shareToTeams: "Share to Teams",
     openingTeams: "Opening Teams…",
+    chooseTeams: "Choose Teams to share",
     teamsCouldNotOpen: "Teams could not be opened. The invitation is ready to paste.",
     readyToPaste: "Invitation copied. Paste it into Teams.",
     openTeams: "Open Teams",
@@ -222,6 +224,7 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     copyFailedManual: "자동으로 복사하지 못했습니다. 아래 텍스트를 선택해 복사하세요.",
     shareToTeams: "Teams로 공유",
     openingTeams: "Teams 여는 중…",
+    chooseTeams: "공유에서 Teams를 선택하세요",
     teamsCouldNotOpen: "Teams를 열 수 없습니다. 초대장을 붙여넣을 준비가 되었습니다.",
     readyToPaste: "초대장이 복사되었습니다. Teams에 붙여넣으세요.",
     openTeams: "Teams 열기",

@@ -28,6 +28,12 @@ export type BuildInvitationInput = {
   deadline?: string | null;
   /** Optional canonical duration in minutes — included ONLY when present (never invented). */
   estimatedMinutes?: number | null;
+  /**
+   * Omit the "Open the Foundry room: <url>" section. Used for the native share
+   * sheet, where the URL is passed as a SEPARATE `url` field so it must not be
+   * duplicated in the body text. Copy-invitation keeps the URL (self-contained).
+   */
+  omitUrl?: boolean;
 };
 
 /** Teams share message limit is small; keep the prefilled text well under it. */
@@ -108,7 +114,7 @@ export function buildFoundryInvitation(input: BuildInvitationInput): string {
     instructionBlock,
     intro,
     meta.join(" · "),
-    `${s.openRoom}\n${url}`,
+    input.omitUrl ? "" : `${s.openRoom}\n${url}`,
   ].filter((sec) => sec && sec.trim().length > 0);
 
   return sections.join("\n\n");
