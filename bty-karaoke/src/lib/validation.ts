@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_QUERY_LEN } from '@/domain/youtube-search';
+import { MAX_LYRICS_LEN } from '@/domain/lyrics';
 
 // Guest enqueue. Primary path: a selected search result (videoId + metadata).
 // Fallback path: a manually pasted YouTube URL/ID (`youtubeInput`), resolved to
@@ -56,6 +57,15 @@ export const DjAddRequestSchema = z
     path: ['youtubeVideoId'],
   });
 export type DjAddRequestInput = z.infer<typeof DjAddRequestSchema>;
+
+// Admin sets / clears the current (or a queued) song's lyrics. Plain text only —
+// bounded here; the server ALSO sanitizes (control chars, blank lines) before
+// storing. An empty string is a valid "clear". NOT trimmed: internal line breaks
+// and indentation are the lyrics. The generous bound covers a long song.
+export const SetLyricsSchema = z.object({
+  lyrics: z.string().max(MAX_LYRICS_LEN, 'Lyrics are too long'),
+});
+export type SetLyricsInput = z.infer<typeof SetLyricsSchema>;
 
 export const SearchQuerySchema = z.object({
   q: z.string().trim().min(2, 'Enter at least 2 characters').max(MAX_QUERY_LEN),

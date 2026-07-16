@@ -341,6 +341,38 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
     }
   }
 
+  // Lyrics V1: save/clear the words the iPad Display shows for a song. Admin/DJ
+  // authed. An empty string clears. Refetches the canonical queue so the DjBoard
+  // reflects the saved lyrics; the Display picks it up on its own next poll.
+  async function setLyrics(id: string, lyrics: string): Promise<boolean> {
+    if (!cred) return false;
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/rooms/${encodeURIComponent(slug)}/dj/requests/${encodeURIComponent(id)}/lyrics`,
+        {
+          method: 'POST',
+          headers: { ...authHeader(cred), 'content-type': 'application/json' },
+          body: JSON.stringify({ lyrics }),
+        },
+      );
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return false;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not save the lyrics.');
+        return false;
+      }
+      await loadQueue(cred);
+      return true;
+    } catch {
+      setError('Network error.');
+      return false;
+    }
+  }
+
   // V8: atomic Start of the FIRST song (no previous song to pass), then hand off to
   // YouTube on this device. Start FIRST so a failure never opens YouTube.
   async function startFirst(id: string, videoId: string) {
@@ -661,6 +693,7 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       onReopen={reopenOnTv}
       onFinish={(id) => { void mutate(id, 'complete'); }}
       onSetQueued={setQueued}
+      onSetLyrics={setLyrics}
       onStartFirst={startFirst}
       onPassTurn={passTurn}
       onMoveNext={(id) => { void mutate(id, 'move_next'); }}

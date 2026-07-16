@@ -74,8 +74,8 @@ describe('rooms.server — queue + display stats accept and apply an eventId', (
   });
   it('getDisplayState threads the eventId into queue + stats', () => {
     const body = rooms.slice(rooms.indexOf('function getDisplayState'));
-    expect(body.slice(0, 900)).toContain('listActiveRequests(room.id, eventId)');
-    expect(body.slice(0, 900)).toContain('displayStatRows(room.id, eventId)');
+    expect(body.slice(0, 1200)).toContain('listActiveRequests(room.id, eventId)');
+    expect(body.slice(0, 1200)).toContain('displayStatRows(room.id, eventId)');
   });
   it('addRequest stamps the event_id column', () => {
     const body = rooms.slice(rooms.indexOf('function addRequest'));

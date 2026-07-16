@@ -38,6 +38,7 @@ import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
 import { badgeForVideo } from '@/domain/video-kind';
 import DjActionSheet from './DjActionSheet';
+import LyricsSheet from './LyricsSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
 import DjAddSongSheet from './DjAddSongSheet';
@@ -232,6 +233,8 @@ interface Props {
   onStartNewEvent: () => Promise<'ok' | 'error'>;
   /** V8: mark/unmark a waiting song as added to the YouTube TV queue (Admin signal). */
   onSetQueued: (id: string, queued: boolean) => Promise<boolean>;
+  /** Lyrics V1: save/clear the words the Display shows for a song (empty clears). */
+  onSetLyrics: (id: string, lyrics: string) => Promise<boolean>;
   /** V8: atomic Start of the FIRST song, then open YouTube on this device. */
   onStartFirst: (id: string, videoId: string) => void | Promise<void>;
   /** V8 pass-turn: complete current + auto-start next if Ready+Queued. Returns why. */
@@ -262,12 +265,14 @@ export default function DjBoard({
   onEndEvent,
   onStartNewEvent,
   onSetQueued,
+  onSetLyrics,
   onStartFirst,
   onPassTurn,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
+  const [lyricsFor, setLyricsFor] = useState<KaraokeRequest | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -828,6 +833,11 @@ export default function DjBoard({
                     ▶ YouTube 다시 열기
                   </button>
                 )}
+                {/* Lyrics V1: add/edit the words shown on the iPad Display for the
+                    song on stage. Reflects immediately on the Display's next poll. */}
+                <button className="ghost lg" onClick={() => setLyricsFor(current)}>
+                  {current.lyrics_text?.trim() ? '📝 가사 편집' : '📝 가사 추가'}
+                </button>
                 {playerFinishConfirm ? (
                   <div className="player-confirm">
                     {/* V8 copy: the operating question is whether the TV moved to the
@@ -1102,10 +1112,23 @@ export default function DjBoard({
                 void onRemove(id);
                 setSheetFor(null);
               }}
+              onEditLyrics={() => {
+                setLyricsFor(sheetFor);
+                setSheetFor(null);
+              }}
               onClose={() => setSheetFor(null)}
             />
           );
         })()}
+
+      {/* ── Lyrics editor (Admin adds / edits / clears the Display's words) ── */}
+      {lyricsFor && (
+        <LyricsSheet
+          request={lyricsFor}
+          onSave={onSetLyrics}
+          onClose={() => setLyricsFor(null)}
+        />
+      )}
     </main>
   );
 }

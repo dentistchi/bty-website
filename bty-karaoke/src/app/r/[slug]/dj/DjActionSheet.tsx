@@ -14,6 +14,8 @@ interface Props {
   onMoveDown: (id: string) => void;
   onMoveNext: (id: string) => void;
   onRemove: (id: string) => void;
+  /** Lyrics V1: open the lyrics editor for this queued song. */
+  onEditLyrics: (id: string) => void;
   onClose: () => void;
 }
 
@@ -29,6 +31,7 @@ export default function DjActionSheet({
   onMoveDown,
   onMoveNext,
   onRemove,
+  onEditLyrics,
   onClose,
 }: Props) {
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -148,6 +151,14 @@ export default function DjActionSheet({
                 ↑ 먼저 부르기
               </button>
             </div>
+            <button
+              type="button"
+              className="sheet-btn ghost sheet-lyrics"
+              onClick={() => onEditLyrics(request.id)}
+              aria-label={`${singer} 신청곡 가사 편집`}
+            >
+              {request.lyrics_text?.trim() ? '📝 가사 편집' : '📝 가사 추가'}
+            </button>
             <button type="button" className="sheet-close linkish" onClick={onClose}>
               닫기
             </button>

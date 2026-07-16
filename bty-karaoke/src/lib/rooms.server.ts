@@ -21,6 +21,7 @@ import { classifyVideo } from '@/domain/video-kind';
 import { isAutoPromotable, noPromoteReason, type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
+import { lyricsViewFor, sanitizeLyrics } from '@/domain/lyrics';
 import type { StatRequest } from '@/domain/event-stats';
 
 export interface PublicRoom {
@@ -51,6 +52,15 @@ export interface KaraokeRequest {
   ready_at: string | null;
   /** V8: the Admin added this song to the YouTube TV queue (Admin-only signal). */
   youtube_queued_at: string | null;
+  /** Lyrics V1: Admin-provided plain-text lyrics for this song (null = none). */
+  lyrics_text: string | null;
+  /** 'admin' | 'provider' | null — V1 only ever writes 'admin'. */
+  lyrics_source: string | null;
+  /** Reserved for a future licensed provider; unused in V1. */
+  lyrics_source_url: string | null;
+  /** 'unavailable' | 'loading' | 'available' | 'failed'. */
+  lyrics_status: string | null;
+  lyrics_updated_at: string | null;
 }
 
 const PUBLIC_ROOM_COLS = 'id, slug, display_name, status';
@@ -647,14 +657,45 @@ export async function setRequestQueued(
   return { outcome: 'not_waiting' };
 }
 
+/**
+ * Lyrics V1 — set / clear Admin-provided lyrics on a request. Room-scoped (the row
+ * MUST belong to this room) but NOT status-guarded: the Admin adds lyrics to the
+ * song already playing OR to any waiting song. The text is sanitized to bounded
+ * plain text here (defense-in-depth beside the route's Zod bound); empty input
+ * clears the lyrics back to 'unavailable'. `lyrics_source` is always 'admin' in
+ * V1. Returns 'ok' or 'not_found' (a row in another room reads as not_found).
+ */
+export async function setRequestLyrics(
+  roomId: string,
+  requestId: string,
+  rawLyrics: string | null | undefined,
+): Promise<{ outcome: 'ok' | 'not_found' }> {
+  const { text, status } = sanitizeLyrics(rawLyrics);
+  const { data, error } = await karaokeDb()
+    .from('karaoke_requests')
+    .update({
+      lyrics_text: text,
+      lyrics_status: status,
+      lyrics_source: text ? 'admin' : null,
+      lyrics_source_url: null,
+      lyrics_updated_at: new Date().toISOString(),
+    })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  return { outcome: data ? 'ok' : 'not_found' };
+}
+
 // ── Public display / full-queue read model ─────────────────────────────────
 // The single safe projection the iPad Display and the guest full-queue board
 // both render. NEVER exposes session_id, dj_secret, the room UUID, or any
 // credential — only what is already visible in the room (name, singer names,
 // public YouTube ids, queue order).
 
-function toDisplayRequest(r: KaraokeRequest): DisplayRequest {
-  return {
+function toDisplayRequest(r: KaraokeRequest, opts?: { withLyrics?: boolean }): DisplayRequest {
+  const base: DisplayRequest = {
     id: r.id,
     guestName: r.guest_name,
     title: requestDisplayTitle(r),
@@ -665,6 +706,10 @@ function toDisplayRequest(r: KaraokeRequest): DisplayRequest {
     status: r.status === 'playing' ? 'playing' : 'waiting',
     ready: r.ready_at != null,
   };
+  // Lyrics ride only with the song on stage — the Display renders lyrics for the
+  // playing request only, so waiting rows stay lean.
+  if (opts?.withLyrics) base.lyrics = lyricsViewFor(r);
+  return base;
 }
 
 /**
@@ -686,10 +731,10 @@ export async function getDisplayState(
         { id: b.id, status: b.status, position: b.position, created_at: b.created_at },
       ),
     );
-  const waiting = waitingRows.map(toDisplayRequest);
+  const waiting = waitingRows.map((r) => toDisplayRequest(r));
   return {
     room: { name: room.display_name, slug: room.slug, open: room.status === 'open' },
-    playing: playingRow ? toDisplayRequest(playingRow) : null,
+    playing: playingRow ? toDisplayRequest(playingRow, { withLyrics: true }) : null,
     next: waiting[0] ?? null,
     waiting,
     waitingCount: waiting.length,

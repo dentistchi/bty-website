@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState } from '@/domain/display';
+import type { LyricsView } from '@/domain/lyrics';
 import { badgeForKind } from '@/domain/video-kind';
 
 interface Props {
@@ -175,8 +176,14 @@ export default function DisplayClient({ slug, roomName }: Props) {
               </div>
             )}
             {playing.artist && <div className="kd-now-artist">{playing.artist}</div>}
-            <p className="kd-tv-note">영상과 가사는 TV에서 확인하세요.</p>
           </div>
+
+          {/* LYRICS — the song on stage. Keyed by the singing request id so a song
+              change RESETS the panel (never carries the previous song's words) and
+              re-scrolls to the top. Lyrics ride inside the same 2s display poll as
+              NOW SINGING, so there is no separate async fetch to arrive late — a
+              stale response cannot overwrite the current song. Text only, never HTML. */}
+          <LyricsPanel key={`lyr-${playing.id}`} lyrics={playing.lyrics} />
 
           {/* NEXT — big and unmistakable; slides in only when it changes. */}
           {next ? (
@@ -258,6 +265,45 @@ export default function DisplayClient({ slug, roomName }: Props) {
         </section>
       )}
     </div>
+  );
+}
+
+// Lyrics for the song on stage. Honest by design: it renders the current song's
+// words ONLY when status === 'available', and shows a calm, static message for
+// every other state (loading / unavailable / failed) — never a guessed match, never
+// technical error detail. Text only (white-space: pre-wrap) — no HTML is ever
+// rendered from stored lyrics, so there is no XSS surface. Scrolls within its own
+// box; NOW SINGING and NEXT above/below never move.
+function LyricsPanel({ lyrics }: { lyrics?: LyricsView }) {
+  const status = lyrics?.status ?? 'unavailable';
+
+  if (status === 'available' && lyrics?.text) {
+    return (
+      <section className="kd-lyrics available" aria-label="가사">
+        <div className="kd-lyrics-scroll">
+          <p className="kd-lyrics-body">{lyrics.text}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (status === 'loading') {
+    return (
+      <section className="kd-lyrics state" aria-label="가사 불러오는 중" aria-busy="true">
+        <div className="kd-lyrics-eyebrow">가사</div>
+        <p className="kd-lyrics-note">가사를 불러오는 중…</p>
+      </section>
+    );
+  }
+
+  // 'unavailable' and 'failed' read the same to the room: no words to show, said
+  // honestly, with a quiet hint that the host can add them. No error internals.
+  return (
+    <section className="kd-lyrics state" aria-label="가사 없음">
+      <div className="kd-lyrics-eyebrow">가사</div>
+      <p className="kd-lyrics-note">이 곡의 가사가 아직 없어요.</p>
+      <p className="kd-lyrics-hint">진행자가 가사를 추가할 수 있어요 · 영상은 TV에서 확인하세요.</p>
+    </section>
   );
 }
 

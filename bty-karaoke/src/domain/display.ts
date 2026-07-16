@@ -8,6 +8,7 @@
 // live on the TV via the singer's YouTube handoff.
 
 import type { VideoKind } from './video-kind';
+import type { LyricsView } from './lyrics';
 import { computeEventStats, type StatRequest } from './event-stats';
 
 export interface DisplayRequest {
@@ -21,6 +22,14 @@ export interface DisplayRequest {
   status: 'playing' | 'waiting';
   /** V6: this waiting singer signalled Ready (Display can show "NEXT · READY"). */
   ready: boolean;
+  /**
+   * Lyrics V1: the current song's lyrics view. Populated ONLY for the `playing`
+   * request (the Display shows lyrics for the song on stage) — omitted on waiting
+   * rows to keep the polled payload small. Because lyrics ride inside this same
+   * display poll (no separate fetch), they can never be stale relative to NOW
+   * SINGING: a song change swaps the whole `playing` object atomically.
+   */
+  lyrics?: LyricsView;
 }
 
 /**

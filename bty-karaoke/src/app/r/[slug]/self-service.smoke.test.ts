@@ -107,9 +107,12 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
     expect(display).toContain('enterFullscreen');
   });
 
-  it('uses honest board copy (no lyrics/sync/video-reference claims)', () => {
+  it('uses honest board copy (no false sync/video claims)', () => {
     expect(displayCode).not.toMatch(/live\s*synced|synced\s*lyrics|lyrics\s*guaranteed|video reference|connected to tv|playing on ipad/i);
-    expect(display).toContain('영상과 가사는 TV에서 확인하세요');
+    // Lyrics V1: the board shows the song's words when available and an HONEST
+    // fallback otherwise (never a guessed match); video still lives on the TV.
+    expect(display).toContain('가사가 아직 없어요');
+    expect(display).toContain('영상은 TV에서 확인하세요');
   });
 });
 

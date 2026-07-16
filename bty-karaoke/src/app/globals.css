@@ -1813,6 +1813,56 @@ main.dj-console {
   margin: 0 0 12px;
 }
 
+/* Lyrics V1 — Admin editor sheet. Plain-text multiline input; the Display renders
+   it as text (never HTML). Roomy on the iPad so pasting a full song is easy. */
+.lyrics-sheet {
+  max-width: 640px;
+}
+.lyrics-input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 16px;
+  min-height: 44vh;
+  resize: vertical;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.lyrics-input:focus {
+  outline: none;
+  border-color: rgba(245, 196, 81, 0.55);
+  box-shadow: var(--ring-gold);
+}
+.lyrics-input:disabled {
+  opacity: 0.6;
+}
+.lyrics-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--muted-2);
+}
+.lyrics-clearhint {
+  color: var(--coral);
+}
+.lyrics-error {
+  margin: 10px 0 0;
+  color: var(--coral);
+  font-weight: 700;
+}
+.sheet-btn.sheet-lyrics {
+  margin-top: 12px;
+  width: 100%;
+}
+
 /* ══════════════════════════════════════════════════════════════
    V2.3 — dock cancel note + Admin menu inside DJ console
    ══════════════════════════════════════════════════════════════ */
@@ -2863,6 +2913,73 @@ a.btn.block {
 }
 .kd-tv-note {
   margin: 16px 0 0;
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  color: var(--muted-2);
+}
+
+/* LYRICS V1 — the song on stage. Sits between NOW SINGING and NEXT. The available
+   panel grows to fill the middle and scrolls WITHIN itself, so NOW/NEXT never move
+   and long lyrics stay reachable by finger. Text only (pre-wrap) — no HTML. */
+.kd-lyrics {
+  width: 100%;
+  max-width: min(94vw, 1000px);
+  margin: 4px auto 0;
+}
+.kd-lyrics.available {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.kd-lyrics-scroll {
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 8px clamp(12px, 3vw, 28px);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  /* Fade the top/bottom edges so partially-scrolled lines read as "more above/below". */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+}
+.kd-lyrics-body {
+  margin: 0;
+  padding: 8px 0;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text);
+  /* Big and high-contrast so it reads from the microphone. */
+  font-size: clamp(1.5rem, 4vw, 2.9rem);
+  line-height: 1.5;
+}
+/* The calm state panel (loading / unavailable / failed) — never a spinner storm,
+   never technical error detail, never a guessed match. */
+.kd-lyrics.state {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--line);
+}
+.kd-lyrics-eyebrow {
+  font-size: clamp(0.8rem, 1.4vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--muted-2);
+}
+.kd-lyrics-note {
+  margin: 8px 0 0;
+  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
+  font-weight: 700;
+  color: var(--muted);
+}
+.kd-lyrics-hint {
+  margin: 6px 0 0;
   font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   color: var(--muted-2);
 }
