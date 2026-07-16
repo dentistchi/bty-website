@@ -18,6 +18,7 @@ import {
   type RequestStatus,
 } from '@/domain/queue';
 import { classifyVideo } from '@/domain/video-kind';
+import { isAutoPromotable, noPromoteReason, type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
 import type { StatRequest } from '@/domain/event-stats';
@@ -48,6 +49,8 @@ export interface KaraokeRequest {
   completed_at: string | null;
   /** V6: the guest signalled "I'm ready" while still waiting (Admin Player reads it). */
   ready_at: string | null;
+  /** V8: the Admin added this song to the YouTube TV queue (Admin-only signal). */
+  youtube_queued_at: string | null;
 }
 
 const PUBLIC_ROOM_COLS = 'id, slug, display_name, status';
@@ -537,6 +540,58 @@ export async function finishOwnRequest(
   return { outcome: 'not_playing', from: cur.status };
 }
 
+export interface PassTurnResult {
+  /** The current song was completed (or was already terminal — idempotent). */
+  completed: boolean;
+  /** The next song auto-started in BTY (Ready + Queued), else null. */
+  promoted: KaraokeRequest | null;
+  /** 'promoted' on success, else why the next song did not auto-start. */
+  reason: 'promoted' | NoPromoteReason;
+}
+
+/**
+ * V8 pass-turn (Option B). Admin-initiated: complete the current playing song and,
+ * if the canonical FIRST waiting song is BOTH Ready (guest) and Queued (on the TV),
+ * atomically start it in BTY so the Admin doesn't press Play every song. The auto-
+ * start only flips BTY state — it never controls YouTube; the operating assumption
+ * is the TV queue is already playing that song next. If the next song isn't both
+ * Ready and Queued, BTY does NOT auto-start and reports why.
+ */
+export async function passTurnAndPromote(
+  roomId: string,
+  currentRequestId: string,
+  eventId?: string | null,
+): Promise<PassTurnResult> {
+  // 1. Complete the current playing song (atomic + status-guarded + idempotent).
+  const fin = await finishOwnRequest(roomId, currentRequestId);
+  const completed = fin.outcome === 'ok' || fin.outcome === 'already_done';
+
+  // 2. Resolve the canonical FIRST waiting song for THIS event (V7.1 scope).
+  const active = await listActiveRequests(roomId, eventId);
+  const waiting = active
+    .filter((r) => r.status === 'waiting')
+    .sort((a, b) => canonicalRank(order(a), order(b)));
+  const next = waiting[0] ?? null;
+  const signals = next
+    ? { status: next.status, readyAt: next.ready_at, youtubeQueuedAt: next.youtube_queued_at }
+    : null;
+
+  // 3. Auto-start only when Ready AND Queued. The one-playing invariant is enforced
+  //    by the atomic start RPC (the same one guests used to self-start).
+  if (next && isAutoPromotable(signals)) {
+    const start = await startOwnRequest(roomId, next.id);
+    if (start.outcome === 'ok') {
+      return { completed, promoted: start.request ?? next, reason: 'promoted' };
+    }
+  }
+  return { completed, promoted: null, reason: noPromoteReason(signals) };
+}
+
+/** Minimal ordering projection for canonicalRank. */
+function order(r: KaraokeRequest): QueueOrderEntry {
+  return { id: r.id, status: r.status, position: r.position, created_at: r.created_at };
+}
+
 export type ReadyOutcome = 'ok' | 'not_waiting' | 'not_found';
 
 /**
@@ -553,6 +608,33 @@ export async function setRequestReady(
   const { data, error } = await db
     .from('karaoke_requests')
     .update({ ready_at: ready ? new Date().toISOString() : null })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'waiting')
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (data) return { outcome: 'ok' };
+  const cur = await getRequestOrderFields(roomId, requestId);
+  if (!cur) return { outcome: 'not_found' };
+  return { outcome: 'not_waiting' };
+}
+
+/**
+ * V8 — set / clear the Admin's "added to the YouTube TV queue" signal on a still-
+ * `waiting` request. Admin-only (the route authorizes DJ/Admin, never a guest).
+ * Mirrors setRequestReady: atomic + status-guarded so it never touches a playing
+ * or finished row and never occupies the stage — the song stays `waiting`.
+ */
+export async function setRequestQueued(
+  roomId: string,
+  requestId: string,
+  queued: boolean,
+): Promise<{ outcome: ReadyOutcome }> {
+  const db = karaokeDb();
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ youtube_queued_at: queued ? new Date().toISOString() : null })
     .eq('id', requestId)
     .eq('room_id', roomId)
     .eq('status', 'waiting')

@@ -173,16 +173,16 @@ describe('paired iPad defaults to the Display, not the DJ console (V3.1)', () =>
 });
 
 describe('Admin console is the SINGLE Player (V6)', () => {
-  it('the Player Hero starts the song then hands off to YouTube (Admin only)', () => {
-    expect(dj).toContain('onPlayOnTv');
-    expect(dj).toContain('▶ YouTube에서 재생');
+  it('the Player Hero starts the FIRST song (atomic) then hands off to YouTube (V8)', () => {
+    expect(dj).toContain('onStartFirst');
+    expect(dj).toContain('▶ 첫 곡 시작');
     expect(dj).toContain('onReopen');
   });
 
-  it('normal Finish is a 2-step "차례 넘기기" on the playing song', () => {
+  it('pass-turn is a 2-step auto-promotion on the playing song (V8)', () => {
     expect(dj).toContain('차례 넘기기');
-    expect(dj).toContain('TV 영상도 멈췄나요?');
-    expect(dj).toContain('onFinish(current.id)');
+    expect(dj).toContain('TV에서 다음 곡이 시작됐나요?');
+    expect(dj).toContain('onPassTurn(current.id)');
   });
 
   it('shows the guest Ready signal from the shared server field', () => {

@@ -310,6 +310,103 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
     if (url) window.location.assign(url);
   }
 
+  // V8 Queue Prep: mark/unmark a waiting song as "added to the YouTube TV queue".
+  // Pure signal — never starts the song, never opens YouTube, never occupies stage.
+  async function setQueued(id: string, queued: boolean): Promise<boolean> {
+    if (!cred) return false;
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/rooms/${encodeURIComponent(slug)}/dj/requests/${encodeURIComponent(id)}/queued`,
+        {
+          method: 'POST',
+          headers: { ...authHeader(cred), 'content-type': 'application/json' },
+          body: JSON.stringify({ queued }),
+        },
+      );
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return false;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not update the TV-queue mark.');
+        return false;
+      }
+      await loadQueue(cred);
+      return true;
+    } catch {
+      setError('Network error.');
+      return false;
+    }
+  }
+
+  // V8: atomic Start of the FIRST song (no previous song to pass), then hand off to
+  // YouTube on this device. Start FIRST so a failure never opens YouTube.
+  async function startFirst(id: string, videoId: string) {
+    if (!cred) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/start`, {
+        method: 'POST',
+        headers: { ...authHeader(cred), 'content-type': 'application/json' },
+        body: JSON.stringify({ requestId: id }),
+      });
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not start the first song.');
+        return;
+      }
+      await loadQueue(cred);
+      const url = safeYoutubeWatchUrl(videoId);
+      if (url) window.location.assign(url);
+    } catch {
+      setError('Network error.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // V8 pass-turn (Option B): complete the current song; if the next is Ready +
+  // Queued, the server auto-starts it in BTY (no per-song Play). Returns the
+  // server reason so the board can show an honest "next not ready" message.
+  async function passTurn(
+    currentId: string,
+  ): Promise<'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' | 'error'> {
+    if (!cred) return 'error';
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/pass-turn`, {
+        method: 'POST',
+        headers: { ...authHeader(cred), 'content-type': 'application/json' },
+        body: JSON.stringify({ currentId }),
+      });
+      if (res.status === 401) {
+        setPhase('disconnected');
+        return 'error';
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body?.error ?? 'Could not pass the turn.');
+        return 'error';
+      }
+      const data = (await res.json()) as { reason: 'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' };
+      await loadQueue(cred);
+      return data.reason;
+    } catch {
+      setError('Network error.');
+      return 'error';
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // Persist a DJ reorder of the waiting queue. Returns a coarse result so the
   // board can keep or roll back its optimistic order. On 401 we drop to
   // disconnected; on 409 (queue changed under the DJ) and on any failure we
@@ -563,6 +660,9 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       onPlayOnTv={playOnTv}
       onReopen={reopenOnTv}
       onFinish={(id) => { void mutate(id, 'complete'); }}
+      onSetQueued={setQueued}
+      onStartFirst={startFirst}
+      onPassTurn={passTurn}
       onMoveNext={(id) => { void mutate(id, 'move_next'); }}
       onRemove={(id) => { void mutate(id, 'remove'); }}
       onReorder={reorder}

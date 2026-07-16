@@ -495,14 +495,16 @@ export async function endEvent(eventId: string): Promise<KaraokeEvent | null> {
   // clear it. History rows (already completed/skipped/removed) are untouched — no
   // record is ever deleted.
   const endedAt = new Date().toISOString();
+  // V8: also clear youtube_queued_at — the TV-queue prep signal is moot once ended
+  // and must never carry into the next Event (V7.1 event scope).
   await db
     .from('karaoke_requests')
-    .update({ status: 'removed', ready_at: null })
+    .update({ status: 'removed', ready_at: null, youtube_queued_at: null })
     .eq('room_id', event.room_id)
     .eq('status', 'waiting');
   await db
     .from('karaoke_requests')
-    .update({ status: 'completed', ready_at: null })
+    .update({ status: 'completed', ready_at: null, youtube_queued_at: null })
     .eq('room_id', event.room_id)
     .eq('status', 'playing');
 

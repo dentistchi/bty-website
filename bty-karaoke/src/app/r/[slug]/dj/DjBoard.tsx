@@ -32,6 +32,7 @@ import {
   type DragRowRect,
 } from '@/domain/reorder';
 import { primaryPlayTarget } from '@/domain/play-flow';
+import { queuePrepLabel, isAutoPromotable, preparedOrderDrifted } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
@@ -40,6 +41,20 @@ import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
 import DjAddSongSheet from './DjAddSongSheet';
+
+/** V8 — the TV-queue-prep badge text for a Ready/Queued combination. */
+function prepBadgeText(label: 'ready_queued' | 'ready' | 'queued' | 'none'): string {
+  switch (label) {
+    case 'ready_queued':
+      return 'READY + QUEUED';
+    case 'ready':
+      return 'READY';
+    case 'queued':
+      return 'QUEUED';
+    default:
+      return 'WAITING';
+  }
+}
 
 /** Small "likely has words on the TV" badge for a request's video. */
 function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
@@ -215,6 +230,14 @@ interface Props {
   onEndEvent: () => Promise<'ok' | 'error'>;
   /** Starts a NEW event after the current one ended (rotation); 'ok' on success. */
   onStartNewEvent: () => Promise<'ok' | 'error'>;
+  /** V8: mark/unmark a waiting song as added to the YouTube TV queue (Admin signal). */
+  onSetQueued: (id: string, queued: boolean) => Promise<boolean>;
+  /** V8: atomic Start of the FIRST song, then open YouTube on this device. */
+  onStartFirst: (id: string, videoId: string) => void | Promise<void>;
+  /** V8 pass-turn: complete current + auto-start next if Ready+Queued. Returns why. */
+  onPassTurn: (
+    currentId: string,
+  ) => Promise<'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' | 'error'>;
 }
 
 export default function DjBoard({
@@ -238,6 +261,9 @@ export default function DjBoard({
   onDisconnect,
   onEndEvent,
   onStartNewEvent,
+  onSetQueued,
+  onStartFirst,
+  onPassTurn,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
@@ -247,6 +273,7 @@ export default function DjBoard({
   const [statusOpen, setStatusOpen] = useState(false);
   const [playerFinishConfirm, setPlayerFinishConfirm] = useState(false); // 2-step "차례 넘기기"
   const [startingNew, setStartingNew] = useState(false); // V7 Start New Event in flight
+  const [passNote, setPassNote] = useState<string | null>(null); // V8 pass-turn: why next didn't auto-start
   const [copiedLink, setCopiedLink] = useState(false);
   const [nowMs, setNowMs] = useState(() => 0);
 
@@ -488,6 +515,35 @@ export default function DjBoard({
   // surface who is up so an admin can reorder/remove if needed.
   const playTarget = primaryPlayTarget(current, displayQueue);
 
+  // ── V8 YouTube Queue Prep ─────────────────────────────────────────────────
+  // The next 3–5 waiting songs the Admin prepares in the TV queue, in canonical
+  // order. Counts + the auto-progression readiness of the very next song feed the
+  // Admin summary; the NOW hero uses them for the pass-turn preview.
+  const prepList = displayQueue.slice(0, 5);
+  const queuedCount = displayQueue.filter((r) => r.youtube_queued_at != null).length;
+  const readyCount = displayQueue.filter((r) => r.ready_at != null).length;
+  const nextSignals = playTarget
+    ? { status: playTarget.status, readyAt: playTarget.ready_at, youtubeQueuedAt: playTarget.youtube_queued_at }
+    : null;
+  const nextAutoReady = isAutoPromotable(nextSignals);
+
+  // Reorder drift: if the Admin reorders songs already added to the TV queue, BTY
+  // cannot reorder the real YouTube queue — warn (never auto-clear, never claim the
+  // TV queue changed). We compare the queued songs' order across renders.
+  const queuedOrderKey = displayQueue
+    .filter((r) => r.youtube_queued_at != null)
+    .map((r) => r.id)
+    .join(',');
+  const prevQueuedOrder = useRef<string[]>([]);
+  const [queueDrift, setQueueDrift] = useState(false);
+  useEffect(() => {
+    const nowOrder = queuedOrderKey ? queuedOrderKey.split(',') : [];
+    if (prevQueuedOrder.current.length && preparedOrderDrifted(prevQueuedOrder.current, nowOrder)) {
+      setQueueDrift(true);
+    }
+    prevQueuedOrder.current = nowOrder;
+  }, [queuedOrderKey]);
+
   async function showGuestQr() {
     setLoadingQr(true);
     try {
@@ -646,6 +702,78 @@ export default function DjBoard({
       )}
       {error && <div className="banner error">{error}</div>}
 
+      {/* ── V8 TV QUEUE PREP — prepare the next 3–5 songs in the YouTube TV queue ── */}
+      {!eventEnded && prepList.length > 0 && (
+        <section className="tv-queue-prep" aria-label="TV 대기열 준비">
+          <div className="tvq-head">
+            <span className="tvq-title">TV QUEUE PREP</span>
+            <span className="tvq-summary">
+              {queuedCount}곡 준비됨 · {readyCount}명 Ready
+              {nextAutoReady ? ' · 다음 자동 진행 가능' : ''}
+            </span>
+          </div>
+          {queueDrift && (
+            <div className="tvq-drift" role="status">
+              ⚠ 순서가 변경되었습니다. YouTube TV 대기열 순서도 확인해 주세요.
+              <button type="button" className="ghost sm" onClick={() => setQueueDrift(false)}>
+                확인
+              </button>
+            </div>
+          )}
+          <ol className="tvq-list">
+            {prepList.map((r, i) => {
+              const label = queuePrepLabel({
+                status: r.status,
+                readyAt: r.ready_at,
+                youtubeQueuedAt: r.youtube_queued_at,
+              });
+              const song =
+                displaySong(r.youtube_title ?? '', r.youtube_channel_title).song ||
+                requestDisplayTitle(r);
+              return (
+                <li key={r.id} className="tvq-row">
+                  <span className="tvq-idx">{i + 1}</span>
+                  <div className="tvq-info">
+                    <div className="tvq-singer">{r.guest_name}</div>
+                    <div className="tvq-song">{song}</div>
+                    <span className={`tvq-badge b-${label}`}>{prepBadgeText(label)}</span>
+                  </div>
+                  <div className="tvq-actions">
+                    {onReopen && (
+                      <button
+                        type="button"
+                        className="ghost sm"
+                        disabled={!r.youtube_video_id}
+                        onClick={() => onReopen(r.youtube_video_id)}
+                      >
+                        ▶ YouTube 열기
+                      </button>
+                    )}
+                    {r.youtube_queued_at ? (
+                      <button
+                        type="button"
+                        className="ghost sm"
+                        onClick={() => void onSetQueued(r.id, false)}
+                      >
+                        대기열 준비 해제
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ok sm"
+                        onClick={() => void onSetQueued(r.id, true)}
+                      >
+                        ✓ 대기열에 추가했어요
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+
       <div className="dj-grid">
         {/* ── LEFT: NOW SINGING stage ──────────────────────────── */}
         <section className="dj-stage" aria-label="Now singing">
@@ -678,10 +806,18 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              {/* V6 Admin Player: stop the video on the TV, then pass the turn. */}
-              <p className="muted playback-help">
-                YouTube에서 영상 재생을 멈춘 뒤 차례를 넘겨주세요.
-              </p>
+              {/* V8: the next song's TV-queue readiness — pass-turn auto-starts it. */}
+              {playTarget ? (
+                <p className={`muted playback-help next-preview${nextAutoReady ? ' auto' : ''}`}>
+                  다음 곡: {playTarget.guest_name} — {displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title).song || requestDisplayTitle(playTarget)}
+                  <br />
+                  {nextAutoReady
+                    ? '✅ READY + TV 대기열 준비됨 · 차례를 넘기면 자동 진행'
+                    : '⏳ 아직 자동 진행 준비 전 (Ready + TV 대기열 필요)'}
+                </p>
+              ) : (
+                <p className="muted playback-help">다음 대기 곡이 없습니다.</p>
+              )}
               <div className="stage-actions">
                 {onReopen && (
                   <button
@@ -694,7 +830,9 @@ export default function DjBoard({
                 )}
                 {playerFinishConfirm ? (
                   <div className="player-confirm">
-                    <span className="player-confirm-q">TV 영상도 멈췄나요?</span>
+                    {/* V8 copy: the operating question is whether the TV moved to the
+                        next queued video, not whether the Admin stopped it. */}
+                    <span className="player-confirm-q">TV에서 다음 곡이 시작됐나요?</span>
                     <div className="player-confirm-row">
                       <button className="ghost" onClick={() => setPlayerFinishConfirm(false)}>
                         아직이요
@@ -702,12 +840,25 @@ export default function DjBoard({
                       <button
                         className="ok"
                         disabled={busy}
-                        onClick={() => {
+                        onClick={async () => {
                           setPlayerFinishConfirm(false);
-                          void onFinish(current.id);
+                          const reason = await onPassTurn(current.id);
+                          if (reason && reason !== 'promoted' && reason !== 'error') {
+                            setPassNote(
+                              reason === 'no_next'
+                                ? '다음 대기 곡이 없습니다.'
+                                : reason === 'needs_queued'
+                                  ? '다음 곡이 아직 TV 대기열에 준비되지 않았습니다.'
+                                  : reason === 'needs_ready'
+                                    ? '다음 가수가 아직 준비되지 않았습니다.'
+                                    : '다음 곡이 아직 준비되지 않았습니다 (Ready + TV 대기열 필요).',
+                            );
+                          } else {
+                            setPassNote(null);
+                          }
                         }}
                       >
-                        네, 차례 넘기기
+                        네, 다음 차례로
                       </button>
                     </div>
                   </div>
@@ -717,6 +868,7 @@ export default function DjBoard({
                   </button>
                 )}
               </div>
+              {passNote && <p className="muted player-passnote">{passNote}</p>}
             </div>
           ) : playTarget ? (
             <div className="stage-hero ready" key={playTarget.id}>
@@ -745,22 +897,24 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              {playTarget.ready_at ? (
-                <p className="lead player-ready">✅ {playTarget.guest_name}님이 준비됐습니다.</p>
+              {/* V8: the first song has no previous song to pass — the Admin starts
+                  it once. When it's Ready + Queued it's an atomic first-song start. */}
+              {nextAutoReady ? (
+                <p className="lead player-ready">✅ READY + TV 대기열 준비됨</p>
+              ) : playTarget.ready_at ? (
+                <p className="muted playback-help">가수는 준비됨 · TV 대기열 준비가 필요합니다.</p>
               ) : (
                 <p className="muted playback-help">아직 준비 신호를 기다리고 있습니다.</p>
               )}
-              {onPlayOnTv && (
-                <div className="stage-actions">
-                  <button
-                    className="primary lg"
-                    disabled={busy || !playTarget.youtube_video_id}
-                    onClick={() => onPlayOnTv(playTarget.id, playTarget.youtube_video_id)}
-                  >
-                    ▶ YouTube에서 재생
-                  </button>
-                </div>
-              )}
+              <div className="stage-actions">
+                <button
+                  className="primary lg"
+                  disabled={busy || !playTarget.youtube_video_id}
+                  onClick={() => onStartFirst(playTarget.id, playTarget.youtube_video_id)}
+                >
+                  ▶ 첫 곡 시작
+                </button>
+              </div>
             </div>
           ) : (
             <div className="stage-hero ready">

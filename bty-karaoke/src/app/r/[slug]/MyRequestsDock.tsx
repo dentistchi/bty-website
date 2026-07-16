@@ -320,7 +320,9 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
             <div className="perf-eyebrow">{namePrefix ? namePrefix : '준비 완료'}</div>
             <div className="perf-title big">재생 준비 완료</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
-            <div className="perf-sub">Admin이 잠시 후 TV에서 노래를 시작합니다.</div>
+            {/* V8: the guest never sees the TV-queue mechanics — only that their
+                turn will progress automatically once things are ready. */}
+            <div className="perf-sub">TV에 곡이 준비되면 자동으로 차례가 진행됩니다.</div>
             <div className="perf-actions">
               <button
                 type="button"
