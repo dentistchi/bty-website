@@ -227,6 +227,21 @@ export default function DisplayClient({ slug, roomName }: Props) {
             </div>
           )}
         </section>
+      ) : ended ? (
+        // V7 PART G — the Event closed: show the finished stage, NOT the join QR
+        // (a scan of the retired QR lands on the guest ended notice anyway). A
+        // paired same-room Display auto-switches to the next Event on its next
+        // poll, because the Display resolves by slug → the new live Event.
+        <section className="kd-empty kd-ended-stage" aria-label="이벤트 종료">
+          <div className="kd-empty-mic" aria-hidden>🎬</div>
+          <div className="kd-empty-eyebrow">이벤트 종료</div>
+          <div className="kd-empty-title">오늘의 무대가 끝났어요</div>
+          <div className="kd-empty-sub">
+            {stats
+              ? `${stats.singers}명 · ${stats.completed}곡 완창 · 기록은 그대로 보존됩니다`
+              : '오늘의 기록은 그대로 보존됩니다'}
+          </div>
+        </section>
       ) : (
         <section className="kd-empty" aria-label="대기 중">
           <div className="kd-empty-mic" aria-hidden>🎤</div>

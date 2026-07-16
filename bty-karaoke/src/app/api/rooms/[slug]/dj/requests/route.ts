@@ -15,6 +15,7 @@ import {
 } from '@/lib/rooms.server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { requestAcceptance } from '@/lib/sessions.server';
+import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,6 +40,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // V7 PART H — never inject a song into an ended Event's queue. Legacy eventless
+  // rooms pass (event: null). Live event → ok; ended → 409 EVENT_ENDED.
+  const access = await resolveEventAccess(auth.room);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
+  }
 
   // Same night gate as guests: accepted while a session is active (legacy
   // no-session rooms stay open). This also stamps the request's session_id.

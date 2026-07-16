@@ -11,6 +11,11 @@ const state = {
   ready: { outcome: 'ok' } as { outcome: 'ok' | 'not_waiting' | 'not_found' },
 };
 
+// V7: the ready route gates through resolveEventAccess. Legacy/no-event rooms
+// resolve to ok so the existing ready behavior is unchanged.
+vi.mock('@/lib/events.server', () => ({
+  resolveEventAccess: vi.fn(async () => ({ ok: true, event: null })),
+}));
 vi.mock('@/lib/capability.server', () => ({
   verifyOwnerCapability: vi.fn(async () => state.owns),
 }));

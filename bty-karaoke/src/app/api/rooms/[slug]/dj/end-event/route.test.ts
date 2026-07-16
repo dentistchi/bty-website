@@ -10,7 +10,9 @@ const s = {
 
 vi.mock('@/lib/rooms.server', () => ({ authorizeDj: vi.fn(async () => s.auth) }));
 vi.mock('@/lib/events.server', () => ({
-  getEventByRoomId: vi.fn(async () => s.event),
+  // V7 PART K: the route now ends only the LIVE event (getCanonicalEvent), never
+  // an all-status lookup that would throw once ended + live coexist after rotation.
+  getCanonicalEvent: vi.fn(async () => s.event),
   endEvent: vi.fn(async () => s.ended),
   publicEvent: (e: { id: string; status: string }) => ({ id: e.id, status: e.status }),
 }));

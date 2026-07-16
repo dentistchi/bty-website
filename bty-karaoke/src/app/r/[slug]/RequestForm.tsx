@@ -186,7 +186,14 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/requests`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ guestName: name, searchQuery: resultQuery || undefined, ...payload }),
+        // V7 PART E: echo the Event this screen is scoped to so the server can
+        // reject a previous round's QR (EVENT_MISMATCH) or an ended one (EVENT_ENDED).
+        body: JSON.stringify({
+          guestName: name,
+          searchQuery: resultQuery || undefined,
+          ...(eventId ? { eventId } : {}),
+          ...payload,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {

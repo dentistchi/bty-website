@@ -213,6 +213,8 @@ interface Props {
   onDisconnect: () => void;
   /** Ends the whole event (distinct from Disconnect); resolves 'ok' on success. */
   onEndEvent: () => Promise<'ok' | 'error'>;
+  /** Starts a NEW event after the current one ended (rotation); 'ok' on success. */
+  onStartNewEvent: () => Promise<'ok' | 'error'>;
 }
 
 export default function DjBoard({
@@ -235,6 +237,7 @@ export default function DjBoard({
   onRefresh,
   onDisconnect,
   onEndEvent,
+  onStartNewEvent,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [loadingQr, setLoadingQr] = useState(false);
@@ -243,6 +246,7 @@ export default function DjBoard({
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [playerFinishConfirm, setPlayerFinishConfirm] = useState(false); // 2-step "차례 넘기기"
+  const [startingNew, setStartingNew] = useState(false); // V7 Start New Event in flight
   const [copiedLink, setCopiedLink] = useState(false);
   const [nowMs, setNowMs] = useState(() => 0);
 
@@ -575,6 +579,34 @@ export default function DjBoard({
           </button>
         )}
       </div>
+
+      {/* V7 — Event ended: the queue is closed. The Admin explicitly rotates to a
+          NEW Event (new Guest QR); the old QR can never join it. No auto-restart. */}
+      {eventStatus && eventStatus.status !== 'active' && (
+        <div className="dj-ended-banner" role="status">
+          <div className="dj-ended-copy">
+            <b>이벤트가 종료되었어요.</b>{' '}
+            <span className="muted">
+              {eventStatus.counts.guests}명 · {eventStatus.counts.completed}곡 완창 · 기록은 그대로
+              보존됩니다.
+            </span>
+          </div>
+          {isAdmin && (
+            <button
+              type="button"
+              className="primary"
+              disabled={startingNew}
+              onClick={async () => {
+                setStartingNew(true);
+                await onStartNewEvent();
+                setStartingNew(false);
+              }}
+            >
+              {startingNew ? '시작 중…' : '🎬 새 이벤트 시작'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* This console is an EXCEPTION surface — normal operation runs on each
           guest's phone. Make that explicit so a host doesn't drive from here. */}

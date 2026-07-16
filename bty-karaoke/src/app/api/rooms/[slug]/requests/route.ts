@@ -7,7 +7,7 @@ import { parseYoutubeVideoId } from '@/domain/youtube';
 import { CreateRequestSchema } from '@/lib/validation';
 import { addRequest, getPublicRoomBySlug, listActiveRequests } from '@/lib/rooms.server';
 import { requestAcceptance } from '@/lib/sessions.server';
-import { resolveEventAccess, getCanonicalEvent } from '@/lib/events.server';
+import { resolveEventAccess, getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
 
 export const dynamic = 'force-dynamic';
@@ -17,9 +17,16 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   const { slug } = await ctx.params;
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-  const [requests, event] = await Promise.all([listActiveRequests(room.id), getCanonicalEvent(room.id)]);
-  // Same canonical event identity the Display / DJ / Admin resolve (or null). A
-  // guest read never creates an event — this is a pure lookup.
+  const [requests, live] = await Promise.all([
+    listActiveRequests(room.id),
+    getCanonicalEvent(room.id),
+  ]);
+  // Same canonical event identity the Display / DJ / Admin resolve. When no Event
+  // is live, fall back to the most recent ended Event so the guest screen can show
+  // the honest ended state (V7 PART F) instead of a stale request form. A guest
+  // read never creates an event — this is a pure lookup. Null only for a legacy
+  // room that never had an Event.
+  const event = live ?? (await getLatestEndedEvent(room.id));
   return NextResponse.json({
     room,
     requests,
@@ -35,10 +42,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     return NextResponse.json({ error: 'This room is closed' }, { status: 409 });
   }
 
-  // Canonical-event gate (V5): if this room is owned by an event, that one event
-  // is the source of truth. An ended/archived event refuses new requests honestly.
-  // Legacy self-service rooms have no event → this is a no-op (backward compatible).
-  const access = await resolveEventAccess(room);
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  // Canonical-event gate (V5 + V7): if this room is owned by an event, that one
+  // event is the source of truth. The guest screen echoes the event id its QR was
+  // scoped to (`eventId`); a mismatch (an old round's QR after rotation) → 403
+  // EVENT_MISMATCH, an ended event → 409 EVENT_ENDED. Legacy self-service rooms
+  // have no event and send no eventId → this is a no-op (backward compatible).
+  const assertedEventId =
+    body && typeof body === 'object' && typeof (body as { eventId?: unknown }).eventId === 'string'
+      ? (body as { eventId: string }).eventId
+      : null;
+  const access = await resolveEventAccess(room, assertedEventId);
   if (!access.ok) {
     return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
   }
@@ -51,13 +71,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       { error: 'The karaoke night is not open right now. Ask the host to start it.' },
       { status: 409 },
     );
-  }
-
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
   const parsed = CreateRequestSchema.safeParse(body);

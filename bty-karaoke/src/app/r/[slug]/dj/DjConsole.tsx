@@ -399,6 +399,28 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
     }
   }
 
+  // V7 PART D — Start a New Event (Event rotation). Admin-only route: mints a new
+  // Event (new id + new Guest QR) and a new night, then reloads so the console
+  // leaves the ended state and shows the fresh empty queue.
+  async function startNewEvent(): Promise<'ok' | 'error'> {
+    if (!cred) return 'error';
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/admin/start-event`, {
+        method: 'POST',
+        headers: authHeader(cred),
+      });
+      if (res.status === 401) {
+        setError('새 이벤트 시작은 Admin만 가능해요.');
+        return 'error';
+      }
+      if (!res.ok) return 'error';
+      await loadQueue(cred);
+      return 'ok';
+    } catch {
+      return 'error';
+    }
+  }
+
   function disconnectManual() {
     // Only ever clears the DJ pairing on this device. An Admin using the console
     // via their admin session keeps that session (they manage via the Admin menu),
@@ -548,6 +570,7 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       onRefresh={refresh}
       onDisconnect={disconnectManual}
       onEndEvent={endEvent}
+      onStartNewEvent={startNewEvent}
     />
   );
 }

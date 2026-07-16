@@ -4,7 +4,7 @@
 // DJ controls. The room's slug in the URL is public; nothing secret is rendered.
 
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
-import { getEventByRoomId } from '@/lib/events.server';
+import { getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DisplayClient from './DisplayClient';
 
@@ -30,6 +30,8 @@ export default async function DisplayPage({ params }: { params: Promise<{ slug: 
   }
 
   // Prefer the event name (what guests see) when this room belongs to an event.
-  const event = await getEventByRoomId(room.id);
+  // V7 PART K: resolve the live Event, else the most recent ended Event — never an
+  // all-status lookup that would throw once a room has both after rotation.
+  const event = (await getCanonicalEvent(room.id)) ?? (await getLatestEndedEvent(room.id));
   return <DisplayClient slug={room.slug} roomName={event?.name ?? room.display_name} />;
 }

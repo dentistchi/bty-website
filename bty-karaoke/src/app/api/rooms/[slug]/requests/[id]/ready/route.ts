@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { OwnerActionSchema } from '@/lib/validation';
 import { verifyOwnerCapability } from '@/lib/capability.server';
 import { getPublicRoomBySlug, setRequestReady } from '@/lib/rooms.server';
+import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -45,6 +46,16 @@ export async function POST(
   const room = await getPublicRoomBySlug(slug);
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404, headers: NO_STORE });
+  }
+
+  // V7 PART I — the ready signal is only meaningful while the Event is live. Once
+  // ended, refuse honestly (the request is already removed anyway).
+  const access = await resolveEventAccess(room);
+  if (!access.ok) {
+    return NextResponse.json(
+      { error: access.error, code: access.code },
+      { status: access.status, headers: NO_STORE },
+    );
   }
 
   const result = await setRequestReady(room.id, id, ready);

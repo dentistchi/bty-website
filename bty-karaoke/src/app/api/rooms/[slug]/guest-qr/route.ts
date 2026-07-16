@@ -15,15 +15,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
 
-  // V5 QR compatibility decision: the Guest QR ALWAYS opens the room's polished
-  // self-service screen (/r/<slug>) — the canonical guest experience since V2–V4.
-  // The server resolves room → canonical live event, so identity is unified
-  // without changing the screen a guest lands on when a room gains an event (a
-  // scan never creates an event — this is a pure read). The pretty /j/<guestSlug>
-  // route stays functional for existing links. roomName shows the event name when
-  // one is live (nice on the Display), else the room's display name.
+  // The Guest QR opens the room's self-service screen (/r/<slug>). V7 PART E:
+  // when a live Event owns the room the QR is EVENT-SCOPED — it carries the live
+  // event id (`?e=<id>`) so a previous round's printed QR can never join the next
+  // Event: the /r screen asserts this id and the server rejects a mismatch (an old
+  // id → EVENT_MISMATCH; an ended id → EVENT_ENDED). A scan never creates an event
+  // — this is a pure read. Legacy eventless rooms keep the bare URL (unchanged).
   const event = await getCanonicalEvent(room.id);
-  const url = `${req.nextUrl.origin}/r/${encodeURIComponent(slug)}`;
+  const base = `${req.nextUrl.origin}/r/${encodeURIComponent(slug)}`;
+  const url = event ? `${base}?e=${encodeURIComponent(event.id)}` : base;
   const svg = await qrSvg(url);
   return NextResponse.json({ url, qrSvg: svg, roomName: event?.name ?? room.display_name });
 }

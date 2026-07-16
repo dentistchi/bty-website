@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeAdmin, activeRequestStats } from '@/lib/rooms.server';
-import { ensureCanonicalLiveEvent } from '@/lib/events.server';
+import { bootstrapInitialEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { getActiveSession, startSession, endSession } from '@/lib/sessions.server';
 
 export const dynamic = 'force-dynamic';
@@ -23,10 +23,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await requireAdmin(req, slug);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Admin Hub init (V5 2A): the ONLY place a room's canonical live Event is
-  // auto-ensured. Opening the Hub silently guarantees exactly one live Event —
-  // no "Create Event" step. Never runs on Guest/Display/DJ/public reads.
-  const event = await ensureCanonicalLiveEvent(auth.room.id, auth.room.display_name);
+  // Admin Hub init (V7 PART A): bootstrap creates the room's ONE live Event only on
+  // its FIRST Hub open. After an Event is ended it returns null — the Hub must NOT
+  // silently re-create a live Event; the Admin lands on the ended summary and
+  // explicitly Starts a New Event. Never runs on Guest/Display/DJ/public reads.
+  const event = await bootstrapInitialEvent(auth.room.id, auth.room.display_name);
+  const endedEvent = event ? null : await getLatestEndedEvent(auth.room.id);
 
   const [session, stats] = await Promise.all([
     getActiveSession(auth.room.id),
@@ -36,7 +38,16 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     room: { slug: auth.room.slug, display_name: auth.room.display_name, status: auth.room.status },
     session,
     stats,
-    event: { id: event.id, name: event.name, status: event.status },
+    event: event ? { id: event.id, name: event.name, status: event.status } : null,
+    endedEvent: endedEvent
+      ? {
+          id: endedEvent.id,
+          name: endedEvent.name,
+          status: endedEvent.status,
+          started_at: endedEvent.starts_at,
+          ended_at: endedEvent.ended_at,
+        }
+      : null,
   });
 }
 

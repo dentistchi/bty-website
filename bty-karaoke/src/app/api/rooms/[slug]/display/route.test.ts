@@ -16,6 +16,8 @@ vi.mock('@/lib/rooms.server', () => ({
 }));
 vi.mock('@/lib/events.server', () => ({
   getCanonicalEvent: vi.fn(async () => state.event),
+  // V7 PART G: display falls back to the latest ended event when none is live.
+  getLatestEndedEvent: vi.fn(async () => null),
 }));
 
 import { GET } from './route';

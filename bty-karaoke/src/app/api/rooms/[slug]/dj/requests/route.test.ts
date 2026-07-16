@@ -20,6 +20,11 @@ vi.mock('@/lib/rooms.server', () => ({
 vi.mock('@/lib/sessions.server', () => ({
   requestAcceptance: vi.fn(async () => state.acceptance),
 }));
+// V7 PART H: the add-song route gates through resolveEventAccess. Legacy/no-event
+// rooms resolve to ok so the existing DJ add-song behavior is unchanged.
+vi.mock('@/lib/events.server', () => ({
+  resolveEventAccess: vi.fn(async () => ({ ok: true, event: null })),
+}));
 
 import { POST } from './route';
 

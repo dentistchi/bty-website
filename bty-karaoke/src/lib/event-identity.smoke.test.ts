@@ -45,9 +45,15 @@ describe('canonical event resolver is deterministic (no recency inference)', () 
     expect(body).not.toMatch(/\.limit\(/);
   });
 
-  it('no single-event selection anywhere picks "the latest/first" event by recency', () => {
-    // A single-event pick by recency would look like .order(...).limit(1).
-    expect(events).not.toMatch(/limit\(1\)/);
+  it('the canonical LIVE resolver never picks the event by recency', () => {
+    // The LIVE identity is deterministic (partial unique index), never a
+    // .order(...).limit(1) recency guess. The ONLY recency pick allowed in this
+    // module is getLatestEndedEvent — read-only ENDED history for the summary, which
+    // is never the canonical/live identity (V7). So scope the guard to the live
+    // resolver rather than the whole file.
+    const live = fnBody(events, 'getCanonicalEvent');
+    expect(live).not.toMatch(/\.order\(/);
+    expect(live).not.toMatch(/\.limit\(/);
     // Check CODE only — the doc comments deliberately name these anti-patterns.
     const eventsCode = events.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(eventsCode).not.toMatch(/latest\s*event|current\s*event|first\s*active\s*(event|session)/i);
@@ -72,26 +78,37 @@ describe('honest reject gate runs on operational paths', () => {
   });
 });
 
-describe('auto-ensure is admin-hub-only (V5 2A)', () => {
-  it('the authenticated Admin Hub init (GET /admin/session) auto-ensures the event', () => {
-    expect(adminSession).toContain('ensureCanonicalLiveEvent(auth.room.id');
-    // The ensure CALL runs only after the admin auth guard.
+describe('bootstrap is admin-hub-only and never re-creates after End (V7 PART A)', () => {
+  it('the authenticated Admin Hub init (GET /admin/session) bootstraps the event', () => {
+    expect(adminSession).toContain('bootstrapInitialEvent(auth.room.id');
+    // The bootstrap CALL runs only after the admin auth guard.
     expect(adminSession.indexOf('if (!auth) return')).toBeLessThan(
-      adminSession.indexOf('ensureCanonicalLiveEvent(auth.room.id'),
+      adminSession.indexOf('bootstrapInitialEvent(auth.room.id'),
     );
-    expect(adminSession).toMatch(/event:\s*\{\s*id:\s*event\.id/);
+    expect(adminSession).toMatch(/event:\s*event\s*\?\s*\{\s*id:\s*event\.id/);
   });
 
-  it('NO public/read path (guest / display / DJ / QR) ever ensures (creates) an event', () => {
+  it('bootstrap does NOT auto-create after an Event ends (returns null → ended summary)', () => {
+    const body = fnBody(events, 'bootstrapInitialEvent');
+    expect(body).toContain('roomHasAnyEvent');
+    expect(body).toMatch(/return null/); // ended room → never auto-recreate
+    // The Admin session surfaces the ended summary when no live event exists.
+    expect(adminSession).toContain('getLatestEndedEvent');
+    expect(adminSession).toContain('endedEvent');
+  });
+
+  it('NO public/read path (guest / display / DJ / QR) ever creates an event', () => {
     for (const src of [guestReq, displayRoute, djQueue, guestQr]) {
       expect(src).not.toContain('ensureCanonicalLiveEvent');
+      expect(src).not.toContain('bootstrapInitialEvent');
+      expect(src).not.toContain('startNewEvent');
     }
   });
 });
 
 describe('identity propagation — all four surfaces carry the same event.id', () => {
   it('Admin, Display, DJ, and Guest reads each expose the canonical event', () => {
-    expect(adminSession).toMatch(/event:\s*\{\s*id:\s*event\.id/);
+    expect(adminSession).toMatch(/event:\s*event\s*\?\s*\{\s*id:\s*event\.id/);
     expect(displayRoute).toMatch(/event:\s*event\s*\?/);
     expect(djQueue).toContain('getCanonicalEvent');
     expect(djQueue).toMatch(/event:\s*event\s*\?/);

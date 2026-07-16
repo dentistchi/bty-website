@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj } from '@/lib/rooms.server';
-import { getEventByRoomId, endEvent, publicEvent } from '@/lib/events.server';
+import { getCanonicalEvent, endEvent, publicEvent } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,9 +24,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const event = await getEventByRoomId(auth.room.id);
-  // Legacy non-event room: nothing to end (guest/DJ flow is unchanged there).
-  if (!event) return NextResponse.json({ error: 'This room has no event' }, { status: 404 });
+  // Only the ONE LIVE Event can be ended (V7 PART K: never an all-status lookup —
+  // after rotation a room has both an ended and a live Event; end the live one).
+  const event = await getCanonicalEvent(auth.room.id);
+  // Legacy non-event room, or already-ended with no live Event: nothing to end.
+  if (!event) return NextResponse.json({ error: 'This room has no live event' }, { status: 404 });
 
   const ended = await endEvent(event.id); // idempotent; ends the active session too
   if (!ended) return NextResponse.json({ error: 'Event not found' }, { status: 404 });

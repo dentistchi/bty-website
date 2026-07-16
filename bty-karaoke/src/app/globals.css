@@ -2201,6 +2201,39 @@ a.btn.block {
   line-height: 1.5;
 }
 
+/* V7 — Event ended banner on the Admin console: closes the queue, offers rotation. */
+.dj-ended-banner {
+  margin: 10px 0 2px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 196, 81, 0.4);
+  background: rgba(245, 196, 81, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.dj-ended-banner .dj-ended-copy {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.dj-ended-banner button {
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #1b1300;
+  background: var(--gold, #f5c451);
+}
+.dj-ended-banner button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Video-kind badge — "likely has words on the TV" hint. Gold = karaoke/lyrics. */
 .vk-badge {
   display: inline-flex;
@@ -2470,6 +2503,10 @@ a.btn.block {
   color: var(--muted);
   font-weight: 800;
   font-size: clamp(0.9rem, 1.8vw, 1.15rem);
+}
+/* V7 — Display finished stage: shown instead of the join-QR once the Event ends. */
+.kd-ended-stage .kd-empty-eyebrow {
+  color: var(--gold, #f5c451);
 }
 .kd-top {
   display: flex;

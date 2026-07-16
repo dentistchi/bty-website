@@ -185,7 +185,17 @@ export async function getCanonicalEvent(roomId: string): Promise<KaraokeEvent | 
 export async function ensureCanonicalLiveEvent(roomId: string, name: string): Promise<KaraokeEvent> {
   const existing = await getCanonicalEvent(roomId);
   if (existing) return existing;
+  return createLiveEvent(roomId, name);
+}
 
+/**
+ * Insert ONE fresh live Event for a room, race-safe against the one-live-per-room
+ * partial unique index (V7). Shared by ensure / bootstrap / startNewEvent — each
+ * of which decides *whether* to create; this is the *how*. A concurrent insert or
+ * a code collision surfaces as 23505: if a live event now exists it is the winner
+ * (idempotent double-tap safety), otherwise the code collided → retry.
+ */
+async function createLiveEvent(roomId: string, name: string): Promise<KaraokeEvent> {
   const db = karaokeDb();
   const eventName = name.trim().slice(0, 80) || 'btyNorebang';
   for (let attempt = 0; attempt < CODE_RETRY; attempt++) {
@@ -221,6 +231,72 @@ export async function ensureCanonicalLiveEvent(roomId: string, name: string): Pr
   throw new Error('Could not ensure a canonical live event');
 }
 
+/**
+ * V7 Event Lifecycle — the room's canonical live Event resolver used by every
+ * PUBLIC / operational read. Same deterministic 1:1 lookup as getCanonicalEvent;
+ * exported under the lifecycle name so lifecycle callers read intentionally.
+ */
+export const getCanonicalLiveEvent = getCanonicalEvent;
+
+/** True if the room has EVER had an Event (any status). Distinguishes a brand-new
+ *  room (bootstrap creates its first Event) from a room whose Event was ended
+ *  (V7: never silently re-create — the Admin must Start a New Event explicitly). */
+export async function roomHasAnyEvent(roomId: string): Promise<boolean> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_events')
+    .select('id')
+    .eq('room_id', roomId)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data != null;
+}
+
+/** The room's most recently ended Event (for the ended summary shown to Admin /
+ *  Guest / Display). Ordered by ended_at desc so a room with a history of rounds
+ *  surfaces the round that just finished. Null if the room never ended an Event. */
+export async function getLatestEndedEvent(roomId: string): Promise<KaraokeEvent | null> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_events')
+    .select(EVENT_COLS)
+    .eq('room_id', roomId)
+    .eq('status', 'ended')
+    .order('ended_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as KaraokeEvent) ?? null;
+}
+
+/**
+ * V7 PART A — Admin-Hub bootstrap. The ONLY auto-creation path, and ONLY on a
+ * room's FIRST Hub open. Returns:
+ *  - the live Event if one exists (idempotent);
+ *  - a freshly created Event if the room has NEVER had an Event;
+ *  - **null** if the room's Event was ended (do NOT silently re-create — the Admin
+ *    lands on the ended summary and must Start a New Event explicitly).
+ */
+export async function bootstrapInitialEvent(roomId: string, name: string): Promise<KaraokeEvent | null> {
+  const live = await getCanonicalEvent(roomId);
+  if (live) return live;
+  if (await roomHasAnyEvent(roomId)) return null; // ended — never auto-recreate
+  return createLiveEvent(roomId, name);
+}
+
+/**
+ * V7 PART D — explicit Event rotation. Called ONLY from the authenticated Admin
+ * "Start New Event" action (never Guest / QR / Display / polling). Idempotent and
+ * double-tap safe: if a live Event already exists it is returned unchanged (the
+ * one-live-per-room invariant is never violated); otherwise a brand-new Event with
+ * a NEW id + NEW guest_slug (a NEW Guest QR) is created. The previous ended Event
+ * is preserved as history and its Guest QR can never join this new Event.
+ */
+export async function startNewEvent(roomId: string, name: string): Promise<KaraokeEvent> {
+  const live = await getCanonicalEvent(roomId);
+  if (live) return live;
+  return createLiveEvent(roomId, name);
+}
+
 export type EventAccess =
   | { ok: true; event: KaraokeEvent | null }
   | { ok: false; status: 403 | 409; code: string; error: string };
@@ -243,7 +319,11 @@ export async function resolveEventAccess(
   room: { id: string },
   assertedEventId?: string | null,
 ): Promise<EventAccess> {
-  const event = await getCanonicalEvent(room.id);
+  // Resolve the live Event; if none is live, fall back to the most recent ended
+  // Event so an ended round refuses honestly (409 EVENT_ENDED) instead of silently
+  // behaving like a legacy eventless room (V7 PART I). A room that never had an
+  // Event resolves to null → legacy self-service stays untouched.
+  const event = (await getCanonicalEvent(room.id)) ?? (await getLatestEndedEvent(room.id));
   const decision = decideEventAccess(event, assertedEventId);
   if (!decision.ok) return decision;
   return { ok: true, event };
@@ -394,10 +474,27 @@ export async function endEvent(eventId: string): Promise<KaraokeEvent | null> {
 
   if (event.status === 'ended' || event.status === 'archived') return event;
 
+  // V7 PART B — clear the live queue as part of ending the Event. Waiting requests
+  // are removed (they never played); a request that was mid-play is marked
+  // completed (honest — it was on the TV). The ready signal is moot once ended, so
+  // clear it. History rows (already completed/skipped/removed) are untouched — no
+  // record is ever deleted.
+  const endedAt = new Date().toISOString();
+  await db
+    .from('karaoke_requests')
+    .update({ status: 'removed', ready_at: null })
+    .eq('room_id', event.room_id)
+    .eq('status', 'waiting');
+  await db
+    .from('karaoke_requests')
+    .update({ status: 'completed', ready_at: null })
+    .eq('room_id', event.room_id)
+    .eq('status', 'playing');
+
   const { data, error } = await db
     .from('karaoke_events')
     // updated_at is stamped by the karaoke_events_touch_updated_at trigger.
-    .update({ status: 'ended', ended_at: new Date().toISOString() })
+    .update({ status: 'ended', ended_at: endedAt })
     .eq('id', eventId)
     .select(EVENT_COLS)
     .maybeSingle();
@@ -464,7 +561,10 @@ export interface DjEventStatus {
  * queries; reuses computeEventStats + selectLivePresence.
  */
 export async function getEventStatusForRoom(roomId: string): Promise<DjEventStatus | null> {
-  const event = await getEventByRoomId(roomId);
+  // V7 PART K: resolve the ONE live Event, or (post-End, before rotation) the most
+  // recent ended Event. NEVER an all-status maybeSingle — once a room has both an
+  // ended and a live Event (after Start New Event) that would match >1 row and throw.
+  const event = (await getCanonicalEvent(roomId)) ?? (await getLatestEndedEvent(roomId));
   if (!event) return null;
 
   const [active, statRows] = await Promise.all([
