@@ -103,6 +103,8 @@ export default function DisplayClient({ slug, roomName }: Props) {
 
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
+  const waiting = state?.waiting ?? [];
+  const comingUp = waiting.slice(1, 5); // songs after the first (the big central QR is only shown when the queue is truly empty)
   const stats = state?.stats ?? null;
   const ended = state?.event?.status === 'ended' || state?.event?.status === 'archived';
   const playingBadge = playing ? badgeForKind(playing.videoKind) : null;
@@ -185,6 +187,46 @@ export default function DisplayClient({ slug, roomName }: Props) {
             </div>
           )}
         </section>
+      ) : next ? (
+        /* No one singing but songs ARE waiting — show the queue, NOT a big QR. */
+        <section className="kd-stage board" aria-label="다음 순서">
+          <div className="kd-nowbar hero kd-fade" key={next.id}>
+            <div className="kd-now-label">
+              {next.ready ? '✅ READY TO PLAY' : 'UP NEXT'}
+            </div>
+            <div className="kd-now-singer">{next.guestName}</div>
+            <div className="kd-now-song">{next.title}</div>
+            {(() => {
+              const badge = badgeForKind(next.videoKind);
+              return badge ? (
+                <div className="kd-now-badge">
+                  <span className={`vk-badge vk-${badge.tone} kd-badge`}>
+                    {badge.emoji} {badge.label}
+                  </span>
+                </div>
+              ) : null;
+            })()}
+            {next.artist && <div className="kd-now-artist">{next.artist}</div>}
+          </div>
+
+          {comingUp.length > 0 && (
+            <div className="kd-comingup">
+              <div className="kd-comingup-label">COMING UP</div>
+              <ol className="kd-comingup-list">
+                {comingUp.map((r) => (
+                  <li key={r.id} className="kd-comingup-row">
+                    <span className="kd-cu-singer">{r.guestName}</span>
+                    <span className="kd-cu-song">{r.title}</span>
+                    {r.ready && <span className="kd-cu-ready">READY</span>}
+                  </li>
+                ))}
+              </ol>
+              {waiting.length > 5 && (
+                <div className="kd-comingup-more">+ {waiting.length - 5} more songs</div>
+              )}
+            </div>
+          )}
+        </section>
       ) : (
         <section className="kd-empty" aria-label="대기 중">
           <div className="kd-empty-mic" aria-hidden>🎤</div>
@@ -195,11 +237,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
             <div className="kd-video-ph big" aria-hidden>🎤</div>
           )}
           <div className="kd-empty-title">휴대폰으로 노래를 신청하세요</div>
-          <div className="kd-empty-sub">
-            {state && state.waitingCount > 0
-              ? `${state.waitingCount}곡이 대기 중이에요.`
-              : '첫 번째 신청자가 오늘의 무대를 시작합니다.'}
-          </div>
+          <div className="kd-empty-sub">첫 번째 신청자가 오늘의 무대를 시작합니다.</div>
         </section>
       )}
     </div>

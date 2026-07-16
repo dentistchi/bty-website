@@ -2178,9 +2178,16 @@ a.btn.block {
   gap: 8px;
   margin: 10px 0 4px;
 }
-.dj-actions-bar > button {
+.dj-actions-bar > button,
+.dj-actions-bar > a {
   flex: 1 1 0;
   min-height: 44px;
+}
+.dj-actions-bar > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 /* This console is an exception surface — the note makes that unmistakable. */
 .dj-exception-note {
@@ -2705,6 +2712,62 @@ a.btn.block {
   margin: 16px 0 0;
   font-size: clamp(0.85rem, 1.6vw, 1.05rem);
   color: var(--muted-2);
+}
+
+/* V6.1 Display waiting-stage: the queue when no one is singing (not a big QR). */
+.kd-comingup {
+  flex: 0 0 auto;
+  margin-top: 6px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  max-width: min(92vw, 900px);
+  width: 100%;
+}
+.kd-comingup-label {
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+  margin-bottom: 8px;
+}
+.kd-comingup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kd-comingup-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+}
+.kd-cu-singer {
+  font-weight: 900;
+  color: #fff;
+  min-width: 4em;
+}
+.kd-cu-song {
+  color: var(--muted);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kd-cu-ready {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #7be3ab;
+  font-size: 0.7em;
+}
+.kd-comingup-more {
+  margin-top: 8px;
+  color: var(--muted-2);
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
 }
 
 .kd-empty {

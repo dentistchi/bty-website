@@ -66,7 +66,7 @@ export default function PairClient({ slug, displayName }: Props) {
   if (phase === 'no-code') {
     return (
       <div className="card hero glow">
-        <div className="eyebrow cyan">Join as DJ</div>
+        <div className="eyebrow cyan">Connect Display</div>
         <div className="display-sm" style={{ marginTop: 6 }}>
           Scan the host’s QR
         </div>
@@ -80,21 +80,21 @@ export default function PairClient({ slug, displayName }: Props) {
   if (phase === 'error') {
     return (
       <div className="card hero glow">
-        <div className="eyebrow cyan">Join as DJ</div>
+        <div className="eyebrow cyan">Connect Display</div>
         <div className="display-sm" style={{ marginTop: 6 }}>
           Pairing didn’t work
         </div>
         <div className="banner error" style={{ marginTop: 12 }}>
           {error}
         </div>
-        <p className="lead">Ask the host to tap “Connect a DJ iPad” for a fresh code.</p>
+        <p className="lead">Ask the host to tap “Connect Display iPad” for a fresh code.</p>
       </div>
     );
   }
 
   return (
     <div className="card hero glow fade-up">
-      <div className="eyebrow cyan">Join as DJ</div>
+      <div className="eyebrow cyan">Connect Display</div>
       <div className="display" style={{ margin: '6px 0' }}>
         {displayName}
       </div>

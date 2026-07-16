@@ -449,7 +449,7 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
           {ended ? `This iPad is no longer connected to ${displayName}.` : `Connect this iPad to ${displayName}`}
         </div>
         <p className="lead">
-          Ask the host to open <b>Connect a DJ iPad</b> on their phone, then scan the QR with this
+          Ask the host to open <b>Connect Display iPad</b> on their phone, then scan the QR with this
           iPad’s camera.
         </p>
         {error && <div className="banner error">{error}</div>}

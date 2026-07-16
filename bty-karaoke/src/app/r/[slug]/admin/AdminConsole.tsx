@@ -6,6 +6,7 @@ import type { KaraokeSession } from '@/lib/sessions.server';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { pairingSecondsRemaining, formatCountdown } from '@/domain/pairing';
 import { adminInitFromProbe } from '@/domain/admin-init';
+import DjConsole from '../dj/DjConsole';
 
 interface Props {
   slug: string;
@@ -326,7 +327,7 @@ export default function AdminConsole({ slug, displayName }: Props) {
   }
 
   async function rotate() {
-    if (!window.confirm('Rotate DJ access? Every paired DJ iPad must scan a new code to reconnect.')) return;
+    if (!window.confirm('Rotate Display access? Every paired Display iPad must scan a new code to reconnect.')) return;
     setBusy(true);
     try {
       const res = await adminCall('/admin/rotate', { method: 'POST' });
@@ -418,175 +419,9 @@ export default function AdminConsole({ slug, displayName }: Props) {
 
   const live = Boolean(session);
 
-  return (
-    <>
-      {brandHead}
-
-      <div className="row between" style={{ marginBottom: 4 }}>
-        <div className="eyebrow">Tonight’s Room</div>
-        {live ? (
-          <span className="pill live">
-            <span className="live-dot" aria-hidden />
-            LIVE
-          </span>
-        ) : (
-          <span className="pill">Ready</span>
-        )}
-      </div>
-      <div className="display">{displayName}</div>
-
-      {!live ? (
-        <div className="card hero glow fade-up">
-          <p className="lead">The stage is set. Start the night and share the guest QR.</p>
-          <button className="primary lg block" style={{ marginTop: 14 }} disabled={busy} onClick={startRoom}>
-            {busy ? 'Starting…' : 'Start the room'}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="metric-row">
-            <div className="metric">
-              <div className="n">{stats.guests}</div>
-              <div className="k">singers joined</div>
-            </div>
-            <div className="metric">
-              <div className="n">{stats.requests}</div>
-              <div className="k">songs in the room</div>
-            </div>
-          </div>
-
-          <div className="stack" style={{ margin: '16px 0' }}>
-            <button className="cyan lg block" disabled={busy} onClick={showGuestQr}>
-              Show guest QR
-            </button>
-            <button className="primary lg block" disabled={busy} onClick={openPairing}>
-              Connect a DJ iPad
-            </button>
-          </div>
-
-          <div className="card glow">
-            <div className="eyebrow muted">Paired devices</div>
-            {devices.length === 0 ? (
-              <p className="lead" style={{ marginTop: 8 }}>
-                No devices yet. Tap “Connect a DJ iPad” to pair one.
-              </p>
-            ) : (
-              devices.map((d) => (
-                <div className={`device-row${d.status === 'revoked' ? ' revoked' : ''}`} key={d.id}>
-                  <span
-                    className={`status-dot ${d.status === 'active' ? 'ok' : ''}`}
-                    aria-hidden
-                  />
-                  <div className="grow">
-                    <div className="d-name">
-                      {d.label}
-                      {d.role === 'admin' ? ' · Admin' : ''}
-                    </div>
-                    <div className="d-meta">
-                      {d.status === 'revoked' ? 'Revoked' : 'Connected'} · paired{' '}
-                      {new Date(d.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  {d.status === 'active' && d.role === 'dj' && (
-                    <button className="danger" onClick={() => revoke(d.id, d.label)}>
-                      Revoke
-                    </button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="row between" style={{ marginTop: 18 }}>
-            <button className="linkish" onClick={rotate}>
-              Rotate DJ access
-            </button>
-            <button className="danger" disabled={busy} onClick={endRoom}>
-              End karaoke night
-            </button>
-          </div>
-        </>
-      )}
-
-      <div className="row" style={{ justifyContent: 'center', marginTop: 24 }}>
-        <button className="linkish" onClick={signOut}>
-          Sign out of this phone
-        </button>
-      </div>
-
-      {/* DJ pairing sheet */}
-      {pairing && (
-        <div className="qr-overlay" role="dialog" aria-modal="true" aria-label="Connect a DJ">
-          {pairedLabel ? (
-            <div className="bloom">
-              <span className="pill ok">✓ DJ CONNECTED</span>
-              <div className="display-sm" style={{ margin: '14px 0' }}>
-                {pairedLabel} is ready.
-              </div>
-              <button className="primary lg" onClick={cancelPairing}>
-                Open room controls
-              </button>
-            </div>
-          ) : (
-            <div>
-              <div className="eyebrow cyan">Connect a DJ</div>
-              <div className="display-sm" style={{ margin: '6px 0 14px' }}>
-                Scan this with the iPad
-              </div>
-              {(() => {
-                const secs = pairingSecondsRemaining(pairing.expiresAt, nowMs || Date.now());
-                if (secs <= 0) {
-                  return (
-                    <div className="card" style={{ maxWidth: 340, margin: '0 auto' }}>
-                      <p className="lead">This code expired.</p>
-                      <button className="primary block" disabled={busy} onClick={openPairing}>
-                        New code
-                      </button>
-                    </div>
-                  );
-                }
-                return (
-                  <>
-                    <div className="qr-surface" dangerouslySetInnerHTML={{ __html: pairing.qrSvg }} />
-                    <div className="qr-caption">
-                      {displayName} · Expires in{' '}
-                      <span className="countdown">{formatCountdown(secs)}</span>
-                    </div>
-                    <p className="muted">Only one device can use this code.</p>
-                  </>
-                );
-              })()}
-              <div className="row" style={{ justifyContent: 'center', marginTop: 8 }}>
-                <button className="ghost" disabled={busy} onClick={openPairing}>
-                  Refresh code
-                </button>
-                <button className="linkish" onClick={cancelPairing}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Guest QR overlay */}
-      {guestQr && (
-        <div className="qr-overlay" role="dialog" aria-modal="true" aria-label="Guest QR">
-          <div>
-            <div className="eyebrow">Request a song</div>
-            <div className="display-sm" style={{ margin: '6px 0 14px' }}>
-              Scan to join {displayName}
-            </div>
-            <div className="qr-surface" dangerouslySetInnerHTML={{ __html: guestQr.qrSvg }} />
-            <div className="qr-caption">{stats.guests} singers joined</div>
-            <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
-              <button className="ghost" onClick={() => setGuestQr(null)}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  // V6.1: an authenticated room admin lands DIRECTLY on the Admin Player — the one
+  // canonical operating screen (Player Hero + queue + admin menu with Guest QR,
+  // Connect Display iPad, Devices). No extra console hop — the old stats/devices
+  // screen is retired; the Player is the operating surface.
+  return <DjConsole slug={slug} displayName={displayName} />;
 }

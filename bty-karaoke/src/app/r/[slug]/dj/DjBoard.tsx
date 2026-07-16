@@ -590,6 +590,15 @@ export default function DjBoard({
         <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
           🔳 Guest QR
         </button>
+        {/* Open the room's read-only Display (same canonical event) in a new tab. */}
+        <a
+          className="ghost"
+          href={`/r/${encodeURIComponent(slug)}/display`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          🖥 Open Display
+        </a>
       </div>
 
       {reconnecting && (

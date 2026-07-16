@@ -395,7 +395,7 @@ export default function ManagerConsole() {
                 setQr({ kind: 'dj', svg: created.djEnrollmentQrSvg, url: created.djEnrollmentUrl, expiresAt: created.djEnrollmentExpiresAt, title: created.event.name })
               }
             >
-              Show DJ Setup QR
+              Connect Display
             </button>
           </div>
 
@@ -481,7 +481,7 @@ export default function ManagerConsole() {
             <div className="stack" style={{ margin: '14px 0' }}>
               {detail.event.status === 'active' && (
                 <button className="primary lg block" disabled={busy} onClick={() => showDjQr(detail.event.id, detail.event.name)}>
-                  Show DJ Setup QR
+                  Connect Display
                 </button>
               )}
               <button
@@ -491,7 +491,7 @@ export default function ManagerConsole() {
                 Show Guest QR
               </button>
               <a className="btn ghost block" href={`/r/${djRoomSlug(detail.event.publicCode)}/dj`}>
-                Open DJ Console
+                Open Admin Player
               </a>
             </div>
 

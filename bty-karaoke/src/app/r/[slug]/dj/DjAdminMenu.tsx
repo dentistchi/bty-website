@@ -192,7 +192,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
             <div className="sheet-eyebrow">Admin · {displayName}</div>
             <div className="admin-group">
               <button type="button" className="admin-item" onClick={openPair}>
-                DJ iPad 연결
+                Display iPad 연결
               </button>
               <button
                 type="button"
@@ -220,7 +220,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
             <div className="admin-group-label">방 관리</div>
             <div className="admin-group">
               <button type="button" className="admin-item" onClick={() => setView('devices')}>
-                DJ 기기 관리
+                연결된 기기
               </button>
               <button type="button" className="admin-item" onClick={() => setView('end')}>
                 오늘 밤 종료
@@ -229,7 +229,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
             <div className="admin-group-label">보안</div>
             <div className="admin-group">
               <button type="button" className="admin-item danger-item" onClick={() => setView('rotate')}>
-                DJ 연결 초기화
+                기기 연결 초기화
               </button>
             </div>
             <button type="button" className="sheet-close linkish" onClick={onClose}>
@@ -240,7 +240,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
 
         {view === 'pair' && (
           <div style={{ textAlign: 'center' }}>
-            <div className="sheet-eyebrow">DJ iPad 연결</div>
+            <div className="sheet-eyebrow">Display iPad 연결</div>
             {pairedLabel ? (
               <div className="bloom">
                 <span className="pill ok">✓ 연결됨</span>
@@ -290,7 +290,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
 
         {view === 'devices' && (
           <>
-            <div className="sheet-eyebrow">DJ 기기 관리</div>
+            <div className="sheet-eyebrow">연결된 기기</div>
             {devices.length === 0 ? (
               <p className="lead">연결된 기기가 없어요.</p>
             ) : (
@@ -363,7 +363,7 @@ export default function DjAdminMenu({ slug, displayName, cred, onShowGuestQr, on
                 돌아가기
               </button>
               <button type="button" className="sheet-btn coral" disabled={busy} onClick={rotate}>
-                DJ 연결 초기화
+                기기 연결 초기화
               </button>
             </div>
           </div>
