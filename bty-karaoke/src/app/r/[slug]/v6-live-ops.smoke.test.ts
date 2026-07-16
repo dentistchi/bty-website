@@ -15,10 +15,28 @@ const pair = readFileSync(root + 'r/[slug]/dj/pair/PairClient.tsx', 'utf8');
 const adminMenu = readFileSync(root + 'r/[slug]/dj/DjAdminMenu.tsx', 'utf8');
 const uiFiles = { admin, display, board, manager, pair, adminMenu };
 
+const djConsole = readFileSync(root + 'r/[slug]/dj/DjConsole.tsx', 'utf8');
+
 describe('canonical Admin entry renders the Admin Player (V6.1)', () => {
   it('the authenticated room admin renders DjConsole directly (no "Open DJ Console" hop)', () => {
     expect(admin).toContain("import DjConsole from '../dj/DjConsole'");
-    expect(admin).toMatch(/return <DjConsole slug=\{slug\} displayName=\{displayName\} \/>;/);
+    expect(admin).toMatch(/return <DjConsole slug=\{slug\} displayName=\{displayName\}/);
+  });
+});
+
+describe('unified Admin auth — Player reuses the Admin session (V6.2)', () => {
+  it('AdminConsole passes its authenticated session cred to the Player', () => {
+    expect(admin).toMatch(/<DjConsole[^>]*sessionCred=\{cred\}/);
+  });
+  it('the Player accepts a sessionCred and uses it as its sole auth', () => {
+    expect(djConsole).toMatch(/sessionCred\??:\s*string \| null/);
+    expect(djConsole).toContain('if (sessionCred) {');
+  });
+  it('an authenticated Admin NEVER sees the host-code / pairing screen', () => {
+    // The host-code screen is gated behind `&& sessionCred` (reconnecting) and
+    // the legacy branch requires NO sessionCred.
+    expect(djConsole).toMatch(/phase === 'unpaired' \|\| phase === 'disconnected'\) && sessionCred/);
+    expect(djConsole).toContain('Reconnecting… your session is safe.');
   });
 });
 

@@ -13,6 +13,14 @@ interface Props {
   slug: string;
   displayName: string;
   dev?: boolean;
+  /**
+   * V6.2: when the Player is rendered inside an ALREADY-authenticated Admin (the
+   * room admin console), the Admin's session credential is passed here. The Player
+   * reuses it as its sole auth and NEVER re-authenticates or shows the legacy
+   * host-code / pairing screen — Admin authenticates exactly once. (authorizeDj ⊇
+   * authorizeAdmin, so an admin cred always authorizes the queue.)
+   */
+  sessionCred?: string | null;
 }
 
 type Phase = 'loading' | 'unpaired' | 'disconnected' | 'authed';
@@ -59,7 +67,7 @@ interface QueuePayload {
   eventStatus: DjEventStatus | null;
 }
 
-export default function DjConsole({ slug, displayName, dev = false }: Props) {
+export default function DjConsole({ slug, displayName, dev = false, sessionCred = null }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [cred, setCred] = useState<string | null>(null);
   const [credSource, setCredSource] = useState<'dj' | 'admin' | null>(null);
@@ -129,6 +137,20 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
   // neither authenticates.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // V6.2: rendered inside an authenticated Admin — reuse that session credential
+    // as the ONLY auth. No pairing, no host code, no re-authentication. A cred that
+    // passed authorizeAdmin always passes authorizeDj, so /dj/queue accepts it; a
+    // transient failure only shows "reconnecting", never the host-code screen.
+    if (sessionCred) {
+      setCred(sessionCred);
+      setCredSource('admin');
+      setPhase('authed');
+      const cached = readQueueCache(slug);
+      if (cached) setData(cached);
+      setReconnecting(true);
+      void loadQueue(sessionCred).then((r) => setReconnecting(r !== 'ok'));
+      return;
+    }
     const candidates: Array<{ source: 'dj' | 'admin'; key: string; token: string }> = [];
     const djTok = window.localStorage.getItem(storageKey(slug));
     const adminTok = window.localStorage.getItem(adminKey(slug));
@@ -175,21 +197,24 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       // cached board, the device was revoked → disconnected; otherwise unpaired.
       setPhase(cached ? 'disconnected' : 'unpaired');
     })();
-  }, [slug, loadQueue]);
+  }, [slug, loadQueue, sessionCred]);
 
   // Live polling while authed.
   useEffect(() => {
     if (phase !== 'authed' || !cred) return;
     const t = window.setInterval(async () => {
       const r = await loadQueue(cred);
-      if (r === 'unauth') {
+      // With an Admin session cred a 401 is not expected (authorizeDj ⊇
+      // authorizeAdmin) and must never drop to the host-code screen — treat any
+      // hiccup as reconnecting and keep the Player up.
+      if (r === 'unauth' && !sessionCred) {
         setPhase('disconnected');
       } else {
-        setReconnecting(r === 'neterr');
+        setReconnecting(r !== 'ok');
       }
     }, POLL_MS);
     return () => window.clearInterval(t);
-  }, [phase, cred, loadQueue]);
+  }, [phase, cred, loadQueue, sessionCred]);
 
   const refresh = useCallback(async () => {
     if (!cred) return;
@@ -434,6 +459,20 @@ export default function DjConsole({ slug, displayName, dev = false }: Props) {
       <main>
         {brandHead}
         <p className="lead">Opening the DJ console…</p>
+      </main>
+    );
+  }
+
+  // V6.2: an authenticated Admin NEVER sees the pairing / host-code screen. If the
+  // Player is rendered with an Admin session cred, a transient issue shows a quiet
+  // reconnecting state instead of asking for a host code (which no longer exists).
+  if ((phase === 'unpaired' || phase === 'disconnected') && sessionCred) {
+    return (
+      <main>
+        {brandHead}
+        <div className="reconnecting" role="status">
+          <span className="status-dot warn" aria-hidden /> Reconnecting… your session is safe.
+        </div>
       </main>
     );
   }

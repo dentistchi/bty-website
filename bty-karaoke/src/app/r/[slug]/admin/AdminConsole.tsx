@@ -423,5 +423,5 @@ export default function AdminConsole({ slug, displayName }: Props) {
   // canonical operating screen (Player Hero + queue + admin menu with Guest QR,
   // Connect Display iPad, Devices). No extra console hop — the old stats/devices
   // screen is retired; the Player is the operating surface.
-  return <DjConsole slug={slug} displayName={displayName} />;
+  return <DjConsole slug={slug} displayName={displayName} sessionCred={cred} />;
 }
