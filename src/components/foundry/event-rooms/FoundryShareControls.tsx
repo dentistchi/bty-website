@@ -31,8 +31,13 @@ export function FoundryShareControls({
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
   const [teamsState, setTeamsState] = useState<"idle" | "opening" | "fallback">("idle");
   const [status, setStatus] = useState(""); // aria-live announcement
+  // Native = the iOS system share sheet (app-neutral primary). Resolved after
+  // mount so SSR/hydration render the web labels first, then align on the client.
+  const [native, setNative] = useState(false);
   const manualRef = useRef<HTMLTextAreaElement | null>(null);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => setNative(isNative()), []);
 
   const contentType = event.content_type === "document" ? "document" : "youtube";
   const invitation = buildFoundryInvitation({
@@ -99,10 +104,10 @@ export function FoundryShareControls({
     // Microsoft login). The canonical join URL rides in the separate `url` field.
     if (isNative() && typeof navigator !== "undefined" && typeof navigator.share === "function") {
       setTeamsState("opening");
-      setStatus(t.chooseTeams);
+      setStatus(t.chooseAppToShare);
       try {
         await navigator.share({ title: event.title, text: shareText, url: event.join_url });
-        // Sheet handed off to the chosen app. We do NOT assert "Shared to Teams".
+        // Sheet handed off to the chosen app. We do NOT assert a successful send.
         setTeamsState("idle");
         setStatus("");
         return;
@@ -116,7 +121,7 @@ export function FoundryShareControls({
         // Share API failed → honest copy fallback.
         const copied = await writeClipboard();
         setTeamsState("fallback");
-        setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
+        setStatus(copied ? t.readyToPasteNative : t.teamsCouldNotOpen);
         if (!copied) revealManual();
         return;
       }
@@ -127,7 +132,7 @@ export function FoundryShareControls({
       setTeamsState("opening");
       const copied = await writeClipboard();
       setTeamsState("fallback");
-      setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
+      setStatus(copied ? t.readyToPasteNative : t.teamsCouldNotOpen);
       if (!copied) revealManual();
       return;
     }
@@ -158,9 +163,10 @@ export function FoundryShareControls({
     teamsUrl,
     writeClipboard,
     revealManual,
-    t.chooseTeams,
+    t.chooseAppToShare,
     t.openingTeams,
     t.readyToPaste,
+    t.readyToPasteNative,
     t.teamsCouldNotOpen,
   ]);
 
@@ -168,28 +174,52 @@ export function FoundryShareControls({
     <section className="flex flex-col gap-2" aria-label={t.shareRoomHeader}>
       <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.shareRoomHeader}</h2>
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onCopy}
-          aria-label={t.copyInvitation}
-          className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
-        >
-          {copyState === "copied" ? t.invitationCopied : t.copyInvitation}
-        </button>
-        <button
-          type="button"
-          onClick={onShareTeams}
-          aria-label={t.shareToTeams}
-          className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
-        >
-          {teamsState === "opening" ? t.openingTeams : t.shareToTeams}
-        </button>
-      </div>
+      {native ? (
+        // Native: the primary action opens the iOS system share sheet (app-neutral
+        // "Share invitation"); Copy invitation stays as a quieter secondary.
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onShareTeams}
+            aria-label={t.shareInvitation}
+            className="w-full rounded-xl bg-[#C9A66B] px-4 py-3 text-sm font-semibold text-[#0B1F3A] transition-opacity hover:opacity-90"
+          >
+            {t.shareInvitation}
+          </button>
+          <button
+            type="button"
+            onClick={onCopy}
+            aria-label={t.copyInvitation}
+            className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
+          >
+            {copyState === "copied" ? t.invitationCopied : t.copyInvitation}
+          </button>
+        </div>
+      ) : (
+        // Web desktop: Copy invitation + the official Share to Teams dialog (unchanged).
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCopy}
+            aria-label={t.copyInvitation}
+            className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
+          >
+            {copyState === "copied" ? t.invitationCopied : t.copyInvitation}
+          </button>
+          <button
+            type="button"
+            onClick={onShareTeams}
+            aria-label={t.shareToTeams}
+            className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.07]"
+          >
+            {teamsState === "opening" ? t.openingTeams : t.shareToTeams}
+          </button>
+        </div>
+      )}
 
-      {/* Fallback message for the Teams path (popup blocked / unsupported). */}
+      {/* Fallback message for the share path (cancel/blocked/unsupported). */}
       {teamsState === "fallback" ? (
-        <p className="text-xs text-white/60">{status || t.readyToPaste}</p>
+        <p className="text-xs text-white/60">{status || (native ? t.readyToPasteNative : t.readyToPaste)}</p>
       ) : null}
 
       {/* Manual-copy fallback: selectable invitation text when clipboard is denied. */}

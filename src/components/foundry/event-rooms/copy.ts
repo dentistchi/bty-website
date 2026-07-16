@@ -69,10 +69,14 @@ export type EventRoomsCopy = {
   invitationCopied: string;
   copyFailedManual: string;
   shareToTeams: string;
+  // Native primary action — opens the iOS system share sheet (app-neutral label).
+  shareInvitation: string;
   openingTeams: string;
   chooseTeams: string;
+  chooseAppToShare: string;
   teamsCouldNotOpen: string;
   readyToPaste: string;
+  readyToPasteNative: string;
   openTeams: string;
   closeFallback: string;
   rotateQr: string;
@@ -147,10 +151,13 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     invitationCopied: "Invitation copied",
     copyFailedManual: "Couldn’t copy automatically. Select and copy the text below.",
     shareToTeams: "Share to Teams",
+    shareInvitation: "Share invitation",
     openingTeams: "Opening Teams…",
     chooseTeams: "Choose Teams to share",
+    chooseAppToShare: "Choose an app to share",
     teamsCouldNotOpen: "Teams could not be opened. The invitation is ready to paste.",
     readyToPaste: "Invitation copied. Paste it into Teams.",
+    readyToPasteNative: "Invitation ready to paste.",
     openTeams: "Open Teams",
     closeFallback: "Close",
     rotateQr: "Rotate QR",
@@ -223,10 +230,13 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     invitationCopied: "초대장이 복사되었습니다",
     copyFailedManual: "자동으로 복사하지 못했습니다. 아래 텍스트를 선택해 복사하세요.",
     shareToTeams: "Teams로 공유",
+    shareInvitation: "초대장 공유",
     openingTeams: "Teams 여는 중…",
     chooseTeams: "공유에서 Teams를 선택하세요",
+    chooseAppToShare: "공유할 앱을 선택하세요",
     teamsCouldNotOpen: "Teams를 열 수 없습니다. 초대장을 붙여넣을 준비가 되었습니다.",
     readyToPaste: "초대장이 복사되었습니다. Teams에 붙여넣으세요.",
+    readyToPasteNative: "초대장을 붙여넣을 준비가 되었습니다.",
     openTeams: "Teams 열기",
     closeFallback: "닫기",
     rotateQr: "QR 재발급",
