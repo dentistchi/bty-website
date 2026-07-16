@@ -454,6 +454,9 @@ export default function DjBoard({
 
   const live = Boolean(data?.session);
   const eventStatus = data?.eventStatus ?? null;
+  // V7.1 PART H: an ended event exposes no Guest QR action (a retired QR must not
+  // be re-shown); the Start New Event action takes its place until rotation.
+  const eventEnded = !!eventStatus && eventStatus.status !== 'active';
   const durationLabel = eventStatus ? formatEventDuration(eventStatus.startsAt, nowMs || Date.now()) : '';
 
   // Tick a coarse clock (30s) so the header/sheet duration stays current while a
@@ -619,9 +622,11 @@ export default function DjBoard({
           state. Guest QR only (Add song lives in the admin menu, off the base
           screen; playback is not a DJ action anymore). */}
       <div className="dj-actions-bar" role="group" aria-label="Admin actions">
-        <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
-          🔳 Guest QR
-        </button>
+        {!eventEnded && (
+          <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
+            🔳 Guest QR
+          </button>
+        )}
         {/* Open the room's read-only Display (same canonical event) in a new tab. */}
         <a
           className="ghost"

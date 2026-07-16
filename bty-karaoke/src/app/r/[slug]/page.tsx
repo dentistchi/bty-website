@@ -3,6 +3,7 @@ import { getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import RequestForm from './RequestForm';
 import QueueBoard from './QueueBoard';
+import RoomLiveGuard from './RoomLiveGuard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,10 +76,14 @@ export default async function RoomPage({
       </div>
       <p className="muted">노래를 검색해 신청하고, 내 차례가 되면 직접 시작하세요.</p>
 
-      <RequestForm slug={room.slug} roomOpen={room.status === 'open'} eventId={eventId} />
+      {/* V7.1: flips this already-open screen to the ended notice the instant the
+          Event ends or is rotated, so a live screen never keeps taking requests. */}
+      <RoomLiveGuard slug={room.slug} initialEventId={eventId} roomName={room.display_name}>
+        <RequestForm slug={room.slug} roomOpen={room.status === 'open'} eventId={eventId} />
 
-      {/* Live full-queue view (canonical /display resolver, my songs highlighted). */}
-      <QueueBoard slug={room.slug} eventId={eventId} />
+        {/* Live full-queue view (canonical /display resolver, my songs highlighted). */}
+        <QueueBoard slug={room.slug} eventId={eventId} />
+      </RoomLiveGuard>
     </main>
   );
 }

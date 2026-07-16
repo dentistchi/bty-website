@@ -142,9 +142,12 @@ describe('Display polish V4 — hero, LIVE panel, empty stage, data-keyed motion
     expect(display).toMatch(/kd-live-num[^]*key=\{value\}|key=\{value\}[^]*kd-live-num/);
   });
 
-  it('has a welcoming empty stage (not just a bare QR)', () => {
+  it('has a welcoming empty stage that points at the ONE top-right QR (V7.1: no central QR)', () => {
     expect(display).toContain('오늘의 노래');
-    expect(display).toContain('첫 번째 신청자가 오늘의 무대를 시작합니다');
+    expect(display).toContain('아직 신청된 곡이 없습니다');
+    expect(display).toContain('오른쪽 위 QR을 스캔해 첫 곡을 신청하세요');
+    // The true-empty stage no longer renders a second, central QR.
+    expect(display).not.toContain('kd-empty-qr');
   });
 });
 

@@ -27,6 +27,8 @@ interface Req {
   room_id: string;
   status: string;
   ready_at: string | null;
+  event_id?: string | null;
+  guest_name?: string;
 }
 interface Sess {
   id: string;
@@ -181,6 +183,7 @@ import {
   getCanonicalEvent,
   getLatestEndedEvent,
   roomHasAnyEvent,
+  eventStatsById,
 } from './events.server';
 
 function seedEvent(partial: Partial<Ev>): Ev {
@@ -285,6 +288,60 @@ describe('endEvent — closes the Event + clears the live queue (V7 PART B)', ()
     const ev = seedEvent({ status: 'ended', ended_at: 'x' });
     const again = await endEvent(ev.id);
     expect(again?.status).toBe('ended');
+  });
+});
+
+describe('V7.1 — LIVE stats are scoped to ONE event id, never room history', () => {
+  const req = (event_id: string | null, status: string, guest_name: string): Req => ({
+    id: `r-${++db.seq}`,
+    room_id: 'room-A',
+    status,
+    ready_at: null,
+    event_id,
+    guest_name,
+  });
+
+  it('counts only the current event — a past event and untagged legacy rows are excluded', async () => {
+    db.requests.push(
+      // Event 1 (past): should NOT count toward event 2.
+      req('evt-1', 'completed', 'Ann'),
+      req('evt-1', 'completed', 'Ben'),
+      // Legacy pre-V7.1 rows (event_id null): belong to no event.
+      req(null, 'completed', 'Ghost'),
+      req(null, 'waiting', 'Ghost2'),
+      // Event 2 (current): the only rows that should count for evt-2.
+      req('evt-2', 'waiting', 'Cara'),
+      req('evt-2', 'playing', 'Dan'),
+      req('evt-2', 'completed', 'Cara'), // Cara again — distinct singers must dedupe
+    );
+    const stats = await eventStatsById('evt-2');
+    expect(stats.totalRequests).toBe(3); // only evt-2 rows
+    expect(stats.uniqueGuests).toBe(2); // Cara + Dan (deduped), NOT the 4 others
+    expect(stats.completed).toBe(1); // only Cara's evt-2 completion
+    expect(stats.waiting).toBe(1);
+    expect(stats.playing).toBe(1);
+  });
+
+  it('a brand-new event with no tagged rows reads exactly zero', async () => {
+    db.requests.push(req('evt-1', 'completed', 'Ann'), req('evt-1', 'waiting', 'Ben'));
+    const stats = await eventStatsById('evt-2');
+    expect(stats.totalRequests).toBe(0);
+    expect(stats.uniqueGuests).toBe(0);
+    expect(stats.completed).toBe(0);
+    expect(stats.waiting).toBe(0);
+  });
+
+  it('event 1 summary stays frozen after event 2 accrues its own requests', async () => {
+    db.requests.push(
+      req('evt-1', 'completed', 'Ann'),
+      req('evt-1', 'completed', 'Ben'),
+      req('evt-2', 'waiting', 'Cara'),
+      req('evt-2', 'waiting', 'Dan'),
+    );
+    const e1 = await eventStatsById('evt-1');
+    expect(e1.totalRequests).toBe(2);
+    expect(e1.completed).toBe(2);
+    expect(e1.waiting).toBe(0); // event 2's waiting rows never leak into event 1
   });
 });
 

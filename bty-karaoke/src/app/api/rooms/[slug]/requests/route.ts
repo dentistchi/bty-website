@@ -17,21 +17,24 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   const { slug } = await ctx.params;
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
-  const [requests, live] = await Promise.all([
-    listActiveRequests(room.id),
-    getCanonicalEvent(room.id),
-  ]);
-  // Same canonical event identity the Display / DJ / Admin resolve. When no Event
-  // is live, fall back to the most recent ended Event so the guest screen can show
-  // the honest ended state (V7 PART F) instead of a stale request form. A guest
-  // read never creates an event — this is a pure lookup. Null only for a legacy
-  // room that never had an Event.
+  const live = await getCanonicalEvent(room.id);
+  // Queue scoped to the LIVE event's rows (V7.1) — never the room's history. When
+  // no Event is live, fall back to the most recent ended Event so the guest screen
+  // can show the honest ended state (V7 PART F) instead of a stale request form. A
+  // guest read never creates an event — this is a pure lookup. Null only for a
+  // legacy room that never had an Event.
   const event = live ?? (await getLatestEndedEvent(room.id));
-  return NextResponse.json({
-    room,
-    requests,
-    event: event ? { id: event.id, name: event.name, status: event.status } : null,
-  });
+  const requests = await listActiveRequests(room.id, live?.id ?? null);
+  return NextResponse.json(
+    {
+      room,
+      requests,
+      event: event ? { id: event.id, name: event.name, status: event.status } : null,
+    },
+    // V7.1 PART J: the guest screen polls this to detect an End the instant it
+    // happens — it must never be served stale from an edge cache.
+    { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
+  );
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
@@ -100,6 +103,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     youtubeChannelTitle: parsed.data.youtubeChannelTitle,
     youtubeThumbnailUrl: parsed.data.youtubeThumbnailUrl,
     sessionId: acceptance.sessionId,
+    // V7.1: permanently tag this request with its Event (access.event is the live
+    // event here — an ended one would have been refused above). Null for legacy.
+    eventId: access.event?.id ?? null,
   });
 
   // Bounded capability so ONLY this device can later cancel this request.

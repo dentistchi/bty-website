@@ -50,7 +50,10 @@ export default function DisplayClient({ slug, roomName }: Props) {
     };
   }, [poll]);
 
-  // Guest-join QR (public link) — fetched once; stable for the night.
+  // Guest-join QR (public link). V7.1 PART I: re-fetched whenever the canonical
+  // event id changes so a rotation swaps in the NEW event's QR (the old one is
+  // event-scoped and can't join the new event). Stable within a single event.
+  const eventId = state?.event?.id ?? null;
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -66,7 +69,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
     return () => {
       alive = false;
     };
-  }, [slug]);
+  }, [slug, eventId]);
 
   // Best-effort keep-awake so the board doesn't sleep mid-song. Re-acquired when
   // the tab returns to the foreground (the lock drops when hidden).
@@ -143,7 +146,9 @@ export default function DisplayClient({ slug, roomName }: Props) {
               ⛶ 전체화면
             </button>
           </div>
-          {qr && (
+          {/* V7.1 PART G: the top-right QR is the ONE join QR. Hidden once the
+              Event has ended (a retired QR must not invite new scans). */}
+          {qr && !ended && (
             <div className="kd-qr" aria-label="참여 QR">
               <div className="kd-qr-svg" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
               <div className="kd-qr-cap">Scan to join</div>
@@ -244,15 +249,12 @@ export default function DisplayClient({ slug, roomName }: Props) {
         </section>
       ) : (
         <section className="kd-empty" aria-label="대기 중">
+          {/* V7.1 PART G: NO central QR — the single join QR lives top-right. This
+              true-empty stage is text only, pointing at that one QR. */}
           <div className="kd-empty-mic" aria-hidden>🎤</div>
           <div className="kd-empty-eyebrow">오늘의 노래</div>
-          {qr ? (
-            <div className="kd-empty-qr" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
-          ) : (
-            <div className="kd-video-ph big" aria-hidden>🎤</div>
-          )}
-          <div className="kd-empty-title">휴대폰으로 노래를 신청하세요</div>
-          <div className="kd-empty-sub">첫 번째 신청자가 오늘의 무대를 시작합니다.</div>
+          <div className="kd-empty-title">아직 신청된 곡이 없습니다</div>
+          <div className="kd-empty-sub">오른쪽 위 QR을 스캔해 첫 곡을 신청하세요.</div>
         </section>
       )}
     </div>

@@ -19,12 +19,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const [requests, stats, session, eventStatus, event] = await Promise.all([
-    listActiveRequests(auth.room.id),
-    activeRequestStats(auth.room.id),
+  // Resolve the canonical LIVE event first so the queue + stats are scoped to THIS
+  // event's rows (V7.1) — never the room's whole history. Null for legacy rooms.
+  const event = await getCanonicalEvent(auth.room.id);
+  const [requests, stats, session, eventStatus] = await Promise.all([
+    listActiveRequests(auth.room.id, event?.id ?? null),
+    activeRequestStats(auth.room.id, event?.id ?? null),
     getActiveSession(auth.room.id),
-    getEventStatusForRoom(auth.room.id), // null for legacy non-event rooms
-    getCanonicalEvent(auth.room.id), // the room's ONE canonical live event (or null)
+    getEventStatusForRoom(auth.room.id), // null for legacy non-event rooms; else event-scoped
   ]);
 
   return NextResponse.json({

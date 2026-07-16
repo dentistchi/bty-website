@@ -20,12 +20,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404, headers: NO_STORE });
   }
-  const [state, live] = await Promise.all([getDisplayState(room), getCanonicalEvent(room.id)]);
-  // Inject the room's ONE canonical event identity so Display / Guest / DJ all
-  // read the same event id + honest status. When no Event is live, fall back to
-  // the most recent ended Event so the Display / guest board can show the ended
-  // stage (V7 PART G). Null only for a legacy room that never had an Event.
+  // Resolve the room's ONE canonical event identity (live, else most-recent ended)
+  // FIRST, then read the display state scoped to THAT event id so LIVE stats + queue
+  // reflect only this Event — never the room's whole history (V7.1). Null only for a
+  // legacy room that never had an Event.
+  const live = await getCanonicalEvent(room.id);
   const event = live ?? (await getLatestEndedEvent(room.id));
+  const state = await getDisplayState(room, event?.id ?? null);
   const withEvent = {
     ...state,
     event: event ? { id: event.id, name: event.name, status: event.status } : null,

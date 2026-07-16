@@ -78,6 +78,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     youtubeChannelTitle: parsed.data.youtubeChannelTitle,
     youtubeThumbnailUrl: parsed.data.youtubeThumbnailUrl,
     sessionId: acceptance.sessionId,
+    // V7.1: tag with the live event (ended would have been refused above).
+    eventId: access.event?.id ?? null,
   });
 
   // Return the fresh canonical queue so the DJ console updates immediately.

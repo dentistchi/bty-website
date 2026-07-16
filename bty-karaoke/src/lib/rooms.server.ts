@@ -41,6 +41,8 @@ export interface KaraokeRequest {
   position: number;
   status: RequestStatus;
   session_id: string | null;
+  /** V7.1: the canonical Event this request belongs to (null for legacy rows). */
+  event_id: string | null;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
@@ -166,20 +168,30 @@ export interface RoomStats {
 }
 
 /** Live counts for the room header: active requests and distinct singers. */
-export async function activeRequestStats(roomId: string): Promise<RoomStats> {
-  const active = await listActiveRequests(roomId);
+export async function activeRequestStats(
+  roomId: string,
+  eventId?: string | null,
+): Promise<RoomStats> {
+  const active = await listActiveRequests(roomId, eventId);
   const guests = new Set(active.map((r) => r.guest_name.trim().toLowerCase())).size;
   return { requests: active.length, guests };
 }
 
 /** Active queue (waiting + playing) for a room, ordered by position. */
-export async function listActiveRequests(roomId: string): Promise<KaraokeRequest[]> {
-  const { data, error } = await karaokeDb()
+export async function listActiveRequests(
+  roomId: string,
+  eventId?: string | null,
+): Promise<KaraokeRequest[]> {
+  // V7.1: when the room is owned by an Event, scope the queue to THAT Event's rows
+  // so a previous round's history never leaks into the current queue. Legacy
+  // eventless rooms (eventId null/undefined) keep the room-wide scope unchanged.
+  let q = karaokeDb()
     .from('karaoke_requests')
     .select('*')
     .eq('room_id', roomId)
-    .in('status', ACTIVE_STATUSES as unknown as string[])
-    .order('position', { ascending: true });
+    .in('status', ACTIVE_STATUSES as unknown as string[]);
+  if (eventId) q = q.eq('event_id', eventId);
+  const { data, error } = await q.order('position', { ascending: true });
   if (error) throw error;
   return (data as KaraokeRequest[]) ?? [];
 }
@@ -217,10 +229,11 @@ async function getRequestOrderFields(
 export async function getGuestQueueStatus(
   roomId: string,
   requestId: string,
+  eventId?: string | null,
 ): Promise<GuestQueueStatus | null> {
   const target = await getRequestOrderFields(roomId, requestId);
   if (!target) return null;
-  const active = await listActiveRequests(roomId);
+  const active = await listActiveRequests(roomId, eventId);
   const readyAt = active.find((r) => r.id === requestId)?.ready_at ?? null;
   return resolveGuestStatus(requestId, toOrderEntries(active), target.status, readyAt);
 }
@@ -273,6 +286,9 @@ export interface AddRequestArgs {
   youtubeThumbnailUrl?: string;
   /** The active night this request belongs to (null for legacy no-session rooms). */
   sessionId?: string | null;
+  /** The canonical Event this request belongs to (V7.1). Null for legacy eventless
+   *  rooms. This is the PERMANENT event scope for every stat/queue read. */
+  eventId?: string | null;
 }
 
 /**
@@ -305,13 +321,14 @@ export async function addRequest(
       position,
       status: 'waiting',
       session_id: args.sessionId ?? null,
+      event_id: args.eventId ?? null,
     })
     .select('*')
     .single();
   if (error) throw error;
   const request = data as KaraokeRequest;
 
-  const active = await listActiveRequests(args.roomId);
+  const active = await listActiveRequests(args.roomId, args.eventId ?? null);
   const status = resolveGuestStatus(request.id, toOrderEntries(active), request.status);
   return { request, status, activeCount: active.length };
 }
@@ -573,8 +590,11 @@ function toDisplayRequest(r: KaraokeRequest): DisplayRequest {
  * `playing` is the song on stage (null when open); `waiting` is the ordered
  * line; `next` is the first waiting song. Order matches the canonical resolver.
  */
-export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
-  const active = await listActiveRequests(room.id);
+export async function getDisplayState(
+  room: PublicRoom,
+  eventId?: string | null,
+): Promise<DisplayState> {
+  const active = await listActiveRequests(room.id, eventId);
   const playingRow = active.find((r) => r.status === 'playing') ?? null;
   const waitingRows = active
     .filter((r) => r.status === 'waiting')
@@ -591,7 +611,7 @@ export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
     next: waiting[0] ?? null,
     waiting,
     waitingCount: waiting.length,
-    stats: displayStatsFrom(await displayStatRows(room.id)),
+    stats: displayStatsFrom(await displayStatRows(room.id, eventId)),
     // The room layer does not know events (that would be an import cycle). The
     // canonical event is injected at the service/route boundary; default null.
     event: null,
@@ -603,11 +623,12 @@ export async function getDisplayState(room: PublicRoom): Promise<DisplayState> {
  * same shape `computeEventStats` consumes. Safe/public: names + statuses only,
  * never a secret. One lightweight read alongside the active-queue read.
  */
-async function displayStatRows(roomId: string): Promise<StatRequest[]> {
-  const { data, error } = await karaokeDb()
-    .from('karaoke_requests')
-    .select('guest_name, status')
-    .eq('room_id', roomId);
+async function displayStatRows(roomId: string, eventId?: string | null): Promise<StatRequest[]> {
+  // V7.1: scope the LIVE stat panel to THIS Event's rows (never the room's whole
+  // history). Legacy eventless rooms fall back to the room-wide scope unchanged.
+  let q = karaokeDb().from('karaoke_requests').select('guest_name, status');
+  q = eventId ? q.eq('event_id', eventId) : q.eq('room_id', roomId);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as StatRequest[];
 }

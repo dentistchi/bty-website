@@ -363,19 +363,33 @@ export async function eventRoomSlugOf(event: KaraokeEvent): Promise<string> {
 }
 
 /** Stat rows (guest_name + status) for a set of rooms, in one query. */
-async function statRowsForRooms(roomIds: string[]): Promise<Map<string, StatRequest[]>> {
-  const byRoom = new Map<string, StatRequest[]>();
-  roomIds.forEach((id) => byRoom.set(id, []));
-  if (roomIds.length === 0) return byRoom;
+/**
+ * V7.1 — event-scoped stat rows. Every LIVE-stat / ended-summary / event-detail
+ * number is computed from EXACTLY the requests tagged with that event_id, so a
+ * room's history across past Events never inflates a current or ended Event's
+ * counts. Keyed by event id (not room id) so two Events in the same room stay
+ * separate. Pre-V7.1 rows (event_id NULL) belong to no Event and are never counted.
+ */
+async function statRowsForEvents(eventIds: string[]): Promise<Map<string, StatRequest[]>> {
+  const byEvent = new Map<string, StatRequest[]>();
+  eventIds.forEach((id) => byEvent.set(id, []));
+  if (eventIds.length === 0) return byEvent;
   const { data, error } = await karaokeDb()
     .from('karaoke_requests')
-    .select('room_id, guest_name, status')
-    .in('room_id', roomIds);
+    .select('event_id, guest_name, status')
+    .in('event_id', eventIds);
   if (error) throw error;
-  for (const r of (data ?? []) as Array<{ room_id: string } & StatRequest>) {
-    byRoom.get(r.room_id)?.push({ guest_name: r.guest_name, status: r.status });
+  for (const r of (data ?? []) as Array<{ event_id: string } & StatRequest>) {
+    byEvent.get(r.event_id)?.push({ guest_name: r.guest_name, status: r.status });
   }
-  return byRoom;
+  return byEvent;
+}
+
+/** Event-scoped stats for ONE event id (V7.1) — the canonical counter for the
+ *  LIVE panel, the DJ header, and the ended summary. */
+export async function eventStatsById(eventId: string): Promise<EventStats> {
+  const rows = (await statRowsForEvents([eventId])).get(eventId) ?? [];
+  return computeEventStats(rows);
 }
 
 /** DJ connection per room (active dj-role device = the enrolled iPad). */
@@ -406,8 +420,8 @@ async function djConnectionForRooms(roomIds: string[]): Promise<Map<string, DjCo
 
 /** Stats for a single event (event detail / DJ header). */
 export async function eventStats(event: KaraokeEvent): Promise<EventStats> {
-  const rows = (await statRowsForRooms([event.room_id])).get(event.room_id) ?? [];
-  return computeEventStats(rows);
+  // V7.1: scope to this event's rows (was room-wide, which summed all history).
+  return eventStatsById(event.id);
 }
 
 /** DJ connection for a single event. */
@@ -435,13 +449,14 @@ export async function listEventSummaries(limit = 50): Promise<EventSummary[]> {
   if (error) throw error;
   const events = (data as KaraokeEvent[]) ?? [];
   const roomIds = events.map((e) => e.room_id);
+  // V7.1: stats keyed by EVENT id so two events in one room don't share a count.
   const [stats, dj] = await Promise.all([
-    statRowsForRooms(roomIds),
+    statRowsForEvents(events.map((e) => e.id)),
     djConnectionForRooms(roomIds),
   ]);
   return events.map((event) => ({
     event,
-    stats: computeEventStats(stats.get(event.room_id) ?? []),
+    stats: computeEventStats(stats.get(event.id) ?? []),
     dj: dj.get(event.room_id) ?? { connected: false, label: null, lastUsedAt: null },
   }));
 }
@@ -525,13 +540,14 @@ function toLiveRow(r: KaraokeRequest): LiveRow {
 }
 
 export async function getGuestLivePresenceByEvent(event: KaraokeEvent): Promise<GuestLivePresence> {
+  // V7.1: queue + counts scoped to THIS event id (was room-wide history).
   const [active, statRows] = await Promise.all([
-    listActiveRequests(event.room_id),
-    statRowsForRooms([event.room_id]),
+    listActiveRequests(event.room_id, event.id),
+    statRowsForEvents([event.id]),
   ]);
 
   const { nowPlaying, upNext } = selectLivePresence(active.map(toLiveRow));
-  const stats = computeEventStats(statRows.get(event.room_id) ?? []);
+  const stats = computeEventStats(statRows.get(event.id) ?? []);
 
   return {
     event: { name: event.name, hostName: event.host_name, status: event.status },
@@ -567,11 +583,13 @@ export async function getEventStatusForRoom(roomId: string): Promise<DjEventStat
   const event = (await getCanonicalEvent(roomId)) ?? (await getLatestEndedEvent(roomId));
   if (!event) return null;
 
+  // V7.1: queue + counts scoped to THIS event id — the DJ/Admin header no longer
+  // sums the room's whole history (that was the 8명·60곡 pollution).
   const [active, statRows] = await Promise.all([
-    listActiveRequests(roomId),
-    statRowsForRooms([roomId]),
+    listActiveRequests(roomId, event.id),
+    statRowsForEvents([event.id]),
   ]);
-  const stats = computeEventStats(statRows.get(roomId) ?? []);
+  const stats = computeEventStats(statRows.get(event.id) ?? []);
   const { nowPlaying, upNext } = selectLivePresence(active.map(toLiveRow));
 
   return {

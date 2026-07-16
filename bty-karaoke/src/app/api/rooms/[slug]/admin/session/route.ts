@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeAdmin, activeRequestStats } from '@/lib/rooms.server';
-import { bootstrapInitialEvent, getLatestEndedEvent } from '@/lib/events.server';
+import { bootstrapInitialEvent, getLatestEndedEvent, eventStatsById } from '@/lib/events.server';
 import { getActiveSession, startSession, endSession } from '@/lib/sessions.server';
 
 export const dynamic = 'force-dynamic';
@@ -30,24 +30,34 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const event = await bootstrapInitialEvent(auth.room.id, auth.room.display_name);
   const endedEvent = event ? null : await getLatestEndedEvent(auth.room.id);
 
-  const [session, stats] = await Promise.all([
+  const [session, stats, endedStats] = await Promise.all([
     getActiveSession(auth.room.id),
-    activeRequestStats(auth.room.id),
+    // V7.1: LIVE stats scoped to THIS event (null → legacy room-wide, backward compat).
+    activeRequestStats(auth.room.id, event?.id ?? null),
+    // Ended summary counts scoped to the ended event id (frozen, never room-wide).
+    endedEvent ? eventStatsById(endedEvent.id) : Promise.resolve(null),
   ]);
   return NextResponse.json({
     room: { slug: auth.room.slug, display_name: auth.room.display_name, status: auth.room.status },
     session,
     stats,
     event: event ? { id: event.id, name: event.name, status: event.status } : null,
-    endedEvent: endedEvent
-      ? {
-          id: endedEvent.id,
-          name: endedEvent.name,
-          status: endedEvent.status,
-          started_at: endedEvent.starts_at,
-          ended_at: endedEvent.ended_at,
-        }
-      : null,
+    endedEvent:
+      endedEvent && endedStats
+        ? {
+            id: endedEvent.id,
+            name: endedEvent.name,
+            status: endedEvent.status,
+            started_at: endedEvent.starts_at,
+            ended_at: endedEvent.ended_at,
+            counts: {
+              singers: endedStats.uniqueGuests,
+              requests: endedStats.totalRequests,
+              completed: endedStats.completed,
+              waiting: endedStats.waiting,
+            },
+          }
+        : null,
   });
 }
 
