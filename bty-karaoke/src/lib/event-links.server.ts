@@ -1,21 +1,21 @@
 // URL + QR builders for events. Guests get a pretty, credential-free link
-// (/j/<guestSlug>); the DJ-enrollment link REUSES the existing room pairing route
-// (/r/<roomSlug>/dj/pair?token=…) so no new DJ flow is introduced. The room slug
-// is derived deterministically from the public code — no extra query.
+// (/j/<guestSlug>, keyed on the event's real guest_slug column); the DJ-enrollment
+// link REUSES the existing room pairing route (/r/<roomSlug>/dj/pair?token=…). The
+// room slug MUST be the canonical one (karaoke_rooms.slug for the event's room_id,
+// resolved by the caller via eventRoomSlugOf) — NEVER derived from the public code,
+// which is wrong for an event on a pre-existing room and yields a dead route.
 
 import { qrSvg } from './qr.server';
-import { eventRoomSlug } from '@/domain/event-code';
 import type { KaraokeEvent } from './events.server';
 
-/** Public, credential-free guest join URL. */
+/** Public, credential-free guest join URL (keyed on the event's real guest_slug). */
 export function guestUrlFor(origin: string, event: KaraokeEvent): string {
   return `${origin}/j/${encodeURIComponent(event.guest_slug)}`;
 }
 
-/** One-use DJ-enrollment URL (reuses the room pairing route). Carries the token. */
-export function djEnrollUrlFor(origin: string, event: KaraokeEvent, token: string): string {
-  const slug = eventRoomSlug(event.public_code);
-  return `${origin}/r/${encodeURIComponent(slug)}/dj/pair?token=${encodeURIComponent(token)}`;
+/** One-use DJ-enrollment URL. `roomSlug` MUST be the canonical room slug. */
+export function djEnrollUrlFor(origin: string, roomSlug: string, token: string): string {
+  return `${origin}/r/${encodeURIComponent(roomSlug)}/dj/pair?token=${encodeURIComponent(token)}`;
 }
 
 /** Guest URL + its QR SVG. */
@@ -24,12 +24,12 @@ export async function guestQrFor(origin: string, event: KaraokeEvent): Promise<{
   return { url, qrSvg: await qrSvg(url) };
 }
 
-/** DJ-enrollment URL + its QR SVG for a freshly minted token. */
+/** DJ-enrollment URL + its QR SVG for a freshly minted token. `roomSlug` canonical. */
 export async function djEnrollQrFor(
   origin: string,
-  event: KaraokeEvent,
+  roomSlug: string,
   token: string,
 ): Promise<{ url: string; qrSvg: string }> {
-  const url = djEnrollUrlFor(origin, event, token);
+  const url = djEnrollUrlFor(origin, roomSlug, token);
   return { url, qrSvg: await qrSvg(url) };
 }

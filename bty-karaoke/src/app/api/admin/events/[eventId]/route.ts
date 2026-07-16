@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { managerEnabled, managerAuthorized } from '@/lib/manager-auth.server';
-import { getEventSummary, publicEvent } from '@/lib/events.server';
+import { getEventSummary, publicEvent, eventRoomSlugOf } from '@/lib/events.server';
 import { guestQrFor } from '@/lib/event-links.server';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +23,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: st
   if (!summary) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
   const guest = await guestQrFor(req.nextUrl.origin, summary.event);
+  // The CANONICAL room slug for this event (from room_id), or null when no room is
+  // mapped. The client builds the Admin Player link from THIS — never from the
+  // public code — so an event on a pre-existing room (bty-home) links correctly and
+  // a room-less event disables the button instead of navigating to a dead route.
+  const roomSlug = await eventRoomSlugOf(summary.event);
   return NextResponse.json({
     event: publicEvent(summary.event),
     stats: summary.stats,
     dj: summary.dj,
     guestUrl: guest.url,
     guestQrSvg: guest.qrSvg,
+    roomSlug,
   });
 }

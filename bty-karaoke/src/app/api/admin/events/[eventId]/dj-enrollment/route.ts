@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { managerEnabled, managerAuthorized } from '@/lib/manager-auth.server';
-import { getEventById, mintDjEnrollment } from '@/lib/events.server';
+import { getEventById, mintDjEnrollment, eventRoomSlugOf } from '@/lib/events.server';
 import { djEnrollQrFor } from '@/lib/event-links.server';
 import { pairingSecondsRemaining } from '@/domain/pairing';
 
@@ -27,8 +27,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ eventId: s
     return NextResponse.json({ error: 'This event has ended.' }, { status: 409 });
   }
 
+  // Build the pairing link from the CANONICAL room slug (never the public code).
+  const roomSlug = await eventRoomSlugOf(event);
+  if (!roomSlug) {
+    return NextResponse.json(
+      { error: 'This event has no room to connect a Display to.', code: 'NO_ROOM' },
+      { status: 409 },
+    );
+  }
+
   const enrollment = await mintDjEnrollment(event);
-  const dj = await djEnrollQrFor(req.nextUrl.origin, event, enrollment.token);
+  const dj = await djEnrollQrFor(req.nextUrl.origin, roomSlug, enrollment.token);
   return NextResponse.json({
     ok: true,
     djEnrollmentUrl: dj.url,

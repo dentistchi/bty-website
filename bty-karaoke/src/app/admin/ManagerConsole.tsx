@@ -43,6 +43,8 @@ interface DetailView {
   dj: DjConnection;
   guestUrl: string;
   guestQrSvg: string;
+  /** CANONICAL room slug for this event (server-resolved from room_id), or null. */
+  roomSlug: string | null;
 }
 
 type Phase = 'loading' | 'need-login' | 'ready';
@@ -52,10 +54,6 @@ type QrModal =
   | { kind: 'guest'; svg: string; url: string; title: string }
   | { kind: 'dj'; svg: string; url: string; expiresAt: string; title: string }
   | null;
-
-function djRoomSlug(publicCode: string): string {
-  return `evt-${publicCode.toLowerCase()}`;
-}
 
 export default function ManagerConsole() {
   const [phase, setPhase] = useState<Phase>('loading');
@@ -490,9 +488,23 @@ export default function ManagerConsole() {
               >
                 Show Guest QR
               </button>
-              <a className="btn ghost block" href={`/r/${djRoomSlug(detail.event.publicCode)}/dj`}>
-                Open Admin Player
-              </a>
+              {/* Uses the CANONICAL server-resolved room slug — NEVER a slug derived
+                  from the public code. When the event has no mapped room, the link is
+                  disabled with an honest note instead of navigating to "Room not found". */}
+              {detail.roomSlug ? (
+                <a className="btn ghost block" href={`/r/${encodeURIComponent(detail.roomSlug)}/dj`}>
+                  Open Admin Player
+                </a>
+              ) : (
+                <div>
+                  <button className="btn ghost block" disabled aria-disabled="true">
+                    Open Admin Player
+                  </button>
+                  <p className="muted" style={{ marginTop: 6, fontSize: '0.85rem' }}>
+                    This event has no room mapped yet — reconnect the Display to create one.
+                  </p>
+                </div>
+              )}
             </div>
 
             {detail.event.status === 'active' &&

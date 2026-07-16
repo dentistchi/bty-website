@@ -351,15 +351,23 @@ export async function getEventByGuestSlug(guestSlug: string): Promise<KaraokeEve
   return (data as KaraokeEvent) ?? null;
 }
 
-/** The room slug that owns an event (for building DJ/queue URLs). */
-export async function eventRoomSlugOf(event: KaraokeEvent): Promise<string> {
+/**
+ * The CANONICAL room slug that owns an event — the actual `karaoke_rooms.slug` for
+ * `event.room_id`, or `null` when no such room exists. This is the ONLY correct way
+ * to build a DJ / queue / Admin-Player URL for an event: an event's room may be a
+ * pre-existing room (e.g. `bty-home`) whose slug is NOT `evt-<public_code>`, so
+ * deriving the slug from the public code (`eventRoomSlug`) produces a dead route
+ * ("Room not found"). Returns null rather than a fabricated slug so callers can
+ * disable a button / show an honest state instead of linking somewhere broken.
+ */
+export async function eventRoomSlugOf(event: KaraokeEvent): Promise<string | null> {
   const { data, error } = await karaokeDb()
     .from('karaoke_rooms')
     .select('slug')
     .eq('id', event.room_id)
     .maybeSingle();
   if (error) throw error;
-  return (data?.slug as string) ?? eventRoomSlug(event.public_code);
+  return (data?.slug as string | undefined) ?? null;
 }
 
 /** Stat rows (guest_name + status) for a set of rooms, in one query. */

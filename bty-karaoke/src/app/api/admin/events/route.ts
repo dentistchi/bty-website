@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Validation failed' }, { status: 400 });
   }
 
-  const { event } = await createEvent({
+  // createEvent returns the room's canonical slug (the room is created with it) —
+  // used directly so the DJ-enroll link never depends on deriving it from the code.
+  const { event, roomSlug } = await createEvent({
     name: parsed.data.name,
     hostName: parsed.data.hostName ?? null,
     startNow: parsed.data.startNow ?? true,
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
   const enrollment = await mintDjEnrollment(event);
   const [guest, dj] = await Promise.all([
     guestQrFor(origin, event),
-    djEnrollQrFor(origin, event, enrollment.token),
+    djEnrollQrFor(origin, roomSlug, enrollment.token),
   ]);
 
   return NextResponse.json(
