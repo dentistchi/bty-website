@@ -7,6 +7,7 @@ import {
   type ModuleDraftAnswers,
   type ModuleDraftStatus,
 } from "@/domain/foundry/module/module-draft";
+import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
  * Foundry Guided Module Builder — service layer (Slice 1).
@@ -50,6 +51,8 @@ export type ModuleDraftSummary = {
   status: ModuleDraftStatus;
   current_step: number;
   module_version: number;
+  /** Card title derived from the problem statement (null when not started). */
+  title: string | null;
   updated_at: string;
   created_at: string;
 };
@@ -136,18 +139,26 @@ export async function getOwnerDraft(
   return data ?? null;
 }
 
-/** List an owner's drafts, newest-touched first. */
+/** List an owner's drafts, newest-touched first, each with a derived card title. */
 export async function listOwnerDrafts(
   admin: SupabaseClient,
   ownerUserId: string,
 ): Promise<ModuleDraftSummary[]> {
   const { data } = await admin
     .from("foundry_module_drafts")
-    .select("id, status, current_step, module_version, updated_at, created_at")
+    .select("id, status, current_step, module_version, answers, updated_at, created_at")
     .eq("owner_user_id", ownerUserId)
     .order("updated_at", { ascending: false })
-    .returns<ModuleDraftSummary[]>();
-  return data ?? [];
+    .returns<(Omit<ModuleDraftSummary, "title"> & { answers: ModuleDraftAnswers })[]>();
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    status: r.status,
+    current_step: r.current_step,
+    module_version: r.module_version,
+    title: draftTitleFrom(r.answers as BuilderAnswers),
+    updated_at: r.updated_at,
+    created_at: r.created_at,
+  }));
 }
 
 // ---------------------------------------------------------------------------

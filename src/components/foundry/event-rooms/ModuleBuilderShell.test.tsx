@@ -140,7 +140,8 @@ describe("ModuleBuilderShell — review + material intent", () => {
     mockDraftServer({ current_step: 8, answers: fullAnswers });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review header + a summary value
-    expect(await screen.findByText("DRAFT SAVED")).toBeTruthy();
+    expect(await screen.findByText("TRAINING DRAFT")).toBeTruthy();
+    expect(screen.getByText("Review what you’ve built.")).toBeTruthy();
     expect(screen.getByText("reads the dosage back at handoff")).toBeTruthy();
     // The forbidden actions must not exist.
     expect(screen.queryByText(/approve/i)).toBeNull();
@@ -153,15 +154,84 @@ describe("ModuleBuilderShell — review + material intent", () => {
   });
 
   it("choosing PDF shows the deferred copy and never calls the upload endpoint", async () => {
-    const srv = mockDraftServer({ current_step: 6, answers: { materialIntent: undefined } });
+    const srv = mockDraftServer({ current_step: 6, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("PDF document"));
-    expect(await screen.findByText(/add the document before creating the session/i)).toBeTruthy();
-    // no upload / staging-ticket call ever happened
+    expect(await screen.findByText(/add the PDF before approval/i)).toBeTruthy();
     const calledUpload = srv.fn.mock.calls.some((c) => String(c[0]).includes("/events/upload"));
     expect(calledUpload).toBe(false);
-    // no file input rendered
     expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+});
+
+describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
+  it("Step 4 asks about post-training evidence and shows the behavior as context", async () => {
+    mockDraftServer({ current_step: 4, answers: { observableBehavior: "reads the dosage back" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    expect(
+      await screen.findByText("After the training, what would show that people are doing this differently?"),
+    ).toBeTruthy();
+    // behavior shown as context
+    expect(screen.getByText("You said people should:")).toBeTruthy();
+    expect(screen.getByText("“reads the dosage back”")).toBeTruthy();
+    // verification options are fully labelled
+    expect(screen.getByText("Observed directly")).toBeTruthy();
+    expect(screen.getByText("Heard in conversation")).toBeTruthy();
+    expect(screen.getByText("Recorded in the workflow")).toBeTruthy();
+    expect(screen.getByText("Confirmed by another person")).toBeTruthy();
+    // the old unrelated handoff example is gone
+    expect(screen.queryByText(/receiving nurse/i)).toBeNull();
+  });
+
+  it("Step 5 supports MULTIPLE learning-type selections and persists the array", async () => {
+    const srv = mockDraftServer({ current_step: 5, answers: {} });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What does this training need to include?");
+    fireEvent.click(screen.getByText("Information"));
+    fireEvent.click(screen.getByText("Practice"));
+    await waitFor(() => {
+      const last = srv.patches[srv.patches.length - 1];
+      expect(last?.answers?.learningNeeds).toEqual(["know", "practice"]);
+    });
+  });
+
+  it("Step 5 restores a legacy singular learning_type into the multi-select", async () => {
+    mockDraftServer({ current_step: 5, answers: { learningNeed: "decide" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    const decision = (await screen.findByText("Decision")).closest("button") as HTMLButtonElement;
+    expect(decision.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("Step 6 offers only YouTube + PDF; Written guidance and Live discussion are gone", async () => {
+    mockDraftServer({ current_step: 6, answers: {} });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What will people learn from?");
+    expect(screen.getByText("YouTube video")).toBeTruthy();
+    expect(screen.getByText("PDF document")).toBeTruthy();
+    expect(screen.queryByText("Written guidance")).toBeNull();
+    expect(screen.queryByText("Live discussion")).toBeNull();
+  });
+
+  it("Step 6 YouTube without a URL shows the missing-link state", async () => {
+    mockDraftServer({ current_step: 6, answers: { materialIntent: "youtube" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What will people learn from?");
+    expect(screen.getByText(/Link not added yet · Required before approval/i)).toBeTruthy();
+  });
+
+  it("review begins near the top (no viewport spacer) and shows needs-attention", async () => {
+    mockDraftServer({
+      current_step: 8,
+      answers: { problem: "x", observableBehavior: "show leadership", materialIntent: "youtube" },
+    });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    // review lead sits right under the header — no min-h spacer block precedes it.
+    expect(await screen.findByText("Review what you’ve built.")).toBeTruthy();
+    // vague behavior + missing YouTube link => 2 needs-attention.
+    expect(screen.getByText("Needs attention — 2")).toBeTruthy();
+    expect(screen.getByText(/Needs clarification/)).toBeTruthy();
+    // still no approve/publish/session/QR controls.
+    expect(screen.queryByText(/approve|publish|create session|generate qr/i)).toBeNull();
   });
 });

@@ -68,12 +68,48 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   observableBehavior?: string;
   successEvidence?: string;
   evidenceType?: EvidenceObservation;
+  /** @deprecated single-value legacy field — read via normalizeLearningNeeds. */
   learningNeed?: LearningNeed;
+  /** Canonical multi-select: a training may need several learning types. */
+  learningNeeds?: LearningNeed[];
   materialIntent?: MaterialIntent;
   materialText?: string;
   arenaRecommended?: boolean;
   followUpDays?: FollowUpDays;
 };
+
+/**
+ * The canonical learning-need set for a draft, tolerant of legacy shapes: a new
+ * `learningNeeds` array wins; otherwise a legacy singular `learningNeed` restores
+ * as `[learningNeed]`. Returns a de-duplicated array of valid needs.
+ */
+export function normalizeLearningNeeds(answers: BuilderAnswers | undefined): LearningNeed[] {
+  const a = answers ?? {};
+  const raw = Array.isArray(a.learningNeeds)
+    ? a.learningNeeds
+    : a.learningNeed
+      ? [a.learningNeed]
+      : [];
+  const out: LearningNeed[] = [];
+  for (const n of raw) {
+    if ((LEARNING_NEEDS as readonly string[]).includes(n as string) && !out.includes(n as LearningNeed)) {
+      out.push(n as LearningNeed);
+    }
+  }
+  return out;
+}
+
+/**
+ * A short, human-readable card title derived from the problem statement (first
+ * meaningful line, bounded). Returns null when there is nothing usable yet.
+ */
+export function draftTitleFrom(answers: BuilderAnswers | undefined): string | null {
+  const problem = answers?.problem;
+  if (typeof problem !== "string") return null;
+  const first = problem.split(/\r?\n/)[0].trim();
+  if (first.length < 1) return null;
+  return first.length > 60 ? `${first.slice(0, 60).trimEnd()}…` : first;
+}
 
 // ---------------------------------------------------------------------------
 // Deterministic Arena practice recommendation (builder-level)
@@ -88,6 +124,15 @@ export type BuilderAnswers = ModuleDraftAnswers & {
  */
 export function recommendArenaForNeed(need: unknown): boolean {
   return need === "decide" || need === "practice" || need === "shared_standard";
+}
+
+/**
+ * Array form: recommend Arena when ANY selected need involves judgment, practice,
+ * or a shared way of working under pressure. Pure information alone ("Know") does
+ * not. Deterministic; creates no Arena content.
+ */
+export function recommendArenaForNeeds(needs: readonly LearningNeed[] | undefined): boolean {
+  return (needs ?? []).some((n) => recommendArenaForNeed(n));
 }
 
 /** Re-exported so the UI never re-implements the Slice-1 behavior heuristic. */
@@ -175,6 +220,23 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
         if ((LEARNING_NEEDS as readonly string[]).includes(a.learningNeed as string)) clean.learningNeed = a.learningNeed as LearningNeed;
         else errors.push("learning_need_invalid");
       }
+      if (a.learningNeeds !== undefined) {
+        if (!Array.isArray(a.learningNeeds)) {
+          errors.push("learning_needs_invalid");
+        } else {
+          const seen: LearningNeed[] = [];
+          let bad = false;
+          for (const n of a.learningNeeds) {
+            if (!(LEARNING_NEEDS as readonly string[]).includes(n as string)) {
+              bad = true;
+              break;
+            }
+            if (!seen.includes(n as LearningNeed)) seen.push(n as LearningNeed);
+          }
+          if (bad) errors.push("learning_needs_invalid");
+          else clean.learningNeeds = seen;
+        }
+      }
 
       if (a.materialIntent !== undefined) {
         if ((MATERIAL_INTENTS as readonly string[]).includes(a.materialIntent as string)) clean.materialIntent = a.materialIntent as MaterialIntent;
@@ -234,7 +296,7 @@ export function stepBlocker(step: number, answers: BuilderAnswers | undefined): 
     case 4:
       return meaningful(a.successEvidence) ? null : "evidence_required";
     case 5:
-      return a.learningNeed ? null : "learning_need_required";
+      return normalizeLearningNeeds(a).length > 0 ? null : "learning_need_required";
     case 6:
       return a.materialIntent ? null : "material_intent_required";
     case 7:

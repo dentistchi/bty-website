@@ -4,6 +4,9 @@ import {
   stepBlocker,
   canAdvanceStep,
   recommendArenaForNeed,
+  recommendArenaForNeeds,
+  normalizeLearningNeeds,
+  draftTitleFrom,
   PROBLEM_MAX,
   type BuilderAnswers,
 } from "./module-builder";
@@ -138,5 +141,55 @@ describe("recommendArenaForNeed — deterministic", () => {
   it("does not recommend for pure information (know) or unknown", () => {
     expect(recommendArenaForNeed("know")).toBe(false);
     expect(recommendArenaForNeed(undefined)).toBe(false);
+  });
+});
+
+describe("multi-select learning needs (2.1)", () => {
+  it("validates a learningNeeds array and de-duplicates", () => {
+    const r = validateDraftPatch({ answers: { learningNeeds: ["know", "practice", "know"] } as never });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.answers?.learningNeeds).toEqual(["know", "practice"]);
+  });
+
+  it("rejects an invalid member of learningNeeds", () => {
+    expect(validateDraftPatch({ answers: { learningNeeds: ["know", "bogus"] } as never })).toEqual({
+      ok: false,
+      errors: ["learning_needs_invalid"],
+    });
+  });
+
+  it("normalizes a legacy singular learningNeed into the array", () => {
+    expect(normalizeLearningNeeds({ learningNeed: "decide" })).toEqual(["decide"]);
+    expect(normalizeLearningNeeds({ learningNeeds: ["know", "shared_standard"] })).toEqual(["know", "shared_standard"]);
+    expect(normalizeLearningNeeds({})).toEqual([]);
+  });
+
+  it("step 5 is satisfied by a non-empty learningNeeds array", () => {
+    expect(stepBlocker(5, { learningNeeds: ["know"] })).toBeNull();
+    expect(stepBlocker(5, { learningNeeds: [] })).toBe("learning_need_required");
+  });
+
+  it("Arena recommendation derives from the array (any qualifying need)", () => {
+    expect(recommendArenaForNeeds(["know"])).toBe(false);
+    expect(recommendArenaForNeeds(["know", "decide"])).toBe(true);
+    expect(recommendArenaForNeeds([])).toBe(false);
+  });
+});
+
+describe("draftTitleFrom", () => {
+  it("derives a title from the first line of the problem", () => {
+    expect(draftTitleFrom({ problem: "Handoffs keep missing the check\nmore detail" })).toBe(
+      "Handoffs keep missing the check",
+    );
+  });
+  it("truncates long problems", () => {
+    const long = "a".repeat(80);
+    const title = draftTitleFrom({ problem: long });
+    expect(title?.endsWith("…")).toBe(true);
+    expect((title ?? "").length).toBeLessThanOrEqual(61);
+  });
+  it("returns null when there is no usable problem", () => {
+    expect(draftTitleFrom({})).toBeNull();
+    expect(draftTitleFrom({ problem: "   " })).toBeNull();
   });
 });

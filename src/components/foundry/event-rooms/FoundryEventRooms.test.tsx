@@ -23,7 +23,7 @@ describe("FoundryEventRooms — Host access states", () => {
   it("active host → event home (empty state shows the Create CTA)", async () => {
     mockFetch({ ok: true, status: 200, body: { events: [] } });
     render(<FoundryEventRooms locale="en" />);
-    expect(await screen.findByText("Create an event")).toBeTruthy();
+    expect(await screen.findByText("Create quick event")).toBeTruthy();
     expect(screen.queryByText(/authorized hosts/i)).toBeNull();
   });
 
@@ -31,7 +31,7 @@ describe("FoundryEventRooms — Host access states", () => {
     mockFetch({ ok: false, status: 403, body: { error: "foundry_host_required" } });
     render(<FoundryEventRooms locale="en" />);
     expect(await screen.findByText(/Training rooms are opened by authorized hosts/i)).toBeTruthy();
-    expect(screen.queryByText("Create an event")).toBeNull();
+    expect(screen.queryByText("Create quick event")).toBeNull();
   });
 
   it("revoked host (403 foundry_host_required) → same quiet non-host state", async () => {
@@ -46,6 +46,6 @@ describe("FoundryEventRooms — Host access states", () => {
     await waitFor(() => expect(fn).toHaveBeenCalled());
     // Neither the non-host copy nor the host Create CTA appears — a neutral hold.
     expect(screen.queryByText(/authorized hosts/i)).toBeNull();
-    expect(screen.queryByText("Create an event")).toBeNull();
+    expect(screen.queryByText("Create quick event")).toBeNull();
   });
 });

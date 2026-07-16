@@ -5,28 +5,27 @@ import type { Locale } from "./copy";
 import { MODULE_BUILDER_COPY, arenaFollowLabel, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import { createSerializedSaver, type SaveState } from "./moduleAutosave";
 import {
-  canAdvanceStep,
   observableBehaviorWarning,
-  recommendArenaForNeed,
+  recommendArenaForNeeds,
+  normalizeLearningNeeds,
   stepBlocker,
   BUILDER_STEP_MAX,
   type BuilderAnswers,
   type AudienceType,
   type EvidenceObservation,
   type LearningNeed,
-  type MaterialIntent,
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
 import type { ClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 
 /**
- * ModuleBuilderShell — the manual Guided Module Builder (Slice 2).
+ * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
  *
  * One primary question per step. Server-authoritative draft: on mount it restores
  * the exact answers + current_step from the server (no empty-form flash, no
- * restore-vs-typing race — local state is seeded only after the fetch resolves).
- * Autosave is serialized (one PATCH at a time, newest wins) via createSerializedSaver.
- * This slice ends at a read-only draft review: NO approve / publish / create-session.
+ * restore-vs-typing race). Autosave is serialized (one PATCH at a time, newest
+ * wins). This slice ends at a read-only draft review: NO approve / publish /
+ * create-session. Persistence engine is regression-protected — unchanged in 2.1.
  */
 
 type Snapshot = { answers: BuilderAnswers; currentStep: number };
@@ -49,13 +48,11 @@ export function ModuleBuilderShell({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [blocker, setBlocker] = useState<string | null>(null);
 
-  // Latest local state, readable inside async saves without stale closures.
   const answersRef = useRef<BuilderAnswers>({});
   const stepRef = useRef<number>(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goneRef = useRef(false);
 
-  // --- Serialized saver (created once). PATCH one snapshot; 404 => gone. ---
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
   if (saverRef.current === null) {
     saverRef.current = createSerializedSaver<Snapshot>(async (snap) => {
@@ -69,7 +66,7 @@ export function ModuleBuilderShell({
         });
         if (res.status === 404) {
           goneRef.current = true;
-          return true; // stop retrying; the "gone" effect navigates home.
+          return true;
         }
         return res.ok;
       } catch {
@@ -79,7 +76,6 @@ export function ModuleBuilderShell({
   }
   const saver = saverRef.current;
 
-  // --- Restore from server on mount (authoritative; no empty-form flash). ---
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -89,20 +85,11 @@ export function ModuleBuilderShell({
           cache: "no-store",
         });
         if (!alive) return;
-        if (res.status === 404) {
-          setRestore("gone");
-          return;
-        }
-        if (!res.ok) {
-          setRestore("unavailable");
-          return;
-        }
+        if (res.status === 404) return setRestore("gone");
+        if (!res.ok) return setRestore("unavailable");
         const data = (await res.json()) as { draft?: ClientDraft };
         const draft = data.draft;
-        if (!draft || draft.status !== "draft") {
-          setRestore("gone");
-          return;
-        }
+        if (!draft || draft.status !== "draft") return setRestore("gone");
         const a = draft.answers ?? {};
         answersRef.current = a;
         stepRef.current = draft.current_step;
@@ -118,11 +105,8 @@ export function ModuleBuilderShell({
     };
   }, [draftId]);
 
-  // If the draft vanished mid-session, return to home with an honest message.
   useEffect(() => {
-    if (restore === "gone" || goneRef.current) {
-      onExit({ gone: true });
-    }
+    if (restore === "gone" || goneRef.current) onExit({ gone: true });
   }, [restore, onExit]);
 
   const cancelDebounce = useCallback(() => {
@@ -132,7 +116,6 @@ export function ModuleBuilderShell({
     }
   }, []);
 
-  // Merge a partial answer, keep refs current, and (optionally) schedule a save.
   const patchAnswers = useCallback(
     (partial: BuilderAnswers, immediate: boolean) => {
       setBlocker(null);
@@ -141,16 +124,12 @@ export function ModuleBuilderShell({
       setAnswers(merged);
       const snapshot: Snapshot = { answers: merged, currentStep: stepRef.current };
       cancelDebounce();
-      if (immediate) {
-        saver.schedule(snapshot);
-      } else {
-        debounceRef.current = setTimeout(() => saver.schedule(snapshot), 600);
-      }
+      if (immediate) saver.schedule(snapshot);
+      else debounceRef.current = setTimeout(() => saver.schedule(snapshot), 600);
     },
     [saver, cancelDebounce],
   );
 
-  // Flush pending edits, then move to `next`, then save the new step.
   const navigate = useCallback(
     async (next: number) => {
       cancelDebounce();
@@ -165,10 +144,7 @@ export function ModuleBuilderShell({
 
   const goNext = useCallback(() => {
     const b = stepBlocker(stepRef.current, answersRef.current);
-    if (b) {
-      setBlocker(b);
-      return;
-    }
+    if (b) return setBlocker(b);
     if (stepRef.current < BUILDER_STEP_MAX) void navigate(stepRef.current + 1);
   }, [navigate]);
 
@@ -176,27 +152,18 @@ export function ModuleBuilderShell({
     if (stepRef.current > 1) void navigate(stepRef.current - 1);
   }, [navigate]);
 
-  const jumpTo = useCallback(
-    (target: number) => {
-      void navigate(target);
-    },
-    [navigate],
-  );
+  const jumpTo = useCallback((target: number) => void navigate(target), [navigate]);
 
   const saveAndLeave = useCallback(async () => {
     cancelDebounce();
     const ok = await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
     if (ok && !goneRef.current) onExit();
-    // On failure the save state shows "Couldn’t save — Retry"; the host stays put.
   }, [saver, cancelDebounce, onExit]);
 
-  const retry = useCallback(() => {
-    void saver.retry();
-  }, [saver]);
+  const retry = useCallback(() => void saver.retry(), [saver]);
 
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
-  // --- Restore gates ---
   if (restore === "loading") {
     return (
       <div className="btyFadeIn flex min-h-[45vh] items-center justify-center">
@@ -214,25 +181,25 @@ export function ModuleBuilderShell({
       </div>
     );
   }
-  if (restore === "gone") {
-    return <div aria-hidden className="min-h-[30vh]" />; // navigating home via effect
-  }
+  if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
-  const arenaChosen = answers.arenaRecommended ?? recommendArenaForNeed(answers.learningNeed);
+  const isReview = step === BUILDER_STEP_MAX;
 
   return (
-    <div className="btyFadeIn flex flex-col gap-6" data-testid="module-builder">
-      {/* Progress + save state */}
+    <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-          {step <= BUILDER_STEP_MAX - 1 ? t.stepOf(step, BUILDER_STEP_MAX - 1) : t.reviewEyebrow}
+          {isReview ? t.reviewEyebrow : t.stepOf(step, BUILDER_STEP_MAX - 1)}
         </span>
         <SaveStatus state={saveState} t={t} onRetry={retry} />
       </div>
 
-      <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t)}</div>
+      {isReview ? (
+        <ReviewBody answers={answers} onEdit={jumpTo} t={t} />
+      ) : (
+        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t)}</div>
+      )}
 
-      {/* Navigation */}
       <div className="flex items-center justify-between gap-3 pt-2">
         <div>
           {step > 1 ? (
@@ -258,17 +225,10 @@ export function ModuleBuilderShell({
           ) : null}
         </div>
       </div>
-
-      {step === BUILDER_STEP_MAX ? (
-        <ReviewSummary answers={answers} arenaChosen={arenaChosen} onEdit={jumpTo} t={t} />
-      ) : null}
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Save status pill
-// ---------------------------------------------------------------------------
 function SaveStatus({ state, t, onRetry }: { state: SaveState; t: ModuleBuilderCopy; onRetry: () => void }) {
   if (state === "saving") return <span className="text-xs text-white/40">{t.saving}</span>;
   if (state === "saved") return <span className="text-xs text-white/40">{t.saved}</span>;
@@ -314,15 +274,7 @@ function textArea(value: string, onChange: (v: string) => void, placeholder: str
   );
 }
 
-function OptionButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function OptionButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -335,6 +287,45 @@ function OptionButton({
       }`}
     >
       {label}
+    </button>
+  );
+}
+
+/** Titled + described option (used by the multi-select learning needs). */
+function DescOption({
+  active,
+  title,
+  desc,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  desc: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
+        active
+          ? "border-[#C9A66B]/70 bg-[#C9A66B]/15"
+          : "border-white/12 bg-white/[0.03] hover:bg-white/[0.06]"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[0.7rem] ${
+          active ? "border-[#C9A66B] bg-[#C9A66B] text-[#0B1F3A]" : "border-white/25 text-transparent"
+        }`}
+      >
+        ✓
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[0.98rem] font-medium text-white/90">{title}</span>
+        <span className="text-sm leading-6 text-white/50">{desc}</span>
+      </span>
     </button>
   );
 }
@@ -393,28 +384,28 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
       );
     }
     case 4: {
-      const chip = (type: EvidenceObservation, label: string) => (
-        <button
-          type="button"
-          onClick={() => patch({ evidenceType: type }, true)}
-          aria-pressed={a.evidenceType === type}
-          className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
-            a.evidenceType === type
-              ? "border-[#C9A66B]/70 bg-[#C9A66B]/15 text-white"
-              : "border-white/12 bg-white/[0.03] text-white/70"
-          }`}
-        >
-          {label}
-        </button>
+      const behavior = a.observableBehavior?.trim();
+      const opt = (type: EvidenceObservation, label: string) => (
+        <OptionButton active={a.evidenceType === type} label={label} onClick={() => patch({ evidenceType: type }, true)} />
       );
       return (
         <StepFrame q={t.s4Q} help={t.s4Help}>
+          {behavior ? (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <p className="text-xs text-white/40">{t.s4BehaviorLead}</p>
+              <p className="mt-1 text-sm leading-6 text-white/75">“{behavior}”</p>
+            </div>
+          ) : null}
           {textArea(a.successEvidence ?? "", (v) => patch({ successEvidence: v }, false), t.s4Placeholder, t.s4Q)}
-          <div className="flex flex-wrap gap-2">
-            {chip("seen", t.evSeen)}
-            {chip("heard", t.evHeard)}
-            {chip("recorded", t.evRecorded)}
-            {chip("confirmed", t.evConfirmed)}
+          <div className="flex flex-col gap-2 pt-1">
+            <h3 className="text-sm font-medium text-white/70">{t.s4VerifyQ}</h3>
+            <div className="flex flex-col gap-2.5">
+              {opt("seen", t.verifyObserved)}
+              {opt("heard", t.verifyHeard)}
+              {opt("recorded", t.verifyRecorded)}
+              {opt("confirmed", t.verifyConfirmed)}
+            </div>
+            <p className="text-xs leading-5 text-white/40">{t.s4VerifyGuidance}</p>
           </div>
           <p className="text-xs leading-5 text-white/40">{t.s4Honesty}</p>
           <BlockerLine show={blocker === "evidence_required"} text={t.s4Blocker} />
@@ -422,18 +413,23 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
       );
     }
     case 5: {
-      const opt = (need: LearningNeed, label: string) => (
-        <OptionButton active={a.learningNeed === need} label={label} onClick={() => patch({ learningNeed: need }, true)} />
+      const selected = normalizeLearningNeeds(a);
+      const toggle = (need: LearningNeed) => {
+        const next = selected.includes(need) ? selected.filter((n) => n !== need) : [...selected, need];
+        patch({ learningNeeds: next }, true);
+      };
+      const item = (need: LearningNeed, title: string, desc: string) => (
+        <DescOption active={selected.includes(need)} title={title} desc={desc} onClick={() => toggle(need)} />
       );
       return (
-        <StepFrame q={t.s5Q}>
+        <StepFrame q={t.s5Q} help={t.s5Help}>
           <div className="flex flex-col gap-2.5">
-            {opt("know", t.needKnow)}
-            {opt("decide", t.needDecide)}
-            {opt("practice", t.needPractice)}
-            {opt("shared_standard", t.needShared)}
+            {item("know", t.needInfoTitle, t.needInfoDesc)}
+            {item("decide", t.needDecideTitle, t.needDecideDesc)}
+            {item("practice", t.needPracticeTitle, t.needPracticeDesc)}
+            {item("shared_standard", t.needSharedTitle, t.needSharedDesc)}
           </div>
-          {recommendArenaForNeed(a.learningNeed) ? (
+          {recommendArenaForNeeds(selected) ? (
             <p className="text-xs leading-5 text-[#C9A66B]/80">{t.s5ArenaHint}</p>
           ) : null}
           <BlockerLine show={blocker === "learning_need_required"} text={t.s5Blocker} />
@@ -441,39 +437,43 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
       );
     }
     case 6: {
-      const opt = (m: MaterialIntent, label: string) => (
+      const opt = (m: "youtube" | "pdf", label: string) => (
         <OptionButton active={a.materialIntent === m} label={label} onClick={() => patch({ materialIntent: m }, true)} />
       );
-      const showText = a.materialIntent === "youtube" || a.materialIntent === "written" || a.materialIntent === "live_discussion";
-      const placeholder =
-        a.materialIntent === "youtube"
-          ? t.matYoutubePlaceholder
-          : a.materialIntent === "written"
-            ? t.matWrittenPlaceholder
-            : t.matLivePlaceholder;
+      const ytEmpty = !a.materialText?.trim();
       return (
         <StepFrame q={t.s6Q}>
           <div className="flex flex-col gap-2.5">
             {opt("youtube", t.matYoutube)}
             {opt("pdf", t.matPdf)}
-            {opt("written", t.matWritten)}
-            {opt("live_discussion", t.matLive)}
           </div>
-          {a.materialIntent === "pdf" ? <p className="text-sm leading-6 text-white/55">{t.matPdfDeferred}</p> : null}
-          {showText ? textArea(a.materialText ?? "", (v) => patch({ materialText: v }, false), placeholder, t.s6Q) : null}
+          {a.materialIntent === "youtube" ? (
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={a.materialText ?? ""}
+                onChange={(e) => patch({ materialText: e.target.value }, false)}
+                placeholder={t.matYoutubePlaceholder}
+                aria-label={t.matYoutube}
+                className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+              />
+              {ytEmpty ? (
+                <p className="text-xs leading-5 text-amber-300/70">
+                  {t.ytMissingTitle} · {t.requiredBeforeApproval}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {a.materialIntent === "pdf" ? <p className="text-sm leading-6 text-white/55">{t.pdfMissingLead}</p> : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />
         </StepFrame>
       );
     }
     case 7: {
-      const recommend = recommendArenaForNeed(a.learningNeed);
+      const recommend = recommendArenaForNeeds(normalizeLearningNeeds(a));
       const chosen = a.arenaRecommended ?? recommend;
       const followOpt = (days: FollowUpDays, label: string) => (
-        <OptionButton
-          active={(a.followUpDays ?? -1) === days}
-          label={label}
-          onClick={() => patch({ followUpDays: days }, true)}
-        />
+        <OptionButton active={(a.followUpDays ?? -1) === days} label={label} onClick={() => patch({ followUpDays: days }, true)} />
       );
       return (
         <StepFrame q={t.s7ArenaQ} help={recommend ? t.s7ArenaRecommended : undefined}>
@@ -492,24 +492,16 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
       );
     }
     default:
-      return <div />; // step 8 body is the ReviewSummary rendered below the nav.
+      return <div />;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Step 8 — read-only draft review (NO approve / publish / create-session)
+// Step 8 — read-only draft review (starts at top; NO approve/publish/create)
 // ---------------------------------------------------------------------------
-function ReviewSummary({
-  answers: a,
-  arenaChosen,
-  onEdit,
-  t,
-}: {
-  answers: BuilderAnswers;
-  arenaChosen: boolean;
-  onEdit: (step: number) => void;
-  t: ModuleBuilderCopy;
-}) {
+type ReviewRow = { label: string; value: string | null; step: number; note?: { title: string; hint?: string } };
+
+function buildReviewRows(a: BuilderAnswers, t: ModuleBuilderCopy): ReviewRow[] {
   const audience = (() => {
     switch (a.audienceType) {
       case "everyone":
@@ -521,52 +513,79 @@ function ReviewSummary({
       case "specific_role":
         return a.audienceDetail || t.audRole;
       default:
-        return undefined;
+        return null;
     }
   })();
-  const learning =
-    a.learningNeed === "know"
-      ? t.needKnow
-      : a.learningNeed === "decide"
-        ? t.needDecide
-        : a.learningNeed === "practice"
-          ? t.needPractice
-          : a.learningNeed === "shared_standard"
-            ? t.needShared
-            : undefined;
-  const material =
-    a.materialIntent === "youtube"
-      ? t.matYoutube
-      : a.materialIntent === "pdf"
-        ? t.matPdf
-        : a.materialIntent === "written"
-          ? t.matWritten
-          : a.materialIntent === "live_discussion"
-            ? t.matLive
-            : undefined;
 
-  const row = (label: string, value: string | undefined, step: number) => (
-    <div className="flex items-start justify-between gap-4 border-b border-white/8 py-3">
-      <div className="min-w-0 flex flex-col gap-1">
-        <span className="text-xs uppercase tracking-[0.12em] text-white/40">{label}</span>
-        <span className="text-[0.95rem] leading-6 text-white/85">{value?.trim() ? value : t.reviewEmpty}</span>
-      </div>
-      <button type="button" onClick={() => onEdit(step)} className="shrink-0 text-xs text-[#C9A66B]">
-        {t.editSection}
-      </button>
-    </div>
-  );
+  const needs = normalizeLearningNeeds(a);
+  const needLabel: Record<LearningNeed, string> = {
+    know: t.needInfoTitle,
+    decide: t.needDecideTitle,
+    practice: t.needPracticeTitle,
+    shared_standard: t.needSharedTitle,
+  };
+  const learning = needs.length > 0 ? needs.map((n) => needLabel[n]).join(", ") : null;
 
+  // Behavior weak/empty → needs clarification.
+  const behaviorVague =
+    !a.observableBehavior?.trim() || observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague";
+  const behaviorNote = behaviorVague ? { title: t.gBehaviorNeeds, hint: t.gBehaviorHint } : undefined;
+
+  // Material — honest missing states (nothing is uploaded/added in this slice).
+  let material: string | null = null;
+  let materialNote: { title: string; hint?: string } | undefined;
+  if (a.materialIntent === "pdf") {
+    material = t.matPdf;
+    materialNote = { title: t.gPdfMissing, hint: t.requiredBeforeApproval };
+  } else if (a.materialIntent === "youtube") {
+    material = t.matYoutube;
+    if (!a.materialText?.trim()) materialNote = { title: t.gYtMissing, hint: t.requiredBeforeApproval };
+  }
+
+  const arenaChosen = a.arenaRecommended ?? recommendArenaForNeeds(needs);
+
+  return [
+    { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1 },
+    { label: t.reviewWho, value: audience, step: 2 },
+    { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, note: behaviorNote },
+    { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4 },
+    { label: t.reviewLearning, value: learning, step: 5 },
+    { label: t.reviewMaterial, value: material, step: 6, note: materialNote },
+    { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 7 },
+    { label: t.reviewFollow, value: arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30), step: 7 },
+  ];
+}
+
+function ReviewBody({ answers, onEdit, t }: { answers: BuilderAnswers; onEdit: (step: number) => void; t: ModuleBuilderCopy }) {
+  const rows = buildReviewRows(answers, t);
+  const attention = rows.filter((r) => r.note).length;
   return (
-    <section className="mt-2 flex flex-col rounded-2xl border border-white/8 bg-white/[0.02] px-4">
-      {row(t.reviewChange, a.problem, 1)}
-      {row(t.reviewWho, audience, 2)}
-      {row(t.reviewBehavior, a.observableBehavior, 3)}
-      {row(t.reviewEvidence, a.successEvidence, 4)}
-      {row(t.reviewLearning, learning, 5)}
-      {row(t.reviewMaterial, material, 6)}
-      {row(t.reviewArena, arenaChosen ? t.arenaYes : t.arenaNo, 7)}
-      {row(t.reviewFollow, arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30), 7)}
-    </section>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-base leading-7 text-white/80">{t.reviewLead}</p>
+        {attention > 0 ? (
+          <p className="text-sm font-medium text-amber-300/85">{t.needsAttention(attention)}</p>
+        ) : null}
+      </div>
+      <section className="flex flex-col rounded-2xl border border-white/8 bg-white/[0.02] px-4">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-start justify-between gap-4 border-b border-white/8 py-3 last:border-b-0">
+            <div className="flex min-w-0 flex-col gap-1">
+              <span className="text-xs uppercase tracking-[0.12em] text-white/40">{r.label}</span>
+              <span className="text-[0.95rem] leading-6 text-white/85">{r.value ?? t.reviewEmpty}</span>
+              {r.note ? (
+                <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
+                  {r.note.title}
+                  {r.note.hint ? ` · ${r.note.hint}` : ""}
+                </span>
+              ) : null}
+            </div>
+            <button type="button" onClick={() => onEdit(r.step)} className="shrink-0 text-xs text-[#C9A66B]">
+              {t.editSection}
+            </button>
+          </div>
+        ))}
+      </section>
+    </div>
   );
 }

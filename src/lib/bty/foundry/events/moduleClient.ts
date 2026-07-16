@@ -1,6 +1,6 @@
 import type { ModuleDraftRow, ModuleDraftSummary } from "./foundryModuleService";
 import type { ModuleDraftStatus } from "@/domain/foundry/module/module-draft";
-import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { normalizeLearningNeeds, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
  * Client-facing draft serialization for the Guided Module Builder routes.
@@ -27,11 +27,16 @@ export type ClientDraft = {
 export type ClientDraftSummary = ModuleDraftSummary;
 
 export function toClientDraft(row: ModuleDraftRow): ClientDraft {
+  const answers = (row.answers ?? {}) as BuilderAnswers;
+  // Restore old drafts into the canonical multi-select shape (legacy learningNeed
+  // -> learningNeeds[]) so the client never has to know about the legacy field.
+  const needs = normalizeLearningNeeds(answers);
+  const normalized: BuilderAnswers = needs.length > 0 ? { ...answers, learningNeeds: needs } : answers;
   return {
     id: row.id,
     status: row.status,
     current_step: row.current_step,
-    answers: (row.answers ?? {}) as BuilderAnswers,
+    answers: normalized,
     module_version: row.module_version,
     parent_module_id: row.parent_module_id,
     document_asset_ref_present: row.document_asset_ref != null,
@@ -47,6 +52,7 @@ export function toClientSummary(s: ModuleDraftSummary): ClientDraftSummary {
     status: s.status,
     current_step: s.current_step,
     module_version: s.module_version,
+    title: s.title ?? null,
     updated_at: s.updated_at,
     created_at: s.created_at,
   };

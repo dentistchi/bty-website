@@ -37,6 +37,7 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
+  const [showAllPast, setShowAllPast] = useState(false);
   const startingRef = useRef(false);
   // Host-capability access, resolved from the events list response. A non-host
   // sees a quiet employee-pointer state; an auth/network error is NOT shown as
@@ -209,7 +210,7 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
     return (
       <div className="btyFadeIn flex flex-col gap-7">
         {builderEntry}
-        <div className="flex flex-col items-center gap-4 pt-2 text-center">
+        <div className="flex flex-col items-center gap-2 pt-2 text-center">
           <p className="max-w-[16rem] text-base leading-7 text-white/55">{t.emptyLead}</p>
           <button
             type="button"
@@ -218,6 +219,7 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
           >
             {t.createCta}
           </button>
+          <p className="text-xs text-white/35">{t.createQuickNote}</p>
         </div>
       </div>
     );
@@ -230,13 +232,16 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
           {t.eyebrow}
         </span>
-        <button
-          type="button"
-          onClick={() => setView({ kind: "create" })}
-          className="rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80"
-        >
-          {t.createCta}
-        </button>
+        <div className="flex flex-col items-end">
+          <button
+            type="button"
+            onClick={() => setView({ kind: "create" })}
+            className="rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80"
+          >
+            {t.createCta}
+          </button>
+          <span className="mt-1 text-[0.68rem] text-white/35">{t.createQuickNote}</span>
+        </div>
       </div>
 
       {open.length > 0 ? (
@@ -255,9 +260,18 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
           <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
             {t.pastHeader}
           </h2>
-          {past.map((e) => (
+          {(showAllPast ? past : past.slice(0, 3)).map((e) => (
             <EventRow key={e.id} summary={e} onOpen={openControl} t={t} />
           ))}
+          {past.length > 3 ? (
+            <button
+              type="button"
+              onClick={() => setShowAllPast((v) => !v)}
+              className="self-start pt-1 text-xs text-white/50 hover:text-white/75"
+            >
+              {showAllPast ? t.pastShowLess : t.pastViewAll}
+            </button>
+          ) : null}
         </section>
       ) : null}
 
@@ -292,58 +306,115 @@ function EventRow({
   );
 }
 
-/** Compact relative-time hint for a draft row (client-only presentation). */
-function relTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  const s = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (s < 60) return "·";
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h`;
-  return `${Math.round(h / 24)}d`;
+/** Localized relative "edited" label for a draft card. */
+function editedLabel(iso: string, bt: ModuleBuilderCopy): string {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return bt.relJustNow;
+  const m = Math.floor(s / 60);
+  if (m < 60) return bt.relMin(m);
+  const h = Math.floor(m / 60);
+  if (h < 24) return bt.relHour(h);
+  return bt.relDay(Math.floor(h / 24));
 }
 
-function DraftRow({
+const SWIPE_REVEAL = 88;
+
+/**
+ * A draft card with left-swipe-to-delete (mobile) plus an always-available
+ * accessible overflow delete (non-swipe fallback). Only one row may be swiped
+ * open at a time (parent owns the open id).
+ */
+function SwipeDraftRow({
   draft,
   prominent,
+  isOpen,
+  onSwipeOpen,
+  onSwipeClose,
   onOpen,
   onDelete,
   bt,
 }: {
   draft: ClientDraftSummary;
   prominent?: boolean;
+  isOpen: boolean;
+  onSwipeOpen: () => void;
+  onSwipeClose: () => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
   bt: ModuleBuilderCopy;
 }) {
+  const startX = useRef<number | null>(null);
+  const [dragDx, setDragDx] = useState(0);
+
+  const title = draft.title?.trim() ? draft.title : bt.untitled;
+  const stepN = Math.min(Math.max(draft.current_step, 1), 7);
+  const subtitle = `${bt.stepProgress(stepN)} · ${bt.editedRel(editedLabel(draft.updated_at, bt))}`;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0]?.clientX ?? null;
+    setDragDx(isOpen ? -SWIPE_REVEAL : 0);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startX.current == null) return;
+    const raw = (e.touches[0]?.clientX ?? 0) - startX.current + (isOpen ? -SWIPE_REVEAL : 0);
+    setDragDx(Math.min(0, Math.max(raw, -SWIPE_REVEAL)));
+  };
+  const onTouchEnd = () => {
+    const dragging = startX.current != null;
+    startX.current = null;
+    if (!dragging) return;
+    if (dragDx < -SWIPE_REVEAL / 2) onSwipeOpen();
+    else onSwipeClose();
+  };
+  const translate = startX.current != null ? dragDx : isOpen ? -SWIPE_REVEAL : 0;
+
   return (
     <div
-      className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3.5 ${
-        prominent ? "border-[#C9A66B]/40 bg-[#C9A66B]/[0.06]" : "border-white/10 bg-white/[0.03]"
+      className={`relative overflow-hidden rounded-xl border ${
+        prominent ? "border-[#C9A66B]/40" : "border-white/10"
       }`}
     >
-      <button
-        type="button"
-        onClick={() => onOpen(draft.id)}
-        className="flex min-w-0 flex-col items-start text-left"
+      {isOpen ? (
+        <button
+          type="button"
+          aria-label={bt.deleteAction}
+          onClick={() => onDelete(draft.id)}
+          className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center bg-red-600 text-sm font-semibold text-white"
+        >
+          {bt.deleteAction}
+        </button>
+      ) : null}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{ transform: `translateX(${translate}px)` }}
+        className={`relative flex items-center justify-between gap-3 px-4 py-3.5 transition-transform ${
+          prominent ? "bg-[#C9A66B]/[0.06]" : "bg-white/[0.03]"
+        }`}
       >
-        <span className="text-[0.95rem] font-medium text-white/90">{bt.continueDraft}</span>
-        <span className="text-xs text-white/40">{bt.draftUpdated(relTime(draft.updated_at))}</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onDelete(draft.id)}
-        aria-label={bt.deleteDraft}
-        className="shrink-0 text-xs text-white/40 hover:text-white/70"
-      >
-        {bt.deleteDraft}
-      </button>
+        <button
+          type="button"
+          onClick={() => onOpen(draft.id)}
+          className="flex min-w-0 flex-col items-start text-left"
+        >
+          <span className="max-w-full truncate text-[0.95rem] font-medium text-white/90">{title}</span>
+          <span className="text-xs text-white/40">{subtitle}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={bt.deleteDraft}
+          onClick={() => onDelete(draft.id)}
+          className="shrink-0 rounded-md px-2 py-1 text-lg leading-none text-white/35 hover:text-white/70"
+        >
+          ⋯
+        </button>
+      </div>
     </div>
   );
 }
 
-/** Builder entry: primary "Start new training" + resumable draft(s). */
+/** Builder entry: primary "Create team training" + resumable draft(s). */
 function BuilderEntry({
   drafts,
   starting,
@@ -359,7 +430,29 @@ function BuilderEntry({
   onDelete: (id: string) => void;
   bt: ModuleBuilderCopy;
 }) {
+  const [openId, setOpenId] = useState<string | null>(null);
   const [topDraft, ...rest] = drafts;
+  const openBuilder = (id: string) => {
+    setOpenId(null);
+    onOpen(id);
+  };
+  const startNew = () => {
+    setOpenId(null);
+    onStart();
+  };
+  const row = (d: ClientDraftSummary, prominent: boolean) => (
+    <SwipeDraftRow
+      key={d.id}
+      draft={d}
+      prominent={prominent}
+      isOpen={openId === d.id}
+      onSwipeOpen={() => setOpenId(d.id)}
+      onSwipeClose={() => setOpenId((prev) => (prev === d.id ? null : prev))}
+      onOpen={openBuilder}
+      onDelete={onDelete}
+      bt={bt}
+    />
+  );
   return (
     <section className="flex flex-col gap-3">
       <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
@@ -367,22 +460,21 @@ function BuilderEntry({
       </span>
       <button
         type="button"
-        onClick={onStart}
+        onClick={startNew}
         disabled={starting}
         className="rounded-xl bg-[#C9A66B] px-6 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-60"
       >
         {starting ? bt.starting : bt.startNew}
       </button>
+      <p className="text-sm leading-6 text-white/50">{bt.entrySupport}</p>
       {topDraft ? (
         <div className="flex flex-col gap-2 pt-1">
           <p className="text-sm text-white/50">{bt.continueLead}</p>
-          <DraftRow draft={topDraft} prominent onOpen={onOpen} onDelete={onDelete} bt={bt} />
+          {row(topDraft, true)}
           {rest.length > 0 ? (
             <>
               <h3 className="pt-1 text-xs uppercase tracking-[0.12em] text-white/40">{bt.otherDrafts}</h3>
-              {rest.map((d) => (
-                <DraftRow key={d.id} draft={d} onOpen={onOpen} onDelete={onDelete} bt={bt} />
-              ))}
+              {rest.map((d) => row(d, false))}
             </>
           ) : null}
         </div>

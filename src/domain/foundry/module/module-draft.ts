@@ -317,7 +317,14 @@ export function validateModuleDraft(answers: ModuleDraftAnswers | undefined): Mo
     errors.push("target_roles_required");
   }
 
-  if (!isLearningType(a.learningType)) {
+  // Learning requirement is satisfied by the legacy single learningType OR the
+  // Slice-2.1 canonical learningNeeds array (a training may need several). Approval
+  // itself is a later slice; this only teaches the validator the array shape.
+  const learningNeeds = (a as { learningNeeds?: unknown }).learningNeeds;
+  const legacyNeed = (a as { learningNeed?: unknown }).learningNeed;
+  const hasNeeds =
+    (Array.isArray(learningNeeds) && learningNeeds.length > 0) || typeof legacyNeed === "string";
+  if (!isLearningType(a.learningType) && !hasNeeds) {
     errors.push("learning_type_required");
   }
 

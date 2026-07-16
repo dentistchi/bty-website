@@ -11,6 +11,10 @@ export type EventRoomsCopy = {
   // empty state
   emptyLead: string;
   createCta: string;
+  createQuickNote: string;
+  // past-events list hygiene (UI only)
+  pastViewAll: string;
+  pastShowLess: string;
   // create
   createEyebrow: string;
   nameLabel: string;
@@ -98,7 +102,10 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     nonHostLead: "Training rooms are opened by authorized hosts.",
     nonHostSub: "Scan an invitation QR to join a training event.",
     emptyLead: "Bring your team into one room.",
-    createCta: "Create an event",
+    createCta: "Create quick event",
+    createQuickNote: "Skip guided setup.",
+    pastViewAll: "View all past events",
+    pastShowLess: "Show less",
     createEyebrow: "CREATE TRAINING EVENT",
     nameLabel: "Event name",
     namePlaceholder: "e.g. Handling Difficult Conversations",
@@ -177,7 +184,10 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     nonHostLead: "훈련 방은 승인된 호스트가 엽니다.",
     nonHostSub: "초대 QR을 스캔하여 훈련 이벤트에 참여하세요.",
     emptyLead: "팀을 하나의 방으로 모으세요.",
-    createCta: "이벤트 만들기",
+    createCta: "빠른 이벤트 만들기",
+    createQuickNote: "가이드 설정 건너뛰기.",
+    pastViewAll: "지난 이벤트 모두 보기",
+    pastShowLess: "간략히 보기",
     createEyebrow: "훈련 이벤트 만들기",
     nameLabel: "이벤트 이름",
     namePlaceholder: "예: 어려운 대화 다루기",
