@@ -200,29 +200,17 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
       onStart={startNewDraft}
       onOpen={openDraft}
       onDelete={deleteDraft}
+      onQuickEvent={() => setView({ kind: "create" })}
+      quickLabel={t.createCta}
+      quickNote={t.createQuickNote}
       bt={bt}
     />
   );
 
-  // Empty (first-ever) events state — the guided builder leads; the direct event
-  // create stays available beneath it.
+  // Empty (first-ever) events state — the guided builder (with its inline quick-
+  // event path) is the whole surface.
   if (events !== null && events.length === 0) {
-    return (
-      <div className="btyFadeIn flex flex-col gap-7">
-        {builderEntry}
-        <div className="flex flex-col items-center gap-2 pt-2 text-center">
-          <p className="max-w-[16rem] text-base leading-7 text-white/55">{t.emptyLead}</p>
-          <button
-            type="button"
-            onClick={() => setView({ kind: "create" })}
-            className="rounded-xl border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-semibold text-white/80"
-          >
-            {t.createCta}
-          </button>
-          <p className="text-xs text-white/35">{t.createQuickNote}</p>
-        </div>
-      </div>
-    );
+    return <div className="btyFadeIn flex flex-col gap-7">{builderEntry}</div>;
   }
 
   return (
@@ -232,16 +220,6 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
           {t.eyebrow}
         </span>
-        <div className="flex flex-col items-end">
-          <button
-            type="button"
-            onClick={() => setView({ kind: "create" })}
-            className="rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80"
-          >
-            {t.createCta}
-          </button>
-          <span className="mt-1 text-[0.68rem] text-white/35">{t.createQuickNote}</span>
-        </div>
       </div>
 
       {open.length > 0 ? (
@@ -414,13 +392,17 @@ function SwipeDraftRow({
   );
 }
 
-/** Builder entry: primary "Create team training" + resumable draft(s). */
+/** Builder entry: primary "Create team training", a discoverable secondary
+ *  quick-event path directly beneath it, then resumable draft(s). */
 function BuilderEntry({
   drafts,
   starting,
   onStart,
   onOpen,
   onDelete,
+  onQuickEvent,
+  quickLabel,
+  quickNote,
   bt,
 }: {
   drafts: ClientDraftSummary[];
@@ -428,6 +410,9 @@ function BuilderEntry({
   onStart: () => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  onQuickEvent: () => void;
+  quickLabel: string;
+  quickNote: string;
   bt: ModuleBuilderCopy;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -467,6 +452,24 @@ function BuilderEntry({
         {starting ? bt.starting : bt.startNew}
       </button>
       <p className="text-sm leading-6 text-white/50">{bt.entrySupport}</p>
+
+      {/* Secondary quick-event path — visible directly below the primary action,
+          not hidden past the draft/event lists. */}
+      <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
+        <span className="min-w-0 text-sm text-white/50">{bt.quickLead}</span>
+        <button
+          type="button"
+          onClick={onQuickEvent}
+          className="shrink-0 rounded-lg border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white/80"
+          aria-describedby="quick-event-note"
+        >
+          {quickLabel}
+        </button>
+      </div>
+      <span id="quick-event-note" className="-mt-1 self-end text-[0.68rem] text-white/35">
+        {quickNote}
+      </span>
+
       {topDraft ? (
         <div className="flex flex-col gap-2 pt-1">
           <p className="text-sm text-white/50">{bt.continueLead}</p>

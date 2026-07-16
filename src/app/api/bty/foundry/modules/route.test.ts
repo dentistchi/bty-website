@@ -55,7 +55,7 @@ const ROW = {
   answers: { problem: "x" },
   module_version: 1,
   parent_module_id: null,
-  document_asset_ref: "owner-1/secret.pdf",
+  document_asset_ref: JSON.stringify({ bucket: "foundry-docs", path: "owner-1/secret.pdf", filename: "Secret.pdf", byteSize: 10, pageCount: 2, pageCountVerified: true, contentHash: "hh", uploadedAt: "t" }),
   approved_at: null,
   published_at: null,
   created_at: "2026-07-16T00:00:00.000Z",
@@ -89,6 +89,9 @@ describe("POST /api/bty/foundry/modules", () => {
     expect(json.draft.owner_user_id).toBeUndefined();
     expect(json.draft.document_asset_ref).toBeUndefined();
     expect(json.draft.document_asset_ref_present).toBe(true);
+    // safe attachment metadata, but never the storage path / bucket / hash.
+    expect(json.draft.attachment.filename).toBe("Secret.pdf");
+    expect(JSON.stringify(json)).not.toMatch(/owner-1\/secret\.pdf|foundry-docs|"hh"/);
   });
 });
 

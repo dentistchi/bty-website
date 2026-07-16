@@ -34,6 +34,15 @@ describe("validateDraftPatch — partial-save friendly", () => {
     if (r.ok) expect(r.value.answers).toEqual({ problem: "x" });
   });
 
+  it("cannot forge attachment/document_asset_ref via a client PATCH", () => {
+    const r = validateDraftPatch({
+      answers: { problem: "x", document_asset_ref: "owner/hax.pdf", attachment: { present: true } } as never,
+    });
+    expect(r.ok).toBe(true);
+    // only the whitelisted answer field survives — the server owns the ref.
+    if (r.ok) expect(r.value.answers).toEqual({ problem: "x" });
+  });
+
   it("validates current_step range 1..8", () => {
     expect(validateDraftPatch({ currentStep: 1 }).ok).toBe(true);
     expect(validateDraftPatch({ currentStep: 8 }).ok).toBe(true);

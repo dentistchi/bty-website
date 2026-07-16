@@ -97,6 +97,19 @@ export type ModuleBuilderCopy = {
   requiredBeforeApproval: string;
   pdfMissingLead: string;
   s6Blocker: string;
+  // pdf attachment
+  pdfAttachLead: string;
+  attachPdf: string;
+  replacePdf: string;
+  removePdf: string;
+  uploadingPdf: string;
+  removingPdf: string;
+  uploadFailed: string;
+  removeFailed: string;
+  pdfReadyBadge: string;
+  pagesLabel: (n: number) => string;
+  // quick-event discoverability
+  quickLead: string;
   // step 7 practice + follow-up
   s7ArenaQ: string;
   s7ArenaRecommended: string;
@@ -219,6 +232,17 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     requiredBeforeApproval: "Required before approval",
     pdfMissingLead: "You’ll add the PDF before approval.",
     s6Blocker: "Choose what people will learn from.",
+    pdfAttachLead: "Attach a PDF your team will read.",
+    attachPdf: "Attach PDF",
+    replacePdf: "Replace PDF",
+    removePdf: "Remove",
+    uploadingPdf: "Uploading PDF…",
+    removingPdf: "Removing…",
+    uploadFailed: "Couldn’t upload the PDF — Try again",
+    removeFailed: "Couldn’t remove the PDF — Try again",
+    pdfReadyBadge: "Ready",
+    pagesLabel: (n) => (n === 1 ? "1 page" : `${n} pages`),
+    quickLead: "Need to launch something quickly?",
     s7ArenaQ: "Should people practice this in Arena?",
     s7ArenaRecommended: "Recommended for this kind of change.",
     s7ArenaAccept: "Yes, recommend practice",
@@ -329,6 +353,17 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     requiredBeforeApproval: "승인 전 필요",
     pdfMissingLead: "승인 전에 PDF를 추가하게 됩니다.",
     s6Blocker: "사람들이 무엇으로 배울지 선택하세요.",
+    pdfAttachLead: "팀이 읽을 PDF를 첨부하세요.",
+    attachPdf: "PDF 첨부",
+    replacePdf: "PDF 교체",
+    removePdf: "제거",
+    uploadingPdf: "PDF 업로드 중…",
+    removingPdf: "제거 중…",
+    uploadFailed: "PDF를 업로드하지 못했습니다 — 다시 시도",
+    removeFailed: "PDF를 제거하지 못했습니다 — 다시 시도",
+    pdfReadyBadge: "준비됨",
+    pagesLabel: (n) => `${n}페이지`,
+    quickLead: "빠르게 시작해야 하나요?",
     s7ArenaQ: "사람들이 Arena에서 연습해야 하나요?",
     s7ArenaRecommended: "이런 변화에 권장됩니다.",
     s7ArenaAccept: "네, 연습을 권장합니다",

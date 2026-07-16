@@ -16,7 +16,7 @@ import {
   type LearningNeed,
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
-import type { ClientDraft } from "@/lib/bty/foundry/events/moduleClient";
+import type { ClientDraft, ClientAttachment } from "@/lib/bty/foundry/events/moduleClient";
 
 /**
  * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
@@ -47,6 +47,11 @@ export function ModuleBuilderShell({
   const [step, setStep] = useState<number>(1);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [blocker, setBlocker] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<ClientAttachment | null>(null);
+  const [docState, setDocState] = useState<"idle" | "uploading" | "removing">("idle");
+  const [docError, setDocError] = useState<"upload" | "remove" | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const docBusy = docState !== "idle";
 
   const answersRef = useRef<BuilderAnswers>({});
   const stepRef = useRef<number>(1);
@@ -95,6 +100,7 @@ export function ModuleBuilderShell({
         stepRef.current = draft.current_step;
         setAnswers(a);
         setStep(draft.current_step);
+        setAttachment(draft.attachment ?? null);
         setRestore("loaded");
       } catch {
         if (alive) setRestore("unavailable");
@@ -162,6 +168,78 @@ export function ModuleBuilderShell({
 
   const retry = useCallback(() => void saver.retry(), [saver]);
 
+  // --- PDF attachment (durable, server-owned; never via autosave) ---
+  const onPickFile = useCallback(() => {
+    if (docBusy) return;
+    fileInputRef.current?.click();
+  }, [docBusy]);
+
+  const onFileChosen = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // allow re-picking the same file later
+      if (!file) return;
+      setDocError(null);
+      setDocState("uploading");
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`/api/bty/foundry/modules/${draftId}/document`, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          body: fd,
+        });
+        if (res.status === 404) {
+          goneRef.current = true;
+          onExit({ gone: true });
+          return;
+        }
+        const data = (await res.json().catch(() => null)) as { attachment?: ClientAttachment } | null;
+        if (res.ok && data?.attachment) {
+          setAttachment(data.attachment);
+          setDocState("idle");
+        } else {
+          setDocError("upload");
+          setDocState("idle");
+        }
+      } catch {
+        setDocError("upload");
+        setDocState("idle");
+      }
+    },
+    [draftId, onExit],
+  );
+
+  const onRemoveFile = useCallback(async () => {
+    if (docBusy) return;
+    setDocError(null);
+    setDocState("removing");
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/document`, {
+        method: "DELETE",
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (res.status === 404) {
+        goneRef.current = true;
+        onExit({ gone: true });
+        return;
+      }
+      if (res.ok) {
+        setAttachment(null);
+        setDocState("idle");
+      } else {
+        // A failed removal must NOT falsely show the attachment as gone.
+        setDocError("remove");
+        setDocState("idle");
+      }
+    } catch {
+      setDocError("remove");
+      setDocState("idle");
+    }
+  }, [draftId, docBusy, onExit]);
+
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
   if (restore === "loading") {
@@ -184,6 +262,15 @@ export function ModuleBuilderShell({
   if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
   const isReview = step === BUILDER_STEP_MAX;
+  const doc: DocProps = {
+    attachment,
+    state: docState,
+    error: docError,
+    onPick: onPickFile,
+    onRemove: onRemoveFile,
+    fileInputRef,
+    onFileChosen,
+  };
 
   return (
     <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
@@ -195,15 +282,20 @@ export function ModuleBuilderShell({
       </div>
 
       {isReview ? (
-        <ReviewBody answers={answers} onEdit={jumpTo} t={t} />
+        <ReviewBody answers={answers} attachment={attachment} onEdit={jumpTo} t={t} />
       ) : (
-        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t)}</div>
+        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, doc)}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
         <div>
           {step > 1 ? (
-            <button type="button" onClick={goBack} className="rounded-lg px-3 py-2 text-sm text-white/70">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={docBusy}
+              className="rounded-lg px-3 py-2 text-sm text-white/70 disabled:opacity-40"
+            >
               {t.back}
             </button>
           ) : (
@@ -211,14 +303,20 @@ export function ModuleBuilderShell({
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={saveAndLeave} className="rounded-lg px-3 py-2 text-sm text-white/60">
+          <button
+            type="button"
+            onClick={saveAndLeave}
+            disabled={docBusy}
+            className="rounded-lg px-3 py-2 text-sm text-white/60 disabled:opacity-40"
+          >
             {t.saveAndLeave}
           </button>
           {step < BUILDER_STEP_MAX ? (
             <button
               type="button"
               onClick={goNext}
-              className="rounded-xl bg-[#C9A66B] px-6 py-3 text-sm font-semibold text-[#0B1F3A]"
+              disabled={docBusy}
+              className="rounded-xl bg-[#C9A66B] px-6 py-3 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
             >
               {t.next}
             </button>
@@ -248,6 +346,23 @@ function SaveStatus({ state, t, onRetry }: { state: SaveState; t: ModuleBuilderC
 // Step rendering
 // ---------------------------------------------------------------------------
 type Patch = (partial: BuilderAnswers, immediate: boolean) => void;
+
+type DocProps = {
+  attachment: ClientAttachment | null;
+  state: "idle" | "uploading" | "removing";
+  error: "upload" | "remove" | null;
+  onPick: () => void;
+  onRemove: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  onFileChosen: (e: React.ChangeEvent<HTMLInputElement>) => void;
+};
+
+/** Human byte size for attachment display (client presentation only). */
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 function StepFrame({ q, help, children }: { q: string; help?: string; children: React.ReactNode }) {
   return (
@@ -335,7 +450,63 @@ function BlockerLine({ show, text }: { show: boolean; text: string }) {
   return <p className="text-xs leading-5 text-amber-300/80">{text}</p>;
 }
 
-function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy) {
+/** PDF attach / uploading / ready(replace·remove) / error, plus the file input. */
+function PdfAttach({ doc, t }: { doc: DocProps; t: ModuleBuilderCopy }) {
+  const busy = doc.state !== "idle";
+  const a = doc.attachment;
+  return (
+    <div className="flex flex-col gap-3">
+      {/* PDF-only, one file. In the hosted WKWebView this opens the native Files picker. */}
+      <input
+        ref={doc.fileInputRef}
+        type="file"
+        accept="application/pdf"
+        aria-label={t.attachPdf}
+        onChange={doc.onFileChosen}
+        className="sr-only"
+      />
+      {a ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-[0.95rem] font-medium text-white/90">{a.filename ?? "PDF"}</span>
+              <span className="text-xs text-white/45">
+                {t.pagesLabel(a.page_count)} · {formatBytes(a.byte_size)}
+              </span>
+            </div>
+            <span className="shrink-0 rounded-full bg-[#C9A66B]/20 px-2.5 py-0.5 text-xs font-medium text-[#C9A66B]">
+              {doc.state === "removing" ? t.removingPdf : t.pdfReadyBadge}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 pt-1">
+            <button type="button" onClick={doc.onPick} disabled={busy} className="text-sm text-[#C9A66B] disabled:opacity-50">
+              {doc.state === "uploading" ? t.uploadingPdf : t.replacePdf}
+            </button>
+            <button type="button" onClick={doc.onRemove} disabled={busy} className="text-sm text-white/50 disabled:opacity-50">
+              {t.removePdf}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm leading-6 text-white/55">{t.pdfAttachLead}</p>
+          <button
+            type="button"
+            onClick={doc.onPick}
+            disabled={busy}
+            className="self-start rounded-xl border border-[#C9A66B]/50 bg-[#C9A66B]/10 px-5 py-2.5 text-sm font-semibold text-[#C9A66B] disabled:opacity-50"
+          >
+            {doc.state === "uploading" ? t.uploadingPdf : t.attachPdf}
+          </button>
+        </div>
+      )}
+      {doc.error === "upload" ? <p className="text-xs text-amber-300/80">{t.uploadFailed}</p> : null}
+      {doc.error === "remove" ? <p className="text-xs text-amber-300/80">{t.removeFailed}</p> : null}
+    </div>
+  );
+}
+
+function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, doc: DocProps) {
   switch (step) {
     case 1:
       return (
@@ -464,7 +635,7 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
               ) : null}
             </div>
           ) : null}
-          {a.materialIntent === "pdf" ? <p className="text-sm leading-6 text-white/55">{t.pdfMissingLead}</p> : null}
+          {a.materialIntent === "pdf" ? <PdfAttach doc={doc} t={t} /> : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />
         </StepFrame>
       );
@@ -499,9 +670,15 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
 // ---------------------------------------------------------------------------
 // Step 8 — read-only draft review (starts at top; NO approve/publish/create)
 // ---------------------------------------------------------------------------
-type ReviewRow = { label: string; value: string | null; step: number; note?: { title: string; hint?: string } };
+type ReviewRow = {
+  label: string;
+  value: string | null;
+  step: number;
+  note?: { title: string; hint?: string };
+  ready?: string;
+};
 
-function buildReviewRows(a: BuilderAnswers, t: ModuleBuilderCopy): ReviewRow[] {
+function buildReviewRows(a: BuilderAnswers, attachment: ClientAttachment | null, t: ModuleBuilderCopy): ReviewRow[] {
   const audience = (() => {
     switch (a.audienceType) {
       case "everyone":
@@ -531,12 +708,18 @@ function buildReviewRows(a: BuilderAnswers, t: ModuleBuilderCopy): ReviewRow[] {
     !a.observableBehavior?.trim() || observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague";
   const behaviorNote = behaviorVague ? { title: t.gBehaviorNeeds, hint: t.gBehaviorHint } : undefined;
 
-  // Material — honest missing states (nothing is uploaded/added in this slice).
+  // Material — honest state. A PDF is "Ready" only when actually attached.
   let material: string | null = null;
   let materialNote: { title: string; hint?: string } | undefined;
+  let materialReady: string | undefined;
   if (a.materialIntent === "pdf") {
-    material = t.matPdf;
-    materialNote = { title: t.gPdfMissing, hint: t.requiredBeforeApproval };
+    if (attachment) {
+      material = attachment.filename ?? t.matPdf;
+      materialReady = `${t.pagesLabel(attachment.page_count)} · ${formatBytes(attachment.byte_size)} · ${t.pdfReadyBadge}`;
+    } else {
+      material = t.matPdf;
+      materialNote = { title: t.gPdfMissing, hint: t.requiredBeforeApproval };
+    }
   } else if (a.materialIntent === "youtube") {
     material = t.matYoutube;
     if (!a.materialText?.trim()) materialNote = { title: t.gYtMissing, hint: t.requiredBeforeApproval };
@@ -550,14 +733,24 @@ function buildReviewRows(a: BuilderAnswers, t: ModuleBuilderCopy): ReviewRow[] {
     { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, note: behaviorNote },
     { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4 },
     { label: t.reviewLearning, value: learning, step: 5 },
-    { label: t.reviewMaterial, value: material, step: 6, note: materialNote },
+    { label: t.reviewMaterial, value: material, step: 6, note: materialNote, ready: materialReady },
     { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 7 },
     { label: t.reviewFollow, value: arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30), step: 7 },
   ];
 }
 
-function ReviewBody({ answers, onEdit, t }: { answers: BuilderAnswers; onEdit: (step: number) => void; t: ModuleBuilderCopy }) {
-  const rows = buildReviewRows(answers, t);
+function ReviewBody({
+  answers,
+  attachment,
+  onEdit,
+  t,
+}: {
+  answers: BuilderAnswers;
+  attachment: ClientAttachment | null;
+  onEdit: (step: number) => void;
+  t: ModuleBuilderCopy;
+}) {
+  const rows = buildReviewRows(answers, attachment, t);
   const attention = rows.filter((r) => r.note).length;
   return (
     <div className="flex flex-col gap-4">
@@ -573,6 +766,7 @@ function ReviewBody({ answers, onEdit, t }: { answers: BuilderAnswers; onEdit: (
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-xs uppercase tracking-[0.12em] text-white/40">{r.label}</span>
               <span className="text-[0.95rem] leading-6 text-white/85">{r.value ?? t.reviewEmpty}</span>
+              {r.ready ? <span className="mt-0.5 text-xs leading-5 text-[#C9A66B]/80">{r.ready}</span> : null}
               {r.note ? (
                 <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
                   {r.note.title}

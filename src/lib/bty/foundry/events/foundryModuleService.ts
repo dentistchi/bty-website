@@ -8,6 +8,8 @@ import {
   type ModuleDraftStatus,
 } from "@/domain/foundry/module/module-draft";
 import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { deleteFoundryDocument } from "./documentStorage";
+import { parseDocumentRef } from "./moduleClient";
 
 /**
  * Foundry Guided Module Builder — service layer (Slice 1).
@@ -258,6 +260,11 @@ export async function deleteDraft(
   const current = await getOwnerDraft(admin, ownerUserId, draftId);
   if (!current) return { ok: false, reason: "draft_not_found" };
   if (!canMutateDraft(current.status)) return { ok: false, reason: "draft_not_mutable" };
+
+  // Remove the draft's private PDF asset first (idempotent; a missing object is
+  // fine) so deleting a draft never leaves an orphaned file in the bucket.
+  const ref = parseDocumentRef(current.document_asset_ref);
+  if (ref) await deleteFoundryDocument(admin, ref.bucket, ref.path);
 
   const { error } = await admin
     .from("foundry_module_drafts")

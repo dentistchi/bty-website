@@ -77,10 +77,13 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     expect(screen.getByText("Turn a recurring problem into a training your team can use.")).toBeTruthy();
   });
 
-  it("keeps the legacy path but demotes it to Create quick event", async () => {
+  it("keeps the legacy path but demotes it to a discoverable quick-event path", async () => {
     server([]);
     render(<FoundryEventRooms locale="en" />);
-    expect(await screen.findByText("Create quick event")).toBeTruthy();
+    // primary first, then the quick-event lead + button directly beneath it.
+    expect(await screen.findByText("Create team training")).toBeTruthy();
+    expect(screen.getByText("Need to launch something quickly?")).toBeTruthy();
+    expect(screen.getByText("Create quick event")).toBeTruthy();
     expect(screen.getByText("Skip guided setup.")).toBeTruthy();
   });
 
