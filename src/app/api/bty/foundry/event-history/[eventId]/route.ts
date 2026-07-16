@@ -5,7 +5,7 @@ import { getHostHistoryDetail } from "@/lib/bty/foundry/events/foundryHostHistor
 export const runtime = "nodejs";
 
 /**
- * GET /api/bty/foundry/events/history/[eventId] — a read-only snapshot of one
+ * GET /api/bty/foundry/event-history/[eventId] — a read-only snapshot of one
  * historical event the caller owns: session summary, canonical counts, a material
  * summary, and a completion-only roster. Returns 404 (non-disclosing) when the
  * event is not owned by the caller OR is not terminal (an open/current event is

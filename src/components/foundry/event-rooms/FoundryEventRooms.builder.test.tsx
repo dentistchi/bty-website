@@ -27,7 +27,7 @@ function server(initialDrafts: Summary[], events: Ev[] = []) {
     const method = opts?.method ?? "GET";
     calls.push({ url, method });
     // Read-only History archive list (must be checked before the generic events match).
-    if (url.includes("/api/bty/foundry/events/history")) return jsonRes({ events: [] });
+    if (url.includes("/api/bty/foundry/event-history")) return jsonRes({ events: [] });
     if (url.includes("/api/bty/foundry/events")) return jsonRes({ events });
     if (url.endsWith("/api/bty/foundry/modules") && method === "GET") return jsonRes({ drafts });
     if (url.endsWith("/api/bty/foundry/modules") && method === "POST")

@@ -37,7 +37,7 @@ beforeEach(() => {
 
 function req(eventId = "ev-1") {
   return {
-    request: new NextRequest(`http://localhost/api/bty/foundry/events/history/${eventId}`, {
+    request: new NextRequest(`http://localhost/api/bty/foundry/event-history/${eventId}`, {
       method: "GET",
       headers: { origin: "https://bty-arena-staging.workers.dev" },
     }),
@@ -45,7 +45,7 @@ function req(eventId = "ev-1") {
   };
 }
 
-describe("GET /api/bty/foundry/events/history/[eventId]", () => {
+describe("GET /api/bty/foundry/event-history/[eventId]", () => {
   it("401s an unauthenticated caller (service untouched)", async () => {
     currentUser.mockReturnValue(null);
     const { request, ctx } = req();

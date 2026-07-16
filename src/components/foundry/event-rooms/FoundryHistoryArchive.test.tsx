@@ -85,7 +85,7 @@ describe("FoundryHistoryArchive", () => {
 
   it("opens a read-only detail with sections, counts, and completion-only roster", async () => {
     mockFetch((url) =>
-      url.includes("/history/ev-1")
+      url.includes("/event-history/ev-1")
         ? { ok: true, status: 200, body: { event: DETAIL_EV1 } }
         : { ok: true, status: 200, body: { events: LIST } },
     );
@@ -106,7 +106,7 @@ describe("FoundryHistoryArchive", () => {
 
   it("shows a not-found state when the detail 404s", async () => {
     mockFetch((url) =>
-      url.includes("/history/ev-1")
+      url.includes("/event-history/ev-1")
         ? { ok: false, status: 404, body: { error: "not_found" } }
         : { ok: true, status: 200, body: { events: LIST } },
     );

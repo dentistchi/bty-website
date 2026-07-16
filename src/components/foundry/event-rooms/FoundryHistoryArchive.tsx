@@ -10,7 +10,7 @@ import { HISTORY_COPY } from "./historyCopy";
  * training sessions we already ran and confirm what happened." No edit, reopen,
  * rerun, duplicate, or delete controls. No individual reflection text. No ranking.
  *
- * Data comes entirely from the server view models (`/api/bty/foundry/events/
+ * Data comes entirely from the server view models (`/api/bty/foundry/event-
  * history[/:id]`) — the UI renders factual counts and completion status only and
  * never reconstructs qualification or count semantics.
  */
@@ -132,7 +132,7 @@ function HistoryList({ t, onOpen }: { t: HistoryCopy; onOpen: (id: string) => vo
   const load = useCallback(async () => {
     setState("loading");
     try {
-      const res = await fetch("/api/bty/foundry/events/history", {
+      const res = await fetch("/api/bty/foundry/event-history", {
         credentials: "include",
         cache: "no-store",
       });
@@ -224,7 +224,7 @@ function HistoryDetailView({
   const load = useCallback(async () => {
     setState("loading");
     try {
-      const res = await fetch(`/api/bty/foundry/events/history/${encodeURIComponent(eventId)}`, {
+      const res = await fetch(`/api/bty/foundry/event-history/${encodeURIComponent(eventId)}`, {
         credentials: "include",
         cache: "no-store",
       });
