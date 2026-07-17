@@ -1,0 +1,288 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArenaPracticePlayer } from "@/components/bty-arena/practice/ArenaPracticePlayer";
+import {
+  completePractice,
+  fetchPracticeList,
+  startPractice,
+  type AvailablePractice,
+  type PlayablePractice,
+} from "./arenaRoomActions";
+
+/**
+ * Native in-shell Arena Practice room (Slice 3.0C-1).
+ *
+ * The ENTIRE journey — list → start → play (Primary → Tradeoff → Action Decision)
+ * → complete → list — is LOCAL React state inside BtyDailyAppShell's arena tab.
+ * There is NO router, no Link, no window.location: this component must never
+ * navigate. BtyDailyAppShell keeps owning the selected bottom tab; ArenaRoom owns
+ * only its own view state; ArenaPracticePlayer (reused unchanged) owns the phase
+ * reducer. Renders as normal flow content inside the shell's <main overflow-y-auto>
+ * (no fixed overlay, no nested scroll, no portal). Zero XP, no canonical Arena run.
+ */
+
+type ArenaRoomView =
+  | { kind: "list" }
+  | { kind: "starting"; practiceId: string; error?: string }
+  | { kind: "playing"; practice: PlayablePractice; runId: string };
+
+type CompleteStatus = "none" | "saving" | "saved" | "error";
+
+const COPY = {
+  en: {
+    eyebrow: "ARENA",
+    loading: "Preparing your decision training…",
+    from: "From",
+    start: "Start practice",
+    again: "Practice again",
+    done: "Done",
+    error: "We couldn't load your Practices.",
+    retry: "Retry",
+    back: "Back to list",
+    starting: "Starting your practice…",
+    startError: "We couldn't start this practice.",
+    completeSaving: "Saving your completion…",
+    completeError: "We couldn't save your completion.",
+  },
+  ko: {
+    eyebrow: "아레나",
+    loading: "결정 훈련 공간을 준비하고 있습니다…",
+    from: "원본",
+    start: "연습 시작",
+    again: "다시 연습",
+    done: "완료",
+    error: "연습을 불러오지 못했습니다.",
+    retry: "다시 시도",
+    back: "목록으로",
+    starting: "연습을 시작하는 중…",
+    startError: "이 연습을 시작하지 못했습니다.",
+    completeSaving: "완료 상태를 저장하는 중…",
+    completeError: "완료 상태를 저장하지 못했습니다.",
+  },
+};
+
+const LIST_TIMEOUT_MS = 10_000;
+
+export function ArenaRoom({
+  locale,
+  lockedTag,
+  lockedBody,
+}: {
+  locale: string;
+  /** Calm "being prepared" copy reused for the genuinely-empty state (never blank/jarring). */
+  lockedTag: string;
+  lockedBody: string;
+}) {
+  const loc = locale === "ko" ? "ko" : "en";
+  const t = COPY[loc];
+
+  const [listStatus, setListStatus] = useState<"loading" | "ok" | "error">("loading");
+  const [practices, setPractices] = useState<AvailablePractice[]>([]);
+  const [view, setView] = useState<ArenaRoomView>({ kind: "list" });
+  const [completeStatus, setCompleteStatus] = useState<CompleteStatus>("none");
+
+  // ---- practice list (bounded fetch; visible loading/list/empty/error) ----
+  const loadList = useCallback(async () => {
+    setListStatus("loading");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), LIST_TIMEOUT_MS);
+    const r = await fetchPracticeList(fetch, controller.signal);
+    clearTimeout(timer);
+    if (r.ok) {
+      setPractices(r.practices);
+      setListStatus("ok");
+    } else {
+      setListStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadList();
+    const onActive = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") void loadList();
+    };
+    window.addEventListener("focus", onActive);
+    document.addEventListener("visibilitychange", onActive);
+    return () => {
+      window.removeEventListener("focus", onActive);
+      document.removeEventListener("visibilitychange", onActive);
+    };
+  }, [loadList]);
+
+  // ---- start (contract: snapshot -> validate -> POST start -> runId; then play) ----
+  const startingRef = useRef(false);
+  const handleStart = useCallback(async (practiceId: string) => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setView({ kind: "starting", practiceId });
+    try {
+      const r = await startPractice(fetch, practiceId);
+      if (r.ok) {
+        setCompleteStatus("none");
+        setView({ kind: "playing", practice: r.practice, runId: r.runId });
+      } else {
+        setView({ kind: "starting", practiceId, error: r.reason });
+      }
+    } finally {
+      startingRef.current = false;
+    }
+  }, []);
+
+  const toList = useCallback(() => {
+    setCompleteStatus("none");
+    setView({ kind: "list" });
+    void loadList();
+  }, [loadList]);
+
+  // ---- completion (persist, honest; preserve local state + retry on failure) ----
+  const saveCompletion = useCallback(
+    async (practiceId: string, runId: string): Promise<boolean> => {
+      setCompleteStatus("saving");
+      const r = await completePractice(fetch, practiceId, runId);
+      setCompleteStatus(r.ok ? "saved" : "error");
+      return r.ok;
+    },
+    [],
+  );
+
+  // Player reached the end → persist once (idempotent server-side).
+  const handleComplete = useCallback(() => {
+    if (view.kind !== "playing") return;
+    void saveCompletion(view.practice.id, view.runId);
+  }, [view, saveCompletion]);
+
+  // Player "Done" → ensure completion is saved before returning (final retry); if it
+  // still fails, stay so the user can Retry — never a false persisted completion.
+  const handleExit = useCallback(async () => {
+    if (view.kind === "playing" && completeStatus !== "saved") {
+      const ok = await saveCompletion(view.practice.id, view.runId);
+      if (!ok) return; // stay on the player; the error strip offers Retry / Back to list
+    }
+    toList();
+  }, [view, completeStatus, saveCompletion, toList]);
+
+  // ------------------------------------------------------------------ render ----
+  if (view.kind === "starting") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-2 text-center">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
+        {view.error ? (
+          <>
+            <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/70">{t.startError}</p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleStart(view.practiceId)}
+                className="rounded-xl bg-[#C9A66B] px-6 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+              >
+                {t.retry}
+              </button>
+              <button type="button" onClick={toList} className="text-sm text-white/50 hover:text-white/80">
+                {t.back}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#C9A66B]" />
+            <p className="text-sm text-white/60">{t.starting}</p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (view.kind === "playing") {
+    return (
+      <div className="flex flex-col">
+        {completeStatus === "error" ? (
+          <div className="mb-3 flex flex-col gap-2 rounded-xl border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-center">
+            <span className="text-sm text-red-200/90">{t.completeError}</span>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => void saveCompletion(view.practice.id, view.runId)}
+                className="rounded-lg bg-[#C9A66B] px-4 py-1.5 text-xs font-semibold text-[#0B1F3A]"
+              >
+                {t.retry}
+              </button>
+              <button type="button" onClick={toList} className="text-xs text-white/50 hover:text-white/80">
+                {t.back}
+              </button>
+            </div>
+          </div>
+        ) : completeStatus === "saving" ? (
+          <p className="mb-3 text-center text-xs text-white/40">{t.completeSaving}</p>
+        ) : null}
+        <ArenaPracticePlayer
+          scenario={view.practice.scenario}
+          locale={loc}
+          mode="play"
+          sourceTrainingTitle={view.practice.source_training_title}
+          onExit={() => void handleExit()}
+          onComplete={handleComplete}
+        />
+      </div>
+    );
+  }
+
+  // view.kind === "list"
+  if (listStatus === "loading") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center">
+        <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
+        <div className="mb-3 h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#C9A66B]" />
+        <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/60">{t.loading}</p>
+      </div>
+    );
+  }
+  if (listStatus === "error") {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-2 text-center">
+        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
+        <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/70">{t.error}</p>
+        <button
+          type="button"
+          onClick={() => void loadList()}
+          className="rounded-xl border border-white/20 px-6 py-2.5 text-sm font-semibold text-white/80 hover:text-white"
+        >
+          {t.retry}
+        </button>
+      </div>
+    );
+  }
+  if (practices.length === 0) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center">
+        <span className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{lockedTag}</span>
+        <p className="max-w-[18rem] text-[0.95rem] leading-6 text-white/60">{lockedBody}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="btyFadeIn mx-auto flex w-full max-w-md flex-col gap-3 px-1 pt-2">
+      <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
+      {practices.map((p) => (
+        <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-[0.98rem] font-semibold text-white/90">{p.practice_title}</p>
+            {p.completed ? (
+              <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.12em] text-[#C9A66B]/80">{t.done}</span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-white/45">
+            {t.from}: {p.source_training_title}
+          </p>
+          <button
+            type="button"
+            onClick={() => void handleStart(p.id)}
+            className="mt-3 w-full rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          >
+            {p.completed ? t.again : t.start}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

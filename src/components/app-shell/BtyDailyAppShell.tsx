@@ -5,6 +5,7 @@ import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
+import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
@@ -1591,7 +1592,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             localStorage. The prepared-room copy (t.center) is retained on COPY as a reserved
             fallback identity. arena/foundry stay LockedRoom until their own steps. */}
         {tab === "center" && <CenterKeepRoom locale={locale} />}
-        {tab === "arena" && <LockedRoom tag={t.arena.tag} body={t.arena.body} />}
+        {/* Arena = relationship with others. In-shell published-practice player
+            (Slice 3.0C-1): list → start → play → complete → list, ALL local state,
+            NO router/navigation. t.arena copy reused only for the empty state. */}
+        {tab === "arena" && <ArenaRoom locale={locale} lockedTag={t.arena.tag} lockedBody={t.arena.body} />}
         {/* Foundry = relationship with the world. V1 is Event Rooms: a manager
             opens one real shared room and brings the team in by QR. Replaces the
             LockedRoom placeholder (t.foundry retained as reserved fallback copy). */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import type {
   ActionDecisionChoice,
   ArenaScenarioDraft,
@@ -59,7 +58,6 @@ export function ArenaPracticeFlow({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = ARENA_PRACTICE_COPY[loc];
-  const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [source, setSource] = useState<SourceSummary | null>(null);
@@ -503,18 +501,13 @@ export function ArenaPracticeFlow({
           ✓
         </div>
         <h1 className="text-xl font-semibold text-white">{t.publishedTitle}</h1>
-        <p className="max-w-[20rem] text-sm leading-6 text-white/60">{t.publishedBody}</p>
-        <button
-          type="button"
-          onClick={() => router.push(`/${loc}/bty-arena/practice/${publishedPracticeId}`)}
-          className="rounded-xl bg-[#C9A66B] px-8 py-3.5 text-base font-semibold text-[#0B1F3A]"
-        >
-          {t.openInArena}
-        </button>
+        {/* No route navigation: the native app tab is owned by BtyDailyAppShell.
+            Guide the host to the Arena tab instead of ejecting to a web route. */}
+        <p className="max-w-[20rem] text-sm leading-6 text-white/60">{t.openArenaTabHint}</p>
         <button
           type="button"
           onClick={() => setPublishState("idle")}
-          className="pt-1 text-sm text-white/50 hover:text-white/80"
+          className="rounded-xl bg-[#C9A66B] px-8 py-3.5 text-base font-semibold text-[#0B1F3A]"
         >
           {t.backToEditor}
         </button>
@@ -546,18 +539,12 @@ export function ArenaPracticeFlow({
           </p>
         ) : null}
 
-        {/* Already published at this revision → the host is never stuck; they see it
-            is live and can open it directly. */}
+        {/* Already published at this revision → the host sees it is live. No route
+            navigation: they start it from the Arena tab (shell-owned). */}
         {livePracticeId && !dirty ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
-            <span className="min-w-0 text-sm text-[#C9A66B]">✓ {t.liveBanner}</span>
-            <button
-              type="button"
-              onClick={() => router.push(`/${loc}/bty-arena/practice/${livePracticeId}`)}
-              className="shrink-0 text-sm font-semibold text-[#C9A66B] underline"
-            >
-              {t.openInArena}
-            </button>
+          <div className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
+            <span className="text-sm text-[#C9A66B]">✓ {t.liveBanner}</span>
+            <span className="ml-1 text-sm text-[#C9A66B]/80">{t.openArenaTabHint}</span>
           </div>
         ) : null}
 

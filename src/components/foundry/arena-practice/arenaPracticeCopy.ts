@@ -94,6 +94,7 @@ export type ArenaPracticeCopy = {
   publishedTitle: string;
   publishedBody: string;
   openInArena: string;
+  openArenaTabHint: string;
   returnToTraining: string;
   backToEditor: string;
   liveBanner: string;
@@ -201,6 +202,7 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishedTitle: "Published to Arena",
     publishedBody: "Learners can now find this practice in the Arena tab.",
     openInArena: "Open in Arena",
+    openArenaTabHint: "Open the Arena tab to start this practice.",
     returnToTraining: "Return to training",
     backToEditor: "Back to editor",
     liveBanner: "This version is published to Arena.",
@@ -301,6 +303,7 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishedTitle: "Arena에 게시되었습니다",
     publishedBody: "이제 학습자가 Arena 탭에서 이 연습을 찾을 수 있습니다.",
     openInArena: "Arena에서 열기",
+    openArenaTabHint: "Arena 탭에서 연습을 시작하세요.",
     returnToTraining: "교육으로 돌아가기",
     backToEditor: "편집기로 돌아가기",
     liveBanner: "이 버전이 Arena에 게시되어 있습니다.",
