@@ -40,14 +40,18 @@ describe('server — queued signal + pass-turn auto-promotion', () => {
     expect(body.slice(0, 600)).toContain('youtube_queued_at:');
     expect(body.slice(0, 600)).toMatch(/\.eq\('status', 'waiting'\)/);
   });
-  it('passTurnAndPromote completes current, then auto-starts next ONLY if Ready+Queued', () => {
+  it('passTurnAndPromote delegates to the shared advance + promote seam (V8: Ready-only)', () => {
+    // V8 Autopilot: pass-turn = complete current + advanceAfterTerminal → promoteNextReady
+    // (Ready alone; the TV-queue requirement is dropped).
     const body = rooms.slice(rooms.indexOf('function passTurnAndPromote'));
-    const scoped = body.slice(0, 1400);
-    expect(scoped).toContain('finishOwnRequest'); // complete current
-    expect(scoped).toContain('isAutoPromotable'); // Ready+Queued gate
-    expect(scoped).toContain('startOwnRequest'); // atomic one-playing start
-    expect(scoped).toContain('canonicalRank'); // next = canonical FIRST waiting
-    expect(scoped).toContain('eventId'); // V7.1 event scope
+    const scoped = body.slice(0, 900);
+    expect(scoped).toContain('advanceAfterTerminal'); // shared Finish/Skip seam
+    // promoteNextReady is the authoritative Ready-only promotion (via the atomic RPC).
+    const promote = rooms.slice(rooms.indexOf('function promoteNextReady'), rooms.indexOf('function promoteNextReady') + 1200);
+    expect(promote).toContain('first.ready_at'); // Ready-only gate (no youtube_queued_at)
+    expect(promote).toContain('startOwnRequest'); // atomic one-playing start
+    expect(promote).toContain('canonicalRank'); // next = canonical FIRST waiting
+    expect(promote).not.toContain('youtube_queued_at'); // TV-queue requirement removed
   });
   it('endEvent clears youtube_queued_at (never carries into the next event)', () => {
     const body = events.slice(events.indexOf('function endEvent'));
@@ -96,14 +100,14 @@ describe('Admin UI — Queue Prep + first song + pass-turn + drift', () => {
     expect(djBoard).toContain('queuePrepLabel');
     expect(djBoard).toContain('READY + QUEUED');
   });
-  it('the first song is an atomic start (▶ 첫 곡 시작), not a per-song play', () => {
-    expect(djBoard).toContain('▶ 첫 곡 시작');
+  it('V8: force-start ("강제로 시작") is a secondary emergency override, not the norm', () => {
+    expect(djBoard).toContain('강제로 시작'); // Ready-ignoring override
     expect(djBoard).toContain('onStartFirst(playTarget.id');
   });
-  it('pass-turn is a 2-step confirm with the TV-queue copy, calling onPassTurn', () => {
-    expect(djBoard).toContain('TV에서 다음 곡이 시작됐나요?');
+  it('V8: "노래 끝" is the 2-step primary op, calling onPassTurn (auto-promotes next Ready)', () => {
+    expect(djBoard).toContain('이 노래가 끝났나요?');
     expect(djBoard).toContain('onPassTurn(current.id)');
-    expect(djBoard).toContain('네, 다음 차례로');
+    expect(djBoard).toContain('네, 노래 끝');
   });
   it('a reorder-drift warning appears (never claims the real TV queue changed)', () => {
     expect(djBoard).toContain('preparedOrderDrifted');
@@ -117,7 +121,7 @@ describe('Admin UI — Queue Prep + first song + pass-turn + drift', () => {
 
 describe('Guest UI — never sees the TV-queue mechanics', () => {
   it('Ready-confirmed copy says the turn auto-progresses, without queue jargon', () => {
-    expect(dock).toContain('TV에 곡이 준비되면 자동으로 차례가 진행됩니다');
+    expect(dock).toContain('앞의 무대가 끝나면 자동으로 이어집니다');
     // No YouTube / queue-prep controls leak to the guest.
     expect(strip(dock)).not.toContain('youtube_queued_at');
     expect(strip(dock)).not.toContain('대기열에 추가');

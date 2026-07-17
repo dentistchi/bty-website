@@ -32,7 +32,7 @@ import {
   type DragRowRect,
 } from '@/domain/reorder';
 import { primaryPlayTarget } from '@/domain/play-flow';
-import { queuePrepLabel, isAutoPromotable, preparedOrderDrifted } from '@/domain/queue-assist';
+import { queuePrepLabel, preparedOrderDrifted } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
@@ -543,10 +543,9 @@ export default function DjBoard({
   const prepList = displayQueue.slice(0, 5);
   const queuedCount = displayQueue.filter((r) => r.youtube_queued_at != null).length;
   const readyCount = displayQueue.filter((r) => r.ready_at != null).length;
-  const nextSignals = playTarget
-    ? { status: playTarget.status, readyAt: playTarget.ready_at, youtubeQueuedAt: playTarget.youtube_queued_at }
-    : null;
-  const nextAutoReady = isAutoPromotable(nextSignals);
+  // V8 AUTOPILOT — auto-start is READY-only (the TV-queue signal is no longer
+  // required). The next song auto-starts on "노래 끝" the moment its guest is Ready.
+  const nextAutoReady = playTarget?.ready_at != null;
 
   // Reorder drift: if the Admin reorders songs already added to the TV queue, BTY
   // cannot reorder the real YouTube queue — warn (never auto-clear, never claim the
@@ -864,14 +863,15 @@ export default function DjBoard({
               })()}
               {/* V1.1: automatic-lyrics status for the song on stage (Admin-only). */}
               <LyricsStatusChip request={current} />
-              {/* V8: the next song's TV-queue readiness — pass-turn auto-starts it. */}
+              {/* V8 AUTOPILOT — the next song auto-starts on "노래 끝" once its guest
+                  is Ready (Ready-only; no TV-queue step). */}
               {playTarget ? (
                 <p className={`muted playback-help next-preview${nextAutoReady ? ' auto' : ''}`}>
-                  다음 곡: {playTarget.guest_name} — {displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title).song || requestDisplayTitle(playTarget)}
+                  다음: {playTarget.guest_name} — {displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title).song || requestDisplayTitle(playTarget)}
                   <br />
                   {nextAutoReady
-                    ? '✅ READY + TV 대기열 준비됨 · 차례를 넘기면 자동 진행'
-                    : '⏳ 아직 자동 진행 준비 전 (Ready + TV 대기열 필요)'}
+                    ? '✅ 다음 가수 준비 완료 · 노래 끝을 누르면 자동으로 시작됩니다'
+                    : '⏳ 다음 가수 준비 대기 중 · 준비되면 자동으로 이어집니다'}
                 </p>
               ) : (
                 <p className="muted playback-help">다음 대기 곡이 없습니다.</p>
@@ -893,9 +893,9 @@ export default function DjBoard({
                 </button>
                 {playerFinishConfirm ? (
                   <div className="player-confirm">
-                    {/* V8 copy: the operating question is whether the TV moved to the
-                        next queued video, not whether the Admin stopped it. */}
-                    <span className="player-confirm-q">TV에서 다음 곡이 시작됐나요?</span>
+                    {/* V8 AUTOPILOT — the Admin only tells BTY the song is over. If the
+                        next guest is Ready, BTY auto-starts their stage. */}
+                    <span className="player-confirm-q">이 노래가 끝났나요?</span>
                     <div className="player-confirm-row">
                       <button className="ghost" onClick={() => setPlayerFinishConfirm(false)}>
                         아직이요
@@ -910,24 +910,20 @@ export default function DjBoard({
                             setPassNote(
                               reason === 'no_next'
                                 ? '다음 대기 곡이 없습니다.'
-                                : reason === 'needs_queued'
-                                  ? '다음 곡이 아직 TV 대기열에 준비되지 않았습니다.'
-                                  : reason === 'needs_ready'
-                                    ? '다음 가수가 아직 준비되지 않았습니다.'
-                                    : '다음 곡이 아직 준비되지 않았습니다 (Ready + TV 대기열 필요).',
+                                : '다음 가수가 아직 준비되지 않았어요 · 준비되면 자동으로 시작됩니다.',
                             );
                           } else {
                             setPassNote(null);
                           }
                         }}
                       >
-                        네, 다음 차례로
+                        네, 노래 끝
                       </button>
                     </div>
                   </div>
                 ) : (
                   <button className="ok lg" disabled={busy} onClick={() => setPlayerFinishConfirm(true)}>
-                    ✓ 차례 넘기기
+                    ✓ 노래 끝
                   </button>
                 )}
               </div>
@@ -960,22 +956,21 @@ export default function DjBoard({
                   </>
                 );
               })()}
-              {/* V8: the first song has no previous song to pass — the Admin starts
-                  it once. When it's Ready + Queued it's an atomic first-song start. */}
-              {nextAutoReady ? (
-                <p className="lead player-ready">✅ READY + TV 대기열 준비됨</p>
-              ) : playTarget.ready_at ? (
-                <p className="muted playback-help">가수는 준비됨 · TV 대기열 준비가 필요합니다.</p>
+              {/* V8 AUTOPILOT — when this guest presses Ready, BTY auto-starts their
+                  stage (Ready is the go signal). The Admin normally does nothing here;
+                  "강제로 시작" is an emergency override that ignores Ready. */}
+              {playTarget.ready_at ? (
+                <p className="lead player-ready">✅ 준비 완료 · 곧 자동으로 시작됩니다</p>
               ) : (
-                <p className="muted playback-help">아직 준비 신호를 기다리고 있습니다.</p>
+                <p className="muted playback-help">다음 가수가 준비되면 자동으로 시작됩니다 · 준비 기다리는 중</p>
               )}
               <div className="stage-actions">
                 <button
-                  className="primary lg"
+                  className={playTarget.ready_at ? 'primary lg' : 'ghost'}
                   disabled={busy || !playTarget.youtube_video_id}
                   onClick={() => onStartFirst(playTarget.id, playTarget.youtube_video_id)}
                 >
-                  ▶ 첫 곡 시작
+                  {playTarget.ready_at ? '▶ 지금 시작' : '강제로 시작'}
                 </button>
                 {/* Lyrics V1.1: manual correction/override, reachable even before a
                     song is on stage (fixes the V1 "button only while playing" gap). */}

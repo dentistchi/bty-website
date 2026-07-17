@@ -55,6 +55,12 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
   const [stageOpen, setStageOpen] = useState<boolean | null>(null);
   const [nextId, setNextId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [justStarted, setJustStarted] = useState(false); // V8: my Ready auto-started my song
+  useEffect(() => {
+    if (!justStarted) return;
+    const t = window.setTimeout(() => setJustStarted(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [justStarted]);
   // `arrived`: a brief one-time "It's your turn" flash flag.
   const [arrived, setArrived] = useState(false);
   const arrivedRef = useRef<string | null>(null); // request id we already fired arrival for
@@ -214,6 +220,11 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
         },
       );
       if (res.ok) {
+        // V8 AUTOPILOT — the server may have auto-started this song (first in line +
+        // stage open). Surface an honest "무대가 시작되었습니다" note; the YouTube
+        // handoff still happens on the Admin Player (we never claim TV autoplay).
+        const data = (await res.json().catch(() => ({}))) as { autoStarted?: boolean };
+        if (data.autoStarted) setJustStarted(true);
         refreshAll();
         return;
       }
@@ -299,8 +310,11 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
           <div className={`perf-card myturn hero${arrived ? ' arrival' : ''}`} role="status">
             <div className="perf-hero-ico" aria-hidden>🎤</div>
             <div className="perf-eyebrow">It’s your turn</div>
-            <div className="perf-title big">{namePrefix ? `${namePrefix}, 준비되셨나요?` : '준비되셨나요?'}</div>
-            <div className="perf-sub">준비되면 Admin이 TV에서 노래를 시작합니다.</div>
+            <div className="perf-title big">{namePrefix ? `${namePrefix}, 다음은 당신의 무대예요` : '다음은 당신의 무대예요'}</div>
+            {/* V8 AUTOPILOT — Ready is the go signal. If nothing is playing, pressing
+                Ready starts the stage right away; otherwise it starts automatically the
+                moment the current song ends. No Admin Start needed. */}
+            <div className="perf-sub">준비되면 눌러주세요 · 앞의 무대가 끝나면 바로 이어집니다.</div>
             <div className="perf-actions">
               <button
                 type="button"
@@ -308,7 +322,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                 onClick={() => doReady(stageReq, true)}
                 disabled={actingId === stageReq.requestId}
               >
-                {actingId === stageReq.requestId ? '알리는 중…' : '준비됐어요'}
+                {actingId === stageReq.requestId ? '준비하는 중…' : '준비됐어요'}
               </button>
             </div>
           </div>
@@ -318,11 +332,15 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
           <div className="perf-card ready hero" role="status">
             <div className="perf-hero-ico" aria-hidden>✅</div>
             <div className="perf-eyebrow">{namePrefix ? namePrefix : '준비 완료'}</div>
-            <div className="perf-title big">재생 준비 완료</div>
+            <div className="perf-title big">준비 완료</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
-            {/* V8: the guest never sees the TV-queue mechanics — only that their
-                turn will progress automatically once things are ready. */}
-            <div className="perf-sub">TV에 곡이 준비되면 자동으로 차례가 진행됩니다.</div>
+            {/* V8: honest — the stage auto-continues on the current song's end; the
+                Admin opens the video on the TV. We never claim TV autoplay. */}
+            <div className="perf-sub">
+              {justStarted
+                ? '무대가 시작되었습니다 · Admin 화면에서 노래를 열고 있어요.'
+                : '앞의 무대가 끝나면 자동으로 이어집니다.'}
+            </div>
             <div className="perf-actions">
               <button
                 type="button"
@@ -330,7 +348,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                 onClick={() => doReady(stageReq, false)}
                 disabled={actingId === stageReq.requestId}
               >
-                준비 상태 취소
+                준비 취소
               </button>
             </div>
           </div>

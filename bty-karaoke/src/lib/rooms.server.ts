@@ -18,7 +18,7 @@ import {
   type RequestStatus,
 } from '@/domain/queue';
 import { classifyVideo } from '@/domain/video-kind';
-import { isAutoPromotable, noPromoteReason, type NoPromoteReason } from '@/domain/queue-assist';
+import { type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
@@ -364,7 +364,7 @@ const NEXT_STATUS: Record<DjAction, RequestStatus> = {
 };
 
 export type DjTransition =
-  | { outcome: 'ok'; request: KaraokeRequest }
+  | { outcome: 'ok'; request: KaraokeRequest; from: RequestStatus }
   | { outcome: 'not_found' }
   | { outcome: 'invalid'; from: RequestStatus };
 
@@ -401,7 +401,7 @@ export async function setRequestStatus(
     .select('*')
     .single();
   if (error) throw error;
-  return { outcome: 'ok', request: data as KaraokeRequest };
+  return { outcome: 'ok', request: data as KaraokeRequest, from };
 }
 
 /**
@@ -443,7 +443,7 @@ export async function moveToNextWaiting(
     .select('*')
     .single();
   if (error) throw error;
-  return { outcome: 'ok', request: data as KaraokeRequest };
+  return { outcome: 'ok', request: data as KaraokeRequest, from: 'waiting' };
 }
 
 export type ReorderResult =
@@ -564,42 +564,102 @@ export interface PassTurnResult {
   reason: 'promoted' | NoPromoteReason;
 }
 
+export type PromoteOutcome = 'started' | 'blocked_not_ready' | 'already_playing' | 'queue_empty';
+
+export interface PromoteResult {
+  outcome: PromoteOutcome;
+  /** The song now on stage (started / already_playing). */
+  request?: KaraokeRequest;
+  /** The canonical first waiting song when it isn't Ready yet (blocked_not_ready). */
+  nextRequest?: KaraokeRequest;
+}
+
 /**
- * V8 pass-turn (Option B). Admin-initiated: complete the current playing song and,
- * if the canonical FIRST waiting song is BOTH Ready (guest) and Queued (on the TV),
- * atomically start it in BTY so the Admin doesn't press Play every song. The auto-
- * start only flips BTY state — it never controls YouTube; the operating assumption
- * is the TV queue is already playing that song next. If the next song isn't both
- * Ready and Queued, BTY does NOT auto-start and reports why.
+ * V8 AUTOPILOT — the ONE authoritative "start the next stage if it's Ready" service.
+ * Ready is the guest's INTENT; starting is the SYSTEM's responsibility. Only the
+ * canonical FIRST waiting song (event-scoped) is ever auto-started, and only when the
+ * stage is open (nothing playing) AND that song's guest has signalled Ready. It never
+ * jumps a Ready guest ahead of an un-ready one at the front of the line. Concurrency-
+ * safe: the actual `waiting → playing` flip goes through the advisory-locked
+ * `start_karaoke_request` RPC (with the one-playing partial-unique-index backstop),
+ * so two simultaneous callers resolve to exactly one winner.
+ */
+export async function promoteNextReady(
+  roomId: string,
+  eventId?: string | null,
+): Promise<PromoteResult> {
+  const active = await listActiveRequests(roomId, eventId);
+  const playing = active.find((r) => r.status === 'playing');
+  if (playing) return { outcome: 'already_playing', request: playing };
+
+  const waiting = active
+    .filter((r) => r.status === 'waiting')
+    .sort((a, b) => canonicalRank(order(a), order(b)));
+  const first = waiting[0];
+  if (!first) return { outcome: 'queue_empty' };
+  if (!first.ready_at) return { outcome: 'blocked_not_ready', nextRequest: first };
+
+  const start = await startOwnRequest(roomId, first.id);
+  if (start.outcome === 'ok') return { outcome: 'started', request: start.request ?? first };
+  if (start.outcome === 'already_playing') {
+    const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
+    return { outcome: 'already_playing', request: p };
+  }
+  // not_next / not_waiting / not_found → the queue changed under us (a concurrent
+  // promote/reorder). Report it as "not ready to start" — a later lifecycle action
+  // (Ready / Finish / Skip) re-drives promotion; never force a second playing.
+  return { outcome: 'blocked_not_ready', nextRequest: first };
+}
+
+export interface AdvanceResult {
+  /** How the current song's terminal transition resolved. */
+  terminal: FinishOutcome | 'skipped' | 'skip_failed';
+  /** Whether the next Ready song auto-started (and which), or why not. */
+  next: PromoteResult;
+}
+
+/**
+ * V8 — the ONE seam every terminal transition uses (Finish, Skip). Complete or skip
+ * the current playing song, then auto-start the next canonical song IF its guest is
+ * Ready. Finish and Skip share this exact promotion path so they can never diverge.
+ */
+export async function advanceAfterTerminal(
+  roomId: string,
+  currentRequestId: string,
+  terminal: 'completed' | 'skipped',
+  eventId?: string | null,
+): Promise<AdvanceResult> {
+  let terminalOutcome: AdvanceResult['terminal'];
+  if (terminal === 'completed') {
+    terminalOutcome = (await finishOwnRequest(roomId, currentRequestId)).outcome;
+  } else {
+    const r = await setRequestStatus(roomId, currentRequestId, 'skip');
+    terminalOutcome = r.outcome === 'ok' ? 'skipped' : 'skip_failed';
+  }
+  const next = await promoteNextReady(roomId, eventId);
+  return { terminal: terminalOutcome, next };
+}
+
+/**
+ * V8 pass-turn / "노래 끝". Admin-initiated: complete the current playing song and
+ * auto-start the next canonical song when its guest is READY (V8 drops the earlier
+ * "must also be TV-queued" requirement — Ready alone is the go signal). Delegates to
+ * the shared advance + promote seam so Finish, Skip, and Ready-auto-start agree.
  */
 export async function passTurnAndPromote(
   roomId: string,
   currentRequestId: string,
   eventId?: string | null,
 ): Promise<PassTurnResult> {
-  // 1. Complete the current playing song (atomic + status-guarded + idempotent).
-  const fin = await finishOwnRequest(roomId, currentRequestId);
-  const completed = fin.outcome === 'ok' || fin.outcome === 'already_done';
-
-  // 2. Resolve the canonical FIRST waiting song for THIS event (V7.1 scope).
-  const active = await listActiveRequests(roomId, eventId);
-  const waiting = active
-    .filter((r) => r.status === 'waiting')
-    .sort((a, b) => canonicalRank(order(a), order(b)));
-  const next = waiting[0] ?? null;
-  const signals = next
-    ? { status: next.status, readyAt: next.ready_at, youtubeQueuedAt: next.youtube_queued_at }
-    : null;
-
-  // 3. Auto-start only when Ready AND Queued. The one-playing invariant is enforced
-  //    by the atomic start RPC (the same one guests used to self-start).
-  if (next && isAutoPromotable(signals)) {
-    const start = await startOwnRequest(roomId, next.id);
-    if (start.outcome === 'ok') {
-      return { completed, promoted: start.request ?? next, reason: 'promoted' };
-    }
+  const adv = await advanceAfterTerminal(roomId, currentRequestId, 'completed', eventId);
+  const completed = adv.terminal === 'ok' || adv.terminal === 'already_done';
+  if (adv.next.outcome === 'started') {
+    return { completed, promoted: adv.next.request ?? null, reason: 'promoted' };
   }
-  return { completed, promoted: null, reason: noPromoteReason(signals) };
+  // Ready-only reasons: no next song, or the next guest hasn't Readied yet.
+  const reason: NoPromoteReason =
+    adv.next.outcome === 'queue_empty' || adv.next.outcome === 'already_playing' ? 'no_next' : 'needs_ready';
+  return { completed, promoted: null, reason };
 }
 
 /** Minimal ordering projection for canonicalRank. */

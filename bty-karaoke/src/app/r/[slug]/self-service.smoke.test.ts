@@ -119,10 +119,10 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
 });
 
 describe('Guest cards — MC greeting, Ready-only (V6)', () => {
-  it('greets the singer by name and asks them to Ready (Admin starts)', () => {
+  it('V8: greets the singer and frames Ready as the auto-start signal', () => {
     expect(dock).toContain('namePrefix');
-    expect(dock).toContain('준비되셨나요?');
-    expect(dock).toContain('준비되면 Admin이 TV에서 노래를 시작합니다');
+    expect(dock).toContain('다음은 당신의 무대예요');
+    expect(dock).toContain('앞의 무대가 끝나면 바로 이어집니다');
   });
 
   it('the playing card explains the Admin runs the stage (no guest finish)', () => {
@@ -140,15 +140,15 @@ describe('paired iPad defaults to the Display, not the DJ console (V3.1)', () =>
 });
 
 describe('Admin console is the SINGLE Player (V6)', () => {
-  it('the Player Hero starts the FIRST song (atomic) then hands off to YouTube (V8)', () => {
+  it('the Player Hero can force-start (emergency) then hand off to YouTube (V8)', () => {
     expect(dj).toContain('onStartFirst');
-    expect(dj).toContain('▶ 첫 곡 시작');
+    expect(dj).toContain('강제로 시작');
     expect(dj).toContain('onReopen');
   });
 
-  it('pass-turn is a 2-step auto-promotion on the playing song (V8)', () => {
-    expect(dj).toContain('차례 넘기기');
-    expect(dj).toContain('TV에서 다음 곡이 시작됐나요?');
+  it('V8: "노래 끝" is a 2-step op that auto-promotes the next Ready song', () => {
+    expect(dj).toContain('노래 끝');
+    expect(dj).toContain('이 노래가 끝났나요?');
     expect(dj).toContain('onPassTurn(current.id)');
   });
 

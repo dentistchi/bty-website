@@ -1,5 +1,5 @@
-// Guest READY route (V6): owner-gated shared signal. It NEVER starts a song —
-// it only sets/clears ready_at on the still-waiting request for the Admin Player.
+// Guest READY route (V8 AUTOPILOT): owner-gated. Sets ready_at AND, when this song is
+// the canonical first with the stage open, auto-starts it via the promote seam.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -9,6 +9,7 @@ const state = {
     | null
     | { id: string; slug: string; display_name: string; status: string },
   ready: { outcome: 'ok' } as { outcome: 'ok' | 'not_waiting' | 'not_found' },
+  promote: { outcome: 'blocked_not_ready' } as { outcome: string; request?: { id: string } },
 };
 
 // V7: the ready route gates through resolveEventAccess. Legacy/no-event rooms
@@ -20,9 +21,12 @@ vi.mock('@/lib/capability.server', () => ({
   verifyOwnerCapability: vi.fn(async () => state.owns),
 }));
 const setRequestReady = vi.fn(async () => state.ready);
+const promoteNextReady = vi.fn(async () => state.promote);
 vi.mock('@/lib/rooms.server', () => ({
   getPublicRoomBySlug: vi.fn(async () => state.room),
   setRequestReady: (...a: unknown[]) => setRequestReady(...(a as [])),
+  promoteNextReady: (...a: unknown[]) => promoteNextReady(...(a as [])),
+  getGuestQueueStatus: vi.fn(async () => ({ state: 'up_next', position: 1 })),
 }));
 
 import { POST } from './route';
@@ -34,7 +38,9 @@ beforeEach(() => {
   state.owns = true;
   state.room = { id: 'room-1', slug: 'bty-home', display_name: 'BTY Home', status: 'open' };
   state.ready = { outcome: 'ok' };
+  state.promote = { outcome: 'blocked_not_ready' };
   setRequestReady.mockClear();
+  promoteNextReady.mockClear();
 });
 
 describe('POST .../requests/[id]/ready', () => {
@@ -52,9 +58,24 @@ describe('POST .../requests/[id]/ready', () => {
     expect(setRequestReady).toHaveBeenCalledWith('room-1', 'req-1', true);
   });
 
-  it('clears the signal when ready=false ("준비 상태 취소")', async () => {
+  it('clears the signal when ready=false ("준비 취소")', async () => {
     await POST(req({ token: 't', ready: false }), ctx);
     expect(setRequestReady).toHaveBeenCalledWith('room-1', 'req-1', false);
+    expect(promoteNextReady).not.toHaveBeenCalled(); // unready never auto-starts
+  });
+
+  it('V8: readying the FIRST song with the stage open AUTO-STARTS it', async () => {
+    state.promote = { outcome: 'started', request: { id: 'req-1' } };
+    const res = await POST(req({ token: 't' }), ctx);
+    expect(res.status).toBe(200);
+    expect(promoteNextReady).toHaveBeenCalledWith('room-1', null);
+    expect(await res.json()).toMatchObject({ ok: true, ready: true, autoStarted: true });
+  });
+
+  it('V8: readying a later-position song only stores Ready (no auto-start)', async () => {
+    state.promote = { outcome: 'already_playing' }; // a song is on stage
+    const res = await POST(req({ token: 't' }), ctx);
+    expect(await res.json()).toMatchObject({ ok: true, ready: true, autoStarted: false });
   });
 
   it('409 when the song is no longer waiting (already started / gone)', async () => {

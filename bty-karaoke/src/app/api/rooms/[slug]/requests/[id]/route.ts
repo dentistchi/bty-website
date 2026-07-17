@@ -10,7 +10,9 @@ import {
   getPublicRoomBySlug,
   setRequestStatus,
   moveToNextWaiting,
+  promoteNextReady,
 } from '@/lib/rooms.server';
+import { getCanonicalEvent } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 
 export const dynamic = 'force-dynamic';
@@ -83,5 +85,16 @@ export async function PATCH(
   // Legacy play path: the song is now on stage → resolve its lyrics in the background.
   if (action === 'play' && result.outcome === 'ok') void scheduleLyricsResolve(auth.room.id, id);
 
-  return NextResponse.json({ ok: true, request: result.request });
+  // V8 AUTOPILOT — when a terminal action (complete/skip) ends the PLAYING song, the
+  // system advances: auto-start the next canonical song IF its guest is Ready. Same
+  // promotion seam as Finish (pass-turn), so Skip and Finish never diverge. Only when
+  // the row was actually `playing` (a waiting-song remove/skip does not promote).
+  let promoted: { id: string } | null = null;
+  if ((action === 'complete' || action === 'skip') && result.outcome === 'ok' && result.from === 'playing') {
+    const event = await getCanonicalEvent(auth.room.id);
+    const p = await promoteNextReady(auth.room.id, event?.id ?? null);
+    if (p.outcome === 'started' && p.request) promoted = { id: p.request.id };
+  }
+
+  return NextResponse.json({ ok: true, request: result.request, promoted });
 }

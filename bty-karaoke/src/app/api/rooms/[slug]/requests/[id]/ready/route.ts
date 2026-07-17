@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OwnerActionSchema } from '@/lib/validation';
 import { verifyOwnerCapability } from '@/lib/capability.server';
-import { getPublicRoomBySlug, setRequestReady } from '@/lib/rooms.server';
+import { getPublicRoomBySlug, setRequestReady, promoteNextReady, getGuestQueueStatus } from '@/lib/rooms.server';
 import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
@@ -60,8 +60,22 @@ export async function POST(
 
   const result = await setRequestReady(room.id, id, ready);
   switch (result.outcome) {
-    case 'ok':
-      return NextResponse.json({ ok: true, ready }, { headers: NO_STORE });
+    case 'ok': {
+      // V8 AUTOPILOT — Ready is the guest's intent; STARTING is the system's job. When
+      // the guest just readied and their song is the canonical FIRST with the stage open,
+      // auto-start it in one server op (no separate Start request). Never jumps a Ready
+      // guest ahead of an un-ready first-in-line. Only on `ready:true`.
+      let autoStarted = false;
+      if (ready) {
+        const promote = await promoteNextReady(room.id, access.event?.id ?? null);
+        autoStarted = promote.outcome === 'started' && promote.request?.id === id;
+      }
+      const status = await getGuestQueueStatus(room.id, id);
+      return NextResponse.json(
+        { ok: true, ready, autoStarted, status: status?.state ?? null, position: status?.position ?? null },
+        { headers: NO_STORE },
+      );
+    }
     case 'not_found':
       return NextResponse.json(
         { error: 'Request not found', code: 'REQUEST_NOT_FOUND' },
