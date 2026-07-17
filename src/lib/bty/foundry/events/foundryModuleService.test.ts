@@ -9,7 +9,7 @@ import {
   listOwnerDrafts,
   updateDraftStep,
 } from "./foundryModuleService";
-import type { ModuleDraftAnswers } from "@/domain/foundry/module/module-draft";
+import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 type Row = Record<string, unknown>;
 
@@ -132,16 +132,19 @@ function makeFakeAdmin(seed: { drafts?: Row[]; modules?: Row[] } = {}) {
 const OWNER = "owner-1";
 const OTHER = "owner-2";
 
-function completeAnswers(): ModuleDraftAnswers {
+/** A builder-complete draft (YouTube material) — passes the builder approval gate. */
+function completeAnswers(): BuilderAnswers {
   return {
     problem: "Handoffs skip the double-check.",
-    capability: "Reliable handoff",
-    targetRoles: ["charge_nurse"],
+    audienceType: "everyone",
     observableBehavior: "The charge nurse reads back the dosage at every shift handoff before sign-off.",
     successEvidence: "Sign-offs include a witnessed verbal read-back.",
-    learningType: "handoff",
-    reflectionPrompt: "When did a rushed handoff cost you?",
-    actionDecisionPrompt: "What read-back will you commit to next shift?",
+    evidenceType: "seen",
+    learningNeeds: ["practice"],
+    materialIntent: "youtube",
+    materialText: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    followUpDays: 7,
+    completionPrompt: "What read-back will you commit to next shift?",
   };
 }
 

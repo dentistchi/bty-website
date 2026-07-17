@@ -1,13 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  canApprove,
   canMutateDraft,
   nextModuleVersion,
-  validateModuleDraft,
   type ModuleDraftAnswers,
   type ModuleDraftStatus,
 } from "@/domain/foundry/module/module-draft";
 import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
 import { deleteFoundryDocument } from "./documentStorage";
 import { parseDocumentRef } from "./moduleClient";
 
@@ -211,9 +210,45 @@ export async function updateDraftStep(
 }
 
 /**
+ * Count a draft's publishable PDF assets. A PDF Study Room needs a `pdf`-kind
+ * object; other attachment kinds do not satisfy a document event. Server-only.
+ */
+export async function countPublishablePdfAssets(
+  admin: SupabaseClient,
+  draftId: string,
+): Promise<number> {
+  const { data } = await admin
+    .from("foundry_module_draft_assets")
+    .select("id")
+    .eq("draft_id", draftId)
+    .eq("file_kind", "pdf")
+    .returns<{ id: string }[]>();
+  return (data ?? []).length;
+}
+
+/**
+ * Approval/publish readiness for a builder draft: the builder's own per-step
+ * completeness (domain) PLUS the one gate only the DB can answer — a PDF material
+ * must have a stored `pdf` asset. Returns the blocking reason codes (empty = ready).
+ */
+export async function draftReadinessErrors(
+  admin: SupabaseClient,
+  draftId: string,
+  answers: BuilderAnswers | undefined,
+): Promise<string[]> {
+  const errors = builderApprovalErrors(answers);
+  if ((answers ?? {}).materialIntent === "pdf") {
+    const pdfs = await countPublishablePdfAssets(admin, draftId);
+    if (pdfs < 1) errors.push("material_pdf_required");
+  }
+  return errors;
+}
+
+/**
  * Approve a draft: draft -> approved. Refused unless the row is a `draft` AND its
- * answers pass domain validation (returns `draft_incomplete` with the failing
- * reasons otherwise). Stamps approved_at. After this the draft is immutable.
+ * answers pass the BUILDER readiness gate (per-step completeness + material
+ * present) — returns the first failing reason otherwise. Stamps approved_at. After
+ * this the draft is immutable.
  */
 export async function approveDraft(
   admin: SupabaseClient,
@@ -224,10 +259,8 @@ export async function approveDraft(
   if (!current) return { ok: false, reason: "draft_not_found" };
   if (current.status !== "draft") return { ok: false, reason: "draft_not_mutable" };
 
-  if (!canApprove(current.status, current.answers)) {
-    const { errors } = validateModuleDraft(current.answers);
-    return { ok: false, reason: errors[0] ?? "draft_incomplete" };
-  }
+  const errors = await draftReadinessErrors(admin, draftId, current.answers as BuilderAnswers);
+  if (errors.length > 0) return { ok: false, reason: errors[0] ?? "draft_incomplete" };
 
   const { error } = await admin
     .from("foundry_module_drafts")

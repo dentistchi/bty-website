@@ -142,7 +142,12 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
     [bt.deleteConfirm, loadDrafts],
   );
 
-  const onBuilderExit = useCallback(() => {
+  const onBuilderExit = useCallback((result?: { gone?: boolean; publishedEventId?: string }) => {
+    // Publishing hands off straight to the new event's control room.
+    if (result?.publishedEventId) {
+      setView({ kind: "control", eventId: result.publishedEventId });
+      return;
+    }
     setView({ kind: "home" });
   }, []);
 

@@ -54,6 +54,9 @@ export const BEHAVIOR_MAX = 2000;
 export const EVIDENCE_MAX = 2000;
 export const MATERIAL_TEXT_MAX = 2000;
 export const AUDIENCE_DETAIL_MAX = 120;
+// The participant-facing completion question. Bounded to match the event content
+// validator (FOUNDRY_COMPLETION_PROMPT_MAX = 300) so a saved value always publishes.
+export const COMPLETION_PROMPT_MAX = 300;
 // A "meaningful" free-text answer for the client Next-guard (guidance only).
 const MEANINGFUL_MIN = 3;
 
@@ -74,6 +77,13 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   learningNeeds?: LearningNeed[];
   materialIntent?: MaterialIntent;
   materialText?: string;
+  /**
+   * The participant-facing completion question shown after the material. Host-
+   * authored (prefilled with a deterministic suggestion in the UI, fully editable).
+   * Distinct from the future `actionDecisionPrompt`. Published into the event's
+   * completion_prompt; a sensible localized default is used only when blank.
+   */
+  completionPrompt?: string;
   arenaRecommended?: boolean;
   followUpDays?: FollowUpDays;
 };
@@ -244,6 +254,9 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       }
       const materialText = checkText(a.materialText, MATERIAL_TEXT_MAX, "material_text_too_long", "material_text_invalid", errors);
       if (materialText !== undefined) clean.materialText = materialText;
+
+      const completionPrompt = checkText(a.completionPrompt, COMPLETION_PROMPT_MAX, "completion_prompt_too_long", "completion_prompt_invalid", errors);
+      if (completionPrompt !== undefined) clean.completionPrompt = completionPrompt;
 
       if (a.arenaRecommended !== undefined) {
         if (typeof a.arenaRecommended === "boolean") clean.arenaRecommended = a.arenaRecommended;

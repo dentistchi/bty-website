@@ -45,7 +45,7 @@ const jsonRes = (body: unknown, status = 200) => ({
  * POST/DELETE /assets attach/remove files. `assetReason` forces per-upload failure
  * with a specific reason (e.g. unsupported_file_type).
  */
-function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string } = {}) {
+function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string; publishError?: boolean } = {}) {
   const draft: Draft = {
     id: "d-1",
     status: "draft",
@@ -64,6 +64,10 @@ function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string }
   let counter = 0;
   const fn = vi.fn(async (url: string, o?: { method?: string; body?: string }) => {
     const method = o?.method ?? "GET";
+    if (url.includes("/publish")) {
+      if (opts.publishError) return jsonRes({ error: "publish_conflict" }, 409);
+      return jsonRes({ event: { id: "ev-new", join_url: "https://x.dev/f/tok" }, reused: false });
+    }
     if (url.includes("/assets")) {
       if (method === "POST") {
         if (opts.assetReason) return jsonRes({ error: opts.assetReason }, opts.assetReason === "draft_not_mutable" ? 409 : 400);
@@ -182,19 +186,15 @@ describe("ModuleBuilderShell — review + material intent", () => {
     arenaRecommended: true,
   };
 
-  it("review shows the summary and has NO approve/publish/create-session control", async () => {
+  it("review shows the summary + the Approve & create session action (Slice 2.3A)", async () => {
     mockDraftServer({ current_step: 8, answers: fullAnswers });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review header + a summary value
     expect(await screen.findByText("TRAINING DRAFT")).toBeTruthy();
     expect(screen.getByText("Review what you’ve built.")).toBeTruthy();
     expect(screen.getByText("reads the dosage back at handoff")).toBeTruthy();
-    // The forbidden actions must not exist.
-    expect(screen.queryByText(/approve/i)).toBeNull();
-    expect(screen.queryByText(/publish/i)).toBeNull();
-    expect(screen.queryByText(/create session/i)).toBeNull();
-    expect(screen.queryByText(/generate qr/i)).toBeNull();
-    // Only Edit + Save and leave are offered.
+    // The canonical publish action is now offered on review (2.3A), alongside Edit + Save and leave.
+    expect(screen.getByText("Approve & create session")).toBeTruthy();
     expect(screen.getByText("Save and leave")).toBeTruthy();
     expect(screen.getAllByText("Edit").length).toBeGreaterThan(0);
   });
@@ -279,8 +279,10 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     // vague behavior + missing YouTube link => 2 needs-attention.
     expect(screen.getByText("Needs attention — 2")).toBeTruthy();
     expect(screen.getByText(/Needs clarification/)).toBeTruthy();
-    // still no approve/publish/session/QR controls.
-    expect(screen.queryByText(/approve|publish|create session|generate qr/i)).toBeNull();
+    // The publish control is present but GATED — an incomplete draft can't be published.
+    const publishBtn = screen.getByText("Approve & create session") as HTMLButtonElement;
+    expect(publishBtn.disabled).toBe(true);
+    expect(screen.getByText("Complete the highlighted sections first.")).toBeTruthy();
   });
 });
 
@@ -371,5 +373,57 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("YouTube video"));
     expect(await screen.findByText(/Link not added yet · Required before approval/)).toBeTruthy();
+  });
+});
+
+describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
+  const completeYoutube = {
+    problem: "Handoffs skip the double-check.",
+    audienceType: "everyone",
+    observableBehavior: "The charge nurse reads back the dosage before sign-off.",
+    successEvidence: "Sign-offs include a witnessed read-back.",
+    evidenceType: "seen",
+    learningNeeds: ["practice"],
+    materialIntent: "youtube",
+    materialText: "https://youtu.be/dQw4w9WgXcQ",
+    followUpDays: 7,
+    completionPrompt: "What read-back will you commit to?",
+  };
+
+  it("prefills an editable Completion question on the material step", async () => {
+    mockDraftServer({ current_step: 6, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    expect(await screen.findByText("Completion question")).toBeTruthy();
+    const ta = screen.getByLabelText("Completion question") as HTMLTextAreaElement;
+    // seeded from the deterministic suggestion (references the behavior, editable)
+    await waitFor(() => expect(ta.value.length).toBeGreaterThan(0));
+    expect(ta.value.toLowerCase()).toContain("reads back the dosage");
+  });
+
+  it("review → Approve & create session publishes and hands off the new event id", async () => {
+    const onExit = vi.fn();
+    mockDraftServer({ current_step: 8, answers: completeYoutube });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
+    const btn = await screen.findByText("Approve & create session");
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(btn);
+    await waitFor(() => expect(onExit).toHaveBeenCalledWith({ publishedEventId: "ev-new" }));
+  });
+
+  it("disables publish for an incomplete draft (not ready)", async () => {
+    mockDraftServer({ current_step: 8, answers: { problem: "only this" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    const btn = await screen.findByText("Approve & create session");
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Complete the highlighted sections first.")).toBeTruthy();
+  });
+
+  it("surfaces a publish failure without leaving the builder", async () => {
+    const onExit = vi.fn();
+    mockDraftServer({ current_step: 8, answers: completeYoutube }, { publishError: true });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
+    fireEvent.click(await screen.findByText("Approve & create session"));
+    expect(await screen.findByText(/Couldn’t create the session/)).toBeTruthy();
+    expect(onExit).not.toHaveBeenCalled();
   });
 });

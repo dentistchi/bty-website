@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "./copy";
-import { MODULE_BUILDER_COPY, arenaFollowLabel, type ModuleBuilderCopy } from "./moduleBuilderCopy";
+import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import { createSerializedSaver, type SaveState } from "./moduleAutosave";
 import {
   observableBehaviorWarning,
@@ -16,6 +16,7 @@ import {
   type LearningNeed,
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
+import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 
@@ -25,8 +26,9 @@ import { FilesAndDocuments } from "./FilesAndDocuments";
  * One primary question per step. Server-authoritative draft: on mount it restores
  * the exact answers + current_step from the server (no empty-form flash, no
  * restore-vs-typing race). Autosave is serialized (one PATCH at a time, newest
- * wins). This slice ends at a read-only draft review: NO approve / publish /
- * create-session. Persistence engine is regression-protected — unchanged in 2.1.
+ * wins). The review step (Slice 2.3A) offers Approve & create session, which
+ * publishes the draft into a live event via the canonical publish transaction and
+ * hands off to its control room. Persistence engine is regression-protected.
  */
 
 type Snapshot = { answers: BuilderAnswers; currentStep: number };
@@ -39,7 +41,7 @@ export function ModuleBuilderShell({
 }: {
   draftId: string;
   locale: Locale;
-  onExit: (result?: { gone?: boolean }) => void;
+  onExit: (result?: { gone?: boolean; publishedEventId?: string }) => void;
 }) {
   const t: ModuleBuilderCopy = MODULE_BUILDER_COPY[locale];
 
@@ -50,11 +52,14 @@ export function ModuleBuilderShell({
   const [blocker, setBlocker] = useState<string | null>(null);
   const [assets, setAssets] = useState<ClientAsset[]>([]);
   const [docBusy, setDocBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishErr, setPublishErr] = useState<string | null>(null);
 
   const answersRef = useRef<BuilderAnswers>({});
   const stepRef = useRef<number>(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goneRef = useRef(false);
+  const seededPromptRef = useRef(false);
 
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
   if (saverRef.current === null) {
@@ -166,6 +171,49 @@ export function ModuleBuilderShell({
 
   const retry = useCallback(() => void saver.retry(), [saver]);
 
+  // Prefill the participant completion question ONCE when the host first reaches
+  // the material step, using a deterministic (non-AI) suggestion — only if the
+  // field is empty. The host sees + edits it; a blank field defaults at publish.
+  useEffect(() => {
+    if (step === 6 && !seededPromptRef.current) {
+      seededPromptRef.current = true;
+      if (!(answersRef.current.completionPrompt ?? "").trim()) {
+        const suggestion = suggestCompletionPrompt(answersRef.current, locale);
+        if (suggestion) patchAnswers({ completionPrompt: suggestion }, false);
+      }
+    }
+  }, [step, patchAnswers, locale]);
+
+  // Publish the draft into a live event (approve-on-publish) and hand off to the
+  // control room. Flushes any pending autosave first so the server reads the
+  // freshest answers. On failure the draft stays a draft (editable).
+  const doPublish = useCallback(async () => {
+    if (publishing) return;
+    cancelDebounce();
+    setPublishErr(null);
+    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    setPublishing(true);
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/publish`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { event?: { id?: string } };
+        onExit({ publishedEventId: data.event?.id });
+        return;
+      }
+      setPublishErr("error");
+    } catch {
+      setPublishErr("error");
+    } finally {
+      setPublishing(false);
+    }
+  }, [publishing, cancelDebounce, saver, draftId, locale, onExit]);
+
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
   if (restore === "loading") {
@@ -208,7 +256,17 @@ export function ModuleBuilderShell({
       </div>
 
       {isReview ? (
-        <ReviewBody answers={answers} assets={assets} onEdit={jumpTo} t={t} />
+        <>
+          <ReviewBody answers={answers} assets={assets} onEdit={jumpTo} t={t} />
+          <PublishAction
+            answers={answers}
+            assets={assets}
+            publishing={publishing}
+            error={publishErr}
+            onPublish={doPublish}
+            t={t}
+          />
+        </>
       ) : (
         <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode)}</div>
       )}
@@ -489,6 +547,13 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
             </div>
           ) : null}
           {a.materialIntent === "pdf" ? filesNode : null}
+          {a.materialIntent ? (
+            <div className="flex flex-col gap-2 border-t border-white/8 pt-4">
+              <h3 className="text-sm font-medium text-white/70">{t.s6CompletionQ}</h3>
+              <p className="text-xs leading-5 text-white/45">{t.s6CompletionHelp}</p>
+              {textArea(a.completionPrompt ?? "", (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
+            </div>
+          ) : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />
         </StepFrame>
       );
@@ -588,9 +653,47 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4 },
     { label: t.reviewLearning, value: learning, step: 5 },
     { label: t.reviewMaterials, value: material, step: 6, note: materialNote, lines: materialLines },
+    { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 6 },
     { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 7 },
     { label: t.reviewFollow, value: arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30), step: 7 },
   ];
+}
+
+/** Approve-and-create-session action on the review step (Slice 2.3A). Gated on the
+ *  builder's readiness (per-step completeness + material present) so the host can't
+ *  publish an incomplete module; the server re-checks the same gate authoritatively. */
+function PublishAction({
+  answers,
+  assets,
+  publishing,
+  error,
+  onPublish,
+  t,
+}: {
+  answers: BuilderAnswers;
+  assets: ClientAsset[];
+  publishing: boolean;
+  error: string | null;
+  onPublish: () => void;
+  t: ModuleBuilderCopy;
+}) {
+  const pdfMissing = answers.materialIntent === "pdf" && assets.filter((a) => a.file_kind === "pdf").length === 0;
+  const notReady = builderApprovalErrors(answers).length > 0 || pdfMissing;
+  return (
+    <div className="flex flex-col gap-3 pt-2">
+      <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
+      {notReady ? <p className="text-xs leading-5 text-amber-300/80">{t.publishNotReady}</p> : null}
+      {error ? <p className="text-xs leading-5 text-amber-300/85">{t.publishError}</p> : null}
+      <button
+        type="button"
+        onClick={onPublish}
+        disabled={publishing || notReady}
+        className="rounded-xl bg-[#C9A66B] px-6 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-50"
+      >
+        {publishing ? t.publishing : t.publishCta}
+      </button>
+    </div>
+  );
 }
 
 function ReviewBody({

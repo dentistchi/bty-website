@@ -157,6 +157,17 @@ export type ModuleBuilderCopy = {
   gBehaviorHint: string;
   gPdfMissing: string;
   gYtMissing: string;
+  // step 6 completion question (participant-facing; host-authored, prefilled with a suggestion)
+  s6CompletionQ: string;
+  s6CompletionHelp: string;
+  s6CompletionPlaceholder: string;
+  // step 8 review — completion-question row + publish action
+  reviewCompletion: string;
+  publishCta: string;
+  publishTrust: string;
+  publishing: string;
+  publishError: string;
+  publishNotReady: string;
 };
 
 const arenaFollowLabel = (
@@ -302,6 +313,15 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     gBehaviorHint: "Describe something another person could see or hear.",
     gPdfMissing: "PDF file not added yet",
     gYtMissing: "Link not added yet",
+    s6CompletionQ: "Completion question",
+    s6CompletionHelp: "The question each participant answers after the material. Edit it freely.",
+    s6CompletionPlaceholder: "What is one thing you will apply this week?",
+    reviewCompletion: "COMPLETION QUESTION",
+    publishCta: "Approve & create session",
+    publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
+    publishing: "Creating session…",
+    publishError: "Couldn’t create the session. Please try once more.",
+    publishNotReady: "Complete the highlighted sections first.",
   },
   ko: {
     entryEyebrow: "훈련 빌더",
@@ -438,7 +458,34 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     gBehaviorHint: "다른 사람이 보거나 들을 수 있는 것을 설명하세요.",
     gPdfMissing: "PDF 파일이 아직 없습니다",
     gYtMissing: "링크가 아직 없습니다",
+    s6CompletionQ: "완료 질문",
+    s6CompletionHelp: "자료를 본 뒤 참가자가 답하는 질문입니다. 자유롭게 수정하세요.",
+    s6CompletionPlaceholder: "이번 주에 적용할 한 가지는 무엇인가요?",
+    reviewCompletion: "완료 질문",
+    publishCta: "승인하고 세션 만들기",
+    publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
+    publishing: "세션을 만드는 중…",
+    publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",
+    publishNotReady: "먼저 표시된 항목을 완성하세요.",
   },
 };
 
 export { arenaFollowLabel };
+
+/**
+ * A deterministic, localized completion-question suggestion derived from the
+ * module design (observable behavior, else the problem). Shown PREFILLED in the
+ * editable field — never an AI-generated prompt applied silently at publish. The
+ * host reviews and edits it; a blank field falls back to the service default.
+ */
+export function suggestCompletionPrompt(
+  answers: { observableBehavior?: string; problem?: string } | undefined,
+  loc: Locale,
+): string {
+  const raw = (answers?.observableBehavior ?? answers?.problem ?? "").replace(/\s+/g, " ").trim();
+  if (!raw) return loc === "ko" ? "이번 주에 적용할 한 가지는 무엇인가요?" : "What is one thing you will apply this week?";
+  const anchor = raw.length > 160 ? `${raw.slice(0, 160).trimEnd()}…` : raw;
+  return loc === "ko"
+    ? `"${anchor}" — 이번 주에 적용할 한 가지는 무엇인가요?`
+    : `Thinking about "${anchor}", what is one thing you will apply this week?`;
+}
