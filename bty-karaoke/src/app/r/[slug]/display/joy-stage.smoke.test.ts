@@ -107,8 +107,8 @@ describe('Joy Stage V1.4 — NEXT, QR, completion, waiting', () => {
 
   it('completion briefly celebrates the singer with a warm light lift — no scoring', () => {
     expect(display).toMatch(/\{celebrating\.name\}의 무대였습니다/);
-    expect(display).toMatch(/setCelebrating\(null\), CELEBRATE_MS/); // auto-dismiss, non-blocking
-    expect(display).toMatch(/cur\.id !== prev\.id/); // reliable via playing.id transition
+    expect(display).toMatch(/setCelebrating\(null\), cur \? CELEBRATE_SHORT_MS : CELEBRATE_MS/); // auto-dismiss; shortens on a rapid new song
+    expect(display).toMatch(/cur\.id === prev\.id/); // reliable via playing.id transition (early-return guard)
     // Deterministic rotation of approved lines — never AI-generated, never a score.
     expect(display).toContain('CELEBRATE_LINES');
     expect(displayCode).not.toMatch(/score|점수|승자|winner|rank|순위|별점|judge/i); // code only

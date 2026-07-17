@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState, DisplayRequest } from '@/domain/display';
+import { createStageSound, type StageSound } from './stage-sound';
 
 interface Props {
   slug: string;
@@ -9,10 +10,13 @@ interface Props {
 }
 
 const POLL_MS = 2000; // iPad Display refreshes faster than the guest phones.
-const CELEBRATE_MS = 2600; // brief "그 사람의 무대였습니다" applause on song completion.
+const CELEBRATE_MS = 2600; // full celebration when no song immediately follows.
+const CELEBRATE_SHORT_MS = 1500; // shortened when a new song has already started.
+const JOY_PULSE_MS = 1500;
+const SOUND_KEY = 'bty-stage-sound'; // localStorage: remember the sound preference.
 
 // Two approved warm closing lines, rotated deterministically (never AI-generated).
-const CELEBRATE_LINES = ['함께해 주셔서 고마워요', '오늘도 멋진 무대였어요'] as const;
+const CELEBRATE_LINES = ['오늘도 함께해 주셔서 고마워요', '오늘도 멋진 무대였어요'] as const;
 
 // A stable artwork URL from the request's video id (hqdefault always exists). Used
 // as a CSS background so a 404 degrades to the ambient gradient — never a broken
@@ -22,11 +26,10 @@ function artUrl(r: DisplayRequest): string | null {
   return r.thumbnailUrl ?? null;
 }
 
-// LIVING JOY STAGE (V1.4) — the iPad by the microphone is NOT a lyrics screen (the
-// TV shows lyrics via the YouTube handoff). It is a warm, BTY-ARENA-quality stage
-// that makes the room FEEL the moment: anticipation before a song, presence while
-// someone sings, shared joy when they finish. Singer-first; artwork is ambient, not
-// a card. Read-only, credential-free, no video, no lyrics surface.
+// LIVING STAGE (V1.5) — the iPad by the microphone is an emotional stage that reacts
+// to the singer's moment: the stage OPENS when a song starts, breathes quietly while
+// they sing, and CELEBRATES them when they finish. The TV shows video + lyrics; this
+// screen shows people, atmosphere, the next stage, and joy. Read-only, no lyrics.
 export default function DisplayClient({ slug, roomName }: Props) {
   const [state, setState] = useState<DisplayState | null>(null);
   const [qr, setQr] = useState<{ qrSvg: string; url: string } | null>(null);
@@ -35,8 +38,6 @@ export default function DisplayClient({ slug, roomName }: Props) {
   const poll = useCallback(async () => {
     const n = ++seq.current;
     try {
-      // No `?lyrics=1`: the Display renders no lyrics (V1.4), so it triggers no
-      // provider resolution. Automatic lyrics remain an internal, default-off backend.
       const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as DisplayState;
@@ -62,8 +63,6 @@ export default function DisplayClient({ slug, roomName }: Props) {
     };
   }, [poll]);
 
-  // Guest-join QR (public link). Re-fetched whenever the canonical event id changes
-  // so a rotation swaps in the NEW event's QR. Stable within a single event.
   const eventId = state?.event?.id ?? null;
   useEffect(() => {
     let alive = true;
@@ -82,7 +81,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
     };
   }, [slug, eventId]);
 
-  // Best-effort keep-awake so the stage doesn't sleep mid-song.
+  // Keep-awake so the stage doesn't sleep mid-song.
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
@@ -114,39 +113,93 @@ export default function DisplayClient({ slug, roomName }: Props) {
     }
   };
 
+  // Celebration sound — default OFF. The toggle tap is the user gesture that unlocks
+  // audio (iOS Safari), and the preference is remembered. Synthesized applause only.
+  const soundRef = useRef<StageSound | null>(null);
+  if (soundRef.current === null) soundRef.current = createStageSound();
+  const [soundOn, setSoundOn] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.localStorage.getItem(SOUND_KEY) === '1') {
+      soundRef.current?.enable();
+      setSoundOn(true);
+    }
+  }, []);
+  const toggleSound = () => {
+    const s = soundRef.current;
+    if (!s) return;
+    if (s.enabled) {
+      s.disable();
+      setSoundOn(false);
+      try { window.localStorage.setItem(SOUND_KEY, '0'); } catch { /* ignore */ }
+    } else {
+      s.enable(); // user gesture → unlock AudioContext
+      setSoundOn(true);
+      try { window.localStorage.setItem(SOUND_KEY, '1'); } catch { /* ignore */ }
+    }
+  };
+
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
   const ended = state?.event?.status === 'ended' || state?.event?.status === 'archived';
+  const stats = state?.stats ?? null;
 
   // Completion transition — when the playing song's id changes (a performance just
-  // finished), briefly celebrate THAT singer. Reliable: the server moved the song out
-  // of `playing`. Client-only, no engine change; auto-dismisses (never blocks).
-  const prevPlaying = useRef<{ id: string; name: string } | null>(null);
+  // finished), celebrate THAT singer. Reliable: the server moved the song out of
+  // `playing`. Client-only, no engine change; auto-dismisses; a rapid new song
+  // shortens (never covers) the celebration.
+  const completedRef = useRef(0);
+  if (stats) completedRef.current = stats.completed;
+  const prevPlaying = useRef<{ id: string; name: string; song: string } | null>(null);
   const celebrateTimer = useRef<number | null>(null);
   const celebrateCount = useRef(0);
-  const [celebrating, setCelebrating] = useState<{ name: string; line: string } | null>(null);
+  const [celebrating, setCelebrating] = useState<{ name: string; song: string; line: string; tier: 1 | 2 } | null>(null);
   const playingId = playing?.id ?? null;
   useEffect(() => {
-    const cur = playing ? { id: playing.id, name: playing.guestName } : null;
+    const cur = playing ? { id: playing.id, name: playing.guestName, song: playing.songTitle } : null;
     const prev = prevPlaying.current;
-    if (prev && (!cur || cur.id !== prev.id)) {
-      const line = CELEBRATE_LINES[celebrateCount.current % CELEBRATE_LINES.length];
-      celebrateCount.current += 1;
-      setCelebrating({ name: prev.name, line });
-      if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
-      celebrateTimer.current = window.setTimeout(() => setCelebrating(null), CELEBRATE_MS);
-    }
     prevPlaying.current = cur;
+    if (!prev || (cur && cur.id === prev.id)) return;
+    // A performance just ended. Milestone (Tier 2) uses existing event stats only:
+    // the first completed song, or every tenth — no new schema/analytics.
+    const completed = completedRef.current;
+    const tier: 1 | 2 = completed === 1 || (completed > 0 && completed % 10 === 0) ? 2 : 1;
+    const line = CELEBRATE_LINES[celebrateCount.current % CELEBRATE_LINES.length];
+    celebrateCount.current += 1;
+    setCelebrating({ name: prev.name, song: prev.song, line, tier });
+    soundRef.current?.applause();
+    if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
+    celebrateTimer.current = window.setTimeout(() => setCelebrating(null), cur ? CELEBRATE_SHORT_MS : CELEBRATE_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playingId]);
   useEffect(() => () => { if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current); }, []);
+
+  // Joy Pulse — a quiet corner note when a NEW song is requested (the request count
+  // rises). Guards the initial mount so the existing queue is never mistaken for new.
+  const prevRequests = useRef<number | null>(null);
+  const joyTimer = useRef<number | null>(null);
+  const [joyPulse, setJoyPulse] = useState(false);
+  const requests = stats?.requests ?? null;
+  useEffect(() => {
+    if (requests == null) return;
+    const prev = prevRequests.current;
+    prevRequests.current = requests;
+    if (prev != null && requests > prev) {
+      setJoyPulse(true);
+      if (joyTimer.current) window.clearTimeout(joyTimer.current);
+      joyTimer.current = window.setTimeout(() => setJoyPulse(false), JOY_PULSE_MS);
+    }
+  }, [requests]);
+  useEffect(() => () => { if (joyTimer.current) window.clearTimeout(joyTimer.current); }, []);
 
   const mode = playing ? 'singing' : ended ? 'ended' : next ? 'upnext' : 'waiting';
 
   return (
     <div className={`js js-${mode}`}>
-      {/* Slow, subtle breathing glow — the living stage. CSS-only, low motion. */}
+      {/* Slow breathing glow + edge bokeh — the room, quietly alive. CSS-only. */}
       <div className="js-aura" aria-hidden />
+      <div className="js-bokeh" aria-hidden>
+        <span className="js-bokeh-a" /><span className="js-bokeh-b" /><span className="js-bokeh-c" />
+      </div>
 
       {ended && (
         <div className="js-ribbon" role="status">
@@ -160,11 +213,19 @@ export default function DisplayClient({ slug, roomName }: Props) {
           <span className="js-room">{roomName}</span>
         </div>
         <div className="js-top-right">
+          <button
+            type="button"
+            className="js-ctl"
+            onClick={toggleSound}
+            aria-pressed={soundOn}
+            aria-label={soundOn ? '축하 사운드 끄기' : '축하 사운드 켜기'}
+            title={soundOn ? 'Celebration sound on' : 'Celebration sound off'}
+          >
+            {soundOn ? '🔔' : '🔕'}
+          </button>
           <button type="button" className="js-ctl" onClick={enterFullscreen} aria-label="전체화면">
             ⛶
           </button>
-          {/* Top-right QR during singing/up-next (compact, "함께 노래해요"). In the
-              waiting state the QR becomes a prominent central invitation instead. */}
           {qr && !ended && mode !== 'waiting' && (
             <div className={`js-qr${playing ? ' compact' : ''}`} aria-label="참여 QR">
               <div className="js-qr-svg" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
@@ -177,21 +238,29 @@ export default function DisplayClient({ slug, roomName }: Props) {
       {playing ? (
         <SingingStage playing={playing} next={next} />
       ) : ended ? (
-        <EndedStage stats={state?.stats ?? null} />
+        <EndedStage stats={stats} />
       ) : next ? (
         <UpNextStage next={next} />
       ) : (
         <WaitingStage qrSvg={qr?.qrSvg ?? null} />
       )}
 
-      {/* Completion celebration — a brief, restrained applause with a warm light lift.
-          Non-blocking: it fades over the next state, never a splash that stalls the
-          room. No score, no ranking, no judgment. */}
+      {/* Joy Pulse — a small, single corner note; never covers the singer. */}
+      {joyPulse && (
+        <div className="js-joypulse" role="status" aria-live="polite">
+          ✨ 새로운 무대가 준비되었어요
+        </div>
+      )}
+
+      {/* Completion celebration — warm light lift + soft applause + a few gold sparks.
+          Non-blocking, once, bounded. No score, no ranking, no judgment. */}
       {celebrating && (
-        <div className="js-celebrate" role="status" aria-live="polite">
+        <div className={`js-celebrate tier-${celebrating.tier}`} role="status" aria-live="polite">
+          <Sparks count={celebrating.tier === 2 ? 18 : 10} milestone={celebrating.tier === 2} />
           <div className="js-celebrate-inner">
             <div className="js-celebrate-symbol" aria-hidden>👏</div>
             <div className="js-celebrate-line">{celebrating.name}의 무대였습니다</div>
+            {celebrating.song && <div className="js-celebrate-song">{celebrating.song}</div>}
             <div className="js-celebrate-sub">{celebrating.line}</div>
           </div>
         </div>
@@ -200,15 +269,34 @@ export default function DisplayClient({ slug, roomName }: Props) {
   );
 }
 
+// A bounded set of CSS gold sparks around the edges — never over the centre text.
+// Deterministic positions (index-based) so the overlay renders once and cleans up
+// with its unmount; no rAF, no growing DOM.
+function Sparks({ count, milestone }: { count: number; milestone: boolean }) {
+  const items = Array.from({ length: count }, (_, i) => {
+    const left = 4 + ((i * 92) / Math.max(1, count - 1)); // spread 4%..96%
+    const delay = (i % 6) * 0.12;
+    const dur = 1.4 + (i % 4) * 0.2;
+    const drift = ((i % 5) - 2) * 8;
+    return (
+      <span
+        key={i}
+        className="js-spark"
+        style={{ left: `${left}%`, animationDelay: `${delay}s`, animationDuration: `${dur}s`, ['--drift' as string]: `${drift}px` }}
+      />
+    );
+  });
+  return <div className={`js-sparks${milestone ? ' milestone' : ''}`} aria-hidden>{items}</div>;
+}
+
 // ── Singing: the Living Visual Stage — ambient artwork · singer-first · compact NEXT ──
 function SingingStage({ playing, next }: { playing: DisplayRequest; next: DisplayRequest | null }) {
   const art = artUrl(playing);
   return (
     <section className="js-stage js-vstage" aria-label="지금 부르는 중">
-      {/* Full-bleed ambient from the artwork (blurred, low opacity, navy + warm veil).
-          Keyed by the request id so a song change swaps the scene atomically and the
-          slow zoom restarts once — never re-animating on a 2s poll. CSS background →
-          a 404 simply shows the gradient veil (no broken-image icon, never black). */}
+      {/* Full-bleed ambient from the artwork. Keyed by the request id so a song change
+          swaps the scene atomically (no old/new mix) and the slow drift restarts once
+          — never on a 2s poll. CSS background → a 404 shows the gradient, never black. */}
       <div
         className={`js-vstage-ambient${art ? '' : ' no-art'}`}
         key={playing.id}
@@ -216,7 +304,8 @@ function SingingStage({ playing, next }: { playing: DisplayRequest; next: Displa
         aria-hidden
       />
       <div className="js-vstage-veil" aria-hidden />
-      {/* One warm bloom as the song begins (keyed → fires once). */}
+      {/* Stage opening: a one-shot curtain darken + warm gold bloom as the song begins. */}
+      <div className="js-curtain" key={`cur-${playing.id}`} aria-hidden />
       <div className="js-bloom" key={`bloom-${playing.id}`} aria-hidden />
 
       <div className="js-vstage-content" key={`c-${playing.id}`}>
