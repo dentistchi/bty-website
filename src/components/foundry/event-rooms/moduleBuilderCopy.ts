@@ -7,10 +7,14 @@ import type { Locale } from "./copy";
 /** Direction Copilot (Slice 2.4A) — product-tone copy for the assistive suggestion
  *  flow on the problem step. Neutral product language, NOT the Dr. Chi mentor voice. */
 export type DirectionCopilotCopy = {
+  entryPrompt: string;
   trigger: string;
+  entrySupport: string;
   loading: string;
   resultsHeading: string;
   draftBadge: string;
+  viewDetails: string;
+  hideDetails: string;
   labelTitle: string;
   labelCapability: string;
   labelWhy: string;
@@ -365,10 +369,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishError: "Couldn’t create the session. Please try once more.",
     publishNotReady: "Complete the highlighted sections first.",
     copilot: {
-      trigger: "Show me three directions",
+      entryPrompt: "Not sure how to turn this into training?",
+      trigger: "Show me three possible directions",
+      entrySupport: "BTY will suggest three approaches. You can review and edit before anything is applied.",
       loading: "Finding three possible directions…",
       resultsHeading: "THREE POSSIBLE DIRECTIONS",
       draftBadge: "Suggested direction",
+      viewDetails: "View details",
+      hideDetails: "Hide details",
       labelTitle: "Direction",
       labelCapability: "Capability",
       labelWhy: "Why it fits",
@@ -542,10 +550,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",
     publishNotReady: "먼저 표시된 항목을 완성하세요.",
     copilot: {
-      trigger: "세 가지 방향 보기",
+      entryPrompt: "이 문제를 어떤 교육으로 만들지 막막하신가요?",
+      trigger: "가능한 교육 방향 3개 보기",
+      entrySupport: "BTY가 세 가지 접근을 제안합니다. 검토하고 수정한 뒤에만 적용됩니다.",
       loading: "가능한 세 가지 방향을 찾는 중…",
       resultsHeading: "가능한 세 가지 방향",
       draftBadge: "제안된 방향",
+      viewDetails: "자세히 보기",
+      hideDetails: "접기",
       labelTitle: "방향",
       labelCapability: "역량",
       labelWhy: "적합한 이유",

@@ -32,6 +32,26 @@ describe("DirectionCopilot", () => {
   it("renders nothing until the problem meets minimum validity", () => {
     setup({ ready: false });
     expect(screen.queryByTestId("direction-copilot-trigger")).toBeNull();
+    expect(screen.queryByTestId("direction-copilot")).toBeNull();
+  });
+
+  it("shows the discoverable assistive block (EN heading + action + support) when ready, without auto-generating", () => {
+    const { onGenerate } = setup();
+    const block = screen.getByTestId("direction-copilot");
+    expect(block.textContent).toContain("Not sure how to turn this into training?");
+    expect(block.textContent).toContain("Show me three possible directions");
+    expect(block.textContent).toContain("You can review and edit before anything is applied.");
+    // A full-width, comfortably-large touch target action.
+    expect(screen.getByTestId("direction-copilot-trigger").className).toContain("w-full");
+    expect(onGenerate).not.toHaveBeenCalled(); // no auto-open, no auto-generate
+  });
+
+  it("renders the Korean heading, action, and supporting copy", () => {
+    setup({ t: MODULE_BUILDER_COPY.ko.copilot });
+    const block = screen.getByTestId("direction-copilot");
+    expect(block.textContent).toContain("이 문제를 어떤 교육으로 만들지 막막하신가요?");
+    expect(block.textContent).toContain("가능한 교육 방향 3개 보기");
+    expect(block.textContent).toContain("검토하고 수정한 뒤에만 적용됩니다.");
   });
 
   it("shows the trigger when ready and generates on tap (loading first, no auto-select)", async () => {
@@ -122,5 +142,56 @@ describe("DirectionCopilot", () => {
     expect(screen.getByTestId("direction-copilot-stale")).toBeTruthy();
     fireEvent.click(screen.getByTestId("direction-copilot-apply"));
     expect(onApply).not.toHaveBeenCalled();
+  });
+
+  describe("card density — collapsible secondary details", () => {
+    async function toResults() {
+      setup();
+      fireEvent.click(screen.getByTestId("direction-copilot-trigger"));
+      await waitFor(() => screen.getByTestId("direction-copilot-results"));
+    }
+
+    it("collapses Why/Evidence/Assumption by default; essentials stay visible", async () => {
+      await toResults();
+      const card = screen.getAllByTestId("direction-card")[0];
+      // Essentials visible.
+      expect(card.textContent).toContain("Shift Handoff"); // Capability
+      expect(card.textContent).toContain("behavior 1"); // Draft behavior
+      expect(card.textContent).toContain(t.useThis);
+      // Secondary details hidden until expanded.
+      expect(card.querySelector('[data-testid="direction-card-details"]')).toBeNull();
+      expect(card.textContent).not.toContain("why 1");
+      const toggle = card.querySelector('[data-testid="direction-card-details-toggle"]') as HTMLButtonElement;
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(toggle.textContent).toBe(t.viewDetails);
+    });
+
+    it("expands and collapses details, exposing full content when open", async () => {
+      await toResults();
+      const card = screen.getAllByTestId("direction-card")[0];
+      const toggle = card.querySelector('[data-testid="direction-card-details-toggle"]') as HTMLButtonElement;
+      fireEvent.click(toggle);
+      expect(card.querySelector('[data-testid="direction-card-details"]')).not.toBeNull();
+      expect(card.textContent).toContain("why 1"); // rationale
+      expect(card.textContent).toContain("evidence 1"); // success evidence
+      expect(card.textContent).toContain("assumption 1"); // assumption
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(toggle.textContent).toBe(t.hideDetails);
+      fireEvent.click(toggle);
+      expect(card.querySelector('[data-testid="direction-card-details"]')).toBeNull();
+    });
+
+    it("selection works from both the collapsed and expanded states", async () => {
+      await toResults();
+      // Collapsed → Use.
+      fireEvent.click(screen.getAllByTestId("direction-card-use")[0]);
+      expect(screen.getByTestId("direction-copilot-review")).toBeTruthy();
+      // Back, expand the second card, then Use from the expanded state.
+      fireEvent.click(screen.getByText(t.backToDirections));
+      const second = screen.getAllByTestId("direction-card")[1];
+      fireEvent.click(second.querySelector('[data-testid="direction-card-details-toggle"]') as HTMLButtonElement);
+      fireEvent.click(second.querySelector('[data-testid="direction-card-use"]') as HTMLButtonElement);
+      expect(screen.getByTestId("direction-copilot-review")).toBeTruthy();
+    });
   });
 });

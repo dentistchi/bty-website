@@ -135,19 +135,26 @@ export function DirectionCopilot({
     setSuggestions([]);
   }, []);
 
-  // -- IDLE: the assistive trigger (only when the problem meets minimum validity) ----
+  // -- IDLE: a clearly separated, discoverable-but-optional assistive block. Appears
+  // only when the problem meets minimum validity; secondary to the primary Next action;
+  // never auto-opens or auto-generates. (Slice 2.4A.2 discoverability polish.)
   if (phase === "idle") {
     if (!ready) return null;
     return (
-      <div className="pt-1" data-testid="direction-copilot">
+      <div
+        className="mt-3 flex flex-col gap-3 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] p-4"
+        data-testid="direction-copilot"
+      >
+        <p className="text-[0.95rem] font-medium leading-6 text-white/85">{t.entryPrompt}</p>
         <button
           type="button"
           onClick={generate}
           data-testid="direction-copilot-trigger"
-          className="inline-flex items-center gap-2 rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/10 px-4 py-2.5 text-sm font-medium text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/15"
+          className="w-full rounded-xl border border-[#C9A66B]/55 bg-[#C9A66B]/15 px-5 py-3.5 text-[0.95rem] font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/25"
         >
           {t.trigger}
         </button>
+        <p className="text-xs leading-5 text-white/50">{t.entrySupport}</p>
       </div>
     );
   }
@@ -278,7 +285,16 @@ export function DirectionCopilot({
   );
 }
 
+/**
+ * A direction card. Always-visible essentials (title, Capability, Draft behavior, Use)
+ * keep three cards scannable side-by-side; the secondary context (why / evidence /
+ * assumption) is collapsed by default behind a details toggle so first-scan comparison
+ * on mobile is faster. No information is removed and the data contract is unchanged;
+ * "Use this direction" works from both the collapsed and expanded states.
+ */
 function DirectionCard({ s, onUse, t }: { s: DirectionSuggestionView; onUse: () => void; t: DirectionCopilotCopy }) {
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = `direction-details-${s.id}`;
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4" data-testid="direction-card">
       <div className="flex items-start justify-between gap-3">
@@ -288,10 +304,26 @@ function DirectionCard({ s, onUse, t }: { s: DirectionSuggestionView; onUse: () 
         </span>
       </div>
       <CardRow label={t.labelCapability} value={s.capability_candidate} />
-      <CardRow label={t.labelWhy} value={s.rationale} muted />
       <CardRow label={t.labelBehavior} value={s.observable_behavior} />
-      <CardRow label={t.labelEvidence} value={s.success_evidence_hint} muted />
-      {s.important_assumption ? <CardRow label={t.labelAssumption} value={s.important_assumption} muted /> : null}
+
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        data-testid="direction-card-details-toggle"
+        className="self-start text-xs font-medium text-[#C9A66B]/85"
+      >
+        {expanded ? t.hideDetails : t.viewDetails}
+      </button>
+      {expanded ? (
+        <div id={detailsId} data-testid="direction-card-details" className="flex flex-col gap-3">
+          <CardRow label={t.labelWhy} value={s.rationale} muted />
+          <CardRow label={t.labelEvidence} value={s.success_evidence_hint} muted />
+          {s.important_assumption ? <CardRow label={t.labelAssumption} value={s.important_assumption} muted /> : null}
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={onUse}

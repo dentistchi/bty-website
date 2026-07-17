@@ -483,6 +483,27 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
     expect(capInput.value).toBe("Shift Handoff");
   });
 
+  it("shows the discoverable assistive block on the first step, above the footer Next, and hides it for short input", async () => {
+    mockDraftServer({ current_step: 1, answers: { problem: "Handoffs miss the double-check." } });
+    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What keeps going wrong?");
+
+    const block = await screen.findByTestId("direction-copilot");
+    expect(block.textContent).toContain("Not sure how to turn this into training?");
+    expect(block.textContent).toContain("Show me three possible directions");
+    // The block sits ABOVE the bottom navigation action in document order.
+    const nextBtn = screen.getByText("Next");
+    expect(block.compareDocumentPosition(nextBtn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // A too-short problem exposes no active generation action.
+    unmount();
+    mockDraftServer({ current_step: 1, answers: { problem: "x" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What keeps going wrong?");
+    expect(screen.queryByTestId("direction-copilot")).toBeNull();
+    expect(screen.getByText("Next")).toBeTruthy(); // manual Next path remains
+  });
+
   it("a generation failure keeps the problem and the manual path intact", async () => {
     const srv = mockDraftServer(
       { current_step: 1, answers: { problem: "Handoffs miss the double-check." } },
