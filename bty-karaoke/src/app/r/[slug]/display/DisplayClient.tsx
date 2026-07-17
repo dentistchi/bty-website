@@ -10,8 +10,9 @@ interface Props {
 }
 
 const POLL_MS = 2000; // iPad Display refreshes faster than the guest phones.
-const CELEBRATE_MS = 2600; // full celebration when no song immediately follows.
-const CELEBRATE_SHORT_MS = 1500; // shortened when a new song has already started.
+const CELEBRATE_MS = 2800; // Tier 1 celebration when no song immediately follows.
+const CELEBRATE_MS_T2 = 3000; // Tier 2 (milestone) lingers a touch longer.
+const CELEBRATE_SHORT_MS = 800; // a new song already started → clean up fast (0.5–0.8s).
 const JOY_PULSE_MS = 1500;
 const SOUND_KEY = 'bty-stage-sound'; // localStorage: remember the sound preference.
 
@@ -152,7 +153,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
   const prevPlaying = useRef<{ id: string; name: string; song: string } | null>(null);
   const celebrateTimer = useRef<number | null>(null);
   const celebrateCount = useRef(0);
-  const [celebrating, setCelebrating] = useState<{ name: string; song: string; line: string; tier: 1 | 2 } | null>(null);
+  const [celebrating, setCelebrating] = useState<{ name: string; song: string; line: string; tier: 1 | 2; ms: number } | null>(null);
   const playingId = playing?.id ?? null;
   useEffect(() => {
     const cur = playing ? { id: playing.id, name: playing.guestName, song: playing.songTitle } : null;
@@ -165,10 +166,15 @@ export default function DisplayClient({ slug, roomName }: Props) {
     const tier: 1 | 2 = completed === 1 || (completed > 0 && completed % 10 === 0) ? 2 : 1;
     const line = CELEBRATE_LINES[celebrateCount.current % CELEBRATE_LINES.length];
     celebrateCount.current += 1;
-    setCelebrating({ name: prev.name, song: prev.song, line, tier });
+    // A new song already started → clean up fast so it never covers the new opening.
+    const ms = cur ? CELEBRATE_SHORT_MS : tier === 2 ? CELEBRATE_MS_T2 : CELEBRATE_MS;
+    setCelebrating({ name: prev.name, song: prev.song, line, tier, ms });
     soundRef.current?.applause();
     if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
-    celebrateTimer.current = window.setTimeout(() => setCelebrating(null), cur ? CELEBRATE_SHORT_MS : CELEBRATE_MS);
+    celebrateTimer.current = window.setTimeout(() => {
+      setCelebrating(null);
+      soundRef.current?.stop(); // fade the applause out with the overlay
+    }, ms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playingId]);
   useEffect(() => () => { if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current); }, []);
@@ -215,13 +221,14 @@ export default function DisplayClient({ slug, roomName }: Props) {
         <div className="js-top-right">
           <button
             type="button"
-            className="js-ctl"
+            className={`js-ctl js-sound${soundOn ? ' on' : ''}`}
             onClick={toggleSound}
             aria-pressed={soundOn}
-            aria-label={soundOn ? '축하 사운드 끄기' : '축하 사운드 켜기'}
-            title={soundOn ? 'Celebration sound on' : 'Celebration sound off'}
+            aria-label={soundOn ? '축하 소리 켜짐 — 끄기' : '축하 소리 켜기'}
+            title={soundOn ? '축하 소리 켜짐' : '축하 소리 켜기'}
           >
-            {soundOn ? '🔔' : '🔕'}
+            <span aria-hidden>{soundOn ? '🔔' : '🔕'}</span>
+            <span className="js-sound-label">{soundOn ? '소리 켜짐' : '소리 켜기'}</span>
           </button>
           <button type="button" className="js-ctl" onClick={enterFullscreen} aria-label="전체화면">
             ⛶
@@ -252,11 +259,18 @@ export default function DisplayClient({ slug, roomName }: Props) {
         </div>
       )}
 
-      {/* Completion celebration — warm light lift + soft applause + a few gold sparks.
-          Non-blocking, once, bounded. No score, no ranking, no judgment. */}
+      {/* Completion celebration — the artwork dims, warm gold light lifts, TWO golden
+          fountains rise from the left & right edges (clearly visible from across the
+          room; the centre is kept clear), soft real applause plays if enabled. Once,
+          bounded, non-blocking. No score, no ranking, no judgment. */}
       {celebrating && (
-        <div className={`js-celebrate tier-${celebrating.tier}`} role="status" aria-live="polite">
-          <Sparks count={celebrating.tier === 2 ? 18 : 10} milestone={celebrating.tier === 2} />
+        <div
+          className={`js-celebrate tier-${celebrating.tier}`}
+          style={{ animationDuration: `${celebrating.ms}ms` }}
+          role="status"
+          aria-live="polite"
+        >
+          <CelebrationFountains tier={celebrating.tier} />
           <div className="js-celebrate-inner">
             <div className="js-celebrate-symbol" aria-hidden>👏</div>
             <div className="js-celebrate-line">{celebrating.name}의 무대였습니다</div>
@@ -269,24 +283,48 @@ export default function DisplayClient({ slug, roomName }: Props) {
   );
 }
 
-// A bounded set of CSS gold sparks around the edges — never over the centre text.
-// Deterministic positions (index-based) so the overlay renders once and cleans up
-// with its unmount; no rAF, no growing DOM.
-function Sparks({ count, milestone }: { count: number; milestone: boolean }) {
+// Two golden celebration fountains (left + right edges) — clearly visible, bright
+// gold cores with a glow + trail, rising and arcing outward, keeping the centre text
+// clear. BOUNDED particle count, index-positioned (deterministic) so the overlay
+// renders once and every particle is removed on its unmount — no rAF, no growing DOM.
+const PER_SIDE = { 1: 15, 2: 24 } as const; // Tier 1 = 30 total, Tier 2 = 48 total.
+
+function CelebrationFountains({ tier }: { tier: 1 | 2 }) {
+  const per = PER_SIDE[tier];
+  return (
+    <div className={`js-fx tier-${tier}`} aria-hidden>
+      <Fountain side="left" count={per} />
+      <Fountain side="right" count={per} />
+      {tier === 2 && <div className="js-fx-burst" />}
+    </div>
+  );
+}
+
+function Fountain({ side, count }: { side: 'left' | 'right'; count: number }) {
+  const dir = side === 'left' ? 1 : -1;
   const items = Array.from({ length: count }, (_, i) => {
-    const left = 4 + ((i * 92) / Math.max(1, count - 1)); // spread 4%..96%
-    const delay = (i % 6) * 0.12;
-    const dur = 1.4 + (i % 4) * 0.2;
-    const drift = ((i % 5) - 2) * 8;
+    const size = 8 + (i % 4) * 2; // 8–14px core
+    const rise = 46 + (i % 5) * 6; // 46–70vh
+    const out = dir * (8 + (i % 6) * 7); // arc outward 8–43vw
+    const dur = 2 + (i % 5) * 0.16;
+    const delay = 0.15 + (i % 7) * 0.06;
+    const hue = i % 5 === 0 ? 'coral' : i % 7 === 0 ? 'ivory' : 'gold';
     return (
       <span
         key={i}
-        className="js-spark"
-        style={{ left: `${left}%`, animationDelay: `${delay}s`, animationDuration: `${dur}s`, ['--drift' as string]: `${drift}px` }}
+        className={`js-fw fw-${hue}`}
+        style={{
+          ['--size' as string]: `${size}px`,
+          ['--rise' as string]: `${rise}vh`,
+          ['--out' as string]: `${out}vw`,
+          ['--i-off' as string]: `${(i % 6) * 12}px`,
+          animationDuration: `${dur}s`,
+          animationDelay: `${delay}s`,
+        }}
       />
     );
   });
-  return <div className={`js-sparks${milestone ? ' milestone' : ''}`} aria-hidden>{items}</div>;
+  return <div className={`js-fountain js-fountain-${side}`}>{items}</div>;
 }
 
 // ── Singing: the Living Visual Stage — ambient artwork · singer-first · compact NEXT ──

@@ -42,20 +42,17 @@ describe('V1.5 — Ambient living stage (CSS-only, slow, no strobe)', () => {
 describe('V1.5 — Completion celebration (tiers, bounded sparks, non-blocking)', () => {
   it('preserves the finished singer name + song and never blocks the next song', () => {
     expect(display).toMatch(/name: prev\.name, song: prev\.song/);
-    expect(display).toMatch(/setCelebrating\(null\), cur \? CELEBRATE_SHORT_MS : CELEBRATE_MS/);
+    expect(display).toMatch(/const ms = cur \? CELEBRATE_SHORT_MS/);
   });
   it('a rapid new song shortens the celebration (never covers the new stage)', () => {
     expect(display).toContain('CELEBRATE_SHORT_MS');
-    expect(display).toMatch(/cur \? CELEBRATE_SHORT_MS : CELEBRATE_MS/);
+    expect(display).toMatch(/const ms = cur \? CELEBRATE_SHORT_MS : tier === 2 \? CELEBRATE_MS_T2 : CELEBRATE_MS/);
+    // and the applause fades out with the overlay
+    expect(display).toMatch(/soundRef\.current\?\.stop\(\)/);
   });
   it('Tier 2 milestone uses ONLY existing event stats (first song / every tenth)', () => {
     expect(display).toMatch(/completed === 1 \|\| \(completed > 0 && completed % 10 === 0\)/);
     expect(displayCode).not.toMatch(/migration|new column|createColumn/i); // code only
-  });
-  it('sparks are BOUNDED and index-positioned (no rAF, no growing DOM)', () => {
-    expect(display).toMatch(/count=\{celebrating\.tier === 2 \? 18 : 10\}/); // explicit cap
-    expect(display).toMatch(/Array\.from\(\{ length: count \}/);
-    expect(display).not.toMatch(/requestAnimationFrame/);
   });
   it('the light lift is warm gold and never a score/rank/judgment', () => {
     expect(block('.js-celebrate {')).toMatch(/245, 196, 81/);
@@ -63,25 +60,61 @@ describe('V1.5 — Completion celebration (tiers, bounded sparks, non-blocking)'
   });
 });
 
-describe('V1.5 — Applause sound (synthesized, default OFF, fail-safe)', () => {
-  it('is Web Audio SYNTHESIS — no asset file, no external provider, no network', () => {
-    expect(sound).toMatch(/AudioContext|webkitAudioContext/);
-    expect(sound).toMatch(/createBuffer/); // generated, not decoded from a file
-    expect(sound).not.toMatch(/fetch\(|import\(|\.mp3|\.wav|new Audio\(/);
+describe('V1.5.1 — Golden celebration fountains (clearly visible)', () => {
+  it('two edge fountains (not tiny centre sparks); centre kept clear for the name', () => {
+    expect(display).toContain('CelebrationFountains');
+    expect(display).toMatch(/Fountain side="left"/);
+    expect(display).toMatch(/Fountain side="right"/);
+    expect(css).toContain('.js-fountain-left');
+    expect(css).toContain('.js-fountain-right');
+  });
+  it('particle count is BOUNDED per side (Tier 1 = 30 total, Tier 2 = 48) — no rAF', () => {
+    expect(display).toMatch(/PER_SIDE = \{ 1: 15, 2: 24 \}/);
+    expect(display).toMatch(/Array\.from\(\{ length: count \}/);
+    expect(display).not.toMatch(/requestAnimationFrame/);
+  });
+  it('particles are BIG and visible: real glow + trail (fix for the invisible sparks)', () => {
+    const fw = block('.js-fw {');
+    expect(fw).toMatch(/box-shadow: 0 0 16px 5px/); // strong glow
+    expect(fw).toMatch(/var\(--size/); // 8–14px core, larger than the old 7px
+    expect(css).toMatch(/\.js-fw::before \{[^}]*height: clamp/); // upward trail
+  });
+  it('a rise-and-arc animation stays bright most of the way, then fades', () => {
+    const kf = css.slice(css.indexOf('@keyframes js-fw-rise'));
+    expect(kf).toMatch(/70% \{ opacity: 1;/); // still bright near the top
+  });
+});
+
+describe('V1.5.1 — Real applause asset (synth removed, AUDIO ASSET REQUIRED seam)', () => {
+  it('NO Web Audio synthesis — plays a real recorded asset (HTMLAudioElement)', () => {
+    expect(sound).not.toMatch(/createBuffer|AudioContext|webkitAudioContext/); // synth removed
+    expect(sound).toMatch(/new Audio\(/); // real recorded file
+    expect(sound).toContain("'/audio/applause.mp3'");
+  });
+  it('no external URL / no network fetch / no new dependency', () => {
+    expect(sound).not.toMatch(/https?:\/\/|fetch\(|import\(/);
+  });
+  it('the required asset + license is documented (AUDIO ASSET REQUIRED)', () => {
+    const readme = readFileSync(fileURLToPath(new URL('../../../../../public/audio/README.md', import.meta.url)), 'utf8');
+    expect(readme).toMatch(/AUDIO ASSET REQUIRED/);
+    expect(readme).toMatch(/license/i);
+    expect(readme).toContain('applause.mp3');
   });
   it('defaults OFF and remembers the preference in localStorage', () => {
     expect(display).toMatch(/useState\(false\)/); // soundOn default false
     expect(display).toContain('bty-stage-sound');
     expect(display).toMatch(/getItem\(SOUND_KEY\) === '1'/);
   });
-  it('the toggle tap unlocks audio (user gesture) and is labeled (not icon-only meaning)', () => {
+  it('the toggle unlocks on tap (gesture preview) and carries a TEXT label', () => {
     expect(display).toMatch(/onClick=\{toggleSound\}/);
-    expect(display).toMatch(/aria-label=\{soundOn \?/); // explicit label, not just an emoji
-    expect(sound).toMatch(/enable\(\).*resume/s); // unlock on enable
+    expect(display).toContain('js-sound-label'); // not icon-only
+    expect(display).toMatch(/aria-label=\{soundOn \?/);
+    expect(sound).toMatch(/enable\(\) \{[\s\S]*?\.play\(\)/); // preview/unlock on enable
   });
-  it('plays once per completion, and audio failure never affects the UI/queue', () => {
+  it('plays once per completion, fades on a new song, and is fully fail-safe', () => {
     expect(display).toMatch(/soundRef\.current\?\.applause\(\)/);
-    expect(sound).toMatch(/if \(!sound\.enabled.*return/s); // no-op when off
+    expect(sound).toMatch(/if \(!sound\.enabled\) return/); // no-op when off
+    expect(sound).toContain('stop()'); // fade/stop seam
     expect(sound).toMatch(/catch \{[\s\S]*?\}/); // swallow failures
   });
 });
@@ -99,7 +132,7 @@ describe('V1.5 — Joy Pulse (new request), NEXT contrast, reduced motion', () =
   it('every new motion honors prefers-reduced-motion', () => {
     const rm = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
     expect(rm).toContain('.js-curtain');
-    expect(rm).toContain('.js-spark');
+    expect(rm).toContain('.js-fw'); // fountains: no travel, still soft glow + text
     expect(rm).toContain('.js-bokeh span');
   });
   it('preserves polling, wake-lock, fullscreen, lyrics-off (no ?lyrics=1)', () => {

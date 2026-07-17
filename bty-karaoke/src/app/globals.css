@@ -2770,6 +2770,23 @@ a.btn.block {
   min-height: 44px;
   font-size: 1.05rem;
 }
+/* Sound toggle — carries a short TEXT label (state not conveyed by the icon alone). */
+.js-sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  min-width: 0;
+}
+.js-sound-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.js-sound.on {
+  border-color: rgba(245, 196, 81, 0.5);
+}
+.js-sound.on .js-sound-label { color: var(--gold); }
 .js-qr {
   text-align: center;
 }
@@ -3052,81 +3069,141 @@ a.btn.block {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* A warm light lift — gold/coral glow over a soft navy scrim. */
+  overflow: hidden;
+  /* The artwork DIMS so the acknowledgement reads, with a warm gold light rising
+     from the bottom (a stage light lift). */
   background:
-    radial-gradient(46% 40% at 50% 42%, rgba(245, 196, 81, 0.22), transparent 72%),
-    radial-gradient(circle at 50% 44%, rgba(11, 16, 32, 0.5), rgba(7, 11, 20, 0.86));
-  animation: js-celebrate 2.6s ease both;
+    radial-gradient(60% 44% at 50% 100%, rgba(245, 196, 81, 0.3), transparent 70%),
+    radial-gradient(70% 60% at 50% 44%, rgba(9, 13, 26, 0.55), rgba(6, 10, 18, 0.9));
+  animation: js-celebrate 2.8s ease both;
 }
-.js-celebrate-inner { text-align: center; }
+/* A soft dark veil directly behind the text so the name always reads over sparks. */
+.js-celebrate-inner {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 22px 28px;
+  border-radius: 26px;
+  background: radial-gradient(70% 70% at 50% 50%, rgba(6, 10, 18, 0.55), transparent 78%);
+}
 .js-celebrate-symbol {
-  font-size: clamp(3rem, 9vw, 6rem);
+  font-size: clamp(3.4rem, 10vw, 6.6rem);
+  filter: drop-shadow(0 0 22px rgba(245, 196, 81, 0.5));
   animation: js-clap 1.6s ease-in-out;
 }
 .js-celebrate-line {
   margin-top: 12px;
   font-weight: 900;
   color: var(--gold);
-  font-size: clamp(1.5rem, 4.2vw, 3rem);
+  font-size: clamp(1.9rem, 5.4vw, 3.6rem);
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 196, 81, 0.35);
 }
 .js-celebrate-song {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--ivory);
   font-weight: 700;
-  font-size: clamp(1.05rem, 2.4vw, 1.7rem);
+  font-size: clamp(1.15rem, 2.8vw, 1.9rem);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
 }
 .js-celebrate-sub {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--joy-coral);
-  font-weight: 600;
-  font-size: clamp(1rem, 2.2vw, 1.5rem);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
-/* Tier 2 (milestone) — the light lift lingers a touch warmer. */
-.js-celebrate.tier-2 {
-  background:
-    radial-gradient(52% 46% at 50% 42%, rgba(245, 196, 81, 0.3), transparent 72%),
-    radial-gradient(circle at 50% 44%, rgba(11, 16, 32, 0.46), rgba(7, 11, 20, 0.84));
-}
-/* A warm light lift as the celebration blooms, then eases back to the next state. */
+.js-celebrate.tier-2 .js-celebrate-line { text-shadow: 0 2px 28px rgba(0, 0, 0, 0.6), 0 0 42px rgba(245, 196, 81, 0.6); }
 @keyframes js-celebrate {
   0% { opacity: 0; }
-  12% { opacity: 1; }
-  82% { opacity: 1; }
+  10% { opacity: 1; }
+  84% { opacity: 1; }
   100% { opacity: 0; }
 }
 @keyframes js-clap {
   0%, 100% { transform: scale(1) rotate(0); }
-  25% { transform: scale(1.12) rotate(-6deg); }
-  60% { transform: scale(1.08) rotate(5deg); }
+  25% { transform: scale(1.14) rotate(-7deg); }
+  60% { transform: scale(1.08) rotate(6deg); }
 }
 
-/* ── Gold sparks — a BOUNDED set at the edges; never over the centre text. They
-   mount with the (keyed, auto-dismissing) celebration overlay and are removed with
-   it — no rAF, no growing DOM. ── */
-.js-sparks {
+/* ══ GOLDEN CELEBRATION FOUNTAINS — clearly visible from across the room. Two
+   fountains rise from the left & right edges and arc outward; the centre stays
+   clear for the name. Bright gold cores with a real glow + trail; BOUNDED count;
+   removed with the overlay's unmount (no rAF, no growing DOM). ══ */
+.js-fx {
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   overflow: hidden;
 }
-.js-spark {
+.js-fountain {
   position: absolute;
-  bottom: 8%;
-  width: 7px;
-  height: 7px;
+  bottom: 2%;
+  width: 30%;
+  height: 100%;
+}
+.js-fountain-left { left: 0; }
+.js-fountain-right { right: 0; }
+/* Each particle: a bright gold core + a soft glow (box-shadow) + a short upward
+   trail (::before). Sizes/positions come from inline vars. */
+.js-fw {
+  position: absolute;
+  bottom: 6%;
+  width: var(--size, 10px);
+  height: var(--size, 10px);
   border-radius: 50%;
-  background: radial-gradient(circle, #ffe6a3, var(--gold) 55%, transparent 75%);
+  background: radial-gradient(circle, #fff7df 0%, #ffe08a 45%, var(--gold) 70%, transparent 78%);
+  box-shadow: 0 0 16px 5px rgba(245, 196, 81, 0.85), 0 0 40px 10px rgba(245, 196, 81, 0.35);
   opacity: 0;
-  animation-name: js-spark-rise;
-  animation-timing-function: ease-out;
+  animation-name: js-fw-rise;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
   animation-iteration-count: 1;
   animation-fill-mode: both;
 }
-.js-sparks.milestone .js-spark { width: 9px; height: 9px; }
-@keyframes js-spark-rise {
-  0% { opacity: 0; transform: translateY(0) translateX(0) scale(0.6); }
-  20% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-58vh) translateX(var(--drift, 0px)) scale(1); }
+.js-fw::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 3px;
+  height: clamp(24px, 5vh, 52px);
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(245, 196, 81, 0.85), transparent);
+  border-radius: 3px;
+  filter: blur(0.5px);
+}
+.js-fountain-left .js-fw { left: calc(6% + var(--i-off, 0px)); }
+.js-fountain-right .js-fw { right: calc(6% + var(--i-off, 0px)); }
+.js-fw.fw-coral { background: radial-gradient(circle, #fff0e8 0%, #ffb59c 50%, var(--joy-coral) 72%, transparent 80%); box-shadow: 0 0 16px 5px rgba(255, 143, 115, 0.8), 0 0 38px 9px rgba(255, 143, 115, 0.3); }
+.js-fw.fw-coral::before { background: linear-gradient(to top, rgba(255, 143, 115, 0.8), transparent); }
+.js-fw.fw-ivory { background: radial-gradient(circle, #ffffff 0%, #fbf3df 55%, var(--ivory) 74%, transparent 82%); box-shadow: 0 0 16px 5px rgba(247, 240, 225, 0.8), 0 0 34px 8px rgba(247, 240, 225, 0.28); }
+/* Rise up, arc outward, and burst slightly larger — staying bright most of the way. */
+@keyframes js-fw-rise {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  12% { opacity: 1; transform: translate(calc(var(--out) * 0.15), calc(var(--rise) * -0.2)) scale(1); }
+  70% { opacity: 1; transform: translate(calc(var(--out) * 0.8), calc(var(--rise) * -0.9)) scale(1.15); }
+  100% { opacity: 0; transform: translate(var(--out), calc(var(--rise) * -1)) scale(0.9); }
+}
+/* Tier 2 — a small extra gold burst near the top centre (never full-screen). */
+.js-fx-burst {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7df, var(--gold) 60%, transparent 75%);
+  box-shadow:
+    0 0 0 0 rgba(245, 196, 81, 0.6),
+    -30px 6px 0 -2px rgba(245, 196, 81, 0.7), 30px 6px 0 -2px rgba(245, 196, 81, 0.7),
+    -18px -14px 0 -3px rgba(255, 143, 115, 0.7), 18px -14px 0 -3px rgba(255, 143, 115, 0.7);
+  animation: js-burst 1s ease-out 0.25s both;
+}
+@keyframes js-burst {
+  0% { opacity: 0; transform: scale(0.2); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.4); }
 }
 
 /* ── Joy Pulse — a quiet corner note when a new song is requested. ── */
@@ -3184,11 +3261,23 @@ a.btn.block {
 
 @media (prefers-reduced-motion: reduce) {
   .js-celebrate-symbol,
-  .js-spark,
   .js-bokeh span,
-  .js-curtain { animation: none; }
-  /* Reduced motion: celebration still conveys its meaning; sparks simply don't move. */
-  .js-spark { opacity: 0; }
+  .js-curtain,
+  .js-fx-burst { animation: none; }
+  /* Reduced motion: keep the warm gold glow + the acknowledgement text (meaning is
+     conveyed without motion), but the fountains do not travel — a still soft glow. */
+  .js-fw {
+    animation: js-fw-still 1.6s ease both;
+    bottom: auto;
+    top: 22%;
+  }
+  .js-fountain-left .js-fw { left: 12%; }
+  .js-fountain-right .js-fw { right: 12%; }
+}
+@keyframes js-fw-still {
+  0% { opacity: 0; transform: scale(0.6); }
+  30%, 70% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; }
 }
 
 /* ── Responsive: phone keeps the singer central by trimming chrome, not name size ── */

@@ -1,110 +1,121 @@
 'use client';
 
-// Celebration audio for the Living Stage — SYNTHESIZED with the Web Audio API. No
-// audio file ships in the repo, no external provider, no network, no license: the
-// applause is generated in-code as shaped filtered noise. Design constraints:
-//   • default OFF — nothing plays until the user taps the Sound toggle (that tap is
-//     the user gesture that unlocks the AudioContext, honoring iOS Safari autoplay).
-//   • soft: a low master gain, band-passed so it never spikes the room's volume.
-//   • once per completion; never blocks the UI; a failure is swallowed (no-op).
-//   • no rAF loop, no asset decode — one short buffer per applause, source
-//     auto-stops and is GC'd.
+// Celebration applause for the Living Stage — plays a REAL recorded-applause asset
+// (an in-repo file under /public/audio), NOT synthesized noise. V1.5's Web-Audio
+// synthesis sounded mechanical and is removed. Design constraints:
+//   • default OFF — nothing plays until the user taps the Sound toggle. That tap is
+//     the user gesture that unlocks HTMLAudioElement playback on iOS Safari; enable()
+//     plays a short low-volume preview to unlock AND confirm the asset is present.
+//   • once per completion; a rapid next song fades it out fast so it never lingers.
+//   • soft but audible; a single reused <audio> element (never one per poll).
+//   • fully fail-safe: a missing asset / rejected play() is swallowed — audio never
+//     breaks the UI or the queue. `available` reflects whether the asset loaded.
+//
+// AUDIO ASSET: /public/audio/applause.mp3 — see /public/audio/README.md for the
+// required source/license. When absent, the toggle still works and simply stays
+// silent (available=false); dropping the licensed file in needs no code change.
+
+export const APPLAUSE_SRC = '/audio/applause.mp3';
 
 export interface StageSound {
   enabled: boolean;
-  /** MUST be called from a user gesture; creates/resumes the context. */
+  /** true once the applause asset has loaded and is playable. */
+  available: boolean;
+  /** MUST be called from a user gesture: unlocks audio + plays a short preview. */
   enable(): void;
   disable(): void;
-  /** Soft applause — no-op when disabled or unsupported; never throws. */
+  /** Play the applause once (soft) — no-op when disabled/unavailable; never throws. */
   applause(): void;
+  /** Fade out + stop quickly (e.g. a new song started). */
+  stop(): void;
 }
 
-type Ctor = typeof AudioContext;
+export function createStageSound(src: string = APPLAUSE_SRC): StageSound {
+  let el: HTMLAudioElement | null = null;
+  let fade: number | null = null;
+  const VOL = 0.55;
 
-function getCtor(): Ctor | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as unknown as { AudioContext?: Ctor; webkitAudioContext?: Ctor };
-  return w.AudioContext ?? w.webkitAudioContext ?? null;
-}
-
-// Build ~1.6s of soft crowd applause: many short exponential-decay noise "claps"
-// summed and normalized low. Cached per context.
-function buildApplause(ctx: AudioContext): AudioBuffer {
-  const dur = 1.6;
-  const sr = ctx.sampleRate;
-  const n = Math.floor(dur * sr);
-  const buf = ctx.createBuffer(1, n, sr);
-  const d = buf.getChannelData(0);
-  const claps = 150;
-  for (let c = 0; c < claps; c++) {
-    const start = Math.floor(Math.random() * n * 0.9);
-    const len = Math.max(1, Math.floor(sr * 0.02 * (0.5 + Math.random())));
-    const amp = 0.3 + Math.random() * 0.7;
-    for (let i = 0; i < len && start + i < n; i++) {
-      const env = Math.exp(-i / (len * 0.3));
-      d[start + i] += (Math.random() * 2 - 1) * env * amp;
+  function ensure(): HTMLAudioElement | null {
+    if (typeof Audio === 'undefined') return null;
+    if (!el) {
+      try {
+        el = new Audio(src);
+        el.preload = 'auto';
+        el.volume = VOL;
+        el.addEventListener('canplaythrough', () => { sound.available = true; }, { once: true });
+        el.addEventListener('error', () => { sound.available = false; });
+        el.load();
+      } catch {
+        el = null;
+      }
     }
+    return el;
   }
-  // Normalize, then apply a gentle overall fade in / out so it swells and settles.
-  let max = 0;
-  for (let i = 0; i < n; i++) max = Math.max(max, Math.abs(d[i]));
-  const norm = max > 0 ? 0.5 / max : 0;
-  const fin = Math.floor(sr * 0.2);
-  const fout = Math.floor(sr * 0.45);
-  for (let i = 0; i < n; i++) {
-    let g = 1;
-    if (i < fin) g = i / fin;
-    else if (i > n - fout) g = (n - i) / fout;
-    d[i] = d[i] * norm * g;
-  }
-  return buf;
-}
 
-export function createStageSound(): StageSound {
-  let ctx: AudioContext | null = null;
-  let buffer: AudioBuffer | null = null;
+  function clearFade() {
+    if (fade != null) { window.clearInterval(fade); fade = null; }
+  }
 
   const sound: StageSound = {
     enabled: false,
+    available: false,
     enable() {
+      sound.enabled = true;
+      const a = ensure();
+      if (!a) return;
+      // Preview at a low volume: unlocks iOS playback within this gesture AND lets the
+      // user hear the real applause once. Stopped after ~0.6s so it isn't intrusive.
       try {
-        const Ctor = getCtor();
-        if (!Ctor) return; // unsupported → toggle still flips, applause no-ops
-        if (!ctx) ctx = new Ctor();
-        void ctx.resume?.();
-        if (!buffer && ctx) buffer = buildApplause(ctx);
-        sound.enabled = true;
+        a.currentTime = 0;
+        a.volume = 0.32;
+        const p = a.play();
+        if (p && typeof p.then === 'function') p.then(() => { sound.available = true; }).catch(() => undefined);
+        window.setTimeout(() => sound.stop(), 600);
       } catch {
-        sound.enabled = true; // remember the preference even if audio is unavailable
+        /* unlock/preview failed — remembered preference stands, applause no-ops */
       }
     },
     disable() {
       sound.enabled = false;
+      sound.stop();
     },
     applause() {
-      if (!sound.enabled || !ctx || !buffer) return;
+      if (!sound.enabled) return;
+      const a = ensure();
+      if (!a) return;
       try {
-        const src = ctx.createBufferSource();
-        src.buffer = buffer;
-        const band = ctx.createBiquadFilter();
-        band.type = 'bandpass';
-        band.frequency.value = 1800;
-        band.Q.value = 0.7;
-        const gain = ctx.createGain();
-        gain.gain.value = 0.18; // soft — well below any music
-        src.connect(band).connect(gain).connect(ctx.destination);
-        src.start();
-        src.onended = () => {
-          try {
-            src.disconnect();
-            band.disconnect();
-            gain.disconnect();
-          } catch {
-            /* already torn down */
-          }
-        };
+        clearFade();
+        a.pause();
+        a.currentTime = 0;
+        a.volume = VOL;
+        const p = a.play();
+        if (p && typeof p.then === 'function') p.then(() => { sound.available = true; }).catch(() => undefined);
       } catch {
         /* audio failure never affects the UI or the queue */
+      }
+    },
+    stop() {
+      const a = el;
+      if (!a) return;
+      clearFade();
+      try {
+        // Quick 400ms fade so a cut-off never sounds abrupt when the next song starts.
+        const step = a.volume / 8;
+        fade = window.setInterval(() => {
+          try {
+            if (!a || a.volume <= step) {
+              a?.pause();
+              if (a) a.volume = VOL;
+              clearFade();
+            } else {
+              a.volume = Math.max(0, a.volume - step);
+            }
+          } catch {
+            clearFade();
+          }
+        }, 50);
+      } catch {
+        try { a.pause(); } catch { /* ignore */ }
       }
     },
   };
