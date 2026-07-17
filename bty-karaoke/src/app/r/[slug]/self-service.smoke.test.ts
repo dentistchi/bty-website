@@ -139,22 +139,26 @@ describe('paired iPad defaults to the Display, not the DJ console (V3.1)', () =>
   });
 });
 
-describe('Admin console is the SINGLE Player (V6)', () => {
-  it('the Player Hero can force-start (emergency) then hand off to YouTube (V8)', () => {
-    expect(dj).toContain('onStartFirst');
-    expect(dj).toContain('강제로 시작');
-    expect(dj).toContain('onReopen');
+describe('Admin console is the SINGLE "next song" player (V9.0)', () => {
+  it('has exactly ONE playback control — "▶ 다음 곡 재생" via onPlayNext', () => {
+    expect(dj).toContain('▶ 다음 곡 재생');
+    expect(dj).toMatch(/onPlayNext\(firstReady\.id, firstReady\.youtube_video_id\)/);
+    // Every other/legacy playback control is gone.
+    expect(dj).not.toContain('노래 완료');
+    expect(dj).not.toContain('YouTube에서 재생');
+    expect(dj).not.toContain('TV QUEUE PREP');
+    expect(dj).not.toContain('강제로 시작');
+    expect(dj).not.toContain('onPlayCurrent');
+    expect(dj).not.toContain('onPassTurn');
   });
 
-  it('V8: "노래 끝" is a 2-step op that auto-promotes the next Ready song', () => {
-    expect(dj).toContain('노래 끝');
-    expect(dj).toContain('이 노래가 끝났나요?');
-    expect(dj).toContain('onPassTurn(current.id)');
-  });
-
-  it('shows the guest Ready signal from the shared server field', () => {
-    expect(dj).toContain('playTarget.ready_at');
+  it('the player subject is the earliest READY song (ready-first, reused)', () => {
+    expect(dj).toContain('const firstReady = displayQueue.find((r) => r.ready_at != null)');
     expect(dj).toContain('READY TO PLAY');
+  });
+
+  it('State A (nobody Ready) shows the waiting message and NO button', () => {
+    expect(dj).toContain('다음 준비된 참가자를 기다리는 중');
   });
 
   it('keeps reorder + remove (exception tools) and stays on one canonical event', () => {

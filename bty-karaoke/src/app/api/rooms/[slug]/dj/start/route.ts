@@ -1,13 +1,16 @@
-// V8 — Admin atomic Start of a specific waiting request (the FIRST song of a set,
-// or a drift-recovery correction). Admin/DJ authenticated. Uses the SAME atomic
-// start RPC guests used to self-start, so the one-playing invariant is enforced in
-// the DB. This flips BTY state only — it never controls YouTube (the Admin opens
-// the video / TV queue separately). POST { requestId }. Event-gated.
+// V9.0 — ensure-playing transaction. The "▶ 다음 곡 재생" flow calls this for the FIRST
+// song of the event (nothing playing yet): it idempotently makes the target request
+// the canonical `playing` stage (so Display + Personal Player show NOW SINGING) before
+// the client opens the video. Success when the song was newly started, is already the
+// active stage, or auto-promotion already put it there — never a false "Could not
+// start". (Once a song is playing, "다음 곡 재생" uses /dj/pass-turn instead: complete +
+// promote next.) Flips BTY state only; never controls YouTube. Admin/DJ authed,
+// event-gated. POST { requestId }.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
-import { authorizeDj, startOwnRequest } from '@/lib/rooms.server';
-import { resolveEventAccess } from '@/lib/events.server';
+import { authorizeDj, ensurePlaying } from '@/lib/rooms.server';
+import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +27,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
 
+  // Event-gated: an ended event returns a precise "이 이벤트가 종료되었습니다." message.
   const access = await resolveEventAccess(auth.room);
   if (!access.ok) {
-    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status, headers: NO_STORE });
+    return NextResponse.json(
+      { error: '이 이벤트가 종료되었습니다.', code: access.code },
+      { status: access.status, headers: NO_STORE },
+    );
   }
 
   let body: unknown;
@@ -40,13 +47,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     return NextResponse.json({ error: 'requestId is required' }, { status: 400, headers: NO_STORE });
   }
 
-  const result = await startOwnRequest(auth.room.id, requestId);
-  if (result.outcome !== 'ok') {
-    // 'already_playing' / 'not_next' / 'not_found' from the RPC → honest 409/404.
-    const status = result.outcome === 'not_found' ? 404 : 409;
-    return NextResponse.json({ error: 'Could not start', code: result.outcome }, { status, headers: NO_STORE });
+  const live = await getCanonicalEvent(auth.room.id);
+  const result = await ensurePlaying(auth.room.id, requestId, live?.id ?? null);
+
+  switch (result.outcome) {
+    case 'started':
+      // Newly on stage → resolve its lyrics server-side, in the background.
+      void scheduleLyricsResolve(auth.room.id, requestId);
+      return NextResponse.json({ ok: true, request: result.request ?? null, code: 'started' }, { headers: NO_STORE });
+    case 'already_active':
+      // Auto-promotion (or a prior tap) already made it the stage — that is success.
+      return NextResponse.json(
+        { ok: true, request: result.request ?? null, code: 'already_active' },
+        { headers: NO_STORE },
+      );
+    case 'conflict':
+      return NextResponse.json(
+        { error: '다른 곡이 현재 재생 중입니다.', code: 'conflict', playing: result.playing ?? null },
+        { status: 409, headers: NO_STORE },
+      );
+    case 'not_ready':
+      return NextResponse.json(
+        { error: '재생 상태를 변경하지 못했습니다.', code: 'not_ready' },
+        { status: 409, headers: NO_STORE },
+      );
+    case 'not_found':
+      return NextResponse.json(
+        { error: '이 신청곡을 찾을 수 없습니다.', code: 'not_found' },
+        { status: 404, headers: NO_STORE },
+      );
   }
-  // The song is now on stage → resolve its lyrics server-side, in the background.
-  void scheduleLyricsResolve(auth.room.id, requestId);
-  return NextResponse.json({ ok: true, request: result.request ?? null }, { headers: NO_STORE });
 }

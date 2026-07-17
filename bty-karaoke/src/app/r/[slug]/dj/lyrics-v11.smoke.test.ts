@@ -1,39 +1,29 @@
-// Lyrics V1.1 — served-code invariants for the discoverability fix (manual entry
-// reachable whether or not a song is playing) and the auto-resolver wiring.
+// Lyrics — the AUTOMATIC resolver wiring only. V9.0 removed the manual lyric input
+// feature entirely (no editor UI, no /dj/.../lyrics route); the auto-resolver remains
+// (server-side, gated off on the Display) and is pinned here.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
-const djBoard = read('./DjBoard.tsx');
-const actionSheet = read('./DjActionSheet.tsx');
 const displayClient = read('../display/DisplayClient.tsx');
 const displayRoute = read('../../../api/rooms/[slug]/display/route.ts');
 const resolver = read('../../../../lib/lyrics-resolver.server.ts');
 
-describe('Lyrics V1.1 — discoverability', () => {
-  it('offers the lyrics editor from the NOW SINGING (playing) stage', () => {
-    // Inside the `current ?` branch: setLyricsFor(current).
-    expect(djBoard).toMatch(/setLyricsFor\(current\)/);
+describe('V9.0 — manual lyric input is GONE', () => {
+  it('DjBoard has no manual lyrics editor, chip, or copy', () => {
+    const djBoard = read('./DjBoard.tsx');
+    for (const s of ['LyricsSheet', 'setLyricsFor', 'LyricsStatusChip', '가사 직접 입력', '가사 수정', 'onSetLyrics']) {
+      expect(djBoard).not.toContain(s);
+    }
   });
-
-  it('ALSO offers it from the UP NEXT stage (fixes the V1 "only while playing" gap)', () => {
-    expect(djBoard).toMatch(/setLyricsFor\(playTarget\)/);
-  });
-
-  it('offers it from each queue item action sheet', () => {
-    expect(djBoard).toMatch(/onEditLyrics=/);
-    expect(actionSheet).toMatch(/onEditLyrics\(request\.id\)/);
-  });
-
-  it('frames manual entry as an override of automatic search', () => {
-    expect(djBoard).toContain('가사 수정');
-    expect(djBoard).toContain('가사 직접 입력');
+  it('the queue action sheet no longer offers a lyrics editor', () => {
+    expect(read('./DjActionSheet.tsx')).not.toContain('onEditLyrics');
   });
 });
 
-describe('Lyrics V1.1 — automatic resolver wiring', () => {
+describe('Lyrics — automatic resolver wiring', () => {
   it('V1.4: the Display no longer opts into automatic resolution (?lyrics=1 removed)', () => {
     // The iPad shows no lyrics (the TV does), so it triggers no provider resolution.
     // The resolver + routes remain, gated off by default (autoLyricsEnabled).

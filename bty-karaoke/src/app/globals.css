@@ -1386,10 +1386,28 @@ main.dj-console {
 .perf-wait-ico {
   font-size: 1.1rem;
 }
+.perf-wait-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .perf-wait-text {
   font-weight: 700;
   color: var(--text);
   font-size: 0.95rem;
+}
+.perf-wait-sub {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+/* V8.1 — a compact, touch-sized Ready action that lives inline in the dock's
+   waiting card (auto width, not the full-width hero button). */
+.perf-btn-inline {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 0.92rem;
+  white-space: nowrap;
 }
 .perf-eyebrow {
   display: inline-flex;
@@ -1685,6 +1703,41 @@ main.dj-console {
 .sheet-row-action {
   flex: 0 0 auto;
   align-self: center;
+}
+/* V8.1 — per-request Ready control in the expanded list. Ready ranks above the
+   destructive cancel action; the note carries meaning in TEXT (not color alone). */
+.sheet-row-ready {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.sheet-ready-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.sheet-ready-btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 900;
+  font-size: 0.94rem;
+}
+.sheet-ready-btn.primary {
+  background: linear-gradient(180deg, #8ff0d0, #35d6a3);
+  color: #06231b;
+}
+.sheet-ready-btn.ghost {
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 800;
+}
+.sheet-ready-btn:disabled {
+  opacity: 0.6;
 }
 
 /* ══════════════════════════════════════════════════════════════

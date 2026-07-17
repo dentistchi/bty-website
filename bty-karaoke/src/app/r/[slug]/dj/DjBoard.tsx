@@ -31,45 +31,14 @@ import {
   insertAt,
   type DragRowRect,
 } from '@/domain/reorder';
-import { primaryPlayTarget } from '@/domain/play-flow';
-import { queuePrepLabel, preparedOrderDrifted } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
 import { badgeForVideo } from '@/domain/video-kind';
 import DjActionSheet from './DjActionSheet';
-import LyricsSheet from './LyricsSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
 import DjAddSongSheet from './DjAddSongSheet';
-
-/** V8 — the TV-queue-prep badge text for a Ready/Queued combination. */
-function prepBadgeText(label: 'ready_queued' | 'ready' | 'queued' | 'none'): string {
-  switch (label) {
-    case 'ready_queued':
-      return 'READY + QUEUED';
-    case 'ready':
-      return 'READY';
-    case 'queued':
-      return 'QUEUED';
-    default:
-      return 'WAITING';
-  }
-}
-
-/** V1.1 — Admin-visible automatic-lyrics status for the song on stage. */
-function LyricsStatusChip({ request }: { request: KaraokeRequest }) {
-  const hasManual = request.lyrics_source === 'admin' && Boolean(request.lyrics_text?.trim());
-  let label: string;
-  let tone: string;
-  if (hasManual) { label = '📝 수동 가사 사용 중'; tone = 'manual'; }
-  else if (request.lyrics_status === 'available') { label = '✅ 자동 가사 찾음'; tone = 'ok'; }
-  else if (request.lyrics_status === 'loading') { label = '⏳ 자동 가사 검색 중'; tone = 'loading'; }
-  else if (request.lyrics_status === 'failed') { label = '⚠ 공급자 일시 오류 · 재시도 예정'; tone = 'warn'; }
-  else if (request.lyrics_resolved_at) { label = '— 일치하는 가사 없음'; tone = 'none'; }
-  else { label = '⏳ 자동 가사 준비 중'; tone = 'loading'; }
-  return <div className={`lyrics-chip lyrics-chip-${tone}`}>{label}</div>;
-}
 
 /** Small "likely has words on the TV" badge for a request's video. */
 function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
@@ -227,12 +196,6 @@ interface Props {
   dev?: boolean;
   /** Admin-capable bearer, present only when the authenticated role is admin. */
   adminCred?: string | null;
-  onStart: (id: string) => void | Promise<void>;
-  /** V6 Admin Player: start the song then open YouTube on this device (→ TV). */
-  onPlayOnTv?: (id: string, videoId: string) => void | Promise<void>;
-  /** V6 Admin Player: re-open the playing video on the TV (no state change). */
-  onReopen?: (videoId: string) => void;
-  onFinish: (id: string) => void | Promise<void>;
   onMoveNext: (id: string) => void | Promise<void>;
   onRemove: (id: string) => void | Promise<void>;
   /** Persist a new waiting-queue order; resolves 'ok' | 'conflict' | 'error'. */
@@ -245,16 +208,13 @@ interface Props {
   onEndEvent: () => Promise<'ok' | 'error'>;
   /** Starts a NEW event after the current one ended (rotation); 'ok' on success. */
   onStartNewEvent: () => Promise<'ok' | 'error'>;
-  /** V8: mark/unmark a waiting song as added to the YouTube TV queue (Admin signal). */
-  onSetQueued: (id: string, queued: boolean) => Promise<boolean>;
-  /** Lyrics V1: save/clear the words the Display shows for a song (empty clears). */
-  onSetLyrics: (id: string, lyrics: string) => Promise<boolean>;
-  /** V8: atomic Start of the FIRST song, then open YouTube on this device. */
-  onStartFirst: (id: string, videoId: string) => void | Promise<void>;
-  /** V8 pass-turn: complete current + auto-start next if Ready+Queued. Returns why. */
-  onPassTurn: (
-    currentId: string,
-  ) => Promise<'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' | 'error'>;
+  /**
+   * V9.0: the ONE operator action — "play the next song". Completes the current song
+   * (if any), auto-promotes the earliest READY song, revalidates, then opens that
+   * song's YouTube. `nextId`/`nextVideoId` identify the READY TO PLAY card's subject
+   * (the deterministic ready-first promote target).
+   */
+  onPlayNext: (nextId: string, nextVideoId: string) => void | Promise<void>;
 }
 
 export default function DjBoard({
@@ -266,10 +226,6 @@ export default function DjBoard({
   busy,
   error,
   adminCred,
-  onStart,
-  onPlayOnTv,
-  onReopen,
-  onFinish,
   onMoveNext,
   onRemove,
   onReorder,
@@ -278,23 +234,17 @@ export default function DjBoard({
   onDisconnect,
   onEndEvent,
   onStartNewEvent,
-  onSetQueued,
-  onSetLyrics,
-  onStartFirst,
-  onPassTurn,
+  onPlayNext,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [displayQr, setDisplayQr] = useState<{ qrSvg: string; url: string } | null>(null);
   const [displayLinkCopied, setDisplayLinkCopied] = useState(false);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
-  const [lyricsFor, setLyricsFor] = useState<KaraokeRequest | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [playerFinishConfirm, setPlayerFinishConfirm] = useState(false); // 2-step "차례 넘기기"
   const [startingNew, setStartingNew] = useState(false); // V7 Start New Event in flight
-  const [passNote, setPassNote] = useState<string | null>(null); // V8 pass-turn: why next didn't auto-start
   const [copiedLink, setCopiedLink] = useState(false);
   const [nowMs, setNowMs] = useState(() => 0);
 
@@ -358,11 +308,6 @@ export default function DjBoard({
     if (!override || activeId || savingRef.current) return;
     if (reconcileDecision(override, serverWaitingIds) !== 'hold') setOverride(null);
   }, [serverWaitingIds, override, activeId]);
-
-  // Clear a stale "pass the turn" confirmation whenever the playing song changes.
-  useEffect(() => {
-    setPlayerFinishConfirm(false);
-  }, [current?.id]);
 
   const sensors = useSensors(
     // Mouse/trackpad: a tiny move starts the drag. Touch: bound to the grip
@@ -530,39 +475,11 @@ export default function DjBoard({
   }
   const newSet = new Set(newIds);
   const isAdmin = data?.role === 'admin';
-  // Informational "up next" for the exception console: the first waiting song
-  // while the stage is open (null once a song is playing). This console no longer
-  // starts playback — the singer starts their own song from their phone; we only
-  // surface who is up so an admin can reorder/remove if needed.
-  const playTarget = primaryPlayTarget(current, displayQueue);
-
-  // ── V8 YouTube Queue Prep ─────────────────────────────────────────────────
-  // The next 3–5 waiting songs the Admin prepares in the TV queue, in canonical
-  // order. Counts + the auto-progression readiness of the very next song feed the
-  // Admin summary; the NOW hero uses them for the pass-turn preview.
-  const prepList = displayQueue.slice(0, 5);
-  const queuedCount = displayQueue.filter((r) => r.youtube_queued_at != null).length;
-  const readyCount = displayQueue.filter((r) => r.ready_at != null).length;
-  // V8 AUTOPILOT — auto-start is READY-only (the TV-queue signal is no longer
-  // required). The next song auto-starts on "노래 끝" the moment its guest is Ready.
-  const nextAutoReady = playTarget?.ready_at != null;
-
-  // Reorder drift: if the Admin reorders songs already added to the TV queue, BTY
-  // cannot reorder the real YouTube queue — warn (never auto-clear, never claim the
-  // TV queue changed). We compare the queued songs' order across renders.
-  const queuedOrderKey = displayQueue
-    .filter((r) => r.youtube_queued_at != null)
-    .map((r) => r.id)
-    .join(',');
-  const prevQueuedOrder = useRef<string[]>([]);
-  const [queueDrift, setQueueDrift] = useState(false);
-  useEffect(() => {
-    const nowOrder = queuedOrderKey ? queuedOrderKey.split(',') : [];
-    if (prevQueuedOrder.current.length && preparedOrderDrifted(prevQueuedOrder.current, nowOrder)) {
-      setQueueDrift(true);
-    }
-    prevQueuedOrder.current = nowOrder;
-  }, [queuedOrderKey]);
+  // V9.0 — the ONE player surface derives entirely from canonical server state.
+  // `firstReady` = the earliest-position waiting song whose guest is Ready — the song
+  // the "▶ 다음 곡 재생" button plays next (an un-ready song ahead never blocks it).
+  // null → nobody is ready → State A (no button). The Display owns "who is singing now".
+  const firstReady = displayQueue.find((r) => r.ready_at != null) ?? null;
 
   async function showGuestQr() {
     setLoadingQr(true);
@@ -757,227 +674,68 @@ export default function DjBoard({
       )}
       {error && <div className="banner error">{error}</div>}
 
-      {/* ── V8 TV QUEUE PREP — prepare the next 3–5 songs in the YouTube TV queue ── */}
-      {!eventEnded && prepList.length > 0 && (
-        <section className="tv-queue-prep" aria-label="TV 대기열 준비">
-          <div className="tvq-head">
-            <span className="tvq-title">TV QUEUE PREP</span>
-            <span className="tvq-summary">
-              {queuedCount}곡 준비됨 · {readyCount}명 Ready
-              {nextAutoReady ? ' · 다음 자동 진행 가능' : ''}
-            </span>
-          </div>
-          {queueDrift && (
-            <div className="tvq-drift" role="status">
-              ⚠ 순서가 변경되었습니다. YouTube TV 대기열 순서도 확인해 주세요.
-              <button type="button" className="ghost sm" onClick={() => setQueueDrift(false)}>
-                확인
-              </button>
-            </div>
-          )}
-          <ol className="tvq-list">
-            {prepList.map((r, i) => {
-              const label = queuePrepLabel({
-                status: r.status,
-                readyAt: r.ready_at,
-                youtubeQueuedAt: r.youtube_queued_at,
-              });
-              const song =
-                displaySong(r.youtube_title ?? '', r.youtube_channel_title).song ||
-                requestDisplayTitle(r);
-              return (
-                <li key={r.id} className="tvq-row">
-                  <span className="tvq-idx">{i + 1}</span>
-                  <div className="tvq-info">
-                    <div className="tvq-singer">{r.guest_name}</div>
-                    <div className="tvq-song">{song}</div>
-                    <span className={`tvq-badge b-${label}`}>{prepBadgeText(label)}</span>
-                  </div>
-                  <div className="tvq-actions">
-                    {onReopen && (
-                      <button
-                        type="button"
-                        className="ghost sm"
-                        disabled={!r.youtube_video_id}
-                        onClick={() => onReopen(r.youtube_video_id)}
-                      >
-                        ▶ YouTube 열기
-                      </button>
-                    )}
-                    {r.youtube_queued_at ? (
-                      <button
-                        type="button"
-                        className="ghost sm"
-                        onClick={() => void onSetQueued(r.id, false)}
-                      >
-                        대기열 준비 해제
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="ok sm"
-                        onClick={() => void onSetQueued(r.id, true)}
-                      >
-                        ✓ 대기열에 추가했어요
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
-
       <div className="dj-grid">
         {/* ── LEFT: NOW SINGING stage ──────────────────────────── */}
         <section className="dj-stage" aria-label="Now singing">
-          {current ? (
-            <div className="stage-hero stage-slide" key={current.id}>
-              <div className="eyebrow" style={{ color: 'var(--magenta)' }}>
-                Now singing
-              </div>
-              {current.youtube_thumbnail_url ? (
+          {/* ── V9.0 READY TO PLAY — the ONE operator action: "play the next song" ──
+              The card's subject is the NEXT song to play: the earliest READY waiting
+              song (firstReady). Pressing "▶ 다음 곡 재생" completes the current song (if
+              any), auto-promotes this Ready singer (canonical ready-first), then opens
+              their YouTube — the operator never thinks about state transitions. When no
+              one is Ready yet there is NO button (State A). The Display shows who is NOW
+              SINGING; this console is purely the "next" control. */}
+          {firstReady ? (
+            <div className="stage-hero ready" key={firstReady.id}>
+              <div className="eyebrow">READY TO PLAY</div>
+              {/* Operator context: who is on stage right now (informational only). */}
+              {current && <div className="muted now-context">🎙 지금 무대 · {current.guest_name}</div>}
+              {firstReady.youtube_thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="stage-thumb"
-                  src={current.youtube_thumbnail_url}
-                  alt=""
-                  style={{ marginTop: 12 }}
-                />
+                <img className="stage-thumb" src={firstReady.youtube_thumbnail_url} alt="" style={{ marginTop: 12 }} />
               ) : (
                 <div className="stage-thumb ph" style={{ marginTop: 12 }} aria-hidden>
                   🎤
                 </div>
               )}
-              <div className="stage-req strong">{current.guest_name}</div>
+              <div className="stage-req strong">{firstReady.guest_name}</div>
               {(() => {
-                const d = displaySong(current.youtube_title ?? '', current.youtube_channel_title);
+                const d = displaySong(firstReady.youtube_title ?? '', firstReady.youtube_channel_title);
                 return (
                   <>
-                    <div className="stage-title">{d.song || requestDisplayTitle(current)}</div>
+                    <div className="stage-title">{d.song || requestDisplayTitle(firstReady)}</div>
                     {d.artist && <div className="stage-artist">{d.artist}</div>}
-                    <VideoKindBadge title={current.youtube_title ?? ''} channel={current.youtube_channel_title} />
+                    <VideoKindBadge title={firstReady.youtube_title ?? ''} channel={firstReady.youtube_channel_title} />
                   </>
                 );
               })()}
-              {/* V1.1: automatic-lyrics status for the song on stage (Admin-only). */}
-              <LyricsStatusChip request={current} />
-              {/* V8 AUTOPILOT — the next song auto-starts on "노래 끝" once its guest
-                  is Ready (Ready-only; no TV-queue step). */}
-              {playTarget ? (
-                <p className={`muted playback-help next-preview${nextAutoReady ? ' auto' : ''}`}>
-                  다음: {playTarget.guest_name} — {displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title).song || requestDisplayTitle(playTarget)}
-                  <br />
-                  {nextAutoReady
-                    ? '✅ 다음 가수 준비 완료 · 노래 끝을 누르면 자동으로 시작됩니다'
-                    : '⏳ 다음 가수 준비 대기 중 · 준비되면 자동으로 이어집니다'}
-                </p>
-              ) : (
-                <p className="muted playback-help">다음 대기 곡이 없습니다.</p>
-              )}
+              <p className="lead player-ready">
+                {current ? '지금 곡이 끝나면 눌러주세요.' : '준비된 첫 무대예요.'}
+              </p>
               <div className="stage-actions">
-                {onReopen && (
-                  <button
-                    className="ghost lg"
-                    disabled={!current.youtube_video_id}
-                    onClick={() => onReopen(current.youtube_video_id)}
-                  >
-                    ▶ YouTube 다시 열기
-                  </button>
-                )}
-                {/* Lyrics V1.1: lyrics are fetched automatically; this is the
-                    correction/override path. Reflects on the Display's next poll. */}
-                <button className="ghost lg" onClick={() => setLyricsFor(current)}>
-                  {current.lyrics_text?.trim() ? '📝 가사 수정' : '📝 가사 직접 입력'}
-                </button>
-                {playerFinishConfirm ? (
-                  <div className="player-confirm">
-                    {/* V8 AUTOPILOT — the Admin only tells BTY the song is over. If the
-                        next guest is Ready, BTY auto-starts their stage. */}
-                    <span className="player-confirm-q">이 노래가 끝났나요?</span>
-                    <div className="player-confirm-row">
-                      <button className="ghost" onClick={() => setPlayerFinishConfirm(false)}>
-                        아직이요
-                      </button>
-                      <button
-                        className="ok"
-                        disabled={busy}
-                        onClick={async () => {
-                          setPlayerFinishConfirm(false);
-                          const reason = await onPassTurn(current.id);
-                          if (reason && reason !== 'promoted' && reason !== 'error') {
-                            setPassNote(
-                              reason === 'no_next'
-                                ? '다음 대기 곡이 없습니다.'
-                                : '다음 가수가 아직 준비되지 않았어요 · 준비되면 자동으로 시작됩니다.',
-                            );
-                          } else {
-                            setPassNote(null);
-                          }
-                        }}
-                      >
-                        네, 노래 끝
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button className="ok lg" disabled={busy} onClick={() => setPlayerFinishConfirm(true)}>
-                    ✓ 노래 끝
-                  </button>
-                )}
-              </div>
-              {passNote && <p className="muted player-passnote">{passNote}</p>}
-            </div>
-          ) : playTarget ? (
-            <div className="stage-hero ready" key={playTarget.id}>
-              <div className="eyebrow">{playTarget.ready_at ? 'READY TO PLAY' : 'UP NEXT'}</div>
-              {playTarget.youtube_thumbnail_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="stage-thumb"
-                  src={playTarget.youtube_thumbnail_url}
-                  alt=""
-                  style={{ marginTop: 12 }}
-                />
-              ) : (
-                <div className="stage-thumb ph" style={{ marginTop: 12 }} aria-hidden>
-                  🎤
-                </div>
-              )}
-              <div className="stage-req strong">{playTarget.guest_name}</div>
-              {(() => {
-                const d = displaySong(playTarget.youtube_title ?? '', playTarget.youtube_channel_title);
-                return (
-                  <>
-                    <div className="stage-title">{d.song || requestDisplayTitle(playTarget)}</div>
-                    {d.artist && <div className="stage-artist">{d.artist}</div>}
-                    <VideoKindBadge title={playTarget.youtube_title ?? ''} channel={playTarget.youtube_channel_title} />
-                  </>
-                );
-              })()}
-              {/* V8 AUTOPILOT — when this guest presses Ready, BTY auto-starts their
-                  stage (Ready is the go signal). The Admin normally does nothing here;
-                  "강제로 시작" is an emergency override that ignores Ready. */}
-              {playTarget.ready_at ? (
-                <p className="lead player-ready">✅ 준비 완료 · 곧 자동으로 시작됩니다</p>
-              ) : (
-                <p className="muted playback-help">다음 가수가 준비되면 자동으로 시작됩니다 · 준비 기다리는 중</p>
-              )}
-              <div className="stage-actions">
+                {/* THE one operator action — completes the current song (if any),
+                    auto-promotes this Ready singer, then opens their YouTube. */}
                 <button
-                  className={playTarget.ready_at ? 'primary lg' : 'ghost'}
-                  disabled={busy || !playTarget.youtube_video_id}
-                  onClick={() => onStartFirst(playTarget.id, playTarget.youtube_video_id)}
+                  className="primary lg"
+                  disabled={busy || !firstReady.youtube_video_id}
+                  onClick={() => onPlayNext(firstReady.id, firstReady.youtube_video_id)}
                 >
-                  {playTarget.ready_at ? '▶ 지금 시작' : '강제로 시작'}
-                </button>
-                {/* Lyrics V1.1: manual correction/override, reachable even before a
-                    song is on stage (fixes the V1 "button only while playing" gap). */}
-                <button className="ghost lg" onClick={() => setLyricsFor(playTarget)}>
-                  {playTarget.lyrics_text?.trim() ? '📝 가사 수정' : '📝 가사 직접 입력'}
+                  ▶ 다음 곡 재생
                 </button>
               </div>
+            </div>
+          ) : current || displayQueue.length > 0 ? (
+            // State A — a song may still be playing on the Display, but NObody is Ready
+            // to go next. No button, no completion: the operator simply waits until a
+            // guest presses "준비됐어요", at which point the button appears.
+            <div className="stage-hero ready">
+              <div className="eyebrow">READY TO PLAY</div>
+              {current && <div className="muted now-context">🎙 지금 무대 · {current.guest_name}</div>}
+              <div className="stage-title" style={{ marginTop: 10 }}>
+                다음 준비된 참가자를 기다리는 중
+              </div>
+              <p className="lead">
+                대기자가 각자 휴대폰에서 “준비됐어요”를 누르면 다음 무대가 여기에 나타납니다.
+              </p>
             </div>
           ) : (
             <div className="stage-hero ready">
@@ -1190,23 +948,10 @@ export default function DjBoard({
                 void onRemove(id);
                 setSheetFor(null);
               }}
-              onEditLyrics={() => {
-                setLyricsFor(sheetFor);
-                setSheetFor(null);
-              }}
               onClose={() => setSheetFor(null)}
             />
           );
         })()}
-
-      {/* ── Lyrics editor (Admin adds / edits / clears the Display's words) ── */}
-      {lyricsFor && (
-        <LyricsSheet
-          request={lyricsFor}
-          onSave={onSetLyrics}
-          onClose={() => setLyricsFor(null)}
-        />
-      )}
     </main>
   );
 }

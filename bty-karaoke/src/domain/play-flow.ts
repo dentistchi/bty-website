@@ -3,11 +3,44 @@
 // mutation + same-window navigation); this module owns the ordering and target
 // rules.
 
-import type { RequestStatus } from './queue';
+import { canonicalRank, type RequestStatus, type QueueOrderEntry } from './queue';
 
 export interface StageEntry {
   id: string;
   status: RequestStatus;
+}
+
+/** A request as far as the stage decision cares: order keys + the Ready signal. */
+export interface ReadyStageEntry extends QueueOrderEntry {
+  ready_at: string | null;
+}
+
+/**
+ * The pure decision behind V8.1 auto-promotion. Given the active requests, decide
+ * what the stage should do — with NO I/O. The one rule that fixes the "unready
+ * blocks everyone" bug: among WAITING songs, the promote target is the earliest
+ * *Ready* one; an un-ready song NEVER blocks a Ready song behind it.
+ *
+ *   • busy       — a song is already playing (never interrupt it)
+ *   • promote    — the earliest-position Ready waiting song should start now
+ *   • none_ready — songs are waiting but NONE is Ready yet (nothing to start)
+ *   • empty      — no waiting songs at all
+ */
+export type StageDecision<T> =
+  | { kind: 'busy'; playing: T }
+  | { kind: 'promote'; request: T }
+  | { kind: 'none_ready'; firstWaiting: T }
+  | { kind: 'empty' };
+
+export function resolveStageDecision<T extends ReadyStageEntry>(
+  active: readonly T[],
+): StageDecision<T> {
+  const playing = active.find((r) => r.status === 'playing');
+  if (playing) return { kind: 'busy', playing };
+  const waiting = active.filter((r) => r.status === 'waiting').slice().sort(canonicalRank);
+  if (waiting.length === 0) return { kind: 'empty' };
+  const ready = waiting.find((r) => r.ready_at != null);
+  return ready ? { kind: 'promote', request: ready } : { kind: 'none_ready', firstWaiting: waiting[0] };
 }
 
 /**

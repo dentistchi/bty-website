@@ -85,15 +85,19 @@ export async function PATCH(
   // Legacy play path: the song is now on stage → resolve its lyrics in the background.
   if (action === 'play' && result.outcome === 'ok') void scheduleLyricsResolve(auth.room.id, id);
 
-  // V8 AUTOPILOT — when a terminal action (complete/skip) ends the PLAYING song, the
-  // system advances: auto-start the next canonical song IF its guest is Ready. Same
-  // promotion seam as Finish (pass-turn), so Skip and Finish never diverge. Only when
-  // the row was actually `playing` (a waiting-song remove/skip does not promote).
+  // V8.1 AUTOPILOT — whenever the PLAYING song leaves the stage (complete or skip;
+  // a playing song can only leave the stage via these — `remove` is waiting-only),
+  // the system advances: auto-start the earliest READY waiting song. Same promotion
+  // seam as Finish (pass-turn), so every terminal transition agrees. Only when the
+  // row was actually `playing` (a waiting-song skip never promotes).
   let promoted: { id: string } | null = null;
   if ((action === 'complete' || action === 'skip') && result.outcome === 'ok' && result.from === 'playing') {
     const event = await getCanonicalEvent(auth.room.id);
     const p = await promoteNextReady(auth.room.id, event?.id ?? null);
-    if (p.outcome === 'started' && p.request) promoted = { id: p.request.id };
+    if (p.outcome === 'started' && p.request) {
+      promoted = { id: p.request.id };
+      void scheduleLyricsResolve(auth.room.id, p.request.id);
+    }
   }
 
   return NextResponse.json({ ok: true, request: result.request, promoted });

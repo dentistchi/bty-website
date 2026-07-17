@@ -18,6 +18,7 @@ import {
   type RequestStatus,
 } from '@/domain/queue';
 import { classifyVideo } from '@/domain/video-kind';
+import { resolveStageDecision } from '@/domain/play-flow';
 import { type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
@@ -570,45 +571,154 @@ export interface PromoteResult {
   outcome: PromoteOutcome;
   /** The song now on stage (started / already_playing). */
   request?: KaraokeRequest;
-  /** The canonical first waiting song when it isn't Ready yet (blocked_not_ready). */
+  /** The earliest waiting song when NONE is Ready yet (blocked_not_ready). */
   nextRequest?: KaraokeRequest;
 }
 
 /**
- * V8 AUTOPILOT — the ONE authoritative "start the next stage if it's Ready" service.
- * Ready is the guest's INTENT; starting is the SYSTEM's responsibility. Only the
- * canonical FIRST waiting song (event-scoped) is ever auto-started, and only when the
- * stage is open (nothing playing) AND that song's guest has signalled Ready. It never
- * jumps a Ready guest ahead of an un-ready one at the front of the line. Concurrency-
- * safe: the actual `waiting → playing` flip goes through the advisory-locked
- * `start_karaoke_request` RPC (with the one-playing partial-unique-index backstop),
- * so two simultaneous callers resolve to exactly one winner.
+ * V8.1 — the concurrency-safe primitive that flips a single WAITING request to
+ * `playing`. The one-playing invariant is enforced by the DB partial unique index
+ * `karaoke_requests_one_playing_idx` (at most one `playing` row per room): if a
+ * second song races onto the stage the UPDATE fails with SQLSTATE 23505, which we
+ * map to `already_playing` (the other caller won). Idempotent: if the target is
+ * ALREADY the playing row, that is success (no error) — so an ensure/start of the
+ * song currently on stage never reports a false failure.
+ */
+async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<StartOutcome> {
+  const db = karaokeDb();
+  const { data, error } = await db
+    .from('karaoke_requests')
+    .update({ status: 'playing', started_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .eq('status', 'waiting')
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    // The one-playing partial unique index rejected a second concurrent stage.
+    if ((error as { code?: string }).code === '23505') return 'already_playing';
+    throw error;
+  }
+  if (data) return 'ok';
+  // The row wasn't `waiting` — resolve why so callers can respond precisely.
+  const cur = await getRequestOrderFields(roomId, requestId);
+  if (!cur) return 'not_found';
+  if (cur.status === 'playing') return 'ok'; // idempotent — already on stage
+  return 'not_waiting';
+}
+
+export type EnsurePlayingOutcome =
+  | 'started'
+  | 'already_active'
+  | 'conflict'
+  | 'not_ready'
+  | 'not_found';
+
+export interface EnsurePlayingResult {
+  outcome: EnsurePlayingOutcome;
+  /** The canonical playing request (started / already_active). */
+  request?: KaraokeRequest;
+  /** The OTHER song that already holds the stage (conflict). */
+  playing?: KaraokeRequest;
+}
+
+/**
+ * V8.1 — the ONE idempotent "make this request the stage" action the Admin's single
+ * READY TO PLAY player uses before opening YouTube. Success when the target was
+ * newly started, is already the playing row, or auto-promotion already put it on
+ * stage. A precise conflict when ANOTHER song is playing. Never creates a second
+ * playing row (see promoteRequestToPlaying). Event-scoped like every read/mutation.
+ */
+export async function ensurePlaying(
+  roomId: string,
+  requestId: string,
+  eventId?: string | null,
+): Promise<EnsurePlayingResult> {
+  const active = await listActiveRequests(roomId, eventId);
+  const target = active.find((r) => r.id === requestId);
+  if (!target) return { outcome: 'not_found' };
+
+  const playing = active.find((r) => r.status === 'playing');
+  if (playing) {
+    if (playing.id === requestId) return { outcome: 'already_active', request: playing };
+    return { outcome: 'conflict', playing };
+  }
+  if (target.status !== 'waiting' || target.ready_at == null) {
+    // The target isn't a ready waiting song (e.g. someone cleared Ready). Nothing
+    // to start — the card will reconcile to canonical state on the next read.
+    return { outcome: 'not_ready' };
+  }
+
+  const outcome = await promoteRequestToPlaying(roomId, requestId);
+  if (outcome === 'ok') {
+    const now = (await listActiveRequests(roomId, eventId)).find((r) => r.id === requestId);
+    return { outcome: 'started', request: now ?? target };
+  }
+  if (outcome === 'already_playing') {
+    const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
+    if (p?.id === requestId) return { outcome: 'already_active', request: p };
+    return { outcome: 'conflict', playing: p };
+  }
+  // not_waiting / not_found → the queue changed under us; report "not ready now".
+  return { outcome: 'not_ready' };
+}
+
+/**
+ * V8.1 — idempotent stage reconciliation. If the stage is idle (nothing playing)
+ * and a Ready waiting song exists, auto-promote it. Safe to call on every Admin
+ * queue read: it self-heals a missed Ready-time promotion (transient/event-scope)
+ * without ever interrupting a song already playing. Returns the promote result.
+ */
+export async function reconcileStage(
+  roomId: string,
+  eventId?: string | null,
+): Promise<PromoteResult> {
+  return promoteNextReady(roomId, eventId);
+}
+
+/**
+ * V8.1 AUTOPILOT — the ONE authoritative "start the next stage if it's Ready" service.
+ * Ready is the guest's INTENT; starting is the SYSTEM's responsibility.
+ *
+ * Canonical next-ready resolver: the EARLIEST-position waiting song whose guest has
+ * signalled Ready (event-scoped). An un-ready song NEVER blocks a Ready one behind it —
+ * so with `#1 unready, #2 ready` the system starts #2. If #1 later becomes Ready while
+ * #2 is playing, #2 is not interrupted; when #2 finishes, #1 (earlier position) is the
+ * next promoted — original queue position stays authoritative.
+ *
+ * Concurrency-safe: the `waiting → playing` flip goes through promoteRequestToPlaying,
+ * whose one-playing partial-unique-index guarantees two simultaneous callers resolve to
+ * exactly one winner (the loser gets `already_playing`, never a second stage).
  */
 export async function promoteNextReady(
   roomId: string,
   eventId?: string | null,
 ): Promise<PromoteResult> {
   const active = await listActiveRequests(roomId, eventId);
-  const playing = active.find((r) => r.status === 'playing');
-  if (playing) return { outcome: 'already_playing', request: playing };
-
-  const waiting = active
-    .filter((r) => r.status === 'waiting')
-    .sort((a, b) => canonicalRank(order(a), order(b)));
-  const first = waiting[0];
-  if (!first) return { outcome: 'queue_empty' };
-  if (!first.ready_at) return { outcome: 'blocked_not_ready', nextRequest: first };
-
-  const start = await startOwnRequest(roomId, first.id);
-  if (start.outcome === 'ok') return { outcome: 'started', request: start.request ?? first };
-  if (start.outcome === 'already_playing') {
-    const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
-    return { outcome: 'already_playing', request: p };
+  const decision = resolveStageDecision(active);
+  switch (decision.kind) {
+    case 'busy':
+      return { outcome: 'already_playing', request: decision.playing };
+    case 'empty':
+      return { outcome: 'queue_empty' };
+    case 'none_ready':
+      return { outcome: 'blocked_not_ready', nextRequest: decision.firstWaiting };
+    case 'promote': {
+      const first = decision.request;
+      const outcome = await promoteRequestToPlaying(roomId, first.id);
+      if (outcome === 'ok') {
+        const started = (await listActiveRequests(roomId, eventId)).find((r) => r.id === first.id);
+        return { outcome: 'started', request: started ?? first };
+      }
+      if (outcome === 'already_playing') {
+        const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
+        return { outcome: 'already_playing', request: p };
+      }
+      // not_waiting / not_found → the queue changed under us (a concurrent promote/
+      // reorder). Report "not ready to start"; a later lifecycle action re-drives it.
+      return { outcome: 'blocked_not_ready', nextRequest: first };
+    }
   }
-  // not_next / not_waiting / not_found → the queue changed under us (a concurrent
-  // promote/reorder). Report it as "not ready to start" — a later lifecycle action
-  // (Ready / Finish / Skip) re-drives promotion; never force a second playing.
-  return { outcome: 'blocked_not_ready', nextRequest: first };
 }
 
 export interface AdvanceResult {

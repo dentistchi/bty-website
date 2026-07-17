@@ -274,6 +274,9 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
   const stageReq = stageId ? requests.find((r) => r.requestId === stageId) ?? null : null;
   // Ready is the SHARED server signal (status.readyAt) the Admin Player also sees.
   const isReady = stage.kind === 'my_turn' && !!(stageId && statuses[stageId]?.readyAt);
+  // V8.1 — the compact dock exposes Ready for the guest's *nearest* waiting song even
+  // when they are #2/#3 (Ready is a pre-signal, not a "your-turn-only" control).
+  const waitReady = stage.kind === 'waiting' && !!(stageId && statuses[stageId]?.readyAt);
   const stageSong = stageReq ? displaySong(stageReq.title, stageReq.artist).song || stageReq.title : '';
 
   const summary = collapsedSummary(
@@ -354,14 +357,39 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
           </div>
         )}
 
-        {stage.kind === 'waiting' && (
+        {stage.kind === 'waiting' && stageReq && (
           <div className="perf-card waiting" role="status">
-            <span className="perf-wait-ico" aria-hidden>🎶</span>
-            <span className="perf-wait-text">
-              {stage.aheadCount === 0
-                ? '곧 당신 차례예요'
-                : `앞에 ${stage.aheadCount}곡 · 순서를 기다리는 중`}
-            </span>
+            <span className="perf-wait-ico" aria-hidden>{waitReady ? '✅' : '🎶'}</span>
+            <div className="perf-wait-main">
+              <div className="perf-wait-text">
+                {waitReady
+                  ? '준비 완료'
+                  : stage.aheadCount === 0
+                    ? '곧 당신 차례예요'
+                    : `가장 빠른 순번 ${stage.position}번`}
+              </div>
+              {/* V8.1 — Ready pre-signals well before the turn; when it lands, the song
+                  auto-continues the moment the stage frees. We never claim TV autoplay. */}
+              <div className="perf-wait-sub">
+                {waitReady
+                  ? stage.aheadCount === 0
+                    ? '끝나면 자동으로 이어집니다'
+                    : `앞에 ${stage.aheadCount}곡 · 끝나면 자동으로 이어집니다`
+                  : '미리 준비해두면 차례가 오면 자동으로 시작돼요'}
+              </div>
+            </div>
+            {/* stopPropagation: a Ready tap must never bubble up to open the sheet. */}
+            <button
+              type="button"
+              className={`perf-btn perf-btn-inline ${waitReady ? 'ghost' : 'ready'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                void doReady(stageReq, !waitReady);
+              }}
+              disabled={actingId === stageReq.requestId}
+            >
+              {actingId === stageReq.requestId ? '처리 중…' : waitReady ? '준비 취소' : '준비됐어요'}
+            </button>
           </div>
         )}
         <button
@@ -411,6 +439,11 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                 const confirming = confirmingId === r.requestId;
                 const song = displaySong(r.title, r.artist);
                 const action = cancelRowAction(state, Boolean(r.cancelToken));
+                // V8.1 — Ready is offered on EVERY own waiting song, independently, not
+                // only the one at the front. Terminal / now-playing rows never show it.
+                const rowReady = Boolean(s?.readyAt);
+                const canReady = (state === 'waiting' || state === 'up_next') && Boolean(r.cancelToken);
+                const acting = actingId === r.requestId;
                 // Swipe is an optional enhancement; disabled while confirming or
                 // when there's nothing to cancel. The button below works regardless.
                 const swipeDisabled = action !== 'cancel' || confirming;
@@ -430,7 +463,35 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                       <div className="sheet-row-main">
                         <div className="sheet-row-song">{song.song || r.title}</div>
                         {song.artist && <div className="sheet-row-artist">{song.artist}</div>}
-                        <div className="sheet-row-status">{statusText(s)}</div>
+                        <div className="sheet-row-status">{rowReady && canReady ? '✓ 준비 완료' : statusText(s)}</div>
+                        {/* Per-request Ready — pointer-isolated so a tap never starts the
+                            swipe-to-cancel gesture on iOS. Ready ranks visually above cancel. */}
+                        {canReady && (
+                          <div className="sheet-row-ready" onPointerDown={(e) => e.stopPropagation()}>
+                            {rowReady ? (
+                              <>
+                                <span className="sheet-ready-note">앞의 무대가 끝나면 자동으로 이어집니다</span>
+                                <button
+                                  type="button"
+                                  className="sheet-ready-btn ghost"
+                                  onClick={() => doReady(r, false)}
+                                  disabled={acting}
+                                >
+                                  {acting ? '처리 중…' : '준비 취소'}
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="sheet-ready-btn primary"
+                                onClick={() => doReady(r, true)}
+                                disabled={acting}
+                              >
+                                {acting ? '준비하는 중…' : '준비됐어요'}
+                              </button>
+                            )}
+                          </div>
+                        )}
                         {confirming && <div className="sheet-row-confirm-q">이 신청곡을 취소할까요?</div>}
                       </div>
 

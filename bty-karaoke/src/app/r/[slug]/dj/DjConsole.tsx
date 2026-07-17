@@ -295,145 +295,69 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
     }
   }
 
-  // Admin Player (V6): start the canonical next song, THEN hand off to YouTube on
-  // this ONE device to cast to the TV. Start FIRST so a failure never opens
-  // YouTube; same-window navigation opens the YouTube app (no blank tab).
-  async function playOnTv(id: string, videoId: string) {
-    const ok = await mutate(id, 'play');
-    if (!ok) return;
-    const url = safeYoutubeWatchUrl(videoId);
-    if (url) window.location.assign(url);
-  }
-  // Re-open the playing video on the TV without any state change.
-  function reopenOnTv(videoId: string) {
-    const url = safeYoutubeWatchUrl(videoId);
-    if (url) window.location.assign(url);
-  }
-
-  // V8 Queue Prep: mark/unmark a waiting song as "added to the YouTube TV queue".
-  // Pure signal — never starts the song, never opens YouTube, never occupies stage.
-  async function setQueued(id: string, queued: boolean): Promise<boolean> {
-    if (!cred) return false;
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/rooms/${encodeURIComponent(slug)}/dj/requests/${encodeURIComponent(id)}/queued`,
-        {
-          method: 'POST',
-          headers: { ...authHeader(cred), 'content-type': 'application/json' },
-          body: JSON.stringify({ queued }),
-        },
-      );
-      if (res.status === 401) {
-        setPhase('disconnected');
-        return false;
-      }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error ?? 'Could not update the TV-queue mark.');
-        return false;
-      }
-      await loadQueue(cred);
-      return true;
-    } catch {
-      setError('Network error.');
-      return false;
-    }
-  }
-
-  // Lyrics V1: save/clear the words the iPad Display shows for a song. Admin/DJ
-  // authed. An empty string clears. Refetches the canonical queue so the DjBoard
-  // reflects the saved lyrics; the Display picks it up on its own next poll.
-  async function setLyrics(id: string, lyrics: string): Promise<boolean> {
-    if (!cred) return false;
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/rooms/${encodeURIComponent(slug)}/dj/requests/${encodeURIComponent(id)}/lyrics`,
-        {
-          method: 'POST',
-          headers: { ...authHeader(cred), 'content-type': 'application/json' },
-          body: JSON.stringify({ lyrics }),
-        },
-      );
-      if (res.status === 401) {
-        setPhase('disconnected');
-        return false;
-      }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error ?? 'Could not save the lyrics.');
-        return false;
-      }
-      await loadQueue(cred);
-      return true;
-    } catch {
-      setError('Network error.');
-      return false;
-    }
-  }
-
-  // V8: atomic Start of the FIRST song (no previous song to pass), then hand off to
-  // YouTube on this device. Start FIRST so a failure never opens YouTube.
-  async function startFirst(id: string, videoId: string) {
+  // V9.0 — the ONE operator action: "play the next song". The operator never thinks
+  // about state transitions; this performs every required one, in the only safe order
+  // for same-window navigation (all server mutations finish BEFORE we leave Safari):
+  //
+  //   • a song is playing → POST /dj/pass-turn: completes the current song AND auto-
+  //     promotes the earliest READY song (canonical ready-first, reused from V8.1).
+  //   • nothing playing (first song) → POST /dj/start: idempotently ensures the first
+  //     READY song is the stage.
+  //
+  // Then revalidate (Display + Personal Player read the canonical `playing` on their
+  // own polls) and ONLY THEN navigate to the promoted song's YouTube. On a precise
+  // failure we show the server's reason and never navigate. `nextVideoId` is the
+  // READY TO PLAY card's subject — the deterministic ready-first promote target.
+  async function playNext(nextId: string, nextVideoId: string) {
     if (!cred) return;
+    const cur = (data?.requests ?? []).find((r) => r.status === 'playing') ?? null;
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/start`, {
-        method: 'POST',
-        headers: { ...authHeader(cred), 'content-type': 'application/json' },
-        body: JSON.stringify({ requestId: id }),
-      });
-      if (res.status === 401) {
-        setPhase('disconnected');
-        return;
+      if (cur) {
+        const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/pass-turn`, {
+          method: 'POST',
+          headers: { ...authHeader(cred), 'content-type': 'application/json' },
+          body: JSON.stringify({ currentId: cur.id }),
+        });
+        if (res.status === 401) {
+          setPhase('disconnected');
+          return;
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          setError(body?.error ?? '다음 곡을 재생하지 못했습니다.');
+          return;
+        }
+        const body = (await res.json().catch(() => ({}))) as { reason?: string };
+        await loadQueue(cred);
+        // The next singer must actually be on stage before we open their video.
+        if (body.reason !== 'promoted') {
+          setError('다음 준비된 참가자를 기다리는 중이에요.');
+          return;
+        }
+      } else {
+        const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/start`, {
+          method: 'POST',
+          headers: { ...authHeader(cred), 'content-type': 'application/json' },
+          body: JSON.stringify({ requestId: nextId }),
+        });
+        if (res.status === 401) {
+          setPhase('disconnected');
+          return;
+        }
+        if (!res.ok) {
+          // Precise server reason (충돌/없음/종료/실패) — never a generic error.
+          const body = await res.json().catch(() => ({}));
+          setError(body?.error ?? '재생 상태를 변경하지 못했습니다.');
+          return;
+        }
+        await loadQueue(cred);
       }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error ?? 'Could not start the first song.');
-        return;
-      }
-      await loadQueue(cred);
-      const url = safeYoutubeWatchUrl(videoId);
+      const url = safeYoutubeWatchUrl(nextVideoId);
       if (url) window.location.assign(url);
     } catch {
-      setError('Network error.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // V8 pass-turn (Option B): complete the current song; if the next is Ready +
-  // Queued, the server auto-starts it in BTY (no per-song Play). Returns the
-  // server reason so the board can show an honest "next not ready" message.
-  async function passTurn(
-    currentId: string,
-  ): Promise<'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' | 'error'> {
-    if (!cred) return 'error';
-    setError(null);
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/pass-turn`, {
-        method: 'POST',
-        headers: { ...authHeader(cred), 'content-type': 'application/json' },
-        body: JSON.stringify({ currentId }),
-      });
-      if (res.status === 401) {
-        setPhase('disconnected');
-        return 'error';
-      }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body?.error ?? 'Could not pass the turn.');
-        return 'error';
-      }
-      const data = (await res.json()) as { reason: 'promoted' | 'no_next' | 'needs_ready' | 'needs_queued' | 'needs_both' };
-      await loadQueue(cred);
-      return data.reason;
-    } catch {
-      setError('Network error.');
-      return 'error';
+      setError('네트워크 오류 — 다시 시도해 주세요.');
     } finally {
       setBusy(false);
     }
@@ -688,14 +612,7 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       error={error}
       dev={dev}
       adminCred={data?.role === 'admin' ? cred : null}
-      onStart={(id) => { void mutate(id, 'play'); }}
-      onPlayOnTv={playOnTv}
-      onReopen={reopenOnTv}
-      onFinish={(id) => { void mutate(id, 'complete'); }}
-      onSetQueued={setQueued}
-      onSetLyrics={setLyrics}
-      onStartFirst={startFirst}
-      onPassTurn={passTurn}
+      onPlayNext={playNext}
       onMoveNext={(id) => { void mutate(id, 'move_next'); }}
       onRemove={(id) => { void mutate(id, 'remove'); }}
       onReorder={reorder}
