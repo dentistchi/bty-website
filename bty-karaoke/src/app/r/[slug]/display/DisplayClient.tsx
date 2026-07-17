@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DisplayState } from '@/domain/display';
+import type { DisplayState, DisplayRequest } from '@/domain/display';
 import type { LyricsView } from '@/domain/lyrics';
-import { badgeForKind } from '@/domain/video-kind';
 
 interface Props {
   slug: string;
@@ -11,13 +10,12 @@ interface Props {
 }
 
 const POLL_MS = 2000; // iPad Display refreshes faster than the guest phones.
+const CELEBRATE_MS = 2600; // brief "그 사람의 무대였습니다" applause on song completion.
 
-// Read-only "song board" by the microphone. Big type, high contrast — readable
-// from across the room. It is NOT a video player: the karaoke video and lyrics
-// live on the TV (via the singer's YouTube handoff). Many karaoke uploads block
-// external embedding, so an on-Display iframe would show "Video unavailable" —
-// V3.1 removes it entirely. The board shows only QR + NOW SINGING + NEXT, which
-// never fail. No credential, no mutation, no DJ controls.
+// JOY STAGE (V1.3) — a warm, BTY-ARENA-quality living stage by the microphone. The
+// singer is the protagonist; YouTube metadata is secondary and normalized. Read-only,
+// credential-free, no video: automatic lyrics are the dominant surface, with a
+// graceful artwork fallback when none are found. Not a dashboard, not karaoke neon.
 export default function DisplayClient({ slug, roomName }: Props) {
   const [state, setState] = useState<DisplayState | null>(null);
   const [qr, setQr] = useState<{ qrSvg: string; url: string } | null>(null);
@@ -53,9 +51,8 @@ export default function DisplayClient({ slug, roomName }: Props) {
     };
   }, [poll]);
 
-  // Guest-join QR (public link). V7.1 PART I: re-fetched whenever the canonical
-  // event id changes so a rotation swaps in the NEW event's QR (the old one is
-  // event-scoped and can't join the new event). Stable within a single event.
+  // Guest-join QR (public link). Re-fetched whenever the canonical event id changes
+  // so a rotation swaps in the NEW event's QR. Stable within a single event.
   const eventId = state?.event?.id ?? null;
   useEffect(() => {
     let alive = true;
@@ -74,8 +71,7 @@ export default function DisplayClient({ slug, roomName }: Props) {
     };
   }, [slug, eventId]);
 
-  // Best-effort keep-awake so the board doesn't sleep mid-song. Re-acquired when
-  // the tab returns to the foreground (the lock drops when hidden).
+  // Best-effort keep-awake so the stage doesn't sleep mid-song.
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
@@ -109,213 +105,208 @@ export default function DisplayClient({ slug, roomName }: Props) {
 
   const playing = state?.playing ?? null;
   const next = state?.next ?? null;
-  const waiting = state?.waiting ?? [];
-  const comingUp = waiting.slice(1, 5); // songs after the first (the big central QR is only shown when the queue is truly empty)
-  const stats = state?.stats ?? null;
   const ended = state?.event?.status === 'ended' || state?.event?.status === 'archived';
-  const playingBadge = playing ? badgeForKind(playing.videoKind) : null;
+
+  // Completion transition — when the playing song's id changes (a performance just
+  // finished), briefly celebrate THAT singer. Reliable: the server moved the song out
+  // of `playing`. Client-only, no engine change; auto-dismisses (never blocks).
+  const prevPlaying = useRef<{ id: string; name: string } | null>(null);
+  const celebrateTimer = useRef<number | null>(null);
+  const [celebrating, setCelebrating] = useState<{ name: string } | null>(null);
+  const playingId = playing?.id ?? null;
+  useEffect(() => {
+    const cur = playing ? { id: playing.id, name: playing.guestName } : null;
+    const prev = prevPlaying.current;
+    if (prev && (!cur || cur.id !== prev.id)) {
+      setCelebrating({ name: prev.name });
+      if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
+      celebrateTimer.current = window.setTimeout(() => setCelebrating(null), CELEBRATE_MS);
+    }
+    prevPlaying.current = cur;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playingId]);
+  useEffect(() => () => { if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current); }, []);
+
+  const mode = playing ? 'singing' : ended ? 'ended' : next ? 'upnext' : 'waiting';
 
   return (
-    <div className="kd">
-      {/* Honest ended state — the one canonical event closed. History is kept. */}
+    <div className={`js js-${mode}`}>
+      {/* Slow, subtle breathing glow — the living stage. CSS-only, low motion. */}
+      <div className="js-aura" aria-hidden />
+
       {ended && (
-        <div className="kd-ended" role="status">
+        <div className="js-ribbon" role="status">
           이벤트가 종료되었어요 · 오늘의 기록은 그대로 보존됩니다
         </div>
       )}
-      {/* Top bar: brand + LIVE panel + QR + fullscreen (no video, no mute) */}
-      <header className="kd-top">
-        <div className="kd-brand">
+
+      <header className="js-top">
+        <div className="js-brand">
           <span className="brand">btyNorebang</span>
-          <span className="kd-room">{roomName}</span>
+          <span className="js-room">{roomName}</span>
         </div>
-
-        {/* LIVE panel — information only (no click). Numbers pop on real change. */}
-        {stats && (
-          <div className="kd-live" role="status" aria-label="라이브 현황">
-            <span className="kd-live-tag">
-              <span className="live-dot" aria-hidden /> LIVE
-            </span>
-            <LiveStat icon="👥" value={stats.singers} label="singers" />
-            <LiveStat icon="🎵" value={stats.requests} label="requests" />
-            <LiveStat icon="✅" value={stats.completed} label="done" />
-            <LiveStat icon="⏳" value={stats.waiting} label="waiting" />
-          </div>
-        )}
-
-        <div className="kd-top-right">
-          <div className="kd-controls">
-            <button type="button" className="kd-ctl" onClick={enterFullscreen}>
-              ⛶ 전체화면
-            </button>
-          </div>
-          {/* V7.1 PART G: the top-right QR is the ONE join QR. Hidden once the
-              Event has ended (a retired QR must not invite new scans). */}
-          {qr && !ended && (
-            <div className="kd-qr" aria-label="참여 QR">
-              <div className="kd-qr-svg" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
-              <div className="kd-qr-cap">Scan to join</div>
+        <div className="js-top-right">
+          <button type="button" className="js-ctl" onClick={enterFullscreen} aria-label="전체화면">
+            ⛶
+          </button>
+          {/* Top-right QR during singing/up-next (compact, "함께 노래해요"). In the
+              waiting state the QR becomes a prominent central invitation instead. */}
+          {qr && !ended && mode !== 'waiting' && (
+            <div className={`js-qr${playing ? ' compact' : ''}`} aria-label="참여 QR">
+              <div className="js-qr-svg" dangerouslySetInnerHTML={{ __html: qr.qrSvg }} />
+              <div className="js-qr-cap">함께 노래해요</div>
             </div>
           )}
         </div>
       </header>
 
       {playing ? (
-        <section className="kd-stage board" aria-label="지금 부르는 중">
-          {/* Keyed by the singing request id: the hero fades in ONLY when the
-              singer actually changes, never on a routine 2s poll re-render. */}
-          <div className="kd-nowbar hero kd-fade" key={playing.id}>
-            <div className="kd-now-label">
-              <span className="live-dot" aria-hidden /> NOW SINGING
-            </div>
-            <div className="kd-now-singer">{playing.guestName}</div>
-            <div className="kd-now-song">{playing.title}</div>
-            {playingBadge && (
-              <div className="kd-now-badge">
-                <span className={`vk-badge vk-${playingBadge.tone} kd-badge`}>
-                  {playingBadge.emoji} {playingBadge.label}
-                </span>
-              </div>
-            )}
-            {playing.artist && <div className="kd-now-artist">{playing.artist}</div>}
-          </div>
-
-          {/* LYRICS — the song on stage. Keyed by the singing request id so a song
-              change RESETS the panel (never carries the previous song's words) and
-              re-scrolls to the top. Lyrics ride inside the same 2s display poll as
-              NOW SINGING, so there is no separate async fetch to arrive late — a
-              stale response cannot overwrite the current song. Text only, never HTML. */}
-          <LyricsPanel key={`lyr-${playing.id}`} lyrics={playing.lyrics} />
-
-          {/* NEXT — big and unmistakable; slides in only when it changes. */}
-          {next ? (
-            <div className="kd-next-hero kd-slide" key={next.id}>
-              <span className="kd-next-label">NEXT{next.ready ? ' · READY' : ''}</span>
-              <span className="kd-next-singer">{next.guestName}</span>
-              <span className="kd-next-song">{next.title}</span>
-            </div>
-          ) : (
-            <div className="kd-next-hero empty">
-              <span className="kd-next-label">NEXT</span>
-              <span className="kd-next-song muted">휴대폰으로 다음 곡을 신청하세요</span>
-            </div>
-          )}
-        </section>
-      ) : next ? (
-        /* No one singing but songs ARE waiting — show the queue, NOT a big QR. */
-        <section className="kd-stage board" aria-label="다음 순서">
-          <div className="kd-nowbar hero kd-fade" key={next.id}>
-            <div className="kd-now-label">
-              {next.ready ? '✅ READY TO PLAY' : 'UP NEXT'}
-            </div>
-            <div className="kd-now-singer">{next.guestName}</div>
-            <div className="kd-now-song">{next.title}</div>
-            {(() => {
-              const badge = badgeForKind(next.videoKind);
-              return badge ? (
-                <div className="kd-now-badge">
-                  <span className={`vk-badge vk-${badge.tone} kd-badge`}>
-                    {badge.emoji} {badge.label}
-                  </span>
-                </div>
-              ) : null;
-            })()}
-            {next.artist && <div className="kd-now-artist">{next.artist}</div>}
-          </div>
-
-          {comingUp.length > 0 && (
-            <div className="kd-comingup">
-              <div className="kd-comingup-label">COMING UP</div>
-              <ol className="kd-comingup-list">
-                {comingUp.map((r) => (
-                  <li key={r.id} className="kd-comingup-row">
-                    <span className="kd-cu-singer">{r.guestName}</span>
-                    <span className="kd-cu-song">{r.title}</span>
-                    {r.ready && <span className="kd-cu-ready">READY</span>}
-                  </li>
-                ))}
-              </ol>
-              {waiting.length > 5 && (
-                <div className="kd-comingup-more">+ {waiting.length - 5} more songs</div>
-              )}
-            </div>
-          )}
-        </section>
+        <SingingStage playing={playing} next={next} />
       ) : ended ? (
-        // V7 PART G — the Event closed: show the finished stage, NOT the join QR
-        // (a scan of the retired QR lands on the guest ended notice anyway). A
-        // paired same-room Display auto-switches to the next Event on its next
-        // poll, because the Display resolves by slug → the new live Event.
-        <section className="kd-empty kd-ended-stage" aria-label="이벤트 종료">
-          <div className="kd-empty-mic" aria-hidden>🎬</div>
-          <div className="kd-empty-eyebrow">이벤트 종료</div>
-          <div className="kd-empty-title">오늘의 무대가 끝났어요</div>
-          <div className="kd-empty-sub">
-            {stats
-              ? `${stats.singers}명 · ${stats.completed}곡 완창 · 기록은 그대로 보존됩니다`
-              : '오늘의 기록은 그대로 보존됩니다'}
-          </div>
-        </section>
+        <EndedStage stats={state?.stats ?? null} />
+      ) : next ? (
+        <UpNextStage next={next} />
       ) : (
-        <section className="kd-empty" aria-label="대기 중">
-          {/* V7.1 PART G: NO central QR — the single join QR lives top-right. This
-              true-empty stage is text only, pointing at that one QR. */}
-          <div className="kd-empty-mic" aria-hidden>🎤</div>
-          <div className="kd-empty-eyebrow">오늘의 노래</div>
-          <div className="kd-empty-title">아직 신청된 곡이 없습니다</div>
-          <div className="kd-empty-sub">오른쪽 위 QR을 스캔해 첫 곡을 신청하세요.</div>
-        </section>
+        <WaitingStage qrSvg={qr?.qrSvg ?? null} />
+      )}
+
+      {/* Completion celebration — a brief, restrained applause overlay. Non-blocking:
+          it fades over the next state, never a splash that stalls the room. */}
+      {celebrating && (
+        <div className="js-celebrate" role="status" aria-live="polite">
+          <div className="js-celebrate-inner">
+            <div className="js-celebrate-symbol" aria-hidden>👏</div>
+            <div className="js-celebrate-line">{celebrating.name}의 무대였습니다</div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-// Lyrics for the song on stage. Honest by design: it renders the current song's
-// words ONLY when status === 'available', and shows a calm, static message for
-// every other state (loading / unavailable / failed) — never a guessed match, never
-// technical error detail. Text only (white-space: pre-wrap) — no HTML is ever
-// rendered from stored lyrics, so there is no XSS surface. Scrolls within its own
-// box; NOW SINGING and NEXT above/below never move.
-function LyricsPanel({ lyrics }: { lyrics?: LyricsView }) {
-  const status = lyrics?.status ?? 'unavailable';
-
-  if (status === 'available' && lyrics?.text) {
-    return (
-      <section className="kd-lyrics available" aria-label="가사">
-        <div className="kd-lyrics-scroll">
-          <p className="kd-lyrics-body">{lyrics.text}</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (status === 'loading') {
-    return (
-      <section className="kd-lyrics state" aria-label="가사 불러오는 중" aria-busy="true">
-        <div className="kd-lyrics-eyebrow">가사</div>
-        <p className="kd-lyrics-note">가사를 불러오는 중…</p>
-      </section>
-    );
-  }
-
-  // 'unavailable' and 'failed' read the same to the room: no words to show, said
-  // honestly, with a quiet hint that the host can add them. No error internals.
+// ── Singing: human-first NOW header · dominant lyrics (or artwork) · NEXT STAGE ──
+function SingingStage({ playing, next }: { playing: DisplayRequest; next: DisplayRequest | null }) {
   return (
-    <section className="kd-lyrics state" aria-label="가사 없음">
-      <div className="kd-lyrics-eyebrow">가사</div>
-      <p className="kd-lyrics-note">이 곡의 가사가 아직 없어요.</p>
-      <p className="kd-lyrics-hint">진행자가 가사를 추가할 수 있어요 · 영상은 TV에서 확인하세요.</p>
+    <section className="js-stage" aria-label="지금 부르는 중">
+      {/* Human-first header — the singer is the protagonist. Keyed by the request id
+          so the gentle staged reveal runs ONCE per song, never on a 2s poll. */}
+      <div className="js-now" key={playing.id}>
+        <div className="js-now-eyebrow">
+          <span className="live-dot" aria-hidden /> NOW SINGING
+        </div>
+        <div className="js-now-stage">{playing.guestName}의 무대</div>
+        <div className="js-now-song">{playing.songTitle}</div>
+        {playing.songArtist && <div className="js-now-artist">{playing.songArtist}</div>}
+      </div>
+
+      {/* Lyrics keyed by the request id: same song → stable key → React keeps the
+          element and the reader's scroll position across polls; a new song remounts →
+          resets to the top. Never carries the previous song's words. */}
+      <LyricsStage key={`lyr-${playing.id}`} playing={playing} />
+
+      <div className="js-next">
+        <span className="js-next-tag">NEXT STAGE</span>
+        {next ? (
+          <span className="js-next-body">
+            잠시 후, <strong>{next.guestName}</strong>의 무대가 시작됩니다
+            <span className="js-next-song"> · {next.songTitle}</span>
+          </span>
+        ) : (
+          <span className="js-next-body muted">함께 부르고 싶은 노래를 신청해 주세요</span>
+        )}
+      </div>
     </section>
   );
 }
 
-// One LIVE number. Keyed by its value so it re-mounts (and pops) ONLY when the
-// count actually changes — a routine poll with the same numbers is silent.
-function LiveStat({ icon, value, label }: { icon: string; value: number; label: string }) {
+// The dominant reading surface OR the graceful artwork fallback when there are no
+// lyrics. Never a big "unavailable" message as the emotional centerpiece.
+function LyricsStage({ playing }: { playing: DisplayRequest }) {
+  const lyrics: LyricsView | undefined = playing.lyrics;
+  const status = lyrics?.status ?? 'unavailable';
+
+  if (status === 'available' && lyrics?.text) {
+    return (
+      <div className="js-lyrics-scroll" aria-label="가사">
+        <p className="js-lyrics-body">{lyrics.text}</p>
+      </div>
+    );
+  }
+
+  // Loading: a calm ambient stage (never a spinner), with the song identity present.
+  // Unavailable / failed: the SAME warm visual stage — artwork + a human message, with
+  // only a small honest note that automatic lyrics weren't found.
+  const loading = status === 'loading';
   return (
-    <span className="kd-live-stat" title={label}>
-      <span className="kd-live-ico" aria-hidden>{icon}</span>
-      <span className="kd-live-num" key={value}>{value}</span>
-    </span>
+    <div
+      className={`js-artwork${playing.thumbnailUrl ? '' : ' no-art'}`}
+      aria-label={loading ? '가사 불러오는 중' : '가사 없음'}
+      aria-busy={loading || undefined}
+    >
+      {playing.thumbnailUrl && (
+        <div className="js-artwork-bg" style={{ backgroundImage: `url("${playing.thumbnailUrl}")` }} aria-hidden />
+      )}
+      <div className="js-artwork-veil" aria-hidden />
+      <div className="js-artwork-body">
+        <div className="js-art-song">{playing.songTitle}</div>
+        {playing.songArtist && <div className="js-art-artist">{playing.songArtist}</div>}
+        <div className="js-art-message">
+          {loading ? '무대가 시작됐어요' : '이 순간을 함께 즐겨주세요'}
+        </div>
+        <div className="js-art-note">
+          {loading ? '가사를 준비하고 있어요…' : '자동 가사를 찾지 못했어요 · 영상은 TV에서 확인하세요'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Up next: warm anticipation before a song starts ──
+function UpNextStage({ next }: { next: DisplayRequest }) {
+  return (
+    <section className="js-stage js-center" aria-label="다음 순서">
+      <div className="js-anticipate" key={next.id}>
+        <div className="js-now-eyebrow up">{next.ready ? '✨ 곧 시작합니다' : 'UP NEXT'}</div>
+        <div className="js-anticipate-stage">
+          잠시 후, <strong>{next.guestName}</strong>의 무대가 시작됩니다
+        </div>
+        <div className="js-now-song big">{next.songTitle}</div>
+        {next.songArtist && <div className="js-now-artist">{next.songArtist}</div>}
+      </div>
+    </section>
+  );
+}
+
+// ── Ended: the night is over, warmly ──
+function EndedStage({ stats }: { stats: DisplayState['stats'] | null }) {
+  return (
+    <section className="js-stage js-center" aria-label="이벤트 종료">
+      <div className="js-empty-symbol" aria-hidden>🎬</div>
+      <div className="js-empty-eyebrow">오늘의 무대</div>
+      <div className="js-empty-title">오늘의 무대가 끝났어요</div>
+      <div className="js-empty-sub">
+        {stats
+          ? `${stats.singers}명이 함께했어요 · ${stats.completed}곡 완창 · 기록은 그대로 보존됩니다`
+          : '함께해 주셔서 고맙습니다 · 기록은 그대로 보존됩니다'}
+      </div>
+    </section>
+  );
+}
+
+// ── Waiting: a warm ambient stage inviting the room to sing (not a dashboard) ──
+function WaitingStage({ qrSvg }: { qrSvg: string | null }) {
+  return (
+    <section className="js-stage js-center js-waiting-stage" aria-label="대기 중">
+      <div className="js-empty-symbol" aria-hidden>🎤</div>
+      <div className="js-empty-eyebrow">오늘의 무대</div>
+      <div className="js-empty-title">오늘의 무대가 곧 시작됩니다</div>
+      <div className="js-empty-sub">함께 부르고 싶은 노래를 신청해 주세요</div>
+      {qrSvg && (
+        <div className="js-invite-qr">
+          <div className="js-invite-qr-svg" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+          <div className="js-invite-qr-cap">휴대폰으로 스캔하고 첫 곡을 신청하세요</div>
+        </div>
+      )}
+    </section>
   );
 }

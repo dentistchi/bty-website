@@ -14,8 +14,13 @@ import { computeEventStats, type StatRequest } from './event-stats';
 export interface DisplayRequest {
   id: string;
   guestName: string;
+  /** Raw-ish label (youtube title / search query) — kept for the guest queue board. */
   title: string;
   artist: string | null;
+  /** V1.3: normalized human-first song title (karaoke/MR/official suffixes removed). */
+  songTitle: string;
+  /** V1.3: normalized artist (from a "Song - Artist" split or the channel), or null. */
+  songArtist: string | null;
   videoId: string;
   videoKind: VideoKind;
   thumbnailUrl: string | null;

@@ -119,11 +119,14 @@ describe('PART E/F — an already-open guest screen transitions to ended', () =>
   });
 });
 
-describe('PART G — Display shows exactly ONE join QR (top-right), none central', () => {
-  it('the true-empty stage renders no central QR', () => {
-    expect(displayClient).not.toContain('kd-empty-qr');
-    expect(displayClient).toContain('아직 신청된 곡이 없습니다');
-    expect(displayClient).toContain('오른쪽 위 QR을 스캔해');
+describe('PART G — Display join QR (V1.3: warm central invitation while waiting)', () => {
+  it('the waiting stage frames the QR as a prominent central invitation', () => {
+    // V1.3 supersedes the V7.1 "no central QR": an empty stage now invites warmly.
+    expect(displayClient).toContain('js-invite-qr');
+    expect(displayClient).toContain('오늘의 무대가 곧 시작됩니다');
+    expect(displayClient).toContain('함께 부르고 싶은 노래를 신청해 주세요');
+    // The top-right header QR is suppressed while waiting so there is ONE QR.
+    expect(displayClient).toMatch(/mode !== 'waiting'/);
   });
   it('the top-right QR is hidden once the event has ended', () => {
     expect(displayClient).toContain('qr && !ended');

@@ -42,6 +42,8 @@ beforeEach(() => {
       guestName: 'Dr. Chi',
       title: 'Dancing Queen',
       artist: 'ABBA',
+      songTitle: 'Dancing Queen',
+      songArtist: 'ABBA',
       videoId: 'abcdefghijk',
       videoKind: 'mr',
       thumbnailUrl: null,

@@ -93,7 +93,8 @@ describe('PART F/G — Guest + Display honest ended states', () => {
     expect(displayRoute).toContain('getLatestEndedEvent');
   });
   it('the Display renders an ended stage instead of the join QR when ended', () => {
-    expect(displayClient).toContain('kd-ended-stage');
+    expect(displayClient).toContain('EndedStage'); // V1.3 warm ended stage
+    expect(displayClient).toContain('오늘의 무대가 끝났어요');
     expect(displayClient).toMatch(/\) : ended \? \(/);
   });
 });

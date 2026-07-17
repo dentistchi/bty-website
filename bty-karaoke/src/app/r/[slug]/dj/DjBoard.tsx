@@ -284,6 +284,8 @@ export default function DjBoard({
   onPassTurn,
 }: Props) {
   const [guestQr, setGuestQr] = useState<{ qrSvg: string; url: string } | null>(null);
+  const [displayQr, setDisplayQr] = useState<{ qrSvg: string; url: string } | null>(null);
+  const [displayLinkCopied, setDisplayLinkCopied] = useState(false);
   const [loadingQr, setLoadingQr] = useState(false);
   const [sheetFor, setSheetFor] = useState<KaraokeRequest | null>(null);
   const [lyricsFor, setLyricsFor] = useState<KaraokeRequest | null>(null);
@@ -576,6 +578,34 @@ export default function DjBoard({
     }
   }
 
+  // "Connect iPad Display" — show a QR of the CANONICAL read-only Display URL so the
+  // iPad camera can open it directly (no password, no manual URL). Event-agnostic:
+  // the /r/<slug>/display route always resolves the current live event by room slug.
+  async function showDisplayQr() {
+    setLoadingQr(true);
+    setDisplayLinkCopied(false);
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display-qr`, { cache: 'no-store' });
+      if (res.ok) {
+        const d = await res.json();
+        setDisplayQr({ qrSvg: d.qrSvg, url: d.url });
+      }
+    } finally {
+      setLoadingQr(false);
+    }
+  }
+
+  async function copyDisplayLink() {
+    if (!displayQr) return;
+    try {
+      await navigator.clipboard.writeText(displayQr.url);
+      setDisplayLinkCopied(true);
+      window.setTimeout(() => setDisplayLinkCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — the QR + visible link still work */
+    }
+  }
+
   // Awareness/navigation only: jump to the earliest still-highlighted new song
   // in its REAL queue position. Never reorders — the card does not move.
   function goToFirstNew() {
@@ -702,14 +732,21 @@ export default function DjBoard({
             🔳 Guest QR
           </button>
         )}
-        {/* Open the room's read-only Display (same canonical event) in a new tab. */}
+        {/* Connect iPad Display — shows a QR the iPad camera scans to open the
+            read-only Display. This is the discoverable "put it on the iPad" path. */}
+        {!eventEnded && (
+          <button className="ghost" onClick={showDisplayQr} disabled={loadingQr}>
+            📺 Connect iPad Display
+          </button>
+        )}
+        {/* Open the read-only Display on THIS device (same tab context). */}
         <a
           className="ghost"
           href={`/r/${encodeURIComponent(slug)}/display`}
           target="_blank"
           rel="noreferrer"
         >
-          🖥 Open Display
+          🖥 Open Display on this device
         </a>
       </div>
 
@@ -1064,6 +1101,31 @@ export default function DjBoard({
             <div className="qr-caption">{data?.stats.guests ?? 0} singers joined</div>
             <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
               <button className="ghost" onClick={() => setGuestQr(null)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Connect iPad Display QR ─────────────────────────────────── */}
+      {displayQr && (
+        <div className="qr-overlay" role="dialog" aria-modal="true" aria-label="Connect the iPad Display">
+          <div>
+            <div className="eyebrow">Connect iPad Display</div>
+            <div className="display-sm" style={{ margin: '6px 0 4px' }}>
+              iPad 카메라로 QR을 스캔하세요
+            </div>
+            <p className="muted" style={{ margin: '0 0 14px', fontSize: '0.9rem' }}>
+              화면이 바로 열립니다 · 비밀번호나 주소 입력이 필요 없어요
+            </p>
+            <div className="qr-surface" dangerouslySetInnerHTML={{ __html: displayQr.qrSvg }} />
+            <div className="qr-caption" style={{ wordBreak: 'break-all' }}>{displayQr.url}</div>
+            <div className="row" style={{ justifyContent: 'center', gap: 10, marginTop: 12 }}>
+              <button className="ghost" onClick={() => void copyDisplayLink()}>
+                {displayLinkCopied ? '✓ 복사됨' : '🔗 Copy Display Link'}
+              </button>
+              <button className="ghost" onClick={() => setDisplayQr(null)}>
                 Done
               </button>
             </div>

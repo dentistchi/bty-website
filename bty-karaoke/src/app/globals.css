@@ -27,6 +27,8 @@
   --green: #34d399;
   --danger: #ff5c7c;
   --coral: #ef8f7c; /* restrained cancel tone — never harsh warning red */
+  --joy-coral: #ff8f73; /* warm human energy (V1.3 Joy Stage) */
+  --ivory: #f7f0e1; /* soft ivory — readable lyric text on the deep-navy stage */
 
   /* Back-compat aliases used by existing guest/DJ classes */
   --accent: var(--gold);
@@ -2667,14 +2669,34 @@ a.btn.block {
 .kd {
   position: fixed;
   inset: 0;
+  /* Dynamic viewport height so the layout tracks Safari's collapsing browser chrome
+     — the lyrics surface always fills the ACTUAL visible height, never behind it. */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background:
     radial-gradient(120% 80% at 50% -10%, rgba(245, 196, 81, 0.14), transparent 60%),
     linear-gradient(180deg, var(--stage-1), var(--stage-0) 55%);
-  padding: calc(16px + var(--safe-t)) 22px calc(16px + var(--safe-b));
-  gap: 14px;
+  padding: calc(16px + var(--safe-t)) calc(18px + var(--safe-r, 0px)) calc(14px + var(--safe-b))
+    calc(18px + var(--safe-l, 0px));
+  gap: 12px;
   overflow: hidden;
+}
+/* While a song is on stage the header shrinks so lyrics dominate (~70–80%). */
+.kd-singing {
+  gap: 8px;
+  padding-top: calc(10px + var(--safe-t));
+  padding-bottom: calc(10px + var(--safe-b));
+}
+.kd-singing .kd-top {
+  flex: 0 0 auto;
+}
+.kd-singing .kd-brand .brand {
+  font-size: clamp(1rem, 2.2vw, 1.4rem);
+}
+.kd-singing .kd-qr {
+  transform: scale(0.82);
+  transform-origin: top right;
 }
 /* Honest ended ribbon — the canonical event closed; history preserved. */
 .kd-ended {
@@ -2935,54 +2957,95 @@ a.btn.block {
   color: var(--muted-2);
 }
 
-/* LYRICS V1 — the song on stage. Sits between NOW SINGING and NEXT. The available
-   panel grows to fill the middle and scrolls WITHIN itself, so NOW/NEXT never move
-   and long lyrics stay reachable by finger. Text only (pre-wrap) — no HTML. */
-.kd-lyrics {
-  width: 100%;
-  max-width: min(94vw, 1000px);
-  margin: 4px auto 0;
+/* ══════════════════════════════════════════════════════════════
+   LYRICS-DOMINANT DISPLAY STAGE (V1.2)
+   Compact NOW header (fixed) · lyrics as ONE large scroll surface
+   filling ~70–80% of the viewport · compact NEXT footer (fixed).
+   ══════════════════════════════════════════════════════════════ */
+.kd-stage.kd-lyrics-stage {
+  align-items: stretch;      /* lyrics fill the full width, not a centred card */
+  justify-content: flex-start;
+  gap: 8px;
 }
-.kd-lyrics.available {
-  flex: 1 1 auto;
-  min-height: 0;
+
+/* Compact NOW header — one tight strip; never grows. */
+.kd-now-compact {
+  flex: 0 0 auto;
   display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  padding: 2px 2px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.kd-now-c-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--magenta);
+  font-size: clamp(0.78rem, 1.5vw, 1.05rem);
+}
+.kd-now-c-singer {
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+  font-size: clamp(1.35rem, 3.4vw, 2.4rem);
+  line-height: 1.05;
+}
+.kd-now-c-song {
+  font-weight: 700;
+  color: var(--text);
+  font-size: clamp(1.02rem, 2.1vw, 1.55rem);
+}
+.kd-now-c-artist {
+  color: var(--muted);
+  font-weight: 600;
+}
+.kd-now-c-badge {
+  align-self: center;
+  font-size: clamp(0.72rem, 1.2vw, 0.95rem);
+}
+
+/* The lyrics surface (available) OR the calm state message both take the middle. */
+.kd-lyrics-stage > .kd-lyrics-scroll,
+.kd-lyrics-stage > .kd-lyrics-state {
+  flex: 1 1 auto;
+  min-height: 0;   /* REQUIRED so the scroll box can shrink and actually scroll */
 }
 .kd-lyrics-scroll {
   width: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: 8px clamp(12px, 3vw, 28px);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--line);
+  padding: clamp(8px, 2.4vh, 26px) clamp(12px, 5vw, 84px);
   /* Fade the top/bottom edges so partially-scrolled lines read as "more above/below". */
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
 }
 .kd-lyrics-body {
-  margin: 0;
-  padding: 8px 0;
+  margin: 0 auto;
+  max-width: min(92vw, 1100px);
   white-space: pre-wrap;
   word-break: keep-all;
   overflow-wrap: anywhere;
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  /* Big and high-contrast so it reads from the microphone. */
-  font-size: clamp(1.5rem, 4vw, 2.9rem);
-  line-height: 1.5;
+  /* Large and high-contrast — readable from microphone distance. */
+  font-size: clamp(1.7rem, 4.6vw, 3.4rem);
+  line-height: 1.55;
 }
-/* The calm state panel (loading / unavailable / failed) — never a spinner storm,
-   never technical error detail, never a guessed match. */
-.kd-lyrics.state {
-  flex: 0 0 auto;
+/* The calm state message (loading / unavailable / failed) — centered, no small box. */
+.kd-lyrics-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 18px 22px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed var(--line);
+  gap: 8px;
+  padding: 16px;
 }
 .kd-lyrics-eyebrow {
   font-size: clamp(0.8rem, 1.4vw, 1rem);
@@ -2991,15 +3054,60 @@ a.btn.block {
   color: var(--muted-2);
 }
 .kd-lyrics-note {
-  margin: 8px 0 0;
-  font-size: clamp(1.1rem, 2.6vw, 1.7rem);
+  margin: 0;
+  font-size: clamp(1.3rem, 3vw, 2rem);
   font-weight: 700;
   color: var(--muted);
 }
 .kd-lyrics-hint {
-  margin: 6px 0 0;
-  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  margin: 0;
+  font-size: clamp(0.9rem, 1.7vw, 1.15rem);
   color: var(--muted-2);
+}
+
+/* Compact NEXT footer — one tight line; never grows; truncates cleanly. */
+.kd-next-compact {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 2px 2px;
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+.kd-next-c-tag {
+  flex: 0 0 auto;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  font-size: clamp(0.8rem, 1.5vw, 1.1rem);
+}
+.kd-next-c-body {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: clamp(1.05rem, 2.2vw, 1.6rem);
+}
+.kd-next-c-singer {
+  font-weight: 900;
+  color: #fff;
+}
+.kd-next-c-song {
+  color: var(--muted);
+}
+.kd-next-c-body.muted {
+  color: var(--muted-2);
+  font-weight: 600;
+}
+/* Phone: keep lyrics dominant (≥ ~65dvh) by trimming padding, not lyric size. */
+@media (max-width: 640px) {
+  .kd-lyrics-scroll {
+    padding: 10px 8px;
+  }
+  .kd-now-c-song {
+    width: 100%;
+  }
 }
 
 /* V6.1 Display waiting-stage: the queue when no one is singing (not a big QR). */
@@ -3097,4 +3205,409 @@ a.btn.block {
 .kd-empty-sub {
   font-size: clamp(1rem, 2.4vw, 1.4rem);
   color: var(--muted);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   JOY STAGE (V1.3) — a warm, BTY-ARENA-quality living Display. Deep navy, warm
+   gold presence, coral human energy, cyan next-stage, soft ivory lyrics. The
+   singer is the protagonist; motion is slow and intentional. Not karaoke neon.
+   ══════════════════════════════════════════════════════════════════════════ */
+.js {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  color: var(--text);
+  background:
+    radial-gradient(120% 80% at 50% -18%, rgba(245, 196, 81, 0.10), transparent 58%),
+    linear-gradient(180deg, #0b1020, #070b14 62%);
+  padding: calc(14px + var(--safe-t)) calc(20px + var(--safe-r, 0px)) calc(12px + var(--safe-b))
+    calc(20px + var(--safe-l, 0px));
+}
+
+/* Slow, subtle breathing glow — the living stage. Tinted by mode; very low motion. */
+.js-aura {
+  position: absolute;
+  inset: -22% -12% auto -12%;
+  height: 74%;
+  pointer-events: none;
+  filter: blur(34px);
+  opacity: 0.55;
+  background: radial-gradient(58% 52% at 50% 0%, rgba(245, 196, 81, 0.16), transparent 72%);
+  animation: js-breathe 10s ease-in-out infinite;
+}
+.js-singing .js-aura { background: radial-gradient(58% 52% at 50% 0%, rgba(255, 143, 115, 0.16), transparent 72%); }
+.js-upnext .js-aura { background: radial-gradient(58% 52% at 50% 0%, rgba(63, 224, 255, 0.13), transparent 72%); }
+.js-waiting .js-aura { background: radial-gradient(58% 52% at 50% 0%, rgba(245, 196, 81, 0.15), transparent 72%); }
+@keyframes js-breathe {
+  0%, 100% { opacity: 0.42; transform: translateY(-2%) scale(1); }
+  50% { opacity: 0.8; transform: translateY(0) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js-aura { animation: none; }
+}
+
+.js-ribbon {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 9px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: clamp(0.85rem, 1.7vw, 1.1rem);
+}
+
+/* Header — brand + room + QR + fullscreen. Compact; stays out of the lyrics' way. */
+.js-top {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.js-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.js-brand .brand {
+  font-weight: 900;
+  font-size: clamp(1rem, 2.1vw, 1.4rem);
+  background: linear-gradient(96deg, var(--gold), #ffe6a3 55%, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.js-room {
+  color: var(--muted);
+  font-size: clamp(0.78rem, 1.5vw, 1.02rem);
+  font-weight: 600;
+}
+.js-top-right {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.js-ctl {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 12px;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.05rem;
+}
+.js-qr {
+  text-align: center;
+}
+.js-qr-svg {
+  width: clamp(84px, 11vw, 132px);
+  padding: 7px;
+  border-radius: 12px;
+  background: #fff;
+}
+.js-qr-svg svg { width: 100%; height: auto; display: block; }
+.js-qr.compact .js-qr-svg { width: clamp(66px, 8vw, 96px); padding: 5px; }
+.js-qr-cap {
+  margin-top: 5px;
+  font-size: clamp(0.66rem, 1.2vw, 0.86rem);
+  color: var(--joy-coral);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* The stage body fills the rest of the screen. */
+.js-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.js-stage.js-center {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+/* Human-first NOW header — the singer is the protagonist; song/artist normalized. */
+.js-now {
+  flex: 0 0 auto;
+  text-align: center;
+  padding-bottom: 6px;
+}
+.js-now-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--joy-coral);
+  font-size: clamp(0.78rem, 1.5vw, 1.05rem);
+  animation: js-rise 0.5s 0s both;
+}
+.js-now-eyebrow.up { color: var(--cyan); }
+.js-now-stage {
+  margin-top: 6px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.04;
+  color: var(--gold);
+  font-size: clamp(1.8rem, 4.6vw, 3.2rem);
+  animation: js-rise 0.6s 0.12s both;
+}
+.js-now-song {
+  margin-top: 8px;
+  font-weight: 700;
+  color: var(--text);
+  font-size: clamp(1.15rem, 2.6vw, 1.9rem);
+  animation: js-rise 0.6s 0.28s both;
+}
+.js-now-song.big { font-size: clamp(1.5rem, 4vw, 2.8rem); }
+.js-now-artist {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: clamp(0.95rem, 2vw, 1.35rem);
+  animation: js-rise 0.6s 0.4s both;
+}
+@keyframes js-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js-now-eyebrow, .js-now-stage, .js-now-song, .js-now-artist { animation: none; }
+}
+
+/* ── Lyrics: a living reading surface (dominant), not a card ── */
+.js-lyrics-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: clamp(10px, 2.5vh, 30px) clamp(12px, 5vw, 70px);
+  /* A subtle focus glow so the centre reading area feels alive — no hard border. */
+  background: radial-gradient(70% 62% at 50% 42%, rgba(255, 255, 255, 0.05), transparent 78%);
+  /* Softly fade the upper and lower overflow. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 30px, #000 calc(100% - 30px), transparent 100%);
+  animation: js-fade 0.5s 0.42s both;
+}
+.js-lyrics-body {
+  margin: 0 auto;
+  max-width: min(92vw, 960px); /* ~850–1000px comfortable reading column */
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-weight: 600;
+  color: var(--ivory);
+  font-size: clamp(1.8rem, 4.4vw, 3.3rem);
+  line-height: 1.72; /* generous */
+}
+@keyframes js-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Artwork fallback (no lyrics) — a graceful visual stage, never a big "unavailable" ── */
+.js-artwork {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22px;
+  overflow: hidden;
+  animation: js-fade 0.5s 0.3s both;
+  background: linear-gradient(160deg, #121a30, #0a0f1e);
+}
+.js-artwork-bg {
+  position: absolute;
+  inset: -8%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(26px) saturate(1.1);
+  transform: scale(1.15);
+  opacity: 0.55;
+}
+.js-artwork-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(80% 70% at 50% 40%, rgba(11, 16, 32, 0.35), rgba(7, 11, 20, 0.82));
+}
+.js-artwork-body {
+  position: relative;
+  text-align: center;
+  padding: 24px;
+  max-width: min(90vw, 900px);
+}
+.js-art-song {
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: -0.01em;
+  font-size: clamp(2rem, 5.4vw, 4rem);
+  line-height: 1.06;
+}
+.js-art-artist {
+  margin-top: 8px;
+  color: var(--ivory);
+  font-weight: 600;
+  font-size: clamp(1.1rem, 2.6vw, 1.8rem);
+}
+.js-art-message {
+  margin-top: clamp(16px, 3vh, 34px);
+  color: var(--joy-coral);
+  font-weight: 800;
+  font-size: clamp(1.2rem, 3vw, 2.1rem);
+}
+.js-art-note {
+  margin-top: 10px;
+  color: var(--muted-2);
+  font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+}
+
+/* ── NEXT STAGE — a warm invitation, compact during singing ── */
+.js-next {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+.js-next-tag {
+  flex: 0 0 auto;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--cyan);
+  font-size: clamp(0.8rem, 1.5vw, 1.1rem);
+}
+.js-next-body {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-size: clamp(1rem, 2.1vw, 1.5rem);
+}
+.js-next-body strong { color: #fff; font-weight: 900; }
+.js-next-body .js-next-song { color: var(--muted); }
+.js-next-body.muted { color: var(--muted-2); }
+
+/* ── Up-next anticipation ── */
+.js-anticipate {
+  max-width: min(92vw, 900px);
+  animation: js-rise 0.6s both;
+}
+.js-anticipate-stage {
+  margin-top: 8px;
+  font-weight: 800;
+  color: var(--ivory);
+  font-size: clamp(1.4rem, 3.4vw, 2.4rem);
+}
+.js-anticipate-stage strong { color: var(--gold); font-weight: 900; }
+
+/* ── Empty / ended warm stages ── */
+.js-empty-symbol {
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  opacity: 0.9;
+}
+.js-empty-eyebrow {
+  margin-top: 8px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--joy-coral);
+  font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+}
+.js-empty-title {
+  margin-top: 8px;
+  font-weight: 900;
+  color: var(--gold);
+  font-size: clamp(1.7rem, 4.6vw, 3.1rem);
+}
+.js-empty-sub {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.2vw, 1.5rem);
+}
+.js-invite-qr {
+  margin-top: clamp(18px, 3.5vh, 40px);
+}
+.js-invite-qr-svg {
+  width: clamp(140px, 22vw, 240px);
+  margin: 0 auto;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--ring-gold);
+}
+.js-invite-qr-svg svg { width: 100%; height: auto; display: block; }
+.js-invite-qr-cap {
+  margin-top: 12px;
+  color: var(--cyan);
+  font-weight: 800;
+  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+}
+
+/* ── Completion celebration — brief, restrained applause. Non-blocking overlay. ── */
+.js-celebrate {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 44%, rgba(11, 16, 32, 0.55), rgba(7, 11, 20, 0.86));
+  animation: js-celebrate 2.6s ease both;
+}
+.js-celebrate-inner { text-align: center; }
+.js-celebrate-symbol {
+  font-size: clamp(3rem, 9vw, 6rem);
+  animation: js-clap 1.6s ease-in-out;
+}
+.js-celebrate-line {
+  margin-top: 12px;
+  font-weight: 900;
+  color: var(--gold);
+  font-size: clamp(1.5rem, 4.2vw, 3rem);
+}
+@keyframes js-celebrate {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes js-clap {
+  0%, 100% { transform: scale(1) rotate(0); }
+  25% { transform: scale(1.12) rotate(-6deg); }
+  60% { transform: scale(1.08) rotate(5deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js-celebrate-symbol { animation: none; }
+}
+
+/* ── Responsive: phone keeps lyrics dominant by trimming chrome, not lyric size ── */
+@media (max-width: 640px) {
+  .js { padding: calc(10px + var(--safe-t)) 12px calc(10px + var(--safe-b)); gap: 8px; }
+  .js-lyrics-scroll { padding: 12px 10px; }
+  .js-now-stage { font-size: clamp(1.5rem, 7vw, 2.2rem); }
+}
+/* iPad portrait — lyrics still dominate; header/footer stay compact. */
+@media (orientation: portrait) {
+  .js-lyrics-body { font-size: clamp(1.9rem, 5vw, 3.2rem); }
 }

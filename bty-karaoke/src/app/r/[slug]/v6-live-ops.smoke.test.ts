@@ -41,22 +41,21 @@ describe('unified Admin auth — Player reuses the Admin session (V6.2)', () => 
 });
 
 describe('Display shows the WAITING queue, not a big QR, when songs wait (V6.1)', () => {
-  it('has a waiting-stage branch keyed off next before the empty (big-QR) state', () => {
-    // Order in source: playing → next(waiting-stage) → empty(big QR).
-    const playingIdx = display.indexOf('{playing ? (');
-    const waitingIdx = display.indexOf(') : next ? (');
-    const emptyIdx = display.indexOf('kd-empty');
+  it('has a playing → up-next → waiting branch order (V1.3 Joy Stage)', () => {
+    // Order in source: playing (SingingStage) → next (UpNextStage) → waiting.
+    const playingIdx = display.indexOf('playing ? (');
+    const upnextIdx = display.indexOf(') : next ? (');
+    const waitingIdx = display.indexOf('<WaitingStage');
     expect(playingIdx).toBeGreaterThan(-1);
-    expect(waitingIdx).toBeGreaterThan(playingIdx);
-    expect(emptyIdx).toBeGreaterThan(waitingIdx);
+    expect(upnextIdx).toBeGreaterThan(playingIdx);
+    expect(waitingIdx).toBeGreaterThan(upnextIdx);
   });
 
-  it('the waiting-stage shows UP NEXT / READY + a COMING UP list', () => {
+  it('the up-next stage warmly anticipates the next singer (not a queue dashboard)', () => {
+    expect(display).toContain('무대가 시작됩니다'); // "잠시 후, {name}의 무대가 시작됩니다"
     expect(display).toContain('UP NEXT');
-    expect(display).toContain('READY TO PLAY');
-    expect(display).toContain('kd-comingup');
-    expect(display).toContain('COMING UP');
-    expect(display).toContain('comingUp');
+    expect(display).toContain('곧 시작합니다'); // ready anticipation
+    expect(display).toContain('js-anticipate');
   });
 
   it('the big central QR empty state no longer claims "N곡 대기 중" (that path means empty)', () => {

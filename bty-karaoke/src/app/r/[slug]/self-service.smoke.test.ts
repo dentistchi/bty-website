@@ -100,59 +100,23 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
     }
   });
 
-  it('renders QR / NOW SINGING / NEXT and keeps wake-lock + fullscreen', () => {
-    expect(display).toContain('kd-qr');
-    expect(display).toContain('kd-nowbar');
+  it('keeps QR + NOW + NEXT + wake-lock + fullscreen (V1.3 Joy Stage)', () => {
+    expect(display).toContain('js-qr'); // QR reachable
+    expect(display).toContain('js-now'); // human-first NOW header
+    expect(display).toContain('js-next'); // NEXT STAGE footer
+    expect(display).toContain('js-lyrics-scroll'); // dominant lyrics surface
     expect(display).toContain('NOW SINGING');
-    expect(display).toContain('kd-next');
+    expect(display).toContain('NEXT STAGE');
     expect(display).toContain('wakeLock');
     expect(display).toContain('enterFullscreen');
   });
 
   it('uses honest board copy (no false sync/video claims)', () => {
     expect(displayCode).not.toMatch(/live\s*synced|synced\s*lyrics|lyrics\s*guaranteed|video reference|connected to tv|playing on ipad/i);
-    // Lyrics V1: the board shows the song's words when available and an HONEST
-    // fallback otherwise (never a guessed match); video still lives on the TV.
-    expect(display).toContain('가사가 아직 없어요');
+    // V1.3: lyrics when available; otherwise a warm visual stage with only a SMALL
+    // honest note (never a big "unavailable"). Video still lives on the TV.
+    expect(display).toContain('자동 가사를 찾지 못했어요');
     expect(display).toContain('영상은 TV에서 확인하세요');
-  });
-});
-
-describe('Display polish V4 — hero, LIVE panel, empty stage, data-keyed motion', () => {
-  it('renders the hero ladder in order: singer → song → badge → artist', () => {
-    const singer = display.indexOf('kd-now-singer');
-    const song = display.indexOf('kd-now-song');
-    const badge = display.indexOf('kd-now-badge');
-    const artist = display.indexOf('kd-now-artist');
-    expect(singer).toBeGreaterThan(-1);
-    expect(singer).toBeLessThan(song);
-    expect(song).toBeLessThan(badge);
-    expect(badge).toBeLessThan(artist);
-  });
-
-  it('shows an information-only LIVE panel from the display stats', () => {
-    expect(display).toContain('kd-live');
-    expect(display).toContain('state?.stats');
-    expect(display).toContain('stats.singers');
-    expect(display).toContain('stats.completed');
-    // Information only — the panel is not a button / has no click handler.
-    expect(display).not.toMatch(/kd-live[^]{0,400}onClick/);
-  });
-
-  it('animates ONLY on real data change (keyed by id/value, never every poll)', () => {
-    // NOW fades keyed by the singing request id; NEXT slides keyed by next id;
-    // each LIVE number pops keyed by its value. Same data → same key → no re-anim.
-    expect(display).toMatch(/kd-fade[^]{0,60}key=\{playing\.id\}|key=\{playing\.id\}[^]{0,60}kd-fade/);
-    expect(display).toMatch(/kd-slide[^]{0,60}key=\{next\.id\}|key=\{next\.id\}[^]{0,60}kd-slide/);
-    expect(display).toMatch(/kd-live-num[^]*key=\{value\}|key=\{value\}[^]*kd-live-num/);
-  });
-
-  it('has a welcoming empty stage that points at the ONE top-right QR (V7.1: no central QR)', () => {
-    expect(display).toContain('오늘의 노래');
-    expect(display).toContain('아직 신청된 곡이 없습니다');
-    expect(display).toContain('오른쪽 위 QR을 스캔해 첫 곡을 신청하세요');
-    // The true-empty stage no longer renders a second, central QR.
-    expect(display).not.toContain('kd-empty-qr');
   });
 });
 

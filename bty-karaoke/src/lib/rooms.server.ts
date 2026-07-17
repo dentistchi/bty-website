@@ -20,6 +20,7 @@ import {
 import { classifyVideo } from '@/domain/video-kind';
 import { isAutoPromotable, noPromoteReason, type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
+import { displaySong } from '@/domain/song-title';
 import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
 import { lyricsViewFor, sanitizeLyrics } from '@/domain/lyrics';
 import type { StatRequest } from '@/domain/event-stats';
@@ -699,11 +700,16 @@ export async function setRequestLyrics(
 // public YouTube ids, queue order).
 
 function toDisplayRequest(r: KaraokeRequest, opts?: { withLyrics?: boolean }): DisplayRequest {
+  // V1.3: normalize the song/artist for the human-first Display (strip karaoke / MR /
+  // official-video noise). Falls back to the plain label when nothing usable survives.
+  const norm = displaySong(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title);
   const base: DisplayRequest = {
     id: r.id,
     guestName: r.guest_name,
     title: requestDisplayTitle(r),
     artist: r.youtube_channel_title,
+    songTitle: norm.song || requestDisplayTitle(r),
+    songArtist: norm.artist,
     videoId: r.youtube_video_id,
     videoKind: classifyVideo(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title ?? ''),
     thumbnailUrl: r.youtube_thumbnail_url,
