@@ -10,6 +10,7 @@ import {
   normalizeLearningNeeds,
   stepBlocker,
   BUILDER_STEP_MAX,
+  CAPABILITY_CANDIDATE_MAX,
   type BuilderAnswers,
   type AudienceType,
   type EvidenceObservation,
@@ -19,6 +20,12 @@ import {
 import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
+import {
+  DirectionCopilot,
+  type DirectionGenerateOutcome,
+  type DirectionSuggestionView,
+  type AppliedDirection,
+} from "./DirectionCopilot";
 
 /**
  * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
@@ -214,6 +221,54 @@ export function ModuleBuilderShell({
     }
   }, [publishing, cancelDebounce, saver, draftId, locale, onExit]);
 
+  // Direction Copilot (Slice 2.4A). Generation flushes autosave FIRST so the server's
+  // saved problem matches the request (its stale guard rejects a mismatch), then calls
+  // the Host-authenticated route. Generation never mutates the draft. Apply writes the
+  // Host-reviewed values through the canonical save path (patchAnswers merges only the
+  // intended fields into the live answers — it never ships an obsolete full snapshot).
+  const generateDirections = useCallback(async (): Promise<DirectionGenerateOutcome> => {
+    cancelDebounce();
+    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/directions`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem_statement: answersRef.current.problem ?? "", locale }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { suggestions?: unknown };
+        if (Array.isArray(data.suggestions)) {
+          return { ok: true, suggestions: data.suggestions as DirectionSuggestionView[] };
+        }
+        return { ok: false, code: "generic" };
+      }
+      if (res.status === 429) return { ok: false, code: "rate_limit" };
+      if (res.status === 409) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, code: body.error === "problem_mismatch" ? "problem_mismatch" : "generic" };
+      }
+      return { ok: false, code: "generic" };
+    } catch {
+      return { ok: false, code: "generic" };
+    }
+  }, [saver, cancelDebounce, draftId, locale]);
+
+  const applyDirection = useCallback(
+    (values: AppliedDirection) => {
+      patchAnswers(
+        {
+          capabilityCandidate: values.capabilityCandidate,
+          observableBehavior: values.observableBehavior,
+          successEvidence: values.successEvidence,
+        },
+        true,
+      );
+    },
+    [patchAnswers],
+  );
+
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
   if (restore === "loading") {
@@ -245,6 +300,17 @@ export function ModuleBuilderShell({
       t={t}
     />
   );
+  // The assistive Direction Copilot lives under the problem step. It appears only once
+  // the problem meets the existing minimum validity, and never blocks manual progression.
+  const copilotNode = (
+    <DirectionCopilot
+      problemStatement={answers.problem ?? ""}
+      ready={stepBlocker(1, answers) === null}
+      onGenerate={generateDirections}
+      onApply={applyDirection}
+      t={t.copilot}
+    />
+  );
 
   return (
     <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
@@ -268,7 +334,7 @@ export function ModuleBuilderShell({
           />
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode)}</div>
+        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode)}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -417,13 +483,14 @@ function BlockerLine({ show, text }: { show: boolean; text: string }) {
   return <p className="text-xs leading-5 text-amber-300/80">{text}</p>;
 }
 
-function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, filesNode: React.ReactNode) {
+function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, filesNode: React.ReactNode, copilotNode: React.ReactNode) {
   switch (step) {
     case 1:
       return (
         <StepFrame q={t.s1Q} help={t.s1Help}>
           {textArea(a.problem ?? "", (v) => patch({ problem: v }, false), t.s1Placeholder, t.s1Q)}
           <BlockerLine show={blocker === "problem_required"} text={t.s1Blocker} />
+          {copilotNode}
         </StepFrame>
       );
     case 2: {
@@ -459,6 +526,22 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
       const vague = observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague";
       return (
         <StepFrame q={t.s3Q} help={t.s3Help}>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="capability-candidate" className="text-xs uppercase tracking-[0.12em] text-white/45">
+              {t.s3CapabilityLabel}
+            </label>
+            <input
+              id="capability-candidate"
+              type="text"
+              value={a.capabilityCandidate ?? ""}
+              onChange={(e) => patch({ capabilityCandidate: e.target.value }, false)}
+              placeholder={t.s3CapabilityPlaceholder}
+              aria-label={t.s3CapabilityLabel}
+              maxLength={CAPABILITY_CANDIDATE_MAX}
+              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+            />
+            <p className="text-xs leading-5 text-white/40">{t.s3CapabilityHelp}</p>
+          </div>
           {textArea(a.observableBehavior ?? "", (v) => patch({ observableBehavior: v }, false), t.s3Placeholder, t.s3Q)}
           {vague ? <p className="text-xs leading-5 text-white/45">{t.s3VagueGuidance}</p> : null}
           <BlockerLine show={blocker === "behavior_required"} text={t.s3Blocker} />
@@ -649,6 +732,7 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
   return [
     { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1 },
     { label: t.reviewWho, value: audience, step: 2 },
+    { label: t.reviewCapability, value: a.capabilityCandidate?.trim() ? a.capabilityCandidate : null, step: 3 },
     { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, note: behaviorNote },
     { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4 },
     { label: t.reviewLearning, value: learning, step: 5 },

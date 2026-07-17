@@ -4,6 +4,37 @@
 
 import type { Locale } from "./copy";
 
+/** Direction Copilot (Slice 2.4A) — product-tone copy for the assistive suggestion
+ *  flow on the problem step. Neutral product language, NOT the Dr. Chi mentor voice. */
+export type DirectionCopilotCopy = {
+  trigger: string;
+  loading: string;
+  resultsHeading: string;
+  draftBadge: string;
+  labelTitle: string;
+  labelCapability: string;
+  labelWhy: string;
+  labelBehavior: string;
+  labelEvidence: string;
+  labelAssumption: string;
+  useThis: string;
+  describeAnother: string;
+  reviewHeading: string;
+  reviewLead: string;
+  reviewApplies: string;
+  backToDirections: string;
+  apply: string;
+  applied: string;
+  appliedDismiss: string;
+  failTitle: string;
+  tryAgain: string;
+  continueWithout: string;
+  rateLimited: string;
+  staleTitle: string;
+  staleHint: string;
+  generateAgain: string;
+};
+
 export type ModuleBuilderCopy = {
   // entry
   entryEyebrow: string;
@@ -62,6 +93,10 @@ export type ModuleBuilderCopy = {
   s3Placeholder: string;
   s3Blocker: string;
   s3VagueGuidance: string;
+  // step 3 capability (optional; applied by the Direction Copilot, editable here)
+  s3CapabilityLabel: string;
+  s3CapabilityHelp: string;
+  s3CapabilityPlaceholder: string;
   // step 4 evidence
   s4Q: string;
   s4Help: string;
@@ -143,6 +178,7 @@ export type ModuleBuilderCopy = {
   needsAttention: (n: number) => string;
   reviewChange: string;
   reviewWho: string;
+  reviewCapability: string;
   reviewBehavior: string;
   reviewEvidence: string;
   reviewLearning: string;
@@ -168,6 +204,8 @@ export type ModuleBuilderCopy = {
   publishing: string;
   publishError: string;
   publishNotReady: string;
+  // Direction Copilot (Slice 2.4A)
+  copilot: DirectionCopilotCopy;
 };
 
 const arenaFollowLabel = (
@@ -227,6 +265,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s3Placeholder: "e.g. The charge nurse reads the dosage back at every handoff before signing off.",
     s3Blocker: "Describe the new action.",
     s3VagueGuidance: "This sounds general. Try naming something someone could actually see or hear.",
+    s3CapabilityLabel: "Capability (optional)",
+    s3CapabilityHelp: "The ability this training builds. You can fill this from a suggested direction, or write your own.",
+    s3CapabilityPlaceholder: "e.g. Accurate shift handoff",
     s4Q: "After the training, what would show that people are doing this differently?",
     s4Help: "Describe something you could see, hear, record, or have someone confirm in real work.",
     s4Placeholder: "e.g. The read-back is noted on the handoff record.",
@@ -300,6 +341,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     needsAttention: (n) => `Needs attention — ${n}`,
     reviewChange: "What needs to change",
     reviewWho: "Who it’s for",
+    reviewCapability: "Capability",
     reviewBehavior: "What people should do differently",
     reviewEvidence: "How you’d recognize success",
     reviewLearning: "Learning approach",
@@ -322,6 +364,34 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishing: "Creating session…",
     publishError: "Couldn’t create the session. Please try once more.",
     publishNotReady: "Complete the highlighted sections first.",
+    copilot: {
+      trigger: "Show me three directions",
+      loading: "Finding three possible directions…",
+      resultsHeading: "THREE POSSIBLE DIRECTIONS",
+      draftBadge: "Suggested direction",
+      labelTitle: "Direction",
+      labelCapability: "Capability",
+      labelWhy: "Why it fits",
+      labelBehavior: "Draft behavior",
+      labelEvidence: "Evidence to look for",
+      labelAssumption: "Assumption",
+      useThis: "Use this direction",
+      describeAnother: "Describe another direction",
+      reviewHeading: "REVIEW THIS DIRECTION",
+      reviewLead: "Edit anything you like. Nothing changes in your draft until you apply it.",
+      reviewApplies: "This will be added to your draft:",
+      backToDirections: "Back to three directions",
+      apply: "Apply this direction",
+      applied: "Added to your draft — you can still edit every part.",
+      appliedDismiss: "Done",
+      failTitle: "We couldn’t generate directions right now.",
+      tryAgain: "Try again",
+      continueWithout: "Continue without suggestions",
+      rateLimited: "Please wait a moment, then try again.",
+      staleTitle: "Your problem changed.",
+      staleHint: "Generate directions again to match it.",
+      generateAgain: "Generate again",
+    },
   },
   ko: {
     entryEyebrow: "훈련 빌더",
@@ -372,6 +442,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s3Placeholder: "예: 담당 간호사가 인수인계마다 서명 전 투약량을 복창합니다.",
     s3Blocker: "새로운 행동을 설명해 주세요.",
     s3VagueGuidance: "다소 일반적입니다. 누군가 실제로 보거나 들을 수 있는 것을 적어 보세요.",
+    s3CapabilityLabel: "역량 (선택)",
+    s3CapabilityHelp: "이 훈련이 길러 주는 능력입니다. 제안된 방향에서 채우거나 직접 작성할 수 있습니다.",
+    s3CapabilityPlaceholder: "예: 정확한 교대 인수인계",
     s4Q: "훈련 후, 사람들이 이것을 다르게 하고 있다는 것을 무엇으로 알 수 있나요?",
     s4Help: "실제 업무에서 보거나, 듣거나, 기록하거나, 누군가 확인해 줄 수 있는 것을 설명하세요.",
     s4Placeholder: "예: 복창이 인수인계 기록에 표시됩니다.",
@@ -445,6 +518,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     needsAttention: (n) => `확인 필요 — ${n}`,
     reviewChange: "무엇을 바꿔야 하는가",
     reviewWho: "누구를 위한 것인가",
+    reviewCapability: "역량",
     reviewBehavior: "무엇을 다르게 해야 하는가",
     reviewEvidence: "성공을 어떻게 알아볼까",
     reviewLearning: "학습 방식",
@@ -467,6 +541,34 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishing: "세션을 만드는 중…",
     publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",
     publishNotReady: "먼저 표시된 항목을 완성하세요.",
+    copilot: {
+      trigger: "세 가지 방향 보기",
+      loading: "가능한 세 가지 방향을 찾는 중…",
+      resultsHeading: "가능한 세 가지 방향",
+      draftBadge: "제안된 방향",
+      labelTitle: "방향",
+      labelCapability: "역량",
+      labelWhy: "적합한 이유",
+      labelBehavior: "행동 초안",
+      labelEvidence: "확인할 증거",
+      labelAssumption: "가정",
+      useThis: "이 방향 사용",
+      describeAnother: "다른 방향 직접 쓰기",
+      reviewHeading: "이 방향 검토",
+      reviewLead: "원하는 대로 수정하세요. 적용하기 전까지 초안은 바뀌지 않습니다.",
+      reviewApplies: "초안에 추가될 내용:",
+      backToDirections: "세 가지 방향으로 돌아가기",
+      apply: "이 방향 적용",
+      applied: "초안에 추가되었습니다 — 모든 부분을 계속 수정할 수 있습니다.",
+      appliedDismiss: "완료",
+      failTitle: "지금은 방향을 생성하지 못했습니다.",
+      tryAgain: "다시 시도",
+      continueWithout: "제안 없이 계속하기",
+      rateLimited: "잠시 후 다시 시도해 주세요.",
+      staleTitle: "문제가 변경되었습니다.",
+      staleHint: "일치하도록 방향을 다시 생성하세요.",
+      generateAgain: "다시 생성",
+    },
   },
 };
 

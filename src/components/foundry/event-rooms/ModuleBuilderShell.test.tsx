@@ -45,7 +45,10 @@ const jsonRes = (body: unknown, status = 200) => ({
  * POST/DELETE /assets attach/remove files. `assetReason` forces per-upload failure
  * with a specific reason (e.g. unsupported_file_type).
  */
-function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string; publishError?: boolean } = {}) {
+function mockDraftServer(
+  initial: Partial<Draft>,
+  opts: { assetReason?: string; publishError?: boolean; directions?: { status?: number; suggestions?: unknown[] } } = {},
+) {
   const draft: Draft = {
     id: "d-1",
     status: "draft",
@@ -80,6 +83,12 @@ function mockDraftServer(initial: Partial<Draft>, opts: { assetReason?: string; 
         draft.assets = draft.assets.filter((a) => a.id !== id);
         return jsonRes({ removed: true });
       }
+    }
+    if (url.includes("/directions")) {
+      if (opts.directions?.status && opts.directions.status >= 400) {
+        return jsonRes({ error: "generation_failed" }, opts.directions.status);
+      }
+      return jsonRes({ suggestions: opts.directions?.suggestions ?? [], generation_version: "direction_copilot_v1" });
     }
     if (method === "PATCH") {
       const body = JSON.parse(o?.body ?? "{}");
@@ -425,5 +434,70 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     fireEvent.click(await screen.findByText("Approve & create session"));
     expect(await screen.findByText(/Couldn’t create the session/)).toBeTruthy();
     expect(onExit).not.toHaveBeenCalled();
+  });
+});
+
+describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", () => {
+  const SUGGESTIONS = [
+    { id: "direction_1", title: "Accurate handoff", capability_candidate: "Shift Handoff", rationale: "why", observable_behavior: "At handoff, the nurse names the owner and next check time.", success_evidence_hint: "The handoff record lists the owner and follow-up.", important_assumption: null },
+    { id: "direction_2", title: "Order read-back", capability_candidate: "Order Verification", rationale: "why", observable_behavior: "Before acting, the staff repeats the dose back.", success_evidence_hint: "The chart shows a confirmation entry.", important_assumption: null },
+    { id: "direction_3", title: "Escalate early", capability_candidate: "Escalation", rationale: "why", observable_behavior: "When unsure, the employee flags it and logs the time.", success_evidence_hint: "A supervisor confirms it was raised.", important_assumption: null },
+  ];
+
+  it("applying a direction writes capability/behavior/evidence via the canonical PATCH, preserves the problem, and restores after reload", async () => {
+    const srv = mockDraftServer(
+      { current_step: 1, answers: { problem: "Handoffs miss the double-check." } },
+      { directions: { suggestions: SUGGESTIONS } },
+    );
+    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What keeps going wrong?");
+
+    // Generate → results (no canonical mutation yet).
+    fireEvent.click(await screen.findByTestId("direction-copilot-trigger"));
+    await screen.findByTestId("direction-copilot-results");
+    expect(srv.patches.some((p) => p.answers?.capabilityCandidate)).toBe(false);
+
+    // Use + apply the first direction.
+    fireEvent.click(screen.getAllByTestId("direction-card-use")[0]);
+    fireEvent.click(await screen.findByTestId("direction-copilot-apply"));
+
+    await waitFor(() =>
+      expect(
+        srv.patches.some(
+          (p) =>
+            p.answers?.capabilityCandidate === "Shift Handoff" &&
+            typeof p.answers?.observableBehavior === "string" &&
+            typeof p.answers?.successEvidence === "string",
+        ),
+      ).toBe(true),
+    );
+    // The Host-authored problem is preserved on the server draft.
+    expect(srv.draft.answers.problem).toBe("Handoffs miss the double-check.");
+    expect(await screen.findByTestId("direction-copilot-applied")).toBeTruthy();
+
+    // Reload at the behavior step → the applied capability restores and is editable.
+    srv.draft.current_step = 3;
+    unmount();
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    const capInput = (await screen.findByLabelText("Capability (optional)")) as HTMLInputElement;
+    expect(capInput.value).toBe("Shift Handoff");
+  });
+
+  it("a generation failure keeps the problem and the manual path intact", async () => {
+    const srv = mockDraftServer(
+      { current_step: 1, answers: { problem: "Handoffs miss the double-check." } },
+      { directions: { status: 502 } },
+    );
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What keeps going wrong?");
+    fireEvent.click(await screen.findByTestId("direction-copilot-trigger"));
+    await screen.findByTestId("direction-copilot-error");
+    // Manual Builder untouched: problem preserved, no canonical copilot write.
+    const ta = screen.getByLabelText("What keeps going wrong?") as HTMLTextAreaElement;
+    expect(ta.value).toBe("Handoffs miss the double-check.");
+    expect(srv.patches.some((p) => p.answers?.capabilityCandidate)).toBe(false);
+    // Continue without suggestions returns to the trigger.
+    fireEvent.click(screen.getByText("Continue without suggestions"));
+    expect(screen.getByTestId("direction-copilot-trigger")).toBeTruthy();
   });
 });

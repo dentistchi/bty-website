@@ -57,6 +57,10 @@ export const AUDIENCE_DETAIL_MAX = 120;
 // The participant-facing completion question. Bounded to match the event content
 // validator (FOUNDRY_COMPLETION_PROMPT_MAX = 300) so a saved value always publishes.
 export const COMPLETION_PROMPT_MAX = 300;
+// Direction Copilot (Slice 2.4A) capability candidate — an advisory draft field the
+// Host reviews/edits/confirms. Bounded to the Copilot suggestion cap so a confirmed
+// value always round-trips through this validator. Stored in the `answers` jsonb.
+export const CAPABILITY_CANDIDATE_MAX = 80;
 // A "meaningful" free-text answer for the client Next-guard (guidance only).
 const MEANINGFUL_MIN = 3;
 
@@ -77,6 +81,12 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   learningNeeds?: LearningNeed[];
   materialIntent?: MaterialIntent;
   materialText?: string;
+  /**
+   * Direction Copilot (Slice 2.4A) — the capability the training builds. Advisory,
+   * Host-reviewed/edited/confirmed; applied only after explicit confirmation. Has no
+   * dedicated approval gate (optional). Lives in the `answers` jsonb; no migration.
+   */
+  capabilityCandidate?: string;
   /**
    * The participant-facing completion question shown after the material. Host-
    * authored (prefilled with a deterministic suggestion in the UI, fully editable).
@@ -217,6 +227,11 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
 
       const behavior = checkText(a.observableBehavior, BEHAVIOR_MAX, "behavior_too_long", "behavior_invalid", errors);
       if (behavior !== undefined) clean.observableBehavior = behavior;
+
+      const capabilityCandidate = checkText(
+        a.capabilityCandidate, CAPABILITY_CANDIDATE_MAX, "capability_candidate_too_long", "capability_candidate_invalid", errors,
+      );
+      if (capabilityCandidate !== undefined) clean.capabilityCandidate = capabilityCandidate;
 
       const evidence = checkText(a.successEvidence, EVIDENCE_MAX, "evidence_too_long", "evidence_invalid", errors);
       if (evidence !== undefined) clean.successEvidence = evidence;
