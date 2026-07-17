@@ -85,6 +85,23 @@ export function ArenaPracticeFlow({
   const [testing, setTesting] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "publishing" | "published" | "stale" | "error">("idle");
   const [publishedPracticeId, setPublishedPracticeId] = useState<string | null>(null);
+  // The published practice id for the CURRENT saved revision, if already live (so a
+  // host who re-opens an already-published draft immediately sees + can open it).
+  const [livePracticeId, setLivePracticeId] = useState<string | null>(null);
+
+  const refreshLiveStatus = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(id)}/publish`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { practice?: { id?: string } | null };
+      setLivePracticeId(data.practice?.id ?? null);
+    } catch {
+      /* best-effort */
+    }
+  }, []);
 
   // ---- initial load: resume an existing draft, else show the source summary ----
   useEffect(() => {
@@ -127,6 +144,7 @@ export function ArenaPracticeFlow({
                 setGenSource(d.draft.generation_source);
                 setRevision(d.draft.revision);
                 setDirty(false);
+                void refreshLiveStatus(d.draft.id); // already published at this revision?
                 setPhase("editor");
                 return;
               }
@@ -193,6 +211,7 @@ export function ArenaPracticeFlow({
       setRevision(data.draft.revision);
       setDirty(false);
       setPublishState("idle");
+      setLivePracticeId(null);
       setWarnings(data.warnings ?? []);
       setView("edit");
       setSaveState("idle");
@@ -226,6 +245,7 @@ export function ArenaPracticeFlow({
       if (typeof data.draft?.revision === "number") setRevision(data.draft.revision);
       setDirty(false);
       setPublishState("idle");
+      setLivePracticeId(null); // a saved (new) revision is not yet published
       setSaveState("saved");
     } catch {
       setSaveState("error");
@@ -247,7 +267,9 @@ export function ArenaPracticeFlow({
       if (res.ok) {
         // Success OR idempotently-resolved (both 200/201) carry the practice id.
         const okBody = (await res.json().catch(() => ({}))) as { practice?: { id?: string } };
-        setPublishedPracticeId(okBody.practice?.id ?? null);
+        const id = okBody.practice?.id ?? null;
+        setPublishedPracticeId(id);
+        setLivePracticeId(id); // this revision is now live
         setPublishState("published");
         return;
       }
@@ -278,6 +300,7 @@ export function ArenaPracticeFlow({
           if (typeof data.draft.revision === "number") setRevision(data.draft.revision);
           setDirty(false);
           setPublishState("idle");
+          setLivePracticeId(null);
           setWarnings(data.warnings ?? []);
           setSaveState("idle");
           setView("edit");
@@ -296,6 +319,7 @@ export function ArenaPracticeFlow({
     setSaveState("idle");
     setDirty(true);
     setPublishState("idle");
+    setLivePracticeId(null); // editing diverges from any published revision
   }, []);
   const setChoiceLabel = useCallback(
     (group: "primary" | "tradeoff" | "action", index: number, label: string) => {
@@ -487,8 +511,12 @@ export function ArenaPracticeFlow({
         >
           {t.openInArena}
         </button>
-        <button type="button" onClick={onBack} className="pt-1 text-sm text-white/50 hover:text-white/80">
-          {t.returnToTraining}
+        <button
+          type="button"
+          onClick={() => setPublishState("idle")}
+          className="pt-1 text-sm text-white/50 hover:text-white/80"
+        >
+          {t.backToEditor}
         </button>
       </div>,
     );
@@ -516,6 +544,21 @@ export function ArenaPracticeFlow({
           <p className="rounded-lg border border-amber-400/30 bg-amber-400/[0.06] px-3 py-2 text-xs leading-5 text-amber-200/90">
             {t.sensitiveWarning}
           </p>
+        ) : null}
+
+        {/* Already published at this revision → the host is never stuck; they see it
+            is live and can open it directly. */}
+        {livePracticeId && !dirty ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
+            <span className="min-w-0 text-sm text-[#C9A66B]">✓ {t.liveBanner}</span>
+            <button
+              type="button"
+              onClick={() => router.push(`/${loc}/bty-arena/practice/${livePracticeId}`)}
+              className="shrink-0 text-sm font-semibold text-[#C9A66B] underline"
+            >
+              {t.openInArena}
+            </button>
+          </div>
         ) : null}
 
         {view === "preview" ? (

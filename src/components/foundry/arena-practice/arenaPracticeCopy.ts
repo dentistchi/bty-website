@@ -95,6 +95,8 @@ export type ArenaPracticeCopy = {
   publishedBody: string;
   openInArena: string;
   returnToTraining: string;
+  backToEditor: string;
+  liveBanner: string;
   saveBeforeTesting: string;
 
   loadError: string;
@@ -200,6 +202,8 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishedBody: "Learners can now find this practice in the Arena tab.",
     openInArena: "Open in Arena",
     returnToTraining: "Return to training",
+    backToEditor: "Back to editor",
+    liveBanner: "This version is published to Arena.",
     saveBeforeTesting: "Save this draft before testing",
 
     loadError: "Couldn't load this training. Go back and retry.",
@@ -298,6 +302,8 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishedBody: "이제 학습자가 Arena 탭에서 이 연습을 찾을 수 있습니다.",
     openInArena: "Arena에서 열기",
     returnToTraining: "교육으로 돌아가기",
+    backToEditor: "편집기로 돌아가기",
+    liveBanner: "이 버전이 Arena에 게시되어 있습니다.",
     saveBeforeTesting: "테스트하기 전에 이 초안을 저장하세요",
 
     loadError: "이 교육을 불러오지 못했습니다. 뒤로 가서 다시 시도하세요.",

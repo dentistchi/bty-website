@@ -112,6 +112,39 @@ export async function publishPractice(
   return { ok: true, value: { row: data, alreadyPublished: false, warnings: publishable.warnings } };
 }
 
+/** Whether the host has ANY published practice from a given source event (for the control-room label). */
+export async function hasPublishedForEvent(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  eventId: string,
+): Promise<boolean> {
+  const { data } = await admin
+    .from("foundry_published_arena_practices")
+    .select("id")
+    .eq("published_by", ownerUserId)
+    .eq("source_event_id", eventId)
+    .eq("status", "published")
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+  return Boolean(data);
+}
+
+/**
+ * The published practice for the draft's CURRENT revision, if any (else null).
+ * Lets the editor show an "already published — Open in Arena" state so a host who
+ * re-opens an already-published revision is never stuck on an unchanged Publish tap.
+ */
+export async function getPublishedForCurrentRevision(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+): Promise<ClientPublishedPractice | null> {
+  const draft = await getOwnerArenaDraft(admin, ownerUserId, draftId);
+  if (!draft) return null;
+  const existing = await findExisting(admin, draftId, draft.revision);
+  return existing ? toClientPublishedPractice(existing) : null;
+}
+
 /** List the published versions a host has produced from a given draft (newest first). */
 export async function listPublishedForDraft(
   admin: SupabaseClient,

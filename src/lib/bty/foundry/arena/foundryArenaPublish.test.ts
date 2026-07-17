@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { publishPractice } from "./foundryArenaPublishService";
+import {
+  getPublishedForCurrentRevision,
+  hasPublishedForEvent,
+  publishPractice,
+} from "./foundryArenaPublishService";
 import {
   canAccessPractice,
   completePracticeRun,
@@ -199,6 +203,25 @@ describe("publishPractice — idempotency, lineage, stale, validation, auth", ()
     const r2 = await publishPractice(admin, OWNER, "draft-1", 3);
     expect(r2.ok).toBe(true);
     expect(tables.foundry_published_arena_practices.length).toBe(2);
+  });
+
+  it("getPublishedForCurrentRevision reflects whether THIS revision is live (already-published editor state)", async () => {
+    const { admin, tables } = makeFakeAdmin({ drafts: [seedDraft(2)], events: [{ id: "evt-1", title: "X" }] });
+    expect(await getPublishedForCurrentRevision(admin, OWNER, "draft-1")).toBeNull();
+    await publishPractice(admin, OWNER, "draft-1", 2);
+    const live = await getPublishedForCurrentRevision(admin, OWNER, "draft-1");
+    expect(live?.source_draft_revision).toBe(2);
+    // editing to a new revision → this revision is no longer the published one
+    tables.foundry_arena_scenario_drafts[0].revision = 3;
+    expect(await getPublishedForCurrentRevision(admin, OWNER, "draft-1")).toBeNull();
+  });
+
+  it("hasPublishedForEvent powers the control-room Create/Continue/Manage label", async () => {
+    const { admin } = makeFakeAdmin({ drafts: [seedDraft(2)], events: [{ id: "evt-1", title: "X" }] });
+    expect(await hasPublishedForEvent(admin, OWNER, "evt-1")).toBe(false);
+    await publishPractice(admin, OWNER, "draft-1", 2);
+    expect(await hasPublishedForEvent(admin, OWNER, "evt-1")).toBe(true);
+    expect(await hasPublishedForEvent(admin, OWNER, "evt-other")).toBe(false);
   });
 });
 

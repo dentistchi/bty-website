@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { LangSwitch } from "@/components/LangSwitch";
 import HubTopNav from "@/components/bty/HubTopNav";
 import BottomNav from "@/components/bty/navigation/BottomNav";
+import { ArenaPracticeDiscovery } from "@/components/bty-arena/ArenaPracticeDiscovery";
 
 /** DESIGN_FIRST_IMPRESSION_BRIEF §4 B: 제목·로고용 포인트 폰트 (Arena 영역만)
  * FONT_VENDOR_A: self-hosted latin-subset Noto Sans KR (was the Google font loader).
@@ -64,7 +65,12 @@ export function ArenaLayoutShell({ children, locale }: { children: ReactNode; lo
       </header>
 
       {/* pb-28 on mobile keeps content clear of the fixed BottomNav; desktop keeps py-8. */}
-      <div className="max-w-6xl mx-auto px-4 py-8 pb-28 md:pb-8">{children}</div>
+      <div className="max-w-6xl mx-auto px-4 py-8 pb-28 md:pb-8">
+        {/* One shared Arena Practice discovery surface, ABOVE the page's
+            state-specific early returns (lobby-gated inside the component). */}
+        <ArenaPracticeDiscovery locale={locale} />
+        {children}
+      </div>
 
       {/* Mobile/native primary nav — the app floor. Desktop hides it (top nav owns nav there). */}
       {locale ? <BottomNav locale={locale} className="md:hidden" /> : null}

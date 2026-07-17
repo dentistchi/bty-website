@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
-import { publishPractice, toClientPublishedPractice } from "@/lib/bty/foundry/arena/foundryArenaPublishService";
+import {
+  getPublishedForCurrentRevision,
+  publishPractice,
+  toClientPublishedPractice,
+} from "@/lib/bty/foundry/arena/foundryArenaPublishService";
 
 export const runtime = "nodejs";
 
@@ -20,6 +24,16 @@ function statusForReason(reason: string): number {
   if (reason === "stale_revision") return 409;
   if (reason === "invalid_structure") return 422;
   return 400;
+}
+
+/** GET — is the draft's CURRENT revision already published? Returns { practice|null }. */
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireManager(req);
+  if (!gate.ok) return gate.response;
+  const { user, admin, base } = gate.ctx;
+  const { id } = await ctx.params;
+  const practice = await getPublishedForCurrentRevision(admin, user.id, id);
+  return managerJson(base, req, { practice });
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

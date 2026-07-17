@@ -5,6 +5,7 @@ import {
   listOwnerArenaDraftsForEvent,
   toClientArenaDraft,
 } from "@/lib/bty/foundry/arena/foundryArenaDraftService";
+import { hasPublishedForEvent } from "@/lib/bty/foundry/arena/foundryArenaPublishService";
 import { parseGuidedAnswers } from "@/domain/foundry/arena-draft/validate";
 
 export const runtime = "nodejs";
@@ -68,5 +69,6 @@ export async function GET(req: NextRequest) {
   if (!eventId) return managerJson(base, req, { error: "event_id_required" }, 400);
 
   const drafts = await listOwnerArenaDraftsForEvent(admin, user.id, eventId);
-  return managerJson(base, req, { drafts });
+  const hasPublished = await hasPublishedForEvent(admin, user.id, eventId);
+  return managerJson(base, req, { drafts, has_published: hasPublished });
 }

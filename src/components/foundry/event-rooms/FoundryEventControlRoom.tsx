@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Locale, EventRoomsCopy } from "./copy";
 import { EVENT_ROOMS_COPY } from "./copy";
 import type { ManagerSnapshot } from "./types";
@@ -39,6 +39,33 @@ export function FoundryEventControlRoom({
 
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Draft-entry label clarity (3.0B.2): Create → Continue (unpublished draft exists)
+  // → Manage (a published practice exists). The action still opens the same editor.
+  const [arenaLabel, setArenaLabel] = useState<string>(t.createArenaPractice);
+  useEffect(() => {
+    if (!onCreateArenaPractice) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/bty/foundry/arena-drafts?eventId=${encodeURIComponent(eventId)}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!alive || !res.ok) return;
+        const data = (await res.json()) as { drafts?: unknown[]; has_published?: boolean };
+        if (!alive) return;
+        if (data.has_published) setArenaLabel(t.manageArenaPractice);
+        else if (Array.isArray(data.drafts) && data.drafts.length > 0) setArenaLabel(t.continueArenaPractice);
+        else setArenaLabel(t.createArenaPractice);
+      } catch {
+        /* keep default label */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [eventId, onCreateArenaPractice, t.createArenaPractice, t.continueArenaPractice, t.manageArenaPractice]);
 
   const event = snapshot?.event ?? null;
   const participants = snapshot?.participants ?? [];
@@ -136,7 +163,7 @@ export function FoundryEventControlRoom({
               onClick={onCreateArenaPractice}
               className="self-start rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-3 text-sm font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/[0.14]"
             >
-              {t.createArenaPractice} →
+              {arenaLabel} →
             </button>
           ) : null}
 
