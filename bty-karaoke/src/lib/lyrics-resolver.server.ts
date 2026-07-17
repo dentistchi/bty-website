@@ -13,6 +13,7 @@
 // the queue, playback, NOW SINGING, NEXT, or the QR.
 
 import { karaokeDb } from './supabase.server';
+import { optionalEnv } from './env.server';
 import {
   normalizeSongForLyrics,
   pickBestLyricsCandidate,
@@ -351,14 +352,24 @@ export async function resolvePlayingLyrics(
 }
 
 /**
- * Fire the auto-resolve in the BACKGROUND, independent of any client. Called right
- * after a request becomes `playing` (the start / pass-turn / play routes) so lyrics
- * resolve server-side — a stale iPad Display that never sends ?lyrics=1 still gets
- * them, because the resolved lyrics ride the base display response. Uses Cloudflare's
- * ctx.waitUntil so the HTTP response returns immediately (no latency on the Admin's
- * Start button); falls back to a detached promise off the Worker runtime.
+ * Automatic on-stage lyric resolution is an INTERNAL CAPABILITY, default OFF (V1.4).
+ * The iPad Display no longer renders lyrics — the TV shows them via the YouTube
+ * handoff — so firing LRCLIB on every song start would be wasted provider load. The
+ * whole resolver, the DB fields, the manual-override API, and the tests are kept
+ * intact; flip `KARAOKE_AUTO_LYRICS=1` (server env) to re-enable background resolve
+ * for a future Admin/settings surface. Manual Admin lyrics never went through here.
+ */
+export function autoLyricsEnabled(): boolean {
+  return optionalEnv('KARAOKE_AUTO_LYRICS') === '1';
+}
+
+/**
+ * Fire the auto-resolve in the BACKGROUND (ctx.waitUntil), independent of any client.
+ * No-ops when the capability is off (the default) so no provider call is made. When
+ * on, it resolves server-side right after a song becomes `playing`.
  */
 export async function scheduleLyricsResolve(roomId: string, requestId: string): Promise<void> {
+  if (!autoLyricsEnabled()) return; // V1.4: Display shows no lyrics → no provider call
   const run = () => resolvePlayingLyrics(roomId, requestId).catch(() => undefined);
   try {
     const mod = await import('@opennextjs/cloudflare');

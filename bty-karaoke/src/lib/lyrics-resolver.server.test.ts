@@ -166,3 +166,24 @@ describe('resolvePlayingLyrics — manual override precedence', () => {
     expect(fetchCandidates).not.toHaveBeenCalled();
   });
 });
+
+describe('V1.4 — automatic on-stage lyrics gated OFF by default', () => {
+  it('autoLyricsEnabled() is false without KARAOKE_AUTO_LYRICS', async () => {
+    const { autoLyricsEnabled } = await import('./lyrics-resolver.server');
+    expect(autoLyricsEnabled()).toBe(false);
+  });
+
+  it('scheduleLyricsResolve is a no-op when off — never reaches the DB/provider', async () => {
+    const { scheduleLyricsResolve } = await import('./lyrics-resolver.server');
+    dbState.row = { youtube_title: 'x', youtube_channel_title: 'y', search_query: null, lyrics_source: null, lyrics_status: 'unavailable', lyrics_resolved_at: null };
+    // Off by default → returns immediately without invoking resolvePlayingLyrics.
+    await expect(scheduleLyricsResolve('room-1', 'req-1')).resolves.toBeUndefined();
+  });
+
+  it('the resolver, manual override, and API infrastructure are preserved (not deleted)', async () => {
+    const mod = await import('./lyrics-resolver.server');
+    expect(typeof mod.resolvePlayingLyrics).toBe('function');
+    expect(typeof mod.resolveLyricsFor).toBe('function');
+    expect(typeof mod.fetchLrclibCandidates).toBe('function');
+  });
+});

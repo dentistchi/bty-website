@@ -34,8 +34,11 @@ describe('Lyrics V1.1 — discoverability', () => {
 });
 
 describe('Lyrics V1.1 — automatic resolver wiring', () => {
-  it('the Display opts into automatic resolution via ?lyrics=1', () => {
-    expect(displayClient).toContain('display?lyrics=1');
+  it('V1.4: the Display no longer opts into automatic resolution (?lyrics=1 removed)', () => {
+    // The iPad shows no lyrics (the TV does), so it triggers no provider resolution.
+    // The resolver + routes remain, gated off by default (autoLyricsEnabled).
+    const code = displayClient.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toContain('?lyrics=1');
   });
 
   it('the display route schedules a non-blocking resolve only when opted in AND not already available', () => {

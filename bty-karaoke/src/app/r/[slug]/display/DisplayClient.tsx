@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState, DisplayRequest } from '@/domain/display';
-import type { LyricsView } from '@/domain/lyrics';
 
 interface Props {
   slug: string;
@@ -12,10 +11,22 @@ interface Props {
 const POLL_MS = 2000; // iPad Display refreshes faster than the guest phones.
 const CELEBRATE_MS = 2600; // brief "그 사람의 무대였습니다" applause on song completion.
 
-// JOY STAGE (V1.3) — a warm, BTY-ARENA-quality living stage by the microphone. The
-// singer is the protagonist; YouTube metadata is secondary and normalized. Read-only,
-// credential-free, no video: automatic lyrics are the dominant surface, with a
-// graceful artwork fallback when none are found. Not a dashboard, not karaoke neon.
+// Two approved warm closing lines, rotated deterministically (never AI-generated).
+const CELEBRATE_LINES = ['함께해 주셔서 고마워요', '오늘도 멋진 무대였어요'] as const;
+
+// A stable artwork URL from the request's video id (hqdefault always exists). Used
+// as a CSS background so a 404 degrades to the ambient gradient — never a broken
+// image icon. Falls back to the stored thumbnail, then null (pure gradient stage).
+function artUrl(r: DisplayRequest): string | null {
+  if (r.videoId) return `https://i.ytimg.com/vi/${encodeURIComponent(r.videoId)}/hqdefault.jpg`;
+  return r.thumbnailUrl ?? null;
+}
+
+// LIVING JOY STAGE (V1.4) — the iPad by the microphone is NOT a lyrics screen (the
+// TV shows lyrics via the YouTube handoff). It is a warm, BTY-ARENA-quality stage
+// that makes the room FEEL the moment: anticipation before a song, presence while
+// someone sings, shared joy when they finish. Singer-first; artwork is ambient, not
+// a card. Read-only, credential-free, no video, no lyrics surface.
 export default function DisplayClient({ slug, roomName }: Props) {
   const [state, setState] = useState<DisplayState | null>(null);
   const [qr, setQr] = useState<{ qrSvg: string; url: string } | null>(null);
@@ -24,9 +35,9 @@ export default function DisplayClient({ slug, roomName }: Props) {
   const poll = useCallback(async () => {
     const n = ++seq.current;
     try {
-      // `?lyrics=1` opts THIS Display into automatic server-side lyrics resolution
-      // for the playing song (guest polls omit it and stay lean).
-      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display?lyrics=1`, { cache: 'no-store' });
+      // No `?lyrics=1`: the Display renders no lyrics (V1.4), so it triggers no
+      // provider resolution. Automatic lyrics remain an internal, default-off backend.
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as DisplayState;
       if (n !== seq.current) return;
@@ -112,13 +123,16 @@ export default function DisplayClient({ slug, roomName }: Props) {
   // of `playing`. Client-only, no engine change; auto-dismisses (never blocks).
   const prevPlaying = useRef<{ id: string; name: string } | null>(null);
   const celebrateTimer = useRef<number | null>(null);
-  const [celebrating, setCelebrating] = useState<{ name: string } | null>(null);
+  const celebrateCount = useRef(0);
+  const [celebrating, setCelebrating] = useState<{ name: string; line: string } | null>(null);
   const playingId = playing?.id ?? null;
   useEffect(() => {
     const cur = playing ? { id: playing.id, name: playing.guestName } : null;
     const prev = prevPlaying.current;
     if (prev && (!cur || cur.id !== prev.id)) {
-      setCelebrating({ name: prev.name });
+      const line = CELEBRATE_LINES[celebrateCount.current % CELEBRATE_LINES.length];
+      celebrateCount.current += 1;
+      setCelebrating({ name: prev.name, line });
       if (celebrateTimer.current) window.clearTimeout(celebrateTimer.current);
       celebrateTimer.current = window.setTimeout(() => setCelebrating(null), CELEBRATE_MS);
     }
@@ -170,13 +184,15 @@ export default function DisplayClient({ slug, roomName }: Props) {
         <WaitingStage qrSvg={qr?.qrSvg ?? null} />
       )}
 
-      {/* Completion celebration — a brief, restrained applause overlay. Non-blocking:
-          it fades over the next state, never a splash that stalls the room. */}
+      {/* Completion celebration — a brief, restrained applause with a warm light lift.
+          Non-blocking: it fades over the next state, never a splash that stalls the
+          room. No score, no ranking, no judgment. */}
       {celebrating && (
         <div className="js-celebrate" role="status" aria-live="polite">
           <div className="js-celebrate-inner">
             <div className="js-celebrate-symbol" aria-hidden>👏</div>
             <div className="js-celebrate-line">{celebrating.name}의 무대였습니다</div>
+            <div className="js-celebrate-sub">{celebrating.line}</div>
           </div>
         </div>
       )}
@@ -184,25 +200,37 @@ export default function DisplayClient({ slug, roomName }: Props) {
   );
 }
 
-// ── Singing: human-first NOW header · dominant lyrics (or artwork) · NEXT STAGE ──
+// ── Singing: the Living Visual Stage — ambient artwork · singer-first · compact NEXT ──
 function SingingStage({ playing, next }: { playing: DisplayRequest; next: DisplayRequest | null }) {
+  const art = artUrl(playing);
   return (
-    <section className="js-stage" aria-label="지금 부르는 중">
-      {/* Human-first header — the singer is the protagonist. Keyed by the request id
-          so the gentle staged reveal runs ONCE per song, never on a 2s poll. */}
-      <div className="js-now" key={playing.id}>
+    <section className="js-stage js-vstage" aria-label="지금 부르는 중">
+      {/* Full-bleed ambient from the artwork (blurred, low opacity, navy + warm veil).
+          Keyed by the request id so a song change swaps the scene atomically and the
+          slow zoom restarts once — never re-animating on a 2s poll. CSS background →
+          a 404 simply shows the gradient veil (no broken-image icon, never black). */}
+      <div
+        className={`js-vstage-ambient${art ? '' : ' no-art'}`}
+        key={playing.id}
+        style={art ? { backgroundImage: `url("${art}")` } : undefined}
+        aria-hidden
+      />
+      <div className="js-vstage-veil" aria-hidden />
+      {/* One warm bloom as the song begins (keyed → fires once). */}
+      <div className="js-bloom" key={`bloom-${playing.id}`} aria-hidden />
+
+      <div className="js-vstage-content" key={`c-${playing.id}`}>
         <div className="js-now-eyebrow">
           <span className="live-dot" aria-hidden /> NOW SINGING
         </div>
+        {art && (
+          <div className="js-art-medallion" style={{ backgroundImage: `url("${art}")` }} aria-hidden />
+        )}
         <div className="js-now-stage">{playing.guestName}의 무대</div>
         <div className="js-now-song">{playing.songTitle}</div>
         {playing.songArtist && <div className="js-now-artist">{playing.songArtist}</div>}
+        <div className="js-moment">이 순간을 함께 즐겨주세요</div>
       </div>
-
-      {/* Lyrics keyed by the request id: same song → stable key → React keeps the
-          element and the reader's scroll position across polls; a new song remounts →
-          resets to the top. Never carries the previous song's words. */}
-      <LyricsStage key={`lyr-${playing.id}`} playing={playing} />
 
       <div className="js-next">
         <span className="js-next-tag">NEXT STAGE</span>
@@ -216,48 +244,6 @@ function SingingStage({ playing, next }: { playing: DisplayRequest; next: Displa
         )}
       </div>
     </section>
-  );
-}
-
-// The dominant reading surface OR the graceful artwork fallback when there are no
-// lyrics. Never a big "unavailable" message as the emotional centerpiece.
-function LyricsStage({ playing }: { playing: DisplayRequest }) {
-  const lyrics: LyricsView | undefined = playing.lyrics;
-  const status = lyrics?.status ?? 'unavailable';
-
-  if (status === 'available' && lyrics?.text) {
-    return (
-      <div className="js-lyrics-scroll" aria-label="가사">
-        <p className="js-lyrics-body">{lyrics.text}</p>
-      </div>
-    );
-  }
-
-  // Loading: a calm ambient stage (never a spinner), with the song identity present.
-  // Unavailable / failed: the SAME warm visual stage — artwork + a human message, with
-  // only a small honest note that automatic lyrics weren't found.
-  const loading = status === 'loading';
-  return (
-    <div
-      className={`js-artwork${playing.thumbnailUrl ? '' : ' no-art'}`}
-      aria-label={loading ? '가사 불러오는 중' : '가사 없음'}
-      aria-busy={loading || undefined}
-    >
-      {playing.thumbnailUrl && (
-        <div className="js-artwork-bg" style={{ backgroundImage: `url("${playing.thumbnailUrl}")` }} aria-hidden />
-      )}
-      <div className="js-artwork-veil" aria-hidden />
-      <div className="js-artwork-body">
-        <div className="js-art-song">{playing.songTitle}</div>
-        {playing.songArtist && <div className="js-art-artist">{playing.songArtist}</div>}
-        <div className="js-art-message">
-          {loading ? '무대가 시작됐어요' : '이 순간을 함께 즐겨주세요'}
-        </div>
-        <div className="js-art-note">
-          {loading ? '가사를 준비하고 있어요…' : '자동 가사를 찾지 못했어요 · 영상은 TV에서 확인하세요'}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -304,7 +290,7 @@ function WaitingStage({ qrSvg }: { qrSvg: string | null }) {
       {qrSvg && (
         <div className="js-invite-qr">
           <div className="js-invite-qr-svg" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-          <div className="js-invite-qr-cap">휴대폰으로 스캔하고 첫 곡을 신청하세요</div>
+          <div className="js-invite-qr-cap">카메라로 스캔해 노래를 신청하세요</div>
         </div>
       )}
     </section>

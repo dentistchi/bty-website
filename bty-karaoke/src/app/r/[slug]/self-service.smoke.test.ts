@@ -100,23 +100,21 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
     }
   });
 
-  it('keeps QR + NOW + NEXT + wake-lock + fullscreen (V1.3 Joy Stage)', () => {
+  it('keeps QR + NOW + NEXT + wake-lock + fullscreen (V1.4 Living Joy Stage)', () => {
     expect(display).toContain('js-qr'); // QR reachable
-    expect(display).toContain('js-now'); // human-first NOW header
+    expect(display).toContain('js-vstage'); // living visual stage (no lyrics surface)
     expect(display).toContain('js-next'); // NEXT STAGE footer
-    expect(display).toContain('js-lyrics-scroll'); // dominant lyrics surface
     expect(display).toContain('NOW SINGING');
     expect(display).toContain('NEXT STAGE');
     expect(display).toContain('wakeLock');
     expect(display).toContain('enterFullscreen');
   });
 
-  it('uses honest board copy (no false sync/video claims)', () => {
+  it('uses honest, warm copy (no false sync/video claims, no lyrics screen)', () => {
     expect(displayCode).not.toMatch(/live\s*synced|synced\s*lyrics|lyrics\s*guaranteed|video reference|connected to tv|playing on ipad/i);
-    // V1.3: lyrics when available; otherwise a warm visual stage with only a SMALL
-    // honest note (never a big "unavailable"). Video still lives on the TV.
-    expect(display).toContain('자동 가사를 찾지 못했어요');
-    expect(display).toContain('영상은 TV에서 확인하세요');
+    // V1.4: the iPad is a warm stage, not a lyrics screen. No lyrics surface at all.
+    expect(display).toContain('이 순간을 함께 즐겨주세요');
+    expect(display).not.toContain('js-lyrics-scroll');
   });
 });
 
