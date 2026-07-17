@@ -11,6 +11,7 @@ import type {
 import type { AudienceType } from "@/domain/foundry/module/module-builder";
 import { ARENA_PRACTICE_COPY, AUDIENCE_LABELS, type ArenaPracticeCopy, type Locale } from "./arenaPracticeCopy";
 import { ArenaScenarioPreview } from "./ArenaScenarioPreview";
+import { ArenaPracticePlayer } from "@/components/bty-arena/practice/ArenaPracticePlayer";
 
 /**
  * Foundry Guided Arena Builder — the in-app, iPhone-first guided flow.
@@ -76,6 +77,12 @@ export function ArenaPracticeFlow({
   const [busy, setBusy] = useState(false);
   const submittingRef = useRef(false);
 
+  // 3.0B — publish + test-in-arena
+  const [revision, setRevision] = useState<number>(0);
+  const [dirty, setDirty] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [publishState, setPublishState] = useState<"idle" | "publishing" | "published" | "stale" | "error">("idle");
+
   // ---- initial load: resume an existing draft, else show the source summary ----
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +122,8 @@ export function ArenaPracticeFlow({
                 setDraftId(d.draft.id);
                 setEditable(d.draft.scenario_draft);
                 setGenSource(d.draft.generation_source);
+                setRevision(d.draft.revision);
+                setDirty(false);
                 setPhase("editor");
                 return;
               }
@@ -178,6 +187,9 @@ export function ArenaPracticeFlow({
       setDraftId(data.draft.id);
       setEditable(data.draft.scenario_draft);
       setGenSource(data.draft.generation_source);
+      setRevision(data.draft.revision);
+      setDirty(false);
+      setPublishState("idle");
       setWarnings(data.warnings ?? []);
       setView("edit");
       setSaveState("idle");
@@ -205,14 +217,40 @@ export function ArenaPracticeFlow({
         setSaveState("error");
         return;
       }
-      const data = (await res.json()) as { warnings?: string[] };
+      const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[] };
       setWarnings(data.warnings ?? []);
       setGenSource("edited");
+      if (typeof data.draft?.revision === "number") setRevision(data.draft.revision);
+      setDirty(false);
+      setPublishState("idle");
       setSaveState("saved");
     } catch {
       setSaveState("error");
     }
   }, [draftId, editable, saveState]);
+
+  // 3.0B — publish the exact saved revision (host must save first: !dirty).
+  const publish = useCallback(async () => {
+    if (!draftId || dirty || publishState === "publishing") return;
+    setPublishState("publishing");
+    try {
+      const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/publish`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedRevision: revision }),
+      });
+      if (res.ok) {
+        setPublishState("published");
+        return;
+      }
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      setPublishState(body?.error === "stale_revision" ? "stale" : "error");
+    } catch {
+      setPublishState("error");
+    }
+  }, [draftId, dirty, revision, publishState]);
 
   const regenerate = useCallback(async () => {
     if (!draftId || busy) return;
@@ -231,6 +269,9 @@ export function ArenaPracticeFlow({
         if (data.draft?.scenario_draft) {
           setEditable(data.draft.scenario_draft);
           setGenSource(data.draft.generation_source);
+          if (typeof data.draft.revision === "number") setRevision(data.draft.revision);
+          setDirty(false);
+          setPublishState("idle");
           setWarnings(data.warnings ?? []);
           setSaveState("idle");
           setView("edit");
@@ -247,6 +288,8 @@ export function ArenaPracticeFlow({
   const patchDraft = useCallback((fn: (d: ArenaScenarioDraft) => ArenaScenarioDraft) => {
     setEditable((prev) => (prev ? fn(prev) : prev));
     setSaveState("idle");
+    setDirty(true);
+    setPublishState("idle");
   }, []);
   const setChoiceLabel = useCallback(
     (group: "primary" | "tradeoff" | "action", index: number, label: string) => {
@@ -406,6 +449,22 @@ export function ArenaPracticeFlow({
     );
   }
 
+  // 3.0B — Test in Arena: ephemeral play of the CURRENT in-memory draft through the
+  // real learner surface. No run, no XP, no completion record. Returns to editor.
+  if (testing && editable) {
+    return (
+      <div className="btyFadeIn min-h-[60vh] rounded-2xl bg-bty-soft/40 p-2">
+        <ArenaPracticePlayer
+          scenario={editable}
+          locale={loc}
+          mode="test"
+          sourceTrainingTitle={source?.event_title}
+          onExit={() => setTesting(false)}
+        />
+      </div>
+    );
+  }
+
   if (phase === "editor" && editable) {
     const hasSensitive = warnings.length > 0;
     return shell(
@@ -413,6 +472,13 @@ export function ArenaPracticeFlow({
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-white">{t.editTitle}</h1>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setTesting(true)}
+              className="text-sm font-medium text-[#C9A66B] hover:text-[#C9A66B]/80"
+            >
+              {t.testInArena}
+            </button>
             <button
               type="button"
               onClick={() => setView((v) => (v === "edit" ? "preview" : "edit"))}
@@ -468,6 +534,25 @@ export function ArenaPracticeFlow({
             </button>
           </div>
           {saveState === "error" ? <p className="text-sm text-red-300/90">{t.saveError}</p> : null}
+
+          {/* Publish to Arena — the exact SAVED revision. Disabled while there are
+              unsaved edits so the host never publishes bytes they didn't see. */}
+          <button
+            type="button"
+            onClick={publish}
+            disabled={dirty || publishState === "publishing" || publishState === "published"}
+            className="rounded-xl border border-[#C9A66B]/50 bg-[#C9A66B]/[0.08] px-6 py-3 text-sm font-semibold text-[#C9A66B] disabled:opacity-45"
+          >
+            {publishState === "publishing"
+              ? t.publishing
+              : publishState === "published"
+                ? t.published
+                : t.publishToArena}
+          </button>
+          {dirty ? <p className="text-center text-xs text-white/40">{t.saveBeforePublish}</p> : null}
+          {publishState === "stale" ? <p className="text-center text-xs text-amber-300/90">{t.publishStale}</p> : null}
+          {publishState === "error" ? <p className="text-center text-xs text-red-300/90">{t.publishError}</p> : null}
+
           <button type="button" onClick={startNew} className="self-center pt-1 text-xs text-white/40 hover:text-white/70">
             {t.startOver}
           </button>

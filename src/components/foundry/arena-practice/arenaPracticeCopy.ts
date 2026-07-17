@@ -82,6 +82,15 @@ export type ArenaPracticeCopy = {
   previewCommitmentTag: string;
 
   // States / errors
+  // 3.0B — test + publish
+  testInArena: string;
+  publishToArena: string;
+  publishing: string;
+  published: string;
+  publishStale: string;
+  publishError: string;
+  saveBeforePublish: string;
+
   loadError: string;
   sourceGoneTitle: string;
   sourceGoneLead: string;
@@ -174,6 +183,14 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewNotPlayable: "Preview only — this is a draft, not a live playable run.",
     previewCommitmentTag: "action",
 
+    testInArena: "Test in Arena",
+    publishToArena: "Publish to Arena",
+    publishing: "Publishing…",
+    published: "Published to Arena ✓",
+    publishStale: "Save your latest edits, then publish.",
+    publishError: "Couldn't publish — check the scenario and retry.",
+    saveBeforePublish: "Save your edits before publishing.",
+
     loadError: "Couldn't load this training. Go back and retry.",
     sourceGoneTitle: "This training is no longer available",
     sourceGoneLead: "The source training was removed or you no longer have access.",
@@ -258,6 +275,14 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewAction: "행동 결정",
     previewNotPlayable: "미리보기 전용 — 실제 플레이가 아닌 초안입니다.",
     previewCommitmentTag: "행동",
+
+    testInArena: "Arena에서 테스트",
+    publishToArena: "Arena에 게시",
+    publishing: "게시하는 중…",
+    published: "Arena에 게시됨 ✓",
+    publishStale: "최신 편집을 저장한 뒤 게시하세요.",
+    publishError: "게시하지 못했습니다 — 시나리오를 확인하고 다시 시도하세요.",
+    saveBeforePublish: "게시하기 전에 편집 내용을 저장하세요.",
 
     loadError: "이 교육을 불러오지 못했습니다. 뒤로 가서 다시 시도하세요.",
     sourceGoneTitle: "이 교육을 더 이상 사용할 수 없습니다",

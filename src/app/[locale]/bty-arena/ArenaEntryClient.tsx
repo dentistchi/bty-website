@@ -235,7 +235,71 @@ export default function ArenaEntryClient({ locale }: Props) {
             <p className="text-xs text-[var(--arena-text)]/60 mt-0.5">{tStatic.quickDesc}</p>
           </Link>
         </div>
+
+        {/* Foundry-published practices available to this member (V1 discovery). */}
+        <PublishedPracticeList locale={locale} />
       </div>
+    </div>
+  );
+}
+
+type AvailablePractice = {
+  id: string;
+  practice_title: string;
+  source_training_title: string;
+  completed: boolean;
+};
+
+/**
+ * Narrow V1 discovery: the member's available Foundry-published practices. Renders
+ * nothing when there are none (never clutters the entry). Render-only; the list is
+ * server-computed (approved-member gated) — no business logic here.
+ */
+function PublishedPracticeList({ locale }: { locale: string }) {
+  const loc = locale === "ko" ? "ko" : "en";
+  const [practices, setPractices] = React.useState<AvailablePractice[] | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/arena/practice", { credentials: "include", cache: "no-store" });
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as { practices?: AvailablePractice[] };
+        if (!cancelled) setPractices(Array.isArray(data.practices) ? data.practices : []);
+      } catch {
+        /* discovery is best-effort; entry still works without it */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!practices || practices.length === 0) return null;
+  const heading = loc === "ko" ? "연습" : "Practice";
+  const doneTag = loc === "ko" ? "완료" : "Done";
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--arena-text)]/50">{heading}</p>
+      {practices.map((p) => (
+        <Link
+          key={p.id}
+          href={`/${locale}/bty-arena/practice/${p.id}`}
+          className="block w-full rounded-2xl border border-[var(--arena-text)]/15 px-5 py-4 text-left transition-colors hover:border-[var(--arena-accent)]/30"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate font-semibold text-[var(--arena-text)]">{p.practice_title}</p>
+            {p.completed ? (
+              <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.12em] text-[var(--arena-accent)]/80">
+                {doneTag}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-[var(--arena-text)]/60">{p.source_training_title}</p>
+        </Link>
+      ))}
     </div>
   );
 }
