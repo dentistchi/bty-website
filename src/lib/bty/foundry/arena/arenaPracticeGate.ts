@@ -5,17 +5,19 @@ import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMember
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 /**
- * Shared gate for the learner-facing published-practice routes.
+ * Access context for the published-practice routes.
  *
- * A published practice is played by an Arena LEARNER, so it reuses the exact Arena
- * entry gate (approved `arena_membership_requests`) — the same authority as every
- * canonical Arena run — rather than the Foundry Host gate. Reads/writes then use
- * the service-role client because `foundry_published_arena_practices` /
- * `foundry_arena_practice_runs` are client-deny.
+ * A published practice is visible/playable to EITHER an approved Arena learner OR
+ * its own CREATOR (published_by). So approved-membership is resolved as a
+ * NON-FATAL flag here (not a hard 403) — the route/service then grants a creator
+ * their own work even without a separate approved-member role, while still
+ * gating other users' practices behind approved membership. Reads/writes use the
+ * service-role client because the practice tables are client-deny.
  */
-export async function requireArenaMember(): Promise<
-  | { ok: true; userId: string; admin: SupabaseClient }
-  | { ok: false; response: NextResponse }
+export type ArenaAccess = { userId: string; admin: SupabaseClient; isApprovedMember: boolean };
+
+export async function requireArenaAccess(): Promise<
+  { ok: true; access: ArenaAccess } | { ok: false; response: NextResponse }
 > {
   const supabase = await getSupabaseServerClient();
   const {
@@ -23,17 +25,13 @@ export async function requireArenaMember(): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, response: NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 }) };
 
-  const gate = await requireApprovedMembership(supabase, user.id);
-  if (!gate.approved) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: gate.error, reason: gate.reason }, { status: gate.status }),
-    };
-  }
+  // Membership is a capability flag, NOT a gate — a creator may lack it and still
+  // see/test their own published work.
+  const membership = await requireApprovedMembership(supabase, user.id);
 
   const admin = getSupabaseAdmin();
   if (!admin) {
     return { ok: false, response: NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 }) };
   }
-  return { ok: true, userId: user.id, admin };
+  return { ok: true, access: { userId: user.id, admin, isApprovedMember: membership.approved } };
 }

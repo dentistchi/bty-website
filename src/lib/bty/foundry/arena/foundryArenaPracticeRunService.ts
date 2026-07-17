@@ -29,9 +29,23 @@ export type PlayablePractice = {
   source_training_title: string;
   source_event_id: string;
   source_module_version: number;
+  published_by: string;
   scenario_snapshot: ArenaScenarioDraft;
   status: "published" | "retired";
 };
+
+/**
+ * May this user see/play this practice? Creator (published_by) OR approved Arena
+ * member. Preserves learner access for others' practices while never forcing a
+ * creator into a separate approved-member role to reach their own work.
+ */
+export function canAccessPractice(
+  practice: { published_by: string },
+  userId: string,
+  isApprovedMember: boolean,
+): boolean {
+  return isApprovedMember || practice.published_by === userId;
+}
 
 type PracticeRunRow = { id: string; practice_id: string; user_id: string; status: string; completed_at: string | null };
 
@@ -39,19 +53,45 @@ type PracticeRunRow = { id: string; practice_id: string; user_id: string; status
 // Discovery
 // ---------------------------------------------------------------------------
 
-/** All currently-published practices available to the user, newest first, with the user's completion flag. */
+/**
+ * Published practices available to the user, newest first, with completion flag.
+ * Creator visibility OR approved-learner visibility: the user always sees the
+ * practices they published; an approved member additionally sees all_members
+ * practices. A non-approved creator therefore still sees their own work.
+ */
 export async function listAvailablePractices(
   admin: SupabaseClient,
   userId: string,
+  isApprovedMember: boolean,
 ): Promise<AvailablePractice[]> {
-  const { data: practices } = await admin
+  const cols = "id, practice_title, source_training_title, source_module_version, published_at, published_by";
+  type Raw = Omit<AvailablePractice, "completed"> & { published_by: string };
+
+  // Always: the user's OWN published practices (creator visibility).
+  const { data: own } = await admin
     .from("foundry_published_arena_practices")
-    .select("id, practice_title, source_training_title, source_module_version, published_at")
+    .select(cols)
     .eq("status", "published")
-    .eq("availability", "all_members")
+    .eq("published_by", userId)
     .order("published_at", { ascending: false })
-    .returns<Omit<AvailablePractice, "completed">[]>();
-  const list = practices ?? [];
+    .returns<Raw[]>();
+
+  // Approved members additionally see shared (all_members) practices.
+  let shared: Raw[] = [];
+  if (isApprovedMember) {
+    const { data } = await admin
+      .from("foundry_published_arena_practices")
+      .select(cols)
+      .eq("status", "published")
+      .eq("availability", "all_members")
+      .order("published_at", { ascending: false })
+      .returns<Raw[]>();
+    shared = data ?? [];
+  }
+
+  const byId = new Map<string, Raw>();
+  for (const p of [...(own ?? []), ...shared]) byId.set(p.id, p);
+  const list = [...byId.values()].sort((a, b) => (a.published_at < b.published_at ? 1 : -1));
   if (list.length === 0) return [];
 
   const { data: runs } = await admin
@@ -62,7 +102,14 @@ export async function listAvailablePractices(
     .returns<{ practice_id: string; status: string }[]>();
   const completed = new Set((runs ?? []).map((r) => r.practice_id));
 
-  return list.map((p) => ({ ...p, completed: completed.has(p.id) }));
+  return list.map((p) => ({
+    id: p.id,
+    practice_title: p.practice_title,
+    source_training_title: p.source_training_title,
+    source_module_version: p.source_module_version,
+    published_at: p.published_at,
+    completed: completed.has(p.id),
+  }));
 }
 
 /** Load a published practice to play. Returns null if missing or retired (not playable). */
@@ -72,7 +119,9 @@ export async function getPlayablePractice(
 ): Promise<PlayablePractice | null> {
   const { data } = await admin
     .from("foundry_published_arena_practices")
-    .select("id, practice_title, source_training_title, source_event_id, source_module_version, scenario_snapshot, status")
+    .select(
+      "id, practice_title, source_training_title, source_event_id, source_module_version, published_by, scenario_snapshot, status",
+    )
     .eq("id", practiceId)
     .maybeSingle<PlayablePractice>();
   if (!data || data.status !== "published") return null;

@@ -1,22 +1,31 @@
 import { NextResponse } from "next/server";
-import { requireArenaMember } from "@/lib/bty/foundry/arena/arenaPracticeGate";
-import { getPlayablePractice, getUserPracticeState } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
+import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import {
+  canAccessPractice,
+  getPlayablePractice,
+  getUserPracticeState,
+} from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
 
 /**
- * GET /api/arena/practice/[practiceId] — the immutable snapshot to play, plus the
- * member's current run state (for reload). 404 if missing/retired. Approved-member
- * gated. Returns the frozen three-phase scenario + source training lineage.
+ * GET /api/arena/practice/[practiceId] — the immutable snapshot to play + the
+ * user's run state (for reload). Visible to the creator OR an approved member;
+ * others get 403. 404 if missing/retired. Returns the frozen three-phase scenario
+ * + source training lineage.
  */
 export async function GET(_req: Request, ctx: { params: Promise<{ practiceId: string }> }) {
-  const gate = await requireArenaMember();
+  const gate = await requireArenaAccess();
   if (!gate.ok) return gate.response;
+  const { userId, admin, isApprovedMember } = gate.access;
   const { practiceId } = await ctx.params;
 
-  const practice = await getPlayablePractice(gate.admin, practiceId);
+  const practice = await getPlayablePractice(admin, practiceId);
   if (!practice) return NextResponse.json({ error: "practice_not_available" }, { status: 404 });
-  const runState = await getUserPracticeState(gate.admin, gate.userId, practiceId);
+  if (!canAccessPractice(practice, userId, isApprovedMember)) {
+    return NextResponse.json({ error: "practice_forbidden" }, { status: 403 });
+  }
+  const runState = await getUserPracticeState(admin, userId, practiceId);
 
   return NextResponse.json(
     {

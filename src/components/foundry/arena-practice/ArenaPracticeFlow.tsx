@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type {
   ActionDecisionChoice,
   ArenaScenarioDraft,
@@ -58,6 +59,7 @@ export function ArenaPracticeFlow({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = ARENA_PRACTICE_COPY[loc];
+  const router = useRouter();
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [source, setSource] = useState<SourceSummary | null>(null);
@@ -82,6 +84,7 @@ export function ArenaPracticeFlow({
   const [dirty, setDirty] = useState(false);
   const [testing, setTesting] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "publishing" | "published" | "stale" | "error">("idle");
+  const [publishedPracticeId, setPublishedPracticeId] = useState<string | null>(null);
 
   // ---- initial load: resume an existing draft, else show the source summary ----
   useEffect(() => {
@@ -242,6 +245,9 @@ export function ArenaPracticeFlow({
         body: JSON.stringify({ expectedRevision: revision }),
       });
       if (res.ok) {
+        // Success OR idempotently-resolved (both 200/201) carry the practice id.
+        const okBody = (await res.json().catch(() => ({}))) as { practice?: { id?: string } };
+        setPublishedPracticeId(okBody.practice?.id ?? null);
         setPublishState("published");
         return;
       }
@@ -465,28 +471,42 @@ export function ArenaPracticeFlow({
     );
   }
 
+  // 3.0B.1 — prominent publish success (never leave the screen visually unchanged).
+  if (phase === "editor" && publishState === "published" && publishedPracticeId) {
+    return shell(
+      <div className="flex min-h-[55vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#C9A66B]/15 text-2xl text-[#C9A66B]">
+          ✓
+        </div>
+        <h1 className="text-xl font-semibold text-white">{t.publishedTitle}</h1>
+        <p className="max-w-[20rem] text-sm leading-6 text-white/60">{t.publishedBody}</p>
+        <button
+          type="button"
+          onClick={() => router.push(`/${loc}/bty-arena/practice/${publishedPracticeId}`)}
+          className="rounded-xl bg-[#C9A66B] px-8 py-3.5 text-base font-semibold text-[#0B1F3A]"
+        >
+          {t.openInArena}
+        </button>
+        <button type="button" onClick={onBack} className="pt-1 text-sm text-white/50 hover:text-white/80">
+          {t.returnToTraining}
+        </button>
+      </div>,
+    );
+  }
+
   if (phase === "editor" && editable) {
     const hasSensitive = warnings.length > 0;
     return shell(
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-white">{t.editTitle}</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setTesting(true)}
-              className="text-sm font-medium text-[#C9A66B] hover:text-[#C9A66B]/80"
-            >
-              {t.testInArena}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView((v) => (v === "edit" ? "preview" : "edit"))}
-              className="text-sm text-white/60 hover:text-white/90"
-            >
-              {view === "edit" ? t.previewCta : t.editCta}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setView((v) => (v === "edit" ? "preview" : "edit"))}
+            className="text-sm text-white/60 hover:text-white/90"
+          >
+            {view === "edit" ? t.previewCta : t.editCta}
+          </button>
         </div>
 
         <p className="text-xs text-white/40">
@@ -534,6 +554,19 @@ export function ArenaPracticeFlow({
             </button>
           </div>
           {saveState === "error" ? <p className="text-sm text-red-300/90">{t.saveError}</p> : null}
+
+          {/* Test in Arena — prominent (not a subtle header link). Always shown; if a
+              save is required first it is disabled with an honest explanation, never
+              silently hidden. Tests the exact current SAVED revision. */}
+          <button
+            type="button"
+            onClick={() => setTesting(true)}
+            disabled={dirty}
+            className="rounded-xl border border-[#C9A66B]/50 px-6 py-3 text-sm font-semibold text-[#C9A66B] disabled:opacity-45"
+          >
+            {t.testInArena}
+          </button>
+          {dirty ? <p className="text-center text-xs text-white/40">{t.saveBeforeTesting}</p> : null}
 
           {/* Publish to Arena — the exact SAVED revision. Disabled while there are
               unsaved edits so the host never publishes bytes they didn't see. */}

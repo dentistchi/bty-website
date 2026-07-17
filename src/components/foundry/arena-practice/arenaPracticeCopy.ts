@@ -90,6 +90,12 @@ export type ArenaPracticeCopy = {
   publishStale: string;
   publishError: string;
   saveBeforePublish: string;
+  // 3.0B.1 — prominent success + honest test gating
+  publishedTitle: string;
+  publishedBody: string;
+  openInArena: string;
+  returnToTraining: string;
+  saveBeforeTesting: string;
 
   loadError: string;
   sourceGoneTitle: string;
@@ -190,6 +196,11 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishStale: "Save your latest edits, then publish.",
     publishError: "Couldn't publish — check the scenario and retry.",
     saveBeforePublish: "Save your edits before publishing.",
+    publishedTitle: "Published to Arena",
+    publishedBody: "Learners can now find this practice in the Arena tab.",
+    openInArena: "Open in Arena",
+    returnToTraining: "Return to training",
+    saveBeforeTesting: "Save this draft before testing",
 
     loadError: "Couldn't load this training. Go back and retry.",
     sourceGoneTitle: "This training is no longer available",
@@ -283,6 +294,11 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     publishStale: "최신 편집을 저장한 뒤 게시하세요.",
     publishError: "게시하지 못했습니다 — 시나리오를 확인하고 다시 시도하세요.",
     saveBeforePublish: "게시하기 전에 편집 내용을 저장하세요.",
+    publishedTitle: "Arena에 게시되었습니다",
+    publishedBody: "이제 학습자가 Arena 탭에서 이 연습을 찾을 수 있습니다.",
+    openInArena: "Arena에서 열기",
+    returnToTraining: "교육으로 돌아가기",
+    saveBeforeTesting: "테스트하기 전에 이 초안을 저장하세요",
 
     loadError: "이 교육을 불러오지 못했습니다. 뒤로 가서 다시 시도하세요.",
     sourceGoneTitle: "이 교육을 더 이상 사용할 수 없습니다",

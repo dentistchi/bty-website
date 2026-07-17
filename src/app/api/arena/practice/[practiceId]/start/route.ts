@@ -1,21 +1,32 @@
 import { NextResponse } from "next/server";
-import { requireArenaMember } from "@/lib/bty/foundry/arena/arenaPracticeGate";
-import { startPracticeRun } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
+import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import {
+  canAccessPractice,
+  getPlayablePractice,
+  startPracticeRun,
+} from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
 
 /**
  * POST /api/arena/practice/[practiceId]/start — begin (or resume) a practice run.
  * Records a row in `foundry_arena_practice_runs` (NO XP, isolated from arena_runs).
- * Duplicate-tap safe: an in-progress run for (user, practice) is reused, never
- * duplicated. 404 if the practice is missing/retired. Approved-member gated.
+ * Duplicate-tap safe. Visible to the creator OR an approved member; others 403.
+ * 404 if missing/retired.
  */
 export async function POST(_req: Request, ctx: { params: Promise<{ practiceId: string }> }) {
-  const gate = await requireArenaMember();
+  const gate = await requireArenaAccess();
   if (!gate.ok) return gate.response;
+  const { userId, admin, isApprovedMember } = gate.access;
   const { practiceId } = await ctx.params;
 
-  const result = await startPracticeRun(gate.admin, gate.userId, practiceId);
+  const practice = await getPlayablePractice(admin, practiceId);
+  if (!practice) return NextResponse.json({ error: "practice_not_available" }, { status: 404 });
+  if (!canAccessPractice(practice, userId, isApprovedMember)) {
+    return NextResponse.json({ error: "practice_forbidden" }, { status: 403 });
+  }
+
+  const result = await startPracticeRun(admin, userId, practiceId);
   if (!result.ok) {
     const status = result.reason === "practice_not_available" ? 404 : 400;
     return NextResponse.json({ error: result.reason }, { status });

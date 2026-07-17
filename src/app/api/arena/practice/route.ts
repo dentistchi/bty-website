@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireArenaMember } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import { listAvailablePractices } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
 
 /**
- * GET /api/arena/practice — the authenticated Arena member's available published
- * practices (Foundry-authored), newest first, each with the member's completion
- * flag. Approved-membership gated (the same authority as any Arena run). This is
- * a narrow V1 discovery list: no search, no marketplace.
+ * GET /api/arena/practice — the authenticated user's available published
+ * practices. Creator visibility (own published) OR approved-learner visibility
+ * (all_members). Newest first, each with the user's completion flag. A creator
+ * sees their own work without needing a separate approved-member role.
  */
 export async function GET() {
-  const gate = await requireArenaMember();
+  const gate = await requireArenaAccess();
   if (!gate.ok) return gate.response;
-  const practices = await listAvailablePractices(gate.admin, gate.userId);
+  const { userId, admin, isApprovedMember } = gate.access;
+  const practices = await listAvailablePractices(admin, userId, isApprovedMember);
   return NextResponse.json({ practices }, { headers: { "Cache-Control": "no-store" } });
 }

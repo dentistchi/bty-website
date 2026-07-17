@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   ArenaReexposurePanel,
   ArenaRuntimeStateBanner,
@@ -200,6 +200,11 @@ export default function ArenaEntryClient({ locale }: Props) {
                 </div>
               )}
             </div>
+            {/* Foundry-published practices are reachable here too (an active user
+                lands on this next-scenario surface, not only the mode-select gate). */}
+            <div className="mt-4">
+              <PublishedPracticeList locale={locale} variant="light" />
+            </div>
           </div>
         </ScreenShell>
       );
@@ -250,54 +255,117 @@ type AvailablePractice = {
   completed: boolean;
 };
 
-/**
- * Narrow V1 discovery: the member's available Foundry-published practices. Renders
- * nothing when there are none (never clutters the entry). Render-only; the list is
- * server-computed (approved-member gated) — no business logic here.
- */
-function PublishedPracticeList({ locale }: { locale: string }) {
-  const loc = locale === "ko" ? "ko" : "en";
-  const [practices, setPractices] = React.useState<AvailablePractice[] | null>(null);
+const PRACTICE_LIST_THEME = {
+  dark: {
+    heading: "text-[var(--arena-text)]/50",
+    border: "border-[var(--arena-text)]/15 hover:border-[var(--arena-accent)]/30",
+    title: "text-[var(--arena-text)]",
+    sub: "text-[var(--arena-text)]/60",
+    done: "text-[var(--arena-accent)]/80",
+    retry: "text-[var(--arena-text)]/70",
+  },
+  light: {
+    heading: "text-bty-secondary",
+    border: "border-bty-border bg-bty-surface hover:border-bty-navy/40",
+    title: "text-bty-navy",
+    sub: "text-bty-secondary",
+    done: "text-bty-navy/70",
+    retry: "text-bty-secondary",
+  },
+} as const;
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/arena/practice", { credentials: "include", cache: "no-store" });
-        if (cancelled || !res.ok) return;
-        const data = (await res.json()) as { practices?: AvailablePractice[] };
-        if (!cancelled) setPractices(Array.isArray(data.practices) ? data.practices : []);
-      } catch {
-        /* discovery is best-effort; entry still works without it */
+/**
+ * Narrow V1 discovery: the user's available Foundry-published practices (own
+ * published + approved-member shared). Render-only. Refetches on mount, on route
+ * change (usePathname), AND when the tab/app becomes active (focus / visibility)
+ * so a just-published practice appears without a cold launch — the native shell
+ * and App Router cache can otherwise keep this stale. Distinguishes loading / list
+ * / truly-empty / error(retry) — an error never renders as a legitimate empty list.
+ * `variant` themes it for the dark mode-select vs the light next-scenario shell.
+ */
+function PublishedPracticeList({ locale, variant = "dark" }: { locale: string; variant?: "dark" | "light" }) {
+  const loc = locale === "ko" ? "ko" : "en";
+  const pathname = usePathname();
+  const c = PRACTICE_LIST_THEME[variant];
+  const [status, setStatus] = React.useState<"loading" | "ok" | "error">("loading");
+  const [practices, setPractices] = React.useState<AvailablePractice[]>([]);
+
+  const load = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/arena/practice", { credentials: "include", cache: "no-store" });
+      if (res.status === 401 || res.status === 403) {
+        // not eligible to see any practices → quietly render nothing (not an error)
+        setPractices([]);
+        setStatus("ok");
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      if (!res.ok) {
+        setStatus("error");
+        return;
+      }
+      const data = (await res.json()) as { practices?: AvailablePractice[] };
+      setPractices(Array.isArray(data.practices) ? data.practices : []);
+      setStatus("ok");
+    } catch {
+      setStatus("error");
+    }
   }, []);
 
-  if (!practices || practices.length === 0) return null;
+  React.useEffect(() => {
+    let alive = true;
+    void load();
+    const onActive = () => {
+      if (alive && (typeof document === "undefined" || document.visibilityState === "visible")) void load();
+    };
+    window.addEventListener("focus", onActive);
+    document.addEventListener("visibilitychange", onActive);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", onActive);
+      document.removeEventListener("visibilitychange", onActive);
+    };
+    // re-run when returning to this route (pathname change) as well as on mount.
+  }, [load, pathname]);
+
   const heading = loc === "ko" ? "연습" : "Practice";
   const doneTag = loc === "ko" ? "완료" : "Done";
 
+  if (status === "error") {
+    return (
+      <div className="space-y-2">
+        <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${c.heading}`}>{heading}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setStatus("loading");
+            void load();
+          }}
+          className={`w-full rounded-2xl border px-5 py-3 text-left text-sm ${c.border} ${c.retry}`}
+        >
+          {loc === "ko" ? "연습 목록을 불러오지 못했습니다 — 다시 시도" : "Couldn't load practices — Retry"}
+        </button>
+      </div>
+    );
+  }
+  // loading first paint, or a genuinely empty list → render nothing (no clutter).
+  if (status === "loading" || practices.length === 0) return null;
+
   return (
     <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--arena-text)]/50">{heading}</p>
+      <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${c.heading}`}>{heading}</p>
       {practices.map((p) => (
         <Link
           key={p.id}
           href={`/${locale}/bty-arena/practice/${p.id}`}
-          className="block w-full rounded-2xl border border-[var(--arena-text)]/15 px-5 py-4 text-left transition-colors hover:border-[var(--arena-accent)]/30"
+          className={`block w-full rounded-2xl border px-5 py-4 text-left transition-colors ${c.border}`}
         >
           <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate font-semibold text-[var(--arena-text)]">{p.practice_title}</p>
+            <p className={`min-w-0 truncate font-semibold ${c.title}`}>{p.practice_title}</p>
             {p.completed ? (
-              <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.12em] text-[var(--arena-accent)]/80">
-                {doneTag}
-              </span>
+              <span className={`shrink-0 text-[0.6rem] uppercase tracking-[0.12em] ${c.done}`}>{doneTag}</span>
             ) : null}
           </div>
-          <p className="mt-0.5 truncate text-xs text-[var(--arena-text)]/60">{p.source_training_title}</p>
+          <p className={`mt-0.5 truncate text-xs ${c.sub}`}>{p.source_training_title}</p>
         </Link>
       ))}
     </div>

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { publishPractice } from "./foundryArenaPublishService";
 import {
+  canAccessPractice,
   completePracticeRun,
   getPlayablePractice,
   getUserPracticeState,
@@ -238,11 +239,30 @@ describe("practice discovery + run lifecycle (zero-XP, isolated)", () => {
     });
   }
 
-  it("lists only PUBLISHED practices with the user's completion flag", async () => {
+  it("lists only PUBLISHED practices with the user's completion flag (approved member)", async () => {
     const { admin } = seedPublished();
-    const list = await listAvailablePractices(admin, LEARNER);
+    const list = await listAvailablePractices(admin, LEARNER, true);
     expect(list.map((p) => p.id)).toEqual(["pub-1"]); // retired excluded
     expect(list[0].completed).toBe(false);
+  });
+
+  it("CREATOR sees their OWN published practice even when NOT an approved member", async () => {
+    const { admin } = seedPublished(); // pub-1 published_by=OWNER
+    const list = await listAvailablePractices(admin, OWNER, false); // not approved
+    expect(list.map((p) => p.id)).toEqual(["pub-1"]);
+  });
+
+  it("a NON-approved NON-creator sees nothing (no broadening to every user)", async () => {
+    const { admin } = seedPublished();
+    const list = await listAvailablePractices(admin, LEARNER, false);
+    expect(list).toEqual([]);
+  });
+
+  it("canAccessPractice: creator OR approved member; others denied", () => {
+    const p = { published_by: OWNER };
+    expect(canAccessPractice(p, OWNER, false)).toBe(true); // creator
+    expect(canAccessPractice(p, LEARNER, true)).toBe(true); // approved member
+    expect(canAccessPractice(p, LEARNER, false)).toBe(false); // neither
   });
 
   it("getPlayablePractice returns published, null for retired", async () => {
@@ -280,7 +300,7 @@ describe("practice discovery + run lifecycle (zero-XP, isolated)", () => {
     // idempotent
     expect((await completePracticeRun(admin, LEARNER, "pub-1", runId)).ok).toBe(true);
     // completion now shows in the discovery flag
-    const list = await listAvailablePractices(admin, LEARNER);
+    const list = await listAvailablePractices(admin, LEARNER, true);
     expect(list[0].completed).toBe(true);
   });
 
