@@ -83,7 +83,8 @@ type Copy = {
   pdfUnavailableHint: string;
   pageOf: (page: number, total: number) => string;
   prev: string;
-  next: string;
+  nextPage: string;
+  continueToReflection: string;
   docLoadError: string;
 };
 
@@ -123,7 +124,8 @@ const COPY: Record<Locale, Copy> = {
     pdfUnavailableHint: "Reload the page, or ask the host to check the event.",
     pageOf: (p, t) => `${p} / ${t}`,
     prev: "Back",
-    next: "Next",
+    nextPage: "Next page",
+    continueToReflection: "Continue to reflection",
     docLoadError: "This document is not available. Ask the host to check the event.",
   },
   ko: {
@@ -161,7 +163,8 @@ const COPY: Record<Locale, Copy> = {
     pdfUnavailableHint: "다시 시도하거나 호스트에게 문의하세요.",
     pageOf: (p, t) => `${p} / ${t}`,
     prev: "이전",
-    next: "다음",
+    nextPage: "다음 페이지",
+    continueToReflection: "성찰로 계속",
     docLoadError: "문서를 사용할 수 없습니다. 호스트에게 확인을 요청하세요.",
   },
 };
@@ -210,8 +213,16 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
   const fileRequestedRef = useRef(false);
+  const reflectionRef = useRef<HTMLDivElement | null>(null);
 
   const t = COPY[locale];
+
+  // "Continue to reflection" (final page, reading requirement met) reveals the
+  // already-rendered, server-unlocked reflection form. It never fakes completion —
+  // the reflection only exists in the DOM when the server marked reading_complete.
+  const onContinue = useCallback(() => {
+    reflectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   useEffect(() => setLocale(resolveLocale()), []);
 
@@ -505,13 +516,16 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
             fileUrl={fileUrl}
             initialPage={doc?.last_page ?? 1}
             onHeartbeat={onHeartbeat}
+            readingComplete={readingComplete}
+            onContinue={onContinue}
             copy={{
               loading: t.pdfLoading,
               unavailable: t.pdfUnavailable,
               unavailableHint: t.pdfUnavailableHint,
               pageOf: t.pageOf,
               prev: t.prev,
-              next: t.next,
+              nextPage: t.nextPage,
+              continueToReflection: t.continueToReflection,
             }}
           />
         ) : (
@@ -529,7 +543,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
       </div>
 
       {readingComplete && (
-        <div className="mt-6">
+        <div className="mt-6" ref={reflectionRef}>
           <Eyebrow>{t.reflection}</Eyebrow>
           {doc?.completion_prompt && (
             <p className="mt-2 text-sm text-white/85">{doc.completion_prompt}</p>

@@ -46,18 +46,27 @@ export type PdfReaderCopy = {
   unavailableHint: string;
   pageOf: (page: number, total: number) => string;
   prev: string;
-  next: string;
+  /** Non-final page: advance to the next PDF page. */
+  nextPage: string;
+  /** Final page, once the server-gated reading requirement is met. */
+  continueToReflection: string;
 };
 
 export function PdfReader({
   fileUrl,
   initialPage,
   onHeartbeat,
+  readingComplete,
+  onContinue,
   copy,
 }: {
   fileUrl: string;
   initialPage: number;
   onHeartbeat: (beat: ReadingHeartbeat) => void;
+  /** Server-authoritative: the reading requirement is met (reflection is unlocked). */
+  readingComplete: boolean;
+  /** Move on from the reader to the reflection step (parent scrolls it into view). */
+  onContinue: () => void;
   copy: PdfReaderCopy;
 }) {
   const [numPages, setNumPages] = useState(0);
@@ -133,7 +142,15 @@ export function PdfReader({
   }, [flush]);
 
   const goPrev = useCallback(() => setPage((p) => Math.max(1, p - 1)), []);
-  const goNext = useCallback(() => setPage((p) => Math.min(numPages || p, p + 1)), []);
+  // IMPORTANT: `numPages` MUST be a dependency. With an empty dep array this closure
+  // captured numPages=0 from the first render (before the PDF loaded), so
+  // `numPages || p` collapsed to `p` and Next never advanced — the participant was
+  // stuck on 1/2 even though the button looked enabled (its disabled check reads the
+  // fresh render-scope numPages). Recreate on load so the clamp uses the real total.
+  const goNext = useCallback(
+    () => setPage((p) => (numPages > 0 ? Math.min(numPages, p + 1) : p)),
+    [numPages],
+  );
 
   if (failed) {
     return (
@@ -191,14 +208,27 @@ export function PdfReader({
           {copy.prev}
         </button>
         <span className="text-xs tabular-nums text-white/70">{copy.pageOf(page, numPages || 1)}</span>
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={numPages > 0 && page >= numPages}
-          className="rounded-full border border-white/20 px-4 py-2 text-sm text-white disabled:opacity-40"
-        >
-          {copy.next}
-        </button>
+        {(() => {
+          const loading = numPages === 0;
+          const isLastPage = numPages > 0 && page >= numPages;
+          // On the last page the control becomes "Continue to reflection" ONLY when
+          // the server has confirmed the reading requirement (readingComplete). Until
+          // then it is a visibly-disabled "Next page" (never an enabled no-op tap).
+          const canContinue = isLastPage && readingComplete;
+          const label = canContinue ? copy.continueToReflection : copy.nextPage;
+          const disabled = loading || (isLastPage && !canContinue);
+          return (
+            <button
+              type="button"
+              onClick={canContinue ? onContinue : goNext}
+              disabled={disabled}
+              style={{ touchAction: "manipulation" }}
+              className="rounded-full border border-white/20 px-4 py-2 text-sm text-white disabled:opacity-40"
+            >
+              {label}
+            </button>
+          );
+        })()}
       </div>
     </div>
   );
