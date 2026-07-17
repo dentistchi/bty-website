@@ -29,6 +29,9 @@ export function FoundryShareControls({
   t: EventRoomsCopy;
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "manual">("idle");
+  // What the manual (clipboard-denied) fallback textarea shows — the URL for the
+  // Copy link action, the full invitation for a Teams-share fallback.
+  const [manualValue, setManualValue] = useState("");
   const [teamsState, setTeamsState] = useState<"idle" | "opening" | "fallback">("idle");
   const [status, setStatus] = useState(""); // aria-live announcement
   // Native = the iOS system share sheet (app-neutral primary). Resolved after
@@ -62,26 +65,30 @@ export function FoundryShareControls({
 
   useEffect(() => () => { if (resetTimer.current) clearTimeout(resetTimer.current); }, []);
 
-  const flashCopied = useCallback(() => {
+  const flashCopied = useCallback((msg: string) => {
     setCopyState("copied");
-    setStatus(t.invitationCopied);
+    setStatus(msg);
     if (resetTimer.current) clearTimeout(resetTimer.current);
     resetTimer.current = setTimeout(() => setCopyState("idle"), 2200);
-  }, [t.invitationCopied]);
+  }, []);
 
-  const writeClipboard = useCallback(async (): Promise<boolean> => {
+  // Write an EXPLICIT payload — never an implicit one. The Copy link action passes
+  // event.join_url (URL-only, address-bar-pasteable); a Teams fallback passes the
+  // full invitation (a chat message). No caller shares an ambiguous default.
+  const writeClipboard = useCallback(async (text: string): Promise<boolean> => {
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(invitation);
+        await navigator.clipboard.writeText(text);
         return true;
       }
     } catch {
       // fall through to manual
     }
     return false;
-  }, [invitation]);
+  }, []);
 
-  const revealManual = useCallback(() => {
+  const revealManual = useCallback((text: string) => {
+    setManualValue(text);
     setCopyState("manual");
     setStatus(t.copyFailedManual);
     // Move focus to the selectable text so keyboard users can copy immediately.
@@ -91,11 +98,20 @@ export function FoundryShareControls({
     }, 0);
   }, [t.copyFailedManual]);
 
-  const onCopy = useCallback(async () => {
-    const ok = await writeClipboard();
-    if (ok) flashCopied();
-    else revealManual();
-  }, [writeClipboard, flashCopied, revealManual]);
+  // Copy link — copies EXACTLY the canonical join URL (no title, no instructions,
+  // no "Open the Foundry room:" prefix, no newline) so a paste into a browser
+  // address bar opens the employee room directly.
+  const onCopyLink = useCallback(async () => {
+    const ok = await writeClipboard(event.join_url);
+    if (ok) flashCopied(t.linkCopied);
+    else revealManual(event.join_url);
+  }, [writeClipboard, flashCopied, revealManual, event.join_url, t.linkCopied]);
+
+  // Re-copy whatever the manual fallback is currently showing.
+  const onCopyManual = useCallback(async () => {
+    const ok = await writeClipboard(manualValue);
+    if (ok) flashCopied(manualValue === event.join_url ? t.linkCopied : t.invitationCopied);
+  }, [writeClipboard, flashCopied, manualValue, event.join_url, t.linkCopied, t.invitationCopied]);
 
   const onShareTeams = useCallback(async () => {
     // NATIVE shell (Capacitor WKWebView): open the iOS SYSTEM SHARE SHEET so the
@@ -119,10 +135,10 @@ export function FoundryShareControls({
           return;
         }
         // Share API failed → honest copy fallback.
-        const copied = await writeClipboard();
+        const copied = await writeClipboard(invitation);
         setTeamsState("fallback");
         setStatus(copied ? t.readyToPasteNative : t.teamsCouldNotOpen);
-        if (!copied) revealManual();
+        if (!copied) revealManual(invitation);
         return;
       }
     }
@@ -130,10 +146,10 @@ export function FoundryShareControls({
       // Native shell without Web Share support → copy fallback. (A guaranteed
       // native sheet here would require @capacitor/share in the shell — see report.)
       setTeamsState("opening");
-      const copied = await writeClipboard();
+      const copied = await writeClipboard(invitation);
       setTeamsState("fallback");
       setStatus(copied ? t.readyToPasteNative : t.teamsCouldNotOpen);
-      if (!copied) revealManual();
+      if (!copied) revealManual(invitation);
       return;
     }
 
@@ -152,13 +168,14 @@ export function FoundryShareControls({
       return;
     }
     // Popup blocked / unsupported → honest fallback: copy + tell user to paste.
-    const copied = await writeClipboard();
+    const copied = await writeClipboard(invitation);
     setTeamsState("fallback");
     setStatus(copied ? t.readyToPaste : t.teamsCouldNotOpen);
-    if (!copied) revealManual();
+    if (!copied) revealManual(invitation);
   }, [
     event.title,
     event.join_url,
+    invitation,
     shareText,
     teamsUrl,
     writeClipboard,
@@ -188,23 +205,23 @@ export function FoundryShareControls({
           </button>
           <button
             type="button"
-            onClick={onCopy}
+            onClick={onCopyLink}
             aria-label={t.copyInvitation}
             className="w-full rounded-xl border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/[0.06]"
           >
-            {copyState === "copied" ? t.invitationCopied : t.copyInvitation}
+            {copyState === "copied" ? t.linkCopied : t.copyInvitation}
           </button>
         </div>
       ) : (
-        // Web desktop: Copy invitation + the official Share to Teams dialog (unchanged).
+        // Web desktop: Copy link + the official Share to Teams dialog (unchanged).
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={onCopy}
+            onClick={onCopyLink}
             aria-label={t.copyInvitation}
             className="flex-1 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.07]"
           >
-            {copyState === "copied" ? t.invitationCopied : t.copyInvitation}
+            {copyState === "copied" ? t.linkCopied : t.copyInvitation}
           </button>
           <button
             type="button"
@@ -229,15 +246,15 @@ export function FoundryShareControls({
           <textarea
             ref={manualRef}
             readOnly
-            value={invitation}
+            value={manualValue}
             aria-label={t.copyInvitation}
-            rows={6}
+            rows={3}
             className="w-full resize-none rounded-lg bg-black/30 px-3 py-2 text-xs text-white/90 outline-none"
           />
           <div className="flex gap-3">
             <button
               type="button"
-              onClick={onCopy}
+              onClick={onCopyManual}
               className="rounded-lg border border-white/12 px-3 py-2 text-xs text-white/80 hover:bg-white/[0.06]"
             >
               {t.copyInvitation}

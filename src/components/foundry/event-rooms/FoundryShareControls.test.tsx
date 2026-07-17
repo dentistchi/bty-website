@@ -55,19 +55,31 @@ function setNativeShare(fn: (d: { title?: string; text?: string; url?: string })
   Object.defineProperty(navigator, "share", { value: fn, configurable: true });
 }
 
-describe("FoundryShareControls — Copy invitation", () => {
-  it("copies the full invitation (title + URL) and confirms calmly", async () => {
+describe("FoundryShareControls — Copy link (URL-only, Slice 2.3A.1)", () => {
+  it("copies EXACTLY the join URL — no title, instructions, prefix, newline, or whitespace", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     setClipboard(writeText);
     render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
     fireEvent.click(screen.getByRole("button", { name: t.copyInvitation }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0][0] as string;
-    expect(copied).toContain("Monthly Clinical Update");
-    expect(copied).toContain("Read the document and complete the reflection.");
-    expect(copied).toContain(URL);
-    expect(copied).not.toMatch(/owner_user_id|storage|core_xp|signedURL/i);
-    await waitFor(() => expect(screen.getAllByText(t.invitationCopied).length).toBeGreaterThan(0));
+    expect(copied).toBe(URL); // #1 exactly joinUrl
+    expect(copied.startsWith("https://")).toBe(true); // #2
+    expect(copied).toContain("/f/"); // #3
+    expect(copied).not.toContain("Monthly Clinical Update"); // #4 no title
+    expect(copied).not.toContain("Read the document"); // #5 no instructions
+    expect(copied).not.toContain("Open the Foundry room"); // #6 no prefix
+    expect(copied).not.toContain("\n"); // #7 no newline
+    expect(copied).toBe(copied.trim()); // #8 trimmed
+    // confirmation says "Link copied", never "Invitation copied"
+    await waitFor(() => expect(screen.getAllByText(t.linkCopied).length).toBeGreaterThan(0));
+    expect(screen.queryByText(t.invitationCopied)).toBeNull();
+  });
+
+  it("the label reads 'Copy link' (URL-only payload)", () => {
+    render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeTruthy();
+    expect(t.copyInvitation).toBe("Copy link");
   });
 
   it("clipboard DENIED → manual selectable fallback (no silent failure)", async () => {
@@ -85,7 +97,7 @@ describe("FoundryShareControls — Copy invitation", () => {
     render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
     fireEvent.click(screen.getByRole("button", { name: t.copyInvitation }));
     const area = (await screen.findByRole("textbox")) as HTMLTextAreaElement;
-    expect(area.value).toContain(URL);
+    expect(area.value).toBe(URL); // URL-only fallback for Copy link
   });
 });
 
@@ -157,6 +169,9 @@ describe("FoundryShareControls — Share to Teams (web) / Share invitation (nati
     render(<FoundryShareControls event={docEvent()} locale="en" t={t} />);
     fireEvent.click(await screen.findByRole("button", { name: t.shareInvitation }));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    // The Teams/share fallback copies the FULL invitation (a chat message), NOT the
+    // URL-only payload — that distinction is what Slice 2.3A.1 preserves.
+    expect(writeText.mock.calls[0][0] as string).toContain("Monthly Clinical Update");
     await waitFor(() => expect(screen.getAllByText(t.readyToPasteNative).length).toBeGreaterThan(0));
     expect(screen.queryByText(/shared/i)).toBeNull();
   });
@@ -195,16 +210,16 @@ describe("FoundryShareControls — Share to Teams (web) / Share invitation (nati
   });
 });
 
-describe("FoundryShareControls — YouTube copy variant", () => {
-  it("YouTube event copies the watch instruction, not the reading line", async () => {
+describe("FoundryShareControls — Copy link is content-agnostic", () => {
+  it("a YouTube event's Copy link is ALSO URL-only (no watch instruction, no title)", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     setClipboard(writeText);
     render(<FoundryShareControls event={docEvent({ content_type: "youtube", document: undefined })} locale="en" t={t} />);
     fireEvent.click(screen.getByRole("button", { name: t.copyInvitation }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const copied = writeText.mock.calls[0][0] as string;
-    expect(copied).toContain("Watch the training video and complete the reflection.");
-    expect(copied).not.toContain("reading progress");
-    expect(copied).toContain(URL);
+    expect(copied).toBe(URL);
+    expect(copied).not.toContain("Watch the training video");
+    expect(copied).not.toContain("Monthly Clinical Update");
   });
 });
