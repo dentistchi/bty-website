@@ -25,11 +25,14 @@ export function FoundryEventControlRoom({
   initialSnapshot,
   locale,
   onBack,
+  onCreateArenaPractice,
 }: {
   eventId: string;
   initialSnapshot?: ManagerSnapshot | null;
   locale: Locale;
   onBack: () => void;
+  /** Host action: open the guided Arena-practice builder for this training. */
+  onCreateArenaPractice?: () => void;
 }) {
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
   const { snapshot, setSnapshot, refresh } = useEventSnapshot(eventId, initialSnapshot);
@@ -123,6 +126,18 @@ export function FoundryEventControlRoom({
                 {document.page_count} {document.page_count === 1 ? "page" : "pages"}
               </p>
             </div>
+          ) : null}
+
+          {/* Create Arena practice — the one clear action to turn this training into
+              a guided practice scenario draft. Host-only (this whole room is gated). */}
+          {onCreateArenaPractice ? (
+            <button
+              type="button"
+              onClick={onCreateArenaPractice}
+              className="self-start rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-3 text-sm font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/[0.14]"
+            >
+              {t.createArenaPractice} →
+            </button>
           ) : null}
 
           {isOpen ? (

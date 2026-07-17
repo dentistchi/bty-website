@@ -10,6 +10,7 @@ import { CreateFoundryEventForm } from "./CreateFoundryEventForm";
 import { FoundryEventControlRoom } from "./FoundryEventControlRoom";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import FoundryHistoryArchive from "./FoundryHistoryArchive";
+import { ArenaPracticeFlow } from "../arena-practice/ArenaPracticeFlow";
 
 /**
  * Foundry Event Rooms — the native Foundry tab (replaces the LockedRoom).
@@ -28,6 +29,7 @@ type View =
   | { kind: "create" }
   | { kind: "builder"; draftId: string }
   | { kind: "history" }
+  | { kind: "arena-practice"; eventId: string }
   | { kind: "control"; eventId: string; initial?: ManagerSnapshot | null };
 
 export default function FoundryEventRooms({ locale }: { locale: string }) {
@@ -171,6 +173,16 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
     return <FoundryHistoryArchive locale={loc} onBack={backHome} />;
   }
 
+  if (view.kind === "arena-practice") {
+    return (
+      <ArenaPracticeFlow
+        eventId={view.eventId}
+        locale={loc}
+        onBack={() => setView({ kind: "control", eventId: view.eventId })}
+      />
+    );
+  }
+
   if (view.kind === "control") {
     return (
       <FoundryEventControlRoom
@@ -178,6 +190,7 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
         initialSnapshot={view.initial}
         locale={loc}
         onBack={backHome}
+        onCreateArenaPractice={() => setView({ kind: "arena-practice", eventId: view.eventId })}
       />
     );
   }
