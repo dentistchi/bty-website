@@ -36,7 +36,6 @@ const COPY = {
     completeBody: "You worked through the full decision. Nothing here counts against you — it's practice.",
     done: "Done",
     exitTest: "Back to editor",
-    actionTag: "action",
     from: "From",
   },
   ko: {
@@ -50,19 +49,25 @@ const COPY = {
     completeBody: "결정 과정을 끝까지 진행했습니다. 이건 연습이니 불이익은 없습니다.",
     done: "완료",
     exitTest: "편집기로 돌아가기",
-    actionTag: "행동",
     from: "원본",
   },
 };
 
+/**
+ * A learner-facing choice card — label only, identical structure for every option in
+ * every phase. It carries NO badge/pill/capsule: the only prior marker rendered the
+ * internal `isActionCommitment` classification, which leaked which option the design
+ * treats as the "real action" (a preferred-answer / hidden-direction signal the
+ * learner must not see) and, being present on just the commitment option, made that
+ * card look preselected. Selection is expressed only by advancing the phase — there is
+ * no lingering per-choice selected state. (Slice 2.4A.4.)
+ */
 function ChoiceCard({
   label,
-  tag,
   onSelect,
   disabled,
 }: {
   label: string;
-  tag?: string;
   onSelect: () => void;
   disabled?: boolean;
 }) {
@@ -71,14 +76,9 @@ function ChoiceCard({
       type="button"
       onClick={onSelect}
       disabled={disabled}
-      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-bty-border/70 bg-white px-4 py-3.5 text-left transition-colors hover:border-bty-navy/40 hover:bg-bty-soft/40 disabled:opacity-50"
+      className="flex w-full items-center gap-3 rounded-2xl border border-bty-border/70 bg-white px-4 py-3.5 text-left transition-colors hover:border-bty-navy/40 hover:bg-bty-soft/40 disabled:opacity-50"
     >
       <span className="min-w-0 text-[0.98rem] leading-6 text-bty-navy">{label}</span>
-      {tag ? (
-        <span className="shrink-0 rounded-full border border-bty-navy/30 px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.12em] text-bty-navy/70">
-          {tag}
-        </span>
-      ) : null}
     </button>
   );
 }
@@ -171,12 +171,7 @@ export function ArenaPracticePlayer({
           <p className="text-[0.98rem] leading-7 text-bty-navy">{scenario.actionDecision.prompt}</p>
           <div className="mt-1 flex flex-col gap-2.5">
             {scenario.actionDecision.choices.map((c) => (
-              <ChoiceCard
-                key={c.id}
-                label={c.label}
-                tag={c.isActionCommitment ? t.actionTag : undefined}
-                onSelect={goComplete}
-              />
+              <ChoiceCard key={c.id} label={c.label} onSelect={goComplete} />
             ))}
           </div>
         </div>
