@@ -179,7 +179,6 @@ export type ModuleBuilderCopy = {
   reviewEyebrow: string;
   reviewSaved: string;
   reviewLead: string;
-  needsAttention: (n: number) => string;
   sectionsNeedAttention: (n: number) => string;
   requiredLabel: string;
   reviewChange: string;
@@ -209,7 +208,6 @@ export type ModuleBuilderCopy = {
   publishTrust: string;
   publishing: string;
   publishError: string;
-  publishNotReady: string;
   // Direction Copilot (Slice 2.4A)
   copilot: DirectionCopilotCopy;
 };
@@ -344,7 +342,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewEyebrow: "TRAINING DRAFT",
     reviewSaved: "Saved",
     reviewLead: "Review what you’ve built.",
-    needsAttention: (n) => `Needs attention — ${n}`,
     sectionsNeedAttention: (n) => (n === 1 ? "1 section needs attention" : `${n} sections need attention`),
     requiredLabel: "Required",
     reviewChange: "What needs to change",
@@ -371,7 +368,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
     publishing: "Creating session…",
     publishError: "Couldn’t create the session. Please try once more.",
-    publishNotReady: "Complete the highlighted sections first.",
     copilot: {
       entryPrompt: "Not sure how to turn this into training?",
       trigger: "Show me three possible directions",
@@ -527,7 +523,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewEyebrow: "훈련 초안",
     reviewSaved: "저장됨",
     reviewLead: "만든 내용을 검토하세요.",
-    needsAttention: (n) => `확인 필요 — ${n}`,
     sectionsNeedAttention: (n) => `주의가 필요한 항목 ${n}개`,
     requiredLabel: "필수",
     reviewChange: "무엇을 바꿔야 하는가",
@@ -554,7 +549,6 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
     publishing: "세션을 만드는 중…",
     publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",
-    publishNotReady: "먼저 표시된 항목을 완성하세요.",
     copilot: {
       entryPrompt: "이 문제를 어떤 교육으로 만들지 막막하신가요?",
       trigger: "가능한 교육 방향 3개 보기",
