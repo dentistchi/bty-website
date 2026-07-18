@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OwnerActionSchema } from '@/lib/validation';
 import { verifyOwnerCapability } from '@/lib/capability.server';
-import { getPublicRoomBySlug, setRequestReady, promoteNextReady, getGuestQueueStatus } from '@/lib/rooms.server';
+import { getPublicRoomBySlug, setRequestReady, getGuestQueueStatus } from '@/lib/rooms.server';
 import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
@@ -61,18 +61,15 @@ export async function POST(
   const result = await setRequestReady(room.id, id, ready);
   switch (result.outcome) {
     case 'ok': {
-      // V8 AUTOPILOT — Ready is the guest's intent; STARTING is the system's job. When
-      // the guest just readied and their song is the canonical FIRST with the stage open,
-      // auto-start it in one server op (no separate Start request). Never jumps a Ready
-      // guest ahead of an un-ready first-in-line. Only on `ready:true`.
-      let autoStarted = false;
-      if (ready) {
-        const promote = await promoteNextReady(room.id, access.event?.id ?? null);
-        autoStarted = promote.outcome === 'started' && promote.request?.id === id;
-      }
+      // V1.1 manual-first: Ready ONLY sets the shared `ready_at` signal — it NEVER
+      // starts a song. Auto-starting the first Ready song on the readiness update
+      // (the V8 autopilot) made music begin before any operator action. The operator
+      // now explicitly starts the first song (dj/start); automatic promotion happens
+      // only as the continuation of finishing a playing song. `autoStarted` is kept in
+      // the response shape (always false) so existing guest clients stay compatible.
       const status = await getGuestQueueStatus(room.id, id);
       return NextResponse.json(
-        { ok: true, ready, autoStarted, status: status?.state ?? null, position: status?.position ?? null },
+        { ok: true, ready, autoStarted: false, status: status?.state ?? null, position: status?.position ?? null },
         { headers: NO_STORE },
       );
     }

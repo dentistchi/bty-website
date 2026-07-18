@@ -42,10 +42,12 @@ describe('V8.1 server — ready-first promotion + idempotent one-playing', () =>
     expect(e).toMatch(/playing\.id === requestId/); // same song → success, not a false failure
   });
 
-  it('reconcileStage is the idempotent self-heal (no interrupt) = promoteNextReady', () => {
-    expect(rooms).toContain('export async function reconcileStage');
-    const r = rooms.slice(rooms.indexOf('export async function reconcileStage'));
-    expect(r.slice(0, 300)).toContain('return promoteNextReady(roomId, eventId)');
+  it('V1.1 manual-first: the idle self-heal (reconcileStage) is GONE — no idle auto-promotion', () => {
+    // The reconcileStage seam existed only to auto-promote the first Ready song on a
+    // poll. Manual-first removes idle auto-promotion, so the function is gone and no
+    // route calls it. promoteNextReady survives ONLY for the finish→next continuation.
+    expect(rooms).not.toContain('reconcileStage');
+    expect(rooms).toContain('export async function promoteNextReady');
   });
 });
 
@@ -63,19 +65,24 @@ describe('V8.1 routes — ensure-playing, precise errors, self-heal', () => {
     expect(startRoute).toContain('이 이벤트가 종료되었습니다.');
   });
 
-  it('/dj/queue self-heals: it reconciles the stage before every read (initial + idle poll)', () => {
-    expect(queueRoute).toContain('reconcileStage');
-    expect(queueRoute).toMatch(/reconcileStage\(auth\.room\.id, event\?\.id \?\? null\)/);
+  it('V1.1: /dj/queue is READ-ONLY — it never reconciles or promotes on a read', () => {
+    // A poll (incl. the first load on launch) must not create a playing row, so the
+    // first song is never already playing before the operator taps Start.
+    expect(queueRoute).not.toContain('reconcileStage');
+    expect(strip(queueRoute)).not.toMatch(/promoteNextReady|ensurePlaying|setRequestReady/);
   });
 
-  it('a complete/skip of the PLAYING song auto-promotes the next Ready (shared seam)', () => {
+  it('a complete/skip of the PLAYING song auto-promotes the next Ready (continuation seam KEPT)', () => {
     expect(patchRoute).toContain('promoteNextReady');
     expect(patchRoute).toMatch(/action === 'complete' \|\| action === 'skip'/);
     expect(patchRoute).toMatch(/result\.from === 'playing'/);
   });
 
-  it('the guest Ready route drives promotion (Ready is the go signal)', () => {
-    expect(readyRoute).toContain('promoteNextReady');
+  it('V1.1: the guest Ready route sets the signal ONLY — it never auto-starts a song', () => {
+    // Ready is no longer a "go" signal; starting the first song is an explicit operator
+    // action. autoStarted is pinned false for client compatibility.
+    expect(strip(readyRoute)).not.toContain('promoteNextReady');
+    expect(readyRoute).toContain('autoStarted: false');
   });
 });
 

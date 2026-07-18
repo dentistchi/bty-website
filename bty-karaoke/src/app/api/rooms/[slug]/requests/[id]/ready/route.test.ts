@@ -1,5 +1,6 @@
-// Guest READY route (V8 AUTOPILOT): owner-gated. Sets ready_at AND, when this song is
-// the canonical first with the stage open, auto-starts it via the promote seam.
+// Guest READY route (V1.1 manual-first): owner-gated. Sets ready_at ONLY — it never
+// starts a song (the V8 auto-start on readiness was removed so the first song is an
+// explicit operator action). `autoStarted` stays in the response (always false).
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -64,17 +65,18 @@ describe('POST .../requests/[id]/ready', () => {
     expect(promoteNextReady).not.toHaveBeenCalled(); // unready never auto-starts
   });
 
-  it('V8: readying the FIRST song with the stage open AUTO-STARTS it', async () => {
-    state.promote = { outcome: 'started', request: { id: 'req-1' } };
+  it('V1.1 manual-first: readying the FIRST song sets the signal ONLY — never auto-starts', async () => {
+    // Even for the canonical first song with the stage open, Ready no longer starts it.
+    state.promote = { outcome: 'started', request: { id: 'req-1' } }; // would have auto-started in V8
     const res = await POST(req({ token: 't' }), ctx);
     expect(res.status).toBe(200);
-    expect(promoteNextReady).toHaveBeenCalledWith('room-1', null);
-    expect(await res.json()).toMatchObject({ ok: true, ready: true, autoStarted: true });
+    expect(promoteNextReady).not.toHaveBeenCalled();
+    expect(await res.json()).toMatchObject({ ok: true, ready: true, autoStarted: false });
   });
 
-  it('V8: readying a later-position song only stores Ready (no auto-start)', async () => {
-    state.promote = { outcome: 'already_playing' }; // a song is on stage
+  it('V1.1: readying any song only stores Ready (autoStarted always false)', async () => {
     const res = await POST(req({ token: 't' }), ctx);
+    expect(promoteNextReady).not.toHaveBeenCalled();
     expect(await res.json()).toMatchObject({ ok: true, ready: true, autoStarted: false });
   });
 

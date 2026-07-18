@@ -697,19 +697,6 @@ export async function ensurePlaying(
 }
 
 /**
- * V8.1 — idempotent stage reconciliation. If the stage is idle (nothing playing)
- * and a Ready waiting song exists, auto-promote it. Safe to call on every Admin
- * queue read: it self-heals a missed Ready-time promotion (transient/event-scope)
- * without ever interrupting a song already playing. Returns the promote result.
- */
-export async function reconcileStage(
-  roomId: string,
-  eventId?: string | null,
-): Promise<PromoteResult> {
-  return promoteNextReady(roomId, eventId);
-}
-
-/**
  * V8.1 AUTOPILOT — the ONE authoritative "start the next stage if it's Ready" service.
  * Ready is the guest's INTENT; starting is the SYSTEM's responsibility.
  *
