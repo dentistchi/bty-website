@@ -108,6 +108,13 @@ export const AdminSetupSchema = z.object({
 export const AdminEnrollSchema = z.object({
   pin: z.string().min(1).max(128),
 });
+
+// Slug-free admin device enrollment (mobile app). Same PIN field; an optional
+// device label. The room is resolved server-side (sole-admin-PIN room).
+export const AdminDeviceEnrollSchema = z.object({
+  pin: z.string().min(1).max(128),
+  deviceName: z.string().max(60).optional(),
+});
 export const AdminPinRotateSchema = z.object({
   pin: z.string().min(1).max(128),
 });

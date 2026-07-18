@@ -57,6 +57,35 @@ export async function authorizeDevice(
 }
 
 /**
+ * Reverse-resolve a raw bearer token to its ACTIVE device WITHOUT knowing the
+ * room — safe and cheap because `token_hash` is globally UNIQUE. Returns the
+ * device (id/room_id/role) or null when the token is unknown or revoked. This is
+ * what lets a stored admin token restore its room on a fresh app launch. Touches
+ * last_used_at best-effort. Never returns the token_hash.
+ */
+export async function getActiveDeviceByToken(
+  rawToken: string,
+): Promise<{ id: string; room_id: string; role: DeviceRole } | null> {
+  if (!rawToken) return null;
+  const hash = await sha256Hex(rawToken);
+  const { data, error } = await karaokeDb()
+    .from('karaoke_dj_devices')
+    .select('id, room_id, role, status')
+    .eq('token_hash', hash)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || data.status !== 'active') return null;
+
+  void karaokeDb()
+    .from('karaoke_dj_devices')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', data.id)
+    .then(undefined, () => undefined);
+
+  return { id: data.id as string, room_id: data.room_id as string, role: data.role as DeviceRole };
+}
+
+/**
  * Create a durable device session for a room. `rawToken` is hashed here; the
  * caller keeps the raw. Returns the new device row (no token).
  */

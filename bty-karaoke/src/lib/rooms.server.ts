@@ -82,6 +82,39 @@ export async function getPublicRoomBySlug(slug: string): Promise<PublicRoom | nu
   return (data as PublicRoom) ?? null;
 }
 
+/** Room lookup by id — never selects dj_secret. Used to resolve a device's room. */
+export async function getPublicRoomById(roomId: string): Promise<PublicRoom | null> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .select(PUBLIC_ROOM_COLS)
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as PublicRoom) ?? null;
+}
+
+/**
+ * The room + its encoded Admin-PIN record when EXACTLY ONE room has an Admin PIN
+ * configured, else null. Powers slug-free device enrollment WITHOUT scanning many
+ * PBKDF2 hashes: we count PIN-configured rooms cheaply and only ever verify a PIN
+ * against a single candidate. Zero or ≥2 PIN-configured rooms → null (the caller
+ * fails uniformly, never disclosing which case occurred). The pin_hash is used
+ * server-side only and never returned to a client.
+ */
+export async function getSoleAdminPinRoom(): Promise<(PublicRoom & { admin_pin_hash: string }) | null> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .select(`${PUBLIC_ROOM_COLS}, admin_pin_hash`)
+    .not('admin_pin_hash', 'is', null)
+    .limit(2); // 2 is enough to detect "more than one" without reading all rooms
+  if (error) throw error;
+  const rows = (data as (PublicRoom & { admin_pin_hash: string | null })[]) ?? [];
+  if (rows.length !== 1) return null;
+  const row = rows[0];
+  if (!row.admin_pin_hash) return null;
+  return row as PublicRoom & { admin_pin_hash: string };
+}
+
 /**
  * Verify a DJ credential (raw) against the room's stored hash. Returns the
  * public room on success, else null. The raw credential never leaves this call
