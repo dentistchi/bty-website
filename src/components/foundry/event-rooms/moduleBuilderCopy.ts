@@ -180,6 +180,8 @@ export type ModuleBuilderCopy = {
   reviewSaved: string;
   reviewLead: string;
   needsAttention: (n: number) => string;
+  sectionsNeedAttention: (n: number) => string;
+  requiredLabel: string;
   reviewChange: string;
   reviewWho: string;
   reviewCapability: string;
@@ -343,6 +345,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewSaved: "Saved",
     reviewLead: "Review what you’ve built.",
     needsAttention: (n) => `Needs attention — ${n}`,
+    sectionsNeedAttention: (n) => (n === 1 ? "1 section needs attention" : `${n} sections need attention`),
+    requiredLabel: "Required",
     reviewChange: "What needs to change",
     reviewWho: "Who it’s for",
     reviewCapability: "Capability",
@@ -524,6 +528,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewSaved: "저장됨",
     reviewLead: "만든 내용을 검토하세요.",
     needsAttention: (n) => `확인 필요 — ${n}`,
+    sectionsNeedAttention: (n) => `주의가 필요한 항목 ${n}개`,
+    requiredLabel: "필수",
     reviewChange: "무엇을 바꿔야 하는가",
     reviewWho: "누구를 위한 것인가",
     reviewCapability: "역량",

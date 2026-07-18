@@ -277,7 +277,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     expect(screen.getByText(/Link not added yet · Required before approval/i)).toBeTruthy();
   });
 
-  it("review begins near the top (no viewport spacer) and shows needs-attention", async () => {
+  it("review begins near the top (no viewport spacer) and shows the explicit missing summary", async () => {
     mockDraftServer({
       current_step: 8,
       answers: { problem: "x", observableBehavior: "show leadership", materialIntent: "youtube" },
@@ -285,13 +285,17 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review lead sits right under the header — no min-h spacer block precedes it.
     expect(await screen.findByText("Review what you’ve built.")).toBeTruthy();
-    // vague behavior + missing YouTube link => 2 needs-attention.
-    expect(screen.getByText("Needs attention — 2")).toBeTruthy();
+    // The canonical missing summary names the exact sections (no generic 'highlighted' copy).
+    const summaries = screen.getAllByTestId("review-missing-summary");
+    expect(summaries.length).toBeGreaterThan(0);
+    expect(summaries[0].textContent).toContain("sections need attention");
+    // behavior is present-but-vague → soft guidance still shown (non-blocking).
     expect(screen.getByText(/Needs clarification/)).toBeTruthy();
     // The publish control is present but GATED — an incomplete draft can't be published.
-    const publishBtn = screen.getByText("Approve & create session") as HTMLButtonElement;
+    const publishBtn = screen.getByTestId("publish-cta") as HTMLButtonElement;
     expect(publishBtn.disabled).toBe(true);
-    expect(screen.getByText("Complete the highlighted sections first.")).toBeTruthy();
+    // The ambiguous "Complete the highlighted sections first" copy is gone.
+    expect(screen.queryByText("Complete the highlighted sections first.")).toBeNull();
   });
 });
 
@@ -352,7 +356,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
     expect(screen.getByText("Keep.docx")).toBeTruthy();
   });
 
-  it("review lists attached files (and honest requirement when none)", async () => {
+  it("review lists attached files and does NOT flag the material section when a file is present", async () => {
     mockDraftServer({
       current_step: 8,
       answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
@@ -361,10 +365,11 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Review what you’ve built.");
     expect(screen.getByText(/Care\.pdf · Attached · Ready for participant delivery/)).toBeTruthy();
-    expect(screen.queryByText(/Needs attention/)).toBeNull();
+    // Material is satisfied → its row is not highlighted as missing.
+    expect(screen.getByTestId("review-row-material").getAttribute("data-missing")).toBeNull();
   });
 
-  it("review shows the requirement when no files are attached", async () => {
+  it("review highlights the material section (Required) when no PDF file is attached", async () => {
     mockDraftServer({
       current_step: 8,
       answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
@@ -372,8 +377,11 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Review what you’ve built.");
-    expect(screen.getByText(/No files attached yet/)).toBeTruthy();
-    expect(screen.getByText("Needs attention — 1")).toBeTruthy();
+    const materialRow = screen.getByTestId("review-row-material");
+    expect(materialRow.getAttribute("data-missing")).toBe("true");
+    expect(materialRow.textContent).toContain("Required");
+    // The material section is named in the explicit missing summary.
+    expect(screen.getAllByTestId("review-missing-item-material").length).toBeGreaterThan(0);
   });
 
   it("YouTube regression: switching to YouTube still shows the missing-link state", async () => {
@@ -419,12 +427,14 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     await waitFor(() => expect(onExit).toHaveBeenCalledWith({ publishedEventId: "ev-new" }));
   });
 
-  it("disables publish for an incomplete draft (not ready)", async () => {
+  it("disables publish for an incomplete draft and names the missing sections", async () => {
     mockDraftServer({ current_step: 8, answers: { problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     const btn = await screen.findByText("Approve & create session");
     expect((btn as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("Complete the highlighted sections first.")).toBeTruthy();
+    // Explicit named summary instead of the old ambiguous "highlighted sections" copy.
+    expect(screen.getAllByTestId("review-missing-summary").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Complete the highlighted sections first.")).toBeNull();
   });
 
   it("surfaces a publish failure without leaving the builder", async () => {
@@ -520,5 +530,89 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
     // Continue without suggestions returns to the trigger.
     fireEvent.click(screen.getByText("Continue without suggestions"));
     expect(screen.getByTestId("direction-copilot-trigger")).toBeTruthy();
+  });
+});
+
+describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.4A.3)", () => {
+  // Every visible section populated EXCEPT follow-up (which previously masqueraded as
+  // "No follow-up" and blocked approval with nothing highlighted — the Commander bug).
+  const nearCompleteNoFollow = {
+    problem: "Handoffs skip the double-check.",
+    audienceType: "everyone" as const,
+    observableBehavior: "The charge nurse reads back the dosage before sign-off.",
+    successEvidence: "Sign-offs include a witnessed read-back.",
+    evidenceType: "seen" as const,
+    learningNeeds: ["practice" as const],
+    materialIntent: "youtube" as const,
+    materialText: "https://youtu.be/dQw4w9WgXcQ",
+    completionPrompt: "What read-back will you commit to?",
+    arenaRecommended: true,
+  };
+
+  it("REPRODUCTION: a draft missing only follow-up disables Approve, names the exact section, and highlights ONLY that row", async () => {
+    mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("Review what you’ve built.");
+
+    // Approve disabled.
+    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(true);
+    // Exact missing section named (count + name), not a generic "highlighted" line.
+    expect(screen.getAllByTestId("review-missing-summary")[0].textContent).toContain("1 section needs attention");
+    expect(screen.getAllByTestId("review-missing-item-followUp").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Complete the highlighted sections first.")).toBeNull();
+    // The follow-up row is the ONLY highlighted row, with a Required label.
+    const followRow = screen.getByTestId("review-row-followUp");
+    expect(followRow.getAttribute("data-missing")).toBe("true");
+    expect(followRow.textContent).toContain("Required");
+    expect(followRow.textContent).toContain("Not added yet"); // no more false "No follow-up"
+    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(1);
+  });
+
+  it("Edit from the missing summary navigates to the correct Builder step, and completing it enables Approve on return", async () => {
+    mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("Review what you’ve built.");
+
+    // Tap the named missing item → jump to the follow-up step (7).
+    fireEvent.click(screen.getAllByTestId("review-missing-item-followUp")[0]);
+    await screen.findByText("When should you check what happened?");
+    fireEvent.click(screen.getByText("No follow-up"));
+
+    // Return to Review.
+    fireEvent.click(screen.getByText("Next"));
+    await screen.findByText("Review what you’ve built.");
+    // Highlight is gone and Approve is enabled immediately (no reload).
+    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
+    expect(screen.queryByTestId("review-missing-summary")).toBeNull();
+    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("a fully complete draft shows no summary, no highlighted row, and an enabled Approve", async () => {
+    mockDraftServer({ current_step: 8, answers: { ...nearCompleteNoFollow, followUpDays: 7 } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("Review what you’ve built.");
+    expect(screen.queryByTestId("review-missing-summary")).toBeNull();
+    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
+    expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("Copilot-applied behavior + evidence are recognized by the readiness gate (no false missing)", async () => {
+    // Behavior/evidence carrying the exact Copilot-applied shape; only audience left blank.
+    const copilotApplied = {
+      ...nearCompleteNoFollow,
+      followUpDays: 0 as const,
+      audienceType: undefined,
+      capabilityCandidate: "Shift Handoff",
+      observableBehavior: "Before ending the handoff, the nurse records the owner and next check time.",
+      successEvidence: "The handoff record lists the owner and a follow-up time.",
+    };
+    mockDraftServer({ current_step: 8, answers: copilotApplied });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("Review what you’ve built.");
+    // Behavior + evidence are NOT flagged (Copilot values count); only audience is.
+    expect(screen.getByTestId("review-row-behavior").getAttribute("data-missing")).toBeNull();
+    expect(screen.getByTestId("review-row-evidence").getAttribute("data-missing")).toBeNull();
+    expect(screen.getByTestId("review-row-audience").getAttribute("data-missing")).toBe("true");
+    expect(document.querySelectorAll('[data-missing="true"]').length).toBe(1);
   });
 });

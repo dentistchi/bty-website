@@ -11,13 +11,14 @@ import {
   stepBlocker,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
+  FOLLOW_UP_DAY_OPTIONS,
   type BuilderAnswers,
   type AudienceType,
   type EvidenceObservation,
   type LearningNeed,
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
-import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
+import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -291,6 +292,11 @@ export function ModuleBuilderShell({
   if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
   const isReview = step === BUILDER_STEP_MAX;
+  // The SINGLE readiness source the Review screen consults — the exact gate that the
+  // server re-enforces at publish, plus the PDF-asset gate the client can see locally.
+  // Every entry maps to a visible, highlightable Review row (Slice 2.4A.3).
+  const pdfMissing = answers.materialIntent === "pdf" && assets.filter((x) => x.file_kind === "pdf").length === 0;
+  const reviewMissing = reviewMissingSections(answers, pdfMissing ? ["material_pdf_required"] : []);
   const filesNode = (
     <FilesAndDocuments
       draftId={draftId}
@@ -323,12 +329,12 @@ export function ModuleBuilderShell({
 
       {isReview ? (
         <>
-          <ReviewBody answers={answers} assets={assets} onEdit={jumpTo} t={t} />
+          <ReviewBody answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           <PublishAction
-            answers={answers}
-            assets={assets}
+            missing={reviewMissing}
             publishing={publishing}
             error={publishErr}
+            onEdit={jumpTo}
             onPublish={doPublish}
             t={t}
           />
@@ -675,9 +681,52 @@ type ReviewRow = {
   label: string;
   value: string | null;
   step: number;
+  /** The canonical blocking section this row represents, if any (drives highlight). */
+  section?: ReviewSectionKey;
+  /** Non-blocking soft guidance (e.g. a present-but-vague behavior). Never counts as missing. */
   note?: { title: string; hint?: string };
   lines?: string[];
 };
+
+/** Section → actionable, localized "what to do" reason (reuses the per-step blockers). */
+function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
+  switch (section) {
+    case "problem":
+      return t.s1Blocker;
+    case "audience":
+      return t.s2Blocker;
+    case "behavior":
+      return t.s3Blocker;
+    case "evidence":
+      return t.s4Blocker;
+    case "learning":
+      return t.s5Blocker;
+    case "material":
+      return t.s6Blocker;
+    case "followUp":
+      return t.s7Blocker;
+  }
+}
+
+/** Section → its Review row label (for the "needs attention" summary list). */
+function sectionLabel(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
+  switch (section) {
+    case "problem":
+      return t.reviewChange;
+    case "audience":
+      return t.reviewWho;
+    case "behavior":
+      return t.reviewBehavior;
+    case "evidence":
+      return t.reviewEvidence;
+    case "learning":
+      return t.reviewLearning;
+    case "material":
+      return t.reviewMaterials;
+    case "followUp":
+      return t.reviewFollow;
+  }
+}
 
 function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuilderCopy): ReviewRow[] {
   const audience = (() => {
@@ -704,74 +753,114 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
   };
   const learning = needs.length > 0 ? needs.map((n) => needLabel[n]).join(", ") : null;
 
-  // Behavior weak/empty → needs clarification.
-  const behaviorVague =
-    !a.observableBehavior?.trim() || observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague";
-  const behaviorNote = behaviorVague ? { title: t.gBehaviorNeeds, hint: t.gBehaviorHint } : undefined;
+  // Behavior present-but-vague → SOFT guidance only (a vague behavior is NOT a hard
+  // blocker; an empty behavior is a hard-missing section, highlighted canonically).
+  const behaviorNote =
+    a.observableBehavior?.trim() && observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague"
+      ? { title: t.gBehaviorNeeds, hint: t.gBehaviorHint }
+      : undefined;
 
-  // Material — honest state. Files: list each attachment; empty is needs-attention.
+  // Material — an honest value: null (→ "Not added yet" + canonical highlight) until the
+  // delivery is actually complete (a PDF asset exists, or a YouTube URL is present).
   let material: string | null = null;
-  let materialNote: { title: string; hint?: string } | undefined;
   let materialLines: string[] | undefined;
   if (a.materialIntent === "pdf") {
-    material = t.matFiles;
     if (assets.length > 0) {
+      material = t.matFiles;
       materialLines = assets.map(
         (as) => `${as.filename} · ${t.assetAttached}${as.participant_delivery_ready ? ` · ${t.deliveryReady}` : ""}`,
       );
-    } else {
-      materialNote = { title: t.noFilesYet, hint: t.requiredBeforeApproval };
     }
   } else if (a.materialIntent === "youtube") {
-    material = t.matYoutube;
-    if (!a.materialText?.trim()) materialNote = { title: t.gYtMissing, hint: t.requiredBeforeApproval };
+    material = a.materialText?.trim() ? t.matYoutube : null;
   }
 
   const arenaChosen = a.arenaRecommended ?? recommendArenaForNeeds(needs);
+  // Follow-up only reads as answered when a valid option was actually chosen — never
+  // mask an unset value as "No follow-up" (that made a required-missing row look done).
+  const followChosen = (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1);
 
   return [
-    { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1 },
-    { label: t.reviewWho, value: audience, step: 2 },
+    { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1, section: "problem" },
+    { label: t.reviewWho, value: audience, step: 2, section: "audience" },
     { label: t.reviewCapability, value: a.capabilityCandidate?.trim() ? a.capabilityCandidate : null, step: 3 },
-    { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, note: behaviorNote },
-    { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4 },
-    { label: t.reviewLearning, value: learning, step: 5 },
-    { label: t.reviewMaterials, value: material, step: 6, note: materialNote, lines: materialLines },
+    { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, section: "behavior", note: behaviorNote },
+    { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4, section: "evidence" },
+    { label: t.reviewLearning, value: learning, step: 5, section: "learning" },
+    { label: t.reviewMaterials, value: material, step: 6, section: "material", lines: materialLines },
     { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 6 },
     { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 7 },
-    { label: t.reviewFollow, value: arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30), step: 7 },
+    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 7, section: "followUp" },
   ];
 }
 
-/** Approve-and-create-session action on the review step (Slice 2.3A). Gated on the
- *  builder's readiness (per-step completeness + material present) so the host can't
- *  publish an incomplete module; the server re-checks the same gate authoritatively. */
+/**
+ * The "needs attention" summary — an explicit, named, tappable list of the exact
+ * missing Review sections. Never rendered when nothing is missing. Tapping a name
+ * jumps to that section's Builder step. This is the fix for the ambiguous
+ * "Complete the highlighted sections first" with nothing highlighted (Slice 2.4A.3).
+ */
+function MissingSummary({
+  missing,
+  onEdit,
+  t,
+}: {
+  missing: ReviewMissingSection[];
+  onEdit: (step: number) => void;
+  t: ModuleBuilderCopy;
+}) {
+  if (missing.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3" data-testid="review-missing-summary">
+      <p className="text-sm font-medium text-amber-200/90">{t.sectionsNeedAttention(missing.length)}</p>
+      <ul className="flex flex-col gap-1">
+        {missing.map((m) => (
+          <li key={m.section}>
+            <button
+              type="button"
+              onClick={() => onEdit(m.step)}
+              data-testid={`review-missing-item-${m.section}`}
+              className="text-left text-sm text-[#C9A66B] underline-offset-2 hover:underline"
+            >
+              • {sectionLabel(m.section, t)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Approve-and-create-session action on the review step. Enabled ONLY when the
+ *  canonical readiness has zero missing sections (the same gate the server re-enforces
+ *  at publish). The explicit missing summary appears right by the button so the Host
+ *  never faces a disabled Approve without seeing exactly what to fix (Slice 2.4A.3). */
 function PublishAction({
-  answers,
-  assets,
+  missing,
   publishing,
   error,
+  onEdit,
   onPublish,
   t,
 }: {
-  answers: BuilderAnswers;
-  assets: ClientAsset[];
+  missing: ReviewMissingSection[];
   publishing: boolean;
   error: string | null;
+  onEdit: (step: number) => void;
   onPublish: () => void;
   t: ModuleBuilderCopy;
 }) {
-  const pdfMissing = answers.materialIntent === "pdf" && assets.filter((a) => a.file_kind === "pdf").length === 0;
-  const notReady = builderApprovalErrors(answers).length > 0 || pdfMissing;
+  const notReady = missing.length > 0;
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
-      {notReady ? <p className="text-xs leading-5 text-amber-300/80">{t.publishNotReady}</p> : null}
+      <MissingSummary missing={missing} onEdit={onEdit} t={t} />
       {error ? <p className="text-xs leading-5 text-amber-300/85">{t.publishError}</p> : null}
       <button
         type="button"
         onClick={onPublish}
         disabled={publishing || notReady}
+        data-testid="publish-cta"
         className="rounded-xl bg-[#C9A66B] px-6 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-50"
       >
         {publishing ? t.publishing : t.publishCta}
@@ -783,47 +872,70 @@ function PublishAction({
 function ReviewBody({
   answers,
   assets,
+  missing,
   onEdit,
   t,
 }: {
   answers: BuilderAnswers;
   assets: ClientAsset[];
+  missing: ReviewMissingSection[];
   onEdit: (step: number) => void;
   t: ModuleBuilderCopy;
 }) {
   const rows = buildReviewRows(answers, assets, t);
-  const attention = rows.filter((r) => r.note).length;
+  const missingSet = new Set(missing.map((m) => m.section));
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <p className="text-base leading-7 text-white/80">{t.reviewLead}</p>
-        {attention > 0 ? (
-          <p className="text-sm font-medium text-amber-300/85">{t.needsAttention(attention)}</p>
-        ) : null}
+        <MissingSummary missing={missing} onEdit={onEdit} t={t} />
       </div>
-      <section className="flex flex-col rounded-2xl border border-white/8 bg-white/[0.02] px-4">
-        {rows.map((r, i) => (
-          <div key={i} className="flex items-start justify-between gap-4 border-b border-white/8 py-3 last:border-b-0">
-            <div className="flex min-w-0 flex-col gap-1">
-              <span className="text-xs uppercase tracking-[0.12em] text-white/40">{r.label}</span>
-              <span className="text-[0.95rem] leading-6 text-white/85">{r.value ?? t.reviewEmpty}</span>
-              {r.lines?.map((line, li) => (
-                <span key={li} className="mt-0.5 text-xs leading-5 text-[#C9A66B]/80">
-                  {line}
+      <section className="flex flex-col gap-2">
+        {rows.map((r, i) => {
+          const isMissing = r.section !== undefined && missingSet.has(r.section);
+          return (
+            <div
+              key={i}
+              data-testid={r.section ? `review-row-${r.section}` : undefined}
+              data-missing={isMissing ? "true" : undefined}
+              className={`flex items-start justify-between gap-4 rounded-xl border px-4 py-3 ${
+                isMissing
+                  ? "border-[#C9A66B]/60 border-l-4 border-l-[#C9A66B] bg-[#C9A66B]/[0.08]"
+                  : "border-white/8 bg-white/[0.02]"
+              }`}
+            >
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-white/40">
+                  {r.label}
+                  {isMissing ? (
+                    <span className="rounded bg-[#C9A66B]/20 px-1.5 py-0.5 text-[0.6rem] font-semibold tracking-normal text-[#C9A66B]" data-testid="required-badge">
+                      {t.requiredLabel}
+                    </span>
+                  ) : null}
                 </span>
-              ))}
-              {r.note ? (
-                <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
-                  {r.note.title}
-                  {r.note.hint ? ` · ${r.note.hint}` : ""}
+                <span className={`text-[0.95rem] leading-6 ${isMissing ? "text-white/50" : "text-white/85"}`}>
+                  {r.value ?? t.reviewEmpty}
                 </span>
-              ) : null}
+                {r.lines?.map((line, li) => (
+                  <span key={li} className="mt-0.5 text-xs leading-5 text-[#C9A66B]/80">
+                    {line}
+                  </span>
+                ))}
+                {isMissing && r.section ? (
+                  <span className="mt-0.5 text-xs leading-5 text-[#C9A66B]/90">{sectionReason(r.section, t)}</span>
+                ) : r.note ? (
+                  <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
+                    {r.note.title}
+                    {r.note.hint ? ` · ${r.note.hint}` : ""}
+                  </span>
+                ) : null}
+              </div>
+              <button type="button" onClick={() => onEdit(r.step)} className="shrink-0 text-xs text-[#C9A66B]">
+                {t.editSection}
+              </button>
             </div>
-            <button type="button" onClick={() => onEdit(r.step)} className="shrink-0 text-xs text-[#C9A66B]">
-              {t.editSection}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </section>
     </div>
   );

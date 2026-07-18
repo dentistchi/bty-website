@@ -5,6 +5,8 @@ import {
   deriveEventMaterial,
   buildModuleSnapshot,
   completionPromptOrNull,
+  reviewMissingSections,
+  ALL_BLOCKING_CODES,
   SNAPSHOT_ANSWER_KEYS,
 } from "./module-publish";
 import type { BuilderAnswers } from "./module-builder";
@@ -51,6 +53,79 @@ describe("builderApprovalErrors", () => {
   it("requires audience detail for a specific-role audience", () => {
     const a: BuilderAnswers = { ...completeYoutube(), audienceType: "specific_role", audienceDetail: "" };
     expect(builderApprovalErrors(a)).toContain("audience_detail_required");
+  });
+});
+
+describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", () => {
+  const sections = (a: BuilderAnswers, extra: string[] = []) => reviewMissingSections(a, extra).map((m) => m.section);
+
+  it("a complete draft has zero missing sections (isComplete)", () => {
+    const m = reviewMissingSections(completeYoutube());
+    expect(m).toEqual([]);
+  });
+
+  it("maps each required field, missing individually, to its exact section + step", () => {
+    const cases: Array<[Partial<BuilderAnswers>, string, number]> = [
+      [{ problem: "   " }, "problem", 1],
+      [{ audienceType: undefined }, "audience", 2],
+      [{ observableBehavior: "  " }, "behavior", 3],
+      [{ successEvidence: "\n\t" }, "evidence", 4],
+      [{ learningNeeds: [] }, "learning", 5],
+      [{ materialIntent: undefined, materialText: undefined }, "material", 6],
+      [{ materialText: "" }, "material", 6], // youtube intent but blank URL
+      [{ followUpDays: undefined }, "followUp", 7],
+    ];
+    for (const [override, section, step] of cases) {
+      const m = reviewMissingSections({ ...completeYoutube(), ...override });
+      expect(m).toContainEqual({ section, step });
+    }
+  });
+
+  it("treats whitespace-only required values as empty (missing)", () => {
+    expect(sections({ ...completeYoutube(), successEvidence: "   " })).toContain("evidence");
+  });
+
+  it("returns a deterministic list ordered by step for multiple missing fields", () => {
+    // pdf intent set (so material is satisfied at the answers level); everything else empty.
+    const m = reviewMissingSections({ materialIntent: "pdf" });
+    expect(m.map((x) => x.step)).toEqual([...m.map((x) => x.step)].sort((a, b) => a - b));
+    expect(m.map((x) => x.section)).toEqual(["problem", "audience", "behavior", "evidence", "learning", "followUp"]);
+  });
+
+  it("does NOT block on an empty (optional) capability candidate", () => {
+    const a = { ...completeYoutube(), capabilityCandidate: undefined };
+    expect(reviewMissingSections(a)).toEqual([]);
+  });
+
+  it("counts Copilot-applied behavior + evidence exactly like manual entry", () => {
+    const a: BuilderAnswers = {
+      ...completeYoutube(),
+      observableBehavior: "Before ending the handoff, the nurse records the owner and next check time.",
+      successEvidence: "The handoff record lists the owner and a follow-up time.",
+    };
+    expect(reviewMissingSections(a)).toEqual([]);
+  });
+
+  it("folds the service-only PDF-asset gate into the material section", () => {
+    const a: BuilderAnswers = { ...completeYoutube(), materialIntent: "pdf", materialText: undefined };
+    expect(sections(a)).not.toContain("material"); // answers alone are fine
+    expect(sections(a, ["material_pdf_required"])).toEqual(["material"]); // no asset → material missing once
+  });
+
+  it("de-duplicates a section reached by multiple codes", () => {
+    // material intent missing AND a pdf-required extra → still one 'material' entry
+    const a: BuilderAnswers = { ...completeYoutube(), materialIntent: undefined, materialText: undefined };
+    const m = sections(a, ["material_pdf_required"]);
+    expect(m.filter((s) => s === "material")).toHaveLength(1);
+  });
+
+  it("INVARIANT: every blocking code the gate can emit maps to a visible section", () => {
+    for (const code of ALL_BLOCKING_CODES) {
+      expect(reviewMissingSections({}, [code]).length).toBeGreaterThan(0);
+    }
+    // and builderApprovalErrors can only emit codes covered by the map
+    const emitted = new Set(builderApprovalErrors({}));
+    for (const code of emitted) expect(ALL_BLOCKING_CODES).toContain(code);
   });
 });
 
