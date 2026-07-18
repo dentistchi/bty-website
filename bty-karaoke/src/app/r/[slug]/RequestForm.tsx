@@ -91,17 +91,25 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     }
   }, [slug, eventId]);
 
-  function persistRequests(list: MyRequest[]) {
-    setMyRequests(list);
-    try {
-      window.localStorage.setItem(myRequestsKey(slug, eventId), JSON.stringify(list));
-    } catch {
-      /* storage full / disabled — presentation only */
-    }
+  // FUNCTIONAL update: always fold into the LATEST tracker, never a closure snapshot.
+  // A non-functional `persistRequests(addMyRequest(myRequests, …))` captured a stale
+  // `myRequests` — so a request added between render and this call (e.g. 다시 신청
+  // right after a poll) was silently dropped, leaving 내 신청곡 0. Folding on `prev`
+  // guarantees the new owned request is registered and survives concurrent writes.
+  function persistRequests(update: (prev: MyRequest[]) => MyRequest[]) {
+    setMyRequests((prev) => {
+      const next = update(prev);
+      try {
+        window.localStorage.setItem(myRequestsKey(slug, eventId), JSON.stringify(next));
+      } catch {
+        /* storage full / disabled — presentation only */
+      }
+      return next;
+    });
   }
 
   const removeMyRequest = (requestId: string) =>
-    persistRequests(myRequests.filter((r) => r.requestId !== requestId));
+    persistRequests((prev) => prev.filter((r) => r.requestId !== requestId));
 
   // "다시 신청" — submit a NEW request for a completed song's same media. Reuses the
   // canonical submit (one-in-flight dedupe → rapid taps create at most one). The
@@ -223,9 +231,10 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       setEditingName(false);
 
       const req = data.request;
-      // Keep search/results/recommendations exactly as they are — just track it.
-      persistRequests(
-        addMyRequest(myRequests, {
+      // Register the new owned request on the LATEST tracker (same ownership as a
+      // first-time submit: id + cancel/owner capability). Keep search/results as-is.
+      persistRequests((prev) =>
+        addMyRequest(prev, {
           requestId: req.id,
           cancelToken: data.cancelToken ?? null,
           title: req?.youtube_title ?? req?.search_query ?? displayTitle,
