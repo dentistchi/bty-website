@@ -7,8 +7,13 @@ import {
   addMyRequest,
   collapsedSummary,
   cancelRowAction,
+  groupOwned,
+  ownedCounts,
+  readyStageCopy,
+  hasActiveMedia,
   MY_REQUESTS_TTL_MS,
   type MyRequest,
+  type OwnedRow,
 } from './guest-requests';
 import { displaySong, cleanSongTitle } from './song-title';
 
@@ -108,6 +113,104 @@ describe('collapsedSummary', () => {
     ]);
     expect(s.count).toBe(1);
     expect(s.nearestPosition).toBe(3);
+  });
+});
+
+describe('groupOwned — current requests vs completed history vs dropped', () => {
+  const rows: OwnedRow[] = [
+    { requestId: 'p', state: 'now_playing' },
+    { requestId: 'w', state: 'waiting' },
+    { requestId: 'd1', state: 'done' },
+    { requestId: 'd2', state: 'done' },
+    { requestId: 'x', state: 'removed' },
+    { requestId: 'g', state: 'not_found' },
+  ];
+  it('active = waiting + playing only', () => {
+    expect(groupOwned(rows).activeIds).toEqual(['p', 'w']);
+  });
+  it('completed = done only, in order', () => {
+    expect(groupOwned(rows).completedIds).toEqual(['d1', 'd2']);
+  });
+  it('removed / not_found belong to neither collection', () => {
+    const g = groupOwned(rows);
+    expect(g.activeIds).not.toContain('x');
+    expect(g.completedIds).not.toContain('g');
+  });
+  it('a request is never in both active and completed', () => {
+    const g = groupOwned(rows);
+    expect(g.activeIds.some((id) => g.completedIds.includes(id))).toBe(false);
+  });
+});
+
+describe('ownedCounts — active / completed / ready', () => {
+  const rows: OwnedRow[] = [
+    { requestId: 'p', state: 'now_playing' },
+    { requestId: 'r', state: 'waiting', readyAt: '2026-07-18T00:00:00Z' },
+    { requestId: 'n', state: 'waiting', readyAt: null },
+    { requestId: 'd', state: 'done' },
+    { requestId: 'x', state: 'removed' },
+  ];
+  it('active counts waiting + playing (not completed/removed)', () => {
+    expect(ownedCounts(rows).active).toBe(3);
+  });
+  it('completed counts done only', () => {
+    expect(ownedCounts(rows).completed).toBe(1);
+  });
+  it('ready counts waiting rows with ready_at only (not Not-Ready)', () => {
+    expect(ownedCounts(rows).ready).toBe(1);
+  });
+  it('the count-vs-render bug: active count excludes the completed cards', () => {
+    // 1 active Ready + 4 completed → the sheet must show active=1, not 5.
+    const mix: OwnedRow[] = [
+      { requestId: 'a', state: 'waiting', readyAt: 'x' },
+      { requestId: 'c1', state: 'done' },
+      { requestId: 'c2', state: 'done' },
+      { requestId: 'c3', state: 'done' },
+      { requestId: 'c4', state: 'done' },
+    ];
+    expect(ownedCounts(mix).active).toBe(1);
+    expect(ownedCounts(mix).completed).toBe(4);
+  });
+});
+
+describe('readyStageCopy — honest, state-derived', () => {
+  const base = { ready: true, stageOpen: null as boolean | null, isEarliestReady: false, readyAheadCount: 0 };
+  it('idle earliest Ready does NOT mention a previous stage', () => {
+    const c = readyStageCopy({ ...base, state: 'up_next', stageOpen: true, isEarliestReady: true });
+    expect(c).toBe('첫 곡으로 시작할 준비가 됐어요');
+    expect(c).not.toContain('앞의 무대가 끝나면');
+  });
+  it('another song playing + next eligible Ready → continuation copy', () => {
+    expect(readyStageCopy({ ...base, state: 'waiting', stageOpen: false, isEarliestReady: true })).toBe(
+      '현재 무대가 끝나면 자동으로 이어집니다',
+    );
+  });
+  it('Ready songs ahead → honest ahead count', () => {
+    expect(readyStageCopy({ ...base, state: 'waiting', readyAheadCount: 2 })).toBe('앞에 준비된 노래 2곡이 있어요');
+  });
+  it('not ready → neutral copy', () => {
+    expect(readyStageCopy({ ...base, state: 'waiting', ready: false })).toBe('준비되면 재생 순서에 반영됩니다');
+  });
+  it('playing / done have their own copy', () => {
+    expect(readyStageCopy({ ...base, state: 'now_playing' })).toBe('지금 부르는 중입니다');
+    expect(readyStageCopy({ ...base, state: 'done' })).toBe('이 곡을 불렀어요');
+  });
+});
+
+describe('hasActiveMedia — duplicate guard for 다시 신청', () => {
+  const rows: OwnedRow[] = [
+    { requestId: 'a', state: 'waiting', videoId: 'VID1' },
+    { requestId: 'b', state: 'done', videoId: 'VID2' },
+  ];
+  it('same media already active → duplicate', () => {
+    expect(hasActiveMedia('VID1', rows)).toBe(true);
+  });
+  it('same media only in completed history → NOT a duplicate (re-request allowed)', () => {
+    expect(hasActiveMedia('VID2', rows)).toBe(false);
+  });
+  it('missing / unknown media → not a duplicate', () => {
+    expect(hasActiveMedia(null, rows)).toBe(false);
+    expect(hasActiveMedia('OTHER', rows)).toBe(false);
   });
 });
 

@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GuestQueueStatus } from '@/domain/queue';
 import type { DisplayState } from '@/domain/display';
-import { collapsedSummary, isTerminalState, cancelRowAction, type MyRequest } from '@/domain/guest-requests';
+import {
+  collapsedSummary,
+  cancelRowAction,
+  shouldDropOwned,
+  groupOwned,
+  readyStageCopy,
+  hasActiveMedia,
+  type MyRequest,
+  type OwnedRow,
+} from '@/domain/guest-requests';
 import { displaySong } from '@/domain/song-title';
 import { resolvePerfStage } from '@/domain/self-service';
 import SwipeableCard from './SwipeableCard';
@@ -14,6 +23,8 @@ interface Props {
   /** The guest's name — used only for a warm MC-style greeting on the cards. */
   guestName?: string;
   onRemoved: (requestId: string) => void;
+  /** Re-request a completed song (creates a NEW request; history is untouched). */
+  onReRequest?: (row: MyRequest) => void;
 }
 
 const POLL_MS = 4000;
@@ -40,7 +51,7 @@ function statusText(s?: GuestQueueStatus): string {
 // auto-expands — a new request only bumps the count and flashes a short gold edge
 // pulse. Tapping the pill opens a clean full-width bottom sheet (not a side
 // column / split-screen). Every status comes from the canonical server resolver.
-export default function MyRequestsDock({ slug, requests, guestName, onRemoved }: Props) {
+export default function MyRequestsDock({ slug, requests, guestName, onRemoved, onReRequest }: Props) {
   // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
   const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
   const [statuses, setStatuses] = useState<Record<string, GuestQueueStatus>>({});
@@ -54,6 +65,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
   // guest is genuinely next AND nobody is singing. The server re-checks anyway.
   const [stageOpen, setStageOpen] = useState<boolean | null>(null);
   const [nextId, setNextId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [justStarted, setJustStarted] = useState(false); // V8: my Ready auto-started my song
   useEffect(() => {
@@ -144,11 +156,12 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
     prevCount.current = requests.length;
   }, [requests.length]);
 
-  // Prune requests that reach a terminal state (after a brief honest note).
+  // Drop ONLY cancelled/gone requests (removed / not_found). Completed songs are
+  // KEPT — they move to the "오늘 부른 노래" history section, not pruned away.
   useEffect(() => {
     for (const r of requests) {
       const s = statuses[r.requestId];
-      if (s && isTerminalState(s.state) && !terminalSeen.current.has(r.requestId)) {
+      if (s && shouldDropOwned(s.state) && !terminalSeen.current.has(r.requestId)) {
         terminalSeen.current.add(r.requestId);
         window.setTimeout(() => onRemoved(r.requestId), 6000);
       }
@@ -286,6 +299,21 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
     }),
   );
 
+  // Canonical owned rows (state + ready + media) for grouping / dedupe / copy.
+  const byId = new Map(requests.map((r) => [r.requestId, r]));
+  const ownedRows: OwnedRow[] = requests.map((r) => {
+    const s = statuses[r.requestId];
+    return { requestId: r.requestId, state: s?.state ?? 'waiting', readyAt: s?.readyAt ?? null, videoId: r.videoId ?? null };
+  });
+  const { activeIds, completedIds } = groupOwned(ownedRows);
+  const activeRequests = activeIds.map((id) => byId.get(id)!).filter(Boolean);
+  const completedRequests = completedIds.map((id) => byId.get(id)!).filter(Boolean);
+  // Ready active rows, earliest first — for honest "N번째 / 첫 곡 / 앞에 준비된 N곡" copy.
+  const readyOrderIds = activeRequests
+    .filter((r) => statuses[r.requestId]?.readyAt != null && (statuses[r.requestId]?.state === 'waiting' || statuses[r.requestId]?.state === 'up_next'))
+    .sort((a, b) => (statuses[a.requestId]?.position ?? 0) - (statuses[b.requestId]?.position ?? 0))
+    .map((r) => r.requestId);
+
   return (
     <>
       {/* Permanent performance card — a persistent, stage-aware surface (never a
@@ -342,7 +370,13 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
             <div className="perf-sub">
               {justStarted
                 ? '무대가 시작되었습니다 · Admin 화면에서 노래를 열고 있어요.'
-                : '앞의 무대가 끝나면 자동으로 이어집니다.'}
+                : readyStageCopy({
+                    state: 'up_next',
+                    ready: true,
+                    stageOpen,
+                    isEarliestReady: stageOpen === true,
+                    readyAheadCount: 0,
+                  })}
             </div>
             <div className="perf-actions">
               <button
@@ -372,9 +406,13 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                   auto-continues the moment the stage frees. We never claim TV autoplay. */}
               <div className="perf-wait-sub">
                 {waitReady
-                  ? stage.aheadCount === 0
-                    ? '끝나면 자동으로 이어집니다'
-                    : `앞에 ${stage.aheadCount}곡 · 끝나면 자동으로 이어집니다`
+                  ? readyStageCopy({
+                      state: 'waiting',
+                      ready: true,
+                      stageOpen,
+                      isEarliestReady: stage.aheadCount === 0,
+                      readyAheadCount: 0, // perf-card lacks per-Ready-ahead data; idle/continuation only
+                    })
                   : '미리 준비해두면 차례가 오면 자동으로 시작돼요'}
               </div>
             </div>
@@ -433,7 +471,7 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
             {error && <div className="banner error">{error}</div>}
 
             <div className="dock-sheet-list">
-              {requests.map((r, i) => {
+              {activeRequests.map((r, i) => {
                 const s = statuses[r.requestId];
                 const state = s?.state ?? 'waiting';
                 const confirming = confirmingId === r.requestId;
@@ -470,7 +508,15 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                           <div className="sheet-row-ready" onPointerDown={(e) => e.stopPropagation()}>
                             {rowReady ? (
                               <>
-                                <span className="sheet-ready-note">앞의 무대가 끝나면 자동으로 이어집니다</span>
+                                <span className="sheet-ready-note">
+                                  {readyStageCopy({
+                                    state,
+                                    ready: true,
+                                    stageOpen,
+                                    isEarliestReady: readyOrderIds[0] === r.requestId,
+                                    readyAheadCount: Math.max(0, readyOrderIds.indexOf(r.requestId)),
+                                  })}
+                                </span>
                                 <button
                                   type="button"
                                   className="sheet-ready-btn ghost"
@@ -532,7 +578,55 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved }:
                   </SwipeableCard>
                 );
               })}
+              {activeRequests.length === 0 && (
+                <div className="sheet-empty-note">현재 신청한 노래가 없어요.</div>
+              )}
             </div>
+
+            {/* Completed history — collapsed by default, rendered ONLY when there is
+                history. Completed rows never appear in the current list above. */}
+            {completedRequests.length > 0 && (
+              <div className="dock-history">
+                <button
+                  type="button"
+                  className="dock-history-toggle"
+                  aria-expanded={historyOpen}
+                  onClick={() => setHistoryOpen((v) => !v)}
+                >
+                  오늘 부른 노래 {completedRequests.length} {historyOpen ? '〉' : '〉'}
+                </button>
+                {historyOpen && (
+                  <div className="dock-history-list">
+                    {completedRequests.map((r) => {
+                      const song = displaySong(r.title, r.artist);
+                      const dup = hasActiveMedia(r.videoId, ownedRows);
+                      return (
+                        <div className="history-row" key={r.requestId}>
+                          <div className="history-row-main">
+                            <div className="history-row-song">{song.song || r.title}</div>
+                            {song.artist && <div className="history-row-artist">{song.artist}</div>}
+                            <div className="history-row-status">이 곡을 불렀어요</div>
+                          </div>
+                          {onReRequest && (
+                            dup ? (
+                              <span className="history-dup-note">이미 신청됨</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="history-rerequest"
+                                onClick={() => onReRequest(r)}
+                              >
+                                다시 신청
+                              </button>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

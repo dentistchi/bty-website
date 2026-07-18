@@ -1717,6 +1717,75 @@ main.dj-console {
   font-size: 0.82rem;
   color: var(--muted);
 }
+
+/* Queue Truth V1 — current-list empty note + collapsed completed history */
+.sheet-empty-note {
+  padding: 18px 6px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.dock-history {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.dock-history-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-align: left;
+  padding: 10px 6px;
+  cursor: pointer;
+}
+.dock-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+.history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.history-row-song {
+  font-weight: 700;
+  opacity: 0.8;
+}
+.history-row-artist {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.history-row-status {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.history-rerequest {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.history-dup-note {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 .sheet-ready-btn {
   min-height: 44px;
   padding: 0 18px;

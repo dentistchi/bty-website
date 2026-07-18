@@ -41,6 +41,15 @@ export function isTerminalState(state: GuestQueueState): boolean {
   return state === 'done' || state === 'removed' || state === 'not_found';
 }
 
+/**
+ * A state that should be DROPPED from the owned list entirely (cancelled / gone).
+ * `done` is intentionally EXCLUDED — completed requests are KEPT as today's history
+ * (the "오늘 부른 노래" section), not pruned away.
+ */
+export function shouldDropOwned(state: GuestQueueState): boolean {
+  return state === 'removed' || state === 'not_found';
+}
+
 /** Drop stale entries older than the TTL (their cancel capability has expired). */
 export function pruneMyRequests(
   list: readonly MyRequest[],
@@ -85,6 +94,105 @@ export function collapsedSummary(
   else if (nearestPosition != null) label = count > 1 ? `가장 빠른 순번 ${nearestPosition}번` : `지금 대기 ${nearestPosition}번`;
   else if (onStage) label = '무대 위';
   return { count, nearestPosition, label };
+}
+
+// ── Queue Truth V1 — owned-request grouping, counts, honest copy, duplicates ──────
+//
+// The Guest sheet must show the SAME truth its count uses: current requests
+// (waiting/playing) and completed HISTORY are distinct collections, and cancelled/
+// removed requests belong to neither. All of this derives from canonical `state`.
+
+export interface OwnedRow {
+  requestId: string;
+  state: GuestQueueState;
+  /** Canonical `ready_at` presence — Ready vs Not-Ready among waiting rows. */
+  readyAt?: string | null;
+  /** Media identity for duplicate detection (youtube_video_id). */
+  videoId?: string | null;
+}
+
+export interface OwnedGroups {
+  /** Current requests — waiting / up_next / now_playing (the "내 신청곡" list). */
+  activeIds: string[];
+  /** Completed history — done (the "오늘 부른 노래" list). */
+  completedIds: string[];
+}
+
+/**
+ * Split owned rows into the current-request list and completed history. A row that
+ * is `removed` / `not_found` (cancelled or gone) belongs to NEITHER — it drops out
+ * of every guest collection. Order is preserved from the input.
+ */
+export function groupOwned(rows: readonly OwnedRow[]): OwnedGroups {
+  const activeIds: string[] = [];
+  const completedIds: string[] = [];
+  for (const r of rows) {
+    if (r.state === 'done') completedIds.push(r.requestId);
+    else if (r.state === 'removed' || r.state === 'not_found') continue; // dropped
+    else activeIds.push(r.requestId); // waiting / up_next / now_playing
+  }
+  return { activeIds, completedIds };
+}
+
+export interface OwnedCounts {
+  active: number; // waiting + playing
+  completed: number; // done history
+  ready: number; // waiting AND ready_at set
+}
+
+/** Canonical guest counts from owned rows — never derived from array length/position. */
+export function ownedCounts(rows: readonly OwnedRow[]): OwnedCounts {
+  let active = 0;
+  let completed = 0;
+  let ready = 0;
+  for (const r of rows) {
+    if (r.state === 'done') completed++;
+    else if (r.state === 'removed' || r.state === 'not_found') continue;
+    else {
+      active++;
+      if ((r.state === 'waiting' || r.state === 'up_next') && r.readyAt != null) ready++;
+    }
+  }
+  return { active, completed, ready };
+}
+
+/** Context for the honest, state-derived Ready sub-copy on a guest row. */
+export interface ReadyCopyContext {
+  state: GuestQueueState;
+  ready: boolean; // this row's ready_at is set
+  stageOpen: boolean | null; // no song is playing anywhere (from /display)
+  isEarliestReady: boolean; // this row is the earliest eligible Ready song
+  readyAheadCount: number; // eligible Ready songs strictly ahead of this one
+}
+
+/**
+ * State-derived copy — NEVER the old static "앞의 무대가 끝나면 자동으로 이어집니다"
+ * regardless of stage. When the stage is idle there is no previous stage to finish,
+ * so that copy would be false.
+ */
+export function readyStageCopy(ctx: ReadyCopyContext): string {
+  if (ctx.state === 'now_playing') return '지금 부르는 중입니다';
+  if (ctx.state === 'done') return '이 곡을 불렀어요';
+  if (!ctx.ready) return '준비되면 재생 순서에 반영됩니다';
+  // Ready + waiting:
+  if (ctx.readyAheadCount > 0) return `앞에 준비된 노래 ${ctx.readyAheadCount}곡이 있어요`;
+  if (ctx.stageOpen === true && ctx.isEarliestReady) return '첫 곡으로 시작할 준비가 됐어요';
+  // A song is playing (or stage state unknown) and this is the next eligible Ready.
+  return '현재 무대가 끝나면 자동으로 이어집니다';
+}
+
+/**
+ * Duplicate guard for "다시 신청": true when the same media (youtube_video_id) is
+ * ALREADY in the guest's active list (waiting/up_next/now_playing). Completed history
+ * does NOT count — that's the whole point of re-requesting.
+ */
+export function hasActiveMedia(videoId: string | null | undefined, rows: readonly OwnedRow[]): boolean {
+  if (!videoId) return false;
+  return rows.some(
+    (r) =>
+      r.videoId === videoId &&
+      (r.state === 'waiting' || r.state === 'up_next' || r.state === 'now_playing'),
+  );
 }
 
 export type CancelAction = 'cancel' | 'unavailable' | 'none';

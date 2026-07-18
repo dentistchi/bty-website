@@ -246,3 +246,85 @@ describe('V8.1 — resilience: restore, rollback, dedup', () => {
     expect(readyCalls.length).toBe(1);
   });
 });
+
+// ── Queue Truth V1 — active/history separation, honest copy, re-request ─────────
+const mkReqV = (id: string, title: string, videoId: string): MyRequest =>
+  ({ requestId: id, title, artist: '', cancelToken: `cap-${id}`, videoId }) as MyRequest;
+
+describe('Queue Truth V1 — current requests vs completed history', () => {
+  it('completed songs are NOT in the current list; count uses active only', async () => {
+    statusById = {
+      a: st({ state: 'waiting', position: 1, aheadCount: 0, readyAt: '2026-01-01T00:00:00Z' }),
+      c1: st({ state: 'done', position: 0 }),
+      c2: st({ state: 'done', position: 0 }),
+    };
+    render(
+      <MyRequestsDock
+        slug="bty-home"
+        requests={[mkReq('a', 'Active A'), mkReq('c1', 'Done One'), mkReq('c2', 'Done Two')]}
+        onRemoved={onRemoved}
+      />,
+    );
+    // Count = active (1), not 3.
+    const pill = await screen.findByRole('button', { name: '내 신청곡 1곡 열기' });
+    fireEvent.click(pill);
+    const dialog = await screen.findByRole('dialog');
+    // Current list has the active song; completed titles are NOT in the current list.
+    expect(within(dialog).getByText('Active A')).toBeTruthy();
+    // History is collapsed by default — completed titles not yet visible.
+    expect(within(dialog).queryByText('Done One')).toBeNull();
+    // The history disclosure shows the completed count.
+    expect(within(dialog).getByText(/오늘 부른 노래 2/)).toBeTruthy();
+  });
+
+  it('expanding history reveals completed rows with 다시 신청', async () => {
+    statusById = {
+      a: st({ state: 'waiting', position: 1, aheadCount: 0 }),
+      c1: st({ state: 'done', position: 0 }),
+    };
+    const onReRequest = vi.fn();
+    render(
+      <MyRequestsDock
+        slug="bty-home"
+        requests={[mkReq('a', 'Active A'), mkReqV('c1', 'Done One', 'VIDDONE')]}
+        onRemoved={onRemoved}
+        onReRequest={onReRequest}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '내 신청곡 1곡 열기' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByText(/오늘 부른 노래 1/));
+    expect(within(dialog).getByText('Done One')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: '다시 신청' }));
+    expect(onReRequest).toHaveBeenCalledTimes(1);
+    expect(onReRequest.mock.calls[0][0].requestId).toBe('c1');
+  });
+
+  it('re-request duplicate: same media already active → 이미 신청됨, no button', async () => {
+    statusById = {
+      a: st({ state: 'waiting', position: 1, aheadCount: 0 }),
+      c1: st({ state: 'done', position: 0 }),
+    };
+    render(
+      <MyRequestsDock
+        slug="bty-home"
+        requests={[mkReqV('a', 'Same Song', 'DUPVID'), mkReqV('c1', 'Same Song', 'DUPVID')]}
+        onRemoved={onRemoved}
+        onReRequest={vi.fn()}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: '내 신청곡 1곡 열기' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByText(/오늘 부른 노래 1/));
+    expect(within(dialog).getByText('이미 신청됨')).toBeTruthy();
+    expect(within(dialog).queryByRole('button', { name: '다시 신청' })).toBeNull();
+  });
+
+  it('idle earliest-Ready copy does NOT claim a previous stage', async () => {
+    display = { playing: null, next: { id: 'a' } }; // stage idle
+    statusById = { a: st({ state: 'up_next', position: 1, aheadCount: 0, readyAt: '2026-01-01T00:00:00Z' }) };
+    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    expect(await screen.findByText('첫 곡으로 시작할 준비가 됐어요')).toBeTruthy();
+    expect(screen.queryByText(/앞의 무대가 끝나면/)).toBeNull();
+  });
+});

@@ -103,6 +103,23 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const removeMyRequest = (requestId: string) =>
     persistRequests(myRequests.filter((r) => r.requestId !== requestId));
 
+  // "다시 신청" — submit a NEW request for a completed song's same media. Reuses the
+  // canonical submit (one-in-flight dedupe → rapid taps create at most one). The
+  // completed history record is immutable; this never mutates it back to waiting.
+  const reRequest = (row: MyRequest) => {
+    if (!row.videoId) return;
+    void submit(
+      {
+        youtubeVideoId: row.videoId,
+        ...(row.title ? { youtubeTitle: row.title } : {}),
+        ...(row.artist ? { youtubeChannelTitle: row.artist } : {}),
+      },
+      row.title,
+      row.artist,
+      `re:${row.requestId}`,
+    );
+  };
+
   // Mode-aware ranking (V5.2): the chosen style decides order, so MR mode leads
   // with real MR/instrumental results instead of popular karaoke videos.
   const ranked = useMemo(
@@ -404,7 +421,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       </div>
 
       {/* Floating live confirmation / my-requests dock */}
-      <MyRequestsDock slug={slug} requests={myRequests} guestName={guestName} onRemoved={removeMyRequest} />
+      <MyRequestsDock slug={slug} requests={myRequests} guestName={guestName} onRemoved={removeMyRequest} onReRequest={reRequest} />
     </>
   );
 }
