@@ -96,7 +96,23 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   completionPrompt?: string;
   arenaRecommended?: boolean;
   followUpDays?: FollowUpDays;
+  /**
+   * Adaptive Clarification (Slice 2.4C) — the resumable pre-draft Q&A state. Assistive
+   * scratch, NOT a canonical published field: it is deliberately excluded from
+   * `SNAPSHOT_ANSWER_KEYS`, never overwrites a canonical Builder field, and survives
+   * refresh only because it rides the same `answers` jsonb. Structurally typed here to
+   * avoid a domain import cycle; `clarification.ts` owns its shape + sanitization.
+   */
+  clarification?: {
+    version: string;
+    answers: { dimension: string; choiceKey: string | null; text: string }[];
+  };
 };
+
+// Adaptive Clarification (Slice 2.4C) persistence bounds — mirrored in clarification.ts.
+export const CLARIFICATION_ANSWERS_MAX = 6;
+export const CLARIFICATION_TEXT_MAX = 300;
+const CLARIFICATION_KEY_MAX = 40;
 
 /**
  * The canonical learning-need set for a draft, tolerant of legacy shapes: a new
@@ -281,6 +297,35 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       if (a.followUpDays !== undefined) {
         if ((FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays as number)) clean.followUpDays = a.followUpDays as FollowUpDays;
         else errors.push("follow_up_days_invalid");
+      }
+
+      // Adaptive Clarification (Slice 2.4C). Structural/bounds validation only — the
+      // clarification domain re-sanitizes dimensions on read. Persisted verbatim so the
+      // pre-draft Q&A survives refresh; never a canonical published field.
+      if (a.clarification !== undefined) {
+        const c = a.clarification;
+        if (!isPlainObject(c) || !Array.isArray((c as { answers?: unknown }).answers)) {
+          errors.push("clarification_invalid");
+        } else {
+          const list = (c as { answers: unknown[] }).answers;
+          const cleaned: { dimension: string; choiceKey: string | null; text: string }[] = [];
+          let bad = list.length > CLARIFICATION_ANSWERS_MAX;
+          for (const it of list) {
+            if (!isPlainObject(it)) { bad = true; break; }
+            const dim = it.dimension;
+            const ck = it.choiceKey;
+            const tx = it.text;
+            if (typeof dim !== "string" || dim.length === 0 || dim.length > CLARIFICATION_KEY_MAX) { bad = true; break; }
+            if (!(ck === null || ck === undefined || (typeof ck === "string" && ck.length <= CLARIFICATION_KEY_MAX))) { bad = true; break; }
+            if (typeof tx !== "string" || tx.length > CLARIFICATION_TEXT_MAX) { bad = true; break; }
+            cleaned.push({ dimension: dim, choiceKey: (ck as string | null | undefined) ?? null, text: tx });
+          }
+          if (bad) errors.push("clarification_invalid");
+          else {
+            const version = typeof (c as { version?: unknown }).version === "string" ? (c as { version: string }).version : "clarification_v1";
+            clean.clarification = { version, answers: cleaned };
+          }
+        }
       }
 
       // learningType (the Slice-1 approval enum) is accepted if a caller supplies a

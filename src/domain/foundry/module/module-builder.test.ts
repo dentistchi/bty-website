@@ -96,6 +96,32 @@ describe("validateDraftPatch — partial-save friendly", () => {
   it("rejects a non-object answers payload", () => {
     expect(validateDraftPatch({ answers: "nope" as never })).toEqual({ ok: false, errors: ["answers_invalid"] });
   });
+
+  // Adaptive Clarification (Slice 2.4C) — namespaced, bounded, resume-safe persistence.
+  it("persists a well-formed clarification state verbatim", () => {
+    const clarification = {
+      version: "clarification_v1",
+      answers: [{ dimension: "observable_behavior", choiceKey: null, text: "Reads the dosage back before sign-off" }],
+    };
+    const r = validateDraftPatch({ answers: { clarification } as never });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.answers?.clarification).toEqual(clarification);
+  });
+
+  it("rejects a malformed clarification payload (bad shape / over-long text / too many answers)", () => {
+    expect(validateDraftPatch({ answers: { clarification: { answers: "nope" } } as never })).toEqual({
+      ok: false,
+      errors: ["clarification_invalid"],
+    });
+    const longText = "x".repeat(301);
+    expect(
+      validateDraftPatch({ answers: { clarification: { version: "v", answers: [{ dimension: "target", choiceKey: null, text: longText }] } } as never }),
+    ).toEqual({ ok: false, errors: ["clarification_invalid"] });
+    const tooMany = Array.from({ length: 7 }, () => ({ dimension: "target", choiceKey: null, text: "x" }));
+    expect(
+      validateDraftPatch({ answers: { clarification: { version: "v", answers: tooMany } } as never }),
+    ).toEqual({ ok: false, errors: ["clarification_invalid"] });
+  });
 });
 
 describe("stepBlocker / canAdvanceStep — client Next-guard", () => {

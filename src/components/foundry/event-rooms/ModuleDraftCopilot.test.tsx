@@ -8,8 +8,27 @@ import {
   type ModuleDraftCurrent,
 } from "./ModuleDraftCopilot";
 import { MODULE_BUILDER_COPY } from "./moduleBuilderCopy";
+import type { ClarificationAssessment } from "@/domain/foundry/module/clarification";
 
 const t = MODULE_BUILDER_COPY.en.moduleDraft;
+
+const BEHAVIOR_Q: ClarificationAssessment = {
+  sufficient: false,
+  missingDimensions: ["observable_behavior"],
+  nextQuestion: { dimension: "observable_behavior", choiceKeys: [], allowCustom: true },
+  askedCount: 0,
+};
+const EVIDENCE_Q: ClarificationAssessment = {
+  sufficient: false,
+  missingDimensions: ["success_evidence"],
+  nextQuestion: {
+    dimension: "success_evidence",
+    choiceKeys: ["ev_seen", "ev_heard", "ev_recorded", "ev_confirmed"],
+    allowCustom: true,
+  },
+  askedCount: 1,
+};
+const SUFFICIENT: ClarificationAssessment = { sufficient: true, missingDimensions: [], nextQuestion: null, askedCount: 0 };
 
 const VIEW: ModuleDraftView = {
   learning_approach: ["practice", "shared_standard"],
@@ -154,5 +173,70 @@ describe("ModuleDraftCopilot", () => {
   it("renders the Korean surface", () => {
     setup({ t: MODULE_BUILDER_COPY.ko.moduleDraft });
     expect(screen.getByTestId("module-draft-copilot").textContent).toContain("나머지 교육 초안 만들기");
+  });
+});
+
+// Adaptive Clarification (Slice 2.4C) — the smallest pre-draft question gate.
+describe("ModuleDraftCopilot — adaptive clarification", () => {
+  it("a sufficient verdict skips straight to generation (zero questions)", async () => {
+    const { onGenerate } = setup({ clarificationAssessment: SUFFICIENT });
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    await waitFor(() => screen.getByTestId("module-draft-review"));
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("module-draft-clarify")).toBeNull();
+  });
+
+  it("an insufficient verdict asks the named question first, without generating", () => {
+    const { onGenerate } = setup({ clarificationAssessment: BEHAVIOR_Q, onClarificationAnswer: vi.fn() });
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    expect(screen.getByTestId("module-draft-clarify")).toBeTruthy();
+    expect(screen.getByTestId("module-draft-clarify-question").textContent).toBe(t.clarification.questions.observable_behavior);
+    expect(onGenerate).not.toHaveBeenCalled();
+  });
+
+  it("a suggested choice is captured as a clarification answer (no canonical write)", () => {
+    const onClarificationAnswer = vi.fn();
+    const { onApply } = setup({ clarificationAssessment: EVIDENCE_Q, onClarificationAnswer });
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    fireEvent.click(screen.getByTestId("module-draft-clarify-choice-ev_recorded"));
+    expect(onClarificationAnswer).toHaveBeenCalledWith({
+      dimension: "success_evidence",
+      choiceKey: "ev_recorded",
+      text: t.clarification.choices.ev_recorded,
+    });
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it("a custom answer is captured verbatim (trimmed)", () => {
+    const onClarificationAnswer = vi.fn();
+    setup({ clarificationAssessment: BEHAVIOR_Q, onClarificationAnswer });
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    fireEvent.change(screen.getByTestId("module-draft-clarify-custom"), { target: { value: "  Reads the dosage back  " } });
+    fireEvent.click(screen.getByTestId("module-draft-clarify-submit"));
+    expect(onClarificationAnswer).toHaveBeenCalledWith({
+      dimension: "observable_behavior",
+      choiceKey: null,
+      text: "Reads the dosage back",
+    });
+  });
+
+  it("Draft anyway respects Host authority — generates immediately, skipping remaining questions", async () => {
+    const { onGenerate } = setup({ clarificationAssessment: BEHAVIOR_Q, onClarificationAnswer: vi.fn() });
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    fireEvent.click(screen.getByTestId("module-draft-clarify-skip"));
+    await waitFor(() => screen.getByTestId("module-draft-review"));
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it("when the verdict flips to sufficient mid-clarification, it proceeds to generate", async () => {
+    const onGenerate = vi.fn<() => Promise<ModuleDraftGenerateOutcome>>().mockResolvedValue({ ok: true, draft: VIEW, assumptions: [], warnings: [] });
+    const props = { ready: true, contextFingerprint: "fp1", current: EMPTY_CURRENT, onGenerate, onApply: vi.fn(), t, clarificationAssessment: BEHAVIOR_Q, onClarificationAnswer: vi.fn() };
+    const { rerender } = render(<ModuleDraftCopilot {...props} />);
+    fireEvent.click(screen.getByTestId("module-draft-trigger"));
+    expect(screen.getByTestId("module-draft-clarify")).toBeTruthy();
+    // Parent persists the answer and recomputes a now-sufficient verdict.
+    rerender(<ModuleDraftCopilot {...props} clarificationAssessment={SUFFICIENT} />);
+    await waitFor(() => screen.getByTestId("module-draft-review"));
+    expect(onGenerate).toHaveBeenCalledTimes(1);
   });
 });

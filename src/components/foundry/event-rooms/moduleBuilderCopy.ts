@@ -78,6 +78,34 @@ export type ModuleDraftCopilotCopy = {
   arenaYes: string;
   arenaNo: string;
   materialTypes: { youtube: string; pdf: string; written: string; live_discussion: string };
+  /** Adaptive Clarification (Slice 2.4C) — the smallest-question pre-draft step. */
+  clarification: ClarificationCopy;
+};
+
+/** Adaptive Clarification (Slice 2.4C) — localized questions + suggested-answer labels.
+ *  Keyed by the domain's ClarificationDimension / choice keys; the domain stays string-free. */
+export type ClarificationCopy = {
+  intro: string;
+  submit: string;
+  customPlaceholder: string;
+  draftAnyway: string;
+  /** One localized question per dimension (matches ClarificationDimension). */
+  questions: {
+    target: string;
+    observable_behavior: string;
+    success_evidence: string;
+    role_authority: string;
+    learning_context: string;
+    field_application: string;
+    follow_up: string;
+  };
+  /** Suggested-answer labels keyed by the domain's choice keys. */
+  choices: {
+    ev_seen: string;
+    ev_heard: string;
+    ev_recorded: string;
+    ev_confirmed: string;
+  };
 };
 
 export type ModuleBuilderCopy = {
@@ -480,6 +508,27 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       arenaYes: "Recommended",
       arenaNo: "Not recommended",
       materialTypes: { youtube: "YouTube video", pdf: "PDF document", written: "Written guidance", live_discussion: "Live discussion" },
+      clarification: {
+        intro: "One quick thing so the draft fits your situation:",
+        submit: "Continue",
+        customPlaceholder: "Type a short answer",
+        draftAnyway: "Draft with what I have",
+        questions: {
+          target: "Who specifically needs to do this differently?",
+          observable_behavior: "What exactly should someone be seen or heard doing differently?",
+          success_evidence: "How would you actually notice this is happening in real work?",
+          role_authority: "Does this group have the authority to change this on their own?",
+          learning_context: "What do people most need — to know, decide, or practice this?",
+          field_application: "Where in the real workflow should this show up?",
+          follow_up: "When would you want to check whether this stuck?",
+        },
+        choices: {
+          ev_seen: "You'd see it",
+          ev_heard: "You'd hear it",
+          ev_recorded: "It'd be recorded",
+          ev_confirmed: "Someone would confirm it",
+        },
+      },
     },
   },
   ko: {
@@ -699,6 +748,27 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       arenaYes: "권장됨",
       arenaNo: "권장되지 않음",
       materialTypes: { youtube: "YouTube 영상", pdf: "PDF 문서", written: "문서 가이드", live_discussion: "라이브 논의" },
+      clarification: {
+        intro: "초안이 상황에 맞도록 한 가지만 확인할게요:",
+        submit: "계속",
+        customPlaceholder: "짧게 답해 주세요",
+        draftAnyway: "지금 정보로 초안 만들기",
+        questions: {
+          target: "누가 구체적으로 이것을 다르게 해야 하나요?",
+          observable_behavior: "누군가 무엇을 다르게 하는 것을 정확히 보거나 들을 수 있어야 하나요?",
+          success_evidence: "실제 업무에서 이것이 일어나고 있음을 무엇으로 알아챌 수 있나요?",
+          role_authority: "이 그룹이 스스로 이것을 바꿀 권한이 있나요?",
+          learning_context: "사람들에게 가장 필요한 것은 무엇인가요 — 알기, 결정하기, 아니면 연습하기?",
+          field_application: "실제 업무 흐름의 어디에서 이것이 드러나야 하나요?",
+          follow_up: "이것이 정착됐는지 언제 확인하고 싶으신가요?",
+        },
+        choices: {
+          ev_seen: "직접 보게 됨",
+          ev_heard: "듣게 됨",
+          ev_recorded: "기록으로 남음",
+          ev_confirmed: "다른 사람이 확인해 줌",
+        },
+      },
     },
   },
 };

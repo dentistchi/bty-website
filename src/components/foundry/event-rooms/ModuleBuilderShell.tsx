@@ -34,6 +34,12 @@ import {
   type AppliedModuleDraft,
 } from "./ModuleDraftCopilot";
 import { moduleDraftContext, moduleDraftContextFingerprint } from "@/domain/foundry/module/module-draft-copilot";
+import {
+  assessClarification,
+  readClarificationState,
+  withClarificationAnswer,
+  type ClarificationAnswer,
+} from "@/domain/foundry/module/clarification";
 
 /**
  * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
@@ -324,6 +330,18 @@ export function ModuleBuilderShell({
     [patchAnswers],
   );
 
+  // Adaptive Clarification (Slice 2.4C). A clarification answer is persisted through the
+  // canonical save path into a NAMESPACED `answers.clarification` key — it never overwrites
+  // a canonical Builder field and never publishes (excluded from the snapshot whitelist).
+  // Re-answering a dimension supersedes the prior answer; the state survives refresh.
+  const answerClarification = useCallback(
+    (answer: ClarificationAnswer) => {
+      const next = withClarificationAnswer(readClarificationState(answersRef.current), answer);
+      patchAnswers({ clarification: next }, true);
+    },
+    [patchAnswers],
+  );
+
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
   if (restore === "loading") {
@@ -374,6 +392,12 @@ export function ModuleBuilderShell({
   // Module-draft Copilot lives on the Learning Approach step; it appears only once the
   // canonical minimum context (problem, audience, behavior, evidence) is valid.
   const moduleCtx = moduleDraftContext(answers);
+  // The deterministic sufficiency verdict is recomputed from the canonical context + the
+  // persisted clarification answers on every render — so it re-derives correctly after a
+  // refresh and an already-answered dimension is never re-asked.
+  const clarificationAssessment = moduleCtx
+    ? assessClarification(moduleCtx, readClarificationState(answers))
+    : undefined;
   const moduleDraftNode = (
     <ModuleDraftCopilot
       ready={moduleCtx !== null}
@@ -386,6 +410,8 @@ export function ModuleBuilderShell({
       }}
       onGenerate={generateModuleDraft}
       onApply={applyModuleDraft}
+      clarificationAssessment={clarificationAssessment}
+      onClarificationAnswer={answerClarification}
       t={t.moduleDraft}
     />
   );

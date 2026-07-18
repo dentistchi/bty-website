@@ -3,6 +3,7 @@ import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGat
 import { getOwnerDraft } from "@/lib/bty/foundry/events/foundryModuleService";
 import { generateModuleDraft } from "@/lib/bty/foundry/events/moduleDraftCopilotService";
 import { moduleDraftContext, moduleDraftContextFingerprint } from "@/domain/foundry/module/module-draft-copilot";
+import { clarificationsForContext } from "@/domain/foundry/module/clarification";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { rateLimitKV, getCfClientIp } from "@/lib/rate-limit";
 
@@ -69,7 +70,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return managerJson(base, req, { error: "rate_limited", retry_after: limited.retryAfterSeconds }, 429);
   }
 
-  const result = await generateModuleDraft(serverCtx, locale);
+  // Any Host clarifications (Slice 2.4C) are read from the SERVER draft and passed as
+  // extra context only — they enrich the draft, never decide progression, and never
+  // become a canonical field (only the reviewed, applied draft writes canonical fields).
+  const clarifications = clarificationsForContext(draft.answers as BuilderAnswers);
+
+  const result = await generateModuleDraft(serverCtx, locale, clarifications);
   if (result.ok) {
     return managerJson(base, req, {
       module_draft: result.value.module_draft,

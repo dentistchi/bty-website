@@ -29,6 +29,9 @@ export type ModuleDraftGenerateResult =
 
 export type ModuleDraftGenerateErrorCode = "provider_unavailable" | "timeout" | "provider_error" | "invalid_output";
 
+/** An optional Host clarification (Slice 2.4C) passed in as extra generation context. */
+export type ClarificationLine = { dimension: string; text: string };
+
 const LLM_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 2; // one bounded retry only (§11I)
 
@@ -65,14 +68,31 @@ function systemPrompt(locale: "en" | "ko"): string {
   ].join("\n");
 }
 
-function userPrompt(ctx: ModuleDraftContext): string {
+/** Human-readable labels for clarification dimensions (service-layer display is allowed). */
+const CLARIFICATION_LABELS: Record<string, string> = {
+  target: "Who specifically",
+  observable_behavior: "Observable behavior detail",
+  success_evidence: "Success evidence detail",
+  role_authority: "Role authority",
+  learning_context: "Learning context",
+  field_application: "Field application",
+  follow_up: "Follow-up timing",
+};
+
+function userPrompt(ctx: ModuleDraftContext, clarifications: ClarificationLine[]): string {
   const lines = [
     `Real-world problem: ${ctx.problemStatement}`,
     `Audience: ${ctx.audienceType}${ctx.audienceDetail ? ` — ${ctx.audienceDetail}` : ""}`,
     ctx.capabilityCandidate ? `Capability: ${ctx.capabilityCandidate}` : null,
     `Approved observable behavior: ${ctx.observableBehavior}`,
     `Approved success evidence: ${ctx.successEvidence}`,
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
+  if (clarifications.length > 0) {
+    lines.push("Host clarifications (already confirmed — treat as authoritative context):");
+    for (const c of clarifications) {
+      lines.push(`- ${CLARIFICATION_LABELS[c.dimension] ?? c.dimension}: ${c.text}`);
+    }
+  }
   return lines.join("\n");
 }
 
@@ -121,6 +141,7 @@ async function attempt(
 export async function generateModuleDraft(
   ctx: ModuleDraftContext,
   locale: "en" | "ko",
+  clarifications: ClarificationLine[] = [],
 ): Promise<ModuleDraftGenerateResult> {
   if (!isLlmAvailable()) {
     logGenOutcome("provider_unavailable");
@@ -128,7 +149,7 @@ export async function generateModuleDraft(
   }
   const base: LlmChatMessage[] = [
     { role: "system", content: systemPrompt(locale) },
-    { role: "user", content: userPrompt(ctx) },
+    { role: "user", content: userPrompt(ctx, clarifications) },
   ];
   let lastCode: ModuleDraftGenerateErrorCode = "invalid_output";
   for (let i = 0; i < MAX_ATTEMPTS; i++) {

@@ -152,6 +152,24 @@ describe("POST /modules/[id]/module-draft", () => {
     expect(updateDraftStep).not.toHaveBeenCalled();
   });
 
+  it("passes persisted Host clarifications (Slice 2.4C) into generation as extra context", async () => {
+    getOwnerDraft.mockResolvedValue({
+      ...DRAFT,
+      answers: {
+        ...ANSWERS,
+        clarification: {
+          version: "clarification_v1",
+          answers: [{ dimension: "success_evidence", choiceKey: "ev_recorded", text: "Noted on the record" }],
+        },
+      },
+    });
+    const res = await POST(req(goodBody), params);
+    expect(res.status).toBe(200);
+    // 3rd arg = clarification lines; canonical context is unchanged.
+    expect(generateModuleDraft.mock.calls[0][2]).toEqual([{ dimension: "success_evidence", text: "Noted on the record" }]);
+    expect(updateDraftStep).not.toHaveBeenCalled();
+  });
+
   it("maps provider_unavailable → 503, timeout → 504, invalid_output → 502", async () => {
     generateModuleDraft.mockResolvedValue({ ok: false, code: "provider_unavailable" });
     expect((await POST(req(goodBody), params)).status).toBe(503);
