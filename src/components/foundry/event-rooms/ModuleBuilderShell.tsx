@@ -27,6 +27,13 @@ import {
   type DirectionSuggestionView,
   type AppliedDirection,
 } from "./DirectionCopilot";
+import {
+  ModuleDraftCopilot,
+  type ModuleDraftGenerateOutcome,
+  type ModuleDraftView,
+  type AppliedModuleDraft,
+} from "./ModuleDraftCopilot";
+import { moduleDraftContext, moduleDraftContextFingerprint } from "@/domain/foundry/module/module-draft-copilot";
 
 /**
  * ModuleBuilderShell — the manual Guided Module Builder (Slice 2 / 2.1).
@@ -270,6 +277,53 @@ export function ModuleBuilderShell({
     [patchAnswers],
   );
 
+  // Module-draft Copilot (Slice 2.4B). Flushes autosave FIRST so the server's saved
+  // context matches the request fingerprint (its stale guard rejects a mismatch), then
+  // calls the Host-authenticated route. Generation never mutates the draft. Apply merges
+  // only the Host-approved fields through the canonical patchAnswers path.
+  const generateModuleDraft = useCallback(async (): Promise<ModuleDraftGenerateOutcome> => {
+    cancelDebounce();
+    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    const ctx = moduleDraftContext(answersRef.current);
+    if (!ctx) return { ok: false, code: "generic" };
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/module-draft`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale, context_fingerprint: moduleDraftContextFingerprint(ctx) }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { module_draft?: unknown; assumptions?: unknown; warnings?: unknown };
+        if (data.module_draft) {
+          return {
+            ok: true,
+            draft: data.module_draft as ModuleDraftView,
+            assumptions: Array.isArray(data.assumptions) ? (data.assumptions as string[]) : [],
+            warnings: Array.isArray(data.warnings) ? (data.warnings as string[]) : [],
+          };
+        }
+        return { ok: false, code: "generic" };
+      }
+      if (res.status === 429) return { ok: false, code: "rate_limit" };
+      if (res.status === 409) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, code: body.error === "context_mismatch" ? "context_mismatch" : "generic" };
+      }
+      return { ok: false, code: "generic" };
+    } catch {
+      return { ok: false, code: "generic" };
+    }
+  }, [saver, cancelDebounce, draftId, locale]);
+
+  const applyModuleDraft = useCallback(
+    (patch: AppliedModuleDraft) => {
+      if (Object.keys(patch).length > 0) patchAnswers(patch, true);
+    },
+    [patchAnswers],
+  );
+
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
   if (restore === "loading") {
@@ -317,6 +371,24 @@ export function ModuleBuilderShell({
       t={t.copilot}
     />
   );
+  // Module-draft Copilot lives on the Learning Approach step; it appears only once the
+  // canonical minimum context (problem, audience, behavior, evidence) is valid.
+  const moduleCtx = moduleDraftContext(answers);
+  const moduleDraftNode = (
+    <ModuleDraftCopilot
+      ready={moduleCtx !== null}
+      contextFingerprint={moduleCtx ? moduleDraftContextFingerprint(moduleCtx) : ""}
+      current={{
+        learningNeeds: normalizeLearningNeeds(answers),
+        completionPrompt: answers.completionPrompt ?? "",
+        arenaRecommended: answers.arenaRecommended,
+        followUpDays: answers.followUpDays,
+      }}
+      onGenerate={generateModuleDraft}
+      onApply={applyModuleDraft}
+      t={t.moduleDraft}
+    />
+  );
 
   return (
     <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
@@ -340,7 +412,7 @@ export function ModuleBuilderShell({
           />
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode)}</div>
+        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode)}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -489,7 +561,7 @@ function BlockerLine({ show, text }: { show: boolean; text: string }) {
   return <p className="text-xs leading-5 text-amber-300/80">{text}</p>;
 }
 
-function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, filesNode: React.ReactNode, copilotNode: React.ReactNode) {
+function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, filesNode: React.ReactNode, copilotNode: React.ReactNode, moduleDraftNode: React.ReactNode) {
   switch (step) {
     case 1:
       return (
@@ -604,6 +676,7 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
             <p className="text-xs leading-5 text-[#C9A66B]/80">{t.s5ArenaHint}</p>
           ) : null}
           <BlockerLine show={blocker === "learning_need_required"} text={t.s5Blocker} />
+          {moduleDraftNode}
         </StepFrame>
       );
     }

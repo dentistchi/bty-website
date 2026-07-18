@@ -47,7 +47,12 @@ const jsonRes = (body: unknown, status = 200) => ({
  */
 function mockDraftServer(
   initial: Partial<Draft>,
-  opts: { assetReason?: string; publishError?: boolean; directions?: { status?: number; suggestions?: unknown[] } } = {},
+  opts: {
+    assetReason?: string;
+    publishError?: boolean;
+    directions?: { status?: number; suggestions?: unknown[] };
+    moduleDraft?: { status?: number; body?: unknown };
+  } = {},
 ) {
   const draft: Draft = {
     id: "d-1",
@@ -89,6 +94,12 @@ function mockDraftServer(
         return jsonRes({ error: "generation_failed" }, opts.directions.status);
       }
       return jsonRes({ suggestions: opts.directions?.suggestions ?? [], generation_version: "direction_copilot_v1" });
+    }
+    if (url.includes("/module-draft")) {
+      if (opts.moduleDraft?.status && opts.moduleDraft.status >= 400) {
+        return jsonRes({ error: "generation_failed" }, opts.moduleDraft.status);
+      }
+      return jsonRes(opts.moduleDraft?.body ?? {});
     }
     if (method === "PATCH") {
       const body = JSON.parse(o?.body ?? "{}");
@@ -614,5 +625,84 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
     expect(screen.getByTestId("review-row-evidence").getAttribute("data-missing")).toBeNull();
     expect(screen.getByTestId("review-row-audience").getAttribute("data-missing")).toBe("true");
     expect(document.querySelectorAll('[data-missing="true"]').length).toBe(1);
+  });
+});
+
+describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)", () => {
+  const CONTEXT = {
+    problem: "Handoffs skip the double-check.",
+    audienceType: "everyone",
+    observableBehavior: "The charge nurse reads the dosage back before sign-off.",
+    successEvidence: "Sign-offs include a witnessed read-back.",
+  };
+  const DRAFT_BODY = {
+    module_draft: {
+      learning_approach: ["practice", "shared_standard"],
+      learning_approach_rationale: "A standard practiced under pressure.",
+      completion_question: "Before the next sign-off, what phrase will you use to confirm the read-back with the receiving nurse?",
+      arena_recommended: true,
+      arena_rationale: "Must hold when the unit is busy.",
+      follow_up_days: 7,
+      follow_up_guidance: "Ask what made the read-back difficult.",
+      material_guidance: { recommended_types: ["written"], suggestion: "A short checklist may help; the host supplies it." },
+    },
+    assumptions: [],
+    warnings: [],
+    generation_version: "module_draft_copilot_v1",
+  };
+
+  it("entry is absent on step 5 until the canonical minimum context is complete", async () => {
+    mockDraftServer({ current_step: 5, answers: { problem: "only this" } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What does this training need to include?");
+    expect(screen.queryByTestId("module-draft-copilot")).toBeNull();
+  });
+
+  it("generates, applies only approved fields via the canonical PATCH, preserves context, and restores", async () => {
+    const srv = mockDraftServer({ current_step: 5, answers: CONTEXT }, { moduleDraft: { body: DRAFT_BODY } });
+    const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What does this training need to include?");
+
+    // Entry present (context complete) — generate.
+    fireEvent.click(await screen.findByTestId("module-draft-trigger"));
+    await screen.findByTestId("module-draft-review");
+    expect(srv.patches.some((p) => p.answers?.completionPrompt)).toBe(false); // nothing yet
+
+    // Apply the reviewed draft (all fields default to Use on an empty draft).
+    fireEvent.click(screen.getByTestId("module-draft-apply"));
+    await waitFor(() =>
+      expect(
+        srv.patches.some(
+          (p) =>
+            Array.isArray(p.answers?.learningNeeds) &&
+            p.answers?.completionPrompt === DRAFT_BODY.module_draft.completion_question &&
+            p.answers?.arenaRecommended === true &&
+            p.answers?.followUpDays === 7,
+        ),
+      ).toBe(true),
+    );
+    // The approved direction context is preserved on the server draft.
+    expect(srv.draft.answers.problem).toBe(CONTEXT.problem);
+    expect(srv.draft.answers.observableBehavior).toBe(CONTEXT.observableBehavior);
+    expect(srv.draft.answers.successEvidence).toBe(CONTEXT.successEvidence);
+    expect(await screen.findByTestId("module-draft-applied")).toBeTruthy();
+
+    // Reload → applied learning approach restores as selected on step 5.
+    unmount();
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What does this training need to include?");
+    const practice = screen.getByText("Practice").closest("button") as HTMLButtonElement;
+    expect(practice.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("a generation failure keeps the manual Builder intact", async () => {
+    const srv = mockDraftServer({ current_step: 5, answers: CONTEXT }, { moduleDraft: { status: 502 } });
+    render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
+    await screen.findByText("What does this training need to include?");
+    fireEvent.click(await screen.findByTestId("module-draft-trigger"));
+    await screen.findByTestId("module-draft-error");
+    expect(srv.patches.some((p) => p.answers?.completionPrompt)).toBe(false);
+    fireEvent.click(screen.getByText("Continue manually"));
+    expect(screen.getByTestId("module-draft-trigger")).toBeTruthy();
   });
 });

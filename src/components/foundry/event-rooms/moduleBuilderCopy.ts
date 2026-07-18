@@ -39,6 +39,47 @@ export type DirectionCopilotCopy = {
   generateAgain: string;
 };
 
+/** Direction-to-Module Draft Copilot (Slice 2.4B) — self-contained copy for the
+ *  "draft the rest of this training" assistive flow on the Learning Approach step. */
+export type ModuleDraftCopilotCopy = {
+  entryPrompt: string;
+  trigger: string;
+  entrySupport: string;
+  loading: string;
+  reviewHeading: string;
+  reviewLead: string;
+  applyNote: string;
+  secLearning: string;
+  secCompletion: string;
+  secArena: string;
+  secFollow: string;
+  secMaterial: string;
+  currentLabel: string;
+  suggestedLabel: string;
+  whyLabel: string;
+  assumptionsLabel: string;
+  warningsLabel: string;
+  materialTypesLabel: string;
+  keep: string;
+  use: string;
+  skip: string;
+  apply: string;
+  applied: string;
+  appliedDismiss: string;
+  failTitle: string;
+  tryAgain: string;
+  continueManually: string;
+  rateLimited: string;
+  staleTitle: string;
+  staleHint: string;
+  regenerate: string;
+  needs: { know: string; decide: string; practice: string; shared_standard: string };
+  follow: { d0: string; d7: string; d30: string };
+  arenaYes: string;
+  arenaNo: string;
+  materialTypes: { youtube: string; pdf: string; written: string; live_discussion: string };
+};
+
 export type ModuleBuilderCopy = {
   // entry
   entryEyebrow: string;
@@ -210,6 +251,8 @@ export type ModuleBuilderCopy = {
   publishError: string;
   // Direction Copilot (Slice 2.4A)
   copilot: DirectionCopilotCopy;
+  // Module-draft Copilot (Slice 2.4B)
+  moduleDraft: ModuleDraftCopilotCopy;
 };
 
 const arenaFollowLabel = (
@@ -400,6 +443,44 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       staleHint: "Generate directions again to match it.",
       generateAgain: "Generate again",
     },
+    moduleDraft: {
+      entryPrompt: "Ready to draft the rest?",
+      trigger: "Draft the rest of this training",
+      entrySupport: "BTY will suggest a learning approach, completion question, Arena recommendation, and follow-up. You will review every section before anything is applied.",
+      loading: "Drafting the remaining sections…",
+      reviewHeading: "REVIEW THE DRAFT",
+      reviewLead: "Keep your own values or use a suggestion. Nothing changes until you apply.",
+      applyNote: "Only the sections set to “Use suggestion” will be added.",
+      secLearning: "Learning approach",
+      secCompletion: "Completion question",
+      secArena: "Arena practice",
+      secFollow: "Follow-up",
+      secMaterial: "Material guidance",
+      currentLabel: "Your current value",
+      suggestedLabel: "Suggested",
+      whyLabel: "Why",
+      assumptionsLabel: "Assumptions",
+      warningsLabel: "Worth noting",
+      materialTypesLabel: "Formats that may help",
+      keep: "Keep current",
+      use: "Use suggestion",
+      skip: "Skip",
+      apply: "Apply reviewed draft",
+      applied: "Added to your draft — every section is still editable.",
+      appliedDismiss: "Done",
+      failTitle: "We couldn’t draft the remaining sections right now.",
+      tryAgain: "Try again",
+      continueManually: "Continue manually",
+      rateLimited: "Please wait a moment, then try again.",
+      staleTitle: "Your training changed.",
+      staleHint: "Generate the draft again to match it.",
+      regenerate: "Generate again",
+      needs: { know: "Information", decide: "Decision", practice: "Practice", shared_standard: "Shared standard" },
+      follow: { d0: "No follow-up", d7: "In 7 days", d30: "In 30 days" },
+      arenaYes: "Recommended",
+      arenaNo: "Not recommended",
+      materialTypes: { youtube: "YouTube video", pdf: "PDF document", written: "Written guidance", live_discussion: "Live discussion" },
+    },
   },
   ko: {
     entryEyebrow: "훈련 빌더",
@@ -580,6 +661,44 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       staleTitle: "문제가 변경되었습니다.",
       staleHint: "일치하도록 방향을 다시 생성하세요.",
       generateAgain: "다시 생성",
+    },
+    moduleDraft: {
+      entryPrompt: "나머지 교육 초안을 만들어볼까요?",
+      trigger: "나머지 교육 초안 만들기",
+      entrySupport: "BTY가 학습 방식, 완료 질문, Arena 연습, 후속 확인을 제안합니다. 각 항목을 검토한 뒤에만 적용됩니다.",
+      loading: "나머지 항목 초안을 만드는 중…",
+      reviewHeading: "초안 검토",
+      reviewLead: "기존 값을 유지하거나 제안을 사용하세요. 적용하기 전까지 아무것도 바뀌지 않습니다.",
+      applyNote: "“제안 사용”으로 설정한 항목만 추가됩니다.",
+      secLearning: "학습 방식",
+      secCompletion: "완료 질문",
+      secArena: "Arena 연습",
+      secFollow: "후속 확인",
+      secMaterial: "자료 가이드",
+      currentLabel: "현재 값",
+      suggestedLabel: "제안",
+      whyLabel: "이유",
+      assumptionsLabel: "가정",
+      warningsLabel: "참고 사항",
+      materialTypesLabel: "도움이 될 형식",
+      keep: "현재 값 유지",
+      use: "제안 사용",
+      skip: "건너뛰기",
+      apply: "검토한 초안 적용",
+      applied: "초안에 추가되었습니다 — 모든 항목을 계속 수정할 수 있습니다.",
+      appliedDismiss: "완료",
+      failTitle: "지금은 나머지 항목 초안을 만들지 못했습니다.",
+      tryAgain: "다시 시도",
+      continueManually: "수동으로 계속하기",
+      rateLimited: "잠시 후 다시 시도해 주세요.",
+      staleTitle: "교육 내용이 변경되었습니다.",
+      staleHint: "일치하도록 초안을 다시 생성하세요.",
+      regenerate: "다시 생성",
+      needs: { know: "정보", decide: "결정", practice: "연습", shared_standard: "공통 기준" },
+      follow: { d0: "후속 없음", d7: "7일 후", d30: "30일 후" },
+      arenaYes: "권장됨",
+      arenaNo: "권장되지 않음",
+      materialTypes: { youtube: "YouTube 영상", pdf: "PDF 문서", written: "문서 가이드", live_discussion: "라이브 논의" },
     },
   },
 };
