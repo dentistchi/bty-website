@@ -9,7 +9,14 @@ vi.mock('./env.server', () => ({
   },
 }));
 
-import { searchYoutube, searchYoutubeWithCache, type SearchKv } from './youtube.server';
+import {
+  searchYoutube,
+  searchYoutubeWithCache,
+  searchYoutubeCachedOnly,
+  QUOTA_MARKER_KEY,
+  type SearchKv,
+} from './youtube.server';
+import { getRecommendations } from './recommendations.server';
 
 const ORIGINAL_KEY = process.env.YOUTUBE_API_KEY;
 
@@ -168,5 +175,138 @@ describe('searchYoutubeWithCache — KV cache', () => {
     expect(r.gated).toBe(true);
     expect(kv.get).not.toHaveBeenCalled();
     expect(kv.put).not.toHaveBeenCalled();
+  });
+
+  it('one search action = exactly one search.list call (primary; cache miss)', async () => {
+    const kv: SearchKv = { get: vi.fn(async () => null), put: vi.fn(async () => {}) };
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ items: [{ id: { videoId: 'v1' }, snippet: { title: 'T', channelTitle: 'C' } }] }),
+    }));
+    vi.stubGlobal('fetch', fetchSpy);
+    await searchYoutubeWithCache('novel query', kv);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('quota classification — 429 is no longer swallowed into a generic failure', () => {
+  beforeEach(() => {
+    process.env.YOUTUBE_API_KEY = 'test-key';
+  });
+
+  const errBody = (reason: string, status?: string) => ({
+    ok: false,
+    status: 429,
+    json: async () => ({ error: { status, errors: [{ reason }] } }),
+  });
+
+  it('429 RESOURCE_EXHAUSTED / rateLimitExceeded → quotaExceeded:true', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => errBody('rateLimitExceeded', 'RESOURCE_EXHAUSTED')));
+    const r = await searchYoutube('IU Blueming');
+    expect(r.quotaExceeded).toBe(true);
+    expect(r.degraded).toBe(true);
+    expect(r.ok).toBe(false);
+    expect(r.fallbackUrl).toContain('search_query='); // direct-link path stays usable
+  });
+
+  it('classic 403 quotaExceeded → quotaExceeded:true', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 403, json: async () => ({ error: { errors: [{ reason: 'quotaExceeded' }] } }) })),
+    );
+    expect((await searchYoutube('IU')).quotaExceeded).toBe(true);
+  });
+
+  it('generic 500 / upstream failure → degraded but quotaExceeded:false (different copy)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })));
+    const r = await searchYoutube('IU');
+    expect(r.degraded).toBe(true);
+    expect(r.quotaExceeded).toBe(false);
+  });
+
+  it('network throw → degraded, not quota', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network'); }));
+    const r = await searchYoutube('IU');
+    expect(r.degraded).toBe(true);
+    expect(r.quotaExceeded).toBe(false);
+  });
+});
+
+describe('quota circuit breaker', () => {
+  const ITEM = { videoId: 'v1', title: 'T', channelTitle: 'C', thumbnailUrl: null };
+  beforeEach(() => {
+    process.env.YOUTUBE_API_KEY = 'test-key';
+  });
+
+  it('trips the breaker (writes the global marker) on a 429', async () => {
+    const store = new Map<string, unknown>();
+    const kv: SearchKv = {
+      get: vi.fn(async (k: string) => store.get(k) ?? null),
+      put: vi.fn(async (k: string, v: string) => { store.set(k, JSON.parse(v)); }),
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429, json: async () => ({ error: { errors: [{ reason: 'rateLimitExceeded' }] } }) })));
+    const r = await searchYoutubeWithCache('novel', kv);
+    expect(r.quotaExceeded).toBe(true);
+    expect(store.get(QUOTA_MARKER_KEY)).toBe(true);
+  });
+
+  it('while OPEN, a new query does NOT call googleapis (breaker prevents the upstream call)', async () => {
+    const store = new Map<string, unknown>([[QUOTA_MARKER_KEY, true]]);
+    const kv: SearchKv = {
+      get: vi.fn(async (k: string) => store.get(k) ?? null),
+      put: vi.fn(async () => {}),
+    };
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const r = await searchYoutubeWithCache('another novel query', kv);
+    expect(r.quotaExceeded).toBe(true);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('while OPEN, an already-cached query is still served', async () => {
+    const store = new Map<string, unknown>([[QUOTA_MARKER_KEY, true], ['ytq:IU karaoke', [ITEM]]]);
+    const kv: SearchKv = {
+      get: vi.fn(async (k: string) => store.get(k) ?? null),
+      put: vi.fn(async () => {}),
+    };
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const r = await searchYoutubeWithCache('IU', kv);
+    expect(r.ok).toBe(true);
+    expect(r.items).toEqual([ITEM]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('does NOT trip the breaker on a generic (non-quota) failure', async () => {
+    const store = new Map<string, unknown>();
+    const kv: SearchKv = {
+      get: vi.fn(async (k: string) => store.get(k) ?? null),
+      put: vi.fn(async (k: string, v: string) => { store.set(k, JSON.parse(v)); }),
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })));
+    await searchYoutubeWithCache('novel', kv);
+    expect(store.has(QUOTA_MARKER_KEY)).toBe(false);
+  });
+});
+
+describe('recommendations spend NO quota (cache-only)', () => {
+  beforeEach(() => {
+    process.env.YOUTUBE_API_KEY = 'test-key';
+  });
+
+  it('searchYoutubeCachedOnly never calls googleapis', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const r = await searchYoutubeCachedOnly('IU');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(r.items).toEqual([]); // no KV binding in test env → empty, never the API
+  });
+
+  it('getRecommendations makes ZERO search.list calls (no automatic 2nd search)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const recos = await getRecommendations({ title: 'IU Blueming', channelTitle: 'IU' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(Array.isArray(recos)).toBe(true);
   });
 });

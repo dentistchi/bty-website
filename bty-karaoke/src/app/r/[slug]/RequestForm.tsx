@@ -166,6 +166,10 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       setResultQuery(query.trim());
       setFallbackUrl(data.fallbackUrl ?? null);
       if (data.gated) setSearchNote('검색을 준비 중이에요. YouTube에서 찾거나 아래에 링크를 붙여넣어 주세요.');
+      // Daily YouTube search quota exhausted — honest, distinct from a temporary blip.
+      else if (data.quotaExceeded)
+        setSearchNote('오늘 YouTube 검색 한도를 모두 사용했어요.\n아래에 YouTube 링크를 붙여 넣으면 계속 신청할 수 있어요.');
+      // Temporary upstream/network failure (5xx/timeout) — keep the "잠시" wording.
       else if (data.degraded) setSearchNote('검색이 잠시 붐벼요. YouTube에서 열거나 아래에 링크를 붙여넣어 주세요.');
       else if (items.length === 0) setSearchNote('결과가 없어요. 다른 단어로 검색하거나 아래에 링크를 붙여넣어 주세요.');
       setSearchState('done');
@@ -348,7 +352,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         </form>
 
         {searchNote && (
-          <p className="muted" style={{ marginTop: 10 }}>
+          <p className="muted" style={{ marginTop: 10, whiteSpace: 'pre-line' }}>
             {searchNote}{' '}
             {fallbackUrl && (
               <a href={fallbackUrl} target="_blank" rel="noreferrer">

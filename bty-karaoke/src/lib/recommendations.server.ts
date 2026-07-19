@@ -11,13 +11,18 @@ import {
 } from '@/domain/recommendations';
 import { rankResults } from '@/domain/youtube-rank';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
-import { searchYoutube } from './youtube.server';
+import { searchYoutubeCachedOnly } from './youtube.server';
 import { maybeAiRecommendationQueries } from './ai-recommend.server';
 
 /**
  * Resolve recommendations for a source song. Excludes the source video id.
- * Returns [] when search is unavailable (gated/degraded) — the UI then hides
- * the section. Every returned item is a real, resolved YouTube result.
+ * Returns [] when search is unavailable — the UI then hides the section.
+ *
+ * QUOTA: recommendations are served ONLY from the KV cache (searchYoutubeCachedOnly)
+ * — they NEVER call googleapis. This keeps one explicit guest search at a single
+ * `search.list` call; a recommendation seed that isn't already cached is skipped
+ * rather than spending a quota unit. Every returned item is still a real, resolved
+ * YouTube result (from a prior cached search).
  */
 export async function getRecommendations(
   source: RecoSource,
@@ -32,8 +37,8 @@ export async function getRecommendations(
 
   for (const q of queries) {
     if (picked.length >= MAX_RECOMMENDATIONS) break;
-    const res = await searchYoutube(q);
-    if (!res.ok || !res.items.length) continue;
+    const res = await searchYoutubeCachedOnly(q); // cache-only — no upstream call
+    if (!res.items.length) continue;
     const best = rankResults(res.items, q).top;
     const pick = best.find((it) => it.videoId && !seen.has(it.videoId));
     if (pick) {
