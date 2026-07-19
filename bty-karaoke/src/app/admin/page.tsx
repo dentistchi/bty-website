@@ -1,4 +1,5 @@
 import ManagerConsole from './ManagerConsole';
+import LegalLinks from '@/components/legal/LegalLinks';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,6 +13,7 @@ export default function AdminHome() {
   return (
     <main>
       <ManagerConsole />
+      <LegalLinks showContact />
     </main>
   );
 }

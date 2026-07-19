@@ -1,4 +1,5 @@
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
+import LegalLinks from '@/components/legal/LegalLinks';
 
 export default function Home() {
   return (
@@ -7,16 +8,15 @@ export default function Home() {
       <p className="muted">{PRODUCT_TAGLINE_KO}</p>
       <div className="card">
         <p>
-          Open a room by its link: <code>/r/&lt;room-slug&gt;</code>
+          {PRODUCT_NAME} is a private-event karaoke web app: guests search publicly available YouTube
+          videos and add them to a shared song queue. Playback is handed off to YouTube.
         </p>
         <p className="muted">
-          The DJ view lives at <code>/r/&lt;room-slug&gt;/dj?secret=&lt;dj-secret&gt;</code>.
-        </p>
-        <p className="muted">
-          Seed a demo room with <code>npm run seed:room</code> (after the migration is applied),
-          then open <code>/r/demo</code>.
+          Guests join an event by its room link (<code>/r/&lt;room-slug&gt;</code>) — no account or
+          Google sign-in required.
         </p>
       </div>
+      <LegalLinks showContact />
     </main>
   );
 }
