@@ -5,6 +5,7 @@ import {
   preflightAssignedAudience,
   publishAssignmentsForEvent,
   readCommittedParticipation,
+  claimAssignmentForParticipant,
 } from "./foundryAssignmentPublishService";
 
 /**
@@ -133,5 +134,42 @@ describe("readCommittedParticipation — authoritative committed state", () => {
     const r = await readCommittedParticipation(admin("open_link", { audience_type: "leaders", resolved_count: 9 }), "evt");
     expect(r.mode).toBe("open_link");
     expect(r.assignmentCount).toBe(0);
+  });
+});
+
+describe("claimAssignmentForParticipant — 3.1B-3D result mapping (assignment claim is separate from XP)", () => {
+  function rpc(result: string | null, error?: string): SupabaseClient {
+    return {
+      rpc: (_n: string, _p: Record<string, unknown>) =>
+        Promise.resolve(error ? { data: null, error: { message: error } } : { data: [{ result, assignment_id: "a1" }], error: null }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("maps a fresh claim", async () => {
+    expect(await claimAssignmentForParticipant(rpc("claimed"), "e", "p", "u")).toBe("claimed");
+  });
+  it("maps idempotent re-claim by the same participant", async () => {
+    expect(await claimAssignmentForParticipant(rpc("already_claimed"), "e", "p", "u")).toBe("already_claimed");
+  });
+  it("maps a conflict (different participant already claimed) — never a transfer", async () => {
+    expect(await claimAssignmentForParticipant(rpc("claim_conflict"), "e", "p", "u")).toBe("claim_conflict");
+  });
+  it("maps a wrong-account / open-link event to the neutral no_matching_assignment", async () => {
+    expect(await claimAssignmentForParticipant(rpc("no_matching_assignment"), "e", "p", "u")).toBe("no_matching_assignment");
+  });
+  it("an RPC error degrades to neutral (never fails the XP claim)", async () => {
+    expect(await claimAssignmentForParticipant(rpc(null, "boom"), "e", "p", "u")).toBe("no_matching_assignment");
+  });
+  it("passes ONLY event/participant/auth-user — no client-forgeable targeting", async () => {
+    const seen: Record<string, unknown>[] = [];
+    const admin = {
+      rpc: (_n: string, p: Record<string, unknown>) => {
+        seen.push(p);
+        return Promise.resolve({ data: [{ result: "claimed" }], error: null });
+      },
+    } as unknown as SupabaseClient;
+    await claimAssignmentForParticipant(admin, "evt", "part", "user");
+    expect(Object.keys(seen[0]).sort()).toEqual(["p_event_id", "p_participant_id", "p_auth_user_id"].sort());
+    expect(seen[0]).toEqual({ p_event_id: "evt", p_participant_id: "part", p_auth_user_id: "user" });
   });
 });

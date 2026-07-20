@@ -17,6 +17,7 @@ import {
   embedCheckReason,
 } from "./youtubeEmbed";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
+import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import {
@@ -401,7 +402,7 @@ async function btyDayWindow(admin: SupabaseClient, userId: string): Promise<{ st
 }
 
 export type ProgressResult =
-  | { ok: true; snapshot: PublicTrainingSnapshot }
+  | { ok: true; snapshot: PublicTrainingSnapshot; assignmentClaim?: AssignmentClaimResult }
   | { ok: false; reason: string };
 
 /** Mark the video started (once). */
@@ -588,5 +589,14 @@ export async function claimXp(
       .is("xp_awarded_at", null);
   }
 
-  return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)) };
+  // Slice 3.1B-3D: after the proven XP claim, connect this authenticated participant to
+  // their OWN assignment for this event (if any). Separate result — a claim failure never
+  // affects the XP outcome above, and a wrong/open-link account gets no_matching_assignment.
+  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  return {
+    ok: true,
+    snapshot: await snapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)),
+    assignmentClaim,
+  };
 }

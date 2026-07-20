@@ -106,6 +106,48 @@ export type CommittedParticipation = {
   audienceType: string | null;
 };
 
+// ---------------------------------------------------------------------------
+// Slice 3.1B-3D — authenticated assignment claim
+// ---------------------------------------------------------------------------
+
+/** Neutral, non-disclosing outcomes of an assignment claim. */
+export type AssignmentClaimResult =
+  | "claimed"
+  | "already_claimed"
+  | "claim_conflict"
+  | "no_matching_assignment";
+
+/**
+ * Claim the authenticated caller's OWN assignment for an event, via the atomic RPC.
+ *
+ * This runs AFTER the proven claim-xp engine and NEVER fails the XP claim — its result is
+ * reported separately. The client supplies no targeting: `authUserId` comes from the server
+ * session, `participantId` from the session-validated participant, `eventId` from the join
+ * token. Match is by the immutable publish-time user_id_snapshot only.
+ *
+ * A missing match (wrong account / open-link event / no assignment) returns
+ * `no_matching_assignment` — a neutral outcome, never an error and never a disclosure.
+ */
+export async function claimAssignmentForParticipant(
+  admin: SupabaseClient,
+  eventId: string,
+  participantId: string,
+  authUserId: string,
+): Promise<AssignmentClaimResult> {
+  const { data, error } = await admin.rpc("bty_foundry_claim_assignment", {
+    p_event_id: eventId,
+    p_participant_id: participantId,
+    p_auth_user_id: authUserId,
+  });
+  // Assignment-claim failure must not disturb the canonical XP result: treat any error as
+  // "no matching assignment" for the participant-facing outcome (nothing was written).
+  if (error) return "no_matching_assignment";
+  const row = (Array.isArray(data) ? data[0] : data) as { result?: string } | undefined;
+  const r = row?.result;
+  if (r === "claimed" || r === "already_claimed" || r === "claim_conflict") return r;
+  return "no_matching_assignment";
+}
+
 /**
  * AUTHORITATIVE post-publish read. Reports what actually COMMITTED for an event — read back
  * from the participation-mode + audience-snapshot rows, NOT from the pre-publish preview and

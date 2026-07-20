@@ -37,6 +37,7 @@ import {
   type ManagerTrainingSnapshot,
 } from "./foundryTrainingService";
 import { deleteFoundryDocument } from "./documentStorage";
+import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 
 /**
  * Foundry PDF Study Room — service layer (the DOCUMENT content type).
@@ -544,7 +545,7 @@ export type ReadingProgressInput = {
 };
 
 export type DocumentProgressResult =
-  | { ok: true; snapshot: PublicDocumentSnapshot }
+  | { ok: true; snapshot: PublicDocumentSnapshot; assignmentClaim?: AssignmentClaimResult }
   | { ok: false; reason: string };
 
 /**
@@ -680,5 +681,13 @@ export async function claimDocumentXp(
       .is("xp_awarded_at", null);
   }
 
-  return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)) };
+  // Slice 3.1B-3D: connect this authenticated participant to their own assignment (if any),
+  // separately from the canonical XP result above.
+  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  return {
+    ok: true,
+    snapshot: await docSnapshotFor(admin, r.event, r.participant, outcomeToXpStatus(outcome)),
+    assignmentClaim,
+  };
 }

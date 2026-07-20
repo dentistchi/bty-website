@@ -46,6 +46,7 @@ type Copy = {
   complete: string;
   completing: string;
   trainingComplete: string;
+  assignmentConnected: string;
   xpAwarded: string;
   carryOne: string;
   xpClaimable: string;
@@ -87,6 +88,7 @@ const COPY: Record<Locale, Copy> = {
     complete: "Complete training",
     completing: "Saving…",
     trainingComplete: "TRAINING COMPLETE",
+    assignmentConnected: "Your assigned learning has been connected to this session.",
     xpAwarded: "+10 Core XP",
     carryOne: "Carry one thing forward.",
     xpClaimable: "10 Core XP is ready to save.",
@@ -126,6 +128,7 @@ const COPY: Record<Locale, Copy> = {
     complete: "훈련 완료",
     completing: "저장 중…",
     trainingComplete: "훈련 완료",
+    assignmentConnected: "배정된 학습이 이 세션 기록과 연결되었습니다.",
     xpAwarded: "+10 Core XP",
     carryOne: "한 가지를 가지고 가세요.",
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
@@ -190,6 +193,8 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [responseError, setResponseError] = useState(false);
   const [playerError, setPlayerError] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Slice 3.1B-3D: the learner claimed their own assigned learning for this session.
+  const [assignmentConnected, setAssignmentConnected] = useState(false);
   const [checkpoint, setCheckpoint] = useState<{ index: number; resume: () => void } | null>(null);
   const [reflection, setReflection] = useState<LivingReflection | null>(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
@@ -234,7 +239,9 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   );
 
   const applyResult = useCallback((data: unknown) => {
-    const d = data as { ok?: boolean; event?: Snapshot["event"]; participant?: Snapshot["participant"]; training?: Snapshot["training"]; stage?: Stage; xp_status?: Snapshot["xp_status"] } | null;
+    const d = data as
+      | { ok?: boolean; event?: Snapshot["event"]; participant?: Snapshot["participant"]; training?: Snapshot["training"]; stage?: Stage; xp_status?: Snapshot["xp_status"]; assignmentClaim?: string }
+      | null;
     if (d?.ok && d.stage) {
       setSnapshot({
         event: d.event ?? null,
@@ -243,6 +250,12 @@ export default function FoundryJoinClient({ token }: { token: string }) {
         stage: d.stage,
         xp_status: d.xp_status ?? "none",
       });
+      // Slice 3.1B-3D: show the narrow connection message ONLY on a fresh claim of the
+      // learner's OWN assignment. Every other outcome (no match / conflict) is silent — no
+      // alarm, no disclosure of another assignee.
+      if (d.assignmentClaim === "claimed" || d.assignmentClaim === "already_claimed") {
+        setAssignmentConnected(true);
+      }
       return true;
     }
     return false;
@@ -418,6 +431,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
 
           <div className="flex flex-col gap-4">
           <Eyebrow>{t.trainingComplete}</Eyebrow>
+          {assignmentConnected ? (
+            <p className="rounded-lg border border-[#C9A66B]/30 bg-[#C9A66B]/[0.08] px-4 py-2.5 text-sm leading-6 text-[#E5B769]" data-testid="assignment-connected">
+              {t.assignmentConnected}
+            </p>
+          ) : null}
           {xp === "awarded" ? (
             <>
               <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
