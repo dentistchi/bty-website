@@ -428,13 +428,18 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     expect(ta.value.toLowerCase()).toContain("reads back the dosage");
   });
 
-  it("review → Approve & create session publishes and hands off the new event id", async () => {
+  it("review → Approve & create session publishes, confirms, then hands off the new event id", async () => {
     const onExit = vi.fn();
     mockDraftServer({ current_step: 8, answers: completeYoutube });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
     const btn = await screen.findByText("Approve & create session");
     expect((btn as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(btn);
+    // Slice 3.1B-3C: publish now shows a confirmation first (open_link here — no
+    // participation in the mock response), then hands off on Continue.
+    const cont = await screen.findByTestId("publish-confirm-continue");
+    expect(screen.getByTestId("publish-confirm-open")).toBeTruthy();
+    fireEvent.click(cont);
     await waitFor(() => expect(onExit).toHaveBeenCalledWith({ publishedEventId: "ev-new" }));
   });
 

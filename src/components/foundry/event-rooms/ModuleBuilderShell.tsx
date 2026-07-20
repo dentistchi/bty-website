@@ -78,6 +78,13 @@ export function ModuleBuilderShell({
   // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
   // assigned overlay, and legacy/absent always stays open link.
   const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
+  // Intended assignment count from the pre-publish preview (review screen only). This is the
+  // INTENT, clearly separate from the committed result shown after publish.
+  const [intendedCount, setIntendedCount] = useState<number | null>(null);
+  // AUTHORITATIVE committed result from the publish response (post-publish confirmation).
+  const [publishedResult, setPublishedResult] = useState<
+    { eventId?: string; mode: "open_link" | "assigned_overlay"; assignmentCount: number; audienceType: string | null } | null
+  >(null);
 
   const answersRef = useRef<BuilderAnswers>({});
   const stepRef = useRef<number>(1);
@@ -234,8 +241,18 @@ export function ModuleBuilderShell({
         body: JSON.stringify(body),
       });
       if (res.ok) {
-        const data = (await res.json()) as { event?: { id?: string } };
-        onExit({ publishedEventId: data.event?.id });
+        const data = (await res.json()) as {
+          event?: { id?: string };
+          participation?: { mode?: "open_link" | "assigned_overlay"; assignmentCount?: number; audienceType?: string | null };
+        };
+        // Confirm from the AUTHORITATIVE committed result, never the preview. Show the
+        // confirmation before handing off so the Host sees what actually happened.
+        setPublishedResult({
+          eventId: data.event?.id,
+          mode: data.participation?.mode === "assigned_overlay" ? "assigned_overlay" : "open_link",
+          assignmentCount: data.participation?.assignmentCount ?? 0,
+          audienceType: data.participation?.audienceType ?? null,
+        });
         return;
       }
       const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -438,12 +455,20 @@ export function ModuleBuilderShell({
         <SaveStatus state={saveState} t={t} onRetry={retry} />
       </div>
 
-      {isReview ? (
+      {publishedResult ? (
+        <PublishConfirmation
+          result={publishedResult}
+          onContinue={() => onExit({ publishedEventId: publishedResult.eventId })}
+          t={t}
+        />
+      ) : isReview ? (
         <>
           <ReviewBody answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           <ParticipationModeChooser
             mode={participationMode}
             audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
+            intendedCount={intendedCount}
+            onIntendedCount={setIntendedCount}
             onChange={setParticipationMode}
             t={t}
           />
@@ -1084,7 +1109,13 @@ function ReviewBody({
  * Render-only: eligibility is resolved entirely server-side by the canonical resolver. The
  * component never computes leader status and never sends an organization id.
  */
-function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
+function LeadersEligibilityPreview({
+  t,
+  onResolvedCount,
+}: {
+  t: ModuleBuilderCopy;
+  onResolvedCount?: (n: number | null) => void;
+}) {
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; count: number; names: string[] }
@@ -1107,6 +1138,7 @@ function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
         if (cancelled) return;
         if (!res.ok || !data.ok) {
           setState({ kind: "error" });
+          onResolvedCount?.(null);
           return;
         }
         setState({
@@ -1114,14 +1146,18 @@ function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
           count: data.eligibleCount ?? 0,
           names: (data.members ?? []).map((m) => m.displayName).filter((n): n is string => !!n),
         });
+        onResolvedCount?.(data.eligibleCount ?? 0);
       } catch {
-        if (!cancelled) setState({ kind: "error" });
+        if (!cancelled) {
+          setState({ kind: "error" });
+          onResolvedCount?.(null);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onResolvedCount]);
 
   return (
     <div
@@ -1171,11 +1207,15 @@ function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
 function ParticipationModeChooser({
   mode,
   audienceType,
+  intendedCount,
+  onIntendedCount,
   onChange,
   t,
 }: {
   mode: "open_link" | "assigned_overlay";
   audienceType: string | null;
+  intendedCount: number | null;
+  onIntendedCount: (n: number | null) => void;
   onChange: (m: "open_link" | "assigned_overlay") => void;
   t: ModuleBuilderCopy;
 }) {
@@ -1198,20 +1238,78 @@ function ParticipationModeChooser({
           testid="participation-mode-assigned"
         />
       </div>
-      {mode === "assigned_overlay" ? (
+      {/* OPEN_LINK — state plainly that nothing will be assigned, so it can never be
+          confused with an assigned publish (the 3.1B-3C gate-B lesson). */}
+      {mode === "open_link" ? (
+        <p className="mt-3 text-xs leading-relaxed text-white/45" data-testid="participation-open-summary">
+          {t.pmOpenNoAssign}
+        </p>
+      ) : (
         <div className="mt-3" data-testid="participation-mode-assigned-detail">
           {audienceType === "leaders" ? (
-            <LeadersEligibilityPreview t={t} />
+            <LeadersEligibilityPreview t={t} onResolvedCount={onIntendedCount} />
           ) : (
             <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/50">
               {t.pmAudienceHint}
             </p>
           )}
+          {/* INTENDED count (pre-publish), explicitly framed as what WILL be created. */}
+          {audienceType === "leaders" && intendedCount != null ? (
+            <p className="mt-2 text-sm font-medium text-[#E5B769]" data-testid="participation-intended-count">
+              {t.pmWillCreate(intendedCount)}
+            </p>
+          ) : null}
+          <p className="mt-1 text-xs text-white/45" data-testid="participation-room-note">
+            {t.pmRoomLinkBased}
+          </p>
           <p className="mt-2 text-xs leading-relaxed text-white/40" data-testid="participation-mode-note">
             {t.pmAssignedNote}
           </p>
         </div>
-      ) : null}
+      )}
+    </div>
+  );
+}
+
+/**
+ * Post-publish confirmation (Slice 3.1B-3C fix). Reports the AUTHORITATIVE committed result
+ * from the publish response — the actual mode + assignment count the server wrote — never
+ * the pre-publish preview. This is the surface Gate B needs to distinguish an assigned
+ * publish from an open-link one.
+ */
+function PublishConfirmation({
+  result,
+  onContinue,
+  t,
+}: {
+  result: { mode: "open_link" | "assigned_overlay"; assignmentCount: number; audienceType: string | null };
+  onContinue: () => void;
+  t: ModuleBuilderCopy;
+}) {
+  const assigned = result.mode === "assigned_overlay";
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-xl border border-white/12 bg-white/[0.03] p-5" data-testid="publish-confirmation">
+      <h3 className="text-base font-semibold text-white/90">
+        {assigned ? t.pmDoneAssignedTitle : t.pmDoneOpenTitle}
+      </h3>
+      {assigned ? (
+        <>
+          <p className="text-sm text-[#E5B769]" data-testid="publish-confirm-count">
+            {t.pmDoneAssignedCount(result.assignmentCount)}
+          </p>
+          <p className="text-xs text-white/50" data-testid="publish-confirm-room">{t.pmRoomLinkBased}</p>
+        </>
+      ) : (
+        <p className="text-sm text-white/60" data-testid="publish-confirm-open">{t.pmDoneOpenNoAssign}</p>
+      )}
+      <button
+        type="button"
+        onClick={onContinue}
+        data-testid="publish-confirm-continue"
+        className="mt-1 self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+      >
+        {t.pmDoneContinue}
+      </button>
     </div>
   );
 }

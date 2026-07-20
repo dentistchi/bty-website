@@ -99,3 +99,43 @@ export async function publishAssignmentsForEvent(
   if (!row) return { ok: false, reason: "assignment_write_failed" };
   return { ok: true, assignmentCount: row.assignment_count };
 }
+
+export type CommittedParticipation = {
+  mode: ParticipationMode;
+  assignmentCount: number;
+  audienceType: string | null;
+};
+
+/**
+ * AUTHORITATIVE post-publish read. Reports what actually COMMITTED for an event — read back
+ * from the participation-mode + audience-snapshot rows, NOT from the pre-publish preview and
+ * NOT from the write call's return value. An event with no mode row is open_link with zero
+ * assignments (the default), which is exactly what a compensated/failed assigned publish
+ * leaves behind. This is the single source of truth the confirmation UI must use.
+ */
+export async function readCommittedParticipation(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<CommittedParticipation> {
+  const { data: modeRow } = await admin
+    .from("foundry_event_participation_mode")
+    .select("mode")
+    .eq("event_id", eventId)
+    .maybeSingle<{ mode: ParticipationMode }>();
+
+  if (!modeRow || modeRow.mode !== "assigned_overlay") {
+    return { mode: "open_link", assignmentCount: 0, audienceType: null };
+  }
+
+  const { data: snap } = await admin
+    .from("foundry_event_audience_snapshot")
+    .select("audience_type, resolved_count")
+    .eq("event_id", eventId)
+    .maybeSingle<{ audience_type: string; resolved_count: number }>();
+
+  return {
+    mode: "assigned_overlay",
+    assignmentCount: snap?.resolved_count ?? 0,
+    audienceType: snap?.audience_type ?? null,
+  };
+}

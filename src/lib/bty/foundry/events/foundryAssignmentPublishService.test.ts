@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   preflightAssignedAudience,
   publishAssignmentsForEvent,
+  readCommittedParticipation,
 } from "./foundryAssignmentPublishService";
 
 /**
@@ -96,5 +97,41 @@ describe("publishAssignmentsForEvent", () => {
     expect(Object.keys(seen[0]).sort()).toEqual(
       ["p_event_id", "p_actor_user_id", "p_audience_type", "p_audience_detail"].sort(),
     );
+  });
+});
+
+describe("readCommittedParticipation — authoritative committed state", () => {
+  function admin(mode: string | null, snap: { audience_type: string; resolved_count: number } | null): SupabaseClient {
+    return {
+      from(table: string) {
+        const q: Record<string, unknown> = {
+          select: () => q,
+          eq: () => q,
+          maybeSingle: () =>
+            Promise.resolve({
+              data: table === "foundry_event_participation_mode" ? (mode ? { mode } : null) : snap,
+              error: null,
+            }),
+        };
+        return q;
+      },
+    } as unknown as SupabaseClient;
+  }
+
+  it("reports open_link + 0 when no mode row exists (default / compensated publish)", async () => {
+    const r = await readCommittedParticipation(admin(null, null), "evt");
+    expect(r).toEqual({ mode: "open_link", assignmentCount: 0, audienceType: null });
+  });
+
+  it("reports the committed assignment count from the snapshot for assigned_overlay", async () => {
+    const r = await readCommittedParticipation(admin("assigned_overlay", { audience_type: "leaders", resolved_count: 1 }), "evt");
+    expect(r).toEqual({ mode: "assigned_overlay", assignmentCount: 1, audienceType: "leaders" });
+  });
+
+  it("never trusts a stray open_link-with-snapshot combination — mode row governs", async () => {
+    // a mode row of open_link means open_link regardless of any snapshot
+    const r = await readCommittedParticipation(admin("open_link", { audience_type: "leaders", resolved_count: 9 }), "evt");
+    expect(r.mode).toBe("open_link");
+    expect(r.assignmentCount).toBe(0);
   });
 });

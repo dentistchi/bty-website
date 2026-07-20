@@ -56,7 +56,14 @@ function mockServers(opts: { audienceType?: string; publish?: (body: unknown) =>
     if (u.endsWith("/publish")) {
       const body = init?.body ? JSON.parse(String(init.body)) : {};
       calls.publish.push(body);
-      const res = opts.publish ? opts.publish(body) : { status: 200, body: { event: { id: "ev-1" } } };
+      // Default: echo an AUTHORITATIVE committed result matching the requested mode.
+      const committed =
+        body.participationMode === "assigned_overlay"
+          ? { mode: "assigned_overlay", assignmentCount: 1, audienceType: "leaders" }
+          : { mode: "open_link", assignmentCount: 0, audienceType: null };
+      const res = opts.publish
+        ? opts.publish(body)
+        : { status: 200, body: { event: { id: "ev-1" }, participation: committed } };
       return Promise.resolve(jsonRes(res.body, res.status));
     }
     if (u.includes("/modules/d-1")) {
@@ -141,5 +148,86 @@ describe("Participation-mode controls in the Builder review step", () => {
     fireEvent.click(screen.getByTestId("publish-cta"));
     await waitFor(() => expect(screen.getByTestId("publish-zero-recipients")).toBeTruthy());
     expect(calls.publish).toHaveLength(1);
+  });
+});
+
+describe("Review screen distinguishes OPEN_LINK vs ASSIGNED (3.1B-3C fix)", () => {
+  it("OPEN_LINK selected shows 'No member assignments will be created'", async () => {
+    mockServers({ audienceType: "leaders" });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode")).toBeTruthy());
+    // default is open link
+    const summary = await screen.findByTestId("participation-open-summary");
+    expect(summary.textContent).toMatch(/No member assignments will be created/i);
+    // and it is NOT visually implying assignment despite the audience being Leaders
+    expect(screen.queryByTestId("participation-intended-count")).toBeNull();
+  });
+
+  it("Leaders + Assigned shows the intended count 'This will create 1 required-learning assignment'", async () => {
+    mockServers({ audienceType: "leaders" });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    const intended = await screen.findByTestId("participation-intended-count");
+    expect(intended.textContent).toMatch(/This will create 1 required-learning assignment/i);
+    expect(screen.getByTestId("participation-room-note").textContent).toMatch(/room remains link-based/i);
+  });
+});
+
+describe("Post-publish confirmation uses the AUTHORITATIVE committed result", () => {
+  it("OPEN_LINK publish confirms zero assignments", async () => {
+    mockServers({ audienceType: "leaders" });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("publish-cta")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const confirm = await screen.findByTestId("publish-confirmation");
+    expect(confirm).toBeTruthy();
+    expect(screen.getByTestId("publish-confirm-open").textContent).toMatch(/No assignments created/i);
+    expect(screen.queryByTestId("publish-confirm-count")).toBeNull();
+  });
+
+  it("ASSIGNED publish confirms the COMMITTED assignment count (not the preview)", async () => {
+    // server commits 1 even though we don't read the preview here
+    mockServers({ audienceType: "leaders" });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const count = await screen.findByTestId("publish-confirm-count");
+    expect(count.textContent).toMatch(/1 assignment created/i);
+    expect(screen.getByTestId("publish-confirm-room").textContent).toMatch(/room remains link-based/i);
+  });
+
+  it("a compensated/failed publish never shows assignment success", async () => {
+    // server-side compensation surfaces as an assignment_write_failed error, not a success
+    const calls = mockServers({
+      audienceType: "leaders",
+      publish: () => ({ status: 500, body: { error: "assignment_write_failed" } }),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    await waitFor(() => expect(calls.publish).toHaveLength(1));
+    // no confirmation panel, no count
+    expect(screen.queryByTestId("publish-confirmation")).toBeNull();
+    expect(screen.queryByTestId("publish-confirm-count")).toBeNull();
+  });
+
+  it("the confirmation reflects the SERVER mode even if the client requested assigned but server committed open_link", async () => {
+    // defence: server is source of truth. Client toggled assigned; server says open_link/0.
+    mockServers({
+      audienceType: "leaders",
+      publish: () => ({ status: 200, body: { event: { id: "ev-1" }, participation: { mode: "open_link", assignmentCount: 0, audienceType: null } } }),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const confirm = await screen.findByTestId("publish-confirmation");
+    expect(confirm).toBeTruthy();
+    // shows the OPEN_LINK confirmation because the server committed open_link
+    expect(screen.getByTestId("publish-confirm-open")).toBeTruthy();
+    expect(screen.queryByTestId("publish-confirm-count")).toBeNull();
   });
 });

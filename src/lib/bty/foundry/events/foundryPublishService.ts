@@ -16,7 +16,9 @@ import {
 import {
   preflightAssignedAudience,
   publishAssignmentsForEvent,
+  readCommittedParticipation,
   type AssignedAudience,
+  type CommittedParticipation,
   type ParticipationMode,
 } from "./foundryAssignmentPublishService";
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
@@ -61,6 +63,12 @@ export type PublishResult = {
   snapshot: ManagerRoomSnapshot;
   /** True when the draft was already published (idempotent replay / concurrent loser). */
   reused: boolean;
+  /**
+   * The participation state that ACTUALLY committed (read back from the DB, Slice 3.1B-3C).
+   * The confirmation UI must use this, never the pre-publish preview — a compensated/failed
+   * assigned publish reports open_link + 0 here.
+   */
+  participation: CommittedParticipation;
 };
 
 /** Content-type-aware owner snapshot (carries join_token for the control-room handoff). */
@@ -172,7 +180,9 @@ export async function publishDraft(
   const already = await getPublishedEventBySourceDraft(admin, draftId);
   if (already) {
     const snap = await snapshotFor(admin, ownerUserId, already.event_id);
-    return snap ? { ok: true, value: { snapshot: snap, reused: true } } : { ok: false, reason: "snapshot_failed" };
+    if (!snap) return { ok: false, reason: "snapshot_failed" };
+    const committed = await readCommittedParticipation(admin, already.event_id);
+    return { ok: true, value: { snapshot: snap, reused: true, participation: committed } };
   }
 
   // ASSIGNED_OVERLAY pre-flight (Slice 3.1B-3C): resolve the recipient set BEFORE creating
@@ -236,7 +246,9 @@ export async function publishDraft(
     const winner = await getPublishedEventBySourceDraft(admin, draftId);
     if (winner) {
       const snap = await snapshotFor(admin, ownerUserId, winner.event_id);
-      return snap ? { ok: true, value: { snapshot: snap, reused: true } } : { ok: false, reason: "snapshot_failed" };
+      if (!snap) return { ok: false, reason: "snapshot_failed" };
+      const committed = await readCommittedParticipation(admin, winner.event_id);
+      return { ok: true, value: { snapshot: snap, reused: true, participation: committed } };
     }
     return { ok: false, reason: "publish_conflict" };
   }
@@ -266,5 +278,7 @@ export async function publishDraft(
 
   const snap = await snapshotFor(admin, ownerUserId, eventId);
   if (!snap) return { ok: false, reason: "snapshot_failed" };
-  return { ok: true, value: { snapshot: snap, reused: false } };
+  // Authoritative committed state for the confirmation UI (reads DB, not the preview).
+  const committed = await readCommittedParticipation(admin, eventId);
+  return { ok: true, value: { snapshot: snap, reused: false, participation: committed } };
 }

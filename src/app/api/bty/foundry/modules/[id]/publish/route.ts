@@ -59,5 +59,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const result = await publishDraft(admin, user.id, id, locale, participation);
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));
 
-  return managerJson(base, req, { ...attachJoinUrl(req, result.value.snapshot), reused: result.value.reused });
+  // The confirmation UI reads `participation` — the ACTUAL committed mode + assignment
+  // count from the server write, never the pre-publish preview (Slice 3.1B-3C fix).
+  return managerJson(base, req, {
+    ...attachJoinUrl(req, result.value.snapshot),
+    reused: result.value.reused,
+    participation: result.value.participation,
+  });
 }

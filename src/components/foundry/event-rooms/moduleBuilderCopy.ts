@@ -169,6 +169,14 @@ export type ModuleBuilderCopy = {
   pmAssignedNote: string;
   pmAudienceHint: string;
   pmZeroRecipients: string;
+  pmOpenNoAssign: string;
+  pmRoomLinkBased: string;
+  pmWillCreate: (n: number) => string;
+  pmDoneAssignedTitle: string;
+  pmDoneAssignedCount: (n: number) => string;
+  pmDoneOpenTitle: string;
+  pmDoneOpenNoAssign: string;
+  pmDoneContinue: string;
   audJobGroup: string;
   audRole: string;
   audJobGroupDetail: string;
@@ -364,6 +372,16 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pmAudienceHint: "Choose an audience on the audience step to see who will be assigned.",
     pmZeroRecipients:
       "No eligible members match this audience, so no assignments can be created. Change the audience or choose Open link session.",
+    pmOpenNoAssign: "No member assignments will be created. Anyone with the link may join.",
+    pmRoomLinkBased: "The room remains link-based.",
+    pmWillCreate: (n: number) =>
+      n === 1 ? "This will create 1 required-learning assignment." : `This will create ${n} required-learning assignments.`,
+    pmDoneAssignedTitle: "Assigned session created",
+    pmDoneAssignedCount: (n: number) =>
+      n === 1 ? "1 assignment created." : `${n} assignments created.`,
+    pmDoneOpenTitle: "Open link session created",
+    pmDoneOpenNoAssign: "No assignments created. Anyone with the link may join.",
+    pmDoneContinue: "Continue to room",
     audJobGroup: "A job group",
     audRole: "A specific role",
     audJobGroupDetail: "Which group?",
@@ -623,6 +641,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pmAudienceHint: "대상 단계에서 대상을 선택하면 배정될 구성원을 확인할 수 있습니다.",
     pmZeroRecipients:
       "이 대상에 해당하는 구성원이 없어 배정을 생성할 수 없습니다. 대상을 변경하거나 오픈 링크 세션을 선택하세요.",
+    pmOpenNoAssign: "구성원 배정이 생성되지 않습니다. 링크를 가진 사람은 누구나 참여할 수 있습니다.",
+    pmRoomLinkBased: "Room은 계속 링크 기반입니다.",
+    pmWillCreate: (n: number) => `필수 학습 배정 ${n}건이 생성됩니다.`,
+    pmDoneAssignedTitle: "배정 세션이 생성되었습니다",
+    pmDoneAssignedCount: (n: number) => `배정 ${n}건이 생성되었습니다.`,
+    pmDoneOpenTitle: "오픈 링크 세션이 생성되었습니다",
+    pmDoneOpenNoAssign: "배정이 생성되지 않았습니다. 링크를 가진 사람은 누구나 참여할 수 있습니다.",
+    pmDoneContinue: "Room으로 이동",
     audJobGroup: "직군",
     audRole: "특정 역할",
     audJobGroupDetail: "어떤 직군인가요?",
