@@ -157,8 +157,11 @@ describe("claimAssignmentForParticipant — 3.1B-3D result mapping (assignment c
   it("maps a wrong-account / open-link event to the neutral no_matching_assignment", async () => {
     expect(await claimAssignmentForParticipant(rpc("no_matching_assignment"), "e", "p", "u")).toBe("no_matching_assignment");
   });
-  it("an RPC error degrades to neutral (never fails the XP claim)", async () => {
-    expect(await claimAssignmentForParticipant(rpc(null, "boom"), "e", "p", "u")).toBe("no_matching_assignment");
+  it("an RPC error degrades to the SILENT not_applicable (never fails the XP claim, no false no-match message)", async () => {
+    expect(await claimAssignmentForParticipant(rpc(null, "boom"), "e", "p", "u")).toBe("not_applicable");
+  });
+  it("maps the open-link not_applicable result", async () => {
+    expect(await claimAssignmentForParticipant(rpc("not_applicable"), "e", "p", "u")).toBe("not_applicable");
   });
   it("passes ONLY event/participant/auth-user — no client-forgeable targeting", async () => {
     const seen: Record<string, unknown>[] = [];

@@ -1,40 +1,43 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import FoundryJoinClient from "./FoundryJoinClient";
 
 /**
- * Slice 3.1B-3D — the assignment-connection message is shown ONLY when the learner claimed
- * their OWN assignment ('claimed'/'already_claimed'). A no_matching_assignment (wrong
- * account / open-link) is SILENT: normal completion, no alarm, no disclosure. Exercises the
- * real installed-app claim path (the join client's claim-xp fetch → applyResult).
+ * Slice 3.1B-3D + fix — the external Foundry claim flow must make the authenticated ACCOUNT
+ * observable before claiming (the room can run in an external browser whose Supabase session
+ * differs from the app), and the assignment message must come only from the authoritative
+ * committed claim result. Wrong-account / open-link never reveal an assignee.
  */
 
-// The initial GET returns a completed_claimable snapshot; the auto-claim POST then returns
-// the awarded snapshot plus the assignmentClaim field under test.
-function mockFetch(assignmentClaim: string | undefined) {
+function mockFetch(opts: {
+  account?: { email: string | null } | null; // /api/auth/session user
+  assignmentClaim?: string; // claim-xp POST result
+  captureClaim?: () => void;
+}) {
   const claimable = {
     event: { title: "T", status: "open" },
-    participant: { display_name: "Hanbit Chi" },
+    participant: { display_name: "Hojin Kim" },
     training: { youtube_video_id: "dQw4w9WgXcQ", completion_prompt: null },
     stage: "completed_claimable",
     xp_status: "claimable",
   };
   const awarded = {
     ok: true,
-    event: claimable.event,
-    participant: claimable.participant,
-    training: claimable.training,
+    ...claimable,
     stage: "completed_awarded",
     xp_status: "awarded",
-    assignmentClaim,
+    assignmentClaim: opts.assignmentClaim,
   };
   return vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url);
+    if (u.includes("/api/auth/session")) {
+      return { ok: true, status: 200, json: async () => ({ ok: true, user: opts.account ?? null }) };
+    }
     if (u.includes("/progress/claim-xp") && init?.method === "POST") {
+      opts.captureClaim?.();
       return { ok: true, status: 200, json: async () => awarded };
     }
-    // any other POST (video-complete etc.) or the initial GET
     return { ok: true, status: 200, json: async () => claimable };
   });
 }
@@ -44,44 +47,75 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("FoundryJoinClient — assignment connection message (3.1B-3D)", () => {
-  it("shows the connection message when the learner claimed their OWN assignment", async () => {
+describe("FoundryJoinClient — account observability + assignment claim (3.1B-3D)", () => {
+  it("shows the CURRENT authenticated account and does NOT auto-claim", async () => {
+    const captureClaim = vi.fn();
     // @ts-expect-error test shim
-    global.fetch = mockFetch("claimed");
+    global.fetch = mockFetch({ account: { email: "hojin@example.com" }, assignmentClaim: "not_applicable", captureClaim });
     render(<FoundryJoinClient token="tok" />);
+    await waitFor(() => expect(screen.getByTestId("claim-account")).toBeTruthy());
+    expect(screen.getByTestId("claim-account-email").textContent).toBe("hojin@example.com");
+    // account is shown but NOTHING is claimed until the learner chooses
+    expect(captureClaim).not.toHaveBeenCalled();
+    expect(screen.getByTestId("claim-continue")).toBeTruthy();
+    expect(screen.getByTestId("claim-switch-account")).toBeTruthy();
+  });
+
+  it("MATCHING account: Continue → shows the connection message from the committed result", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ account: { email: "hanbit@example.com" }, assignmentClaim: "claimed" });
+    render(<FoundryJoinClient token="tok" />);
+    fireEvent.click(await screen.findByTestId("claim-continue"));
     await waitFor(() => expect(screen.getByTestId("assignment-connected")).toBeTruthy());
     expect(screen.getByTestId("assignment-connected").textContent).toMatch(/assigned learning has been connected/i);
   });
 
-  it("also shows it on an idempotent re-claim (already_claimed)", async () => {
+  it("WRONG account on an assigned event: neutral no-match message, NO assignee disclosure", async () => {
     // @ts-expect-error test shim
-    global.fetch = mockFetch("already_claimed");
+    global.fetch = mockFetch({ account: { email: "someoneelse@example.com" }, assignmentClaim: "no_matching_assignment" });
     render(<FoundryJoinClient token="tok" />);
-    await waitFor(() => expect(screen.getByTestId("assignment-connected")).toBeTruthy());
-  });
-
-  it("is SILENT for a wrong-account / open-link participant (no_matching_assignment)", async () => {
-    // @ts-expect-error test shim
-    global.fetch = mockFetch("no_matching_assignment");
-    render(<FoundryJoinClient token="tok" />);
-    // completion still renders (XP awarded), but NO assignment message and no disclosure
-    await waitFor(() => expect(screen.getByText("+10 Core XP")).toBeTruthy());
+    fireEvent.click(await screen.findByTestId("claim-continue"));
+    const msg = await screen.findByTestId("assignment-no-match");
+    expect(msg.textContent).toMatch(/No matching assignment was connected/i);
+    // XP still succeeded; no assignee identity anywhere
+    expect(screen.getByText("+10 Core XP")).toBeTruthy();
     expect(screen.queryByTestId("assignment-connected")).toBeNull();
   });
 
-  it("is SILENT when there is no assignmentClaim field at all (open-link event)", async () => {
+  it("OPEN-LINK room (not_applicable): SILENT — no assignment message at all", async () => {
     // @ts-expect-error test shim
-    global.fetch = mockFetch(undefined);
+    global.fetch = mockFetch({ account: { email: "anyone@example.com" }, assignmentClaim: "not_applicable" });
     render(<FoundryJoinClient token="tok" />);
+    fireEvent.click(await screen.findByTestId("claim-continue"));
     await waitFor(() => expect(screen.getByText("+10 Core XP")).toBeTruthy());
+    expect(screen.queryByTestId("assignment-connected")).toBeNull();
+    expect(screen.queryByTestId("assignment-no-match")).toBeNull();
+  });
+
+  it("a claim_conflict is treated as neutral no-match (never reveals the other participant)", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ account: { email: "hanbit@example.com" }, assignmentClaim: "claim_conflict" });
+    render(<FoundryJoinClient token="tok" />);
+    fireEvent.click(await screen.findByTestId("claim-continue"));
+    await waitFor(() => expect(screen.getByTestId("assignment-no-match")).toBeTruthy());
     expect(screen.queryByTestId("assignment-connected")).toBeNull();
   });
 
-  it("never reveals another assignee on a claim_conflict — treated as silent", async () => {
+  it("UNAUTHENTICATED: shows a sign-in prompt, not a silent auto-claim", async () => {
+    const captureClaim = vi.fn();
     // @ts-expect-error test shim
-    global.fetch = mockFetch("claim_conflict");
+    global.fetch = mockFetch({ account: null, captureClaim });
     render(<FoundryJoinClient token="tok" />);
-    await waitFor(() => expect(screen.getByText("+10 Core XP")).toBeTruthy());
-    expect(screen.queryByTestId("assignment-connected")).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("claim-signin")).toBeTruthy());
+    expect(captureClaim).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("claim-continue")).toBeNull();
+  });
+
+  it("account switch control is present so the learner can change accounts (external browser)", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ account: { email: "wrong@example.com" }, assignmentClaim: "no_matching_assignment" });
+    render(<FoundryJoinClient token="tok" />);
+    const sw = await screen.findByTestId("claim-switch-account");
+    expect(sw.textContent).toMatch(/another account/i);
   });
 });

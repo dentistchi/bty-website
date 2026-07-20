@@ -73,3 +73,27 @@ describe("foundry assignment-claim migration (schema-intent)", () => {
     expect(RAW.endsWith("\n")).toBe(true);
   });
 });
+
+/**
+ * Slice 3.1B-3D fix (migration 20260724000000): the "no assignment for this user" branch
+ * distinguishes an assigned event (wrong account) from an ordinary open-link room, so the
+ * UI can stay silent on open-link and surface a neutral message only on an assigned event.
+ */
+describe("assignment-claim v2 — open-link vs wrong-account distinction", () => {
+  const V2 = readFileSync(join(process.cwd(), "supabase", "migrations", "20260724000000_foundry_assignment_claim_v2.sql"), "utf8").replace(/\s+/g, " ");
+  const V2CODE = readFileSync(join(process.cwd(), "supabase", "migrations", "20260724000000_foundry_assignment_claim_v2.sql"), "utf8").replace(/--[^\n]*/g, " ").replace(/\s+/g, " ");
+
+  it("returns not_applicable for an open-link room, no_matching_assignment for an assigned event", () => {
+    expect(V2).toMatch(/from public\.foundry_event_participation_mode m where m\.event_id = p_event_id and m\.mode = 'assigned_overlay'/i);
+    expect(V2).toMatch(/case when v_is_assigned then 'no_matching_assignment' else 'not_applicable' end/i);
+  });
+
+  it("preserves the v1 contract: match by user_id_snapshot, lock, assigned->completed, service-role only", () => {
+    expect(V2).toMatch(/where a\.event_id = p_event_id and a\.user_id_snapshot = p_auth_user_id and a\.status <> 'revoked' for update/i);
+    expect(V2).toMatch(/set participant_id = p_participant_id, claimed_at = now\(\), completed_at = now\(\), status = 'completed'/i);
+    expect(V2).toMatch(/security definer set search_path = pg_catalog, public/i);
+    expect(V2).toMatch(/grant execute on function public\.bty_foundry_claim_assignment\(uuid, uuid, uuid\) to service_role/i);
+    // still writes no XP / participant / identity
+    expect(V2CODE).not.toMatch(/core_xp|linked_user_id|foundry_event_participants/i);
+  });
+});

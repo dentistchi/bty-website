@@ -47,6 +47,13 @@ type Copy = {
   completing: string;
   trainingComplete: string;
   assignmentConnected: string;
+  assignmentNoMatch: string;
+  signedInAs: string;
+  accountUnknownEmail: string;
+  accountLoading: string;
+  continueWithAccount: string;
+  useAnotherAccount: string;
+  signInToSave: string;
   xpAwarded: string;
   carryOne: string;
   xpClaimable: string;
@@ -89,6 +96,13 @@ const COPY: Record<Locale, Copy> = {
     completing: "Saving…",
     trainingComplete: "TRAINING COMPLETE",
     assignmentConnected: "Your assigned learning has been connected to this session.",
+    assignmentNoMatch: "Your training record was saved. No matching assignment was connected.",
+    signedInAs: "Signed in as",
+    accountUnknownEmail: "your account",
+    accountLoading: "Checking your account…",
+    continueWithAccount: "Continue with this account",
+    useAnotherAccount: "Use another account",
+    signInToSave: "Sign in to save",
     xpAwarded: "+10 Core XP",
     carryOne: "Carry one thing forward.",
     xpClaimable: "10 Core XP is ready to save.",
@@ -129,6 +143,13 @@ const COPY: Record<Locale, Copy> = {
     completing: "저장 중…",
     trainingComplete: "훈련 완료",
     assignmentConnected: "배정된 학습이 이 세션 기록과 연결되었습니다.",
+    assignmentNoMatch: "학습 기록이 저장되었습니다. 연결된 배정은 없습니다.",
+    signedInAs: "로그인 계정:",
+    accountUnknownEmail: "내 계정",
+    accountLoading: "계정을 확인하는 중…",
+    continueWithAccount: "이 계정으로 계속하기",
+    useAnotherAccount: "다른 계정 사용",
+    signInToSave: "로그인하고 저장",
     xpAwarded: "+10 Core XP",
     carryOne: "한 가지를 가지고 가세요.",
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
@@ -195,6 +216,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [isPlaying, setIsPlaying] = useState(false);
   // Slice 3.1B-3D: the learner claimed their own assigned learning for this session.
   const [assignmentConnected, setAssignmentConnected] = useState(false);
+  // 3.1B-3D fix: neutral "no matching assignment" (wrong account on an assigned event) —
+  // never reveals the assignee. And the currently authenticated account, so the learner can
+  // SEE and choose which account claims (the external-browser session may differ from the app).
+  const [assignmentNoMatch, setAssignmentNoMatch] = useState(false);
+  const [account, setAccount] = useState<{ email: string | null } | null | "loading">("loading");
   const [checkpoint, setCheckpoint] = useState<{ index: number; resume: () => void } | null>(null);
   const [reflection, setReflection] = useState<LivingReflection | null>(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
@@ -255,6 +281,12 @@ export default function FoundryJoinClient({ token }: { token: string }) {
       // alarm, no disclosure of another assignee.
       if (d.assignmentClaim === "claimed" || d.assignmentClaim === "already_claimed") {
         setAssignmentConnected(true);
+        setAssignmentNoMatch(false);
+      } else if (d.assignmentClaim === "no_matching_assignment" || d.assignmentClaim === "claim_conflict") {
+        // Neutral: this event HAS assignments but not for the signed-in account. Never
+        // reveal the assignee. 'not_applicable' (open-link) stays silent.
+        setAssignmentNoMatch(true);
+        setAssignmentConnected(false);
       }
       return true;
     }
@@ -328,13 +360,39 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     [post, applyResult, token, locale],
   );
 
-  // Auto-claim once when returning to a claimable state (e.g. back from login).
+  // 3.1B-3D fix: do NOT auto-claim. When the learner reaches the claimable state, load the
+  // CURRENTLY authenticated account so they can see and choose it before claiming. The room
+  // may run in an external browser whose Supabase session differs from the BTY app, so the
+  // account must be shown here, not inferred from the app.
   useEffect(() => {
-    if (snapshot?.stage === "completed_claimable" && !autoClaimedRef.current) {
-      autoClaimedRef.current = true;
-      void onClaim(true);
-    }
-  }, [snapshot?.stage, onClaim]);
+    if (snapshot?.stage !== "completed_claimable" || autoClaimedRef.current) return;
+    autoClaimedRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as { user?: { email?: string | null } | null };
+        if (!cancelled) setAccount(data.user ? { email: data.user.email ?? null } : null);
+      } catch {
+        if (!cancelled) setAccount(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [snapshot?.stage]);
+
+  const switchAccount = useCallback(() => {
+    // Sign out (middleware clears cookies at /bty/logout) then return here to sign in as a
+    // different account. Account switching = logout + login for Supabase sessions.
+    const next = encodeURIComponent(`/f/${token}`);
+    window.location.href = `/${locale}/bty/logout?next=${next}`;
+  }, [token, locale]);
+
+  const goSignIn = useCallback(() => {
+    const next = encodeURIComponent(`/f/${token}`);
+    window.location.href = `/${locale}/bty/login?next=${next}`;
+  }, [token, locale]);
 
   // Keep the screen awake while the video plays; release the moment it stops.
   useEffect(() => {
@@ -435,6 +493,10 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             <p className="rounded-lg border border-[#C9A66B]/30 bg-[#C9A66B]/[0.08] px-4 py-2.5 text-sm leading-6 text-[#E5B769]" data-testid="assignment-connected">
               {t.assignmentConnected}
             </p>
+          ) : assignmentNoMatch ? (
+            <p className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm leading-6 text-white/60" data-testid="assignment-no-match">
+              {t.assignmentNoMatch}
+            </p>
           ) : null}
           {xp === "awarded" ? (
             <>
@@ -444,14 +506,46 @@ export default function FoundryJoinClient({ token }: { token: string }) {
           ) : xp === "claimable" ? (
             <>
               <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
-              <button
-                type="button"
-                onClick={() => onClaim(false)}
-                disabled={busy}
-                className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
-              >
-                {busy ? t.saving : t.saveXp}
-              </button>
+              {/* 3.1B-3D fix: account is OBSERVABLE + chosen before claiming. */}
+              {account === "loading" ? (
+                <p className="text-sm text-white/45" data-testid="claim-account-loading">{t.accountLoading}</p>
+              ) : account ? (
+                <div className="flex flex-col gap-2" data-testid="claim-account">
+                  <p className="text-sm text-white/70">
+                    {t.signedInAs}{" "}
+                    <span className="font-medium text-white/90" data-testid="claim-account-email">
+                      {account.email ?? t.accountUnknownEmail}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onClaim(false)}
+                    disabled={busy}
+                    data-testid="claim-continue"
+                    className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
+                  >
+                    {busy ? t.saving : t.continueWithAccount}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={switchAccount}
+                    disabled={busy}
+                    data-testid="claim-switch-account"
+                    className="text-sm text-white/50 underline underline-offset-4 hover:text-white/70"
+                  >
+                    {t.useAnotherAccount}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goSignIn}
+                  data-testid="claim-signin"
+                  className="rounded-xl bg-[#C9A66B] px-5 py-3.5 text-base font-semibold text-[#0B1F3A]"
+                >
+                  {t.signInToSave}
+                </button>
+              )}
             </>
           ) : xp === "daily_limit" ? (
             <p className="text-sm leading-6 text-white/60">{t.xpDailyLimit}</p>

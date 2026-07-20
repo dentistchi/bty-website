@@ -115,7 +115,11 @@ export type AssignmentClaimResult =
   | "claimed"
   | "already_claimed"
   | "claim_conflict"
-  | "no_matching_assignment";
+  | "no_matching_assignment"
+  // Ordinary open-link room (no assignment overlay) — assignments are not a concept
+  // here, so the UI stays silent. Distinct from no_matching_assignment (wrong account
+  // on an assigned event), which the UI surfaces neutrally.
+  | "not_applicable";
 
 /**
  * Claim the authenticated caller's OWN assignment for an event, via the atomic RPC.
@@ -141,11 +145,21 @@ export async function claimAssignmentForParticipant(
   });
   // Assignment-claim failure must not disturb the canonical XP result: treat any error as
   // "no matching assignment" for the participant-facing outcome (nothing was written).
-  if (error) return "no_matching_assignment";
+  // A claim failure must never disturb the canonical XP result; degrade to the SILENT
+  // not_applicable so a transient error shows the participant nothing about assignments.
+  if (error) return "not_applicable";
   const row = (Array.isArray(data) ? data[0] : data) as { result?: string } | undefined;
   const r = row?.result;
-  if (r === "claimed" || r === "already_claimed" || r === "claim_conflict") return r;
-  return "no_matching_assignment";
+  if (
+    r === "claimed" ||
+    r === "already_claimed" ||
+    r === "claim_conflict" ||
+    r === "no_matching_assignment" ||
+    r === "not_applicable"
+  ) {
+    return r;
+  }
+  return "not_applicable";
 }
 
 /**
