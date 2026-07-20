@@ -8,6 +8,7 @@ import { newArrivals } from '@/domain/queue';
 import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DjBoard from './DjBoard';
+import { adminAuthHeader, isCookieCred } from '@/domain/admin-auth';
 
 interface Props {
   slug: string;
@@ -21,6 +22,10 @@ interface Props {
    * authorizeAdmin, so an admin cred always authorizes the queue.)
    */
   sessionCred?: string | null;
+  /** Slice 2.1: called when the passed session credential is server-rejected (401)
+   *  — used for the Host web COOKIE credential so a revoked cookie exits protected
+   *  state and re-resolves, instead of silently staying "authed". */
+  onSessionInvalid?: () => void;
 }
 
 type Phase = 'loading' | 'unpaired' | 'disconnected' | 'authed';
@@ -67,7 +72,7 @@ interface QueuePayload {
   eventStatus: DjEventStatus | null;
 }
 
-export default function DjConsole({ slug, displayName, dev = false, sessionCred = null }: Props) {
+export default function DjConsole({ slug, displayName, dev = false, sessionCred = null, onSessionInvalid }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [cred, setCred] = useState<string | null>(null);
   const [credSource, setCredSource] = useState<'dj' | 'admin' | null>(null);
@@ -87,7 +92,9 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // newer one (which would, e.g., briefly drop the playing row and hide Finish).
   const loadSeqRef = useRef(0);
 
-  const authHeader = useCallback((c: string) => ({ authorization: `Bearer ${c}` }), []);
+  // Mode-aware: the cookie sentinel sends NO header so the browser attaches the
+  // same-origin HttpOnly bty_room cookie (Slice 2.1).
+  const authHeader = useCallback((c: string) => adminAuthHeader(c), []);
 
   const markArrivals = useCallback((requests: KaraokeRequest[]) => {
     const ids = requests.map((r) => r.id);
@@ -207,14 +214,22 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       // With an Admin session cred a 401 is not expected (authorizeDj ⊇
       // authorizeAdmin) and must never drop to the host-code screen — treat any
       // hiccup as reconnecting and keep the Player up.
-      if (r === 'unauth' && !sessionCred) {
-        setPhase('disconnected');
+      if (r === 'unauth') {
+        if (isCookieCred(sessionCred)) {
+          // Revoked/expired Room cookie → stop protected polling and re-resolve.
+          onSessionInvalid?.();
+        } else if (!sessionCred) {
+          setPhase('disconnected');
+        } else {
+          // A Bearer admin cred: a 401 here is unexpected; keep the Player up.
+          setReconnecting(true);
+        }
       } else {
         setReconnecting(r !== 'ok');
       }
     }, POLL_MS);
     return () => window.clearInterval(t);
-  }, [phase, cred, loadQueue, sessionCred]);
+  }, [phase, cred, loadQueue, sessionCred, onSessionInvalid]);
 
   const refresh = useCallback(async () => {
     if (!cred) return;

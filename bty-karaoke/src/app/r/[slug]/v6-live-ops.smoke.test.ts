@@ -20,7 +20,7 @@ const djConsole = readFileSync(root + 'r/[slug]/dj/DjConsole.tsx', 'utf8');
 describe('canonical Admin entry renders the Admin Player (V6.1)', () => {
   it('the authenticated room admin renders DjConsole directly (no "Open DJ Console" hop)', () => {
     expect(admin).toContain("import DjConsole from '../dj/DjConsole'");
-    expect(admin).toMatch(/return <DjConsole slug=\{slug\} displayName=\{displayName\}/);
+    expect(admin).toMatch(/<DjConsole\s+slug=\{slug\} displayName=\{displayName\}/);
   });
 });
 

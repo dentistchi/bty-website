@@ -15,20 +15,43 @@ import { timingSafeEqual } from './dj-auth.server';
 import { optionalEnv } from './env.server';
 
 const CSRF_FIELD = 'csrf';
+/** Minimum entropy we will accept for the dedicated CSRF secret. */
+const MIN_CSRF_SECRET_LEN = 32;
 
-function secret(): string {
-  // Same key material selection as the existing manager-session signer.
-  return optionalEnv('KARAOKE_CAP_SECRET') ?? optionalEnv('KARAOKE_SUPABASE_SERVICE_ROLE_KEY') ?? '';
+/**
+ * DEDICATED CSRF secret — no cryptographic key reuse (Slice 2.1 §10). The Supabase
+ * service-role key and the Manager passcode are NEVER used here: a signing key and
+ * a database key must not be the same material. Returns null (fail closed) when the
+ * dedicated secret is absent or too short, so state-changing Host routes reject.
+ */
+export function csrfSecret(): string | null {
+  const s = optionalEnv('KARAOKE_HOST_CSRF_SECRET');
+  if (!s || s.length < MIN_CSRF_SECRET_LEN) return null;
+  return s;
 }
 
-/** Derive the CSRF token for a Host session. Never logged, never in a URL. */
+export function csrfConfigured(): boolean {
+  return csrfSecret() !== null;
+}
+
+/** Derive the CSRF token for a Host session. Never logged, never in a URL.
+ *  Throws when the dedicated secret is missing — callers must fail closed. */
 export async function csrfTokenFor(hostSessionToken: string): Promise<string> {
+  const secretValue = csrfSecret();
+  if (!secretValue) throw new Error('KARAOKE_HOST_CSRF_SECRET is not configured');
   const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(secret()),
+    'raw', new TextEncoder().encode(secretValue),
     { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
   );
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`csrf:${hostSessionToken}`));
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Page-render helper: the CSRF token, or null when the secret is unconfigured
+ *  (so a page can render an honest disabled state instead of throwing). */
+export async function csrfTokenOrNull(hostSessionToken: string): Promise<string | null> {
+  if (!csrfConfigured()) return null;
+  return csrfTokenFor(hostSessionToken);
 }
 
 /** Origins allowed to submit state-changing Host requests. */
@@ -50,6 +73,9 @@ export async function verifyHostCsrf(
   hostSessionToken: string | null,
   submitted: string | null,
 ): Promise<CsrfResult> {
+  // Fail closed: with no dedicated secret configured, every state-changing Host
+  // route is rejected rather than validated with reused key material.
+  if (!csrfConfigured()) return { ok: false, reason: 'not_configured' };
   if (!hostSessionToken) return { ok: false, reason: 'no_session' };
 
   const origin = req.headers.get('origin');

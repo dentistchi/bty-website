@@ -5,7 +5,7 @@ import type { DjDevice } from '@/lib/devices.server';
 import type { KaraokeSession } from '@/lib/sessions.server';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { pairingSecondsRemaining, formatCountdown } from '@/domain/pairing';
-import { adminInitFromProbe } from '@/domain/admin-init';
+import { adminAuthHeader, finalizeAdminAuth, COOKIE_CRED } from '@/domain/admin-auth';
 import DjConsole from '../dj/DjConsole';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   displayName: string;
 }
 
-type Phase = 'loading' | 'need-auth' | 'authed';
+type Phase = 'loading' | 'need-auth' | 'authed' | 'unavailable';
 
 // localStorage (NOT a cookie): the admin device token is never auto-attached to
 // requests and never lands in page HTML. It travels only in an Authorization
@@ -49,12 +49,15 @@ export default function AdminConsole({ slug, displayName }: Props) {
   const [guestQr, setGuestQr] = useState<GuestQr | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => 0);
 
-  const authHeader = useCallback((c: string) => ({ authorization: `Bearer ${c}` }), []);
+  // Mode-aware: a Bearer token sends the header; the cookie sentinel (or null)
+  // sends NO header so the browser attaches the same-origin HttpOnly `bty_room`.
+  const authHeader = useCallback((c: string | null) => adminAuthHeader(c), []);
 
   // Tri-state (like DjConsole): 401 is a DEFINITIVE reject; anything else is a
-  // transient error we must NOT treat as "not enrolled".
+  // transient error we must NOT treat as "not enrolled". Passing null probes the
+  // Room cookie (Slice 2.1).
   const loadSession = useCallback(
-    async (c: string): Promise<'ok' | 'unauth' | 'neterr'> => {
+    async (c: string | null): Promise<'ok' | 'unauth' | 'neterr'> => {
       try {
         const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/admin/session`, {
           headers: authHeader(c),
@@ -103,42 +106,64 @@ export default function AdminConsole({ slug, displayName }: Props) {
   // takes precedence; the PIN form appears ONLY on a definitive 401 or when no
   // credential is stored. Transient failures retry quietly — never flash the PIN
   // form (the bug where a slow mobile-Safari /admin/session fetch showed the PIN).
+  const [resolveNonce, setResolveNonce] = useState(0);
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey(slug)) : null;
-    if (!saved) {
-      setPhase('need-auth');
-      return;
-    }
     let cancelled = false;
+    setPhase('loading');
     (async () => {
       for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
-        const decision = adminInitFromProbe(true, await loadSession(saved));
+        // Bearer FIRST — unchanged priority. Only when it is absent or definitively
+        // rejected do we probe the Room cookie (no Authorization header).
+        const bearer = saved ? await loadSession(saved) : null;
         if (cancelled) return;
-        if (decision === 'authed') {
+        if (bearer === 'ok') {
           setCred(saved);
           setPhase('authed');
-          void loadDevices(saved);
+          void loadDevices(saved!);
           return;
         }
-        if (decision === 'need-auth') {
-          window.localStorage.removeItem(storageKey(slug)); // revoked/invalid → clear
+        const cookie = await loadSession(null);   // cookie probe (same-origin)
+        if (cancelled) return;
+
+        const r = finalizeAdminAuth(bearer, cookie);
+        if (r.phase === 'authed') {
+          // A valid cookie with a dead Bearer → drop the dead local token.
+          if (r.mode === 'cookie' && saved) window.localStorage.removeItem(storageKey(slug));
+          const c = r.mode === 'cookie' ? COOKIE_CRED : saved!;
+          setCred(c);
+          setPhase('authed');
+          void loadDevices(c);
+          return;
+        }
+        if (r.phase === 'need-auth') {
+          if (saved) window.localStorage.removeItem(storageKey(slug)); // dead Bearer
           setPhase('need-auth');
           return;
         }
-        // 'retry' — transient; brief backoff, keep the cred, stay on loading.
-        await new Promise((r) => window.setTimeout(r, 400 * (attempt + 1)));
+        // 'retry' — a transient failure on EITHER path. Never show pairing here.
+        await new Promise((res) => window.setTimeout(res, 400 * (attempt + 1)));
       }
       if (cancelled) return;
-      // Still only transient failures: a valid cred takes precedence — enter the
-      // console (polling signs out on a real 401) rather than show the PIN form.
-      setCred(saved);
-      setPhase('authed');
-      void loadDevices(saved);
+      // Exhausted with only transient failures. A stored Bearer takes precedence
+      // (polling signs out on a real 401); otherwise we cannot confirm auth, so
+      // show an honest retry state rather than pairing or a fake authed screen.
+      if (saved) {
+        setCred(saved);
+        setPhase('authed');
+        void loadDevices(saved);
+      } else {
+        setPhase('unavailable');
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [slug, loadSession, loadDevices]);
+  }, [slug, loadSession, loadDevices, resolveNonce]);
+
+  /** Called when the active credential is server-rejected mid-session (e.g. the
+   *  Room cookie was revoked): re-run resolution instead of faking authed. */
+  const revalidate = useCallback(() => setResolveNonce((n) => n + 1), []);
 
   // Ticking clock for the pairing countdown (only while a code is shown).
   useEffect(() => {
@@ -353,6 +378,21 @@ export default function AdminConsole({ slug, displayName }: Props) {
     );
   }
 
+  // Only transient failures so far and no stored credential — an HONEST retry
+  // state (§4 Outcome C). NEVER the pairing form: a network blip is not "no auth".
+  if (phase === 'unavailable') {
+    return (
+      <>
+        {brandHead}
+        <div className="card hero" role="status">
+          <p className="lead">일시적으로 연결하지 못했어요.</p>
+          <p className="muted">네트워크 상태를 확인한 뒤 다시 시도해 주세요.</p>
+          <button className="primary" onClick={revalidate}>다시 시도</button>
+        </div>
+      </>
+    );
+  }
+
   if (phase === 'need-auth') {
     return (
       <>
@@ -423,5 +463,7 @@ export default function AdminConsole({ slug, displayName }: Props) {
   // canonical operating screen (Player Hero + queue + admin menu with Guest QR,
   // Connect Display iPad, Devices). No extra console hop — the old stats/devices
   // screen is retired; the Player is the operating surface.
-  return <DjConsole slug={slug} displayName={displayName} sessionCred={cred} />;
+  return (
+    <DjConsole slug={slug} displayName={displayName} sessionCred={cred} onSessionInvalid={revalidate} />
+  );
 }

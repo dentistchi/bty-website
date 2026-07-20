@@ -2,7 +2,7 @@
 // SameSite=Lax is a mitigation; these prove the explicit server-side check.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { csrfTokenFor, verifyHostCsrf, csrfFromForm, allowedOrigins } from './host-csrf.server';
+import { csrfTokenFor, verifyHostCsrf, csrfFromForm, allowedOrigins, csrfConfigured } from './host-csrf.server';
 
 const ORIGIN = 'https://bty-karaoke.ywamer2022.workers.dev';
 const SESSION = 'host-session-token-abc';
@@ -14,7 +14,7 @@ function makeReq(headers: Record<string, string>, origin = ORIGIN) {
   } as never;
 }
 
-beforeEach(() => { vi.unstubAllEnvs(); vi.stubEnv('KARAOKE_CAP_SECRET', 'test-secret'); });
+beforeEach(() => { vi.unstubAllEnvs(); vi.stubEnv('KARAOKE_HOST_CSRF_SECRET', 'test-csrf-secret-0123456789abcdef-xyz'); });
 afterEach(() => vi.unstubAllEnvs());
 
 describe('token derivation', () => {
@@ -84,6 +84,35 @@ describe('verifyHostCsrf', () => {
 
   it('allows the measured local dev origin', () => {
     expect(allowedOrigins(makeReq({}, 'http://localhost:3002'))).toContain('http://localhost:3002');
+  });
+});
+
+describe('dedicated CSRF secret — no key reuse, fail closed', () => {
+  it('is configured only with a sufficiently long dedicated secret', () => {
+    expect(csrfConfigured()).toBe(true);
+    vi.unstubAllEnvs();
+    expect(csrfConfigured()).toBe(false);
+    vi.stubEnv('KARAOKE_HOST_CSRF_SECRET', 'short');
+    expect(csrfConfigured()).toBe(false);
+  });
+
+  it('does NOT fall back to the Supabase service-role key or manager passcode', () => {
+    vi.unstubAllEnvs();
+    vi.stubEnv('KARAOKE_SUPABASE_SERVICE_ROLE_KEY', 'service-role-key-that-is-long-enough-xx');
+    vi.stubEnv('KARAOKE_CAP_SECRET', 'cap-secret-that-is-also-long-enough-xxxx');
+    vi.stubEnv('KARAOKE_MANAGER_PASSCODE', 'manager-passcode-also-long-enough-xxxxxx');
+    expect(csrfConfigured()).toBe(false);
+  });
+
+  it('rejects state-changing requests when the dedicated secret is absent', async () => {
+    vi.unstubAllEnvs();
+    const r = await verifyHostCsrf(makeReq({ origin: ORIGIN }), SESSION, 'anything');
+    expect(r).toMatchObject({ ok: false, reason: 'not_configured' });
+  });
+
+  it('csrfTokenFor throws (never silently signs) without the secret', async () => {
+    vi.unstubAllEnvs();
+    await expect(csrfTokenFor(SESSION)).rejects.toThrow();
   });
 });
 

@@ -7,7 +7,7 @@
 
 import { cookies } from 'next/headers';
 import { authorizeHost, listHostRooms, publicAccount } from '@/lib/host-auth.server';
-import { csrfTokenFor, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
+import { csrfTokenOrNull, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
 import { googleWebConfigured } from '@/lib/google-oauth.server';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
@@ -76,7 +76,7 @@ export default async function HostPage({
   const rooms = await listHostRooms(account.id);     // pure read, zero Events
   const me = publicAccount(account);
   // Session-bound CSRF token for every state-changing form on this page.
-  const csrf = await csrfTokenFor(token!);
+  const csrf = await csrfTokenOrNull(token!);   // null when the CSRF secret is unconfigured
 
   return (
     <main className="host-shell">
@@ -88,7 +88,7 @@ export default async function HostPage({
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h1>My Norebang</h1>
         <form action="/host/logout" method="post">
-          <input type="hidden" name={CSRF_FIELD_NAME} value={csrf} />
+          <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ""} />
           <button className="host-btn host-btn-ghost" type="submit">로그아웃</button>
         </form>
       </div>
@@ -126,7 +126,7 @@ export default async function HostPage({
                 NEVER creates an Event — starting one stays an explicit action
                 inside the Admin experience. */}
             <form action={`/api/host/rooms/${encodeURIComponent(room.slug)}/admin-session`} method="post">
-              <input type="hidden" name={CSRF_FIELD_NAME} value={csrf} />
+              <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ""} />
               <button className="host-btn host-btn-primary" type="submit">
                 {room.hasActiveEvent ? '노래방으로 들어가기' : '새 노래방 시작'}
               </button>
