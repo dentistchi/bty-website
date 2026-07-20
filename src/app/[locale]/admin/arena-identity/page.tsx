@@ -133,6 +133,21 @@ const COPY = {
       "This member's membership in the selected organization is inactive. Reactivate it before curating identity.",
     reasonPrimaryConflict:
       "Another primary-membership change for this member was saved at the same time. Nothing was changed — reload and try again.",
+    // leadership responsibilities (Slice 3.1B-1)
+    respTitle: "Leadership responsibilities",
+    respIntro:
+      "Zero or more, independent of the primary role above. Identity only — this grants no access and assigns no learning.",
+    respLoading: "Loading responsibilities…",
+    respNone: "No leadership responsibilities assigned.",
+    respSelect: "Select a responsibility…",
+    respAdd: "Add responsibility",
+    respRemove: "Remove",
+    respFailed: "Could not update responsibilities.",
+    respDuplicate: "This member already holds that responsibility.",
+    respNotActive: "That responsibility is no longer assigned. Reload and try again.",
+    respInvalid: "That is not a valid leadership responsibility.",
+    respDateFuture: "Responsibility start date cannot be in the future.",
+    respDateBad: "Enter a valid date.",
   },
   ko: {
     title: "회원 신원",
@@ -200,6 +215,21 @@ const COPY = {
       "선택한 조직의 멤버십이 비활성 상태입니다. 정체성을 큐레이션하기 전에 멤버십을 다시 활성화하세요.",
     reasonPrimaryConflict:
       "같은 회원의 대표 멤버십 변경이 동시에 저장되었습니다. 변경된 내용은 없습니다. 새로고침 후 다시 시도하세요.",
+    // leadership responsibilities (Slice 3.1B-1)
+    respTitle: "리더십 책임",
+    respIntro:
+      "0개 이상 지정할 수 있으며 위의 역할과 독립적입니다. 신원 정보 전용 — 접근 권한이나 학습 배정을 부여하지 않습니다.",
+    respLoading: "리더십 책임을 불러오는 중…",
+    respNone: "지정된 리더십 책임이 없습니다.",
+    respSelect: "리더십 책임 선택…",
+    respAdd: "책임 추가",
+    respRemove: "제거",
+    respFailed: "리더십 책임을 변경하지 못했습니다.",
+    respDuplicate: "이 회원은 이미 해당 책임을 가지고 있습니다.",
+    respNotActive: "해당 책임이 더 이상 지정되어 있지 않습니다. 새로고침 후 다시 시도하세요.",
+    respInvalid: "유효한 리더십 책임이 아닙니다.",
+    respDateFuture: "책임 시작일은 미래일 수 없습니다.",
+    respDateBad: "유효한 날짜를 입력하세요.",
   },
 } as const;
 
@@ -228,6 +258,31 @@ function reasonMessage(reason: string | undefined, t: Copy): string {
       return t.reasonPrimaryConflict;
     default:
       return t.reasonInvalid;
+  }
+}
+
+/** Server-provided rejection reason → admin-facing copy (Slice 3.1B-1). */
+function responsibilityReasonMessage(reason: string | undefined, t: Copy): string {
+  switch (reason) {
+    case "responsibility_already_active":
+      return t.respDuplicate;
+    case "responsibility_not_active":
+      return t.respNotActive;
+    case "invalid_responsibility":
+    case "invalid_action":
+      return t.respInvalid;
+    case "start_date_in_future":
+      return t.respDateFuture;
+    case "start_date_not_a_date":
+      return t.respDateBad;
+    case "member_out_of_scope":
+      return t.reasonScope;
+    case "membership_not_found":
+      return t.reasonNotFound;
+    case "organization_membership_inactive":
+      return t.reasonInactiveMembership;
+    default:
+      return t.respFailed;
   }
 }
 
@@ -612,6 +667,14 @@ function IdentityEditor({
           <p className="mt-1 text-xs text-neutral-400">{t.fRoleDateHint}</p>
         </div>
 
+        {/*
+          Leadership responsibilities — a SEPARATE 0..n dimension, deliberately not merged
+          with Primary Role. Each add/remove/date-revision commits on its own to the
+          responsibilities endpoint, so nothing is ever assigned silently as a side effect
+          of the identity Save above.
+        */}
+        <ResponsibilitiesSection membershipId={member.membershipId} locale={t === COPY.ko ? "ko" : "en"} t={t} />
+
         {err && (
           <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700" data-testid="editor-error">
             {t.saveFailed}: {err}
@@ -637,6 +700,190 @@ function IdentityEditor({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+type ResponsibilityRow = { id: string; responsibilityKey: string; startedOn: string | null };
+type VocabularyItem = { key: string; label: string };
+
+/**
+ * Leadership responsibilities sub-editor (Slice 3.1B-1).
+ *
+ * Render-only with respect to business rules: the canonical vocabulary, validity, and
+ * every rejection reason come from the server. Zero or more responsibilities per
+ * membership; each mutation is an explicit, individually-committed admin action.
+ */
+function ResponsibilitiesSection({
+  membershipId,
+  locale,
+  t,
+}: {
+  membershipId: string;
+  locale: "en" | "ko";
+  t: Copy;
+}) {
+  const [rows, setRows] = useState<ResponsibilityRow[]>([]);
+  const [vocabulary, setVocabulary] = useState<VocabularyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [rErr, setRErr] = useState<string | null>(null);
+
+  const [addKey, setAddKey] = useState("");
+  const [addDate, setAddDate] = useState("");
+  const [addDateUnknown, setAddDateUnknown] = useState(true);
+
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/arena/org-memberships/responsibilities?membershipId=${encodeURIComponent(membershipId)}&locale=${locale}`,
+        { credentials: "include", cache: "no-store" },
+      );
+      const data: { ok?: boolean; responsibilities?: ResponsibilityRow[]; vocabulary?: VocabularyItem[] } =
+        await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        setRows(data.responsibilities ?? []);
+        setVocabulary(data.vocabulary ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [membershipId, locale]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const mutate = async (body: Record<string, unknown>) => {
+    setBusy(true);
+    setRErr(null);
+    try {
+      const res = await fetch("/api/admin/arena/org-memberships/responsibilities", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ membershipId, ...body }),
+      });
+      const data: { ok?: boolean; reason?: string } = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setRErr(responsibilityReasonMessage(data.reason, t));
+        return false;
+      }
+      await load();
+      return true;
+    } catch {
+      setRErr(t.respFailed);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Only offer keys not already active — the server rejects duplicates regardless.
+  const assigned = new Set(rows.map((r) => r.responsibilityKey));
+  const available = vocabulary.filter((v) => !assigned.has(v.key));
+
+  return (
+    <div className="mb-4 rounded-md border border-neutral-200 bg-neutral-50 p-3" data-testid="responsibilities-section">
+      <h3 className="mb-1 text-sm font-semibold text-neutral-900">{t.respTitle}</h3>
+      <p className="mb-3 text-xs text-neutral-500">{t.respIntro}</p>
+
+      {loading ? (
+        <p className="text-xs text-neutral-400">{t.respLoading}</p>
+      ) : rows.length === 0 ? (
+        <p className="mb-3 text-xs text-neutral-400" data-testid="responsibilities-empty">
+          {t.respNone}
+        </p>
+      ) : (
+        <ul className="mb-3 space-y-1" data-testid="responsibilities-list">
+          {rows.map((r) => (
+            <li
+              key={r.id}
+              className="flex items-center justify-between rounded border border-neutral-200 bg-white px-2 py-1.5"
+              data-testid={`responsibility-${r.responsibilityKey}`}
+            >
+              <span className="text-sm text-neutral-800">
+                {vocabulary.find((v) => v.key === r.responsibilityKey)?.label ?? r.responsibilityKey}
+                <span className="ml-2 text-xs text-neutral-400">{r.startedOn ?? t.dateUnknown}</span>
+              </span>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void mutate({ responsibilityKey: r.responsibilityKey, action: "remove" })}
+                data-testid={`responsibility-remove-${r.responsibilityKey}`}
+                className="rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                {t.respRemove}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {available.length > 0 && (
+        <div className="rounded border border-dashed border-neutral-300 bg-white p-2">
+          <select
+            value={addKey}
+            onChange={(e) => setAddKey(e.target.value)}
+            data-testid="responsibility-add-select"
+            className="mb-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">{t.respSelect}</option>
+            {available.map((v) => (
+              <option key={v.key} value={v.key}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={addDate}
+            max={today}
+            disabled={addDateUnknown}
+            onChange={(e) => setAddDate(e.target.value)}
+            data-testid="responsibility-add-date"
+            className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100"
+          />
+          <label className="mt-2 flex items-center gap-2 text-xs text-neutral-600">
+            <input
+              type="checkbox"
+              checked={addDateUnknown}
+              onChange={(e) => setAddDateUnknown(e.target.checked)}
+              data-testid="responsibility-add-date-unknown"
+            />
+            {t.dateUnknown}
+          </label>
+          <button
+            type="button"
+            disabled={busy || !addKey}
+            onClick={async () => {
+              const ok = await mutate({
+                responsibilityKey: addKey,
+                action: "assign",
+                startedOn: addDateUnknown || !addDate ? null : addDate,
+              });
+              if (ok) {
+                setAddKey("");
+                setAddDate("");
+                setAddDateUnknown(true);
+              }
+            }}
+            data-testid="responsibility-add"
+            className="mt-2 w-full rounded bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+          >
+            {t.respAdd}
+          </button>
+        </div>
+      )}
+
+      {rErr && (
+        <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-700" data-testid="responsibility-error">
+          {rErr}
+        </div>
+      )}
     </div>
   );
 }
