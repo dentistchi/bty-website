@@ -32,15 +32,53 @@ export function publicAccount(a: HostAccount) {
   return { id: a.id, email: a.email, displayName: a.display_name };
 }
 
+export type IdentityProvider = 'apple' | 'google';
+
+/** Look up the account that owns a verified (provider, subject) identity. */
+async function accountForIdentity(
+  provider: IdentityProvider,
+  subject: string,
+): Promise<HostAccount | null> {
+  const db = karaokeDb();
+  const idRow = await db
+    .from('karaoke_account_identities')
+    .select('id, account_id')
+    .eq('provider', provider)
+    .eq('provider_subject', subject)
+    .maybeSingle();
+  if (idRow.error) throw idRow.error;
+  if (!idRow.data) return null;
+
+  const acct = await db
+    .from('karaoke_accounts')
+    .select(ACCOUNT_COLS)
+    .eq('id', idRow.data.account_id as string)
+    .maybeSingle();
+  if (acct.error) throw acct.error;
+  if (!acct.data) return null;
+
+  void db
+    .from('karaoke_account_identities')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', idRow.data.id as string)
+    .then(() => undefined);
+
+  return acct.data as HostAccount;
+}
+
 /**
- * Resolve the ONE account for a verified external identity, creating it on first
- * sign-in. Idempotent by (provider, provider_subject) — the unique index makes a
- * concurrent double sign-in resolve to the same row rather than duplicating.
- * `displayName` is only ever written on creation: Apple sends the human name once,
- * and a later sign-in must not blank it out.
+ * Resolve the ONE canonical account for a verified external identity, creating the
+ * account on first sign-in. PROVIDER-NEUTRAL (Cross-Platform Identity V1): identity
+ * lives in karaoke_account_identities, so Apple and Google logins by the same
+ * linked person resolve to the SAME account and therefore the same workspace.
+ *
+ * Idempotent by (provider, provider_subject) — the unique index makes a concurrent
+ * double sign-in resolve to the same row rather than duplicating. Email is NEVER
+ * used to match or merge accounts: two providers reporting one address does not
+ * prove one person.
  */
 export async function resolveAccountForIdentity(args: {
-  provider: 'apple';
+  provider: IdentityProvider;
   subject: string;
   email?: string | null;
   displayName?: string | null;
@@ -48,51 +86,130 @@ export async function resolveAccountForIdentity(args: {
   const db = karaokeDb();
   const { provider, subject } = args;
 
-  const existing = await db
-    .from('karaoke_accounts')
-    .select(ACCOUNT_COLS)
-    .eq('provider', provider)
-    .eq('provider_subject', subject)
-    .maybeSingle();
-  if (existing.error) throw existing.error;
-
-  if (existing.data) {
-    const acct = existing.data as HostAccount;
-    // Best-effort freshness only; never blocks sign-in and never clears a name.
+  const existing = await accountForIdentity(provider, subject);
+  if (existing) {
     void db
       .from('karaoke_accounts')
       .update({ last_login_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', acct.id)
+      .eq('id', existing.id)
       .then(() => undefined);
-    return acct;
+    return existing;
   }
 
+  // First sign-in with this identity → create the canonical account, then attach
+  // the identity. The account row carries NO provider-specific key.
   const insert = await db
     .from('karaoke_accounts')
     .insert({
-      provider,
-      provider_subject: subject,
       email: args.email ?? null,
       display_name: args.displayName ?? null,
       last_login_at: new Date().toISOString(),
     })
     .select(ACCOUNT_COLS)
     .single();
+  if (insert.error) throw insert.error;
+  const account = insert.data as HostAccount;
 
-  if (!insert.error) return insert.data as HostAccount;
+  const link = await db.from('karaoke_account_identities').insert({
+    account_id: account.id,
+    provider,
+    provider_subject: subject,
+    email: args.email ?? null,
+    last_used_at: new Date().toISOString(),
+  });
 
-  // Concurrent first sign-in: the unique index elected a winner — read it back.
-  if ((insert.error as { code?: string }).code === '23505') {
-    const winner = await db
-      .from('karaoke_accounts')
-      .select(ACCOUNT_COLS)
-      .eq('provider', provider)
-      .eq('provider_subject', subject)
-      .maybeSingle();
-    if (winner.error) throw winner.error;
-    if (winner.data) return winner.data as HostAccount;
+  if (link.error) {
+    // A concurrent sign-in won the identity race. Discard the account row we just
+    // made (it owns nothing) and return the winner, so one identity never yields
+    // two accounts.
+    if ((link.error as { code?: string }).code === '23505') {
+      void db.from('karaoke_accounts').delete().eq('id', account.id).then(() => undefined);
+      const winner = await accountForIdentity(provider, subject);
+      if (winner) return winner;
+    }
+    throw link.error;
   }
-  throw insert.error;
+  return account;
+}
+
+export type LinkOutcome =
+  | { outcome: 'linked' | 'already_linked' }
+  | { outcome: 'owned_by_other' };
+
+/**
+ * Deliberately link an additional verified identity to an ALREADY authenticated
+ * account (§8). The caller must hold a valid Host session AND have just proved the
+ * new provider identity — this function is the ownership boundary, not the
+ * authentication boundary.
+ *
+ *  - identity already on THIS account → idempotent success;
+ *  - identity owned by ANOTHER account → refused (never re-pointed or stolen);
+ *  - otherwise attached atomically (single insert guarded by the unique index).
+ *
+ * Never matches on email, never changes workspace memberships, never touches Events.
+ */
+export async function linkIdentityToAccount(args: {
+  accountId: string;
+  provider: IdentityProvider;
+  subject: string;
+  email?: string | null;
+}): Promise<LinkOutcome> {
+  const db = karaokeDb();
+  const existing = await db
+    .from('karaoke_account_identities')
+    .select('id, account_id')
+    .eq('provider', args.provider)
+    .eq('provider_subject', args.subject)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+
+  if (existing.data) {
+    return existing.data.account_id === args.accountId
+      ? { outcome: 'already_linked' }
+      : { outcome: 'owned_by_other' };
+  }
+
+  const insert = await db.from('karaoke_account_identities').insert({
+    account_id: args.accountId,
+    provider: args.provider,
+    provider_subject: args.subject,
+    email: args.email ?? null,
+    last_used_at: new Date().toISOString(),
+  });
+  if (insert.error) {
+    // Lost a concurrent race — re-read to report the truthful outcome. A failed
+    // link leaves no partial row.
+    if ((insert.error as { code?: string }).code === '23505') {
+      const winner = await db
+        .from('karaoke_account_identities')
+        .select('account_id')
+        .eq('provider', args.provider)
+        .eq('provider_subject', args.subject)
+        .maybeSingle();
+      if (winner.data) {
+        return winner.data.account_id === args.accountId
+          ? { outcome: 'already_linked' }
+          : { outcome: 'owned_by_other' };
+      }
+    }
+    throw insert.error;
+  }
+  return { outcome: 'linked' };
+}
+
+/** The Host's connected login methods, for the "Login methods" settings UI. */
+export async function listAccountIdentities(
+  accountId: string,
+): Promise<Array<{ provider: IdentityProvider; createdAt: string }>> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_account_identities')
+    .select('provider, created_at')
+    .eq('account_id', accountId);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    provider: r.provider as IdentityProvider,
+    createdAt: r.created_at as string,
+  }));
 }
 
 /** Mint an opaque session. Only the SHA-256 hash is stored. */
