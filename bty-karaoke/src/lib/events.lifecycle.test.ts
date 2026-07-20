@@ -56,20 +56,19 @@ function liveFor(roomId: string): Ev | undefined {
 // reports completed_count). Request rows are scoped by event_id (V7.1).
 function fakeEndEventRpc(eventId: string) {
   const ev = db.events.find((e) => e.id === eventId);
-  if (!ev) return { data: [] as unknown[], error: null };
+  // The real RPC returns SQL NULL for an unknown event (caller maps to 404).
+  if (!ev) return { data: null as unknown, error: null };
   const completedCount = () =>
     db.requests.filter((r) => r.event_id === eventId && r.status === 'completed').length;
   if (ev.status === 'ended' || ev.status === 'archived') {
     return {
-      data: [
-        {
-          event_id: eventId,
-          status: ev.status,
-          ended_at: ev.ended_at,
-          completed_count: completedCount(),
-          unfinished_closed_count: 0,
-        },
-      ],
+      data: {
+        eventId,
+        status: ev.status,
+        endedAt: ev.ended_at,
+        completedCount: completedCount(),
+        unfinishedClosedCount: 0,
+      },
       error: null,
     };
   }
@@ -99,15 +98,13 @@ function fakeEndEventRpc(eventId: string) {
   ev.status = 'ended';
   ev.ended_at = '2026-07-19T00:00:00Z';
   return {
-    data: [
-      {
-        event_id: eventId,
-        status: 'ended',
-        ended_at: ev.ended_at,
-        completed_count: completedCount(),
-        unfinished_closed_count: closed,
-      },
-    ],
+    data: {
+      eventId,
+      status: 'ended',
+      endedAt: ev.ended_at,
+      completedCount: completedCount(),
+      unfinishedClosedCount: closed,
+    },
     error: null,
   };
 }

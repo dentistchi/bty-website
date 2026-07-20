@@ -453,12 +453,15 @@ export interface EndedEvent {
   summary: EndEventSummary;
 }
 
+/** The single jsonb object `end_karaoke_event` returns (null when no such event).
+ *  It deliberately has NO OUT parameters — see the 20260719130000 migration: OUT
+ *  params named after real columns made every UPDATE in the function ambiguous. */
 interface EndEventRpcRow {
-  event_id: string;
+  eventId: string;
   status: EventStatus;
-  ended_at: string | null;
-  completed_count: number | string | null;
-  unfinished_closed_count: number | string | null;
+  endedAt: string | null;
+  completedCount: number | string | null;
+  unfinishedClosedCount: number | string | null;
 }
 
 /**
@@ -485,8 +488,8 @@ export async function endEvent(eventId: string): Promise<EndedEvent | null> {
   return {
     event,
     summary: {
-      completedCount: Number(row.completed_count ?? 0) || 0,
-      unfinishedClosedCount: Number(row.unfinished_closed_count ?? 0) || 0,
+      completedCount: Number(row.completedCount ?? 0) || 0,
+      unfinishedClosedCount: Number(row.unfinishedClosedCount ?? 0) || 0,
     },
   };
 }
