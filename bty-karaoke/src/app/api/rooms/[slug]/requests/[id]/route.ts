@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { DjActionSchema } from '@/lib/validation';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import {
   authorizeDj,
   getGuestQueueStatus,
@@ -45,7 +45,7 @@ export async function PATCH(
 ) {
   const { slug, id } = await ctx.params;
 
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: unknown;

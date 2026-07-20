@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeHost, claimRoomForAccount } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
+import { verifyHostCsrf, csrfFromForm } from '@/lib/host-csrf.server';
 import { managerEnabled, verifyManagerPasscode } from '@/lib/manager-auth.server';
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
 import { makeLimiter, isLockedOut, recordFailure, recordSuccess } from '@/lib/rate-limit.server';
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
   if (limiter && (await isLockedOut(limiter))) return back(req, 'bad_passcode');
 
   const form = await req.formData().catch(() => null);
+  const csrf = await verifyHostCsrf(req, hostTokenFromRequest(req), csrfFromForm(form));
+  if (!csrf.ok) return NextResponse.json({ error: 'Invalid request' }, { status: 403 });
+
   const passcode = form?.get('passcode');
   if (!managerEnabled() || typeof passcode !== 'string' || !verifyManagerPasscode(passcode)) {
     if (limiter) await recordFailure(limiter);

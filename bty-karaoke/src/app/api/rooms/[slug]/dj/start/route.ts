@@ -8,7 +8,7 @@
 // event-gated. POST { requestId }.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, ensurePlaying } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
@@ -21,7 +21,7 @@ const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
 
   const auth = await authorizeDj(slug, cred);

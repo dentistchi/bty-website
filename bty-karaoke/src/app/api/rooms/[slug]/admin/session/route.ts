@@ -4,7 +4,7 @@
 //   DELETE -> end the active session (blocks new guest requests; keeps history)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeAdmin, activeRequestStats } from '@/lib/rooms.server';
 import { getCanonicalEvent, getLatestEndedEvent, eventStatsById } from '@/lib/events.server';
 import { getActiveSession, startSession, endSession } from '@/lib/sessions.server';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 async function requireAdmin(req: NextRequest, slug: string) {
-  const bearer = bearerFromHeader(req.headers.get('authorization'));
+  const bearer = roomCredentialFromRequest(req);
   if (!bearer) return null;
   return authorizeAdmin(slug, bearer);
 }

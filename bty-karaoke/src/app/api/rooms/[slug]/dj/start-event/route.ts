@@ -13,7 +13,7 @@
 // two taps (or a lost response the client retries) never create two live Events.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj } from '@/lib/rooms.server';
 import { startNewEvent, publicEvent } from '@/lib/events.server';
 import { startSession } from '@/lib/sessions.server';
@@ -23,7 +23,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const bearer = bearerFromHeader(req.headers.get('authorization'));
+  const bearer = roomCredentialFromRequest(req);
   if (!bearer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const auth = await authorizeDj(slug, bearer);

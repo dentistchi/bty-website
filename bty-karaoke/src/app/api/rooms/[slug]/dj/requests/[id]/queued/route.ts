@@ -5,7 +5,7 @@
 // true; false clears). Event-gated: an ended Event refuses (EVENT_ENDED).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, setRequestQueued } from '@/lib/rooms.server';
 import { resolveEventAccess } from '@/lib/events.server';
 
@@ -20,7 +20,7 @@ export async function POST(
   ctx: { params: Promise<{ slug: string; id: string }> },
 ) {
   const { slug, id } = await ctx.params;
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
 
   const auth = await authorizeDj(slug, cred);

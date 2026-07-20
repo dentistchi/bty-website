@@ -49,3 +49,24 @@ export function randomToken(bytes = 24): string {
   for (const b of buf) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+
+/**
+ * THE shared Room-credential resolver (Room Web Auth Bridge).
+ *
+ * Additive: the existing `Authorization: Bearer` device credential is tried FIRST
+ * and behaves exactly as before, so every native client and every previously
+ * paired browser keeps working untouched. Only when no Bearer is present do we
+ * fall back to the same-origin HttpOnly Room cookie.
+ *
+ * This resolves a CREDENTIAL only — it grants nothing. Authorization still runs
+ * through authorizeDj/authorizeAdmin, which bind the credential to the room in the
+ * URL, so a cookie minted for one Room can never authorize another.
+ */
+export function roomCredentialFromRequest(req: {
+  headers: { get(name: string): string | null };
+  cookies?: { get(name: string): { value: string } | undefined };
+}): string | null {
+  const bearer = bearerFromHeader(req.headers.get('authorization'));
+  if (bearer) return bearer;
+  return req.cookies?.get('bty_room')?.value ?? null;
+}

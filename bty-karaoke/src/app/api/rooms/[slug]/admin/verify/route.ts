@@ -4,7 +4,7 @@
 // phone never has to hold the master credential again. 401 with no data on fail.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader, randomToken } from '@/lib/dj-auth.server';
+import { bearerFromHeader, randomToken, roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeAdmin } from '@/lib/rooms.server';
 import { createDeviceSession } from '@/lib/devices.server';
 import { defaultDeviceLabel } from '@/domain/pairing';
@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const bearer = bearerFromHeader(req.headers.get('authorization'));
+  const bearer = roomCredentialFromRequest(req);
   if (!bearer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const auth = await authorizeAdmin(slug, bearer);

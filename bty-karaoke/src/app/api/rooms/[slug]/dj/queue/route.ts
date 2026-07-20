@@ -10,7 +10,7 @@
 // ONLY as the continuation of finishing a playing song (pass-turn / complete-skip).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, listActiveRequests, activeRequestStats } from '@/lib/rooms.server';
 import { getActiveSession } from '@/lib/sessions.server';
 import { getEventStatusForRoom, getCanonicalEvent } from '@/lib/events.server';
@@ -20,7 +20,7 @@ export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const auth = await authorizeDj(slug, cred);

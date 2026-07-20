@@ -5,6 +5,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { authorizeHost, listHostRooms } from '@/lib/host-auth.server';
+import { csrfTokenFor, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import LegalLinks from '@/components/legal/LegalLinks';
@@ -24,8 +25,10 @@ export default async function HostConnectPage({
   searchParams: Promise<{ notice?: string }>;
 }) {
   const { notice } = await searchParams;
-  const account = await authorizeHost((await cookies()).get(HOST_COOKIE)?.value ?? null);
+  const token = (await cookies()).get(HOST_COOKIE)?.value ?? null;
+  const account = await authorizeHost(token);
   if (!account) redirect('/host');                    // identity first, always
+  const csrf = await csrfTokenFor(token!);
 
   // Already connected → nothing to do here.
   const rooms = await listHostRooms(account.id);      // pure read, zero Events
@@ -45,6 +48,7 @@ export default async function HostConnectPage({
         {/* SameSite=Lax means a cross-site POST carries no session cookie, which is
             the CSRF guard for this state-changing form. */}
         <form action="/host/connect/submit" method="post" className="host-form">
+          <input type="hidden" name={CSRF_FIELD_NAME} value={csrf} />
           <label htmlFor="passcode">매니저 비밀번호</label>
           <input id="passcode" name="passcode" type="password" autoComplete="current-password" required />
           <button className="host-btn host-btn-primary" type="submit">내 노래방 연결하기</button>

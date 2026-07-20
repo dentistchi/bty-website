@@ -1,7 +1,7 @@
 // Admin: revoke a single paired device. Blocks that device on its next call.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeAdmin } from '@/lib/rooms.server';
 import { revokeDeviceSafely } from '@/lib/devices.server';
 
@@ -13,7 +13,7 @@ export async function DELETE(
   ctx: { params: Promise<{ slug: string; id: string }> },
 ) {
   const { slug, id } = await ctx.params;
-  const bearer = bearerFromHeader(req.headers.get('authorization'));
+  const bearer = roomCredentialFromRequest(req);
   if (!bearer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const auth = await authorizeAdmin(slug, bearer);

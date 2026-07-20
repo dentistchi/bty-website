@@ -9,7 +9,7 @@
 // or exposed on the DJ device.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj } from '@/lib/rooms.server';
 import { getCanonicalEvent, getLatestEndedEvent, endEvent, publicEvent } from '@/lib/events.server';
 
@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const auth = await authorizeDj(slug, cred);

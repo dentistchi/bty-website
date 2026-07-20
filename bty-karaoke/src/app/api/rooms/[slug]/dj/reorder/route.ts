@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ReorderQueueSchema } from '@/lib/validation';
-import { bearerFromHeader } from '@/lib/dj-auth.server';
+import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, reorderWaitingRequests } from '@/lib/rooms.server';
 import { resolveEventAccess } from '@/lib/events.server';
 
@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
 
-  const cred = bearerFromHeader(req.headers.get('authorization'));
+  const cred = roomCredentialFromRequest(req);
   if (!cred) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: unknown;
