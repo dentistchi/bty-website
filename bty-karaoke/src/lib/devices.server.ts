@@ -25,6 +25,13 @@ export interface AuthorizedDevice {
   id: string;
   role: DeviceRole;
   label: string;
+  /**
+   * The Host account this device credential belongs to, or null for a device
+   * enrolled before Host accounts existed. When set, the device is SUBORDINATE to
+   * that account: authorizeDj/authorizeAdmin re-check the account's workspace
+   * membership on every call, so revoking membership revokes the device's access.
+   */
+  accountId: string | null;
 }
 
 /**
@@ -39,7 +46,7 @@ export async function authorizeDevice(
   const hash = await sha256Hex(rawToken);
   const { data, error } = await karaokeDb()
     .from('karaoke_dj_devices')
-    .select('id, role, label, status')
+    .select('id, role, label, status, account_id')
     .eq('room_id', roomId)
     .eq('token_hash', hash)
     .maybeSingle();
@@ -53,7 +60,12 @@ export async function authorizeDevice(
     .eq('id', data.id)
     .then(undefined, () => undefined);
 
-  return { id: data.id as string, role: data.role as DeviceRole, label: data.label as string };
+  return {
+    id: data.id as string,
+    role: data.role as DeviceRole,
+    label: data.label as string,
+    accountId: (data.account_id as string | null) ?? null,
+  };
 }
 
 /**
@@ -94,6 +106,8 @@ export async function createDeviceSession(args: {
   rawToken: string;
   role: DeviceRole;
   label: string;
+  /** Bind the credential to a Host account, making it revocable via membership. */
+  accountId?: string | null;
 }): Promise<DjDevice> {
   const token_hash = await sha256Hex(args.rawToken);
   const { data, error } = await karaokeDb()
@@ -104,6 +118,7 @@ export async function createDeviceSession(args: {
       label: args.label,
       token_hash,
       status: 'active',
+      account_id: args.accountId ?? null,
     })
     .select(DEVICE_COLS)
     .single();

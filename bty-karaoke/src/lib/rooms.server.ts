@@ -4,6 +4,7 @@
 import { karaokeDb } from './supabase.server';
 import { credentialMatches } from './dj-auth.server';
 import { authorizeDevice } from './devices.server';
+import { accountHasRoomAccess, roomOwnerWorkspace } from './host-auth.server';
 import type { DeviceRole } from '@/domain/pairing';
 import {
   ACTIVE_STATUSES,
@@ -158,9 +159,33 @@ export interface RoomAuth {
 }
 
 /**
+ * Host Account V1 — the membership re-check every device-authorized call runs.
+ *
+ * A durable device token must NOT keep working once the Host who owns it loses
+ * access. Because this sits inside authorizeDj/authorizeAdmin, all 22
+ * credential-protected routes inherit it without each one being edited.
+ *
+ * Rules:
+ *  - device NOT account-bound (enrolled before Host accounts): allowed. These are
+ *    legacy credentials on a Room that predates claiming; the deployed web Admin
+ *    still relies on them. Documented transitional allowance, not an oversight.
+ *  - device account-bound + Room UNCLAIMED: allowed (no workspace exists to be a
+ *    member of yet).
+ *  - device account-bound + Room CLAIMED: REQUIRED to hold an active membership in
+ *    the workspace that owns this Room. Revoked membership, or membership in some
+ *    other workspace, fails here on the very next request.
+ */
+async function deviceStillAuthorized(roomId: string, accountId: string | null): Promise<boolean> {
+  if (!accountId) return true;
+  const owner = await roomOwnerWorkspace(roomId);
+  if (!owner) return true;
+  return accountHasRoomAccess(accountId, roomId);
+}
+
+/**
  * Authorize a DJ-level bearer for a room. Accepted credentials, in order:
  *   1. the room master credential (bootstrap / owner) → admin authority
- *   2. any ACTIVE paired device (dj or admin role)
+ *   2. any ACTIVE paired device (dj or admin role) whose Host still has access
  * Returns null (no data) on failure. This replaces raw-credential-only DJ auth.
  */
 export async function authorizeDj(slug: string, bearer: string): Promise<RoomAuth | null> {
@@ -171,7 +196,9 @@ export async function authorizeDj(slug: string, bearer: string): Promise<RoomAut
     return { room: pub, role: 'admin', deviceId: null };
   }
   const device = await authorizeDevice(pub.id, bearer);
-  if (device) return { room: pub, role: device.role, deviceId: device.id };
+  if (device && (await deviceStillAuthorized(pub.id, device.accountId))) {
+    return { room: pub, role: device.role, deviceId: device.id };
+  }
   return null;
 }
 
@@ -190,7 +217,13 @@ export async function authorizeAdmin(slug: string, bearer: string): Promise<Room
     return { room: pub, role: 'admin', deviceId: null };
   }
   const device = await authorizeDevice(pub.id, bearer);
-  if (device && device.role === 'admin') return { room: pub, role: 'admin', deviceId: device.id };
+  if (
+    device &&
+    device.role === 'admin' &&
+    (await deviceStillAuthorized(pub.id, device.accountId))
+  ) {
+    return { room: pub, role: 'admin', deviceId: device.id };
+  }
   return null;
 }
 
