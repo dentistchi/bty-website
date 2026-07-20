@@ -4,6 +4,7 @@ import {
   ensureCanonicalMembershipFromApproval,
   reconciliationStatus,
   validateProfessionalIdentity,
+  listCanonicalMembershipsForAdmin,
 } from "./organizationMembershipService";
 
 /**
@@ -142,5 +143,112 @@ describe("validateProfessionalIdentity (future admin-curation guard)", () => {
   });
   it("accepts a compatible pair", () => {
     expect(validateProfessionalIdentity({ jobFamilyKey: "CLINICAL_PROVIDER", primaryRoleKey: "GENERAL_DENTIST" })).toEqual({ ok: true });
+  });
+});
+
+// -- Slice 3.1A-2: admin READ surface ------------------------------------------------
+type ListCfg = {
+  memberships?: Record<string, unknown>[];
+  orgs?: { id: string; organization_key: string; display_name: string }[];
+  approved?: { user_id: string }[];
+};
+
+function makeListAdmin(cfg: ListCfg) {
+  const touched = new Set<string>();
+  function builder(table: string) {
+    touched.add(table);
+    const b: Record<string, unknown> = {
+      select() { return b; },
+      eq() { return b; },
+      then(onF: (v: unknown) => unknown) {
+        let data: unknown[] = [];
+        if (table === "bty_org_memberships") data = cfg.memberships ?? [];
+        else if (table === "bty_organizations") data = cfg.orgs ?? [];
+        else if (table === "arena_membership_requests") data = cfg.approved ?? [];
+        return Promise.resolve({ data, error: null }).then(onF);
+      },
+    };
+    return b;
+  }
+  const admin = { from: (t: string) => builder(t) } as unknown as import("@supabase/supabase-js").SupabaseClient;
+  return { admin, touched };
+}
+
+const ORG = { id: "org1", organization_key: "BTY_LEGACY", display_name: "BTY Legacy Organization" };
+function mem(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: "m1", user_id: "u1", organization_id: "org1", status: "active", is_primary: true,
+    job_family_key: null, primary_role_key: null, role_started_at: null,
+    identity_source: "legacy_approved_request", joined_at: "2026-01-01T00:00:00Z",
+    created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", ...over,
+  };
+}
+
+describe("listCanonicalMembershipsForAdmin", () => {
+  it("resolves org + returns nullable identity honestly, aligned when reconciled", async () => {
+    const { admin, touched } = makeListAdmin({
+      orgs: [ORG],
+      memberships: [mem({ id: "m1", user_id: "u1" }), mem({ id: "m2", user_id: "u2" })],
+      approved: [{ user_id: "u1" }, { user_id: "u2" }],
+    });
+    const { summary, memberships } = await listCanonicalMembershipsForAdmin(admin);
+    expect(memberships).toHaveLength(2);
+    expect(memberships[0]).toMatchObject({ organizationKey: "BTY_LEGACY", organizationName: "BTY Legacy Organization", jobFamilyKey: null, primaryRoleKey: null });
+    expect(summary.reconciliationStatus).toBe("aligned");
+    expect(summary).toMatchObject({ approvedRequests: 2, activeCanonicalMemberships: 2, approvedWithoutCanonical: 0, canonicalWithoutApproved: 0, unknownJobFamily: 2, unknownPrimaryRole: 2, fullyClassified: 0 });
+    // NEVER queries legacy tables
+    expect(touched.has("memberships")).toBe(false);
+    expect(touched.has("organizations")).toBe(false);
+  });
+
+  it("orders unresolved identity first, then by created_at, then id", async () => {
+    const { admin } = makeListAdmin({
+      orgs: [ORG],
+      memberships: [
+        mem({ id: "resolved", user_id: "u1", job_family_key: "CLINICAL_PROVIDER", primary_role_key: "GENERAL_DENTIST", created_at: "2026-01-01T00:00:00Z" }),
+        mem({ id: "unresolved-newer", user_id: "u2", created_at: "2026-03-01T00:00:00Z" }),
+        mem({ id: "unresolved-older", user_id: "u3", created_at: "2026-02-01T00:00:00Z" }),
+      ],
+      approved: [{ user_id: "u1" }, { user_id: "u2" }, { user_id: "u3" }],
+    });
+    const { memberships, summary } = await listCanonicalMembershipsForAdmin(admin);
+    expect(memberships.map((m) => m.membershipId)).toEqual(["unresolved-older", "unresolved-newer", "resolved"]);
+    expect(summary.fullyClassified).toBe(1);
+    expect(summary.unknownJobFamily).toBe(2);
+  });
+
+  it("flags drift: an approved user with no canonical membership", async () => {
+    const { admin } = makeListAdmin({
+      orgs: [ORG],
+      memberships: [mem({ user_id: "u1" })],
+      approved: [{ user_id: "u1" }, { user_id: "u2" }],
+    });
+    const { summary } = await listCanonicalMembershipsForAdmin(admin);
+    expect(summary.reconciliationStatus).toBe("drift");
+    expect(summary.approvedWithoutCanonical).toBe(1);
+    expect(summary.canonicalWithoutApproved).toBe(0);
+  });
+
+  it("flags drift: an active canonical member with no approved access", async () => {
+    const { admin } = makeListAdmin({
+      orgs: [ORG],
+      memberships: [mem({ user_id: "u1" }), mem({ id: "m2", user_id: "ghost" })],
+      approved: [{ user_id: "u1" }],
+    });
+    const { summary } = await listCanonicalMembershipsForAdmin(admin);
+    expect(summary.reconciliationStatus).toBe("drift");
+    expect(summary.canonicalWithoutApproved).toBe(1);
+  });
+
+  it("flags drift: an unresolved organization reference", async () => {
+    const { admin } = makeListAdmin({
+      orgs: [], // org row missing
+      memberships: [mem({ user_id: "u1", organization_id: "missing" })],
+      approved: [{ user_id: "u1" }],
+    });
+    const { summary, memberships } = await listCanonicalMembershipsForAdmin(admin);
+    expect(memberships[0].organizationKey).toBeNull();
+    expect(summary.unresolvedOrganization).toBe(1);
+    expect(summary.reconciliationStatus).toBe("drift");
   });
 });

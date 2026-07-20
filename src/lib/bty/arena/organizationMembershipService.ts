@@ -151,6 +151,166 @@ export async function reconciliationStatus(
   return { approvedRequests: approved ?? 0, canonicalActive: canonical ?? 0 };
 }
 
+// ---------------------------------------------------------------------------
+// Admin READ surface (Slice 3.1A-2) — observability only, zero writes.
+// ---------------------------------------------------------------------------
+
+/** One canonical membership row, admin-shaped. `userId` is internal (the route strips it). */
+export type AdminCanonicalMembership = {
+  membershipId: string;
+  userId: string;
+  organizationKey: string | null;
+  organizationName: string | null;
+  status: string;
+  isPrimary: boolean;
+  jobFamilyKey: string | null;
+  primaryRoleKey: string | null;
+  identitySource: string;
+  joinedAt: string | null;
+  roleStartedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminCanonicalSummary = {
+  approvedRequests: number;
+  activeCanonicalMemberships: number;
+  approvedWithoutCanonical: number;
+  canonicalWithoutApproved: number;
+  unknownJobFamily: number;
+  unknownPrimaryRole: number;
+  fullyClassified: number;
+  duplicateActivePrimary: number;
+  duplicateUserOrg: number;
+  unresolvedOrganization: number;
+  reconciliationStatus: "aligned" | "drift";
+};
+
+type RawMembershipRow = {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  status: string;
+  is_primary: boolean;
+  job_family_key: string | null;
+  primary_role_key: string | null;
+  role_started_at: string | null;
+  identity_source: string;
+  joined_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * List canonical memberships + a reconciliation summary for the admin observability
+ * page (Slice 3.1A-2). READ-ONLY: no writes, and it NEVER queries the legacy
+ * `memberships`/`organizations` tables. Ordering is deterministic: unresolved identity
+ * (no job family) first, then oldest first, then membership id. `userId` is returned for
+ * server-side name resolution; the route strips it before responding to the browser.
+ */
+export async function listCanonicalMembershipsForAdmin(
+  admin: SupabaseClient,
+): Promise<{ summary: AdminCanonicalSummary; memberships: AdminCanonicalMembership[] }> {
+  const { data: memData } = await admin
+    .from("bty_org_memberships")
+    .select(
+      "id, user_id, organization_id, status, is_primary, job_family_key, primary_role_key, role_started_at, identity_source, joined_at, created_at, updated_at",
+    );
+  const { data: orgData } = await admin
+    .from("bty_organizations")
+    .select("id, organization_key, display_name");
+  const { data: approvedData } = await admin
+    .from("arena_membership_requests")
+    .select("user_id")
+    .eq("status", "approved");
+
+  const orgMap = new Map<string, { organization_key: string; display_name: string }>(
+    ((orgData ?? []) as Array<{ id: string; organization_key: string; display_name: string }>).map((o) => [
+      o.id,
+      { organization_key: o.organization_key, display_name: o.display_name },
+    ]),
+  );
+  const approvedSet = new Set(
+    ((approvedData ?? []) as Array<{ user_id: string }>).map((r) => r.user_id),
+  );
+
+  const rows = (memData ?? []) as RawMembershipRow[];
+  const memberships: AdminCanonicalMembership[] = rows.map((m) => {
+    const org = orgMap.get(m.organization_id);
+    return {
+      membershipId: m.id,
+      userId: m.user_id,
+      organizationKey: org?.organization_key ?? null,
+      organizationName: org?.display_name ?? null,
+      status: m.status,
+      isPrimary: m.is_primary,
+      jobFamilyKey: m.job_family_key,
+      primaryRoleKey: m.primary_role_key,
+      identitySource: m.identity_source,
+      joinedAt: m.joined_at,
+      roleStartedAt: m.role_started_at,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+    };
+  });
+
+  // Deterministic: unresolved identity first, then oldest, then id.
+  memberships.sort((a, b) => {
+    const au = a.jobFamilyKey == null ? 0 : 1;
+    const bu = b.jobFamilyKey == null ? 0 : 1;
+    if (au !== bu) return au - bu;
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
+    return a.membershipId < b.membershipId ? -1 : a.membershipId > b.membershipId ? 1 : 0;
+  });
+
+  const activePrimary = memberships.filter((m) => m.status === "active" && m.isPrimary);
+  const activePrimaryUsers = new Set(activePrimary.map((m) => m.userId));
+
+  const approvedWithoutCanonical = Array.from(approvedSet).filter((u) => !activePrimaryUsers.has(u)).length;
+  const canonicalWithoutApproved = activePrimary.filter((m) => !approvedSet.has(m.userId)).length;
+
+  // duplicate active-primary per user
+  const activePrimaryByUser = new Map<string, number>();
+  for (const m of activePrimary) activePrimaryByUser.set(m.userId, (activePrimaryByUser.get(m.userId) ?? 0) + 1);
+  const duplicateActivePrimary = Array.from(activePrimaryByUser.values()).filter((n) => n > 1).length;
+
+  // duplicate (user, organization)
+  const byUserOrg = new Map<string, number>();
+  for (const m of memberships) {
+    const k = `${m.userId}¦${m.organizationKey ?? ""}`;
+    byUserOrg.set(k, (byUserOrg.get(k) ?? 0) + 1);
+  }
+  const duplicateUserOrg = Array.from(byUserOrg.values()).filter((n) => n > 1).length;
+
+  const unresolvedOrganization = memberships.filter((m) => m.organizationKey == null).length;
+  const unknownJobFamily = memberships.filter((m) => m.jobFamilyKey == null).length;
+  const unknownPrimaryRole = memberships.filter((m) => m.primaryRoleKey == null).length;
+  const fullyClassified = memberships.filter((m) => m.jobFamilyKey != null && m.primaryRoleKey != null).length;
+
+  const aligned =
+    approvedWithoutCanonical === 0 &&
+    canonicalWithoutApproved === 0 &&
+    duplicateActivePrimary === 0 &&
+    duplicateUserOrg === 0 &&
+    unresolvedOrganization === 0;
+
+  const summary: AdminCanonicalSummary = {
+    approvedRequests: approvedSet.size,
+    activeCanonicalMemberships: activePrimary.length,
+    approvedWithoutCanonical,
+    canonicalWithoutApproved,
+    unknownJobFamily,
+    unknownPrimaryRole,
+    fullyClassified,
+    duplicateActivePrimary,
+    duplicateUserOrg,
+    unresolvedOrganization,
+    reconciliationStatus: aligned ? "aligned" : "drift",
+  };
+
+  return { summary, memberships };
+}
+
 /**
  * Guard for a future admin-curation path: validate an optional (family, role) pair before
  * it is ever written. UNKNOWN on either side is allowed (this slice never guesses). Only a

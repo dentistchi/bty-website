@@ -32,6 +32,20 @@ export default function AdminArenaMembershipPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<number | null>(null);
+  // Non-blocking result of the canonical membership write-through (Slice 3.1A-2).
+  const [canonicalNotice, setCanonicalNotice] = useState<"ok" | "reconciliation_pending" | null>(null);
+  const identityCopy =
+    locale === "ko"
+      ? {
+          ok: "승인됨. 표준 회원 신원이 생성되었습니다.",
+          pending: "승인됨. 회원 접근은 활성이지만 표준 신원에 정합 작업이 필요합니다.",
+          link: "회원 신원",
+        }
+      : {
+          ok: "Approved. Canonical member identity created.",
+          pending: "Approved. Member access is active, but canonical identity needs reconciliation.",
+          link: "Member Identity",
+        };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +80,10 @@ export default function AdminArenaMembershipPage() {
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && (data as { ok?: boolean }).ok) {
+        // Approval succeeded. Surface the canonical write-through result non-blockingly —
+        // reconciliation_pending must NOT imply the approval failed (access is active).
+        const canonical = (data as { canonicalMembership?: string }).canonicalMembership;
+        setCanonicalNotice(canonical === "reconciliation_pending" ? "reconciliation_pending" : "ok");
         await load();
       } else {
         setError((data as { error?: string }).error ?? `Approve failed ${r.status}`);
@@ -88,6 +106,20 @@ export default function AdminArenaMembershipPage() {
         </div>
 
       </div>
+
+      {canonicalNotice === "ok" && (
+        <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" data-testid="canonical-notice-ok">
+          {identityCopy.ok}
+        </div>
+      )}
+      {canonicalNotice === "reconciliation_pending" && (
+        <div className="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" data-testid="canonical-notice-pending">
+          {identityCopy.pending}{" "}
+          <a href={`/${locale}/admin/arena-identity`} className="font-medium underline" data-testid="canonical-notice-link">
+            {identityCopy.link}
+          </a>
+        </div>
+      )}
 
       <div className="rounded border border-neutral-200 bg-white p-6 shadow-sm">
         {loading && (
