@@ -177,6 +177,10 @@ export type ModuleBuilderCopy = {
   pmDoneOpenTitle: string;
   pmDoneOpenNoAssign: string;
   pmDoneContinue: string;
+  publishErrYoutube: string;
+  publishErrPdf: string;
+  publishErrNotHost: string;
+  publishErrAssignment: string;
   audJobGroup: string;
   audRole: string;
   audJobGroupDetail: string;
@@ -382,6 +386,11 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pmDoneOpenTitle: "Open link session created",
     pmDoneOpenNoAssign: "No assignments created. Anyone with the link may join.",
     pmDoneContinue: "Continue to room",
+    publishErrYoutube: "The video link isn't a valid YouTube URL. Fix the material and try again.",
+    publishErrPdf: "Attach the training PDF before publishing.",
+    publishErrNotHost: "You don't have permission to create Foundry sessions.",
+    publishErrAssignment:
+      "The assignments couldn't be created, so nothing was published. Please try again.",
     audJobGroup: "A job group",
     audRole: "A specific role",
     audJobGroupDetail: "Which group?",
@@ -649,6 +658,11 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pmDoneOpenTitle: "오픈 링크 세션이 생성되었습니다",
     pmDoneOpenNoAssign: "배정이 생성되지 않았습니다. 링크를 가진 사람은 누구나 참여할 수 있습니다.",
     pmDoneContinue: "Room으로 이동",
+    publishErrYoutube: "유효한 YouTube 링크가 아닙니다. 자료를 수정한 후 다시 시도하세요.",
+    publishErrPdf: "게시하기 전에 학습 PDF를 첨부하세요.",
+    publishErrNotHost: "Foundry 세션을 생성할 권한이 없습니다.",
+    publishErrAssignment:
+      "배정을 생성하지 못해 게시되지 않았습니다. 다시 시도하세요.",
     audJobGroup: "직군",
     audRole: "특정 역할",
     audJobGroupDetail: "어떤 직군인가요?",

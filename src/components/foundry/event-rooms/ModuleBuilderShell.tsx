@@ -256,8 +256,10 @@ export function ModuleBuilderShell({
         return;
       }
       const err = (await res.json().catch(() => ({}))) as { error?: string };
-      // Surface the specific zero-recipient block so the Host can act on it.
-      setPublishErr(err.error === "zero_recipients" ? "zero_recipients" : "error");
+      // Surface the ACTUAL failure reason (3.1B-3C-fix2). A generic "try again" previously
+      // hid a bad-YouTube-URL content failure AND would hide a real assignment failure — so
+      // we keep the specific reason and map it to actionable copy.
+      setPublishErr(err.error ?? "error");
     } catch {
       setPublishErr("error");
     } finally {
@@ -985,6 +987,26 @@ function MissingSummary({
  *  canonical readiness has zero missing sections (the same gate the server re-enforces
  *  at publish). The explicit missing summary appears right by the button so the Host
  *  never faces a disabled Approve without seeing exactly what to fix (Slice 2.4A.3). */
+/**
+ * Map a publish failure REASON to actionable Host copy (3.1B-3C-fix2). The generic
+ * "try once more" previously hid a bad-YouTube-URL content failure and would hide a real
+ * assignment failure; specific messages make each class diagnosable in-app.
+ */
+function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
+  switch (reason) {
+    case "youtube_url_invalid":
+      return t.publishErrYoutube;
+    case "material_pdf_required":
+      return t.publishErrPdf;
+    case "not_a_host":
+      return t.publishErrNotHost;
+    case "assignment_write_failed":
+      return t.publishErrAssignment;
+    default:
+      return t.publishError;
+  }
+}
+
 function PublishAction({
   missing,
   publishing,
@@ -1010,7 +1032,9 @@ function PublishAction({
           {t.pmZeroRecipients}
         </p>
       ) : error ? (
-        <p className="text-xs leading-5 text-amber-300/85">{t.publishError}</p>
+        <p className="text-xs leading-5 text-amber-300/85" data-testid="publish-error">
+          {publishErrorMessage(error, t)}
+        </p>
       ) : null}
       <button
         type="button"

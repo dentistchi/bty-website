@@ -231,3 +231,50 @@ describe("Post-publish confirmation uses the AUTHORITATIVE committed result", ()
     expect(screen.queryByTestId("publish-confirm-count")).toBeNull();
   });
 });
+
+describe("Publish errors are specific and actionable (3.1B-3C-fix2, real-app repro)", () => {
+  it("the EXACT failed-gate path: assigned Leaders + invalid YouTube URL shows a YouTube message, not generic retry", async () => {
+    // Reproduces the live failure: preflight/UI fine, but createTrainingEvent rejects the
+    // material with youtube_url_invalid (a Foundry room link pasted as the video), so no
+    // event is created. The Host must see WHY, not "try once more".
+    const calls = mockServers({
+      audienceType: "leaders",
+      publish: () => ({ status: 400, body: { error: "youtube_url_invalid" } }),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const err = await screen.findByTestId("publish-error");
+    expect(err.textContent).toMatch(/valid YouTube URL/i);
+    // no false success
+    expect(screen.queryByTestId("publish-confirmation")).toBeNull();
+    expect(calls.publish).toHaveLength(1);
+  });
+
+  it("a genuine assignment write failure is now distinctly surfaced (no longer hidden)", async () => {
+    mockServers({
+      audienceType: "leaders",
+      publish: () => ({ status: 500, body: { error: "assignment_write_failed" } }),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("participation-mode-assigned")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("participation-mode-assigned"));
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const err = await screen.findByTestId("publish-error");
+    expect(err.textContent).toMatch(/assignments couldn't be created/i);
+    expect(screen.queryByTestId("publish-confirmation")).toBeNull();
+  });
+
+  it("an unknown reason still falls back to the generic message", async () => {
+    mockServers({
+      audienceType: "leaders",
+      publish: () => ({ status: 409, body: { error: "publish_conflict" } }),
+    });
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId("publish-cta")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("publish-cta"));
+    const err = await screen.findByTestId("publish-error");
+    expect(err.textContent).toBeTruthy();
+  });
+});
