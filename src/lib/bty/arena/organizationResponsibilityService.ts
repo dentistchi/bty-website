@@ -12,6 +12,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  resolveCanonicalLeaderStatus,
   validateResponsibilityMutation,
   type ResponsibilityAction,
   type ResponsibilityKey,
@@ -216,4 +217,89 @@ export async function curateMembershipResponsibility(
     before: { startedOn: row.prev_started_on, status: row.prev_status },
     after: { startedOn: row.new_started_on, status: row.new_status },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Slice 3.1B-2 — Leaders ELIGIBILITY PREVIEW (no assignment, no access change)
+// ---------------------------------------------------------------------------
+
+export type LeaderEligibleMember = {
+  membershipId: string;
+  displayName: string | null;
+  matchedResponsibilityKeys: ResponsibilityKey[];
+};
+
+export type LeaderEligibility = {
+  organizationId: string;
+  eligibleCount: number;
+  members: LeaderEligibleMember[];
+};
+
+/**
+ * Resolve the canonical Leaders eligibility set for ONE organization.
+ *
+ * This is a PREVIEW only. It assigns nobody, restricts nothing, and grants no access —
+ * Foundry participation remains anonymous and link-based (see Slice 3.1B-3 for
+ * identity-bound targeting). Nothing here writes.
+ *
+ * Organization isolation is structural, not a filter bolted on afterwards: responsibilities
+ * are joined through `bty_org_memberships` restricted to the requested organization, so a
+ * responsibility held in Organization A can never surface a member as a leader in
+ * Organization B. Inactive memberships and removed responsibilities are excluded by the
+ * query, and leader status itself is decided ONLY by the canonical domain resolver.
+ */
+export async function resolveLeaderEligibility(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<LeaderEligibility> {
+  // Active memberships in THIS organization only.
+  const { data: memberships, error: mErr } = await admin
+    .from("bty_org_memberships")
+    .select("id, user_id")
+    .eq("organization_id", organizationId)
+    .eq("status", "active");
+
+  if (mErr || !memberships || memberships.length === 0) {
+    return { organizationId, eligibleCount: 0, members: [] };
+  }
+
+  const rows = memberships as Array<{ id: string; user_id: string }>;
+  const byMembership = await listResponsibilitiesForMemberships(
+    admin,
+    rows.map((m) => m.id),
+  );
+
+  const members: LeaderEligibleMember[] = [];
+  for (const m of rows) {
+    const keys = (byMembership[m.id] ?? []).map((r) => r.responsibilityKey);
+    const status = resolveCanonicalLeaderStatus({ activeResponsibilityKeys: keys });
+    if (!status.isLeader) continue;
+    members.push({
+      membershipId: m.id,
+      displayName: null, // resolved by the caller only where names are already authorized
+      matchedResponsibilityKeys: status.matchedResponsibilityKeys,
+    });
+  }
+
+  // One member appears ONCE regardless of how many responsibilities they hold.
+  return { organizationId, eligibleCount: members.length, members };
+}
+
+/**
+ * The organization a user's own ACTIVE canonical membership belongs to. Used to scope a
+ * Host's eligibility preview to their own organization — the Host never supplies an
+ * organization id, so a client cannot widen or cross the boundary.
+ */
+export async function resolveOwnOrganizationId(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
+  const { data } = await admin
+    .from("bty_org_memberships")
+    .select("organization_id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .eq("is_primary", true)
+    .maybeSingle<{ organization_id: string }>();
+  return data?.organization_id ?? null;
 }

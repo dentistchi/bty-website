@@ -154,6 +154,12 @@ export type ModuleBuilderCopy = {
   s2Q: string;
   audEveryone: string;
   audLeaders: string;
+  // Leaders eligibility preview (Slice 3.1B-2) — preview copy, never targeting copy.
+  audLeadersEligible: (n: number) => string;
+  audLeadersZero: string;
+  audLeadersPreviewNote: string;
+  audLeadersPreviewLoading: string;
+  audLeadersPreviewError: string;
   audJobGroup: string;
   audRole: string;
   audJobGroupDetail: string;
@@ -329,6 +335,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s2Q: "Who needs to do something differently?",
     audEveryone: "Everyone",
     audLeaders: "Leaders",
+    audLeadersEligible: (n: number) =>
+      n === 1 ? "1 member currently qualifies as a leader." : `${n} members currently qualify as leaders.`,
+    audLeadersZero:
+      "No one in your organization has an assigned leadership responsibility yet, so this preview is empty. Ask an administrator to assign responsibilities on the Member Identity page.",
+    audLeadersPreviewNote:
+      "Preview only. This is based on explicitly assigned leadership responsibilities. Choosing Leaders describes who this module is for — it does not assign members, invite anyone, or restrict entry. Foundry participation stays anonymous and link-based.",
+    audLeadersPreviewLoading: "Checking who qualifies…",
+    audLeadersPreviewError: "Could not check leader eligibility right now.",
     audJobGroup: "A job group",
     audRole: "A specific role",
     audJobGroupDetail: "Which group?",
@@ -569,6 +583,13 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s2Q: "누가 다르게 행동해야 하나요?",
     audEveryone: "모두",
     audLeaders: "리더",
+    audLeadersEligible: (n: number) => `현재 ${n}명이 리더 조건을 충족합니다.`,
+    audLeadersZero:
+      "아직 조직에 지정된 리더십 책임이 없어 미리보기가 비어 있습니다. 관리자에게 회원 신원 페이지에서 리더십 책임을 지정해 달라고 요청하세요.",
+    audLeadersPreviewNote:
+      "미리보기 전용입니다. 명시적으로 지정된 리더십 책임만을 기준으로 합니다. 리더를 선택하면 이 모듈의 대상을 설명할 뿐, 구성원을 배정하거나 초대하거나 입장을 제한하지 않습니다. Foundry 참여는 계속 익명 링크 기반입니다.",
+    audLeadersPreviewLoading: "대상을 확인하는 중…",
+    audLeadersPreviewError: "지금은 리더 조건을 확인할 수 없습니다.",
     audJobGroup: "직군",
     audRole: "특정 역할",
     audJobGroupDetail: "어떤 직군인가요?",

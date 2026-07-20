@@ -621,6 +621,13 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
               className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
             />
           ) : null}
+          {/*
+            Leaders ELIGIBILITY PREVIEW (Slice 3.1B-2) — informational only. It shows who
+            currently holds a canonical leadership responsibility; it does NOT assign,
+            invite, restrict, or target anyone. Foundry participation stays anonymous and
+            link-based. Identity-bound targeting is Slice 3.1B-3.
+          */}
+          {a.audienceType === "leaders" ? <LeadersEligibilityPreview t={t} /> : null}
           <BlockerLine show={blocker === "audience_required"} text={t.s2Blocker} />
           <BlockerLine show={blocker === "audience_detail_required"} text={t.s2DetailBlocker} />
         </StepFrame>
@@ -1036,6 +1043,93 @@ function ReviewBody({
           );
         })}
       </section>
+    </div>
+  );
+}
+
+/**
+ * Leaders eligibility preview (Slice 3.1B-2).
+ *
+ * Shows how many members of the Host's own organization currently hold a canonical
+ * leadership responsibility, and who they are. It is deliberately explicit that this is a
+ * PREVIEW: selecting "Leaders" describes the module's intended audience, it does not assign
+ * members, restrict entry, or target anyone — Foundry participation remains anonymous and
+ * link-based. Identity-bound targeting is Slice 3.1B-3.
+ *
+ * Render-only: eligibility is resolved entirely server-side by the canonical resolver. The
+ * component never computes leader status and never sends an organization id.
+ */
+function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
+  const [state, setState] = useState<
+    | { kind: "loading" }
+    | { kind: "ready"; count: number; names: string[] }
+    | { kind: "error" }
+  >({ kind: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/bty/foundry/audience/leaders-preview", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data: {
+          ok?: boolean;
+          eligibleCount?: number;
+          members?: Array<{ displayName: string | null }>;
+        } = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !data.ok) {
+          setState({ kind: "error" });
+          return;
+        }
+        setState({
+          kind: "ready",
+          count: data.eligibleCount ?? 0,
+          names: (data.members ?? []).map((m) => m.displayName).filter((n): n is string => !!n),
+        });
+      } catch {
+        if (!cancelled) setState({ kind: "error" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div
+      className="mt-1 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+      data-testid="leaders-eligibility-preview"
+    >
+      {state.kind === "loading" ? (
+        <p className="text-sm text-white/50">{t.audLeadersPreviewLoading}</p>
+      ) : state.kind === "error" ? (
+        <p className="text-sm text-white/50" data-testid="leaders-preview-error">
+          {t.audLeadersPreviewError}
+        </p>
+      ) : (
+        <>
+          <p className="text-sm text-white/80" data-testid="leaders-eligible-count">
+            {t.audLeadersEligible(state.count)}
+          </p>
+          {state.count === 0 ? (
+            // Never silently fall back to Everyone — say plainly that nobody qualifies yet.
+            <p className="mt-1 text-sm text-[#E5B769]" data-testid="leaders-zero-warning">
+              {t.audLeadersZero}
+            </p>
+          ) : state.names.length > 0 ? (
+            <p className="mt-1 text-sm text-white/60" data-testid="leaders-eligible-names">
+              {state.names.join(", ")}
+            </p>
+          ) : null}
+        </>
+      )}
+      {/* The non-assignment contract, stated where the Host makes the choice. */}
+      <p className="mt-2 text-xs leading-relaxed text-white/40" data-testid="leaders-preview-note">
+        {t.audLeadersPreviewNote}
+      </p>
     </div>
   );
 }

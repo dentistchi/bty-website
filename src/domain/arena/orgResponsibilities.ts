@@ -58,6 +58,42 @@ export function isResponsibilityAction(value: unknown): value is ResponsibilityA
   return typeof value === "string" && (RESPONSIBILITY_ACTIONS as readonly string[]).includes(value);
 }
 
+/**
+ * THE canonical leader definition (Slice 3.1B-2) — the ONLY place "is this member a
+ * leader?" is decided. Deliberately lives beside the responsibility taxonomy that owns the
+ * facts, so Foundry (or any future consumer) reads this rather than growing a second
+ * leadership identity system.
+ *
+ * A member is a leader iff they hold AT LEAST ONE active canonical leadership
+ * responsibility on the membership being asked about. Nothing else qualifies — not
+ * primary_role, job_family, is_leader_track, leader_started_at, office_assignments.is_lead,
+ * legacy job_function, Certified Leader grants, tenure, title text, XP, or activity.
+ *
+ * Scope is the caller's responsibility in the sense that the keys passed in MUST come from
+ * ONE membership (one user in one organization). A responsibility held in Organization A
+ * therefore cannot make the member a leader in Organization B, because those are different
+ * memberships and produce different key sets.
+ *
+ * ELIGIBILITY, NOT AUTHORIZATION. Leader status never grants admin access, office scope,
+ * Foundry Host rights, member-curation rights, or cross-organization reach.
+ */
+export type CanonicalLeaderStatus = {
+  isLeader: boolean;
+  matchedResponsibilityKeys: ResponsibilityKey[];
+};
+
+export function resolveCanonicalLeaderStatus(input: {
+  activeResponsibilityKeys: readonly string[];
+}): CanonicalLeaderStatus {
+  // Only canonical keys count; anything unrecognized (legacy signal, free text, a removed
+  // row's key that a caller passed by mistake) is ignored rather than trusted.
+  const matched: ResponsibilityKey[] = [];
+  for (const key of input.activeResponsibilityKeys) {
+    if (isResponsibilityKey(key) && !matched.includes(key)) matched.push(key);
+  }
+  return { isLeader: matched.length > 0, matchedResponsibilityKeys: matched };
+}
+
 export type ResponsibilityValidationError =
   | "invalid_responsibility"
   | "invalid_action"
