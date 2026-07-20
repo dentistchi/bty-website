@@ -12,7 +12,7 @@ import {
   moveToNextWaiting,
   promoteNextReady,
 } from '@/lib/rooms.server';
-import { getCanonicalEvent } from '@/lib/events.server';
+import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 
 export const dynamic = 'force-dynamic';
@@ -63,6 +63,14 @@ export async function PATCH(
   const auth = await authorizeDj(slug, cred);
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Event Lifecycle V1 — an ended Event refuses every DJ transition (play/complete/
+  // skip/move_next) HONESTLY (409 EVENT_ENDED) instead of only failing once the row
+  // is already terminal. Legacy eventless rooms resolve ok (event: null).
+  const access = await resolveEventAccess(auth.room);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
   }
 
   const action = parsed.data.action;

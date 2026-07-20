@@ -6,7 +6,9 @@ vi.mock('@/lib/manager-auth.server', () => ({
   managerAuthorized: async () => s.authorized,
 }));
 vi.mock('@/lib/events.server', () => ({
-  endEvent: vi.fn(async () => s.event),
+  endEvent: vi.fn(async () =>
+    s.event ? { event: s.event, summary: { completedCount: 5, unfinishedClosedCount: 2 } } : null,
+  ),
   publicEvent: (e: { id: string; status: string }) => ({ id: e.id, status: e.status }),
 }));
 
@@ -30,11 +32,12 @@ describe('POST /api/admin/events/[eventId]/end', () => {
     expect(res.status).toBe(401);
   });
 
-  it('ends the event and returns its ended status for an authorized manager', async () => {
+  it('ends the event and returns its ended status + honest summary for an authorized manager', async () => {
     const res = await POST(makeReq(), ctx('evt-1'));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.event.status).toBe('ended');
+    expect(data.summary).toEqual({ completedCount: 5, unfinishedClosedCount: 2 });
   });
 
   it('returns 404 when the event does not exist', async () => {

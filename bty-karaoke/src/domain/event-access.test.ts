@@ -4,9 +4,13 @@ import { decideEventAccess, type EventLike } from './event-access';
 const live: EventLike = { id: 'evt-1', status: 'active' };
 const ended: EventLike = { id: 'evt-1', status: 'ended' };
 
-describe('decideEventAccess — canonical-event gate (V5)', () => {
-  it('allows a legacy room (no event) with no asserted id — V4 backward compatible', () => {
-    expect(decideEventAccess(null)).toEqual({ ok: true });
+describe('decideEventAccess — canonical-event gate (Event Lifecycle V1)', () => {
+  it('409 NO_ACTIVE_EVENT for a room with NO event — the legacy eventless fallback is REMOVED', () => {
+    expect(decideEventAccess(null)).toMatchObject({
+      ok: false,
+      status: 409,
+      code: 'NO_ACTIVE_EVENT',
+    });
   });
 
   it('allows a live event with no asserted id', () => {

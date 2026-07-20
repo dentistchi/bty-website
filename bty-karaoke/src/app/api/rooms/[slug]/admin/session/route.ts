@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeAdmin, activeRequestStats } from '@/lib/rooms.server';
-import { bootstrapInitialEvent, getLatestEndedEvent, eventStatsById } from '@/lib/events.server';
+import { getCanonicalEvent, getLatestEndedEvent, eventStatsById } from '@/lib/events.server';
 import { getActiveSession, startSession, endSession } from '@/lib/sessions.server';
 
 export const dynamic = 'force-dynamic';
@@ -23,11 +23,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const auth = await requireAdmin(req, slug);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Admin Hub init (V7 PART A): bootstrap creates the room's ONE live Event only on
-  // its FIRST Hub open. After an Event is ended it returns null — the Hub must NOT
-  // silently re-create a live Event; the Admin lands on the ended summary and
-  // explicitly Starts a New Event. Never runs on Guest/Display/DJ/public reads.
-  const event = await bootstrapInitialEvent(auth.room.id, auth.room.display_name);
+  // Event Lifecycle V1 — Admin Hub init is a PURE READ. It resolves the room's ONE
+  // live Event and NEVER creates one (no first-open bootstrap, no get-or-create).
+  // A room with zero Events returns event: null and the Hub renders an explicit
+  // "Start Event" action; only an authenticated Host POST creates an Event.
+  const event = await getCanonicalEvent(auth.room.id);
   const endedEvent = event ? null : await getLatestEndedEvent(auth.room.id);
 
   const [session, stats, endedStats] = await Promise.all([

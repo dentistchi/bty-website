@@ -5,6 +5,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const state = {
   auth: null as null | { room: { id: string } },
+  access: { ok: true, event: null } as
+    | { ok: true; event: unknown }
+    | { ok: false; status: 403 | 409; code: string; error: string },
   reorder: { outcome: 'ok' } as
     | { outcome: 'ok'; requests: unknown[] }
     | { outcome: 'queue_changed' }
@@ -15,6 +18,9 @@ const state = {
 vi.mock('@/lib/rooms.server', () => ({
   authorizeDj: vi.fn(async () => state.auth),
   reorderWaitingRequests: vi.fn(async () => state.reorder),
+}));
+vi.mock('@/lib/events.server', () => ({
+  resolveEventAccess: vi.fn(async () => state.access),
 }));
 
 import { POST } from './route';
@@ -32,6 +38,7 @@ const ctx = { params: Promise.resolve({ slug: 'bty-home' }) };
 
 beforeEach(() => {
   state.auth = { room: { id: 'room-1' } };
+  state.access = { ok: true, event: null };
   state.reorder = { outcome: 'ok', requests: [{ id: UUID_A }, { id: UUID_B }] };
 });
 
@@ -79,5 +86,13 @@ describe('POST /api/rooms/[slug]/dj/reorder', () => {
     state.reorder = { outcome: 'invalid' };
     const res = await POST(makeReq('Bearer x', { orderedRequestIds: [UUID_A] }), ctx);
     expect(res.status).toBe(400);
+  });
+
+  it('an ended event refuses reorder HONESTLY with 409 EVENT_ENDED (before any reorder work)', async () => {
+    state.access = { ok: false, status: 409, code: 'EVENT_ENDED', error: 'This event has ended' };
+    const res = await POST(makeReq('Bearer x', { orderedRequestIds: [UUID_A, UUID_B] }), ctx);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.code).toBe('EVENT_ENDED');
   });
 });

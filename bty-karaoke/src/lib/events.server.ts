@@ -170,25 +170,6 @@ export async function getCanonicalEvent(roomId: string): Promise<KaraokeEvent | 
 }
 
 /**
- * Auto-ensure exactly ONE canonical live Event for an EXISTING room (V5 2A).
- *
- * Callable ONLY from the authenticated Admin Hub init (never Guest / QR / Display
- * / DJ / polling / any public read). Idempotent:
- *  - a live Event already exists → return it unchanged;
- *  - none exists → create ONE for this room (NO new room, NO session — the
- *    request-acceptance/session model is untouched, so the home flow is unchanged);
- *  - concurrent Admin loads → the partial unique index makes exactly one insert
- *    win; the loser's 23505 re-reads and returns the winner;
- *  - an ended Event is NEVER silently reactivated — a fresh live Event is created
- *    only when NO live Event exists, preserving historical identity.
- */
-export async function ensureCanonicalLiveEvent(roomId: string, name: string): Promise<KaraokeEvent> {
-  const existing = await getCanonicalEvent(roomId);
-  if (existing) return existing;
-  return createLiveEvent(roomId, name);
-}
-
-/**
  * Insert ONE fresh live Event for a room, race-safe against the one-live-per-room
  * partial unique index (V7). Shared by ensure / bootstrap / startNewEvent — each
  * of which decides *whether* to create; this is the *how*. A concurrent insert or
@@ -238,20 +219,6 @@ async function createLiveEvent(roomId: string, name: string): Promise<KaraokeEve
  */
 export const getCanonicalLiveEvent = getCanonicalEvent;
 
-/** True if the room has EVER had an Event (any status). Distinguishes a brand-new
- *  room (bootstrap creates its first Event) from a room whose Event was ended
- *  (V7: never silently re-create — the Admin must Start a New Event explicitly). */
-export async function roomHasAnyEvent(roomId: string): Promise<boolean> {
-  const { data, error } = await karaokeDb()
-    .from('karaoke_events')
-    .select('id')
-    .eq('room_id', roomId)
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data != null;
-}
-
 /** The room's most recently ended Event (for the ended summary shown to Admin /
  *  Guest / Display). Ordered by ended_at desc so a room with a history of rounds
  *  surfaces the round that just finished. Null if the room never ended an Event. */
@@ -269,21 +236,15 @@ export async function getLatestEndedEvent(roomId: string): Promise<KaraokeEvent 
 }
 
 /**
- * V7 PART A — Admin-Hub bootstrap. The ONLY auto-creation path, and ONLY on a
- * room's FIRST Hub open. Returns:
- *  - the live Event if one exists (idempotent);
- *  - a freshly created Event if the room has NEVER had an Event;
- *  - **null** if the room's Event was ended (do NOT silently re-create — the Admin
- *    lands on the ended summary and must Start a New Event explicitly).
- */
-export async function bootstrapInitialEvent(roomId: string, name: string): Promise<KaraokeEvent | null> {
-  const live = await getCanonicalEvent(roomId);
-  if (live) return live;
-  if (await roomHasAnyEvent(roomId)) return null; // ended — never auto-recreate
-  return createLiveEvent(roomId, name);
-}
-
-/**
+ * Event Lifecycle V1 — explicit Event creation is the ONLY creation path.
+ *
+ * There is deliberately NO get-or-create / bootstrap / ensure helper in this module:
+ * a room with zero Events stays at zero until an authenticated Host POSTs Start.
+ * Every read path (Admin Hub GET, manager login, device-token restore, polling, QR
+ * lookup, Guest page, Display) resolves through getCanonicalEvent / getLatestEnded
+ * Event, which never write. See the zero-auto-create proof in
+ * src/lib/events.no-autocreate.test.ts.
+ *
  * V7 PART D — explicit Event rotation. Called ONLY from the authenticated Admin
  * "Start New Event" action (never Guest / QR / Display / polling). Idempotent and
  * double-tap safe: if a live Event already exists it is returned unchanged (the
@@ -477,54 +438,57 @@ export async function getEventSummary(eventId: string): Promise<EventSummary | n
   return { event, stats, dj };
 }
 
+/** The honest ended summary (Event Lifecycle V1). `completedCount` = songs the DJ
+ *  actually finished for this event (immutable history). `unfinishedClosedCount` =
+ *  rows THIS end closed without completing them (waiting→removed + playing→skipped).
+ *  A repeated (idempotent) end reports completedCount for the already-ended event
+ *  and unfinishedClosedCount = 0. */
+export interface EndEventSummary {
+  completedCount: number;
+  unfinishedClosedCount: number;
+}
+
+export interface EndedEvent {
+  event: KaraokeEvent;
+  summary: EndEventSummary;
+}
+
+interface EndEventRpcRow {
+  event_id: string;
+  status: EventStatus;
+  ended_at: string | null;
+  completed_count: number | string | null;
+  unfinished_closed_count: number | string | null;
+}
+
 /**
  * End an event: mark it ended and end its active night (blocks new guest
- * requests; the queue/history is preserved). Idempotent. The room is NOT closed
- * and the current song is NOT stopped — only new requests are refused.
+ * requests; the queue/history is preserved). ATOMIC + idempotent via the
+ * `end_karaoke_event` RPC — the whole live queue is closed as one unit so a
+ * partial failure can never leave a `playing` row open under an `ended` event.
+ * Canonical close policy (see the migration): WAITING→removed, PLAYING→skipped
+ * (unfinished, never `completed`), ready_at/youtube_queued_at cleared, history
+ * untouched. The room is NOT closed and current media is NOT stopped. Returns the
+ * ended event plus the honest summary, or null when the event does not exist.
  */
-export async function endEvent(eventId: string): Promise<KaraokeEvent | null> {
+export async function endEvent(eventId: string): Promise<EndedEvent | null> {
   const db = karaokeDb();
+  const { data, error } = await db.rpc('end_karaoke_event', { p_event_id: eventId });
+  if (error) throw error;
+
+  const row = (Array.isArray(data) ? data[0] : data) as EndEventRpcRow | null | undefined;
+  if (!row) return null; // event not found
+
   const event = await getEventById(eventId);
   if (!event) return null;
 
-  // End the active session for this room (mirrors sessions.server.endSession,
-  // scoped by room so we don't need to import a second module boundary here).
-  await db
-    .from('karaoke_sessions')
-    .update({ status: 'ended', ended_at: new Date().toISOString() })
-    .eq('room_id', event.room_id)
-    .eq('status', 'active');
-
-  if (event.status === 'ended' || event.status === 'archived') return event;
-
-  // V7 PART B — clear the live queue as part of ending the Event. Waiting requests
-  // are removed (they never played); a request that was mid-play is marked
-  // completed (honest — it was on the TV). The ready signal is moot once ended, so
-  // clear it. History rows (already completed/skipped/removed) are untouched — no
-  // record is ever deleted.
-  const endedAt = new Date().toISOString();
-  // V8: also clear youtube_queued_at — the TV-queue prep signal is moot once ended
-  // and must never carry into the next Event (V7.1 event scope).
-  await db
-    .from('karaoke_requests')
-    .update({ status: 'removed', ready_at: null, youtube_queued_at: null })
-    .eq('room_id', event.room_id)
-    .eq('status', 'waiting');
-  await db
-    .from('karaoke_requests')
-    .update({ status: 'completed', ready_at: null, youtube_queued_at: null })
-    .eq('room_id', event.room_id)
-    .eq('status', 'playing');
-
-  const { data, error } = await db
-    .from('karaoke_events')
-    // updated_at is stamped by the karaoke_events_touch_updated_at trigger.
-    .update({ status: 'ended', ended_at: endedAt })
-    .eq('id', eventId)
-    .select(EVENT_COLS)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as KaraokeEvent) ?? event;
+  return {
+    event,
+    summary: {
+      completedCount: Number(row.completed_count ?? 0) || 0,
+      unfinishedClosedCount: Number(row.unfinished_closed_count ?? 0) || 0,
+    },
+  };
 }
 
 /**

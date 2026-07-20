@@ -50,8 +50,76 @@ function liveFor(roomId: string): Ev | undefined {
   );
 }
 
+// Models the end_karaoke_event RPC against the in-memory tables: WAITING→removed,
+// PLAYING→skipped (NOT completed), session ended, event→ended, returns the honest
+// summary. Idempotent for an already ended/archived event (closes nothing, still
+// reports completed_count). Request rows are scoped by event_id (V7.1).
+function fakeEndEventRpc(eventId: string) {
+  const ev = db.events.find((e) => e.id === eventId);
+  if (!ev) return { data: [] as unknown[], error: null };
+  const completedCount = () =>
+    db.requests.filter((r) => r.event_id === eventId && r.status === 'completed').length;
+  if (ev.status === 'ended' || ev.status === 'archived') {
+    return {
+      data: [
+        {
+          event_id: eventId,
+          status: ev.status,
+          ended_at: ev.ended_at,
+          completed_count: completedCount(),
+          unfinished_closed_count: 0,
+        },
+      ],
+      error: null,
+    };
+  }
+  for (const s of db.sessions) {
+    if (s.room_id === ev.room_id && s.status === 'active') {
+      s.status = 'ended';
+      s.ended_at = '2026-07-19T00:00:00Z';
+    }
+  }
+  let closed = 0;
+  for (const r of db.requests) {
+    if (r.event_id === eventId && r.status === 'waiting') {
+      r.status = 'removed';
+      r.ready_at = null;
+      (r as { youtube_queued_at?: string | null }).youtube_queued_at = null;
+      closed++;
+    }
+  }
+  for (const r of db.requests) {
+    if (r.event_id === eventId && r.status === 'playing') {
+      r.status = 'skipped';
+      r.ready_at = null;
+      (r as { youtube_queued_at?: string | null }).youtube_queued_at = null;
+      closed++;
+    }
+  }
+  ev.status = 'ended';
+  ev.ended_at = '2026-07-19T00:00:00Z';
+  return {
+    data: [
+      {
+        event_id: eventId,
+        status: 'ended',
+        ended_at: ev.ended_at,
+        completed_count: completedCount(),
+        unfinished_closed_count: closed,
+      },
+    ],
+    error: null,
+  };
+}
+
 vi.mock('@/lib/supabase.server', () => ({
   karaokeDb: () => ({
+    rpc(name: string, params: Record<string, unknown>) {
+      if (name === 'end_karaoke_event') {
+        return Promise.resolve(fakeEndEventRpc(String(params.p_event_id)));
+      }
+      return Promise.resolve({ data: null, error: { message: `unknown rpc ${name}` } });
+    },
     from(table: string) {
       const filters: Array<[string, unknown]> = [];
       let inFilter: { col: string; vals: unknown[] } | null = null;
@@ -177,12 +245,10 @@ vi.mock('@/lib/supabase.server', () => ({
 // endEvent also ends the active session in-line (no sessions.server import); the
 // fake above handles the karaoke_sessions update path.
 import {
-  bootstrapInitialEvent,
   startNewEvent,
   endEvent,
   getCanonicalEvent,
   getLatestEndedEvent,
-  roomHasAnyEvent,
   eventStatsById,
 } from './events.server';
 
@@ -212,34 +278,16 @@ beforeEach(() => {
   db.seq = 0;
 });
 
-describe('bootstrapInitialEvent — first open only, NEVER re-create after End (V7 PART A)', () => {
-  it('creates the first Event for a brand-new room', async () => {
-    const ev = await bootstrapInitialEvent('room-A', 'BTY Home');
-    expect(ev?.status).toBe('active');
-    expect(db.events).toHaveLength(1);
+describe('a read NEVER creates an Event (Event Lifecycle V1 — bootstrap removed)', () => {
+  it('a brand-new room resolves to null and stays at zero Events', async () => {
+    expect(await getCanonicalEvent('room-A')).toBeNull();
+    expect(db.events).toHaveLength(0);
   });
 
-  it('returns the live Event unchanged when one already exists (idempotent)', async () => {
-    const first = seedEvent({ status: 'active' });
-    const ev = await bootstrapInitialEvent('room-A', 'BTY Home');
-    expect(ev?.id).toBe(first.id);
-    expect(db.events).toHaveLength(1);
-  });
-
-  it('returns NULL (does NOT auto-create) when the room only has an ended Event', async () => {
+  it('a room whose only Event is ENDED is never re-opened by a read', async () => {
     seedEvent({ status: 'ended', ended_at: '2026-07-15T01:00:00Z' });
-    const ev = await bootstrapInitialEvent('room-A', 'BTY Home');
-    expect(ev).toBeNull();
-    // No new live event was spawned — the Admin must Start a New Event explicitly.
+    expect(await getCanonicalEvent('room-A')).toBeNull();
     expect(db.events.filter((e) => e.status !== 'ended')).toHaveLength(0);
-  });
-});
-
-describe('roomHasAnyEvent', () => {
-  it('is false for a room with no events, true once any (even ended) exists', async () => {
-    expect(await roomHasAnyEvent('room-A')).toBe(false);
-    seedEvent({ status: 'ended' });
-    expect(await roomHasAnyEvent('room-A')).toBe(true);
   });
 });
 
@@ -262,32 +310,43 @@ describe('startNewEvent — explicit rotation, fresh identity, double-tap safe (
   });
 });
 
-describe('endEvent — closes the Event + clears the live queue (V7 PART B)', () => {
-  it('flips status→ended, stamps ended_at, removes waiting, completes playing, clears ready', async () => {
+describe('endEvent — closes the Event + clears the live queue (Event Lifecycle V1)', () => {
+  it('flips status→ended, stamps ended_at, removes waiting, SKIPS playing (never completed), clears ready, returns summary', async () => {
     const ev = seedEvent({ status: 'active' });
     db.requests.push(
-      { id: 'r1', room_id: 'room-A', status: 'waiting', ready_at: '2026-07-15T00:30:00Z' },
-      { id: 'r2', room_id: 'room-A', status: 'playing', ready_at: null },
-      { id: 'r3', room_id: 'room-A', status: 'completed', ready_at: null }, // history, untouched
+      { id: 'r1', room_id: 'room-A', event_id: ev.id, status: 'waiting', ready_at: '2026-07-15T00:30:00Z' },
+      { id: 'r2', room_id: 'room-A', event_id: ev.id, status: 'playing', ready_at: null },
+      { id: 'r3', room_id: 'room-A', event_id: ev.id, status: 'completed', ready_at: null }, // history, untouched
     );
     db.sessions.push({ id: 's1', room_id: 'room-A', status: 'active', ended_at: null });
 
     const ended = await endEvent(ev.id);
-    expect(ended?.status).toBe('ended');
-    expect(ended?.ended_at).toBeTruthy();
+    expect(ended?.event.status).toBe('ended');
+    expect(ended?.event.ended_at).toBeTruthy();
 
     const byId = (id: string) => db.requests.find((r) => r.id === id)!;
-    expect(byId('r1').status).toBe('removed'); // waiting → removed
+    expect(byId('r1').status).toBe('removed'); // waiting → removed (never played)
     expect(byId('r1').ready_at).toBeNull(); // ready cleared
-    expect(byId('r2').status).toBe('completed'); // playing → completed
+    // Event Lifecycle V1 §7.3.7 — a song cut off by End is UNFINISHED, closed with a
+    // terminal NON-completed status (skipped), NEVER marked completed.
+    expect(byId('r2').status).toBe('skipped');
     expect(byId('r3').status).toBe('completed'); // pre-existing history untouched
     expect(db.sessions[0].status).toBe('ended'); // the night ended too
+
+    // Honest summary: 1 genuinely completed (r3); 2 unfinished closed (r1 removed + r2 skipped).
+    expect(ended?.summary.completedCount).toBe(1);
+    expect(ended?.summary.unfinishedClosedCount).toBe(2);
   });
 
-  it('is idempotent — ending an already-ended Event does not throw or double-clear', async () => {
+  it('is idempotent — ending an already-ended Event does not throw, closes nothing, reports completed count', async () => {
     const ev = seedEvent({ status: 'ended', ended_at: 'x' });
+    db.requests.push(
+      { id: 'c1', room_id: 'room-A', event_id: ev.id, status: 'completed', ready_at: null },
+    );
     const again = await endEvent(ev.id);
-    expect(again?.status).toBe('ended');
+    expect(again?.event.status).toBe('ended');
+    expect(again?.summary.unfinishedClosedCount).toBe(0); // nothing re-closed
+    expect(again?.summary.completedCount).toBe(1);
   });
 });
 

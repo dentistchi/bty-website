@@ -24,10 +24,12 @@ const displayClient = read('r/[slug]/display/DisplayClient.tsx');
 const djConsole = read('r/[slug]/dj/DjConsole.tsx');
 const djBoard = read('r/[slug]/dj/DjBoard.tsx');
 
-describe('PART A — no auto-create after End', () => {
-  it('the Admin Hub init bootstraps (never ensures) the event', () => {
-    expect(adminSession).toContain('bootstrapInitialEvent');
+describe('PART A — no auto-create, ever (Event Lifecycle V1)', () => {
+  it('the Admin Hub init is a PURE READ — no bootstrap/ensure create path', () => {
+    expect(adminSession).toContain('getCanonicalEvent');
     expect(strip(adminSession)).not.toContain('ensureCanonicalLiveEvent');
+    expect(strip(adminSession)).not.toContain('bootstrapInitialEvent');
+    expect(strip(adminSession)).not.toContain('startNewEvent');
   });
   it('the Admin Hub surfaces the ended summary when no live event exists', () => {
     expect(adminSession).toContain('getLatestEndedEvent');

@@ -78,27 +78,29 @@ describe('honest reject gate runs on operational paths', () => {
   });
 });
 
-describe('bootstrap is admin-hub-only and never re-creates after End (V7 PART A)', () => {
-  it('the authenticated Admin Hub init (GET /admin/session) bootstraps the event', () => {
-    expect(adminSession).toContain('bootstrapInitialEvent(auth.room.id');
-    // The bootstrap CALL runs only after the admin auth guard.
+describe('ZERO auto-create — no read path creates an Event (Event Lifecycle V1)', () => {
+  it('the authenticated Admin Hub init (GET /admin/session) only READS the event', () => {
+    expect(adminSession).toContain('getCanonicalEvent(auth.room.id');
+    // The read runs only after the admin auth guard.
     expect(adminSession.indexOf('if (!auth) return')).toBeLessThan(
-      adminSession.indexOf('bootstrapInitialEvent(auth.room.id'),
+      adminSession.indexOf('getCanonicalEvent(auth.room.id'),
     );
     expect(adminSession).toMatch(/event:\s*event\s*\?\s*\{\s*id:\s*event\.id/);
   });
 
-  it('bootstrap does NOT auto-create after an Event ends (returns null → ended summary)', () => {
-    const body = fnBody(events, 'bootstrapInitialEvent');
-    expect(body).toContain('roomHasAnyEvent');
-    expect(body).toMatch(/return null/); // ended room → never auto-recreate
-    // The Admin session surfaces the ended summary when no live event exists.
+  it('the events module exposes NO get-or-create/bootstrap helper at all', () => {
+    expect(events).not.toContain('export async function bootstrapInitialEvent');
+    expect(events).not.toContain('export async function ensureCanonicalLiveEvent');
+    expect(events).not.toContain('roomHasAnyEvent');
+  });
+
+  it('the Admin session still surfaces the ended summary when no live event exists', () => {
     expect(adminSession).toContain('getLatestEndedEvent');
     expect(adminSession).toContain('endedEvent');
   });
 
-  it('NO public/read path (guest / display / DJ / QR) ever creates an event', () => {
-    for (const src of [guestReq, displayRoute, djQueue, guestQr]) {
+  it('NO read path (admin GET / guest / display / DJ / QR) ever creates an event', () => {
+    for (const src of [adminSession, guestReq, displayRoute, djQueue, guestQr]) {
       expect(src).not.toContain('ensureCanonicalLiveEvent');
       expect(src).not.toContain('bootstrapInitialEvent');
       expect(src).not.toContain('startNewEvent');

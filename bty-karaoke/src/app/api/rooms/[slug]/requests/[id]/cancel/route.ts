@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CancelRequestSchema } from '@/lib/validation';
 import { verifyCancelCapability } from '@/lib/capability.server';
 import { getPublicRoomBySlug, cancelOwnRequest } from '@/lib/rooms.server';
+import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +37,14 @@ export async function POST(
 
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+
+  // Event Lifecycle V1 — an ended Event refuses guest cancel HONESTLY (409
+  // EVENT_ENDED) instead of only failing indirectly because the row was already
+  // removed by End. Legacy eventless rooms resolve ok (event: null) → unchanged.
+  const access = await resolveEventAccess(room);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
+  }
 
   const result = await cancelOwnRequest(room.id, id);
   if (result.outcome === 'not_found') {

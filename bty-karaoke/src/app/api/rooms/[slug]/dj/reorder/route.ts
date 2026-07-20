@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ReorderQueueSchema } from '@/lib/validation';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeDj, reorderWaitingRequests } from '@/lib/rooms.server';
+import { resolveEventAccess } from '@/lib/events.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,6 +35,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const auth = await authorizeDj(slug, cred);
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Event Lifecycle V1 — an ended Event refuses reorder HONESTLY (409 EVENT_ENDED)
+  // rather than only failing indirectly once its rows are already removed. A legacy
+  // eventless room resolves ok (event: null) so V4 self-service is untouched.
+  const access = await resolveEventAccess(auth.room);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error, code: access.code }, { status: access.status });
   }
 
   const result = await reorderWaitingRequests(auth.room.id, parsed.data.orderedRequestIds);

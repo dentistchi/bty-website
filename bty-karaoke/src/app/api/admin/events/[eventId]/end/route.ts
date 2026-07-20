@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ eventId: s
   }
 
   const { eventId } = await ctx.params;
-  const event = await endEvent(eventId);
-  if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-  return NextResponse.json({ ok: true, event: publicEvent(event) });
+  const ended = await endEvent(eventId);
+  if (!ended) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+  return NextResponse.json({ ok: true, event: publicEvent(ended.event), summary: ended.summary });
 }

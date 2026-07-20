@@ -447,9 +447,15 @@ export default function DjBoard({
 
   const live = Boolean(data?.session);
   const eventStatus = data?.eventStatus ?? null;
+  // Event Lifecycle V1 — a room with ZERO Events resolves to no eventStatus at all
+  // (nothing auto-creates one on load any more), so first use and post-End rotation
+  // share ONE explicit "Start Event" affordance.
+  const noEvent = !eventStatus;
   // V7.1 PART H: an ended event exposes no Guest QR action (a retired QR must not
   // be re-shown); the Start New Event action takes its place until rotation.
   const eventEnded = !!eventStatus && eventStatus.status !== 'active';
+  /** No live Event: never started, or ended and awaiting explicit rotation. */
+  const noLiveEvent = noEvent || eventEnded;
   const durationLabel = eventStatus ? formatEventDuration(eventStatus.startsAt, nowMs || Date.now()) : '';
 
   // Tick a coarse clock (30s) so the header/sheet duration stays current while a
@@ -604,6 +610,33 @@ export default function DjBoard({
         )}
       </div>
 
+      {/* Event Lifecycle V1 — FIRST USE: the room has no Event at all. Nothing is
+          auto-created on load, so the Admin must explicitly start the first one. */}
+      {noEvent && (
+        <div className="dj-ended-banner" role="status">
+          <div className="dj-ended-copy">
+            <b>진행 중인 이벤트가 없어요.</b>{' '}
+            <span className="muted">
+              이벤트를 시작하면 손님 초대 QR과 새 대기열이 만들어집니다.
+            </span>
+          </div>
+          {isAdmin && (
+            <button
+              type="button"
+              className="primary"
+              disabled={startingNew}
+              onClick={async () => {
+                setStartingNew(true);
+                await onStartNewEvent();
+                setStartingNew(false);
+              }}
+            >
+              {startingNew ? '시작 중…' : '🎬 이벤트 시작'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* V7 — Event ended: the queue is closed. The Admin explicitly rotates to a
           NEW Event (new Guest QR); the old QR can never join it. No auto-restart. */}
       {eventStatus && eventStatus.status !== 'active' && (
@@ -643,14 +676,14 @@ export default function DjBoard({
           state. Guest QR only (Add song lives in the admin menu, off the base
           screen; playback is not a DJ action anymore). */}
       <div className="dj-actions-bar" role="group" aria-label="Admin actions">
-        {!eventEnded && (
+        {!noLiveEvent && (
           <button className="ghost" onClick={showGuestQr} disabled={loadingQr}>
             🔳 Guest QR
           </button>
         )}
         {/* Connect iPad Display — shows a QR the iPad camera scans to open the
             read-only Display. This is the discoverable "put it on the iPad" path. */}
-        {!eventEnded && (
+        {!noLiveEvent && (
           <button className="ghost" onClick={showDisplayQr} disabled={loadingQr}>
             📺 Connect iPad Display
           </button>

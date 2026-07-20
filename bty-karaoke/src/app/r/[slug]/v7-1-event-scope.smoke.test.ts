@@ -137,9 +137,12 @@ describe('PART G — Display join QR (V1.3: warm central invitation while waitin
 });
 
 describe('PART H — Admin hides the Guest QR action on an ended event', () => {
-  it('the Guest QR button is gated behind !eventEnded', () => {
+  it('the Guest QR button is gated behind !noLiveEvent (ended OR never-started)', () => {
     expect(djBoard).toContain('const eventEnded =');
-    expect(djBoard).toContain('{!eventEnded && (');
+    // Event Lifecycle V1: the gate widened from "ended" to "no LIVE event", so a
+    // room that never started one also exposes no Guest QR — only Start Event.
+    expect(djBoard).toContain('const noLiveEvent =');
+    expect(djBoard).toContain('{!noLiveEvent && (');
   });
 });
 

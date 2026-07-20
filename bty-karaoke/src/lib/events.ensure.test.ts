@@ -1,4 +1,4 @@
-// ensureCanonicalLiveEvent behavior against a fake Supabase that enforces the
+// startNewEvent behavior against a fake Supabase that enforces the
 // one-live-Event-per-room invariant on insert (mirroring the partial unique
 // index). Proves: idempotency, no new room, ended events coexist (not
 // reactivated), and the concurrency race resolves to a single live event.
@@ -90,7 +90,7 @@ function mkEvent(row: Record<string, unknown>, status: string): Ev {
   };
 }
 
-import { ensureCanonicalLiveEvent, getCanonicalEvent } from './events.server';
+import { startNewEvent, getCanonicalEvent } from './events.server';
 
 beforeEach(() => {
   db.store = [];
@@ -99,25 +99,25 @@ beforeEach(() => {
   db.roomsTouched = new Set();
 });
 
-describe('ensureCanonicalLiveEvent (V5 2A)', () => {
+describe('startNewEvent — the ONLY create path (explicit Host Start)', () => {
   it('creates exactly one live event for an existing room — and NO new room', async () => {
-    const ev = await ensureCanonicalLiveEvent('room-A', 'BTY Home');
+    const ev = await startNewEvent('room-A', 'BTY Home');
     expect(ev.room_id).toBe('room-A');
     expect(ev.status).toBe('active');
     expect(db.store).toHaveLength(1);
     expect(db.roomsTouched.size).toBe(0); // never inserts a karaoke_rooms row
   });
 
-  it('is idempotent — a second Hub open returns the SAME event, no new insert', async () => {
-    const first = await ensureCanonicalLiveEvent('room-A', 'BTY Home');
-    const second = await ensureCanonicalLiveEvent('room-A', 'BTY Home');
+  it('is idempotent — a second explicit Start returns the SAME event, no new insert', async () => {
+    const first = await startNewEvent('room-A', 'BTY Home');
+    const second = await startNewEvent('room-A', 'BTY Home');
     expect(second.id).toBe(first.id);
     expect(db.store).toHaveLength(1);
   });
 
   it('does not reactivate an ended event — it creates a fresh live one alongside history', async () => {
     db.store.push(mkEvent({ room_id: 'room-A', name: 'Old Night' }, 'ended'));
-    const ev = await ensureCanonicalLiveEvent('room-A', 'BTY Home');
+    const ev = await startNewEvent('room-A', 'BTY Home');
     expect(ev.status).toBe('active');
     expect(db.store.filter((e) => e.room_id === 'room-A' && e.status === 'ended')).toHaveLength(1);
     expect(db.store.filter((e) => e.room_id === 'room-A' && e.status === 'active')).toHaveLength(1);
@@ -125,7 +125,7 @@ describe('ensureCanonicalLiveEvent (V5 2A)', () => {
 
   it('concurrency: a 23505 from a racing winner resolves to that single live event', async () => {
     db.raceOnNextInsert = true; // our insert loses the one-live-per-room race
-    const ev = await ensureCanonicalLiveEvent('room-A', 'BTY Home');
+    const ev = await startNewEvent('room-A', 'BTY Home');
     expect(ev.room_id).toBe('room-A');
     expect(ev.status).toBe('active');
     // Exactly one live event exists for the room (the winner), never two.
@@ -134,7 +134,7 @@ describe('ensureCanonicalLiveEvent (V5 2A)', () => {
 
   it('getCanonicalEvent returns the live event, or null when none', async () => {
     expect(await getCanonicalEvent('room-Z')).toBeNull();
-    await ensureCanonicalLiveEvent('room-Z', 'Z');
+    await startNewEvent('room-Z', 'Z');
     expect((await getCanonicalEvent('room-Z'))?.room_id).toBe('room-Z');
   });
 });

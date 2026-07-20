@@ -1,5 +1,5 @@
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
-import { getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
+import { getCanonicalEvent } from '@/lib/events.server';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import RequestForm from './RequestForm';
 import QueueBoard from './QueueBoard';
@@ -37,31 +37,46 @@ export default async function RoomPage({
   const event = await getCanonicalEvent(room.id);
   const eventId = event?.id ?? null;
 
-  // V7 PART E/F — honest ended / expired-QR states. A QR carries the id of the
-  // Event it was printed for (`?e=`). If that id is not the room's current live
-  // Event, this is a previous round's QR: never join the new Event, never
-  // auto-redirect, never create one — show a clear notice.
+  // Event Lifecycle V1 — EXPLICIT ended-Event URL. A QR carries the id of the Event
+  // it was printed for (`?e=`). If that id is not the room's current live Event this
+  // is a previous round's QR: never join a newer Event, never auto-redirect, never
+  // create one, never fall through to the live form.
   const scopedToPastEvent = Boolean(assertedEventId) && assertedEventId !== eventId;
-  const endedEvent = event ? null : await getLatestEndedEvent(room.id);
 
-  if (scopedToPastEvent || (!event && endedEvent)) {
-    const endedName = (event ? null : endedEvent)?.name ?? room.display_name;
+  if (scopedToPastEvent) {
     return (
       <main>
         <div className="brand-head">
           <span className="brand">{PRODUCT_NAME}</span>
           <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
         </div>
-        <div className="card hero">
+        <div className="card hero" data-event-ended>
           <div className="eyebrow">이벤트 종료</div>
-          <h1>{endedName}</h1>
-          <p className="lead">
-            {scopedToPastEvent
-              ? '이 QR은 지난 이벤트의 것이에요. 새 이벤트의 QR을 다시 스캔해 주세요.'
-              : '이 이벤트는 종료되었어요. 새 이벤트가 시작되면 새 QR을 스캔해 주세요.'}
-          </p>
-          <p className="muted">진행자가 새 이벤트를 시작하면 다시 신청할 수 있어요.</p>
+          <h1>이 노래방 이벤트는 종료됐어요</h1>
+          <p className="lead">새 이벤트 QR을 Host에게 받아 주세요.</p>
         </div>
+        {/* Privacy/Terms/Contact stay reachable on every guest screen. */}
+        <LegalLinks showContact />
+      </main>
+    );
+  }
+
+  // Event Lifecycle V1 — the bare Room URL resolves to the genuinely live Event or
+  // to an honest "no karaoke running" state. It NEVER surfaces the latest ended
+  // Event, NEVER renders the legacy eventless request form, never accepts requests,
+  // and never creates an Event.
+  if (!event) {
+    return (
+      <main>
+        <div className="brand-head">
+          <span className="brand">{PRODUCT_NAME}</span>
+          <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
+        </div>
+        <div className="card hero" data-no-active-event>
+          <h1>지금 진행 중인 노래방이 없습니다</h1>
+          <p className="muted">진행자가 새 이벤트를 시작하면 새 QR로 신청할 수 있어요.</p>
+        </div>
+        <LegalLinks showContact />
       </main>
     );
   }
