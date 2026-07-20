@@ -75,6 +75,9 @@ export function ModuleBuilderShell({
   const [docBusy, setDocBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishErr, setPublishErr] = useState<string | null>(null);
+  // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
+  // assigned overlay, and legacy/absent always stays open link.
+  const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
 
   const answersRef = useRef<BuilderAnswers>({});
   const stepRef = useRef<number>(1);
@@ -215,25 +218,35 @@ export function ModuleBuilderShell({
     await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
     setPublishing(true);
     try {
+      // Only the DECLARED audience travels with an assigned publish — never resolved member
+      // ids, org, or count. The server resolves recipients and blocks a zero-eligible
+      // assigned publish (never falls back to Everyone).
+      const body: Record<string, unknown> = { locale, participationMode };
+      if (participationMode === "assigned_overlay") {
+        body.audienceType = answersRef.current.audienceType;
+        body.audienceDetail = answersRef.current.audienceDetail ?? null;
+      }
       const res = await fetch(`/api/bty/foundry/modules/${draftId}/publish`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = (await res.json()) as { event?: { id?: string } };
         onExit({ publishedEventId: data.event?.id });
         return;
       }
-      setPublishErr("error");
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      // Surface the specific zero-recipient block so the Host can act on it.
+      setPublishErr(err.error === "zero_recipients" ? "zero_recipients" : "error");
     } catch {
       setPublishErr("error");
     } finally {
       setPublishing(false);
     }
-  }, [publishing, cancelDebounce, saver, draftId, locale, onExit]);
+  }, [publishing, cancelDebounce, saver, draftId, locale, participationMode, onExit]);
 
   // Direction Copilot (Slice 2.4A). Generation flushes autosave FIRST so the server's
   // saved problem matches the request (its stale guard rejects a mismatch), then calls
@@ -428,6 +441,12 @@ export function ModuleBuilderShell({
       {isReview ? (
         <>
           <ReviewBody answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
+          <ParticipationModeChooser
+            mode={participationMode}
+            audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
+            onChange={setParticipationMode}
+            t={t}
+          />
           <PublishAction
             missing={reviewMissing}
             publishing={publishing}
@@ -961,7 +980,13 @@ function PublishAction({
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
       <MissingSummary missing={missing} onEdit={onEdit} t={t} />
-      {error ? <p className="text-xs leading-5 text-amber-300/85">{t.publishError}</p> : null}
+      {error === "zero_recipients" ? (
+        <p className="text-xs leading-5 text-amber-300/85" data-testid="publish-zero-recipients">
+          {t.pmZeroRecipients}
+        </p>
+      ) : error ? (
+        <p className="text-xs leading-5 text-amber-300/85">{t.publishError}</p>
+      ) : null}
       <button
         type="button"
         onClick={onPublish}
@@ -1131,5 +1156,91 @@ function LeadersEligibilityPreview({ t }: { t: ModuleBuilderCopy }) {
         {t.audLeadersPreviewNote}
       </p>
     </div>
+  );
+}
+
+/**
+ * Participation-mode chooser (Slice 3.1B-3C). Shown at review/publish. Default OPEN_LINK.
+ *
+ * ASSIGNED_OVERLAY is an overlay, never an entry gate: the copy is explicit that the room
+ * stays link-based and that no invitation is sent and no login is required to open it. When
+ * assigned + Leaders is chosen we reuse the existing 3.1B-2 eligibility preview so the Host
+ * sees the recipient count before publishing; the server re-resolves authoritatively and
+ * blocks a zero-recipient assigned publish.
+ */
+function ParticipationModeChooser({
+  mode,
+  audienceType,
+  onChange,
+  t,
+}: {
+  mode: "open_link" | "assigned_overlay";
+  audienceType: string | null;
+  onChange: (m: "open_link" | "assigned_overlay") => void;
+  t: ModuleBuilderCopy;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-4" data-testid="participation-mode">
+      <h3 className="mb-2 text-sm font-semibold text-white/80">{t.pmTitle}</h3>
+      <div className="flex flex-col gap-2">
+        <ModeOption
+          active={mode === "open_link"}
+          label={t.pmOpenLabel}
+          desc={t.pmOpenDesc}
+          onClick={() => onChange("open_link")}
+          testid="participation-mode-open"
+        />
+        <ModeOption
+          active={mode === "assigned_overlay"}
+          label={t.pmAssignedLabel}
+          desc={t.pmAssignedDesc}
+          onClick={() => onChange("assigned_overlay")}
+          testid="participation-mode-assigned"
+        />
+      </div>
+      {mode === "assigned_overlay" ? (
+        <div className="mt-3" data-testid="participation-mode-assigned-detail">
+          {audienceType === "leaders" ? (
+            <LeadersEligibilityPreview t={t} />
+          ) : (
+            <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/50">
+              {t.pmAudienceHint}
+            </p>
+          )}
+          <p className="mt-2 text-xs leading-relaxed text-white/40" data-testid="participation-mode-note">
+            {t.pmAssignedNote}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ModeOption({
+  active,
+  label,
+  desc,
+  onClick,
+  testid,
+}: {
+  active: boolean;
+  label: string;
+  desc: string;
+  onClick: () => void;
+  testid: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      aria-pressed={active}
+      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+        active ? "border-[#C9A66B]/60 bg-[#C9A66B]/[0.08]" : "border-white/12 bg-white/[0.03] hover:border-white/25"
+      }`}
+    >
+      <span className="block text-sm font-medium text-white/85">{label}</span>
+      <span className="mt-0.5 block text-xs leading-relaxed text-white/45">{desc}</span>
+    </button>
   );
 }

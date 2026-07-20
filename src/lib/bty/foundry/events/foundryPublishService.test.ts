@@ -111,8 +111,16 @@ function makeFakeAdmin(tables: Tables) {
     };
     return q;
   }
-  return { from } as unknown as SupabaseClient;
+  // Slice 3.1B-3C: publishDraft now calls the assignment RPCs on assigned_overlay. The fake
+  // resolves them from an injected `rpc` map so OPEN_LINK never touches them.
+  const rpc = (name: string, params: Record<string, unknown>) => {
+    const impl = (tables.__rpc as unknown as RpcMap | undefined)?.[name];
+    return Promise.resolve(impl ? impl(params) : { data: null, error: null });
+  };
+  return { from, rpc } as unknown as SupabaseClient;
 }
+
+type RpcMap = Record<string, (p: Record<string, unknown>) => { data: unknown; error: { message: string } | null }>;
 
 const OWNER = "owner-1";
 
@@ -281,5 +289,103 @@ describe("publishDraft — PDF (durable-reference reuse)", () => {
     if (r.ok) return;
     expect(r.reason).toBe("material_pdf_required");
     expect(tables.foundry_event_module).toHaveLength(0);
+  });
+});
+
+/**
+ * Slice 3.1B-3C — participation mode at publish. OPEN_LINK (absent/explicit) must be exactly
+ * today's behavior with no assignment artifacts; ASSIGNED_OVERLAY runs the pre-flight then
+ * the atomic RPC, and a failed assigned publish compensates the event.
+ */
+describe("publishDraft — participation mode (3.1B-3C)", () => {
+  const okRpc: RpcMap = {
+    bty_foundry_resolve_audience: () => ({ data: [{ membership_id: "m1", user_id: "u1", organization_id: "org-a" }], error: null }),
+    bty_foundry_publish_assignments: () => ({ data: [{ assignment_count: 1, organization_id: "org-a" }], error: null }),
+  };
+
+  it("(1) OPEN_LINK publish creates the event with NO assignment artifacts", async () => {
+    const tables: Tables = { foundry_module_drafts: [youtubeDraft()], foundry_event_module: [] };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en", { mode: "open_link" });
+    expect(r.ok).toBe(true);
+    expect(tables.foundry_event_module).toHaveLength(1);
+    expect(tables.foundry_event_assignments ?? []).toHaveLength(0);
+    expect(tables.foundry_event_audience_snapshot ?? []).toHaveLength(0);
+  });
+
+  it("(2) absent participation arg = unchanged legacy behavior (no RPC call)", async () => {
+    const tables: Tables = { foundry_module_drafts: [youtubeDraft()], foundry_event_module: [], __rpc: okRpc as never };
+    const admin = makeFakeAdmin(tables);
+    const spy = vi.spyOn(admin, "rpc");
+    const r = await publishDraft(admin, OWNER, "d-yt", "en"); // no participation
+    expect(r.ok).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("(3) ASSIGNED_OVERLAY + Leaders creates the event and calls the atomic RPC", async () => {
+    const tables: Tables = { foundry_module_drafts: [youtubeDraft()], foundry_event_module: [], __rpc: okRpc as never };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en", {
+      mode: "assigned_overlay",
+      audience: { audienceType: "leaders", audienceDetail: null },
+    });
+    expect(r.ok).toBe(true);
+    expect(tables.foundry_event_module).toHaveLength(1);
+  });
+
+  it("(11/12) zero recipients BLOCKS assigned publish and creates NOTHING (no fallback)", async () => {
+    const zeroRpc: RpcMap = { bty_foundry_resolve_audience: () => ({ data: [], error: null }) };
+    const tables: Tables = { foundry_module_drafts: [youtubeDraft()], foundry_event_module: [], __rpc: zeroRpc as never };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en", {
+      mode: "assigned_overlay",
+      audience: { audienceType: "leaders", audienceDetail: null },
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("zero_recipients");
+    // pre-flight failed BEFORE event creation → nothing exists
+    expect(tables.foundry_event_module).toHaveLength(0);
+    expect(createTrainingEvent).not.toHaveBeenCalled();
+  });
+
+  it("(17) a failing atomic RPC compensates: event is deleted, draft stays publishable", async () => {
+    const failRpc: RpcMap = {
+      bty_foundry_resolve_audience: () => ({ data: [{ membership_id: "m1", user_id: "u1", organization_id: "org-a" }], error: null }),
+      bty_foundry_publish_assignments: () => ({ data: null, error: { message: "assignment write blew up" } }),
+    };
+    const tables: Tables = {
+      foundry_module_drafts: [youtubeDraft()],
+      foundry_event_module: [],
+      foundry_events: [],
+      __rpc: failRpc as never,
+    };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en", {
+      mode: "assigned_overlay",
+      audience: { audienceType: "leaders", audienceDetail: null },
+    });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("assignment_write_failed");
+    // event compensated
+    expect(tables.foundry_events).toHaveLength(0);
+    // draft NOT transitioned to published → still recoverable
+    expect(tables.foundry_module_drafts[0].status).toBe("draft");
+  });
+
+  it("(21) assigned publish creates no participant row", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [youtubeDraft()],
+      foundry_event_module: [],
+      foundry_event_participants: [],
+      __rpc: okRpc as never,
+    };
+    const admin = makeFakeAdmin(tables);
+    await publishDraft(admin, OWNER, "d-yt", "en", {
+      mode: "assigned_overlay",
+      audience: { audienceType: "leaders", audienceDetail: null },
+    });
+    expect(tables.foundry_event_participants).toHaveLength(0);
   });
 });

@@ -20,6 +20,12 @@ export const runtime = "nodejs";
 function statusForReason(reason: string): number {
   if (reason === "draft_not_found") return 404;
   if (reason === "draft_not_mutable" || reason === "publish_conflict" || reason === "draft_not_publishable") return 409;
+  // Assigned-overlay outcomes (Slice 3.1B-3C): a resolvable-but-empty audience is a
+  // deliberate block the Host must resolve (change audience or pick Open link), not a
+  // server error and not a silent Everyone fallback.
+  if (reason === "zero_recipients") return 409;
+  if (reason === "not_a_host") return 403;
+  if (reason === "assignment_write_failed") return 500;
   return 400;
 }
 
@@ -32,7 +38,25 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = await req.json().catch(() => ({}));
   const locale: Locale = body?.locale === "en" ? "en" : "ko";
 
-  const result = await publishDraft(admin, user.id, id, locale);
+  // Participation mode (Slice 3.1B-3C). Absent / anything but the explicit assigned value ⇒
+  // OPEN_LINK, so existing publishes and any legacy client are unchanged. The client sends
+  // only the DECLARED audience (type + optional detail) the Builder already supports; the
+  // server resolves the actual recipients and never trusts a client member/org/count.
+  const participation =
+    body?.participationMode === "assigned_overlay"
+      ? {
+          mode: "assigned_overlay" as const,
+          audience: {
+            audienceType: body?.audienceType,
+            audienceDetail:
+              typeof body?.audienceDetail === "string" && body.audienceDetail.trim()
+                ? body.audienceDetail.trim()
+                : null,
+          },
+        }
+      : { mode: "open_link" as const };
+
+  const result = await publishDraft(admin, user.id, id, locale, participation);
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));
 
   return managerJson(base, req, { ...attachJoinUrl(req, result.value.snapshot), reused: result.value.reused });

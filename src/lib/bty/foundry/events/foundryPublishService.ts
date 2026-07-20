@@ -13,6 +13,12 @@ import {
   getPublishedEventBySourceDraft,
   type ServiceResult,
 } from "./foundryModuleService";
+import {
+  preflightAssignedAudience,
+  publishAssignmentsForEvent,
+  type AssignedAudience,
+  type ParticipationMode,
+} from "./foundryAssignmentPublishService";
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
 import { getOwnerRoomSnapshot, type ManagerDocumentSnapshot } from "./foundryDocumentService";
 
@@ -141,11 +147,23 @@ async function createDocumentEventFromDraftAsset(
  * as an event, snapshotted immutably, and transitioned to `published` LAST (so a
  * failure never leaves an un-editable approved limbo). Idempotent by source_draft_id.
  */
+/**
+ * Optional participation overlay (Slice 3.1B-3C). Absent ⇒ OPEN_LINK, exactly today's
+ * behavior. `assigned_overlay` additionally freezes a canonical recipient set; it never
+ * gates the room. The audience is the declaration the Builder already supports; the server
+ * resolves the actual members and never trusts a client recipient list.
+ */
+export type PublishParticipation = {
+  mode: ParticipationMode;
+  audience?: AssignedAudience;
+};
+
 export async function publishDraft(
   admin: SupabaseClient,
   ownerUserId: string,
   draftId: string,
   locale: Locale = "ko",
+  participation?: PublishParticipation,
 ): Promise<ServiceResult<PublishResult>> {
   const draft = await getOwnerDraft(admin, ownerUserId, draftId);
   if (!draft) return { ok: false, reason: "draft_not_found" };
@@ -155,6 +173,16 @@ export async function publishDraft(
   if (already) {
     const snap = await snapshotFor(admin, ownerUserId, already.event_id);
     return snap ? { ok: true, value: { snapshot: snap, reused: true } } : { ok: false, reason: "snapshot_failed" };
+  }
+
+  // ASSIGNED_OVERLAY pre-flight (Slice 3.1B-3C): resolve the recipient set BEFORE creating
+  // any event, so a zero-recipient assigned publish creates NOTHING — no event, no snapshot,
+  // no fallback to Everyone. OPEN_LINK skips this entirely and behaves exactly as before.
+  const isAssigned = participation?.mode === "assigned_overlay";
+  if (isAssigned) {
+    if (!participation?.audience) return { ok: false, reason: "audience_required" };
+    const pre = await preflightAssignedAudience(admin, ownerUserId, participation.audience);
+    if (!pre.ok) return { ok: false, reason: pre.reason };
   }
 
   if (draft.status !== "draft" && draft.status !== "approved") {
@@ -213,12 +241,25 @@ export async function publishDraft(
     return { ok: false, reason: "publish_conflict" };
   }
 
-  // 3. Transition the draft to published LAST (stamps both to satisfy the lifecycle
-  //    CHECK). A 0-row race is harmless — the event_module row is already canonical.
-  const now = new Date().toISOString();
+  // 4. ASSIGNED_OVERLAY (Slice 3.1B-3C): now that the event exists, atomically freeze the
+  //    audience snapshot + assignment rows + audit + mode in ONE function transaction. If it
+  //    fails, COMPENSATE by deleting the just-created event (same pattern the module-snapshot
+  //    conflict above uses) so a failed assigned publish leaves nothing behind.
+  if (isAssigned && participation?.audience) {
+    const assigned = await publishAssignmentsForEvent(admin, eventId, ownerUserId, participation.audience);
+    if (!assigned.ok) {
+      await admin.from("foundry_events").delete().eq("id", eventId).eq("owner_user_id", ownerUserId);
+      // The draft transition has not happened yet (it runs below only on success), so the
+      // draft remains publishable for a retry.
+      return { ok: false, reason: assigned.reason };
+    }
+  }
+
+  // 5. Transition the draft to published LAST.
+  const nowPub = new Date().toISOString();
   await admin
     .from("foundry_module_drafts")
-    .update({ status: "published", approved_at: draft.approved_at ?? now, published_at: now, updated_at: now })
+    .update({ status: "published", approved_at: draft.approved_at ?? nowPub, published_at: nowPub, updated_at: nowPub })
     .eq("id", draftId)
     .eq("owner_user_id", ownerUserId)
     .in("status", ["draft", "approved"]);

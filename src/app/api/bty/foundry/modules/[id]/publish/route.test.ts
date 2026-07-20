@@ -83,7 +83,7 @@ describe("POST /modules/[id]/publish", () => {
     expect(json.event.join_url).toMatch(/^https:\/\/bty-arena-staging\.workers\.dev\/f\/btyfr1\./);
     expect(json.event.join_token).toBeUndefined();
     expect(json.reused).toBe(false);
-    expect(publishDraft).toHaveBeenCalledWith(expect.anything(), "owner", "d1", "en");
+    expect(publishDraft).toHaveBeenCalledWith(expect.anything(), "owner", "d1", "en", { mode: "open_link" });
   });
 
   it("defaults locale to ko when not 'en'", async () => {
@@ -91,6 +91,6 @@ describe("POST /modules/[id]/publish", () => {
     publishDraft.mockResolvedValue({ ok: true, value: { snapshot: SNAPSHOT, reused: false } });
     const { req, ctx } = call({});
     await POST(req, ctx);
-    expect(publishDraft).toHaveBeenCalledWith(expect.anything(), "owner", "d1", "ko");
+    expect(publishDraft).toHaveBeenCalledWith(expect.anything(), "owner", "d1", "ko", { mode: "open_link" });
   });
 });

@@ -160,6 +160,15 @@ export type ModuleBuilderCopy = {
   audLeadersPreviewNote: string;
   audLeadersPreviewLoading: string;
   audLeadersPreviewError: string;
+  // Participation mode (Slice 3.1B-3C)
+  pmTitle: string;
+  pmOpenLabel: string;
+  pmOpenDesc: string;
+  pmAssignedLabel: string;
+  pmAssignedDesc: string;
+  pmAssignedNote: string;
+  pmAudienceHint: string;
+  pmZeroRecipients: string;
   audJobGroup: string;
   audRole: string;
   audJobGroupDetail: string;
@@ -343,6 +352,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       "Preview only. This is based on explicitly assigned leadership responsibilities. Choosing Leaders describes who this module is for — it does not assign members, invite anyone, or restrict entry. Foundry participation stays anonymous and link-based.",
     audLeadersPreviewLoading: "Checking who qualifies…",
     audLeadersPreviewError: "Could not check leader eligibility right now.",
+    pmTitle: "Participation",
+    pmOpenLabel: "Open link session",
+    pmOpenDesc:
+      "Anyone with the link may join. Participation remains anonymous unless a participant later claims their work.",
+    pmAssignedLabel: "Assigned to organization members",
+    pmAssignedDesc:
+      "Create required-learning assignments for the eligible members shown below. The room itself remains link-based and is not access-restricted.",
+    pmAssignedNote:
+      "No invitation is sent and no login is required to open the room. Assignment records who this learning is for; it does not restrict entry or verify behavior.",
+    pmAudienceHint: "Choose an audience on the audience step to see who will be assigned.",
+    pmZeroRecipients:
+      "No eligible members match this audience, so no assignments can be created. Change the audience or choose Open link session.",
     audJobGroup: "A job group",
     audRole: "A specific role",
     audJobGroupDetail: "Which group?",
@@ -590,6 +611,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       "미리보기 전용입니다. 명시적으로 지정된 리더십 책임만을 기준으로 합니다. 리더를 선택하면 이 모듈의 대상을 설명할 뿐, 구성원을 배정하거나 초대하거나 입장을 제한하지 않습니다. Foundry 참여는 계속 익명 링크 기반입니다.",
     audLeadersPreviewLoading: "대상을 확인하는 중…",
     audLeadersPreviewError: "지금은 리더 조건을 확인할 수 없습니다.",
+    pmTitle: "참여 방식",
+    pmOpenLabel: "오픈 링크 세션",
+    pmOpenDesc:
+      "링크를 가진 사람이 참여할 수 있습니다. 참여자가 나중에 자신의 기록을 연결하기 전까지는 익명으로 유지됩니다.",
+    pmAssignedLabel: "조직 구성원에게 배정",
+    pmAssignedDesc:
+      "아래 대상 구성원에게 필수 학습 배정을 생성합니다. Room 참여 자체는 계속 링크 기반이며 입장을 제한하지 않습니다.",
+    pmAssignedNote:
+      "초대를 보내지 않으며 Room을 열 때 로그인이 필요하지 않습니다. 배정은 이 학습의 대상을 기록할 뿐, 입장을 제한하거나 행동을 검증하지 않습니다.",
+    pmAudienceHint: "대상 단계에서 대상을 선택하면 배정될 구성원을 확인할 수 있습니다.",
+    pmZeroRecipients:
+      "이 대상에 해당하는 구성원이 없어 배정을 생성할 수 없습니다. 대상을 변경하거나 오픈 링크 세션을 선택하세요.",
     audJobGroup: "직군",
     audRole: "특정 역할",
     audJobGroupDetail: "어떤 직군인가요?",
