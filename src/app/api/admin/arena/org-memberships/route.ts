@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
     const rows = memberships.map((m) => ({
       membershipId: m.membershipId,
       displayName: nameMap.get(m.userId) ?? null,
+      organizationId: m.organizationId,
       organizationKey: m.organizationKey,
       organizationName: m.organizationName,
       status: m.status,
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
       primaryRoleLabel: isPrimaryRoleKey(m.primaryRoleKey) ? PRIMARY_ROLE_LABELS[m.primaryRoleKey] : null,
       identitySource: m.identitySource,
       joinedAt: m.joinedAt,
-      roleStartedAt: m.roleStartedAt,
+      roleStartedOn: m.roleStartedOn,
       createdAt: m.createdAt,
       updatedAt: m.updatedAt,
     }));

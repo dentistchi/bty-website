@@ -142,3 +142,79 @@ export function isFamilyRoleCompatible(
   if (!isJobFamilyKey(family) || !isPrimaryRoleKey(role)) return false;
   return ROLE_TO_FAMILY[role] === family;
 }
+
+// ---------------------------------------------------------------------------
+// Curation validation (Slice 3.1A-3) — pure. No Date.now(): "today" is injected
+// so the domain stays deterministic and side-effect-free.
+// ---------------------------------------------------------------------------
+
+/** A role date is unknown (null) or a real calendar date not later than today. */
+export type RoleStartDateError = "not_a_date" | "in_future";
+
+/** A strict `YYYY-MM-DD` string that names a real calendar date. */
+export function isCalendarDateString(v: unknown): v is string {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const [y, m, d] = v.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  // Reject impossible days (e.g. 2026-02-30) by round-tripping through UTC.
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+/**
+ * Validate a role start date against an injected `todayISO` (`YYYY-MM-DD`). NULL/undefined
+ * (unknown) is always valid — the date is never inferred. Returns null when acceptable,
+ * else the specific error. Comparison is lexical, which is correct for zero-padded ISO.
+ */
+export function roleStartDateError(
+  roleStartedOn: string | null | undefined,
+  todayISO: string,
+): RoleStartDateError | null {
+  if (roleStartedOn == null) return null; // unknown stays unknown
+  if (!isCalendarDateString(roleStartedOn)) return "not_a_date";
+  if (roleStartedOn > todayISO) return "in_future";
+  return null;
+}
+
+export type CurationValidationError =
+  | "invalid_family"
+  | "invalid_role"
+  | "role_requires_family"
+  | "incompatible"
+  | "role_date_not_a_date"
+  | "role_date_in_future";
+
+/**
+ * Full server-authoritative validation of a professional-identity curation payload
+ * (pure). Rules:
+ *   - job family, if provided, must be a known active key (else invalid_family)
+ *   - role, if provided, must be a known active key (else invalid_role)
+ *   - a role may not be set without its family (else role_requires_family) — this slice
+ *     never derives a family from a role
+ *   - a fully-specified (family, role) pair must agree (else incompatible)
+ *   - role date is unknown or a real date ≤ today (else role_date_*)
+ * Unknown family/role/date are all permitted. Organization scope + existence are checked
+ * in the service/RPC (they need DB access); this function is the pure rule core.
+ */
+export function validateIdentityCuration(
+  input: {
+    jobFamilyKey?: string | null;
+    primaryRoleKey?: string | null;
+    roleStartedOn?: string | null;
+  },
+  todayISO: string,
+): { ok: true } | { ok: false; reason: CurationValidationError } {
+  const fam = input.jobFamilyKey ?? null;
+  const role = input.primaryRoleKey ?? null;
+
+  if (fam !== null && !isJobFamilyKey(fam)) return { ok: false, reason: "invalid_family" };
+  if (role !== null && !isPrimaryRoleKey(role)) return { ok: false, reason: "invalid_role" };
+  if (role !== null && fam === null) return { ok: false, reason: "role_requires_family" };
+  if (!isFamilyRoleCompatible(fam as never, role as never)) return { ok: false, reason: "incompatible" };
+
+  const dateErr = roleStartDateError(input.roleStartedOn, todayISO);
+  if (dateErr === "not_a_date") return { ok: false, reason: "role_date_not_a_date" };
+  if (dateErr === "in_future") return { ok: false, reason: "role_date_in_future" };
+
+  return { ok: true };
+}

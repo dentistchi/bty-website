@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isPrimaryRoleKey, isJobFamilyKey, isFamilyRoleCompatible } from "@/domain/arena/orgIdentity";
+import {
+  isPrimaryRoleKey,
+  isJobFamilyKey,
+  isFamilyRoleCompatible,
+  validateIdentityCuration,
+  type CurationValidationError,
+} from "@/domain/arena/orgIdentity";
 
 /**
  * Canonical organization-membership service (server-only, Slice 3.1A-1).
@@ -159,6 +165,7 @@ export async function reconciliationStatus(
 export type AdminCanonicalMembership = {
   membershipId: string;
   userId: string;
+  organizationId: string;
   organizationKey: string | null;
   organizationName: string | null;
   status: string;
@@ -167,7 +174,7 @@ export type AdminCanonicalMembership = {
   primaryRoleKey: string | null;
   identitySource: string;
   joinedAt: string | null;
-  roleStartedAt: string | null;
+  roleStartedOn: string | null; // canonical calendar DATE 'YYYY-MM-DD'
   createdAt: string;
   updatedAt: string;
 };
@@ -194,7 +201,7 @@ type RawMembershipRow = {
   is_primary: boolean;
   job_family_key: string | null;
   primary_role_key: string | null;
-  role_started_at: string | null;
+  role_started_on: string | null;
   identity_source: string;
   joined_at: string | null;
   created_at: string;
@@ -214,7 +221,7 @@ export async function listCanonicalMembershipsForAdmin(
   const { data: memData } = await admin
     .from("bty_org_memberships")
     .select(
-      "id, user_id, organization_id, status, is_primary, job_family_key, primary_role_key, role_started_at, identity_source, joined_at, created_at, updated_at",
+      "id, user_id, organization_id, status, is_primary, job_family_key, primary_role_key, role_started_on, identity_source, joined_at, created_at, updated_at",
     );
   const { data: orgData } = await admin
     .from("bty_organizations")
@@ -240,6 +247,7 @@ export async function listCanonicalMembershipsForAdmin(
     return {
       membershipId: m.id,
       userId: m.user_id,
+      organizationId: m.organization_id,
       organizationKey: org?.organization_key ?? null,
       organizationName: org?.display_name ?? null,
       status: m.status,
@@ -248,7 +256,7 @@ export async function listCanonicalMembershipsForAdmin(
       primaryRoleKey: m.primary_role_key,
       identitySource: m.identity_source,
       joinedAt: m.joined_at,
-      roleStartedAt: m.role_started_at,
+      roleStartedOn: m.role_started_on,
       createdAt: m.created_at,
       updatedAt: m.updated_at,
     };
@@ -326,4 +334,186 @@ export function validateProfessionalIdentity(input: {
   if (role !== null && !isPrimaryRoleKey(role)) return { ok: false, reason: "invalid_role" };
   if (!isFamilyRoleCompatible(fam as never, role as never)) return { ok: false, reason: "incompatible" };
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Admin CURATION write surface (Slice 3.1A-3).
+//
+// The one place manageable-organization scope is resolved. Today every
+// BTY_ADMIN_EMAILS admin manages every active organization (the app is
+// effectively single-tenant: one active BTY_LEGACY org). This is the seam where
+// a future per-admin org scope slots in — every caller (selector options AND the
+// write authorization) funnels through it, so tightening it later is a one-place
+// change and cannot be bypassed.
+// ---------------------------------------------------------------------------
+
+export type ManageableOrganization = {
+  id: string;
+  organizationKey: string;
+  displayName: string;
+  enterpriseId: string;
+};
+
+/** Active organizations the given admin may manage. */
+export async function resolveManageableOrganizations(
+  admin: SupabaseClient,
+  // _adminUserId is accepted now so the future per-admin scope needs no signature change.
+  _adminUserId?: string,
+): Promise<ManageableOrganization[]> {
+  const { data } = await admin
+    .from("bty_organizations")
+    .select("id, organization_key, display_name, enterprise_id, status")
+    .eq("status", "active")
+    .order("organization_key", { ascending: true });
+  return ((data ?? []) as Array<{
+    id: string;
+    organization_key: string;
+    display_name: string;
+    enterprise_id: string;
+  }>).map((o) => ({
+    id: o.id,
+    organizationKey: o.organization_key,
+    displayName: o.display_name,
+    enterpriseId: o.enterprise_id,
+  }));
+}
+
+export type CurateIdentityInput = {
+  membershipId: string;
+  organizationId: string;
+  jobFamilyKey: string | null;
+  primaryRoleKey: string | null;
+  roleStartedOn: string | null; // YYYY-MM-DD or null (unknown)
+  changedBy: string; // authenticated admin user id
+  todayISO: string; // injected `YYYY-MM-DD` (domain purity: no Date.now in the rule core)
+};
+
+/** Reason keys for a rejected curation, each mapped to an HTTP status by the route. */
+export type CurateIdentityFailReason =
+  | CurationValidationError
+  | "organization_not_manageable"
+  | "membership_not_found"
+  | "member_out_of_scope"
+  | "organization_membership_missing"
+  | "organization_membership_inactive"
+  | "primary_membership_conflict"
+  | "write_failed";
+
+type IdentitySnapshot = {
+  organizationId: string | null;
+  jobFamilyKey: string | null;
+  primaryRoleKey: string | null;
+  roleStartedOn: string | null;
+  isPrimary: boolean | null;
+};
+
+export type CurateIdentityResult =
+  | { ok: true; before: IdentitySnapshot; after: IdentitySnapshot }
+  | { ok: false; reason: CurateIdentityFailReason; detail?: string };
+
+/**
+ * Server-authoritative professional-identity curation. NOTHING is trusted because the UI
+ * filtered it. Order of authority:
+ *   1. domain validation (family/role validity + compatibility + role-requires-family +
+ *      role date ≤ today)                                   → CurationValidationError
+ *   2. the submitted organization must be in the admin's manageable scope
+ *      (rejects cross-org id injection)                     → organization_not_manageable
+ *   3. the anchor membership (the clicked row) must exist AND its organization must be in
+ *      scope, resolving the target USER privately            → membership_not_found / member_out_of_scope
+ *   4. the atomic RPC curates the user's EXISTING membership in the selected organization
+ *      and (re)designates it primary — it never creates/moves/deletes a row. A user with no
+ *      membership in the selected organization is rejected   → organization_membership_missing
+ * Never touches organization_id, XP, access, Learning Path, or any other system.
+ */
+export async function curateMembershipIdentity(
+  admin: SupabaseClient,
+  input: CurateIdentityInput,
+): Promise<CurateIdentityResult> {
+  // 1. Pure domain rules.
+  const validation = validateIdentityCuration(
+    {
+      jobFamilyKey: input.jobFamilyKey,
+      primaryRoleKey: input.primaryRoleKey,
+      roleStartedOn: input.roleStartedOn,
+    },
+    input.todayISO,
+  );
+  if (!validation.ok) return { ok: false, reason: validation.reason };
+
+  // 2. Submitted organization must be manageable (in scope).
+  const manageable = await resolveManageableOrganizations(admin, input.changedBy);
+  const manageableIds = new Set(manageable.map((o) => o.id));
+  if (!manageableIds.has(input.organizationId)) {
+    return { ok: false, reason: "organization_not_manageable" };
+  }
+
+  // 3. Resolve the target USER privately from the clicked (anchor) membership, and confirm
+  //    the admin manages that member. The raw user_id never reaches the browser.
+  const { data: anchor } = await admin
+    .from("bty_org_memberships")
+    .select("id, user_id, organization_id")
+    .eq("id", input.membershipId)
+    .maybeSingle<{ id: string; user_id: string; organization_id: string }>();
+  if (!anchor) return { ok: false, reason: "membership_not_found" };
+  if (!manageableIds.has(anchor.organization_id)) {
+    return { ok: false, reason: "member_out_of_scope" };
+  }
+
+  // 4. Atomic curation of the user's EXISTING membership in the selected org + primary
+  //    (re)designation via the SECURITY DEFINER RPC. organization_id is never changed.
+  const { data, error } = await admin.rpc("bty_curate_membership_identity", {
+    p_user_id: anchor.user_id,
+    p_organization_id: input.organizationId,
+    p_job_family_key: input.jobFamilyKey,
+    p_primary_role_key: input.primaryRoleKey,
+    p_role_started_on: input.roleStartedOn,
+    p_changed_by: input.changedBy,
+  });
+
+  if (error) {
+    const msg = error.message ?? "";
+    if (/organization_membership_missing/.test(msg)) return { ok: false, reason: "organization_membership_missing" };
+    // Target exists but is not active — never curated, never promoted.
+    if (/organization_membership_inactive/.test(msg)) return { ok: false, reason: "organization_membership_inactive" };
+    // Lost a concurrent single-primary race (one-active-primary unique index). Nothing
+    // was persisted by the losing transaction; the admin may simply retry.
+    if (/primary_membership_conflict/.test(msg)) return { ok: false, reason: "primary_membership_conflict" };
+    if (/role_date_future/.test(msg)) return { ok: false, reason: "role_date_in_future" };
+    if (/family_role_compat/.test(msg)) return { ok: false, reason: "incompatible" };
+    return { ok: false, reason: "write_failed", detail: msg };
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | {
+        prev_organization_id: string | null;
+        prev_job_family_key: string | null;
+        prev_primary_role_key: string | null;
+        prev_role_started_on: string | null;
+        prev_is_primary: boolean | null;
+        new_organization_id: string | null;
+        new_job_family_key: string | null;
+        new_primary_role_key: string | null;
+        new_role_started_on: string | null;
+        new_is_primary: boolean | null;
+      }
+    | undefined;
+  if (!row) return { ok: false, reason: "write_failed", detail: "rpc returned no row" };
+
+  return {
+    ok: true,
+    before: {
+      organizationId: row.prev_organization_id,
+      jobFamilyKey: row.prev_job_family_key,
+      primaryRoleKey: row.prev_primary_role_key,
+      roleStartedOn: row.prev_role_started_on,
+      isPrimary: row.prev_is_primary,
+    },
+    after: {
+      organizationId: row.new_organization_id,
+      jobFamilyKey: row.new_job_family_key,
+      primaryRoleKey: row.new_primary_role_key,
+      roleStartedOn: row.new_role_started_on,
+      isPrimary: row.new_is_primary,
+    },
+  };
 }
