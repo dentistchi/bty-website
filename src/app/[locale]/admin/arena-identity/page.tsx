@@ -583,7 +583,13 @@ function IdentityEditor({
       aria-modal="true"
       data-testid="identity-editor"
     >
-      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+      {/*
+        max-h + overflow-y-auto: the editor grew with the Leadership responsibilities
+        section, and a centered fixed modal with no scroll CLIPS anything taller than the
+        viewport — with no scrollbar, the extra content is simply unreachable on a laptop.
+        Without this the section can be present in the DOM yet impossible to see or use.
+      */}
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
         <div className="mb-1 flex items-start justify-between">
           <h2 className="text-lg font-semibold text-neutral-900">{t.editTitle}</h2>
           <button type="button" onClick={onClose} className="text-neutral-400 hover:text-neutral-700" aria-label="close">
