@@ -43,7 +43,7 @@ type Copy = {
   completedHeader: string;
   completedSub: string;
   startCta: string;
-  viewCta: string;
+  reviewCta: string;
   completedTag: string;
   assignedOn: (d: string) => string;
   completedOn: (d: string) => string;
@@ -60,7 +60,7 @@ const COPY: Record<Locale, Copy> = {
     completedHeader: "Completed",
     completedSub: "Learning you have finished and connected to your account.",
     startCta: "Start learning",
-    viewCta: "View learning",
+    reviewCta: "Review learning",
     completedTag: "Completed",
     assignedOn: (d) => `Assigned ${d}`,
     completedOn: (d) => `Completed ${d}`,
@@ -75,7 +75,7 @@ const COPY: Record<Locale, Copy> = {
     completedHeader: "완료한 학습",
     completedSub: "완료 후 내 계정과 연결된 학습입니다.",
     startCta: "학습 시작",
-    viewCta: "학습 보기",
+    reviewCta: "학습 다시 보기",
     completedTag: "완료",
     assignedOn: (d) => `배정일 ${d}`,
     completedOn: (d) => `완료일 ${d}`,
@@ -94,7 +94,14 @@ function fmtDate(iso: string | null, locale: Locale): string {
   });
 }
 
-export default function FoundryRequiredLearning({ locale }: { locale: string }) {
+export default function FoundryRequiredLearning({
+  locale,
+  onOpenReview = () => {},
+}: {
+  locale: string;
+  /** Open the authenticated read-only review for a COMPLETED assignment (never the Room). */
+  onOpenReview?: (assignmentId: string) => void;
+}) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
 
@@ -231,7 +238,7 @@ export default function FoundryRequiredLearning({ locale }: { locale: string }) 
           </div>
           <div className="flex flex-col gap-2.5">
             {completed.map((a) => (
-              <CompletedCard key={a.assignmentId} a={a} t={t} loc={loc} />
+              <CompletedCard key={a.assignmentId} a={a} t={t} loc={loc} onOpenReview={onOpenReview} />
             ))}
           </div>
         </div>
@@ -248,10 +255,11 @@ function RequiredCard({ a, t, loc }: { a: Assignment; t: Copy; loc: Locale }) {
         <span className="min-w-0 truncate text-[0.98rem] font-medium text-white/90">{a.title}</span>
         {date ? <span className="text-xs text-white/40">{t.assignedOn(date)}</span> : null}
       </div>
-      {/* Same-origin anchor: navigates the WebView to the Room (session preserved).
-          No target=_blank — a new WKWebView context would not share the auth cookie. */}
+      {/* Same-origin anchor: navigates the WebView to the live Room (session preserved), and
+          carries a sanitized return target so the Room can offer "Back to Foundry". No
+          target=_blank — a new WKWebView context would not share the auth cookie. */}
       <a
-        href={a.roomUrl}
+        href={`${a.roomUrl}?return=${encodeURIComponent(`/${loc}/app?tab=foundry`)}`}
         className="shrink-0 rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A]"
       >
         {t.startCta}
@@ -260,7 +268,17 @@ function RequiredCard({ a, t, loc }: { a: Assignment; t: Copy; loc: Locale }) {
   );
 }
 
-function CompletedCard({ a, t, loc }: { a: Assignment; t: Copy; loc: Locale }) {
+function CompletedCard({
+  a,
+  t,
+  loc,
+  onOpenReview,
+}: {
+  a: Assignment;
+  t: Copy;
+  loc: Locale;
+  onOpenReview: (assignmentId: string) => void;
+}) {
   const date = fmtDate(a.completedAt, loc);
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3.5">
@@ -271,14 +289,15 @@ function CompletedCard({ a, t, loc }: { a: Assignment; t: Copy; loc: Locale }) {
           {date ? ` · ${t.completedOn(date)}` : ""}
         </span>
       </div>
-      {/* Opening a completed Room is safe: link-based, creates no participant, awards
-          no XP. Kept subtle (secondary) so Completed reads as done, not actionable. */}
-      <a
-        href={a.roomUrl}
+      {/* A completed assignment MUST NOT reopen the anonymous Room. "Review learning" opens
+          the authenticated read-only review in-shell — no participant, no XP, no join. */}
+      <button
+        type="button"
+        onClick={() => onOpenReview(a.assignmentId)}
         className="shrink-0 rounded-lg border border-white/15 bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-white/70"
       >
-        {t.viewCta}
-      </a>
+        {t.reviewCta}
+      </button>
     </div>
   );
 }

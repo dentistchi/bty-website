@@ -106,9 +106,11 @@ export async function switchAccount({
 }
 
 /**
- * Sign out: same teardown, but land on the login screen with NO auto-return (no `next`,
- * no `switch`) — mirroring the existing durable-logout contract. Same server-authoritative
- * rule: a failed server logout is reported and does not navigate.
+ * Sign out: same teardown, then land on the login screen IMMEDIATELY. `switch=1` suppresses
+ * the native durable-session auto-restore (so the previous Google account is never silently
+ * restored — the login form shows) and, after a manual sign-in, `next` returns the user to
+ * the canonical app shell (`/{locale}/app?tab=me`), never a raw Room or standalone page. Same
+ * server-authoritative rule: a failed server logout is reported and does not navigate.
  */
 export async function signOutAccount({
   locale,
@@ -119,6 +121,7 @@ export async function signOutAccount({
   if (failed.includes("server")) return { ok: false, failed };
 
   const loc = normalizeLocale(locale);
-  window.location.assign(`/${loc}/bty/login`);
+  const next = `/${loc}/app?tab=me`;
+  window.location.assign(`/${loc}/bty/login?next=${encodeURIComponent(next)}&switch=1`);
   return { ok: true, failed };
 }

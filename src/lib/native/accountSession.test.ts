@@ -95,13 +95,15 @@ describe("switchAccount", () => {
 });
 
 describe("signOutAccount", () => {
-  it("lands on plain login (no next, no switch, no Foundry auto-return)", async () => {
+  it("lands on login and returns to the app shell (tab=me), skipping restore via switch=1 (not Foundry)", async () => {
     const r = await signOutAccount({ locale: "en" });
     expect(r.ok).toBe(true);
-    expect(assign).toHaveBeenCalledWith("/en/bty/login");
     const url = assign.mock.calls[0][0] as string;
-    expect(url).not.toContain("next=");
-    expect(url).not.toContain("switch=");
+    expect(url.startsWith("/en/bty/login?next=")).toBe(true);
+    expect(url).toContain(encodeURIComponent("/en/app?tab=me"));
+    expect(url).toContain("switch=1");
+    // sign-out returns to the Me tab, never Foundry
+    expect(url).not.toContain(encodeURIComponent("tab=foundry"));
   });
 
   it("server-logout failure does not navigate + reports ok:false", async () => {

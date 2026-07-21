@@ -59,10 +59,14 @@ describe("BtyDailyAppShell — only the arena branch changed", () => {
     expect(src).not.toMatch(/ArenaTabRoom/);
   });
 
-  it("Today / Center / Foundry / Me tab branches are unchanged", () => {
+  it("Today / Center / Foundry / Me tab branches render their rooms", () => {
     expect(src).toMatch(/tab === "today"/);
     expect(src).toMatch(/tab === "center" && <CenterKeepRoom/);
-    expect(src).toMatch(/tab === "foundry" && <FoundryEventRooms/);
+    // Foundry tab renders the rooms surface, OR the in-shell completion review when a
+    // ?review deep-link / Review-learning tap is active (Slice 3.1B-3E.1).
+    expect(src).toMatch(/tab === "foundry" &&/);
+    expect(src).toMatch(/<FoundryEventRooms locale={locale} onOpenReview={setReviewId}/);
+    expect(src).toMatch(/<FoundryCompletionReview/);
     expect(src).toMatch(/tab === "me"/);
   });
 

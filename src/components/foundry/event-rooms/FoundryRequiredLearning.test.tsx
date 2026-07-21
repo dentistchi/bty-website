@@ -9,6 +9,8 @@ vi.mock("@/lib/native/accountSession", () => ({
 
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 
+const onOpenReview = vi.fn();
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -49,21 +51,33 @@ function mockFetch(assignments: unknown[], email: string | null = "ywamer2022@gm
 describe("FoundryRequiredLearning — learner surface", () => {
   it("Gate B: with only a completed item, Required shows the INTENTIONAL empty state (not an error)", async () => {
     mockFetch([COMPLETED]);
-    render(<FoundryRequiredLearning locale="en" />);
+    render(<FoundryRequiredLearning locale="en" onOpenReview={onOpenReview} />);
     await waitFor(() => expect(screen.getByTestId("foundry-required-learning")).toBeTruthy());
     expect(screen.getByTestId("required-empty")).toBeTruthy();
     expect(screen.getByText("Nothing required right now")).toBeTruthy();
     expect(screen.getByText("Onboarding Care")).toBeTruthy();
-    const view = screen.getByText("View learning").closest("a");
-    expect(view?.getAttribute("href")).toBe(COMPLETED.roomUrl);
+    expect(screen.getByText("Review learning")).toBeTruthy();
   });
 
-  it("an assigned item renders under Required with a same-origin Start link; no Completed section", async () => {
+  it("Completed card NEVER links to the anonymous Room; 'Review learning' opens the review", async () => {
+    mockFetch([COMPLETED]);
+    render(<FoundryRequiredLearning locale="en" onOpenReview={onOpenReview} />);
+    await waitFor(() => screen.getByText("Review learning"));
+    // No anchor to /f/<token> anywhere on a Completed-only surface.
+    const anchors = Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? "");
+    expect(anchors.some((h) => h.includes("/f/"))).toBe(false);
+    fireEvent.click(screen.getByText("Review learning"));
+    expect(onOpenReview).toHaveBeenCalledWith("a-done");
+  });
+
+  it("Required 'Start learning' opens the Room with a sanitized return-to-Foundry target", async () => {
     mockFetch([ASSIGNED]);
-    render(<FoundryRequiredLearning locale="en" />);
+    render(<FoundryRequiredLearning locale="en" onOpenReview={onOpenReview} />);
     await waitFor(() => expect(screen.getByText("Safety Basics")).toBeTruthy());
     const start = screen.getByText("Start learning").closest("a");
-    expect(start?.getAttribute("href")).toBe(ASSIGNED.roomUrl);
+    const href = start?.getAttribute("href") ?? "";
+    expect(href.startsWith(ASSIGNED.roomUrl)).toBe(true);
+    expect(href).toContain(`return=${encodeURIComponent("/en/app?tab=foundry")}`);
     expect(screen.queryByText("Completed")).toBeNull();
     expect(screen.queryByTestId("required-empty")).toBeNull();
   });

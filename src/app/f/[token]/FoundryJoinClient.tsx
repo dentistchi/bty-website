@@ -6,6 +6,7 @@ import type { CompletionState } from "@/domain/foundry/watch-integrity";
 import type { LivingReflection } from "@/domain/foundry/living-reflection";
 import { selectReflectionPrompt, selectCheckpointPrompt } from "@/lib/bty/foundry/events/reflectionExpression";
 import { keepScreenAwake, type WakeLockController } from "@/lib/native/keepAwake";
+import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 
 type Locale = "en" | "ko";
 
@@ -181,6 +182,15 @@ function resolveLocale(): Locale {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
+  // Slice 3.1B-3E.1 (contract C): when the Room was opened from a Required assignment it
+  // carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back to Foundry"
+  // on EVERY state, not dependent on browser history. Unsafe/external returns → no control.
+  const [returnTarget] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
+      : null,
+  );
+  const backLabel = returnTarget?.startsWith("/ko/") ? "← 파운드리로 돌아가기" : "← Back to Foundry";
   return (
     <main
       className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
@@ -189,7 +199,18 @@ function Frame({ children }: { children: React.ReactNode }) {
         paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6">{children}</div>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6">
+        {returnTarget ? (
+          <a
+            href={returnTarget}
+            data-testid="room-back-to-foundry"
+            className="self-start pb-3 pt-1 text-sm text-white/55 hover:text-white/85"
+          >
+            {backLabel}
+          </a>
+        ) : null}
+        {children}
+      </div>
     </main>
   );
 }

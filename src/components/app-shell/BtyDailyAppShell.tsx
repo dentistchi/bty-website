@@ -7,6 +7,7 @@ import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
+import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
@@ -1207,18 +1208,36 @@ export function TodaySurface({
 
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
+  // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
+  // authenticated read-only review inside the Foundry tab. Null = normal Foundry surface.
+  const [reviewId, setReviewId] = useState<string | null>(null);
 
-  // Return contract (Slice 3.1B-3E): open a specific tab from `?tab=` once on mount — used
-  // after an account switch returns to `/app?tab=foundry`. Only known tab values are honored
-  // (unknown → no-op, default stays Today); the param is consumed via replaceState so a
-  // re-render / back never re-triggers it and no navigation loop forms.
+  // Return contract: open a specific tab from `?tab=` (and/or a `?review=` deep-link) ONCE on
+  // mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
+  // are honored (unknown → no-op, default stays Today); a review id is accepted only in
+  // UUID-ish shape (the server does the real authz). Both params are consumed via replaceState
+  // so a re-render / back never re-triggers them and no navigation loop forms.
   useEffect(() => {
-    const requested = resolveInitialAppTab(window.location.search);
-    if (!requested) return;
-    setTab(requested);
+    const search = window.location.search;
+    const requestedTab = resolveInitialAppTab(search);
+    let reviewParam: string | null = null;
     try {
-      const params = new URLSearchParams(window.location.search);
+      reviewParam = new URLSearchParams(search).get("review");
+    } catch {
+      reviewParam = null;
+    }
+    const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
+    if (!requestedTab && !validReview) return;
+    if (validReview) {
+      setTab("foundry");
+      setReviewId(validReview);
+    } else if (requestedTab) {
+      setTab(requestedTab);
+    }
+    try {
+      const params = new URLSearchParams(search);
       params.delete("tab");
+      params.delete("review");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1623,7 +1642,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
         {/* Foundry = relationship with the world. V1 is Event Rooms: a manager
             opens one real shared room and brings the team in by QR. Replaces the
             LockedRoom placeholder (t.foundry retained as reserved fallback copy). */}
-        {tab === "foundry" && <FoundryEventRooms locale={locale} />}
+        {tab === "foundry" &&
+          (reviewId ? (
+            <FoundryCompletionReview
+              assignmentId={reviewId}
+              locale={locale}
+              onBack={() => setReviewId(null)}
+            />
+          ) : (
+            <FoundryEventRooms locale={locale} onOpenReview={setReviewId} />
+          ))}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe
             derived value (leadershipState stage). The prepared-room copy (t.me)
