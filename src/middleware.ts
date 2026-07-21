@@ -14,6 +14,7 @@ import { userHasBlockingArenaActionContract } from "@/lib/bty/arena/blockingAren
 import { userHasForcedResetPending } from "@/lib/bty/leadership-engine/state-service";
 import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
+import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -217,7 +218,17 @@ export async function middleware(req: NextRequest) {
       });
       const { data } = await supabase.auth.getUser();
       if (data?.user) {
-        return NextResponse.redirect(new URL(`/${locale}/bty`, req.url), 302);
+        // Honor a safe post-login `next` (installed-app sign-out → /app?tab=me,
+        // account switch → /app?tab=foundry). Without this, an authenticated hit to
+        // the login page is force-redirected to /bty and the app-shell target is lost.
+        // This is the FAIL surface for Slice 3.1B-3E.2: the native cookie-propagation
+        // race briefly bounces /app back here (with `next` preserved) and, once the
+        // WKWebView cookie becomes visible, this branch previously dropped `next` → /bty.
+        // sanitizeNextForRedirect is the single shared safe-next resolver (rejects
+        // external/protocol-relative/malformed values and login-loop paths, falling back
+        // to /{locale}/bty only when no valid app path is present).
+        const dest = sanitizeNextForRedirect(req.nextUrl.searchParams.get("next"), { locale });
+        return NextResponse.redirect(new URL(dest, req.url), 302);
       }
       return resLogin;
     } catch {
