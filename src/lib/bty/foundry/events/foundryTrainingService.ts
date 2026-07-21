@@ -578,7 +578,16 @@ export async function claimXp(
 
   const prog = await getProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
-  if (prog.xp_awarded_at) return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded") };
+
+  // Slice 3.1B-3D (fix): connect the assignment on EVERY completed claim-xp call, BEFORE the
+  // XP early-return. The claim is idempotent (already_claimed is a no-op), so this is safe
+  // and RETRIABLE — the earlier bug attempted it only on the XP-awarding call, so if XP was
+  // already awarded (e.g. a prior/auto claim) the assignment was never connected.
+  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  if (prog.xp_awarded_at) {
+    return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };
+  }
 
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
   if (outcome === "awarded") {
@@ -588,11 +597,6 @@ export async function claimXp(
       .eq("id", prog.id)
       .is("xp_awarded_at", null);
   }
-
-  // Slice 3.1B-3D: after the proven XP claim, connect this authenticated participant to
-  // their OWN assignment for this event (if any). Separate result — a claim failure never
-  // affects the XP outcome above, and a wrong/open-link account gets no_matching_assignment.
-  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
 
   return {
     ok: true,

@@ -382,6 +382,18 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     };
   }, [snapshot?.stage]);
 
+  // 3.1B-3D (fix): if the session is already XP-awarded but we don't yet know the assignment
+  // result (e.g. XP was awarded by a prior/stale claim before the assignment could connect),
+  // do ONE silent claim-xp to reconcile the assignment. Idempotent — no double XP, and the
+  // server now connects the assignment on the early-return path.
+  const reconciledRef = useRef(false);
+  useEffect(() => {
+    if (snapshot?.stage !== "completed_awarded") return;
+    if (assignmentConnected || assignmentNoMatch || reconciledRef.current) return;
+    reconciledRef.current = true;
+    void onClaim(true);
+  }, [snapshot?.stage, assignmentConnected, assignmentNoMatch, onClaim]);
+
   const switchAccount = useCallback(() => {
     // Sign out (middleware clears cookies at /bty/logout) then return here to sign in as a
     // different account. Account switching = logout + login for Supabase sessions.

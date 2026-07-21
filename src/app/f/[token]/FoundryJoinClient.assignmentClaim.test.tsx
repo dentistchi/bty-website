@@ -118,4 +118,29 @@ describe("FoundryJoinClient — account observability + assignment claim (3.1B-3
     const sw = await screen.findByTestId("claim-switch-account");
     expect(sw.textContent).toMatch(/another account/i);
   });
+  it("RECONCILE: arriving already-awarded (XP done earlier) silently re-claims and connects", async () => {
+    // The snapshot loads directly as completed_awarded (XP already awarded by a prior/stale
+    // claim). The client should fire ONE silent claim-xp to reconcile the assignment.
+    const claimable = {
+      event: { title: "T", status: "open" },
+      participant: { display_name: "Hanbit" },
+      training: { youtube_video_id: "dQw4w9WgXcQ", completion_prompt: null },
+      stage: "completed_awarded",
+      xp_status: "awarded",
+    };
+    let claimCalls = 0;
+    // @ts-expect-error test shim
+    global.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes("/api/auth/session")) return { ok: true, status: 200, json: async () => ({ ok: true, user: { email: "hanbit@example.com" } }) };
+      if (u.includes("/progress/claim-xp") && init?.method === "POST") {
+        claimCalls += 1;
+        return { ok: true, status: 200, json: async () => ({ ...claimable, ok: true, assignmentClaim: "claimed" }) };
+      }
+      return { ok: true, status: 200, json: async () => claimable };
+    });
+    render(<FoundryJoinClient token="tok" />);
+    await waitFor(() => expect(screen.getByTestId("assignment-connected")).toBeTruthy());
+    expect(claimCalls).toBe(1);
+  });
 });

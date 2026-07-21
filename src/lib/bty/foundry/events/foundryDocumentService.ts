@@ -670,7 +670,14 @@ export async function claimDocumentXp(
 
   const prog = await getDocProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
-  if (prog.xp_awarded_at) return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded") };
+
+  // Slice 3.1B-3D (fix): connect the assignment on EVERY completed claim call, idempotently,
+  // BEFORE the XP early-return — so a previously-awarded session still gets connected.
+  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  if (prog.xp_awarded_at) {
+    return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };
+  }
 
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);
   if (outcome === "awarded") {
@@ -680,10 +687,6 @@ export async function claimDocumentXp(
       .eq("id", prog.id)
       .is("xp_awarded_at", null);
   }
-
-  // Slice 3.1B-3D: connect this authenticated participant to their own assignment (if any),
-  // separately from the canonical XP result above.
-  const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
 
   return {
     ok: true,

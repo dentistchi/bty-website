@@ -197,6 +197,13 @@ function makeFakeAdmin() {
   // Simulate the atomic award RPC (mirrors bty_foundry_award_daily_capped SQL):
   // idempotency by source_id, one-per-(user,event), per-day cap; inserts ledger.
   function rpc(name: string, p: Record<string, unknown>) {
+    if (name === "bty_foundry_claim_assignment") {
+      // record the call so a test can prove the assignment claim runs even on the
+      // XP-already-awarded early-return path (Slice 3.1B-3D fix).
+      tables.__claim_calls = tables.__claim_calls ?? [];
+      (tables.__claim_calls as Array<Record<string, unknown>>).push(p);
+      return Promise.resolve({ data: [{ result: "claimed", assignment_id: "a1" }], error: null });
+    }
     if (name !== "bty_foundry_award_daily_capped") {
       return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
     }
@@ -397,7 +404,7 @@ describe("XP: authenticated award vs anonymous claim", () => {
   });
 
   it("anonymous completion then claim awards exactly once", async () => {
-    const { admin, token, session } = await setupJoined();
+    const { admin, token, session, tables } = await setupJoined();
     await completeVideo(admin, token, session);
     await completeTraining(admin, token, session, "Anon reflection.", null);
     expect(awardSpy).not.toHaveBeenCalled();
@@ -410,6 +417,13 @@ describe("XP: authenticated award vs anonymous claim", () => {
     const claim2 = await claimXp(admin, token, session, AUTH);
     expect(claim2.ok && claim2.snapshot.stage).toBe("completed_awarded");
     expect(awardSpy).toHaveBeenCalledTimes(1);
+
+    // Slice 3.1B-3D fix: the assignment claim runs on BOTH the awarding call AND the
+    // idempotent early-return call (XP already awarded). The earlier bug ran it only on the
+    // awarding call, so a previously-awarded session never connected its assignment.
+    const claimCalls = (tables.__claim_calls as Array<Record<string, unknown>>) ?? [];
+    expect(claimCalls.length).toBeGreaterThanOrEqual(2);
+    expect(claimCalls.every((c) => c.p_auth_user_id === AUTH)).toBe(true);
   });
 
   it("claim requires a completed progress row", async () => {
