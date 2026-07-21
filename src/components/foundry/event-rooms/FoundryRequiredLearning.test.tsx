@@ -1,11 +1,18 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
+
+const switchAccount = vi.fn(async (..._a: unknown[]) => ({ ok: true, failed: [] as string[] }));
+vi.mock("@/lib/native/accountSession", () => ({
+  switchAccount: (...a: unknown[]) => switchAccount(...a),
+}));
+
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 const ASSIGNED = {
@@ -29,11 +36,14 @@ const COMPLETED = {
   participationMode: "assigned_overlay" as const,
 };
 
-function mockFetch(assignments: unknown[]) {
-  global.fetch = vi.fn(async () => ({
-    ok: true,
-    json: async () => ({ ok: true, assignments }),
-  })) as unknown as typeof fetch;
+/** Route-aware mock: session endpoint returns the email; assignments endpoint the list. */
+function mockFetch(assignments: unknown[], email: string | null = "ywamer2022@gmail.com") {
+  global.fetch = vi.fn(async (url: string) => {
+    if (url.includes("/api/auth/session")) {
+      return { ok: true, json: async () => (email ? { ok: true, user: { email } } : { ok: false }) };
+    }
+    return { ok: true, json: async () => ({ ok: true, assignments }) };
+  }) as unknown as typeof fetch;
 }
 
 describe("FoundryRequiredLearning — learner surface", () => {
@@ -43,7 +53,6 @@ describe("FoundryRequiredLearning — learner surface", () => {
     await waitFor(() => expect(screen.getByTestId("foundry-required-learning")).toBeTruthy());
     expect(screen.getByTestId("required-empty")).toBeTruthy();
     expect(screen.getByText("Nothing required right now")).toBeTruthy();
-    // Completed section present with a safe View link to the same Room URL.
     expect(screen.getByText("Onboarding Care")).toBeTruthy();
     const view = screen.getByText("View learning").closest("a");
     expect(view?.getAttribute("href")).toBe(COMPLETED.roomUrl);
@@ -55,19 +64,37 @@ describe("FoundryRequiredLearning — learner surface", () => {
     await waitFor(() => expect(screen.getByText("Safety Basics")).toBeTruthy());
     const start = screen.getByText("Start learning").closest("a");
     expect(start?.getAttribute("href")).toBe(ASSIGNED.roomUrl);
-    // No optimistic completion: an assigned item never renders as Completed.
     expect(screen.queryByText("Completed")).toBeNull();
     expect(screen.queryByTestId("required-empty")).toBeNull();
   });
 
+  it("shows the compact 'Learning account' line with the authenticated email", async () => {
+    mockFetch([COMPLETED], "ywamer2022@gmail.com");
+    render(<FoundryRequiredLearning locale="en" />);
+    await waitFor(() =>
+      expect(screen.getByTestId("foundry-account-email").textContent).toBe("ywamer2022@gmail.com"),
+    );
+    expect(screen.getByText("Learning account:", { exact: false })).toBeTruthy();
+  });
+
+  it("the Foundry 'Switch' calls the SAME shared switchAccount(returnTab=foundry)", async () => {
+    mockFetch([COMPLETED]);
+    render(<FoundryRequiredLearning locale="en" />);
+    await waitFor(() => screen.getByTestId("foundry-learning-account"));
+    fireEvent.click(screen.getByText("Switch"));
+    await waitFor(() =>
+      expect(switchAccount).toHaveBeenCalledWith({ locale: "en", returnTab: "foundry" }),
+    );
+  });
+
   it("Korean copy renders for the empty state", async () => {
-    mockFetch([]);
+    mockFetch([], null);
     render(<FoundryRequiredLearning locale="ko" />);
     await waitFor(() => expect(screen.getByText("지금 필요한 학습이 없습니다")).toBeTruthy());
     expect(screen.getByText("필수 학습")).toBeTruthy();
   });
 
-  it("renders nothing before the first response resolves (bounded hold, no skeleton)", () => {
+  it("renders nothing before the first assignments response resolves (bounded hold)", () => {
     global.fetch = vi.fn(() => new Promise(() => {})) as unknown as typeof fetch;
     const { container } = render(<FoundryRequiredLearning locale="en" />);
     expect(container.querySelector('[data-testid="foundry-required-learning"]')).toBeNull();

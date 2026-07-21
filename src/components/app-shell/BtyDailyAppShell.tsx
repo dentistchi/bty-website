@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
+import AccountBlock from "@/components/app-shell/AccountBlock";
+import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
@@ -1205,6 +1207,28 @@ export function TodaySurface({
 
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
+
+  // Return contract (Slice 3.1B-3E): open a specific tab from `?tab=` once on mount — used
+  // after an account switch returns to `/app?tab=foundry`. Only known tab values are honored
+  // (unknown → no-op, default stays Today); the param is consumed via replaceState so a
+  // re-render / back never re-triggers it and no navigation loop forms.
+  useEffect(() => {
+    const requested = resolveInitialAppTab(window.location.search);
+    if (!requested) return;
+    setTab(requested);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("tab");
+      const qs = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash,
+      );
+    } catch {
+      /* history unavailable — the tab still opened; nothing else to do */
+    }
+  }, []);
   const t = COPY[locale];
 
   // Post-confirm settling (STEP 1): the Today selection + confirmation are OWNED here at the shell —
@@ -1611,6 +1635,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             reads /api/arena/*. Framed as a self "weekly trace," not competition. */}
         {tab === "me" && (
           <div className="flex flex-col">
+            {/* Canonical account-management surface: current email + Use another account +
+                Sign out (Slice 3.1B-3E). Uses the shared switchAccount/signOutAccount actions. */}
+            <div className="mb-5">
+              <AccountBlock locale={locale} />
+            </div>
             <CenterMeCard locale={locale} />
             {/* Lift the weekly light up into the open space below the mirror so it is the
                 emotional centre of the Me tab (not a bottom decoration) and its caption

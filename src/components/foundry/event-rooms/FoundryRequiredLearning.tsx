@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { switchAccount } from "@/lib/native/accountSession";
 
 /**
  * Foundry REQUIRED LEARNING — the installed-app learner surface (Slice 3.1B-3E).
@@ -33,6 +34,8 @@ type Assignment = {
 };
 
 type Copy = {
+  learningAccount: string;
+  switchCta: string;
   requiredHeader: string;
   requiredSub: string;
   emptyTitle: string;
@@ -48,6 +51,8 @@ type Copy = {
 
 const COPY: Record<Locale, Copy> = {
   en: {
+    learningAccount: "Learning account",
+    switchCta: "Switch",
     requiredHeader: "Required learning",
     requiredSub: "Learning assigned to you by your organization.",
     emptyTitle: "Nothing required right now",
@@ -61,6 +66,8 @@ const COPY: Record<Locale, Copy> = {
     completedOn: (d) => `Completed ${d}`,
   },
   ko: {
+    learningAccount: "학습 계정",
+    switchCta: "전환",
     requiredHeader: "필수 학습",
     requiredSub: "조직에서 나에게 배정한 학습입니다.",
     emptyTitle: "지금 필요한 학습이 없습니다",
@@ -96,6 +103,11 @@ export default function FoundryRequiredLearning({ locale }: { locale: string }) 
   // (initially null -> the surface simply stays absent) rather than asserting a false
   // "nothing required".
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
+  // The signed-in email for the compact "Learning account" line — read from the
+  // authenticated session endpoint (never inferred from profile/membership).
+  const [email, setEmail] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -113,11 +125,25 @@ export default function FoundryRequiredLearning({ locale }: { locale: string }) 
     }
   }, []);
 
+  const loadEmail = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+      const data = (await res.json()) as { ok?: boolean; user?: { email?: string | null } };
+      if (data?.ok && data.user?.email) setEmail(data.user.email);
+    } catch {
+      /* leave email null; the Switch action still works */
+    }
+  }, []);
+
   useEffect(() => {
     void load();
+    void loadEmail();
     // Refresh when the app returns to the foreground (return-from-Room, tab focus).
     const onVisible = () => {
-      if (document.visibilityState === "visible") void load();
+      if (document.visibilityState === "visible") {
+        void load();
+        void loadEmail();
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", load);
@@ -125,7 +151,17 @@ export default function FoundryRequiredLearning({ locale }: { locale: string }) 
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", load);
     };
-  }, [load]);
+  }, [load, loadEmail]);
+
+  const onSwitch = useCallback(async () => {
+    setSwitchError(null);
+    setSwitching(true);
+    const r = await switchAccount({ locale: loc, returnTab: "foundry" });
+    if (!r.ok) {
+      setSwitching(false);
+      setSwitchError(loc === "ko" ? "전환하지 못했습니다. 다시 시도해 주세요." : "Couldn’t switch. Please try again.");
+    }
+  }, [loc]);
 
   // Pre-first-response hold: render nothing (bounded — the fetch resolves fast). The
   // host room below is unaffected.
@@ -136,6 +172,30 @@ export default function FoundryRequiredLearning({ locale }: { locale: string }) 
 
   return (
     <section className="flex flex-col gap-6" data-testid="foundry-required-learning" aria-label={t.requiredHeader}>
+      {/* Compact contextual account line — WHO this required-learning list belongs to, with a
+          Switch that runs the SAME shared switchAccount() the Me tab uses (no duplicated UI). */}
+      <div
+        data-testid="foundry-learning-account"
+        className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-2.5"
+      >
+        <span className="min-w-0 truncate text-xs text-white/50">
+          {t.learningAccount}: <span className="text-white/75" data-testid="foundry-account-email">{email ?? "…"}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onSwitch}
+          disabled={switching}
+          className="shrink-0 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-white/80 disabled:opacity-60"
+        >
+          {t.switchCta}
+        </button>
+      </div>
+      {switchError ? (
+        <p role="alert" className="-mt-3 text-xs text-red-300/80">
+          {switchError}
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">

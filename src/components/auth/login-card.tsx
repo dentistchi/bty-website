@@ -23,6 +23,12 @@ type LoginCardProps = {
   nextPath: string;
   /** Optional OAuth/callback error surfaced via query string. */
   initialError?: string;
+  /**
+   * Account-switch entry (`?switch=1`): force the native Google account chooser so a
+   * deliberate switch cannot silently re-select the previous account. Default false →
+   * normal login is behaviorally unchanged.
+   */
+  forceAccountSelection?: boolean;
 };
 
 const C = {
@@ -123,7 +129,13 @@ type SocialLoginPlugin = {
   }) => Promise<void>;
   login: (options: {
     provider: "google";
-    options: { scopes?: string[]; nonce?: string; forcePrompt?: boolean };
+    options: {
+      scopes?: string[];
+      nonce?: string;
+      forcePrompt?: boolean;
+      /** iOS: force the account selection prompt (used on a deliberate account switch). */
+      forceAccountSelection?: boolean;
+    };
   }) => Promise<{
     result: { idToken: string | null };
   }>;
@@ -163,7 +175,7 @@ function enabledProviders(): { google: boolean; microsoft: boolean; phone: boole
   };
 }
 
-export default function LoginCard({ locale, nextPath, initialError }: LoginCardProps) {
+export default function LoginCard({ locale, nextPath, initialError, forceAccountSelection }: LoginCardProps) {
   const { google: showGoogle, microsoft: showMicrosoft, phone: showPhone } = enabledProviders();
   const t = C[locale];
   const [phase, setPhase] = useState<LoginAuthPhase>("initial");
@@ -234,7 +246,13 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
           const nonceDigest = hexFromBytes(new Uint8Array(digestBuf));
           const res = await social.login({
             provider: "google",
-            options: { nonce: nonceDigest, forcePrompt: true },
+            options: {
+              nonce: nonceDigest,
+              forcePrompt: true,
+              // Deliberate account switch (?switch=1): force the iOS chooser so the previous
+              // account cannot be silently re-selected. Absent on a normal login (unchanged).
+              ...(forceAccountSelection ? { forceAccountSelection: true } : {}),
+            },
           });
           const idToken = res.result.idToken;
           if (!idToken) {
@@ -302,7 +320,7 @@ export default function LoginCard({ locale, nextPath, initialError }: LoginCardP
         setOauthProvider(null);
       }
     },
-    [configured, locale, nextPath, t.errorGeneric, t.errorSupabase]
+    [configured, locale, nextPath, forceAccountSelection, t.errorGeneric, t.errorSupabase]
   );
 
   const onSendOtp = useCallback(async () => {

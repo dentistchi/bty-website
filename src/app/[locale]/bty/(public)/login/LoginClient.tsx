@@ -20,10 +20,17 @@ export default function LoginClient({
   nextPath,
   locale,
   oauthError,
+  accountSwitch = false,
 }: {
   nextPath: string;
   locale: "en" | "ko";
   oauthError?: string;
+  /**
+   * Deliberate account switch (`?switch=1`): force the Google chooser AND suppress the
+   * native durable-session auto-restore below — otherwise a still-present Keychain session
+   * would silently re-seat the PREVIOUS account and defeat the switch.
+   */
+  accountSwitch?: boolean;
 }) {
   const next = useMemo(() => sanitizeNextForRedirect(nextPath, { locale }), [nextPath, locale]);
   const initialError = useMemo(() => {
@@ -44,6 +51,9 @@ export default function LoginClient({
   // Web is untouched: isNative() is false → the effect no-ops and the form renders.
   const [nativeRestoring, setNativeRestoring] = useState(false);
   useEffect(() => {
+    // On a deliberate account switch, NEVER auto-restore the durable session — the user is
+    // here to pick a different account, and restoring would silently return the previous one.
+    if (accountSwitch) return;
     if (!isNative()) return;
     let cancelled = false;
     setNativeRestoring(true);
@@ -56,7 +66,7 @@ export default function LoginClient({
     return () => {
       cancelled = true;
     };
-  }, [next]);
+  }, [next, accountSwitch]);
 
   if (nativeRestoring) {
     return (
@@ -78,7 +88,12 @@ export default function LoginClient({
       className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-12 sm:px-6"
       data-testid="login-page"
     >
-      <LoginCard locale={locale} nextPath={next} initialError={initialError} />
+      <LoginCard
+        locale={locale}
+        nextPath={next}
+        initialError={initialError}
+        forceAccountSelection={accountSwitch}
+      />
     </div>
   );
 }

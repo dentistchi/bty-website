@@ -39,5 +39,18 @@ export default async function Page({ searchParams, params }: Props) {
   const oauthError =
     typeof errParam === "string" ? errParam : Array.isArray(errParam) ? errParam[0] : undefined;
 
-  return <LoginClient nextPath={next ?? ""} locale={locale} oauthError={oauthError} />;
+  // `?switch=1` marks a deliberate account switch: force the Google chooser + skip the
+  // native durable-session auto-restore (see LoginClient). Absent on a normal login.
+  const switchParam = sp.switch;
+  const accountSwitch =
+    (typeof switchParam === "string" ? switchParam : Array.isArray(switchParam) ? switchParam[0] : "") === "1";
+
+  return (
+    <LoginClient
+      nextPath={next ?? ""}
+      locale={locale}
+      oauthError={oauthError}
+      accountSwitch={accountSwitch}
+    />
+  );
 }
