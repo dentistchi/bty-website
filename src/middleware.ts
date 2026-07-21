@@ -58,6 +58,20 @@ function getLocale(pathname: string): (typeof LOCALES)[number] | null {
   return null;
 }
 
+/**
+ * Locale for the canonical root redirect (Slice 3.1B-3E.3). No separate i18n runtime exists
+ * (LangSwitch just navigates between `/en` and `/ko` paths), so this is the single entry
+ * resolver — do not add a parallel locale system: a persisted `NEXT_LOCALE` cookie wins, else
+ * the browser's primary Accept-Language, else default `en`.
+ */
+function resolveEntryLocale(req: NextRequest): (typeof LOCALES)[number] {
+  const cookie = req.cookies.get("NEXT_LOCALE")?.value;
+  if (cookie === "ko" || cookie === "en") return cookie;
+  const al = (req.headers.get("accept-language") ?? "").trim().toLowerCase();
+  if (al.startsWith("ko")) return "ko";
+  return "en";
+}
+
 function isPublicPath(pathname: string) {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/favicon")) return true;
@@ -93,13 +107,27 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const cookieSecure = authCookieSecureForRequest(req);
 
+  // Canonical root → app-shell journey (Slice 3.1B-3E.3). arena.btydaily.com is the Arena
+  // APPLICATION origin, not the legacy web landing: `/` resolves locale and enters
+  // `/{locale}/app`; the existing protected-route gate below then sends an unauthenticated
+  // user to `/{locale}/bty/login?next=/{locale}/app`. (Previously `/` → `/en` rendered the
+  // legacy LandingClient portal.)
   if (pathname === "/") {
-    return NextResponse.redirect(new URL("/en", req.url), 307);
+    const entryLocale = resolveEntryLocale(req);
+    return NextResponse.redirect(new URL(`/${entryLocale}/app`, req.url), 307);
   }
 
   const locale = getLocale(pathname);
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-locale", locale ?? "ko");
+
+  // Canonical bare-locale entry: `/{locale}` (+ trailing slash) must enter the app shell, not
+  // the legacy landing portal (Slice 3.1B-3E.3). Deep routes `/{locale}/…` are untouched; an
+  // unauthenticated user is routed to `/{locale}/bty/login?next=/{locale}/app` by the
+  // protected-route gate below.
+  if (locale && (pathname === `/${locale}` || pathname === `/${locale}/`)) {
+    return NextResponse.redirect(new URL(`/${locale}/app`, req.url), 307);
+  }
 
   /** Canonical Arena play is `/[locale]/bty-arena`; alias `/bty-arena/run` must not serve a cached shell without session/next. */
   if (
