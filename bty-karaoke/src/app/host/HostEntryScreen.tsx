@@ -7,7 +7,7 @@
 //   signed out        → Google login entry
 //   exactly one room  → auto-enter via the account-bound admin-session bridge
 //   two or more rooms → My Norebang chooser (explicit selection)
-//   zero rooms        → honest empty state (connect a room; never auto-create)
+//   zero rooms        → first-room onboarding (create a Room; never auto-create)
 //
 // Loading this screen performs pure reads and creates ZERO Events. Auto-enter is a
 // redirect to the GET bridge — it never mints a Room cookie here and never uses
@@ -22,6 +22,7 @@ import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { resolveHostEntry } from '@/domain/host-entry';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import LegalLinks from '@/components/legal/LegalLinks';
+import FirstRoomForm from './FirstRoomForm';
 
 const NOTICES: Record<string, string> = {
   google_unconfigured: 'Google 로그인이 아직 설정되지 않았습니다.',
@@ -32,6 +33,7 @@ const NOTICES: Record<string, string> = {
   verification_failed: '로그인을 확인하지 못했습니다. 다시 시도해 주세요.',
   cancelled: '로그인이 취소되었습니다.',
   signed_out: '로그아웃되었습니다.',
+  bad_name: '노래방 이름을 입력해 주세요.',
 };
 
 function BrandHead() {
@@ -109,12 +111,21 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
       <p className="muted">{me.displayName ?? me.email ?? '로그인됨'}</p>
 
       {decision.kind === 'empty' ? (
+        // Zero owned Rooms → first-room onboarding. The Host supplies only a name;
+        // the slug, ownership, and Admin entry are all derived server-side. This
+        // never sends a zero-Room Host to an empty hub and shows no Manager passcode.
         <div className="card hero" data-host-no-room>
-          <h2>노래방을 연결하세요</h2>
-          <p className="muted">기존 BTY Norebang을 이 계정에 한 번만 연결합니다.</p>
-          <a className="host-btn host-btn-primary" href="/host/connect">
-            내 노래방 연결하기
-          </a>
+          <h2>노래방을 만드세요</h2>
+          <p className="muted">이 공간의 이름을 지어 주세요. 표시 이름은 나중에 바꿀 수 있어요.</p>
+          {message && <p className="host-notice" role="status">{message}</p>}
+          {csrf ? (
+            <FirstRoomForm csrf={csrf} csrfField={CSRF_FIELD_NAME} />
+          ) : (
+            <div className="host-unavailable" role="status">
+              <b>준비 중</b>
+              <span className="muted">아직 설정이 완료되지 않아 지금은 만들 수 없습니다.</span>
+            </div>
+          )}
         </div>
       ) : (
         rooms.map((room) => (

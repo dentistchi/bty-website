@@ -23,6 +23,14 @@ export const CreateRequestSchema = z
   });
 export type CreateRequestInput = z.infer<typeof CreateRequestSchema>;
 
+// First-room onboarding: the Host supplies ONLY a Norebang display name. The slug
+// is generated server-side; no owner, slug, or redirect is ever accepted from the
+// client. Bounded 1..80 to match the workspace-name and account display-name limits.
+export const CreateRoomSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+});
+export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
+
 // The DJ credential now travels in the Authorization header, not the body.
 // 'move_next' (먼저 부르기) is a reorder, not a status change — handled separately.
 export const DjActionSchema = z.object({

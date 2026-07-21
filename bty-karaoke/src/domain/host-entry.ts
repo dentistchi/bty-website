@@ -8,10 +8,12 @@
 //   signed out                    → render the Google Host login entry
 //   signed in, exactly one room   → auto-enter that room (bridge → /r/{slug}/admin)
 //   signed in, two or more rooms  → render the My Norebang chooser
-//   signed in, zero rooms         → render the honest empty state (connect a room)
+//   signed in, zero rooms         → render first-room onboarding (create a Room)
 //
-// Auto-enter never creates/starts/ends an Event and never alters ownership — it
-// only hands off to the existing account-bound admin-session bridge.
+// The 'empty' kind means "this account owns zero Rooms" — the screen renders the
+// first-room onboarding form there (New Host Onboarding V1). Neither this decision
+// nor auto-enter ever creates/starts/ends an Event or alters ownership; the only
+// write that a zero-Room Host can trigger is the explicit "create my Norebang" POST.
 
 export type HostEntryDecision =
   | { kind: 'signed_out' }

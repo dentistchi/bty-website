@@ -12,6 +12,7 @@
 
 import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
+import { buildRoomSlug } from '@/domain/room-slug';
 
 /** Durable native login. Long-lived on purpose, but revocable and expiring. */
 export const HOST_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -414,6 +415,67 @@ export async function claimRoomForAccount(args: {
   const row = (Array.isArray(data) ? data[0] : data) as ClaimOutcome | null;
   if (!row) return { outcome: 'no_room' };
   return row;
+}
+
+/** A URL-safe, lowercase random slug suffix (base36) from a CSPRNG. Carries the
+ *  global-uniqueness weight of a Room slug so the readable name-derived prefix
+ *  never has to. */
+function randomSlugSuffix(chars = 8): string {
+  const bytes = new Uint8Array(chars);
+  crypto.getRandomValues(bytes);
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (const b of bytes) s += alphabet[b % 36];
+  return s;
+}
+
+export type FirstRoomOutcome = { outcome: 'created' | 'has_room'; slug: string; roomId: string };
+
+/**
+ * First-room onboarding (New Host Onboarding V1). Create THIS account's first Room
+ * and its ownership graph atomically via the create_karaoke_room RPC, deriving the
+ * canonical slug server-side from the Host's display name plus a CSPRNG suffix.
+ *
+ *  - 'created'  — a brand-new Room + ownership (and workspace/membership if needed).
+ *  - 'has_room' — the account already owns a Room; the RPC returns THAT Room's slug
+ *                 instead of minting a duplicate (rule F, enforced under an account-
+ *                 scoped advisory lock so a double submit yields exactly one Room).
+ *
+ * The owner is ALWAYS the passed accountId (derived from the authenticated Host
+ * session by the caller); no client-supplied owner is ever accepted. Creates ZERO
+ * Events. A slug collision (23505) is retried with a fresh suffix.
+ */
+export async function createFirstRoomForAccount(args: {
+  accountId: string;
+  displayName: string;
+}): Promise<FirstRoomOutcome> {
+  const db = karaokeDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = buildRoomSlug(args.displayName, randomSlugSuffix());
+    // A random, un-returned master credential: NOT NULL is satisfied while the
+    // shared-secret path stays effectively disabled — this Room is reached only
+    // through the account-bound Room web session, never a passcode nobody holds.
+    const djSecret = await sha256Hex(randomToken(32));
+    const { data, error } = await db.rpc('create_karaoke_room', {
+      p_account_id: args.accountId,
+      p_slug: slug,
+      p_display_name: args.displayName,
+      p_dj_secret: djSecret,
+      p_workspace_name: 'My Norebang',
+    });
+    if (error) {
+      // 23505 = the generated slug collided with an existing Room. Retry a fresh one.
+      if ((error as { code?: string }).code === '23505') continue;
+      throw error;
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      outcome: 'created' | 'has_room';
+      slug: string;
+      roomId: string;
+    };
+    return { outcome: row.outcome, slug: row.slug, roomId: row.roomId };
+  }
+  throw new Error('Could not allocate a unique room slug after several attempts');
 }
 
 /** Bind a device credential to the Host who enrolled it (subordinate credential). */
