@@ -32,6 +32,8 @@ export interface PublicRoom {
   slug: string;
   display_name: string;
   status: 'open' | 'closed';
+  /** Room Settings V1 — optional guest-facing welcome message (null = none). */
+  guest_welcome_message: string | null;
 }
 
 export interface KaraokeRequest {
@@ -70,7 +72,39 @@ export interface KaraokeRequest {
   lyrics_resolved_at: string | null;
 }
 
-const PUBLIC_ROOM_COLS = 'id, slug, display_name, status';
+const PUBLIC_ROOM_COLS = 'id, slug, display_name, status, guest_welcome_message';
+
+export interface RoomSettings {
+  displayName: string;
+  guestWelcomeMessage: string | null;
+}
+
+/**
+ * Room Settings V1 — update the guest-facing identity of ONE Room: its display name
+ * and optional welcome message. Ownership is verified by the caller (Host session →
+ * account → accountHasRoomAccess) BEFORE this runs; this is the write boundary, not
+ * the authorization boundary. Writes ONLY the karaoke_rooms row — never the slug,
+ * an Event, a queue entry, a session, or ownership. Returns the persisted values.
+ */
+export async function updateRoomSettings(
+  roomId: string,
+  settings: RoomSettings,
+): Promise<RoomSettings> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .update({
+      display_name: settings.displayName,
+      guest_welcome_message: settings.guestWelcomeMessage,
+    })
+    .eq('id', roomId)
+    .select('display_name, guest_welcome_message')
+    .single();
+  if (error) throw error;
+  return {
+    displayName: data.display_name as string,
+    guestWelcomeMessage: (data.guest_welcome_message as string | null) ?? null,
+  };
+}
 
 /** Room lookup for guests — never selects dj_secret. */
 export async function getPublicRoomBySlug(slug: string): Promise<PublicRoom | null> {

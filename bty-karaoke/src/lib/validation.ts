@@ -31,6 +31,18 @@ export const CreateRoomSchema = z.object({
 });
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
 
+// Room Settings V1: the owner edits ONLY the guest-facing identity — display name
+// (required, 1..80) and an optional welcome message (0..160). Trimmed + bounded
+// server-side; Korean/Unicode text passes unchanged. NO slug, owner, account, or
+// workspace field is part of the contract — the route rejects/ignores anything else.
+// An absent or empty welcome normalizes to null (guest renders the default, no
+// empty placeholder).
+export const RoomSettingsSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+  guestWelcomeMessage: z.string().trim().max(160, 'Welcome message is too long').optional(),
+});
+export type RoomSettingsInput = z.infer<typeof RoomSettingsSchema>;
+
 // The DJ credential now travels in the Authorization header, not the body.
 // 'move_next' (먼저 부르기) is a reorder, not a status change — handled separately.
 export const DjActionSchema = z.object({

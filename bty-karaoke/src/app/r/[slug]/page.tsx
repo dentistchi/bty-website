@@ -10,6 +10,30 @@ import LegalLinks from '@/components/legal/LegalLinks';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Room Settings V1 — the Room's guest-facing identity: its editable display name
+// and, when set, the optional welcome message. Shown whether or not an Event is
+// live (a guest who lands before karaoke starts still sees whose Room this is). The
+// welcome renders ONLY when present — no empty placeholder when it is null.
+function GuestRoomHeader({
+  room,
+}: {
+  room: { display_name: string; status: string; guest_welcome_message: string | null };
+}) {
+  return (
+    <>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h1>{room.display_name}</h1>
+        <span className="tag">{room.status === 'open' ? '열림' : '닫힘'}</span>
+      </div>
+      {room.guest_welcome_message ? (
+        <p className="lead" data-guest-welcome>
+          {room.guest_welcome_message}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 export default async function RoomPage({
   params,
   searchParams,
@@ -72,8 +96,9 @@ export default async function RoomPage({
           <span className="brand">{PRODUCT_NAME}</span>
           <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
         </div>
+        <GuestRoomHeader room={room} />
         <div className="card hero" data-no-active-event>
-          <h1>지금 진행 중인 노래방이 없습니다</h1>
+          <h2>지금 진행 중인 노래방이 없습니다</h2>
           <p className="muted">진행자가 새 이벤트를 시작하면 새 QR로 신청할 수 있어요.</p>
         </div>
         <LegalLinks showContact />
@@ -87,10 +112,7 @@ export default async function RoomPage({
         <span className="brand">{PRODUCT_NAME}</span>
         <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
       </div>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>{room.display_name}</h1>
-        <span className="tag">{room.status === 'open' ? '열림' : '닫힘'}</span>
-      </div>
+      <GuestRoomHeader room={room} />
       <p className="muted">노래를 검색해 신청하고, 내 차례가 되면 직접 시작하세요.</p>
 
       {/* V7.1: flips this already-open screen to the ended notice the instant the

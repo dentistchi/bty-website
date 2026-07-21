@@ -41,7 +41,16 @@ export default async function AdminPage({ params }: { params: Promise<{ slug: st
   return (
     <main>
       {hostToken && hostCsrf && (
-        <div className="row host-admin-signout" style={{ justifyContent: 'flex-end' }}>
+        <div className="row host-admin-signout" style={{ justifyContent: 'flex-end', gap: '0.5rem' }}>
+          {/* Room Settings V1 — an authenticated owner reaches their Settings screen
+              from Admin. Rendered ONLY with a Host session (DJ/manager-paired admins
+              have no bty_host cookie); the page itself re-checks ownership. */}
+          <a
+            className="host-btn host-btn-ghost"
+            href={`/host/rooms/${encodeURIComponent(room.slug)}/settings`}
+          >
+            노래방 설정
+          </a>
           <form action="/host/logout" method="post">
             <input type="hidden" name={CSRF_FIELD_NAME} value={hostCsrf} />
             <button className="host-btn host-btn-ghost" type="submit">로그아웃</button>
