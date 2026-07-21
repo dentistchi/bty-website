@@ -38,7 +38,12 @@ export default function FirstRoomForm({
         autoComplete="off"
         maxLength={80}
         required
-        disabled={submitting}
+        // MUST NOT be `disabled` while submitting: a disabled control is omitted
+        // from the POST body, so the typed name would never reach the route (it
+        // then fails validation → ?notice=bad_name and no Room is created). Use
+        // `readOnly` — it locks editing during submit yet is still submitted. Only
+        // the button carries `disabled` for double-submit prevention.
+        readOnly={submitting}
         placeholder="예: 우리집 노래방"
         aria-describedby="room-name-help"
       />
