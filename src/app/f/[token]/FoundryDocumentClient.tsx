@@ -370,8 +370,20 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     [post, applyResult, token, locale],
   );
 
+  // One silent claim-xp on EITHER terminal completion stage so the assignment connects
+  // (claim-xp is the SOLE surface that runs claimAssignmentForParticipant). completed_claimable
+  // = XP still to award (anonymous-then-auth); completed_awarded = an authenticated
+  // completeDocumentTraining already awarded XP inline (Slice 3.1B-3F). WITHOUT covering the
+  // awarded stage, an authenticated PDF learner's assignment is never connected and the Required
+  // Learning card never moves to Completed — the video client already reconciles on
+  // completed_awarded (FoundryJoinClient); this brings the document path to parity. Idempotent:
+  // autoClaimedRef fires once per mount, the server claim is already_claimed-safe, and the
+  // awarded early-return still connects the assignment with NO second XP award.
   useEffect(() => {
-    if (snapshot?.stage === "completed_claimable" && !autoClaimedRef.current) {
+    if (
+      (snapshot?.stage === "completed_claimable" || snapshot?.stage === "completed_awarded") &&
+      !autoClaimedRef.current
+    ) {
       autoClaimedRef.current = true;
       void onClaim(true);
     }
