@@ -109,12 +109,14 @@ export function newOAuthTransaction(returnTo: string): OAuthTransaction {
  * replaced with the default.
  */
 export function safeReturnTo(candidate: string | null | undefined): string {
-  const fallback = '/host';
+  // The canonical Host entry is the site root; it resolves login/auto-enter/chooser.
+  const fallback = '/';
   if (!candidate) return fallback;
   const value = candidate.trim();
   if (!value.startsWith('/')) return fallback;      // no scheme/host
   if (value.startsWith('//') || value.startsWith('/\\')) return fallback; // protocol-relative
-  if (!value.startsWith('/host')) return fallback;  // keep the blast radius tiny
+  // Keep the blast radius tiny: only the root or the /host* entry paths.
+  if (value !== '/' && !value.startsWith('/host')) return fallback;
   if (value.includes('\\') || value.includes('\n') || value.includes('\r')) return fallback;
   return value;
 }

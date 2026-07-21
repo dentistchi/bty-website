@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const config = googleWebConfig(origin);
   if (!config) {
     // Honest, controlled state — no throw, no account, no Event.
-    return NextResponse.redirect(new URL('/host?notice=google_unconfigured', origin));
+    return NextResponse.redirect(new URL('/?notice=google_unconfigured', origin));
   }
 
   const tx = newOAuthTransaction(returnTo);

@@ -1,22 +1,18 @@
-import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
-import LegalLinks from '@/components/legal/LegalLinks';
+// Canonical public entry for the browser Host: https://<domain>/
+// The single URL a Host must remember. All branching (login / auto-enter / chooser
+// / empty) lives in HostEntryScreen, driven by the pure resolveHostEntry().
+// Guests never need this URL — they join an event by its room link (/r/<slug>).
 
-export default function Home() {
-  return (
-    <main>
-      <h1 className="brand">{PRODUCT_NAME}</h1>
-      <p className="muted">{PRODUCT_TAGLINE_KO}</p>
-      <div className="card">
-        <p>
-          {PRODUCT_NAME} is a private-event karaoke web app: guests search publicly available YouTube
-          videos and add them to a shared song queue. Playback is handed off to YouTube.
-        </p>
-        <p className="muted">
-          Guests join an event by its room link (<code>/r/&lt;room-slug&gt;</code>) — no account or
-          Google sign-in required.
-        </p>
-      </div>
-      <LegalLinks showContact />
-    </main>
-  );
+import HostEntryScreen from './host/HostEntryScreen';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ notice?: string }>;
+}) {
+  const { notice } = await searchParams;
+  return <HostEntryScreen notice={notice} />;
 }

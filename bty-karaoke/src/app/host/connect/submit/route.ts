@@ -25,7 +25,7 @@ function clientIp(req: NextRequest): string {
 
 export async function POST(req: NextRequest) {
   const account = await authorizeHost(hostTokenFromRequest(req));
-  if (!account) return NextResponse.redirect(new URL('/host', req.nextUrl.origin), 303);
+  if (!account) return NextResponse.redirect(new URL('/', req.nextUrl.origin), 303);
 
   const limiter = await makeLimiter('host-web-claim', clientIp(req));
   if (limiter && (await isLockedOut(limiter))) return back(req, 'bad_passcode');
@@ -48,5 +48,5 @@ export async function POST(req: NextRequest) {
   if (result.outcome === 'no_room') return back(req, 'failed');
 
   if (limiter) await recordSuccess(limiter);
-  return NextResponse.redirect(new URL('/host', req.nextUrl.origin), 303);
+  return NextResponse.redirect(new URL('/', req.nextUrl.origin), 303);
 }

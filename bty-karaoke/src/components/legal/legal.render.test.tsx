@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import PrivacyPage from '@/app/privacy/page';
 import TermsPage from '@/app/terms/page';
-import Home from '@/app/page';
 import LegalLinks from './LegalLinks';
 import GuestConsentGate from './GuestConsentGate';
 import { CONSENT_STORAGE_KEY, LEGAL_VERSION, CONTACT_EMAIL } from '@/lib/legal';
+
+// The root entry reads the Host cookie; with none present it renders the signed-out
+// Host login screen, which still carries the public legal links.
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined }) }));
+import HostEntryScreen from '@/app/host/HostEntryScreen';
 
 afterEach(() => {
   cleanup();
@@ -63,8 +67,9 @@ describe('public links', () => {
     expect(container.querySelector('a[href="/privacy"]')?.textContent).toBe('개인정보처리방침');
     expect(container.querySelector('a[href="/terms"]')?.textContent).toBe('이용약관');
   });
-  it('the public home page renders the legal links', () => {
-    const { container } = render(<Home />);
+  it('the public root entry (signed out) renders the legal links', async () => {
+    const ui = await HostEntryScreen({ notice: undefined });
+    const { container } = render(ui);
     expect(container.querySelector('a[href="/privacy"]')).toBeTruthy();
     expect(container.querySelector('a[href="/terms"]')).toBeTruthy();
   });

@@ -27,12 +27,12 @@ export default async function HostConnectPage({
   const { notice } = await searchParams;
   const token = (await cookies()).get(HOST_COOKIE)?.value ?? null;
   const account = await authorizeHost(token);
-  if (!account) redirect('/host');                    // identity first, always
+  if (!account) redirect('/');                        // identity first, always
   const csrf = await csrfTokenOrNull(token!);
 
   // Already connected → nothing to do here.
   const rooms = await listHostRooms(account.id);      // pure read, zero Events
-  if (rooms.length > 0) redirect('/host');
+  if (rooms.length > 0) redirect('/');
 
   return (
     <main className="host-shell">

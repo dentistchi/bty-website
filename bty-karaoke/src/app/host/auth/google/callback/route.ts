@@ -22,7 +22,8 @@ export const runtime = 'nodejs';
 
 /** Every failure path lands here: one opaque notice, transaction cookie cleared. */
 function fail(req: NextRequest, notice: string) {
-  const res = NextResponse.redirect(new URL(`/host?notice=${notice}`, req.nextUrl.origin));
+  // Return to the canonical root entry (which renders the honest notice).
+  const res = NextResponse.redirect(new URL(`/?notice=${notice}`, req.nextUrl.origin));
   res.cookies.set({ name: OAUTH_TX_COOKIE, value: '', path: '/host', maxAge: 0 });
   return res;
 }

@@ -59,7 +59,8 @@ describe('configuration — fail closed', () => {
 });
 
 describe('open-redirect prevention (safeReturnTo)', () => {
-  it('allows only internal /host paths', () => {
+  it('allows the canonical root and internal /host paths', () => {
+    expect(safeReturnTo('/')).toBe('/');
     expect(safeReturnTo('/host')).toBe('/host');
     expect(safeReturnTo('/host/account')).toBe('/host/account');
   });
@@ -74,19 +75,19 @@ describe('open-redirect prevention (safeReturnTo)', () => {
       '/host\\..\\evil',
       '/host\nSet-Cookie: x=1',
     ]) {
-      expect(safeReturnTo(evil)).toBe('/host');
+      expect(safeReturnTo(evil)).toBe('/');
     }
   });
 
-  it('rejects internal paths outside /host (keeps the blast radius small)', () => {
-    expect(safeReturnTo('/admin')).toBe('/host');
-    expect(safeReturnTo('/r/bty-home/dj')).toBe('/host');
+  it('rejects internal paths outside root and /host (keeps the blast radius small)', () => {
+    expect(safeReturnTo('/admin')).toBe('/');
+    expect(safeReturnTo('/r/bty-home/dj')).toBe('/');
   });
 
   it('defaults safely for empty input', () => {
-    expect(safeReturnTo(null)).toBe('/host');
-    expect(safeReturnTo(undefined)).toBe('/host');
-    expect(safeReturnTo('')).toBe('/host');
+    expect(safeReturnTo(null)).toBe('/');
+    expect(safeReturnTo(undefined)).toBe('/');
+    expect(safeReturnTo('')).toBe('/');
   });
 });
 
@@ -105,7 +106,7 @@ describe('transactions — unique, bounded, one-time', () => {
   });
 
   it('sanitises returnTo at mint time', () => {
-    expect(newOAuthTransaction('https://evil.example.com').returnTo).toBe('/host');
+    expect(newOAuthTransaction('https://evil.example.com').returnTo).toBe('/');
   });
 
   it('expires after the bounded TTL', () => {
