@@ -10,6 +10,7 @@ import { CreateFoundryEventForm } from "./CreateFoundryEventForm";
 import { FoundryEventControlRoom } from "./FoundryEventControlRoom";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import FoundryHistoryArchive from "./FoundryHistoryArchive";
+import FoundryRequiredLearning from "./FoundryRequiredLearning";
 import { ArenaPracticeFlow } from "../arena-practice/ArenaPracticeFlow";
 
 /**
@@ -199,13 +200,18 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
   // "coming soon"; employees join via the public QR route). An unresolved auth/
   // network error stays a neutral hold, never mislabeled as non-host.
   if (access === "non_host") {
+    // A non-host learner's Foundry home: their required-learning surface leads, with
+    // the quiet host-pointer copy retained beneath it (calmer, no longer full-height).
     return (
-      <div className="btyFadeIn flex min-h-[55vh] flex-col items-center justify-center gap-4 text-center">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-          {t.eyebrow}
-        </span>
-        <p className="max-w-[18rem] text-base leading-7 text-white/80">{t.nonHostLead}</p>
-        <p className="max-w-[18rem] text-sm leading-6 text-white/50">{t.nonHostSub}</p>
+      <div className="btyFadeIn flex flex-col gap-8">
+        <FoundryRequiredLearning locale={loc} />
+        <div className="flex flex-col items-center gap-3 pt-2 text-center">
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
+            {t.eyebrow}
+          </span>
+          <p className="max-w-[18rem] text-base leading-7 text-white/80">{t.nonHostLead}</p>
+          <p className="max-w-[18rem] text-sm leading-6 text-white/50">{t.nonHostSub}</p>
+        </div>
       </div>
     );
   }
@@ -231,13 +237,20 @@ export default function FoundryEventRooms({ locale }: { locale: string }) {
   );
 
   // Empty (first-ever) events state — the guided builder (with its inline quick-
-  // event path) is the whole surface.
+  // event path) is the whole surface. A host is also a learner, so the required-
+  // learning surface leads here too.
   if (events !== null && events.length === 0) {
-    return <div className="btyFadeIn flex flex-col gap-7">{builderEntry}</div>;
+    return (
+      <div className="btyFadeIn flex flex-col gap-9">
+        <FoundryRequiredLearning locale={loc} />
+        {builderEntry}
+      </div>
+    );
   }
 
   return (
-    <div className="btyFadeIn flex flex-col gap-7">
+    <div className="btyFadeIn flex flex-col gap-9">
+      <FoundryRequiredLearning locale={loc} />
       {builderEntry}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">

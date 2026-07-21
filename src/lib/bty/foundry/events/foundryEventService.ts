@@ -88,7 +88,7 @@ export type ServiceResult<T> =
   | { ok: false; reason: string };
 
 /** Mint the current signed join capability for an event row. */
-function mintJoinToken(event: Pick<EventRow, "id" | "join_version">): string {
+export function mintJoinToken(event: Pick<EventRow, "id" | "join_version">): string {
   return signFoundryRoomToken({
     type: "foundry_room",
     eventId: event.id,
