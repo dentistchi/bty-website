@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
@@ -1208,6 +1208,25 @@ export function TodaySurface({
   );
 }
 
+/**
+ * Today greeting header (Slice 3.1B-3J.1) — the time-aware greeting that OPENS the Today screen.
+ * Lifted out of the retired relationship surface so Today now reads: greeting → Personal Brief
+ * (understand yesterday · what not to miss). SSR-safe: the server + first client paint render the
+ * morning default (copy.title) so hydration matches; the real local-time band resolves after mount
+ * from the device clock (no API, no timezone service, no storage). No sub-line, no door framing.
+ */
+function TodayGreeting({ greetings, ssrDefault }: { greetings: TodayCopy["greetings"]; ssrDefault: string }) {
+  const [greeting, setGreeting] = useState(ssrDefault);
+  useEffect(() => {
+    setGreeting(pickGreeting(greetings, new Date().getHours()));
+  }, [greetings]);
+  return (
+    <header data-today-greeting className="btyRise mb-6" style={{ animationDelay: "40ms" }}>
+      <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-white">{greeting}</h1>
+    </header>
+  );
+}
+
 export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [tab, setTab] = useState<AppTabKey>("today");
   // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
@@ -1284,100 +1303,22 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   }, []);
   const t = COPY[locale];
 
-  // Post-confirm settling (STEP 1): the Today selection + confirmation are OWNED here at the shell —
-  // LIFTED out of TodaySurface — so a same-session tab switch no longer discards the accepted day
-  // (TodaySurface unmounts on tab change; the shell does not). In-memory ONLY: no storage, no cookie,
-  // no API, no DB — a cold launch / full shell remount resets them (intentional).
-  const [todaySelected, setTodaySelected] = useState<TodayFocusKey | null>(null);
-  const [todayConfirmed, setTodayConfirmed] = useState(false);
-
-  // Today Relationship Commitment (V1): the confirmed relationship is a DURABLE, server-recognized
-  // decision for the canonical BTY day. `todayHydrated` gates the Today doors until the mount GET
-  // resolves, so a committed day restores its terminal state with NO uncommitted-door flash and NO
-  // arrival replay; an uncommitted day plays the normal arrival. Flips true exactly once per shell
-  // session (the shell does not remount on tab switch), so tab-return never re-holds.
-  const [todayHydrated, setTodayHydrated] = useState(false);
-
-  // Today Living Response (V1): the one grounded perspective for today's commitment. Read-only on the
-  // client — settled/pending view only; only ready/fallback carry a line (pending renders nothing).
-  const [livingResponse, setLivingResponse] = useState<LivingResponseView | null>(null);
-  // Presence V1.1 — arms the ONE-TIME arrival reveal. Set true ONLY when a first-generation line
-  // resolves from this session's own commit (handleTodayConfirm); the hydration/restore path never
-  // arms it, and onLivingArrivalEnd disarms it after the reveal so a tab-return remount paints at rest.
-  const [animateLivingArrival, setAnimateLivingArrival] = useState(false);
-  // Commitment-scoped one-shot guard for hydration MATERIALIZATION: at most one POST per commitment
-  // (keyed by BTY day_key — one commitment per user/day) per mounted session. Marked BEFORE the await
-  // and held in a ref so it survives React Strict-Mode effect replay, rerenders, and tab-return.
-  const materializeKeyRef = useRef<string | null>(null);
-
-  // Three-door affordance is a ONCE-PER-SESSION cue. TodaySurface unmounts on tab switch; this ref
-  // (held at the shell, which does NOT unmount) makes the sequence play on the first Today mount of
-  // the session only — never on a tab-return or an intelligence refresh. In-memory; no persistence.
-  const arrivalPlayedRef = useRef(false);
-
-  // Today Intelligence (Phase 3): deterministic bands/narrative, read-only. Plus the user's
-  // open promise (A+), read-only. Both fetched once on mount so Today is ready immediately.
-  // Fail-soft — the shell always renders (FALLBACK_INTEL / null promise).
-  const [intel, setIntel] = useState<TodayIntelligence>(FALLBACK_INTEL);
-  const [intelLoading, setIntelLoading] = useState(true);
-  const [promiseText, setPromiseText] = useState<string | null>(null);
-  // Center Promise Loop STEP 1B: the self-owned Center keep, surfaced read-only on Today.
-  // null unless a keep exists for today (keptToday). Fail-soft → null (nothing renders).
-  const [centerKeepLine, setCenterKeepLine] = useState<string | null>(null);
-  // Yesterday → Today Memory Bridge V1: the one evidence-backed remembered line from yesterday's real
-  // commitment (null unless yesterday held one). memoryPending holds the arrival trace's reserved
-  // height until the read settles, so the line appears once (no status→memory swap, no layout jump).
-  const [yesterdayMemory, setYesterdayMemory] = useState<string | null>(null);
-  // ARRIVAL ORDER PATCH V1: the Today arrival is held (via the existing hydration gate) until the
-  // memory read settles, so a remembered line is present when the cascade plays. `memoryPending`
-  // clears on the read settling OR the bounded cap firing (whichever first); the cap ref then
-  // prevents a late read from swapping a line into an already-arrived Today.
-  const [memoryPending, setMemoryPending] = useState(true);
-  const memoryCappedRef = useRef(false);
+  // Today Simplification (Slice 3.1B-3J.1): the retired relationship/commitment surface took its
+  // intelligence / open-promise / Center-keep / yesterday-memory / commitment / living-response reads
+  // with it. Today now has exactly two jobs — understand yesterday · show what must not be missed —
+  // both served SERVER-SIDE by TodayPersonalBrief (/api/me/today/brief). The engines behind the
+  // removed reads (commit, living-response, today-intelligence, …) are UNCHANGED and still reachable;
+  // the shell simply no longer drives them from Today. The only Today-mount read left here is the
   // Me-tab Weekly Orb rhythm (numberless barIntensity[]). Fail-soft: [] → resting orb.
   const [weeklyRhythm, setWeeklyRhythm] = useState<MeWeeklyRhythm>([]);
-
   useEffect(() => {
     let alive = true;
-    void fetchTodayIntelligence().then((data) => {
-      if (!alive) return;
-      setIntel(data);
-      setIntelLoading(false);
-    });
-    void fetchOpenPromise(locale).then((text) => {
-      if (!alive) return;
-      setPromiseText(text);
-    });
-    void fetchTodayCenterKeep().then((line) => {
-      if (!alive) return;
-      setCenterKeepLine(line);
-    });
-    void fetchYesterdayMemory().then((line) => {
-      // If the cap already released the arrival (pathologically slow read), do NOT inject a late
-      // line — that would be a status→memory swap on an already-arrived Today. Normal reads win the
-      // race and set the line before the cap, so memory is present when the cascade plays.
-      if (!alive || memoryCappedRef.current) return;
-      setYesterdayMemory(line);
-      setMemoryPending(false);
-    });
     void fetchWeeklyRhythm().then((rhythm) => {
-      if (!alive) return;
-      setWeeklyRhythm(rhythm);
+      if (alive) setWeeklyRhythm(rhythm);
     });
     return () => {
       alive = false;
     };
-  }, [locale]);
-
-  // ARRIVAL ORDER PATCH V1 — bounded backstop so a pathologically slow memory read can never hold
-  // the Today arrival longer than MEMORY_ARRIVAL_CAP_MS. On cap, release the arrival (memory absent
-  // this time) and lock out a late read so it cannot swap in after the cascade has played.
-  useEffect(() => {
-    const id = setTimeout(() => {
-      memoryCappedRef.current = true;
-      setMemoryPending(false);
-    }, MEMORY_ARRIVAL_CAP_MS);
-    return () => clearTimeout(id);
   }, []);
 
   // Center Daily Trace STEP 1A — record a quiet self-return the first time the native app is
@@ -1388,87 +1329,6 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   useEffect(() => {
     recordNativeSelfReturn();
   }, []);
-
-  // Rehydrate today's commitment before showing an interactive (uncommitted) Today. If a commitment
-  // exists, restore the confirmed terminal state and mark the arrival consumed so it does NOT replay.
-  // Always release the hydration gate (fail-soft) so an uncommitted / degraded day still arrives.
-  useEffect(() => {
-    let alive = true;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
-    const POLL_MAX = 5;
-    const POLL_INTERVAL_MS = 1500;
-
-    // Bounded, quiet GET recheck while a generation attempt is IN_PROGRESS (never POSTs, never loops
-    // forever, cancels on unmount / commitment change). Settled result renders when it arrives.
-    const pollPending = (attempt: number) => {
-      if (!alive || attempt >= POLL_MAX) return;
-      pollTimer = setTimeout(() => {
-        void fetchLivingResponse().then((r) => {
-          if (!alive) return;
-          if (r && r.status !== "pending") setLivingResponse(r);
-          else pollPending(attempt + 1);
-        });
-      }, POLL_INTERVAL_MS);
-    };
-
-    // Materialize the Living Response for an already-committed day. GET first: settled → render;
-    // pending → bounded recheck; NULL (no row ever created) → one idempotent POST to generate. The
-    // per-commitment guard makes the POST at most once. Any failure stays visually quiet.
-    const materialize = async (dayKey: string) => {
-      const first = await fetchLivingResponse();
-      if (!alive) return;
-      if (first && first.status !== "pending") return void setLivingResponse(first);
-      if (first && first.status === "pending") return pollPending(0);
-      // first === null (no row): POST once per commitment (guard marked BEFORE the await).
-      if (materializeKeyRef.current === dayKey) return pollPending(0);
-      materializeKeyRef.current = dayKey;
-      const posted = await postLivingResponse();
-      if (!alive) return;
-      if (posted && posted.status !== "pending") return void setLivingResponse(posted);
-      if (posted && posted.status === "pending") return pollPending(0);
-      // posted === null → quiet failure: no toast/spinner/error; confirmed Today stays intact.
-    };
-
-    void fetchTodayCommitment()
-      .then((commitment) => {
-        if (!alive) return;
-        if (commitment) {
-          setTodaySelected(focusFromRelationship(commitment.relationship));
-          setTodayConfirmed(true);
-          arrivalPlayedRef.current = true; // committed day paints at rest — no arrival animation
-          void materialize(commitment.dayKey);
-        }
-      })
-      .finally(() => {
-        if (alive) setTodayHydrated(true);
-      });
-    return () => {
-      alive = false;
-      if (pollTimer) clearTimeout(pollTimer);
-    };
-  }, []);
-
-  // CTA confirm → durable commitment. On committed/locked, adopt the SERVER's canonical relationship
-  // (locked restores a different, already-committed door) and enter the confirmed terminal state.
-  // On failure, return false so the CTA stays retryable — never fabricate a confirmation.
-  const handleTodayConfirm = async (focus: TodayFocusKey): Promise<boolean> => {
-    const outcome = await postTodayCommitment(focus, resolveInvitedFocus(intel), locale);
-    if (outcome.status === "committed" || outcome.status === "locked") {
-      setTodaySelected(outcome.focus);
-      setTodayConfirmed(true);
-      // Fire the Living Response POST AFTER confirmation — never awaited, never blocks the CTA. The
-      // perspective (ready/fallback) arrives when it resolves; failure leaves the terminal intact.
-      // FIRST GENERATION: arm the one-time arrival reveal only when a real line resolves (never for a
-      // pending view, and never on the restore path).
-      void postLivingResponse().then((r) => {
-        if (!r) return;
-        setLivingResponse(r);
-        if (r.status !== "pending" && r.perspective) setAnimateLivingArrival(true);
-      });
-      return true;
-    }
-    return false;
-  };
 
   // Native cold-reopen white-screen P0 is CLOSED; the temporary [BTYAppBoot] boot
   // diagnostics (mount marker + global error/rejection console capture) were removed.
@@ -1632,41 +1492,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
-            {/* Today Personal Brief (Slice 3.1B-3J): deterministic reminders + optional consent-gated
-                AI observation/suggestion. Replaces the raw From-Yesterday card. Renders nothing when
-                empty. The raw Reflection body never reaches this client. */}
+            {/* FINAL TODAY IA (Slice 3.1B-3J.1): greeting OPENS the screen, then the Personal Brief —
+                understand yesterday (consent-gated) + what must not be missed (deterministic
+                reminders). The old relationship/commitment presentation (three doors, TODAY'S PATH,
+                PROMISE TO CARRY, the "living this relationship" card, the yesterday-trace) is removed;
+                its records + server engines are preserved, just no longer surfaced here. */}
+            <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
+            {/* Deterministic reminders + optional consent-gated AI observation/suggestion, composed
+                server-side. Renders nothing (no empty container) when there is neither a brief nor a
+                reminder. The raw Reflection body never reaches this client. */}
             <TodayPersonalBrief locale={locale} />
-            {/* ARRIVAL ORDER PATCH V1: hold the surface behind the EXISTING hydration gate until the
-                memory read has also settled (bounded by MEMORY_ARRIVAL_CAP_MS), so a remembered line
-                is present at first paint and rides its arrival beat ahead of the doors — never a late,
-                post-doors pop. No-memory users clear this in the same fast read. */}
-            {todayHydrated && !memoryPending ? (
-            <TodaySurface
-              copy={t.today}
-              statusLine={selectTodayStatus(locale, intel.userState)}
-              yesterdayMemory={yesterdayMemory}
-              activeFocus={resolveInvitedFocus(intel)}
-              loading={intelLoading}
-              promiseText={promiseText}
-              centerKeepLine={centerKeepLine}
-              selected={todaySelected}
-              setSelected={setTodaySelected}
-              confirmed={todayConfirmed}
-              setConfirmed={setTodayConfirmed}
-              onConfirm={handleTodayConfirm}
-              livingResponse={livingResponse}
-              animateLivingArrival={animateLivingArrival}
-              onLivingArrivalEnd={() => setAnimateLivingArrival(false)}
-              firstArrival={!arrivalPlayedRef.current}
-              onArrivalConsumed={() => {
-                arrivalPlayedRef.current = true;
-              }}
-            />
-            ) : (
-              // Bounded hydration hold — a calm, empty Today surface (never the uncommitted doors)
-              // while the commitment GET resolves. No spinner, no copy; the dark shell is enough.
-              <div data-today-hydrating aria-hidden className="min-h-full" />
-            )}
           </>
         )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and

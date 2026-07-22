@@ -61,6 +61,21 @@ describe("buildTodayReminders", () => {
     expect(out.find((r) => r.stableId === "action:c1")).toBeUndefined();
   });
 
+  // REGRESSION (Slice 3.1B-3J.1): the old primary Today card that rendered an open Action Contract as
+  // "PROMISE TO CARRY" was removed. With NO suppression set (the brief route no longer suppresses),
+  // that same canonical Action Contract must remain discoverable — exactly once — as an ACTION_DUE
+  // reminder, so removing the card never hides a real obligation.
+  it("keeps the action contract from the removed primary card discoverable as a reminder (no suppression)", async () => {
+    const admin = mockAdmin({
+      contracts: [{ id: "blk1", contract_description: "submit QR proof", deadline_at: "2026-07-22T20:00:00Z" }],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en"); // no suppress arg
+    const hits = out.filter((r) => r.stableId === "action:blk1");
+    expect(hits).toHaveLength(1); // present, and never duplicated
+    expect(hits[0].category).toBe("ACTION_DUE");
+    expect(hits[0].canonicalDeepLink.length).toBeGreaterThan(0); // still deep-linkable
+  });
+
   it("returns [] for an empty user id (never a cross-user read)", async () => {
     expect(await buildTodayReminders(mockAdmin({}), "", now, "UTC", "en")).toEqual([]);
   });

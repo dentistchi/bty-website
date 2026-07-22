@@ -13,7 +13,6 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { buildTodayReminders } from "@/lib/bty/daily/todayReminders.server";
 import { composeTodayBrief } from "@/lib/bty/daily/todayBrief.server";
-import { fetchBlockingArenaContractForSession } from "@/lib/bty/arena/blockingArenaActionContract";
 
 export const dynamic = "force-dynamic";
 
@@ -49,17 +48,14 @@ export async function GET(req: NextRequest) {
       consent = false;
     }
 
-    // Dedup: suppress the action contract already surfaced as the primary Today path.
-    const suppress = new Set<string>();
-    try {
-      const blocking = await fetchBlockingArenaContractForSession(admin, user.id);
-      if (blocking?.id) suppress.add(`action:${blocking.id}`);
-    } catch {
-      /* dedup best-effort */
-    }
-
+    // Slice 3.1B-3J.1: the old primary Today card (the relationship/commitment surface that rendered
+    // the open action contract as "PROMISE TO CARRY") was removed. That card was the ONLY reason to
+    // suppress the blocking action contract from the reminder list — with it gone, suppression would
+    // hide a real, canonical Action Contract entirely. So NO reminder is suppressed here now; the open
+    // action contract is discoverable exactly once in DON'T MISS TODAY when it meets the reminder
+    // contract. (The dedup mechanism itself is retained in the reminder builder for future use.)
     const [reminders, brief] = await Promise.all([
-      buildTodayReminders(admin, user.id, now, timezone, locale, suppress),
+      buildTodayReminders(admin, user.id, now, timezone, locale),
       composeTodayBrief(admin, user.id, now, timezone, locale, consent),
     ]);
 

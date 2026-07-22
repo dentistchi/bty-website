@@ -27,6 +27,7 @@ const COPY: Record<Locale, {
   privacy: string;
   consentLabel: string;
   consentHelp: string;
+  consentPrivacy: string;
   today: string;
   yesterday: string;
   earlier: string;
@@ -41,9 +42,9 @@ const COPY: Record<Locale, {
     title: "CENTER",
     subtitle: "A place to see yourself clearly.",
     privacy: "Your reflections are private. Only you can see them.",
-    consentLabel: "Use my private reflections to personalize Today",
-    consentHelp:
-      "When on, BTY may use yesterday's private reflections to create a short understanding and practical suggestion for Today. Your reflections remain private and are never shown to your training Host.",
+    consentLabel: "Today personalization",
+    consentHelp: "Use yesterday's private reflections for a short Today brief.",
+    consentPrivacy: "Your reflection remains private and is never shown to the training Host.",
     today: "TODAY",
     yesterday: "YESTERDAY",
     earlier: "EARLIER",
@@ -58,9 +59,9 @@ const COPY: Record<Locale, {
     title: "CENTER",
     subtitle: "나를 선명하게 바라보는 공간.",
     privacy: "나의 성찰은 비공개이며 본인만 볼 수 있습니다.",
-    consentLabel: "나의 비공개 성찰을 Today 개인화에 사용",
-    consentHelp:
-      "켜면 BTY가 어제 남긴 비공개 성찰을 바탕으로 Today에 짧은 이해와 실천 제안을 만듭니다. 성찰 원문은 교육 담당자에게 공개되지 않습니다.",
+    consentLabel: "Today 개인화",
+    consentHelp: "어제의 비공개 성찰을 바탕으로 짧은 Today 안내를 만듭니다.",
+    consentPrivacy: "성찰 원문은 비공개이며 교육 담당자에게 공개되지 않습니다.",
     today: "오늘",
     yesterday: "어제",
     earlier: "이전",
@@ -208,23 +209,44 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
         <p className="mt-1 text-xs text-white/45">{t.privacy}</p>
       </div>
 
-      {/* Canonical consent toggle (Slice 3.1B-3J). */}
-      <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-sm text-white/80">{t.consentLabel}</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={consent === true}
-            data-testid="center-consent-toggle"
-            disabled={consent === null || savingConsent}
-            onClick={toggleConsent}
-            className={"relative h-6 w-11 shrink-0 rounded-full transition-colors " + (consent ? "bg-[#C9A66B]" : "bg-white/15")}
+      {/* Compact personalization setting (Slice 3.1B-3J.1) — a supporting setting ROW, not a
+          dominant card: a top divider instead of a filled box, so it never overpowers the feed.
+          The whole row is one accessible switch button (tapping the label toggles too), avoiding a
+          <label>-wraps-<button> double-fire. Fixed-PX track + thumb pinned with left/top: the thumb
+          can never leave the track — no rem-scaling drift (px is immune to iOS Dynamic Type), no
+          missing left anchor, and `shrink-0` stops the control compressing in the flex row. */}
+      <div className="flex flex-col gap-1.5 border-t border-white/8 pt-4">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={consent === true}
+          aria-label={t.consentLabel}
+          aria-busy={savingConsent || undefined}
+          data-testid="center-consent-toggle"
+          disabled={consent === null || savingConsent}
+          onClick={toggleConsent}
+          className="flex w-full items-center justify-between gap-4 text-left transition-opacity disabled:opacity-60"
+        >
+          <span className="min-w-0 text-sm text-white/80">{t.consentLabel}</span>
+          <span
+            aria-hidden
+            data-testid="center-consent-track"
+            className={
+              "relative inline-block h-[24px] w-[44px] shrink-0 rounded-full transition-colors duration-200 " +
+              (consent ? "bg-[#C9A66B]" : "bg-white/20")
+            }
           >
-            <span className={"absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform " + (consent ? "translate-x-5" : "translate-x-0.5")} />
-          </button>
-        </label>
+            <span
+              data-testid="center-consent-thumb"
+              className={
+                "absolute top-[2px] left-[2px] h-[20px] w-[20px] rounded-full bg-white shadow-sm transition-transform duration-200 " +
+                (consent ? "translate-x-[20px]" : "translate-x-0")
+              }
+            />
+          </span>
+        </button>
         <p className="text-xs leading-5 text-white/45">{t.consentHelp}</p>
+        <p className="text-[0.7rem] leading-5 text-white/35">{t.consentPrivacy}</p>
       </div>
 
       {items === null ? (

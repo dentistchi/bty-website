@@ -9,7 +9,7 @@
  * ever reaches output.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import BtyDailyAppShell, {
   COPY,
   FALLBACK_INTEL,
@@ -535,121 +535,115 @@ describe("app-shell Today suggested-door transition-in (Arrival Warmth STEP 3)",
   });
 });
 
-describe("app-shell renders Today directly (no shell threshold / no double-door)", () => {
-  function stubShellFetch(promise: string | null = null, memoryLine: string | null = null) {
+// FINAL TODAY IA (Slice 3.1B-3J.1): the whole shell renders greeting → Personal Brief only. The old
+// relationship/commitment presentation (doors, TODAY'S PATH, PROMISE TO CARRY, the "living this
+// relationship" card, the yesterday-trace, the sub line) is entirely gone. The Brief endpoint is the
+// only Today-content read; every other former Today-mount read was removed with the retired surface.
+describe("app-shell Today — simplified IA (Slice 3.1B-3J.1)", () => {
+  type BriefDto = { yesterdayObservation: string; todaySuggestion: string } | null;
+  function stubShellFetch(over: { brief?: BriefDto; reminders?: unknown[] } = {}) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
         const u = String(url);
-        if (u.includes("today-intelligence")) {
-          return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
-        }
-        if (u.includes("my-page/state")) {
-          return new Response(JSON.stringify({ open_action_contract: promise ? { action_text: promise } : null }), {
-            status: 200,
-          });
-        }
-        if (u.includes("yesterday-memory")) {
-          return new Response(JSON.stringify({ ok: true, memory: memoryLine ? { line: memoryLine } : null }), {
-            status: 200,
-          });
+        if (u.includes("/api/me/today/brief")) {
+          return new Response(
+            JSON.stringify({ ok: true, consent: !!over.brief, brief: over.brief ?? null, reminders: over.reminders ?? [] }),
+            { status: 200 },
+          );
         }
         return new Response("{}", { status: 200 });
       }),
     );
   }
-
-  it("shows Today (no 'Hold to begin' Orb threshold) on mount, with the bottom tabs", async () => {
-    stubShellFetch();
-    render(<BtyDailyAppShell locale="en" />);
-    // Today surface is present immediately — no second threshold gate.
-    // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
-    await screen.findByText("Where will you show up today?");
-    expect(screen.queryByText("Hold to begin.")).toBeNull();
-    expect(screen.queryByText("누르고 있으면 열립니다.")).toBeNull();
-    // Native app shell intact: bottom tab bar renders.
-    expect(screen.getByText("Foundry")).toBeTruthy();
-    expect(screen.getByText("Me")).toBeTruthy();
-  });
-
-  // ARRIVAL ORDER PATCH V1 — the arrival waits for the memory read, so when Today arrives the
-  // remembered line is ALREADY in the trace (never a late post-doors pop).
-  it("holds the arrival until memory resolves, then Today arrives WITH the memory in the trace", async () => {
-    stubShellFetch(null, "Yesterday, you chose to return to yourself.");
-    render(<BtyDailyAppShell locale="en" />);
-    // When Today arrives, the memory line is present in the trace immediately (not added later).
-    await screen.findByText("Where will you show up today?");
-    const s = document.querySelector("[data-today-status]");
-    expect(s?.getAttribute("data-today-memory")).toBe("");
-    expect(s?.textContent).toBe("Yesterday, you chose to return to yourself.");
-  });
-
-  it("memory-absent users still arrive at Today with no memory marker (no empty pause regression)", async () => {
-    stubShellFetch(null, null);
-    render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Where will you show up today?");
-    // Doors are present and interactive; no memory marker was introduced.
-    expect(document.querySelectorAll("button[data-focus]").length).toBe(3);
-    expect(document.querySelector("[data-today-memory]")).toBeNull();
-  });
-
-  it("relationship selection still reveals confirmation + CTA inside the full shell", async () => {
-    stubShellFetch("Send the summary");
-    render(<BtyDailyAppShell locale="en" />);
-    // Anchor on the (time-independent) sub line so the assertion never depends on wall-clock.
-    await screen.findByText("Where will you show up today?");
-    // Select the Self relationship card (the ritual selection, not navigation).
-    fireEvent.click(screen.getByText("SELF"));
-    expect(document.querySelector("[data-today-confirm]")).not.toBeNull();
-    expect(screen.getByText("I’ll live this relationship today")).toBeTruthy();
-  });
-
-  // Center Daily Trace STEP 1A — native Today arrival records a quiet self-return.
-  it("POSTs /api/me/day/open on native Today mount, device tz only, no client day-key", async () => {
-    stubShellFetch();
-    render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Where will you show up today?");
-    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
-    const dayOpen = calls.find(([u]) => String(u).includes("/api/me/day/open"));
-    expect(dayOpen).toBeTruthy();
-    expect(dayOpen?.[1]?.method).toBe("POST");
-    // The client sends ONLY the device tz for server-side capture — no day-key is computed here.
-    const body = JSON.parse(String(dayOpen?.[1]?.body ?? "{}")) as Record<string, unknown>;
-    expect(Object.keys(body)).toEqual(["tz"]);
-  });
-
-  it("self-return capture is fire-and-forget: a day/open failure never blocks Today", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        const u = String(url);
-        if (u.includes("/api/me/day/open")) throw new Error("network down");
-        if (u.includes("today-intelligence")) {
-          return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
-        }
-        return new Response("{}", { status: 200 });
-      }),
+  const briefFetched = () =>
+    ((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string]>).some(([u]) =>
+      String(u).includes("/api/me/today/brief"),
     );
-    render(<BtyDailyAppShell locale="en" />);
-    // Today still renders despite the rejected self-return call.
-    await screen.findByText("Where will you show up today?");
-  });
-});
+  // Every retired presentation string that must never appear on the simplified Today.
+  const OLD_TODAY_STRINGS = [
+    "Return to myself",
+    "TODAY'S PATH",
+    "PROMISE TO CARRY",
+    "I’m living this relationship today",
+    "I’ll live this relationship today",
+    "Yesterday left a trace worth noticing.",
+    "Where will you show up today?",
+  ];
+  const aReminder = {
+    stableId: "req:a1",
+    category: "REQUIRED_LEARNING",
+    title: "OSHA basics",
+    state: "incomplete_required",
+    canonicalDeepLink: "/en/app?tab=foundry",
+  };
 
-describe("app-shell — no explicit AI companion announcement", () => {
-  it("the shell renders no 'Dr. Chi is with you today.' companion line or avatar", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        const u = String(url);
-        if (u.includes("today-intelligence")) return new Response(JSON.stringify(FALLBACK_INTEL), { status: 200 });
-        return new Response("{}", { status: 200 });
-      }),
-    );
+  it("greeting renders and comes BEFORE the Personal Brief (never a brief above the greeting)", async () => {
+    stubShellFetch({ reminders: [aReminder] });
     const { container } = render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Where will you show up today?"); // shell mounted (all tabs share the bottom dock)
-    expect(screen.queryByText("Dr. Chi is with you today.")).toBeNull();
+    await screen.findByText("Foundry"); // shell mounted
+    const greeting = await waitFor(() => {
+      const g = container.querySelector("[data-today-greeting]");
+      expect(g).not.toBeNull();
+      return g!;
+    });
+    const brief = await screen.findByTestId("today-personal-brief");
+    // brief FOLLOWS greeting in document order → greeting opens the screen.
+    expect(greeting.compareDocumentPosition(brief) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("the old relationship/commitment presentation is entirely absent (no doors, no legacy copy)", async () => {
+    stubShellFetch({ reminders: [aReminder] });
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Foundry");
+    await screen.findByTestId("today-personal-brief");
+    expect(container.querySelectorAll("[data-focus]").length).toBe(0); // no relationship doors
+    expect(container.querySelector("[data-today-confirm]")).toBeNull();
+    expect(container.querySelector("[data-today-center-keep]")).toBeNull();
+    expect(container.querySelector("[data-today-status]")).toBeNull(); // no yesterday-trace slot
+    for (const s of OLD_TODAY_STRINGS) expect(container.textContent).not.toContain(s);
+    // Exactly one YESTERDAY/TODAY brief structure exists (the Personal Brief).
+    expect(screen.getAllByTestId("today-personal-brief").length).toBe(1);
+  });
+
+  it("consent OFF / no data leaves a useful greeting + reminders with NO empty brief container", async () => {
+    stubShellFetch({ brief: null, reminders: [] });
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Foundry");
+    await waitFor(() => expect(briefFetched()).toBe(true));
+    // Greeting stays; the empty brief renders no container at all.
+    await waitFor(() => expect(container.querySelector("[data-today-greeting]")).not.toBeNull());
+    expect(screen.queryByTestId("today-personal-brief")).toBeNull();
+  });
+
+  it("reminders surface (deep-linked + tappable) with no AI brief when consent is off", async () => {
+    stubShellFetch({ brief: null, reminders: [{ stableId: "action:blk1", category: "ACTION_DUE", title: "submit QR proof", state: "due_today", canonicalDeepLink: "/en/bty-arena" }] });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByTestId("today-personal-brief");
+    const item = await screen.findByText("submit QR proof");
+    expect(item.closest("a")?.getAttribute("href")).toBe("/en/bty-arena");
+    expect(screen.queryByTestId("brief-ai")).toBeNull(); // no AI section without consent/data
+  });
+
+  it("POSTs /api/me/day/open on native Today mount (device tz only, no client day-key)", async () => {
+    stubShellFetch({ reminders: [] });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Foundry");
+    await waitFor(() => {
+      const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
+      expect(calls.some(([u]) => String(u).includes("/api/me/day/open"))).toBe(true);
+    });
+    const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
+    const dayOpen = calls.find(([u]) => String(u).includes("/api/me/day/open"))!;
+    expect(dayOpen[1]?.method).toBe("POST");
+    expect(Object.keys(JSON.parse(String(dayOpen[1]?.body ?? "{}")))).toEqual(["tz"]);
+  });
+
+  it("renders no 'Dr. Chi' companion line or avatar glyph", async () => {
+    stubShellFetch({ reminders: [] });
+    const { container } = render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Foundry");
     expect(container.textContent).not.toContain("Dr. Chi");
-    expect(container.textContent).not.toContain("치"); // the removed avatar glyph
+    expect(container.textContent).not.toContain("치");
   });
 });

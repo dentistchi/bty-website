@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import BtyDailyAppShell, {
+import {
   COPY,
   TodaySurface,
   selectTodayStatus,
@@ -152,96 +152,8 @@ describe("CTA — durable confirm via onConfirm", () => {
   });
 });
 
-// ── shell-level hydration + provider-zero-call ──────────────────────────────────────────────
-type FetchCall = { url: string; method: string };
-
-function installFetch(router: (url: string, method: string) => unknown, calls: FetchCall[]) {
-  vi.stubGlobal("matchMedia", (q: string) => ({
-    matches: false,
-    media: q,
-    onchange: null,
-    addEventListener() {},
-    removeEventListener() {},
-    addListener() {},
-    removeListener() {},
-    dispatchEvent: () => false,
-  }));
-  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = typeof input === "string" ? input : String(input);
-    const method = (init?.method ?? "GET").toUpperCase();
-    calls.push({ url, method });
-    const body = router(url, method);
-    return Promise.resolve({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve(body ?? {}),
-    } as Response);
-  });
-}
-
-// Base router for the shell's fail-soft data fetches; commitResponder handles /today/commit.
-function baseRouter(commitResponder: (url: string, method: string) => unknown) {
-  return (url: string, method: string): unknown => {
-    if (url.includes("/api/me/today/commit")) return commitResponder(url, method);
-    if (url.includes("/api/me/today-intelligence"))
-      return { userState: "scenario_signal", relationshipFocus: "Self", confidence: "none", reasonCodes: [], fallbackMode: "none" };
-    if (url.includes("/api/bty/my-page/state")) return { open_action_contract: null };
-    if (url.includes("/api/bty/center/keep")) return { line: null, keptToday: false };
-    if (url.includes("/api/me/day/open")) return { ok: true };
-    return {}; // meWeeklyRhythm / daily-trace etc. → fail-soft empty
-  };
-}
-
-const commitmentBody = (relationship: string) => ({
-  ok: true,
-  commitment: {
-    relationship,
-    suggestedRelationship: null,
-    dayKey: "2026-07-13",
-    confirmedAt: "2026-07-12T20:30:00.000Z",
-    locale: "en",
-    timezoneSnapshot: "Asia/Seoul",
-    tzFallback: false,
-  },
-});
-
-describe("shell hydration — same-day re-entry", () => {
-  it("committed day: restores the confirmed terminal with NO uncommitted-door flash", async () => {
-    const calls: FetchCall[] = [];
-    installFetch(baseRouter(() => commitmentBody("others")), calls);
-    const { container } = render(<BtyDailyAppShell locale="en" />);
-
-    // Before hydration resolves, the bounded hold is shown and NO interactive doors exist.
-    expect(container.querySelector("[data-today-hydrating]")).not.toBeNull();
-    expect(container.querySelectorAll("[data-focus]").length).toBe(0);
-
-    // After hydration: terminal restored — CTA shows the settled label, exactly one interior.
-    await waitFor(() => expect(container.querySelector("[data-today-cta]")).not.toBeNull());
-    const ctaEl = container.querySelector<HTMLButtonElement>("[data-today-cta]")!;
-    expect(ctaEl.getAttribute("aria-pressed")).toBe("true");
-    expect(ctaEl.textContent).toContain(COPY.en.today.ctaDone);
-    // committed door 'Others' held; the other two collapsed (aria-hidden)
-    const others = container.querySelector('[data-focus="Others"]')!;
-    expect(others).not.toBeNull();
-  });
-
-  it("uncommitted day: shows the normal doors, no confirmed terminal", async () => {
-    const calls: FetchCall[] = [];
-    installFetch(baseRouter(() => ({ ok: true, commitment: null })), calls);
-    const { container } = render(<BtyDailyAppShell locale="en" />);
-    await waitFor(() => expect(container.querySelectorAll("[data-focus]").length).toBe(3));
-    expect(container.querySelector("[data-today-cta]")).toBeNull(); // nothing selected/confirmed
-    expect(container.querySelector("[data-today-hydrating]")).toBeNull();
-  });
-
-  it("PROVIDER ZERO-CALL: hydration + data fetches never hit an AI/generation endpoint", async () => {
-    const calls: FetchCall[] = [];
-    installFetch(baseRouter(() => ({ ok: true, commitment: null })), calls);
-    render(<BtyDailyAppShell locale="en" />);
-    await waitFor(() => expect(calls.some((c) => c.url.includes("/api/me/today/commit"))).toBe(true));
-    const forbidden = /todayMirror|mirror\/generate|\/llm|generate-today|living-response/i;
-    expect(calls.every((c) => !forbidden.test(c.url))).toBe(true);
-    // the commitment GET is a read (GET), not a generation POST
-    expect(calls.find((c) => c.url.includes("/api/me/today/commit"))!.method).toBe("GET");
-  });
-});
+// NOTE (Slice 3.1B-3J.1): the former "shell hydration — same-day re-entry" block was removed with the
+// retired Today relationship/commitment surface — the shell no longer renders the doors or drives the
+// commitment/living-response reads (its server engines are unchanged and still covered elsewhere). The
+// commitment CTA + rehydration BEHAVIOR above is still exercised via TodaySurface + the Harness in
+// isolation; the shell's simplified Today (greeting → Personal Brief) is covered in the today suite.
