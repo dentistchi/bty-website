@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
+import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 
 /**
  * Foundry PDF Study Room — participant experience.
@@ -175,6 +176,17 @@ function resolveLocale(): Locale {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
+  // Slice 3.1B-3F.1 (parity with FoundryJoinClient): when the PDF Room was opened from a Required
+  // assignment it carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back
+  // to Foundry" on EVERY stage (not dependent on WebView history, which the native shell may not
+  // expose). Returning is pure navigation — it never completes the assignment. Unsafe/external or
+  // absent returns (e.g. an open-link QR scan) → no control, exactly like the video player.
+  const [returnTarget] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
+      : null,
+  );
+  const backLabel = returnTarget?.startsWith("/ko/") ? "← 파운드리로 돌아가기" : "← Back to Foundry";
   return (
     <main
       className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
@@ -183,7 +195,18 @@ function Frame({ children }: { children: React.ReactNode }) {
         paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6">{children}</div>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6">
+        {returnTarget ? (
+          <a
+            href={returnTarget}
+            data-testid="room-back-to-foundry"
+            className="self-start pb-3 pt-1 text-sm text-white/55 hover:text-white/85"
+          >
+            {backLabel}
+          </a>
+        ) : null}
+        {children}
+      </div>
     </main>
   );
 }
