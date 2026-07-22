@@ -12,6 +12,7 @@
 
 import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
+import { ensureDefaultFreePlan } from './host-plan.server';
 import { buildRoomSlug } from '@/domain/room-slug';
 
 /** Durable native login. Long-lived on purpose, but revocable and expiring. */
@@ -130,6 +131,12 @@ export async function resolveAccountForIdentity(args: {
     }
     throw link.error;
   }
+
+  // Host Plan Foundation V1: a brand-new canonical account gets exactly one active
+  // FREE assignment at creation. Idempotent + non-fatal — it never blocks sign-in,
+  // and returning accounts (the early return above) never re-provision, so repeated
+  // logins add nothing.
+  await ensureDefaultFreePlan(account.id);
   return account;
 }
 

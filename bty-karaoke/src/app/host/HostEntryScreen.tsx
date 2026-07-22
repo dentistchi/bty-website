@@ -103,10 +103,14 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
 
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h1>My Norebang</h1>
-        <form action="/host/logout" method="post">
-          <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ''} />
-          <button className="host-btn host-btn-ghost" type="submit">로그아웃</button>
-        </form>
+        <div className="row" style={{ gap: '0.5rem' }}>
+          {/* Host Plan Foundation V1 — the Plan screen entry from the hub. */}
+          <a className="host-btn host-btn-ghost" href="/host/plan">플랜</a>
+          <form action="/host/logout" method="post">
+            <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ''} />
+            <button className="host-btn host-btn-ghost" type="submit">로그아웃</button>
+          </form>
+        </div>
       </div>
       <p className="muted">{me.displayName ?? me.email ?? '로그인됨'}</p>
 

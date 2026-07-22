@@ -62,6 +62,11 @@ export default async function AdminPage({ params }: { params: Promise<{ slug: st
           >
             노래방 설정
           </a>
+          {/* Host Plan Foundation V1 — reachable for a single-Room Host who
+              auto-entered and never passes through the My Norebang hub. */}
+          <a className="host-btn host-btn-ghost" href="/host/plan">
+            플랜
+          </a>
           <form action="/host/logout" method="post">
             <input type="hidden" name={CSRF_FIELD_NAME} value={hostCsrf} />
             <button className="host-btn host-btn-ghost" type="submit">로그아웃</button>
