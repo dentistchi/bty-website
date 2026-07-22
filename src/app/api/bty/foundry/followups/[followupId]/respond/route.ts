@@ -6,6 +6,13 @@ import { jsonNoStore } from "@/lib/bty/foundry/events/publicRoute";
 
 export const runtime = "nodejs";
 
+/** Private learner data: `private, no-store` (mirrors the Today brief route), never shared-cacheable. */
+function priv(body: unknown, status = 200) {
+  const res = jsonNoStore(body, status);
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
+}
+
 /**
  * POST /api/bty/foundry/followups/[followupId]/respond — the authenticated learner submits ONE
  * self-reported outcome (APPLIED / PARTLY_APPLIED / NOT_YET / BLOCKED), closing the checkpoint as
@@ -16,28 +23,28 @@ export const runtime = "nodejs";
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ followupId: string }> }) {
   const admin = getSupabaseAdmin();
-  if (!admin) return jsonNoStore({ ok: false, error: "unavailable" }, 503);
+  if (!admin) return priv({ ok: false, error: "unavailable" }, 503);
 
   const supa = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supa.auth.getUser();
-  if (!user) return jsonNoStore({ ok: false, error: "unauthenticated" }, 401);
+  if (!user) return priv({ ok: false, error: "unauthenticated" }, 401);
 
   const { followupId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
   const res = await submitFollowupOutcome(admin, user.id, followupId, body?.outcome);
 
   if (res.result === "responded" || res.result === "unchanged") {
-    return jsonNoStore({ ok: true, result: res.result, status: res.status, outcome: res.outcome });
+    return priv({ ok: true, result: res.result, status: res.status, outcome: res.outcome });
   }
   if (res.result === "already_responded") {
     // The first outcome stands; return it read-only (never silently overwritten).
-    return jsonNoStore(
+    return priv(
       { ok: false, error: "already_responded", status: res.status, outcome: res.outcome },
       409,
     );
   }
   const status = res.result === "not_found" ? 404 : res.result === "not_owner" ? 404 : res.result === "invalid_outcome" ? 400 : 500;
-  return jsonNoStore({ ok: false, error: res.result }, status);
+  return priv({ ok: false, error: res.result }, status);
 }
