@@ -309,6 +309,13 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       const completionPrompt = checkText(a.completionPrompt, COMPLETION_PROMPT_MAX, "completion_prompt_too_long", "completion_prompt_invalid", errors);
       if (completionPrompt !== undefined) clean.completionPrompt = completionPrompt;
 
+      // Shared Understanding question (Slice 3.1B-3G hotfix): whitelist it alongside completionPrompt
+      // so the draft-save round-trip PERSISTS it. checkText preserves "" so an intentional Host clear
+      // survives as empty (publish → null), and the Builder never silently re-proposes a removed
+      // question (the prefill only fires when the key is `undefined`, not empty).
+      const sharedQuestion = checkText(a.sharedQuestion, COMPLETION_PROMPT_MAX, "shared_question_too_long", "shared_question_invalid", errors);
+      if (sharedQuestion !== undefined) clean.sharedQuestion = sharedQuestion;
+
       if (a.arenaRecommended !== undefined) {
         if (typeof a.arenaRecommended === "boolean") clean.arenaRecommended = a.arenaRecommended;
         else errors.push("arena_recommended_invalid");
