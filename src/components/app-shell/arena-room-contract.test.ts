@@ -61,10 +61,8 @@ describe("BtyDailyAppShell — only the arena branch changed", () => {
 
   it("Today / Center / Foundry / Me tab branches render their rooms", () => {
     expect(src).toMatch(/tab === "today"/);
-    // Center renders the keep room OR the private reflection timeline subview (Slice 3.1B-3I).
-    expect(src).toMatch(/tab === "center" &&/);
-    expect(src).toMatch(/<CenterKeepRoom locale={locale}/);
-    expect(src).toMatch(/<CenterReflections locale={locale} focusEntryId={centerFocusEntry}/);
+    // Center is ONE canonical Personal Reality Feed — no subview (Slice 3.1B-3J).
+    expect(src).toMatch(/tab === "center" && <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry}/);
     // Foundry tab renders the rooms surface, OR the in-shell completion review when a
     // ?review deep-link / Review-learning tap is active (Slice 3.1B-3E.1).
     expect(src).toMatch(/tab === "foundry" &&/);

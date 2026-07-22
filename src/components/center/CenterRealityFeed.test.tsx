@@ -1,0 +1,74 @@
+/** @vitest-environment jsdom */
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
+import CenterRealityFeed from "./CenterRealityFeed";
+
+/**
+ * Slice 3.1B-3J — Center Personal Reality Feed: reflections render DIRECTLY on the first screen
+ * (no subview), grouped; the canonical consent toggle reads/writes the preference; ?entry focuses
+ * the exact record. Explicit DTO allow-list. Owner-scoped reads (server-enforced).
+ */
+
+const patchBodies: unknown[] = [];
+
+function mockFetch(opts: { history?: unknown[]; consent?: boolean }) {
+  return vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url);
+    if (u.includes("/api/bty/foundry/history")) return { ok: true, status: 200, json: async () => ({ ok: true, history: opts.history ?? [] }) };
+    if (u.includes("/api/me/conversation-preferences")) {
+      if (init?.method === "PATCH") { patchBodies.push(JSON.parse(String(init.body))); return { ok: true, status: 200, json: async () => ({ ok: true }) }; }
+      return { ok: true, status: 200, json: async () => ({ personalizeTodayFromReflections: opts.consent ?? false }) };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  });
+}
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  patchBodies.length = 0;
+});
+
+describe("CenterRealityFeed", () => {
+  it("renders reflections directly on the first screen with privacy copy (no subview)", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ history: [{ entryId: "p1", eventTitle: "배가 고파", contentType: "youtube", completedAt: "2026-07-22T04:00:00Z", responseText: "MY REFLECTION" }] });
+    render(<CenterRealityFeed locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("center-reflection-item")).toBeTruthy());
+    expect(screen.getByText("MY REFLECTION")).toBeTruthy();
+    expect(screen.getByText("Your reflections are private. Only you can see them.")).toBeTruthy();
+    // at least one day-group renders
+    expect(document.querySelector('[data-testid^="center-group-"]')).toBeTruthy();
+  });
+
+  it("the consent toggle reflects the stored preference and writes a partial PATCH on tap", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ consent: false, history: [] });
+    render(<CenterRealityFeed locale="en" />);
+    const toggle = await screen.findByTestId("center-consent-toggle");
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("false"));
+    fireEvent.click(toggle);
+    await waitFor(() => expect(patchBodies.length).toBe(1));
+    expect(patchBodies[0]).toEqual({ personalizeTodayFromReflections: true });
+  });
+
+  it("focuses the exact deep-linked entry (?entry=<id>)", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ history: [
+      { entryId: "p1", eventTitle: "A", contentType: "youtube", completedAt: "2026-07-22T04:00:00Z", responseText: "one" },
+      { entryId: "p2", eventTitle: "B", contentType: "document", completedAt: "2026-07-22T05:00:00Z", responseText: "two" },
+    ] });
+    render(<CenterRealityFeed locale="en" focusEntryId="p2" />);
+    await waitFor(() => expect(screen.getAllByTestId("center-reflection-item").length).toBe(2));
+    const focused = screen.getAllByTestId("center-reflection-item").find((el) => el.getAttribute("data-entry-id") === "p2");
+    expect(focused?.getAttribute("data-focused")).toBe("1");
+  });
+
+  it("non-judgmental empty state; Korean privacy copy", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockFetch({ history: [] });
+    render(<CenterRealityFeed locale="ko" />);
+    await waitFor(() => expect(screen.getByTestId("center-feed-empty")).toBeTruthy());
+    expect(screen.getByText("나의 성찰은 비공개이며 본인만 볼 수 있습니다.")).toBeTruthy();
+  });
+});

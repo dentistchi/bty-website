@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_conversation_preferences")
-    .select("remember_chat, remember_mentor, updated_at")
+    .select("remember_chat, remember_mentor, personalize_today_from_reflections, updated_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -19,6 +19,8 @@ export async function GET() {
   return NextResponse.json({
     rememberChat: data?.remember_chat ?? false,
     rememberMentor: data?.remember_mentor ?? false,
+    // Slice 3.1B-3J consent: default OFF for all existing/new users.
+    personalizeTodayFromReflections: data?.personalize_today_from_reflections ?? false,
     updatedAt: data?.updated_at ?? null,
   });
 }
@@ -29,7 +31,7 @@ export async function PATCH(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
 
-  let body: { rememberChat?: boolean; rememberMentor?: boolean } = {};
+  let body: { rememberChat?: boolean; rememberMentor?: boolean; personalizeTodayFromReflections?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -38,12 +40,18 @@ export async function PATCH(req: Request) {
 
   const { data: existing } = await supabase
     .from("user_conversation_preferences")
-    .select("remember_chat, remember_mentor")
+    .select("remember_chat, remember_mentor, personalize_today_from_reflections")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Partial-safe: any field absent from the body keeps its existing value, so a caller updating
+  // one preference never resets the consent flag (or vice versa).
   const rememberChat = typeof body.rememberChat === "boolean" ? body.rememberChat : (existing?.remember_chat ?? false);
   const rememberMentor = typeof body.rememberMentor === "boolean" ? body.rememberMentor : (existing?.remember_mentor ?? false);
+  const personalizeToday =
+    typeof body.personalizeTodayFromReflections === "boolean"
+      ? body.personalizeTodayFromReflections
+      : (existing?.personalize_today_from_reflections ?? false);
 
   const { error } = await supabase
     .from("user_conversation_preferences")
@@ -52,6 +60,7 @@ export async function PATCH(req: Request) {
         user_id: user.id,
         remember_chat: rememberChat,
         remember_mentor: rememberMentor,
+        personalize_today_from_reflections: personalizeToday,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

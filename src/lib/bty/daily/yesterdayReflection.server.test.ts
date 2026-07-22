@@ -10,7 +10,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockTz = vi.fn(async () => ({ timezone: "UTC", tzFallback: false }));
 const mockHistory = vi.fn();
 
-vi.mock("./userDay", () => ({ resolveUserTzContext: (...a: unknown[]) => mockTz(...a) }));
+vi.mock("./userDay", () => ({ resolveUserTzContext: () => mockTz() }));
 vi.mock("@/lib/bty/foundry/events/foundryHistoryService", () => ({
   listUserFoundryHistory: (...a: unknown[]) => mockHistory(...a),
 }));
