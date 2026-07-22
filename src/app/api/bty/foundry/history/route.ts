@@ -50,9 +50,11 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.json({
     ok: true,
     history: items.map((it) => ({
+      entryId: it.entryId,
       eventId: it.eventId,
       eventTitle: it.eventTitle,
       contentType: it.contentType,
+      sharedUnderstanding: it.sharedUnderstanding,
       completedAt: it.completedAt,
       responseText: it.responseText,
       responseExcerpt: it.responseExcerpt,
@@ -65,6 +67,8 @@ export async function GET(req: NextRequest) {
     threadStatusCopy,
     threadNeedsGeneration,
   });
+  // Private Reflection body travels here → never cache it anywhere (Slice 3.1B-3I).
+  res.headers.set("Cache-Control", "private, no-store");
   copyCookiesAndDebug(base, res, req, true);
   return res;
 }

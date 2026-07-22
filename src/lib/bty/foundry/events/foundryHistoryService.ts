@@ -15,20 +15,27 @@ import { excerptOf, type CompletionMeaning, type FoundryHistoryRecord } from "@/
  */
 
 type ProgressRow = {
+  id: string;
   event_id: string;
   completed_at: string;
   response_text: string | null;
+  shared_understanding_response: string | null;
   reflection: unknown;
   completion_state: string | null;
 };
 
-const HISTORY_COLS = "event_id, completed_at, response_text, reflection, completion_state";
+const HISTORY_COLS =
+  "id, event_id, completed_at, response_text, shared_understanding_response, reflection, completion_state";
 
 export type FoundryHistoryItem = {
+  /** Stable owner-scoped record id (the progress row id) — the Center deep-link entry (Slice 3.1B-3I). */
+  entryId: string;
   eventId: string;
   eventTitle: string;
   /** Source content type for the learner's My Learning surface (Slice 3.1B-3H). */
   contentType: "youtube" | "document";
+  /** The learner's OWN Shared Understanding answer (Foundry surface). null when the module had none. */
+  sharedUnderstanding: string | null;
   completedAt: string;
   /** The user's own final reflection (owner-only) — full text for the detail view. */
   responseText: string;
@@ -79,10 +86,13 @@ export async function listUserFoundryHistory(
     const aiReflection = stored.ok ? stored.value : null;
     const responseText = (r.response_text ?? "").trim();
     const ev = metaById.get(r.event_id);
+    const sharedUnderstanding = (r.shared_understanding_response ?? "").trim();
     return {
+      entryId: r.id,
       eventId: r.event_id,
       eventTitle: ev?.title ?? "Foundry training",
       contentType: ev?.content_type === "document" ? "document" : "youtube",
+      sharedUnderstanding: sharedUnderstanding.length > 0 ? sharedUnderstanding : null,
       completedAt: r.completed_at,
       responseText,
       responseExcerpt: excerptOf(responseText),

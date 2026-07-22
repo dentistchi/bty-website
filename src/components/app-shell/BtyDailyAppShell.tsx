@@ -9,6 +9,8 @@ import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
+import CenterReflections from "@/components/center/CenterReflections";
+import FromYesterdayReflection from "@/components/app-shell/FromYesterdayReflection";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
@@ -1216,6 +1218,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // (the learner-owned private reflection history). Opened via `?tab=foundry&view=my-learning`
   // — e.g. the open-link post-claim "Continue to BTY" handoff.
   const [foundryView, setFoundryView] = useState<"rooms" | "my-learning">("rooms");
+  // Center sub-view (Slice 3.1B-3I): "keep" (default) or "reflections" (the learner's canonical
+  // Private Reflection timeline). `centerFocusEntry` deep-links a specific reflection
+  // (?tab=center&view=reflections&entry=<progressId>); the server still owner-scopes every read.
+  const [centerView, setCenterView] = useState<"keep" | "reflections">("keep");
+  const [centerFocusEntry, setCenterFocusEntry] = useState<string | null>(null);
 
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
   // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
@@ -1235,15 +1242,27 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       reviewParam = null;
       viewParam = null;
     }
+    let entryParam: string | null = null;
+    try {
+      entryParam = new URLSearchParams(search).get("entry");
+    } catch {
+      entryParam = null;
+    }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
     const wantsMyLearning = viewParam === "my-learning";
-    if (!requestedTab && !validReview && !wantsMyLearning) return;
+    const wantsReflections = viewParam === "reflections";
+    const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
+    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections) return;
     if (validReview) {
       setTab("foundry");
       setReviewId(validReview);
     } else if (wantsMyLearning) {
       setTab("foundry");
       setFoundryView("my-learning");
+    } else if (wantsReflections) {
+      setTab("center");
+      setCenterView("reflections");
+      setCenterFocusEntry(validEntry);
     } else if (requestedTab) {
       setTab(requestedTab);
     }
@@ -1252,6 +1271,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("tab");
       params.delete("review");
       params.delete("view");
+      params.delete("entry");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1610,13 +1630,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden className="relative z-10" />
 
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
-        {tab === "today" &&
-          // ARRIVAL ORDER PATCH V1: hold the surface behind the EXISTING hydration gate until the
-          // memory read has also settled (bounded by MEMORY_ARRIVAL_CAP_MS), so a remembered line is
-          // present at first paint and rides its arrival beat ahead of the doors — never a late,
-          // post-doors pop. No-memory users clear this in the same fast read; the greeting is never
-          // held beyond the cap.
-          (todayHydrated && !memoryPending ? (
+        {tab === "today" && (
+          <>
+            {/* Today "From yesterday" private reflection card (Slice 3.1B-3I). Owner-only; renders
+                nothing when there is no eligible yesterday reflection. Additive above the surface. */}
+            <FromYesterdayReflection locale={locale} />
+            {/* ARRIVAL ORDER PATCH V1: hold the surface behind the EXISTING hydration gate until the
+                memory read has also settled (bounded by MEMORY_ARRIVAL_CAP_MS), so a remembered line
+                is present at first paint and rides its arrival beat ahead of the doors — never a late,
+                post-doors pop. No-memory users clear this in the same fast read. */}
+            {todayHydrated && !memoryPending ? (
             <TodaySurface
               copy={t.today}
               statusLine={selectTodayStatus(locale, intel.userState)}
@@ -1638,17 +1661,24 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 arrivalPlayedRef.current = true;
               }}
             />
-          ) : (
-            // Bounded hydration hold — a calm, empty Today surface (never the uncommitted doors)
-            // while the commitment GET resolves. No spinner, no copy; the dark shell is enough.
-            <div data-today-hydrating aria-hidden className="min-h-full" />
-          ))}
+            ) : (
+              // Bounded hydration hold — a calm, empty Today surface (never the uncommitted doors)
+              // while the commitment GET resolves. No spinner, no copy; the dark shell is enough.
+              <div data-today-hydrating aria-hidden className="min-h-full" />
+            )}
+          </>
+        )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
             save ONE honest line for today. Server-persisted (Center-owned dear_me_letters,
             marker prompt='center_daily_keep') — NO Arena action contract, NO LLM reply, NO
             localStorage. The prepared-room copy (t.center) is retained on COPY as a reserved
             fallback identity. arena/foundry stay LockedRoom until their own steps. */}
-        {tab === "center" && <CenterKeepRoom locale={locale} />}
+        {tab === "center" &&
+          (centerView === "reflections" ? (
+            <CenterReflections locale={locale} focusEntryId={centerFocusEntry} />
+          ) : (
+            <CenterKeepRoom locale={locale} onOpenReflections={() => setCenterView("reflections")} />
+          ))}
         {/* Arena = relationship with others. In-shell published-practice player
             (Slice 3.0C-1): list → start → play → complete → list, ALL local state,
             NO router/navigation. t.arena copy reused only for the empty state. */}

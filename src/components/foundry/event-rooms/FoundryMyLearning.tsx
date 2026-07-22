@@ -3,32 +3,32 @@
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * My Learning — the learner-owned private surface (Slice 3.1B-3H).
+ * Foundry → My Learning (Slice 3.1B-3I re-placement).
  *
- * Reuses the EXISTING owner-scoped read GET /api/bty/foundry/history →
- * listUserFoundryHistory (linked_user_id = authenticated caller). The Private Reflection
- * (`responseText`) is the learner's OWN and is NEVER Host-visible (Host projections exclude it,
- * server-side). This surface is read-only in V1 (no edit/delete) and shows ONLY an explicit DTO
- * allow-list — never the raw history object, never the AI reflection body, Host review note,
- * scores, analytics, or other learners' content.
+ * Foundry answers "what did I learn and understand?" — so the PRIMARY artifact is the learner's
+ * OWN Shared Understanding answer, NOT the Private Reflection (that now lives canonically in
+ * Center). Reuses the owner-scoped GET /api/bty/foundry/history (linked_user_id = caller). Each
+ * row links to the exact Center reflection via ?tab=center&view=reflections&entry=<entryId>.
+ * Explicit DTO allow-list — never the raw row; never Host review notes.
  */
 
 type Locale = "en" | "ko";
 
-/** Explicit client DTO allow-list — do NOT spread the raw history row into the view. */
+/** Explicit client DTO allow-list — the private responseText is deliberately NOT read here. */
 type MyLearningItem = {
-  eventId: string;
+  entryId: string;
   eventTitle: string;
   contentType: "youtube" | "document";
   completedAt: string;
-  responseText: string;
+  sharedUnderstanding: string | null;
 };
 
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
-  privateLabel: string;
-  privateNote: string;
+  sharedLabel: string;
+  noShared: string;
+  viewInCenter: string;
   completedOn: string;
   video: string;
   document: string;
@@ -39,27 +39,29 @@ const COPY: Record<Locale, {
 }> = {
   en: {
     title: "My Learning",
-    subtitle: "Your completed trainings and private reflections.",
-    privateLabel: "My private reflection",
-    privateNote: "Only you can see this reflection.",
+    subtitle: "What you understood, in your own words.",
+    sharedLabel: "What I understood",
+    noShared: "No shared understanding was recorded for this training.",
+    viewInCenter: "View my private reflection in Center",
     completedOn: "Completed",
     video: "Video",
     document: "PDF",
     empty: "No completed trainings yet.",
-    emptyHint: "When you finish a training, it appears here with your private reflection.",
+    emptyHint: "When you finish a training, it appears here with what you understood.",
     back: "← Required learning",
     loading: "Loading…",
   },
   ko: {
     title: "내 학습",
-    subtitle: "완료한 교육과 비공개 성찰입니다.",
-    privateLabel: "나의 비공개 성찰",
-    privateNote: "이 성찰은 본인만 볼 수 있습니다.",
+    subtitle: "내가 이해한 내용을 나의 말로.",
+    sharedLabel: "내가 이해한 것",
+    noShared: "이 교육에는 공유 이해 답변이 없습니다.",
+    viewInCenter: "Center에서 나의 비공개 성찰 보기",
     completedOn: "완료",
     video: "영상",
     document: "PDF",
     empty: "아직 완료한 교육이 없습니다.",
-    emptyHint: "교육을 마치면 여기에서 비공개 성찰과 함께 볼 수 있습니다.",
+    emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
     back: "← 필수 학습",
     loading: "불러오는 중…",
   },
@@ -90,16 +92,15 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
         return;
       }
       const data = (await res.json()) as {
-        ok?: boolean;
-        history?: Array<{ eventId?: string; eventTitle?: string; contentType?: string; completedAt?: string; responseText?: string }>;
+        history?: Array<{ entryId?: string; eventTitle?: string; contentType?: string; completedAt?: string; sharedUnderstanding?: string | null }>;
       };
-      // Explicit allow-list mapping — never spread the raw row (Host note / AI reflection / scores excluded).
+      // Allow-list mapping — responseText (Private Reflection) is intentionally NOT read here.
       const mapped: MyLearningItem[] = (data?.history ?? []).map((h) => ({
-        eventId: String(h.eventId ?? ""),
+        entryId: String(h.entryId ?? ""),
         eventTitle: String(h.eventTitle ?? "Foundry training"),
         contentType: h.contentType === "document" ? "document" : "youtube",
         completedAt: String(h.completedAt ?? ""),
-        responseText: String(h.responseText ?? ""),
+        sharedUnderstanding: h.sharedUnderstanding ? String(h.sharedUnderstanding) : null,
       }));
       setItems(mapped);
     } catch {
@@ -148,7 +149,7 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
         <ul className="flex flex-col gap-3">
           {items.map((it) => (
             <li
-              key={it.eventId}
+              key={it.entryId}
               data-testid="my-learning-item"
               className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3"
             >
@@ -161,16 +162,27 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
               <span className="text-xs text-emerald-300/70">
                 {t.completedOn} · {formatDate(it.completedAt, loc)}
               </span>
-              <div className="mt-1 rounded-xl border border-white/8 bg-black/20 px-3 py-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
-                    {t.privateLabel}
-                  </span>
-                  <span aria-hidden="true" className="text-[0.7rem] text-white/35">·</span>
-                  <span className="text-[0.7rem] text-white/45">{t.privateNote}</span>
-                </div>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-white/85">{it.responseText}</p>
+              {/* PRIMARY artifact: the learner's own Shared Understanding (Host-reviewable). */}
+              <div className="mt-1 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
+                  {t.sharedLabel}
+                </span>
+                {it.sharedUnderstanding ? (
+                  <p data-testid="my-learning-shared" className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-white/85">
+                    {it.sharedUnderstanding}
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-sm leading-6 text-white/40">{t.noShared}</p>
+                )}
               </div>
+              {/* Private Reflection is NOT shown here — it lives in Center. Deep-link to the exact entry. */}
+              <a
+                href={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(it.entryId)}`}
+                data-testid="view-reflection-in-center"
+                className="self-start text-xs font-medium text-[#C9A66B]/80 underline underline-offset-4"
+              >
+                {t.viewInCenter} →
+              </a>
             </li>
           ))}
         </ul>

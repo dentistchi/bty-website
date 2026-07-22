@@ -63,7 +63,14 @@ function resolveTz(): string | null {
  * metrics, no reply, no LLM. Fail-soft everywhere — a read/save failure simply
  * leaves the writing surface usable, with no error drama.
  */
-export default function CenterKeepRoom({ locale }: { locale: Locale }) {
+export default function CenterKeepRoom({
+  locale,
+  onOpenReflections = () => {},
+}: {
+  locale: Locale;
+  /** Open the learner's canonical Private Reflection timeline (Slice 3.1B-3I). */
+  onOpenReflections?: () => void;
+}) {
   const t = COPY[locale];
   const [mode, setMode] = useState<"loading" | "writing" | "held">("loading");
   const [input, setInput] = useState("");
@@ -128,8 +135,17 @@ export default function CenterKeepRoom({ locale }: { locale: Locale }) {
   return (
     <div
       data-center-keep=""
-      className="flex min-h-[60vh] flex-col items-center justify-center px-2 text-center"
+      className="relative flex min-h-[60vh] flex-col items-center justify-center px-2 text-center"
     >
+      {/* Entry to the canonical Private Reflection timeline (Slice 3.1B-3I). */}
+      <button
+        type="button"
+        onClick={onOpenReflections}
+        data-testid="open-center-reflections"
+        className="absolute right-3 top-3 rounded-lg border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-3 py-1.5 text-xs font-medium text-[#C9A66B]"
+      >
+        {locale === "ko" ? "나의 성찰 →" : "My reflections →"}
+      </button>
       {/* Center Return V1 — the RETURN settle. When Center opens onto an already-held anchor,
           the remembered block resolves into presence with an opacity-led, no-delay settle
           (≈ the shell's fade language, but its own). NO delay = "already here", not "arriving";
