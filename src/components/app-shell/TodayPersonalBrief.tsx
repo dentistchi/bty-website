@@ -13,7 +13,7 @@ type Locale = "en" | "ko";
 
 type Reminder = {
   stableId: string;
-  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE";
+  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
   title: string;
   state: "overdue" | "due_today" | "incomplete_required" | "upcoming";
   canonicalDeepLink: string;
@@ -102,8 +102,16 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
 
   const stateLabel = (s: Reminder["state"]) =>
     s === "overdue" ? t.overdue : s === "due_today" ? t.dueToday : s === "incomplete_required" ? t.incomplete : t.upcoming;
+  // FOLLOW_UP_DUE carries its own checkpoint eyebrow inside the title ("7-day follow-up · …"),
+  // so it renders with no category prefix (catLabel "").
   const catLabel = (c: Reminder["category"]) =>
-    c === "REQUIRED_LEARNING" ? t.required : c === "ACTION_DUE" ? t.action : t.practice;
+    c === "REQUIRED_LEARNING"
+      ? t.required
+      : c === "ACTION_DUE"
+        ? t.action
+        : c === "PRACTICE_DUE"
+          ? t.practice
+          : "";
   const stateTone = (s: Reminder["state"]) =>
     s === "overdue" ? "text-red-300/80 border-red-400/30" : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35" : "text-white/50 border-white/12";
 
@@ -130,7 +138,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               <li key={r.stableId} data-testid="brief-reminder" data-category={r.category} data-state={r.state}>
                 <a href={r.canonicalDeepLink} className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
                   <span className="min-w-0 flex-1 truncate text-sm text-white/80">
-                    <span className="text-white/40">{catLabel(r.category)} · </span>
+                    {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
                     {r.title}
                   </span>
                   <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state)}>{stateLabel(r.state)}</span>

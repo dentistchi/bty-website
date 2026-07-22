@@ -25,7 +25,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
 
   const { token } = await ctx.params;
   const session = readParticipantSession(req, token);
-  const r = await claimXp(admin, token, session, user.id);
+  const body = await req.json().catch(() => ({}));
+  const r = await claimXp(admin, token, session, user.id, body?.tz);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
   // assignmentClaim (3.1B-3D) is a NEUTRAL, non-disclosing field: 'claimed' connects the
   // learner's own assignment; anything else (incl. no_matching_assignment) is silent.

@@ -7,7 +7,7 @@
  */
 import { userDayKey } from "./userDayKey";
 
-export type ReminderCategory = "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE";
+export type ReminderCategory = "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
 /** overdue > due_today > incomplete_required (no date) > upcoming (dated future). */
 export type ReminderState = "overdue" | "due_today" | "incomplete_required" | "upcoming";
 

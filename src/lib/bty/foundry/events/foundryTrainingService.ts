@@ -20,6 +20,7 @@ import {
 } from "./youtubeEmbed";
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
+import { materializeFollowupObligation } from "./foundryFollowupService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import {
@@ -534,6 +535,7 @@ export async function completeTraining(
   rawResponse: unknown,
   authUserId: string | null,
   rawSharedResponse?: unknown,
+  deviceTz?: string | null,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -589,6 +591,20 @@ export async function completeTraining(
     xpOverride = outcomeToXpStatus(outcome);
   }
 
+  // Follow-up Obligation (Slice 3.1B-3K): an AUTHENTICATED completion has a durable learner
+  // identity (authUserId) — materialize the obligation ONCE, regardless of the XP outcome (capped /
+  // owner / already-awarded still get one). Anonymous completion (authUserId null) materializes
+  // nothing here — it is created later at the authenticated claim. Fail-soft: never blocks completion.
+  if (authUserId) {
+    await materializeFollowupObligation(admin, {
+      eventId: r.event.id,
+      progressId,
+      authUserId,
+      completedAtIso: now,
+      deviceTz,
+    });
+  }
+
   return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride) };
 }
 
@@ -602,6 +618,7 @@ export async function claimXp(
   token: string,
   sessionToken: string | null | undefined,
   authUserId: string,
+  deviceTz?: string | null,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -614,6 +631,18 @@ export async function claimXp(
   // and RETRIABLE — the earlier bug attempted it only on the XP-awarding call, so if XP was
   // already awarded (e.g. a prior/auto claim) the assignment was never connected.
   const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  // Follow-up Obligation (Slice 3.1B-3K): an anonymous completion FIRST gains a durable learner
+  // identity here — materialize the obligation ONCE, BEFORE the XP early-return (mirrors the
+  // assignment claim), using the now-known authUserId + the frozen completed_at. Idempotent
+  // (unique progress_id+checkpoint), so a repeated claim / already-awarded path never duplicates.
+  await materializeFollowupObligation(admin, {
+    eventId: r.event.id,
+    progressId: prog.id,
+    authUserId,
+    completedAtIso: prog.completed_at,
+    deviceTz,
+  });
 
   if (prog.xp_awarded_at) {
     return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };

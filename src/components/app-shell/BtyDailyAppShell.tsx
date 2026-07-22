@@ -8,6 +8,7 @@ import CenterMeCard from "@/components/center/CenterMeCard";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
+import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
@@ -1236,6 +1237,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // (the learner-owned private reflection history). Opened via `?tab=foundry&view=my-learning`
   // — e.g. the open-link post-claim "Continue to BTY" handoff.
   const [foundryView, setFoundryView] = useState<"rooms" | "my-learning">("rooms");
+  // Follow-up response surface (Slice 3.1B-3K): `?tab=foundry&followup=<id>` opens the focused
+  // learner follow-up outcome surface inside the Foundry tab (from the Today FOLLOW_UP_DUE reminder).
+  const [followupId, setFollowupId] = useState<string | null>(null);
   // Center is ONE canonical Personal Reality Feed (Slice 3.1B-3J) — no subview. `centerFocusEntry`
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
@@ -1265,12 +1269,23 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     } catch {
       entryParam = null;
     }
+    let followupParam: string | null = null;
+    try {
+      followupParam = new URLSearchParams(search).get("followup");
+    } catch {
+      followupParam = null;
+    }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
     const wantsMyLearning = viewParam === "my-learning";
     const wantsReflections = viewParam === "reflections";
     const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
-    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections) return;
-    if (validReview) {
+    const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
+    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections && !validFollowup) return;
+    if (validFollowup) {
+      // Canonical Today FOLLOW_UP_DUE deep link → open the focused follow-up surface in Foundry.
+      setTab("foundry");
+      setFollowupId(validFollowup);
+    } else if (validReview) {
       setTab("foundry");
       setReviewId(validReview);
     } else if (wantsMyLearning) {
@@ -1291,6 +1306,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("review");
       params.delete("view");
       params.delete("entry");
+      params.delete("followup");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1518,7 +1534,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             opens one real shared room and brings the team in by QR. Replaces the
             LockedRoom placeholder (t.foundry retained as reserved fallback copy). */}
         {tab === "foundry" &&
-          (reviewId ? (
+          (followupId ? (
+            <FoundryFollowUpResponse
+              followupId={followupId}
+              locale={locale}
+              onBack={() => setFollowupId(null)}
+            />
+          ) : reviewId ? (
             <FoundryCompletionReview
               assignmentId={reviewId}
               locale={locale}

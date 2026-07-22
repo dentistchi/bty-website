@@ -8,6 +8,7 @@ import { useEventSnapshot } from "./useEventSnapshot";
 import { FoundryEventQr } from "./FoundryEventQr";
 import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
 import FoundrySharedReview from "./FoundrySharedReview";
+import FoundryFollowupStatus from "./FoundryFollowupStatus";
 import { FoundryShareControls } from "./FoundryShareControls";
 
 async function postAction(url: string): Promise<ManagerSnapshot | null> {
@@ -209,6 +210,9 @@ export function FoundryEventControlRoom({
                 question is configured AND a learner has submitted a shared response. Never shows
                 private Reflection. */}
             <FoundrySharedReview eventId={eventId} locale={locale} />
+            {/* Follow-up Status (Slice 3.1B-3K) — INDEPENDENT of the shared-question gate; self-gates
+                to nothing when the event has no follow-up obligations. Learner-reported outcomes only. */}
+            <FoundryFollowupStatus eventId={eventId} locale={locale} />
           </section>
 
           {isOpen ? (

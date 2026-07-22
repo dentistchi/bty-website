@@ -245,6 +245,15 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 const api = (token: string, path = "") =>
   `/api/bty/foundry/public/${encodeURIComponent(token)}${path}`;
 
+/** Best-effort device IANA tz for the follow-up due-date resolution (Slice 3.1B-3K). Capture-only. */
+function deviceTz(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function FoundryJoinClient({ token }: { token: string }) {
   const [locale, setLocale] = useState<Locale>("en");
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -388,6 +397,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
       const { ok, data } = await post("/progress/complete", {
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
+        tz: deviceTz(),
       });
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
@@ -406,7 +416,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
       busyRef.current = true;
       if (!silent) setBusy(true);
       try {
-        const { ok, status, data } = await post("/progress/claim-xp");
+        const { ok, status, data } = await post("/progress/claim-xp", { tz: deviceTz() });
         if (ok) applyResult(data);
         else if (status === 401 && !silent) {
           // Need to sign in first — return here afterward.

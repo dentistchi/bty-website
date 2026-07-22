@@ -5,8 +5,11 @@
  *   REQUIRED_LEARNING — bty_foundry_list_my_assignments (status='assigned' = incomplete; NO due date)
  *   ACTION_DUE        — bty_action_contracts.deadline_at (open contracts; due/overdue/upcoming)
  *   PRACTICE_DUE      — arena_pending_outcomes.scheduled_for (pending re-exposure; due/overdue/upcoming)
- * FOLLOW_UP_DUE / REVIEW_DUE are deliberately NOT built — no canonical dated per-participant source
- * exists, and the engine must never invent a deadline. Fail-soft per source (a read error → []).
+ *   FOLLOW_UP_DUE     — foundry_participant_followups.due_at (Slice 3.1B-3K; PENDING obligations; the
+ *                       deadline was materialized ONCE at creation and is only READ here — never
+ *                       recomputed. V1 emits due_today / overdue only, no upcoming.)
+ * REVIEW_DUE is still deliberately NOT built — no canonical dated per-participant source exists, and
+ * the engine must never invent a deadline. Fail-soft per source (a read error → []).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -15,6 +18,7 @@ import {
   sortReminders,
   type TodayReminder,
 } from "@/domain/daily/todayReminders";
+import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
 
 const OPEN_CONTRACT_STATUSES = ["pending", "submitted", "rejected", "escalated"] as const;
 
@@ -81,6 +85,43 @@ async function practiceDue(admin: SupabaseClient, userId: string, now: Date, tz:
   }
 }
 
+/** Localized checkpoint eyebrow for a follow-up obligation (server-side; matches other title fallbacks). */
+function followUpCheckpointLabel(followUpDays: number, locale: string): string {
+  if (locale === "ko") return followUpDays === 30 ? "30일 후 확인" : "7일 후 확인";
+  return followUpDays === 30 ? "30-day follow-up" : "7-day follow-up";
+}
+
+/**
+ * FOLLOW_UP_DUE (Slice 3.1B-3K) — pending per-participant follow-up obligations whose materialized
+ * due_at is due_today or overdue. Reads the owner's rows directly (service-role, owner-scoped by
+ * user_id_snapshot), classifies against the CURRENT reader tz (like Action/Practice), and DROPS
+ * anything upcoming (V1 shows no future follow-up). The title carries the localized checkpoint +
+ * the source training title; the deep link opens the focused follow-up response surface.
+ */
+async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz: string, locale: string): Promise<TodayReminder[]> {
+  try {
+    const { data } = await admin
+      .from("foundry_participant_followups")
+      .select("id, source_training_title, follow_up_days, due_at, status")
+      .eq("user_id_snapshot", userId)
+      .eq("status", "PENDING")
+      .not("due_at", "is", null);
+    return (data ?? [])
+      .map((r: { id: string; source_training_title: string | null; follow_up_days: number; due_at: string }): TodayReminder => ({
+        stableId: `followup:${r.id}`,
+        category: "FOLLOW_UP_DUE",
+        title: `${followUpCheckpointLabel(r.follow_up_days, locale)} · ${r.source_training_title ?? "Foundry training"}`,
+        state: classifyFollowUpDue(r.due_at, now, tz),
+        sourceTimestamp: r.due_at,
+        roleContext: "learner",
+        canonicalDeepLink: `/${locale}/app?tab=foundry&followup=${r.id}`,
+      }))
+      .filter((r: TodayReminder) => r.state === "overdue" || r.state === "due_today"); // V1: no upcoming
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The authenticated caller's deterministic Today reminders, priority-ordered. `suppressStableIds`
  * removes anything already shown as the primary Today path (dedup vs Today Intelligence). Upcoming
@@ -95,10 +136,11 @@ export async function buildTodayReminders(
   suppressStableIds: ReadonlySet<string> = new Set(),
 ): Promise<TodayReminder[]> {
   if (!userId) return [];
-  const [req, action, practice] = await Promise.all([
+  const [req, action, practice, followUp] = await Promise.all([
     requiredLearning(admin, userId, locale),
     actionDue(admin, userId, now, tz, locale),
     practiceDue(admin, userId, now, tz, locale),
+    followUpDue(admin, userId, now, tz, locale),
   ]);
-  return sortReminders(dedupeReminders([...req, ...action, ...practice], suppressStableIds));
+  return sortReminders(dedupeReminders([...req, ...action, ...practice, ...followUp], suppressStableIds));
 }

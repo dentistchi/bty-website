@@ -39,6 +39,7 @@ import {
 } from "./foundryTrainingService";
 import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
+import { materializeFollowupObligation } from "./foundryFollowupService";
 
 /**
  * Foundry PDF Study Room — service layer (the DOCUMENT content type).
@@ -621,6 +622,7 @@ export async function completeDocumentTraining(
   rawResponse: unknown,
   authUserId: string | null,
   rawSharedResponse?: unknown,
+  deviceTz?: string | null,
 ): Promise<DocumentProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -675,6 +677,18 @@ export async function completeDocumentTraining(
     xpOverride = outcomeToXpStatus(outcome);
   }
 
+  // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE on an AUTHENTICATED document completion
+  // (mirrors the YouTube path), regardless of XP outcome. Anonymous completion → nothing here.
+  if (authUserId) {
+    await materializeFollowupObligation(admin, {
+      eventId: r.event.id,
+      progressId,
+      authUserId,
+      completedAtIso: now,
+      deviceTz,
+    });
+  }
+
   return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride) };
 }
 
@@ -684,6 +698,7 @@ export async function claimDocumentXp(
   token: string,
   sessionToken: string | null | undefined,
   authUserId: string,
+  deviceTz?: string | null,
 ): Promise<DocumentProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -694,6 +709,16 @@ export async function claimDocumentXp(
   // Slice 3.1B-3D (fix): connect the assignment on EVERY completed claim call, idempotently,
   // BEFORE the XP early-return — so a previously-awarded session still gets connected.
   const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+
+  // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE at the authenticated claim (mirrors the
+  // YouTube claim), BEFORE the XP early-return, idempotently. This is the anonymous→owned path.
+  await materializeFollowupObligation(admin, {
+    eventId: r.event.id,
+    progressId: prog.id,
+    authUserId,
+    completedAtIso: prog.completed_at,
+    deviceTz,
+  });
 
   if (prog.xp_awarded_at) {
     return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };

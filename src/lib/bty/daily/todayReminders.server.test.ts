@@ -12,11 +12,19 @@ function query(data: unknown[]) {
   (obj as { then: unknown }).then = (res: (v: { data: unknown[] }) => unknown) => Promise.resolve({ data }).then(res);
   return obj;
 }
-function mockAdmin(cfg: { assignments?: unknown[]; contracts?: unknown[]; outcomes?: unknown[] }) {
+function mockAdmin(cfg: { assignments?: unknown[]; contracts?: unknown[]; outcomes?: unknown[]; followups?: unknown[] }) {
   return {
     rpc: async () => ({ data: cfg.assignments ?? [] }),
     from: (table: string) =>
-      query(table === "bty_action_contracts" ? (cfg.contracts ?? []) : table === "arena_pending_outcomes" ? (cfg.outcomes ?? []) : []),
+      query(
+        table === "bty_action_contracts"
+          ? (cfg.contracts ?? [])
+          : table === "arena_pending_outcomes"
+            ? (cfg.outcomes ?? [])
+            : table === "foundry_participant_followups"
+              ? (cfg.followups ?? [])
+              : [],
+      ),
   } as never;
 }
 
@@ -78,5 +86,61 @@ describe("buildTodayReminders", () => {
 
   it("returns [] for an empty user id (never a cross-user read)", async () => {
     expect(await buildTodayReminders(mockAdmin({}), "", now, "UTC", "en")).toEqual([]);
+  });
+
+  // Slice 3.1B-3K — FOLLOW_UP_DUE joins the projection from foundry_participant_followups.
+  describe("FOLLOW_UP_DUE (Slice 3.1B-3K)", () => {
+    it("test 25/26/29 — a due-today AND an overdue PENDING follow-up appear with the followup: prefix", async () => {
+      const admin = mockAdmin({
+        followups: [
+          { id: "f1", source_training_title: "Confirm Understanding", follow_up_days: 7, due_at: "2026-07-22T05:00:00Z", status: "PENDING" }, // due today (same BTY day as now)
+          { id: "f2", source_training_title: "Old one", follow_up_days: 30, due_at: "2026-07-20T05:00:00Z", status: "PENDING" }, // overdue
+        ],
+      });
+      const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+      const f1 = out.find((r) => r.stableId === "followup:f1")!;
+      const f2 = out.find((r) => r.stableId === "followup:f2")!;
+      expect(f1.category).toBe("FOLLOW_UP_DUE");
+      expect(f1.state).toBe("due_today");
+      expect(f1.title).toContain("7-day follow-up");
+      expect(f1.title).toContain("Confirm Understanding");
+      expect(f1.canonicalDeepLink).toBe("/en/app?tab=foundry&followup=f1");
+      expect(f2.state).toBe("overdue");
+      expect(f2.title).toContain("30-day follow-up");
+    });
+
+    it("test 27 — an UPCOMING follow-up (future BTY day) does NOT appear in V1", async () => {
+      const admin = mockAdmin({
+        followups: [{ id: "f9", source_training_title: "Later", follow_up_days: 7, due_at: "2026-07-25T05:00:00Z", status: "PENDING" }],
+      });
+      const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+      expect(out.find((r) => r.stableId === "followup:f9")).toBeUndefined();
+    });
+
+    it("test 30 — overdue follow-up ranks by the existing state priority (before due_today)", async () => {
+      const admin = mockAdmin({
+        followups: [
+          { id: "due", source_training_title: "A", follow_up_days: 7, due_at: "2026-07-22T05:00:00Z", status: "PENDING" },
+          { id: "over", source_training_title: "B", follow_up_days: 7, due_at: "2026-07-19T05:00:00Z", status: "PENDING" },
+        ],
+      });
+      const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+      expect(out[0].stableId).toBe("followup:over"); // overdue ranks first via STATE_RANK
+    });
+
+    it("test 28 — a RESPONDED follow-up is filtered out by the source query (status=PENDING) → absent", async () => {
+      // The projection query filters .eq(status, 'PENDING'); a RESPONDED row is never returned by the DB.
+      const admin = mockAdmin({ followups: [] });
+      const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+      expect(out.find((r) => r.category === "FOLLOW_UP_DUE")).toBeUndefined();
+    });
+
+    it("KO — localized checkpoint eyebrow", async () => {
+      const admin = mockAdmin({
+        followups: [{ id: "f1", source_training_title: "환자 이해 확인", follow_up_days: 7, due_at: "2026-07-22T05:00:00Z", status: "PENDING" }],
+      });
+      const out = await buildTodayReminders(admin, "u1", now, "UTC", "ko");
+      expect(out.find((r) => r.stableId === "followup:f1")!.title).toContain("7일 후 확인");
+    });
   });
 });

@@ -53,6 +53,32 @@ describe("TodayPersonalBrief", () => {
     expect(rows[0].getAttribute("data-state")).toBe("overdue");
   });
 
+  it("renders a FOLLOW_UP_DUE reminder (Slice 3.1B-3K) — checkpoint title in-line, deep link to the surface", async () => {
+    // @ts-expect-error test shim
+    global.fetch = mockBrief({
+      ok: true,
+      consent: false,
+      brief: null,
+      reminders: [
+        {
+          stableId: "followup:f1",
+          category: "FOLLOW_UP_DUE",
+          title: "7-day follow-up · Confirm Patient Understanding",
+          state: "due_today",
+          canonicalDeepLink: "/en/app?tab=foundry&followup=f1",
+        },
+      ],
+    });
+    render(<TodayPersonalBrief locale="en" />);
+    await waitFor(() => expect(screen.getByTestId("brief-reminders")).toBeTruthy());
+    const row = screen.getByTestId("brief-reminder");
+    expect(row.getAttribute("data-category")).toBe("FOLLOW_UP_DUE");
+    expect(row.textContent).toContain("7-day follow-up · Confirm Patient Understanding");
+    // No category prefix is prepended (the checkpoint eyebrow lives inside the title).
+    expect(row.textContent).not.toContain("Required training ·");
+    expect(row.querySelector("a")?.getAttribute("href")).toBe("/en/app?tab=foundry&followup=f1");
+  });
+
   it("shows reminders even when the brief is null (consent off / AI omitted)", async () => {
     // @ts-expect-error test shim
     global.fetch = mockBrief({
