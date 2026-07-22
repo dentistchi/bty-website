@@ -78,6 +78,51 @@ describe('RoomSettingsForm submitted contract', () => {
     expect(values).toEqual(['midnight_gold', 'neon_night', 'warm_stage']);
   });
 
+  // Gate C regression: the selected theme must survive the submitting-state re-render.
+  // The browser builds FormData AFTER onSubmit fires (which flips submitting=true and
+  // re-renders); a disabled checked radio would be dropped here, silently reverting the
+  // Room to midnight_gold. Build FormData from the real form POST-submit, like a browser.
+  it('select neon_night → submit → FormData carries branding theme=neon_night (once)', () => {
+    const { container } = render(
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,
+    );
+    const form = container.querySelector('form')!;
+    fireEvent.click(container.querySelector('input[value="neon_night"]')!);
+    fireEvent.submit(form); // drives the submitting=true re-render, as a real submit does
+    const fd = new FormData(form);
+    expect(fd.getAll('theme')).toEqual(['neon_night']); // present exactly once
+  });
+
+  it('select warm_stage → submit → FormData carries branding theme=warm_stage', () => {
+    const { container } = render(
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,
+    );
+    const form = container.querySelector('form')!;
+    fireEvent.click(container.querySelector('input[value="warm_stage"]')!);
+    fireEvent.submit(form);
+    expect(new FormData(form).getAll('theme')).toEqual(['warm_stage']);
+  });
+
+  it('midnight_gold remains a valid submitted theme after submit', () => {
+    const { container } = render(
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,
+    );
+    const form = container.querySelector('form')!;
+    fireEvent.submit(form);
+    expect(new FormData(form).getAll('theme')).toEqual(['midnight_gold']);
+  });
+
+  it('theme radios are NEVER disabled while submitting — so the checked value still POSTs', () => {
+    const { container } = render(
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="neon_night" />,
+    );
+    const form = container.querySelector('form')!;
+    fireEvent.submit(form);
+    const radios = [...container.querySelectorAll('input[name="theme"]')] as HTMLInputElement[];
+    expect(radios.every((r) => r.disabled === false)).toBe(true);
+    expect(new FormData(form).get('theme')).toBe('neon_night');
+  });
+
   it('value-carrying fields are readOnly (never disabled) while submitting — so they still POST', () => {
     render(
       <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,

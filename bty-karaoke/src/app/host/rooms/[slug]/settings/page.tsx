@@ -28,6 +28,7 @@ const NOTICES: Record<string, { kind: 'ok' | 'err'; text: string }> = {
   saved: { kind: 'ok', text: '변경사항을 저장했어요.' },
   bad_name: { kind: 'err', text: '노래방 이름을 입력해 주세요.' },
   bad_welcome: { kind: 'err', text: '환영 문구가 너무 길어요. (최대 160자)' },
+  bad_theme: { kind: 'err', text: '테마를 선택해 주세요.' },
   logo_saved: { kind: 'ok', text: '로고를 저장했어요.' },
   logo_removed: { kind: 'ok', text: '로고를 제거했어요.' },
   logo_bad: { kind: 'err', text: '이미지를 읽을 수 없어요. PNG · JPEG · WebP 파일을 올려 주세요.' },

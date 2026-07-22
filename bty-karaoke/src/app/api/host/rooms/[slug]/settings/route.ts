@@ -18,7 +18,7 @@ import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { verifyHostCsrf, csrfFromForm } from '@/lib/host-csrf.server';
 import { getPublicRoomBySlug, updateRoomSettings, updateRoomTheme } from '@/lib/rooms.server';
 import { RoomSettingsSchema } from '@/lib/validation';
-import { normalizeTheme } from '@/domain/branding';
+import { isBrandingTheme, type BrandingTheme } from '@/domain/branding';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -61,17 +61,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     return NextResponse.redirect(settingsUrl(req, room.slug, tooLong ? 'bad_welcome' : 'bad_name'), 303);
   }
 
+  // Preset theme (Room Branding V1): decide BEFORE any write so an invalid value
+  // never leaves a half-applied save. Allowlist ONLY.
+  //   missing/empty  → preserve the current persisted theme (a name/welcome-only
+  //                    save must never touch the theme).
+  //   present+valid  → update to exactly that theme.
+  //   present+invalid→ reject outright (bad_theme). We NEVER coerce an unknown/
+  //                    injected value to the default and store it — doing so would
+  //                    silently reset a Room to midnight_gold (the Gate C defect).
+  const rawTheme = form?.get('theme');
+  let nextTheme: BrandingTheme | null = null;
+  if (typeof rawTheme === 'string' && rawTheme.length > 0) {
+    if (!isBrandingTheme(rawTheme)) {
+      return NextResponse.redirect(settingsUrl(req, room.slug, 'bad_theme'), 303);
+    }
+    nextTheme = rawTheme;
+  }
+
   const welcome = parsed.data.guestWelcomeMessage;
   await updateRoomSettings(room.id, {
     displayName: parsed.data.name,
     guestWelcomeMessage: welcome && welcome.length > 0 ? welcome : null,
   });
 
-  // Preset theme (Room Branding V1): allowlist ONLY — any unknown/injected value
-  // normalizes to the default, so raw CSS/colors can never be stored. Updated only
-  // when the field is present, so a name/welcome save never resets the theme.
-  const rawTheme = form?.get('theme');
-  if (typeof rawTheme === 'string') await updateRoomTheme(room.id, normalizeTheme(rawTheme));
+  if (nextTheme) await updateRoomTheme(room.id, nextTheme);
 
   // 5. Back to the settings page (canonical slug unchanged) with a success notice.
   const res = NextResponse.redirect(settingsUrl(req, room.slug, 'saved'), 303);

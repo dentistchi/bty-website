@@ -71,12 +71,28 @@ describe('POST /api/host/rooms/[slug]/settings', () => {
     expect(themeSpy).toHaveBeenCalledWith('room-chi', 'neon_night');
   });
 
-  it('coerces an unknown / injected theme to the default (no raw CSS/colors stored)', async () => {
-    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: 'red; background: url(evil)' }), ctx);
-    expect(themeSpy).toHaveBeenCalledWith('room-chi', 'midnight_gold');
+  it('saves warm_stage as an allowlisted theme', async () => {
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: 'warm_stage' }), ctx);
+    expect(themeSpy).toHaveBeenCalledWith('room-chi', 'warm_stage');
   });
 
-  it('omitting the theme field never resets the theme (no theme write)', async () => {
+  it('an unknown / injected theme is REJECTED (bad_theme) — never coerced-and-stored, no write at all', async () => {
+    const res = await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: 'red; background: url(evil)' }), ctx);
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(`${SETTINGS}?notice=bad_theme`);
+    // invalid theme must NOT silently reset the Room to midnight_gold, and must NOT
+    // partially apply the name/welcome write.
+    expect(themeSpy).not.toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('an empty-string theme is treated as missing → preserved (no theme write), name still saved', async () => {
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: '' }), ctx);
+    expect(themeSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledWith('room-chi', { displayName: 'Chi', guestWelcomeMessage: null });
+  });
+
+  it('omitting the theme field never resets the theme (no theme write) — preserves a neon_night Room', async () => {
     await POST(makeReq({ csrf: 'csrf-token', name: 'Chi' }), ctx);
     expect(themeSpy).not.toHaveBeenCalled();
   });

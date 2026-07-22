@@ -3,11 +3,14 @@
 // Room Settings + Branding — the name / welcome / theme editor (one explicit Save).
 //
 // A NATIVE form POST to /api/host/rooms/{slug}/settings — works with zero JS. Client
-// behaviour is progressive enhancement: on submit it locks the value-carrying fields
-// with `readOnly` (NOT `disabled` — a disabled control is omitted from the POST body,
-// the first-room bad_name defect) and shows a loading state. Selecting a theme card
-// live-updates the preview swatch (data-theme drives server-controlled CSS variables);
-// only an allowlisted theme id is ever submitted — never raw colors/CSS.
+// behaviour is progressive enhancement: on submit it locks the text fields with
+// `readOnly` (NOT `disabled` — a disabled control is omitted from the POST body, the
+// first-room bad_name defect) and shows a loading state. The theme radios have no
+// readOnly equivalent, so they must NOT be disabled on submit either: a disabled
+// checked radio is dropped from FormData, which silently drops the theme selection
+// (the Gate C revert-to-midnight_gold defect). Only the Save button is disabled.
+// Selecting a theme card live-updates the preview swatch (data-theme drives server-
+// controlled CSS variables); only an allowlisted theme id is ever submitted.
 
 import { useState } from 'react';
 import { BRANDING_THEMES, THEME_META, type BrandingTheme, normalizeTheme } from '@/domain/branding';
@@ -77,7 +80,6 @@ export default function RoomSettingsForm({
               name="theme"
               value={id}
               checked={theme === id}
-              disabled={submitting}
               onChange={() => setTheme(id)}
             />
             <span className="theme-swatch" aria-hidden="true">
