@@ -33,6 +33,46 @@ export function validateCompletionPrompt(raw: unknown): ValidationResult<string>
 }
 
 /**
+ * The module's Shared Understanding question (Slice 3.1B-3G) — OPTIONAL. null / blank ⇒ the module
+ * has no shared question (value null). A present question is bounded exactly like the completion
+ * prompt (1..MAX). Distinct from the private Reflection prompt.
+ */
+export function validateSharedQuestionOptional(raw: unknown): ValidationResult<string | null> {
+  if (raw === null || raw === undefined) return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false, reason: "shared_question_invalid" };
+  const cleaned = stripControlChars(raw).trim();
+  if (cleaned.length < 1) return { ok: true, value: null };
+  if (cleaned.length > FOUNDRY_COMPLETION_PROMPT_MAX) return { ok: false, reason: "shared_question_too_long" };
+  return { ok: true, value: cleaned };
+}
+
+/**
+ * The learner's Shared Understanding response (Slice 3.1B-3G) — required ONLY when the module has a
+ * shared question. Same shape as validateResponse (newlines allowed, control chars stripped, 1..1000)
+ * but a distinct reason namespace so the learner UI can message the shared field independently.
+ */
+export function validateSharedResponse(raw: unknown): ValidationResult<string> {
+  const base = validateResponse(raw);
+  if (base.ok) return base;
+  return { ok: false, reason: base.reason === "response_required" ? "shared_response_required" : base.reason };
+}
+
+/**
+ * Resolve the Shared Understanding response at completion (Slice 3.1B-3G). Pure gate:
+ *   - no shared question configured  → value null (shared response NOT stored; input ignored).
+ *   - shared question configured     → a non-empty valid response is REQUIRED.
+ * The service persists `value` into shared_understanding_response ONLY (never response_text), and
+ * sets host_review_status = NOT_REVIEWED when value is non-null.
+ */
+export function resolveSharedResponse(
+  sharedQuestion: string | null | undefined,
+  raw: unknown,
+): ValidationResult<string | null> {
+  if (!sharedQuestion || sharedQuestion.trim().length < 1) return { ok: true, value: null };
+  return validateSharedResponse(raw);
+}
+
+/**
  * The completion response. Newlines are allowed (it's a reflection), so we keep
  * \n and \r but still strip other control chars. Length is measured post-trim.
  */

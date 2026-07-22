@@ -4,8 +4,9 @@ import {
   deriveEventMaterial,
   buildModuleSnapshot,
   completionPromptOrNull,
+  sharedQuestionOrNull,
 } from "@/domain/foundry/module/module-publish";
-import { validateCompletionPrompt } from "@/domain/foundry/events/foundry-training";
+import { validateCompletionPrompt, validateSharedQuestionOptional } from "@/domain/foundry/events/foundry-training";
 import { computeMinReadSeconds, validatePageCount } from "@/domain/foundry/events/foundry-document";
 import {
   getOwnerDraft,
@@ -102,6 +103,7 @@ async function createDocumentEventFromDraftAsset(
   draftId: string,
   title: string,
   completionPrompt: string,
+  sharedQuestion: string | null,
 ): Promise<ServiceResult<string>> {
   const { data: asset } = await admin
     .from("foundry_module_draft_assets")
@@ -139,6 +141,7 @@ async function createDocumentEventFromDraftAsset(
     min_read_seconds: minReadSeconds,
     intro: null,
     completion_prompt: completionPrompt,
+    shared_question: sharedQuestion,
   });
   if (contentErr) {
     // Compensate: remove the event (cascade drops the content row) — NEVER the object.
@@ -213,6 +216,12 @@ export async function publishDraft(
   if (!promptCheck.ok) return { ok: false, reason: promptCheck.reason };
   const completionPrompt = promptCheck.value;
 
+  // Shared Understanding question (Slice 3.1B-3G) — OPTIONAL, distinct from the private Reflection
+  // prompt. NULL (blank / Host-removed) publishes no shared question → completion behaves as before.
+  const sharedCheck = validateSharedQuestionOptional(sharedQuestionOrNull(answers));
+  if (!sharedCheck.ok) return { ok: false, reason: sharedCheck.reason };
+  const sharedQuestion = sharedCheck.value;
+
   const material = deriveEventMaterial(answers);
   if (material.kind === "unsupported") return { ok: false, reason: material.reason };
 
@@ -223,11 +232,12 @@ export async function publishDraft(
       title,
       youtube_url: material.url,
       completion_prompt: completionPrompt,
+      shared_question: sharedQuestion,
     });
     if (!res.ok) return { ok: false, reason: res.reason };
     eventId = res.value.event.id;
   } else {
-    const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt);
+    const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt, sharedQuestion);
     if (!res.ok) return { ok: false, reason: res.reason };
     eventId = res.value;
   }

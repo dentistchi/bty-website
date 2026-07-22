@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
 import {
   validateCompletionPrompt,
+  validateSharedQuestionOptional,
+  resolveSharedResponse,
   validateResponse,
   projectManagerRosterStatus,
   projectPublicTrainingStage,
@@ -50,6 +52,7 @@ type ContentRow = {
   youtube_channel_title: string | null;
   youtube_thumbnail_url: string | null;
   completion_prompt: string;
+  shared_question: string | null;
 };
 
 type ProgressRow = {
@@ -102,7 +105,7 @@ export type ManagerTrainingSnapshot = {
 async function getContent(admin: SupabaseClient, eventId: string): Promise<ContentRow | null> {
   const { data } = await admin
     .from("foundry_event_training_content")
-    .select("event_id, youtube_video_id, youtube_title, youtube_channel_title, youtube_thumbnail_url, completion_prompt")
+    .select("event_id, youtube_video_id, youtube_title, youtube_channel_title, youtube_thumbnail_url, completion_prompt, shared_question")
     .eq("event_id", eventId)
     .maybeSingle<ContentRow>();
   return data ?? null;
@@ -116,7 +119,7 @@ async function getContent(admin: SupabaseClient, eventId: string): Promise<Conte
 export async function createTrainingEvent(
   admin: SupabaseClient,
   ownerUserId: string,
-  input: { title?: unknown; youtube_url?: unknown; completion_prompt?: unknown },
+  input: { title?: unknown; youtube_url?: unknown; completion_prompt?: unknown; shared_question?: unknown },
 ): Promise<ServiceResult<ManagerTrainingSnapshot>> {
   const title = validateEventTitle(input.title);
   if (!title.ok) return { ok: false, reason: title.reason };
@@ -126,6 +129,10 @@ export async function createTrainingEvent(
 
   const prompt = validateCompletionPrompt(input.completion_prompt);
   if (!prompt.ok) return { ok: false, reason: prompt.reason };
+
+  // Shared Understanding question (Slice 3.1B-3G) — OPTIONAL; NULL ⇒ no shared question.
+  const sharedQ = validateSharedQuestionOptional(input.shared_question);
+  if (!sharedQ.ok) return { ok: false, reason: sharedQ.reason };
 
   // Embeddability gate — BEFORE any insert, so a non-embeddable video creates NO
   // event/content rows (atomic). A video whose owner disabled embedding would
@@ -144,6 +151,7 @@ export async function createTrainingEvent(
     event_id: event.id,
     youtube_video_id: videoId,
     completion_prompt: prompt.value,
+    shared_question: sharedQ.value,
   });
   if (contentErr) {
     // Compensate — never leave a training event without its content.
@@ -233,7 +241,12 @@ export type PublicXpStatus = "awarded" | "claimable" | "owner_ineligible" | "dai
 export type PublicTrainingSnapshot = {
   event: { title: string; status: FoundryEventStatus } | null;
   participant: { display_name: string } | null;
-  training: { youtube_video_id: string; completion_prompt: string | null } | null;
+  training: {
+    youtube_video_id: string;
+    completion_prompt: string | null;
+    /** Shared Understanding question (Slice 3.1B-3G). null = no shared question OR not yet unlocked. */
+    shared_question: string | null;
+  } | null;
   stage: PublicTrainingStage;
   xp_status: PublicXpStatus;
 };
@@ -312,6 +325,8 @@ function buildPublicSnapshot(
       ? {
           youtube_video_id: content.youtube_video_id,
           completion_prompt: unlockedPrompt ? content.completion_prompt : null,
+          // Shared Understanding question — surfaced with the completion prompt (same unlock gate).
+          shared_question: unlockedPrompt ? content.shared_question : null,
         }
       : null;
 
@@ -518,6 +533,7 @@ export async function completeTraining(
   sessionToken: string | null | undefined,
   rawResponse: unknown,
   authUserId: string | null,
+  rawSharedResponse?: unknown,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -531,13 +547,27 @@ export async function completeTraining(
   if (r.event.status === "closed") return { ok: false, reason: "event_closed" };
   if (!prog.video_completed_at) return { ok: false, reason: "video_not_complete" };
 
+  // response_text = PRIVATE Reflection (unchanged, never Host-visible). Still required today.
   const response = validateResponse(rawResponse);
   if (!response.ok) return { ok: false, reason: response.reason };
 
+  // Shared Understanding (Slice 3.1B-3G): required ONLY when the module has a shared_question.
+  // Written to a SEPARATE column with a NOT_REVIEWED status; never conflated with response_text.
+  const { data: content } = await admin
+    .from("foundry_event_training_content")
+    .select("shared_question")
+    .eq("event_id", r.event.id)
+    .maybeSingle<{ shared_question: string | null }>();
+  const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
+  if (!shared.ok) return { ok: false, reason: shared.reason };
+
   const now = new Date().toISOString();
+  const sharedWrite = shared.value
+    ? { shared_understanding_response: shared.value, shared_response_submitted_at: now, host_review_status: "NOT_REVIEWED" }
+    : {};
   const { data: updated } = await admin
     .from("foundry_event_training_progress")
-    .update({ response_text: response.value, completed_at: now, updated_at: now })
+    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite })
     .eq("id", prog.id)
     .is("completed_at", null)
     .select(PROGRESS_COLS)

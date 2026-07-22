@@ -34,7 +34,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   }
 
   const body = await req.json().catch(() => ({}));
-  const r = await completeTraining(admin, token, session, body?.response_text, authUserId);
+  // shared_response is the Host-visible Shared Understanding answer (Slice 3.1B-3G), distinct from
+  // the private response_text; required by the service only when the module has a shared_question.
+  const r = await completeTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
   return jsonNoStore({ ok: true, ...r.snapshot });
 }

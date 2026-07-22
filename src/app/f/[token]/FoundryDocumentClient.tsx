@@ -38,6 +38,7 @@ type DocInfo = {
   active_read_ms: number;
   reading_complete: boolean;
   completion_prompt: string | null;
+  shared_question: string | null;
 };
 
 type Snapshot = {
@@ -62,6 +63,10 @@ type Copy = {
   readingDone: string;
   reflection: string;
   responsePlaceholder: string;
+  sharedHeading: string;
+  sharedDisclosure: string;
+  sharedPlaceholder: string;
+  sharedError: string;
   complete: string;
   completing: string;
   trainingComplete: string;
@@ -103,6 +108,10 @@ const COPY: Record<Locale, Copy> = {
     readingDone: "You’ve read the document.",
     reflection: "REFLECTION",
     responsePlaceholder: "Write your reflection…",
+    sharedHeading: "Show what you understood",
+    sharedDisclosure: "Your response will be shared with the training host.",
+    sharedPlaceholder: "Answer the question above…",
+    sharedError: "Please answer the shared question to complete.",
     complete: "Complete training",
     completing: "Saving…",
     trainingComplete: "TRAINING COMPLETE",
@@ -142,6 +151,10 @@ const COPY: Record<Locale, Copy> = {
     readingDone: "문서를 모두 읽었습니다.",
     reflection: "성찰",
     responsePlaceholder: "성찰을 적어 주세요…",
+    sharedHeading: "배운 내용을 설명해 주세요",
+    sharedDisclosure: "이 답변은 교육 담당자에게 공유됩니다.",
+    sharedPlaceholder: "위 질문에 답해 주세요…",
+    sharedError: "완료하려면 공유 질문에 답해 주세요.",
     complete: "훈련 완료",
     completing: "저장 중…",
     trainingComplete: "훈련 완료",
@@ -228,9 +241,12 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
   const [response, setResponse] = useState("");
+  // Shared Understanding answer (Slice 3.1B-3G) — SEPARATE state from the private `response`.
+  const [sharedResponse, setSharedResponse] = useState("");
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
+  const [sharedError, setSharedError] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState(false);
   const busyRef = useRef(false);
@@ -355,23 +371,32 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     [post, applyResult],
   );
 
+  const sharedQuestion = snapshot?.document?.shared_question ?? null;
   const onComplete = useCallback(async () => {
     if (busyRef.current) return;
     if (response.trim().length < 1) return setResponseError(true);
+    // A configured shared question requires a non-empty shared answer BEFORE completion.
+    if (sharedQuestion && sharedResponse.trim().length < 1) return setSharedError(true);
     busyRef.current = true;
     setBusy(true);
     setResponseError(false);
+    setSharedError(false);
     try {
-      const { ok, data } = await post("/complete", { response_text: response.trim() });
+      const { ok, data } = await post("/complete", {
+        response_text: response.trim(),
+        ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
+      });
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
+      else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long" || d?.error === "response_too_long")
+        setSharedError(true);
       else await load();
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -602,6 +627,30 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
               className="w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
             />
             {responseError && <p className="mt-2 text-xs text-red-300">{t.responseError}</p>}
+
+            {sharedQuestion && (
+              /* Shared Understanding — VISUALLY + semantically separate from the private reflection
+                 above. The learner is explicitly told this answer is shared with the Host. */
+              <div className="mt-6 rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.06] p-4" data-testid="shared-understanding-section">
+                <Eyebrow>{t.sharedHeading}</Eyebrow>
+                <p className="mt-2 text-sm text-white/85">{sharedQuestion}</p>
+                <p className="mt-1 text-xs text-[#C9A66B]/90" data-testid="shared-disclosure">{t.sharedDisclosure}</p>
+                <textarea
+                  value={sharedResponse}
+                  onChange={(e) => {
+                    setSharedResponse(e.target.value);
+                    setSharedError(false);
+                  }}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder={t.sharedPlaceholder}
+                  data-testid="shared-understanding-input"
+                  className="mt-3 w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+                />
+                {sharedError && <p className="mt-2 text-xs text-red-300">{t.sharedError}</p>}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={busy}

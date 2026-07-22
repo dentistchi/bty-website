@@ -7,6 +7,7 @@ import type { ManagerSnapshot } from "./types";
 import { useEventSnapshot } from "./useEventSnapshot";
 import { FoundryEventQr } from "./FoundryEventQr";
 import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
+import FoundrySharedReview from "./FoundrySharedReview";
 import { FoundryShareControls } from "./FoundryShareControls";
 
 async function postAction(url: string): Promise<ManagerSnapshot | null> {
@@ -204,6 +205,10 @@ export function FoundryEventControlRoom({
               removingId={removingId}
               t={t}
             />
+            {/* Shared Understanding review (Slice 3.1B-3G) — self-gates: renders only when a shared
+                question is configured AND a learner has submitted a shared response. Never shows
+                private Reflection. */}
+            <FoundrySharedReview eventId={eventId} locale={locale} />
           </section>
 
           {isOpen ? (

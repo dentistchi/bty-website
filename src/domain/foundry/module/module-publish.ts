@@ -201,3 +201,13 @@ export function completionPromptOrNull(answers: BuilderAnswers | undefined): str
   const v = (answers?.completionPrompt ?? "").trim();
   return v.length > 0 ? v : null;
 }
+
+/**
+ * The module's Shared Understanding question (Slice 3.1B-3G), or null when the Host left it blank /
+ * explicitly removed it. NULL published as `shared_question` means the module has no shared question
+ * and completion behaves exactly as before. Distinct from completionPromptOrNull (private Reflection).
+ */
+export function sharedQuestionOrNull(answers: BuilderAnswers | undefined): string | null {
+  const v = (answers?.sharedQuestion ?? "").trim();
+  return v.length > 0 ? v : null;
+}

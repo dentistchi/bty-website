@@ -94,6 +94,15 @@ export type BuilderAnswers = ModuleDraftAnswers & {
    * completion_prompt; a sensible localized default is used only when blank.
    */
   completionPrompt?: string;
+  /**
+   * Shared Understanding question (Slice 3.1B-3G). Module-specific; the learner is EXPLICITLY
+   * told the answer is shared with the training Host (distinct from the private completion
+   * Reflection). Host-authored, editable, and explicitly removable. Blank / absent = the module
+   * has no shared question and completion behaves exactly as before. Published into the event's
+   * `shared_question`. Its answer lands in `shared_understanding_response`, NEVER in the private
+   * `response_text`.
+   */
+  sharedQuestion?: string;
   arenaRecommended?: boolean;
   followUpDays?: FollowUpDays;
   /**
@@ -169,6 +178,17 @@ export function recommendArenaForNeed(need: unknown): boolean {
  */
 export function recommendArenaForNeeds(needs: readonly LearningNeed[] | undefined): boolean {
   return (needs ?? []).some((n) => recommendArenaForNeed(n));
+}
+
+/**
+ * Shared Understanding default policy (Slice 3.1B-3G, Amendment F). Propose a shared question by
+ * default when the learning need involves judgment, practice, or a shared standard — the same
+ * decide/practice/shared_standard rule Arena keys on. Pure information ("Know") alone does NOT get
+ * a default shared question (it stays optional). Pure + deterministic; the Host may always edit or
+ * explicitly remove the proposed question, and may add one to a Know-only module.
+ */
+export function shouldProposeSharedQuestion(needs: readonly LearningNeed[] | undefined): boolean {
+  return recommendArenaForNeeds(needs);
 }
 
 /** Re-exported so the UI never re-implements the Slice-1 behavior heuristic. */

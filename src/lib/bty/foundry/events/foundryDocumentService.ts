@@ -3,6 +3,7 @@ import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/ev
 import {
   validateCompletionPrompt,
   validateResponse,
+  resolveSharedResponse,
   projectManagerRosterStatus,
   projectPublicTrainingStage,
   FOUNDRY_TRAINING_XP,
@@ -65,10 +66,11 @@ type DocContentRow = {
   min_read_seconds: number;
   intro: string | null;
   completion_prompt: string;
+  shared_question: string | null;
 };
 
 const DOC_CONTENT_COLS =
-  "event_id, source_type, storage_bucket, storage_path, file_name, byte_size, page_count, min_read_seconds, intro, completion_prompt";
+  "event_id, source_type, storage_bucket, storage_path, file_name, byte_size, page_count, min_read_seconds, intro, completion_prompt, shared_question";
 
 type DocProgressRow = {
   id: string;
@@ -419,6 +421,8 @@ export type PublicDocumentSnapshot = {
     active_read_ms: number;
     reading_complete: boolean;
     completion_prompt: string | null;
+    /** Shared Understanding question (Slice 3.1B-3G). null = none OR not yet unlocked. */
+    shared_question: string | null;
   } | null;
   stage: PublicTrainingStage;
   xp_status: PublicXpStatus;
@@ -468,6 +472,7 @@ function buildDocumentSnapshot(
           active_read_ms: progress?.document_active_read_ms ?? 0,
           reading_complete: Boolean(progress?.document_read_completed_at),
           completion_prompt: unlockedPrompt ? content.completion_prompt : null,
+          shared_question: unlockedPrompt ? content.shared_question : null,
         }
       : null;
 
@@ -615,6 +620,7 @@ export async function completeDocumentTraining(
   sessionToken: string | null | undefined,
   rawResponse: unknown,
   authUserId: string | null,
+  rawSharedResponse?: unknown,
 ): Promise<DocumentProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -628,13 +634,27 @@ export async function completeDocumentTraining(
   if (r.event.status === "closed") return { ok: false, reason: "event_closed" };
   if (!prog.document_read_completed_at) return { ok: false, reason: "reading_not_complete" };
 
+  // response_text = PRIVATE Reflection (unchanged, never Host-visible). Still required today.
   const response = validateResponse(rawResponse);
   if (!response.ok) return { ok: false, reason: response.reason };
 
+  // Shared Understanding (Slice 3.1B-3G): required ONLY when the module has a shared_question —
+  // equivalent to the YouTube path. Separate column + NOT_REVIEWED status; response_text untouched.
+  const { data: content } = await admin
+    .from("foundry_event_document_content")
+    .select("shared_question")
+    .eq("event_id", r.event.id)
+    .maybeSingle<{ shared_question: string | null }>();
+  const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
+  if (!shared.ok) return { ok: false, reason: shared.reason };
+
   const now = new Date().toISOString();
+  const sharedWrite = shared.value
+    ? { shared_understanding_response: shared.value, shared_response_submitted_at: now, host_review_status: "NOT_REVIEWED" }
+    : {};
   const { data: updated } = await admin
     .from("foundry_event_training_progress")
-    .update({ response_text: response.value, completed_at: now, updated_at: now })
+    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite })
     .eq("id", prog.id)
     .is("completed_at", null)
     .select(DOC_PROGRESS_COLS)

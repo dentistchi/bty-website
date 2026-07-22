@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "./copy";
-import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, type ModuleBuilderCopy } from "./moduleBuilderCopy";
+import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, suggestSharedQuestion, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import { createSerializedSaver, type SaveState } from "./moduleAutosave";
 import {
   observableBehaviorWarning,
   recommendArenaForNeeds,
   normalizeLearningNeeds,
+  shouldProposeSharedQuestion,
   stepBlocker,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
@@ -91,6 +92,7 @@ export function ModuleBuilderShell({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goneRef = useRef(false);
   const seededPromptRef = useRef(false);
+  const seededSharedRef = useRef(false);
 
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
   if (saverRef.current === null) {
@@ -211,6 +213,19 @@ export function ModuleBuilderShell({
       if (!(answersRef.current.completionPrompt ?? "").trim()) {
         const suggestion = suggestCompletionPrompt(answersRef.current, locale);
         if (suggestion) patchAnswers({ completionPrompt: suggestion }, false);
+      }
+    }
+    // Shared Understanding default (Slice 3.1B-3G, Amendment F): propose a shared question by
+    // default for decide/practice/shared_standard needs, ONCE, and ONLY if the field is untouched
+    // (undefined). Once the Host edits it — even to empty (an explicit remove) — it is no longer
+    // undefined, so we never silently restore a removed question.
+    if (step === 6 && !seededSharedRef.current) {
+      seededSharedRef.current = true;
+      if (
+        answersRef.current.sharedQuestion === undefined &&
+        shouldProposeSharedQuestion(normalizeLearningNeeds(answersRef.current))
+      ) {
+        patchAnswers({ sharedQuestion: suggestSharedQuestion(locale) }, false);
       }
     }
   }, [step, patchAnswers, locale]);
@@ -793,6 +808,16 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
               <h3 className="text-sm font-medium text-white/70">{t.s6CompletionQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6CompletionHelp}</p>
               {textArea(a.completionPrompt ?? "", (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
+            </div>
+          ) : null}
+          {a.materialIntent ? (
+            /* Shared Understanding question (Slice 3.1B-3G) — distinct from the private completion
+               question above; the learner is told this answer is shared with the Host. Optional
+               (clear to remove); default-proposed for judgment/practice/shared-standard needs. */
+            <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-shared-question">
+              <h3 className="text-sm font-medium text-white/70">{t.s6SharedQ}</h3>
+              <p className="text-xs leading-5 text-white/45">{t.s6SharedHelp}</p>
+              {textArea(a.sharedQuestion ?? "", (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
             </div>
           ) : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />

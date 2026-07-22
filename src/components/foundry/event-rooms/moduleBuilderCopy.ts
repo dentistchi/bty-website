@@ -298,6 +298,9 @@ export type ModuleBuilderCopy = {
   s6CompletionQ: string;
   s6CompletionHelp: string;
   s6CompletionPlaceholder: string;
+  s6SharedQ: string;
+  s6SharedHelp: string;
+  s6SharedPlaceholder: string;
   // step 8 review — completion-question row + publish action
   reviewCompletion: string;
   publishCta: string;
@@ -496,6 +499,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s6CompletionQ: "Completion question",
     s6CompletionHelp: "The question each participant answers after the material. Edit it freely.",
     s6CompletionPlaceholder: "What is one thing you will apply this week?",
+    s6SharedQ: "Shared understanding question",
+    s6SharedHelp: "The learner is told this answer is shared with you. Proposed by default for judgment, practice, and shared-standard training — edit it, or clear it to remove.",
+    s6SharedPlaceholder: "In your own words, what is the most important standard from this training?",
     reviewCompletion: "COMPLETION QUESTION",
     publishCta: "Approve & create session",
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
@@ -768,6 +774,9 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s6CompletionQ: "완료 질문",
     s6CompletionHelp: "자료를 본 뒤 참가자가 답하는 질문입니다. 자유롭게 수정하세요.",
     s6CompletionPlaceholder: "이번 주에 적용할 한 가지는 무엇인가요?",
+    s6SharedQ: "공유 이해 질문",
+    s6SharedHelp: "이 답변이 담당자에게 공유된다고 학습자에게 안내됩니다. 판단·연습·공통 기준 교육에는 기본 제안됩니다 — 수정하거나 비워서 제거할 수 있습니다.",
+    s6SharedPlaceholder: "이 교육에서 가장 중요한 행동 기준을 자신의 말로 설명해 주세요.",
     reviewCompletion: "완료 질문",
     publishCta: "승인하고 세션 만들기",
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
@@ -885,4 +894,15 @@ export function suggestCompletionPrompt(
   return loc === "ko"
     ? `"${anchor}" — 이번 주에 적용할 한 가지는 무엇인가요?`
     : `Thinking about "${anchor}", what is one thing you will apply this week?`;
+}
+
+/**
+ * Deterministic default Shared Understanding question (Slice 3.1B-3G). The learner is told this
+ * answer is shared with the Host; it tests articulation of the standard (never "how do you feel").
+ * The caller decides WHETHER to propose it (shouldProposeSharedQuestion by need). Non-AI.
+ */
+export function suggestSharedQuestion(loc: Locale): string {
+  return loc === "ko"
+    ? "이 교육에서 가장 중요한 행동 기준을 자신의 말로 설명해 주세요."
+    : "In your own words, what is the most important standard from this training?";
 }
