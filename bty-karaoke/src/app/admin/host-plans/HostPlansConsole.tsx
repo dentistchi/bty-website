@@ -6,8 +6,13 @@ import { ANOMALY_LABEL, type AnomalyFlag, type ProviderSummary } from '@/domain/
 
 // The Manager session is an HttpOnly cookie set by the server — never readable here,
 // never stored in localStorage. Same-origin fetches carry it; a 401 means "not signed
-// in" → show the passcode form. This console is READ-ONLY: it renders no plan-change,
-// upgrade, downgrade, edit, delete, or retry control anywhere.
+// in" → show the passcode form.
+//
+// Plan-change action (confirm-gated, audited) lives ONLY inside the account detail
+// sheet, which already presents the unambiguous target and full before-state. It calls
+// the existing atomic endpoint POST /api/manager/host-plans/assign — never a client DB
+// write, never an optimistic local plan mutation. After every response the canonical
+// list + detail are refetched, so the screen only ever shows server truth.
 
 interface PlanView {
   code: 'FREE' | 'PRO';
@@ -119,6 +124,23 @@ export default function HostPlansConsole() {
   const [q, setQ] = useState('');
   const [detail, setDetail] = useState<Detail | null>(null);
 
+  // Plan-change flow (detail sheet only). `changeOpen` shows the confirm panel;
+  // `changeKey` is the ONE idempotency key for the current attempt — minted when the
+  // panel opens, reused verbatim for duplicate clicks or network retries, replaced only
+  // when a fresh attempt begins. `changeResult` is set from the server response (never
+  // optimistically) after a canonical refetch.
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
+  const [changeKey, setChangeKey] = useState<string | null>(null);
+  const [changeBusy, setChangeBusy] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const [changeResult, setChangeResult] = useState<{
+    changed: boolean;
+    from: 'FREE' | 'PRO';
+    to: 'FREE' | 'PRO';
+    reason: string;
+  } | null>(null);
+
   const loadList = useCallback(
     async (f: { plan: PlanFilter; anomalyOnly: boolean; q: string }): Promise<'ok' | 'unauth' | 'err'> => {
       try {
@@ -186,18 +208,116 @@ export default function HostPlansConsole() {
     }
   }
 
-  async function openDetail(accountId: string) {
-    const res = await fetch(`/api/manager/host-plans/${encodeURIComponent(accountId)}`, {
-      cache: 'no-store',
-      credentials: 'same-origin',
-    });
-    if (res.status === 401) {
-      setPhase('need-login');
-      return;
-    }
-    if (res.ok) {
+  const loadDetail = useCallback(async (accountId: string): Promise<'ok' | 'unauth' | 'err'> => {
+    try {
+      const res = await fetch(`/api/manager/host-plans/${encodeURIComponent(accountId)}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (res.status === 401) return 'unauth';
+      if (!res.ok) return 'err';
       const body = await res.json();
       setDetail(body.detail as Detail);
+      return 'ok';
+    } catch {
+      return 'err';
+    }
+  }, []);
+
+  function resetChange() {
+    setChangeOpen(false);
+    setChangeReason('');
+    setChangeKey(null);
+    setChangeBusy(false);
+    setChangeError(null);
+    setChangeResult(null);
+  }
+
+  async function openDetail(accountId: string) {
+    resetChange();
+    const r = await loadDetail(accountId);
+    if (r === 'unauth') setPhase('need-login');
+  }
+
+  function closeDetail() {
+    resetChange();
+    setDetail(null);
+  }
+
+  // Begin a change attempt: open the confirm panel and mint ONE idempotency key that is
+  // reused for every retry until the panel is closed (cancel / success dismiss).
+  function beginChange() {
+    setChangeError(null);
+    setChangeResult(null);
+    setChangeReason('');
+    setChangeKey(crypto.randomUUID());
+    setChangeOpen(true);
+  }
+
+  async function confirmChange() {
+    if (!detail || changeBusy) return; // duplicate-click guard
+    const from = detail.current.code;
+    const to: 'FREE' | 'PRO' = from === 'FREE' ? 'PRO' : 'FREE';
+    const reason = changeReason.trim();
+    if (!reason) {
+      setChangeError('Please enter a reason for this change.');
+      return;
+    }
+    // Reuse the attempt's key; only mint one if somehow absent.
+    const idempotencyKey = changeKey ?? crypto.randomUUID();
+    if (!changeKey) setChangeKey(idempotencyKey);
+
+    setChangeBusy(true);
+    setChangeError(null);
+    try {
+      const res = await fetch('/api/manager/host-plans/assign', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify({ accountId: detail.accountId, planCode: to, reason, idempotencyKey }),
+      });
+
+      if (res.status === 401) {
+        // Session expired — keep no partial UI state; send to the login surface.
+        resetChange();
+        setDetail(null);
+        setPhase('need-login');
+        return;
+      }
+
+      const body = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        changed?: boolean;
+        currentPlan?: 'FREE' | 'PRO';
+      };
+
+      if (!res.ok || body.ok !== true) {
+        // Privacy-clean, cause-specific — never surface server/SQL/RPC detail.
+        if (res.status === 404) {
+          setChangeError('That account could not be found. Refreshing the list…');
+          void loadList({ plan, anomalyOnly, q });
+        } else if (res.status === 400) {
+          setChangeError('That change was rejected. Check the reason and try again.');
+        } else if (res.status === 503) {
+          setChangeError('Plan changes are not available right now.');
+        } else {
+          setChangeError('The change could not be completed. Please try again.');
+        }
+        return; // key retained → a retry reuses the same idempotency key
+      }
+
+      // Success path — NEVER trust the local plan; refetch canonical list + detail so
+      // the screen shows server truth (current plan + new history/audit rows).
+      const changed = body.changed === true;
+      await Promise.all([loadList({ plan, anomalyOnly, q }), loadDetail(detail.accountId)]);
+      setChangeOpen(false);
+      setChangeResult({ changed, from, to, reason });
+    } catch {
+      // Network failure — nothing was confirmed applied; retain the key for retry.
+      setChangeError('Network error. The change was not applied. Try again.');
+    } finally {
+      setChangeBusy(false);
     }
   }
 
@@ -367,7 +487,7 @@ export default function HostPlansConsole() {
       )}
 
       <div className="row" style={{ justifyContent: 'center', marginTop: 20 }}>
-        <span className="muted">Read-only · plan changes are made via the operator API, not here.</span>
+        <span className="muted">Open an account to view its history or change its plan.</span>
       </div>
 
       {/* Detail sheet */}
@@ -376,7 +496,7 @@ export default function HostPlansConsole() {
           <div style={{ width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="row between">
               <div className="eyebrow">Host · {detail.accountRef}</div>
-              <button className="linkish" onClick={() => setDetail(null)}>
+              <button className="linkish" onClick={closeDetail}>
                 Close
               </button>
             </div>
@@ -406,6 +526,100 @@ export default function HostPlansConsole() {
                 </div>
               )}
             </div>
+
+            {/* Plan change — confirm-gated, audited, no local optimistic mutation */}
+            {(() => {
+              const from = detail.current.code;
+              const to: 'FREE' | 'PRO' = from === 'FREE' ? 'PRO' : 'FREE';
+              const actionLabel = to === 'PRO' ? 'Upgrade to PRO' : 'Downgrade to FREE';
+              const actionLabelKo = to === 'PRO' ? 'PRO로 변경' : 'FREE로 변경';
+
+              return (
+                <div className="card" style={{ marginTop: 10 }}>
+                  <div className="d-name">Change plan · 플랜 변경</div>
+
+                  {/* Success / no-op result — set only from a server response after refetch */}
+                  {changeResult && (
+                    <div className={`banner ${changeResult.changed ? 'success' : 'info'}`} style={{ marginTop: 8 }} role="status">
+                      {changeResult.changed ? (
+                        <>
+                          <strong>Plan changed successfully</strong>
+                          <div style={{ marginTop: 4 }}>
+                            {changeResult.from} → {changeResult.to}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <strong>Already on {changeResult.to}</strong>
+                          <div style={{ marginTop: 4 }}>No change was needed — no new assignment or audit was created.</div>
+                        </>
+                      )}
+                      <div className="d-meta" style={{ marginTop: 4 }}>
+                        Reason: {changeResult.reason}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirm panel */}
+                  {changeOpen ? (
+                    <div style={{ marginTop: 10 }}>
+                      <div className="d-meta">
+                        Account: <strong>{detail.label}</strong> · {detail.accountRef}
+                      </div>
+                      <div className="d-meta" style={{ marginTop: 4 }}>
+                        Current plan: <strong>{from}</strong> → Target plan: <strong>{to}</strong>
+                      </div>
+
+                      {changeError && (
+                        <div className="banner error" style={{ marginTop: 8 }} role="alert">
+                          {changeError}
+                        </div>
+                      )}
+
+                      <label htmlFor="hp-change-reason" style={{ marginTop: 10, display: 'block' }}>
+                        Reason for change · 변경 사유
+                      </label>
+                      <textarea
+                        id="hp-change-reason"
+                        value={changeReason}
+                        onChange={(e) => setChangeReason(e.target.value)}
+                        placeholder="Why is this plan changing?"
+                        rows={3}
+                        disabled={changeBusy}
+                        aria-label="Reason for change"
+                        maxLength={300}
+                        style={{ width: '100%', resize: 'vertical' }}
+                      />
+
+                      <div className="d-meta" style={{ marginTop: 8 }}>
+                        This changes the Host plan only. It will not create, end, or modify any Room or Event.
+                        <br />이 작업은 Host 플랜만 변경합니다. Room 또는 Event를 생성하거나 종료하거나 변경하지 않습니다.
+                      </div>
+
+                      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+                        <button className="ghost" onClick={resetChange} disabled={changeBusy}>
+                          Cancel · 취소
+                        </button>
+                        <button
+                          className="primary"
+                          onClick={confirmChange}
+                          disabled={changeBusy || !changeReason.trim()}
+                          aria-label="Confirm plan change"
+                        >
+                          {changeBusy ? 'Applying…' : 'Confirm plan change · 플랜 변경 확정'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 10 }}>
+                      <button className="primary block" onClick={beginChange}>
+                        {actionLabel} · {actionLabelKo}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Anomalies */}
             {detail.anomalies.length > 0 && (
@@ -487,7 +701,7 @@ export default function HostPlansConsole() {
             </div>
 
             <div className="row" style={{ justifyContent: 'center', margin: '14px 0 4px' }}>
-              <span className="muted">Read-only view — no changes can be made here.</span>
+              <span className="muted">Plan changes are audited. Room and Event data is never affected.</span>
             </div>
           </div>
         </div>
