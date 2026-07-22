@@ -13,31 +13,9 @@ export const PLAN_CODES = ['FREE', 'PRO'] as const;
 export type PlanCode = (typeof PLAN_CODES)[number];
 export const DEFAULT_PLAN_CODE: PlanCode = 'FREE';
 
-/**
- * PRO Multi-Room V1 — how many Rooms a plan may OWN. FREE grants one Norebang; PRO
- * grants up to three. This is the DISPLAY mirror the Host Hub reads to decide whether
- * to show the "create another" action and which limit copy to render. It is NOT the
- * enforcement authority: create_additional_karaoke_room resolves the plan and derives
- * the same FREE=1 / PRO=3 limit INSIDE the locked transaction, so a bypassed UI/route
- * can never exceed it. The two intentionally encode the same numbers; the DB wins.
- */
-export const ROOM_LIMITS: Record<PlanCode, number> = { FREE: 1, PRO: 3 };
-
-/** Max Rooms this plan may own. */
-export function maxRoomsForPlan(plan: PlanCode): number {
-  return ROOM_LIMITS[plan];
-}
-
-/**
- * Pure capacity decision: may an account on `plan` that already owns `ownedCount`
- * Rooms create ANOTHER? Legacy over-cap Hosts (ownedCount already ≥ max, e.g. a FREE
- * Host with 2 legacy Rooms) simply return false — they keep every existing Room, only
- * new creation is blocked. Never throws; a negative/NaN count is treated as 0.
- */
-export function canCreateAnotherRoom(plan: PlanCode, ownedCount: number): boolean {
-  const owned = Number.isFinite(ownedCount) && ownedCount > 0 ? Math.floor(ownedCount) : 0;
-  return owned < maxRoomsForPlan(plan);
-}
+// Room count is NOT a plan boundary. FREE and PRO Hosts may both own multiple Rooms;
+// there is deliberately no per-plan Room limit. (Monetization moves to daily
+// Event-minutes — see the Daily FREE Karaoke Minutes foundation.)
 
 /** How an assignment came to exist. Only SYSTEM_DEFAULT is used in this slice. */
 export const PLAN_SOURCES = ['SYSTEM_DEFAULT', 'MANUAL', 'BILLING'] as const;

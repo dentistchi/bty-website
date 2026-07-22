@@ -21,7 +21,6 @@ import { csrfTokenOrNull, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
 import { googleWebConfigured } from '@/lib/google-oauth.server';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { resolveHostEntry } from '@/domain/host-entry';
-import { maxRoomsForPlan, canCreateAnotherRoom } from '@/domain/host-plan';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import LegalLinks from '@/components/legal/LegalLinks';
 import FirstRoomForm from './FirstRoomForm';
@@ -36,7 +35,8 @@ const NOTICES: Record<string, string> = {
   cancelled: '로그인이 취소되었습니다.',
   signed_out: '로그아웃되었습니다.',
   bad_name: '노래방 이름을 입력해 주세요.',
-  room_limit: '현재 플랜의 노래방 수가 가득 찼습니다.',
+  room_conflict: '같은 요청이 다른 이름으로 이미 처리되었습니다. 새로 시도해 주세요.',
+  room_blocked: '노래방을 만들 수 없습니다. 잠시 후 다시 시도해 주세요.',
 };
 
 function BrandHead() {
@@ -48,20 +48,22 @@ function BrandHead() {
   );
 }
 
-export default async function HostEntryScreen({ notice }: { notice?: string }) {
+export default async function HostEntryScreen({ notice, view }: { notice?: string; view?: string }) {
   const message = notice ? NOTICES[notice] ?? null : null;
+  // The Host EXPLICITLY opened the hub (the "My Norebang" action, /?view=rooms) — a
+  // single-Room Host must then see the chooser instead of auto-entering their one Room.
+  const explicitHub = view === 'rooms';
 
   const token = (await cookies()).get(HOST_COOKIE)?.value ?? null;
   const account = await authorizeHost(token);        // pure read
   const rooms = account ? await listHostRooms(account.id) : [];   // pure read, zero Events
-  // Plan is READ-only here — used to route (1-Room PRO → chooser) and to render the
-  // capacity action/copy. It is never mutated and never enforces the limit (the RPC does).
+  // Plan is READ-only here — shown as a chip only. Room count is NOT plan-bounded.
   const plan = account ? (await resolveNorebangHostEntitlements(account.id)).planCode : 'FREE';
 
   const decision = resolveHostEntry({
     authenticated: account != null,
     roomSlugs: rooms.map((r) => r.slug),
-    plan,
+    explicitHub,
   });
 
   // ---------------------------------------------------------------- signed out
@@ -103,9 +105,10 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
   // ------------------------------------------------------------- authenticated
   const me = publicAccount(account!);
   const csrf = await csrfTokenOrNull(token!);   // null when the CSRF secret is unconfigured
-  const roomCount = rooms.length;
-  const roomMax = maxRoomsForPlan(plan);
-  const canAddRoom = canCreateAnotherRoom(plan, roomCount);
+  // Server-issued per-render idempotency key: a resubmit of THIS rendered form reuses it
+  // (the additional-Room create replays instead of duplicating); a fresh load mints a new
+  // one. Purely a request token — never a credential, never persisted.
+  const idempotencyKey = crypto.randomUUID();
 
   return (
     <main className="host-shell">
@@ -137,7 +140,7 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
           <p className="muted">이 공간의 이름을 지어 주세요. 표시 이름은 나중에 바꿀 수 있어요.</p>
           {message && <p className="host-notice" role="status">{message}</p>}
           {csrf ? (
-            <FirstRoomForm csrf={csrf} csrfField={CSRF_FIELD_NAME} />
+            <FirstRoomForm csrf={csrf} csrfField={CSRF_FIELD_NAME} idempotencyKey={idempotencyKey} />
           ) : (
             <div className="host-unavailable" role="status">
               <b>준비 중</b>
@@ -174,38 +177,28 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
             </div>
           ))}
 
-          {/* PRO Multi-Room V1 — capacity-aware action. Below the cap: reuse the
-              first-Room form (same endpoint) to add another Norebang. At the cap:
-              show the limit clearly with NO create action and NO upgrade CTA. */}
-          {canAddRoom ? (
-            <div className="card hero" data-host-add-room>
-              <h2>노래방 추가 만들기</h2>
-              <p className="muted">Create another Norebang · 이 공간의 이름을 지어 주세요.</p>
-              {message && <p className="host-notice" role="status">{message}</p>}
-              {csrf ? (
-                <FirstRoomForm
-                  csrf={csrf}
-                  csrfField={CSRF_FIELD_NAME}
-                  submitLabel="노래방 추가 만들기"
-                  busyLabel="만드는 중…"
-                />
-              ) : (
-                <div className="host-unavailable" role="status">
-                  <b>준비 중</b>
-                  <span className="muted">아직 설정이 완료되지 않아 지금은 만들 수 없습니다.</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="card" data-host-room-limit={plan}>
-              {message && <p className="host-notice" role="status">{message}</p>}
-              {plan === 'PRO' ? (
-                <p className="muted">{roomMax} of {roomMax} Norebangs used · 노래방 {roomMax}/{roomMax} 사용 중</p>
-              ) : (
-                <p className="muted">FREE includes 1 Norebang · FREE 플랜은 노래방 1개를 제공합니다.</p>
-              )}
-            </div>
-          )}
+          {/* Room count is not a plan boundary — any Host may add another Norebang.
+              Reuse the first-Room form (same endpoint) with a server-issued idempotency
+              key so a resubmit replays instead of duplicating. No limit copy, no CTA. */}
+          <div className="card hero" data-host-add-room>
+            <h2>노래방 추가 만들기</h2>
+            <p className="muted">Create another Norebang · 이 공간의 이름을 지어 주세요.</p>
+            {message && <p className="host-notice" role="status">{message}</p>}
+            {csrf ? (
+              <FirstRoomForm
+                csrf={csrf}
+                csrfField={CSRF_FIELD_NAME}
+                idempotencyKey={idempotencyKey}
+                submitLabel="노래방 추가 만들기"
+                busyLabel="만드는 중…"
+              />
+            ) : (
+              <div className="host-unavailable" role="status">
+                <b>준비 중</b>
+                <span className="muted">아직 설정이 완료되지 않아 지금은 만들 수 없습니다.</span>
+              </div>
+            )}
+          </div>
         </>
       )}
 

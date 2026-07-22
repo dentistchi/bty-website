@@ -15,11 +15,15 @@ import { useState } from 'react';
 export default function FirstRoomForm({
   csrf,
   csrfField,
+  idempotencyKey,
   submitLabel = '내 노래방 만들기',
   busyLabel = '만드는 중…',
 }: {
   csrf: string;
   csrfField: string;
+  /** Server-issued per-render idempotency key (hidden field). Resubmitting the same
+   *  rendered form reuses it so the additional-Room create replays instead of duplicating. */
+  idempotencyKey?: string;
   /** Button copy. Defaults are the first-Room labels; the additional-Room card overrides them. */
   submitLabel?: string;
   busyLabel?: string;
@@ -34,6 +38,7 @@ export default function FirstRoomForm({
       onSubmit={() => setSubmitting(true)}
     >
       <input type="hidden" name={csrfField} value={csrf} />
+      {idempotencyKey && <input type="hidden" name="idempotencyKey" value={idempotencyKey} />}
       <label htmlFor="room-name">노래방 이름</label>
       <input
         id="room-name"

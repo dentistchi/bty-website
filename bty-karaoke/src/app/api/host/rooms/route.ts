@@ -44,28 +44,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 403, headers: NO_STORE });
   }
 
-  // 3. Validate the ONLY accepted input: a trimmed, bounded display name.
+  // 3. Validate the ONLY accepted input: a trimmed, bounded display name. The
+  //    idempotency key is a server-issued hidden field (empty for legacy forms).
   const parsed = CreateRoomSchema.safeParse({ name: form?.get('name') });
   if (!parsed.success) return back(req, 'bad_name');
+  const idempotencyKey = (form?.get('idempotencyKey')?.toString() ?? '').trim();
 
-  // 4. Atomic, duplicate-safe create. Routes by owned-Room count: 0 → the unchanged
-  //    first-Room path (enter Admin); ≥1 → the plan-capped additional-Room path. The
-  //    owner is the authenticated account — never anything from the request body. The
-  //    plan Room-limit is resolved and enforced inside the DB transaction.
+  // 4. Atomic create. Routes by owned-Room count: 0 → the unchanged first-Room path
+  //    (enter Admin; has_room makes it idempotent); ≥1 → the uncapped, idempotency-keyed
+  //    additional-Room path. There is NO Room-count limit. The owner is the
+  //    authenticated account — never anything from the request body.
   const result = await createRoomForAccount({
     accountId: account.id,
     displayName: parsed.data.name,
+    idempotencyKey,
   });
 
-  // 5a. At capacity → no Room was created. Return to the hub chooser with a notice.
-  if (result.kind === 'limit_reached') {
-    return NextResponse.redirect(new URL('/?notice=room_limit', req.nextUrl.origin), 303);
+  // 5a. Same key + a different payload → refuse (no new Room). Return to the hub.
+  if (result.kind === 'idempotency_conflict') {
+    return NextResponse.redirect(new URL('/?notice=room_conflict&view=rooms', req.nextUrl.origin), 303);
   }
 
-  // 5b. Additional Room created → return/refetch into the multi-Room chooser (spec).
+  // 5b. Fail-closed (missing workspace / inconsistency) → no Room. Return to the hub.
+  if (result.kind === 'blocked') {
+    return NextResponse.redirect(new URL('/?notice=room_blocked&view=rooms', req.nextUrl.origin), 303);
+  }
+
+  // 5c. Additional Room created (or idempotent replay) → return into the chooser.
   //     Do NOT auto-enter Admin; the Host picks the Room from the hub.
   if (result.kind === 'added') {
-    return NextResponse.redirect(new URL('/', req.nextUrl.origin), 303);
+    return NextResponse.redirect(new URL('/?view=rooms', req.nextUrl.origin), 303);
   }
 
   // 5c. First Room (created or idempotent re-entry) → unchanged behavior: mint the

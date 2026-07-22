@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 //
-// PRO Multi-Room V1 — the Host Hub chooser, proved by rendering the real async server
-// component against mocked canonical reads. Locks the required UI behavior:
-//   0 rooms          → first-room onboarding (unchanged)
-//   1 room + FREE    → auto-enter (redirect; no chooser)
-//   1 room + PRO     → chooser WITH "노래방 추가 만들기"
-//   3 rooms + PRO    → chooser WITH "3 of 3 Norebangs used", NO create action
-//   2 rooms + FREE   → chooser (legacy), "FREE includes 1 Norebang", NO create action
+// Room-limit policy correction — the Host Hub, proved by rendering the real async server
+// component against mocked canonical reads. Locks the required behavior:
+//   0 rooms                    → first-room onboarding (unchanged)
+//   1 room, normal entry        → auto-enter (redirect; no chooser)
+//   1 room, explicit hub        → chooser WITH "노래방 추가 만들기" (any plan)
+//   2 rooms                     → chooser WITH "노래방 추가 만들기", NO limit copy
+//   the create form carries a server-issued hidden idempotencyKey
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -42,9 +42,8 @@ import HostEntryScreen from './HostEntryScreen';
 function room(slug: string) {
   return { slug, displayName: slug, hasActiveEvent: false, queueCount: 0, activeEvent: null };
 }
-
-async function renderHub() {
-  const el = await HostEntryScreen({ notice: undefined });
+async function renderHub(view?: string) {
+  const el = await HostEntryScreen({ notice: undefined, view });
   render(el);
 }
 
@@ -56,51 +55,39 @@ beforeEach(() => {
   state.plan = 'FREE';
 });
 
-describe('HostEntryScreen — PRO Multi-Room chooser', () => {
-  it('0 rooms → first-room onboarding (unchanged), no add/limit copy', async () => {
+describe('HostEntryScreen — Room-limit policy correction', () => {
+  it('0 rooms → first-room onboarding, no add copy', async () => {
     state.rooms = [];
     await renderHub();
     expect(screen.getByText('노래방을 만드세요')).toBeTruthy();
-    expect(screen.queryByText(/추가 만들기/)).toBeNull();
   });
 
-  it('1 room + FREE → auto-enter (redirect to the admin bridge), no chooser render', async () => {
-    state.plan = 'FREE';
+  it('1 room, normal entry → auto-enter (redirect), no chooser', async () => {
     state.rooms = [room('bty-home')];
-    let redirectedTo = '';
+    let to = '';
     try {
       await renderHub();
     } catch (e) {
-      redirectedTo = (e as { url?: string }).url ?? '';
+      to = (e as { url?: string }).url ?? '';
     }
-    expect(redirectedTo).toBe('/host/rooms/bty-home/enter');
+    expect(to).toBe('/host/rooms/bty-home/enter');
   });
 
-  it('1 room + PRO → chooser WITH "노래방 추가 만들기"', async () => {
-    state.plan = 'PRO';
+  it('1 room, explicit hub (view=rooms) → chooser WITH "노래방 추가 만들기" and a hidden idempotencyKey', async () => {
     state.rooms = [room('bty-home')];
-    await renderHub();
-    // Rendered in both the card heading and the submit button.
+    await renderHub('rooms');
     expect(screen.getAllByText(/노래방 추가 만들기/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/of 3 Norebangs used/)).toBeNull();
-    expect(screen.getByText('PRO')).toBeTruthy(); // plan chip shown
+    const hidden = document.querySelector('input[name="idempotencyKey"]') as HTMLInputElement | null;
+    expect(hidden?.value).toBeTruthy();
   });
 
-  it('3 rooms + PRO → chooser WITH "3 of 3", NO create action', async () => {
-    state.plan = 'PRO';
-    state.rooms = [room('a'), room('b'), room('c')];
-    await renderHub();
-    expect(screen.getByText(/3 of 3 Norebangs used/)).toBeTruthy();
-    expect(screen.queryByText(/추가 만들기/)).toBeNull();
-  });
-
-  it('2 rooms + FREE (legacy) → chooser, "FREE includes 1 Norebang", NO create action, access intact', async () => {
+  it('2 rooms → chooser WITH "노래방 추가 만들기", NO limit copy', async () => {
     state.plan = 'FREE';
     state.rooms = [room('a'), room('b')];
     await renderHub();
-    expect(screen.getByText(/FREE includes 1 Norebang/)).toBeTruthy();
-    expect(screen.queryByText(/추가 만들기/)).toBeNull();
-    // both legacy Rooms still rendered (access preserved)
+    expect(screen.getAllByText(/노래방 추가 만들기/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/of 3 Norebangs used/)).toBeNull();
+    expect(screen.queryByText(/FREE includes 1 Norebang/)).toBeNull();
     expect(screen.getByText('a')).toBeTruthy();
     expect(screen.getByText('b')).toBeTruthy();
   });

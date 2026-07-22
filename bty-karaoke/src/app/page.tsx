@@ -11,8 +11,8 @@ export const runtime = 'nodejs';
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string }>;
+  searchParams: Promise<{ notice?: string; view?: string }>;
 }) {
-  const { notice } = await searchParams;
-  return <HostEntryScreen notice={notice} />;
+  const { notice, view } = await searchParams;
+  return <HostEntryScreen notice={notice} view={view} />;
 }

@@ -14,7 +14,6 @@ import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
 import { ensureDefaultFreePlan } from './host-plan.server';
 import { buildRoomSlug } from '@/domain/room-slug';
-import { normalizePlanCode, type PlanCode } from '@/domain/host-plan';
 
 /** Durable native login. Long-lived on purpose, but revocable and expiring. */
 export const HOST_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -437,32 +436,37 @@ function randomSlugSuffix(chars = 8): string {
   return s;
 }
 
-export type FirstRoomOutcome = { outcome: 'created' | 'has_room'; slug: string; roomId: string };
+export type FirstRoomOutcome =
+  | { outcome: 'created' | 'has_room'; slug: string; roomId: string }
+  | { outcome: 'idempotency_conflict' }
+  | { outcome: 'idempotency_target_missing' }
+  | { outcome: 'invalid_idempotency_key' }
+  | { outcome: 'invalid_request_fingerprint' }
+  | { outcome: 'account_not_found' };
+
+/** Stable hash of the normalized request payload (versioned), for idempotency. */
+export function roomRequestFingerprint(displayName: string): Promise<string> {
+  const norm = (displayName ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return sha256Hex(`room-create:v1:${norm}`);
+}
 
 /**
- * First-room onboarding (New Host Onboarding V1). Create THIS account's first Room
- * and its ownership graph atomically via the create_karaoke_room RPC, deriving the
- * canonical slug server-side from the Host's display name plus a CSPRNG suffix.
- *
- *  - 'created'  — a brand-new Room + ownership (and workspace/membership if needed).
- *  - 'has_room' — the account already owns a Room; the RPC returns THAT Room's slug
- *                 instead of minting a duplicate (rule F, enforced under an account-
- *                 scoped advisory lock so a double submit yields exactly one Room).
- *
- * The owner is ALWAYS the passed accountId (derived from the authenticated Host
- * session by the caller); no client-supplied owner is ever accepted. Creates ZERO
- * Events. A slug collision (23505) is retried with a fresh suffix.
+ * First-Room creation via the atomic, idempotent create_karaoke_room (7-arg keyed
+ * overload). The canonical slug is derived server-side (display name + CSPRNG suffix);
+ * the owner is ALWAYS the passed accountId. Request-level idempotency is REQUIRED: the
+ * same key + same payload replays the SAME Room; a different payload → conflict; a blank
+ * key/fingerprint fails closed. 'has_room' means the account already owns a Room (never a
+ * duplicate). Creates ZERO Events. A slug collision (23505) retries a fresh suffix.
  */
 export async function createFirstRoomForAccount(args: {
   accountId: string;
   displayName: string;
+  idempotencyKey: string;
+  requestFingerprint: string;
 }): Promise<FirstRoomOutcome> {
   const db = karaokeDb();
   for (let attempt = 0; attempt < 5; attempt++) {
     const slug = buildRoomSlug(args.displayName, randomSlugSuffix());
-    // A random, un-returned master credential: NOT NULL is satisfied while the
-    // shared-secret path stays effectively disabled — this Room is reached only
-    // through the account-bound Room web session, never a passcode nobody holds.
     const djSecret = await sha256Hex(randomToken(32));
     const { data, error } = await db.rpc('create_karaoke_room', {
       p_account_id: args.accountId,
@@ -470,18 +474,18 @@ export async function createFirstRoomForAccount(args: {
       p_display_name: args.displayName,
       p_dj_secret: djSecret,
       p_workspace_name: 'My Norebang',
+      p_idempotency_key: args.idempotencyKey,
+      p_request_fingerprint: args.requestFingerprint,
     });
     if (error) {
-      // 23505 = the generated slug collided with an existing Room. Retry a fresh one.
-      if ((error as { code?: string }).code === '23505') continue;
+      if ((error as { code?: string }).code === '23505') continue; // slug clash → retry
       throw error;
     }
-    const row = (Array.isArray(data) ? data[0] : data) as {
-      outcome: 'created' | 'has_room';
-      slug: string;
-      roomId: string;
-    };
-    return { outcome: row.outcome, slug: row.slug, roomId: row.roomId };
+    const row = (Array.isArray(data) ? data[0] : data) as { outcome: string; slug?: string; roomId?: string };
+    if (row.outcome === 'created' || row.outcome === 'has_room') {
+      return { outcome: row.outcome, slug: row.slug!, roomId: row.roomId! };
+    }
+    return { outcome: row.outcome as Exclude<FirstRoomOutcome['outcome'], 'created' | 'has_room'> };
   }
   throw new Error('Could not allocate a unique room slug after several attempts');
 }
@@ -511,24 +515,30 @@ export async function countOwnedRooms(accountId: string): Promise<number> {
 }
 
 export type AdditionalRoomOutcome =
-  | { outcome: 'created'; slug: string; roomId: string; count: number; max: number }
-  | { outcome: 'limit_reached'; plan: PlanCode; count: number; max: number }
-  | { outcome: 'first_room_required' } //     zero owned → create_karaoke_room is the sole 0→1 path
-  | { outcome: 'ownership_state_invalid' } //  owns a Room but has no active workspace (broken graph)
+  | { outcome: 'created'; slug: string; roomId: string; replayed: boolean }
+  | { outcome: 'idempotency_conflict' } //         same key + different payload → no new Room
+  | { outcome: 'idempotency_target_missing' } //   the recorded Room is gone → do not re-create
+  | { outcome: 'invalid_idempotency_key' } //      blank key → fail closed, no write
+  | { outcome: 'invalid_request_fingerprint' } //  blank fingerprint → fail closed, no write
+  | { outcome: 'first_room_required' } //          zero owned → create_karaoke_room is the sole 0→1 path
+  | { outcome: 'ownership_state_invalid' } //      owns a Room but has no active workspace (broken graph)
   | { outcome: 'account_not_found' };
 
 /**
- * PRO Multi-Room V1. Create an ADDITIONAL Room for an account that already owns one,
- * within its plan's Room limit, via the atomic create_additional_karaoke_room RPC. The
- * plan and the FREE=1 / PRO=3 cap are resolved INSIDE the locked transaction — this
- * caller passes NO limit and cannot inflate it. The RPC fails CLOSED with zero writes on
- * 'first_room_required' (zero owned) and 'ownership_state_invalid' (missing workspace);
- * 'limit_reached' means at capacity. Only 'created' mints a Room; existing Rooms are
- * always untouched. Creates ZERO Events. A slug collision (23505) retries a fresh suffix.
+ * Create an ADDITIONAL Room via the atomic create_additional_karaoke_room RPC (6-arg,
+ * idempotent). There is NO Room-count limit — FREE and PRO Hosts may both add Rooms.
+ * Request-level idempotency is REQUIRED and enforced in-DB on (account_id, idempotencyKey):
+ * SAME key + SAME payload replays the existing Room (replayed:true); a DIFFERENT payload →
+ * 'idempotency_conflict'; a blank key/fingerprint fails closed. Fails closed with zero
+ * writes on 'first_room_required' and 'ownership_state_invalid'. The owned-Room count uses
+ * the canonical active-membership → ownership path. Creates ZERO Events. A slug collision
+ * (23505) retries a fresh suffix.
  */
 export async function createAdditionalRoomForAccount(args: {
   accountId: string;
   displayName: string;
+  idempotencyKey: string;
+  requestFingerprint: string;
 }): Promise<AdditionalRoomOutcome> {
   const db = karaokeDb();
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -539,6 +549,8 @@ export async function createAdditionalRoomForAccount(args: {
       p_slug: slug,
       p_display_name: args.displayName,
       p_dj_secret: djSecret,
+      p_idempotency_key: args.idempotencyKey,
+      p_request_fingerprint: args.requestFingerprint,
     });
     if (error) {
       if ((error as { code?: string }).code === '23505') continue; // slug clash → retry
@@ -548,49 +560,57 @@ export async function createAdditionalRoomForAccount(args: {
       outcome: string;
       slug?: string;
       roomId?: string;
-      plan?: string;
-      count?: number;
-      max?: number;
+      replayed?: boolean;
     };
     if (row.outcome === 'created') {
-      return { outcome: 'created', slug: row.slug!, roomId: row.roomId!, count: row.count ?? 0, max: row.max ?? 0 };
+      return { outcome: 'created', slug: row.slug!, roomId: row.roomId!, replayed: row.replayed === true };
     }
-    if (row.outcome === 'limit_reached') {
-      return { outcome: 'limit_reached', plan: normalizePlanCode(row.plan), count: row.count ?? 0, max: row.max ?? 0 };
-    }
-    if (row.outcome === 'first_room_required') return { outcome: 'first_room_required' };
-    if (row.outcome === 'ownership_state_invalid') return { outcome: 'ownership_state_invalid' };
-    return { outcome: 'account_not_found' };
+    return { outcome: row.outcome as Exclude<AdditionalRoomOutcome['outcome'], 'created'> };
   }
   throw new Error('Could not allocate a unique room slug after several attempts');
 }
 
 export type CreateRoomResult =
   | { kind: 'entered'; slug: string; roomId: string } // first Room (created or has_room) → enter Admin
-  | { kind: 'added'; slug: string; roomId: string } //   additional Room created → return to chooser
-  | { kind: 'limit_reached' }; //                        at capacity → no Room created
+  | { kind: 'added'; slug: string; roomId: string } //   additional Room created (or idempotent replay) → chooser
+  | { kind: 'idempotency_conflict' } //                  same key, different payload → no Room
+  | { kind: 'blocked' }; //                              fail-closed (invalid key/fp, target missing, etc.)
 
 /**
- * The single creation entry the Host route calls. Routes by owned-Room count WITHOUT
- * changing first-Room behavior: 0 owned → the unchanged create_karaoke_room path (enter
- * Admin); ≥1 owned → the plan-capped additional-Room path (return to the chooser, or
- * 'limit_reached'). The count here only picks the path; both paths re-check under the
- * account lock, so a concurrent race can never exceed the cap. account_not_found (a
- * near-impossible inconsistency for an authenticated Host) is treated as 'limit_reached'
- * — no Room is created and the Host is returned to the hub.
+ * The single creation entry the Host route calls. Computes the server-side request
+ * fingerprint ONCE, then routes by owned-Room count: 0 owned → the first-Room keyed RPC
+ * (enter Admin); ≥1 owned → the uncapped additional-Room keyed RPC (return to the
+ * chooser). BOTH paths carry the same request-level idempotency contract, re-checked
+ * under the account advisory lock. The idempotencyKey is a server-issued per-form token;
+ * a resubmit of the same rendered form replays the same Room instead of duplicating.
  */
 export async function createRoomForAccount(args: {
   accountId: string;
   displayName: string;
+  idempotencyKey: string;
 }): Promise<CreateRoomResult> {
+  const requestFingerprint = await roomRequestFingerprint(args.displayName);
   const owned = await countOwnedRooms(args.accountId);
   if (owned === 0) {
-    const r = await createFirstRoomForAccount(args);
-    return { kind: 'entered', slug: r.slug, roomId: r.roomId };
+    const r = await createFirstRoomForAccount({
+      accountId: args.accountId,
+      displayName: args.displayName,
+      idempotencyKey: args.idempotencyKey,
+      requestFingerprint,
+    });
+    if (r.outcome === 'created' || r.outcome === 'has_room') return { kind: 'entered', slug: r.slug, roomId: r.roomId };
+    if (r.outcome === 'idempotency_conflict') return { kind: 'idempotency_conflict' };
+    return { kind: 'blocked' };
   }
-  const r = await createAdditionalRoomForAccount(args);
+  const r = await createAdditionalRoomForAccount({
+    accountId: args.accountId,
+    displayName: args.displayName,
+    idempotencyKey: args.idempotencyKey,
+    requestFingerprint,
+  });
   if (r.outcome === 'created') return { kind: 'added', slug: r.slug, roomId: r.roomId };
-  return { kind: 'limit_reached' };
+  if (r.outcome === 'idempotency_conflict') return { kind: 'idempotency_conflict' };
+  return { kind: 'blocked' };
 }
 
 /** Bind a device credential to the Host who enrolled it (subordinate credential). */

@@ -56,6 +56,12 @@ export default async function AdminPage({ params }: { params: Promise<{ slug: st
           {/* Room Settings V1 — an authenticated owner reaches their Settings screen
               from Admin. Rendered ONLY with a Host session (DJ/manager-paired admins
               have no bty_host cookie); the page itself re-checks ownership. */}
+          {/* Room-limit policy correction — a single-Room Host who auto-entered can
+              open the My Norebang hub explicitly (?view=rooms never auto-enters) to add
+              or switch Rooms. */}
+          <a className="host-btn host-btn-ghost" href="/?view=rooms">
+            내 노래방 관리
+          </a>
           <a
             className="host-btn host-btn-ghost"
             href={`/host/rooms/${encodeURIComponent(room.slug)}/settings`}

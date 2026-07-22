@@ -17,7 +17,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 type CreateRoomResult =
   | { kind: 'entered'; slug: string; roomId: string }
   | { kind: 'added'; slug: string; roomId: string }
-  | { kind: 'limit_reached' };
+  | { kind: 'idempotency_conflict' }
+  | { kind: 'blocked' };
 
 const state = {
   hostToken: 'host-token' as string | null,
@@ -26,12 +27,12 @@ const state = {
   result: { kind: 'entered', slug: 'my-room-ab12cd34', roomId: 'room-new' } as CreateRoomResult,
 };
 
-const createSpy = vi.fn(async (_args: { accountId: string; displayName: string }) => state.result);
+const createSpy = vi.fn(async (_args: { accountId: string; displayName: string; idempotencyKey: string }) => state.result);
 const issueSpy = vi.fn(async (_roomId: string, _accountId: string) => 'room-raw-token');
 
 vi.mock('@/lib/host-auth.server', () => ({
   authorizeHost: vi.fn(async () => state.account),
-  createRoomForAccount: (args: { accountId: string; displayName: string }) => createSpy(args),
+  createRoomForAccount: (args: { accountId: string; displayName: string; idempotencyKey: string }) => createSpy(args),
 }));
 vi.mock('@/lib/host-web-session.server', () => ({
   hostTokenFromRequest: () => state.hostToken,
@@ -47,7 +48,7 @@ vi.mock('@/lib/room-web-session.server', () => ({
 
 import { POST } from './route';
 
-function makeReq(fields: Record<string, string> = { csrf: 'csrf-token', name: 'Chi Family Norebang' }) {
+function makeReq(fields: Record<string, string> = { csrf: 'csrf-token', name: 'Chi Family Norebang', idempotencyKey: 'idem-1' }) {
   return {
     formData: async () => new Map(Object.entries(fields)),
     headers: { get: () => null },
@@ -70,25 +71,33 @@ describe('POST /api/host/rooms', () => {
     expect(res.status).toBe(303);
     expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/r/my-room-ab12cd34/admin');
     expect(res.headers.get('set-cookie')).toContain('bty_room=room-raw-token');
-    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Chi Family Norebang' });
+    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Chi Family Norebang', idempotencyKey: 'idem-1' });
     expect(issueSpy).toHaveBeenCalledWith('room-new', 'acct-1');
   });
 
-  it('additional Room (added) → 303 to the hub chooser (/), NO Room cookie, no admin bridge', async () => {
+  it('additional Room (added) → 303 to the hub chooser (/?view=rooms), NO Room cookie, no admin bridge', async () => {
     state.result = { kind: 'added', slug: 'second-room', roomId: 'room-2' };
     const res = await POST(makeReq());
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/');
+    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/?view=rooms');
     expect(res.headers.get('set-cookie')).toBeNull();
     expect(issueSpy).not.toHaveBeenCalled();
   });
 
-  it('at capacity (limit_reached) → 303 to /?notice=room_limit, nothing created', async () => {
-    state.result = { kind: 'limit_reached' };
+  it('idempotency_conflict → 303 to /?notice=room_conflict&view=rooms, nothing created', async () => {
+    state.result = { kind: 'idempotency_conflict' };
     const res = await POST(makeReq());
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/?notice=room_limit');
+    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/?notice=room_conflict&view=rooms');
     expect(res.headers.get('set-cookie')).toBeNull();
+    expect(issueSpy).not.toHaveBeenCalled();
+  });
+
+  it('blocked (fail-closed) → 303 to /?notice=room_blocked&view=rooms, nothing created', async () => {
+    state.result = { kind: 'blocked' };
+    const res = await POST(makeReq());
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/?notice=room_blocked&view=rooms');
     expect(issueSpy).not.toHaveBeenCalled();
   });
 
@@ -124,7 +133,7 @@ describe('POST /api/host/rooms', () => {
   });
 
   it('ignores any client-supplied owner/slug — only account + name reach the service', async () => {
-    await POST(makeReq({ csrf: 'csrf-token', name: 'Room X', accountId: 'attacker', slug: 'pwned', ownerId: 'x' }));
-    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Room X' });
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Room X', idempotencyKey: 'idem-1', accountId: 'attacker', slug: 'pwned', ownerId: 'x' }));
+    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Room X', idempotencyKey: 'idem-1' });
   });
 });
