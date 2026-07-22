@@ -17,6 +17,8 @@ import {
   isPlanSource,
   DEFAULT_PLAN_CODE,
   type HostEntitlements,
+  type PlanCode,
+  type PlanSource,
 } from '@/domain/host-plan';
 
 const ASSIGNMENT_COLS = 'id, account_id, plan_code, source, status, started_at, ended_at';
@@ -108,5 +110,63 @@ export async function resolveNorebangHostEntitlements(accountId: string): Promis
     source: isPlanSource(active.source) ? active.source : 'SYSTEM_DEFAULT',
     capabilities: capabilitiesForPlan(planCode),
     fallback: false,
+  };
+}
+
+/** A known, non-exceptional rejection the RPC returns as data (never leaks details). */
+export type PlanChangeError =
+  | 'account_not_found'
+  | 'invalid_plan_code'
+  | 'invalid_source'
+  | 'reason_required'
+  | 'idempotency_key_required';
+
+export type PlanChangeOutcome =
+  | { ok: true; changed: boolean; replayed: boolean; previousPlan: PlanCode | null; currentPlan: PlanCode }
+  | { ok: false; error: PlanChangeError };
+
+export interface ChangeHostPlanInput {
+  accountId: string;
+  planCode: PlanCode;
+  reason: string;
+  idempotencyKey: string;
+  /** Only MANUAL is used this slice; defaults to MANUAL. */
+  source?: PlanSource;
+  /** The operator account effecting the change; null for system/service. */
+  actorAccountId?: string | null;
+}
+
+/**
+ * Move a canonical Host account between FREE and PRO through the ATOMIC
+ * change_karaoke_host_plan RPC — the single sanctioned mutation path. There is NO
+ * client-side table write: end-current + insert-new + append-one-audit happen in one
+ * server transaction, so the account is never left with 0 or 2 active assignments.
+ *
+ * Same-plan requests are a no-op (changed=false, no audit); a replayed idempotency
+ * key returns the recorded outcome and writes nothing. Known rejections
+ * (unknown account, bad plan/source, empty reason/key) come back as { ok:false } and
+ * never expose an email, provider subject, or any credential.
+ */
+export async function changeNorebangHostPlan(input: ChangeHostPlanInput): Promise<PlanChangeOutcome> {
+  const { data, error } = await karaokeDb().rpc('change_karaoke_host_plan', {
+    p_account_id: input.accountId,
+    p_plan_code: input.planCode,
+    p_reason: input.reason,
+    p_idempotency_key: input.idempotencyKey,
+    p_source: input.source ?? 'MANUAL',
+    p_actor_account: input.actorAccountId ?? null,
+  });
+  if (error) throw error;
+
+  const row = (data ?? {}) as Record<string, unknown>;
+  if (row.ok === false) {
+    return { ok: false, error: String(row.error ?? 'invalid_plan_code') as PlanChangeError };
+  }
+  return {
+    ok: true,
+    changed: row.changed === true,
+    replayed: row.replayed === true,
+    previousPlan: row.previousPlan == null ? null : normalizePlanCode(row.previousPlan),
+    currentPlan: normalizePlanCode(row.currentPlan),
   };
 }

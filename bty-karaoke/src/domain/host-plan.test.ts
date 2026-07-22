@@ -9,6 +9,7 @@ import {
   normalizePlanCode,
   isPlanSource,
   capabilitiesForPlan,
+  decidePlanChange,
 } from './host-plan';
 
 describe('plan codes', () => {
@@ -68,5 +69,25 @@ describe('capabilitiesForPlan (V1: every current feature, every plan)', () => {
         'canUsePresetBranding',
       ].sort(),
     );
+  });
+});
+
+describe('decidePlanChange (the pure no-op vs change rule)', () => {
+  it('FREE → PRO is a real change', () => {
+    expect(decidePlanChange('FREE', 'PRO')).toEqual({ kind: 'change', from: 'FREE', to: 'PRO' });
+  });
+
+  it('PRO → FREE is a real change (downgrade)', () => {
+    expect(decidePlanChange('PRO', 'FREE')).toEqual({ kind: 'change', from: 'PRO', to: 'FREE' });
+  });
+
+  it('same-plan request is an idempotent no-op (FREE→FREE, PRO→PRO)', () => {
+    expect(decidePlanChange('FREE', 'FREE')).toEqual({ kind: 'noop', plan: 'FREE' });
+    expect(decidePlanChange('PRO', 'PRO')).toEqual({ kind: 'noop', plan: 'PRO' });
+  });
+
+  it('no current active assignment is always a real change (never a no-op)', () => {
+    expect(decidePlanChange(null, 'FREE')).toEqual({ kind: 'change', from: null, to: 'FREE' });
+    expect(decidePlanChange(null, 'PRO')).toEqual({ kind: 'change', from: null, to: 'PRO' });
   });
 });

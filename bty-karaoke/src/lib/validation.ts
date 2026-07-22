@@ -145,6 +145,17 @@ export const ManagerLoginSchema = z.object({
   passcode: z.string().min(1).max(256),
 });
 
+// Manager (operator) manually assigns a Host plan (FREE ↔ PRO). accountId is the
+// CANONICAL Host account; reason is mandatory (audited); idempotencyKey makes the
+// operation replay-safe. planCode is a closed enum — anything else is rejected here
+// before the RPC is ever reached.
+export const HostPlanAssignSchema = z.object({
+  accountId: z.string().uuid(),
+  planCode: z.enum(['FREE', 'PRO']),
+  reason: z.string().trim().min(1, 'Reason is required').max(300),
+  idempotencyKey: z.string().trim().min(1).max(128),
+});
+
 // Manager creates an event. Name is required; host is optional. `startNow`
 // starts the karaoke night immediately (defaults to true).
 export const CreateEventSchema = z.object({

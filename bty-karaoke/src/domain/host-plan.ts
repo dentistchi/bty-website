@@ -54,6 +54,24 @@ export function isPlanSource(v: unknown): v is PlanSource {
 }
 
 /**
+ * The pure decision for a manual plan change: given the account's CURRENT plan (null
+ * when it has no active assignment yet) and the REQUESTED plan, is this a real change
+ * or an idempotent no-op? This is the same rule the atomic RPC enforces; keeping it
+ * pure lets both the tests and any caller reason about it without a database. It is
+ * NOT a re-derivation of entitlement rules — routes still forward to the RPC, which
+ * is the single runtime authority — it only names the no-op condition.
+ */
+export function decidePlanChange(
+  currentPlan: PlanCode | null,
+  requestedPlan: PlanCode,
+): { kind: 'noop'; plan: PlanCode } | { kind: 'change'; from: PlanCode | null; to: PlanCode } {
+  if (currentPlan !== null && currentPlan === requestedPlan) {
+    return { kind: 'noop', plan: requestedPlan };
+  }
+  return { kind: 'change', from: currentPlan, to: requestedPlan };
+}
+
+/**
  * The V1 capability map for a plan. Deliberately identical for FREE and PRO: no
  * feature is plan-gated yet, so every current capability is `true` for both. This
  * is what guarantees a FREE Host loses nothing when plans are introduced.

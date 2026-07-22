@@ -113,4 +113,27 @@ describe('GET /host/plan', () => {
     expect(screen.getByText('Free')).toBeTruthy();
     expect(screen.queryByText('Pro — 사용 중')).toBeNull();
   });
+
+  it('(24) a PRO pilot account shows Pro · Active · Pilot with an honest no-billing note', async () => {
+    state.entitlements = { ...state.entitlements, planCode: 'PRO', source: 'MANUAL' };
+    await renderPage();
+    expect(screen.getByText('Pro')).toBeTruthy();
+    expect(screen.getByText(/Active · Pilot/)).toBeTruthy();
+    // Honest: internal pilot, no billing connected, no extra feature/limit yet.
+    expect(screen.getByText(/내부 파일럿/)).toBeTruthy();
+    expect(screen.getByText(/결제는 아직 연결되어 있지 않/)).toBeTruthy();
+    // Free is shown as the base/previous plan.
+    expect(screen.getByText('Free')).toBeTruthy();
+  });
+
+  it('(25) even in PRO pilot there is NO price or purchase CTA', async () => {
+    state.entitlements = { ...state.entitlements, planCode: 'PRO', source: 'MANUAL' };
+    const { container } = render(await HostPlanPage());
+    expect(container.querySelectorAll('button').length).toBe(0);
+    const actionable = [...container.querySelectorAll('a')].map(
+      (a) => `${a.textContent ?? ''} ${a.getAttribute('href') ?? ''}`,
+    );
+    expect(actionable.some((s) => /upgrade|checkout|buy|pay|구매하기|결제하기|업그레이드/i.test(s))).toBe(false);
+    expect(screen.queryByText(/\$\d|₩\d|무료 체험|free trial/i)).toBeNull();
+  });
 });
