@@ -34,6 +34,12 @@ export interface PublicRoom {
   status: 'open' | 'closed';
   /** Room Settings V1 — optional guest-facing welcome message (null = none). */
   guest_welcome_message: string | null;
+  /** Room Branding V1 — opaque key of the normalized logo in the private bucket (null = none). */
+  logo_object_key: string | null;
+  /** Room Branding V1 — cache-busting token for the versioned logo proxy URL. */
+  logo_version: string | null;
+  /** Room Branding V1 — preset visual theme (allowlisted; default 'midnight_gold'). */
+  branding_theme: string;
 }
 
 export interface KaraokeRequest {
@@ -72,11 +78,44 @@ export interface KaraokeRequest {
   lyrics_resolved_at: string | null;
 }
 
-const PUBLIC_ROOM_COLS = 'id, slug, display_name, status, guest_welcome_message';
+const PUBLIC_ROOM_COLS =
+  'id, slug, display_name, status, guest_welcome_message, logo_object_key, logo_version, branding_theme';
 
 export interface RoomSettings {
   displayName: string;
   guestWelcomeMessage: string | null;
+}
+
+/** Room Branding V1 — set the theme (allowlist already validated by the caller). */
+export async function updateRoomTheme(roomId: string, theme: string): Promise<void> {
+  const { error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .update({ branding_theme: theme })
+    .eq('id', roomId);
+  if (error) throw error;
+}
+
+/**
+ * Room Branding V1 — point the Room at a newly stored logo object. Writes ONLY the
+ * pointer + version on the karaoke_rooms row (never the slug, an Event, or storage).
+ * The caller uploads the object FIRST and deletes the previous object AFTER this
+ * succeeds (compensation flow), so the pointer never references a missing object.
+ */
+export async function setRoomLogoPointer(roomId: string, objectKey: string, version: string): Promise<void> {
+  const { error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .update({ logo_object_key: objectKey, logo_version: version })
+    .eq('id', roomId);
+  if (error) throw error;
+}
+
+/** Room Branding V1 — clear the logo pointer (removal). Object deletion is the caller's. */
+export async function clearRoomLogoPointer(roomId: string): Promise<void> {
+  const { error } = await karaokeDb()
+    .from('karaoke_rooms')
+    .update({ logo_object_key: null, logo_version: null })
+    .eq('id', roomId);
+  if (error) throw error;
 }
 
 /**

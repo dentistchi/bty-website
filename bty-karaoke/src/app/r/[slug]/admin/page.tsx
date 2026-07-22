@@ -3,6 +3,7 @@ import { getPublicRoomBySlug } from '@/lib/rooms.server';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { csrfTokenOrNull, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
+import { normalizeTheme } from '@/domain/branding';
 import AdminConsole from './AdminConsole';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +39,18 @@ export default async function AdminPage({ params }: { params: Promise<{ slug: st
   const hostToken = (await cookies()).get(HOST_COOKIE)?.value ?? null;
   const hostCsrf = hostToken ? await csrfTokenOrNull(hostToken) : null;
 
+  const logoUrl = room.logo_object_key
+    ? `/api/public/rooms/${encodeURIComponent(room.slug)}/logo?v=${room.logo_version ?? ''}`
+    : null;
+
   return (
-    <main>
+    <main data-theme={normalizeTheme(room.branding_theme)}>
+      {logoUrl && (
+        <div className="row admin-room-identity" style={{ gap: '0.6rem', alignItems: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="room-logo room-logo-sm" src={logoUrl} alt={`${room.display_name} 로고`} width={40} height={40} />
+        </div>
+      )}
       {hostToken && hostCsrf && (
         <div className="row host-admin-signout" style={{ justifyContent: 'flex-end', gap: '0.5rem' }}>
           {/* Room Settings V1 — an authenticated owner reaches their Settings screen

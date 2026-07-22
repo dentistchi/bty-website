@@ -16,6 +16,9 @@ const state = {
     display_name: 'Chi Family Norebang',
     status: 'open',
     guest_welcome_message: null as string | null,
+    logo_object_key: null as string | null,
+    logo_version: null as string | null,
+    branding_theme: 'midnight_gold',
   },
   liveEvent: null as null | { id: string; name: string; status: string },
   canonicalCalls: 0,
@@ -52,9 +55,47 @@ beforeEach(() => {
     display_name: 'Chi Family Norebang',
     status: 'open',
     guest_welcome_message: null,
+    logo_object_key: null,
+    logo_version: null,
+    branding_theme: 'midnight_gold',
   };
   state.liveEvent = null;
   state.canonicalCalls = 0;
+});
+
+describe('guest surface — branding (theme + logo)', () => {
+  it('applies the selected theme to the page via data-theme', async () => {
+    state.room.branding_theme = 'neon_night';
+    const { container } = render(
+      await RoomPage({ params: Promise.resolve({ slug: 'chi-norebang-xqjbyszq' }), searchParams: Promise.resolve({}) }),
+    );
+    expect(container.querySelector('main')?.getAttribute('data-theme')).toBe('neon_night');
+  });
+
+  it('renders the logo via the public proxy (versioned) when a logo exists', async () => {
+    state.room.logo_object_key = 'rooms/room-chi/logo-X.webp';
+    state.room.logo_version = 'ver123';
+    await renderPage();
+    const img = screen.getByAltText('Chi Family Norebang 로고') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe('/api/public/rooms/chi-norebang-xqjbyszq/logo?v=ver123');
+  });
+
+  it('renders NO logo image (clean text fallback) when there is no logo', async () => {
+    state.room.logo_object_key = null;
+    const { container } = render(
+      await RoomPage({ params: Promise.resolve({ slug: 'chi-norebang-xqjbyszq' }), searchParams: Promise.resolve({}) }),
+    );
+    expect(container.querySelector('img.room-logo')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Chi Family Norebang' })).toBeTruthy();
+  });
+
+  it('coerces an unexpected stored theme to the default on render (defense in depth)', async () => {
+    state.room.branding_theme = 'bogus';
+    const { container } = render(
+      await RoomPage({ params: Promise.resolve({ slug: 'chi-norebang-xqjbyszq' }), searchParams: Promise.resolve({}) }),
+    );
+    expect(container.querySelector('main')?.getAttribute('data-theme')).toBe('midnight_gold');
+  });
 });
 
 describe('guest surface — updated Room name', () => {

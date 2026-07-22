@@ -22,6 +22,7 @@ function submitWith(name: string, welcome: string) {
       csrfField="csrf"
       initialName="Chi Norebang"
       initialWelcome=""
+      initialTheme="midnight_gold"
     />,
   );
   const form = screen.getByRole('button', { name: /변경사항 저장/ }).closest('form')!;
@@ -40,6 +41,7 @@ describe('RoomSettingsForm submitted contract', () => {
         csrfField="csrf"
         initialName="Chi Norebang"
         initialWelcome="기존 문구"
+        initialTheme="neon_night"
       />,
     );
     expect((screen.getByLabelText('노래방 이름') as HTMLInputElement).value).toBe('Chi Norebang');
@@ -63,9 +65,22 @@ describe('RoomSettingsForm submitted contract', () => {
     expect(RoomSettingsSchema.safeParse({ name: fd.get('name'), guestWelcomeMessage: fd.get('guestWelcomeMessage') }).success).toBe(true);
   });
 
+  it('submits the pre-selected theme, and switching cards updates the submitted theme', () => {
+    const { container } = render(
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,
+    );
+    const form = container.querySelector('form')!;
+    expect(new FormData(form).get('theme')).toBe('midnight_gold');
+    fireEvent.click(container.querySelector('input[value="warm_stage"]')!);
+    expect(new FormData(form).get('theme')).toBe('warm_stage');
+    // only an allowlisted id is ever a submittable value
+    const values = [...container.querySelectorAll('input[name="theme"]')].map((el) => (el as HTMLInputElement).value);
+    expect(values).toEqual(['midnight_gold', 'neon_night', 'warm_stage']);
+  });
+
   it('value-carrying fields are readOnly (never disabled) while submitting — so they still POST', () => {
     render(
-      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" />,
+      <RoomSettingsForm slug="s" csrf="c" csrfField="csrf" initialName="A" initialWelcome="" initialTheme="midnight_gold" />,
     );
     const form = screen.getByRole('button', { name: /변경사항 저장/ }).closest('form')!;
     const name = screen.getByLabelText('노래방 이름') as HTMLInputElement;

@@ -16,8 +16,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authorizeHost, accountHasRoomAccess } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { verifyHostCsrf, csrfFromForm } from '@/lib/host-csrf.server';
-import { getPublicRoomBySlug, updateRoomSettings } from '@/lib/rooms.server';
+import { getPublicRoomBySlug, updateRoomSettings, updateRoomTheme } from '@/lib/rooms.server';
 import { RoomSettingsSchema } from '@/lib/validation';
+import { normalizeTheme } from '@/domain/branding';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -65,6 +66,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     displayName: parsed.data.name,
     guestWelcomeMessage: welcome && welcome.length > 0 ? welcome : null,
   });
+
+  // Preset theme (Room Branding V1): allowlist ONLY — any unknown/injected value
+  // normalizes to the default, so raw CSS/colors can never be stored. Updated only
+  // when the field is present, so a name/welcome save never resets the theme.
+  const rawTheme = form?.get('theme');
+  if (typeof rawTheme === 'string') await updateRoomTheme(room.id, normalizeTheme(rawTheme));
 
   // 5. Back to the settings page (canonical slug unchanged) with a success notice.
   const res = NextResponse.redirect(settingsUrl(req, room.slug, 'saved'), 303);

@@ -14,9 +14,9 @@ import { render, screen, cleanup } from '@testing-library/react';
 const state = {
   token: 'host-token' as string | null,
   account: { id: 'acct-1' } as null | { id: string },
-  room: { id: 'room-chi', slug: 'chi-norebang-xqjbyszq', display_name: 'Chi Norebang', status: 'open', guest_welcome_message: '기존' } as
+  room: { id: 'room-chi', slug: 'chi-norebang-xqjbyszq', display_name: 'Chi Norebang', status: 'open', guest_welcome_message: '기존' , logo_object_key: null, logo_version: null, branding_theme: 'midnight_gold' } as
     | null
-    | { id: string; slug: string; display_name: string; status: string; guest_welcome_message: string | null },
+    | { id: string; slug: string; display_name: string; status: string; guest_welcome_message: string | null; logo_object_key: string | null; logo_version: string | null; branding_theme: string },
   hasAccess: true,
 };
 
@@ -56,7 +56,7 @@ beforeEach(() => {
   cleanup();
   state.token = 'host-token';
   state.account = { id: 'acct-1' };
-  state.room = { id: 'room-chi', slug: 'chi-norebang-xqjbyszq', display_name: 'Chi Norebang', status: 'open', guest_welcome_message: '기존' };
+  state.room = { id: 'room-chi', slug: 'chi-norebang-xqjbyszq', display_name: 'Chi Norebang', status: 'open', guest_welcome_message: '기존' , logo_object_key: null, logo_version: null, branding_theme: 'midnight_gold' };
   state.hasAccess = true;
 });
 

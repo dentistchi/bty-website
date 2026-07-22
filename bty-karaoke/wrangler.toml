@@ -7,10 +7,12 @@ compatibility_date = "2026-04-26"
 
 compatibility_flags = ["nodejs_compat"]
 
-# Admin-PIN enrollment runs PBKDF2 (a few ms of CPU); raise the per-request CPU
-# budget so the KDF completes well within limits on the Workers Standard plan.
+# Admin-PIN enrollment runs PBKDF2, and Room Branding logo normalization runs
+# @cf-wasm/photon (decode + EXIF transpose + 512² cover + WebP encode) — hundreds of
+# ms of CPU for a multi-megapixel image. Raise the per-request CPU budget so both
+# complete within limits on the Workers Standard plan.
 [limits]
-cpu_ms = 50
+cpu_ms = 300
 
 [assets]
 directory = ".open-next/assets"

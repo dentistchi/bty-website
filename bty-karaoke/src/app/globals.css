@@ -3541,3 +3541,136 @@ a.btn.block {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Room Branding V1 — preset themes + logo / theme-picker.
+   Themes override the accent/surface custom-property tokens on the element that
+   carries data-theme (a room <main>, the Admin shell, or a preview card). The
+   :root default IS 'midnight_gold', so an unthemed page (and bty-home) is unchanged.
+   Text stays light on dark for contrast; the QR, badges, and destructive tones are
+   never restyled here. ───────────────────────────────────────────────────── */
+
+[data-theme='neon_night'] {
+  --stage-0: #0a0a18;
+  --stage-1: #10101f;
+  --stage-2: #16162b;
+  --bg: var(--stage-0);
+  --panel: #15132b;
+  --panel-2: #1d1a3a;
+  --text: #f2f0ff;
+  --muted: #b3accf;
+  --gold: #b98cff; /* accent slot → violet */
+  --gold-2: #9a6cff;
+  --cyan: #4ff0ff;
+  --accent: #b98cff;
+  --accent-2: #4ff0ff;
+}
+
+[data-theme='warm_stage'] {
+  --stage-0: #17100a;
+  --stage-1: #201409;
+  --stage-2: #291a0f;
+  --bg: var(--stage-0);
+  --panel: #241812;
+  --panel-2: #30201a;
+  --text: #fbf1e6;
+  --muted: #d7c3ad;
+  --gold: #ffb454; /* amber */
+  --gold-2: #f39b34;
+  --cyan: #ff9d7a; /* warm coral in the secondary slot */
+  --accent: #ffb454;
+  --accent-2: #ff8f73;
+}
+
+/* A themed surface tint so a guest / admin page visibly reflects its theme. */
+main[data-theme='neon_night'],
+main[data-theme='warm_stage'] {
+  background-image:
+    radial-gradient(120% 80% at 50% -8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--stage-1), var(--stage-0) 46%);
+  border-radius: var(--radius);
+}
+
+/* Room identity block: logo + name + welcome. */
+.room-identity {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin: 4px 0 10px;
+}
+.room-identity-text { flex: 1 1 auto; min-width: 0; }
+.room-logo {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+}
+.room-logo-sm { width: 40px; height: 40px; }
+.admin-room-identity { margin-bottom: 8px; }
+
+/* Settings — logo controls + theme picker. */
+.settings-label { display: block; font-weight: 600; margin: 6px 0 4px; }
+.logo-controls { display: flex; flex-direction: column; gap: 12px; }
+.logo-preview {
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+.logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+.logo-empty { color: var(--muted-2); font-size: 13px; }
+
+.theme-picker {
+  border: none;
+  padding: 0;
+  margin: 6px 0 2px;
+  display: grid;
+  gap: 10px;
+}
+.theme-picker legend { font-weight: 600; padding: 0; margin-bottom: 4px; }
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+}
+.theme-card.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.theme-card input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.theme-card input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-card-text { display: flex; flex-direction: column; }
+.theme-card-text b { color: var(--text); }
+.theme-swatch {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+}
+.theme-swatch-accent {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}

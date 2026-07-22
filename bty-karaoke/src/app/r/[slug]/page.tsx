@@ -6,6 +6,7 @@ import QueueBoard from './QueueBoard';
 import RoomLiveGuard from './RoomLiveGuard';
 import GuestConsentGate from '@/components/legal/GuestConsentGate';
 import LegalLinks from '@/components/legal/LegalLinks';
+import { normalizeTheme } from '@/domain/branding';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,20 +18,38 @@ export const runtime = 'nodejs';
 function GuestRoomHeader({
   room,
 }: {
-  room: { display_name: string; status: string; guest_welcome_message: string | null };
+  room: {
+    slug: string;
+    display_name: string;
+    status: string;
+    guest_welcome_message: string | null;
+    logo_object_key: string | null;
+    logo_version: string | null;
+  };
 }) {
+  // Logo is delivered through the controlled public proxy (never the private URL).
+  // Absent logo → clean text identity, no broken image / empty box.
+  const logoUrl = room.logo_object_key
+    ? `/api/public/rooms/${encodeURIComponent(room.slug)}/logo?v=${room.logo_version ?? ''}`
+    : null;
   return (
-    <>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>{room.display_name}</h1>
-        <span className="tag">{room.status === 'open' ? '열림' : '닫힘'}</span>
-      </div>
-      {room.guest_welcome_message ? (
-        <p className="lead" data-guest-welcome>
-          {room.guest_welcome_message}
-        </p>
+    <div className="room-identity">
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="room-logo" src={logoUrl} alt={`${room.display_name} 로고`} width={72} height={72} />
       ) : null}
-    </>
+      <div className="room-identity-text">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <h1>{room.display_name}</h1>
+          <span className="tag">{room.status === 'open' ? '열림' : '닫힘'}</span>
+        </div>
+        {room.guest_welcome_message ? (
+          <p className="lead" data-guest-welcome>
+            {room.guest_welcome_message}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -91,7 +110,7 @@ export default async function RoomPage({
   // and never creates an Event.
   if (!event) {
     return (
-      <main>
+      <main data-theme={normalizeTheme(room.branding_theme)}>
         <div className="brand-head">
           <span className="brand">{PRODUCT_NAME}</span>
           <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
@@ -107,7 +126,7 @@ export default async function RoomPage({
   }
 
   return (
-    <main>
+    <main data-theme={normalizeTheme(room.branding_theme)}>
       <div className="brand-head">
         <span className="brand">{PRODUCT_NAME}</span>
         <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>

@@ -24,6 +24,7 @@ const state = {
 };
 
 const updateSpy = vi.fn(async (_roomId: string, s: { displayName: string; guestWelcomeMessage: string | null }) => s);
+const themeSpy = vi.fn(async (_roomId: string, _theme: string) => {});
 
 vi.mock('@/lib/host-auth.server', () => ({
   authorizeHost: vi.fn(async () => state.account),
@@ -37,6 +38,7 @@ vi.mock('@/lib/host-csrf.server', () => ({
 vi.mock('@/lib/rooms.server', () => ({
   getPublicRoomBySlug: vi.fn(async () => state.room),
   updateRoomSettings: (roomId: string, s: { displayName: string; guestWelcomeMessage: string | null }) => updateSpy(roomId, s),
+  updateRoomTheme: (roomId: string, theme: string) => themeSpy(roomId, theme),
 }));
 
 import { POST } from './route';
@@ -60,9 +62,25 @@ beforeEach(() => {
   state.room = { id: 'room-chi', slug: SLUG, display_name: 'Chi Norebang', status: 'open', guest_welcome_message: null };
   state.hasAccess = true;
   updateSpy.mockClear();
+  themeSpy.mockClear();
 });
 
 describe('POST /api/host/rooms/[slug]/settings', () => {
+  it('saves an allowlisted theme alongside name/welcome', async () => {
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: 'neon_night' }), ctx);
+    expect(themeSpy).toHaveBeenCalledWith('room-chi', 'neon_night');
+  });
+
+  it('coerces an unknown / injected theme to the default (no raw CSS/colors stored)', async () => {
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi', theme: 'red; background: url(evil)' }), ctx);
+    expect(themeSpy).toHaveBeenCalledWith('room-chi', 'midnight_gold');
+  });
+
+  it('omitting the theme field never resets the theme (no theme write)', async () => {
+    await POST(makeReq({ csrf: 'csrf-token', name: 'Chi' }), ctx);
+    expect(themeSpy).not.toHaveBeenCalled();
+  });
+
   it('owner updates display name → 303 back to settings?notice=saved, targeting the resolved Room id', async () => {
     const res = await POST(makeReq(), ctx);
     expect(res.status).toBe(303);
