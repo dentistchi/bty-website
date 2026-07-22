@@ -340,7 +340,15 @@ export default function ManagerConsole() {
             </div>
           )}
 
-          <div className="row" style={{ justifyContent: 'center', marginTop: 24 }}>
+          {/* Manager navigation — read-only Host Plans console (plan changes are made
+              via the operator API, never from a UI button). */}
+          <div className="row" style={{ justifyContent: 'center', marginTop: 20 }}>
+            <a className="linkish" href="/admin/host-plans">
+              Host Plans · Host 플랜 →
+            </a>
+          </div>
+
+          <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
             <button className="linkish" onClick={signOut}>
               Sign out
             </button>

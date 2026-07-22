@@ -78,6 +78,32 @@ export async function ensureDefaultFreePlan(accountId: string): Promise<void> {
 }
 
 /**
+ * Pure mapping from a single active assignment row (or null) to the resolved
+ * entitlement view. This is the ONE place plan → entitlement is decided; both the
+ * per-account resolver and the Manager console read-view derive from it, so they can
+ * never disagree. A null row is the safe FREE fallback — never a paid promotion.
+ */
+export function entitlementsFromActiveAssignment(active: PlanAssignmentRow | null): HostEntitlements {
+  if (!active) {
+    return {
+      planCode: DEFAULT_PLAN_CODE,
+      planStatus: 'ACTIVE',
+      source: 'SYSTEM_DEFAULT',
+      capabilities: capabilitiesForPlan(DEFAULT_PLAN_CODE),
+      fallback: true,
+    };
+  }
+  const planCode = normalizePlanCode(active.plan_code);
+  return {
+    planCode,
+    planStatus: 'ACTIVE',
+    source: isPlanSource(active.source) ? active.source : 'SYSTEM_DEFAULT',
+    capabilities: capabilitiesForPlan(planCode),
+    fallback: false,
+  };
+}
+
+/**
  * THE entitlement resolver. Given a canonical account id, return its plan and the
  * capability map the app renders/enforces from. An account with no active
  * assignment resolves to FREE (safe default) — NEVER to a paid plan — with a
@@ -89,28 +115,12 @@ export async function ensureDefaultFreePlan(accountId: string): Promise<void> {
  */
 export async function resolveNorebangHostEntitlements(accountId: string): Promise<HostEntitlements> {
   const active = await getActivePlanAssignment(accountId);
-
   if (!active) {
     console.warn('[host-plan] no active plan assignment; defaulting to FREE (no paid promotion)', {
       accountId,
     });
-    return {
-      planCode: DEFAULT_PLAN_CODE,
-      planStatus: 'ACTIVE',
-      source: 'SYSTEM_DEFAULT',
-      capabilities: capabilitiesForPlan(DEFAULT_PLAN_CODE),
-      fallback: true,
-    };
   }
-
-  const planCode = normalizePlanCode(active.plan_code);
-  return {
-    planCode,
-    planStatus: 'ACTIVE',
-    source: isPlanSource(active.source) ? active.source : 'SYSTEM_DEFAULT',
-    capabilities: capabilitiesForPlan(planCode),
-    fallback: false,
-  };
+  return entitlementsFromActiveAssignment(active);
 }
 
 /** A known, non-exceptional rejection the RPC returns as data (never leaks details). */
