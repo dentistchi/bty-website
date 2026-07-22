@@ -97,8 +97,11 @@ function fmtDate(iso: string | null, locale: Locale): string {
 export default function FoundryRequiredLearning({
   locale,
   onOpenReview = () => {},
+  onOpenMyLearning = () => {},
 }: {
   locale: string;
+  /** Open the learner's own My Learning / private reflection history (Slice 3.1B-3H). */
+  onOpenMyLearning?: () => void;
   /** Open the authenticated read-only review for a COMPLETED assignment (never the Room). */
   onOpenReview?: (assignmentId: string) => void;
 }) {
@@ -179,6 +182,16 @@ export default function FoundryRequiredLearning({
 
   return (
     <section className="flex flex-col gap-6" data-testid="foundry-required-learning" aria-label={t.requiredHeader}>
+      {/* Discoverable entry to the learner's own private reflection history (Slice 3.1B-3H). */}
+      <button
+        type="button"
+        onClick={onOpenMyLearning}
+        data-testid="open-my-learning"
+        className="flex items-center justify-between gap-2 rounded-xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-4 py-2.5 text-left"
+      >
+        <span className="text-sm font-medium text-[#C9A66B]">{loc === "ko" ? "내 학습" : "My Learning"}</span>
+        <span aria-hidden="true" className="text-sm text-[#C9A66B]/70">→</span>
+      </button>
       {/* Compact contextual account line — WHO this required-learning list belongs to, with a
           Switch that runs the SAME shared switchAccount() the Me tab uses (no duplicated UI). */}
       <div

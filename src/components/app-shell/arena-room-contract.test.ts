@@ -65,7 +65,10 @@ describe("BtyDailyAppShell — only the arena branch changed", () => {
     // Foundry tab renders the rooms surface, OR the in-shell completion review when a
     // ?review deep-link / Review-learning tap is active (Slice 3.1B-3E.1).
     expect(src).toMatch(/tab === "foundry" &&/);
-    expect(src).toMatch(/<FoundryEventRooms locale={locale} onOpenReview={setReviewId}/);
+    // FoundryEventRooms renders with onOpenReview (+ onOpenMyLearning wiring, Slice 3.1B-3H).
+    expect(src).toMatch(/<FoundryEventRooms[\s\S]*?onOpenReview={setReviewId}/);
+    expect(src).toMatch(/onOpenMyLearning={\(\) => setFoundryView\("my-learning"\)}/);
+    expect(src).toMatch(/<FoundryMyLearning locale={locale}/);
     expect(src).toMatch(/<FoundryCompletionReview/);
     expect(src).toMatch(/tab === "me"/);
   });

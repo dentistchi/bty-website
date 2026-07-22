@@ -73,6 +73,9 @@ type Copy = {
   xpAwarded: string;
   xpClaimable: string;
   saveXp: string;
+  savedTitle: string;
+  savedBody: string;
+  continueToBty: string;
   saving: string;
   xpDailyLimit: string;
   xpOwner: string;
@@ -118,6 +121,9 @@ const COPY: Record<Locale, Copy> = {
     xpAwarded: "+10 Core XP",
     xpClaimable: "10 Core XP is ready to save.",
     saveXp: "Save XP to BTY",
+    savedTitle: "Saved to your BTY",
+    savedBody: "Your reflection is private and available in My Learning.",
+    continueToBty: "Continue to BTY",
     saving: "Saving…",
     xpDailyLimit: "Today’s Core XP is already saved. Come back tomorrow.",
     xpOwner: "Thanks for hosting this training.",
@@ -161,6 +167,9 @@ const COPY: Record<Locale, Copy> = {
     xpAwarded: "+10 Core XP",
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
     saveXp: "BTY에 XP 저장",
+    savedTitle: "BTY에 저장되었습니다",
+    savedBody: "이 성찰은 비공개이며 내 학습에서 다시 볼 수 있습니다.",
+    continueToBty: "BTY로 계속하기",
     saving: "저장 중…",
     xpDailyLimit: "오늘의 Core XP는 이미 저장되었습니다. 내일 다시 오세요.",
     xpOwner: "이 훈련을 열어 주셔서 감사합니다.",
@@ -249,6 +258,14 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const [sharedError, setSharedError] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState(false);
+  // Open-link vs assigned entry (Slice 3.1B-3H): assigned learners arrive with a sanitized
+  // `?return=/{locale}/app…`; an open-link web learner has none → show the "Saved to your BTY"
+  // handoff after a successful authenticated claim.
+  const [roomReturn] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
+      : null,
+  );
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
   const fileRequestedRef = useRef(false);
@@ -548,6 +565,25 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
             )}
             {xp === "daily_limit" && <p className="text-sm text-white/70">{t.xpDailyLimit}</p>}
             {xp === "owner_ineligible" && <p className="text-sm text-white/70">{t.xpOwner}</p>}
+            {/* Open-link → BTY handoff (Slice 3.1B-3H): only after a successful authenticated claim
+                (xp awarded to this account) and only for an open-link entry (no assigned return).
+                Non-mutating navigation into the app-shell My Learning view. */}
+            {!roomReturn && xp === "awarded" ? (
+              <div
+                data-testid="saved-to-bty"
+                className="mt-6 flex flex-col gap-2 rounded-xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-4 py-3 text-left"
+              >
+                <p className="text-base font-semibold text-[#C9A66B]">{t.savedTitle}</p>
+                <p className="text-sm leading-6 text-white/70">{t.savedBody}</p>
+                <a
+                  href={`/${locale}/app?tab=foundry&view=my-learning`}
+                  data-testid="continue-to-bty"
+                  className="mt-1 self-start rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
+                >
+                  {t.continueToBty}
+                </a>
+              </div>
+            ) : null}
           </div>
         </Centered>
       </Frame>

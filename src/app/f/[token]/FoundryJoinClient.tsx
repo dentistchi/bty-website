@@ -53,6 +53,9 @@ type Copy = {
   trainingComplete: string;
   assignmentConnected: string;
   assignmentNoMatch: string;
+  savedTitle: string;
+  savedBody: string;
+  continueToBty: string;
   signedInAs: string;
   accountUnknownEmail: string;
   accountLoading: string;
@@ -106,6 +109,9 @@ const COPY: Record<Locale, Copy> = {
     trainingComplete: "TRAINING COMPLETE",
     assignmentConnected: "Your assigned learning has been connected to this session.",
     assignmentNoMatch: "Your training record was saved. No matching assignment was connected.",
+    savedTitle: "Saved to your BTY",
+    savedBody: "Your reflection is private and available in My Learning.",
+    continueToBty: "Continue to BTY",
     signedInAs: "Signed in as",
     accountUnknownEmail: "your account",
     accountLoading: "Checking your account…",
@@ -157,6 +163,9 @@ const COPY: Record<Locale, Copy> = {
     trainingComplete: "훈련 완료",
     assignmentConnected: "배정된 학습이 이 세션 기록과 연결되었습니다.",
     assignmentNoMatch: "학습 기록이 저장되었습니다. 연결된 배정은 없습니다.",
+    savedTitle: "BTY에 저장되었습니다",
+    savedBody: "이 성찰은 비공개이며 내 학습에서 다시 볼 수 있습니다.",
+    continueToBty: "BTY로 계속하기",
     signedInAs: "로그인 계정:",
     accountUnknownEmail: "내 계정",
     accountLoading: "계정을 확인하는 중…",
@@ -257,6 +266,14 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   // SEE and choose which account claims (the external-browser session may differ from the app).
   const [assignmentNoMatch, setAssignmentNoMatch] = useState(false);
   const [account, setAccount] = useState<{ email: string | null } | null | "loading">("loading");
+  // Open-link vs assigned entry (Slice 3.1B-3H): an assigned learner arrives with a sanitized
+  // `?return=/{locale}/app…` (→ "Back to Foundry"); an open-link web learner has none, so after a
+  // successful authenticated claim we show the "Saved to your BTY" handoff into the app shell.
+  const [roomReturn] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
+      : null,
+  );
   const [checkpoint, setCheckpoint] = useState<{ index: number; resume: () => void } | null>(null);
   const [reflection, setReflection] = useState<LivingReflection | null>(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
@@ -609,6 +626,26 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             // owner_ineligible / none — completion stands, quietly.
             <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
           )}
+          {/* Open-link → BTY handoff (Slice 3.1B-3H): shown ONLY after a successful authenticated
+              claim (ownership reconciled: xp awarded to this account) and ONLY for an open-link
+              entry (no assigned `?return`). Navigation is non-mutating — it never re-runs completion
+              or claim. Assigned learners keep the Frame's "Back to Foundry". */}
+          {!roomReturn && xp === "awarded" ? (
+            <div
+              data-testid="saved-to-bty"
+              className="mt-2 flex flex-col gap-2 rounded-xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-4 py-3"
+            >
+              <p className="text-base font-semibold text-[#C9A66B]">{t.savedTitle}</p>
+              <p className="text-sm leading-6 text-white/70">{t.savedBody}</p>
+              <a
+                href={`/${locale}/app?tab=foundry&view=my-learning`}
+                data-testid="continue-to-bty"
+                className="mt-1 self-start rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
+              >
+                {t.continueToBty}
+              </a>
+            </div>
+          ) : null}
           </div>
         </div>
       </Frame>

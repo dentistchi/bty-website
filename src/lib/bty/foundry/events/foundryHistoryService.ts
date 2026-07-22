@@ -27,6 +27,8 @@ const HISTORY_COLS = "event_id, completed_at, response_text, reflection, complet
 export type FoundryHistoryItem = {
   eventId: string;
   eventTitle: string;
+  /** Source content type for the learner's My Learning surface (Slice 3.1B-3H). */
+  contentType: "youtube" | "document";
   completedAt: string;
   /** The user's own final reflection (owner-only) — full text for the detail view. */
   responseText: string;
@@ -67,18 +69,20 @@ export async function listUserFoundryHistory(
   const eventIds = [...new Set(rows.map((r) => r.event_id))];
   const { data: events } = await admin
     .from("foundry_events")
-    .select("id, title")
+    .select("id, title, content_type")
     .in("id", eventIds)
-    .returns<{ id: string; title: string }[]>();
-  const titleById = new Map((events ?? []).map((e) => [e.id, e.title] as const));
+    .returns<{ id: string; title: string; content_type: string | null }[]>();
+  const metaById = new Map((events ?? []).map((e) => [e.id, e] as const));
 
   return rows.map((r) => {
     const stored = validateLivingReflection(r.reflection);
     const aiReflection = stored.ok ? stored.value : null;
     const responseText = (r.response_text ?? "").trim();
+    const ev = metaById.get(r.event_id);
     return {
       eventId: r.event_id,
-      eventTitle: titleById.get(r.event_id) ?? "Foundry training",
+      eventTitle: ev?.title ?? "Foundry training",
+      contentType: ev?.content_type === "document" ? "document" : "youtube",
       completedAt: r.completed_at,
       responseText,
       responseExcerpt: excerptOf(responseText),

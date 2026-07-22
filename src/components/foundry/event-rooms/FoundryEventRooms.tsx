@@ -36,10 +36,13 @@ type View =
 export default function FoundryEventRooms({
   locale,
   onOpenReview = () => {},
+  onOpenMyLearning = () => {},
 }: {
   locale: string;
   /** Open the authenticated completion review for a completed assignment (in-shell). */
   onOpenReview?: (assignmentId: string) => void;
+  /** Open the learner's own My Learning / private reflection history (in-shell, Slice 3.1B-3H). */
+  onOpenMyLearning?: () => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[loc];
@@ -211,7 +214,7 @@ export default function FoundryEventRooms({
     // the quiet host-pointer copy retained beneath it (calmer, no longer full-height).
     return (
       <div className="btyFadeIn flex flex-col gap-8">
-        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} />
+        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
         <div className="flex flex-col items-center gap-3 pt-2 text-center">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
             {t.eyebrow}
@@ -249,7 +252,7 @@ export default function FoundryEventRooms({
   if (events !== null && events.length === 0) {
     return (
       <div className="btyFadeIn flex flex-col gap-9">
-        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} />
+        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
         {builderEntry}
       </div>
     );
@@ -257,7 +260,7 @@ export default function FoundryEventRooms({
 
   return (
     <div className="btyFadeIn flex flex-col gap-9">
-      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} />
+      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
       {builderEntry}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">

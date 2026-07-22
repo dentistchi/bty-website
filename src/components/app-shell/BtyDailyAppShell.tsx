@@ -8,6 +8,7 @@ import CenterMeCard from "@/components/center/CenterMeCard";
 import CenterKeepRoom from "@/components/center/CenterKeepRoom";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
+import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
@@ -1211,26 +1212,38 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Deep-linked completion review (Slice 3.1B-3E.1): `?review=<assignmentId>` opens the
   // authenticated read-only review inside the Foundry tab. Null = normal Foundry surface.
   const [reviewId, setReviewId] = useState<string | null>(null);
+  // Foundry sub-view (Slice 3.1B-3H): "rooms" (Required Learning + Host rooms) or "my-learning"
+  // (the learner-owned private reflection history). Opened via `?tab=foundry&view=my-learning`
+  // — e.g. the open-link post-claim "Continue to BTY" handoff.
+  const [foundryView, setFoundryView] = useState<"rooms" | "my-learning">("rooms");
 
-  // Return contract: open a specific tab from `?tab=` (and/or a `?review=` deep-link) ONCE on
-  // mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
+  // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
+  // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
   // are honored (unknown → no-op, default stays Today); a review id is accepted only in
-  // UUID-ish shape (the server does the real authz). Both params are consumed via replaceState
+  // UUID-ish shape (the server does the real authz). Params are consumed via replaceState
   // so a re-render / back never re-triggers them and no navigation loop forms.
   useEffect(() => {
     const search = window.location.search;
     const requestedTab = resolveInitialAppTab(search);
     let reviewParam: string | null = null;
+    let viewParam: string | null = null;
     try {
-      reviewParam = new URLSearchParams(search).get("review");
+      const sp = new URLSearchParams(search);
+      reviewParam = sp.get("review");
+      viewParam = sp.get("view");
     } catch {
       reviewParam = null;
+      viewParam = null;
     }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
-    if (!requestedTab && !validReview) return;
+    const wantsMyLearning = viewParam === "my-learning";
+    if (!requestedTab && !validReview && !wantsMyLearning) return;
     if (validReview) {
       setTab("foundry");
       setReviewId(validReview);
+    } else if (wantsMyLearning) {
+      setTab("foundry");
+      setFoundryView("my-learning");
     } else if (requestedTab) {
       setTab(requestedTab);
     }
@@ -1238,6 +1251,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       const params = new URLSearchParams(search);
       params.delete("tab");
       params.delete("review");
+      params.delete("view");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1649,8 +1663,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               locale={locale}
               onBack={() => setReviewId(null)}
             />
+          ) : foundryView === "my-learning" ? (
+            <FoundryMyLearning locale={locale} onBack={() => setFoundryView("rooms")} />
           ) : (
-            <FoundryEventRooms locale={locale} onOpenReview={setReviewId} />
+            <FoundryEventRooms
+              locale={locale}
+              onOpenReview={setReviewId}
+              onOpenMyLearning={() => setFoundryView("my-learning")}
+            />
           ))}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe

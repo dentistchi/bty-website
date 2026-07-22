@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
     history: items.map((it) => ({
       eventId: it.eventId,
       eventTitle: it.eventTitle,
+      contentType: it.contentType,
       completedAt: it.completedAt,
       responseText: it.responseText,
       responseExcerpt: it.responseExcerpt,
