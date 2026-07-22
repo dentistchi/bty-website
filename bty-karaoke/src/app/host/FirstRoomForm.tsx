@@ -15,9 +15,14 @@ import { useState } from 'react';
 export default function FirstRoomForm({
   csrf,
   csrfField,
+  submitLabel = '내 노래방 만들기',
+  busyLabel = '만드는 중…',
 }: {
   csrf: string;
   csrfField: string;
+  /** Button copy. Defaults are the first-Room labels; the additional-Room card overrides them. */
+  submitLabel?: string;
+  busyLabel?: string;
 }) {
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,7 +61,7 @@ export default function FirstRoomForm({
         disabled={submitting}
         aria-busy={submitting}
       >
-        {submitting ? '만드는 중…' : '내 노래방 만들기'}
+        {submitting ? busyLabel : submitLabel}
       </button>
     </form>
   );

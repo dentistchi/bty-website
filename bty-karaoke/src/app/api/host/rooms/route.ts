@@ -16,7 +16,7 @@
 // This mirrors the admin-session bridge: same minting primitives, same 303-to-admin.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizeHost, createFirstRoomForAccount } from '@/lib/host-auth.server';
+import { authorizeHost, createRoomForAccount } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { verifyHostCsrf, csrfFromForm } from '@/lib/host-csrf.server';
 import { issueRoomWebSession, roomSessionCookie } from '@/lib/room-web-session.server';
@@ -48,16 +48,28 @@ export async function POST(req: NextRequest) {
   const parsed = CreateRoomSchema.safeParse({ name: form?.get('name') });
   if (!parsed.success) return back(req, 'bad_name');
 
-  // 4. Atomic, duplicate-safe create (or resolve the already-owned Room). The owner
-  //    is the authenticated account — never anything from the request body.
-  const result = await createFirstRoomForAccount({
+  // 4. Atomic, duplicate-safe create. Routes by owned-Room count: 0 → the unchanged
+  //    first-Room path (enter Admin); ≥1 → the plan-capped additional-Room path. The
+  //    owner is the authenticated account — never anything from the request body. The
+  //    plan Room-limit is resolved and enforced inside the DB transaction.
+  const result = await createRoomForAccount({
     accountId: account.id,
     displayName: parsed.data.name,
   });
 
-  // 5. Enter Admin through the canonical bootstrap: mint the account-bound Room
-  //    credential and 303 to /r/{slug}/admin. Identical exit for 'created' and
-  //    'has_room' — creation and idempotent re-entry both land in the same Room.
+  // 5a. At capacity → no Room was created. Return to the hub chooser with a notice.
+  if (result.kind === 'limit_reached') {
+    return NextResponse.redirect(new URL('/?notice=room_limit', req.nextUrl.origin), 303);
+  }
+
+  // 5b. Additional Room created → return/refetch into the multi-Room chooser (spec).
+  //     Do NOT auto-enter Admin; the Host picks the Room from the hub.
+  if (result.kind === 'added') {
+    return NextResponse.redirect(new URL('/', req.nextUrl.origin), 303);
+  }
+
+  // 5c. First Room (created or idempotent re-entry) → unchanged behavior: mint the
+  //     account-bound Room credential and 303 to /r/{slug}/admin.
   const raw = await issueRoomWebSession(result.roomId, account.id);
   const res = NextResponse.redirect(
     new URL(`/r/${encodeURIComponent(result.slug)}/admin`, req.nextUrl.origin),

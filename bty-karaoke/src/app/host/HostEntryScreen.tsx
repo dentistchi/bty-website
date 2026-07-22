@@ -16,10 +16,12 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { authorizeHost, listHostRooms, publicAccount } from '@/lib/host-auth.server';
+import { resolveNorebangHostEntitlements } from '@/lib/host-plan.server';
 import { csrfTokenOrNull, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
 import { googleWebConfigured } from '@/lib/google-oauth.server';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { resolveHostEntry } from '@/domain/host-entry';
+import { maxRoomsForPlan, canCreateAnotherRoom } from '@/domain/host-plan';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import LegalLinks from '@/components/legal/LegalLinks';
 import FirstRoomForm from './FirstRoomForm';
@@ -34,6 +36,7 @@ const NOTICES: Record<string, string> = {
   cancelled: '로그인이 취소되었습니다.',
   signed_out: '로그아웃되었습니다.',
   bad_name: '노래방 이름을 입력해 주세요.',
+  room_limit: '현재 플랜의 노래방 수가 가득 찼습니다.',
 };
 
 function BrandHead() {
@@ -51,10 +54,14 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
   const token = (await cookies()).get(HOST_COOKIE)?.value ?? null;
   const account = await authorizeHost(token);        // pure read
   const rooms = account ? await listHostRooms(account.id) : [];   // pure read, zero Events
+  // Plan is READ-only here — used to route (1-Room PRO → chooser) and to render the
+  // capacity action/copy. It is never mutated and never enforces the limit (the RPC does).
+  const plan = account ? (await resolveNorebangHostEntitlements(account.id)).planCode : 'FREE';
 
   const decision = resolveHostEntry({
     authenticated: account != null,
     roomSlugs: rooms.map((r) => r.slug),
+    plan,
   });
 
   // ---------------------------------------------------------------- signed out
@@ -96,13 +103,20 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
   // ------------------------------------------------------------- authenticated
   const me = publicAccount(account!);
   const csrf = await csrfTokenOrNull(token!);   // null when the CSRF secret is unconfigured
+  const roomCount = rooms.length;
+  const roomMax = maxRoomsForPlan(plan);
+  const canAddRoom = canCreateAnotherRoom(plan, roomCount);
 
   return (
     <main className="host-shell">
       <BrandHead />
 
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1>My Norebang</h1>
+        <div className="row" style={{ gap: '0.5rem', alignItems: 'center' }}>
+          <h1>My Norebang</h1>
+          {/* Current plan (read-only display; no upgrade CTA in V1). */}
+          <span className="pill" data-host-plan={plan}>{plan}</span>
+        </div>
         <div className="row" style={{ gap: '0.5rem' }}>
           {/* Host Plan Foundation V1 — the Plan screen entry from the hub. */}
           <a className="host-btn host-btn-ghost" href="/host/plan">플랜</a>
@@ -132,32 +146,67 @@ export default async function HostEntryScreen({ notice }: { notice?: string }) {
           )}
         </div>
       ) : (
-        rooms.map((room) => (
-          <div className="card" key={room.slug} data-host-room={room.slug}>
-            <h2>{room.displayName}</h2>
-            {room.hasActiveEvent ? (
-              <p className="muted">
-                진행 중 · 대기열 {room.queueCount}곡
-                {room.activeEvent?.startsAt
-                  ? ` · ${new Date(room.activeEvent.startsAt).toLocaleTimeString('ko-KR', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })} 시작`
-                  : ''}
-              </p>
-            ) : (
-              <p className="muted">진행 중인 노래방이 없어요</p>
-            )}
-            {/* Explicit selection (2+ rooms): protected POST issues the account-bound
-                Room cookie, then redirects into Admin. Entering never creates an Event. */}
-            <form action={`/api/host/rooms/${encodeURIComponent(room.slug)}/admin-session`} method="post">
-              <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ''} />
-              <button className="host-btn host-btn-primary" type="submit">
-                {room.hasActiveEvent ? '노래방으로 들어가기' : '새 노래방 시작'}
-              </button>
-            </form>
-          </div>
-        ))
+        <>
+          {rooms.map((room) => (
+            <div className="card" key={room.slug} data-host-room={room.slug}>
+              <h2>{room.displayName}</h2>
+              {room.hasActiveEvent ? (
+                <p className="muted">
+                  진행 중 · 대기열 {room.queueCount}곡
+                  {room.activeEvent?.startsAt
+                    ? ` · ${new Date(room.activeEvent.startsAt).toLocaleTimeString('ko-KR', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })} 시작`
+                    : ''}
+                </p>
+              ) : (
+                <p className="muted">진행 중인 노래방이 없어요</p>
+              )}
+              {/* Explicit selection (2+ rooms): protected POST issues the account-bound
+                  Room cookie, then redirects into Admin. Entering never creates an Event. */}
+              <form action={`/api/host/rooms/${encodeURIComponent(room.slug)}/admin-session`} method="post">
+                <input type="hidden" name={CSRF_FIELD_NAME} value={csrf ?? ''} />
+                <button className="host-btn host-btn-primary" type="submit">
+                  {room.hasActiveEvent ? '노래방으로 들어가기' : '새 노래방 시작'}
+                </button>
+              </form>
+            </div>
+          ))}
+
+          {/* PRO Multi-Room V1 — capacity-aware action. Below the cap: reuse the
+              first-Room form (same endpoint) to add another Norebang. At the cap:
+              show the limit clearly with NO create action and NO upgrade CTA. */}
+          {canAddRoom ? (
+            <div className="card hero" data-host-add-room>
+              <h2>노래방 추가 만들기</h2>
+              <p className="muted">Create another Norebang · 이 공간의 이름을 지어 주세요.</p>
+              {message && <p className="host-notice" role="status">{message}</p>}
+              {csrf ? (
+                <FirstRoomForm
+                  csrf={csrf}
+                  csrfField={CSRF_FIELD_NAME}
+                  submitLabel="노래방 추가 만들기"
+                  busyLabel="만드는 중…"
+                />
+              ) : (
+                <div className="host-unavailable" role="status">
+                  <b>준비 중</b>
+                  <span className="muted">아직 설정이 완료되지 않아 지금은 만들 수 없습니다.</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="card" data-host-room-limit={plan}>
+              {message && <p className="host-notice" role="status">{message}</p>}
+              {plan === 'PRO' ? (
+                <p className="muted">{roomMax} of {roomMax} Norebangs used · 노래방 {roomMax}/{roomMax} 사용 중</p>
+              ) : (
+                <p className="muted">FREE includes 1 Norebang · FREE 플랜은 노래방 1개를 제공합니다.</p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <LegalLinks showContact />

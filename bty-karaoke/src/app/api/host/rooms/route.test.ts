@@ -1,35 +1,37 @@
-// First-room onboarding endpoint (New Host Onboarding V1).
+// Host Room creation endpoint (New Host Onboarding V1 + PRO Multi-Room V1).
 //
-// Pins the route-level contract a brand-new zero-Room Host relies on:
+// Pins the route-level contract:
 //   - identity is required FIRST (no session → 303 to the root login), then CSRF (403)
 //   - the ONLY accepted input is a bounded display name; empty/invalid → back with a notice
-//   - success mints an account-bound Room credential and 303s to EXACTLY /r/{slug}/admin
+//   - FIRST Room (kind 'entered', incl. idempotent has_room) mints an account-bound Room
+//     credential and 303s to EXACTLY /r/{slug}/admin — unchanged shipped behavior
+//   - ADDITIONAL Room (kind 'added') 303s to the hub chooser (/), no Room cookie
+//   - at capacity (kind 'limit_reached') 303s to /?notice=room_limit, nothing created
 //   - the owner is ALWAYS the authenticated account — no owner is ever read from the body
-//   - 'has_room' (already owns a Room) enters that SAME Room — a duplicate is never created
 //
-// The atomicity + duplicate + zero-Event guarantees live in the create_karaoke_room
-// RPC (DB-enforced under an account-scoped advisory lock); here we assert the HTTP
-// wiring and that it forwards nothing but the session account + typed name.
+// The atomicity + plan-limit + zero-Event guarantees live in the RPCs (DB-enforced under
+// an account-scoped advisory lock); here we assert the HTTP wiring + outcome routing.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+type CreateRoomResult =
+  | { kind: 'entered'; slug: string; roomId: string }
+  | { kind: 'added'; slug: string; roomId: string }
+  | { kind: 'limit_reached' };
 
 const state = {
   hostToken: 'host-token' as string | null,
   account: { id: 'acct-1' } as null | { id: string },
   csrfOk: true,
-  create: { outcome: 'created', slug: 'my-room-ab12cd34', roomId: 'room-new' } as {
-    outcome: 'created' | 'has_room';
-    slug: string;
-    roomId: string;
-  },
+  result: { kind: 'entered', slug: 'my-room-ab12cd34', roomId: 'room-new' } as CreateRoomResult,
 };
 
-const createSpy = vi.fn(async (_args: { accountId: string; displayName: string }) => state.create);
+const createSpy = vi.fn(async (_args: { accountId: string; displayName: string }) => state.result);
 const issueSpy = vi.fn(async (_roomId: string, _accountId: string) => 'room-raw-token');
 
 vi.mock('@/lib/host-auth.server', () => ({
   authorizeHost: vi.fn(async () => state.account),
-  createFirstRoomForAccount: (args: { accountId: string; displayName: string }) => createSpy(args),
+  createRoomForAccount: (args: { accountId: string; displayName: string }) => createSpy(args),
 }));
 vi.mock('@/lib/host-web-session.server', () => ({
   hostTokenFromRequest: () => state.hostToken,
@@ -57,28 +59,37 @@ beforeEach(() => {
   state.hostToken = 'host-token';
   state.account = { id: 'acct-1' };
   state.csrfOk = true;
-  state.create = { outcome: 'created', slug: 'my-room-ab12cd34', roomId: 'room-new' };
+  state.result = { kind: 'entered', slug: 'my-room-ab12cd34', roomId: 'room-new' };
   createSpy.mockClear();
   issueSpy.mockClear();
 });
 
 describe('POST /api/host/rooms', () => {
-  it('created → 303 to /r/{slug}/admin with the Room cookie; owner is the session account', async () => {
+  it('first Room (entered) → 303 to /r/{slug}/admin with the Room cookie; owner is the session account', async () => {
     const res = await POST(makeReq());
     expect(res.status).toBe(303);
     expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/r/my-room-ab12cd34/admin');
     expect(res.headers.get('set-cookie')).toContain('bty_room=room-raw-token');
-    // Owner derived from the authenticated session, and ONLY the typed name forwarded.
     expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Chi Family Norebang' });
     expect(issueSpy).toHaveBeenCalledWith('room-new', 'acct-1');
   });
 
-  it('already owns a Room (has_room) → enters that SAME Room; no duplicate created', async () => {
-    state.create = { outcome: 'has_room', slug: 'existing-room', roomId: 'room-existing' };
+  it('additional Room (added) → 303 to the hub chooser (/), NO Room cookie, no admin bridge', async () => {
+    state.result = { kind: 'added', slug: 'second-room', roomId: 'room-2' };
     const res = await POST(makeReq());
     expect(res.status).toBe(303);
-    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/r/existing-room/admin');
-    expect(issueSpy).toHaveBeenCalledWith('room-existing', 'acct-1');
+    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/');
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(issueSpy).not.toHaveBeenCalled();
+  });
+
+  it('at capacity (limit_reached) → 303 to /?notice=room_limit, nothing created', async () => {
+    state.result = { kind: 'limit_reached' };
+    const res = await POST(makeReq());
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('https://norebang.btydaily.com/?notice=room_limit');
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(issueSpy).not.toHaveBeenCalled();
   });
 
   it('unauthenticated → 303 to the root login, and nothing is created', async () => {

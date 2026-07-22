@@ -14,6 +14,7 @@ import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
 import { ensureDefaultFreePlan } from './host-plan.server';
 import { buildRoomSlug } from '@/domain/room-slug';
+import { normalizePlanCode, type PlanCode } from '@/domain/host-plan';
 
 /** Durable native login. Long-lived on purpose, but revocable and expiring. */
 export const HOST_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -483,6 +484,113 @@ export async function createFirstRoomForAccount(args: {
     return { outcome: row.outcome, slug: row.slug, roomId: row.roomId };
   }
   throw new Error('Could not allocate a unique room slug after several attempts');
+}
+
+/**
+ * Count the account's currently-owned active Rooms. Cheap (no event/queue joins) — it
+ * exists only to ROUTE creation (0 → first-Room path, ≥1 → additional-Room path). It is
+ * NOT the limit authority: the additional-Room RPC re-counts under the account lock and
+ * enforces the plan cap there, so this read is never trusted for enforcement.
+ */
+export async function countOwnedRooms(accountId: string): Promise<number> {
+  const db = karaokeDb();
+  const memberships = await db
+    .from('karaoke_workspace_members')
+    .select('workspace_id')
+    .eq('account_id', accountId)
+    .eq('status', 'active');
+  if (memberships.error) throw memberships.error;
+  const workspaceIds = (memberships.data ?? []).map((m) => m.workspace_id as string);
+  if (workspaceIds.length === 0) return 0;
+  const { count, error } = await db
+    .from('karaoke_room_ownership')
+    .select('*', { count: 'exact', head: true })
+    .in('workspace_id', workspaceIds);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export type AdditionalRoomOutcome =
+  | { outcome: 'created'; slug: string; roomId: string; count: number; max: number }
+  | { outcome: 'limit_reached'; plan: PlanCode; count: number; max: number }
+  | { outcome: 'first_room_required' } //     zero owned → create_karaoke_room is the sole 0→1 path
+  | { outcome: 'ownership_state_invalid' } //  owns a Room but has no active workspace (broken graph)
+  | { outcome: 'account_not_found' };
+
+/**
+ * PRO Multi-Room V1. Create an ADDITIONAL Room for an account that already owns one,
+ * within its plan's Room limit, via the atomic create_additional_karaoke_room RPC. The
+ * plan and the FREE=1 / PRO=3 cap are resolved INSIDE the locked transaction — this
+ * caller passes NO limit and cannot inflate it. The RPC fails CLOSED with zero writes on
+ * 'first_room_required' (zero owned) and 'ownership_state_invalid' (missing workspace);
+ * 'limit_reached' means at capacity. Only 'created' mints a Room; existing Rooms are
+ * always untouched. Creates ZERO Events. A slug collision (23505) retries a fresh suffix.
+ */
+export async function createAdditionalRoomForAccount(args: {
+  accountId: string;
+  displayName: string;
+}): Promise<AdditionalRoomOutcome> {
+  const db = karaokeDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = buildRoomSlug(args.displayName, randomSlugSuffix());
+    const djSecret = await sha256Hex(randomToken(32));
+    const { data, error } = await db.rpc('create_additional_karaoke_room', {
+      p_account_id: args.accountId,
+      p_slug: slug,
+      p_display_name: args.displayName,
+      p_dj_secret: djSecret,
+    });
+    if (error) {
+      if ((error as { code?: string }).code === '23505') continue; // slug clash → retry
+      throw error;
+    }
+    const row = (Array.isArray(data) ? data[0] : data) as {
+      outcome: string;
+      slug?: string;
+      roomId?: string;
+      plan?: string;
+      count?: number;
+      max?: number;
+    };
+    if (row.outcome === 'created') {
+      return { outcome: 'created', slug: row.slug!, roomId: row.roomId!, count: row.count ?? 0, max: row.max ?? 0 };
+    }
+    if (row.outcome === 'limit_reached') {
+      return { outcome: 'limit_reached', plan: normalizePlanCode(row.plan), count: row.count ?? 0, max: row.max ?? 0 };
+    }
+    if (row.outcome === 'first_room_required') return { outcome: 'first_room_required' };
+    if (row.outcome === 'ownership_state_invalid') return { outcome: 'ownership_state_invalid' };
+    return { outcome: 'account_not_found' };
+  }
+  throw new Error('Could not allocate a unique room slug after several attempts');
+}
+
+export type CreateRoomResult =
+  | { kind: 'entered'; slug: string; roomId: string } // first Room (created or has_room) → enter Admin
+  | { kind: 'added'; slug: string; roomId: string } //   additional Room created → return to chooser
+  | { kind: 'limit_reached' }; //                        at capacity → no Room created
+
+/**
+ * The single creation entry the Host route calls. Routes by owned-Room count WITHOUT
+ * changing first-Room behavior: 0 owned → the unchanged create_karaoke_room path (enter
+ * Admin); ≥1 owned → the plan-capped additional-Room path (return to the chooser, or
+ * 'limit_reached'). The count here only picks the path; both paths re-check under the
+ * account lock, so a concurrent race can never exceed the cap. account_not_found (a
+ * near-impossible inconsistency for an authenticated Host) is treated as 'limit_reached'
+ * — no Room is created and the Host is returned to the hub.
+ */
+export async function createRoomForAccount(args: {
+  accountId: string;
+  displayName: string;
+}): Promise<CreateRoomResult> {
+  const owned = await countOwnedRooms(args.accountId);
+  if (owned === 0) {
+    const r = await createFirstRoomForAccount(args);
+    return { kind: 'entered', slug: r.slug, roomId: r.roomId };
+  }
+  const r = await createAdditionalRoomForAccount(args);
+  if (r.outcome === 'created') return { kind: 'added', slug: r.slug, roomId: r.roomId };
+  return { kind: 'limit_reached' };
 }
 
 /** Bind a device credential to the Host who enrolled it (subordinate credential). */
