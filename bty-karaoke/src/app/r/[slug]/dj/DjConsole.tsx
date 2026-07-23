@@ -92,6 +92,12 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
 
   const seenRef = useRef<Set<string>>(new Set());
   const initedRef = useRef(false);
+  // Exactly ONE dedicated YouTube player tab per Room/Admin session. We reuse a stable,
+  // Room-scoped browsing-context name so every "Next Song" NAVIGATES the same tab rather
+  // than spawning a new one, and we retain the WindowProxy while DjConsole is mounted so a
+  // live handle is reused without re-opening. The Admin tab is never navigated away.
+  const ytWindowName = `bty-norebang-youtube-${slug}`;
+  const ytWinRef = useRef<Window | null>(null);
   // Monotonic load counter: a slow older /dj/queue response can never overwrite a
   // newer one (which would, e.g., briefly drop the playing row and hide Finish).
   const loadSeqRef = useRef(0);
@@ -329,28 +335,43 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // READY TO PLAY card's subject — the deterministic ready-first promote target.
   async function playNext(nextId: string, nextVideoId: string) {
     if (!cred) return;
-    // Open the secondary YouTube tab SYNCHRONOUSLY within this click gesture so popup
-    // blockers permit it — a blank tab now, navigated to YouTube only AFTER Start
-    // succeeds. The Admin tab is NEVER navigated away: it stays mounted, so there is no
-    // Back / remount cycle and nothing can misread the still-playing song as completed.
-    // On any Start failure we close the blank tab; if the popup was blocked we keep
-    // Admin open and surface an explicit "Open YouTube" link.
-    const ytWin: Window | null = typeof window !== 'undefined' ? window.open('', '_blank') : null;
-    // Detach the opener so the YouTube tab can never navigate or script the Admin tab
-    // back (reverse-tabnabbing). We can't pass 'noopener' to window.open — that returns
-    // null and we'd lose the handle we need to navigate the tab — so we null it here.
-    if (ytWin) {
-      try {
-        ytWin.opener = null;
-      } catch {
-        /* some browsers disallow assigning opener — safe to ignore */
+    // Exactly ONE dedicated YouTube player tab per Room/Admin session. Reuse the retained
+    // WindowProxy if it is still open; otherwise acquire-or-create the stable Room-scoped
+    // NAMED context SYNCHRONOUSLY within this click gesture (empty url ⇒ no navigation yet)
+    // so popup blockers permit it and a manually-closed player is recreated exactly once.
+    // The Admin tab is NEVER navigated away — only this one player tab is navigated, and
+    // only AFTER the server transition succeeds, so every "Next Song" REPLACES the previous
+    // video in the same tab instead of accumulating a tab per song.
+    let ytWin: Window | null =
+      ytWinRef.current && !ytWinRef.current.closed ? ytWinRef.current : null;
+    // Track whether we CREATED a fresh blank tab THIS click (vs reused a live player that
+    // may still hold the previous video). On a lifecycle failure we close only the fresh
+    // blank — never the reused player, since that would destroy a valid in-progress video.
+    let createdFresh = false;
+    if (!ytWin && typeof window !== 'undefined') {
+      ytWin = window.open('', ytWindowName);
+      if (ytWin) {
+        createdFresh = true;
+        // Detach opener (reverse-tabnabbing). 'noopener' can't be used — it returns null
+        // and we'd lose the handle we must navigate.
+        try {
+          ytWin.opener = null;
+        } catch {
+          /* some browsers disallow assigning opener — safe to ignore */
+        }
       }
     }
-    const closeYt = () => {
-      try {
-        ytWin?.close();
-      } catch {
-        /* ignore */
+    ytWinRef.current = ytWin;
+    // Lifecycle-failure cleanup: close ONLY a tab we just created blank this click, and
+    // clear the ref so the next click recreates exactly one. A reused player is left intact.
+    const closeFreshBlankOnFailure = () => {
+      if (createdFresh && ytWin && !ytWin.closed) {
+        try {
+          ytWin.close();
+        } catch {
+          /* ignore */
+        }
+        ytWinRef.current = null;
       }
     };
     const url = safeYoutubeWatchUrl(nextVideoId);
@@ -366,21 +387,21 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           body: JSON.stringify({ currentId: cur.id }),
         });
         if (res.status === 401) {
-          closeYt();
+          closeFreshBlankOnFailure();
           setPhase('disconnected');
           return;
         }
         if (!res.ok) {
-          closeYt();
+          closeFreshBlankOnFailure();
           const body = await res.json().catch(() => ({}));
           setError(body?.error ?? '다음 곡을 재생하지 못했습니다.');
           return;
         }
         const body = (await res.json().catch(() => ({}))) as { reason?: string };
         await loadQueue(cred);
-        // The next singer must actually be on stage before we open their video.
+        // The next singer must actually be on stage before we navigate the player tab.
         if (body.reason !== 'promoted') {
-          closeYt();
+          closeFreshBlankOnFailure();
           setError('다음 준비된 참가자를 기다리는 중이에요.');
           return;
         }
@@ -391,42 +412,47 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           body: JSON.stringify({ requestId: nextId }),
         });
         if (res.status === 401) {
-          closeYt();
+          closeFreshBlankOnFailure();
           setPhase('disconnected');
           return;
         }
         if (!res.ok) {
           // Precise server reason (충돌/없음/종료/실패) — never a generic error.
-          closeYt();
+          closeFreshBlankOnFailure();
           const body = await res.json().catch(() => ({}));
           setError(body?.error ?? '재생 상태를 변경하지 못했습니다.');
           return;
         }
         await loadQueue(cred);
       }
-      // Start already succeeded here — the queue is mutated and canonical. The YouTube
-      // handoff is best-effort UI ONLY: if it fails we keep the Admin tab open, expose an
-      // explicit link, and NEVER re-run Start or complete/skip the request.
+      // Server transition succeeded and is canonical. Navigate the SAME player tab to the
+      // new video (replacing the previous one) — best-effort UI only, never Admin. On any
+      // navigation/focus failure we NEVER re-run Start/pass-turn and never touch the
+      // request; we keep the player tab (it may still hold the prior video) and, if the
+      // popup was blocked, surface an explicit SAME-NAMED "Open YouTube" link.
       if (url) {
         if (ytWin && !ytWin.closed) {
           try {
             ytWin.location.replace(url);
+            try {
+              ytWin.focus();
+            } catch {
+              /* focus may be blocked — non-fatal */
+            }
           } catch {
-            // Navigation threw (e.g. user closed the tab mid-flight) → drop the stray
-            // blank tab and fall back to the explicit link.
-            closeYt();
+            // Navigating the handle threw (tab closed mid-flight / cross-origin edge) →
+            // keep Admin open, expose the same-named fallback link. Request is untouched.
             setPendingYoutubeUrl(url);
           }
         } else {
-          // Popup blocked, or the tab was closed before we could navigate it → keep Admin
-          // open, expose an explicit link. The song stays exactly as Start left it.
+          // Popup blocked, or the player tab was closed before we could navigate it → keep
+          // Admin open, expose an explicit same-named link. Song stays as Start left it.
           setPendingYoutubeUrl(url);
         }
-      } else {
-        closeYt();
       }
     } catch {
-      closeYt();
+      // Network error before the transition completed → never retry; close a fresh blank.
+      closeFreshBlankOnFailure();
       setError('네트워크 오류 — 다시 시도해 주세요.');
     } finally {
       setBusy(false);
@@ -693,8 +719,10 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
         onEndEvent={endEvent}
         onStartNewEvent={startNewEvent}
       />
-      {/* Popup-blocked fallback: the song already started; the Admin stays open and the
-          operator opens YouTube explicitly (separate tab). Never navigates Admin away. */}
+      {/* Popup-blocked / navigation-failure fallback: the song already started; the Admin
+          stays open and the operator opens YouTube explicitly. The link targets the SAME
+          stable player window (ytWindowName), NOT _blank, so it reuses the one player tab
+          rather than spawning a new one. Never navigates Admin away. */}
       {pendingYoutubeUrl && (
         <div
           className="yt-fallback"
@@ -717,7 +745,7 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           <a
             className="primary lg block"
             href={pendingYoutubeUrl}
-            target="_blank"
+            target={ytWindowName}
             rel="noreferrer"
             onClick={() => setPendingYoutubeUrl(null)}
             style={{ textAlign: 'center', maxWidth: 420 }}
