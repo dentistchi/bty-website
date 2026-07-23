@@ -50,8 +50,20 @@ type ActionStatus = {
   deepLink: string;
 };
 
+// Slice 3.1B-3N Phase 5B — Host Action Review queue item (read-only; server DTO from /api/arena/action-reviews).
+type HostActionReview = {
+  actionContractId: string;
+  learnerLabel: string;
+  actionSummary: string;
+  submittedAt: string | null;
+  originalDeadline: string | null;
+  verificationMode: "hybrid" | "link";
+  statusLabel: string;
+};
+
 const HOST_PREVIEW = 3;
 const ACTION_STATUS_PREVIEW = 3;
+const ACTION_REVIEW_PREVIEW = 3;
 
 const COPY: Record<Locale, {
   yesterday: string;
@@ -75,6 +87,10 @@ const COPY: Record<Locale, {
   actionStatusBadge: Record<ActionStatusState, string>;
   actionStatusCopy: Record<ActionStatusState, string>;
   originalDeadline: string;
+  actionReviewsTitle: string;
+  actionReviewsSub: (n: number) => string;
+  remoteReview: string;
+  submittedOn: string;
 }> = {
   en: {
     yesterday: "Yesterday",
@@ -115,6 +131,10 @@ const COPY: Record<Locale, {
       awaiting_resolution: "This action was escalated and is awaiting resolution.",
     },
     originalDeadline: "Original deadline",
+    actionReviewsTitle: "ACTION REVIEWS",
+    actionReviewsSub: (n) => `${n} action${n === 1 ? "" : "s"} awaiting your review`,
+    remoteReview: "Remote review allowed",
+    submittedOn: "Submitted",
   },
   ko: {
     yesterday: "어제의 나",
@@ -155,6 +175,10 @@ const COPY: Record<Locale, {
       awaiting_resolution: "이 실행은 상위 확인으로 전달되어 해결을 기다리고 있습니다.",
     },
     originalDeadline: "원래 기한",
+    actionReviewsTitle: "행동 검토",
+    actionReviewsSub: (n) => `${n}개의 행동이 검토를 기다리고 있습니다`,
+    remoteReview: "원격 검토 가능",
+    submittedOn: "제출",
   },
 };
 
@@ -180,36 +204,50 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [actionStatus, setActionStatus] = useState<ActionStatus[]>([]);
+  const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
   const [showAllHost, setShowAllHost] = useState(false);
   const [showAllAction, setShowAllAction] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const tz = deviceTz();
     void (async () => {
+      const qs = new URLSearchParams({ locale: loc });
+      if (tz) qs.set("tz", tz);
+      // Today brief (existing) — fail-soft.
       try {
-        const qs = new URLSearchParams({ locale: loc });
-        if (tz) qs.set("tz", tz);
         const res = await fetch(`/api/me/today/brief?${qs.toString()}`, { credentials: "include", cache: "no-store" });
-        if (!res.ok) return;
-        const d = (await res.json()) as {
-          ok?: boolean;
-          brief?: Brief | null;
-          reminders?: Reminder[];
-          hostAttention?: HostAttention[];
-          actionStatus?: ActionStatus[];
-        };
-        if (cancelled || !d?.ok) return;
-        setBrief(d.brief ?? null);
-        setReminders(Array.isArray(d.reminders) ? d.reminders : []);
-        setHostAttention(Array.isArray(d.hostAttention) ? d.hostAttention : []);
-        setActionStatus(Array.isArray(d.actionStatus) ? d.actionStatus : []);
+        if (res.ok) {
+          const d = (await res.json()) as {
+            ok?: boolean;
+            brief?: Brief | null;
+            reminders?: Reminder[];
+            hostAttention?: HostAttention[];
+            actionStatus?: ActionStatus[];
+          };
+          if (!cancelled && d?.ok) {
+            setBrief(d.brief ?? null);
+            setReminders(Array.isArray(d.reminders) ? d.reminders : []);
+            setHostAttention(Array.isArray(d.hostAttention) ? d.hostAttention : []);
+            setActionStatus(Array.isArray(d.actionStatus) ? d.actionStatus : []);
+          }
+        }
       } catch {
-        /* fail-soft — render nothing */
-      } finally {
-        if (!cancelled) setLoaded(true);
+        /* fail-soft — brief renders nothing */
       }
+      // Host Action Review queue (Slice 3.1B-3N Phase 5B) — independent, isolated failure.
+      try {
+        const res2 = await fetch(`/api/arena/action-review-queue?locale=${loc}`, { credentials: "include", cache: "no-store" });
+        if (res2.ok) {
+          const d2 = (await res2.json()) as { items?: HostActionReview[] };
+          if (!cancelled) setHostActionReviews(Array.isArray(d2.items) ? d2.items : []);
+        }
+      } catch {
+        /* fail-soft — Action reviews subsection omitted */
+      }
+      if (!cancelled) setLoaded(true);
     })();
     return () => {
       cancelled = true;
@@ -217,7 +255,14 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   }, [loc]);
 
   if (!loaded) return null;
-  if (!brief && reminders.length === 0 && hostAttention.length === 0 && actionStatus.length === 0) return null;
+  if (
+    !brief &&
+    reminders.length === 0 &&
+    hostAttention.length === 0 &&
+    actionStatus.length === 0 &&
+    hostActionReviews.length === 0
+  )
+    return null;
 
   const stateLabel = (s: Reminder["state"]) =>
     s === "overdue" ? t.overdue
@@ -249,6 +294,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   const hostVisible = showAllHost ? hostAttention : hostAttention.slice(0, HOST_PREVIEW);
   const actionVisible = showAllAction ? actionStatus : actionStatus.slice(0, ACTION_STATUS_PREVIEW);
   const actionStates = new Set(actionStatus.map((a) => a.status));
+  const reviewsVisible = showAllReviews ? hostActionReviews : hostActionReviews.slice(0, ACTION_REVIEW_PREVIEW);
 
   return (
     <section data-testid="today-personal-brief" className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
@@ -349,6 +395,48 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
             >
               {showAllHost ? t.showLess : t.showAll(hostAttention.length)}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {hostActionReviews.length > 0 ? (
+        <div className="flex flex-col gap-2" data-testid="brief-action-reviews">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.actionReviewsTitle}</span>
+            <span className="text-[0.72rem] text-white/45">{t.actionReviewsSub(hostActionReviews.length)}</span>
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {reviewsVisible.map((r) => {
+              const submitted = fmtDate(r.submittedAt, loc);
+              const deadline = fmtDate(r.originalDeadline, loc);
+              return (
+                <li key={r.actionContractId} data-testid="action-review-row" data-mode={r.verificationMode}>
+                  <a
+                    href={`/${locale}/app?tab=today&actionReview=${r.actionContractId}`}
+                    className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{r.learnerLabel}</span>
+                      <span className="shrink-0 rounded-md border border-sky-400/25 px-2 py-0.5 text-[0.66rem] text-sky-200/75">{r.statusLabel}</span>
+                    </div>
+                    {r.actionSummary ? <span className="truncate text-xs text-white/60">{r.actionSummary}</span> : null}
+                    <span className="text-[0.7rem] text-white/40">{t.remoteReview}</span>
+                    {submitted ? <span className="text-[0.7rem] text-white/35">{t.submittedOn} · {submitted}</span> : null}
+                    {deadline ? <span className="text-[0.7rem] text-white/35">{t.originalDeadline} · {deadline}</span> : null}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+          {hostActionReviews.length > ACTION_REVIEW_PREVIEW ? (
+            <button
+              type="button"
+              data-testid="action-review-toggle"
+              onClick={() => setShowAllReviews((v) => !v)}
+              className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
+            >
+              {showAllReviews ? t.showLess : t.showAll(hostActionReviews.length)}
             </button>
           ) : null}
         </div>

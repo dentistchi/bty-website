@@ -12,6 +12,7 @@ import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearnin
 import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
+import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
@@ -1252,6 +1253,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [hostEventId, setHostEventId] = useState<string | null>(null);
   const [hostSection, setHostSection] = useState<HostFocusSection | null>(null);
   const [hostFocusId, setHostFocusId] = useState<string | null>(null);
+  // Host Action Review detail deep link (Slice 3.1B-3N Phase 5B): `?tab=today&actionReview=<contractId>`
+  // opens the read-only in-shell review detail; onBack clears it (returns to the Today queue). The
+  // detail route re-runs the authority resolver — a queue appearance never grants authority.
+  const [actionReviewId, setActionReviewId] = useState<string | null>(null);
 
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
   // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
@@ -1283,16 +1288,37 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     } catch {
       followupParam = null;
     }
+    let actionReviewParam: string | null = null;
+    try {
+      actionReviewParam = new URLSearchParams(search).get("actionReview");
+    } catch {
+      actionReviewParam = null;
+    }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
     const wantsMyLearning = viewParam === "my-learning";
     const wantsReflections = viewParam === "reflections";
     const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
     const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
+    const validActionReview =
+      actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
     // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
     // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
     const hostLink = parseHostDeepLink(search);
-    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections && !validFollowup && !hostLink) return;
-    if (validFollowup) {
+    if (
+      !requestedTab &&
+      !validReview &&
+      !wantsMyLearning &&
+      !wantsReflections &&
+      !validFollowup &&
+      !validActionReview &&
+      !hostLink
+    )
+      return;
+    if (validActionReview) {
+      // Canonical Today Action-review deep link → open the read-only in-shell review detail.
+      setTab("today");
+      setActionReviewId(validActionReview);
+    } else if (validFollowup) {
       // Canonical Today FOLLOW_UP_DUE deep link → open the focused follow-up surface in Foundry.
       setTab("foundry");
       setFollowupId(validFollowup);
@@ -1324,6 +1350,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("view");
       params.delete("entry");
       params.delete("followup");
+      params.delete("actionReview");
       params.delete("event");
       params.delete("section");
       params.delete("focus");
@@ -1528,16 +1555,27 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
-            {/* FINAL TODAY IA (Slice 3.1B-3J.1): greeting OPENS the screen, then the Personal Brief —
-                understand yesterday (consent-gated) + what must not be missed (deterministic
-                reminders). The old relationship/commitment presentation (three doors, TODAY'S PATH,
-                PROMISE TO CARRY, the "living this relationship" card, the yesterday-trace) is removed;
-                its records + server engines are preserved, just no longer surfaced here. */}
-            <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
-            {/* Deterministic reminders + optional consent-gated AI observation/suggestion, composed
-                server-side. Renders nothing (no empty container) when there is neither a brief nor a
-                reminder. The raw Reflection body never reaches this client. */}
-            <TodayPersonalBrief locale={locale} />
+            {actionReviewId ? (
+              // Slice 3.1B-3N Phase 5B: read-only Host review detail, in-shell. Back returns to Today.
+              <HostActionReviewDetail
+                locale={locale}
+                actionContractId={actionReviewId}
+                onBack={() => setActionReviewId(null)}
+              />
+            ) : (
+              <>
+                {/* FINAL TODAY IA (Slice 3.1B-3J.1): greeting OPENS the screen, then the Personal Brief —
+                    understand yesterday (consent-gated) + what must not be missed (deterministic
+                    reminders). The old relationship/commitment presentation (three doors, TODAY'S PATH,
+                    PROMISE TO CARRY, the "living this relationship" card, the yesterday-trace) is removed;
+                    its records + server engines are preserved, just no longer surfaced here. */}
+                <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
+                {/* Deterministic reminders + optional consent-gated AI observation/suggestion, composed
+                    server-side. Renders nothing (no empty container) when there is neither a brief nor a
+                    reminder. The raw Reflection body never reaches this client. */}
+                <TodayPersonalBrief locale={locale} />
+              </>
+            )}
           </>
         )}
         {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
