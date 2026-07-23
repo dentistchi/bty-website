@@ -12,6 +12,7 @@ import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import FoundryHistoryArchive from "./FoundryHistoryArchive";
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 import { ArenaPracticeFlow } from "../arena-practice/ArenaPracticeFlow";
+import type { HostFocusSection } from "@/components/app-shell/hostDeepLink";
 
 /**
  * Foundry Event Rooms — the native Foundry tab (replaces the LockedRoom).
@@ -31,24 +32,59 @@ type View =
   | { kind: "builder"; draftId: string }
   | { kind: "history" }
   | { kind: "arena-practice"; eventId: string }
-  | { kind: "control"; eventId: string; initial?: ManagerSnapshot | null };
+  | {
+      kind: "control";
+      eventId: string;
+      initial?: ManagerSnapshot | null;
+      focusSection?: HostFocusSection;
+      focusId?: string;
+    };
 
 export default function FoundryEventRooms({
   locale,
   onOpenReview = () => {},
   onOpenMyLearning = () => {},
+  initialEventId = null,
+  initialFocusSection = null,
+  initialFocusId = null,
+  onInitialConsumed = () => {},
 }: {
   locale: string;
   /** Open the authenticated completion review for a completed assignment (in-shell). */
   onOpenReview?: (assignmentId: string) => void;
   /** Open the learner's own My Learning / private reflection history (in-shell, Slice 3.1B-3H). */
   onOpenMyLearning?: () => void;
+  /** Host Leadership Attention deep link (Slice 3.1B-3L): open this OWNED event's control room on
+   *  mount, focused on the given section/row. Null = normal Foundry home. Server owner-scopes the
+   *  control-room reads; a not-owned event simply resolves to an empty room (no disclosure). */
+  initialEventId?: string | null;
+  initialFocusSection?: HostFocusSection | null;
+  initialFocusId?: string | null;
+  /** Called once after the initial deep-linked control room is opened, so the shell clears the
+   *  one-shot params (a later tab re-entry then returns to the Foundry home list). */
+  onInitialConsumed?: () => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[loc];
   const bt: ModuleBuilderCopy = MODULE_BUILDER_COPY[loc];
 
-  const [view, setView] = useState<View>({ kind: "home" });
+  const [view, setView] = useState<View>(() =>
+    initialEventId
+      ? {
+          kind: "control",
+          eventId: initialEventId,
+          focusSection: initialFocusSection ?? undefined,
+          focusId: initialFocusId ?? undefined,
+        }
+      : { kind: "home" },
+  );
+
+  // One-shot: the deep-linked control room is now the initial view — tell the shell to drop the params
+  // so leaving and re-entering the Foundry tab returns to the home list (never a stuck re-open).
+  useEffect(() => {
+    if (initialEventId) onInitialConsumed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
@@ -202,6 +238,8 @@ export default function FoundryEventRooms({
         locale={loc}
         onBack={backHome}
         onCreateArenaPractice={() => setView({ kind: "arena-practice", eventId: view.eventId })}
+        focusSection={view.focusSection}
+        focusId={view.focusId}
       />
     );
   }

@@ -10,6 +10,7 @@ import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
 import FoundrySharedReview from "./FoundrySharedReview";
 import FoundryFollowupStatus from "./FoundryFollowupStatus";
 import { FoundryShareControls } from "./FoundryShareControls";
+import type { HostFocusSection } from "@/components/app-shell/hostDeepLink";
 
 async function postAction(url: string): Promise<ManagerSnapshot | null> {
   try {
@@ -28,6 +29,8 @@ export function FoundryEventControlRoom({
   locale,
   onBack,
   onCreateArenaPractice,
+  focusSection,
+  focusId,
 }: {
   eventId: string;
   initialSnapshot?: ManagerSnapshot | null;
@@ -35,6 +38,10 @@ export function FoundryEventControlRoom({
   onBack: () => void;
   /** Host action: open the guided Arena-practice builder for this training. */
   onCreateArenaPractice?: () => void;
+  /** Host Leadership Attention deep link (Slice 3.1B-3L): scroll/highlight the exact row in the
+   *  named section. 'followups' → focusId is a followup id; 'shared-understanding' → a progress id. */
+  focusSection?: HostFocusSection;
+  focusId?: string;
 }) {
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
   const { snapshot, setSnapshot, refresh } = useEventSnapshot(eventId, initialSnapshot);
@@ -209,10 +216,18 @@ export function FoundryEventControlRoom({
             {/* Shared Understanding review (Slice 3.1B-3G) — self-gates: renders only when a shared
                 question is configured AND a learner has submitted a shared response. Never shows
                 private Reflection. */}
-            <FoundrySharedReview eventId={eventId} locale={locale} />
+            <FoundrySharedReview
+              eventId={eventId}
+              locale={locale}
+              focusProgressId={focusSection === "shared-understanding" ? focusId : undefined}
+            />
             {/* Follow-up Status (Slice 3.1B-3K) — INDEPENDENT of the shared-question gate; self-gates
                 to nothing when the event has no follow-up obligations. Learner-reported outcomes only. */}
-            <FoundryFollowupStatus eventId={eventId} locale={locale} />
+            <FoundryFollowupStatus
+              eventId={eventId}
+              locale={locale}
+              focusFollowupId={focusSection === "followups" ? focusId : undefined}
+            />
           </section>
 
           {isOpen ? (

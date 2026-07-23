@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Locale } from "./copy";
 
 /**
@@ -72,9 +72,31 @@ function deviceTz(): string | null {
   }
 }
 
-export default function FoundryFollowupStatus({ eventId, locale }: { eventId: string; locale: Locale }) {
+export default function FoundryFollowupStatus({
+  eventId,
+  locale,
+  focusFollowupId,
+}: {
+  eventId: string;
+  locale: Locale;
+  /** Host Leadership Attention deep link (Slice 3.1B-3L): scroll to + highlight this followup row. */
+  focusFollowupId?: string;
+}) {
   const t = COPY[locale];
   const [rows, setRows] = useState<Row[] | null>(null);
+  // Scroll the deep-linked row into view exactly once (after the async rows load), then keep it
+  // highlighted so the Host understands where the Today link landed. Presentation only.
+  const scrolledRef = useRef(false);
+  const setFocusEl = (el: HTMLLIElement | null) => {
+    if (el && !scrolledRef.current) {
+      scrolledRef.current = true;
+      try {
+        el.scrollIntoView({ block: "center" });
+      } catch {
+        /* non-DOM env — no-op */
+      }
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -113,12 +135,19 @@ export default function FoundryFollowupStatus({ eventId, locale }: { eventId: st
     <div className="flex flex-col gap-3" data-testid="foundry-followup-status">
       <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/85">{t.title}</span>
       <ul className="flex flex-col gap-2">
-        {rows.map((r) => (
+        {rows.map((r) => {
+          const isFocused = Boolean(focusFollowupId) && r.followupId === focusFollowupId;
+          return (
           <li
             key={r.followupId}
+            ref={isFocused ? setFocusEl : undefined}
             data-testid="followup-status-row"
             data-state={r.state}
-            className="flex flex-col gap-1 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2"
+            data-focused={isFocused ? "true" : undefined}
+            className={
+              "flex flex-col gap-1 rounded-xl border bg-white/[0.02] px-3 py-2 " +
+              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/8")
+            }
           >
             <div className="flex items-center justify-between gap-2">
               <span className="min-w-0 truncate text-sm font-medium text-white/90">{r.displayName}</span>
@@ -137,7 +166,8 @@ export default function FoundryFollowupStatus({ eventId, locale }: { eventId: st
               <span className="text-xs text-white/40">{t.awaiting}</span>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

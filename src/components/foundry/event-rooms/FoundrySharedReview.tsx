@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Host Shared Understanding review (Slice 3.1B-3G, CHECKPOINT 4).
@@ -16,6 +16,7 @@ type ReviewStatus = "NOT_REVIEWED" | "ALIGNED" | "PARTIALLY_CLEAR" | "FOLLOW_UP_
 
 type Response = {
   participantId: string;
+  progressId: string;
   displayName: string;
   completed: boolean;
   sharedResponse: string;
@@ -68,11 +69,32 @@ const COPY: Record<Locale, {
 
 const REVIEWABLE: ReviewStatus[] = ["ALIGNED", "PARTIALLY_CLEAR", "FOLLOW_UP_NEEDED"];
 
-export default function FoundrySharedReview({ eventId, locale }: { eventId: string; locale: string }) {
+export default function FoundrySharedReview({
+  eventId,
+  locale,
+  focusProgressId,
+}: {
+  eventId: string;
+  locale: string;
+  /** Host Leadership Attention deep link (Slice 3.1B-3L): scroll to + highlight this progress row. */
+  focusProgressId?: string;
+}) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [view, setView] = useState<View | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Scroll the deep-linked row into view exactly once, then keep it highlighted. Presentation only.
+  const scrolledRef = useRef(false);
+  const setFocusEl = (el: HTMLLIElement | null) => {
+    if (el && !scrolledRef.current) {
+      scrolledRef.current = true;
+      try {
+        el.scrollIntoView({ block: "center" });
+      } catch {
+        /* non-DOM env — no-op */
+      }
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -125,8 +147,19 @@ export default function FoundrySharedReview({ eventId, locale }: { eventId: stri
         <p className="mt-2 text-sm text-white/80">{view.sharedQuestion}</p>
       </div>
       <ul className="flex flex-col gap-3">
-        {view.responses.map((r) => (
-          <li key={r.participantId} data-testid="shared-review-row" className="rounded-xl border border-white/8 bg-white/[0.02] p-3">
+        {view.responses.map((r) => {
+          const isFocused = Boolean(focusProgressId) && r.progressId === focusProgressId;
+          return (
+          <li
+            key={r.participantId}
+            ref={isFocused ? setFocusEl : undefined}
+            data-testid="shared-review-row"
+            data-focused={isFocused ? "true" : undefined}
+            className={
+              "rounded-xl border bg-white/[0.02] p-3 " +
+              (isFocused ? "border-[#C9A66B]/60 ring-2 ring-[#C9A66B]/40" : "border-white/8")
+            }
+          >
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-white/90">{r.displayName}</span>
               <span className="text-[11px] text-white/40">{t.submitted}: {new Date(r.submittedAt).toLocaleDateString()}</span>
@@ -156,7 +189,8 @@ export default function FoundrySharedReview({ eventId, locale }: { eventId: stri
               {t.statuses[r.reviewStatus]}
             </p>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

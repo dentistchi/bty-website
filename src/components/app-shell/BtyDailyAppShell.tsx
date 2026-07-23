@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
+import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
 import CenterMeCard from "@/components/center/CenterMeCard";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
@@ -1244,6 +1245,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
   const [centerFocusEntry, setCenterFocusEntry] = useState<string | null>(null);
+  // Host Leadership Attention deep link (Slice 3.1B-3L): `?tab=foundry&event=<id>&section=<s>&focus=<id>`
+  // opens the EXACT owned Event Control Room + section, with the focused learner row highlighted. These
+  // feed FoundryEventRooms' initial view once; `onInitialConsumed` clears them so a later tab re-entry
+  // returns to the Foundry home list (never a stuck re-open). Distinct from the learner `?followup=` path.
+  const [hostEventId, setHostEventId] = useState<string | null>(null);
+  const [hostSection, setHostSection] = useState<HostFocusSection | null>(null);
+  const [hostFocusId, setHostFocusId] = useState<string | null>(null);
 
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
   // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
@@ -1280,11 +1288,20 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     const wantsReflections = viewParam === "reflections";
     const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
     const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
-    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections && !validFollowup) return;
+    // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
+    // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
+    const hostLink = parseHostDeepLink(search);
+    if (!requestedTab && !validReview && !wantsMyLearning && !wantsReflections && !validFollowup && !hostLink) return;
     if (validFollowup) {
       // Canonical Today FOLLOW_UP_DUE deep link → open the focused follow-up surface in Foundry.
       setTab("foundry");
       setFollowupId(validFollowup);
+    } else if (hostLink) {
+      // Canonical Today Host attention deep link → open the exact owned control room + section + row.
+      setTab("foundry");
+      setHostEventId(hostLink.eventId);
+      setHostSection(hostLink.section);
+      setHostFocusId(hostLink.focusId);
     } else if (validReview) {
       setTab("foundry");
       setReviewId(validReview);
@@ -1307,6 +1324,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("view");
       params.delete("entry");
       params.delete("followup");
+      params.delete("event");
+      params.delete("section");
+      params.delete("focus");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1553,6 +1573,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               locale={locale}
               onOpenReview={setReviewId}
               onOpenMyLearning={() => setFoundryView("my-learning")}
+              initialEventId={hostEventId}
+              initialFocusSection={hostSection}
+              initialFocusId={hostFocusId}
+              onInitialConsumed={() => {
+                setHostEventId(null);
+                setHostSection(null);
+                setHostFocusId(null);
+              }}
             />
           ))}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the

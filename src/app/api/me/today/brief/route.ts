@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { buildTodayReminders } from "@/lib/bty/daily/todayReminders.server";
 import { composeTodayBrief } from "@/lib/bty/daily/todayBrief.server";
+import { getHostDailyAttention } from "@/lib/bty/foundry/events/hostAttentionService";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +55,17 @@ export async function GET(req: NextRequest) {
     // hide a real, canonical Action Contract entirely. So NO reminder is suppressed here now; the open
     // action contract is discoverable exactly once in DON'T MISS TODAY when it meets the reminder
     // contract. (The dedup mechanism itself is retained in the reminder builder for future use.)
-    const [reminders, brief] = await Promise.all([
+    // Host Leadership Attention (Slice 3.1B-3L) is a SEPARATE field, never merged into reminders. It
+    // is owner-scoped + Host-gated inside the service ([] for any non-Host / no-owned-events). Its own
+    // fail-soft catch keeps a Host-projection failure from ever removing learner reminders or the brief.
+    const [reminders, brief, hostAttention] = await Promise.all([
       buildTodayReminders(admin, user.id, now, timezone, locale),
       composeTodayBrief(admin, user.id, now, timezone, locale, consent),
+      getHostDailyAttention(admin, user.id, now, timezone, locale).catch(() => []),
     ]);
 
-    // Explicit allow-list: only sentences + reminder DTOs + consent state reach the client.
+    // Explicit allow-list: only sentences + reminder DTOs + Host navigation summaries + consent state
+    // reach the client. hostAttention exposes NO private body/note/reflection/AI/inferred value.
     return noStore(
       NextResponse.json(
         {
@@ -74,6 +80,17 @@ export async function GET(req: NextRequest) {
             sourceTimestamp: r.sourceTimestamp,
             roleContext: r.roleContext,
             canonicalDeepLink: r.canonicalDeepLink,
+          })),
+          hostAttention: hostAttention.map((h) => ({
+            stableId: h.stableId,
+            category: h.category,
+            eventId: h.eventId,
+            focusId: h.focusId,
+            participantDisplayName: h.participantDisplayName,
+            trainingTitle: h.trainingTitle,
+            reason: h.reason,
+            sourceTimestamp: h.sourceTimestamp,
+            deepLink: h.deepLink,
           })),
         },
         { status: 200 },

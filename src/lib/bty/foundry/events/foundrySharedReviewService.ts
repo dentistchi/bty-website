@@ -19,6 +19,8 @@ export type HostReviewStatus = "NOT_REVIEWED" | "ALIGNED" | "PARTIALLY_CLEAR" | 
 /** One learner's SHARED evidence for the Host review surface — never any private field. */
 export type SharedUnderstandingResponse = {
   participantId: string;
+  /** Canonical progress-row id — the deep-link focus target (Slice 3.1B-3L). Not private (row id only). */
+  progressId: string;
   displayName: string;
   completed: boolean;
   /** The shared answer — visible because the learner was explicitly told it is shared. */
@@ -83,16 +85,18 @@ export async function getSharedUnderstandingForOwner(
 
   const sharedQuestion = await sharedQuestionFor(admin, eventId, ev.content_type);
 
-  // SAFE allow-list ONLY — never response_text, never reflection.
+  // SAFE allow-list ONLY — never response_text, never reflection. `id` (progress row id) is the
+  // deep-link focus target (Slice 3.1B-3L) — a row identifier, not a private field.
   const { data: rows } = await admin
     .from("foundry_event_training_progress")
     .select(
-      "participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at",
+      "id, participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at",
     )
     .eq("event_id", eventId)
     .not("shared_understanding_response", "is", null);
 
   const progress = (rows ?? []) as Array<{
+    id: string;
     participant_id: string;
     completed_at: string | null;
     shared_understanding_response: string;
@@ -118,6 +122,7 @@ export async function getSharedUnderstandingForOwner(
 
   const responses: SharedUnderstandingResponse[] = progress.map((p) => ({
     participantId: p.participant_id,
+    progressId: p.id,
     displayName: nameById.get(p.participant_id) ?? "",
     completed: Boolean(p.completed_at),
     sharedResponse: p.shared_understanding_response,
