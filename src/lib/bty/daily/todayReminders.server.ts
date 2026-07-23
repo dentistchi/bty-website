@@ -56,7 +56,12 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
       state: classifyDue(r.deadline_at, now, tz),
       sourceTimestamp: r.deadline_at,
       roleContext: "learner",
-      canonicalDeepLink: `/${locale}/bty-arena`,
+      // Stay INSIDE the current 5-tab app shell (Slice 3.1B-3L device-gate fix). The legacy
+      // `/${locale}/bty-arena` standalone route rendered a second Center/Arena/Foundry/My-Page nav +
+      // old practice cards (a shell escape). The in-shell Arena tab is the canonical current surface;
+      // there is no focused Action-Contract surface in-shell yet (a future slice would add
+      // `?tab=arena&action=<id>`), so the smallest honest target is the Arena tab.
+      canonicalDeepLink: `/${locale}/app?tab=arena`,
     }));
   } catch {
     return [];
@@ -78,7 +83,9 @@ async function practiceDue(admin: SupabaseClient, userId: string, now: Date, tz:
       state: classifyDue(r.scheduled_for, now, tz),
       sourceTimestamp: r.scheduled_for,
       roleContext: "learner",
-      canonicalDeepLink: `/${locale}/bty-arena`,
+      // In-shell Arena tab (the practice player), never the legacy `/${locale}/bty-arena` standalone
+      // route (Slice 3.1B-3L device-gate fix — same shell-escape root cause as ACTION_DUE).
+      canonicalDeepLink: `/${locale}/app?tab=arena`,
     }));
   } catch {
     return [];

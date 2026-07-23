@@ -84,6 +84,37 @@ describe("buildTodayReminders", () => {
     expect(hits[0].canonicalDeepLink.length).toBeGreaterThan(0); // still deep-linkable
   });
 
+  // Slice 3.1B-3L device-gate fix: ACTION_DUE / PRACTICE_DUE reminders must stay INSIDE the 5-tab app
+  // shell (the in-shell Arena tab), never the legacy `/{locale}/bty-arena` standalone route that
+  // rendered a second app navigation + old practice cards (a shell escape).
+  it("(#8/#9/#11) ACTION_DUE + PRACTICE_DUE deep-link to the in-shell Arena tab, never the legacy /bty-arena route", async () => {
+    const admin = mockAdmin({
+      contracts: [{ id: "c1", contract_description: "submit QR", deadline_at: "2026-07-22T04:00:00Z" }],
+      outcomes: [{ id: "o1", outcome_title: "replay", scheduled_for: "2026-07-22T04:00:00Z" }],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    const action = out.find((r) => r.stableId === "action:c1")!;
+    const practice = out.find((r) => r.stableId === "practice:o1")!;
+    expect(action.canonicalDeepLink).toBe("/en/app?tab=arena");
+    expect(practice.canonicalDeepLink).toBe("/en/app?tab=arena");
+    // Never the legacy standalone route (the shell escape) for ANY reminder.
+    expect(out.every((r) => !r.canonicalDeepLink.includes("/bty-arena"))).toBe(true);
+    // Every reminder link stays within the canonical /{locale}/app shell.
+    expect(out.every((r) => r.canonicalDeepLink.startsWith("/en/app"))).toBe(true);
+  });
+
+  it("(#10/#16) distinct Action contracts with identical titles stay distinct (unique stableIds), not merged", async () => {
+    const admin = mockAdmin({
+      contracts: [
+        { id: "dup-a", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T04:00:00Z" },
+        { id: "dup-b", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T05:00:00Z" },
+      ],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    expect(out.filter((r) => r.category === "ACTION_DUE")).toHaveLength(2);
+    expect(new Set(out.map((r) => r.stableId)).size).toBe(out.length); // all distinct
+  });
+
   it("returns [] for an empty user id (never a cross-user read)", async () => {
     expect(await buildTodayReminders(mockAdmin({}), "", now, "UTC", "en")).toEqual([]);
   });
