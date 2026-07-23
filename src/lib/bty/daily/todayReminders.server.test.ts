@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTodayReminders } from "./todayReminders.server";
+import { buildTodayReminders, buildActionStatus } from "./todayReminders.server";
 
 /**
  * Slice 3.1B-3J — deterministic reminder projection over the three canonical owner-scoped sources.
@@ -37,7 +37,7 @@ describe("buildTodayReminders", () => {
         { assignment_id: "a1", status: "assigned", title: "OSHA basics" },
         { assignment_id: "a2", status: "completed", title: "done" },
       ],
-      contracts: [{ id: "c1", contract_description: "submit QR", deadline_at: "2026-07-22T04:00:00Z" }],
+      contracts: [{ id: "c1", status: "pending", contract_description: "submit QR", deadline_at: "2026-07-22T04:00:00Z" }],
       outcomes: [{ id: "o1", outcome_title: "replay", scheduled_for: "2026-07-22T20:00:00Z" }],
     });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
@@ -53,8 +53,8 @@ describe("buildTodayReminders", () => {
   it("orders overdue first (priority) and every reminder has a canonical deep link", async () => {
     const admin = mockAdmin({
       contracts: [
-        { id: "c1", contract_description: "overdue one", deadline_at: "2026-07-22T04:00:00Z" },
-        { id: "c2", contract_description: "due later today", deadline_at: "2026-07-22T20:00:00Z" },
+        { id: "c1", status: "pending", contract_description: "overdue one", deadline_at: "2026-07-22T04:00:00Z" },
+        { id: "c2", status: "pending", contract_description: "due later today", deadline_at: "2026-07-22T20:00:00Z" },
       ],
     });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
@@ -64,7 +64,7 @@ describe("buildTodayReminders", () => {
   });
 
   it("dedupes a source already surfaced as the primary Today path", async () => {
-    const admin = mockAdmin({ contracts: [{ id: "c1", contract_description: "x", deadline_at: "2026-07-22T20:00:00Z" }] });
+    const admin = mockAdmin({ contracts: [{ id: "c1", status: "pending", contract_description: "x", deadline_at: "2026-07-22T20:00:00Z" }] });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en", new Set(["action:c1"]));
     expect(out.find((r) => r.stableId === "action:c1")).toBeUndefined();
   });
@@ -75,7 +75,7 @@ describe("buildTodayReminders", () => {
   // reminder, so removing the card never hides a real obligation.
   it("keeps the action contract from the removed primary card discoverable as a reminder (no suppression)", async () => {
     const admin = mockAdmin({
-      contracts: [{ id: "blk1", contract_description: "submit QR proof", deadline_at: "2026-07-22T20:00:00Z" }],
+      contracts: [{ id: "blk1", status: "pending", contract_description: "submit QR proof", deadline_at: "2026-07-22T20:00:00Z" }],
     });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en"); // no suppress arg
     const hits = out.filter((r) => r.stableId === "action:blk1");
@@ -89,7 +89,7 @@ describe("buildTodayReminders", () => {
   // rendered a second app navigation + old practice cards (a shell escape).
   it("(#8/#9/#11) ACTION_DUE + PRACTICE_DUE deep-link to the in-shell Arena tab, never the legacy /bty-arena route", async () => {
     const admin = mockAdmin({
-      contracts: [{ id: "c1", contract_description: "submit QR", deadline_at: "2026-07-22T04:00:00Z" }],
+      contracts: [{ id: "c1", status: "pending", contract_description: "submit QR", deadline_at: "2026-07-22T04:00:00Z" }],
       outcomes: [{ id: "o1", outcome_title: "replay", scheduled_for: "2026-07-22T04:00:00Z" }],
     });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
@@ -106,13 +106,86 @@ describe("buildTodayReminders", () => {
   it("(#10/#16) distinct Action contracts with identical titles stay distinct (unique stableIds), not merged", async () => {
     const admin = mockAdmin({
       contracts: [
-        { id: "dup-a", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T04:00:00Z" },
-        { id: "dup-b", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T05:00:00Z" },
+        { id: "dup-a", status: "pending", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T04:00:00Z" },
+        { id: "dup-b", status: "pending", contract_description: "Within 48 hours, schedule a review", deadline_at: "2026-07-22T05:00:00Z" },
       ],
     });
     const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
     expect(out.filter((r) => r.category === "ACTION_DUE")).toHaveLength(2);
     expect(new Set(out.map((r) => r.stableId)).size).toBe(out.length); // all distinct
+  });
+
+  // ===== Slice 3.1B-3M Action Hygiene: classify by STORED status before deadline =====
+
+  it("(1/2) PENDING → ACTION_DUE (overdue past deadline / due_today same BTY day)", async () => {
+    const admin = mockAdmin({
+      contracts: [
+        { id: "p1", status: "pending", contract_description: "overdue pending", deadline_at: "2026-07-22T04:00:00Z", pattern_family: "future_deferral" },
+        { id: "p2", status: "pending", contract_description: "due today pending", deadline_at: "2026-07-22T20:00:00Z", pattern_family: "future_deferral" },
+      ],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    const a1 = out.find((r) => r.stableId === "action:p1")!;
+    const a2 = out.find((r) => r.stableId === "action:p2")!;
+    expect(a1.category).toBe("ACTION_DUE");
+    expect(a1.state).toBe("overdue");
+    expect(a2.category).toBe("ACTION_DUE");
+    expect(a2.state).toBe("due_today");
+  });
+
+  it("(8) REJECTED → ACTION_REVISION with state needs_revision, never plain overdue", async () => {
+    const admin = mockAdmin({
+      contracts: [{ id: "r1", status: "rejected", contract_description: "fix this", deadline_at: "2026-07-01T04:00:00Z", pattern_family: "blame_shift" }],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    const r = out.find((x) => x.stableId === "action:r1")!;
+    expect(r.category).toBe("ACTION_REVISION");
+    expect(r.state).toBe("needs_revision");
+  });
+
+  it("(4/6/9/10) SUBMITTED, ESCALATED, APPROVED, MISSED never appear in reminders", async () => {
+    const admin = mockAdmin({
+      contracts: [
+        { id: "s1", status: "submitted", contract_description: "submitted", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "x" },
+        { id: "e1", status: "escalated", contract_description: "escalated", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "y" },
+        { id: "ap", status: "approved", contract_description: "approved", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "z" },
+        { id: "mi", status: "missed", contract_description: "missed", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "w" },
+      ],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    expect(out.filter((r) => r.category === "ACTION_DUE" || r.category === "ACTION_REVISION")).toHaveLength(0);
+  });
+
+  it("(11/12/14) ten distinct SUBMITTED contracts → 0 overdue reminders, 10 verification_pending (no family grouping)", async () => {
+    const fams = ["ownership_act", "future_deferral", "blame_shift", "truth_naming", "delegation_deflection", "reputation_protection", "system_thinking", "unknown", "ownership_clarity", "integrity_compromise"];
+    const contracts = fams.map((f, i) => ({ id: `sub${i}`, status: "submitted", contract_description: `Within 48 hours, schedule a review`, deadline_at: `2026-05-0${(i % 9) + 1}T04:00:00Z`, pattern_family: f }));
+    const admin = mockAdmin({ contracts });
+    const reminders = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    expect(reminders.filter((r) => r.category === "ACTION_DUE" || r.category === "ACTION_REVISION" || r.state === "overdue")).toHaveLength(0);
+    const status = await buildActionStatus(admin, "u1", "en");
+    expect(status).toHaveLength(10);
+    expect(status.every((s) => s.status === "verification_pending")).toBe(true);
+    expect(new Set(status.map((s) => s.stableId)).size).toBe(10); // distinct, never merged by title
+  });
+
+  it("(5/7) buildActionStatus maps submitted→verification_pending, escalated→awaiting_resolution; approved/missed excluded; stays in-shell", async () => {
+    const admin = mockAdmin({
+      contracts: [
+        { id: "s1", status: "submitted", contract_description: "sub", deadline_at: "2026-05-05T04:00:00Z", pattern_family: "a" },
+        { id: "e1", status: "escalated", contract_description: "esc", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "b" },
+        { id: "ap", status: "approved", contract_description: "ok", deadline_at: "2026-05-01T04:00:00Z", pattern_family: "c" },
+      ],
+    });
+    const status = await buildActionStatus(admin, "u1", "en");
+    expect(status.map((s) => s.status)).toEqual(["verification_pending", "awaiting_resolution"]); // sorted, approved excluded
+    expect(status.every((s) => s.deepLink === "/en/app?tab=arena")).toBe(true);
+    expect(status.every((s) => !s.deepLink.includes("/bty-arena"))).toBe(true);
+    expect(status.find((s) => s.contractId === "s1")!.originalDeadline).toBe("2026-05-05T04:00:00Z");
+    expect(status.every((s) => s.sourceTitle === null)).toBe(true); // never guessed in V1
+  });
+
+  it("buildActionStatus returns [] for an empty user id", async () => {
+    expect(await buildActionStatus(mockAdmin({}), "", "en")).toEqual([]);
   });
 
   it("returns [] for an empty user id (never a cross-user read)", async () => {

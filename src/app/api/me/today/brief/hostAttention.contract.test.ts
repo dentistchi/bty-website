@@ -16,7 +16,10 @@ const mockHostAttention = vi.fn();
 vi.mock("@/lib/supabase-server", () => ({ getSupabaseServer: () => Promise.resolve({ auth: { getUser: () => mockGetUser() } }) }));
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => mockGetAdmin() }));
 vi.mock("@/lib/bty/daily/userDay", () => ({ resolveUserTzContext: () => Promise.resolve({ timezone: "UTC" }) }));
-vi.mock("@/lib/bty/daily/todayReminders.server", () => ({ buildTodayReminders: (...a: unknown[]) => mockReminders(...a) }));
+vi.mock("@/lib/bty/daily/todayReminders.server", () => ({
+  buildTodayReminders: (...a: unknown[]) => mockReminders(...a),
+  buildActionStatus: () => Promise.resolve([]),
+}));
 vi.mock("@/lib/bty/daily/todayBrief.server", () => ({ composeTodayBrief: (...a: unknown[]) => mockBrief(...a) }));
 vi.mock("@/lib/bty/foundry/events/hostAttentionService", () => ({ getHostDailyAttention: (...a: unknown[]) => mockHostAttention(...a) }));
 

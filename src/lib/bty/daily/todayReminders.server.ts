@@ -19,8 +19,18 @@ import {
   type TodayReminder,
 } from "@/domain/daily/todayReminders";
 import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
+import {
+  classifyActionContract,
+  sortActionStatus,
+  type ActionStatusItem,
+  type ActionStatusState,
+} from "@/domain/daily/actionStatus";
 
-const OPEN_CONTRACT_STATUSES = ["pending", "submitted", "rejected", "escalated"] as const;
+// Reminder-side Action statuses ONLY (Slice 3.1B-3M): pending → ACTION_DUE (may be overdue), rejected →
+// ACTION_REVISION (needs_revision). submitted/escalated are NOT reminders — they render in the separate
+// calm actionStatus section (buildActionStatus). approved/missed/draft/committed never emit into Today.
+const REMINDER_CONTRACT_STATUSES = ["pending", "rejected"] as const;
+const ACTION_STATUS_CONTRACT_STATUSES = ["submitted", "escalated"] as const;
 
 async function requiredLearning(admin: SupabaseClient, userId: string, locale: string): Promise<TodayReminder[]> {
   try {
@@ -41,28 +51,84 @@ async function requiredLearning(admin: SupabaseClient, userId: string, locale: s
   }
 }
 
+/**
+ * Reminder-side Action Contracts (Slice 3.1B-3M): ONLY `pending` (ACTION_DUE, deadline-classified) and
+ * `rejected` (ACTION_REVISION, needs_revision). A `submitted` contract past deadline is NEVER surfaced
+ * here as red "overdue" — the learner already acted (it moves to the calm actionStatus section). Stays
+ * in-shell (`/${locale}/app?tab=arena`; no legacy `/bty-arena` escape, no focused-contract surface yet).
+ */
 async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: string, locale: string): Promise<TodayReminder[]> {
   try {
     const { data } = await admin
       .from("bty_action_contracts")
       .select("id, contract_description, deadline_at, status")
       .eq("user_id", userId)
-      .in("status", OPEN_CONTRACT_STATUSES as unknown as string[])
+      .in("status", REMINDER_CONTRACT_STATUSES as unknown as string[])
       .not("deadline_at", "is", null);
-    return (data ?? []).map((r: { id: string; contract_description: string | null; deadline_at: string }): TodayReminder => ({
-      stableId: `action:${r.id}`,
-      category: "ACTION_DUE",
-      title: (r.contract_description ?? "Action commitment").slice(0, 120),
-      state: classifyDue(r.deadline_at, now, tz),
-      sourceTimestamp: r.deadline_at,
-      roleContext: "learner",
-      // Stay INSIDE the current 5-tab app shell (Slice 3.1B-3L device-gate fix). The legacy
-      // `/${locale}/bty-arena` standalone route rendered a second Center/Arena/Foundry/My-Page nav +
-      // old practice cards (a shell escape). The in-shell Arena tab is the canonical current surface;
-      // there is no focused Action-Contract surface in-shell yet (a future slice would add
-      // `?tab=arena&action=<id>`), so the smallest honest target is the Arena tab.
-      canonicalDeepLink: `/${locale}/app?tab=arena`,
-    }));
+    const out: TodayReminder[] = [];
+    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string; status: string }>) {
+      const bucket = classifyActionContract(r.status);
+      const title = (r.contract_description ?? "Action commitment").slice(0, 120);
+      if (bucket === "action_due") {
+        out.push({
+          stableId: `action:${r.id}`,
+          category: "ACTION_DUE",
+          title,
+          state: classifyDue(r.deadline_at, now, tz),
+          sourceTimestamp: r.deadline_at,
+          roleContext: "learner",
+          canonicalDeepLink: `/${locale}/app?tab=arena`,
+        });
+      } else if (bucket === "action_revision") {
+        out.push({
+          stableId: `action:${r.id}`,
+          category: "ACTION_REVISION",
+          title,
+          state: "needs_revision", // by stored status, never a deadline-derived "overdue"
+          sourceTimestamp: r.deadline_at,
+          roleContext: "learner",
+          canonicalDeepLink: `/${locale}/app?tab=arena`,
+        });
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Secondary Action-status projection (Slice 3.1B-3M) — `submitted` (verification_pending) and
+ * `escalated` (awaiting_resolution) contracts the learner already acted on. SEPARATE from reminders;
+ * never red "overdue", never asks the learner to redo the action. Owner-scoped by user_id. Shown
+ * regardless of deadline (originalDeadline is displayed, never a fabricated submission date). No
+ * canonical source-title resolution in V1 → sourceTitle stays null (never a guess). Fail-soft.
+ */
+export async function buildActionStatus(admin: SupabaseClient, userId: string, locale: string): Promise<ActionStatusItem[]> {
+  if (!userId) return [];
+  try {
+    const { data } = await admin
+      .from("bty_action_contracts")
+      .select("id, contract_description, deadline_at, status, pattern_family")
+      .eq("user_id", userId)
+      .in("status", ACTION_STATUS_CONTRACT_STATUSES as unknown as string[]);
+    const items: ActionStatusItem[] = [];
+    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string | null; status: string; pattern_family: string | null }>) {
+      const bucket = classifyActionContract(r.status);
+      if (bucket !== "verification_pending" && bucket !== "awaiting_resolution") continue;
+      items.push({
+        stableId: `actionstatus:${r.id}`,
+        contractId: r.id,
+        status: bucket as ActionStatusState,
+        title: (r.contract_description ?? "Action commitment").slice(0, 120),
+        patternFamily: r.pattern_family ?? "",
+        sourceTitle: null, // canonical source-title resolution deferred (Slice 3.1B-3M.1); never guess
+        originalDeadline: r.deadline_at,
+        // Honest interim: opens the in-shell Arena surface, NOT the exact contract (no focused surface yet).
+        deepLink: `/${locale}/app?tab=arena`,
+      });
+    }
+    return sortActionStatus(items);
   } catch {
     return [];
   }

@@ -7,9 +7,12 @@
  */
 import { userDayKey } from "./userDayKey";
 
-export type ReminderCategory = "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
-/** overdue > due_today > incomplete_required (no date) > upcoming (dated future). */
-export type ReminderState = "overdue" | "due_today" | "incomplete_required" | "upcoming";
+// ACTION_REVISION (Slice 3.1B-3M): a REJECTED Action Contract that needs correction/resubmit — an
+// actionable DON'T MISS TODAY item, but NOT plain "Overdue". (submitted/escalated are NOT reminders —
+// they render in the separate calm actionStatus section; see src/domain/daily/actionStatus.ts.)
+export type ReminderCategory = "REQUIRED_LEARNING" | "ACTION_DUE" | "ACTION_REVISION" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
+/** overdue > needs_revision > due_today > incomplete_required (no date) > upcoming (dated future). */
+export type ReminderState = "overdue" | "needs_revision" | "due_today" | "incomplete_required" | "upcoming";
 
 export type TodayReminder = {
   /** Stable, source-derived id (never an array index). Used for dedup + React keys. */
@@ -25,9 +28,10 @@ export type TodayReminder = {
 
 const STATE_RANK: Record<ReminderState, number> = {
   overdue: 0,
-  due_today: 1,
-  incomplete_required: 2,
-  upcoming: 3,
+  needs_revision: 1, // a rejected submission the learner must correct — urgent, just after overdue
+  due_today: 2,
+  incomplete_required: 3,
+  upcoming: 4,
 };
 
 /**

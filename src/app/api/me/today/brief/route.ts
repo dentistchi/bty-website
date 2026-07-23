@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
-import { buildTodayReminders } from "@/lib/bty/daily/todayReminders.server";
+import { buildTodayReminders, buildActionStatus } from "@/lib/bty/daily/todayReminders.server";
 import { composeTodayBrief } from "@/lib/bty/daily/todayBrief.server";
 import { getHostDailyAttention } from "@/lib/bty/foundry/events/hostAttentionService";
 
@@ -58,10 +58,14 @@ export async function GET(req: NextRequest) {
     // Host Leadership Attention (Slice 3.1B-3L) is a SEPARATE field, never merged into reminders. It
     // is owner-scoped + Host-gated inside the service ([] for any non-Host / no-owned-events). Its own
     // fail-soft catch keeps a Host-projection failure from ever removing learner reminders or the brief.
-    const [reminders, brief, hostAttention] = await Promise.all([
+    // Slice 3.1B-3M: `actionStatus` (submitted=verification_pending / escalated=awaiting_resolution)
+    // is a SEPARATE field, never merged into `reminders` — the learner already acted, so it is never a
+    // red "overdue" nag. Its own fail-soft catch keeps a projection failure from removing reminders.
+    const [reminders, brief, hostAttention, actionStatus] = await Promise.all([
       buildTodayReminders(admin, user.id, now, timezone, locale),
       composeTodayBrief(admin, user.id, now, timezone, locale, consent),
       getHostDailyAttention(admin, user.id, now, timezone, locale).catch(() => []),
+      buildActionStatus(admin, user.id, locale).catch(() => []),
     ]);
 
     // Explicit allow-list: only sentences + reminder DTOs + Host navigation summaries + consent state
@@ -91,6 +95,16 @@ export async function GET(req: NextRequest) {
             reason: h.reason,
             sourceTimestamp: h.sourceTimestamp,
             deepLink: h.deepLink,
+          })),
+          actionStatus: actionStatus.map((a) => ({
+            stableId: a.stableId,
+            contractId: a.contractId,
+            status: a.status,
+            title: a.title,
+            patternFamily: a.patternFamily,
+            sourceTitle: a.sourceTitle,
+            originalDeadline: a.originalDeadline,
+            deepLink: a.deepLink,
           })),
         },
         { status: 200 },

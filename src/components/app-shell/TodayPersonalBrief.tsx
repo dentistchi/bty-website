@@ -3,25 +3,24 @@
 import { useEffect, useState } from "react";
 
 /**
- * Today — Personal Daily Brief (Slice 3.1B-3J). Deterministic reminders + an OPTIONAL, consent-
- * gated AI observation/suggestion, composed SERVER-SIDE (/api/me/today/brief). The raw Reflection
- * body NEVER reaches this client — only the generated sentences + reminder DTOs. Replaces the raw
- * "From yesterday" card. Renders nothing when there is neither a brief nor a reminder.
+ * Today — Personal Daily Brief (Slice 3.1B-3J). Deterministic reminders + an OPTIONAL, consent-gated
+ * AI observation/suggestion, composed SERVER-SIDE (/api/me/today/brief). The raw Reflection body NEVER
+ * reaches this client — only generated sentences + DTOs. Renders nothing when there is nothing to show.
  *
- * Slice 3.1B-3L adds a SEPARATE "LEADERSHIP ATTENTION" section (Host obligations), rendered only for
- * a Host who owns events with attention items. It is read-only navigation — no review buttons here;
- * every row deep-links into the exact Event Control Room section/row. Learner obligations (DON'T MISS
- * TODAY) and people-review duties are never mixed. First 3 show, with an in-place "Show all N"
- * expansion (session-local presentation state only — NEVER a dismissal / viewed-once behavior).
+ * Slice 3.1B-3L: a separate "LEADERSHIP ATTENTION" section (Host obligations).
+ * Slice 3.1B-3M (Action Hygiene): DON'T MISS TODAY holds ONLY actionable items — PENDING actions
+ * (overdue/due/upcoming) + REJECTED actions (needs_revision, amber not red). Already-submitted /
+ * escalated actions move to a separate calm "VERIFICATION PENDING / AWAITING RESOLUTION" section
+ * (never red overdue, never asks the learner to redo the action). Top-3 + Show all N, no dismissal.
  */
 
 type Locale = "en" | "ko";
 
 type Reminder = {
   stableId: string;
-  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
+  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "ACTION_REVISION" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
   title: string;
-  state: "overdue" | "due_today" | "incomplete_required" | "upcoming";
+  state: "overdue" | "needs_revision" | "due_today" | "incomplete_required" | "upcoming";
   canonicalDeepLink: string;
 };
 type Brief = { yesterdayObservation: string; todaySuggestion: string };
@@ -39,13 +38,27 @@ type HostAttention = {
   deepLink: string;
 };
 
+type ActionStatusState = "verification_pending" | "awaiting_resolution";
+type ActionStatus = {
+  stableId: string;
+  contractId: string;
+  status: ActionStatusState;
+  title: string;
+  patternFamily: string;
+  sourceTitle: string | null;
+  originalDeadline: string | null;
+  deepLink: string;
+};
+
 const HOST_PREVIEW = 3;
+const ACTION_STATUS_PREVIEW = 3;
 
 const COPY: Record<Locale, {
   yesterday: string;
   today: string;
   dontMiss: string;
   overdue: string;
+  needsRevision: string;
   dueToday: string;
   incomplete: string;
   upcoming: string;
@@ -57,12 +70,18 @@ const COPY: Record<Locale, {
   showAll: (n: number) => string;
   showLess: string;
   hostTags: Record<HostAttentionCategory, string>;
+  actionStatusEyebrow: (states: Set<ActionStatusState>) => string;
+  actionStatusSub: (n: number, states: Set<ActionStatusState>) => string;
+  actionStatusBadge: Record<ActionStatusState, string>;
+  actionStatusCopy: Record<ActionStatusState, string>;
+  originalDeadline: string;
 }> = {
   en: {
     yesterday: "Yesterday",
     today: "Today",
     dontMiss: "DON'T MISS TODAY",
     overdue: "Overdue",
+    needsRevision: "Needs revision",
     dueToday: "Due today",
     incomplete: "Incomplete",
     upcoming: "Upcoming",
@@ -78,12 +97,31 @@ const COPY: Record<Locale, {
       FOLLOW_UP_NEEDED: "Needs follow-up",
       SHARED_REVIEW_DUE: "Shared response awaiting review",
     },
+    actionStatusEyebrow: (s) =>
+      s.has("verification_pending") && s.has("awaiting_resolution")
+        ? "ACTION STATUS"
+        : s.has("awaiting_resolution")
+          ? "AWAITING RESOLUTION"
+          : "VERIFICATION PENDING",
+    actionStatusSub: (n, s) =>
+      s.has("verification_pending") && s.has("awaiting_resolution")
+        ? `${n} action${n === 1 ? "" : "s"} submitted or escalated, awaiting a next step`
+        : s.has("awaiting_resolution")
+          ? `${n} action${n === 1 ? "" : "s"} awaiting resolution`
+          : `${n} action${n === 1 ? "" : "s"} waiting for verification`,
+    actionStatusBadge: { verification_pending: "Verification pending", awaiting_resolution: "Awaiting resolution" },
+    actionStatusCopy: {
+      verification_pending: "Your action was submitted and is waiting for verification.",
+      awaiting_resolution: "This action was escalated and is awaiting resolution.",
+    },
+    originalDeadline: "Original deadline",
   },
   ko: {
     yesterday: "어제의 나",
     today: "오늘의 제안",
     dontMiss: "오늘 놓치지 말 것",
     overdue: "기한 지남",
+    needsRevision: "수정이 필요합니다",
     dueToday: "오늘 마감",
     incomplete: "미완료",
     upcoming: "예정",
@@ -92,13 +130,31 @@ const COPY: Record<Locale, {
     practice: "연습",
     leadershipTitle: "리더십 확인",
     leadershipSub: "오늘 관심을 기울여야 할 사람",
-    showAll: (n) => `${n}명 모두 보기`,
+    showAll: (n) => `${n}개 모두 보기`,
     showLess: "접기",
     hostTags: {
       FOLLOW_UP_OVERDUE: "후속 확인 지연",
       FOLLOW_UP_NEEDED: "후속 확인 필요",
       SHARED_REVIEW_DUE: "공유 이해 검토 대기",
     },
+    actionStatusEyebrow: (s) =>
+      s.has("verification_pending") && s.has("awaiting_resolution")
+        ? "행동 상태"
+        : s.has("awaiting_resolution")
+          ? "해결 대기 중"
+          : "확인 대기 중",
+    actionStatusSub: (n, s) =>
+      s.has("verification_pending") && s.has("awaiting_resolution")
+        ? `${n}개의 행동이 제출·전달되어 다음 단계를 기다리고 있습니다`
+        : s.has("awaiting_resolution")
+          ? `${n}개의 행동이 해결을 기다리고 있습니다`
+          : `${n}개의 행동이 확인을 기다리고 있습니다`,
+    actionStatusBadge: { verification_pending: "확인 대기 중", awaiting_resolution: "해결 대기 중" },
+    actionStatusCopy: {
+      verification_pending: "실행 결과가 제출되었으며 확인을 기다리고 있습니다.",
+      awaiting_resolution: "이 실행은 상위 확인으로 전달되어 해결을 기다리고 있습니다.",
+    },
+    originalDeadline: "원래 기한",
   },
 };
 
@@ -110,13 +166,22 @@ function deviceTz(): string | null {
   }
 }
 
+function fmtDate(iso: string | null, loc: Locale): string | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return new Date(t).toLocaleDateString(loc === "ko" ? "ko-KR" : "en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default function TodayPersonalBrief({ locale }: { locale: string }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [brief, setBrief] = useState<Brief | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
+  const [actionStatus, setActionStatus] = useState<ActionStatus[]>([]);
   const [showAllHost, setShowAllHost] = useState(false);
+  const [showAllAction, setShowAllAction] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -133,11 +198,13 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
           brief?: Brief | null;
           reminders?: Reminder[];
           hostAttention?: HostAttention[];
+          actionStatus?: ActionStatus[];
         };
         if (cancelled || !d?.ok) return;
         setBrief(d.brief ?? null);
         setReminders(Array.isArray(d.reminders) ? d.reminders : []);
         setHostAttention(Array.isArray(d.hostAttention) ? d.hostAttention : []);
+        setActionStatus(Array.isArray(d.actionStatus) ? d.actionStatus : []);
       } catch {
         /* fail-soft — render nothing */
       } finally {
@@ -150,31 +217,38 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   }, [loc]);
 
   if (!loaded) return null;
-  if (!brief && reminders.length === 0 && hostAttention.length === 0) return null; // nothing to say → no card
+  if (!brief && reminders.length === 0 && hostAttention.length === 0 && actionStatus.length === 0) return null;
 
   const stateLabel = (s: Reminder["state"]) =>
-    s === "overdue" ? t.overdue : s === "due_today" ? t.dueToday : s === "incomplete_required" ? t.incomplete : t.upcoming;
-  // FOLLOW_UP_DUE carries its own checkpoint eyebrow inside the title ("7-day follow-up · …"),
-  // so it renders with no category prefix (catLabel "").
+    s === "overdue" ? t.overdue
+      : s === "needs_revision" ? t.needsRevision
+        : s === "due_today" ? t.dueToday
+          : s === "incomplete_required" ? t.incomplete
+            : t.upcoming;
   const catLabel = (c: Reminder["category"]) =>
-    c === "REQUIRED_LEARNING"
-      ? t.required
-      : c === "ACTION_DUE"
-        ? t.action
-        : c === "PRACTICE_DUE"
-          ? t.practice
-          : "";
+    c === "REQUIRED_LEARNING" ? t.required
+      : c === "ACTION_DUE" || c === "ACTION_REVISION" ? t.action
+        : c === "PRACTICE_DUE" ? t.practice
+          : ""; // FOLLOW_UP_DUE carries its own eyebrow in the title
+  // needs_revision is amber (actionable, not punitive) — NEVER the red overdue tone.
   const stateTone = (s: Reminder["state"]) =>
-    s === "overdue" ? "text-red-300/80 border-red-400/30" : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35" : "text-white/50 border-white/12";
+    s === "overdue" ? "text-red-300/80 border-red-400/30"
+      : s === "needs_revision" ? "text-[#E5B769] border-[#C9A66B]/45"
+        : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35"
+          : "text-white/50 border-white/12";
 
   const hostTagTone = (c: HostAttentionCategory) =>
-    c === "FOLLOW_UP_OVERDUE"
-      ? "text-red-300/80 border-red-400/30"
-      : c === "FOLLOW_UP_NEEDED"
-        ? "text-[#E5B769] border-[#C9A66B]/35"
+    c === "FOLLOW_UP_OVERDUE" ? "text-red-300/80 border-red-400/30"
+      : c === "FOLLOW_UP_NEEDED" ? "text-[#E5B769] border-[#C9A66B]/35"
         : "text-white/55 border-white/14";
 
+  // Action-status badges are calm — NEVER red. Escalated is visually distinct (violet) from submitted (slate).
+  const actionStatusTone = (s: ActionStatusState) =>
+    s === "awaiting_resolution" ? "text-violet-200/80 border-violet-400/30" : "text-sky-200/75 border-sky-400/25";
+
   const hostVisible = showAllHost ? hostAttention : hostAttention.slice(0, HOST_PREVIEW);
+  const actionVisible = showAllAction ? actionStatus : actionStatus.slice(0, ACTION_STATUS_PREVIEW);
+  const actionStates = new Set(actionStatus.map((a) => a.status));
 
   return (
     <section data-testid="today-personal-brief" className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
@@ -207,6 +281,43 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {actionStatus.length > 0 ? (
+        <div className="flex flex-col gap-2" data-testid="brief-action-status">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.actionStatusEyebrow(actionStates)}</span>
+            <span className="text-[0.72rem] text-white/45">{t.actionStatusSub(actionStatus.length, actionStates)}</span>
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {actionVisible.map((a) => {
+              const deadline = fmtDate(a.originalDeadline, loc);
+              return (
+                <li key={a.stableId} data-testid="action-status-row" data-status={a.status}>
+                  <a href={a.deepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm text-white/80">{a.title}</span>
+                      <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + actionStatusTone(a.status)}>{t.actionStatusBadge[a.status]}</span>
+                    </div>
+                    <span className="text-xs text-white/50">{t.actionStatusCopy[a.status]}</span>
+                    {a.sourceTitle ? <span className="truncate text-xs text-white/40">{a.sourceTitle}</span> : null}
+                    {deadline ? <span className="text-[0.7rem] text-white/35">{t.originalDeadline} · {deadline}</span> : null}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+          {actionStatus.length > ACTION_STATUS_PREVIEW ? (
+            <button
+              type="button"
+              data-testid="action-status-toggle"
+              onClick={() => setShowAllAction((v) => !v)}
+              className="self-start pt-0.5 text-xs text-white/50 hover:text-white/80"
+            >
+              {showAllAction ? t.showLess : t.showAll(actionStatus.length)}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
