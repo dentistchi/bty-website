@@ -48,21 +48,35 @@ beforeEach(() => {
 });
 
 describe('POST /api/host/rooms/create (native Bearer/JSON)', () => {
-  it('first Room (entered) → 200 { ok, slug, roomId }; owner = session account', async () => {
+  it('first Room (entered) → 200 { ok, slug, roomId, displayName }; owner = session account', async () => {
     const res = await POST(makeReq({ name: '첫 노래방' }));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toMatchObject({ ok: true, kind: 'entered', slug: 'my-first-room-ab12', roomId: 'room-new' });
-    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: '첫 노래방', idempotencyKey: '' });
+    expect(data).toMatchObject({ ok: true, kind: 'entered', slug: 'my-first-room-ab12', roomId: 'room-new', displayName: '첫 노래방' });
+  });
+
+  it('a BLANK/absent idempotency key is replaced by a server-generated one (never passed blank)', async () => {
+    // Root cause of the build-11 409: create_karaoke_room fails closed on a blank key.
+    // The route must mint a non-blank account-scoped key so a valid first create succeeds.
+    await POST(makeReq({ name: 'Joy' })); // no idempotencyKey field at all
+    const call = createSpy.mock.calls.at(-1)![0];
+    expect(call.accountId).toBe('acct-1');
+    expect(call.displayName).toBe('Joy');
+    expect(typeof call.idempotencyKey).toBe('string');
+    expect(call.idempotencyKey.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('an explicit client key (native per-attempt UUID) is used as-is', async () => {
+    await POST(makeReq({ name: '첫 노래방', idempotencyKey: 'attempt-uuid-1' }));
+    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: '첫 노래방', idempotencyKey: 'attempt-uuid-1' });
   });
 
   it('idempotent retry returns the SAME first Room (no duplicate) — entered again', async () => {
     // The service is idempotent: a retry for a Host that now owns a Room returns 'entered'
-    // with the same slug. The route just passes it through as success.
+    // with the same slug (account-level has_room). The route passes it through as success.
     state.result = { kind: 'entered', slug: 'my-first-room-ab12', roomId: 'room-new' };
     const res = await POST(makeReq({ name: '첫 노래방', idempotencyKey: 'idem-1' }));
     expect((await res.json()).slug).toBe('my-first-room-ab12');
-    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: '첫 노래방', idempotencyKey: 'idem-1' });
   });
 
   it('additional Room (added) → 200 with slug/roomId', async () => {
@@ -102,6 +116,8 @@ describe('POST /api/host/rooms/create (native Bearer/JSON)', () => {
 
   it('ignores client-supplied owner/slug/account — only account + name reach the service', async () => {
     await POST(makeReq({ name: 'Room X', accountId: 'attacker', ownerId: 'x', slug: 'pwned' }));
-    expect(createSpy).toHaveBeenCalledWith({ accountId: 'acct-1', displayName: 'Room X', idempotencyKey: '' });
+    const call = createSpy.mock.calls.at(-1)![0];
+    expect(call.accountId).toBe('acct-1'); // the session account, never the body
+    expect(call.displayName).toBe('Room X');
   });
 });
