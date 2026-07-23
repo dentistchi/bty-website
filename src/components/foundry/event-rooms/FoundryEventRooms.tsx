@@ -68,23 +68,32 @@ export default function FoundryEventRooms({
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[loc];
   const bt: ModuleBuilderCopy = MODULE_BUILDER_COPY[loc];
 
-  const [view, setView] = useState<View>(() =>
-    initialEventId
-      ? {
-          kind: "control",
-          eventId: initialEventId,
-          focusSection: initialFocusSection ?? undefined,
-          focusId: initialFocusId ?? undefined,
-        }
-      : { kind: "home" },
-  );
+  const [view, setView] = useState<View>({ kind: "home" });
 
-  // One-shot: the deep-linked control room is now the initial view — tell the shell to drop the params
-  // so leaving and re-entering the Foundry tab returns to the home list (never a stuck re-open).
+  // Host Leadership Attention deep link (Slice 3.1B-3L): open the EXACT owned control room whenever the
+  // target becomes available — at first mount OR as a later prop UPDATE. This is the cold-navigation
+  // race the Commander observed on device: FoundryEventRooms can first mount with NO target (the tab
+  // flips to foundry / the surface renders before the shell's parsed event/section/focus have
+  // propagated), then receive the target a render later. A useState lazy-initializer reads
+  // initialEventId only once and would leave the view stuck on the home/event list; this effect opens
+  // control on whichever render the target first appears, EXACTLY ONCE (ref-guarded so a later back-out
+  // or param clear never re-opens it), and consumes the one-shot params only AFTER the handoff. The
+  // control room's reads are server owner-scoped, so a not-owned/invalid event resolves to an empty
+  // room (no disclosure) rather than any foreign data — client-side list matching is deliberately NOT
+  // used as the ownership gate (it would false-negative a valid deep link on a large owned-event set).
+  const deepLinkConsumedRef = useRef(false);
   useEffect(() => {
-    if (initialEventId) onInitialConsumed();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (initialEventId && !deepLinkConsumedRef.current) {
+      deepLinkConsumedRef.current = true;
+      setView({
+        kind: "control",
+        eventId: initialEventId,
+        focusSection: initialFocusSection ?? undefined,
+        focusId: initialFocusId ?? undefined,
+      });
+      onInitialConsumed();
+    }
+  }, [initialEventId, initialFocusSection, initialFocusId, onInitialConsumed]);
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
