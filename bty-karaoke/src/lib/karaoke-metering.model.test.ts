@@ -52,8 +52,13 @@ function begin(room: string, reqId: string, mode: string) {
     if (firstReady?.id !== reqId) return { outcome: 'not_next' };
   }
   const plan = db.plans[acct] ?? 'FREE';
+  // B2 enforcement gate — mirrors karaoke_begin_song §G: FREE + enforcement on + no
+  // daily minutes left → upgrade_required, and NOTHING mutates (the flip never runs,
+  // no segment opens). PRO and enforcement-off skip the gate entirely.
   if (db.enforcement && plan === 'FREE') {
-    // (enforcement path not used in B1) — would gate on remaining<=0
+    const ent = entitlement(acct, NOW) as { remainingSeconds?: number; outcome?: string };
+    if (ent.outcome) return { outcome: 'shadow_metering_error', detail: ent.outcome };
+    if ((ent.remainingSeconds ?? 0) <= 0) return { outcome: 'upgrade_required', entitlement: ent };
   }
   // segment conflict → the whole "transaction" fails; the flip does NOT persist (rollback).
   if (db.segs.some((s) => s.request === reqId)) throw new Error('segment unique(request_id) violation → rollback');
@@ -107,7 +112,13 @@ function entitlement(acct: string, asOf: number | null) {
     used += Math.max(0, eff - s.started_at);
   }
   const remaining = Math.max(0, 900 - Math.floor(used));
-  return { plan: 'FREE', unlimited: false, limitSeconds: 900, usedSeconds: Math.floor(used), remainingSeconds: remaining, activePlaybackCount: active, burnRatePerSecond: burn, warnLevel: 'none' };
+  // B2 warnLevel — mirrors karaoke_free_minutes_entitlement_at §E: computed ONLY when
+  // enforcement is enabled (else always 'none' — no active-enforcement warning).
+  let warnLevel: 'none' | 'five_min' | 'two_min' | 'zero' = 'none';
+  if (db.enforcement) {
+    warnLevel = remaining <= 0 ? 'zero' : remaining <= 120 ? 'two_min' : remaining <= 300 ? 'five_min' : 'none';
+  }
+  return { plan: 'FREE', unlimited: false, enforcementEnabled: db.enforcement, limitSeconds: 900, usedSeconds: Math.floor(used), remainingSeconds: remaining, activePlaybackCount: active, burnRatePerSecond: burn, warnLevel };
 }
 
 beforeEach(() => {
@@ -220,5 +231,76 @@ describe('entitlement contract', () => {
     e = entitlement('acctA', NOW) as { activePlaybackCount: number; burnRatePerSecond: number };
     expect(e.activePlaybackCount).toBe(0);
     expect(e.burnRatePerSecond).toBe(0);
+  });
+});
+
+// ── B2 ENFORCEMENT MATRIX (enforcement_enabled=true) ─────────────────────────────
+// Mirrors the SQL that is ALREADY deployed but gated off in B1. Proves the start-
+// boundary block, the warning thresholds, current-song safety, and the automatic-next
+// boundary against the same in-memory model the B1 contract tests use.
+describe('B2 enforcement — FREE daily limit', () => {
+  // Burn `used` seconds via ONE closed metered segment (distinct request id so it never
+  // collides with the unique(request_id) / one-open-per-room rules under test).
+  function burnUsed(used: number) {
+    const id = `used-${++db.seq}`;
+    db.segs.push({ id, account: 'acctA', event: 'e1', room: 'r1', request: id, plan: 'FREE', metered: true, started_at: NOW - used, ended_at: NOW, close_reason: 'completed' });
+  }
+  const remainingOf = () => (entitlement('acctA', NOW) as { remainingSeconds: number }).remainingSeconds;
+  const warnOf = () => (entitlement('acctA', NOW) as { warnLevel: string }).warnLevel;
+
+  describe('usage calculation', () => {
+    it('fresh FREE window → 900s, no warn', () => { db.enforcement = true; expect(remainingOf()).toBe(900); expect(warnOf()).toBe('none'); });
+    it('30s used → 870s', () => { db.enforcement = true; burnUsed(30); expect(remainingOf()).toBe(870); });
+    it('over-limit never goes negative → 0', () => { db.enforcement = true; burnUsed(1200); expect(remainingOf()).toBe(0); });
+    it('PRO is not FREE-metered even past the limit', () => { db.plans.acctA = 'PRO'; db.enforcement = true; burnUsed(1200); expect(entitlement('acctA', NOW)).toMatchObject({ plan: 'PRO', unlimited: true }); });
+    it('enforcement disabled → warnLevel none even at 0 remaining', () => { db.enforcement = false; burnUsed(1200); expect(warnOf()).toBe('none'); });
+  });
+
+  describe('manual start gate', () => {
+    beforeEach(() => { db.enforcement = true; });
+    it('900 remaining → start ok + exactly one segment', () => { seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); expect(db.segs.filter((s) => s.request === 'a').length).toBe(1); });
+    it('301 remaining → start ok, no warn yet', () => { burnUsed(599); expect(warnOf()).toBe('none'); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+    it('300 remaining → start ok + five_min', () => { burnUsed(600); expect(warnOf()).toBe('five_min'); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+    it('120 remaining → start ok + two_min', () => { burnUsed(780); expect(warnOf()).toBe('two_min'); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+    it('1 remaining → start ok (server does not predict song length)', () => { burnUsed(899); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+    it('0 remaining → upgrade_required, NO segment, request stays waiting', () => { burnUsed(900); seedReq('a', 1, { ready_at: 'r' }); const r = begin('r1', 'a', 'promote'); expect(r.outcome).toBe('upgrade_required'); expect(db.segs.filter((s) => s.request === 'a').length).toBe(0); expect(req('a')?.status).toBe('waiting'); });
+    it('PRO can start regardless of FREE-equivalent usage', () => { db.plans.acctA = 'PRO'; burnUsed(1200); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+    it('duplicate successful start creates no second segment', () => { seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); expect(begin('r1', 'a', 'promote').outcome).toBe('not_waiting'); expect(db.segs.filter((s) => s.request === 'a').length).toBe(1); });
+    it('enforcement disabled preserves B1 non-blocking start at 0 remaining', () => { db.enforcement = false; burnUsed(900); seedReq('a', 1, { ready_at: 'r' }); expect(begin('r1', 'a', 'promote').outcome).toBe('ok'); });
+  });
+
+  describe('current playing song at zero', () => {
+    beforeEach(() => { db.enforcement = true; });
+    it('remaining reaches 0 WHILE playing → stays playing, segment open, warn zero', () => {
+      seedReq('a', 1, { ready_at: 'r' }); begin('r1', 'a', 'promote');
+      burnUsed(900); // exhaust the window while 'a' plays
+      expect(req('a')?.status).toBe('playing');
+      expect(openSeg('a')).not.toBeNull();
+      expect(warnOf()).toBe('zero');
+    });
+    it('complete at zero closes the segment exactly once (no force-stop)', () => {
+      seedReq('a', 1, { ready_at: 'r' }); begin('r1', 'a', 'promote'); burnUsed(900);
+      expect(end('r1', 'a', 'complete')).toMatchObject({ outcome: 'ok', segmentClosed: true });
+      expect(openSeg('a')).toBeNull();
+    });
+  });
+
+  describe('automatic-next boundary', () => {
+    beforeEach(() => { db.enforcement = true; });
+    it('zero remaining: current closes, next start blocked, next stays waiting, no next segment', () => {
+      seedReq('a', 1, { ready_at: 'r' }); seedReq('b', 2, { ready_at: 'r' });
+      begin('r1', 'a', 'promote'); burnUsed(900);
+      expect(end('r1', 'a', 'complete')).toMatchObject({ outcome: 'ok', segmentClosed: true });
+      const next = begin('r1', 'b', 'promote');
+      expect(next.outcome).toBe('upgrade_required');
+      expect(req('b')?.status).toBe('waiting');
+      expect(db.segs.filter((s) => s.request === 'b').length).toBe(0);
+    });
+    it('positive remaining: current closes then next opens exactly one segment', () => {
+      seedReq('a', 1, { ready_at: 'r' }); seedReq('b', 2, { ready_at: 'r' });
+      begin('r1', 'a', 'promote'); end('r1', 'a', 'complete');
+      expect(begin('r1', 'b', 'promote').outcome).toBe('ok');
+      expect(db.segs.filter((s) => s.request === 'b').length).toBe(1);
+    });
   });
 });

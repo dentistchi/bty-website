@@ -3,6 +3,10 @@
 
 import { karaokeDb } from './supabase.server';
 import { beginSong, endSong, type BeginOutcome } from './metering.server';
+// B2 enforcement: `upgrade_required` (FREE + enforcement on + no daily minutes left)
+// is a first-class lifecycle outcome — it must reach the caller/route as itself, never
+// collapse into a generic "invalid/not_ready". The `entitlement` snapshot travels with
+// it so the client can render the truthful zero-time state without a second read.
 import { credentialMatches } from './dj-auth.server';
 import { authorizeDevice } from './devices.server';
 import { accountHasRoomAccess, roomOwnerWorkspace } from './host-auth.server';
@@ -507,7 +511,10 @@ const NEXT_STATUS: Record<DjAction, RequestStatus> = {
 export type DjTransition =
   | { outcome: 'ok'; request: KaraokeRequest; from: RequestStatus }
   | { outcome: 'not_found' }
-  | { outcome: 'invalid'; from: RequestStatus };
+  | { outcome: 'invalid'; from: RequestStatus }
+  // B2: a manual Admin play blocked by the FREE daily limit. NOTHING mutated (the
+  // begin RPC rolled back) — the request stays exactly where it was.
+  | { outcome: 'upgrade_required'; from: RequestStatus; entitlement?: unknown };
 
 /** DJ transition for a single request, scoped to the room and state-guarded. */
 export async function setRequestStatus(
@@ -544,6 +551,10 @@ export async function setRequestStatus(
   // in one transaction). No app-level 'playing'/'completed'/'skipped(playing)' write.
   if (action === 'play') {
     const r = await beginSong(roomId, requestId, 'promote'); // Admin manual Start = promote
+    if (r.outcome === 'upgrade_required') {
+      // FREE minutes exhausted: no status/segment/queue change — surface the block.
+      return { outcome: 'upgrade_required', from, entitlement: r.entitlement };
+    }
     if (r.outcome !== 'ok') return { outcome: 'invalid', from };
     const row = await fetchRow();
     return row ? { outcome: 'ok', request: row, from } : { outcome: 'not_found' };
@@ -657,12 +668,15 @@ export type StartOutcome =
   | 'not_found'
   | 'not_waiting'
   | 'not_next'
-  | 'already_playing';
+  | 'already_playing'
+  | 'upgrade_required';
 
 export interface StartResult {
   outcome: StartOutcome;
   request?: KaraokeRequest;
   status?: GuestQueueStatus;
+  /** Present when outcome === 'upgrade_required' — the truthful usage snapshot. */
+  entitlement?: unknown;
 }
 
 /**
@@ -681,7 +695,7 @@ export async function startOwnRequest(
   // enforces canonical first-waiting + stage-open inside the RPC and opens the segment.
   const r = await beginSong(roomId, requestId, 'guest');
   const outcome = beginToStartOutcome(r.outcome, { roomId, requestId });
-  if (outcome !== 'ok') return { outcome };
+  if (outcome !== 'ok') return { outcome, entitlement: outcome === 'upgrade_required' ? r.entitlement : undefined };
 
   const active = await listActiveRequests(roomId);
   const request = active.find((r) => r.id === requestId);
@@ -728,11 +742,22 @@ export interface PassTurnResult {
   completed: boolean;
   /** The next song auto-started in BTY (Ready + Queued), else null. */
   promoted: KaraokeRequest | null;
-  /** 'promoted' on success, else why the next song did not auto-start. */
-  reason: 'promoted' | NoPromoteReason;
+  /**
+   * 'promoted' on success; 'upgrade_required' when the current song was completed but
+   * the next start is blocked by the FREE daily limit; else why the next song did not
+   * auto-start.
+   */
+  reason: 'promoted' | 'upgrade_required' | NoPromoteReason;
+  /** Present when reason === 'upgrade_required' — the truthful usage snapshot. */
+  entitlement?: unknown;
 }
 
-export type PromoteOutcome = 'started' | 'blocked_not_ready' | 'already_playing' | 'queue_empty';
+export type PromoteOutcome =
+  | 'started'
+  | 'blocked_not_ready'
+  | 'already_playing'
+  | 'queue_empty'
+  | 'upgrade_required';
 
 export interface PromoteResult {
   outcome: PromoteOutcome;
@@ -740,6 +765,8 @@ export interface PromoteResult {
   request?: KaraokeRequest;
   /** The earliest waiting song when NONE is Ready yet (blocked_not_ready). */
   nextRequest?: KaraokeRequest;
+  /** Present when outcome === 'upgrade_required' — the truthful usage snapshot. */
+  entitlement?: unknown;
 }
 
 /**
@@ -751,7 +778,7 @@ export interface PromoteResult {
  * ALREADY the playing row, that is success (no error) — so an ensure/start of the
  * song currently on stage never reports a false failure.
  */
-/** Map a begin_song outcome onto the legacy StartOutcome the callers reason about. */
+/** Map a begin_song outcome onto the StartOutcome the callers reason about. */
 function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: string }): StartOutcome {
   switch (o) {
     case 'ok':
@@ -764,6 +791,10 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
       return 'not_found';
     case 'not_waiting':
       return 'not_waiting';
+    case 'upgrade_required':
+      // B2: FREE daily minutes exhausted + enforcement on. NOT an anomaly and NOT a
+      // generic failure — the caller must surface the zero-time / upgrade state.
+      return 'upgrade_required';
     default:
       // not_ready (promote race) / event_state_invalid / ownership_state_invalid /
       // request_state_changed / shadow_metering_error → "did not start"; callers treat
@@ -775,12 +806,20 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
   }
 }
 
+/** promoteRequestToPlaying result — carries the entitlement snapshot on a blocked start. */
+interface PromoteFlip {
+  outcome: StartOutcome;
+  entitlement?: unknown;
+}
+
 // B1 metering: the waiting→playing flip + its usage segment are opened in ONE atomic
 // RPC (karaoke_begin_song, promote mode). No app-level 'playing' write remains here;
-// the one-playing index + canonical first-ready check live inside the RPC.
-async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<StartOutcome> {
+// the one-playing index + canonical first-ready check live inside the RPC. B2: the
+// begin RPC also decides enforcement — a FREE account with no minutes gets
+// `upgrade_required` + its entitlement, which we thread up unchanged.
+async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<PromoteFlip> {
   const r = await beginSong(roomId, requestId, 'promote');
-  return beginToStartOutcome(r.outcome, { roomId, requestId });
+  return { outcome: beginToStartOutcome(r.outcome, { roomId, requestId }), entitlement: r.entitlement };
 }
 
 export type EnsurePlayingOutcome =
@@ -788,7 +827,8 @@ export type EnsurePlayingOutcome =
   | 'already_active'
   | 'conflict'
   | 'not_ready'
-  | 'not_found';
+  | 'not_found'
+  | 'upgrade_required';
 
 export interface EnsurePlayingResult {
   outcome: EnsurePlayingOutcome;
@@ -796,6 +836,8 @@ export interface EnsurePlayingResult {
   request?: KaraokeRequest;
   /** The OTHER song that already holds the stage (conflict). */
   playing?: KaraokeRequest;
+  /** Present when outcome === 'upgrade_required' — the truthful usage snapshot. */
+  entitlement?: unknown;
 }
 
 /**
@@ -825,12 +867,17 @@ export async function ensurePlaying(
     return { outcome: 'not_ready' };
   }
 
-  const outcome = await promoteRequestToPlaying(roomId, requestId);
-  if (outcome === 'ok') {
+  const flip = await promoteRequestToPlaying(roomId, requestId);
+  if (flip.outcome === 'ok') {
     const now = (await listActiveRequests(roomId, eventId)).find((r) => r.id === requestId);
     return { outcome: 'started', request: now ?? target };
   }
-  if (outcome === 'already_playing') {
+  if (flip.outcome === 'upgrade_required') {
+    // FREE minutes exhausted (enforcement on): NOTHING mutated (the RPC rolled back).
+    // Surface the block truthfully — no song was started.
+    return { outcome: 'upgrade_required', entitlement: flip.entitlement };
+  }
+  if (flip.outcome === 'already_playing') {
     const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
     if (p?.id === requestId) return { outcome: 'already_active', request: p };
     return { outcome: 'conflict', playing: p };
@@ -868,12 +915,18 @@ export async function promoteNextReady(
       return { outcome: 'blocked_not_ready', nextRequest: decision.firstWaiting };
     case 'promote': {
       const first = decision.request;
-      const outcome = await promoteRequestToPlaying(roomId, first.id);
-      if (outcome === 'ok') {
+      const flip = await promoteRequestToPlaying(roomId, first.id);
+      if (flip.outcome === 'ok') {
         const started = (await listActiveRequests(roomId, eventId)).find((r) => r.id === first.id);
         return { outcome: 'started', request: started ?? first };
       }
-      if (outcome === 'already_playing') {
+      if (flip.outcome === 'upgrade_required') {
+        // AUTO-NEXT boundary (§8): the current song has ALREADY been closed by the
+        // terminal transition upstream; the NEXT start is blocked and NOTHING was
+        // opened (the RPC rolled back). The next request stays waiting/ready.
+        return { outcome: 'upgrade_required', nextRequest: first, entitlement: flip.entitlement };
+      }
+      if (flip.outcome === 'already_playing') {
         const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
         return { outcome: 'already_playing', request: p };
       }
@@ -928,6 +981,11 @@ export async function passTurnAndPromote(
   const completed = adv.terminal === 'ok' || adv.terminal === 'already_done';
   if (adv.next.outcome === 'started') {
     return { completed, promoted: adv.next.request ?? null, reason: 'promoted' };
+  }
+  if (adv.next.outcome === 'upgrade_required') {
+    // §8: current song closed exactly once; NEXT start blocked by the FREE limit. The
+    // next request stays waiting/ready — no segment opened, no YouTube handoff.
+    return { completed, promoted: null, reason: 'upgrade_required', entitlement: adv.next.entitlement };
   }
   // Ready-only reasons: no next song, or the next guest hasn't Readied yet.
   const reason: NoPromoteReason =

@@ -9,6 +9,7 @@ import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, passTurnAndPromote } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
+import { projectEntitlement } from '@/domain/usage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,12 +48,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // A new song was auto-promoted to the stage → resolve its lyrics in the background.
   if (result.promoted?.id) void scheduleLyricsResolve(auth.room.id, result.promoted.id);
 
+  // B2: the current song completed (§6 — never force-stopped); when the next start is
+  // blocked by the FREE limit the response carries reason='upgrade_required' + the usage
+  // snapshot. The next request stays waiting/ready and no YouTube handoff occurs.
   return NextResponse.json(
     {
       ok: true,
       completed: result.completed,
       promoted: result.promoted ? { id: result.promoted.id } : null,
       reason: result.reason,
+      usage: result.reason === 'upgrade_required' ? projectEntitlement(result.entitlement) : null,
     },
     { headers: NO_STORE },
   );

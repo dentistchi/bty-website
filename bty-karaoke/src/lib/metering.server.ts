@@ -95,11 +95,36 @@ export async function endSong(
   };
 }
 
-/** Canonical entitlement snapshot for an account (real-time wrapper). B1: display only. */
+/** Canonical entitlement snapshot for an account (real-time wrapper). B2: read by the
+ *  usage projection endpoint and returned on a blocked start. Never mutates. */
 export async function readEntitlement(accountId: string): Promise<Record<string, unknown> | null> {
   const { data, error } = await karaokeDb().rpc('karaoke_free_minutes_entitlement', { p_account_id: accountId });
   if (error) throw error;
   return (first(data) as Record<string, unknown>) ?? null;
+}
+
+/**
+ * Resolve the single active owner account for a room (or null when ownership is
+ * ambiguous/absent — exactly the same rule the atomic RPCs lock on). Read-only.
+ * Used by the usage projection endpoint to scope account-level entitlement from a
+ * room-scoped DJ credential.
+ */
+export async function roomOwnerAccountId(roomId: string): Promise<string | null> {
+  const { data, error } = await karaokeDb().rpc('karaoke_room_owner_account', { p_room_id: roomId });
+  if (error) throw error;
+  const v = Array.isArray(data) ? data[0] : data;
+  return typeof v === 'string' && v.length > 0 ? v : null;
+}
+
+/**
+ * Canonical usage snapshot for the OWNER of a room. Convenience wrapper the room-
+ * scoped usage endpoint uses: room → owner account → entitlement. Returns null when
+ * the room has no unambiguous active owner.
+ */
+export async function readRoomEntitlement(roomId: string): Promise<Record<string, unknown> | null> {
+  const accountId = await roomOwnerAccountId(roomId);
+  if (!accountId) return null;
+  return readEntitlement(accountId);
 }
 
 /** One-time browser timezone capture (atomic; eligible only while source='default' + zero usage). */

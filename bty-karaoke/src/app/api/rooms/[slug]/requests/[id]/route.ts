@@ -14,6 +14,7 @@ import {
 } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
+import { projectEntitlement } from '@/domain/usage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -83,6 +84,19 @@ export async function PATCH(
   if (result.outcome === 'not_found') {
     return NextResponse.json({ error: 'Request not found in this room' }, { status: 404 });
   }
+  // B2: a manual play blocked by the FREE daily limit. Nothing mutated — return the
+  // canonical upgrade_required with the truthful usage snapshot so the Admin can render
+  // the zero-time / upgrade state (never a generic "invalid").
+  if (result.outcome === 'upgrade_required') {
+    return NextResponse.json(
+      {
+        error: '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.',
+        code: 'upgrade_required',
+        usage: projectEntitlement(result.entitlement),
+      },
+      { status: 402 },
+    );
+  }
   if (result.outcome === 'invalid') {
     return NextResponse.json(
       { error: `Cannot ${action} a request that is '${result.from}'` },
@@ -99,14 +113,23 @@ export async function PATCH(
   // seam as Finish (pass-turn), so every terminal transition agrees. Only when the
   // row was actually `playing` (a waiting-song skip never promotes).
   let promoted: { id: string } | null = null;
+  // B2 auto-next boundary: when the FREE limit blocks the next start, the current song
+  // has ALREADY been closed above (§8 — current is never force-stopped, it completed
+  // normally). We do NOT start the next song, leave it waiting/ready, and surface the
+  // upgrade state + usage so the Admin sees why nothing auto-started.
+  let upgradeRequired = false;
+  let usage: ReturnType<typeof projectEntitlement> = null;
   if ((action === 'complete' || action === 'skip') && result.outcome === 'ok' && result.from === 'playing') {
     const event = await getCanonicalEvent(auth.room.id);
     const p = await promoteNextReady(auth.room.id, event?.id ?? null);
     if (p.outcome === 'started' && p.request) {
       promoted = { id: p.request.id };
       void scheduleLyricsResolve(auth.room.id, p.request.id);
+    } else if (p.outcome === 'upgrade_required') {
+      upgradeRequired = true;
+      usage = projectEntitlement(p.entitlement);
     }
   }
 
-  return NextResponse.json({ ok: true, request: result.request, promoted });
+  return NextResponse.json({ ok: true, request: result.request, promoted, upgradeRequired, usage });
 }

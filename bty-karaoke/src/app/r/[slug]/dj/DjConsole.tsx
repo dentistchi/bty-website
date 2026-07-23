@@ -15,7 +15,9 @@ import {
 import { isNativeHost, nativeOpenYouTube } from '@/lib/native-bridge';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DjBoard from './DjBoard';
+import UsageBanner from './UsageBanner';
 import { adminAuthHeader, isCookieCred } from '@/domain/admin-auth';
+import type { UsageProjection } from '@/domain/usage';
 
 interface Props {
   slug: string;
@@ -92,6 +94,9 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // Admin stays fully open and we surface an explicit "Open the Player" link instead — the
   // Admin tab is never navigated away by the handoff.
   const [showPlayerFallback, setShowPlayerFallback] = useState(false);
+  // B2 — server-truth FREE-minutes usage projection (remaining, warning banner, block).
+  // Polled on the queue cadence and refreshed instantly from a blocked start's response.
+  const [usage, setUsage] = useState<UsageProjection | null>(null);
 
   // Advanced bootstrap fallback (host master code) — hidden by default.
   const [showCode, setShowCode] = useState(false);
@@ -155,6 +160,26 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       }
     },
     [slug, authHeader, markArrivals],
+  );
+
+  // B2 — fetch the server-truth usage projection (FREE minutes remaining / warning /
+  // block). Best-effort: a hiccup just leaves the last-known banner in place. The
+  // server is always the enforcement authority; this only drives what the Admin SEES.
+  const loadUsage = useCallback(
+    async (c: string): Promise<void> => {
+      try {
+        const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/usage`, {
+          headers: authHeader(c),
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const body = (await res.json()) as { usage?: UsageProjection | null };
+        setUsage(body.usage ?? null);
+      } catch {
+        /* keep the last-known banner */
+      }
+    },
+    [slug, authHeader],
   );
 
   // On mount: try the paired DJ token first, then the Admin token (admin ⊇ dj).
@@ -227,7 +252,9 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // Live polling while authed.
   useEffect(() => {
     if (phase !== 'authed' || !cred) return;
+    void loadUsage(cred); // seed the usage banner immediately on entering the console
     const t = window.setInterval(async () => {
+      void loadUsage(cred); // refresh the FREE-minutes banner on the same cadence
       const r = await loadQueue(cred);
       // With an Admin session cred a 401 is not expected (authorizeDj ⊇
       // authorizeAdmin) and must never drop to the host-code screen — treat any
@@ -247,14 +274,15 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
       }
     }, POLL_MS);
     return () => window.clearInterval(t);
-  }, [phase, cred, loadQueue, sessionCred, onSessionInvalid]);
+  }, [phase, cred, loadQueue, loadUsage, sessionCred, onSessionInvalid]);
 
   const refresh = useCallback(async () => {
     if (!cred) return;
+    void loadUsage(cred); // keep the FREE-minutes banner current on every canonical refresh
     const r = await loadQueue(cred);
     if (r === 'unauth') setPhase('disconnected');
     else setReconnecting(r === 'neterr');
-  }, [cred, loadQueue]);
+  }, [cred, loadQueue, loadUsage]);
 
   // Idempotent viewport+state restore for EVERY return path from the YouTube app.
   // Blurring any focused input snaps iOS Safari back from an auto-zoomed state to
@@ -405,8 +433,20 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           setError(body?.error ?? '다음 곡을 재생하지 못했습니다.');
           return;
         }
-        const body = (await res.json().catch(() => ({}))) as { reason?: string };
+        const body = (await res.json().catch(() => ({}))) as {
+          reason?: string;
+          usage?: UsageProjection | null;
+        };
         await loadQueue(cred);
+        // B2: the current song completed (§6 — never force-stopped), but the FREE daily
+        // limit blocked the next start. Surface the upgrade state and update the banner
+        // from server truth; the next request stays waiting/ready and we do NOT hand off.
+        if (body.reason === 'upgrade_required') {
+          closePlayerOnFailure();
+          if (body.usage) setUsage(body.usage);
+          setError('오늘의 무료 이용 시간을 모두 사용했어요 — PRO로 업그레이드하면 다음 곡을 시작할 수 있어요.');
+          return;
+        }
         // The next singer must actually be on stage before we command the Player.
         if (body.reason !== 'promoted') {
           closePlayerOnFailure();
@@ -425,9 +465,18 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           return;
         }
         if (!res.ok) {
-          // Precise server reason (충돌/없음/종료/실패) — never a generic error.
+          // Precise server reason (충돌/없음/종료/한도/실패) — never a generic error.
           closePlayerOnFailure();
-          const body = await res.json().catch(() => ({}));
+          const body = (await res.json().catch(() => ({}))) as {
+            error?: string;
+            code?: string;
+            usage?: UsageProjection | null;
+          };
+          // B2: FREE daily limit blocked this first-song start. Nothing mutated — show
+          // the upgrade state and refresh the banner from the server's usage snapshot.
+          if (res.status === 402 || body.code === 'upgrade_required') {
+            if (body.usage) setUsage(body.usage);
+          }
           setError(body?.error ?? '재생 상태를 변경하지 못했습니다.');
           return;
         }
@@ -714,6 +763,10 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
 
   return (
     <>
+      {/* B2 — FREE daily-minutes banner. Server-truth only (polled + refreshed on block);
+          hidden for PRO and while enforcement is disabled. Survives refresh/relaunch
+          because it is reconstructed from /dj/usage, never from local countdown state. */}
+      <UsageBanner usage={usage} />
       <DjBoard
         slug={slug}
         displayName={displayName}

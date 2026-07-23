@@ -12,6 +12,7 @@ import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, ensurePlaying } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
+import { projectEntitlement } from '@/domain/usage';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -60,6 +61,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       return NextResponse.json(
         { ok: true, request: result.request ?? null, code: 'already_active' },
         { headers: NO_STORE },
+      );
+    case 'upgrade_required':
+      // FREE daily minutes exhausted (enforcement on). Nothing was started — surface
+      // the canonical upgrade_required with the truthful usage snapshot.
+      return NextResponse.json(
+        {
+          error: '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.',
+          code: 'upgrade_required',
+          usage: projectEntitlement(result.entitlement),
+        },
+        { status: 402, headers: NO_STORE },
       );
     case 'conflict':
       return NextResponse.json(
