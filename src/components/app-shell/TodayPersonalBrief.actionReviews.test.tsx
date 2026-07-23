@@ -24,7 +24,7 @@ function stub(reviews: unknown[]) {
       Promise.resolve({
         ok: true,
         json: () =>
-          Promise.resolve(String(url).includes("/api/arena/action-reviews") ? { items: reviews } : brief),
+          Promise.resolve(String(url).includes("/api/arena/action-review-queue") ? { items: reviews } : brief),
       }),
     ),
   );

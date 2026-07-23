@@ -2,12 +2,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 
-const switchAccount = vi.fn(async (..._a: unknown[]) => ({ ok: true, failed: [] as string[] }));
+// Slice 3.1B-3N-5B.1: Switch launches the Google chooser DIRECTLY (no teardown-first, no login card).
+const startGoogleOAuth = vi.fn(async (..._a: unknown[]) => ({ status: "redirecting" as const }));
 const signOutAccount = vi.fn(async (..._a: unknown[]) => ({ ok: true, failed: [] as string[] }));
-vi.mock("@/lib/native/accountSession", () => ({
-  switchAccount: (...a: unknown[]) => switchAccount(...a),
-  signOutAccount: (...a: unknown[]) => signOutAccount(...a),
-}));
+vi.mock("@/lib/native/googleOAuth", () => ({ startGoogleOAuth: (...a: unknown[]) => startGoogleOAuth(...a) }));
+vi.mock("@/lib/native/accountSession", () => ({ signOutAccount: (...a: unknown[]) => signOutAccount(...a) }));
 
 import AccountBlock from "./AccountBlock";
 
@@ -24,42 +23,58 @@ function mockSession(email: string | null) {
 }
 
 describe("AccountBlock (Me tab canonical account surface)", () => {
-  it("shows the authenticated email from the session endpoint", async () => {
+  it("(15) shows the authenticated email + 'Switch account' + 'Sign out'", async () => {
     mockSession("ywamer2022@gmail.com");
     render(<AccountBlock locale="en" />);
     await waitFor(() => expect(screen.getByTestId("account-email").textContent).toBe("ywamer2022@gmail.com"));
-    expect(screen.getByText("Use another account")).toBeTruthy();
+    expect(screen.getByText("Switch account")).toBeTruthy();
     expect(screen.getByText("Sign out")).toBeTruthy();
   });
 
-  it("'Use another account' calls the shared switchAccount(returnTab=foundry)", async () => {
+  it("(3)(4)(11) 'Switch account' launches the provider chooser directly, next=Today, force-chooser", async () => {
     mockSession("ywamer2022@gmail.com");
     render(<AccountBlock locale="en" />);
     await waitFor(() => screen.getByTestId("account-email"));
-    fireEvent.click(screen.getByText("Use another account"));
+    fireEvent.click(screen.getByTestId("account-switch"));
     await waitFor(() =>
-      expect(switchAccount).toHaveBeenCalledWith({ locale: "en", returnTab: "foundry" }),
+      expect(startGoogleOAuth).toHaveBeenCalledWith({
+        locale: "en",
+        nextPath: "/en/app?tab=today",
+        forceAccountSelection: true,
+      }),
     );
     expect(signOutAccount).not.toHaveBeenCalled();
   });
 
-  it("'Sign out' calls the shared signOutAccount (no Foundry return)", async () => {
+  it("(13) 'Sign out' still calls the shared signOutAccount (unchanged)", async () => {
     mockSession("ywamer2022@gmail.com");
     render(<AccountBlock locale="en" />);
     await waitFor(() => screen.getByTestId("account-email"));
-    fireEvent.click(screen.getByText("Sign out"));
+    fireEvent.click(screen.getByTestId("account-signout"));
     await waitFor(() => expect(signOutAccount).toHaveBeenCalledWith({ locale: "en" }));
-    expect(switchAccount).not.toHaveBeenCalled();
+    expect(startGoogleOAuth).not.toHaveBeenCalled();
   });
 
-  it("surfaces an actionable, privacy-safe error on a partial (failed) teardown", async () => {
+  it("(5)(6) a non-redirecting result keeps the user here with a privacy-safe error", async () => {
     mockSession("ywamer2022@gmail.com");
-    switchAccount.mockResolvedValueOnce({ ok: false, failed: ["server"] });
+    startGoogleOAuth.mockResolvedValueOnce({ status: "error", detail: "provider-cancelled" } as never);
     render(<AccountBlock locale="en" />);
     await waitFor(() => screen.getByTestId("account-email"));
-    fireEvent.click(screen.getByText("Use another account"));
+    fireEvent.click(screen.getByTestId("account-switch"));
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-    // no token / provider / id leaked
-    expect(screen.getByRole("alert").textContent).not.toMatch(/token|server|google|d0b1af49/i);
+    expect(screen.getByRole("alert").textContent).not.toMatch(/token|provider|google|cancelled/i);
+  });
+
+  it("(16) a rapid double-tap starts only ONE switch", async () => {
+    mockSession("ywamer2022@gmail.com");
+    // never resolve → stays in-flight so the second tap must be ignored
+    startGoogleOAuth.mockImplementationOnce(() => new Promise(() => {}));
+    render(<AccountBlock locale="en" />);
+    await waitFor(() => screen.getByTestId("account-email"));
+    const btn = screen.getByTestId("account-switch");
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.getByTestId("switching-overlay")).toBeTruthy());
+    expect(startGoogleOAuth).toHaveBeenCalledTimes(1);
   });
 });

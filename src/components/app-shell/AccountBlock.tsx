@@ -1,38 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { switchAccount, signOutAccount } from "@/lib/native/accountSession";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { signOutAccount } from "@/lib/native/accountSession";
+import { startGoogleOAuth } from "@/lib/native/googleOAuth";
 
 /**
- * Me-tab account block — the canonical account-management surface (Slice 3.1B-3E).
+ * Me-tab account block — the canonical (and ONLY) account-management surface (Slice 3.1B-3N-5B.1).
  *
- * Shows the current signed-in email (read from the authenticated session endpoint — NEVER
- * inferred from profile/membership data), plus "Use another account" and "Sign out". Both
- * actions call the SAME shared account-session functions the Foundry affordance uses.
- * "Use another account" returns to the Foundry tab after re-auth; "Sign out" lands on login
- * with no auto-return. Errors are actionable but privacy-safe (no tokens/ids/providers).
+ * "Switch account" launches the Google chooser DIRECTLY (no "Welcome to bty" interstitial, no second
+ * "Continue with Google" tap) and NEVER tears down the current session first — a cancelled switch
+ * leaves the previous account signed in; a successful callback atomically replaces it and lands on
+ * Today. "Sign out" keeps the existing full teardown → login screen. Errors are privacy-safe (no
+ * tokens/ids/providers).
  */
 
 type Locale = "en" | "ko";
 
 const COPY: Record<Locale, {
   signedInAs: string;
-  useAnother: string;
+  switchAccount: string;
   signOut: string;
+  switching: string;
   working: string;
   error: string;
 }> = {
   en: {
     signedInAs: "Signed in as",
-    useAnother: "Use another account",
+    switchAccount: "Switch account",
     signOut: "Sign out",
+    switching: "Switching account…",
     working: "Working…",
     error: "That didn’t complete. Please try again.",
   },
   ko: {
     signedInAs: "로그인 계정",
-    useAnother: "다른 계정 사용",
+    switchAccount: "계정 전환",
     signOut: "로그아웃",
+    switching: "계정 전환 중…",
     working: "처리 중…",
     error: "완료하지 못했습니다. 다시 시도해 주세요.",
   },
@@ -44,6 +48,9 @@ export default function AccountBlock({ locale }: { locale: string }) {
   const [email, setEmail] = useState<string | null>(null);
   const [busy, setBusy] = useState<"switch" | "signout" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // In-flight latch: a rapid double-tap cannot start two simultaneous switches (state disables the
+  // button on re-render, but this guards the microtask window before that render commits).
+  const inFlight = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,21 +69,28 @@ export default function AccountBlock({ locale }: { locale: string }) {
   }, []);
 
   const onSwitch = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setError(null);
     setBusy("switch");
-    const r = await switchAccount({ locale: loc, returnTab: "foundry" });
-    // On success the browser is already navigating away; only a failure returns here.
-    if (!r.ok) {
+    // Direct provider chooser, next = Today. On "redirecting" the page is leaving (web) or has
+    // navigated (native); only a real error returns here — the previous session stays intact.
+    const r = await startGoogleOAuth({ locale: loc, nextPath: `/${loc}/app?tab=today`, forceAccountSelection: true });
+    if (r.status !== "redirecting") {
+      inFlight.current = false;
       setBusy(null);
       setError(t.error);
     }
   }, [loc, t.error]);
 
   const onSignOut = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setError(null);
     setBusy("signout");
     const r = await signOutAccount({ locale: loc });
     if (!r.ok) {
+      inFlight.current = false;
       setBusy(null);
       setError(t.error);
     }
@@ -86,7 +100,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
     <section
       data-testid="account-block"
       aria-label={t.signedInAs}
-      className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4"
+      className="relative flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4"
     >
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
@@ -99,14 +113,16 @@ export default function AccountBlock({ locale }: { locale: string }) {
       <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
+          data-testid="account-switch"
           onClick={onSwitch}
           disabled={busy !== null}
           className="rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-3.5 py-2 text-sm font-semibold text-[#C9A66B] disabled:opacity-60"
         >
-          {busy === "switch" ? t.working : t.useAnother}
+          {busy === "switch" ? t.switching : t.switchAccount}
         </button>
         <button
           type="button"
+          data-testid="account-signout"
           onClick={onSignOut}
           disabled={busy !== null}
           className="rounded-lg border border-white/12 bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-white/70 disabled:opacity-60"
@@ -118,6 +134,14 @@ export default function AccountBlock({ locale }: { locale: string }) {
         <p role="alert" className="text-sm leading-6 text-red-300/80">
           {error}
         </p>
+      ) : null}
+      {busy === "switch" ? (
+        <div
+          data-testid="switching-overlay"
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[#0b0b0f]/80 backdrop-blur-sm"
+        >
+          <span className="text-sm font-medium text-white/85">{t.switching}</span>
+        </div>
       ) : null}
     </section>
   );

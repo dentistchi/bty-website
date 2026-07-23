@@ -2,11 +2,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 
-const switchAccount = vi.fn(async (..._a: unknown[]) => ({ ok: true, failed: [] as string[] }));
-vi.mock("@/lib/native/accountSession", () => ({
-  switchAccount: (...a: unknown[]) => switchAccount(...a),
-}));
-
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 
 const onOpenReview = vi.fn();
@@ -91,14 +86,15 @@ describe("FoundryRequiredLearning — learner surface", () => {
     expect(screen.getByText("Learning account:", { exact: false })).toBeTruthy();
   });
 
-  it("the Foundry 'Switch' calls the SAME shared switchAccount(returnTab=foundry)", async () => {
-    mockFetch([COMPLETED]);
+  it("(14) does NOT render a Foundry Switch control — switching is consolidated to the Me tab", async () => {
+    mockFetch([COMPLETED], "ywamer2022@gmail.com");
     render(<FoundryRequiredLearning locale="en" />);
     await waitFor(() => screen.getByTestId("foundry-learning-account"));
-    fireEvent.click(screen.getByText("Switch"));
-    await waitFor(() =>
-      expect(switchAccount).toHaveBeenCalledWith({ locale: "en", returnTab: "foundry" }),
-    );
+    // the informational account line remains…
+    expect(screen.getByText("Learning account:", { exact: false })).toBeTruthy();
+    // …but there is no Switch button here anymore.
+    expect(screen.queryByText("Switch")).toBeNull();
+    expect(screen.getByTestId("foundry-learning-account").querySelector("button")).toBeNull();
   });
 
   it("Korean copy renders for the empty state", async () => {

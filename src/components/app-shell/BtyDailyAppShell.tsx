@@ -1632,8 +1632,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             reads /api/arena/*. Framed as a self "weekly trace," not competition. */}
         {tab === "me" && (
           <div className="flex flex-col">
-            {/* Canonical account-management surface: current email + Use another account +
-                Sign out (Slice 3.1B-3E). Uses the shared switchAccount/signOutAccount actions. */}
+            {/* Canonical (and only) account-management surface: current email + Switch account +
+                Sign out. Switch launches the Google chooser directly → Today (Slice 3.1B-3N-5B.1);
+                Sign out uses the shared signOutAccount teardown. */}
             <div className="mb-5">
               <AccountBlock locale={locale} />
             </div>

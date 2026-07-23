@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 import { supabase } from "@/lib/supabase";
 import { isNative } from "@/lib/native/isNative";
+import { clearAccountScopedStorage } from "@/lib/native/accountScopedStorage";
 
 function parseHashParams(hash: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -60,6 +61,11 @@ function AuthCallbackForm() {
       const next = searchParams.get("next");
 
       function redirectAfterSession() {
+        // Slice 3.1B-3N-5B.1: a new session is now established. Drop the PREVIOUS account's
+        // account-scoped client storage (drafts / arena progress / cached personal state) so an
+        // account switch cannot flash or leak the prior actor's data. The freshly-written Supabase
+        // session (sb-*) + device-wide prefs are preserved by clearAccountScopedStorage().
+        clearAccountScopedStorage();
         const locFromPath = pathname.startsWith("/ko") ? "ko" : "en";
         const loc =
           next != null && String(next).trim() !== "" ? inferLocaleFromNextParam(next) : locFromPath;
