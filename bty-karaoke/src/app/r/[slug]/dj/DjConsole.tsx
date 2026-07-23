@@ -81,6 +81,10 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   const [reconnecting, setReconnecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set ONLY when the secondary YouTube tab could not be opened (popup blocked). The
+  // Admin stays fully open and we surface an explicit "Open YouTube" link instead —
+  // the Admin tab is never navigated away by the handoff.
+  const [pendingYoutubeUrl, setPendingYoutubeUrl] = useState<string | null>(null);
 
   // Advanced bootstrap fallback (host master code) — hidden by default.
   const [showCode, setShowCode] = useState(false);
@@ -325,8 +329,34 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // READY TO PLAY card's subject — the deterministic ready-first promote target.
   async function playNext(nextId: string, nextVideoId: string) {
     if (!cred) return;
+    // Open the secondary YouTube tab SYNCHRONOUSLY within this click gesture so popup
+    // blockers permit it — a blank tab now, navigated to YouTube only AFTER Start
+    // succeeds. The Admin tab is NEVER navigated away: it stays mounted, so there is no
+    // Back / remount cycle and nothing can misread the still-playing song as completed.
+    // On any Start failure we close the blank tab; if the popup was blocked we keep
+    // Admin open and surface an explicit "Open YouTube" link.
+    const ytWin: Window | null = typeof window !== 'undefined' ? window.open('', '_blank') : null;
+    // Detach the opener so the YouTube tab can never navigate or script the Admin tab
+    // back (reverse-tabnabbing). We can't pass 'noopener' to window.open — that returns
+    // null and we'd lose the handle we need to navigate the tab — so we null it here.
+    if (ytWin) {
+      try {
+        ytWin.opener = null;
+      } catch {
+        /* some browsers disallow assigning opener — safe to ignore */
+      }
+    }
+    const closeYt = () => {
+      try {
+        ytWin?.close();
+      } catch {
+        /* ignore */
+      }
+    };
+    const url = safeYoutubeWatchUrl(nextVideoId);
     const cur = (data?.requests ?? []).find((r) => r.status === 'playing') ?? null;
     setError(null);
+    setPendingYoutubeUrl(null);
     setBusy(true);
     try {
       if (cur) {
@@ -336,10 +366,12 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           body: JSON.stringify({ currentId: cur.id }),
         });
         if (res.status === 401) {
+          closeYt();
           setPhase('disconnected');
           return;
         }
         if (!res.ok) {
+          closeYt();
           const body = await res.json().catch(() => ({}));
           setError(body?.error ?? '다음 곡을 재생하지 못했습니다.');
           return;
@@ -348,6 +380,7 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
         await loadQueue(cred);
         // The next singer must actually be on stage before we open their video.
         if (body.reason !== 'promoted') {
+          closeYt();
           setError('다음 준비된 참가자를 기다리는 중이에요.');
           return;
         }
@@ -358,20 +391,42 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           body: JSON.stringify({ requestId: nextId }),
         });
         if (res.status === 401) {
+          closeYt();
           setPhase('disconnected');
           return;
         }
         if (!res.ok) {
           // Precise server reason (충돌/없음/종료/실패) — never a generic error.
+          closeYt();
           const body = await res.json().catch(() => ({}));
           setError(body?.error ?? '재생 상태를 변경하지 못했습니다.');
           return;
         }
         await loadQueue(cred);
       }
-      const url = safeYoutubeWatchUrl(nextVideoId);
-      if (url) window.location.assign(url);
+      // Start already succeeded here — the queue is mutated and canonical. The YouTube
+      // handoff is best-effort UI ONLY: if it fails we keep the Admin tab open, expose an
+      // explicit link, and NEVER re-run Start or complete/skip the request.
+      if (url) {
+        if (ytWin && !ytWin.closed) {
+          try {
+            ytWin.location.replace(url);
+          } catch {
+            // Navigation threw (e.g. user closed the tab mid-flight) → drop the stray
+            // blank tab and fall back to the explicit link.
+            closeYt();
+            setPendingYoutubeUrl(url);
+          }
+        } else {
+          // Popup blocked, or the tab was closed before we could navigate it → keep Admin
+          // open, expose an explicit link. The song stays exactly as Start left it.
+          setPendingYoutubeUrl(url);
+        }
+      } else {
+        closeYt();
+      }
     } catch {
+      closeYt();
       setError('네트워크 오류 — 다시 시도해 주세요.');
     } finally {
       setBusy(false);
@@ -617,25 +672,60 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   }
 
   return (
-    <DjBoard
-      slug={slug}
-      displayName={displayName}
-      data={data}
-      newIds={newIds}
-      reconnecting={reconnecting}
-      busy={busy}
-      error={error}
-      dev={dev}
-      adminCred={data?.role === 'admin' ? cred : null}
-      onPlayNext={playNext}
-      onMoveNext={(id) => { void mutate(id, 'move_next'); }}
-      onRemove={(id) => { void mutate(id, 'remove'); }}
-      onReorder={reorder}
-      onAddSong={addSong}
-      onRefresh={refresh}
-      onDisconnect={disconnectManual}
-      onEndEvent={endEvent}
-      onStartNewEvent={startNewEvent}
-    />
+    <>
+      <DjBoard
+        slug={slug}
+        displayName={displayName}
+        data={data}
+        newIds={newIds}
+        reconnecting={reconnecting}
+        busy={busy}
+        error={error}
+        dev={dev}
+        adminCred={data?.role === 'admin' ? cred : null}
+        onPlayNext={playNext}
+        onMoveNext={(id) => { void mutate(id, 'move_next'); }}
+        onRemove={(id) => { void mutate(id, 'remove'); }}
+        onReorder={reorder}
+        onAddSong={addSong}
+        onRefresh={refresh}
+        onDisconnect={disconnectManual}
+        onEndEvent={endEvent}
+        onStartNewEvent={startNewEvent}
+      />
+      {/* Popup-blocked fallback: the song already started; the Admin stays open and the
+          operator opens YouTube explicitly (separate tab). Never navigates Admin away. */}
+      {pendingYoutubeUrl && (
+        <div
+          className="yt-fallback"
+          role="alert"
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            alignItems: 'center',
+            padding: '14px 16px calc(14px + env(safe-area-inset-bottom))',
+            background: 'rgba(10,12,20,0.96)',
+          }}
+        >
+          <span className="muted">YouTube가 자동으로 열리지 않았어요.</span>
+          <a
+            className="primary lg block"
+            href={pendingYoutubeUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setPendingYoutubeUrl(null)}
+            style={{ textAlign: 'center', maxWidth: 420 }}
+          >
+            ▶ YouTube에서 열기
+          </a>
+        </div>
+      )}
+    </>
   );
 }
