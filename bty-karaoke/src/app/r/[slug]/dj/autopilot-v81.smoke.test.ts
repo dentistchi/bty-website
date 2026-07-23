@@ -27,12 +27,15 @@ describe('V8.1 server — ready-first promotion + idempotent one-playing', () =>
     expect(p.slice(0, 900)).toContain("case 'promote'");
   });
 
-  it('promoteRequestToPlaying maps the one-playing index violation (23505) to already_playing', () => {
-    const f = rooms.slice(rooms.indexOf('async function promoteRequestToPlaying'), rooms.indexOf('async function promoteRequestToPlaying') + 900);
-    expect(f).toContain("=== '23505'");
-    expect(f).toContain("return 'already_playing'");
-    // Idempotent: the target already being the stage is success, not a failure.
-    expect(f).toMatch(/status === 'playing'\) return 'ok'/);
+  it('promoteRequestToPlaying delegates the atomic flip + one-playing guarantee to the begin_song RPC', () => {
+    const f = rooms.slice(rooms.indexOf('async function promoteRequestToPlaying'), rooms.indexOf('async function promoteRequestToPlaying') + 400);
+    // B1 metering: the waiting→playing flip + usage segment are now one atomic RPC.
+    expect(f).toContain("beginSong(roomId, requestId, 'promote')");
+    // The 23505 / one-playing / already_playing handling moved INTO the RPC — no app-level
+    // status='playing' update remains in this function.
+    expect(f).not.toContain("status: 'playing'");
+    // already_playing is still surfaced to callers via the outcome mapping.
+    expect(rooms).toContain("case 'already_playing':");
   });
 
   it('ensurePlaying is idempotent (already_active) and reports a precise conflict', () => {

@@ -23,6 +23,7 @@ import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { resolveHostEntry } from '@/domain/host-entry';
 import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import LegalLinks from '@/components/legal/LegalLinks';
+import HostTimezoneCapture from '@/components/host/HostTimezoneCapture';
 import FirstRoomForm from './FirstRoomForm';
 
 const NOTICES: Record<string, string> = {
@@ -113,6 +114,8 @@ export default async function HostEntryScreen({ notice, view }: { notice?: strin
   return (
     <main className="host-shell">
       <BrandHead />
+      {/* One-time IANA timezone capture (Daily FREE Karaoke Minutes) — authenticated shell. */}
+      <HostTimezoneCapture />
 
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div className="row" style={{ gap: '0.5rem', alignItems: 'center' }}>

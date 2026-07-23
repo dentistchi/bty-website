@@ -27,8 +27,27 @@ function full(r: Row) {
 //   listActiveRequests: from().select().eq().in().order()  → array
 //   getRequestOrderFields: from().select().eq().eq().maybeSingle() → {status}
 //   promoteRequestToPlaying: from().update().eq().eq().eq().select().maybeSingle()
+// Models karaoke_begin_song against the in-memory table: a playing row (idempotent
+// target OR race loser) → already_playing; a non-waiting target → not_waiting; else the
+// waiting→playing flip (respecting the simulated one-playing index). ensurePlaying /
+// promoteNextReady pre-resolve the canonical target, so begin only ever flips a valid
+// open-stage request — mirroring the RPC being called under the room advisory lock.
+function fakeBeginSong(reqId: string) {
+  const row = table.find((r) => r.id === reqId);
+  if (!row) return { outcome: 'not_found' };
+  if (table.some((r) => r.status === 'playing')) return { outcome: 'already_playing' };
+  if (row.status !== 'waiting') return { outcome: 'not_waiting' };
+  if (rejectSecondPlaying && table.some((r) => r.status === 'playing')) return { outcome: 'already_playing' };
+  row.status = 'playing';
+  return { outcome: 'ok' };
+}
+
 function makeDb() {
   return {
+    rpc(name: string, p: Record<string, unknown>) {
+      const data = name === 'karaoke_begin_song' ? fakeBeginSong(String(p.p_request_id)) : { outcome: 'invalid_action' };
+      return Promise.resolve({ data, error: null });
+    },
     from() {
       const ctx: { op: 'select' | 'update'; patch?: Partial<Row>; eqs: Record<string, unknown> } = {
         op: 'select',

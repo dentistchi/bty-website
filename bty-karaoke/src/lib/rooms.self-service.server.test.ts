@@ -1,116 +1,78 @@
-// Self-service server helpers. The full atomic guarantees (start collision →
-// exactly one winner, single stage per room) live in the advisory-locked
-// `start_karaoke_request` RPC + the partial unique index, and are exercised at
-// the DB / device-gate level (not unit-testable without live Postgres). Here we
-// pin the OUTCOME MAPPING that the app relies on around that RPC and the atomic
-// finish update.
+// Self-service server helpers, B1 metering. The full atomic guarantees (flip + usage
+// segment in one transaction, one-playing, canonical selection) live in the
+// karaoke_begin_song / karaoke_end_song RPCs and are exercised at the DB/device-gate
+// level (not unit-testable without live Postgres). Here we pin the OUTCOME MAPPING the
+// app relies on around those RPCs, via the metering seam.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const rpc = vi.fn();
-// A tiny chainable query-builder mock whose terminal call resolves `next`.
-const finishResult = { data: null as null | { id: string }, error: null as unknown };
-const orderRow = { data: null as null | { status: string }, error: null as unknown };
+const beginSong = vi.fn();
+const endSong = vi.fn();
+vi.mock('@/lib/metering.server', () => ({
+  beginSong: (...a: unknown[]) => beginSong(...a),
+  endSong: (...a: unknown[]) => endSong(...a),
+}));
 
-function chain(terminal: () => unknown) {
+// Queue reads used by startOwnRequest only on the 'ok' path.
+const activeRows: Array<{ id: string; status: string }> = [];
+function chain(rows: unknown) {
   const b: Record<string, unknown> = {};
-  for (const m of ['from', 'update', 'select', 'eq', 'in', 'order']) b[m] = () => b;
-  b.maybeSingle = async () => terminal();
-  b.single = async () => terminal();
+  for (const m of ['from', 'select', 'eq', 'in', 'order', 'limit']) b[m] = () => b;
+  b.maybeSingle = async () => ({ data: null, error: null });
+  b.then = (resolve: (v: { data: unknown; error: unknown }) => unknown) => Promise.resolve(resolve({ data: rows, error: null }));
   return b;
 }
-
-let mode: 'finishUpdate' | 'orderFields' = 'finishUpdate';
-vi.mock('@/lib/supabase.server', () => ({
-  karaokeDb: () => ({
-    rpc,
-    from: () =>
-      chain(() => (mode === 'finishUpdate' ? finishResult : orderRow)),
-  }),
-}));
+vi.mock('@/lib/supabase.server', () => ({ karaokeDb: () => ({ from: () => chain(activeRows) }) }));
 
 import { startOwnRequest, finishOwnRequest } from './rooms.server';
 
 beforeEach(() => {
-  rpc.mockReset();
-  finishResult.data = null;
-  orderRow.data = null;
+  beginSong.mockReset();
+  endSong.mockReset();
+  activeRows.length = 0;
 });
 
-describe('startOwnRequest — RPC outcome mapping', () => {
-  for (const outcome of ['not_found', 'not_waiting', 'not_next', 'already_playing'] as const) {
-    it(`passes '${outcome}' straight through (no queue read on failure)`, async () => {
-      rpc.mockResolvedValueOnce({ data: outcome, error: null });
+describe('startOwnRequest — begin_song(guest) outcome mapping', () => {
+  for (const [begin, mapped] of [
+    ['not_found', 'not_found'],
+    ['not_waiting', 'not_waiting'],
+    ['not_next', 'not_next'],
+    ['already_playing', 'already_playing'],
+    ['event_state_invalid', 'not_waiting'], // anomalies map to "did not start"
+    ['ownership_state_invalid', 'not_waiting'],
+  ] as const) {
+    it(`maps begin '${begin}' → StartResult '${mapped}' (no queue read on failure)`, async () => {
+      beginSong.mockResolvedValueOnce({ outcome: begin });
       const res = await startOwnRequest('room-1', 'req-1');
-      expect(res.outcome).toBe(outcome);
+      expect(res.outcome).toBe(mapped);
       expect(res.request).toBeUndefined();
     });
   }
 
-  it('throws if the RPC errors (surfaced, never a silent no-op)', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: new Error('boom') });
+  it('throws if begin_song surfaces an error (never a silent no-op)', async () => {
+    beginSong.mockRejectedValueOnce(new Error('boom'));
     await expect(startOwnRequest('room-1', 'req-1')).rejects.toThrow('boom');
   });
 });
 
-describe('finishOwnRequest — atomic, idempotent', () => {
-  it('ok when the conditional playing→completed update hit a row', async () => {
-    mode = 'finishUpdate';
-    finishResult.data = { id: 'req-1' };
-    const res = await finishOwnRequest('room-1', 'req-1');
-    expect(res.outcome).toBe('ok');
-  });
+describe('finishOwnRequest — end_song(complete) outcome mapping', () => {
+  for (const [end, mapped] of [
+    ['ok', 'ok'],
+    ['recovered', 'already_done'],
+    ['already_done', 'already_done'],
+    ['not_playing', 'not_playing'],
+    ['not_found', 'not_found'],
+    ['request_state_changed', 'not_playing'],
+  ] as const) {
+    it(`maps end '${end}' → FinishResult '${mapped}'`, async () => {
+      endSong.mockResolvedValueOnce({ outcome: end });
+      const res = await finishOwnRequest('room-1', 'req-1');
+      expect(res.outcome).toBe(mapped);
+    });
+  }
 
-  it('already_done when the row is already completed (double finish)', async () => {
-    // First terminal (the update) matches nothing; the follow-up status read
-    // returns 'completed'. We flip `mode` after the update call resolves.
-    let calls = 0;
-    const orig = orderRow;
-    mode = 'finishUpdate';
-    finishResult.data = null;
-    // getRequestOrderFields reads next → simulate by switching mode on 2nd terminal.
-    const dbMod = await import('@/lib/supabase.server');
-    vi.spyOn(dbMod, 'karaokeDb').mockReturnValue({
-      rpc,
-      from: () =>
-        chain(() => {
-          calls += 1;
-          return calls === 1 ? { data: null, error: null } : { data: { status: 'completed' }, error: null };
-        }),
-    } as never);
-    const res = await finishOwnRequest('room-1', 'req-1');
-    expect(res.outcome).toBe('already_done');
-    vi.restoreAllMocks();
-    void orig;
-  });
-
-  it('not_playing when the row exists but is waiting', async () => {
-    let calls = 0;
-    const dbMod = await import('@/lib/supabase.server');
-    vi.spyOn(dbMod, 'karaokeDb').mockReturnValue({
-      rpc,
-      from: () =>
-        chain(() => {
-          calls += 1;
-          return calls === 1 ? { data: null, error: null } : { data: { status: 'waiting' }, error: null };
-        }),
-    } as never);
-    const res = await finishOwnRequest('room-1', 'req-1');
-    expect(res.outcome).toBe('not_playing');
-    expect(res.from).toBe('waiting');
-    vi.restoreAllMocks();
-  });
-
-  it('not_found when the row does not exist at all', async () => {
-    let calls = 0;
-    const dbMod = await import('@/lib/supabase.server');
-    vi.spyOn(dbMod, 'karaokeDb').mockReturnValue({
-      rpc,
-      from: () => chain(() => { calls += 1; return { data: null, error: null }; }),
-    } as never);
-    const res = await finishOwnRequest('room-1', 'req-1');
-    expect(res.outcome).toBe('not_found');
-    expect(calls).toBe(2); // update miss, then status read miss
-    vi.restoreAllMocks();
+  it('throws if end_song surfaces an error', async () => {
+    endSong.mockRejectedValueOnce(new Error('boom'));
+    await expect(finishOwnRequest('room-1', 'req-1')).rejects.toThrow('boom');
   });
 });

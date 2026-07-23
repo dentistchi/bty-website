@@ -4,6 +4,7 @@ import { PRODUCT_NAME } from '@/lib/brand';
 import { HOST_COOKIE } from '@/lib/host-web-session.server';
 import { csrfTokenOrNull, CSRF_FIELD_NAME } from '@/lib/host-csrf.server';
 import { normalizeTheme } from '@/domain/branding';
+import HostTimezoneCapture from '@/components/host/HostTimezoneCapture';
 import AdminConsole from './AdminConsole';
 
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,8 @@ export default async function AdminPage({ params }: { params: Promise<{ slug: st
           <img className="room-logo room-logo-sm" src={logoUrl} alt={`${room.display_name} 로고`} width={40} height={40} />
         </div>
       )}
+      {/* One-time IANA timezone capture — only on the authenticated Host shell. */}
+      {hostToken && <HostTimezoneCapture />}
       {hostToken && hostCsrf && (
         <div className="row host-admin-signout" style={{ justifyContent: 'flex-end', gap: '0.5rem' }}>
           {/* Room Settings V1 — an authenticated owner reaches their Settings screen

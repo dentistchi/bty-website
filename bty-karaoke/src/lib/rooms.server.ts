@@ -2,6 +2,7 @@
 // service-role client; pure queue math lives in src/domain.
 
 import { karaokeDb } from './supabase.server';
+import { beginSong, endSong, type BeginOutcome } from './metering.server';
 import { credentialMatches } from './dj-auth.server';
 import { authorizeDevice } from './devices.server';
 import { accountHasRoomAccess, roomOwnerWorkspace } from './host-auth.server';
@@ -528,16 +529,46 @@ export async function setRequestStatus(
   const from = current.status as RequestStatus;
   if (!isValidTransition(from, action)) return { outcome: 'invalid', from };
 
-  const patch: Record<string, unknown> = { status: NEXT_STATUS[action] };
-  if (action === 'play' || action === 'complete') {
-    patch[NOW_COLUMN[action]] = new Date().toISOString();
+  // The full row after a transition (terminal rows are not in listActiveRequests).
+  const fetchRow = async (): Promise<KaraokeRequest | null> => {
+    const { data } = await db
+      .from('karaoke_requests')
+      .select('*')
+      .eq('id', requestId)
+      .eq('room_id', roomId)
+      .maybeSingle();
+    return (data as KaraokeRequest) ?? null;
+  };
+
+  // Metering hot-path transitions go through atomic RPCs (status flip + usage segment
+  // in one transaction). No app-level 'playing'/'completed'/'skipped(playing)' write.
+  if (action === 'play') {
+    const r = await beginSong(roomId, requestId, 'promote'); // Admin manual Start = promote
+    if (r.outcome !== 'ok') return { outcome: 'invalid', from };
+    const row = await fetchRow();
+    return row ? { outcome: 'ok', request: row, from } : { outcome: 'not_found' };
+  }
+  if (action === 'complete') {
+    const r = await endSong(roomId, requestId, 'complete');
+    if (r.outcome !== 'ok' && r.outcome !== 'recovered') return { outcome: 'invalid', from };
+    const row = await fetchRow();
+    return row ? { outcome: 'ok', request: row, from } : { outcome: 'not_found' };
+  }
+  if (action === 'skip' && from === 'playing') {
+    const r = await endSong(roomId, requestId, 'skip');
+    if (r.outcome !== 'ok' && r.outcome !== 'recovered') return { outcome: 'invalid', from };
+    const row = await fetchRow();
+    return row ? { outcome: 'ok', request: row, from } : { outcome: 'not_found' };
   }
 
+  // Non-metering queue ops stay app-level, HARD-GUARDED to a waiting source so they can
+  // never touch a playing song: skip-of-waiting (→skipped) and remove (→removed).
   const { data, error } = await db
     .from('karaoke_requests')
-    .update(patch)
+    .update({ status: NEXT_STATUS[action] })
     .eq('id', requestId)
     .eq('room_id', roomId)
+    .eq('status', 'waiting')
     .select('*')
     .single();
   if (error) throw error;
@@ -637,20 +668,19 @@ export interface StartResult {
 /**
  * Promote a guest's OWN waiting request to `playing` — but ONLY when it is the
  * canonical first waiting song AND the stage is open. Delegates the whole check
- * to the advisory-locked `start_karaoke_request` RPC so two simultaneous
- * "Start My Song" taps resolve to exactly one winner (the partial unique index
- * is the final backstop). Ownership is verified by the route before calling.
+ * to the advisory-locked karaoke_begin_song ('guest' mode) RPC so two simultaneous
+ * "Start My Song" taps resolve to exactly one winner (the one-playing partial unique
+ * index is the final backstop), and the usage segment opens atomically with the flip.
+ * Ownership is verified by the route before calling.
  */
 export async function startOwnRequest(
   roomId: string,
   requestId: string,
 ): Promise<StartResult> {
-  const { data, error } = await karaokeDb().rpc('start_karaoke_request', {
-    p_room_id: roomId,
-    p_request_id: requestId,
-  });
-  if (error) throw error;
-  const outcome = data as StartOutcome;
+  // B1 metering: guest self-start via the atomic karaoke_begin_song ('guest' mode) —
+  // enforces canonical first-waiting + stage-open inside the RPC and opens the segment.
+  const r = await beginSong(roomId, requestId, 'guest');
+  const outcome = beginToStartOutcome(r.outcome, { roomId, requestId });
   if (outcome !== 'ok') return { outcome };
 
   const active = await listActiveRequests(roomId);
@@ -676,23 +706,21 @@ export async function finishOwnRequest(
   roomId: string,
   requestId: string,
 ): Promise<FinishResult> {
-  const db = karaokeDb();
-  const { data, error } = await db
-    .from('karaoke_requests')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
-    .eq('id', requestId)
-    .eq('room_id', roomId)
-    .eq('status', 'playing')
-    .select('id')
-    .maybeSingle();
-  if (error) throw error;
-  if (data) return { outcome: 'ok' };
-
-  const cur = await getRequestOrderFields(roomId, requestId);
-  if (!cur) return { outcome: 'not_found' };
-  // Already completed (this guest or a fallback finished it) → idempotent success.
-  if (cur.status === 'completed') return { outcome: 'already_done', from: cur.status };
-  return { outcome: 'not_playing', from: cur.status };
+  // B1 metering: playing→completed + close its usage segment in ONE atomic RPC
+  // (karaoke_end_song, 'complete'). No app-level 'completed' write remains here.
+  const r = await endSong(roomId, requestId, 'complete');
+  switch (r.outcome) {
+    case 'ok':
+      return { outcome: 'ok', from: 'playing' };
+    case 'recovered': // already terminal; a stray open segment was closed (idempotent success)
+    case 'already_done':
+      return { outcome: 'already_done', from: 'completed' };
+    case 'not_found':
+      return { outcome: 'not_found' };
+    default:
+      // not_playing / request_state_changed / ownership_state_invalid / invalid_action
+      return { outcome: 'not_playing' };
+  }
 }
 
 export interface PassTurnResult {
@@ -723,27 +751,36 @@ export interface PromoteResult {
  * ALREADY the playing row, that is success (no error) — so an ensure/start of the
  * song currently on stage never reports a false failure.
  */
-async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<StartOutcome> {
-  const db = karaokeDb();
-  const { data, error } = await db
-    .from('karaoke_requests')
-    .update({ status: 'playing', started_at: new Date().toISOString() })
-    .eq('id', requestId)
-    .eq('room_id', roomId)
-    .eq('status', 'waiting')
-    .select('id')
-    .maybeSingle();
-  if (error) {
-    // The one-playing partial unique index rejected a second concurrent stage.
-    if ((error as { code?: string }).code === '23505') return 'already_playing';
-    throw error;
+/** Map a begin_song outcome onto the legacy StartOutcome the callers reason about. */
+function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: string }): StartOutcome {
+  switch (o) {
+    case 'ok':
+      return 'ok';
+    case 'already_playing':
+      return 'already_playing';
+    case 'not_next':
+      return 'not_next';
+    case 'not_found':
+      return 'not_found';
+    case 'not_waiting':
+      return 'not_waiting';
+    default:
+      // not_ready (promote race) / event_state_invalid / ownership_state_invalid /
+      // request_state_changed / shadow_metering_error → "did not start"; callers treat
+      // like not-ready and reconcile on the next read. Anomalies are logged.
+      if (o !== 'not_ready') {
+        console.warn('[metering] begin_song anomaly', { ...ctx, outcome: o });
+      }
+      return 'not_waiting';
   }
-  if (data) return 'ok';
-  // The row wasn't `waiting` — resolve why so callers can respond precisely.
-  const cur = await getRequestOrderFields(roomId, requestId);
-  if (!cur) return 'not_found';
-  if (cur.status === 'playing') return 'ok'; // idempotent — already on stage
-  return 'not_waiting';
+}
+
+// B1 metering: the waiting→playing flip + its usage segment are opened in ONE atomic
+// RPC (karaoke_begin_song, promote mode). No app-level 'playing' write remains here;
+// the one-playing index + canonical first-ready check live inside the RPC.
+async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<StartOutcome> {
+  const r = await beginSong(roomId, requestId, 'promote');
+  return beginToStartOutcome(r.outcome, { roomId, requestId });
 }
 
 export type EnsurePlayingOutcome =
