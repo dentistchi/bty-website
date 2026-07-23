@@ -122,12 +122,12 @@ describe('V8.1 Admin UI — ONE player surface, TV QUEUE PREP gone', () => {
 describe('V9.0 one-tap play — every transition, then navigate last', () => {
   it('playNext completes-current-or-starts-first, revalidates, THEN navigates (no fire-and-forget)', () => {
     const fn = djConsole.slice(djConsole.indexOf('async function playNext'), djConsole.indexOf('async function reorder'));
-    // Both branches await a server mutation and loadQueue BEFORE navigating the SEPARATE
-    // YouTube tab (Gate A fix — the Admin tab is never navigated away).
-    const navIdx = fn.indexOf('ytWin.location.replace(url)');
+    // Both branches await a server mutation and loadQueue BEFORE pushing the video to the
+    // same-origin Player over the Room BroadcastChannel (Gate A — Admin is never navigated).
+    const pushIdx = fn.indexOf('ch.postMessage(command)');
     const loadIdx = fn.indexOf('await loadQueue(cred)');
     expect(loadIdx).toBeGreaterThan(-1);
-    expect(navIdx).toBeGreaterThan(loadIdx); // secondary-tab navigation is LAST
+    expect(pushIdx).toBeGreaterThan(loadIdx); // the Player command is LAST
     // Admin tab is NEVER replaced.
     expect(fn).not.toContain('window.location.assign');
     // A song is playing → pass-turn (complete + promote next). No current → start.
