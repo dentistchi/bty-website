@@ -152,6 +152,18 @@ export default function OrbLiving({
 }: OrbLivingProps): React.ReactElement {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [failed, setFailed] = React.useState(false);
+  // Slice 3.1B-3N-5D.1C-H: explicit INTERACTIVE-READY contract. The Orb must never present as
+  // interactive before its first valid touch can be accepted. `interactiveReady` flips true ONLY at
+  // the END of the mount effect — after the canvas exists, the pointer handlers are attached, and the
+  // commit callback (onCommitRef) is live. It is derived from REAL state, never a fixed timeout. A
+  // one-shot, privacy-safe `orb-interactive-ready` signal (window event + a native-observable window
+  // flag + a <html> data attribute + a timestamp) is emitted at the same instant so the native shell
+  // can correlate web-ready vs first native touch (Gate H5) and prove whether a residual first-touch
+  // delay is web (H2) or native (H3). Note: in this codebase the pointer handlers already attach
+  // synchronously BEFORE the first rAF paint, so the Orb never *looks* ready before it *is* — this
+  // state makes that invariant explicit + testable and supplies the cross-seam correlation timestamp.
+  const [interactiveReady, setInteractiveReady] = React.useState(false);
+  const readySignalSentRef = React.useRef(false);
   // Keep the latest onCommit / holdMs / bodyShading / contrastFrame in refs so the
   // (size/fieldCells-scoped) draw effect never captures a stale closure AND is never
   // re-initialised by these props. Visual-only — no haptic (§G). bodyShading + contrastFrame
@@ -859,6 +871,22 @@ export default function OrbLiving({
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerCancel);
 
+    // ── INTERACTIVE-READY (5D.1C-H) ─────────────────────────────────────────────
+    // Handlers are attached + the commit callback is live → the first valid press/hold can now be
+    // accepted. Flip the state and emit the one-shot readiness signal (best-effort; never blocks).
+    setInteractiveReady(true);
+    if (!readySignalSentRef.current) {
+      readySignalSentRef.current = true;
+      try {
+        (window as unknown as { __btyOrbReadyAt?: number }).__btyOrbReadyAt =
+          typeof performance !== "undefined" ? performance.now() : 0;
+        document.documentElement.setAttribute("data-orb-interactive-ready", "1");
+        window.dispatchEvent(new CustomEvent("orb-interactive-ready"));
+      } catch {
+        /* signal is best-effort diagnostics — never block interactivity */
+      }
+    }
+
     return () => {
       if (raf) window.cancelAnimationFrame(raf);
       if (holdTimer) clearTimeout(holdTimer);
@@ -870,12 +898,17 @@ export default function OrbLiving({
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      // The Orb is leaving the tree → clear the native-observable readiness marker (the next mount
+      // re-emits). The window flag/event are one-shot diagnostics and are not reset here.
+      document.documentElement.removeAttribute("data-orb-interactive-ready");
     };
   }, [size, fieldCells]);
 
   return (
     <div
       aria-hidden
+      data-testid="orb-living"
+      data-orb-interactive-ready={interactiveReady ? "1" : "0"}
       onContextMenu={(e) => e.preventDefault()}
       style={{
         position: "relative",
