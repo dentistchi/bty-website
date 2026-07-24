@@ -146,6 +146,19 @@ describe("listHostActionReviewQueue", () => {
     expect(items).toHaveLength(1);
     expect(items[0].verificationMode).toBe("link");
   });
+
+  // Slice 3.1B-3N-5C.3: a submitted field_action (NULL Arena fields) belongs in the SAME queue as
+  // an arena_run_completion contract; a pending one is excluded by the status filter.
+  it("includes a submitted field_action (NULL run_id/scenario/pattern_family), excludes a pending one", async () => {
+    mockResolve.mockResolvedValue({ allowed: true, verificationMode: "hybrid" });
+    const admin = world([
+      base({ id: "fa1", action_type: "field_action", run_id: null, arena_scenario_id: null, pattern_family: null }),
+      base({ id: "fa-pending", action_type: "field_action", status: "pending" }),
+    ]);
+    const items = await listHostActionReviewQueue(admin as never, "host-a", "en");
+    expect(items.map((i) => i.actionContractId)).toEqual(["fa1"]); // pending excluded
+    expect(items[0].verificationMode).toBe("hybrid");
+  });
 });
 
 describe("getHostActionReviewDetail", () => {
@@ -158,6 +171,16 @@ describe("getHostActionReviewDetail", () => {
     expect(detail?.actionContractId).toBe("c1");
     expect(detail?.who).toBe("team");
     expect(detail?.learnerLabel).toBe("Nickname");
+    expect(detail?.sourceLabel).toBeNull(); // arena contract → no source label
+  });
+
+  it("field_action detail returns the 'Real-world application' source label + Who/What/How/When (NULL Arena fields OK)", async () => {
+    mockResolve.mockResolvedValue({ allowed: true, verificationMode: "hybrid" });
+    const admin = world([base({ id: "fa1", action_type: "field_action", run_id: null, arena_scenario_id: null, pattern_family: null })]);
+    const detail = await getHostActionReviewDetail(admin as never, "host-a", "fa1", "en");
+    expect(detail?.sourceLabel).toBe("Real-world application");
+    expect(detail?.who).toBe("team");
+    expect(detail?.what).toBe("check-in");
   });
 
   it("returns null (→ generic 404) when the resolver denies", async () => {

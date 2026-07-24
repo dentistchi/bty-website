@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+
+type Layer1Signal = { rule?: string; signal?: string };
 
 /**
  * Field Action producer surface (Slice 3.1B-3N-5C.3) — Today/Reality-owned, in-shell.
@@ -45,6 +47,7 @@ const COPY = {
     submit: "Submit",
     working: "Working…",
     validation: "Please complete Who, What, How, and When.",
+    reviseHeading: "Please make this action more specific.",
     error: "Something went wrong. Please try again.",
   },
   ko: {
@@ -67,6 +70,7 @@ const COPY = {
     submit: "제출",
     working: "처리 중…",
     validation: "누가 / 무엇을 / 어떻게 / 언제를 모두 입력해 주세요.",
+    reviseHeading: "행동을 조금 더 구체적으로 작성해 주세요.",
     error: "문제가 발생했습니다. 다시 시도해 주세요.",
   },
 } as const;
@@ -96,6 +100,14 @@ export default function FieldActionForm({
   const [pending, setPending] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Server Layer-1 "revise" signals — the form stays OPEN and the learner corrects + resubmits. */
+  const [reviseSignals, setReviseSignals] = useState<Layer1Signal[] | null>(null);
+
+  const whoRef = useRef<HTMLTextAreaElement>(null);
+  const whatRef = useRef<HTMLTextAreaElement>(null);
+  const howRef = useRef<HTMLTextAreaElement>(null);
+  const whenRef = useRef<HTMLTextAreaElement>(null);
+  const clearRevise = useCallback(() => setReviseSignals(null), []);
 
   const prime = useCallback((c: FieldActionContract) => {
     setContract(c);
@@ -163,6 +175,7 @@ export default function FieldActionForm({
     setInvalid(false);
     setPending(true);
     setError(null);
+    setReviseSignals(null);
     try {
       const res = await fetch("/api/bty/action-contract/submit-validation", {
         method: "POST",
@@ -171,7 +184,27 @@ export default function FieldActionForm({
         body: JSON.stringify({ contractId: contract.contractId, who: w, what: x, how: h, when: wh, raw_text: x }),
       });
       if (res.ok) {
-        onBack();
+        // res.ok alone is NOT success — submit-validation returns 200 for a Layer-1 "revise".
+        const d = (await res.json().catch(() => ({}))) as {
+          outcome?: string;
+          layer1_errors?: Layer1Signal[];
+          contract_state?: string;
+        };
+        const errs = Array.isArray(d.layer1_errors) ? d.layer1_errors : [];
+        if (d.outcome === "revise" || errs.length > 0) {
+          // Stay OPEN: keep values, show the server signals, focus the first related field.
+          setReviseSignals(errs.length > 0 ? errs : [{ rule: "R1", signal: "" }]);
+          setPending(false);
+          focusForRule(errs[0]?.rule);
+          return;
+        }
+        if (d.contract_state === "awaiting_qr" || d.contract_state === "terminal") {
+          onBack(); // canonical submitted (verified_at null) → Today Verification Pending
+          return;
+        }
+        // Ambiguous 200 without a canonical landing → treat as retryable, do not close.
+        setError(t.error);
+        setPending(false);
         return;
       }
       setError(t.error);
@@ -180,6 +213,11 @@ export default function FieldActionForm({
       setError(t.error);
       setPending(false);
     }
+  }
+
+  function focusForRule(rule?: string) {
+    const ref = rule === "R2" ? whatRef : rule === "R4" ? howRef : rule === "R1" || !rule ? whoRef : whenRef;
+    try { ref.current?.focus(); } catch { /* focus best-effort */ }
   }
 
   return (
@@ -221,10 +259,23 @@ export default function FieldActionForm({
             </div>
           ) : null}
 
-          <Field label={t.who} value={who} onChange={setWho} placeholder={t.whoPh} testid="field-action-who" disabled={pending} />
-          <Field label={t.what} value={what} onChange={setWhat} placeholder={t.whatPh} testid="field-action-what" disabled={pending} />
-          <Field label={t.how} value={how} onChange={setHow} placeholder={t.howPh} testid="field-action-how" disabled={pending} />
-          <Field label={t.when} value={when} onChange={setWhen} placeholder={t.whenPh} testid="field-action-when" disabled={pending} />
+          {reviseSignals && reviseSignals.length > 0 ? (
+            <div data-testid="field-action-revise" className="flex flex-col gap-1 rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2">
+              <span className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-amber-200/85">{t.reviseHeading}</span>
+              {reviseSignals
+                .filter((s) => typeof s.signal === "string" && s.signal.trim() !== "")
+                .map((s, i) => (
+                  <span key={`${s.rule ?? "r"}-${i}`} data-testid="field-action-revise-signal" className="text-xs leading-5 text-white/80">
+                    {s.signal}
+                  </span>
+                ))}
+            </div>
+          ) : null}
+
+          <Field label={t.who} value={who} onChange={(v) => { setWho(v); clearRevise(); }} placeholder={t.whoPh} testid="field-action-who" disabled={pending} inputRef={whoRef} />
+          <Field label={t.what} value={what} onChange={(v) => { setWhat(v); clearRevise(); }} placeholder={t.whatPh} testid="field-action-what" disabled={pending} inputRef={whatRef} />
+          <Field label={t.how} value={how} onChange={(v) => { setHow(v); clearRevise(); }} placeholder={t.howPh} testid="field-action-how" disabled={pending} inputRef={howRef} />
+          <Field label={t.when} value={when} onChange={(v) => { setWhen(v); clearRevise(); }} placeholder={t.whenPh} testid="field-action-when" disabled={pending} inputRef={whenRef} />
 
           {invalid ? (
             <span data-testid="field-action-validation" className="text-xs text-amber-300/80">{t.validation}</span>
@@ -255,6 +306,7 @@ function Field({
   placeholder,
   testid,
   disabled,
+  inputRef,
 }: {
   label: string;
   value: string;
@@ -262,11 +314,13 @@ function Field({
   placeholder: string;
   testid: string;
   disabled: boolean;
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/40">{label}</span>
       <textarea
+        ref={inputRef}
         data-testid={testid}
         value={value}
         placeholder={placeholder}
