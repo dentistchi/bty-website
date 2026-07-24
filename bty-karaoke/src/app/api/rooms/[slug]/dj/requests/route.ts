@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const guestName = parsed.data.guestName?.trim() || 'DJ';
 
-  const { request } = await addRequest({
+  const result = await addRequest({
     roomId: auth.room.id,
     guestName,
     youtubeVideoId: videoId,
@@ -81,6 +81,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     // V7.1: tag with the live event (ended would have been refused above).
     eventId: access.event?.id ?? null,
   });
+  // BUILD 18B: the DJ add path sends no idempotency key, so a conflict is impossible —
+  // this guard only narrows the union (defensive; never taken in practice).
+  if (result.outcome === 'conflict') {
+    return NextResponse.json({ error: 'Could not add the song.', code: 'INVALID_REQUEST' }, { status: 409 });
+  }
+  const { request } = result;
 
   // Return the fresh canonical queue so the DJ console updates immediately.
   const requests = await listActiveRequests(auth.room.id);

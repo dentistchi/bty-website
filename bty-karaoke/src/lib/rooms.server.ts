@@ -452,16 +452,41 @@ export interface AddRequestArgs {
   /** The canonical Event this request belongs to (V7.1). Null for legacy eventless
    *  rooms. This is the PERMANENT event scope for every stat/queue read. */
   eventId?: string | null;
+  /** BUILD 18B — client-minted key, stable across timeout/retry of ONE logical request.
+   *  When present the insert is replay-safe (partial unique index on
+   *  room+event+key). Null/undefined = legacy insert, no dedup. */
+  idempotencyKey?: string | null;
+}
+
+/**
+ * BUILD 18B — the outcome of a (possibly replayed) guest request insert.
+ *   created  — a brand-new queue row was inserted.
+ *   replayed — the same idempotency key already produced this row (SAME payload); the
+ *              existing row is returned so a timeout/retry never duplicates.
+ *   conflict — the same key was reused with a DIFFERENT song/guest; nothing is inserted
+ *              and the caller must surface a stable idempotency_conflict (never a silent
+ *              success).
+ */
+export type AddRequestResult =
+  | { outcome: 'created'; request: KaraokeRequest; status: GuestQueueStatus; activeCount: number }
+  | { outcome: 'replayed'; request: KaraokeRequest; status: GuestQueueStatus; activeCount: number }
+  | { outcome: 'conflict' };
+
+function is23505(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505';
 }
 
 /**
  * Insert a request at the next position and report the guest's live queue slot.
  * Position is computed across all of the room's rows (not just active ones) so
  * completed/removed rows never cause a position collision.
+ *
+ * BUILD 18B: when `idempotencyKey` is set, a unique-index (23505) collision means the
+ * same logical request already landed — we READ the existing row and return it as a
+ * `replayed` success when the song/guest match, or `conflict` when the key was reused
+ * for a different payload. No existing row is ever mutated.
  */
-export async function addRequest(
-  args: AddRequestArgs,
-): Promise<{ request: KaraokeRequest; status: GuestQueueStatus; activeCount: number }> {
+export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult> {
   const db = karaokeDb();
 
   const { data: allRows, error: posErr } = await db
@@ -485,15 +510,52 @@ export async function addRequest(
       status: 'waiting',
       session_id: args.sessionId ?? null,
       event_id: args.eventId ?? null,
+      idempotency_key: args.idempotencyKey ?? null,
     })
     .select('*')
     .single();
-  if (error) throw error;
-  const request = data as KaraokeRequest;
 
+  if (error) {
+    // A unique-index collision is the ONLY expected error when a key is present: the
+    // same logical request already landed (a retry after a lost response, or a
+    // concurrent duplicate). Read the existing row and replay it; anything else throws.
+    if (args.idempotencyKey && is23505(error)) {
+      const existing = await findRequestByKey(db, args.roomId, args.eventId ?? null, args.idempotencyKey);
+      if (!existing) throw error; // vanished under us — surface the real error
+      // The key must map to the SAME song + guest, else it was reused for a different
+      // request: never a silent success.
+      if (existing.youtube_video_id !== args.youtubeVideoId || existing.guest_name !== args.guestName) {
+        return { outcome: 'conflict' };
+      }
+      const active = await listActiveRequests(args.roomId, args.eventId ?? null);
+      const status = resolveGuestStatus(existing.id, toOrderEntries(active), existing.status);
+      return { outcome: 'replayed', request: existing, status, activeCount: active.length };
+    }
+    throw error;
+  }
+
+  const request = data as KaraokeRequest;
   const active = await listActiveRequests(args.roomId, args.eventId ?? null);
   const status = resolveGuestStatus(request.id, toOrderEntries(active), request.status);
-  return { request, status, activeCount: active.length };
+  return { outcome: 'created', request, status, activeCount: active.length };
+}
+
+/** Read the single row matching a room+event+key tuple (the unique-index bucket). */
+async function findRequestByKey(
+  db: ReturnType<typeof karaokeDb>,
+  roomId: string,
+  eventId: string | null,
+  key: string,
+): Promise<KaraokeRequest | null> {
+  let q = db
+    .from('karaoke_requests')
+    .select('*')
+    .eq('room_id', roomId)
+    .eq('idempotency_key', key);
+  q = eventId === null ? q.is('event_id', null) : q.eq('event_id', eventId);
+  const { data, error } = await q.maybeSingle();
+  if (error) throw error;
+  return (data as KaraokeRequest | null) ?? null;
 }
 
 const NOW_COLUMN: Record<'play' | 'complete', 'started_at' | 'completed_at'> = {

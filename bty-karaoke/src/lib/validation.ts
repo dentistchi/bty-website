@@ -16,6 +16,11 @@ export const CreateRequestSchema = z
     youtubeThumbnailUrl: z.string().url().max(600).optional(),
     // Manual fallback path:
     youtubeInput: z.string().trim().max(300).optional(),
+    // BUILD 18B — a client-minted key that is STABLE across timeout/retry of one logical
+    // request and NEW only for a genuinely new request. When present the server dedups on
+    // it (replay-safe); when absent behaviour is exactly the legacy insert. Optional so
+    // every existing caller keeps working.
+    idempotencyKey: z.string().trim().min(1).max(128).optional(),
   })
   .refine((v) => Boolean(v.youtubeVideoId || v.youtubeInput), {
     message: 'Select a song or paste a YouTube link',

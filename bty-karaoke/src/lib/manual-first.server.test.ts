@@ -52,7 +52,8 @@ describe('manual-first — request creation persists waiting, never playing', ()
       eventId: 'evt-1',
     });
     expect(capturedInsert?.status).toBe('waiting');
-    expect(res.request.status).toBe('waiting');
+    expect(res.outcome).toBe('created');
+    if (res.outcome !== 'conflict') expect(res.request.status).toBe('waiting');
   });
 
   it('addRequest NEVER inserts a playing/started row (no auto-stage on creation)', async () => {

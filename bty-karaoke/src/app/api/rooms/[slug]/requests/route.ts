@@ -40,16 +40,18 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   const room = await getPublicRoomBySlug(slug);
-  if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+  // BUILD 18B: every failure carries a STABLE machine-readable `code` so the guest client
+  // classifies retryable vs non-retryable without parsing human/HTTP strings.
+  if (!room) return NextResponse.json({ error: 'Room not found', code: 'ROOM_NOT_FOUND' }, { status: 404 });
   if (room.status !== 'open') {
-    return NextResponse.json({ error: 'This room is closed' }, { status: 409 });
+    return NextResponse.json({ error: 'This room is closed', code: 'ROOM_CLOSED' }, { status: 409 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON body', code: 'INVALID_REQUEST' }, { status: 400 });
   }
 
   // Canonical-event gate (V5 + V7): if this room is owned by an event, that one
@@ -71,7 +73,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const acceptance = await requestAcceptance(room.id);
   if (!acceptance.ok) {
     return NextResponse.json(
-      { error: 'The karaoke night is not open right now. Ask the host to start it.' },
+      {
+        error: 'The karaoke night is not open right now. Ask the host to start it.',
+        code: 'NIGHT_NOT_OPEN',
+      },
       { status: 409 },
     );
   }
@@ -79,7 +84,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const parsed = CreateRequestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: 'Validation failed', issues: parsed.error.flatten().fieldErrors },
+      { error: 'Validation failed', code: 'INVALID_REQUEST', issues: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
   }
@@ -89,12 +94,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     parsed.data.youtubeVideoId ?? parseYoutubeVideoId(parsed.data.youtubeInput ?? '');
   if (!videoId) {
     return NextResponse.json(
-      { error: 'Could not read a YouTube video from that link or ID' },
+      { error: 'Could not read a YouTube video from that link or ID', code: 'INVALID_REQUEST' },
       { status: 400 },
     );
   }
 
-  const { request, status, activeCount } = await addRequest({
+  const result = await addRequest({
     roomId: room.id,
     guestName: parsed.data.guestName,
     youtubeVideoId: videoId,
@@ -106,14 +111,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     // V7.1: permanently tag this request with its Event (access.event is the live
     // event here — an ended one would have been refused above). Null for legacy.
     eventId: access.event?.id ?? null,
+    // BUILD 18B: replay-safe when present (the client mints one key per logical request
+    // and reuses it on every timeout/retry).
+    idempotencyKey: parsed.data.idempotencyKey,
   });
 
+  // The same key reused for a DIFFERENT song/guest is never a silent success.
+  if (result.outcome === 'conflict') {
+    return NextResponse.json(
+      {
+        error: 'This request key was already used for a different song.',
+        code: 'IDEMPOTENCY_CONFLICT',
+      },
+      { status: 409 },
+    );
+  }
+
+  const { request, status, activeCount } = result;
   // Bounded capability so ONLY this device can later cancel this request.
   const cancelToken = await signCancelCapability(request.id);
 
   return NextResponse.json(
     {
       ok: true,
+      // `replayed` lets the client know a retry recovered the SAME row (no duplicate).
+      replayed: result.outcome === 'replayed',
       request,
       status,
       activeCount,
@@ -122,6 +144,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       positionInQueue: status.position,
       message: status.isUpNext ? `You're up next` : `You're #${status.position} in the queue`,
     },
-    { status: 201 },
+    // A replay returns 200 (already existed); a fresh insert returns 201.
+    { status: result.outcome === 'replayed' ? 200 : 201 },
   );
 }
