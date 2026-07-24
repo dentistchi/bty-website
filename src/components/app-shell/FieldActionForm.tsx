@@ -29,6 +29,8 @@ const COPY = {
     back: "Back",
     loading: "Loading…",
     notFound: "This isn't available.",
+    loadError: "Couldn't load this action. Try again.",
+    retry: "Try again",
     heading: "Apply this in real life",
     context: "From your learning:",
     who: "Who",
@@ -49,6 +51,8 @@ const COPY = {
     back: "뒤로",
     loading: "불러오는 중…",
     notFound: "이용할 수 없습니다.",
+    loadError: "이 행동을 불러오지 못했습니다. 다시 시도해 주세요.",
+    retry: "다시 시도",
     heading: "현실에서 적용하기",
     context: "학습에서:",
     who: "누가",
@@ -83,6 +87,8 @@ export default function FieldActionForm({
 
   const [loaded, setLoaded] = useState(false);
   const [contract, setContract] = useState<FieldActionContract | null>(null);
+  /** 'notfound' = safe unavailable (404); 'loaderror' = transient/retryable (500/network). */
+  const [initError, setInitError] = useState<"notfound" | "loaderror" | null>(null);
   const [who, setWho] = useState("");
   const [what, setWhat] = useState("");
   const [how, setHow] = useState("");
@@ -99,37 +105,50 @@ export default function FieldActionForm({
     setWhen(c.stepWhen ?? "");
   }, []);
 
+  // Initialize: create/resume by assignmentId (idempotent — a retry never duplicates) or load by
+  // contractId. 404 → unavailable (never leak); non-404 non-ok / network → retryable load error.
+  const initLoad = useCallback(async () => {
+    setLoaded(false);
+    setInitError(null);
+    try {
+      let res: Response | null = null;
+      if (assignmentId) {
+        res = await fetch("/api/bty/action-contract/field-action", {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ assignmentId }),
+        });
+      } else if (contractIdProp) {
+        res = await fetch(
+          `/api/bty/action-contract/field-action?contractId=${encodeURIComponent(contractIdProp)}`,
+          { credentials: "include", cache: "no-store" },
+        );
+      }
+      if (res && res.ok) {
+        const d = (await res.json()) as { contract?: FieldActionContract | null };
+        if (d?.contract) prime(d.contract);
+        else setInitError("loaderror");
+      } else if (res && res.status === 404) {
+        setInitError("notfound");
+      } else {
+        setInitError("loaderror");
+      }
+    } catch {
+      setInitError("loaderror");
+    }
+    setLoaded(true);
+  }, [assignmentId, contractIdProp, prime]);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      try {
-        let res: Response | null = null;
-        if (assignmentId) {
-          res = await fetch("/api/bty/action-contract/field-action", {
-            method: "POST",
-            credentials: "include",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ assignmentId }),
-          });
-        } else if (contractIdProp) {
-          res = await fetch(
-            `/api/bty/action-contract/field-action?contractId=${encodeURIComponent(contractIdProp)}`,
-            { credentials: "include", cache: "no-store" },
-          );
-        }
-        if (res && res.ok) {
-          const d = (await res.json()) as { contract?: FieldActionContract | null };
-          if (!cancelled && d?.contract) prime(d.contract);
-        }
-      } catch {
-        /* fail-soft → notFound */
-      }
-      if (!cancelled) setLoaded(true);
+      if (!cancelled) await initLoad();
     })();
     return () => {
       cancelled = true;
     };
-  }, [assignmentId, contractIdProp, prime]);
+  }, [initLoad]);
 
   async function onSubmit() {
     if (pending || !contract) return;
@@ -171,6 +190,18 @@ export default function FieldActionForm({
 
       {!loaded ? (
         <div data-testid="field-action-loading" className="h-16 animate-pulse rounded-lg bg-white/[0.03]" />
+      ) : initError === "loaderror" ? (
+        <div data-testid="field-action-loaderror" className="flex flex-col items-start gap-2">
+          <p className="text-sm text-white/60">{t.loadError}</p>
+          <button
+            type="button"
+            data-testid="field-action-retry"
+            onClick={() => { void initLoad(); }}
+            className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/[0.06]"
+          >
+            {t.retry}
+          </button>
+        </div>
       ) : !contract ? (
         <p data-testid="field-action-notfound" className="text-sm text-white/60">{t.notFound}</p>
       ) : (

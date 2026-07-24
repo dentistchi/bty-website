@@ -132,7 +132,13 @@ export async function ensureFieldActionDraft(
   const nowIso = params.nowIso ?? new Date().toISOString();
   const deadlineAt = new Date(Date.parse(nowIso) + FIELD_ACTION_DEFAULT_WINDOW_HOURS * 3600 * 1000).toISOString();
 
-  // 5. Insert the NON-ARENA draft. No arena_runs, no pattern_family, no scenario/choice.
+  // 5. Insert the NON-ARENA Field Action. No arena_runs, no pattern_family, no scenario/choice.
+  //    LIVE-CHECK-COMPATIBLE values (the live schema rejects draft/committed status, mode='field',
+  //    and le_activation_type='field_application' with 23514): status='pending', mode='foundry'
+  //    (honest — this action originates from Foundry learning), le_activation_type='micro_win'
+  //    (a legacy AIR type, INERT here since field_action approval never touches AIR). The
+  //    AUTHORITATIVE source discriminator stays `action_type='field_action'` — mode /
+  //    le_activation_type are compatibility/lineage only and are NEVER used to decide effects.
   const insertRow = {
     user_id: learnerUserId,
     session_id: sessionId,
@@ -140,12 +146,12 @@ export async function ensureFieldActionDraft(
     deadline_at: deadlineAt,
     action_id: `field_action:${progressId}`,
     action_type: FIELD_ACTION_ACTION_TYPE,
-    le_activation_type: "field_application",
+    le_activation_type: "micro_win",
     verification_type: "action_completed",
     weight: 1.0,
-    mode: "field",
+    mode: "foundry",
     chosen_at: nowIso,
-    status: "draft",
+    status: "pending",
     verification_mode: "hybrid",
     verification_tier: "mvp_open",
     verification_status: "pending",

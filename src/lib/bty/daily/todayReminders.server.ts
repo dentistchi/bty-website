@@ -70,6 +70,12 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
       const bucket = classifyActionContract(r.status);
       const title = (r.contract_description ?? "Action commitment").slice(0, 120);
       if (bucket === "action_due") {
+        // Slice 3.1B-3N-5C.3: a pending field_action (learner has not yet submitted) reopens the
+        // FOCUSED Field Action form to complete/resume; an arena contract keeps the in-shell Arena tab.
+        const dueDeepLink =
+          r.action_type === "field_action"
+            ? `/${locale}/app?tab=today&fieldActionContract=${r.id}`
+            : `/${locale}/app?tab=arena`;
         out.push({
           stableId: `action:${r.id}`,
           category: "ACTION_DUE",
@@ -77,7 +83,7 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
           state: classifyDue(r.deadline_at, now, tz),
           sourceTimestamp: r.deadline_at,
           roleContext: "learner",
-          canonicalDeepLink: `/${locale}/app?tab=arena`,
+          canonicalDeepLink: dueDeepLink,
         });
       } else if (bucket === "action_revision") {
         // The Host's revision note is owner-scoped learner-facing feedback (never AI, never a

@@ -103,6 +103,24 @@ describe("buildTodayReminders", () => {
     expect(out.every((r) => r.canonicalDeepLink.startsWith("/en/app"))).toBe(true);
   });
 
+  // Slice 3.1B-3N-5C.3: a PENDING field_action reminder must reopen the FOCUSED Field Action form
+  // (to complete/resume), not dead-end at the Arena tab; a non-field pending keeps the Arena tab.
+  it("field_action ACTION_DUE deep-links to the focused Field Action form; arena contracts keep the Arena tab", async () => {
+    const admin = mockAdmin({
+      contracts: [
+        { id: "fa1", status: "pending", action_type: "field_action", contract_description: "Apply: module", deadline_at: "2026-07-22T20:00:00Z" },
+        { id: "ar1", status: "pending", action_type: "arena_run_completion", contract_description: "arena action", deadline_at: "2026-07-22T20:00:00Z" },
+      ],
+    });
+    const out = await buildTodayReminders(admin, "u1", now, "UTC", "en");
+    const fa = out.find((r) => r.stableId === "action:fa1")!;
+    const ar = out.find((r) => r.stableId === "action:ar1")!;
+    expect(fa.category).toBe("ACTION_DUE");
+    expect(fa.canonicalDeepLink).toBe("/en/app?tab=today&fieldActionContract=fa1");
+    expect(ar.canonicalDeepLink).toBe("/en/app?tab=arena");
+    expect(out.every((r) => !r.canonicalDeepLink.includes("/bty-arena"))).toBe(true);
+  });
+
   it("(#10/#16) distinct Action contracts with identical titles stay distinct (unique stableIds), not merged", async () => {
     const admin = mockAdmin({
       contracts: [

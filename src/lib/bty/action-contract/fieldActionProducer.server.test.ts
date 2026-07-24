@@ -60,10 +60,17 @@ describe("ensureFieldActionDraft — assignment-anchored", () => {
     if (r.ok) { expect(r.created).toBe(true); expect(r.contract.actionType).toBe("field_action"); }
     const row = insert.mock.calls[0][0] as Record<string, unknown>;
     expect(row.action_type).toBe("field_action");
+    // LIVE-CHECK-COMPATIBLE values (23514 fix): pending / foundry / micro_win.
+    expect(row.status).toBe("pending");
+    expect(row.mode).toBe("foundry");
+    expect(row.le_activation_type).toBe("micro_win");
     expect(row.verification_mode).toBe("hybrid");
+    expect(row.verification_tier).toBe("mvp_open");
     expect(row.session_id).toBe(`field_action:${PROGRESS}`);
     expect(row.user_id).toBe(LEARNER);
     expect((row as { run_id?: unknown }).run_id).toBeUndefined();
+    expect((row as { arena_scenario_id?: unknown }).arena_scenario_id).toBeUndefined();
+    expect((row as { primary_choice_id?: unknown }).primary_choice_id).toBeUndefined();
     expect((row as { pattern_family?: unknown }).pattern_family).toBeUndefined();
     expect((row.details as { source?: Record<string, unknown> }).source).toMatchObject({
       kind: "foundry_field_action", assignment_id: ASSIGNMENT, event_id: EVENT, participant_id: PARTICIPANT, progress_id: PROGRESS,
