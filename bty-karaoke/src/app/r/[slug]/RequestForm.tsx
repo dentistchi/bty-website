@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
+import {
+  resolveSubmit,
+  submitCopy,
+  SUBMIT_COPY,
+  type SubmitPhase,
+  type SubmitErrorClass,
+} from '@/domain/request-submit';
 import { rankResults, rankSearchResults, isMrCandidate } from '@/domain/youtube-rank';
 import {
   type PerformanceStyle,
@@ -57,6 +64,23 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const [submittingKey, setSubmittingKey] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // BUILD 18B — the submit state machine + failure classification (server drives it via
+  // stable `code`s; the view only renders). `activeSubmission` holds the CURRENT logical
+  // request with its STABLE idempotency key — reused on every retry so a timeout/lost
+  // response can never create a duplicate queue row (the server replays the same row).
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
+  const [submitErrorClass, setSubmitErrorClass] = useState<SubmitErrorClass | null>(null);
+  const activeSubmission = useRef<{
+    logicalKey: string;
+    idempotencyKey: string;
+    payload: Record<string, unknown>;
+    displayTitle: string;
+    displayArtist: string | null;
+  } | null>(null);
+  // A client abort past this point makes the result UNCERTAIN (not failed): the server
+  // may have committed. The retry reuses the key so the server replays, never duplicates.
+  const SUBMIT_TIMEOUT_MS = 12000;
 
   // Every request this device submitted (presentation only — statuses come from
   // the server resolver). Persisted per room so a reload keeps continuity.
@@ -145,6 +169,11 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     e?.preventDefault();
     if (query.trim().length < 2) return;
     setError(null);
+    // A new search moves on from any prior submit status (retry button hides).
+    if (!submittingKey) {
+      setSubmitPhase('idle');
+      setSubmitErrorClass(null);
+    }
     setSearchState('searching');
     setResults([]);
     setRecos([]);
@@ -196,66 +225,120 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     }
   }
 
-  async function submit(
+  // Begin a NEW logical song request. Mints ONE fresh idempotency key; a genuinely new
+  // request (or one whose prior attempt was non-retryable) always gets a new key.
+  function submit(
     payload: Record<string, unknown>,
     displayTitle: string,
     displayArtist: string | null,
     key: string,
   ) {
-    if (submittingKey) return; // one in-flight request at a time (dedupe)
+    if (submittingKey) return; // one in-flight request at a time (double-tap dedupe)
     const name = normalizeGuestName(guestName);
     if (!isValidGuestName(name)) {
       setEditingName(true);
       setError('먼저 이름을 입력해 주세요');
       return;
     }
-    setSubmittingKey(key);
+    activeSubmission.current = {
+      logicalKey: key,
+      idempotencyKey: crypto.randomUUID(), // ONE key per new logical request
+      payload,
+      displayTitle,
+      displayArtist,
+    };
+    void doSubmit();
+  }
+
+  // Retry the CURRENT logical request — REUSES its idempotency key so the server replays
+  // an already-committed insert instead of duplicating it. Offered only for retryable /
+  // uncertain phases (the button is hidden otherwise).
+  function retrySubmit() {
+    if (submittingKey || !activeSubmission.current) return;
+    void doSubmit();
+  }
+
+  async function doSubmit() {
+    const sub = activeSubmission.current;
+    if (!sub) return;
+    const name = normalizeGuestName(guestName);
+    setSubmittingKey(sub.logicalKey);
+    setSubmitPhase('submitting');
+    setSubmitErrorClass(null);
     setError(null);
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), SUBMIT_TIMEOUT_MS);
     try {
       const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/requests`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        // V7 PART E: echo the Event this screen is scoped to so the server can
-        // reject a previous round's QR (EVENT_MISMATCH) or an ended one (EVENT_ENDED).
+        signal: controller.signal,
+        // V7 PART E: echo the Event this screen is scoped to so the server can reject a
+        // previous round's QR (EVENT_MISMATCH) or an ended one (EVENT_ENDED). BUILD 18B:
+        // the stable idempotencyKey makes the insert replay-safe under retry.
         body: JSON.stringify({
           guestName: name,
           searchQuery: resultQuery || undefined,
           ...(eventId ? { eventId } : {}),
-          ...payload,
+          idempotencyKey: sub.idempotencyKey,
+          ...sub.payload,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.error ?? '문제가 발생했어요');
+      const data = await res.json().catch(() => ({}));
+      const resolution = resolveSubmit({ status: res.status, code: data?.code });
+      if (resolution.phase === 'succeeded') {
+        onSubmitSuccess(data, sub, name);
         return;
       }
-      window.localStorage.setItem(guestNameKey(slug), name);
-      setGuestName(name);
-      setNameLocked(true);
-      setEditingName(false);
-
-      const req = data.request;
-      // Register the new owned request on the LATEST tracker (same ownership as a
-      // first-time submit: id + cancel/owner capability). Keep search/results as-is.
-      persistRequests((prev) =>
-        addMyRequest(prev, {
-          requestId: req.id,
-          cancelToken: data.cancelToken ?? null,
-          title: req?.youtube_title ?? req?.search_query ?? displayTitle,
-          artist: req?.youtube_channel_title ?? displayArtist,
-          videoId: req?.youtube_video_id ?? null,
-          submittedAt: Date.now(),
-        }),
-      );
-      // Brief "✓ 신청됨" on the card that was submitted.
-      setRequestedIds((prev) => [...prev, key]);
-      window.setTimeout(() => setRequestedIds((prev) => prev.filter((k) => k !== key)), 2500);
-      onSubmitted?.(); // event guest screen refreshes live presence immediately
-    } catch {
-      setError('네트워크 오류 — 다시 시도해 주세요');
+      setSubmitPhase(resolution.phase);
+      setSubmitErrorClass(resolution.errorClass);
+      // A non-retryable failure ends this logical request — a later attempt mints a fresh
+      // key (incl. idempotency_conflict, so a new key can succeed).
+      if (resolution.phase === 'failed_nonretryable') activeSubmission.current = null;
+    } catch (e) {
+      // Aborted by our timeout → UNCERTAIN (server may have committed). Any other throw is
+      // an offline/transport failure. Both KEEP activeSubmission so a retry reuses the key.
+      const aborted = e instanceof DOMException && e.name === 'AbortError';
+      const resolution = resolveSubmit(aborted ? { aborted: true } : { networkError: true });
+      setSubmitPhase(resolution.phase);
+      setSubmitErrorClass(resolution.errorClass);
     } finally {
+      window.clearTimeout(timer);
       setSubmittingKey(null);
     }
+  }
+
+  function onSubmitSuccess(
+    data: { request?: Record<string, unknown>; cancelToken?: string | null },
+    sub: { logicalKey: string; displayTitle: string; displayArtist: string | null },
+    name: string,
+  ) {
+    window.localStorage.setItem(guestNameKey(slug), name);
+    setGuestName(name);
+    setNameLocked(true);
+    setEditingName(false);
+
+    const req = data.request ?? {};
+    // Register the owned request on the LATEST tracker (addMyRequest dedups by requestId,
+    // so a replay of the SAME row never creates a second tile). Keep search/results as-is.
+    persistRequests((prev) =>
+      addMyRequest(prev, {
+        requestId: String(req.id),
+        cancelToken: data.cancelToken ?? null,
+        title: (req.youtube_title as string) ?? (req.search_query as string) ?? sub.displayTitle,
+        artist: (req.youtube_channel_title as string) ?? sub.displayArtist,
+        videoId: (req.youtube_video_id as string) ?? null,
+        submittedAt: Date.now(),
+      }),
+    );
+    setSubmitPhase('succeeded');
+    setSubmitErrorClass(null);
+    activeSubmission.current = null;
+    // Brief "✓ 신청됨" on the card that was submitted.
+    setRequestedIds((prev) => [...prev, sub.logicalKey]);
+    window.setTimeout(() => setRequestedIds((prev) => prev.filter((k) => k !== sub.logicalKey)), 2500);
+    onSubmitted?.(); // event guest screen refreshes live presence immediately
   }
 
   const requestItem = (item: YoutubeSearchItem) =>
@@ -282,6 +365,37 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     <>
       <div className="card">
         {error && <div className="banner error">{error}</div>}
+
+        {/* BUILD 18B — submit status. Text always accompanies the spinner; the retry button
+            appears ONLY for retryable / uncertain phases (reuses the same idempotency key). */}
+        {submitPhase === 'submitting' && (
+          <div className="banner" role="status" aria-live="polite">
+            {SUBMIT_COPY.submitting}
+          </div>
+        )}
+        {submitErrorClass &&
+          (submitPhase === 'failed_retryable' ||
+            submitPhase === 'failed_nonretryable' ||
+            submitPhase === 'uncertain') && (
+            <div
+              className={`banner${submitPhase === 'uncertain' ? '' : ' error'}`}
+              role="alert"
+              aria-live="assertive"
+            >
+              {submitCopy(submitErrorClass)}
+              {(submitPhase === 'failed_retryable' || submitPhase === 'uncertain') && (
+                <button
+                  type="button"
+                  className="linkish"
+                  style={{ marginLeft: 8 }}
+                  onClick={retrySubmit}
+                  disabled={submittingKey !== null}
+                >
+                  {SUBMIT_COPY.retry}
+                </button>
+              )}
+            </div>
+          )}
 
         {/* Identity — entered once, then a compact row */}
         {nameLocked && !editingName ? (
