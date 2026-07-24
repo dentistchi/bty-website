@@ -26,6 +26,7 @@ type Detail = {
   what: string | null;
   how: string | null;
   stepWhen: string | null;
+  sourceLabel: string | null;
 };
 
 const REVISION_NOTE_MAX = 500;
@@ -227,6 +228,11 @@ export default function HostActionReviewDetail({
             </span>
           </div>
           <p className="text-xs text-white/50">{t.intro}</p>
+          {detail.sourceLabel ? (
+            <span data-testid="host-action-review-source" className="self-start rounded-md border border-emerald-400/25 bg-emerald-400/[0.06] px-2 py-0.5 text-[0.66rem] text-emerald-200/80">
+              {detail.sourceLabel}
+            </span>
+          ) : null}
           {detail.actionSummary ? (
             <p className="text-sm leading-6 text-white/80">{detail.actionSummary}</p>
           ) : null}

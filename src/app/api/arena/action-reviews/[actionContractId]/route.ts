@@ -109,6 +109,10 @@ export async function POST(
           { status: 409 },
         );
         break;
+      case "unsupported_source":
+        // Fail-closed: an unrecognized contract source is never mutated.
+        out = NextResponse.json({ ok: false, error: "UNSUPPORTED_SOURCE" }, { status: 409 });
+        break;
       // unauthorized + not_found both collapse to a generic 404 (existence never leaked).
       case "unauthorized":
       case "not_found":

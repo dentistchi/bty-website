@@ -13,6 +13,7 @@ import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFol
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
+import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
@@ -1258,6 +1259,12 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // detail route re-runs the authority resolver — a queue appearance never grants authority.
   const [actionReviewId, setActionReviewId] = useState<string | null>(null);
 
+  // Field Action producer deep links (Slice 3.1B-3N-5C.3), both Today-owned + in-shell:
+  //   `?tab=today&fieldActionEvent=<foundryEventId>`   → create/open the learner's Field Action for a completed module
+  //   `?tab=today&fieldActionContract=<contractId>`     → edit + resubmit a rejected Field Action
+  const [fieldActionEventId, setFieldActionEventId] = useState<string | null>(null);
+  const [fieldActionContractId, setFieldActionContractId] = useState<string | null>(null);
+
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
   // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
   // are honored (unknown → no-op, default stays Today); a review id is accepted only in
@@ -1294,6 +1301,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     } catch {
       actionReviewParam = null;
     }
+    let fieldActionEventParam: string | null = null;
+    let fieldActionContractParam: string | null = null;
+    try {
+      const sp = new URLSearchParams(search);
+      fieldActionEventParam = sp.get("fieldActionEvent");
+      fieldActionContractParam = sp.get("fieldActionContract");
+    } catch {
+      fieldActionEventParam = null;
+      fieldActionContractParam = null;
+    }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
     const wantsMyLearning = viewParam === "my-learning";
     const wantsReflections = viewParam === "reflections";
@@ -1301,6 +1318,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
     const validActionReview =
       actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
+    const validFieldActionEvent =
+      fieldActionEventParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionEventParam) ? fieldActionEventParam : null;
+    const validFieldActionContract =
+      fieldActionContractParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionContractParam) ? fieldActionContractParam : null;
     // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
     // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
     const hostLink = parseHostDeepLink(search);
@@ -1311,10 +1332,20 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       !wantsReflections &&
       !validFollowup &&
       !validActionReview &&
+      !validFieldActionEvent &&
+      !validFieldActionContract &&
       !hostLink
     )
       return;
-    if (validActionReview) {
+    if (validFieldActionEvent) {
+      // Foundry "Apply this in real life" → open the Today-owned Field Action producer.
+      setTab("today");
+      setFieldActionEventId(validFieldActionEvent);
+    } else if (validFieldActionContract) {
+      // Today "Needs revision" for a field_action → open the focused form to edit + resubmit.
+      setTab("today");
+      setFieldActionContractId(validFieldActionContract);
+    } else if (validActionReview) {
       // Canonical Today Action-review deep link → open the read-only in-shell review detail.
       setTab("today");
       setActionReviewId(validActionReview);
@@ -1351,6 +1382,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("entry");
       params.delete("followup");
       params.delete("actionReview");
+      params.delete("fieldActionEvent");
+      params.delete("fieldActionContract");
       params.delete("event");
       params.delete("section");
       params.delete("focus");
@@ -1555,7 +1588,18 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
-            {actionReviewId ? (
+            {fieldActionEventId || fieldActionContractId ? (
+              // Slice 3.1B-3N-5C.3: Today-owned Field Action producer (author / resubmit). Back → Today.
+              <FieldActionForm
+                locale={locale}
+                eventId={fieldActionEventId}
+                contractId={fieldActionContractId}
+                onBack={() => {
+                  setFieldActionEventId(null);
+                  setFieldActionContractId(null);
+                }}
+              />
+            ) : actionReviewId ? (
               // Slice 3.1B-3N Phase 5B: read-only Host review detail, in-shell. Back returns to Today.
               <HostActionReviewDetail
                 locale={locale}

@@ -61,12 +61,12 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
   try {
     const { data } = await admin
       .from("bty_action_contracts")
-      .select("id, contract_description, deadline_at, status, revision_note")
+      .select("id, contract_description, deadline_at, status, revision_note, action_type")
       .eq("user_id", userId)
       .in("status", REMINDER_CONTRACT_STATUSES as unknown as string[])
       .not("deadline_at", "is", null);
     const out: TodayReminder[] = [];
-    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string; status: string; revision_note: string | null }>) {
+    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string; status: string; revision_note: string | null; action_type: string | null }>) {
       const bucket = classifyActionContract(r.status);
       const title = (r.contract_description ?? "Action commitment").slice(0, 120);
       if (bucket === "action_due") {
@@ -83,6 +83,12 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
         // The Host's revision note is owner-scoped learner-facing feedback (never AI, never a
         // guess). Carried only for this rejected contract's owner.
         const note = typeof r.revision_note === "string" && r.revision_note.trim() !== "" ? r.revision_note.trim() : null;
+        // Slice 3.1B-3N-5C.3: a rejected field_action opens the FOCUSED Field Action form to edit +
+        // resubmit; an arena contract keeps the existing in-shell Arena tab link (no legacy /bty-arena).
+        const canonicalDeepLink =
+          r.action_type === "field_action"
+            ? `/${locale}/app?tab=today&fieldActionContract=${r.id}`
+            : `/${locale}/app?tab=arena`;
         out.push({
           stableId: `action:${r.id}`,
           category: "ACTION_REVISION",
@@ -90,7 +96,7 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
           state: "needs_revision", // by stored status, never a deadline-derived "overdue"
           sourceTimestamp: r.deadline_at,
           roleContext: "learner",
-          canonicalDeepLink: `/${locale}/app?tab=arena`,
+          canonicalDeepLink,
           note,
         });
       }

@@ -26,6 +26,12 @@ export type HostActionReviewDetail = HostActionReviewQueueItem & {
   what: string | null;
   how: string | null;
   stepWhen: string | null;
+  /**
+   * Human source label (5C.3): "Real-world application" for a Foundry Field Action, null for an
+   * Arena-sourced contract. Derived from the server-authored `action_type` — NEVER exposes the
+   * raw action_type, pattern_family, scenario id, or any internal source identifier.
+   */
+  sourceLabel: string | null;
 };
 
 /** Row shape the service sorts on before projecting to DTOs (kept out of the client DTO). */

@@ -38,9 +38,21 @@ const CONTRACT = "contract-a";
 
 type RpcRow = Record<string, unknown>;
 
-function makeAdmin(rpcRow: RpcRow | null, rpcError: { message: string } | null = null) {
+function makeAdmin(
+  rpcRow: RpcRow | null,
+  rpcError: { message: string } | null = null,
+  actionType: string | null = "arena_run_completion",
+) {
   const rpc = vi.fn().mockResolvedValue({ data: rpcRow ? [rpcRow] : [], error: rpcError });
-  return { admin: { rpc } as never, rpc };
+  // Source-load (5C.3): admin.from("bty_action_contracts").select("action_type").eq(...).maybeSingle()
+  const from = vi.fn(() => ({
+    select: () => ({
+      eq: () => ({
+        maybeSingle: () => Promise.resolve({ data: actionType === null ? null : { action_type: actionType }, error: null }),
+      }),
+    }),
+  }));
+  return { admin: { rpc, from } as never, rpc, from };
 }
 
 function appliedApproveRow(overrides: RpcRow = {}): RpcRow {
@@ -124,7 +136,10 @@ describe("resolveActionReviewDecision — authority", () => {
       order.push("rpc");
       return { data: [appliedApproveRow()], error: null };
     });
-    await resolveActionReviewDecision({ rpc } as never, {
+    const from = vi.fn(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { action_type: "arena_run_completion" }, error: null }) }) }),
+    }));
+    await resolveActionReviewDecision({ rpc, from } as never, {
       actorUserId: HOST,
       actionContractId: CONTRACT,
       decision: "approve",
@@ -292,5 +307,60 @@ describe("resolveActionReviewDecision — side-effect gate + idempotency", () =>
     const r = await resolveActionReviewDecision(admin, { actorUserId: HOST, actionContractId: CONTRACT, decision: "approve" });
     expect(r).toEqual({ ok: false, code: "unauthorized" });
     expect(mockLevel).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolveActionReviewDecision — source-aware dispatch (5C.3)", () => {
+  it("arena_run_completion approval runs the FULL existing Arena chain", async () => {
+    const { admin } = makeAdmin(appliedApproveRow(), null, "arena_run_completion");
+    const r = await resolveActionReviewDecision(admin, { actorUserId: HOST, actionContractId: CONTRACT, decision: "approve" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.completionApplied).toBe(true);
+    expect(mockCompleteRun).toHaveBeenCalledTimes(1);
+    expect(mockLevel).toHaveBeenCalledTimes(1);
+    expect(mockReward).toHaveBeenCalledTimes(1);
+    expect(mockAir).toHaveBeenCalledTimes(1);
+  });
+
+  it("field_action approval runs ZERO Arena effects (no run/Level/XP/AIR)", async () => {
+    const { admin } = makeAdmin(appliedApproveRow(), null, "field_action");
+    const r = await resolveActionReviewDecision(admin, { actorUserId: HOST, actionContractId: CONTRACT, decision: "approve" });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.completionApplied).toBe(false); // approved + audited, but NO Arena effects
+    expect(mockCompleteRun).not.toHaveBeenCalled();
+    expect(mockLevel).not.toHaveBeenCalled(); // no Arena Level sentinel/increment
+    expect(mockReward).not.toHaveBeenCalled(); // no Weekly/Core Arena XP
+    expect(mockAir).not.toHaveBeenCalled(); // no AIR activation/verification
+  });
+
+  it("unknown/unsupported action_type is rejected BEFORE mutation (RPC never called)", async () => {
+    const { admin, rpc } = makeAdmin(appliedApproveRow(), null, "some_future_source");
+    const r = await resolveActionReviewDecision(admin, { actorUserId: HOST, actionContractId: CONTRACT, decision: "approve" });
+    expect(r).toEqual({ ok: false, code: "unsupported_source" });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(mockLevel).not.toHaveBeenCalled();
+  });
+
+  it("missing contract at source-load → not_found before RPC", async () => {
+    const { admin, rpc } = makeAdmin(appliedApproveRow(), null, null);
+    const r = await resolveActionReviewDecision(admin, { actorUserId: HOST, actionContractId: CONTRACT, decision: "approve" });
+    expect(r).toEqual({ ok: false, code: "not_found", currentStatus: null });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("request_revision on a field_action triggers NO effects (source-neutral, no completion chain)", async () => {
+    const { admin } = makeAdmin(
+      appliedApproveRow({ decision: "request_revision", resulting_status: "rejected", revision_note: "redo" }),
+      null,
+      "field_action",
+    );
+    const r = await resolveActionReviewDecision(admin, {
+      actorUserId: HOST, actionContractId: CONTRACT, decision: "request_revision", revisionNote: "redo",
+    });
+    expect(r.ok).toBe(true);
+    expect(mockCompleteRun).not.toHaveBeenCalled();
+    expect(mockLevel).not.toHaveBeenCalled();
+    expect(mockReward).not.toHaveBeenCalled();
+    expect(mockAir).not.toHaveBeenCalled();
   });
 });

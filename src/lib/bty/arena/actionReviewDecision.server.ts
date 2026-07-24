@@ -59,9 +59,18 @@ export type ActionReviewDecisionResult =
         | "unauthorized"
         | "already_resolved"
         | "not_found"
+        | "unsupported_source"
         | "server_error";
       currentStatus?: string | null;
     };
+
+/**
+ * Server-recognized contract sources for Action Review (5C.3). `action_type` is the
+ * AUTHORITATIVE, server-authored discriminator — never inferred from run_id/session_id and
+ * never trusted from the client. An unsupported source fails closed BEFORE any mutation.
+ */
+const SUPPORTED_ACTION_TYPES = new Set(["arena_run_completion", "field_action"]);
+const ARENA_ACTION_TYPE = "arena_run_completion";
 
 type ReviewRpcRow = {
   transition_applied: boolean;
@@ -199,6 +208,29 @@ export async function resolveActionReviewDecision(
     return { ok: false, code: "unauthorized" };
   }
 
+  // 2b. Source-aware precheck (5C.3): load the canonical action_type from server truth and
+  // fail closed on an unsupported source BEFORE calling the RPC — no status change, no audit,
+  // no effects. Approve effects are later dispatched by THIS server-measured source, never the
+  // client's. (Arena approval keeps the full 5C chain; field_action gets none.)
+  const { data: srcRow, error: srcErr } = await admin
+    .from("bty_action_contracts")
+    .select("action_type")
+    .eq("id", actionContractId)
+    .maybeSingle();
+  if (srcErr) return { ok: false, code: "server_error" };
+  const actionType =
+    typeof (srcRow as { action_type?: string } | null)?.action_type === "string"
+      ? (srcRow as { action_type: string }).action_type
+      : null;
+  if (actionType == null) return { ok: false, code: "not_found", currentStatus: null };
+  if (!SUPPORTED_ACTION_TYPES.has(actionType)) {
+    console.error("[action_review_decision] unsupported action_type — fail closed", {
+      contract: actionContractId.slice(0, 8),
+      actionType,
+    });
+    return { ok: false, code: "unsupported_source" };
+  }
+
   // 3. Canonical atomic transition + audit (authority revalidated inside the RPC too).
   const { data, error } = await admin.rpc("bty_resolve_action_review", {
     p_action_contract_id: actionContractId,
@@ -236,10 +268,14 @@ export async function resolveActionReviewDecision(
     return { ok: false, code: "already_resolved", currentStatus: row.resulting_status ?? null };
   }
 
-  // 4a. Side-effect gate: verified-completion chain ONLY on applied APPROVE. The chain
-  // operates on the LEARNER (run/XP/AIR/Level owner = contract owner), never the Host.
+  // 4a. SOURCE-AWARE effect dispatch (5C.3), on applied APPROVE only:
+  //   arena_run_completion → full existing Arena verified-completion chain (LEARNER-scoped).
+  //   field_action        → NO Arena effects at all. The approved contract state + verified_at
+  //                         + the immutable Host decision audit ARE the canonical Field Action
+  //                         evidence. No arena_runs completion, no Level sentinel/increment, no
+  //                         Weekly/Core Arena XP, no le_activation_log/le_verification_log (AIR).
   let completionApplied = false;
-  if (validated.decision === "approve") {
+  if (validated.decision === "approve" && actionType === ARENA_ACTION_TYPE) {
     const learnerUserId =
       typeof row.learner_user_id === "string" && row.learner_user_id.trim() !== ""
         ? row.learner_user_id.trim()

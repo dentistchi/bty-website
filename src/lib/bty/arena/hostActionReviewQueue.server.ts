@@ -28,7 +28,13 @@ const MEMBERSHIP_COLS = "id, user_id, organization_id, status";
 const CONTRACT_QUEUE_COLS =
   "id, user_id, contract_description, submitted_at, deadline_at, verification_mode, status, verified_at, created_at";
 const CONTRACT_DETAIL_COLS =
-  "id, user_id, who, what, how, step_when, contract_description, submitted_at, deadline_at, verification_mode, status, verified_at, created_at";
+  "id, user_id, who, what, how, step_when, contract_description, submitted_at, deadline_at, verification_mode, status, verified_at, created_at, action_type";
+
+/** Human source label only — never the raw action_type / scenario / pattern (5C.3). */
+function sourceLabel(actionType: string | null, locale: string): string | null {
+  if (actionType === "field_action") return locale === "ko" ? "현실 적용" : "Real-world application";
+  return null;
+}
 
 function statusLabel(locale: string): string {
   return locale === "ko" ? "검토를 기다리는 중" : "Awaiting your review";
@@ -209,6 +215,7 @@ export async function getHostActionReviewDetail(
       submitted_at: string | null;
       deadline_at: string | null;
       verification_mode: string | null;
+      action_type: string | null;
     }>();
   if (!row) return null;
 
@@ -225,5 +232,6 @@ export async function getHostActionReviewDetail(
     what: row.what ?? null,
     how: row.how ?? null,
     stepWhen: row.step_when ?? null,
+    sourceLabel: sourceLabel(row.action_type ?? null, locale),
   };
 }
