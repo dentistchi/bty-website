@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
             sourceTimestamp: r.sourceTimestamp,
             roleContext: r.roleContext,
             canonicalDeepLink: r.canonicalDeepLink,
+            // Owner-scoped learner-facing Host revision note (ACTION_REVISION only); null otherwise.
+            note: r.note ?? null,
           })),
           hostAttention: hostAttention.map((h) => ({
             stableId: h.stableId,

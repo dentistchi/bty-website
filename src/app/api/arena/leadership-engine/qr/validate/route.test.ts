@@ -27,9 +27,14 @@ vi.mock("@/lib/bty/arena/reflectionRewards.server", () => ({
 
 const adminFrom = vi.fn();
 
+const adminRpc = vi
+  .fn()
+  .mockResolvedValue({ data: [{ applied: true, band_changed: false }], error: null });
+
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
     from: adminFrom,
+    rpc: adminRpc,
   })),
 }));
 
@@ -114,7 +119,9 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
               eq: vi.fn().mockResolvedValue({ error: null }),
               in: vi.fn().mockReturnValue({
                 not: vi.fn().mockReturnValue({
-                  is: vi.fn().mockResolvedValue({ error: null }),
+                  is: vi.fn().mockReturnValue({
+                    select: vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null }),
+                  }),
                 }),
               }),
             }),
@@ -271,7 +278,9 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
         eq: vi.fn().mockReturnValue({
           in: vi.fn().mockReturnValue({
             not: vi.fn().mockReturnValue({
-              is: vi.fn().mockResolvedValue({ error: null }),
+              is: vi.fn().mockReturnValue({
+                select: vi.fn().mockResolvedValue({ data: [{ id: "c1" }], error: null }),
+              }),
             }),
           }),
         }),
@@ -351,6 +360,76 @@ describe("POST /api/arena/leadership-engine/qr/validate", () => {
     );
     expect(mockApplyArenaRunRewardsOnVerifiedCompletion).toHaveBeenCalledTimes(1);
     expect(mockReflectContractVerificationToAir).toHaveBeenCalledTimes(1);
+  });
+
+  it("zero-row CAS (lost the race) → no completion effects, 409 already resolved (Refinement 5A)", async () => {
+    // The read passes awaitingVerification, but the CAS updates ZERO rows because a
+    // concurrent verifier (e.g. Host Approve) already flipped verified_at. Absence of an
+    // update error is NOT proof a row changed — Level/XP/AIR must NOT run.
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            not: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({
+                select: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+    adminFrom.mockImplementation((table: string) => {
+      if (table === "arena_runs") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: "owner" }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "bty_action_contracts") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: {
+                    ...contractRow,
+                    status: "submitted",
+                    validation_approved_at: new Date().toISOString(),
+                    verified_at: null,
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+          update,
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      };
+    });
+    const token = signArenaActionLoopToken({
+      sessionId: "run1",
+      userId: "owner",
+      actionId: "arena_action_loop:run1",
+      issuedAt: Date.now(),
+      contractId: "c1",
+    });
+    const res = await POST(req({ arenaActionLoopToken: token }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("contract_already_resolved");
+    expect(mockApplyArenaRunRewardsOnVerifiedCompletion).not.toHaveBeenCalled();
+    expect(mockReflectContractVerificationToAir).not.toHaveBeenCalled();
+    expect(adminRpc).not.toHaveBeenCalled();
   });
 
   it("refuses a pending (unvalidated) contract — QR scan does not complete the action", async () => {

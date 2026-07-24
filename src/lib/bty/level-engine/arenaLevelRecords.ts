@@ -15,13 +15,6 @@ export const LEVEL_DECREASE_ABANDON_THRESHOLD = 2;
 
 const BAND_ORDER = ["easy", "mid", "hard", "extreme"] as const;
 
-function nextBandUp(current: string): string {
-  const i = BAND_ORDER.indexOf(current as (typeof BAND_ORDER)[number]);
-  if (i < 0) return "mid";
-  if (i >= BAND_ORDER.length - 1) return BAND_ORDER[BAND_ORDER.length - 1]!;
-  return BAND_ORDER[i + 1]!;
-}
-
 function prevBandDown(current: string): DifficultyKey {
   const i = BAND_ORDER.indexOf(current as (typeof BAND_ORDER)[number]);
   if (i <= 0) return BAND_ORDER[0]!;
@@ -69,83 +62,40 @@ export async function ensureArenaLevelRecord(
 
 /**
  * After a run reaches `complete_verified` + contract `approved` with `verified_at` (caller must enforce).
- * Increments consecutive_verified_completions; may bump band if threshold met and cooldown elapsed.
+ *
+ * IDEMPOTENT PER RUN (Slice 3.1B-3N-5C, Option 2). The atomic sentinel claim
+ * (`arena_events` RUN_LEVEL_VERIFIED_APPLIED, partial-unique on `(user_id, run_id)`)
+ * and the `consecutive_verified_completions` increment + band evaluation run inside
+ * ONE database transaction via `bty_apply_run_level_verified`. A second call for the
+ * same `(user_id, run_id)` — from a QR vs Host-Approve race, or a retry — applies NO
+ * increment. `runId` is REQUIRED: it is the per-run idempotency key. Callers: the QR
+ * verify route, the legacy self-attest submit path, and the Host Approve route — each
+ * only after they actually WON the contract `verified_at` transition.
  */
 export async function onArenaRunCompleteVerified(
   admin: SupabaseClient,
   userId: string,
-): Promise<{ ok: boolean; error?: string; bandChanged?: boolean }> {
-  await ensureArenaLevelRecord(admin, userId);
-
-  const { data: row, error: selErr } = await admin
-    .from("arena_level_records")
-    .select(
-      "consecutive_verified_completions, current_band, cooldown_until, last_band_change_at",
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (selErr) return { ok: false, error: selErr.message };
-  const rec = row as {
-    consecutive_verified_completions?: number;
-    current_band?: string;
-    cooldown_until?: string | null;
-    last_band_change_at?: string | null;
-  } | null;
-
-  const now = Date.now();
-  const cooldownUntilMs = rec?.cooldown_until ? Date.parse(rec.cooldown_until) : NaN;
-  const inCooldown = Number.isFinite(cooldownUntilMs) && now < cooldownUntilMs;
-
-  /** During cooldown, do not increment consecutive (no band evaluation per ENGINE §5 rule 8). */
-  if (inCooldown) {
-    await admin
-      .from("arena_level_records")
-      .update({
-        last_evaluation_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
-    return { ok: true, bandChanged: false };
+  runId: string,
+): Promise<{ ok: boolean; error?: string; bandChanged?: boolean; applied?: boolean }> {
+  const trimmedRun = typeof runId === "string" ? runId.trim() : "";
+  if (!trimmedRun) {
+    return { ok: false, error: "run_level_run_missing" };
   }
 
-  let nextConsecutive = Math.min(
-    32767,
-    Math.max(0, Number(rec?.consecutive_verified_completions ?? 0) + 1),
-  );
-  let currentBand = typeof rec?.current_band === "string" && rec.current_band ? rec.current_band : "mid";
+  const { data, error } = await admin.rpc("bty_apply_run_level_verified", {
+    p_user_id: userId,
+    p_run_id: trimmedRun,
+  });
+  if (error) return { ok: false, error: error.message };
 
-  if (nextConsecutive >= LEVEL_INCREASE_CONSECUTIVE_THRESHOLD) {
-    currentBand = nextBandUp(currentBand);
-    nextConsecutive = 0;
-    const cooldownIso = new Date(now + LEVEL_BAND_COOLDOWN_MS).toISOString();
-    const { error: upErr } = await admin
-      .from("arena_level_records")
-      .update({
-        consecutive_verified_completions: nextConsecutive,
-        current_band: currentBand,
-        last_band_change_at: new Date().toISOString(),
-        cooldown_until: cooldownIso,
-        last_evaluation_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId);
-
-    if (upErr) return { ok: false, error: upErr.message };
-    return { ok: true, bandChanged: true };
-  }
-
-  const { error: upErr } = await admin
-    .from("arena_level_records")
-    .update({
-      consecutive_verified_completions: nextConsecutive,
-      last_evaluation_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
-
-  if (upErr) return { ok: false, error: upErr.message };
-  return { ok: true, bandChanged: false };
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { applied?: boolean; band_changed?: boolean }
+    | null;
+  return {
+    ok: true,
+    applied: Boolean(row?.applied),
+    bandChanged: Boolean(row?.band_changed),
+  };
 }
 
 /**

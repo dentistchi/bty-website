@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
   }
 
   const verifiedAt = new Date().toISOString();
-  const { error: upErr } = await adminClient
+  const { data: updatedRows, error: upErr } = await adminClient
     .from("bty_action_contracts")
     .update({
       status: "approved",
@@ -199,28 +199,60 @@ export async function POST(req: NextRequest) {
     .eq("user_id", userId)
     .in("status", ["approved", "submitted"])
     .not("validation_approved_at", "is", null)
-    .is("verified_at", null);
+    .is("verified_at", null)
+    .select("id");
 
   if (upErr) {
     return NextResponse.json({ ok: false, error: "contract_update_failed" }, { status: 500 });
   }
 
+  // QR CAS WINNER GATE (Slice 3.1B-3N-5C, Refinement 1). Only the verifier that
+  // actually flipped `submitted + verified_at NULL -> approved` may initiate the
+  // completion effect chain. Absence of an update error is NOT proof a row changed.
+  // A zero-row CAS means a concurrent canonical verifier (e.g. Host Approve) already
+  // won — re-read canonical state and run ZERO completion effects, so Level/XP/AIR
+  // are never double-applied and verification attribution stays with the winner.
+  const transitionApplied = Array.isArray(updatedRows) && updatedRows.length === 1;
+  if (!transitionApplied) {
+    const { data: fresh } = await adminClient
+      .from("bty_action_contracts")
+      .select("status, verified_at")
+      .eq("id", contractId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    const freshStatus = (fresh as { status?: string } | null)?.status ?? null;
+    console.info("[qr/validate] zero-row CAS — completion already resolved elsewhere", {
+      contractId,
+      freshStatus,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "contract_already_resolved",
+        runtime_state: "ALREADY_RESOLVED",
+        contractId,
+        status: freshStatus,
+      },
+      { status: 409 },
+    );
+  }
+
+  const runIdForReward = resolvedRunId ?? sessionId;
+
   const finalized = await completeArenaRunAfterContractVerification(adminClient, {
     userId,
-    runId: resolvedRunId ?? sessionId,
+    runId: runIdForReward,
     verifiedAtIso: verifiedAt,
   });
   if (!finalized.runUpdated) {
     console.error("[qr/validate] arena_runs completion after contract verify failed");
   }
 
-  const levelRes = await onArenaRunCompleteVerified(adminClient, userId);
+  const levelRes = await onArenaRunCompleteVerified(adminClient, userId, runIdForReward);
   if (!levelRes.ok) {
     console.error("[qr/validate] level record update failed", levelRes.error);
   }
 
-  const runIdForReward =
-    resolvedRunId ?? sessionId;
   const reward = await applyArenaRunRewardsOnVerifiedCompletion({
     supabase: adminClient,
     userId,
@@ -237,6 +269,8 @@ export async function POST(req: NextRequest) {
     supabase: adminClient,
     userId,
     runId: runIdForReward,
+    contractId,
+    method: "qr_contract_verification",
     verifiedAtIso: verifiedAt,
     activationType:
       typeof row.le_activation_type === "string" ? row.le_activation_type : null,

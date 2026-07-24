@@ -24,6 +24,12 @@ export type TodayReminder = {
   sourceTimestamp: string | null;
   roleContext: "learner" | "host";
   canonicalDeepLink: string;
+  /**
+   * Optional learner-facing note carried by the canonical source (Slice 3.1B-3N-5C):
+   * the Host's revision note for an ACTION_REVISION item. Owner-scoped read only; never a
+   * guess, never AI-authored. Absent for every other category.
+   */
+  note?: string | null;
 };
 
 const STATE_RANK: Record<ReminderState, number> = {

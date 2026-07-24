@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getHostActionReviewDetail } from "@/lib/bty/arena/hostActionReviewQueue.server";
+import { resolveActionReviewDecision } from "@/lib/bty/arena/actionReviewDecision.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,83 @@ export async function GET(
   }
 
   const out = NextResponse.json({ item });
+  copyCookiesAndDebug(base, out, req, true);
+  return out;
+}
+
+/**
+ * POST /api/arena/action-reviews/[actionContractId] (Slice 3.1B-3N-5C) — reviewer decision.
+ *
+ * Body: { decision: "approve" | "request_revision", revisionNote?: string }. Thin handler:
+ * server-resolved actor identity → canonical service (which re-resolves authority and runs
+ * the atomic RPC + gated approve completion). Deny/stale never leak existence or reason.
+ */
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ actionContractId: string }> },
+) {
+  const { user, base } = await requireUser(req);
+  if (!user) return unauthenticated(req, base);
+
+  const { actionContractId } = await ctx.params;
+
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    body = {};
+  }
+  const decision = typeof body.decision === "string" ? body.decision : "";
+  const revisionNote = typeof body.revisionNote === "string" ? body.revisionNote : null;
+
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    const out = NextResponse.json({ error: "SERVER_ERROR" }, { status: 500 });
+    copyCookiesAndDebug(base, out, req, true);
+    return out;
+  }
+
+  const result = await resolveActionReviewDecision(admin, {
+    actorUserId: user.id,
+    actionContractId,
+    decision,
+    revisionNote,
+  });
+
+  let out: NextResponse;
+  if (result.ok) {
+    out = NextResponse.json({
+      ok: true,
+      decision: result.decision,
+      resultingStatus: result.resultingStatus,
+      reviewedAt: result.reviewedAt,
+    });
+  } else {
+    switch (result.code) {
+      case "invalid_decision":
+        out = NextResponse.json({ ok: false, error: "INVALID_DECISION" }, { status: 400 });
+        break;
+      case "note_required":
+        out = NextResponse.json({ ok: false, error: "NOTE_REQUIRED" }, { status: 422 });
+        break;
+      case "note_too_long":
+        out = NextResponse.json({ ok: false, error: "NOTE_TOO_LONG" }, { status: 422 });
+        break;
+      case "already_resolved":
+        out = NextResponse.json(
+          { ok: false, error: "ALREADY_RESOLVED", status: result.currentStatus ?? null },
+          { status: 409 },
+        );
+        break;
+      // unauthorized + not_found both collapse to a generic 404 (existence never leaked).
+      case "unauthorized":
+      case "not_found":
+        out = NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 });
+        break;
+      default:
+        out = NextResponse.json({ ok: false, error: "SERVER_ERROR" }, { status: 500 });
+    }
+  }
   copyCookiesAndDebug(base, out, req, true);
   return out;
 }

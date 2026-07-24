@@ -214,6 +214,11 @@ export async function POST(req: NextRequest) {
     raw_text: rawText.trim(),
     status: "submitted",
     submitted_at: submittedAt,
+    // Resubmission reset (Slice 3.1B-3N-5C, Refinement E): a new submission starts a fresh
+    // review cycle, so clear the prior cycle's projection fields. The immutable decision
+    // audit preserves review history; these contract fields reflect ONLY the current cycle.
+    revision_note: null,
+    reviewed_at: null,
   };
   if (snapshotProvided) {
     submitPatch.pattern_state_snapshot = snapshot;
@@ -445,7 +450,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const levelRes = await onArenaRunCompleteVerified(admin, user.id);
+      const levelRes = await onArenaRunCompleteVerified(admin, user.id, resolvedRunId);
       if (!levelRes.ok) {
         console.error("[submit-validation] level record update failed", levelRes.error);
       }
@@ -467,6 +472,8 @@ export async function POST(req: NextRequest) {
         supabase: admin,
         userId: user.id,
         runId: resolvedRunId,
+        contractId: typeof c.id === "string" ? c.id : null,
+        method: "legacy_self_attest_verification",
         verifiedAtIso: nowIso,
         activationType:
           typeof c.le_activation_type === "string" ? c.le_activation_type : null,

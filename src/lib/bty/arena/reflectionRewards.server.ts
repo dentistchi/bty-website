@@ -266,6 +266,16 @@ export async function reflectContractVerificationToAir(params: {
   userId: string;
   runId: string;
   verifiedAtIso: string;
+  /**
+   * Contract this verification reflects. When present, the final `le_verification_log`
+   * row is written with the canonical method-INDEPENDENT identity
+   * (`event_kind='ACTION_CONTRACT_VERIFIED'`, partial-unique on `contract_id`) so QR
+   * verification and Host-Approve verification collapse into ONE AIR evidence row per
+   * contract. A duplicate (either method, or a retry) hits 23505 and is a benign no-op.
+   */
+  contractId?: string | null;
+  /** Verify method stored as METADATA only — never the idempotency identity. */
+  method?: string | null;
   activationType?: string | null;
   weight?: number | null;
   chosenAtIso?: string | null;
@@ -276,6 +286,8 @@ export async function reflectContractVerificationToAir(params: {
     userId,
     runId,
     verifiedAtIso,
+    contractId,
+    method,
     activationType,
     weight,
     chosenAtIso,
@@ -321,14 +333,33 @@ export async function reflectContractVerificationToAir(params: {
 
   if (!activationId) return { ok: false, error: "activation_id_missing" };
 
-  const { error: verErr } = await supabase.from("le_verification_log").insert({
+  const trimmedContractId =
+    typeof contractId === "string" && contractId.trim() !== "" ? contractId.trim() : null;
+  const verificationRow: Record<string, unknown> = {
     activation_id: activationId,
     user_id: userId,
     verifier_role: "system",
     verified: true,
-    method: "qr_contract_verification",
+    method:
+      typeof method === "string" && method.trim() !== ""
+        ? method.trim()
+        : "qr_contract_verification",
     verified_at: verifiedAtIso,
-  });
-  if (verErr) return { ok: false, error: verErr.message };
+  };
+  if (trimmedContractId) {
+    // Canonical method-independent AIR identity — one final verification evidence row
+    // per contract regardless of verify method. QR and Host Approve collapse here.
+    verificationRow.contract_id = trimmedContractId;
+    verificationRow.event_kind = "ACTION_CONTRACT_VERIFIED";
+  }
+
+  const { error: verErr } = await supabase
+    .from("le_verification_log")
+    .insert(verificationRow);
+  if (verErr) {
+    // Already reflected (QR/Approve race or retry): benign, do not double-count AIR.
+    if ((verErr as { code?: string }).code === "23505") return { ok: true };
+    return { ok: false, error: verErr.message };
+  }
   return { ok: true };
 }

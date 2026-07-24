@@ -294,7 +294,12 @@ function createSupabaseState() {
           },
           in: (_k: string, _v: unknown[]) => updater,
           not: (_k: string, _o: string, _v: unknown) => updater,
-          is: async (_k: string, _v: unknown) => ({ error: null }),
+          // Terminal for a plain CAS; also supports `.select("id")` (QR CAS winner gate):
+          // the contract update already mutated state above, so report one updated row.
+          is: (_k: string, _v: unknown) =>
+            Object.assign(Promise.resolve({ error: null }), {
+              select: async () => ({ data: [{ id: filters.id }], error: null }),
+            }),
         };
         return updater;
       },

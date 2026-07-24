@@ -22,6 +22,8 @@ type Reminder = {
   title: string;
   state: "overdue" | "needs_revision" | "due_today" | "incomplete_required" | "upcoming";
   canonicalDeepLink: string;
+  /** Host revision note for an ACTION_REVISION item (learner-facing); null/absent otherwise. */
+  note?: string | null;
 };
 type Brief = { yesterdayObservation: string; todaySuggestion: string };
 
@@ -91,6 +93,7 @@ const COPY: Record<Locale, {
   actionReviewsSub: (n: number) => string;
   remoteReview: string;
   submittedOn: string;
+  revisionNoteLabel: string;
 }> = {
   en: {
     yesterday: "Yesterday",
@@ -135,6 +138,7 @@ const COPY: Record<Locale, {
     actionReviewsSub: (n) => `${n} action${n === 1 ? "" : "s"} awaiting your review`,
     remoteReview: "Remote review allowed",
     submittedOn: "Submitted",
+    revisionNoteLabel: "Revision requested",
   },
   ko: {
     yesterday: "어제의 나",
@@ -179,6 +183,7 @@ const COPY: Record<Locale, {
     actionReviewsSub: (n) => `${n}개의 행동이 검토를 기다리고 있습니다`,
     remoteReview: "원격 검토 가능",
     submittedOn: "제출",
+    revisionNoteLabel: "수정 요청",
   },
 };
 
@@ -315,17 +320,31 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
         <div className="flex flex-col gap-2" data-testid="brief-reminders">
           <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.dontMiss}</span>
           <ul className="flex flex-col gap-1.5">
-            {reminders.map((r) => (
-              <li key={r.stableId} data-testid="brief-reminder" data-category={r.category} data-state={r.state}>
-                <a href={r.canonicalDeepLink} className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate text-sm text-white/80">
-                    {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
-                    {r.title}
-                  </span>
-                  <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state)}>{stateLabel(r.state)}</span>
-                </a>
-              </li>
-            ))}
+            {reminders.map((r) => {
+              const revisionNote =
+                r.category === "ACTION_REVISION" && typeof r.note === "string" && r.note.trim() !== ""
+                  ? r.note.trim()
+                  : null;
+              return (
+                <li key={r.stableId} data-testid="brief-reminder" data-category={r.category} data-state={r.state}>
+                  <a href={r.canonicalDeepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm text-white/80">
+                        {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
+                        {r.title}
+                      </span>
+                      <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state)}>{stateLabel(r.state)}</span>
+                    </div>
+                    {revisionNote ? (
+                      <div data-testid="brief-reminder-revision-note" className="flex flex-col gap-0.5 rounded-md border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-2.5 py-1.5">
+                        <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[#E5B769]/80">{t.revisionNoteLabel}</span>
+                        <span className="whitespace-pre-wrap text-xs leading-5 text-white/75">{revisionNote}</span>
+                      </div>
+                    ) : null}
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
