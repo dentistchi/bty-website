@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { listHostActionReviewQueue } from "@/lib/bty/arena/hostActionReviewQueue.server";
+import {
+  getHostActionReviewStageCounts,
+  listHostActionReviewQueue,
+} from "@/lib/bty/arena/hostActionReviewQueue.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,15 +28,27 @@ export async function GET(req: NextRequest) {
   const admin = getSupabaseAdmin();
 
   let items = [] as Awaited<ReturnType<typeof listHostActionReviewQueue>>;
+  let stageCounts = {
+    verificationPending: 0,
+    needsRevision: 0,
+    reviewedAccepted: 0,
+    awaitingResolution: 0,
+  } as Awaited<ReturnType<typeof getHostActionReviewStageCounts>>;
   if (admin) {
     try {
       items = await listHostActionReviewQueue(admin, user.id, locale);
     } catch {
       items = []; // fail-soft: a projection failure must never break Today
     }
+    // Independent read (Slice 3.1B-3N-5D.1) — operational stage counts, own isolated failure.
+    try {
+      stageCounts = await getHostActionReviewStageCounts(admin, user.id);
+    } catch {
+      /* fail-soft — the counts row is simply omitted */
+    }
   }
 
-  const out = NextResponse.json({ items });
+  const out = NextResponse.json({ items, stageCounts });
   copyCookiesAndDebug(base, out, req, true);
   return out;
 }

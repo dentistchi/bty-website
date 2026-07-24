@@ -24,6 +24,22 @@ type MyLearningItem = {
   sharedUnderstanding: string | null;
 };
 
+/**
+ * Reviewed Action Plan card (Slice 3.1B-3N-5D.1). An approved Field Action = a reviewer
+ * reviewed & ACCEPTED the learner's submitted PLAN. Deliberately carries NO reviewer identity,
+ * NO audit internals, NO private reflection — and the copy never implies Applied/Observed.
+ */
+type ReviewedPlanCard = {
+  contractId: string;
+  who: string | null;
+  what: string | null;
+  how: string | null;
+  stepWhen: string | null;
+  moduleTitle: string | null;
+  moduleVersion: number | null;
+  reviewedAt: string | null;
+};
+
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
@@ -37,6 +53,14 @@ const COPY: Record<Locale, {
   emptyHint: string;
   back: string;
   loading: string;
+  reviewedTitle: string;
+  reviewedStatus: string;
+  labelWho: string;
+  labelWhat: string;
+  labelHow: string;
+  labelWhen: string;
+  reviewedOn: string;
+  moduleVersion: (v: number) => string;
 }> = {
   en: {
     title: "My Learning",
@@ -51,6 +75,14 @@ const COPY: Record<Locale, {
     emptyHint: "When you finish a training, it appears here with what you understood.",
     back: "← Required learning",
     loading: "Loading…",
+    reviewedTitle: "Reviewed action plans",
+    reviewedStatus: "Action plan reviewed & accepted",
+    labelWho: "Who",
+    labelWhat: "What",
+    labelHow: "How",
+    labelWhen: "When",
+    reviewedOn: "Reviewed",
+    moduleVersion: (v) => `Module v${v}`,
   },
   ko: {
     title: "내 학습",
@@ -65,6 +97,14 @@ const COPY: Record<Locale, {
     emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
     back: "← 필수 학습",
     loading: "불러오는 중…",
+    reviewedTitle: "검토·승인된 행동 계획",
+    reviewedStatus: "행동 계획이 검토되고 승인되었습니다",
+    labelWho: "누구",
+    labelWhat: "무엇",
+    labelHow: "어떻게",
+    labelWhen: "언제",
+    reviewedOn: "검토됨",
+    moduleVersion: (v) => `모듈 v${v}`,
   },
 };
 
@@ -84,6 +124,7 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
+  const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -110,18 +151,55 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
     }
   }, []);
 
+  // Reviewed Action Plans (Slice 3.1B-3N-5D.1) — a DIFFERENT evidence stage from completion,
+  // fetched independently so its failure never affects the completion list. Deduped by contractId.
+  const loadReviewedPlans = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bty/action-contract/reviewed-plans", { credentials: "include", cache: "no-store" });
+      if (!res.ok) {
+        setReviewedPlans([]);
+        return;
+      }
+      const data = (await res.json()) as { items?: ReviewedPlanCard[] };
+      const seen = new Set<string>();
+      const mapped: ReviewedPlanCard[] = (Array.isArray(data?.items) ? data.items : [])
+        .map((p) => ({
+          contractId: String(p.contractId ?? ""),
+          who: p.who ?? null,
+          what: p.what ?? null,
+          how: p.how ?? null,
+          stepWhen: p.stepWhen ?? null,
+          moduleTitle: p.moduleTitle ?? null,
+          moduleVersion: typeof p.moduleVersion === "number" ? p.moduleVersion : null,
+          reviewedAt: p.reviewedAt ?? null,
+        }))
+        .filter((p) => p.contractId && !seen.has(p.contractId) && seen.add(p.contractId));
+      setReviewedPlans(mapped);
+    } catch {
+      setReviewedPlans([]);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
+    void loadReviewedPlans();
     const onVisible = () => {
-      if (document.visibilityState === "visible") void load();
+      if (document.visibilityState === "visible") {
+        void load();
+        void loadReviewedPlans();
+      }
+    };
+    const onFocus = () => {
+      void load();
+      void loadReviewedPlans();
     };
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", load);
+    window.addEventListener("focus", onFocus);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", load);
+      window.removeEventListener("focus", onFocus);
     };
-  }, [load]);
+  }, [load, loadReviewedPlans]);
 
   return (
     <section data-testid="foundry-my-learning" className="flex flex-col gap-4 px-4 py-4">
@@ -189,6 +267,62 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
           ))}
         </ul>
       )}
+
+      {reviewedPlans.length > 0 ? (
+        <div data-testid="reviewed-plans" className="mt-1 flex flex-col gap-3">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">
+            {t.reviewedTitle}
+          </span>
+          <ul className="flex flex-col gap-3">
+            {reviewedPlans.map((p) => (
+              <li
+                key={p.contractId}
+                data-testid="reviewed-plan-item"
+                className="flex flex-col gap-2 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.03] px-4 py-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    data-testid="reviewed-plan-status"
+                    className="rounded-md border border-emerald-400/25 px-2 py-0.5 text-[0.72rem] font-medium text-emerald-200/85"
+                  >
+                    {t.reviewedStatus}
+                  </span>
+                  {p.reviewedAt ? (
+                    <span className="text-[0.72rem] text-white/45">
+                      {t.reviewedOn} · {formatDate(p.reviewedAt, loc)}
+                    </span>
+                  ) : null}
+                </div>
+                {p.moduleTitle ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 break-words text-[0.95rem] font-medium text-white/90">{p.moduleTitle}</span>
+                    {p.moduleVersion != null ? (
+                      <span className="shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 text-[0.66rem] text-white/50">
+                        {t.moduleVersion(p.moduleVersion)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <dl className="mt-0.5 flex flex-col gap-1.5">
+                  {([
+                    [t.labelWho, p.who],
+                    [t.labelWhat, p.what],
+                    [t.labelHow, p.how],
+                    [t.labelWhen, p.stepWhen],
+                  ] as const)
+                    .filter(([, v]) => (v ?? "").trim() !== "")
+                    .map(([label, v]) => (
+                      <div key={label} className="flex flex-col gap-0.5">
+                        <dt className="text-[0.66rem] font-medium uppercase tracking-[0.12em] text-white/40">{label}</dt>
+                        <dd className="whitespace-pre-wrap break-words text-base leading-6 text-white/85">{v}</dd>
+                      </div>
+                    ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

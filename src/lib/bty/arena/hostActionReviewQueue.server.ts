@@ -181,6 +181,65 @@ export async function listHostActionReviewQueue(
 }
 
 /**
+ * Field Action review STAGE COUNTS for one authenticated Host (Slice 3.1B-3N-5D.1). READ-ONLY.
+ *
+ * Operational counts scoped by the SAME canonical authority path as the queue — the actor's active
+ * ACTION_REVIEWER edges → reachable learner owner ids (via {@link candidateContractIds}). Counts
+ * DISTINCT `field_action` contract ids per lifecycle stage; `action_type` is filtered explicitly so
+ * `arena_run_completion` contracts can never be counted. These are responsibility-scoped operational
+ * counts (a reviewer seeing their own assigned items' stages), NOT anonymous organizational analytics
+ * — so they render honestly even below cohort size 5. Pure read: no write, no Arena/AIR/XP effect.
+ */
+export type HostActionReviewStageCounts = {
+  /** status='submitted' AND verified_at IS NULL — awaiting the reviewer's decision. */
+  verificationPending: number;
+  /** status='rejected' — a revision was requested. */
+  needsRevision: number;
+  /** status='approved' — the action plan was reviewed & accepted. */
+  reviewedAccepted: number;
+  /** status='escalated' — awaiting resolution. */
+  awaitingResolution: number;
+};
+
+export async function getHostActionReviewStageCounts(
+  admin: SupabaseClient,
+  actorUserId: string,
+): Promise<HostActionReviewStageCounts> {
+  const empty: HostActionReviewStageCounts = {
+    verificationPending: 0,
+    needsRevision: 0,
+    reviewedAccepted: 0,
+    awaitingResolution: 0,
+  };
+  const actor = typeof actorUserId === "string" ? actorUserId.trim() : "";
+  if (!actor) return empty;
+
+  const { ownerUserIds } = await candidateContractIds(admin, actor);
+  if (ownerUserIds.length === 0) return empty;
+
+  // Explicit action_type filter → Arena actions are never counted. Only the stage columns.
+  const { data: rows } = await admin
+    .from("bty_action_contracts")
+    .select("id, status, verified_at")
+    .eq("action_type", "field_action")
+    .in("user_id", ownerUserIds)
+    .returns<{ id: string; status: string | null; verified_at: string | null }[]>();
+
+  // DISTINCT contract ids; each id lands in at most ONE bucket (buckets are disjoint by status).
+  const seen = new Set<string>();
+  const counts = { ...empty };
+  for (const r of rows ?? []) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    if (r.status === "submitted" && r.verified_at == null) counts.verificationPending += 1;
+    else if (r.status === "rejected") counts.needsRevision += 1;
+    else if (r.status === "approved") counts.reviewedAccepted += 1;
+    else if (r.status === "escalated") counts.awaitingResolution += 1;
+  }
+  return counts;
+}
+
+/**
  * Read-only detail for ONE contract. Re-runs the authority resolver on THIS request — a contract's
  * prior queue presence is not proof of current authority. Returns null on any deny (the route maps
  * null to a generic not-found-equivalent so existence is never leaked).

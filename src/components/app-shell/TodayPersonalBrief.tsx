@@ -63,6 +63,14 @@ type HostActionReview = {
   statusLabel: string;
 };
 
+/** Operational Field Action stage counts (Slice 3.1B-3N-5D.1) — reviewer-authority scoped. */
+type StageCounts = {
+  verificationPending: number;
+  needsRevision: number;
+  reviewedAccepted: number;
+  awaitingResolution: number;
+};
+
 const HOST_PREVIEW = 3;
 const ACTION_STATUS_PREVIEW = 3;
 const ACTION_REVIEW_PREVIEW = 3;
@@ -94,6 +102,11 @@ const COPY: Record<Locale, {
   remoteReview: string;
   submittedOn: string;
   revisionNoteLabel: string;
+  stageCountsTitle: string;
+  stageVerificationPending: string;
+  stageNeedsRevision: string;
+  stageReviewedAccepted: string;
+  stageAwaitingResolution: string;
 }> = {
   en: {
     yesterday: "Yesterday",
@@ -139,6 +152,11 @@ const COPY: Record<Locale, {
     remoteReview: "Remote review allowed",
     submittedOn: "Submitted",
     revisionNoteLabel: "Revision requested",
+    stageCountsTitle: "Field action plans",
+    stageVerificationPending: "Verification pending",
+    stageNeedsRevision: "Needs revision",
+    stageReviewedAccepted: "Reviewed action plans",
+    stageAwaitingResolution: "Awaiting resolution",
   },
   ko: {
     yesterday: "어제의 나",
@@ -184,6 +202,11 @@ const COPY: Record<Locale, {
     remoteReview: "원격 검토 가능",
     submittedOn: "제출",
     revisionNoteLabel: "수정 요청",
+    stageCountsTitle: "현장 행동 계획",
+    stageVerificationPending: "검토 대기",
+    stageNeedsRevision: "수정 필요",
+    stageReviewedAccepted: "검토·승인된 행동 계획",
+    stageAwaitingResolution: "해결 대기",
   },
 };
 
@@ -210,6 +233,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [actionStatus, setActionStatus] = useState<ActionStatus[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
+  const [stageCounts, setStageCounts] = useState<StageCounts | null>(null);
   const [showAllHost, setShowAllHost] = useState(false);
   const [showAllAction, setShowAllAction] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
@@ -246,8 +270,11 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
       try {
         const res2 = await fetch(`/api/arena/action-review-queue?locale=${loc}`, { credentials: "include", cache: "no-store" });
         if (res2.ok) {
-          const d2 = (await res2.json()) as { items?: HostActionReview[] };
-          if (!cancelled) setHostActionReviews(Array.isArray(d2.items) ? d2.items : []);
+          const d2 = (await res2.json()) as { items?: HostActionReview[]; stageCounts?: StageCounts };
+          if (!cancelled) {
+            setHostActionReviews(Array.isArray(d2.items) ? d2.items : []);
+            setStageCounts(d2.stageCounts ?? null);
+          }
         }
       } catch {
         /* fail-soft — Action reviews subsection omitted */
@@ -259,13 +286,22 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
     };
   }, [loc]);
 
+  const stageTotal = stageCounts
+    ? stageCounts.verificationPending +
+      stageCounts.needsRevision +
+      stageCounts.reviewedAccepted +
+      stageCounts.awaitingResolution
+    : 0;
+  const hasStageCounts = stageTotal > 0;
+
   if (!loaded) return null;
   if (
     !brief &&
     reminders.length === 0 &&
     hostAttention.length === 0 &&
     actionStatus.length === 0 &&
-    hostActionReviews.length === 0
+    hostActionReviews.length === 0 &&
+    !hasStageCounts
   )
     return null;
 
@@ -416,6 +452,32 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
               {showAllHost ? t.showLess : t.showAll(hostAttention.length)}
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {hasStageCounts && stageCounts ? (
+        <div className="flex flex-col gap-2" data-testid="action-review-stage-counts">
+          <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">
+            {t.stageCountsTitle}
+          </span>
+          <div className="grid grid-cols-2 gap-1.5">
+            {([
+              ["verificationPending", t.stageVerificationPending, stageCounts.verificationPending],
+              ["needsRevision", t.stageNeedsRevision, stageCounts.needsRevision],
+              ["reviewedAccepted", t.stageReviewedAccepted, stageCounts.reviewedAccepted],
+              ["awaitingResolution", t.stageAwaitingResolution, stageCounts.awaitingResolution],
+            ] as const).map(([key, label, n]) => (
+              <div
+                key={key}
+                data-testid={`stage-count-${key}`}
+                data-count={n}
+                className="flex items-center justify-between gap-2 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2"
+              >
+                <span className="min-w-0 truncate text-[0.72rem] text-white/55">{label}</span>
+                <span className="shrink-0 text-sm font-semibold text-white/85">{n}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

@@ -7,6 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRequireUser = vi.fn();
 const mockList = vi.fn();
+const mockCounts = vi.fn();
+const ZERO_COUNTS = { verificationPending: 0, needsRevision: 0, reviewedAccepted: 0, awaitingResolution: 0 };
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...a: unknown[]) => mockRequireUser(...a),
@@ -16,6 +18,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({}) }));
 vi.mock("@/lib/bty/arena/hostActionReviewQueue.server", () => ({
   listHostActionReviewQueue: (...a: unknown[]) => mockList(...a),
+  getHostActionReviewStageCounts: (...a: unknown[]) => mockCounts(...a),
 }));
 
 import { GET } from "./route";
@@ -26,6 +29,8 @@ describe("GET /api/arena/action-review-queue", () => {
   beforeEach(() => {
     mockRequireUser.mockReset();
     mockList.mockReset();
+    mockCounts.mockReset();
+    mockCounts.mockResolvedValue({ ...ZERO_COUNTS });
   });
 
   it("401 when unauthenticated", async () => {
@@ -40,7 +45,7 @@ describe("GET /api/arena/action-review-queue", () => {
     mockList.mockResolvedValue([]);
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ items: [] });
+    expect(await res.json()).toEqual({ items: [], stageCounts: ZERO_COUNTS });
   });
 
   it("returns the queue DTO and leaks no private fields", async () => {
@@ -71,6 +76,6 @@ describe("GET /api/arena/action-review-queue", () => {
     mockList.mockRejectedValue(new Error("boom"));
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ items: [] });
+    expect(await res.json()).toEqual({ items: [], stageCounts: ZERO_COUNTS });
   });
 });
