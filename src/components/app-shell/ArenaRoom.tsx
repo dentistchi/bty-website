@@ -260,13 +260,18 @@ export function ArenaRoom({
       </div>
     );
   }
+  // Slice 3.1B-3N-5D.1B: Arena shares the app-shell surface contract. The list root fills the shared
+  // shell scroll region (px-5) width like the sibling tabs (Center/Foundry) — no `mx-auto max-w-md px-1`
+  // self-wrapper — and the cards use the canonical shell card scale (px-4 py-3, 0.95rem title, px-4
+  // button) so moving Today into Arena reads at one consistent scale. Text is NOT shrunk below the shell
+  // norm (0.95rem/text-sm match Center/Foundry) — and there is no CSS zoom / transform / scale hack.
   return (
-    <div className="btyFadeIn mx-auto flex w-full max-w-md flex-col gap-3 px-1 pt-2">
+    <div className="btyFadeIn flex w-full flex-col gap-3 pt-2">
       <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">{t.eyebrow}</span>
       {practices.map((p) => (
-        <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+        <div key={p.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-[0.98rem] font-semibold text-white/90">{p.practice_title}</p>
+            <p className="min-w-0 truncate text-[0.95rem] font-semibold text-white/90">{p.practice_title}</p>
             {p.completed ? (
               <span className="shrink-0 text-[0.6rem] uppercase tracking-[0.12em] text-[#C9A66B]/80">{t.done}</span>
             ) : null}
@@ -277,7 +282,7 @@ export function ArenaRoom({
           <button
             type="button"
             onClick={() => void handleStart(p.id)}
-            className="mt-3 w-full rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+            className="mt-3 w-full rounded-xl bg-[#C9A66B] px-4 py-2.5 text-sm font-semibold text-[#0B1F3A]"
           >
             {p.completed ? t.again : t.start}
           </button>
