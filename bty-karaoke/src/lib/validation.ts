@@ -164,3 +164,19 @@ export const CreateEventSchema = z.object({
   startNow: z.boolean().optional(),
 });
 export type CreateEventInput = z.infer<typeof CreateEventSchema>;
+
+// A FREE Host requests the PRO pilot from the native app. The account is ALWAYS
+// derived server-side from the session — accountId is never accepted from the body.
+// roomId is optional request context; if present it must be a Room the account owns.
+// idempotencyKey makes a retried create return the same request (never a duplicate).
+export const ProPilotRequestSchema = z.object({
+  roomId: z.string().uuid().optional(),
+  idempotencyKey: z.string().trim().min(1).max(128),
+});
+
+// Manager approve/decline of a pending pilot request. A fresh idempotencyKey per
+// decision attempt makes it replay-safe; reason is optional and audited when present.
+export const ProPilotDecisionSchema = z.object({
+  idempotencyKey: z.string().trim().min(1).max(128),
+  reason: z.string().trim().max(300).optional(),
+});

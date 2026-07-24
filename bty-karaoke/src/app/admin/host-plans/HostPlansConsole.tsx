@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { ANOMALY_LABEL, type AnomalyFlag, type ProviderSummary } from '@/domain/host-plan-console';
+import ProPilotRequestsSection from './ProPilotRequestsSection';
 
 // The Manager session is an HttpOnly cookie set by the server — never readable here,
 // never stored in localStorage. Same-origin fetches carry it; a 401 means "not signed
@@ -489,6 +490,9 @@ export default function HostPlansConsole() {
       <div className="row" style={{ justifyContent: 'center', marginTop: 20 }}>
         <span className="muted">Open an account to view its history or change its plan.</span>
       </div>
+
+      {/* PRO Pilot Requests — approve/decline pending native requests (BUILD 16) */}
+      <ProPilotRequestsSection onUnauthorized={() => setPhase('need-login')} />
 
       {/* Detail sheet */}
       {detail && (
