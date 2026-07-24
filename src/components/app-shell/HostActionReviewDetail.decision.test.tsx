@@ -108,4 +108,31 @@ describe("HostActionReviewDetail — decision controls", () => {
     expect(await screen.findByTestId("host-action-review-error")).toBeTruthy();
     expect(onBack).not.toHaveBeenCalled();
   });
+
+  // ===== Slice 3.1B-3N-5C.4: iOS post-action viewport =====
+  it("revision note uses a 16px font (text-base) + decision buttons carry touch-manipulation", async () => {
+    mockFetch({});
+    render(<HostActionReviewDetail locale="en" actionContractId="c1" onBack={() => {}} />);
+    expect((await screen.findByTestId("host-action-review-approve")).className).toContain("touch-manipulation");
+    expect(screen.getByTestId("host-action-review-request-revision").className).toContain("touch-manipulation");
+    fireEvent.click(screen.getByTestId("host-action-review-request-revision"));
+    const note = await screen.findByTestId("host-action-review-revision-note");
+    expect(note.className).toContain("text-base");
+    expect(note.className).not.toContain("text-sm");
+    expect(screen.getByTestId("host-action-review-revision-submit").className).toContain("touch-manipulation");
+  });
+
+  it("request-revision success BLURS the note before onBack (iOS zoom reset); approve shares the same path", async () => {
+    const onBack = vi.fn();
+    mockFetch({ post: () => new Response(JSON.stringify({ ok: true, resultingStatus: "rejected" }), { status: 200 }) });
+    render(<HostActionReviewDetail locale="en" actionContractId="c1" onBack={onBack} />);
+    fireEvent.click(await screen.findByTestId("host-action-review-request-revision"));
+    const note = (await screen.findByTestId("host-action-review-revision-note")) as HTMLTextAreaElement;
+    fireEvent.change(note, { target: { value: "Name the exact date." } });
+    note.focus();
+    const blurSpy = vi.spyOn(note, "blur");
+    fireEvent.click(screen.getByTestId("host-action-review-revision-submit"));
+    await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
+    expect(blurSpy).toHaveBeenCalled();
+  });
 });

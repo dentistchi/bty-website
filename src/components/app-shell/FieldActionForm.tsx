@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { blurActiveThen } from "@/components/app-shell/viewportFocus";
 
 type Layer1Signal = { rule?: string; signal?: string };
 
@@ -192,14 +193,21 @@ export default function FieldActionForm({
         };
         const errs = Array.isArray(d.layer1_errors) ? d.layer1_errors : [];
         if (d.outcome === "revise" || errs.length > 0) {
-          // Stay OPEN: keep values, show the server signals, focus the first related field.
+          // Stay OPEN: keep values, show the server signals, focus the first related field. Defer
+          // the focus to AFTER the re-render (the field is disabled while pending; a disabled
+          // control cannot take focus) — this is also the "keep focus on the invalid field" path
+          // (no blur/close), distinct from a canonical success.
           setReviseSignals(errs.length > 0 ? errs : [{ rule: "R1", signal: "" }]);
           setPending(false);
-          focusForRule(errs[0]?.rule);
+          const firstRule = errs[0]?.rule;
+          const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (f: FrameRequestCallback) => setTimeout(() => f(0), 0);
+          raf(() => focusForRule(firstRule));
           return;
         }
         if (d.contract_state === "awaiting_qr" || d.contract_state === "terminal") {
-          onBack(); // canonical submitted (verified_at null) → Today Verification Pending
+          // Canonical submitted (verified_at null) → Today Verification Pending. Release focus
+          // (dismiss keyboard, reset iOS zoom) BEFORE returning. Not called on 'revise'.
+          blurActiveThen(onBack);
           return;
         }
         // Ambiguous 200 without a canonical landing → treat as retryable, do not close.
@@ -235,7 +243,7 @@ export default function FieldActionForm({
             type="button"
             data-testid="field-action-retry"
             onClick={() => { void initLoad(); }}
-            className="rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/[0.06]"
+            className="touch-manipulation rounded-lg border border-white/15 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-white/[0.06]"
           >
             {t.retry}
           </button>
@@ -289,7 +297,7 @@ export default function FieldActionForm({
             data-testid="field-action-submit"
             disabled={pending}
             onClick={onSubmit}
-            className="mt-1 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
+            className="mt-1 touch-manipulation rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
           >
             {pending ? t.working : t.submit}
           </button>
@@ -327,7 +335,8 @@ function Field({
         disabled={disabled}
         rows={2}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-sm text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
+        // text-base (16px) prevents iOS form-control auto-zoom on focus (Slice 3.1B-3N-5C.4).
+        className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
       />
     </label>
   );

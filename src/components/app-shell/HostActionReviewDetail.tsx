@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { blurActiveThen } from "@/components/app-shell/viewportFocus";
 
 /**
  * Host Action Review — in-shell detail (Slice 3.1B-3N; decisions added Phase 5C).
@@ -158,8 +159,9 @@ export default function HostActionReviewDetail({
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        // Server truth reconciled: leave to the queue, which refetches on remount.
-        onBack();
+        // Server truth reconciled: release focus (dismiss keyboard, reset iOS zoom) BEFORE leaving
+        // to the queue, which refetches on remount.
+        blurActiveThen(onBack);
         return;
       }
       if (res.status === 409) {
@@ -268,7 +270,7 @@ export default function HostActionReviewDetail({
                     data-testid="host-action-review-approve"
                     disabled={controlsDisabled}
                     onClick={() => { setError(null); setMode("approve-confirm"); }}
-                    className="flex-1 rounded-lg bg-emerald-500/85 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-emerald-500 disabled:opacity-50"
+                    className="flex-1 touch-manipulation rounded-lg bg-emerald-500/85 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-emerald-500 disabled:opacity-50"
                   >
                     {t.approve}
                   </button>
@@ -277,7 +279,7 @@ export default function HostActionReviewDetail({
                     data-testid="host-action-review-request-revision"
                     disabled={controlsDisabled}
                     onClick={() => { setError(null); setNoteInvalid(false); setMode("revision-sheet"); }}
-                    className="flex-1 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50"
+                    className="flex-1 touch-manipulation rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2 text-sm text-white/80 hover:bg-white/[0.06] disabled:opacity-50"
                   >
                     {t.requestRevision}
                   </button>
@@ -294,7 +296,7 @@ export default function HostActionReviewDetail({
                       data-testid="host-action-review-approve-confirm-btn"
                       disabled={controlsDisabled}
                       onClick={onApproveConfirm}
-                      className="flex-1 rounded-lg bg-emerald-500/85 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-emerald-500 disabled:opacity-50"
+                      className="flex-1 touch-manipulation rounded-lg bg-emerald-500/85 px-3 py-2 text-sm font-medium text-emerald-50 hover:bg-emerald-500 disabled:opacity-50"
                     >
                       {pending ? t.working : t.confirm}
                     </button>
@@ -303,7 +305,7 @@ export default function HostActionReviewDetail({
                       data-testid="host-action-review-cancel"
                       disabled={controlsDisabled}
                       onClick={() => setMode("none")}
-                      className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
+                      className="touch-manipulation rounded-lg border border-white/15 px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
                     >
                       {t.cancel}
                     </button>
@@ -324,7 +326,8 @@ export default function HostActionReviewDetail({
                     disabled={controlsDisabled}
                     onChange={(e) => { setNote(e.target.value); if (noteInvalid) setNoteInvalid(false); }}
                     rows={3}
-                    className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-sm text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
+                    // text-base (16px) prevents iOS form-control auto-zoom on focus (Slice 3.1B-3N-5C.4).
+                    className="w-full resize-none rounded-md border border-white/12 bg-black/20 px-2.5 py-2 text-base text-white/85 outline-none focus:border-white/25 disabled:opacity-50"
                   />
                   {noteInvalid ? (
                     <span data-testid="host-action-review-note-validation" className="text-xs text-amber-300/80">
@@ -337,7 +340,7 @@ export default function HostActionReviewDetail({
                       data-testid="host-action-review-revision-submit"
                       disabled={controlsDisabled}
                       onClick={onRevisionSubmit}
-                      className="flex-1 rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
+                      className="flex-1 touch-manipulation rounded-lg bg-white/90 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-white disabled:opacity-50"
                     >
                       {pending ? t.working : t.submit}
                     </button>
@@ -346,7 +349,7 @@ export default function HostActionReviewDetail({
                       data-testid="host-action-review-cancel"
                       disabled={controlsDisabled}
                       onClick={() => setMode("none")}
-                      className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
+                      className="touch-manipulation rounded-lg border border-white/15 px-3 py-2 text-sm text-white/70 hover:bg-white/[0.06] disabled:opacity-50"
                     >
                       {t.cancel}
                     </button>

@@ -167,4 +167,44 @@ describe("FieldActionForm", () => {
     expect(await screen.findByTestId("field-action-error")).toBeTruthy();
     expect(onBack).not.toHaveBeenCalled();
   });
+
+  // ===== Slice 3.1B-3N-5C.4: iOS post-action viewport (font-size / touch-action / blur) =====
+  it("editable controls use a 16px font (text-base, not text-sm) to avoid iOS auto-zoom; submit has touch-manipulation", async () => {
+    mockFetch({});
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={() => {}} />);
+    for (const id of ["field-action-who", "field-action-what", "field-action-how", "field-action-when"]) {
+      const el = await screen.findByTestId(id);
+      expect(el.className).toContain("text-base");
+      expect(el.className).not.toContain("text-sm");
+    }
+    expect(screen.getByTestId("field-action-submit").className).toContain("touch-manipulation");
+  });
+
+  it("canonical submit BLURS the focused control before onBack (iOS zoom reset)", async () => {
+    const onBack = vi.fn();
+    mockFetch({});
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={onBack} />);
+    const who = (await screen.findByTestId("field-action-who")) as HTMLTextAreaElement;
+    authorAll();
+    who.focus();
+    expect(document.activeElement).toBe(who);
+    const blurSpy = vi.spyOn(who, "blur");
+    fireEvent.click(screen.getByTestId("field-action-submit"));
+    await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
+    expect(blurSpy).toHaveBeenCalled();
+  });
+
+  it("validation revise does NOT blur away — focus stays on the invalid field", async () => {
+    const onBack = vi.fn();
+    mockFetch({ submitBody: REVISE });
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={onBack} />);
+    await screen.findByTestId("field-action-who");
+    authorAll();
+    fireEvent.click(screen.getByTestId("field-action-submit"));
+    await screen.findByTestId("field-action-revise");
+    expect(onBack).not.toHaveBeenCalled();
+    // R1 → the Who field is focused for correction (not blurred away); focus is deferred to
+    // after the re-render (the field re-enables), so wait for it.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("field-action-who")));
+  });
 });
