@@ -30,9 +30,13 @@ const CONTRACT_QUEUE_COLS =
 const CONTRACT_DETAIL_COLS =
   "id, user_id, who, what, how, step_when, contract_description, submitted_at, deadline_at, verification_mode, status, verified_at, created_at, action_type";
 
-/** Human source label only — never the raw action_type / scenario / pattern (5C.3). */
+/**
+ * Human source label only — never the raw action_type / scenario / pattern (5C.3). A field_action
+ * stores only an E3 forward action PLAN (who/what/how/when) with no execution result/evidence, so the
+ * badge says "Action plan" — NOT "Real-world application" (which would over-claim applied) (5D.1A).
+ */
 function sourceLabel(actionType: string | null, locale: string): string | null {
-  if (actionType === "field_action") return locale === "ko" ? "현실 적용" : "Real-world application";
+  if (actionType === "field_action") return locale === "ko" ? "행동 계획" : "Action plan";
   return null;
 }
 

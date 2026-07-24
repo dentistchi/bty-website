@@ -174,13 +174,21 @@ describe("getHostActionReviewDetail", () => {
     expect(detail?.sourceLabel).toBeNull(); // arena contract → no source label
   });
 
-  it("field_action detail returns the 'Real-world application' source label + Who/What/How/When (NULL Arena fields OK)", async () => {
+  it("field_action detail returns the 'Action plan' source label (E3, not applied — 5D.1A) + Who/What/How/When (NULL Arena fields OK)", async () => {
     mockResolve.mockResolvedValue({ allowed: true, verificationMode: "hybrid" });
     const admin = world([base({ id: "fa1", action_type: "field_action", run_id: null, arena_scenario_id: null, pattern_family: null })]);
     const detail = await getHostActionReviewDetail(admin as never, "host-a", "fa1", "en");
-    expect(detail?.sourceLabel).toBe("Real-world application");
+    expect(detail?.sourceLabel).toBe("Action plan");
+    expect(detail?.sourceLabel).not.toBe("Real-world application");
     expect(detail?.who).toBe("team");
     expect(detail?.what).toBe("check-in");
+  });
+
+  it("field_action detail source label is localized to Korean (행동 계획)", async () => {
+    mockResolve.mockResolvedValue({ allowed: true, verificationMode: "hybrid" });
+    const admin = world([base({ id: "fa1", action_type: "field_action", run_id: null, arena_scenario_id: null, pattern_family: null })]);
+    const detail = await getHostActionReviewDetail(admin as never, "host-a", "fa1", "ko");
+    expect(detail?.sourceLabel).toBe("행동 계획");
   });
 
   it("returns null (→ generic 404) when the resolver denies", async () => {

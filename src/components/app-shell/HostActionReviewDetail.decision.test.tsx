@@ -135,4 +135,36 @@ describe("HostActionReviewDetail — decision controls", () => {
     await waitFor(() => expect(onBack).toHaveBeenCalledTimes(1));
     expect(blurSpy).toHaveBeenCalled();
   });
+
+  // ===== Slice 3.1B-3N-5D.1A: E3 semantic copy (action PLAN, not applied evidence) =====
+  it("renders 'Action plan' + 'Review the submitted action plan.' and NEVER 'Real-world application' / 'available evidence'", async () => {
+    mockFetch({ get: { ...DETAIL, sourceLabel: "Action plan" } });
+    render(<HostActionReviewDetail locale="en" actionContractId="c1" onBack={() => {}} />);
+    await screen.findByTestId("host-action-review-approve");
+    expect(screen.getByTestId("host-action-review-source").textContent).toBe("Action plan");
+    expect(screen.getByText("Review the submitted action plan.")).toBeTruthy();
+    expect(screen.queryByText(/Real-world application/i)).toBeNull();
+    expect(screen.queryByText(/available evidence/i)).toBeNull();
+    expect(screen.queryByText(/\b(applied|verified application|observed|sustained|behavior changed|capability mastered)\b/i)).toBeNull();
+  });
+
+  it("approve confirmation uses action-plan wording", async () => {
+    mockFetch({ get: { ...DETAIL, sourceLabel: "Action plan" } });
+    render(<HostActionReviewDetail locale="en" actionContractId="c1" onBack={() => {}} />);
+    fireEvent.click(await screen.findByTestId("host-action-review-approve"));
+    expect(screen.getByText("Approve this action plan?")).toBeTruthy();
+    expect(screen.getByText("This confirms the submitted action plan for this review.")).toBeTruthy();
+    expect(screen.queryByText("Approve this action?")).toBeNull();
+  });
+
+  it("Korean E3 copy matches the locked wording (행동 계획)", async () => {
+    mockFetch({ get: { ...DETAIL, sourceLabel: "행동 계획" } });
+    render(<HostActionReviewDetail locale="ko" actionContractId="c1" onBack={() => {}} />);
+    await screen.findByTestId("host-action-review-approve");
+    expect(screen.getByTestId("host-action-review-source").textContent).toBe("행동 계획");
+    expect(screen.getByText("제출된 행동 계획을 검토합니다.")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("host-action-review-approve"));
+    expect(screen.getByText("이 행동 계획을 승인하시겠습니까?")).toBeTruthy();
+    expect(screen.getByText("이 검토를 위해 제출된 행동 계획을 승인합니다.")).toBeTruthy();
+  });
 });
