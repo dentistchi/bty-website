@@ -29,23 +29,23 @@ describe("field-action producer route", () => {
 
   it("401 when unauthenticated (POST); service never called", async () => {
     mockRequireUser.mockResolvedValue({ user: null, base: {} });
-    const res = await POST(postReq({ eventId: "e1" }));
+    const res = await POST(postReq({ assignmentId: "a1" }));
     expect(res.status).toBe(401);
     expect(mockEnsure).not.toHaveBeenCalled();
   });
 
-  it("POST passes the SERVER-resolved learner id (never client) + eventId to the producer", async () => {
+  it("POST passes the SERVER-resolved learner id (never client) + assignmentId to the producer", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "learner-1" }, base: {} });
     mockEnsure.mockResolvedValue({ ok: true, created: true, contract: { contractId: "c1" } });
-    const res = await POST(postReq({ eventId: "e1", user_id: "SPOOF" }));
+    const res = await POST(postReq({ assignmentId: "a1", user_id: "SPOOF" }));
     expect(res.status).toBe(200);
-    expect(mockEnsure).toHaveBeenCalledWith(expect.anything(), { learnerUserId: "learner-1", eventId: "e1" });
+    expect(mockEnsure).toHaveBeenCalledWith(expect.anything(), { learnerUserId: "learner-1", assignmentId: "a1" });
   });
 
   it("POST maps not-owner/not-found to a generic 404 (no existence leak)", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "learner-1" }, base: {} });
     mockEnsure.mockResolvedValue({ ok: false, code: "progress_not_found" });
-    const res = await POST(postReq({ eventId: "e1" }));
+    const res = await POST(postReq({ assignmentId: "a1" }));
     expect(res.status).toBe(404);
     expect((await res.json()).error).toBe("NOT_FOUND");
   });

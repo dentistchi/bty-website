@@ -66,34 +66,49 @@ function projectContract(row: Record<string, unknown>): FieldActionContract {
 }
 
 /**
- * Create (or return the existing) Field Action draft for a learner's completed Foundry event.
- * Idempotent per learner + progress. Never accepts ownership from the client.
+ * Create (or return the existing) Field Action draft for a learner's COMPLETED Foundry assignment.
+ *
+ * Ownership is ASSIGNMENT-ANCHORED (Slice 3.1B-3N-5C.3 Gate-0 fix), mirroring
+ * getMyCompletionReview: the immutable `foundry_event_assignments.user_id_snapshot` is the sole
+ * ownership key. Participant-claimed / historical completions legitimately have
+ * `foundry_event_training_progress.linked_user_id = NULL`, so that column MUST NOT be required.
+ * The progress is resolved by (event_id, participant_id) from the owned assignment. Idempotent
+ * per (learner, progress) via the existing UNIQUE(user_id, session_id). Never trusts client ids.
  */
 export async function ensureFieldActionDraft(
   admin: SupabaseClient,
-  params: { learnerUserId: string; eventId: string; nowIso?: string },
+  params: { learnerUserId: string; assignmentId: string; nowIso?: string },
 ): Promise<FieldActionProducerResult> {
   const learnerUserId = typeof params.learnerUserId === "string" ? params.learnerUserId.trim() : "";
-  const eventId = typeof params.eventId === "string" ? params.eventId.trim() : "";
-  if (!learnerUserId || !eventId) return { ok: false, code: "progress_not_found" };
+  const assignmentId = typeof params.assignmentId === "string" ? params.assignmentId.trim() : "";
+  if (!learnerUserId || !assignmentId) return { ok: false, code: "not_owner" };
 
-  // 1. Confirm the learner OWNS a COMPLETED progress for this event (server truth).
+  // 1. Own the assignment (immutable snapshot) + require completed + a bound participant.
+  const { data: asg, error: asgErr } = await admin
+    .from("foundry_event_assignments")
+    .select("id, event_id, participant_id, status, user_id_snapshot")
+    .eq("id", assignmentId)
+    .maybeSingle<{ id: string; event_id: string | null; participant_id: string | null; status: string; user_id_snapshot: string | null }>();
+  if (asgErr) return { ok: false, code: "load_failed" };
+  if (!asg || asg.user_id_snapshot !== learnerUserId || asg.status !== "completed" || !asg.event_id || !asg.participant_id) {
+    return { ok: false, code: "not_owner" };
+  }
+  const eventId = asg.event_id;
+
+  // 2. Resolve the COMPLETED progress by (event_id, participant_id) — NOT by linked_user_id.
   const { data: progress, error: progErr } = await admin
     .from("foundry_event_training_progress")
-    .select("id, event_id, linked_user_id, completed_at")
+    .select("id, completed_at")
     .eq("event_id", eventId)
-    .eq("linked_user_id", learnerUserId)
-    .not("completed_at", "is", null)
-    .order("completed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("participant_id", asg.participant_id)
+    .maybeSingle<{ id: string; completed_at: string | null }>();
   if (progErr) return { ok: false, code: "load_failed" };
-  if (!progress) return { ok: false, code: "progress_not_found" };
+  if (!progress || progress.completed_at == null) return { ok: false, code: "progress_not_found" };
 
-  const progressId = String((progress as { id: string }).id);
+  const progressId = String(progress.id);
   const sessionId = `field_action:${progressId}`;
 
-  // 2. Idempotency: return the existing Field Action for this (learner, progress) if any.
+  // 3. Idempotency: return the existing Field Action for this (learner, progress) if any.
   const { data: existing, error: exErr } = await admin
     .from("bty_action_contracts")
     .select(FIELD_ACTION_COLS)
@@ -103,7 +118,7 @@ export async function ensureFieldActionDraft(
   if (exErr) return { ok: false, code: "load_failed" };
   if (existing) return { ok: true, contract: projectContract(existing as Record<string, unknown>), created: false };
 
-  // 3. Module title = honest source context for contract_description (NOT a fabricated action).
+  // 4. Module title = honest source context for contract_description (NOT a fabricated action).
   const { data: eventRow } = await admin
     .from("foundry_events")
     .select("id, title")
@@ -117,7 +132,7 @@ export async function ensureFieldActionDraft(
   const nowIso = params.nowIso ?? new Date().toISOString();
   const deadlineAt = new Date(Date.parse(nowIso) + FIELD_ACTION_DEFAULT_WINDOW_HOURS * 3600 * 1000).toISOString();
 
-  // 4. Insert the NON-ARENA draft. No arena_runs, no pattern_family, no scenario/choice.
+  // 5. Insert the NON-ARENA draft. No arena_runs, no pattern_family, no scenario/choice.
   const insertRow = {
     user_id: learnerUserId,
     session_id: sessionId,
@@ -134,7 +149,15 @@ export async function ensureFieldActionDraft(
     verification_mode: "hybrid",
     verification_tier: "mvp_open",
     verification_status: "pending",
-    details: { source: { kind: FIELD_ACTION_SOURCE_KIND, event_id: eventId, progress_id: progressId } },
+    details: {
+      source: {
+        kind: FIELD_ACTION_SOURCE_KIND,
+        assignment_id: assignmentId,
+        event_id: eventId,
+        participant_id: asg.participant_id,
+        progress_id: progressId,
+      },
+    },
   };
 
   const { data: inserted, error: insErr } = await admin

@@ -69,12 +69,12 @@ const COPY = {
 
 export default function FieldActionForm({
   locale,
-  eventId,
+  assignmentId,
   contractId: contractIdProp,
   onBack,
 }: {
   locale: string;
-  eventId?: string | null;
+  assignmentId?: string | null;
   contractId?: string | null;
   onBack: () => void;
 }) {
@@ -104,12 +104,12 @@ export default function FieldActionForm({
     void (async () => {
       try {
         let res: Response | null = null;
-        if (eventId) {
+        if (assignmentId) {
           res = await fetch("/api/bty/action-contract/field-action", {
             method: "POST",
             credentials: "include",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ eventId }),
+            body: JSON.stringify({ assignmentId }),
           });
         } else if (contractIdProp) {
           res = await fetch(
@@ -129,7 +129,7 @@ export default function FieldActionForm({
     return () => {
       cancelled = true;
     };
-  }, [eventId, contractIdProp, prime]);
+  }, [assignmentId, contractIdProp, prime]);
 
   async function onSubmit() {
     if (pending || !contract) return;

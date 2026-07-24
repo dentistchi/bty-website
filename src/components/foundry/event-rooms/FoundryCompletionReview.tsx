@@ -40,6 +40,7 @@ const COPY: Record<Locale, {
   secSentence: string;
   secNext: string;
   loadError: string;
+  applyCta: string;
 }> = {
   en: {
     back: "← Back to Foundry",
@@ -53,6 +54,7 @@ const COPY: Record<Locale, {
     secSentence: "Your living sentence",
     secNext: "Your next invitation",
     loadError: "This review couldn’t be opened.",
+    applyCta: "Apply this in real life",
   },
   ko: {
     back: "← 파운드리로 돌아가기",
@@ -66,6 +68,7 @@ const COPY: Record<Locale, {
     secSentence: "나의 한 문장",
     secNext: "다음 초대",
     loadError: "이 리뷰를 열 수 없습니다.",
+    applyCta: "현실에서 적용하기",
   },
 };
 
@@ -172,6 +175,17 @@ export default function FoundryCompletionReview({
           {date ? t.completedOn(date) : t.completed}
         </span>
       </div>
+
+      {/* Slice 3.1B-3N-5C.3: the single canonical Field Action entry — a present, owned, completed
+          review is the only precondition. Opens the Today-owned FieldActionForm in the same shell
+          (assignment-anchored producer; no /bty-arena, no nested shell). */}
+      <a
+        href={`/${loc}/app?tab=today&fieldActionAssignment=${encodeURIComponent(review.assignmentId)}`}
+        data-testid="completion-review-apply-cta"
+        className="inline-flex w-fit items-center rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-4 py-2 text-sm font-medium text-emerald-100/90 hover:bg-emerald-400/[0.14]"
+      >
+        {t.applyCta} →
+      </a>
 
       <div className="flex flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-[0.14em] text-[#C9A66B]/90">

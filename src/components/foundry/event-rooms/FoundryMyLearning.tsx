@@ -37,7 +37,6 @@ const COPY: Record<Locale, {
   emptyHint: string;
   back: string;
   loading: string;
-  applyCta: string;
 }> = {
   en: {
     title: "My Learning",
@@ -52,7 +51,6 @@ const COPY: Record<Locale, {
     emptyHint: "When you finish a training, it appears here with what you understood.",
     back: "← Required learning",
     loading: "Loading…",
-    applyCta: "Apply this in real life",
   },
   ko: {
     title: "내 학습",
@@ -67,7 +65,6 @@ const COPY: Record<Locale, {
     emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
     back: "← 필수 학습",
     loading: "불러오는 중…",
-    applyCta: "현실에서 적용하기",
   },
 };
 
@@ -188,17 +185,6 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
               >
                 {t.viewInCenter} →
               </a>
-              {/* Slice 3.1B-3N-5C.3: optional "Apply this in real life" → the Today-owned Field Action
-                  producer for this completed module. Practice completion does NOT gate this CTA. */}
-              {it.eventId ? (
-                <a
-                  href={`/${loc}/app?tab=today&fieldActionEvent=${encodeURIComponent(it.eventId)}`}
-                  data-testid="my-learning-apply-cta"
-                  className="mt-1 self-start rounded-lg border border-emerald-400/25 bg-emerald-400/[0.06] px-3 py-1.5 text-xs font-medium text-emerald-200/85 hover:bg-emerald-400/[0.1]"
-                >
-                  {t.applyCta} →
-                </a>
-              ) : null}
             </li>
           ))}
         </ul>

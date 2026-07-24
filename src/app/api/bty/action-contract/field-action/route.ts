@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 /**
  * Field Action producer route (Slice 3.1B-3N-5C.3).
  *
- * POST { eventId } → create/return the learner's Field Action draft for a completed Foundry
- * event (idempotent per learner + progress). GET ?contractId=<id> → load the learner's own
- * `field_action` contract (resubmission prefill). Ownership is ALWAYS the server session —
- * the client never supplies user_id. No arena run is created.
+ * POST { assignmentId } → create/return the learner's Field Action draft for a COMPLETED Foundry
+ * assignment (ownership via the immutable assignment snapshot; idempotent per learner + progress).
+ * GET ?contractId=<id> → load the learner's own `field_action` contract (resubmission prefill).
+ * Ownership is ALWAYS the server session — the client never supplies user_id. No arena run created.
  */
 export async function POST(req: NextRequest) {
   const { user, base } = await requireUser(req);
@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
   } catch {
     body = {};
   }
-  const eventId = typeof body.eventId === "string" ? body.eventId.trim() : "";
-  if (!eventId) {
-    const out = NextResponse.json({ ok: false, error: "MISSING_EVENT" }, { status: 400 });
+  const assignmentId = typeof body.assignmentId === "string" ? body.assignmentId.trim() : "";
+  if (!assignmentId) {
+    const out = NextResponse.json({ ok: false, error: "MISSING_ASSIGNMENT" }, { status: 400 });
     copyCookiesAndDebug(base, out, req, true);
     return out;
   }
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     return out;
   }
 
-  const result = await ensureFieldActionDraft(admin, { learnerUserId: user.id, eventId });
+  const result = await ensureFieldActionDraft(admin, { learnerUserId: user.id, assignmentId });
   let out: NextResponse;
   if (result.ok) {
     out = NextResponse.json({ ok: true, contract: result.contract, created: result.created });

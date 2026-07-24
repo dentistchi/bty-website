@@ -1260,9 +1260,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [actionReviewId, setActionReviewId] = useState<string | null>(null);
 
   // Field Action producer deep links (Slice 3.1B-3N-5C.3), both Today-owned + in-shell:
-  //   `?tab=today&fieldActionEvent=<foundryEventId>`   → create/open the learner's Field Action for a completed module
-  //   `?tab=today&fieldActionContract=<contractId>`     → edit + resubmit a rejected Field Action
-  const [fieldActionEventId, setFieldActionEventId] = useState<string | null>(null);
+  //   `?tab=today&fieldActionAssignment=<assignmentId>` → create/open the Field Action for a completed assignment
+  //   `?tab=today&fieldActionContract=<contractId>`      → edit + resubmit a rejected Field Action
+  const [fieldActionAssignmentId, setFieldActionAssignmentId] = useState<string | null>(null);
   const [fieldActionContractId, setFieldActionContractId] = useState<string | null>(null);
 
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
@@ -1301,14 +1301,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     } catch {
       actionReviewParam = null;
     }
-    let fieldActionEventParam: string | null = null;
+    let fieldActionAssignmentParam: string | null = null;
     let fieldActionContractParam: string | null = null;
     try {
       const sp = new URLSearchParams(search);
-      fieldActionEventParam = sp.get("fieldActionEvent");
+      fieldActionAssignmentParam = sp.get("fieldActionAssignment");
       fieldActionContractParam = sp.get("fieldActionContract");
     } catch {
-      fieldActionEventParam = null;
+      fieldActionAssignmentParam = null;
       fieldActionContractParam = null;
     }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
@@ -1318,8 +1318,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
     const validActionReview =
       actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
-    const validFieldActionEvent =
-      fieldActionEventParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionEventParam) ? fieldActionEventParam : null;
+    const validFieldActionAssignment =
+      fieldActionAssignmentParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionAssignmentParam) ? fieldActionAssignmentParam : null;
     const validFieldActionContract =
       fieldActionContractParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionContractParam) ? fieldActionContractParam : null;
     // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
@@ -1332,15 +1332,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       !wantsReflections &&
       !validFollowup &&
       !validActionReview &&
-      !validFieldActionEvent &&
+      !validFieldActionAssignment &&
       !validFieldActionContract &&
       !hostLink
     )
       return;
-    if (validFieldActionEvent) {
-      // Foundry "Apply this in real life" → open the Today-owned Field Action producer.
+    if (validFieldActionAssignment) {
+      // Foundry completion "Apply this in real life" → open the Today-owned Field Action producer.
       setTab("today");
-      setFieldActionEventId(validFieldActionEvent);
+      setFieldActionAssignmentId(validFieldActionAssignment);
     } else if (validFieldActionContract) {
       // Today "Needs revision" for a field_action → open the focused form to edit + resubmit.
       setTab("today");
@@ -1382,7 +1382,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("entry");
       params.delete("followup");
       params.delete("actionReview");
-      params.delete("fieldActionEvent");
+      params.delete("fieldActionAssignment");
       params.delete("fieldActionContract");
       params.delete("event");
       params.delete("section");
@@ -1588,14 +1588,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
-            {fieldActionEventId || fieldActionContractId ? (
+            {fieldActionAssignmentId || fieldActionContractId ? (
               // Slice 3.1B-3N-5C.3: Today-owned Field Action producer (author / resubmit). Back → Today.
               <FieldActionForm
                 locale={locale}
-                eventId={fieldActionEventId}
+                assignmentId={fieldActionAssignmentId}
                 contractId={fieldActionContractId}
                 onBack={() => {
-                  setFieldActionEventId(null);
+                  setFieldActionAssignmentId(null);
                   setFieldActionContractId(null);
                 }}
               />

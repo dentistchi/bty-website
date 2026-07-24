@@ -41,7 +41,7 @@ afterEach(() => {
 describe("FieldActionForm", () => {
   it("new from a completed event → shows the authoring form + module context", async () => {
     mockFetch({});
-    render(<FieldActionForm locale="en" eventId="event-1" onBack={() => {}} />);
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={() => {}} />);
     expect(await screen.findByTestId("field-action-form")).toBeTruthy();
     expect(screen.getByTestId("field-action-who")).toBeTruthy();
     expect(screen.getByTestId("field-action-what")).toBeTruthy();
@@ -51,7 +51,7 @@ describe("FieldActionForm", () => {
   it("blocks submit until Who/What/How/When are authored (no POST)", async () => {
     const onSubmit = vi.fn();
     mockFetch({ onSubmit });
-    render(<FieldActionForm locale="en" eventId="event-1" onBack={() => {}} />);
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={() => {}} />);
     fireEvent.click(await screen.findByTestId("field-action-submit"));
     expect(screen.getByTestId("field-action-validation")).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -61,7 +61,7 @@ describe("FieldActionForm", () => {
     const onBack = vi.fn();
     const onSubmit = vi.fn();
     mockFetch({ onSubmit });
-    render(<FieldActionForm locale="en" eventId="event-1" onBack={onBack} />);
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={onBack} />);
     await screen.findByTestId("field-action-who");
     fireEvent.change(screen.getByTestId("field-action-who"), { target: { value: "My team" } });
     fireEvent.change(screen.getByTestId("field-action-what"), { target: { value: "Run a retro" } });
@@ -90,7 +90,7 @@ describe("FieldActionForm", () => {
   it("server failure does not declare success (no onBack)", async () => {
     const onBack = vi.fn();
     mockFetch({ submitStatus: 500 });
-    render(<FieldActionForm locale="en" eventId="event-1" onBack={onBack} />);
+    render(<FieldActionForm locale="en" assignmentId="assign-1" onBack={onBack} />);
     await screen.findByTestId("field-action-who");
     fireEvent.change(screen.getByTestId("field-action-who"), { target: { value: "a" } });
     fireEvent.change(screen.getByTestId("field-action-what"), { target: { value: "b" } });
