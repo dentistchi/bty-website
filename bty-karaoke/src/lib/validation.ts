@@ -180,3 +180,30 @@ export const ProPilotDecisionSchema = z.object({
   idempotencyKey: z.string().trim().min(1).max(128),
   reason: z.string().trim().max(300).optional(),
 });
+
+// TIMED ACCESS PASS (BUILD 17). Fixed durations only — passType is a closed enum, so an
+// arbitrary time can never be issued. accountId is the canonical account (Manager side).
+export const TIMED_PASS_TYPES = ['ONE_HOUR', 'FOUR_HOURS', 'TWENTY_FOUR_HOURS'] as const;
+
+// Manager issues a pass. reason is optional (audited when present); idempotencyKey makes a
+// retried issue return the same grant instead of a duplicate.
+export const IssueTimedPassSchema = z.object({
+  accountId: z.string().uuid(),
+  passType: z.enum(TIMED_PASS_TYPES),
+  reason: z.string().trim().max(300).optional(),
+  idempotencyKey: z.string().trim().min(1).max(128),
+});
+
+// Manager revokes an unused pass. A fresh idempotencyKey per attempt makes it replay-safe.
+export const RevokeTimedPassSchema = z.object({
+  reason: z.string().trim().max(300).optional(),
+  idempotencyKey: z.string().trim().min(1).max(128),
+});
+
+// Host selects a pass to use. The account is ALWAYS derived server-side from the session —
+// never accepted from the body. idempotencyKey is optional (selection is naturally
+// idempotent: re-selecting the same pass is a no-op).
+export const SelectTimedPassSchema = z.object({
+  passGrantId: z.string().uuid(),
+  idempotencyKey: z.string().trim().min(1).max(128).optional(),
+});

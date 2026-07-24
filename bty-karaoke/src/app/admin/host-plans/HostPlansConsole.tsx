@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PRODUCT_NAME } from '@/lib/brand';
 import { ANOMALY_LABEL, type AnomalyFlag, type ProviderSummary } from '@/domain/host-plan-console';
 import ProPilotRequestsSection from './ProPilotRequestsSection';
+import TimedAccessPassSection from './TimedAccessPassSection';
 
 // The Manager session is an HttpOnly cookie set by the server — never readable here,
 // never stored in localStorage. Same-origin fetches carry it; a 401 means "not signed
@@ -658,6 +659,13 @@ export default function HostPlansConsole() {
                 </div>
               )}
             </div>
+
+            {/* Timed Access Pass (BUILD 17) — issue / revoke / inventory / audit */}
+            <TimedAccessPassSection
+              accountId={detail.accountId}
+              basePlan={detail.current.code}
+              onUnauthorized={closeDetail}
+            />
 
             {/* Assignment history (started_at asc) */}
             <div className="card" style={{ marginTop: 10 }}>
