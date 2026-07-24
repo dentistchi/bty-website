@@ -225,8 +225,34 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     }
   }
 
-  // Begin a NEW logical song request. Mints ONE fresh idempotency key; a genuinely new
-  // request (or one whose prior attempt was non-retryable) always gets a new key.
+  // BUILD 18B Gate C fix — the DURABLE idempotency key for one logical request. It lives in
+  // sessionStorage (per room+event+song) so it survives a rerender, a component remount, a
+  // browser reconnect, AND whether the user retries via the retry button OR by re-tapping
+  // the same song card. A NEW key is minted ONLY when none is stored — i.e. a genuinely new
+  // song, or the same song AFTER a confirmed success / non-retryable failure cleared it.
+  const pendingKeyStore = (logicalKey: string) => `bty:reqkey:${slug}:${eventId ?? ''}:${logicalKey}`;
+  function acquireIdempotencyKey(logicalKey: string): string {
+    try {
+      const sk = pendingKeyStore(logicalKey);
+      const existing = window.sessionStorage.getItem(sk);
+      if (existing) return existing; // an unresolved attempt for THIS song → reuse, never duplicate
+      const fresh = crypto.randomUUID();
+      window.sessionStorage.setItem(sk, fresh);
+      return fresh;
+    } catch {
+      return crypto.randomUUID(); // storage disabled — the in-memory ref still reuses within this mount
+    }
+  }
+  function clearPendingKey(logicalKey: string) {
+    try {
+      window.sessionStorage.removeItem(pendingKeyStore(logicalKey));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Begin (or re-tap) a logical song request. Reuses the durable key for the SAME song
+  // while it is unresolved; mints a fresh key only for a genuinely new/different request.
   function submit(
     payload: Record<string, unknown>,
     displayTitle: string,
@@ -242,7 +268,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     }
     activeSubmission.current = {
       logicalKey: key,
-      idempotencyKey: crypto.randomUUID(), // ONE key per new logical request
+      idempotencyKey: acquireIdempotencyKey(key), // reuse the durable key for this logical request
       payload,
       displayTitle,
       displayArtist,
@@ -293,9 +319,12 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       }
       setSubmitPhase(resolution.phase);
       setSubmitErrorClass(resolution.errorClass);
-      // A non-retryable failure ends this logical request — a later attempt mints a fresh
-      // key (incl. idempotency_conflict, so a new key can succeed).
-      if (resolution.phase === 'failed_nonretryable') activeSubmission.current = null;
+      // A non-retryable failure ends this logical request — clear the durable key so a
+      // later attempt mints a fresh one (incl. idempotency_conflict, so a new key can succeed).
+      if (resolution.phase === 'failed_nonretryable') {
+        clearPendingKey(sub.logicalKey);
+        activeSubmission.current = null;
+      }
     } catch (e) {
       // Aborted by our timeout → UNCERTAIN (server may have committed). Any other throw is
       // an offline/transport failure. Both KEEP activeSubmission so a retry reuses the key.
@@ -334,6 +363,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     );
     setSubmitPhase('succeeded');
     setSubmitErrorClass(null);
+    clearPendingKey(sub.logicalKey); // confirmed success → the next request for this song is genuinely new
     activeSubmission.current = null;
     // Brief "✓ 신청됨" on the card that was submitted.
     setRequestedIds((prev) => [...prev, sub.logicalKey]);
