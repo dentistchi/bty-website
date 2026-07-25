@@ -31,6 +31,19 @@ function currentLocale(): string {
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";
 }
 
+/** [BTYOrbLatency] milestone log (Slice 3.1B-3N-5D.1C-L) — same contract as OrbLiving's helper.
+ * console.log is bridged to native os_log by Capacitor. Diagnostics only; no user/url/session data. */
+function logOrbLatency(phase: string): void {
+  try {
+    const p = typeof performance !== "undefined" ? performance : null;
+    const now = p ? p.now() : 0;
+    const epoch = (p && typeof p.timeOrigin === "number" ? p.timeOrigin : 0) + now;
+    console.log(`[BTYOrbLatency][Web] ${phase} perfMs=${now.toFixed(1)} epochMs=${epoch.toFixed(0)}`);
+  } catch {
+    /* never block navigation */
+  }
+}
+
 export default function StartShellClient() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -84,8 +97,11 @@ export default function StartShellClient() {
   const openDay = React.useCallback(() => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
+    logOrbLatency("openDay-enter");
     const locale = currentLocale();
-    router.push(isNative() ? `/${locale}/app` : `/${locale}/today`);
+    const dest = isNative() ? `/${locale}/app` : `/${locale}/today`;
+    logOrbLatency("navigation-requested"); // milestone only — the destination path is NOT logged
+    router.push(dest);
   }, [router]);
 
   // Keyboard commit mirrors the pointer press-and-hold: Space/Enter must be HELD ≥ HOLD_MS;

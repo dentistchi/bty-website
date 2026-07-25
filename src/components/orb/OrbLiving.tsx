@@ -43,14 +43,41 @@ import * as goldenOverlay from "./orbGoldenOverlay";
 import { drawOrbBodyShading, drawOrbContrastFrame } from "./orbBodyShading";
 
 /**
+ * [BTYOrbLatency] first-interaction latency instrumentation (Slice 3.1B-3N-5D.1C-L). Logs a
+ * milestone with both performance.now (relative) and its epoch conversion (timeOrigin+now) so it can
+ * be correlated with the native `[BTYOrbLatency][Native]` epoch line. Uses console.log — Capacitor
+ * bridges the WKWebView console to native os_log, so these appear in Console.app alongside the native
+ * lines. Diagnostics only: no user/token/url/query/account/session/action data; must never throw or
+ * affect interactivity. Measurement-first — this slice adds NO behavioral change to the press path.
+ */
+function orbLatencyLog(phase: string): void {
+  try {
+    const p = typeof performance !== "undefined" ? performance : null;
+    const now = p ? p.now() : 0;
+    const epoch = (p && typeof p.timeOrigin === "number" ? p.timeOrigin : 0) + now;
+    console.log(`[BTYOrbLatency][Web] ${phase} perfMs=${now.toFixed(1)} epochMs=${epoch.toFixed(0)}`);
+  } catch {
+    /* logging must never affect interactivity */
+  }
+}
+
+/**
  * The sole LIVE haptic call site (#배타성 LOCK), relocated from the retired Orb.tsx.
  * Native iOS WKWebView routes through Capacitor Haptics (the web Vibration API is dead
  * there); plain web falls back to navigator.vibrate. Subtle, one-shot — never spammed.
+ *
+ * The Capacitor impact() call is FIRE-AND-FORGET (its promise is not awaited), so a cold-start
+ * Haptics init can never block the visual press response, the hold timer, or the commit. The
+ * request/resolution are logged (5D.1C-L) to MEASURE the native Haptics round-trip from the JS side.
  */
 function orbHaptic(style: "LIGHT" | "MEDIUM"): void {
   if (typeof navigator === "undefined") return;
+  orbLatencyLog(`haptics-request-${style}`);
   if (isNative()) {
-    window.Capacitor?.Plugins?.Haptics?.impact?.({ style });
+    const r = window.Capacitor?.Plugins?.Haptics?.impact?.({ style }) as Promise<void> | undefined;
+    if (r && typeof r.then === "function") {
+      r.then(() => orbLatencyLog(`haptics-resolved-${style}`)).catch(() => orbLatencyLog(`haptics-rejected-${style}`));
+    }
     return;
   }
   if (typeof navigator.vibrate === "function") navigator.vibrate(style === "LIGHT" ? 14 : 22);
@@ -346,6 +373,8 @@ export default function OrbLiving({
     let touchDownT = 0;
     let committed = false; // per-press latch — onCommit fires at most once per press
     let holdTimer = 0; // §G press-and-hold timer id (0 = none)
+    let pressVisualPending = false; // [BTYOrbLatency] set on pointerdown; the next drawn frame that
+    // reflects the press logs "first-visual-press" → measures rAF/visual-response latency after touch.
     let touchX = cx;
     let touchY = cy;
     let lastMoveX = 0;
@@ -393,6 +422,13 @@ export default function OrbLiving({
       // layer eases calmly back (no linger — that is B-3). Particles never receive
       // this shift (§D-3). All easing is exponential-toward-target → no snap.
       realT += dt;
+      // [BTYOrbLatency] first drawn frame that renders the press (tap impulse / contact bloom / scale
+      // are all active from here) → measures pointerdown → first-visual-response (rAF starvation shows
+      // up as a large delta on a cold start).
+      if (pressVisualPending && touching) {
+        pressVisualPending = false;
+        orbLatencyLog("first-visual-press");
+      }
       // STEP 4.3: relax the tap impulse (immediate rise on contact → gentle exponential decay).
       tapImpulse *= Math.exp(-dt / TAP_TAU);
       if (tapImpulse < 0.001) tapImpulse = 0;
@@ -793,6 +829,8 @@ export default function OrbLiving({
       }
     };
     const onPointerDown = (e: PointerEvent) => {
+      orbLatencyLog("pointerdown");
+      pressVisualPending = true; // the next drawn frame logs first-visual-press
       const p = localPoint(e);
       touching = true;
       committed = false;
@@ -825,13 +863,17 @@ export default function OrbLiving({
         clearHold();
         holdTimer = window.setTimeout(() => {
           holdTimer = 0;
+          orbLatencyLog("hold-threshold-fired");
           if (touching && !committed) {
             committed = true;
+            orbLatencyLog("commit-latched");
             orbHaptic("MEDIUM"); // single decisive COMMIT pulse
             if (!reduceMotion) goldenOverlay.commit(); // hand off the entry light (persists through nav)
+            orbLatencyLog("oncommit-enter");
             onCommitRef.current?.(); // navigate into Today
           }
         }, hold);
+        orbLatencyLog("hold-timer-scheduled");
       }
     };
     const onPointerMove = (e: PointerEvent) => {
@@ -875,6 +917,7 @@ export default function OrbLiving({
     // Handlers are attached + the commit callback is live → the first valid press/hold can now be
     // accepted. Flip the state and emit the one-shot readiness signal (best-effort; never blocks).
     setInteractiveReady(true);
+    orbLatencyLog("orb-interactive-ready");
     if (!readySignalSentRef.current) {
       readySignalSentRef.current = true;
       try {
