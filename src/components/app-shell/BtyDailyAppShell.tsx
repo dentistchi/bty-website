@@ -11,10 +11,12 @@ import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCom
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
 import FoundryFollowUpResponse from "@/components/foundry/event-rooms/FoundryFollowUpResponse";
 import CenterRealityFeed from "@/components/center/CenterRealityFeed";
-import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
+import TodayHome from "@/components/app-shell/TodayHome";
+import LearnHeader from "@/components/app-shell/LearnHeader";
+import PracticeLanding from "@/components/app-shell/PracticeLanding";
+import MeEntries from "@/components/app-shell/MeEntries";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
-import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
@@ -29,10 +31,12 @@ import {
  * New BTY Daily App Shell — v1 (Phase 3 Today wire + A/A+ ritual beat).
  *
  * Mobile-first, full-height, app-native (no desktop top nav, no legacy
- * HubTopNav / ArenaLayoutShell / CenterLayoutShell / ScreenShell). Five tabs
- * switch locally (in-component state) — no navigation to legacy routes, no
- * iframes. Relationship model: Today (the day's door) · Center=Self · Arena=
- * Others · Foundry=World · Me=identity.
+ * HubTopNav / ArenaLayoutShell / CenterLayoutShell / ScreenShell). FOUR visible
+ * tabs (App Shell + Today Simplification V1) — Today · Learn · Practice · Me —
+ * switch locally (in-component state), no navigation to legacy routes, no iframes.
+ * The prior five developer-facing domains map beneath them: Learn = Foundry,
+ * Practice = Arena + Field Actions, and Center/Recovery folds into Me. Canonical
+ * internal names/routes/engines are unchanged; translated only at this UI layer.
  *
  * Today consumes REAL deterministic data from GET /api/me/today-intelligence
  * (bands / narrative only — never confidence numerics or reason-code tokens).
@@ -65,7 +69,10 @@ type Copy = {
     /** Each door: `noun` = the BTY ontology label (quiet eyebrow) · `action` = the lived daily
      *  choice (primary, visually strongest). `focus` (self/others/world) is the unchanged internal
      *  key. `select`/benediction are protected interior copy. */
-    cards: { noun: string; action: string; tab: AppTabKey; focus: TodayFocusKey; select: string }[];
+    // `tab` here is RETIRED reserved copy for the removed three-door relationship surface
+    // (TodaySurface, preserved for isolated tests, not rendered). It intentionally keeps the
+    // legacy relationship-door keys and is decoupled from the live 4-tab AppTabKey.
+    cards: { noun: string; action: string; tab: "center" | "arena" | "foundry"; focus: TodayFocusKey; select: string }[];
     /** Confirmation-card sublabels — reuse the locked-room eyebrow tone (no new style). */
     pathLabel: string;
     promiseLabel: string;
@@ -1247,6 +1254,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
   const [centerFocusEntry, setCenterFocusEntry] = useState<string | null>(null);
+  // Me sub-view (App Shell + Today Simplification V1): Center folds into Me. "home" = the Me landing
+  // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
+  // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
+  // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
+  const [meView, setMeView] = useState<"home" | "center" | "my-learning">("home");
   // Host Leadership Attention deep link (Slice 3.1B-3L): `?tab=foundry&event=<id>&section=<s>&focus=<id>`
   // opens the EXACT owned Event Control Room + section, with the focused learner row highlighted. These
   // feed FoundryEventRooms' initial view once; `onInitialConsumed` clears them so a later tab re-entry
@@ -1273,6 +1285,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   useEffect(() => {
     const search = window.location.search;
     const requestedTab = resolveInitialAppTab(search);
+    // Raw (pre-alias) tab value — lets legacy `?tab=center` open the Center feed inside Me.
+    let rawTab: string | null = null;
+    try {
+      rawTab = new URLSearchParams(search).get("tab");
+    } catch {
+      rawTab = null;
+    }
     let reviewParam: string | null = null;
     let viewParam: string | null = null;
     try {
@@ -1350,29 +1369,33 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setTab("today");
       setActionReviewId(validActionReview);
     } else if (validFollowup) {
-      // Canonical Today FOLLOW_UP_DUE deep link → open the focused follow-up surface in Foundry.
-      setTab("foundry");
+      // Canonical Today FOLLOW_UP_DUE deep link (?tab=foundry&followup=) → Learn (=Foundry) follow-up.
+      setTab("learn");
       setFollowupId(validFollowup);
     } else if (hostLink) {
-      // Canonical Today Host attention deep link → open the exact owned control room + section + row.
-      setTab("foundry");
+      // Canonical Host attention deep link → Learn (=Foundry) control room + section + focused row.
+      setTab("learn");
       setHostEventId(hostLink.eventId);
       setHostSection(hostLink.section);
       setHostFocusId(hostLink.focusId);
     } else if (validReview) {
-      setTab("foundry");
+      setTab("learn");
       setReviewId(validReview);
     } else if (wantsMyLearning) {
-      setTab("foundry");
+      setTab("learn");
       setFoundryView("my-learning");
     } else if (wantsReflections) {
-      // Legacy ?view=reflections normalizes to the single Center feed; preserve entry focus.
-      setTab("center");
+      // Legacy ?view=reflections normalizes to the single Center feed — now inside Me (Center folded in).
+      setTab("me");
+      setMeView("center");
       setCenterFocusEntry(validEntry);
     } else if (requestedTab) {
       setTab(requestedTab);
-      // Canonical deep link ?tab=center&entry=<id> focuses the reflection on the feed.
-      if (requestedTab === "center" && validEntry) setCenterFocusEntry(validEntry);
+      // Legacy ?tab=center[&entry=<id>] resolves to Me → open the Center feed (focused when entry present).
+      if (rawTab === "center") {
+        setMeView("center");
+        if (validEntry) setCenterFocusEntry(validEntry);
+      }
     }
     try {
       const params = new URLSearchParams(search);
@@ -1608,34 +1631,33 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               />
             ) : (
               <>
-                {/* FINAL TODAY IA (Slice 3.1B-3J.1): greeting OPENS the screen, then the Personal Brief —
-                    understand yesterday (consent-gated) + what must not be missed (deterministic
-                    reminders). The old relationship/commitment presentation (three doors, TODAY'S PATH,
-                    PROMISE TO CARRY, the "living this relationship" card, the yesterday-trace) is removed;
-                    its records + server engines are preserved, just no longer surfaced here. */}
+                {/* TODAY SIMPLIFICATION V1: greeting OPENS the screen, then the calm Today hierarchy —
+                    Better Than Yesterday header · measured yesterday summary · exactly ONE primary next
+                    action (deterministic domain selector) · a compact "needs your attention" summary ·
+                    and "Show everything", under which the FULL, unchanged detailed projections render
+                    (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
+                    AI brief). No detailed list renders in the first viewport by default. */}
                 <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
-                {/* Deterministic reminders + optional consent-gated AI observation/suggestion, composed
-                    server-side. Renders nothing (no empty container) when there is neither a brief nor a
-                    reminder. The raw Reflection body never reaches this client. */}
-                <TodayPersonalBrief locale={locale} />
+                <TodayHome locale={locale} />
               </>
             )}
           </>
         )}
-        {/* Center = the self-owned Daily Keep room (Center Promise Loop STEP 1A): write and
-            save ONE honest line for today. Server-persisted (Center-owned dear_me_letters,
-            marker prompt='center_daily_keep') — NO Arena action contract, NO LLM reply, NO
-            localStorage. The prepared-room copy (t.center) is retained on COPY as a reserved
-            fallback identity. arena/foundry stay LockedRoom until their own steps. */}
-        {tab === "center" && <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry} />}
-        {/* Arena = relationship with others. In-shell published-practice player
-            (Slice 3.0C-1): list → start → play → complete → list, ALL local state,
-            NO router/navigation. t.arena copy reused only for the empty state. */}
-        {tab === "arena" && <ArenaRoom locale={locale} lockedTag={t.arena.tag} lockedBody={t.arena.body} />}
-        {/* Foundry = relationship with the world. V1 is Event Rooms: a manager
-            opens one real shared room and brings the team in by QR. Replaces the
-            LockedRoom placeholder (t.foundry retained as reserved fallback copy). */}
-        {tab === "foundry" &&
+        {/* Practice (= Arena + Field Actions). Landing surface with calm doors; "Arena practice"
+            opens the UNCHANGED in-shell Arena runtime in place, "Field Actions" routes to Today
+            where due Field Actions surface, Live Experiences / Scan QR are gated placeholders. */}
+        {tab === "practice" && (
+          <PracticeLanding
+            locale={locale}
+            lockedTag={t.arena.tag}
+            lockedBody={t.arena.body}
+            onGoFieldActions={() => setTab("today")}
+          />
+        )}
+        {/* Learn (= Foundry). A learner-facing identity header sits above the UNCHANGED Foundry
+            surface: Event Rooms, Required Learning, program discovery/progress, and — for authorized
+            hosts — the creation tools. All existing Foundry sub-views / deep links are preserved. */}
+        {tab === "learn" &&
           (followupId ? (
             <FoundryFollowUpResponse
               followupId={followupId}
@@ -1651,19 +1673,24 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           ) : foundryView === "my-learning" ? (
             <FoundryMyLearning locale={locale} onBack={() => setFoundryView("rooms")} />
           ) : (
-            <FoundryEventRooms
-              locale={locale}
-              onOpenReview={setReviewId}
-              onOpenMyLearning={() => setFoundryView("my-learning")}
-              initialEventId={hostEventId}
-              initialFocusSection={hostSection}
-              initialFocusId={hostFocusId}
-              onInitialConsumed={() => {
-                setHostEventId(null);
-                setHostSection(null);
-                setHostFocusId(null);
-              }}
-            />
+            <>
+              {/* Learn identity header — a learner can continue/open training without first
+                  understanding "Foundry"; Foundry appears only as a quiet secondary attribution. */}
+              <LearnHeader locale={locale} onOpenMyLearning={() => setFoundryView("my-learning")} />
+              <FoundryEventRooms
+                locale={locale}
+                onOpenReview={setReviewId}
+                onOpenMyLearning={() => setFoundryView("my-learning")}
+                initialEventId={hostEventId}
+                initialFocusSection={hostSection}
+                initialFocusId={hostFocusId}
+                onInitialConsumed={() => {
+                  setHostEventId(null);
+                  setHostSection(null);
+                  setHostFocusId(null);
+                }}
+              />
+            </>
           ))}
         {/* Me = Center/self-owned mirror rendered inside Today. Today supplies the
             render slot + locale ONLY; the card reads its own Center/self-safe
@@ -1674,28 +1701,56 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             light (not a chart/link/control). The Arena read + composition happen HERE at
             the shell (the composition layer) — CenterMeCard stays Center-pure and never
             reads /api/arena/*. Framed as a self "weekly trace," not competition. */}
-        {tab === "me" && (
-          <div className="flex flex-col">
-            {/* Canonical (and only) account-management surface: current email + Switch account +
-                Sign out. Switch launches the Google chooser directly → Today (Slice 3.1B-3N-5B.1);
-                Sign out uses the shared signOutAccount teardown. */}
-            <div className="mb-5">
-              <AccountBlock locale={locale} />
+        {tab === "me" &&
+          (meView === "center" ? (
+            // Voluntary Center / Recovery surface (folded into Me). The deterministic forced-reset
+            // middleware redirect to /{locale}/center is UNCHANGED — this is the in-shell voluntary path.
+            <div className="flex flex-col gap-4" data-testid="me-center">
+              <button
+                type="button"
+                data-testid="me-center-back"
+                onClick={() => {
+                  setMeView("home");
+                  setCenterFocusEntry(null);
+                }}
+                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+              >
+                ‹ {locale === "ko" ? "뒤로" : "Back"}
+              </button>
+              <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry} />
             </div>
-            <CenterMeCard locale={locale} />
-            {/* Lift the weekly light up into the open space below the mirror so it is the
-                emotional centre of the Me tab (not a bottom decoration) and its caption
-                clears the bottom tab dock. vh-relative so the lift scales across devices. */}
-            <div className="-mt-[24vh]">
-              <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+          ) : meView === "my-learning" ? (
+            <FoundryMyLearning locale={locale} onBack={() => setMeView("home")} />
+          ) : (
+            <div className="flex flex-col">
+              {/* Canonical (and only) account-management surface: current email + Switch account +
+                  Sign out. Switch launches the Google chooser directly → Today (Slice 3.1B-3N-5B.1);
+                  Sign out uses the shared signOutAccount teardown. */}
+              <div className="mb-5">
+                <AccountBlock locale={locale} />
+              </div>
+              {/* Me entries — My Learning · Recovery/Center · My Experiences (placeholder). */}
+              <div className="mb-5">
+                <MeEntries
+                  locale={locale}
+                  onOpenMyLearning={() => setMeView("my-learning")}
+                  onOpenRecovery={() => setMeView("center")}
+                />
+              </div>
+              <CenterMeCard locale={locale} />
+              {/* Lift the weekly light up into the open space below the mirror so it is the
+                  emotional centre of the Me tab (not a bottom decoration) and its caption
+                  clears the bottom tab dock. vh-relative so the lift scales across devices. */}
+              <div className="-mt-[24vh]">
+                <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+              </div>
             </div>
-          </div>
-        )}
+          ))}
       </main>
 
       {/* Bottom dock lifted above the wake layer (z-10) so the ambient glow stays behind it. */}
       <div className="relative z-10 flex shrink-0 flex-col">
-        <AppTabBar active={tab} onSelect={setTab} />
+        <AppTabBar active={tab} onSelect={setTab} locale={locale} />
       </div>
     </div>
   );

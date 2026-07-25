@@ -535,13 +535,13 @@ describe("app-shell Today suggested-door transition-in (Arrival Warmth STEP 3)",
   });
 });
 
-// FINAL TODAY IA (Slice 3.1B-3J.1): the whole shell renders greeting → Personal Brief only. The old
-// relationship/commitment presentation (doors, TODAY'S PATH, PROMISE TO CARRY, the "living this
-// relationship" card, the yesterday-trace, the sub line) is entirely gone. The Brief endpoint is the
-// only Today-content read; every other former Today-mount read was removed with the retired surface.
-describe("app-shell Today — simplified IA (Slice 3.1B-3J.1)", () => {
+// APP SHELL + TODAY SIMPLIFICATION V1: the whole shell renders greeting → TodayHome (the calm
+// hierarchy: Better Than Yesterday header · measured yesterday · ONE primary action · attention ·
+// Show everything). The detailed projections (TodayPersonalBrief) are collapsed by default and
+// revealed only under "Show everything". The old relationship/commitment presentation stays gone.
+describe("app-shell Today — simplified hierarchy (App Shell V1)", () => {
   type BriefDto = { yesterdayObservation: string; todaySuggestion: string } | null;
-  function stubShellFetch(over: { brief?: BriefDto; reminders?: unknown[] } = {}) {
+  function stubShellFetch(over: { brief?: BriefDto; reminders?: unknown[]; yesterdayReturned?: boolean } = {}) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -552,14 +552,15 @@ describe("app-shell Today — simplified IA (Slice 3.1B-3J.1)", () => {
             { status: 200 },
           );
         }
+        if (u.includes("/api/me/daily-trace")) {
+          // 7-day series; the second-to-last day is "yesterday".
+          const y = over.yesterdayReturned ? 1 : 0;
+          return new Response(JSON.stringify({ dailyTrace: [{ date: "d6", intensity: y }, { date: "d7", intensity: 1 }] }), { status: 200 });
+        }
         return new Response("{}", { status: 200 });
       }),
     );
   }
-  const briefFetched = () =>
-    ((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string]>).some(([u]) =>
-      String(u).includes("/api/me/today/brief"),
-    );
   // Every retired presentation string that must never appear on the simplified Today.
   const OLD_TODAY_STRINGS = [
     "Return to myself",
@@ -578,57 +579,82 @@ describe("app-shell Today — simplified IA (Slice 3.1B-3J.1)", () => {
     canonicalDeepLink: "/en/app?tab=foundry",
   };
 
-  it("greeting renders and comes BEFORE the Personal Brief (never a brief above the greeting)", async () => {
+  it("greeting renders and comes BEFORE the Today hierarchy (greeting opens the screen)", async () => {
     stubShellFetch({ reminders: [aReminder] });
     const { container } = render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Foundry"); // shell mounted
+    await screen.findByText("Learn"); // shell mounted (new tab label)
     const greeting = await waitFor(() => {
       const g = container.querySelector("[data-today-greeting]");
       expect(g).not.toBeNull();
       return g!;
     });
-    const brief = await screen.findByTestId("today-personal-brief");
-    // brief FOLLOWS greeting in document order → greeting opens the screen.
-    expect(greeting.compareDocumentPosition(brief) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const home = await screen.findByTestId("today-home");
+    expect(greeting.compareDocumentPosition(home) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("the old relationship/commitment presentation is entirely absent (no doors, no legacy copy)", async () => {
     stubShellFetch({ reminders: [aReminder] });
     const { container } = render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Foundry");
-    await screen.findByTestId("today-personal-brief");
+    await screen.findByText("Learn");
+    await screen.findByTestId("today-home");
     expect(container.querySelectorAll("[data-focus]").length).toBe(0); // no relationship doors
     expect(container.querySelector("[data-today-confirm]")).toBeNull();
     expect(container.querySelector("[data-today-center-keep]")).toBeNull();
     expect(container.querySelector("[data-today-status]")).toBeNull(); // no yesterday-trace slot
     for (const s of OLD_TODAY_STRINGS) expect(container.textContent).not.toContain(s);
-    // Exactly one YESTERDAY/TODAY brief structure exists (the Personal Brief).
-    expect(screen.getAllByTestId("today-personal-brief").length).toBe(1);
   });
 
-  it("consent OFF / no data leaves a useful greeting + reminders with NO empty brief container", async () => {
-    stubShellFetch({ brief: null, reminders: [] });
-    const { container } = render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Foundry");
-    await waitFor(() => expect(briefFetched()).toBe(true));
-    // Greeting stays; the empty brief renders no container at all.
-    await waitFor(() => expect(container.querySelector("[data-today-greeting]")).not.toBeNull());
-    expect(screen.queryByTestId("today-personal-brief")).toBeNull();
-  });
-
-  it("reminders surface (deep-linked + tappable) with no AI brief when consent is off", async () => {
-    stubShellFetch({ brief: null, reminders: [{ stableId: "action:blk1", category: "ACTION_DUE", title: "submit QR proof", state: "due_today", canonicalDeepLink: "/en/bty-arena" }] });
+  it("shows the Better Than Yesterday header + a yesterday summary in the first viewport", async () => {
+    stubShellFetch({ reminders: [], yesterdayReturned: true });
     render(<BtyDailyAppShell locale="en" />);
-    await screen.findByTestId("today-personal-brief");
-    const item = await screen.findByText("submit QR proof");
-    expect(item.closest("a")?.getAttribute("href")).toBe("/en/bty-arena");
-    expect(screen.queryByTestId("brief-ai")).toBeNull(); // no AI section without consent/data
+    await screen.findByText("Learn");
+    expect(await screen.findByTestId("today-header")).toBeTruthy();
+    const yesterday = await screen.findByTestId("today-yesterday");
+    await waitFor(() => expect(yesterday.textContent).toContain("You showed up yesterday."));
+  });
+
+  it("projects EXACTLY ONE primary action and routes it directly (deep link preserved)", async () => {
+    stubShellFetch({
+      reminders: [
+        aReminder,
+        { stableId: "rev:1", category: "ACTION_REVISION", title: "fix your action", state: "needs_revision", canonicalDeepLink: "/en/app?tab=today&fieldActionContract=abc" },
+        { stableId: "act:1", category: "ACTION_DUE", title: "submit proof", state: "due_today", canonicalDeepLink: "/en/bty-arena" },
+      ],
+    });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Learn");
+    // Exactly one primary-action node — needs_revision wins (blocking correction).
+    const primaries = await screen.findAllByTestId("today-primary-action");
+    expect(primaries.length).toBe(1);
+    expect(primaries[0].getAttribute("data-category")).toBe("ACTION_REVISION");
+    expect(primaries[0].getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc");
+    expect(primaries[0].textContent).toContain("fix your action");
+  });
+
+  it("collapses the detailed projections by default; Show everything reveals the full brief", async () => {
+    stubShellFetch({ brief: { yesterdayObservation: "y", todaySuggestion: "t" }, reminders: [aReminder] });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByTestId("today-home");
+    // Detailed brief NOT rendered on the first viewport.
+    expect(screen.queryByTestId("today-personal-brief")).toBeNull();
+    // Tapping "Show everything" reveals it (all detailed sections preserved).
+    fireEvent.click(await screen.findByTestId("today-show-everything-toggle"));
+    expect(await screen.findByTestId("today-personal-brief")).toBeTruthy();
+  });
+
+  it("no fabricated yesterday: a quiet yesterday reads as the calm invitation, never invented progress", async () => {
+    stubShellFetch({ reminders: [], yesterdayReturned: false });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Learn");
+    const yesterday = await screen.findByTestId("today-yesterday");
+    await waitFor(() => expect(yesterday.textContent).toContain("Yesterday was quiet."));
+    expect(yesterday.textContent).not.toContain("You showed up yesterday.");
   });
 
   it("POSTs /api/me/day/open on native Today mount (device tz only, no client day-key)", async () => {
     stubShellFetch({ reminders: [] });
     render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Foundry");
+    await screen.findByText("Learn");
     await waitFor(() => {
       const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls as Array<[string, RequestInit?]>;
       expect(calls.some(([u]) => String(u).includes("/api/me/day/open"))).toBe(true);
@@ -642,7 +668,7 @@ describe("app-shell Today — simplified IA (Slice 3.1B-3J.1)", () => {
   it("renders no 'Dr. Chi' companion line or avatar glyph", async () => {
     stubShellFetch({ reminders: [] });
     const { container } = render(<BtyDailyAppShell locale="en" />);
-    await screen.findByText("Foundry");
+    await screen.findByText("Learn");
     expect(container.textContent).not.toContain("Dr. Chi");
     expect(container.textContent).not.toContain("치");
   });

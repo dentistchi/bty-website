@@ -50,28 +50,51 @@ describe("arenaRoomActions endpoint discipline", () => {
   });
 });
 
-describe("BtyDailyAppShell — only the arena branch changed", () => {
+describe("PracticeLanding navigation lock (App Shell V1)", () => {
+  const src = read("./PracticeLanding.tsx");
+  it("has NO router / navigation for its own controls (Arena runtime stays in-shell)", () => {
+    expect(src).not.toMatch(/useRouter|router\.(push|replace)/);
+    expect(src).not.toMatch(/next\/navigation/);
+    expect(src).not.toMatch(/next\/link/i);
+  });
+  it("opens the unchanged in-shell ArenaRoom in place", () => {
+    expect(src).toMatch(/ArenaRoom/);
+  });
+});
+
+describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplification V1)", () => {
   const src = read("./BtyDailyAppShell.tsx");
 
-  it("arena tab renders ArenaRoom (not the old LockedRoom stub, not ArenaTabRoom)", () => {
-    expect(src).toMatch(/tab === "arena" && <ArenaRoom/);
-    expect(src).not.toMatch(/tab === "arena" && <LockedRoom/);
-    expect(src).not.toMatch(/ArenaTabRoom/);
+  it("renders exactly the four visible tab branches: today / learn / practice / me", () => {
+    expect(src).toMatch(/tab === "today"/);
+    expect(src).toMatch(/tab === "learn" &&/);
+    expect(src).toMatch(/tab === "practice" &&/);
+    expect(src).toMatch(/tab === "me" &&/);
+    // The old five-domain visible tabs no longer exist as shell branches.
+    expect(src).not.toMatch(/tab === "arena"/);
+    expect(src).not.toMatch(/tab === "foundry"/);
+    expect(src).not.toMatch(/tab === "center" &&/);
   });
 
-  it("Today / Center / Foundry / Me tab branches render their rooms", () => {
-    expect(src).toMatch(/tab === "today"/);
-    // Center is ONE canonical Personal Reality Feed — no subview (Slice 3.1B-3J).
-    expect(src).toMatch(/tab === "center" && <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry}/);
-    // Foundry tab renders the rooms surface, OR the in-shell completion review when a
-    // ?review deep-link / Review-learning tap is active (Slice 3.1B-3E.1).
-    expect(src).toMatch(/tab === "foundry" &&/);
-    // FoundryEventRooms renders with onOpenReview (+ onOpenMyLearning wiring, Slice 3.1B-3H).
+  it("Practice renders PracticeLanding (Arena runtime moved beneath it, unchanged)", () => {
+    expect(src).toMatch(/tab === "practice" && \(?\s*<PracticeLanding/);
+  });
+
+  it("Learn renders the unchanged Foundry surface + all its sub-views", () => {
+    expect(src).toMatch(/tab === "learn" &&/);
     expect(src).toMatch(/<FoundryEventRooms[\s\S]*?onOpenReview={setReviewId}/);
     expect(src).toMatch(/onOpenMyLearning={\(\) => setFoundryView\("my-learning"\)}/);
     expect(src).toMatch(/<FoundryMyLearning locale={locale}/);
     expect(src).toMatch(/<FoundryCompletionReview/);
-    expect(src).toMatch(/tab === "me"/);
+    // Learn identity header sits above the default Foundry surface.
+    expect(src).toMatch(/<LearnHeader/);
+  });
+
+  it("Me folds in the voluntary Center feed + My Learning (recovery routing untouched)", () => {
+    expect(src).toMatch(/meView === "center"/);
+    expect(src).toMatch(/<CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry}/);
+    expect(src).toMatch(/meView === "my-learning"/);
+    expect(src).toMatch(/<MeEntries/);
   });
 
   it("AppTabBar remains the in-component tab owner (onSelect={setTab})", () => {

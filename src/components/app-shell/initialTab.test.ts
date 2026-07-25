@@ -2,17 +2,28 @@
 import { describe, it, expect } from "vitest";
 import { resolveInitialAppTab } from "./initialTab";
 
-/** Slice 3.1B-3E return contract: ?tab= opens a known tab; unknown/absent → null (default Today). */
+/**
+ * Return contract (App Shell + Today Simplification V1): `?tab=` opens one of the FOUR visible tabs;
+ * legacy five-domain values still resolve (Foundry→Learn, Arena→Practice, Center→Me) so every
+ * previously-shipped deep link keeps working; unknown/absent → null (default Today).
+ */
 describe("resolveInitialAppTab", () => {
-  it("resolves each known tab", () => {
-    for (const tab of ["today", "center", "arena", "foundry", "me"]) {
+  it("resolves each of the four visible tabs", () => {
+    for (const tab of ["today", "learn", "practice", "me"]) {
       expect(resolveInitialAppTab(`?tab=${tab}`)).toBe(tab);
     }
   });
 
-  it("opens Foundry from the account-switch return url", () => {
-    expect(resolveInitialAppTab("?tab=foundry")).toBe("foundry");
-    expect(resolveInitialAppTab("?next=x&tab=foundry&switch=1")).toBe("foundry");
+  it("maps legacy five-domain tab values to their new visible tab", () => {
+    expect(resolveInitialAppTab("?tab=foundry")).toBe("learn");
+    expect(resolveInitialAppTab("?tab=arena")).toBe("practice");
+    expect(resolveInitialAppTab("?tab=center")).toBe("me");
+  });
+
+  it("still opens the correct tab from the account-switch return url", () => {
+    // Legacy return url (?tab=foundry) resolves to Learn; a fresh one (?tab=learn) resolves directly.
+    expect(resolveInitialAppTab("?next=x&tab=foundry&switch=1")).toBe("learn");
+    expect(resolveInitialAppTab("?next=x&tab=learn&switch=1")).toBe("learn");
   });
 
   it("returns null for an absent tab param (default stays Today)", () => {
