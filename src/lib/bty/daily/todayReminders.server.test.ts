@@ -103,9 +103,10 @@ describe("buildTodayReminders", () => {
     expect(out.every((r) => r.canonicalDeepLink.startsWith("/en/app"))).toBe(true);
   });
 
-  // Slice 3.1B-3N-5C.3: a PENDING field_action reminder must reopen the FOCUSED Field Action form
-  // (to complete/resume), not dead-end at the Arena tab; a non-field pending keeps the Arena tab.
-  it("field_action ACTION_DUE deep-links to the focused Field Action form; arena contracts keep the Arena tab", async () => {
+  // Field Actions Focused Surface V1: a PENDING field_action reminder deep-links to the FOCUSED
+  // Field Actions surface under Practice (?tab=practice&fieldAction=), so the Today primary CTA opens
+  // the specific action there — never generic Today; a non-field pending keeps the Arena tab.
+  it("field_action ACTION_DUE deep-links to the focused Field Actions surface; arena contracts keep the Arena tab", async () => {
     const admin = mockAdmin({
       contracts: [
         { id: "fa1", status: "pending", action_type: "field_action", contract_description: "Apply: module", deadline_at: "2026-07-22T20:00:00Z" },
@@ -116,7 +117,7 @@ describe("buildTodayReminders", () => {
     const fa = out.find((r) => r.stableId === "action:fa1")!;
     const ar = out.find((r) => r.stableId === "action:ar1")!;
     expect(fa.category).toBe("ACTION_DUE");
-    expect(fa.canonicalDeepLink).toBe("/en/app?tab=today&fieldActionContract=fa1");
+    expect(fa.canonicalDeepLink).toBe("/en/app?tab=practice&fieldAction=fa1");
     expect(ar.canonicalDeepLink).toBe("/en/app?tab=arena");
     expect(out.every((r) => !r.canonicalDeepLink.includes("/bty-arena"))).toBe(true);
   });

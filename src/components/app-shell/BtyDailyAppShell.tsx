@@ -1276,6 +1276,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   //   `?tab=today&fieldActionContract=<contractId>`      → edit + resubmit a rejected Field Action
   const [fieldActionAssignmentId, setFieldActionAssignmentId] = useState<string | null>(null);
   const [fieldActionContractId, setFieldActionContractId] = useState<string | null>(null);
+  // Field Actions Focused Surface V1: `?tab=practice&fieldAction=<contractId>` opens the focused
+  // Field Actions surface under Practice, scrolled to that action. Cleared once consumed.
+  const [practiceFieldActionId, setPracticeFieldActionId] = useState<string | null>(null);
 
   // Return contract: open a specific tab from `?tab=` (and/or a `?review=`/`?view=` deep-link) ONCE
   // on mount — used after an account switch returns to `/app?tab=foundry`. Only known tab values
@@ -1322,13 +1325,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     }
     let fieldActionAssignmentParam: string | null = null;
     let fieldActionContractParam: string | null = null;
+    let fieldActionParam: string | null = null;
     try {
       const sp = new URLSearchParams(search);
       fieldActionAssignmentParam = sp.get("fieldActionAssignment");
       fieldActionContractParam = sp.get("fieldActionContract");
+      fieldActionParam = sp.get("fieldAction");
     } catch {
       fieldActionAssignmentParam = null;
       fieldActionContractParam = null;
+      fieldActionParam = null;
     }
     const validReview = reviewParam && /^[0-9a-fA-F-]{16,}$/.test(reviewParam) ? reviewParam : null;
     const wantsMyLearning = viewParam === "my-learning";
@@ -1341,6 +1347,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       fieldActionAssignmentParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionAssignmentParam) ? fieldActionAssignmentParam : null;
     const validFieldActionContract =
       fieldActionContractParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionContractParam) ? fieldActionContractParam : null;
+    const validFieldAction =
+      fieldActionParam && /^[0-9a-fA-F-]{16,}$/.test(fieldActionParam) ? fieldActionParam : null;
     // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
     // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
     const hostLink = parseHostDeepLink(search);
@@ -1353,15 +1361,21 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       !validActionReview &&
       !validFieldActionAssignment &&
       !validFieldActionContract &&
+      !validFieldAction &&
       !hostLink
     )
       return;
-    if (validFieldActionAssignment) {
+    if (validFieldAction) {
+      // Field Actions Focused Surface V1: open the focused Field Actions surface under Practice,
+      // scrolled to this specific action (never generic Today).
+      setTab("practice");
+      setPracticeFieldActionId(validFieldAction);
+    } else if (validFieldActionAssignment) {
       // Foundry completion "Apply this in real life" → open the Today-owned Field Action producer.
       setTab("today");
       setFieldActionAssignmentId(validFieldActionAssignment);
     } else if (validFieldActionContract) {
-      // Today "Needs revision" for a field_action → open the focused form to edit + resubmit.
+      // Backward-compat: a legacy ?tab=today&fieldActionContract= link still opens the focused form.
       setTab("today");
       setFieldActionContractId(validFieldActionContract);
     } else if (validActionReview) {
@@ -1407,6 +1421,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("actionReview");
       params.delete("fieldActionAssignment");
       params.delete("fieldActionContract");
+      params.delete("fieldAction");
       params.delete("event");
       params.delete("section");
       params.delete("focus");
@@ -1644,14 +1659,17 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           </>
         )}
         {/* Practice (= Arena + Field Actions). Landing surface with calm doors; "Arena practice"
-            opens the UNCHANGED in-shell Arena runtime in place, "Field Actions" routes to Today
-            where due Field Actions surface, Live Experiences / Scan QR are gated placeholders. */}
+            opens the UNCHANGED in-shell Arena runtime in place, "Field Actions" opens the focused
+            in-shell Field Actions surface (never generic Today), Live Experiences / Scan QR are
+            gated placeholders. `?tab=practice&fieldAction=<id>` deep-links straight to that action. */}
         {tab === "practice" && (
           <PracticeLanding
             locale={locale}
             lockedTag={t.arena.tag}
             lockedBody={t.arena.body}
-            onGoFieldActions={() => setTab("today")}
+            initialView={practiceFieldActionId ? "fieldActions" : "landing"}
+            initialFieldActionId={practiceFieldActionId}
+            onFieldActionConsumed={() => setPracticeFieldActionId(null)}
           />
         )}
         {/* Learn (= Foundry). A learner-facing identity header sits above the UNCHANGED Foundry

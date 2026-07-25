@@ -113,6 +113,28 @@ describe("Foundry publish-link safety — no eject-out-of-shell navigation", () 
   });
 });
 
+describe("Field Actions Focused Surface V1 — wiring guards", () => {
+  const shell = read("./BtyDailyAppShell.tsx");
+  const landing = read("./PracticeLanding.tsx");
+  const reminders = read("../../lib/bty/daily/todayReminders.server.ts");
+
+  it("Practice → Field Actions opens the focused surface in-shell, NOT generic Today", () => {
+    // The landing no longer routes Field Actions to Today; it opens the focused subview.
+    expect(landing).toMatch(/setView\("fieldActions"\)/);
+    expect(landing).toMatch(/<FieldActionsFocus/);
+    expect(shell).not.toMatch(/onGoFieldActions/);
+  });
+
+  it("the Today field-action deep link targets the focused Practice surface (test 9 wiring)", () => {
+    // Reminder builder emits ?tab=practice&fieldAction= for field_action (so the Today primary CTA
+    // opens the specific focused action), and the shell routes that param into Practice.
+    expect(reminders).toMatch(/tab=practice&fieldAction=/);
+    expect(shell).toMatch(/getBy?.*fieldAction|sp\.get\("fieldAction"\)|get\("fieldAction"\)/);
+    expect(shell).toMatch(/setTab\("practice"\)[\s\S]*setPracticeFieldActionId/);
+    expect(shell).toMatch(/initialFieldActionId={practiceFieldActionId}/);
+  });
+});
+
 describe("AppTabBar remains in-component (no route navigation introduced)", () => {
   const src = read("./AppTabBar.tsx");
   it("uses an onSelect callback, no router / Link", () => {

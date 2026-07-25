@@ -3,9 +3,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
-// Mock the heavy in-shell Arena runtime — this test only proves the landing wiring, not the player.
+// Mock the heavy in-shell subviews — this test only proves the landing wiring, not their internals.
 vi.mock("@/components/app-shell/ArenaRoom", () => ({
   ArenaRoom: () => <div data-testid="arena-room-mock">arena</div>,
+}));
+vi.mock("@/components/app-shell/FieldActionsFocus", () => ({
+  default: ({ onBack }: { onBack: () => void }) => (
+    <div data-testid="field-actions-focus-mock">
+      <button data-testid="fa-mock-back" onClick={onBack}>back</button>
+    </div>
+  ),
 }));
 
 import PracticeLanding from "./PracticeLanding";
@@ -16,7 +23,6 @@ const base = {
   locale: "en",
   lockedTag: "tag",
   lockedBody: "body",
-  onGoFieldActions: () => {},
 };
 
 describe("PracticeLanding", () => {
@@ -38,11 +44,21 @@ describe("PracticeLanding", () => {
     expect(screen.getByTestId("practice-landing")).toBeTruthy();
   });
 
-  it("Field Actions is reachable (routes to Today via callback)", () => {
-    const onGoFieldActions = vi.fn();
-    render(<PracticeLanding {...base} onGoFieldActions={onGoFieldActions} />);
+  it("Field Actions opens the focused in-shell surface (never navigates to generic Today)", () => {
+    render(<PracticeLanding {...base} />);
     fireEvent.click(screen.getByTestId("practice-field-actions"));
-    expect(onGoFieldActions).toHaveBeenCalledOnce();
+    // In-shell subview mounts; the landing is replaced, no Today/route navigation.
+    expect(screen.getByTestId("field-actions-focus-mock")).toBeTruthy();
+    expect(screen.queryByTestId("practice-landing")).toBeNull();
+    // Back returns to the Practice landing.
+    fireEvent.click(screen.getByTestId("fa-mock-back"));
+    expect(screen.getByTestId("practice-landing")).toBeTruthy();
+  });
+
+  it("deep-link focus opens the focused Field Actions surface directly", () => {
+    render(<PracticeLanding {...base} initialFieldActionId="abc-1234-5678-9012-3456" />);
+    expect(screen.getByTestId("field-actions-focus-mock")).toBeTruthy();
+    expect(screen.queryByTestId("practice-landing")).toBeNull();
   });
 
   it("QR entry respects permissions — hidden unless authorized", () => {

@@ -57,6 +57,9 @@ export type ActionStatusItem = {
   /** Stable, source-derived id (never an array index). Used for dedup + React keys + tie-break. */
   stableId: string;
   contractId: string;
+  /** Canonical source discriminator (`field_action` etc.) — lets the focused Field Actions view
+   *  scope "Awaiting review" to field_action contracts. Optional/additive; null when unknown. */
+  actionType?: string | null;
   status: ActionStatusState;
   title: string;
   /** Raw canonical behavior family tag (owner's own data). The UI renders a label only if a settled one exists. */

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
+import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
 
 /**
  * Practice — landing surface (App Shell + Today Simplification V1, Phase 6).
@@ -9,8 +10,8 @@ import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
  * A calm entry surface for the "Practice" tab. It does NOT expose internal runtime-state vocabulary;
  * it offers a small set of doors:
  *   • Arena practice — the existing in-shell Arena runtime (unchanged), opened in place.
- *   • Field Actions — reachable; routes to Today, where due Field Actions surface (no separate list
- *     exists yet, so we send the learner to the canonical surface rather than fabricate one).
+ *   • Field Actions — opens the focused in-shell Field Actions surface ({@link FieldActionsFocus}),
+ *     the learner's (and authorized reviewer's) full Field Action state. Never redirects to Today.
  *   • Live Experiences — a calm "Coming next" placeholder; no canonical scheduled-event contract
  *     exists in code yet, so nothing is fabricated (directive: adapter/placeholder only).
  *   • Scan QR — shown only when authorized; there is no in-shell scanner in V1, so it stays a gated
@@ -116,20 +117,27 @@ export default function PracticeLanding({
   locale,
   lockedTag,
   lockedBody,
-  onGoFieldActions,
   qrAuthorized = false,
+  initialView = "landing",
+  initialFieldActionId = null,
+  onFieldActionConsumed,
 }: {
   locale: string;
   lockedTag: string;
   lockedBody: string;
-  /** Field Actions live on Today; the landing routes there rather than fabricating a list surface. */
-  onGoFieldActions: () => void;
   /** QR scan is offered only when authorized; V1 has no in-shell scanner, so it stays a placeholder. */
   qrAuthorized?: boolean;
+  /** Deep-link entry: open the focused Field Actions surface directly (?tab=practice&fieldAction=). */
+  initialView?: "landing" | "fieldActions";
+  initialFieldActionId?: string | null;
+  /** Cleared once the deep-link focus is consumed so a later Back never re-opens it. */
+  onFieldActionConsumed?: () => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [view, setView] = useState<"landing" | "arena">("landing");
+  const [view, setView] = useState<"landing" | "arena" | "fieldActions">(
+    initialView === "fieldActions" || initialFieldActionId ? "fieldActions" : "landing",
+  );
 
   if (view === "arena") {
     return (
@@ -147,6 +155,19 @@ export default function PracticeLanding({
     );
   }
 
+  if (view === "fieldActions") {
+    return (
+      <FieldActionsFocus
+        locale={locale}
+        initialFieldActionId={initialFieldActionId}
+        onBack={() => {
+          setView("landing");
+          onFieldActionConsumed?.();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4" data-testid="practice-landing">
       <header className="flex flex-col gap-1">
@@ -155,7 +176,7 @@ export default function PracticeLanding({
       </header>
       <div className="flex flex-col gap-2">
         <DoorRow testId="practice-arena-entry" title={t.arena} sub={t.arenaSub} onClick={() => setView("arena")} />
-        <DoorRow testId="practice-field-actions" title={t.fieldActions} sub={t.fieldActionsSub} onClick={onGoFieldActions} />
+        <DoorRow testId="practice-field-actions" title={t.fieldActions} sub={t.fieldActionsSub} onClick={() => setView("fieldActions")} />
         <DoorRow testId="practice-live" title={t.live} sub={t.liveSub} badge={t.comingNext} disabled />
         {qrAuthorized ? (
           <DoorRow testId="practice-qr" title={t.qr} sub={t.qrSub} badge={t.comingNext} disabled />

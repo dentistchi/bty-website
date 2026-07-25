@@ -70,11 +70,11 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
       const bucket = classifyActionContract(r.status);
       const title = (r.contract_description ?? "Action commitment").slice(0, 120);
       if (bucket === "action_due") {
-        // Slice 3.1B-3N-5C.3: a pending field_action (learner has not yet submitted) reopens the
-        // FOCUSED Field Action form to complete/resume; an arena contract keeps the in-shell Arena tab.
+        // Field Actions Focused Surface V1: a field_action opens the FOCUSED Field Actions subview
+        // under Practice (never generic Today); an arena contract keeps the in-shell Arena tab.
         const dueDeepLink =
           r.action_type === "field_action"
-            ? `/${locale}/app?tab=today&fieldActionContract=${r.id}`
+            ? `/${locale}/app?tab=practice&fieldAction=${r.id}`
             : `/${locale}/app?tab=arena`;
         out.push({
           stableId: `action:${r.id}`,
@@ -89,11 +89,11 @@ async function actionDue(admin: SupabaseClient, userId: string, now: Date, tz: s
         // The Host's revision note is owner-scoped learner-facing feedback (never AI, never a
         // guess). Carried only for this rejected contract's owner.
         const note = typeof r.revision_note === "string" && r.revision_note.trim() !== "" ? r.revision_note.trim() : null;
-        // Slice 3.1B-3N-5C.3: a rejected field_action opens the FOCUSED Field Action form to edit +
-        // resubmit; an arena contract keeps the existing in-shell Arena tab link (no legacy /bty-arena).
+        // Field Actions Focused Surface V1: a rejected field_action opens the FOCUSED Field Actions
+        // subview under Practice (edit + resubmit there); an arena contract keeps the in-shell Arena tab.
         const canonicalDeepLink =
           r.action_type === "field_action"
-            ? `/${locale}/app?tab=today&fieldActionContract=${r.id}`
+            ? `/${locale}/app?tab=practice&fieldAction=${r.id}`
             : `/${locale}/app?tab=arena`;
         out.push({
           stableId: `action:${r.id}`,
@@ -125,16 +125,19 @@ export async function buildActionStatus(admin: SupabaseClient, userId: string, l
   try {
     const { data } = await admin
       .from("bty_action_contracts")
-      .select("id, contract_description, deadline_at, status, pattern_family")
+      .select("id, contract_description, deadline_at, status, pattern_family, action_type")
       .eq("user_id", userId)
       .in("status", ACTION_STATUS_CONTRACT_STATUSES as unknown as string[]);
     const items: ActionStatusItem[] = [];
-    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string | null; status: string; pattern_family: string | null }>) {
+    for (const r of (data ?? []) as Array<{ id: string; contract_description: string | null; deadline_at: string | null; status: string; pattern_family: string | null; action_type: string | null }>) {
       const bucket = classifyActionContract(r.status);
       if (bucket !== "verification_pending" && bucket !== "awaiting_resolution") continue;
       items.push({
         stableId: `actionstatus:${r.id}`,
         contractId: r.id,
+        // Field Actions Focused Surface V1: carry the canonical discriminator so the focused
+        // Field Actions view can scope "Awaiting review" to field_action contracts only.
+        actionType: r.action_type,
         status: bucket as ActionStatusState,
         title: (r.contract_description ?? "Action commitment").slice(0, 120),
         patternFamily: r.pattern_family ?? "",
