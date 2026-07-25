@@ -26,6 +26,8 @@ import {
 } from '@/domain/guest-requests';
 import RequestResultCard from './RequestResultCard';
 import MyRequestsDock from './MyRequestsDock';
+import AppInvitationCard from './AppInvitationCard';
+import { inviteShownKey, type GuestFunnelEvent } from '@/domain/app-invite';
 
 interface Props {
   slug: string;
@@ -64,6 +66,10 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const [submittingKey, setSubmittingKey] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // BUILD 19C — the contextual, non-blocking app invitation (shown at most once per guest
+  // session/Event after the first successful request; reuses the BUILD 19B handoff).
+  const [appInvite, setAppInvite] = useState<{ url: string; handoffId: string; requestId: string } | null>(null);
 
   // BUILD 18B — the submit state machine + failure classification (server drives it via
   // stable `code`s; the view only renders). `activeSubmission` holds the CURRENT logical
@@ -369,7 +375,55 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     setRequestedIds((prev) => [...prev, sub.logicalKey]);
     window.setTimeout(() => setRequestedIds((prev) => prev.filter((k) => k !== sub.logicalKey)), 2500);
     onSubmitted?.(); // event guest screen refreshes live presence immediately
+    void maybeShowAppInvite(String(req.id)); // BUILD 19C — contextual app invitation after success
   }
+
+  // BUILD 19C — best-effort, privacy-clean funnel analytics (fire-and-forget). Never blocks the
+  // guest flow; the server records the event type + already-public ids only (no token/identity).
+  function recordFunnel(eventType: GuestFunnelEvent, handoffId?: string, requestId?: string) {
+    try {
+      void fetch('/api/guest-app-funnel', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({ eventType, roomSlug: slug, ...(handoffId ? { handoffId } : {}), ...(requestId ? { requestId } : {}) }),
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  // Mint (or reuse) the canonical BUILD 19B handoff for a successful request and show the
+  // invitation ONCE per session/Event. Idempotent: a replayed success (already shown, or no fresh
+  // Universal Link returned) never re-shows or double-counts. Never blocks the request flow.
+  async function maybeShowAppInvite(requestId: string) {
+    if (typeof window === 'undefined' || !requestId) return;
+    try {
+      const key = inviteShownKey(slug, eventId);
+      if (window.localStorage.getItem(key)) return; // already shown this session/Event
+      const res = await fetch('/api/guest-app-handoffs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ roomSlug: slug, requestId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; handoffId?: string };
+      if (!res.ok || !data.url || !data.handoffId) return; // no fresh link → never a broken invite
+      window.localStorage.setItem(key, '1');
+      setAppInvite({ url: data.url, handoffId: data.handoffId, requestId });
+      recordFunnel('INVITE_SHOWN', data.handoffId, requestId);
+    } catch {
+      /* invitation is optional */
+    }
+  }
+
+  const openAppFromInvite = () => {
+    if (appInvite) recordFunnel('APP_OPEN_TAPPED', appInvite.handoffId, appInvite.requestId);
+    // the <a href> then navigates to the Universal Link
+  };
+  const continueWebFromInvite = () => {
+    if (appInvite) recordFunnel('CONTINUE_WEB', appInvite.handoffId, appInvite.requestId);
+    setAppInvite(null);
+  };
 
   const requestItem = (item: YoutubeSearchItem) =>
     submit(
@@ -393,6 +447,16 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
   return (
     <>
+      {/* BUILD 19C — contextual, non-blocking app invitation (App Store action hidden until 19D). */}
+      {appInvite && (
+        <AppInvitationCard
+          universalLink={appInvite.url}
+          appStoreUrl={null}
+          onOpenApp={openAppFromInvite}
+          onGetApp={() => appInvite && recordFunnel('APP_STORE_TAPPED', appInvite.handoffId, appInvite.requestId)}
+          onContinue={continueWebFromInvite}
+        />
+      )}
       <div className="card">
         {error && <div className="banner error">{error}</div>}
 
