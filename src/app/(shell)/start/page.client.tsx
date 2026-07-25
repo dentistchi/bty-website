@@ -37,6 +37,32 @@ export default function StartShellClient() {
   const [phase, setPhase] = React.useState<Phase>("splash");
   const navigatedRef = React.useRef(false);
 
+  // Slice 3.1B-3N-5D.1C-N3: mark the START SHELL as HYDRATED the instant this client component mounts
+  // — BEFORE auth resolves, the 500ms splash, or the Orb. The native launch watchdog uses this as the
+  // positive "the web is alive" progress signal, so a healthy-but-slow cold start (a slow first
+  // WebProcess) is NOT misclassified as a blank document and force-reloaded. This runs regardless of
+  // the loading/!user early return below (hooks run before return), so it fires even while auth is
+  // still restoring. No user/session data; a plain hydration timestamp + a data flag. Cleared on true
+  // page unload only (client SPA navigation keeps the same document, so the flag persists into Today).
+  React.useEffect(() => {
+    try {
+      (window as unknown as { __btyStartShellReadyAt?: number }).__btyStartShellReadyAt =
+        typeof performance !== "undefined" ? performance.now() : 0;
+      document.documentElement.dataset.btyStartShellReady = "1";
+    } catch {
+      /* best-effort progress marker — never block startup */
+    }
+    const onUnload = () => {
+      try {
+        delete document.documentElement.dataset.btyStartShellReady;
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("pagehide", onUnload);
+    return () => window.removeEventListener("pagehide", onUnload);
+  }, []);
+
   // Client auth gate — redirect to the REAL login.
   React.useEffect(() => {
     if (loading || user) return;
