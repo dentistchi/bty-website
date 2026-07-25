@@ -5,26 +5,28 @@ import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
 import {
   selectPrimaryAction,
   type PrimaryActionCandidate,
+  type PrimaryActionResult,
 } from "@/domain/daily/todayPrimaryAction";
 
 /**
- * Today — simplified hierarchy (App Shell + Today Simplification V1, Phases 3–4).
+ * Today — simplified hierarchy (App Shell + Today Simplification V1, Phases 3–4 + empty-state patch).
  *
  * The first viewport shows a CALM summary only:
  *   A. Better Than Yesterday header
  *   B. Yesterday summary   (measured self-return only — never fabricated progress)
- *   C. One primary next action   (deterministic domain selector; routes directly to the action)
+ *   C. One primary next action   (deterministic domain selector; ALWAYS exactly one CTA)
  *   D. Needs your attention   (collapsed learner + Host counts, when non-zero)
  *   F. Show everything   (reveals the full, unchanged detailed projections)
  *
- * The detailed Today projections are NOT restructured — the existing {@link TodayPersonalBrief}
- * (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders, AI brief)
- * renders verbatim beneath "Show everything", so no data or operational function is removed.
+ * Empty-state contract: Today must ALWAYS render exactly one actionable primary CTA. When no due
+ * work exists the selector falls back deterministically — continue an in-progress program → start an
+ * available Arena practice → find a program in Learn — never a decorative message without a CTA.
+ * Fallback signals are measured (in-progress program %, available-practice count); nothing fabricated.
+ * Fallback CTAs navigate IN-SHELL via {@link onNavigate} (Practice/Learn tab), no route reload.
  *
  * This component computes only PROJECTION/priority (the selector is a pure domain function); it
- * introduces no new engine, no new ranking, and no new server data — it reads the same canonical
- * `/api/me/today/brief` + `/api/me/action-review-queue` the detailed view already consumes, plus
- * `/api/me/daily-trace` for the measured yesterday signal. Fail-soft throughout.
+ * introduces no new engine, no new ranking, and no new server data. Fail-soft throughout: if the
+ * fallback reads fail, the always-valid "find a program" CTA still renders.
  */
 
 type Locale = "en" | "ko";
@@ -45,8 +47,6 @@ const COPY: Record<Locale, {
   yesterdayReturned: string;
   yesterdayQuiet: string;
   nextStep: string;
-  optional: string;
-  optionalBody: string;
   attention: string;
   corrections: (n: number) => string;
   reviews: (n: number) => string;
@@ -54,6 +54,14 @@ const COPY: Record<Locale, {
   showEverything: string;
   showLess: string;
   catEyebrow: Record<PrimaryActionCandidate["category"], string>;
+  // Deterministic empty-day fallbacks (tiers 6–8).
+  fallbackHeader: string;
+  continueBody: string;
+  continueCta: string;
+  practiceBody: string;
+  practiceCta: string;
+  findBody: string;
+  findCta: string;
 }> = {
   en: {
     eyebrow: "BETTER THAN YESTERDAY",
@@ -61,8 +69,6 @@ const COPY: Record<Locale, {
     yesterdayReturned: "You showed up yesterday.",
     yesterdayQuiet: "Yesterday was quiet. Begin with one small step today.",
     nextStep: "Your next step",
-    optional: "Your next step",
-    optionalBody: "Nothing is due. When you're ready, choose one small step.",
     attention: "Your team needs you",
     corrections: (n) => `${n} action${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} your correction`,
     reviews: (n) => `${n} action plan${n === 1 ? "" : "s"} awaiting your review`,
@@ -76,6 +82,13 @@ const COPY: Record<Locale, {
       PRACTICE_DUE: "Practice due",
       FOLLOW_UP_DUE: "Follow-up due",
     },
+    fallbackHeader: "Your next step",
+    continueBody: "Continue what you started.",
+    continueCta: "Continue learning",
+    practiceBody: "Practice one real-world decision.",
+    practiceCta: "Start practice",
+    findBody: "Choose one thing to get better at today.",
+    findCta: "Find a program",
   },
   ko: {
     eyebrow: "어제보다 나은 나",
@@ -83,8 +96,6 @@ const COPY: Record<Locale, {
     yesterdayReturned: "어제 당신은 이 자리에 왔습니다.",
     yesterdayQuiet: "어제는 조용했습니다. 오늘 작은 한 걸음으로 시작하세요.",
     nextStep: "오늘의 다음 걸음",
-    optional: "오늘의 다음 걸음",
-    optionalBody: "마감된 것이 없습니다. 준비되면 작은 한 걸음을 골라 보세요.",
     attention: "당신의 손길이 필요합니다",
     corrections: (n) => `${n}개의 행동에 수정이 필요합니다`,
     reviews: (n) => `${n}개의 행동 계획이 검토를 기다리고 있습니다`,
@@ -98,6 +109,13 @@ const COPY: Record<Locale, {
       PRACTICE_DUE: "연습 예정",
       FOLLOW_UP_DUE: "후속 확인",
     },
+    fallbackHeader: "오늘의 다음 단계",
+    continueBody: "시작한 학습을 이어가세요.",
+    continueCta: "학습 계속하기",
+    practiceBody: "현실에서 필요한 판단 하나를 연습하세요.",
+    practiceCta: "연습 시작",
+    findBody: "오늘 더 나아질 한 가지를 선택하세요.",
+    findCta: "프로그램 찾기",
   },
 };
 
@@ -109,13 +127,22 @@ function deviceTz(): string | null {
   }
 }
 
-export default function TodayHome({ locale }: { locale: string }) {
+export default function TodayHome({
+  locale,
+  onNavigate,
+}: {
+  locale: string;
+  /** In-shell tab navigation for the deterministic fallback CTAs (no route reload). */
+  onNavigate?: (tab: "learn" | "practice") => void;
+}) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
   const [yesterdayReturned, setYesterdayReturned] = useState<boolean | null>(null);
+  const [hasActiveProgram, setHasActiveProgram] = useState(false);
+  const [hasAvailablePractice, setHasAvailablePractice] = useState(false);
   const [showEverything, setShowEverything] = useState(false);
 
   useEffect(() => {
@@ -150,12 +177,35 @@ export default function TodayHome({ locale }: { locale: string }) {
         if (res3.ok) {
           const d3 = (await res3.json()) as { dailyTrace?: { date: string; intensity: 0 | 1 }[] };
           const series = Array.isArray(d3.dailyTrace) ? d3.dailyTrace : [];
-          // Measured self-return only: the second-to-last day in the 7-day series is "yesterday".
           const y = series.length >= 2 ? series[series.length - 2] : null;
           if (!cancelled) setYesterdayReturned(y ? y.intensity === 1 : false);
         }
       } catch {
         /* fail-soft — quiet fallback */
+      }
+      // Fallback signal: an available Arena practice (tier 7). Any listed practice is startable.
+      try {
+        const res4 = await fetch(`/api/arena/practice`, { credentials: "include", cache: "no-store" });
+        if (res4.ok) {
+          const d4 = (await res4.json()) as { practices?: unknown[] };
+          if (!cancelled) setHasAvailablePractice(Array.isArray(d4.practices) && d4.practices.length > 0);
+        }
+      } catch {
+        /* fail-soft → no practice signal (falls through to Find a program) */
+      }
+      // Fallback signal: an in-progress program (tier 6) — started but not complete (measured %).
+      try {
+        const res5 = await fetch(`/api/bty/foundry/learning-path`, { credentials: "include", cache: "no-store" });
+        if (res5.ok) {
+          const d5 = (await res5.json()) as { ok?: boolean; programs?: { completion_pct?: number }[] };
+          const programs = Array.isArray(d5.programs) ? d5.programs : [];
+          const active = programs.some(
+            (p) => typeof p.completion_pct === "number" && p.completion_pct > 0 && p.completion_pct < 100,
+          );
+          if (!cancelled) setHasActiveProgram(active);
+        }
+      } catch {
+        /* fail-soft → no active-program signal */
       }
     })();
     return () => {
@@ -163,7 +213,7 @@ export default function TodayHome({ locale }: { locale: string }) {
     };
   }, [loc]);
 
-  const primary = useMemo(
+  const primary: PrimaryActionResult = useMemo(
     () =>
       selectPrimaryAction(
         reminders.map((r) => ({
@@ -173,8 +223,9 @@ export default function TodayHome({ locale }: { locale: string }) {
           title: r.title,
           deepLink: r.canonicalDeepLink,
         })),
+        { hasActiveProgram, hasAvailablePractice },
       ),
-    [reminders],
+    [reminders, hasActiveProgram, hasAvailablePractice],
   );
 
   // Calm attention summary — learner corrections + Host reviews + follow-ups collapsed into counts.
@@ -186,8 +237,18 @@ export default function TodayHome({ locale }: { locale: string }) {
     hostAttention.filter((h) => h.category === "FOLLOW_UP_OVERDUE" || h.category === "FOLLOW_UP_NEEDED").length;
   const attentionTotal = corrections + reviews + followups;
 
-  const yesterdayLine =
-    yesterdayReturned === true ? t.yesterdayReturned : t.yesterdayQuiet;
+  const yesterdayLine = yesterdayReturned === true ? t.yesterdayReturned : t.yesterdayQuiet;
+
+  // Deterministic fallback presentation (tiers 6–8) — body + CTA + in-shell target.
+  const fallback =
+    primary.kind === "continue_program"
+      ? { body: t.continueBody, cta: t.continueCta, target: "learn" as const }
+      : primary.kind === "start_practice"
+        ? { body: t.practiceBody, cta: t.practiceCta, target: "practice" as const }
+        : { body: t.findBody, cta: t.findCta, target: "learn" as const };
+
+  const primaryCardCls =
+    "flex flex-col gap-1 rounded-2xl border border-[#C9A66B]/35 bg-[#C9A66B]/[0.06] px-4 py-3";
 
   return (
     <div className="flex flex-col gap-4" data-testid="today-home">
@@ -202,26 +263,34 @@ export default function TodayHome({ locale }: { locale: string }) {
         <p className="text-sm leading-6 text-white/80">{yesterdayLine}</p>
       </div>
 
-      {/* C — One primary next action (exactly one) */}
-      {primary ? (
+      {/* C — EXACTLY ONE primary next action (reminder deep link, or deterministic in-shell fallback) */}
+      {primary.kind === "reminder" ? (
         <a
-          href={primary.deepLink}
+          href={primary.candidate.deepLink}
           data-testid="today-primary-action"
-          data-category={primary.category}
-          className="flex flex-col gap-1 rounded-2xl border border-[#C9A66B]/35 bg-[#C9A66B]/[0.06] px-4 py-3"
+          data-kind="reminder"
+          data-category={primary.candidate.category}
+          className={primaryCardCls}
         >
           <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#E5B769]/85">{t.nextStep}</span>
-          <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">{t.catEyebrow[primary.category]}</span>
-          <span className="text-[0.95rem] font-medium leading-6 text-white/90">{primary.title}</span>
+          <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">{t.catEyebrow[primary.candidate.category]}</span>
+          <span className="text-[0.95rem] font-medium leading-6 text-white/90">{primary.candidate.title}</span>
         </a>
       ) : (
-        <div
-          data-testid="today-primary-action-optional"
-          className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3"
+        <button
+          type="button"
+          data-testid="today-primary-action"
+          data-kind={primary.kind}
+          data-target={fallback.target}
+          onClick={() => onNavigate?.(fallback.target)}
+          className={primaryCardCls + " text-left"}
         >
-          <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/45">{t.optional}</span>
-          <span className="text-sm leading-6 text-white/65">{t.optionalBody}</span>
-        </div>
+          <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#E5B769]/85">{t.fallbackHeader}</span>
+          <span className="text-[0.95rem] leading-6 text-white/85">{fallback.body}</span>
+          <span data-testid="today-primary-cta" className="mt-1 self-start rounded-lg border border-[#C9A66B]/45 bg-[#C9A66B]/10 px-3 py-1.5 text-[0.8rem] font-medium text-[#E5B769]">
+            {fallback.cta}
+          </span>
+        </button>
       )}
 
       {/* D — Needs your attention (only when non-zero) */}

@@ -1638,7 +1638,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                     (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
                     AI brief). No detailed list renders in the first viewport by default. */}
                 <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
-                <TodayHome locale={locale} />
+                <TodayHome locale={locale} onNavigate={(dest) => setTab(dest)} />
               </>
             )}
           </>

@@ -623,8 +623,12 @@ describe("app-shell Today — simplified hierarchy (App Shell V1)", () => {
     });
     render(<BtyDailyAppShell locale="en" />);
     await screen.findByText("Learn");
-    // Exactly one primary-action node — needs_revision wins (blocking correction).
-    const primaries = await screen.findAllByTestId("today-primary-action");
+    // Exactly one primary-action node — needs_revision wins (blocking correction). Wait for the
+    // reminder kind to settle (the pre-fetch first paint shows the deterministic fallback CTA).
+    await waitFor(() =>
+      expect(screen.getByTestId("today-primary-action").getAttribute("data-kind")).toBe("reminder"),
+    );
+    const primaries = screen.getAllByTestId("today-primary-action");
     expect(primaries.length).toBe(1);
     expect(primaries[0].getAttribute("data-category")).toBe("ACTION_REVISION");
     expect(primaries[0].getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc");
