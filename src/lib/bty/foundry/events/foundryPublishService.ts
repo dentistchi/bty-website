@@ -24,6 +24,7 @@ import {
 } from "./foundryAssignmentPublishService";
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
 import { getOwnerRoomSnapshot, type ManagerDocumentSnapshot } from "./foundryDocumentService";
+import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
 
 /**
  * Foundry Guided Module Builder — PUBLISH (Slice 2.3A · service layer).
@@ -104,6 +105,7 @@ async function createDocumentEventFromDraftAsset(
   title: string,
   completionPrompt: string,
   sharedQuestion: string | null,
+  lineage?: ProgramLineage,
 ): Promise<ServiceResult<string>> {
   const { data: asset } = await admin
     .from("foundry_module_draft_assets")
@@ -120,9 +122,11 @@ async function createDocumentEventFromDraftAsset(
   const pageCount = pageCountCheck.ok ? pageCountCheck.value : 1;
   const minReadSeconds = computeMinReadSeconds(pageCount);
 
+  const programId = await programIdForNewRun(admin, ownerUserId, title, lineage);
+
   const { data: event, error: evErr } = await admin
     .from("foundry_events")
-    .insert({ owner_user_id: ownerUserId, title, content_type: "document" })
+    .insert({ owner_user_id: ownerUserId, title, content_type: "document", program_id: programId })
     .select("id")
     .single<{ id: string }>();
   if (evErr || !event) return { ok: false, reason: evErr?.message ?? "event_insert_failed" };
@@ -226,6 +230,10 @@ export async function publishDraft(
   if (material.kind === "unsupported") return { ok: false, reason: material.reason };
 
   // 1. Create the event + participant content via the canonical primitives.
+  // Program Run lineage (Slice 3.2C): the published run INHERITS the draft's durable
+  // Program identity EXACTLY (including null = draft with no recorded lineage). Never
+  // re-resolved here, so a Guided publish can never cross organizations or fork identity.
+  const lineage = { programId: draft.program_id };
   let eventId: string;
   if (material.kind === "youtube") {
     const res = await createTrainingEvent(admin, ownerUserId, {
@@ -233,11 +241,11 @@ export async function publishDraft(
       youtube_url: material.url,
       completion_prompt: completionPrompt,
       shared_question: sharedQuestion,
-    });
+    }, lineage);
     if (!res.ok) return { ok: false, reason: res.reason };
     eventId = res.value.event.id;
   } else {
-    const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt, sharedQuestion);
+    const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt, sharedQuestion, lineage);
     if (!res.ok) return { ok: false, reason: res.reason };
     eventId = res.value;
   }

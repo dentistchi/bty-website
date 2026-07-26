@@ -13,6 +13,7 @@ import {
   FOUNDRY_TRAINING_XP,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
+import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
 import {
   resolveYoutubeEmbeddable,
   embedCheckAllowsCreate,
@@ -121,6 +122,7 @@ export async function createTrainingEvent(
   admin: SupabaseClient,
   ownerUserId: string,
   input: { title?: unknown; youtube_url?: unknown; completion_prompt?: unknown; shared_question?: unknown },
+  lineage?: ProgramLineage,
 ): Promise<ServiceResult<ManagerTrainingSnapshot>> {
   const title = validateEventTitle(input.title);
   if (!title.ok) return { ok: false, reason: title.reason };
@@ -141,9 +143,13 @@ export async function createTrainingEvent(
   const embed = await resolveYoutubeEmbeddable(videoId);
   if (!embedCheckAllowsCreate(embed)) return { ok: false, reason: embedCheckReason(embed) };
 
+  // Program Run lineage (Slice 3.2C): Guided publish passes the draft's identity;
+  // Quick/direct create resolves a fresh one. Best-effort → null keeps today's flow.
+  const programId = await programIdForNewRun(admin, ownerUserId, title.value, lineage);
+
   const { data: event, error: evErr } = await admin
     .from("foundry_events")
-    .insert({ owner_user_id: ownerUserId, title: title.value })
+    .insert({ owner_user_id: ownerUserId, title: title.value, program_id: programId })
     .select("id")
     .single<{ id: string }>();
   if (evErr || !event) return { ok: false, reason: evErr?.message ?? "event_insert_failed" };

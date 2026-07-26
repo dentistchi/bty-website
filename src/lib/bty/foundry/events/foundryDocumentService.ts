@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
+import { programIdForNewRun } from "./foundryProgramService";
 import {
   validateCompletionPrompt,
   validateResponse,
@@ -267,9 +268,12 @@ export async function createDocumentEvent(
 
   const minReadSeconds = computeMinReadSeconds(pageCount.value);
 
+  // Quick/direct document create → best-effort resolve-or-create Program (Slice 3.2C).
+  const programId = await programIdForNewRun(admin, ownerUserId, title.value);
+
   const { data: event, error: evErr } = await admin
     .from("foundry_events")
-    .insert({ owner_user_id: ownerUserId, title: title.value, content_type: "document" })
+    .insert({ owner_user_id: ownerUserId, title: title.value, content_type: "document", program_id: programId })
     .select("id")
     .single<{ id: string }>();
   if (evErr || !event) {

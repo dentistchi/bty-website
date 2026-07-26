@@ -9,6 +9,7 @@ import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/mod
 import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
 import { deleteFoundryDocument } from "./documentStorage";
 import { parseDocumentRef } from "./moduleClient";
+import { resolveOrCreateProgramForActor } from "./foundryProgramService";
 
 /**
  * Foundry Guided Module Builder — service layer (Slice 1).
@@ -30,7 +31,7 @@ import { parseDocumentRef } from "./moduleClient";
  */
 
 const DRAFT_COLS =
-  "id, owner_user_id, status, current_step, answers, module_version, parent_module_id, document_asset_ref, approved_at, published_at, created_at, updated_at";
+  "id, owner_user_id, status, current_step, answers, module_version, parent_module_id, program_id, document_asset_ref, approved_at, published_at, created_at, updated_at";
 
 export type ModuleDraftRow = {
   id: string;
@@ -40,6 +41,8 @@ export type ModuleDraftRow = {
   answers: ModuleDraftAnswers;
   module_version: number;
   parent_module_id: string | null;
+  /** Durable Program identity this draft/version belongs to (Slice 3.2C). NULL = lineage not recorded. */
+  program_id: string | null;
   document_asset_ref: string | null;
   approved_at: string | null;
   published_at: string | null;
@@ -94,18 +97,33 @@ export async function createDraft(
 ): Promise<ServiceResult<ModuleDraftRow>> {
   let moduleVersion = 1;
   let parentModuleId: string | null = null;
+  // Program lineage (Slice 3.2C). A revision INHERITS the parent's Program identity
+  // so every version stays in one lineage; an original resolves/creates a Program in
+  // the owner's org. Linkage is BEST-EFFORT: an owner with no resolvable org (Foundry
+  // Host is a global capability) links nothing (program_id NULL) — draft creation is
+  // never blocked, preserving today's create behavior.
+  let programId: string | null = null;
 
   if (input.parentDraftId) {
     const parent = await getOwnerDraft(admin, ownerUserId, input.parentDraftId);
     if (!parent) return { ok: false, reason: "parent_not_found" };
     moduleVersion = nextModuleVersion(parent.module_version);
     parentModuleId = parent.id;
+    programId = parent.program_id; // inherit lineage; never re-resolve for a revision
+  } else {
+    const title = draftTitleFrom((input.answers ?? {}) as BuilderAnswers) ?? "";
+    try {
+      programId = await resolveOrCreateProgramForActor(admin, ownerUserId, title);
+    } catch {
+      programId = null; // best-effort: Program linkage must never block draft creation
+    }
   }
 
   const insert: Record<string, unknown> = {
     owner_user_id: ownerUserId,
     module_version: moduleVersion,
     parent_module_id: parentModuleId,
+    program_id: programId,
   };
   if (input.answers !== undefined) insert.answers = input.answers;
   if (input.currentStep !== undefined) insert.current_step = input.currentStep;
