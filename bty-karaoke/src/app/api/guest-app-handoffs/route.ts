@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createGuestAppHandoff } from '@/lib/guest-handoff.server';
-import { HANDOFF_PATH_PREFIX } from '@/domain/guest-handoff';
+import { canonicalUniversalLink } from '@/domain/app-link';
 import { makeLimiter, isLockedOut, recordFailure } from '@/lib/rate-limit.server';
 
 export const dynamic = 'force-dynamic';
@@ -44,9 +44,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { handoffId, expiresAt, token, replayed } = result.creation;
-  // The Universal Link is emitted ONLY on first mint (token present). Built from THIS request's
-  // origin (norebang.btydaily.com in production) so it always matches the AASA-authorized host.
-  const url = token ? `${req.nextUrl.origin}${HANDOFF_PATH_PREFIX}${token}` : undefined;
+  // The Universal Link is emitted ONLY on first mint (token present). It is built from the FIXED
+  // canonical origin (norebang.btydaily.com — the app's applinks host), NEVER req.nextUrl.origin /
+  // Host / X-Forwarded-Host — otherwise a workers.dev-origin request would return a link iOS can't
+  // intercept. Fails closed: if the canonical link can't be built, no url is emitted (never a
+  // non-canonical link), and the client simply doesn't surface the app-open action.
+  const url = token ? (canonicalUniversalLink(token) ?? undefined) : undefined;
 
   return NextResponse.json(
     { ok: true, handoffId, expiresAt, replayed, ...(url ? { url } : {}) },
