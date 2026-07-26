@@ -222,6 +222,51 @@ describe("publishDraft — YouTube", () => {
   });
 });
 
+// --- Slice 3.2C-B3A: Journey-enabled publish (title + completion from the approved Journey) ---
+function groundedJourney(over: Record<string, unknown> = {}) {
+  return {
+    version: 1,
+    displayTitle: "Read-back before sign-off",
+    displayTitleStatus: "grounded",
+    elements: [
+      { id: "el_why_it_matters", kind: "why_it_matters", content: "Handoffs skip the double-check.", grounding: [{ sourceType: "host_statement", field: "problem" }], confirmationStatus: "grounded" },
+      { id: "el_observable_standard", kind: "observable_standard", content: "The charge nurse reads back the dosage before sign-off.", grounding: [{ sourceType: "host_statement", field: "observableBehavior" }], confirmationStatus: "grounded" },
+      { id: "el_completion_check", kind: "completion_check", content: "What read-back will you commit to?", grounding: [{ sourceType: "host_statement", field: "completionPrompt" }], confirmationStatus: "grounded" },
+    ],
+    ...over,
+  };
+}
+function journeyDraft(journey: Record<string, unknown>): Row {
+  const base = youtubeDraft();
+  return { ...base, answers: { ...(base.answers as Row), realityGroundedJourneyV1: journey } };
+}
+
+describe("publishDraft — Journey-enabled (B3A)", () => {
+  it("uses the approved Journey displayTitle + completion_check (NOT the raw problem line / completionPrompt) and freezes the Journey into the snapshot", async () => {
+    const tables: Tables = { foundry_module_drafts: [journeyDraft(groundedJourney())], foundry_event_module: [] };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en");
+    expect(r.ok).toBe(true);
+    // title + completion came from the approved Journey
+    const call = createTrainingEvent.mock.calls[0];
+    expect(call[2].title).toBe("Read-back before sign-off");
+    expect(call[2].completion_prompt).toBe("What read-back will you commit to?");
+    // the exact approved Journey is in the immutable snapshot
+    const snap = tables.foundry_event_module[0].module_snapshot as Row;
+    expect((snap.realityGroundedJourneyV1 as Row).displayTitle).toBe("Read-back before sign-off");
+  });
+
+  it("BLOCKS publish while the Journey is not fully grounded (needs_confirmation) — nothing created", async () => {
+    const notApproved = groundedJourney({ displayTitleStatus: "needs_confirmation" });
+    const tables: Tables = { foundry_module_drafts: [journeyDraft(notApproved)], foundry_event_module: [] };
+    const admin = makeFakeAdmin(tables);
+    const r = await publishDraft(admin, OWNER, "d-yt", "en");
+    expect(r).toEqual({ ok: false, reason: "journey_not_approved" });
+    expect(tables.foundry_event_module).toHaveLength(0);
+    expect(createTrainingEvent).not.toHaveBeenCalled();
+  });
+});
+
 describe("publishDraft — PDF (durable-reference reuse)", () => {
   function pdfSetup(): Tables {
     return {

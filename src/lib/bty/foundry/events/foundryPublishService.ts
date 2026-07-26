@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { isJourneyApprovable, journeyCompletionCheck } from "@/domain/foundry/module/journey";
 import {
   deriveEventMaterial,
   buildModuleSnapshot,
@@ -212,10 +213,24 @@ export async function publishDraft(
   const errors = await draftReadinessErrors(admin, draftId, answers);
   if (errors.length > 0) return { ok: false, reason: errors[0] ?? "draft_incomplete" };
 
-  const title = (draftTitleFrom(answers) ?? answers.problem ?? "").trim();
+  // Reality-Grounded Journey V1 (Slice 3.2C-B3A). When the draft is Journey-enabled
+  // the participant TITLE and COMPLETION CHECK come from the Host-APPROVED Journey —
+  // never the raw problem first line or a raw completionPrompt that bypassed review.
+  // Publish is blocked unless the Journey is fully grounded (no needs_confirmation).
+  const journey = answers.realityGroundedJourneyV1;
+  const journeyEnabled = journey !== undefined;
+  if (journeyEnabled && !isJourneyApprovable(journey)) {
+    return { ok: false, reason: "journey_not_approved" };
+  }
+
+  const title = journeyEnabled
+    ? (journey!.displayTitle ?? "").trim()
+    : (draftTitleFrom(answers) ?? answers.problem ?? "").trim();
   if (!title) return { ok: false, reason: "title_required" };
 
-  const promptRaw = completionPromptOrNull(answers) ?? DEFAULT_COMPLETION_PROMPT[locale];
+  const promptRaw = journeyEnabled
+    ? (journeyCompletionCheck(journey) ?? "")
+    : (completionPromptOrNull(answers) ?? DEFAULT_COMPLETION_PROMPT[locale]);
   const promptCheck = validateCompletionPrompt(promptRaw);
   if (!promptCheck.ok) return { ok: false, reason: promptCheck.reason };
   const completionPrompt = promptCheck.value;

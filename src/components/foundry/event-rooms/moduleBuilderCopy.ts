@@ -275,6 +275,8 @@ export type ModuleBuilderCopy = {
   reviewEyebrow: string;
   revisionTitle: string;
   revisionNote: string;
+  journeyApprovalBlocked: string;
+  journeyStart: string;
   reviewSaved: string;
   reviewLead: string;
   sectionsNeedAttention: (n: number) => string;
@@ -480,6 +482,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewEyebrow: "TRAINING DRAFT",
     revisionTitle: "Create new version",
     revisionNote: "Your current published training will remain unchanged.",
+    journeyApprovalBlocked: "Confirm the learner title and resolve every “Needs confirmation” element before creating this training.",
+    journeyStart: "Preview as learner journey",
     reviewSaved: "Saved",
     reviewLead: "Review what you’ve built.",
     sectionsNeedAttention: (n) => (n === 1 ? "1 section needs attention" : `${n} sections need attention`),
@@ -757,6 +761,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewEyebrow: "훈련 초안",
     revisionTitle: "새 버전 만들기",
     revisionNote: "현재 게시된 트레이닝은 그대로 유지됩니다.",
+    journeyApprovalBlocked: "학습자 제목을 확인하고 “확인 필요” 요소를 모두 해결한 후 트레이닝을 만들 수 있습니다.",
+    journeyStart: "학습자 여정 미리보기",
     reviewSaved: "저장됨",
     reviewLead: "만든 내용을 검토하세요.",
     sectionsNeedAttention: (n) => `주의가 필요한 항목 ${n}개`,

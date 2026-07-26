@@ -14,6 +14,7 @@ import {
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
 import { programIdForNewRun, programErrorReason, type ProgramLineage } from "./foundryProgramService";
+import { toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
   resolveYoutubeEmbeddable,
   embedCheckAllowsCreate,
@@ -274,6 +275,10 @@ export type PublicTrainingSnapshot = {
   } | null;
   stage: PublicTrainingStage;
   xp_status: PublicXpStatus;
+  /** Reality-Grounded Journey V1 (Slice 3.2C-B3A) — ordered participant-facing content
+   *  from the immutable module snapshot. null = legacy Run (no approved Journey) → the
+   *  player falls back to the existing video/PDF + completion-question experience. */
+  journey?: PublicJourney | null;
 };
 
 async function getProgress(
@@ -315,6 +320,21 @@ function markers(p: ProgressRow | null): TrainingProgressMarkers | null {
   };
 }
 
+/**
+ * The approved participant Journey for an event, from the immutable module snapshot.
+ * null when the event has no Journey-enabled module (legacy Run) → the player uses
+ * the existing video/PDF + completion-question fallback. Never exposes grounding,
+ * confirmation status, draft/program ids, or unresolved needs_confirmation content.
+ */
+async function getEventJourney(admin: SupabaseClient, eventId: string): Promise<PublicJourney | null> {
+  const { data } = await admin
+    .from("foundry_event_module")
+    .select("module_snapshot")
+    .eq("event_id", eventId)
+    .maybeSingle<{ module_snapshot: { realityGroundedJourneyV1?: RealityGroundedJourneyV1 } | null }>();
+  return toPublicJourney(data?.module_snapshot?.realityGroundedJourneyV1);
+}
+
 /** Build the employee-facing snapshot from a resolved event + participant + progress. */
 function buildPublicSnapshot(
   event: EventRow,
@@ -323,6 +343,7 @@ function buildPublicSnapshot(
   content: ContentRow | null,
   tokenVersionCurrent: boolean,
   xpOverride?: PublicXpStatus,
+  journey?: PublicJourney | null,
 ): PublicTrainingSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -370,6 +391,8 @@ function buildPublicSnapshot(
     training,
     stage,
     xp_status,
+    // Journey shown alongside the content (same visibility gate as the video).
+    journey: showVideo ? (journey ?? null) : null,
   };
 }
 
@@ -418,7 +441,8 @@ export async function getPublicTrainingSnapshot(
       .then(() => undefined, () => undefined);
   }
 
-  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version);
+  const journey = participant ? await getEventJourney(admin, event.id) : null;
+  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey);
 }
 
 async function snapshotFor(
@@ -429,7 +453,8 @@ async function snapshotFor(
 ): Promise<PublicTrainingSnapshot> {
   const progress = await getProgress(admin, event.id, participant.id);
   const content = await getContent(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride);
+  const journey = await getEventJourney(admin, event.id);
+  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey);
 }
 
 /** Compute the caller's canonical BTY-day window [start, end) (05:00 user-local). */

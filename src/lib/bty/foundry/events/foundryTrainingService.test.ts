@@ -523,6 +523,34 @@ describe("XP integrity hardening (owner / daily cap / same-user-same-event)", ()
   });
 });
 
+describe("public snapshot — Reality-Grounded Journey (B3A)", () => {
+  const JMOD = {
+    version: 1,
+    displayTitle: "Owning the next step",
+    displayTitleStatus: "grounded",
+    elements: [
+      { id: "el_why_it_matters", kind: "why_it_matters", content: "People leave the huddle without naming who acts.", grounding: [{ sourceType: "host_statement", field: "problem" }], confirmationStatus: "grounded" },
+      { id: "el_observable_standard", kind: "observable_standard", content: "The owner repeats the action and deadline aloud.", grounding: [{ sourceType: "host_statement", field: "observableBehavior" }], confirmationStatus: "grounded" },
+      { id: "el_completion_check", kind: "completion_check", content: "What action had a named owner?", grounding: [{ sourceType: "host_statement", field: "completionPrompt" }], confirmationStatus: "grounded" },
+    ],
+  };
+
+  it("exposes the approved Journey (learner-safe) from the module snapshot", async () => {
+    const { admin, token, session, eventId } = await setupJoined();
+    await admin.from("foundry_event_module").insert({ event_id: eventId, source_draft_id: "d-src", module_version: 1, module_snapshot: { realityGroundedJourneyV1: JMOD } });
+    const snap = await getPublicTrainingSnapshot(admin, token, session);
+    expect(snap.journey?.displayTitle).toBe("Owning the next step");
+    expect(snap.journey?.elements.map((e) => e.kind)).toEqual(["why_it_matters", "observable_standard", "completion_check"]);
+    for (const e of snap.journey!.elements) expect(Object.keys(e).sort()).toEqual(["content", "id", "kind"]); // no grounding/status leak
+  });
+
+  it("legacy Run with no module snapshot → journey null (fallback preserved)", async () => {
+    const { admin, token, session } = await setupJoined();
+    const snap = await getPublicTrainingSnapshot(admin, token, session);
+    expect(snap.journey ?? null).toBeNull();
+  });
+});
+
 describe("close + privacy + roster projection", () => {
   it("blocks new completion after close but keeps completed results", async () => {
     const { admin, token, session, eventId } = await setupJoined();

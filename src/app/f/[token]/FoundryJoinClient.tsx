@@ -23,13 +23,50 @@ type Stage =
 
 type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
 
+type JourneyBlock = { id: string; kind: string; content: string };
+type Journey = { displayTitle: string; elements: JourneyBlock[] } | null;
+
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
   participant: { display_name: string } | null;
   training: { youtube_video_id: string; completion_prompt: string | null; shared_question: string | null } | null;
   stage: Stage;
   xp_status: XpStatus;
+  /** Reality-Grounded Journey V1 (Slice 3.2C-B3A). null = legacy Run → video/PDF + completion fallback. */
+  journey?: Journey;
 };
+
+// Learner-facing labels per Journey element kind (the content itself is Host-approved).
+const JOURNEY_KIND_LABEL: Record<string, { en: string; ko: string }> = {
+  why_it_matters: { en: "WHY THIS MATTERS", ko: "왜 중요한가" },
+  observable_standard: { en: "THE STANDARD", ko: "기준" },
+  scenario: { en: "IN CONTEXT", ko: "상황" },
+  reflection: { en: "REFLECT", ko: "성찰" },
+  action_decision: { en: "YOUR DECISION", ko: "결정" },
+  field_application: { en: "APPLY IT", ko: "적용" },
+  evidence: { en: "WHAT SUCCESS LOOKS LIKE", ko: "성공의 모습" },
+  completion_check: { en: "BEFORE YOU FINISH", ko: "마치기 전에" },
+};
+
+function JourneyReading({ journey, locale }: { journey: Journey; locale: string }) {
+  if (!journey || journey.elements.length === 0) return null;
+  const lang = locale === "ko" ? "ko" : "en";
+  // The completion_check is delivered by the existing completion step, not the reading list.
+  const blocks = journey.elements.filter((e) => e.kind !== "completion_check");
+  if (blocks.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-4" data-testid="journey-reading">
+      {blocks.map((el) => (
+        <div key={el.id} className="flex flex-col gap-1" data-testid={`journey-el-${el.kind}`}>
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-[#C9A66B]/85">
+            {JOURNEY_KIND_LABEL[el.kind]?.[lang] ?? el.kind}
+          </span>
+          <p className="text-base leading-7 text-white/85">{el.content}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 type Copy = {
   eyebrow: string;
@@ -498,7 +535,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   // grounds and persists. Idempotent — a returning visitor gets the stored one.
   const completedStage = snapshot?.stage === "completed_awarded" || snapshot?.stage === "completed_claimable";
   useEffect(() => {
-    if (!completedStage || reflectionRequestedRef.current) return;
+    // Living Reflection boundary (Slice 3.2C-B3A): a Journey-enabled Run must NOT
+    // invoke the ungrounded runtime Living Reflection (which could introduce facts
+    // outside the approved Journey). Its grounded reflection element is already shown
+    // in the reading sequence. Legacy Runs keep the existing runtime reflection.
+    if (!completedStage || reflectionRequestedRef.current || snapshot?.journey) return;
     reflectionRequestedRef.current = true;
     setReflectionLoading(true);
     void (async () => {
@@ -693,6 +734,9 @@ export default function FoundryJoinClient({ token }: { token: string }) {
           >
             <Eyebrow>{t.todaysTraining}</Eyebrow>
             <h1 className="text-xl font-semibold leading-snug text-white">{title}</h1>
+            {/* Reality-Grounded Journey (Slice 3.2C-B3A): the Host-approved structured
+                context the learner reads before/around the material. Absent → legacy. */}
+            <JourneyReading journey={snapshot.journey ?? null} locale={locale} />
           </div>
           <YouTubePlayer
             videoId={videoId}

@@ -18,6 +18,7 @@
 
 import type { ModuleDraftAnswers } from "./module-draft";
 import { isLearningType, observableBehaviorWarning } from "./module-draft";
+import { validateJourney, type RealityGroundedJourneyV1 } from "./journey";
 
 // ---------------------------------------------------------------------------
 // Builder value domains (plain, operational — never surfaced as jargon)
@@ -105,6 +106,12 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   sharedQuestion?: string;
   arenaRecommended?: boolean;
   followUpDays?: FollowUpDays;
+  /**
+   * Reality-Grounded Journey V1 (Slice 3.2C-B3A) — the Host-approved participant-facing
+   * structured experience. One namespaced, versioned contract; persisted verbatim and
+   * frozen into the module snapshot at publish (it IS a canonical published field).
+   */
+  realityGroundedJourneyV1?: RealityGroundedJourneyV1;
   /**
    * Adaptive Clarification (Slice 2.4C) — the resumable pre-draft Q&A state. Assistive
    * scratch, NOT a canonical published field: it is deliberately excluded from
@@ -358,6 +365,19 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       // learningType (the Slice-1 approval enum) is accepted if a caller supplies a
       // valid value, but the builder itself does not set it — kept for forward-compat.
       if (a.learningType !== undefined && isLearningType(a.learningType)) clean.learningType = a.learningType;
+
+      // Reality-Grounded Journey V1 (Slice 3.2C-B3A). One namespaced, versioned,
+      // participant-facing contract. Structural validation only here; persisted
+      // verbatim so the Host-approved Journey survives the draft round-trip and is
+      // frozen into the module snapshot at publish. Content grounding/approval is
+      // enforced in the domain + service, not re-derived here.
+      if (a.realityGroundedJourneyV1 !== undefined) {
+        if (validateJourney(a.realityGroundedJourneyV1).length === 0) {
+          clean.realityGroundedJourneyV1 = a.realityGroundedJourneyV1 as BuilderAnswers["realityGroundedJourneyV1"];
+        } else {
+          errors.push("journey_invalid");
+        }
+      }
 
       if (errors.length === 0) out.answers = clean;
     }

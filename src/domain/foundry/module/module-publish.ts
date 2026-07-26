@@ -177,6 +177,10 @@ export const SNAPSHOT_ANSWER_KEYS: readonly (keyof BuilderAnswers)[] = [
   "completionPrompt",
   "arenaRecommended",
   "followUpDays",
+  // Reality-Grounded Journey V1 (Slice 3.2C-B3A) — the exact Host-approved
+  // participant-facing Journey is frozen into the snapshot so the learner receives
+  // precisely what was approved for this Run.
+  "realityGroundedJourneyV1",
 ];
 
 export type ModuleSnapshot = Partial<Pick<BuilderAnswers, (typeof SNAPSHOT_ANSWER_KEYS)[number]>>;

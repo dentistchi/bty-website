@@ -1,0 +1,205 @@
+/**
+ * Reality-Grounded Guided Journey — V1 contract + deterministic mapper (Slice 3.2C-B3A).
+ *
+ * A Journey is the PARTICIPANT-FACING structured experience approved by the Host.
+ * It is stored as ONE versioned, namespaced contract inside a draft's answers
+ * (`answers.realityGroundedJourneyV1`) and frozen verbatim into the immutable
+ * module snapshot at publish — so what the Host approves is exactly what the
+ * learner receives.
+ *
+ * B3A is DETERMINISTIC only — no LLM. Every participant-facing sentence traces to
+ * a concrete existing BuilderAnswers field (grounding source `host_statement`).
+ * The mapper NEVER invents facts, incidents, policies, roles, or standards; it
+ * preserves the Host's exact words, omits optional elements with no grounded
+ * content, and marks a missing REQUIRED element `needs_confirmation` (which blocks
+ * approval) rather than substituting generic language.
+ *
+ * Pure domain: no I/O, no display strings beyond the Host's own content, no LLM.
+ */
+
+import type { BuilderAnswers } from "./module-builder";
+
+export type JourneyElementKind =
+  | "why_it_matters"
+  | "observable_standard"
+  | "scenario"
+  | "reflection"
+  | "action_decision"
+  | "field_application"
+  | "evidence"
+  | "completion_check";
+
+/** B3A grounds every element in a Host statement only (source docs / standards = B3B). */
+export type GroundingSourceType = "host_statement";
+export type ConfirmationStatus = "grounded" | "needs_confirmation";
+
+export type JourneyGrounding = {
+  sourceType: GroundingSourceType;
+  /** The exact BuilderAnswers key that grounded this element (audit/provenance). */
+  field: keyof BuilderAnswers;
+};
+
+export type JourneyElement = {
+  id: string;
+  kind: JourneyElementKind;
+  /** Participant-facing content — the Host's own words (or a Host edit). */
+  content: string;
+  grounding: JourneyGrounding[];
+  confirmationStatus: ConfirmationStatus;
+};
+
+export type RealityGroundedJourneyV1 = {
+  version: 1;
+  displayTitle: string;
+  /** The learner title must be Host-approved, never silently the raw problem phrase. */
+  displayTitleStatus: ConfirmationStatus;
+  elements: JourneyElement[];
+};
+
+/** Canonical render order. Each kind appears at most once in V1. */
+export const JOURNEY_KIND_ORDER: readonly JourneyElementKind[] = [
+  "why_it_matters",
+  "observable_standard",
+  "scenario",
+  "reflection",
+  "action_decision",
+  "field_application",
+  "evidence",
+  "completion_check",
+];
+
+/** Elements that must be grounded before the Journey can be approved/published. */
+export const REQUIRED_JOURNEY_KINDS: readonly JourneyElementKind[] = [
+  "why_it_matters",
+  "observable_standard",
+  "completion_check",
+];
+
+/** Stable, deterministic element id (one element per kind in V1). */
+export function journeyElementId(kind: JourneyElementKind): string {
+  return `el_${kind}`;
+}
+
+const asText = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+
+/** Which BuilderAnswers field grounds each participant-facing element. */
+const KIND_SOURCE: Partial<Record<JourneyElementKind, keyof BuilderAnswers>> = {
+  why_it_matters: "problem",
+  observable_standard: "observableBehavior",
+  evidence: "successEvidence",
+  reflection: "sharedQuestion",
+  completion_check: "completionPrompt",
+};
+
+/**
+ * Deterministically derive a Journey from a draft's approved BuilderAnswers.
+ *
+ * - REQUIRED elements (why_it_matters, observable_standard, completion_check) are
+ *   always present; if their grounding field is empty they are emitted with empty
+ *   content + `needs_confirmation` (never a generic default) so approval is blocked.
+ * - OPTIONAL elements (evidence, reflection) are OMITTED when their field is empty
+ *   (never invented). scenario / action_decision / field_application have no
+ *   grounded source in V1 BuilderAnswers, so they are never emitted here.
+ * - displayTitle is derived from the problem's first line but marked
+ *   `needs_confirmation` — the Host must review/approve the learner title.
+ */
+export function mapAnswersToJourney(answers: BuilderAnswers | undefined): RealityGroundedJourneyV1 {
+  const a = answers ?? {};
+  const elements: JourneyElement[] = [];
+
+  for (const kind of JOURNEY_KIND_ORDER) {
+    const field = KIND_SOURCE[kind];
+    if (!field) continue; // no grounded source in V1 → never emit (no invention)
+    const content = asText(a[field]);
+    const required = REQUIRED_JOURNEY_KINDS.includes(kind);
+    if (!content && !required) continue; // optional + empty → omit
+    elements.push({
+      id: journeyElementId(kind),
+      kind,
+      content,
+      grounding: content ? [{ sourceType: "host_statement", field }] : [],
+      confirmationStatus: content ? "grounded" : "needs_confirmation",
+    });
+  }
+
+  const firstLine = asText(a.problem).split(/\r?\n/)[0]?.trim() ?? "";
+  return {
+    version: 1,
+    displayTitle: firstLine, // provisional — the Host reviews/edits before approval
+    displayTitleStatus: "needs_confirmation",
+    elements,
+  };
+}
+
+/** Structural validation. Returns blocking reason codes (empty = valid shape). */
+export function validateJourney(j: unknown): string[] {
+  const errors: string[] = [];
+  const journey = j as Partial<RealityGroundedJourneyV1> | null;
+  if (!journey || typeof journey !== "object") return ["journey_missing"];
+  if (journey.version !== 1) errors.push("bad_version");
+  if (typeof journey.displayTitle !== "string") errors.push("bad_title");
+  if (journey.displayTitleStatus !== "grounded" && journey.displayTitleStatus !== "needs_confirmation") {
+    errors.push("bad_title_status");
+  }
+  if (!Array.isArray(journey.elements)) return [...errors, "bad_elements"];
+
+  const seen = new Set<string>();
+  const orderIdx = (k: JourneyElementKind) => JOURNEY_KIND_ORDER.indexOf(k);
+  let prevOrder = -1;
+  for (const el of journey.elements) {
+    if (!el || typeof el !== "object") { errors.push("bad_element"); continue; }
+    if (!JOURNEY_KIND_ORDER.includes(el.kind)) errors.push("bad_kind");
+    if (el.id !== journeyElementId(el.kind)) errors.push("bad_element_id");
+    if (seen.has(el.id)) errors.push("duplicate_element");
+    seen.add(el.id);
+    if (typeof el.content !== "string") errors.push("bad_content");
+    if (el.confirmationStatus !== "grounded" && el.confirmationStatus !== "needs_confirmation") errors.push("bad_status");
+    const idx = orderIdx(el.kind);
+    if (idx < prevOrder) errors.push("bad_order");
+    prevOrder = idx;
+  }
+  for (const kind of REQUIRED_JOURNEY_KINDS) {
+    if (!journey.elements.some((e) => e?.kind === kind)) errors.push(`missing_required:${kind}`);
+  }
+  return errors;
+}
+
+/** True when the Journey is structurally valid AND fully grounded (Host-approvable). */
+export function isJourneyApprovable(j: RealityGroundedJourneyV1 | undefined): boolean {
+  if (!j || validateJourney(j).length > 0) return false;
+  if (j.displayTitleStatus !== "grounded") return false;
+  return j.elements.every((e) => e.confirmationStatus === "grounded");
+}
+
+/** Element kinds still needing Host confirmation (drives the approval gate UI). */
+export function unresolvedJourneyElements(j: RealityGroundedJourneyV1 | undefined): JourneyElementKind[] {
+  if (!j) return [];
+  const out = j.elements.filter((e) => e.confirmationStatus === "needs_confirmation").map((e) => e.kind);
+  return out;
+}
+
+/** The approved participant completion question (completion_check content), or null. */
+export function journeyCompletionCheck(j: RealityGroundedJourneyV1 | undefined): string | null {
+  const el = j?.elements.find((e) => e.kind === "completion_check");
+  const c = (el?.content ?? "").trim();
+  return c.length > 0 ? c : null;
+}
+
+export type PublicJourneyElement = { id: string; kind: JourneyElementKind; content: string };
+export type PublicJourney = { displayTitle: string; elements: PublicJourneyElement[] };
+
+/**
+ * The learner-safe projection: ordered display title + grounded elements' content
+ * only. NEVER exposes grounding metadata, confirmation status, or any
+ * needs_confirmation content (approval already guarantees all grounded, but this
+ * filters defensively).
+ */
+export function toPublicJourney(j: RealityGroundedJourneyV1 | undefined): PublicJourney | null {
+  if (!j) return null;
+  return {
+    displayTitle: j.displayTitle,
+    elements: j.elements
+      .filter((e) => e.confirmationStatus === "grounded" && e.content.trim().length > 0)
+      .map((e) => ({ id: e.id, kind: e.kind, content: e.content })),
+  };
+}

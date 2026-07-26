@@ -20,6 +20,8 @@ import {
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
+import { JourneyPreview } from "./JourneyPreview";
+import { mapAnswersToJourney } from "@/domain/foundry/module/journey";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -80,6 +82,9 @@ export function ModuleBuilderShell({
   // Guided training (parent lineage / version > 1), so the Host understands the old
   // published training is NOT being edited.
   const [isRevision, setIsRevision] = useState(false);
+  // Journey approval gate (Slice 3.2C-B3A): publish is blocked until the learner
+  // preview Journey is fully grounded (title confirmed + no needs_confirmation).
+  const [journeyApprovable, setJourneyApprovable] = useState(false);
   // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
   // assigned overlay, and legacy/absent always stays open link.
   const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
@@ -416,6 +421,8 @@ export function ModuleBuilderShell({
   if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
   const isReview = step === BUILDER_STEP_MAX;
+  // Journey-enabled once the Host has opted into the learner preview (Slice 3.2C-B3A).
+  const journeyEnabled = answers.realityGroundedJourneyV1 !== undefined;
   // The SINGLE readiness source the Review screen consults — the exact gate that the
   // server re-enforces at publish, plus the PDF-asset gate the client can see locally.
   // Every entry maps to a visible, highlightable Review row (Slice 2.4A.3).
@@ -495,6 +502,22 @@ export function ModuleBuilderShell({
         />
       ) : isReview ? (
         <>
+          {/* Reality-Grounded Journey (Slice 3.2C-B3A). A draft becomes Journey-enabled
+              when the Host opts into the learner preview; then the preview + approval
+              gate replace the raw-title/raw-completion publish. Legacy drafts (no
+              Journey) keep the existing review → publish exactly. */}
+          {journeyEnabled ? (
+            <JourneyPreview answers={answers} onPatch={patchAnswers} onApprovableChange={setJourneyApprovable} />
+          ) : (
+            <button
+              type="button"
+              data-testid="journey-start"
+              onClick={() => patchAnswers({ realityGroundedJourneyV1: mapAnswersToJourney(answers) }, true)}
+              className="self-start rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-5 py-3 text-sm font-semibold text-[#C9A66B] transition-colors hover:bg-[#C9A66B]/[0.14]"
+            >
+              {t.journeyStart} →
+            </button>
+          )}
           <ReviewBody answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           <ParticipationModeChooser
             mode={participationMode}
@@ -504,14 +527,23 @@ export function ModuleBuilderShell({
             onChange={setParticipationMode}
             t={t}
           />
-          <PublishAction
-            missing={reviewMissing}
-            publishing={publishing}
-            error={publishErr}
-            onEdit={jumpTo}
-            onPublish={doPublish}
-            t={t}
-          />
+          {journeyEnabled && !journeyApprovable ? (
+            <div
+              data-testid="journey-publish-blocked"
+              className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100/85"
+            >
+              {t.journeyApprovalBlocked}
+            </div>
+          ) : (
+            <PublishAction
+              missing={reviewMissing}
+              publishing={publishing}
+              error={publishErr}
+              onEdit={jumpTo}
+              onPublish={doPublish}
+              t={t}
+            />
+          )}
         </>
       ) : (
         <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode)}</div>
