@@ -105,6 +105,45 @@ describe("FieldActionsFocus — canonical inventory + load states", () => {
     expect((await screen.findByTestId("fa-item")).getAttribute("data-group")).toBe("upcoming");
   });
 
+  // ── Escalated semantic separation ──────────────────────────────────────────
+  it("Escalated 1/2/3 — submitted under Awaiting review; escalated under Awaiting resolution; never conflated", async () => {
+    stub({ items: [fa({ contractId: "c-sub", status: "submitted" }), fa({ contractId: "c-esc", status: "escalated" })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const awaitingReview = await screen.findByTestId("fa-group-awaiting_review");
+    const awaitingResolution = await screen.findByTestId("fa-group-awaiting_resolution");
+    // submitted only under Awaiting review; escalated only under Awaiting resolution.
+    expect(awaitingReview.querySelector('[data-contract="c-sub"]')).toBeTruthy();
+    expect(awaitingReview.querySelector('[data-contract="c-esc"]')).toBeNull();
+    expect(awaitingResolution.querySelector('[data-contract="c-esc"]')).toBeTruthy();
+    expect(awaitingResolution.querySelector('[data-contract="c-sub"]')).toBeNull();
+    // Awaiting resolution copy present; never the Awaiting-review/forbidden phrasing for escalated.
+    expect(awaitingResolution.textContent).toContain("Awaiting resolution");
+    expect(awaitingResolution.textContent).toContain("This action is waiting for a resolution.");
+    expect(awaitingResolution.textContent).not.toContain("Awaiting review");
+  });
+
+  it("Escalated 4 — submitted and escalated each render exactly once", async () => {
+    stub({ items: [fa({ contractId: "c-sub", status: "submitted" }), fa({ contractId: "c-esc", status: "escalated" })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    await screen.findByTestId("fa-group-awaiting_resolution");
+    expect(screen.getAllByTestId("fa-item").filter((n) => n.getAttribute("data-contract") === "c-sub").length).toBe(1);
+    expect(screen.getAllByTestId("fa-item").filter((n) => n.getAttribute("data-contract") === "c-esc").length).toBe(1);
+  });
+
+  it("Escalated 6 — a deep-linked escalated contract focuses correctly (opens its form)", async () => {
+    stub({ items: [fa({ contractId: "c-esc", status: "escalated" })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} initialFieldActionId="c-esc" />);
+    expect((await screen.findByTestId("field-action-form-mock")).getAttribute("data-contract")).toBe("c-esc");
+  });
+
+  it("Escalated 7 — EN/KO parity for Awaiting resolution copy", async () => {
+    stub({ items: [fa({ contractId: "c-esc", status: "escalated" })] });
+    render(<FieldActionsFocus locale="ko" onBack={() => {}} />);
+    const g = await screen.findByTestId("fa-group-awaiting_resolution");
+    expect(g.textContent).toContain("해결 대기 중");
+    expect(g.textContent).toContain("이 행동은 해결을 기다리고 있습니다.");
+  });
+
   it("Test 7 — contract-id dedup across overlapping fixtures (rendered once)", async () => {
     stub({ items: [fa({ contractId: "dup", status: "submitted" }), fa({ contractId: "dup", status: "submitted" })] });
     render(<FieldActionsFocus locale="en" onBack={() => {}} />);

@@ -61,6 +61,8 @@ const COPY: Record<Locale, {
   groups: Record<Exclude<FieldActionLearnerGroup, "other">, string>;
   reviewedAccepted: string;
   awaitingReviewBadge: string;
+  awaitingResolutionBadge: string;
+  awaitingResolutionBody: string;
   needsRevisionBadge: string;
   revisionNote: string;
   reviewedOn: string;
@@ -83,11 +85,14 @@ const COPY: Record<Locale, {
     groups: {
       needs_revision: "Needs revision",
       awaiting_review: "Awaiting review",
+      awaiting_resolution: "Awaiting resolution",
       upcoming: "Upcoming actions",
       reviewed: "Reviewed action plans",
     },
     reviewedAccepted: "Action plan reviewed & accepted",
     awaitingReviewBadge: "Awaiting review",
+    awaitingResolutionBadge: "Awaiting resolution",
+    awaitingResolutionBody: "This action is waiting for a resolution.",
     needsRevisionBadge: "Needs revision",
     revisionNote: "Revision requested",
     reviewedOn: "Reviewed",
@@ -110,11 +115,14 @@ const COPY: Record<Locale, {
     groups: {
       needs_revision: "수정이 필요합니다",
       awaiting_review: "검토 대기",
+      awaiting_resolution: "해결 대기 중",
       upcoming: "예정된 행동",
       reviewed: "검토·승인된 행동 계획",
     },
     reviewedAccepted: "행동 계획이 검토되고 승인되었습니다",
     awaitingReviewBadge: "검토 대기",
+    awaitingResolutionBadge: "해결 대기 중",
+    awaitingResolutionBody: "이 행동은 해결을 기다리고 있습니다.",
     needsRevisionBadge: "수정 필요",
     revisionNote: "수정 요청",
     reviewedOn: "검토됨",
@@ -217,6 +225,7 @@ export default function FieldActionsFocus({
   const byGroup: Record<Exclude<FieldActionLearnerGroup, "other">, MyFieldAction[]> = {
     needs_revision: [],
     awaiting_review: [],
+    awaiting_resolution: [],
     upcoming: [],
     reviewed: [],
   };
@@ -234,6 +243,7 @@ export default function FieldActionsFocus({
   const groupTone: Record<Exclude<FieldActionLearnerGroup, "other">, string> = {
     needs_revision: "text-[#E5B769]/85",
     awaiting_review: "text-white/40",
+    awaiting_resolution: "text-violet-200/70",
     upcoming: "text-white/40",
     reviewed: "text-[#C9A66B]/70",
   };
@@ -296,8 +306,13 @@ export default function FieldActionsFocus({
                         <span className="shrink-0 rounded-md border border-[#C9A66B]/45 px-2 py-0.5 text-[0.66rem] text-[#E5B769]">{t.needsRevisionBadge}</span>
                       ) : g === "awaiting_review" ? (
                         <span className="shrink-0 rounded-md border border-sky-400/25 px-2 py-0.5 text-[0.66rem] text-sky-200/75">{t.awaitingReviewBadge}</span>
+                      ) : g === "awaiting_resolution" ? (
+                        <span className="shrink-0 rounded-md border border-violet-400/30 px-2 py-0.5 text-[0.66rem] text-violet-200/80">{t.awaitingResolutionBadge}</span>
                       ) : null}
                     </div>
+                    {g === "awaiting_resolution" ? (
+                      <span className="text-xs leading-5 text-white/55">{t.awaitingResolutionBody}</span>
+                    ) : null}
                     {g === "needs_revision" && a.revisionNote ? (
                       <span className="rounded-md border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-2.5 py-1.5 text-xs leading-5 text-white/75">
                         <span className="mr-1 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[#E5B769]/80">{t.revisionNote}:</span>
