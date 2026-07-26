@@ -172,6 +172,7 @@ function makeFakeAdmin() {
   }
 
   function rpc(name: string, p: Record<string, unknown>) {
+    if (name === "bty_foundry_resolve_or_create_program") return Promise.resolve({ data: [{ program_id: "prog-test" }], error: null });
     if (name !== "bty_foundry_award_daily_capped") return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
     const led = tables.core_xp_ledger;
     const SRC = "foundry_training_completion";

@@ -12,7 +12,7 @@ import { join } from "node:path";
  * only (never legacy `memberships`); title never dedups identities.
  */
 const RAW = readFileSync(
-  join(process.cwd(), "supabase", "migrations", "20260732000000_foundry_programs_root_v1.sql"),
+  join(process.cwd(), "supabase", "migrations", "20260801000000_foundry_programs_root_v1.sql"),
   "utf8",
 );
 const CODE = RAW.replace(/--[^\n]*/g, " ").replace(/\s+/g, " ").toLowerCase();
@@ -73,14 +73,19 @@ describe("foundry-programs-root migration (schema-intent)", () => {
     );
   });
 
-  it("derives org from CANONICAL bty_org_memberships (never legacy memberships) and is best-effort NULL", () => {
+  it("derives org from CANONICAL bty_org_memberships (never legacy memberships)", () => {
     expect(CODE).toMatch(/from public\.bty_org_memberships om/);
     expect(CODE).toMatch(/om\.status = 'active' and om\.is_primary = true/);
-    // best-effort: no org -> NULL program, never an error
-    expect(CODE).toMatch(/program_id := null/);
     // must not read the legacy membership table
     expect(CODE).not.toMatch(/from public\.memberships\b/);
     expect(CODE).not.toMatch(/from memberships\b/);
+  });
+
+  it("FAILS CLOSED for a NEW Program (no silent NULL): unresolved + ambiguous org raise", () => {
+    expect(CODE).toMatch(/raise exception 'organization_unresolved'/);
+    expect(CODE).toMatch(/raise exception 'organization_ambiguous'/);
+    // the best-effort NULL-linkage create path must be GONE
+    expect(CODE).not.toMatch(/program_id := null/);
   });
 
   it("fails closed on a supplied cross-org / missing Program (never links silently)", () => {

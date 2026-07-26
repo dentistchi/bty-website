@@ -126,7 +126,16 @@ function makeFakeAdmin(seed: { drafts?: Row[]; modules?: Row[] } = {}) {
     return q;
   }
 
-  return { admin: { from } as unknown as SupabaseClient, tables };
+  // Program resolve-or-create RPC (Slice 3.2C-R1): default = a Host WITH one
+  // active-primary org → a resolved Program identity. createDraft now fails closed
+  // without it, so an original draft receives a non-null program_id here.
+  function rpc(name: string) {
+    if (name === "bty_foundry_resolve_or_create_program") {
+      return Promise.resolve({ data: [{ program_id: "prog-test" }], error: null });
+    }
+    return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
+  }
+  return { admin: { from, rpc } as unknown as SupabaseClient, tables };
 }
 
 const OWNER = "owner-1";

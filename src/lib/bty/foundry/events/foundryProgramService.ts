@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Foundry Program identity — service layer (Slice 3.2C, Minimal Program Root).
+ * Foundry Program identity — service layer (Slice 3.2C, corrected 3.2C-R1).
  *
  * A Program is the durable, organization-scoped learning IDENTITY that a draft/
  * version (Guided authoring) and a published run (Guided or Quick) belong to. It
@@ -9,48 +9,65 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * (those stay on the Program Run = foundry_events). See
  * docs/UNIFIED_PROGRAM_LIVE_EXPERIENCE_CONTRACT.md.
  *
- * All linkage is BEST-EFFORT and server-authoritative:
- *   - Org is DERIVED (inside the RPC) from the actor's active-primary
- *     bty_org_membership — the caller never supplies an org or a foreign
- *     program_id it did not receive from the server.
- *   - Foundry Host is a GLOBAL capability, so a Host may have no org membership.
- *     In that case resolveOrCreateProgramForActor returns null and the caller
- *     proceeds WITHOUT Program linkage (program_id stays NULL = "legacy
- *     unified-lineage not recorded"), exactly preserving today's create behavior.
+ * FAIL-CLOSED authorization (3.2C-R1): creating a NEW Program REQUIRES a
+ * deterministically resolved canonical organization. Org is DERIVED (inside the
+ * RPC) from the actor's active-primary bty_org_membership — never the legacy
+ * `memberships` table, never a client value. If the actor has no active-primary
+ * org the RPC raises `organization_unresolved`; more than one raises
+ * `organization_ambiguous`; a supplied foreign/absent Program raises
+ * `cross_organization` / `program_missing`. Foundry Host is a GLOBAL capability
+ * and does NOT by itself authorize an org-owned Program. There is NO silent
+ * NULL-linkage downgrade for a NEW Program — only HISTORICAL rows keep NULL.
  *
  * This service is a thin wrapper over the service-role-only SECURITY DEFINER RPC
  * bty_foundry_resolve_or_create_program; it never widens client access.
  */
 
+const PROGRAM_REASONS = [
+  "organization_unresolved",
+  "organization_ambiguous",
+  "cross_organization",
+  "program_missing",
+] as const;
+
+/** Map an RPC/wrapper error to a stable, calm reason for the existing UI. */
+export function programErrorReason(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  return PROGRAM_REASONS.find((r) => msg.includes(r)) ?? "program_resolve_failed";
+}
+
 /**
  * Resolve or create the Program identity for a create/publish action by `actorUserId`.
  *
  * - `existingProgramId` present  → resolve that Program (must exist AND be the
- *   actor's own org; a foreign-org id raises inside the RPC). Used so a Guided
- *   revision / publish inherits the SAME Program identity as its draft.
- * - `existingProgramId` absent   → create a new Program in the actor's org, using
+ *   actor's own org; a foreign-org id raises). Used so a Guided revision / publish
+ *   inherits the SAME Program identity as its draft.
+ * - `existingProgramId` absent   → create a NEW Program in the actor's org, using
  *   `title` for display identity only (never dedup/merge by title).
  *
- * Returns the resolved/created program_id, or `null` when the actor has no
- * resolvable organization (best-effort — caller links nothing). Throws only on a
- * genuine authorization violation (program_missing / cross_organization) or a DB
- * error, so a cross-org attempt fails closed rather than linking silently.
+ * Returns a NON-NULL program_id on success. THROWS a stable-reason Error
+ * (`organization_unresolved` / `organization_ambiguous` / `cross_organization` /
+ * `program_missing` / `program_resolve_failed`) when the org cannot be resolved
+ * or the supplied Program is foreign — so a caller ALWAYS fails closed and never
+ * links (or silently unlinks) across an authorization boundary.
  */
 export async function resolveOrCreateProgramForActor(
   admin: SupabaseClient,
   actorUserId: string,
   title: string,
   existingProgramId?: string | null,
-): Promise<string | null> {
+): Promise<string> {
   const { data, error } = await admin.rpc("bty_foundry_resolve_or_create_program", {
     p_actor_user_id: actorUserId,
     p_title: title,
     p_program_id: existingProgramId ?? null,
   });
-  if (error) throw new Error(`program_resolve_failed:${error.message}`);
-  // RPC returns a single-row table { program_id } (program_id may be null).
+  if (error) throw new Error(programErrorReason(error.message ?? "program_resolve_failed"));
   const row = Array.isArray(data) ? data[0] : data;
   const programId = (row as { program_id?: string | null } | null)?.program_id ?? null;
+  // The RPC fails closed (raises) on no/ambiguous org, so a null here is a
+  // contract violation — treat it as unresolved rather than link silently.
+  if (programId == null) throw new Error("organization_unresolved");
   return programId;
 }
 
@@ -61,10 +78,11 @@ export type ProgramLineage = { programId: string | null };
  * Resolve the program_id to stamp on a NEW Program Run (foundry_events).
  *
  * - `lineage` present (Guided publish) → use the draft's recorded Program identity
- *   EXACTLY, including `null` (a draft with no lineage yields an unlinked run).
- * - `lineage` absent (Quick / direct create) → best-effort resolve-or-create a
- *   fresh Program in the owner's org; a failure or no-org yields `null` and the
- *   run is created unlinked (today's behavior, never blocked).
+ *   EXACTLY, including `null` (a HISTORICAL draft with no lineage yields an
+ *   unlinked run). Never throws — publishing a legacy draft must keep working.
+ * - `lineage` absent (Quick / direct create) → resolve-or-create a Program in the
+ *   owner's org and FAIL CLOSED (throw) if the org cannot be resolved. The caller
+ *   must reject BEFORE creating the event — never a silent NULL run.
  */
 export async function programIdForNewRun(
   admin: SupabaseClient,
@@ -73,9 +91,5 @@ export async function programIdForNewRun(
   lineage?: ProgramLineage,
 ): Promise<string | null> {
   if (lineage) return lineage.programId;
-  try {
-    return await resolveOrCreateProgramForActor(admin, ownerUserId, title);
-  } catch {
-    return null; // best-effort: Program linkage must never block run creation
-  }
+  return await resolveOrCreateProgramForActor(admin, ownerUserId, title);
 }

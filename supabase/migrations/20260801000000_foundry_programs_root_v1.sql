@@ -29,12 +29,15 @@
 --   4. bty_foundry_resolve_or_create_program(...) — a SECURITY DEFINER,
 --      service-role-only RPC that create-or-resolves a Program in the ACTOR's OWN
 --      organization (org derived from the actor's active-primary membership,
---      never trusted from the caller). BEST-EFFORT: if the actor has no resolvable
---      org it returns a NULL program_id (the create path proceeds WITHOUT linkage
---      — exactly today's behavior), because Foundry Host is a GLOBAL capability
---      and a Host is not necessarily an org member. Legacy / non-member-authored
---      rows therefore keep program_id NULL = "LEGACY UNIFIED-LINEAGE NOT
---      RECORDED"; they remain fully playable and visible.
+--      never trusted from the caller). FAIL-CLOSED (Slice 3.2C-R1): a NEW Program
+--      REQUIRES a deterministically resolved canonical org — no org raises
+--      `organization_unresolved` and >1 active-primary raises
+--      `organization_ambiguous`, so the caller rejects BEFORE creating any
+--      draft/event (never a silent unlinked event). Foundry Host is a GLOBAL
+--      capability and does NOT by itself authorize an org-owned Program. Only
+--      HISTORICAL rows (authored before this slice) keep program_id NULL =
+--      "LEGACY UNIFIED-LINEAGE NOT RECORDED"; they remain fully playable and
+--      visible and are never backfilled.
 --
 -- ORGANIZATION ISOLATION: organization_id uses the CANONICAL bty_organizations /
 -- bty_org_memberships identity — NEVER the legacy `memberships` table. A caller
@@ -149,17 +152,32 @@ set search_path = pg_catalog, public
 as $$
 declare
   v_org uuid;
+  v_count int;
   v_prog_org uuid;
   v_new uuid;
   v_title text;
 begin
-  -- Derive org from the actor's OWN active-primary membership (canonical table).
-  -- Best-effort: absence is NOT an error — it means "no Program linkage".
-  select om.organization_id into v_org
+  -- Ambiguity guard (defensive): the partial unique index
+  -- bty_org_membership_one_active_primary already makes >1 active-primary per
+  -- user impossible, but fail closed rather than silently pick one if that
+  -- invariant is ever violated. No explicit org selector exists in any Host
+  -- surface, so ambiguity cannot be resolved and must be rejected.
+  select count(*) into v_count
     from public.bty_org_memberships om
    where om.user_id = p_actor_user_id and om.status = 'active' and om.is_primary = true;
+  if v_count > 1 then
+    raise exception 'organization_ambiguous' using errcode = 'P0001';
+  end if;
 
-  -- Resolve an explicitly-supplied Program: must exist and be SAME-ORG.
+  -- Derive the actor's OWN canonical organization (never trusted from the caller,
+  -- never the legacy `memberships` table).
+  select om.organization_id into v_org
+    from public.bty_org_memberships om
+   where om.user_id = p_actor_user_id and om.status = 'active' and om.is_primary = true
+   limit 1;
+
+  -- RESOLVE an explicitly-supplied Program: it must exist AND be SAME-ORG. An
+  -- actor with no org can own/resolve no Program.
   if p_program_id is not null then
     select fp.organization_id into v_prog_org
       from public.foundry_programs fp
@@ -167,7 +185,6 @@ begin
     if not found then
       raise exception 'program_missing' using errcode = 'P0002';
     end if;
-    -- If the actor has no org, they cannot own/resolve any Program.
     if v_org is null or v_prog_org is distinct from v_org then
       raise exception 'cross_organization' using errcode = 'P0001';
     end if;
@@ -176,15 +193,16 @@ begin
     return;
   end if;
 
-  -- No org -> best-effort NULL (create path proceeds WITHOUT linkage).
+  -- CREATE path: canonical organization ownership is REQUIRED. A NEW Guided or
+  -- Quick Program must never be silently downgraded to an unlinked event — fail
+  -- CLOSED so the caller rejects BEFORE creating any draft/event. Foundry Host is
+  -- a GLOBAL capability and does NOT by itself authorize an org-owned Program.
   if v_org is null then
-    program_id := null;
-    return next;
-    return;
+    raise exception 'organization_unresolved' using errcode = 'P0002';
   end if;
 
   -- Create a NEW Program identity in the actor's org. Title bounded/trimmed to
-  -- the table CHECK; never used to dedup.
+  -- the table CHECK; NEVER used to dedup / merge identities.
   v_title := btrim(coalesce(p_title, ''));
   if v_title = '' then
     v_title := 'Untitled Program';

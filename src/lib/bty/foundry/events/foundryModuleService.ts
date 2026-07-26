@@ -9,7 +9,7 @@ import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/mod
 import { builderApprovalErrors } from "@/domain/foundry/module/module-publish";
 import { deleteFoundryDocument } from "./documentStorage";
 import { parseDocumentRef } from "./moduleClient";
-import { resolveOrCreateProgramForActor } from "./foundryProgramService";
+import { resolveOrCreateProgramForActor, programErrorReason } from "./foundryProgramService";
 
 /**
  * Foundry Guided Module Builder — service layer (Slice 1).
@@ -97,12 +97,13 @@ export async function createDraft(
 ): Promise<ServiceResult<ModuleDraftRow>> {
   let moduleVersion = 1;
   let parentModuleId: string | null = null;
-  // Program lineage (Slice 3.2C). A revision INHERITS the parent's Program identity
-  // so every version stays in one lineage; an original resolves/creates a Program in
-  // the owner's org. Linkage is BEST-EFFORT: an owner with no resolvable org (Foundry
-  // Host is a global capability) links nothing (program_id NULL) — draft creation is
-  // never blocked, preserving today's create behavior.
+  // Program lineage (Slice 3.2C, fail-closed 3.2C-R1). A revision INHERITS the
+  // parent's Program identity (may be null for a HISTORICAL lineage) so every
+  // version stays in one lineage and never re-resolves. A NEW original Program
+  // REQUIRES a deterministically resolved canonical org — resolution runs BEFORE
+  // the draft insert and REJECTS (no partial draft) when the org is unresolvable.
   let programId: string | null = null;
+  let createdProgram = false;
 
   if (input.parentDraftId) {
     const parent = await getOwnerDraft(admin, ownerUserId, input.parentDraftId);
@@ -114,8 +115,9 @@ export async function createDraft(
     const title = draftTitleFrom((input.answers ?? {}) as BuilderAnswers) ?? "";
     try {
       programId = await resolveOrCreateProgramForActor(admin, ownerUserId, title);
-    } catch {
-      programId = null; // best-effort: Program linkage must never block draft creation
+      createdProgram = true;
+    } catch (e) {
+      return { ok: false, reason: programErrorReason(e) }; // fail closed BEFORE any draft row
     }
   }
 
@@ -135,7 +137,15 @@ export async function createDraft(
     .select(DRAFT_COLS)
     .single<ModuleDraftRow>();
 
-  if (error || !data) return { ok: false, reason: error?.message ?? "draft_insert_failed" };
+  if (error || !data) {
+    // Both-or-neither: compensate the Program THIS call just created so a failed
+    // draft insert never leaves an orphaned Program root (inline compensation,
+    // mirroring the existing event↔content compensation — not a cleanup job).
+    if (createdProgram && programId) {
+      await admin.from("foundry_programs").delete().eq("id", programId).eq("owner_user_id_snapshot", ownerUserId);
+    }
+    return { ok: false, reason: error?.message ?? "draft_insert_failed" };
+  }
   return { ok: true, value: data };
 }
 

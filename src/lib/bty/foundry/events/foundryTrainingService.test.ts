@@ -31,9 +31,14 @@ beforeAll(() => {
 });
 
 const awardSpy = applyDirectCoreXp as unknown as ReturnType<typeof vi.fn>;
+// Program resolve-or-create RPC result (Slice 3.2C-R1). Default: a Host WITH one
+// active-primary org → a resolved Program. A test may set an org error to prove
+// Quick creation fails closed.
+const programRpcState = { result: { data: [{ program_id: "prog-test" }] as unknown, error: null as unknown } };
 beforeEach(() => {
   awardSpy.mockClear();
   embedState.value = "embeddable";
+  programRpcState.result = { data: [{ program_id: "prog-test" }], error: null };
 });
 
 // ---- Capable in-memory fake (4 tables + core_xp_ledger, with unique constraints) ----
@@ -204,6 +209,9 @@ function makeFakeAdmin() {
       (tables.__claim_calls as Array<Record<string, unknown>>).push(p);
       return Promise.resolve({ data: [{ result: "claimed", assignment_id: "a1" }], error: null });
     }
+    if (name === "bty_foundry_resolve_or_create_program") {
+      return Promise.resolve(programRpcState.result);
+    }
     if (name !== "bty_foundry_award_daily_capped") {
       return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
     }
@@ -299,6 +307,22 @@ describe("createTrainingEvent", () => {
     const { admin } = makeFakeAdmin();
     const r = await createTrainingEvent(admin, OWNER, { title: "T", youtube_url: YT, completion_prompt: "  " });
     expect(r).toEqual({ ok: false, reason: "prompt_required" });
+  });
+
+  it("links the created run to a Program identity (Quick Program, 3.2C)", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const r = await createTrainingEvent(admin, OWNER, { title: "Prog", youtube_url: YT, completion_prompt: "q?" });
+    expect(r.ok).toBe(true);
+    expect(tables.foundry_events[0]?.program_id).toBe("prog-test"); // non-null Program on the run
+  });
+
+  it("FAILS CLOSED (no event/content) when the owner has no canonical org (3.2C-R1)", async () => {
+    programRpcState.result = { data: null, error: { message: "organization_unresolved" } };
+    const { admin, tables } = makeFakeAdmin();
+    const r = await createTrainingEvent(admin, OWNER, { title: "NoOrg", youtube_url: YT, completion_prompt: "q?" });
+    expect(r).toEqual({ ok: false, reason: "organization_unresolved" });
+    expect(tables.foundry_events).toHaveLength(0); // no silent unlinked event
+    expect(tables.foundry_event_training_content ?? []).toHaveLength(0);
   });
 });
 

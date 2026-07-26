@@ -13,7 +13,7 @@ import {
   FOUNDRY_TRAINING_XP,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
-import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
+import { programIdForNewRun, programErrorReason, type ProgramLineage } from "./foundryProgramService";
 import {
   resolveYoutubeEmbeddable,
   embedCheckAllowsCreate,
@@ -143,16 +143,31 @@ export async function createTrainingEvent(
   const embed = await resolveYoutubeEmbeddable(videoId);
   if (!embedCheckAllowsCreate(embed)) return { ok: false, reason: embedCheckReason(embed) };
 
-  // Program Run lineage (Slice 3.2C): Guided publish passes the draft's identity;
-  // Quick/direct create resolves a fresh one. Best-effort → null keeps today's flow.
-  const programId = await programIdForNewRun(admin, ownerUserId, title.value, lineage);
+  // Program Run lineage (Slice 3.2C, fail-closed 3.2C-R1). Guided publish passes
+  // the draft's identity (as-is, incl. null for a legacy draft — never throws);
+  // Quick/direct create resolves a FRESH Program and FAILS CLOSED before any event
+  // row if the canonical org is unresolvable.
+  let programId: string | null;
+  try {
+    programId = await programIdForNewRun(admin, ownerUserId, title.value, lineage);
+  } catch (e) {
+    return { ok: false, reason: programErrorReason(e) };
+  }
+  // Only a Program THIS call minted (Quick create) is compensated on failure; a
+  // Guided-publish lineage program is owned by its draft and must never be deleted.
+  const createdProgram = lineage === undefined && programId != null;
 
   const { data: event, error: evErr } = await admin
     .from("foundry_events")
     .insert({ owner_user_id: ownerUserId, title: title.value, program_id: programId })
     .select("id")
     .single<{ id: string }>();
-  if (evErr || !event) return { ok: false, reason: evErr?.message ?? "event_insert_failed" };
+  if (evErr || !event) {
+    if (createdProgram && programId) {
+      await admin.from("foundry_programs").delete().eq("id", programId).eq("owner_user_id_snapshot", ownerUserId);
+    }
+    return { ok: false, reason: evErr?.message ?? "event_insert_failed" };
+  }
 
   const { error: contentErr } = await admin.from("foundry_event_training_content").insert({
     event_id: event.id,
@@ -161,8 +176,11 @@ export async function createTrainingEvent(
     shared_question: sharedQ.value,
   });
   if (contentErr) {
-    // Compensate — never leave a training event without its content.
+    // Compensate — never leave a training event without its content (or an orphan Program).
     await admin.from("foundry_events").delete().eq("id", event.id).eq("owner_user_id", ownerUserId);
+    if (createdProgram && programId) {
+      await admin.from("foundry_programs").delete().eq("id", programId).eq("owner_user_id_snapshot", ownerUserId);
+    }
     return { ok: false, reason: "content_insert_failed" };
   }
 

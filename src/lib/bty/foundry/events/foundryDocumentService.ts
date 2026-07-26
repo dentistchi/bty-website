@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
-import { programIdForNewRun } from "./foundryProgramService";
+import { programIdForNewRun, programErrorReason } from "./foundryProgramService";
 import {
   validateCompletionPrompt,
   validateResponse,
@@ -268,8 +268,16 @@ export async function createDocumentEvent(
 
   const minReadSeconds = computeMinReadSeconds(pageCount.value);
 
-  // Quick/direct document create → best-effort resolve-or-create Program (Slice 3.2C).
-  const programId = await programIdForNewRun(admin, ownerUserId, title.value);
+  // Quick/direct document create → resolve-or-create Program, FAIL CLOSED before
+  // any event/content row when the canonical org is unresolvable (Slice 3.2C-R1).
+  let programId: string | null;
+  try {
+    programId = await programIdForNewRun(admin, ownerUserId, title.value);
+  } catch (e) {
+    await cleanupUpload();
+    return { ok: false, reason: programErrorReason(e) };
+  }
+  const createdProgram = programId != null; // quick document path always mints a Program
 
   const { data: event, error: evErr } = await admin
     .from("foundry_events")
@@ -278,6 +286,9 @@ export async function createDocumentEvent(
     .single<{ id: string }>();
   if (evErr || !event) {
     await cleanupUpload();
+    if (createdProgram && programId) {
+      await admin.from("foundry_programs").delete().eq("id", programId).eq("owner_user_id_snapshot", ownerUserId);
+    }
     return { ok: false, reason: evErr?.message ?? "event_insert_failed" };
   }
 
@@ -297,9 +308,13 @@ export async function createDocumentEvent(
     completion_prompt: prompt.value,
   });
   if (contentErr) {
-    // Compensate — never leave a document event without its content or a stranded file.
+    // Compensate — never leave a document event without its content, a stranded file,
+    // or an orphaned Program root.
     await admin.from("foundry_events").delete().eq("id", event.id).eq("owner_user_id", ownerUserId);
     await cleanupUpload();
+    if (createdProgram && programId) {
+      await admin.from("foundry_programs").delete().eq("id", programId).eq("owner_user_id_snapshot", ownerUserId);
+    }
     return { ok: false, reason: "content_insert_failed" };
   }
 
