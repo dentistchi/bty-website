@@ -50,6 +50,8 @@ export type ManagerSnapshot = {
   participants: ManagerParticipant[];
   joined_count: number;
   completed_count: number;
+  /** Guided "Create new version" eligibility (Slice 3.2C-B1); server-computed, boolean only. */
+  revisable?: boolean;
 };
 
 export type ManagerEventSummary = {

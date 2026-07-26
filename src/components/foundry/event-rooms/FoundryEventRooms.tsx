@@ -182,6 +182,32 @@ export default function FoundryEventRooms({
 
   const openDraft = useCallback((id: string) => setView({ kind: "builder", draftId: id }), []);
 
+  // Create a new version of a published Guided training (Slice 3.2C-B1). The server
+  // resolves the source draft + creates OR resumes exactly one revision draft in the
+  // SAME Program; we then open the existing Builder on it (prior answers prefilled).
+  // Guarded so a double-tap opens exactly one. The action is server-gated (revisable),
+  // so a non-ok response is a rare race — we simply stay in the control room.
+  const versioningRef = useRef(false);
+  const createNewVersion = useCallback(async (eventId: string) => {
+    if (versioningRef.current) return;
+    versioningRef.current = true;
+    try {
+      const res = await fetch(`/api/bty/foundry/events/${encodeURIComponent(eventId)}/revisions`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { draftId?: string };
+        if (data.draftId) setView({ kind: "builder", draftId: data.draftId });
+      }
+    } catch {
+      /* stay on the control room; the action re-enables */
+    } finally {
+      versioningRef.current = false;
+    }
+  }, []);
+
   const deleteDraft = useCallback(
     async (id: string) => {
       if (!window.confirm(bt.deleteConfirm)) return;
@@ -247,6 +273,7 @@ export default function FoundryEventRooms({
         locale={loc}
         onBack={backHome}
         onCreateArenaPractice={() => setView({ kind: "arena-practice", eventId: view.eventId })}
+        onCreateNewVersion={() => createNewVersion(view.eventId)}
         focusSection={view.focusSection}
         focusId={view.focusId}
       />

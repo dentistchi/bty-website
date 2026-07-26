@@ -273,6 +273,8 @@ export type ModuleBuilderCopy = {
   s7Blocker: string;
   // step 8 review
   reviewEyebrow: string;
+  revisionTitle: string;
+  revisionNote: string;
   reviewSaved: string;
   reviewLead: string;
   sectionsNeedAttention: (n: number) => string;
@@ -476,6 +478,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     follow30: "In 30 days",
     s7Blocker: "Choose a follow-up timing.",
     reviewEyebrow: "TRAINING DRAFT",
+    revisionTitle: "Create new version",
+    revisionNote: "Your current published training will remain unchanged.",
     reviewSaved: "Saved",
     reviewLead: "Review what you’ve built.",
     sectionsNeedAttention: (n) => (n === 1 ? "1 section needs attention" : `${n} sections need attention`),
@@ -751,6 +755,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     follow30: "30일 후",
     s7Blocker: "후속 시점을 선택하세요.",
     reviewEyebrow: "훈련 초안",
+    revisionTitle: "새 버전 만들기",
+    revisionNote: "현재 게시된 트레이닝은 그대로 유지됩니다.",
     reviewSaved: "저장됨",
     reviewLead: "만든 내용을 검토하세요.",
     sectionsNeedAttention: (n) => `주의가 필요한 항목 ${n}개`,

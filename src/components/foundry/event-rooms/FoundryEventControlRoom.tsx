@@ -29,6 +29,7 @@ export function FoundryEventControlRoom({
   locale,
   onBack,
   onCreateArenaPractice,
+  onCreateNewVersion,
   focusSection,
   focusId,
 }: {
@@ -38,6 +39,8 @@ export function FoundryEventControlRoom({
   onBack: () => void;
   /** Host action: open the guided Arena-practice builder for this training. */
   onCreateArenaPractice?: () => void;
+  /** Host action (Slice 3.2C-B1): create a new version of this published Guided training. */
+  onCreateNewVersion?: () => void;
   /** Host Leadership Attention deep link (Slice 3.1B-3L): scroll/highlight the exact row in the
    *  named section. 'followups' → focusId is a followup id; 'shared-understanding' → a progress id. */
   focusSection?: HostFocusSection;
@@ -48,6 +51,14 @@ export function FoundryEventControlRoom({
 
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  // Create-new-version in-flight guard (Slice 3.2C-B1): the POST + Builder handoff
+  // happens in the parent; this only prevents a double-tap from firing twice.
+  const [creatingVersion, setCreatingVersion] = useState(false);
+  const onCreateNewVersionClick = useCallback(() => {
+    if (creatingVersion || !onCreateNewVersion) return;
+    setCreatingVersion(true);
+    onCreateNewVersion();
+  }, [creatingVersion, onCreateNewVersion]);
 
   // Draft-entry label clarity (3.0B.2): Create → Continue (unpublished draft exists)
   // → Manage (a published practice exists). The action still opens the same editor.
@@ -174,6 +185,24 @@ export function FoundryEventControlRoom({
             >
               {arenaLabel} →
             </button>
+          ) : null}
+
+          {/* Create new version — only for a Guided published training the caller owns
+              (server-gated via snapshot.revisable). Creates a NEW draft version in the
+              SAME Program; the old published training stays unchanged. (Slice 3.2C-B1) */}
+          {onCreateNewVersion && snapshot?.revisable ? (
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={onCreateNewVersionClick}
+                disabled={creatingVersion}
+                data-testid="foundry-create-new-version"
+                className="self-start rounded-xl border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white/85 transition-colors hover:bg-white/[0.08] disabled:opacity-60"
+              >
+                {creatingVersion ? t.createNewVersionBusy : t.createNewVersion}
+              </button>
+              <span className="text-xs leading-5 text-white/45">{t.createNewVersionNote}</span>
+            </div>
           ) : null}
 
           {isOpen ? (

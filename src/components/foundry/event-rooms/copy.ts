@@ -88,6 +88,9 @@ export type EventRoomsCopy = {
   createArenaPractice: string;
   continueArenaPractice: string;
   manageArenaPractice: string;
+  createNewVersion: string;
+  createNewVersionBusy: string;
+  createNewVersionNote: string;
   joinedHeader: (n: number) => string;
   closeEvent: string;
   closeConfirm: string;
@@ -175,6 +178,9 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     createArenaPractice: "Create Arena practice",
     continueArenaPractice: "Continue Arena practice",
     manageArenaPractice: "Manage Arena practice",
+    createNewVersion: "Create new version",
+    createNewVersionBusy: "Opening…",
+    createNewVersionNote: "Your current published training will remain unchanged.",
     joinedHeader: (n) => (n === 1 ? "1 person joined" : `${n} people joined`),
     closeEvent: "Close event",
     closeConfirm: "Close this event? No one new will be able to join.",
@@ -259,6 +265,9 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     createArenaPractice: "아레나 연습 만들기",
     continueArenaPractice: "아레나 연습 이어하기",
     manageArenaPractice: "아레나 연습 관리",
+    createNewVersion: "새 버전 만들기",
+    createNewVersionBusy: "여는 중…",
+    createNewVersionNote: "현재 게시된 트레이닝은 그대로 유지됩니다.",
     rotateConfirm: "현재 QR을 교체할까요? 기존 QR은 더 이상 작동하지 않습니다.",
     joinedHeader: (n) => `${n}명 입장`,
     closeEvent: "이벤트 종료",

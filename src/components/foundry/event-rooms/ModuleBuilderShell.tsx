@@ -76,6 +76,10 @@ export function ModuleBuilderShell({
   const [docBusy, setDocBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishErr, setPublishErr] = useState<string | null>(null);
+  // Revision context (Slice 3.2C-B1): this draft is a NEW VERSION of a published
+  // Guided training (parent lineage / version > 1), so the Host understands the old
+  // published training is NOT being edited.
+  const [isRevision, setIsRevision] = useState(false);
   // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
   // assigned overlay, and legacy/absent always stays open link.
   const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
@@ -137,6 +141,7 @@ export function ModuleBuilderShell({
         setAnswers(a);
         setStep(draft.current_step);
         setAssets(draft.assets ?? []);
+        setIsRevision((draft.module_version ?? 1) > 1 || draft.parent_module_id != null);
         setRestore("loaded");
       } catch {
         if (alive) setRestore("unavailable");
@@ -471,6 +476,16 @@ export function ModuleBuilderShell({
         </span>
         <SaveStatus state={saveState} t={t} onRetry={retry} />
       </div>
+
+      {isRevision && !publishedResult ? (
+        <div
+          data-testid="module-builder-revision-banner"
+          className="flex flex-col gap-0.5 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.06] px-4 py-3"
+        >
+          <span className="text-sm font-semibold text-[#C9A66B]">{t.revisionTitle}</span>
+          <span className="text-xs leading-5 text-white/55">{t.revisionNote}</span>
+        </div>
+      ) : null}
 
       {publishedResult ? (
         <PublishConfirmation

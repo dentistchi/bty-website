@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson, attachJoinUrl } from "@/lib/bty/foundry/events/managerGate";
 import { getOwnerRoomSnapshot } from "@/lib/bty/foundry/events/foundryDocumentService";
+import { isEventRevisable } from "@/lib/bty/foundry/events/foundryRevisionService";
 
 export const runtime = "nodejs";
 
@@ -21,5 +22,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ eventId: st
   const snapshot = await getOwnerRoomSnapshot(admin, user.id, eventId);
   if (!snapshot) return managerJson(base, req, { error: "not_found" }, 404);
 
-  return managerJson(base, req, attachJoinUrl(req, snapshot));
+  // Guided "Create new version" eligibility (Slice 3.2C-B1): boolean only — true iff
+  // this owned event is a Guided published training with a resolvable source draft.
+  const revisable = await isEventRevisable(admin, user.id, eventId);
+
+  return managerJson(base, req, { ...attachJoinUrl(req, snapshot), revisable });
 }
