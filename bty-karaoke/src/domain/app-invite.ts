@@ -9,6 +9,10 @@ export const GUEST_FUNNEL_EVENTS = [
   'APP_OPEN_TAPPED',
   'APP_STORE_TAPPED',
   'CONTINUE_WEB',
+  // BUILD 19C — the PERSISTENT app-entry CTA (always under the hero), recorded SEPARATELY from the
+  // one-time invitation events above so the two funnels never merge.
+  'PERSISTENT_APP_CTA_SHOWN',
+  'PERSISTENT_APP_CTA_TAPPED',
 ] as const;
 export type GuestFunnelEvent = (typeof GUEST_FUNNEL_EVENTS)[number];
 
@@ -48,3 +52,35 @@ export const INVITE_COPY = {
   getApp: 'App Store에서 받기',
   continueWeb: '웹에서 계속하기',
 } as const;
+
+// MARK: - Persistent web-to-app entry (BUILD 19C — always-present CTA)
+//
+// A PERSISTENT app-entry CTA that lives under the Room hero regardless of the one-time invitation.
+// Before the first successful request no BUILD 19B handoff exists (a handoff REQUIRES a
+// source_request_id — no fake request is ever created), so the CTA renders INFORMATIONAL. After
+// the first success it ACTIVATES with the canonical Universal Link (persisted client-side so it
+// survives reloads within the Event, since a handoff replay returns no fresh link). No App Store
+// action and never the words 앱 설치하기 / App Store에서 받기 until BUILD 19D provides a real URL.
+
+/** The persistent CTA copy. Verbatim product contract. */
+export const PERSISTENT_CTA_COPY = {
+  label: '앱에서 보기',
+  supporting: '내 노래 순서와 준비 상태를 앱에서 바로 확인하세요',
+} as const;
+
+/** Client-side persistence of the minted Universal Link so the persistent CTA stays ACTIVE across
+ *  reloads within the same Event (a handoff replay does not re-emit the link). Per room+event. */
+export function appUrlKey(slug: string, eventId?: string | null): string {
+  return `bty:appurl:${slug}:${eventId ?? ''}`;
+}
+
+/** Fires PERSISTENT_APP_CTA_SHOWN at most once per session/Event when the CTA activates. */
+export function persistentCtaShownKey(slug: string, eventId?: string | null): string {
+  return `bty:appcta:shown:${slug}:${eventId ?? ''}`;
+}
+
+/** The persistent CTA is ACTIVE (a real Universal Link to open) only when one exists — otherwise
+ *  it renders in the INFORMATIONAL state. Never a dead link, never an App Store link before 19D. */
+export function resolvePersistentCta(input: { universalLink: string | null | undefined }): { active: boolean } {
+  return { active: (input.universalLink ?? '').trim().length > 0 };
+}

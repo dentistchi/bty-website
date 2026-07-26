@@ -168,6 +168,35 @@ h1.brand {
   box-shadow: var(--shadow-lift);
 }
 
+/* BUILD 19C — the persistent web-to-app entry CTA, directly under the Room hero. Compact so it
+   never competes with the search/request card; stays in normal flow (never obscures controls). */
+.app-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.app-cta-support {
+  margin: 0;
+  font-size: 0.85rem;
+  flex: 1 1 auto;
+  min-width: 12ch;
+}
+.app-cta-action {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.app-cta-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* Hero card — the strongest object on screen (now-playing, primary CTA). */
 .hero {
   position: relative;

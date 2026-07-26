@@ -27,7 +27,14 @@ import {
 import RequestResultCard from './RequestResultCard';
 import MyRequestsDock from './MyRequestsDock';
 import AppInvitationCard from './AppInvitationCard';
-import { inviteShownKey, type GuestFunnelEvent } from '@/domain/app-invite';
+import PersistentAppEntry from './PersistentAppEntry';
+import {
+  inviteShownKey,
+  appUrlKey,
+  persistentCtaShownKey,
+  resolvePersistentCta,
+  type GuestFunnelEvent,
+} from '@/domain/app-invite';
 
 interface Props {
   slug: string;
@@ -70,6 +77,11 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   // BUILD 19C — the contextual, non-blocking app invitation (shown at most once per guest
   // session/Event after the first successful request; reuses the BUILD 19B handoff).
   const [appInvite, setAppInvite] = useState<{ url: string; handoffId: string; requestId: string } | null>(null);
+
+  // BUILD 19C — the PERSISTENT app-entry CTA (always under the hero). Holds the minted Universal
+  // Link once a request exists; persisted per room+event so it stays ACTIVE across reloads within
+  // the Event (a handoff replay does not re-emit the link). Independent of the one-time card above.
+  const [persistentApp, setPersistentApp] = useState<{ url: string; handoffId: string | null } | null>(null);
 
   // BUILD 18B — the submit state machine + failure classification (server drives it via
   // stable `code`s; the view only renders). `activeSubmission` holds the CURRENT logical
@@ -116,6 +128,16 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         }
       }
       if (raw) setMyRequests(pruneMyRequests(JSON.parse(raw) as MyRequest[], Date.now()));
+    } catch {
+      /* ignore corrupt storage */
+    }
+    // Rehydrate the persistent app-entry link (kept ACTIVE across reloads within the Event).
+    try {
+      const rawUrl = window.localStorage.getItem(appUrlKey(slug, eventId));
+      if (rawUrl) {
+        const parsed = JSON.parse(rawUrl) as { url?: string; handoffId?: string | null };
+        if (parsed?.url) setPersistentApp({ url: parsed.url, handoffId: parsed.handoffId ?? null });
+      }
     } catch {
       /* ignore corrupt storage */
     }
@@ -398,17 +420,42 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   // Universal Link returned) never re-shows or double-counts. Never blocks the request flow.
   async function maybeShowAppInvite(requestId: string) {
     if (typeof window === 'undefined' || !requestId) return;
+    const inviteKey = inviteShownKey(slug, eventId);
+    const oneTimeDone = !!window.localStorage.getItem(inviteKey);
+    // Reliable across the stale closure right after submit: localStorage is the source of truth.
+    const persistentActive = !!window.localStorage.getItem(appUrlKey(slug, eventId)) || !!persistentApp;
+    if (oneTimeDone && persistentActive) return; // nothing to mint — reuse the existing handoff/link
     try {
-      const key = inviteShownKey(slug, eventId);
-      if (window.localStorage.getItem(key)) return; // already shown this session/Event
+      // Mint OR reuse the canonical BUILD 19B handoff for this successful request. Idempotent per
+      // source request → never a duplicate durable handoff; the link is emitted only on first mint.
       const res = await fetch('/api/guest-app-handoffs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ roomSlug: slug, requestId }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; handoffId?: string };
-      if (!res.ok || !data.url || !data.handoffId) return; // no fresh link → never a broken invite
-      window.localStorage.setItem(key, '1');
+
+      // PERSISTENT CTA — activate once, persist the link (survives reloads), count SHOWN once.
+      // Recorded SEPARATELY from the one-time invitation events (never merged).
+      if (res.ok && data.url && !persistentActive) {
+        const entry = { url: data.url, handoffId: data.handoffId ?? null };
+        setPersistentApp(entry);
+        try {
+          window.localStorage.setItem(appUrlKey(slug, eventId), JSON.stringify(entry));
+        } catch {
+          /* presentation only */
+        }
+        const shownKey = persistentCtaShownKey(slug, eventId);
+        if (!window.localStorage.getItem(shownKey)) {
+          window.localStorage.setItem(shownKey, '1');
+          recordFunnel('PERSISTENT_APP_CTA_SHOWN', data.handoffId, requestId);
+        }
+      }
+
+      // ONE-TIME invitation card — unchanged: at most once per session/Event, never a broken invite.
+      if (oneTimeDone) return;
+      if (!res.ok || !data.url || !data.handoffId) return;
+      window.localStorage.setItem(inviteKey, '1');
       setAppInvite({ url: data.url, handoffId: data.handoffId, requestId });
       recordFunnel('INVITE_SHOWN', data.handoffId, requestId);
     } catch {
@@ -422,7 +469,11 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   };
   const continueWebFromInvite = () => {
     if (appInvite) recordFunnel('CONTINUE_WEB', appInvite.handoffId, appInvite.requestId);
-    setAppInvite(null);
+    setAppInvite(null); // dismisses ONLY the one-time card — the persistent CTA stays put
+  };
+  const openPersistentApp = () => {
+    if (persistentApp) recordFunnel('PERSISTENT_APP_CTA_TAPPED', persistentApp.handoffId ?? undefined, undefined);
+    // the <a href> then navigates to the Universal Link (safe web fallback if the app isn't installed)
   };
 
   const requestItem = (item: YoutubeSearchItem) =>
@@ -445,8 +496,18 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     return <div className="banner error">이 방은 닫혀 있어 신청을 받지 않습니다.</div>;
   }
 
+  const persistentCta = resolvePersistentCta({ universalLink: persistentApp?.url ?? null });
+
   return (
     <>
+      {/* BUILD 19C — the PERSISTENT app-entry CTA, directly under the Room hero. Informational
+          before the first request; ACTIVE (canonical Universal Link) after. Never removed by
+          dismissing the one-time card below; no App Store link before BUILD 19D. */}
+      <PersistentAppEntry
+        active={persistentCta.active}
+        universalLink={persistentApp?.url ?? null}
+        onOpen={openPersistentApp}
+      />
       {/* BUILD 19C — contextual, non-blocking app invitation (App Store action hidden until 19D). */}
       {appInvite && (
         <AppInvitationCard
