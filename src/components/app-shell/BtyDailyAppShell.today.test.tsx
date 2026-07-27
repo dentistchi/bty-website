@@ -613,7 +613,7 @@ describe("app-shell Today — simplified hierarchy (App Shell V1)", () => {
     await waitFor(() => expect(yesterday.textContent).toContain("You showed up yesterday."));
   });
 
-  it("projects EXACTLY ONE primary action and routes it directly (deep link preserved)", async () => {
+  it("Today is ONE canonical action list (1–3 shown, direct deep links preserved)", async () => {
     stubShellFetch({
       reminders: [
         aReminder,
@@ -623,27 +623,36 @@ describe("app-shell Today — simplified hierarchy (App Shell V1)", () => {
     });
     render(<BtyDailyAppShell locale="en" />);
     await screen.findByText("Learn");
-    // Exactly one primary-action node — needs_revision wins (blocking correction). Wait for the
-    // reminder kind to settle (the pre-fetch first paint shows the deterministic fallback CTA).
-    await waitFor(() =>
-      expect(screen.getByTestId("today-primary-action").getAttribute("data-kind")).toBe("reminder"),
-    );
-    const primaries = screen.getAllByTestId("today-primary-action");
-    expect(primaries.length).toBe(1);
-    expect(primaries[0].getAttribute("data-category")).toBe("ACTION_REVISION");
-    expect(primaries[0].getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc");
-    expect(primaries[0].textContent).toContain("fix your action");
+    // 3 items → all shown (1–3 rule), no "show more". Each routes via its canonical deep link.
+    await waitFor(() => expect(screen.getAllByTestId("today-item").length).toBe(3));
+    expect(screen.queryByTestId("today-show-more")).toBeNull();
+    const rev = screen.getAllByTestId("today-item").find((i) => i.getAttribute("data-category") === "ACTION_REVISION");
+    expect(rev?.getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc");
+    expect(rev?.textContent).toContain("fix your action");
   });
 
-  it("collapses the detailed projections by default; Show everything reveals the full brief", async () => {
+  it("removes 'Show everything' — Today is a direct action list, not a hidden brief", async () => {
     stubShellFetch({ brief: { yesterdayObservation: "y", todaySuggestion: "t" }, reminders: [aReminder] });
     render(<BtyDailyAppShell locale="en" />);
     await screen.findByTestId("today-home");
-    // Detailed brief NOT rendered on the first viewport.
+    expect(screen.queryByTestId("today-show-everything-toggle")).toBeNull(); // gone
     expect(screen.queryByTestId("today-personal-brief")).toBeNull();
-    // Tapping "Show everything" reveals it (all detailed sections preserved).
-    fireEvent.click(await screen.findByTestId("today-show-everything-toggle"));
-    expect(await screen.findByTestId("today-personal-brief")).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByTestId("today-item").length).toBe(1));
+  });
+
+  it("4+ Today items → exactly 3 shown, Show more reveals the rest, Show less restores", async () => {
+    stubShellFetch({
+      reminders: Array.from({ length: 5 }, (_, i) => ({
+        stableId: `r:${i}`, category: "REQUIRED_LEARNING", title: `item ${i}`, state: "assigned", canonicalDeepLink: `/en/app?x=${i}`,
+      })),
+    });
+    render(<BtyDailyAppShell locale="en" />);
+    await screen.findByText("Learn");
+    await waitFor(() => expect(screen.getAllByTestId("today-item").length).toBe(3)); // top 3
+    fireEvent.click(screen.getByTestId("today-show-more"));
+    expect(screen.getAllByTestId("today-item").length).toBe(5); // expanded
+    fireEvent.click(screen.getByTestId("today-show-more")); // now "Show less"
+    expect(screen.getAllByTestId("today-item").length).toBe(3); // restored
   });
 
   it("no fabricated yesterday: a quiet yesterday reads as the calm invitation, never invented progress", async () => {

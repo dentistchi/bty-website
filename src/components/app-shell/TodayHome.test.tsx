@@ -31,11 +31,11 @@ function stub(over: { reminders?: unknown[]; practices?: unknown[]; programs?: u
   );
 }
 
-// Re-query on every poll — the primary node changes element type (button<->a) across kinds,
-// so a held reference goes stale. Returns the settled primary-action element.
-async function primaryKind(kind: string): Promise<HTMLElement> {
-  await waitFor(() => expect(screen.getByTestId("today-primary-action").getAttribute("data-kind")).toBe(kind));
-  return screen.getByTestId("today-primary-action");
+// The Today empty state (0 actionable items) carries the calm suggestion CTA. Its
+// wording distinguishes continue-program / start-practice / find-program.
+async function emptyContains(text: string): Promise<HTMLElement> {
+  await waitFor(() => expect(screen.getByTestId("today-empty").textContent).toContain(text));
+  return screen.getByTestId("today-empty");
 }
 
 const dueReminder = {
@@ -46,70 +46,69 @@ const dueReminder = {
   canonicalDeepLink: "/en/app?tab=today&fieldActionContract=abc",
 };
 
-describe("TodayHome — always exactly one primary CTA", () => {
-  it("Test 6/7 — empty day with NOTHING available renders exactly ONE CTA: Find a program", async () => {
+describe("TodayHome — Today action list + calm empty state (B3A.2B)", () => {
+  it("empty day with NOTHING available → calm empty CTA: Find a program", async () => {
     stub({ reminders: [], practices: [], programs: [] });
     render(<TodayHome locale="en" onNavigate={() => {}} />);
-    const cta = await primaryKind("find_program");
-    expect(screen.getAllByTestId("today-primary-action").length).toBe(1); // never more than one
-    expect(cta.textContent).toContain("Find a program");
+    await emptyContains("Find a program");
+    expect(screen.queryByTestId("today-item")).toBeNull(); // no action items
   });
 
-  it("Test 3 — an available practice (no active program) renders Start practice", async () => {
+  it("an available practice (no active program) → Start practice", async () => {
     stub({ reminders: [], practices: [{ id: "p1" }], programs: [] });
     render(<TodayHome locale="en" onNavigate={() => {}} />);
-    const cta = await primaryKind("start_practice");
-    expect(cta.textContent).toContain("Start practice");
+    const cta = await emptyContains("Start practice");
     expect(cta.textContent).toContain("Practice one real-world decision.");
   });
 
-  it("Test 2 — an active program outranks an available practice (Continue learning)", async () => {
+  it("an active program outranks an available practice (Continue learning)", async () => {
     stub({ reminders: [], practices: [{ id: "p1" }], programs: [{ completion_pct: 40 }] });
     render(<TodayHome locale="en" onNavigate={() => {}} />);
-    const cta = await primaryKind("continue_program");
-    expect(cta.textContent).toContain("Continue learning");
+    await emptyContains("Continue learning");
   });
 
-  it("a fully-complete program is NOT 'active' (100% → falls through to practice/find)", async () => {
+  it("a fully-complete program is NOT 'active' (100% → falls through to find)", async () => {
     stub({ reminders: [], practices: [], programs: [{ completion_pct: 100 }] });
     render(<TodayHome locale="en" onNavigate={() => {}} />);
-    await primaryKind("find_program");
+    await emptyContains("Find a program");
   });
 
-  it("Test 1 — due work outranks every fallback (reminder CTA with its deep link)", async () => {
+  it("due work appears as a Today item with its deep link (not the empty state)", async () => {
     stub({ reminders: [dueReminder], practices: [{ id: "p1" }], programs: [{ completion_pct: 40 }] });
     render(<TodayHome locale="en" onNavigate={() => {}} />);
-    const cta = await primaryKind("reminder");
-    expect(cta.getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc");
-    expect(screen.getAllByTestId("today-primary-action").length).toBe(1);
+    await waitFor(() => expect(screen.getByTestId("today-item").getAttribute("href")).toBe("/en/app?tab=today&fieldActionContract=abc"));
+    expect(screen.queryByTestId("today-empty")).toBeNull();
   });
 
-  it("Test 8 — fallback CTAs navigate IN-SHELL (Practice / Learn) via onNavigate", async () => {
+  it("empty-state CTA navigates IN-SHELL (Practice / Learn) via onNavigate", async () => {
     const onNav = vi.fn();
-    // Practice fallback → practice tab.
     stub({ reminders: [], practices: [{ id: "p1" }], programs: [] });
     const { unmount } = render(<TodayHome locale="en" onNavigate={onNav} />);
-    fireEvent.click(await primaryKind("start_practice"));
+    fireEvent.click(await emptyContains("Start practice"));
     expect(onNav).toHaveBeenCalledWith("practice");
     unmount();
     onNav.mockReset();
-    // Find-a-program fallback → learn tab.
     stub({ reminders: [], practices: [], programs: [] });
     render(<TodayHome locale="en" onNavigate={onNav} />);
-    fireEvent.click(await primaryKind("find_program"));
+    fireEvent.click(await emptyContains("Find a program"));
     expect(onNav).toHaveBeenCalledWith("learn");
   });
 
-  it("Test 9 — EN/KO copy parity for the empty-day fallbacks", async () => {
+  it("EN/KO copy parity for the empty-day suggestion", async () => {
     stub({ reminders: [], practices: [{ id: "p1" }], programs: [] });
     const { unmount } = render(<TodayHome locale="ko" onNavigate={() => {}} />);
-    const koPractice = await primaryKind("start_practice");
-    expect(koPractice.textContent).toContain("연습 시작");
+    const koPractice = await emptyContains("연습 시작");
     expect(koPractice.textContent).toContain("현실에서 필요한 판단 하나를 연습하세요.");
     unmount();
     stub({ reminders: [], practices: [], programs: [] });
     render(<TodayHome locale="ko" onNavigate={() => {}} />);
-    const koFind = await primaryKind("find_program");
-    expect(koFind.textContent).toContain("프로그램 찾기");
+    await emptyContains("프로그램 찾기");
+  });
+
+  it("no 'Show everything' control exists anymore", async () => {
+    stub({ reminders: [dueReminder] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    await screen.findByTestId("today-home");
+    expect(screen.queryByTestId("today-show-everything-toggle")).toBeNull();
   });
 });

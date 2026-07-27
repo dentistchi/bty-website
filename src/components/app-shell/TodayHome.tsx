@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import TodayPersonalBrief from "@/components/app-shell/TodayPersonalBrief";
+import { buildYesterdaySummary, type YesterdayCounts } from "@/domain/daily/yesterdaySummary";
+import { normalizeTodayItems, todayVisible } from "@/domain/daily/todayList";
 import {
   selectPrimaryAction,
   type PrimaryActionCandidate,
@@ -53,6 +54,9 @@ const COPY: Record<Locale, {
   followups: (n: number) => string;
   showEverything: string;
   showLess: string;
+  todayHeader: string;
+  showMore: string;
+  todayEmpty: string;
   catEyebrow: Record<PrimaryActionCandidate["category"], string>;
   // Deterministic empty-day fallbacks (tiers 6–8).
   fallbackHeader: string;
@@ -75,6 +79,9 @@ const COPY: Record<Locale, {
     followups: (n) => `${n} follow-up${n === 1 ? "" : "s"} due`,
     showEverything: "Show everything",
     showLess: "Show less",
+    todayHeader: "Today",
+    showMore: "Show more",
+    todayEmpty: "You're all caught up for today.",
     catEyebrow: {
       ACTION_REVISION: "Needs revision",
       ACTION_DUE: "Action due",
@@ -102,6 +109,9 @@ const COPY: Record<Locale, {
     followups: (n) => `${n}개의 후속 확인이 예정되어 있습니다`,
     showEverything: "모두 보기",
     showLess: "접기",
+    todayHeader: "오늘",
+    showMore: "더 보기",
+    todayEmpty: "오늘 할 일을 모두 마쳤습니다.",
     catEyebrow: {
       ACTION_REVISION: "수정 필요",
       ACTION_DUE: "행동 마감",
@@ -141,9 +151,10 @@ export default function TodayHome({
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
   const [yesterdayReturned, setYesterdayReturned] = useState<boolean | null>(null);
+  const [yesterdayCounts, setYesterdayCounts] = useState<YesterdayCounts | null>(null);
   const [hasActiveProgram, setHasActiveProgram] = useState(false);
   const [hasAvailablePractice, setHasAvailablePractice] = useState(false);
-  const [showEverything, setShowEverything] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +173,16 @@ export default function TodayHome({
         }
       } catch {
         /* fail-soft */
+      }
+      try {
+        const tz = deviceTz();
+        const resY = await fetch(`/api/me/today/yesterday-activity${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, { credentials: "include", cache: "no-store" });
+        if (resY.ok) {
+          const dY = (await resY.json()) as { counts?: YesterdayCounts | null };
+          if (!cancelled) setYesterdayCounts(dY.counts ?? null);
+        }
+      } catch {
+        /* fail-soft → falls back to the self-return line */
       }
       try {
         const res2 = await fetch(`/api/arena/action-review-queue?locale=${loc}`, { credentials: "include", cache: "no-store" });
@@ -228,16 +249,22 @@ export default function TodayHome({
     [reminders, hasActiveProgram, hasAvailablePractice],
   );
 
-  // Calm attention summary — learner corrections + Host reviews + follow-ups collapsed into counts.
-  const corrections = reminders.filter((r) => r.state === "needs_revision").length;
+  // Today = ONE canonical, ordered, deduped action list (learner actionable items:
+  // required learning / needs revision / verification pending / follow-up). Host
+  // "reviews" (creator reviewing others) are NOT reminders, so they stay a compact
+  // separate row (never duplicated into the list).
+  const todayItems = normalizeTodayItems(
+    reminders.map((r) => ({ stableId: r.stableId, category: r.category, state: r.state, title: r.title, deepLink: r.canonicalDeepLink })),
+  );
+  const { visible: todayVisibleItems, hasMore: todayHasMore } = todayVisible(todayItems, expanded);
   const reviews =
     hostActionReviews.length + hostAttention.filter((h) => h.category === "SHARED_REVIEW_DUE").length;
-  const followups =
-    reminders.filter((r) => r.category === "FOLLOW_UP_DUE").length +
-    hostAttention.filter((h) => h.category === "FOLLOW_UP_OVERDUE" || h.category === "FOLLOW_UP_NEEDED").length;
-  const attentionTotal = corrections + reviews + followups;
 
-  const yesterdayLine = yesterdayReturned === true ? t.yesterdayReturned : t.yesterdayQuiet;
+  // Yesterday = canonical counts sentence; falls back to the measured self-return line
+  // only when the counts source is unavailable (never fabricated).
+  const yesterdaySummary = yesterdayCounts
+    ? buildYesterdaySummary(yesterdayCounts, loc)
+    : { sentence: yesterdayReturned === true ? t.yesterdayReturned : t.yesterdayQuiet, compact: null as string | null };
 
   // Deterministic fallback presentation (tiers 6–8) — body + CTA + in-shell target.
   const fallback =
@@ -257,72 +284,74 @@ export default function TodayHome({
         {t.eyebrow}
       </span>
 
-      {/* B — Yesterday summary (measured self-return only) */}
+      {/* B — YESTERDAY: one truthful sentence (canonical counts) + optional compact line */}
       <div className="flex flex-col gap-0.5" data-testid="today-yesterday">
         <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.yesterday}</span>
-        <p className="text-sm leading-6 text-white/80">{yesterdayLine}</p>
+        <p className="text-sm leading-6 text-white/80" data-testid="today-yesterday-sentence">{yesterdaySummary.sentence}</p>
+        {yesterdaySummary.compact ? (
+          <span className="text-[0.72rem] text-white/45" data-testid="today-yesterday-compact">{yesterdaySummary.compact}</span>
+        ) : null}
       </div>
 
-      {/* C — EXACTLY ONE primary next action (reminder deep link, or deterministic in-shell fallback) */}
-      {primary.kind === "reminder" ? (
-        <a
-          href={primary.candidate.deepLink}
-          data-testid="today-primary-action"
-          data-kind="reminder"
-          data-category={primary.candidate.category}
-          className={primaryCardCls}
-        >
-          <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#E5B769]/85">{t.nextStep}</span>
-          <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">{t.catEyebrow[primary.candidate.category]}</span>
-          <span className="text-[0.95rem] font-medium leading-6 text-white/90">{primary.candidate.title}</span>
-        </a>
-      ) : (
-        <button
-          type="button"
-          data-testid="today-primary-action"
-          data-kind={primary.kind}
-          data-target={fallback.target}
-          onClick={() => onNavigate?.(fallback.target)}
-          className={primaryCardCls + " text-left"}
-        >
-          <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#E5B769]/85">{t.fallbackHeader}</span>
-          <span className="text-[0.95rem] leading-6 text-white/85">{fallback.body}</span>
-          <span data-testid="today-primary-cta" className="mt-1 self-start rounded-lg border border-[#C9A66B]/45 bg-[#C9A66B]/10 px-3 py-1.5 text-[0.8rem] font-medium text-[#E5B769]">
-            {fallback.cta}
-          </span>
-        </button>
-      )}
+      {/* TODAY: one canonical action list (top-3, Show more/less). No "Show everything". */}
+      <div className="flex flex-col gap-2" data-testid="today-list">
+        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.todayHeader}</span>
+        {todayItems.length === 0 ? (
+          <button
+            type="button"
+            data-testid="today-empty"
+            data-target={fallback.target}
+            onClick={() => onNavigate?.(fallback.target)}
+            className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
+          >
+            <span className="text-[0.9rem] leading-6 text-white/80">{t.todayEmpty}</span>
+            <span className="text-[0.85rem] leading-6 text-white/55">{fallback.body}</span>
+            <span data-testid="today-empty-cta" className="mt-1 self-start rounded-lg border border-[#C9A66B]/45 bg-[#C9A66B]/10 px-3 py-1.5 text-[0.8rem] font-medium text-[#E5B769]">
+              {fallback.cta}
+            </span>
+          </button>
+        ) : (
+          <>
+            {todayVisibleItems.map((it) => (
+              <a
+                key={it.stableId}
+                href={it.deepLink}
+                data-testid="today-item"
+                data-category={it.category}
+                className="flex flex-col gap-0.5 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-4 py-3"
+              >
+                <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+                  {t.catEyebrow[it.category as PrimaryActionCandidate["category"]] ?? it.category}
+                </span>
+                <span className="text-[0.95rem] font-medium leading-6 text-white/90">{it.title}</span>
+              </a>
+            ))}
+            {todayHasMore ? (
+              <button
+                type="button"
+                data-testid="today-show-more"
+                onClick={() => setExpanded((v) => !v)}
+                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+              >
+                {expanded ? t.showLess : t.showMore}
+              </button>
+            ) : null}
+          </>
+        )}
+      </div>
 
-      {/* D — Needs your attention (only when non-zero) */}
-      {attentionTotal > 0 ? (
+      {/* Host reviews (creator reviewing others) — compact, only when non-zero; never
+          duplicated into the Today list above. */}
+      {reviews > 0 ? (
         <button
           type="button"
           data-testid="today-attention"
-          onClick={() => setShowEverything(true)}
+          onClick={() => onNavigate?.("practice")}
           className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
         >
           <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.attention}</span>
-          <ul className="flex flex-col gap-0.5 text-[0.8rem] text-white/70">
-            {corrections > 0 ? <li data-testid="attention-corrections">{t.corrections(corrections)}</li> : null}
-            {reviews > 0 ? <li data-testid="attention-reviews">{t.reviews(reviews)}</li> : null}
-            {followups > 0 ? <li data-testid="attention-followups">{t.followups(followups)}</li> : null}
-          </ul>
+          <span data-testid="attention-reviews" className="text-[0.8rem] text-white/70">{t.reviews(reviews)}</span>
         </button>
-      ) : null}
-
-      {/* F — Show everything (details collapsed by default; revealed on demand) */}
-      <button
-        type="button"
-        data-testid="today-show-everything-toggle"
-        onClick={() => setShowEverything((v) => !v)}
-        className="self-start text-xs font-medium text-white/55 hover:text-white/85"
-      >
-        {showEverything ? t.showLess : t.showEverything}
-      </button>
-      {showEverything ? (
-        <div data-testid="today-everything">
-          <TodayPersonalBrief locale={locale} />
-        </div>
       ) : null}
     </div>
   );
