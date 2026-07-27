@@ -1258,7 +1258,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
-  const [meView, setMeView] = useState<"home" | "center" | "my-learning">("home");
+  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account">("home");
   // Host Leadership Attention deep link (Slice 3.1B-3L): `?tab=foundry&event=<id>&section=<s>&focus=<id>`
   // opens the EXACT owned Event Control Room + section, with the focused learner row highlighted. These
   // feed FoundryEventRooms' initial view once; `onInitialConsumed` clears them so a later tab re-entry
@@ -1739,14 +1739,26 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             </div>
           ) : meView === "my-learning" ? (
             <FoundryMyLearning locale={locale} onBack={() => setMeView("home")} />
+          ) : meView === "account" ? (
+            // Account detail (B3A.2C-R1): the canonical account-management surface — current
+            // email + Switch account + Sign out — behind one calm "Account" row, not a
+            // first-screen card. AccountBlock (switch/sign-out capability) is UNCHANGED.
+            <div className="flex flex-col gap-4" data-testid="me-account">
+              <button
+                type="button"
+                data-testid="me-account-back"
+                onClick={() => setMeView("home")}
+                className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+              >
+                ‹ {locale === "ko" ? "뒤로" : "Back"}
+              </button>
+              <AccountBlock locale={locale} />
+            </div>
           ) : (
             <div className="flex flex-col">
-              {/* Canonical (and only) account-management surface: current email + Switch account +
-                  Sign out. Switch launches the Google chooser directly → Today (Slice 3.1B-3N-5B.1);
-                  Sign out uses the shared signOutAccount teardown. */}
-              <div className="mb-5">
-                <AccountBlock locale={locale} />
-              </div>
+              {/* B3A.2C-R1: the large "Signed in as" card is NOT on the Me root; account
+                  identity / Switch account / Sign out live behind the single "Account >"
+                  row near the bottom (see below). */}
               {/* Me entries — My Learning · Recovery/Center · My Experiences (placeholder). */}
               <div className="mb-5">
                 <MeEntries
@@ -1756,6 +1768,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 />
               </div>
               <CenterMeCard locale={locale} />
+              {/* One calm Account row near the bottom — the only account entry point on Me root. */}
+              <button
+                type="button"
+                data-testid="me-account-row"
+                onClick={() => setMeView("account")}
+                className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+              >
+                <span className="text-sm font-medium text-white/70">{locale === "ko" ? "계정" : "Account"}</span>
+                <span aria-hidden="true" className="text-white/40">›</span>
+              </button>
               {/* Lift the weekly light up into the open space below the mirror so it is the
                   emotional centre of the Me tab (not a bottom decoration) and its caption
                   clears the bottom tab dock. vh-relative so the lift scales across devices. */}
