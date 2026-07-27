@@ -51,7 +51,7 @@ const COPY: Record<Locale, {
   document: string;
   empty: string;
   emptyHint: string;
-  back: string;
+  backDefault: string;
   loading: string;
   reviewedTitle: string;
   reviewedStatus: string;
@@ -73,7 +73,10 @@ const COPY: Record<Locale, {
     document: "PDF",
     empty: "No completed trainings yet.",
     emptyHint: "When you finish a training, it appears here with what you understood.",
-    back: "← Required learning",
+    // Default parent = the Learn/Required-learning origin. An explicit `backLabel` overrides this
+    // per origin (B3A.2D-R1) — e.g. the Me-tab origin passes "Me" so a personal-history surface
+    // returns to Me, never leaking "Required learning" as its parent.
+    backDefault: "Required learning",
     loading: "Loading…",
     reviewedTitle: "Reviewed action plans",
     reviewedStatus: "Action plan reviewed & accepted",
@@ -95,7 +98,7 @@ const COPY: Record<Locale, {
     document: "PDF",
     empty: "아직 완료한 교육이 없습니다.",
     emptyHint: "교육을 마치면 여기에서 이해한 내용을 볼 수 있습니다.",
-    back: "← 필수 학습",
+    backDefault: "필수 학습",
     loading: "불러오는 중…",
     reviewedTitle: "검토·승인된 행동 계획",
     reviewedStatus: "행동 계획이 검토되고 승인되었습니다",
@@ -120,9 +123,20 @@ function formatDate(iso: string, loc: Locale): string {
   }
 }
 
-export default function FoundryMyLearning({ locale, onBack }: { locale: string; onBack: () => void }) {
+export default function FoundryMyLearning({
+  locale,
+  onBack,
+  backLabel,
+}: {
+  locale: string;
+  onBack: () => void;
+  /** Origin-aware parent name (B3A.2D-R1). Me-origin passes "Me"; Learn-origin omits it → the
+   *  measured "Required learning" default. Explicit per call — never inferred from tab/history. */
+  backLabel?: string;
+}) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
+  const backText = `← ${backLabel ?? t.backDefault}`;
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
   const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
 
@@ -214,7 +228,7 @@ export default function FoundryMyLearning({ locale, onBack }: { locale: string; 
           data-testid="my-learning-back"
           className="shrink-0 rounded-lg border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/70"
         >
-          {t.back}
+          {backText}
         </button>
       </div>
 

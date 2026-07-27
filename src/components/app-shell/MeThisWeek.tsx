@@ -48,7 +48,16 @@ function deviceTz(): string | null {
   }
 }
 
-export default function MeThisWeek({ locale, weeklyRhythm }: { locale: string; weeklyRhythm: MeWeeklyRhythm }) {
+export default function MeThisWeek({
+  locale,
+  weeklyRhythm,
+  refreshKey,
+}: {
+  locale: string;
+  weeklyRhythm: MeWeeklyRhythm;
+  /** Bumped on Me-tab reselect (B3A.2D-R1) → re-fetch the canonical weekly projection once. */
+  refreshKey?: number;
+}) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [summary, setSummary] = useState<WeeklySummary | null>(null);
@@ -69,7 +78,7 @@ export default function MeThisWeek({ locale, weeklyRhythm }: { locale: string; w
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshKey]);
 
   const s = summary ?? {};
   // Attendance dots from the existing weekly rhythm (presence-as-light).

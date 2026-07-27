@@ -100,8 +100,19 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/me-account-row/);
   });
 
-  it("AppTabBar remains the in-component tab owner (onSelect={setTab})", () => {
-    expect(src).toMatch(/<AppTabBar active={tab} onSelect={setTab}/);
+  it("Me Orb reuses the ONE canonical Orb runtime via MeOrbDoor (no second WeeklyOrb engine)", () => {
+    // B3A.2D-R1: the Me Orb is MeOrbDoor (which renders the canonical OrbLiving); the retired
+    // WeeklyOrb visual engine is no longer mounted in the shell → a single Orb runtime.
+    expect(src).toMatch(/<MeOrbDoor/);
+    expect(src).not.toMatch(/<WeeklyOrb/);
+  });
+
+  it("AppTabBar tab owner routes through handleTabSelect (root reselect wrapper over setTab)", () => {
+    // B3A.2D-R1: onSelect now goes through handleTabSelect, which resets nested Me state, refreshes
+    // the weekly projection, scrolls to top, and still calls setTab — the in-component tab owner.
+    expect(src).toMatch(/<AppTabBar active={tab} onSelect={handleTabSelect}/);
+    expect(src).toMatch(/const handleTabSelect = useCallback/);
+    expect(src).toMatch(/setTab\(key\)/);
   });
 });
 

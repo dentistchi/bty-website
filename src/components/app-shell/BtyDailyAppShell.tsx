@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
@@ -15,8 +15,9 @@ import LearnHeader from "@/components/app-shell/LearnHeader";
 import PracticeLanding from "@/components/app-shell/PracticeLanding";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
-import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
+import MeOrbDoor from "@/components/app-shell/MeOrbDoor";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
+import MeThisWeekDetail from "@/components/app-shell/MeThisWeekDetail";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 import {
@@ -1257,7 +1258,29 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
-  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account">("home");
+  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account" | "this-week">("home");
+  // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
+  // and the This Week detail re-fetch the canonical projection once per reselect.
+  const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
+  // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
+  // reselect scrolls THIS container to the top.
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+
+  // Bottom-tab reselect (B3A.2D-R1): every press resolves to the canonical Me ROOT. Selecting Me
+  // (from another tab, a nested Me subview, or Me-root-while-scrolled) clears any nested meView,
+  // re-fetches the weekly projection once, and scrolls the real scroll owner to the top. Idempotent:
+  // repeated Me taps just re-assert root + scroll-top (no duplicate navigation, no unrelated reset).
+  const handleTabSelect = useCallback((key: AppTabKey) => {
+    if (key === "me") {
+      setMeView("home");
+      setWeeklyRefreshKey((k) => k + 1);
+    }
+    setTab(key);
+    // Scroll after the (possibly root-reset) view paints. rAF avoids scrolling stale nested content.
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => mainScrollRef.current?.scrollTo?.({ top: 0 }));
+    }
+  }, []);
   // Host Leadership Attention deep link (Slice 3.1B-3L): `?tab=foundry&event=<id>&section=<s>&focus=<id>`
   // opens the EXACT owned Event Control Room + section, with the focused learner row highlighted. These
   // feed FoundryEventRooms' initial view once; `onInitialConsumed` clears them so a later tab re-entry
@@ -1622,7 +1645,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       {/* iOS status-bar safe area — reserved so app content never underlaps the notch/clock. */}
       <div style={{ height: "env(safe-area-inset-top)" }} aria-hidden className="relative z-10" />
 
-      <main className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
+      <main ref={mainScrollRef} className="relative z-10 flex-1 overflow-y-auto px-5 pb-4 pt-8" aria-label={t.appAria}>
         {tab === "today" && (
           <>
             {fieldActionAssignmentId || fieldActionContractId ? (
@@ -1737,7 +1760,17 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry} />
             </div>
           ) : meView === "my-learning" ? (
-            <FoundryMyLearning locale={locale} onBack={() => setMeView("home")} />
+            // Opened FROM Me → the back label is "Me" and it returns to the Me root (B3A.2D-R1);
+            // it must never present "Required learning" as its parent. Origin is explicit, never
+            // inferred from tab/history. (The Learn-tab entry below keeps its own default label.)
+            <FoundryMyLearning
+              locale={locale}
+              onBack={() => setMeView("home")}
+              backLabel={locale === "ko" ? "나" : "Me"}
+            />
+          ) : meView === "this-week" ? (
+            // This Week detail — opened by a SHORT TAP on the Me Orb. Back label "‹ Me" → Me root.
+            <MeThisWeekDetail locale={locale} refreshKey={weeklyRefreshKey} onBack={() => setMeView("home")} />
           ) : meView === "account" ? (
             // Account detail (B3A.2C-R1): the canonical account-management surface — current
             // email + Switch account + Sign out — behind one calm "Account" row, not a
@@ -1759,8 +1792,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             // lift / dead space), then compact nav rows ending with Account. Nothing is
             // absolute/fixed; safe-area padding keeps content clear of the bottom dock.
             <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
-              <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} />
-              <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+              <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
+              {/* The Me Orb is the ONE canonical Orb runtime (OrbLiving) with dual interaction:
+                  short tap → This Week detail; long hold → canonical entry (switch to Today).
+                  Entering in-shell keeps the session, origin, and Me state (no second shell). */}
+              <MeOrbDoor
+                locale={locale}
+                onOpenWeek={() => setMeView("this-week")}
+                onEnter={() => handleTabSelect("today")}
+              />
               <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
                 {[
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
@@ -1786,7 +1826,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
 
       {/* Bottom dock lifted above the wake layer (z-10) so the ambient glow stays behind it. */}
       <div className="relative z-10 flex shrink-0 flex-col">
-        <AppTabBar active={tab} onSelect={setTab} locale={locale} />
+        <AppTabBar active={tab} onSelect={handleTabSelect} locale={locale} />
       </div>
     </div>
   );
