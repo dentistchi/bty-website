@@ -112,9 +112,9 @@ export default function FoundryRequiredLearning({
   // (initially null -> the surface simply stays absent) rather than asserting a false
   // "nothing required".
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
-  // The signed-in email for the compact "Learning account" line — read from the
-  // authenticated session endpoint (never inferred from profile/membership).
-  const [email, setEmail] = useState<string | null>(null);
+  // Completed history is collapsed by default (B3A.2C) so it never dominates the
+  // Learn screen; returning to Learn root resets to collapsed (fresh mount).
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -132,25 +132,11 @@ export default function FoundryRequiredLearning({
     }
   }, []);
 
-  const loadEmail = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
-      const data = (await res.json()) as { ok?: boolean; user?: { email?: string | null } };
-      if (data?.ok && data.user?.email) setEmail(data.user.email);
-    } catch {
-      /* leave email null; the Switch action still works */
-    }
-  }, []);
-
   useEffect(() => {
     void load();
-    void loadEmail();
     // Refresh when the app returns to the foreground (return-from-Room, tab focus).
     const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void load();
-        void loadEmail();
-      }
+      if (document.visibilityState === "visible") void load();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", load);
@@ -158,7 +144,7 @@ export default function FoundryRequiredLearning({
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", load);
     };
-  }, [load, loadEmail]);
+  }, [load]);
 
   // Pre-first-response hold: render nothing (bounded — the fetch resolves fast). The
   // host room below is unaffected.
@@ -169,27 +155,10 @@ export default function FoundryRequiredLearning({
 
   return (
     <section className="flex flex-col gap-6" data-testid="foundry-required-learning" aria-label={t.requiredHeader}>
-      {/* Discoverable entry to the learner's own private reflection history (Slice 3.1B-3H). */}
-      <button
-        type="button"
-        onClick={onOpenMyLearning}
-        data-testid="open-my-learning"
-        className="flex items-center justify-between gap-2 rounded-xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-4 py-2.5 text-left"
-      >
-        <span className="text-sm font-medium text-[#C9A66B]">{loc === "ko" ? "내 학습" : "My Learning"}</span>
-        <span aria-hidden="true" className="text-sm text-[#C9A66B]/70">→</span>
-      </button>
-      {/* Compact contextual account line — WHO this required-learning list belongs to. Account
-          SWITCHING is consolidated to the single Me-tab control (Slice 3.1B-3N-5B.1): no duplicate
-          switch here. */}
-      <div
-        data-testid="foundry-learning-account"
-        className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-2.5"
-      >
-        <span className="min-w-0 truncate text-xs text-white/50">
-          {t.learningAccount}: <span className="text-white/75" data-testid="foundry-account-email">{email ?? "…"}</span>
-        </span>
-      </div>
+      {/* B3A.2C Learn hygiene: one My learning surface (the LearnDoors door owns the
+          entry). The duplicate My-Learning pill and the "Learning account: <email>"
+          block are removed from the content area — account controls live in Me;
+          assignment loading is still session-scoped (isolation unchanged). */}
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
@@ -217,18 +186,29 @@ export default function FoundryRequiredLearning({
       </div>
 
       {completed.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
-              {t.completedHeader}
-            </h2>
-            <p className="text-sm leading-6 text-white/40">{t.completedSub}</p>
-          </div>
-          <div className="flex flex-col gap-2.5">
-            {completed.map((a) => (
-              <CompletedCard key={a.assignmentId} a={a} t={t} loc={loc} onOpenReview={onOpenReview} />
-            ))}
-          </div>
+        <div className="flex flex-col gap-2">
+          {/* Completed is a compact disclosure, collapsed by default (B3A.2C) — the
+              count is always visible; the cards render only when expanded. */}
+          <button
+            type="button"
+            data-testid="completed-disclosure"
+            aria-expanded={showCompleted}
+            aria-controls="foundry-completed-list"
+            onClick={() => setShowCompleted((v) => !v)}
+            className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+          >
+            <span className="text-sm font-medium text-white/75">
+              {t.completedHeader} ({completed.length}) · {t.reviewCta}
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-white/45">{showCompleted ? "▲" : "▼"}</span>
+          </button>
+          {showCompleted ? (
+            <div id="foundry-completed-list" data-testid="completed-list" className="flex flex-col gap-2.5">
+              {completed.map((a) => (
+                <CompletedCard key={a.assignmentId} a={a} t={t} loc={loc} onOpenReview={onOpenReview} />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

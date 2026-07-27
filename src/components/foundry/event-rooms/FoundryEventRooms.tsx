@@ -305,16 +305,13 @@ export default function FoundryEventRooms({
     // A non-host learner's Foundry home: their required-learning surface leads, with
     // the quiet host-pointer copy retained beneath it (calmer, no longer full-height).
     return (
+      // B3A.2C: a non-host learner's Learn surface is just the two-door entry + their
+      // required learning. The "FOUNDRY / Training rooms are opened by authorized
+      // hosts / Scan an invitation QR" host-pointer block is removed (it explained
+      // authorization instead of offering a useful action). QR deep links are unchanged.
       <div className="btyFadeIn flex flex-col gap-8">
         {learnDoors}
         {requiredLearning}
-        <div className="flex flex-col items-center gap-3 pt-2 text-center">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-            {t.eyebrow}
-          </span>
-          <p className="max-w-[18rem] text-base leading-7 text-white/80">{t.nonHostLead}</p>
-          <p className="max-w-[18rem] text-sm leading-6 text-white/50">{t.nonHostSub}</p>
-        </div>
       </div>
     );
   }
@@ -357,11 +354,8 @@ export default function FoundryEventRooms({
       {learnDoors}
       {requiredLearning}
       {builderEntry}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-          {t.eyebrow}
-        </span>
-      </div>
+      {/* B3A.2C: the "FOUNDRY" heading is removed from the Learn surface; the
+          Host's own trainings appear under their plain Open/Past section headers. */}
 
       {open.length > 0 ? (
         <section className="flex flex-col gap-2.5">

@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import FoundryEventRooms from "./FoundryEventRooms";
 
 /**
@@ -57,7 +57,10 @@ describe("FoundryEventRooms — required-learning surface on the Foundry tab", (
     // The learner surface mounts inside the tab, with the completed item and the
     // intentional empty Required state (Required: 0 / Completed: 1 — the live baseline).
     await waitFor(() => expect(screen.getByTestId("foundry-required-learning")).toBeTruthy());
-    expect(screen.getByText("Onboarding Care")).toBeTruthy();
     expect(screen.getByTestId("required-empty")).toBeTruthy();
+    // Completed is collapsed by default (B3A.2C): the count shows; expand to see the card.
+    expect(screen.getByTestId("completed-disclosure").textContent).toContain("Completed (1)");
+    fireEvent.click(screen.getByTestId("completed-disclosure"));
+    expect(await screen.findByText("Onboarding Care")).toBeTruthy();
   });
 });

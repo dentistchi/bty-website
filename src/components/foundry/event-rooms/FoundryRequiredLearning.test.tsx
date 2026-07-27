@@ -44,25 +44,32 @@ function mockFetch(assignments: unknown[], email: string | null = "ywamer2022@gm
 }
 
 describe("FoundryRequiredLearning — learner surface", () => {
-  it("Gate B: with only a completed item, Required shows the INTENTIONAL empty state (not an error)", async () => {
+  it("Gate B: only a completed item → Required empty state + a COLLAPSED Completed disclosure (count only)", async () => {
     mockFetch([COMPLETED]);
     render(<FoundryRequiredLearning locale="en" onOpenReview={onOpenReview} />);
     await waitFor(() => expect(screen.getByTestId("foundry-required-learning")).toBeTruthy());
     expect(screen.getByTestId("required-empty")).toBeTruthy();
     expect(screen.getByText("Nothing required right now")).toBeTruthy();
-    expect(screen.getByText("Onboarding Care")).toBeTruthy();
-    expect(screen.getByText("Review learning")).toBeTruthy();
+    // Completed is a compact disclosure showing the count; cards NOT rendered while collapsed.
+    expect(screen.getByTestId("completed-disclosure").textContent).toContain("Completed (1)");
+    expect(screen.queryByTestId("completed-list")).toBeNull();
+    expect(screen.queryByText("Onboarding Care")).toBeNull();
   });
 
-  it("Completed card NEVER links to the anonymous Room; 'Review learning' opens the review", async () => {
+  it("Completed collapsed by default; expand reveals cards + Review learning (never links to the Room); collapse hides", async () => {
     mockFetch([COMPLETED]);
     render(<FoundryRequiredLearning locale="en" onOpenReview={onOpenReview} />);
-    await waitFor(() => screen.getByText("Review learning"));
-    // No anchor to /f/<token> anywhere on a Completed-only surface.
+    const disc = await screen.findByTestId("completed-disclosure");
+    expect(disc.getAttribute("aria-expanded")).toBe("false"); // collapsed by default (accessible)
+    fireEvent.click(disc);
+    expect(screen.getByTestId("completed-disclosure").getAttribute("aria-expanded")).toBe("true");
+    await screen.findByTestId("completed-list");
     const anchors = Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? "");
-    expect(anchors.some((h) => h.includes("/f/"))).toBe(false);
+    expect(anchors.some((h) => h.includes("/f/"))).toBe(false); // review never links to the anonymous Room
     fireEvent.click(screen.getByText("Review learning"));
     expect(onOpenReview).toHaveBeenCalledWith("a-done");
+    fireEvent.click(screen.getByTestId("completed-disclosure")); // collapse again
+    expect(screen.queryByTestId("completed-list")).toBeNull();
   });
 
   it("Required 'Start learning' opens the Room with a sanitized return-to-Foundry target", async () => {
@@ -77,24 +84,15 @@ describe("FoundryRequiredLearning — learner surface", () => {
     expect(screen.queryByTestId("required-empty")).toBeNull();
   });
 
-  it("shows the compact 'Learning account' line with the authenticated email", async () => {
+  it("B3A.2C hygiene: NO account email block and NO duplicate My-learning pill in the content area", async () => {
     mockFetch([COMPLETED], "ywamer2022@gmail.com");
     render(<FoundryRequiredLearning locale="en" />);
-    await waitFor(() =>
-      expect(screen.getByTestId("foundry-account-email").textContent).toBe("ywamer2022@gmail.com"),
-    );
-    expect(screen.getByText("Learning account:", { exact: false })).toBeTruthy();
-  });
-
-  it("(14) does NOT render a Foundry Switch control — switching is consolidated to the Me tab", async () => {
-    mockFetch([COMPLETED], "ywamer2022@gmail.com");
-    render(<FoundryRequiredLearning locale="en" />);
-    await waitFor(() => screen.getByTestId("foundry-learning-account"));
-    // the informational account line remains…
-    expect(screen.getByText("Learning account:", { exact: false })).toBeTruthy();
-    // …but there is no Switch button here anymore.
+    await waitFor(() => screen.getByTestId("foundry-required-learning"));
+    expect(screen.queryByTestId("foundry-learning-account")).toBeNull();
+    expect(screen.queryByTestId("foundry-account-email")).toBeNull();
+    expect(screen.queryByText("Learning account:", { exact: false })).toBeNull();
+    expect(screen.queryByTestId("open-my-learning")).toBeNull(); // no duplicate My-learning control
     expect(screen.queryByText("Switch")).toBeNull();
-    expect(screen.getByTestId("foundry-learning-account").querySelector("button")).toBeNull();
   });
 
   it("Korean copy renders for the empty state", async () => {
