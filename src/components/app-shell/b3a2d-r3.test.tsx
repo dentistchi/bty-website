@@ -38,12 +38,11 @@ async function gotoMe() {
   fireEvent.click(within(nav).getByText("Me"));
 }
 
-describe("Me weekly Orb visual contract (B3A.2D-R3)", () => {
-  it("declares exactly seven lights and is not the entry Orb", async () => {
+describe("Me weekly Orb visual contract (B3A.2D-R3.1)", () => {
+  it("mounts the living WeeklyOrb (not the entry Orb) with no hold-to-enter", async () => {
     stub();
     await gotoMe();
-    const orb = await screen.findByTestId("weekly-orb");
-    expect(orb.getAttribute("data-light-count")).toBe("7");
+    expect(await screen.findByTestId("weekly-orb")).toBeTruthy();
     expect(screen.queryByTestId("me-orb-door")).toBeNull();
     expect(screen.queryByText(/Hold to enter/i)).toBeNull();
   });

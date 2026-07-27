@@ -5,7 +5,7 @@ import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import type { MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { WeeklyActivityDetail } from "@/lib/bty/daily/weeklyActivity.server";
 import { getCachedDetail, setCachedDetail } from "@/lib/bty/daily/weeklyActivityCache";
-import { choosePopupPlacement } from "@/domain/daily/weeklyOrbGeometry";
+import { choosePopupPlacement } from "@/domain/daily/popupPlacement";
 
 /**
  * MeWeeklyTrace (Slice 3.2C-B3A.2D-R2 · R3 refinements) — the Me Orb is the LIVING seven-light

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signOutAccount } from "@/lib/native/accountSession";
 import { startGoogleOAuth } from "@/lib/native/googleOAuth";
+import { clearWeeklyActivityCache } from "@/lib/bty/daily/weeklyActivityCache";
 
 /**
  * Me-tab account block — the canonical (and ONLY) account-management surface (Slice 3.1B-3N-5B.1).
@@ -73,6 +74,9 @@ export default function AccountBlock({ locale }: { locale: string }) {
     inFlight.current = true;
     setError(null);
     setBusy("switch");
+    // Wipe the session weekly cache BEFORE switching accounts so no Account A value can seed
+    // Account B (defense-in-depth; the OAuth redirect also fully reloads the document).
+    clearWeeklyActivityCache();
     // Direct provider chooser, next = Today. On "redirecting" the page is leaving (web) or has
     // navigated (native); only a real error returns here — the previous session stays intact.
     const r = await startGoogleOAuth({ locale: loc, nextPath: `/${loc}/app?tab=today`, forceAccountSelection: true });
@@ -88,6 +92,7 @@ export default function AccountBlock({ locale }: { locale: string }) {
     inFlight.current = true;
     setError(null);
     setBusy("signout");
+    clearWeeklyActivityCache(); // clear session weekly data on teardown
     const r = await signOutAccount({ locale: loc });
     if (!r.ok) {
       inFlight.current = false;
