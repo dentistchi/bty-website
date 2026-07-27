@@ -72,18 +72,18 @@ beforeEach(() => {
 });
 
 describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
-  it("shows the host-oriented Create team training entry", async () => {
+  it("shows the host-oriented Create training entry", async () => {
     server([]);
     render(<FoundryEventRooms locale="en" />);
-    expect(await screen.findByText("Create team training")).toBeTruthy();
-    expect(screen.getByText("Turn a recurring problem into a training your team can use.")).toBeTruthy();
+    expect(await screen.findByText("Create training")).toBeTruthy();
+    expect(screen.getByText("Turn a real workplace issue into clear training for your team.")).toBeTruthy();
   });
 
   it("keeps the legacy path but demotes it to a discoverable quick-event path", async () => {
     server([]);
     render(<FoundryEventRooms locale="en" />);
     // primary first, then the quick-event lead + button directly beneath it.
-    expect(await screen.findByText("Create team training")).toBeTruthy();
+    expect(await screen.findByText("Create training")).toBeTruthy();
     expect(screen.getByText("Need to launch something quickly?")).toBeTruthy();
     expect(screen.getByText("Create quick event")).toBeTruthy();
     expect(screen.getByText("Skip guided setup.")).toBeTruthy();
@@ -92,7 +92,7 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
   it("starting a new draft creates EXACTLY one row even on a double-tap", async () => {
     const s = server([]);
     render(<FoundryEventRooms locale="en" />);
-    const btn = await screen.findByText("Create team training");
+    const btn = await screen.findByText("Create training");
     fireEvent.click(btn);
     fireEvent.click(btn);
     await waitFor(() => expect(postCount(s.calls)).toBe(1));
@@ -151,7 +151,7 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
     }));
     server([], past);
     render(<FoundryEventRooms locale="en" />);
-    await screen.findByText("Create team training");
+    await screen.findByText("Create training");
     // only 3 of 5 shown as an inline preview on the home surface
     expect(screen.getByText("Closed event 0")).toBeTruthy();
     expect(screen.getByText("Closed event 2")).toBeTruthy();

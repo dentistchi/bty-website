@@ -12,6 +12,7 @@ import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import FoundryHistoryArchive from "./FoundryHistoryArchive";
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 import { ArenaPracticeFlow } from "../arena-practice/ArenaPracticeFlow";
+import { LearnDoors } from "./LearnDoors";
 import type { HostFocusSection } from "@/components/app-shell/hostDeepLink";
 
 /**
@@ -241,6 +242,23 @@ export default function FoundryEventRooms({
 
   const backHome = useCallback(() => setView({ kind: "home" }), []);
 
+  // Two-door first-time entry (Slice 3.2C-B3A.1): "My learning" scrolls to the
+  // required-training section on this same surface; "Create training" (creators
+  // only) opens the builder. No mode switch — both live in one shell.
+  const openLearning = useCallback(() => {
+    if (typeof document !== "undefined") {
+      document.getElementById("learn-required")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+  const learnDoors = (
+    <LearnDoors locale={loc} canCreate={access === "host"} onOpenLearning={openLearning} onCreate={startNewDraft} />
+  );
+  const requiredLearning = (
+    <div id="learn-required">
+      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
+    </div>
+  );
+
   if (view.kind === "create") {
     return (
       <CreateFoundryEventForm locale={loc} onCreated={onCreated} onCancel={backHome} />
@@ -288,7 +306,8 @@ export default function FoundryEventRooms({
     // the quiet host-pointer copy retained beneath it (calmer, no longer full-height).
     return (
       <div className="btyFadeIn flex flex-col gap-8">
-        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
+        {learnDoors}
+        {requiredLearning}
         <div className="flex flex-col items-center gap-3 pt-2 text-center">
           <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
             {t.eyebrow}
@@ -326,7 +345,8 @@ export default function FoundryEventRooms({
   if (events !== null && events.length === 0) {
     return (
       <div className="btyFadeIn flex flex-col gap-9">
-        <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
+        {learnDoors}
+        {requiredLearning}
         {builderEntry}
       </div>
     );
@@ -334,7 +354,8 @@ export default function FoundryEventRooms({
 
   return (
     <div className="btyFadeIn flex flex-col gap-9">
-      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
+      {learnDoors}
+      {requiredLearning}
       {builderEntry}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
@@ -558,23 +579,10 @@ function BuilderEntry({
       bt={bt}
     />
   );
+  void startNew; // create-new is owned by the top "Create training" door (B3A.1)
   return (
     <section className="flex flex-col gap-3">
-      <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-        {bt.entryEyebrow}
-      </span>
-      <button
-        type="button"
-        onClick={startNew}
-        disabled={starting}
-        className="rounded-xl bg-[#C9A66B] px-6 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-60"
-      >
-        {starting ? bt.starting : bt.startNew}
-      </button>
-      <p className="text-sm leading-6 text-white/50">{bt.entrySupport}</p>
-
-      {/* Secondary quick-event path — visible directly below the primary action,
-          not hidden past the draft/event lists. */}
+      {/* Quick-event path (create-new lives in the top door now, B3A.1). */}
       <div className="mt-1 flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
         <span className="min-w-0 text-sm text-white/50">{bt.quickLead}</span>
         <button

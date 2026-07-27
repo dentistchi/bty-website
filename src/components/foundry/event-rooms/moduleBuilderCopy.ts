@@ -327,7 +327,7 @@ const arenaFollowLabel = (
 export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
   en: {
     entryEyebrow: "TRAINING BUILDER",
-    startNew: "Create team training",
+    startNew: "Create training",
     entrySupport: "Turn a recurring problem into a training your team can use.",
     starting: "Starting…",
     continueLead: "Pick up where you left off.",
@@ -483,7 +483,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     revisionTitle: "Create new version",
     revisionNote: "Your current published training will remain unchanged.",
     journeyApprovalBlocked: "Confirm the learner title and resolve every “Needs confirmation” element before creating this training.",
-    journeyStart: "Preview as learner journey",
+    journeyStart: "Review the training",
     reviewSaved: "Saved",
     reviewLead: "Review what you’ve built.",
     sectionsNeedAttention: (n) => (n === 1 ? "1 section needs attention" : `${n} sections need attention`),
@@ -609,7 +609,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
   },
   ko: {
     entryEyebrow: "훈련 빌더",
-    startNew: "팀 훈련 만들기",
+    startNew: "트레이닝 만들기",
     entrySupport: "반복되는 문제를 팀이 쓸 수 있는 훈련으로 바꾸세요.",
     starting: "시작하는 중…",
     continueLead: "이어서 계속하세요.",
@@ -762,7 +762,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     revisionTitle: "새 버전 만들기",
     revisionNote: "현재 게시된 트레이닝은 그대로 유지됩니다.",
     journeyApprovalBlocked: "학습자 제목을 확인하고 “확인 필요” 요소를 모두 해결한 후 트레이닝을 만들 수 있습니다.",
-    journeyStart: "학습자 여정 미리보기",
+    journeyStart: "트레이닝 검토",
     reviewSaved: "저장됨",
     reviewLead: "만든 내용을 검토하세요.",
     sectionsNeedAttention: (n) => `주의가 필요한 항목 ${n}개`,
