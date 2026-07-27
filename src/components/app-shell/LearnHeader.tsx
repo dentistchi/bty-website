@@ -40,21 +40,11 @@ export default function LearnHeader({
   const t = COPY[loc];
   return (
     <header className="mb-5 flex flex-col gap-1" data-testid="learn-header">
+      {/* B3A.2 Learn hygiene: the header is just the identity. "My learning" lives in
+          the single LearnDoors entry below (no duplicate pill); the internal
+          "Powered by BTY Foundry" line is removed from first-user vocabulary. */}
       <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#C9A66B]/80">{t.eyebrow}</span>
       <h1 className="text-[1.4rem] font-semibold leading-tight tracking-tight text-white">{t.title}</h1>
-      <div className="mt-1 flex items-center justify-between gap-3">
-        <span className="text-[0.7rem] tracking-wide text-white/35">{t.poweredBy}</span>
-        {onOpenMyLearning ? (
-          <button
-            type="button"
-            data-testid="learn-my-learning"
-            onClick={onOpenMyLearning}
-            className="rounded-full border border-white/12 px-3 py-1 text-[0.72rem] text-white/70 hover:text-white/90"
-          >
-            {t.myLearning}
-          </button>
-        ) : null}
-      </div>
     </header>
   );
 }

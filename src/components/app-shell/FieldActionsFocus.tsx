@@ -76,7 +76,7 @@ const COPY: Record<Locale, {
   submittedOn: string;
 }> = {
   en: {
-    title: "Field Actions",
+    title: "Action plans",
     back: "Back",
     loading: "Loading field actions…",
     empty: "No field actions right now.",
@@ -106,11 +106,11 @@ const COPY: Record<Locale, {
     submittedOn: "Submitted",
   },
   ko: {
-    title: "현장 행동",
+    title: "행동 계획",
     back: "뒤로",
-    loading: "현장 행동을 불러오는 중입니다…",
-    empty: "현재 진행 중인 현장 행동이 없습니다.",
-    errorText: "현장 행동을 불러오지 못했습니다.",
+    loading: "행동 계획을 불러오는 중입니다…",
+    empty: "현재 진행 중인 행동 계획이 없습니다.",
+    errorText: "행동 계획을 불러오지 못했습니다.",
     retry: "다시 시도",
     groups: {
       needs_revision: "수정이 필요합니다",
