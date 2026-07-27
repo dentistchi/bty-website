@@ -90,11 +90,14 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/<LearnHeader/);
   });
 
-  it("Me folds in the voluntary Center feed + My Learning (recovery routing untouched)", () => {
+  it("Me root = This week first, then compact nav rows (Center + My Learning routing untouched)", () => {
     expect(src).toMatch(/meView === "center"/);
     expect(src).toMatch(/<CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry}/);
     expect(src).toMatch(/meView === "my-learning"/);
-    expect(src).toMatch(/<MeEntries/);
+    // B3A.2D: This-week summary leads; the large MeEntries cards are replaced by compact rows.
+    expect(src).toMatch(/<MeThisWeek/);
+    expect(src).toMatch(/me-row-center/);
+    expect(src).toMatch(/me-account-row/);
   });
 
   it("AppTabBar remains the in-component tab owner (onSelect={setTab})", () => {

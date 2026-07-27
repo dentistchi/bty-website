@@ -5,7 +5,6 @@ import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
-import CenterMeCard from "@/components/center/CenterMeCard";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
@@ -14,10 +13,10 @@ import CenterRealityFeed from "@/components/center/CenterRealityFeed";
 import TodayHome from "@/components/app-shell/TodayHome";
 import LearnHeader from "@/components/app-shell/LearnHeader";
 import PracticeLanding from "@/components/app-shell/PracticeLanding";
-import MeEntries from "@/components/app-shell/MeEntries";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
+import MeThisWeek from "@/components/app-shell/MeThisWeek";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 import {
@@ -1755,35 +1754,32 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               <AccountBlock locale={locale} />
             </div>
           ) : (
-            <div className="flex flex-col">
-              {/* B3A.2C-R1: the large "Signed in as" card is NOT on the Me root; account
-                  identity / Switch account / Sign out live behind the single "Account >"
-                  row near the bottom (see below). */}
-              {/* Me entries — My Learning · Recovery/Center · My Experiences (placeholder). */}
-              <div className="mb-5">
-                <MeEntries
-                  locale={locale}
-                  onOpenMyLearning={() => setMeView("my-learning")}
-                  onOpenRecovery={() => setMeView("center")}
-                />
-              </div>
-              <CenterMeCard locale={locale} />
-              {/* One calm Account row near the bottom — the only account entry point on Me root. */}
-              <button
-                type="button"
-                data-testid="me-account-row"
-                onClick={() => setMeView("account")}
-                className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
-              >
-                <span className="text-sm font-medium text-white/70">{locale === "ko" ? "계정" : "Account"}</span>
-                <span aria-hidden="true" className="text-white/40">›</span>
-              </button>
-              {/* Lift the weekly light up into the open space below the mirror so it is the
-                  emotional centre of the Me tab (not a bottom decoration) and its caption
-                  clears the bottom tab dock. vh-relative so the lift scales across devices. */}
-              <div className="-mt-[24vh]">
-                <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
-              </div>
+            // Me root hierarchy (B3A.2D): identity + Forge stage + THIS WEEK first
+            // (visible without scrolling), then the Orb in NORMAL flow (no viewport-height
+            // lift / dead space), then compact nav rows ending with Account. Nothing is
+            // absolute/fixed; safe-area padding keeps content clear of the bottom dock.
+            <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
+              <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} />
+              <WeeklyOrb intensities={weeklyRhythm} locale={locale} />
+              <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
+                {[
+                  { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
+                  { id: "me-row-achieved", label: locale === "ko" ? "내가 이룬 것" : "What I achieved", go: () => setMeView("my-learning") },
+                  { id: "me-row-center", label: locale === "ko" ? "센터" : "Center", go: () => setMeView("center") },
+                  { id: "me-account-row", label: locale === "ko" ? "계정" : "Account", go: () => setMeView("account") },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    data-testid={r.id}
+                    onClick={r.go}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left"
+                  >
+                    <span className="text-sm font-medium text-white/75">{r.label}</span>
+                    <span aria-hidden="true" className="text-white/40">›</span>
+                  </button>
+                ))}
+              </nav>
             </div>
           ))}
       </main>

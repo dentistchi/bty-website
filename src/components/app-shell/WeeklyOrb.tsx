@@ -467,7 +467,22 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
   return (
     // No card / no background fill / no wrapper gradient — only light. The shell applies the
     // upward lift; here the caption is pulled snug under the orb with safe bottom spacing.
-    <div className="flex flex-col items-center pb-6">
+    <div
+      className="flex flex-col items-center pb-6 select-none"
+      data-testid="weekly-orb"
+      // Orb touch hygiene (Slice 3.2C-B3A.2D): a hold/drag on the Orb must never
+      // invoke WebView selection, native callout, or image drag. Scoped to the Orb
+      // subtree only — page scroll, pinch-zoom, and other content are unaffected.
+      onDragStart={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+      style={{
+        userSelect: "none",
+        WebkitUserSelect: "none",
+        WebkitTouchCallout: "none",
+        WebkitUserDrag: "none",
+        touchAction: "manipulation",
+      } as React.CSSProperties}
+    >
       <div
         role="img"
         aria-label={ARIA[locale]}
@@ -476,7 +491,8 @@ export default function WeeklyOrb({ intensities, locale, size = 240 }: Props) {
         <canvas
           ref={canvasRef}
           aria-hidden
-          style={{ display: failed ? "none" : "block", width: size, height: size }}
+          draggable={false}
+          style={{ display: failed ? "none" : "block", width: size, height: size, WebkitUserDrag: "none" } as React.CSSProperties}
         />
         {failed ? (
           <div
