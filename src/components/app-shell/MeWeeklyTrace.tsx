@@ -1,49 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import WeeklyOrb from "@/components/app-shell/WeeklyOrb";
 import type { MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { WeeklyActivityDetail } from "@/lib/bty/daily/weeklyActivity.server";
+import { getCachedDetail, setCachedDetail } from "@/lib/bty/daily/weeklyActivityCache";
+import { choosePopupPlacement } from "@/domain/daily/weeklyOrbGeometry";
 
 /**
- * MeWeeklyTrace (Slice 3.2C-B3A.2D-R2) — the Me Orb is the LIVING seven-light weekly trace
- * ({@link WeeklyOrb}, NOT the startup entry Orb): one continuously-moving light per BTY day in the
- * current 7-day window. A short TAP toggles an INLINE weekly popover anchored above the Orb — no
- * route, no meView change, no nested screen, no hold-to-enter. The WeeklyOrb is mounted ONCE with
- * stable identity so toggling the popup never remounts it, never spawns a second canvas / rAF loop,
- * and never interrupts or accelerates the animation. The startup Orb is untouched by this file.
+ * MeWeeklyTrace (Slice 3.2C-B3A.2D-R2 · R3 refinements) — the Me Orb is the LIVING seven-light
+ * {@link WeeklyOrb} (NOT the startup entry Orb). A short TAP toggles a COMPACT inline popover
+ * anchored to the Orb.
  *
- * Data: the SAME canonical endpoint (?detail=1). Fetched once per mount and per Me-reselect
- * (refreshKey) — never per frame / per light movement. Center reflection bodies are never fetched.
+ * R3: the popover no longer duplicates the root THIS WEEK counts — it discloses only what the root
+ * doesn't (date range + the seven dated day indicators + the selected day's proven activity state).
+ * Placement is collision-aware (prefers above, flips below when the top would cross the safe area),
+ * so the heading/date range are never clipped. Detail is seeded from the session cache
+ * (stale-while-refresh) so a reselect never blanks it. Center reflection bodies are never fetched.
  */
 
 const COPY = {
-  en: {
-    show: "Show this week",
-    hide: "Hide this week",
-    title: "This week",
-    points: "Weekly points",
-    activeDays: "Active days",
-    learning: "Learning completed",
-    training: "Training created",
-    center: "Center reflections",
-    actions: "Action plans done",
-    activity: "Activity recorded",
-    noActivity: "No activity recorded",
-  },
-  ko: {
-    show: "이번 주 보기",
-    hide: "이번 주 닫기",
-    title: "이번 주",
-    points: "주간 포인트",
-    activeDays: "활동일",
-    learning: "완료한 학습",
-    training: "생성한 교육",
-    center: "센터 성찰",
-    actions: "완료한 행동 계획",
-    activity: "활동 기록됨",
-    noActivity: "활동 없음",
-  },
+  en: { show: "Show this week", hide: "Hide this week", title: "This week", activity: "Activity recorded", noActivity: "No activity recorded" },
+  ko: { show: "이번 주 보기", hide: "이번 주 닫기", title: "이번 주", activity: "활동 기록됨", noActivity: "활동 없음" },
 };
 
 function deviceTz(): string | null {
@@ -68,6 +46,10 @@ function fmtWeekday(iso: string, loc: string): string {
   }
 }
 
+// A conservative top safe-area allowance (status bar / notch) for collision math; env() is not
+// readable in JS, and over-reserving only makes the popup flip below sooner (never clip).
+const SAFE_TOP_PX = 56;
+
 export default function MeWeeklyTrace({
   locale,
   weeklyRhythm,
@@ -81,22 +63,28 @@ export default function MeWeeklyTrace({
   const t = COPY[loc];
   const [open, setOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [detail, setDetail] = useState<WeeklyActivityDetail | null>(null);
-  const popupId = "me-week-popup"; // single instance on the Me root
+  const [detail, setDetail] = useState<WeeklyActivityDetail | null>(() => getCachedDetail());
+  const [placement, setPlacement] = useState<"above" | "below">("above");
+  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const popupId = "me-week-popup";
 
-  // Fetch the canonical detail ONCE per mount / Me-reselect (refreshKey). Never on toggle or frame.
+  // Fetch canonical detail once per mount / Me-reselect (never on toggle or frame). Stale-while-
+  // refresh: seed from cache, keep the last value on failure, save on success.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const tz = deviceTz();
         const res = await fetch(`/api/me/today/weekly-activity?detail=1${tz ? `&tz=${encodeURIComponent(tz)}` : ""}`, { credentials: "include", cache: "no-store" });
-        if (res.ok) {
-          const d = (await res.json()) as WeeklyActivityDetail;
-          if (!cancelled) setDetail(d);
+        if (!res.ok) return;
+        const d = (await res.json()) as WeeklyActivityDetail;
+        if (!cancelled && d && d.summary) {
+          setDetail(d);
+          setCachedDetail(d);
         }
       } catch {
-        /* fail-soft → the Orb still animates; the popup shows whatever loaded */
+        /* fail-soft → keep the last cached detail; the Orb still animates */
       }
     })();
     return () => {
@@ -104,57 +92,54 @@ export default function MeWeeklyTrace({
     };
   }, [refreshKey]);
 
-  // Me-reselect (refreshKey change) closes the popup and clears any day selection — the shell's
-  // canonical root-reselect contract. This is the only case where the popup is open while the
-  // component stays mounted (opening a row / switching tabs unmounts me-home entirely).
+  // Me-reselect closes the popup + clears any day selection (canonical root-reselect contract).
   useEffect(() => {
     setOpen(false);
     setSelectedDay(null);
   }, [refreshKey]);
 
-  const s = detail?.summary ?? {};
+  // Collision-aware placement: measured synchronously before paint. Prefer above the Orb; flip
+  // below when the above-top would cross the top safe area (so the heading is never clipped).
+  useLayoutEffect(() => {
+    if (!open || !toggleRef.current || !popupRef.current) return;
+    const anchor = toggleRef.current.getBoundingClientRect();
+    const popup = popupRef.current.getBoundingClientRect();
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    setPlacement(
+      choosePopupPlacement({
+        anchorTop: anchor.top,
+        anchorBottom: anchor.bottom,
+        popupHeight: popup.height,
+        viewportHeight: vh,
+        safeTop: SAFE_TOP_PX,
+        margin: 10,
+      }),
+    );
+  }, [open, detail, selectedDay]);
+
   const attendance = detail?.attendance;
   const range = attendance && attendance.length === 7 ? `${fmtDate(attendance[0].date, loc)} – ${fmtDate(attendance[6].date, loc)}` : null;
 
-  const rows: Array<[string, number | undefined]> = [
-    [t.points, typeof s.weeklyPoints === "number" ? s.weeklyPoints : undefined],
-    [t.activeDays, typeof s.activeDays === "number" ? s.activeDays : undefined],
-    [t.learning, typeof s.trainingsCompleted === "number" ? s.trainingsCompleted : undefined],
-    [t.training, typeof s.trainingsCreated === "number" ? s.trainingsCreated : undefined],
-    [t.center, typeof s.centerReflections === "number" ? s.centerReflections : undefined],
-    [t.actions, typeof s.actionPlansCompleted === "number" ? s.actionPlansCompleted : undefined],
-  ];
-
   return (
     <div className="relative flex flex-col items-center" data-testid="me-weekly-trace">
-      {/* Inline popover — anchored ABOVE the Orb, does not cover the Orb hit target, stays clear of
-          the bottom dock (rendered inside <main>, which the dock always paints over). */}
       {open ? (
         <div
+          ref={popupRef}
           id={popupId}
           role="region"
           aria-label={t.title}
           data-testid="me-week-popup"
-          className="absolute bottom-full left-1/2 z-20 mb-3 w-[min(20rem,88vw)] -translate-x-1/2 rounded-2xl border border-white/12 bg-[#12161f]/95 px-4 py-3 shadow-xl backdrop-blur-sm"
+          data-placement={placement}
+          className={`absolute left-1/2 z-20 w-[min(19rem,86vw)] max-h-[42vh] -translate-x-1/2 overflow-y-auto rounded-2xl border border-white/12 bg-[#12161f]/95 px-4 py-3 shadow-xl backdrop-blur-sm ${placement === "above" ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
         >
-          <div className="flex items-baseline justify-between">
+          {/* Compact — no duplication of the root summary counts. Only what the root doesn't show. */}
+          <div className="flex items-baseline justify-between gap-2">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/50">{t.title}</span>
             {range ? <span className="text-[0.72rem] text-white/45" data-testid="me-week-range">{range}</span> : null}
           </div>
 
-          <div className="mt-2 flex flex-col gap-1">
-            {rows.map(([label, value]) =>
-              typeof value === "number" ? (
-                <div key={label} className="flex items-baseline justify-between gap-3 text-[0.8rem]">
-                  <span className="text-white/60">{label}</span>
-                  <span className="font-semibold text-white/85">{value}</span>
-                </div>
-              ) : null,
-            )}
-          </div>
-
           {attendance && attendance.length > 0 ? (
-            <div className="mt-3 flex items-center justify-between gap-1" data-testid="me-week-days">
+            <div className="mt-2.5 flex items-center justify-between gap-1" data-testid="me-week-days">
               {attendance.map((d, i) => (
                 <button
                   key={d.date}
@@ -178,9 +163,10 @@ export default function MeWeeklyTrace({
         </div>
       ) : null}
 
-      {/* The living seven-light Orb IS the toggle control. Mounted once (stable identity) so the
-          popup toggle never remounts it or restarts its animation. Touch-safe (B3A.2D protections). */}
+      {/* The living seven-light Orb IS the toggle. Mounted once (stable identity) → no remount / no
+          second canvas·rAF across toggles. Touch-safe (B3A.2D protections). */}
       <button
+        ref={toggleRef}
         type="button"
         data-testid="me-weekly-orb-toggle"
         aria-expanded={open}

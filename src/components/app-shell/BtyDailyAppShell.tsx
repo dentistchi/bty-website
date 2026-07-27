@@ -1754,7 +1754,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 }}
                 className="self-start text-xs font-medium text-white/55 hover:text-white/85"
               >
-                ‹ {locale === "ko" ? "뒤로" : "Back"}
+                ← {locale === "ko" ? "나" : "Me"}
               </button>
               <CenterRealityFeed locale={locale} focusEntryId={centerFocusEntry} />
             </div>
@@ -1778,7 +1778,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 onClick={() => setMeView("home")}
                 className="self-start text-xs font-medium text-white/55 hover:text-white/85"
               >
-                ‹ {locale === "ko" ? "뒤로" : "Back"}
+                ← {locale === "ko" ? "나" : "Me"}
               </button>
               <AccountBlock locale={locale} />
             </div>

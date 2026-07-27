@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { WeeklySummary } from "@/lib/bty/daily/weeklyActivity.server";
+import { getCachedSummary, setCachedSummary } from "@/lib/bty/daily/weeklyActivityCache";
 
 /**
  * Me · This week (Slice 3.2C-B3A.2D) — the FIRST substantive block on the Me root,
@@ -25,6 +26,7 @@ const COPY = {
     center: (n: number) => `${n} Center`,
     actions: (n: number) => `${n} action ${n === 1 ? "plan" : "plans"}`,
     quiet: "A quiet week so far.",
+    loading: "Loading your week…",
   },
   ko: {
     me: "나",
@@ -37,6 +39,7 @@ const COPY = {
     center: (n: number) => `센터 ${n}`,
     actions: (n: number) => `행동 계획 ${n}`,
     quiet: "아직 조용한 한 주입니다.",
+    loading: "이번 주 불러오는 중…",
   },
 };
 
@@ -60,7 +63,12 @@ export default function MeThisWeek({
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [summary, setSummary] = useState<WeeklySummary | null>(null);
+  // Stale-while-refresh (B3A.2D-R3): seed from the session cache so a bottom-Me reselect (which
+  // remounts me-home) keeps the last successful Forge Stage + weekly values visible instead of
+  // blanking to the "quiet week" fallback. `loaded` distinguishes an initial no-data mount (may
+  // show a quiet loading state) from a proven-empty week.
+  const [summary, setSummary] = useState<WeeklySummary | null>(() => getCachedSummary());
+  const [loaded, setLoaded] = useState<boolean>(() => getCachedSummary() != null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,11 +76,16 @@ export default function MeThisWeek({
       try {
         const tz = deviceTz();
         const res = await fetch(`/api/me/today/weekly-activity${tz ? `?tz=${encodeURIComponent(tz)}` : ""}`, { credentials: "include", cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) return; // failure → RETAIN the last successful values (never blank)
         const d = (await res.json()) as { summary?: WeeklySummary | null };
-        if (!cancelled) setSummary(d.summary ?? null);
+        if (cancelled) return;
+        if (d.summary) {
+          setSummary(d.summary);
+          setCachedSummary(d.summary);
+        }
+        setLoaded(true);
       } catch {
-        /* fail-soft → the block still shows identity + attendance dots */
+        /* fail-soft → retain the last successful values; the Orb + identity still render */
       }
     })();
     return () => {
@@ -123,8 +136,13 @@ export default function MeThisWeek({
               </span>
             ))}
           </div>
-        ) : (
+        ) : loaded ? (
+          // Proven-empty week (a completed load with no canonical values) — never shown merely
+          // because a refresh is pending (that path retains the last values above).
           <p className="text-[0.82rem] text-white/50">{t.quiet}</p>
+        ) : (
+          // Initial no-data mount only — a quiet loading state, not a proven-zero claim.
+          <p className="text-[0.82rem] text-white/30" role="status" data-testid="me-week-loading">{t.loading}</p>
         )}
       </div>
     </section>
