@@ -147,16 +147,6 @@ export interface OrbLivingProps {
    */
   holdMs?: number;
   /**
-   * Short-tap (dual-interaction) callback — ADDITIVE (Slice 3.2C-B3A.2D-R1). Only meaningful in
-   * HOLD mode (`holdMs > 0`): fires on a deliberate pointer-UP that occurs BEFORE the hold
-   * threshold is reached (i.e. a quick tap), and NEVER after a completed hold (`committed`) nor on
-   * pointer-cancel. Undefined → no short-tap behavior (the `/start` cold-launch door passes none, so
-   * it stays byte-identical). Used by the in-shell Me door to open the This Week detail on a tap
-   * while the hold still enters the canonical Orb experience. Visual-only for this component (no
-   * haptic added here).
-   */
-  onTap?: () => void;
-  /**
    * LAB-ONLY (dev/orb) — when true, draws a volumetric body-shading pass (limb darkening /
    * bottom density / depth / grounding / faint specular) in the source-over body region,
    * BEFORE the additive interior light. Default OFF. Production (`/start`) never passes it, so
@@ -183,7 +173,6 @@ export default function OrbLiving({
   size = 220,
   fieldCells = 40,
   onCommit,
-  onTap,
   holdMs = 0,
   bodyShading = false,
   contrastFrame = false,
@@ -207,17 +196,15 @@ export default function OrbLiving({
   // re-initialised by these props. Visual-only — no haptic (§G). bodyShading + contrastFrame
   // are lab-only (default OFF in production).
   const onCommitRef = React.useRef(onCommit);
-  const onTapRef = React.useRef(onTap);
   const holdMsRef = React.useRef(holdMs);
   const bodyShadingRef = React.useRef(bodyShading);
   const contrastFrameRef = React.useRef(contrastFrame);
   React.useEffect(() => {
     onCommitRef.current = onCommit;
-    onTapRef.current = onTap;
     holdMsRef.current = holdMs;
     bodyShadingRef.current = bodyShading;
     contrastFrameRef.current = contrastFrame;
-  }, [onCommit, onTap, holdMs, bodyShading, contrastFrame]);
+  }, [onCommit, holdMs, bodyShading, contrastFrame]);
 
   React.useEffect(() => {
     const canvas = canvasRef.current;
@@ -914,12 +901,6 @@ export default function OrbLiving({
       if (holdMsRef.current <= 0 && !committed) {
         committed = true;
         onCommitRef.current?.(); // visual-only, NO haptic
-      } else if (holdMsRef.current > 0 && !committed) {
-        // Dual-interaction (B3A.2D-R1): a deliberate release BEFORE the hold threshold is a short
-        // TAP. Fires onTap when provided (the in-shell Me door → open This Week detail). Suppressed
-        // after a completed hold (`committed`) and never fires on pointer-cancel. Undefined for the
-        // /start door → no-op, so cold-launch behavior is unchanged. NO haptic here.
-        onTapRef.current?.();
       }
     };
     const onPointerCancel = (e: PointerEvent) => {

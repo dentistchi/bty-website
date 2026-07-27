@@ -100,11 +100,12 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/me-account-row/);
   });
 
-  it("Me Orb reuses the ONE canonical Orb runtime via MeOrbDoor (no second WeeklyOrb engine)", () => {
-    // B3A.2D-R1: the Me Orb is MeOrbDoor (which renders the canonical OrbLiving); the retired
-    // WeeklyOrb visual engine is no longer mounted in the shell → a single Orb runtime.
-    expect(src).toMatch(/<MeOrbDoor/);
-    expect(src).not.toMatch(/<WeeklyOrb/);
+  it("Me Orb = living WeeklyOrb via MeWeeklyTrace (no entry-door / OrbLiving in the shell)", () => {
+    // B3A.2D-R2: the Me Orb is the living seven-light WeeklyOrb wrapped by MeWeeklyTrace (tap →
+    // inline popup). The startup entry Orb (OrbLiving / MeOrbDoor) is NOT used on the Me root.
+    expect(src).toMatch(/<MeWeeklyTrace/);
+    expect(src).not.toMatch(/<MeOrbDoor/);
+    expect(src).not.toMatch(/OrbLiving/);
   });
 
   it("AppTabBar tab owner routes through handleTabSelect (root reselect wrapper over setTab)", () => {

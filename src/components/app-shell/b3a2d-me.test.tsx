@@ -35,11 +35,11 @@ async function gotoMe() {
 }
 
 describe("Me root — hierarchy (B3A.2D / B3A.2D-R1)", () => {
-  it("This week renders ABOVE the Orb door; Account is the final nav row; no My Experiences card", async () => {
+  it("This week renders ABOVE the weekly Orb; Account is the final nav row; no My Experiences card", async () => {
     stub();
     await gotoMe();
     const week = await screen.findByTestId("me-this-week");
-    const orb = await screen.findByTestId("me-orb-door");
+    const orb = await screen.findByTestId("me-weekly-trace");
     expect(week.compareDocumentPosition(orb) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const center = screen.getByTestId("me-row-center");
     const account = screen.getByTestId("me-account-row");
@@ -61,15 +61,13 @@ describe("Me root — hierarchy (B3A.2D / B3A.2D-R1)", () => {
     expect(screen.getByTestId("me-forge-stage").textContent).toContain("Forge stage 1");
   });
 
-  it("Me Orb shows the two-line dual-interaction caption (not 'This week's trace')", async () => {
+  it("Me Orb is a selection-safe toggle with no 'Hold to enter' entry copy", async () => {
     stub();
     await gotoMe();
-    const cap = await screen.findByTestId("me-orb-caption");
-    expect(cap.textContent).toContain("Tap for this week");
-    expect(cap.textContent).toContain("Hold to enter");
-    expect(screen.queryByText(/This week's trace/i)).toBeNull();
-    // Orb door subtree suppresses selection (jsdom keeps standard user-select).
-    const door = screen.getByTestId("me-orb-door");
-    expect(door.className).toMatch(/select-none/);
+    const toggle = await screen.findByTestId("me-weekly-orb-toggle");
+    // Living weekly trace — an accessible toggle (not an entry door); no hold-to-enter copy.
+    expect(toggle.getAttribute("aria-label")).toMatch(/Show this week/i);
+    expect(screen.queryByText(/Hold to enter/i)).toBeNull();
+    expect(toggle.className).toMatch(/select-none/);
   });
 });

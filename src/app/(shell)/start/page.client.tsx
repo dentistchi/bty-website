@@ -4,7 +4,6 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
-import { ORB_HOLD_MS } from "@/components/orb/orbEntryContract";
 import { isNative } from "@/lib/native/isNative";
 import { StartNavySurface } from "./StartNavySurface";
 
@@ -25,11 +24,8 @@ import { StartNavySurface } from "./StartNavySurface";
 type Phase = "splash" | "orb";
 
 const SPLASH_MS = 500;
-// §G deliberate hold — the canonical ~3s hold-to-enter (STEP 5.2b). Now sourced from the shared
-// orbEntryContract so the /start door and the in-shell Me door share ONE threshold (B3A.2D-R1);
-// the value is unchanged. Progress builds the Orb enlargement + warm-golden entry light (OrbLiving);
-// a brief tap stays a response (no nav).
-const HOLD_MS = ORB_HOLD_MS;
+const HOLD_MS = 3000; // §G deliberate hold — STEP 5.2b: ~3s hold-to-enter. Progress builds the
+// Orb enlargement + warm-golden entry light (OrbLiving); a brief tap stays a response (no nav).
 
 function currentLocale(): string {
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";

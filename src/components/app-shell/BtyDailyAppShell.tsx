@@ -15,9 +15,8 @@ import LearnHeader from "@/components/app-shell/LearnHeader";
 import PracticeLanding from "@/components/app-shell/PracticeLanding";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
-import MeOrbDoor from "@/components/app-shell/MeOrbDoor";
+import MeWeeklyTrace from "@/components/app-shell/MeWeeklyTrace";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
-import MeThisWeekDetail from "@/components/app-shell/MeThisWeekDetail";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 import {
@@ -1258,7 +1257,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
   // middleware redirect to /{locale}/center is UNCHANGED — this state is only the in-shell voluntary path.
-  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account" | "this-week">("home");
+  const [meView, setMeView] = useState<"home" | "center" | "my-learning" | "account">("home");
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
@@ -1768,9 +1767,6 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               onBack={() => setMeView("home")}
               backLabel={locale === "ko" ? "나" : "Me"}
             />
-          ) : meView === "this-week" ? (
-            // This Week detail — opened by a SHORT TAP on the Me Orb. Back label "‹ Me" → Me root.
-            <MeThisWeekDetail locale={locale} refreshKey={weeklyRefreshKey} onBack={() => setMeView("home")} />
           ) : meView === "account" ? (
             // Account detail (B3A.2C-R1): the canonical account-management surface — current
             // email + Switch account + Sign out — behind one calm "Account" row, not a
@@ -1793,14 +1789,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             // absolute/fixed; safe-area padding keeps content clear of the bottom dock.
             <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
-              {/* The Me Orb is the ONE canonical Orb runtime (OrbLiving) with dual interaction:
-                  short tap → This Week detail; long hold → canonical entry (switch to Today).
-                  Entering in-shell keeps the session, origin, and Me state (no second shell). */}
-              <MeOrbDoor
-                locale={locale}
-                onOpenWeek={() => setMeView("this-week")}
-                onEnter={() => handleTabSelect("today")}
-              />
+              {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup
+                  entry Orb. A short tap toggles an inline weekly popover (no route / no meView /
+                  no hold-to-enter); the animation runs uninterrupted across toggles. */}
+              <MeWeeklyTrace locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
                 {[
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
