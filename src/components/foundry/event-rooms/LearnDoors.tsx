@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Locale } from "./copy";
 
 /**
@@ -23,6 +24,8 @@ const COPY: Record<
     createTitle: string;
     createBody: string;
     createCta: string;
+    eventTitle: string;
+    eventBody: string;
   }
 > = {
   en: {
@@ -32,6 +35,8 @@ const COPY: Record<
     createTitle: "Create training",
     createBody: "Turn a real workplace issue into clear training for your team.",
     createCta: "Create training",
+    eventTitle: "Open an event",
+    eventBody: "Open a real moment for your team to participate in.",
   },
   ko: {
     learnTitle: "나의 학습",
@@ -40,6 +45,8 @@ const COPY: Record<
     createTitle: "트레이닝 만들기",
     createBody: "현장의 실제 문제를 팀을 위한 명확한 트레이닝으로 만드세요.",
     createCta: "트레이닝 만들기",
+    eventTitle: "이벤트 열기",
+    eventBody: "팀이 참여할 실제 순간을 여세요.",
   },
 };
 
@@ -79,6 +86,19 @@ export function LearnDoors({
           <span className="text-lg font-semibold text-[#E5B769]">{t.createTitle}</span>
           <span className="text-sm leading-6 text-white/65">{t.createBody}</span>
         </button>
+      ) : null}
+
+      {/* Reality Event Host entry (Slice 3.2D-EVENT). Visibility mirrors the creator
+          capability; the leader-track authority is enforced by POST /api/bty/events. */}
+      {canCreate ? (
+        <Link
+          href={`/${locale}/bty/events/new`}
+          data-testid="door-open-event"
+          className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
+        >
+          <span className="text-lg font-semibold text-white">{t.eventTitle}</span>
+          <span className="text-sm leading-6 text-white/60">{t.eventBody}</span>
+        </Link>
       ) : null}
     </section>
   );
