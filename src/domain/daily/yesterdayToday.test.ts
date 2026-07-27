@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildYesterdaySummary } from "./yesterdaySummary";
 import { normalizeTodayItems, todayVisible, TODAY_TOP_N, type TodayItem } from "./todayList";
+import { countFirstPublishedRunsInWindow, type ProgramRun } from "./yesterdayCreation";
 
 describe("buildYesterdaySummary — truthful, plural-correct, omit-zero", () => {
   it("composes multiple non-zero categories with correct grammar + compact line", () => {
@@ -82,5 +83,32 @@ describe("todayVisible — display rule (0/1-3/4+, show more/less)", () => {
     expect(todayVisible(items, true).visible.length).toBe(6);
     const collapsed = todayVisible(items, false).visible;
     expect(collapsed.map((i) => i.stableId)).toEqual(["i0", "i1", "i2"]);
+  });
+});
+
+describe("countFirstPublishedRunsInWindow — a training is 'created' at its FIRST published Run (R1)", () => {
+  const S = 1000, E = 2000; // window [1000, 2000)
+  const run = (programId: string, createdAtMs: number): ProgramRun => ({ programId, createdAtMs });
+
+  it("Program with NO run → 0; first Run in window → 1", () => {
+    expect(countFirstPublishedRunsInWindow([], S, E)).toBe(0);
+    expect(countFirstPublishedRunsInWindow([run("A", 1500)], S, E)).toBe(1);
+  });
+  it("a later V2/V3 Run for the same Program adds nothing (only the first Run counts)", () => {
+    // A's first run (1200) is in-window; a second run (1800) must NOT add.
+    expect(countFirstPublishedRunsInWindow([run("A", 1200), run("A", 1800)], S, E)).toBe(1);
+  });
+  it("a Program whose FIRST run predates the window does not count even if a later run is in-window", () => {
+    expect(countFirstPublishedRunsInWindow([run("B", 500), run("B", 1500)], S, E)).toBe(0);
+  });
+  it("two Programs each first-published in-window → 2", () => {
+    expect(countFirstPublishedRunsInWindow([run("A", 1100), run("C", 1900)], S, E)).toBe(2);
+  });
+  it("idempotent retry (identical run rows) does not duplicate; title is irrelevant (uses program id)", () => {
+    expect(countFirstPublishedRunsInWindow([run("A", 1300), run("A", 1300)], S, E)).toBe(1);
+  });
+  it("boundary is [start, end): start inclusive, end exclusive", () => {
+    expect(countFirstPublishedRunsInWindow([run("A", 1000)], S, E)).toBe(1); // start inclusive
+    expect(countFirstPublishedRunsInWindow([run("A", 2000)], S, E)).toBe(0); // end exclusive
   });
 });
