@@ -9,6 +9,7 @@ import { CreateEventSchema } from '@/lib/validation';
 import { managerEnabled, managerAuthorized } from '@/lib/manager-auth.server';
 import { createEvent, listEventSummaries, mintDjEnrollment, publicEvent } from '@/lib/events.server';
 import { guestQrFor, djEnrollQrFor } from '@/lib/event-links.server';
+import { canonicalGuestOrigin } from '@/domain/guest-origin';
 import { pairingSecondsRemaining } from '@/domain/pairing';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,8 @@ export async function POST(req: NextRequest) {
     startNow: parsed.data.startNow ?? true,
   });
 
-  const origin = req.nextUrl.origin;
+  // BUILD 20B-R1 — guest/DJ QRs encode the canonical production origin, never workers.dev.
+  const origin = canonicalGuestOrigin();
   const enrollment = await mintDjEnrollment(event);
   const [guest, dj] = await Promise.all([
     guestQrFor(origin, event),

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
 import { getCanonicalEvent } from '@/lib/events.server';
 import { qrSvg } from '@/lib/qr.server';
+import { canonicalGuestRoomUrl } from '@/domain/guest-origin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,8 +23,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   // id → EVENT_MISMATCH; an ended id → EVENT_ENDED). A scan never creates an event
   // — this is a pure read. Legacy eventless rooms keep the bare URL (unchanged).
   const event = await getCanonicalEvent(room.id);
-  const base = `${req.nextUrl.origin}/r/${encodeURIComponent(slug)}`;
-  const url = event ? `${base}?e=${encodeURIComponent(event.id)}` : base;
+  // BUILD 20B-R1 — the guest QR MUST encode the canonical production origin
+  // (norebang.btydaily.com), never req.nextUrl.origin (which is workers.dev on the deployed
+  // Worker). Slug + event-id resolution is unchanged.
+  const url = canonicalGuestRoomUrl(slug, event?.id);
   const svg = await qrSvg(url);
   return NextResponse.json({ url, qrSvg: svg, roomName: event?.name ?? room.display_name });
 }

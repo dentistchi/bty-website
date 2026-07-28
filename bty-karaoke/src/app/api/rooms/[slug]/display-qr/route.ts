@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
 import { qrSvg } from '@/lib/qr.server';
+import { canonicalGuestOrigin } from '@/domain/guest-origin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,8 +19,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   const room = await getPublicRoomBySlug(slug);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
 
-  // Canonical Display URL for THIS room — never derived from an event code.
-  const url = `${req.nextUrl.origin}/r/${encodeURIComponent(room.slug)}/display`;
+  // Canonical Display URL for THIS room — the fixed production origin (BUILD 20B-R1), never
+  // req.nextUrl.origin (workers.dev), and never derived from an event code.
+  const url = `${canonicalGuestOrigin()}/r/${encodeURIComponent(room.slug)}/display`;
   const svg = await qrSvg(url);
   return NextResponse.json({ url, qrSvg: svg, roomName: room.display_name });
 }

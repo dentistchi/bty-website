@@ -9,6 +9,7 @@ import { mintPairingToken } from '@/lib/pairing.server';
 import { qrSvg } from '@/lib/qr.server';
 import { PairMintSchema } from '@/lib/validation';
 import { pairingSecondsRemaining } from '@/domain/pairing';
+import { canonicalGuestOrigin } from '@/domain/guest-origin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const minted = await mintPairingToken({ roomId: auth.room.id, role: 'dj', label });
 
-  const origin = req.nextUrl.origin;
+  const origin = canonicalGuestOrigin();   // BUILD 20B-R1 — no workers.dev in a scanned QR
   const pairUrl = `${origin}/r/${encodeURIComponent(slug)}/dj/pair?token=${encodeURIComponent(minted.token)}`;
   const svg = await qrSvg(pairUrl);
 

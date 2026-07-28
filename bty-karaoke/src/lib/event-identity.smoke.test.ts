@@ -122,7 +122,9 @@ describe('identity propagation — all four surfaces carry the same event.id', (
 describe('QR compatibility decision (V5 2A)', () => {
   it('the Guest QR always opens the polished /r/<slug> screen (identity resolved server-side)', () => {
     const guestQrCode = guestQr.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(guestQrCode).toMatch(/\/r\/\$\{encodeURIComponent\(slug\)\}/);
+    // BUILD 20B-R1 — the /r/<slug> URL is now built by the canonical guest-origin helper (pinning
+    // norebang.btydaily.com); the /r/<slug> shape is proven by guest-origin.test + the guest-qr route test.
+    expect(guestQrCode).toContain('canonicalGuestRoomUrl');
     expect(guestQrCode).not.toMatch(/\/j\//); // no flip to the event-join screen (code only)
     expect(guestQrCode).toContain('getCanonicalEvent'); // resolves the event for the name, never creates it
   });

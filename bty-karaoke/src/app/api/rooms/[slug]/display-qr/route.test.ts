@@ -15,20 +15,23 @@ vi.mock('@/lib/qr.server', () => ({
 
 import { GET } from './route';
 
-const req = { nextUrl: { origin: 'https://x.test' } } as unknown as Parameters<typeof GET>[0];
+// BUILD 20B-R1 — the request origin is workers.dev on the deployed Worker; the QR must ignore it.
+const req = { nextUrl: { origin: 'https://bty-karaoke.ywamer2022.workers.dev' } } as unknown as Parameters<typeof GET>[0];
 const ctx = { params: Promise.resolve({ slug: 'bty-home' }) };
 
 beforeEach(() => {
+  delete process.env.KARAOKE_PUBLIC_ORIGIN;
   state.room = { id: 'room-1', slug: 'bty-home', display_name: 'btyNorebang', status: 'open' };
 });
 
 describe('GET /api/rooms/[slug]/display-qr', () => {
-  it('returns the canonical Display URL + a QR of it', async () => {
+  it('returns the CANONICAL production Display URL + a QR of it (never the request/workers.dev origin)', async () => {
     const res = await GET(req, ctx);
     const data = await res.json();
     expect(res.status).toBe(200);
-    expect(data.url).toBe('https://x.test/r/bty-home/display');
-    expect(data.qrSvg).toContain('https://x.test/r/bty-home/display'); // QR encodes THAT url
+    expect(data.url).toBe('https://norebang.btydaily.com/r/bty-home/display');
+    expect(data.qrSvg).toContain('https://norebang.btydaily.com/r/bty-home/display'); // QR encodes THAT url
+    expect(data.url).not.toMatch(/workers\.dev/);
   });
 
   it('uses the room slug, NEVER a derived event slug', async () => {

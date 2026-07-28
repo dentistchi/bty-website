@@ -69,7 +69,9 @@ describe('PART B/K — End Event ends only the LIVE event, no all-status lookup'
 
 describe('PART E — the Guest QR is event-scoped so an old QR cannot join a new event', () => {
   it('the guest QR carries the live event id (?e=<id>)', () => {
-    expect(guestQr).toMatch(/\?e=\$\{encodeURIComponent\(event\.id\)\}/);
+    // BUILD 20B-R1 — the canonical builder appends ?e=<eventId>; the route passes the live event id.
+    // The ?e= output is proven by guest-origin.test + the guest-qr route test.
+    expect(guestQr).toMatch(/canonicalGuestRoomUrl\(\s*slug\s*,\s*event\?\.id\s*\)/);
   });
   it('the guest screen echoes its scoped eventId on submit', () => {
     expect(requestForm).toMatch(/eventId\s*\?\s*\{\s*eventId\s*\}/);
