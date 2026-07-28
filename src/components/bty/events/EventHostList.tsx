@@ -69,10 +69,13 @@ export default function EventHostList({
   locale,
   onBack,
   onOpenCreate,
+  onOpenDetail,
 }: {
   locale: string;
   onBack: () => void;
   onOpenCreate: () => void;
+  /** Open the owner Event detail (roster + QR reopen) for one event (Slice R1). */
+  onOpenDetail: (eventId: string) => void;
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -149,15 +152,27 @@ export default function EventHostList({
       ) : (
         <ul className="flex flex-col gap-2" data-testid="event-host-events">
           {(events ?? []).map((e) => (
-            <li key={e.eventId} data-testid="event-host-row" className="flex flex-col gap-1 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate text-sm font-medium text-white/85">{e.title}</span>
-                <span className="shrink-0 text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-white/45">{t.state[e.state]}</span>
-              </div>
-              <span className="text-[0.82rem] font-semibold text-[#E5B769]" data-testid="event-host-count">{t.count(e.participationCount)}</span>
-              {e.closesAt ? (
-                <span className="text-[0.7rem] text-white/40">{e.state === "ENDED" ? t.closed(fmt(e.closesAt, loc)) : t.closes(fmt(e.closesAt, loc))}</span>
-              ) : null}
+            <li key={e.eventId}>
+              {/* R1: the whole card is one accessible control opening the owner Event detail. */}
+              <button
+                type="button"
+                data-testid="event-host-row"
+                onClick={() => onOpenDetail(e.eventId)}
+                aria-label={`${e.title} — ${t.state[e.state]}, ${t.count(e.participationCount)}`}
+                className="flex w-full flex-col gap-1 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium text-white/85">{e.title}</span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-white/45">{t.state[e.state]}</span>
+                    <span aria-hidden="true" className="text-white/35">›</span>
+                  </span>
+                </div>
+                <span className="text-[0.82rem] font-semibold text-[#E5B769]" data-testid="event-host-count">{t.count(e.participationCount)}</span>
+                {e.closesAt ? (
+                  <span className="text-[0.7rem] text-white/40">{e.state === "ENDED" ? t.closed(fmt(e.closesAt, loc)) : t.closes(fmt(e.closesAt, loc))}</span>
+                ) : null}
+              </button>
             </li>
           ))}
         </ul>

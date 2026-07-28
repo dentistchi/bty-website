@@ -26,7 +26,7 @@ const noop = () => {};
 describe("EventHostList (3.2E-EVENT-HOST)", () => {
   it("(1) shows a loading state first", async () => {
     mockMine({ status: 200, events: [] });
-    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} />);
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} onOpenDetail={noop} />);
     expect(screen.getByTestId("event-host-loading")).toBeTruthy();
     await waitFor(() => expect(screen.getByTestId("event-host-empty")).toBeTruthy());
   });
@@ -34,14 +34,14 @@ describe("EventHostList (3.2E-EVENT-HOST)", () => {
   it("(2) empty state offers an Open-an-event action", async () => {
     mockMine({ status: 200, events: [] });
     const onOpenCreate = vi.fn();
-    render(<EventHostList locale="en" onBack={noop} onOpenCreate={onOpenCreate} />);
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={onOpenCreate} onOpenDetail={noop} />);
     fireEvent.click(await screen.findByTestId("event-host-empty-create"));
     expect(onOpenCreate).toHaveBeenCalledTimes(1);
   });
 
   it("(3) renders 0 / 1 / multiple participation counts with honest copy", async () => {
     mockMine({ status: 200, events: [ev("e1", "Morning huddle", "ACTIVE", 2), ev("e2", "Standup", "ENDED", 1), ev("e3", "Kickoff", "CANCELLED", 0)] });
-    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} />);
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} onOpenDetail={noop} />);
     const rows = await screen.findAllByTestId("event-host-row");
     expect(rows).toHaveLength(3);
     expect(within(rows[0]).getByTestId("event-host-count").textContent).toBe("2 participations");
@@ -58,7 +58,7 @@ describe("EventHostList (3.2E-EVENT-HOST)", () => {
       { status: 200, events: [ev("e1", "Huddle", "ACTIVE", 1)] }, // retry succeeds
       { status: 200, events: [ev("e1", "Huddle", "ACTIVE", 2)] }, // refresh → count 2
     );
-    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} />);
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} onOpenDetail={noop} />);
     fireEvent.click(await screen.findByText(/Try again/i)); // retry
     expect((await screen.findByTestId("event-host-count")).textContent).toBe("1 participation");
     fireEvent.click(screen.getByTestId("event-host-refresh"));
@@ -66,17 +66,27 @@ describe("EventHostList (3.2E-EVENT-HOST)", () => {
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
+  it("(R1) each Event card is a button that opens that event's detail", async () => {
+    mockMine({ status: 200, events: [ev("e1", "Morning huddle", "ACTIVE", 2), ev("e2", "Standup", "ENDED", 1)] });
+    const onOpenDetail = vi.fn();
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} onOpenDetail={onOpenDetail} />);
+    const rows = await screen.findAllByTestId("event-host-row");
+    expect(rows[0].tagName).toBe("BUTTON");
+    fireEvent.click(rows[1]);
+    expect(onOpenDetail).toHaveBeenCalledWith("e2"); // the tapped event's id
+  });
+
   it("(7) Back returns to Learn", async () => {
     mockMine({ status: 200, events: [] });
     const onBack = vi.fn();
-    render(<EventHostList locale="en" onBack={onBack} onOpenCreate={noop} />);
+    render(<EventHostList locale="en" onBack={onBack} onOpenCreate={noop} onOpenDetail={noop} />);
     fireEvent.click(screen.getByTestId("event-host-back"));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("(9) never renders participant IDs / internal identifiers", async () => {
     mockMine({ status: 200, events: [ev("e1", "Huddle", "ACTIVE", 3)] });
-    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} />);
+    render(<EventHostList locale="en" onBack={noop} onOpenCreate={noop} onOpenDetail={noop} />);
     await screen.findByTestId("event-host-row");
     const txt = screen.getByTestId("event-host-list").textContent ?? "";
     // event id is used only as a React key, never shown.

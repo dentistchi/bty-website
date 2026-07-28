@@ -96,6 +96,15 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/onViewEvents={\(\) => setFoundryView\("event-list"\)}/);
   });
 
+  it("Event detail (roster + QR reopen) is an IN-SHELL view opened from a My-events card — R1", () => {
+    // 3.2E-EVENT-HOST-R1: tapping a card opens the owner Event detail in-shell (event-detail),
+    // carrying the selected event id; Back returns to the list. Not a route.
+    expect(src).toMatch(/foundryView === "event-detail"/);
+    expect(src).toMatch(/<EventHostDetail/);
+    expect(src).toMatch(/onOpenDetail={\(id\) => {/);
+    expect(src).toMatch(/setHostEventDetailId\(id\)/);
+  });
+
   it("Learn renders the unchanged Foundry surface + all its sub-views", () => {
     expect(src).toMatch(/tab === "learn" &&/);
     expect(src).toMatch(/<FoundryEventRooms[\s\S]*?onOpenReview={setReviewId}/);
