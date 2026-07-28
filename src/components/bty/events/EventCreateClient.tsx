@@ -32,6 +32,7 @@ const COPY = {
     working: "Opening…",
     createdHeading: "Event ready",
     scanInstruction: "Show this to participants — they scan to record their participation.",
+    viewEvents: "View my events",
     another: "Open another event",
     backLearn: "Back to Learn",
     errors: {
@@ -58,6 +59,7 @@ const COPY = {
     working: "여는 중…",
     createdHeading: "이벤트 준비됨",
     scanInstruction: "참가자에게 보여주세요 — 스캔하면 참여가 기록됩니다.",
+    viewEvents: "내 이벤트 보기",
     another: "다른 이벤트 열기",
     backLearn: "학습으로 돌아가기",
     errors: {
@@ -75,7 +77,7 @@ const COPY = {
 
 type CreatedEvent = { title: string; qrUrl: string };
 
-export default function EventCreateClient({ locale, onBack }: { locale: string; onBack?: () => void }) {
+export default function EventCreateClient({ locale, onBack, onViewEvents }: { locale: string; onBack?: () => void; onViewEvents?: () => void }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [title, setTitle] = useState("");
@@ -155,6 +157,11 @@ export default function EventCreateClient({ locale, onBack }: { locale: string; 
         <pre data-testid="event-create-qr-url" className="sr-only">{created.qrUrl}</pre>
         <p className="text-center text-sm text-white/60">{t.scanInstruction}</p>
         <div className="flex flex-col items-center gap-2">
+          {onViewEvents ? (
+            <button type="button" onClick={onViewEvents} data-testid="event-create-view-events" className="rounded-full bg-[#C9A66B] px-6 py-2.5 text-sm font-semibold text-[#0B1F3A]">
+              {t.viewEvents}
+            </button>
+          ) : null}
           <button type="button" onClick={reset} data-testid="event-create-another" className="text-sm font-semibold text-[#C9A66B]">
             {t.another}
           </button>

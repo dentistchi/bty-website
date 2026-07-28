@@ -125,4 +125,18 @@ describe("LearnDoors — Host 'Open an event' in-shell entry (3.2D-EVENT-R1)", (
     fireEvent.click(door);
     expect(onOpenEvent).toHaveBeenCalledTimes(1);
   });
+
+  it("the 'My events' door is a creator-gated in-shell button firing onOpenMyEvents — 3.2E", () => {
+    const onOpenMyEvents = vi.fn();
+    const { rerender } = render(<LearnDoors locale="en" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} onOpenMyEvents={onOpenMyEvents} />);
+    expect(screen.queryByTestId("door-my-events")).toBeNull(); // not a creator
+    rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} />);
+    expect(screen.queryByTestId("door-my-events")).toBeNull(); // no handler
+    rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenMyEvents={onOpenMyEvents} />);
+    const door = screen.getByTestId("door-my-events");
+    expect(door.tagName).toBe("BUTTON");
+    expect(door.getAttribute("href")).toBeNull();
+    fireEvent.click(door);
+    expect(onOpenMyEvents).toHaveBeenCalledTimes(1);
+  });
 });

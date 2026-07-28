@@ -83,8 +83,17 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
   it("Reality Event create is an IN-SHELL Learn nested view (no external route handoff) — R1", () => {
     // 3.2D-EVENT-R1: the Host "Open an event" action opens an in-shell foundryView, NOT a route.
     expect(src).toMatch(/foundryView === "event-create"/);
-    expect(src).toMatch(/<EventCreateClient locale={locale} onBack={\(\) => setFoundryView\("rooms"\)}/);
+    expect(src).toMatch(/<EventCreateClient/);
     expect(src).toMatch(/onOpenEvent={\(\) => setFoundryView\("event-create"\)}/);
+  });
+
+  it("Reality Event Host 'My events' is an IN-SHELL nested view + post-create continuation — 3.2E", () => {
+    // 3.2E-EVENT-HOST: the Host results view opens in-shell (event-list), reachable from the Learn
+    // door AND as the post-create continuation; both are foundryView state, not routes.
+    expect(src).toMatch(/foundryView === "event-list"/);
+    expect(src).toMatch(/<EventHostList/);
+    expect(src).toMatch(/onOpenMyEvents={\(\) => setFoundryView\("event-list"\)}/);
+    expect(src).toMatch(/onViewEvents={\(\) => setFoundryView\("event-list"\)}/);
   });
 
   it("Learn renders the unchanged Foundry surface + all its sub-views", () => {

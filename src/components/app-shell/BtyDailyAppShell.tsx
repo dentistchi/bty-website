@@ -18,6 +18,7 @@ import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import MeWeeklyTrace from "@/components/app-shell/MeWeeklyTrace";
 import MeThisWeek from "@/components/app-shell/MeThisWeek";
 import EventCreateClient from "@/components/bty/events/EventCreateClient";
+import EventHostList from "@/components/bty/events/EventHostList";
 import { fetchMeWeeklyRhythm, type MeWeeklyRhythm } from "@/components/app-shell/meWeeklyRhythm";
 import type { TodayConfidence, TodayIntelligence, TodayUserState } from "@/domain/daily/todayIntelligence";
 import {
@@ -1246,7 +1247,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Foundry sub-view (Slice 3.1B-3H): "rooms" (Required Learning + Host rooms) or "my-learning"
   // (the learner-owned private reflection history). Opened via `?tab=foundry&view=my-learning`
   // — e.g. the open-link post-claim "Continue to BTY" handoff.
-  const [foundryView, setFoundryView] = useState<"rooms" | "my-learning" | "event-create">("rooms");
+  const [foundryView, setFoundryView] = useState<"rooms" | "my-learning" | "event-create" | "event-list">("rooms");
   // Follow-up response surface (Slice 3.1B-3K): `?tab=foundry&followup=<id>` opens the focused
   // learner follow-up outcome surface inside the Foundry tab (from the Today FOLLOW_UP_DUE reminder).
   const [followupId, setFollowupId] = useState<string | null>(null);
@@ -1715,7 +1716,19 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           ) : foundryView === "event-create" ? (
             // In-shell Reality Event create (Slice 3.2D-EVENT-R1): the same EventCreateClient,
             // rendered inside the app webview so a Host authoring action never opens Safari.
-            <EventCreateClient locale={locale} onBack={() => setFoundryView("rooms")} />
+            // Post-create continuation (3.2E) → the Host "My events" participation view.
+            <EventCreateClient
+              locale={locale}
+              onBack={() => setFoundryView("rooms")}
+              onViewEvents={() => setFoundryView("event-list")}
+            />
+          ) : foundryView === "event-list" ? (
+            // In-shell Host "My events" participation view (Slice 3.2E-EVENT-HOST).
+            <EventHostList
+              locale={locale}
+              onBack={() => setFoundryView("rooms")}
+              onOpenCreate={() => setFoundryView("event-create")}
+            />
           ) : (
             <>
               {/* Learn identity header — a learner can continue/open training without first
@@ -1726,6 +1739,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 onOpenReview={setReviewId}
                 onOpenMyLearning={() => setFoundryView("my-learning")}
                 onOpenEvent={() => setFoundryView("event-create")}
+                onOpenMyEvents={() => setFoundryView("event-list")}
                 initialEventId={hostEventId}
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}

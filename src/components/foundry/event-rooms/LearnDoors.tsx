@@ -25,6 +25,8 @@ const COPY: Record<
     createCta: string;
     eventTitle: string;
     eventBody: string;
+    myEventsTitle: string;
+    myEventsBody: string;
   }
 > = {
   en: {
@@ -36,6 +38,8 @@ const COPY: Record<
     createCta: "Create training",
     eventTitle: "Open an event",
     eventBody: "Open a real moment for your team to participate in.",
+    myEventsTitle: "My events",
+    myEventsBody: "See participation in the Reality Events you opened.",
   },
   ko: {
     learnTitle: "나의 학습",
@@ -46,6 +50,8 @@ const COPY: Record<
     createCta: "트레이닝 만들기",
     eventTitle: "이벤트 열기",
     eventBody: "팀이 참여할 실제 순간을 여세요.",
+    myEventsTitle: "내 이벤트",
+    myEventsBody: "내가 연 리얼리티 이벤트의 참여 현황을 확인하세요.",
   },
 };
 
@@ -55,6 +61,7 @@ export function LearnDoors({
   onOpenLearning,
   onCreate,
   onOpenEvent,
+  onOpenMyEvents,
 }: {
   locale: Locale;
   /** True only when the user holds the existing training-creation capability. */
@@ -63,6 +70,8 @@ export function LearnDoors({
   onCreate: () => void;
   /** Opens the in-shell Event-create view (Slice 3.2D-EVENT-R1). Omitted → the door is hidden. */
   onOpenEvent?: () => void;
+  /** Opens the in-shell Host "My events" participation view (Slice 3.2E-EVENT-HOST). */
+  onOpenMyEvents?: () => void;
 }) {
   const t = COPY[locale];
   return (
@@ -102,6 +111,19 @@ export function LearnDoors({
         >
           <span className="text-lg font-semibold text-white">{t.eventTitle}</span>
           <span className="text-sm leading-6 text-white/60">{t.eventBody}</span>
+        </button>
+      ) : null}
+
+      {/* Reality Event Host results (Slice 3.2E-EVENT-HOST). In-shell callback; same creator gate. */}
+      {canCreate && onOpenMyEvents ? (
+        <button
+          type="button"
+          onClick={onOpenMyEvents}
+          data-testid="door-my-events"
+          className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
+        >
+          <span className="text-lg font-semibold text-white">{t.myEventsTitle}</span>
+          <span className="text-sm leading-6 text-white/60">{t.myEventsBody}</span>
         </button>
       ) : null}
     </section>
