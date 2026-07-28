@@ -95,14 +95,34 @@ describe("EventCreateClient — Host create flow (3.2D-EVENT)", () => {
     fireEvent.click(screen.getByTestId("event-create-submit"));
     expect((await screen.findByTestId("event-create-error")).textContent).toMatch(/went wrong/i);
   });
+
+  it("in-shell back is a callback button (no route navigation) — R1", () => {
+    const onBack = vi.fn();
+    render(<EventCreateClient locale="en" onBack={onBack} />);
+    const back = screen.getByTestId("event-create-back");
+    expect(back.tagName).toBe("BUTTON");
+    expect(back.getAttribute("href")).toBeNull();
+    fireEvent.click(back);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
 });
 
-describe("LearnDoors — Host 'Open an event' entry (3.2D-EVENT)", () => {
-  it("shows the event door only to creators and links to the create page", () => {
-    const { rerender } = render(<LearnDoors locale="en" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} />);
+describe("LearnDoors — Host 'Open an event' in-shell entry (3.2D-EVENT-R1)", () => {
+  it("is a callback BUTTON (no href/target — never leaves the app), gated on creator + handler", () => {
+    const onOpenEvent = vi.fn();
+    // Not a creator → hidden.
+    const { rerender } = render(<LearnDoors locale="en" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
     expect(screen.queryByTestId("door-open-event")).toBeNull();
+    // Creator but no handler → hidden (no dead route).
     rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} />);
+    expect(screen.queryByTestId("door-open-event")).toBeNull();
+    // Creator + handler → an in-shell button.
+    rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} onOpenEvent={onOpenEvent} />);
     const door = screen.getByTestId("door-open-event");
-    expect(door.getAttribute("href")).toBe("/en/bty/events/new");
+    expect(door.tagName).toBe("BUTTON");
+    expect(door.getAttribute("href")).toBeNull();
+    expect(door.getAttribute("target")).toBeNull();
+    fireEvent.click(door);
+    expect(onOpenEvent).toHaveBeenCalledTimes(1);
   });
 });

@@ -80,6 +80,13 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/tab === "practice" && \(?\s*<PracticeLanding/);
   });
 
+  it("Reality Event create is an IN-SHELL Learn nested view (no external route handoff) — R1", () => {
+    // 3.2D-EVENT-R1: the Host "Open an event" action opens an in-shell foundryView, NOT a route.
+    expect(src).toMatch(/foundryView === "event-create"/);
+    expect(src).toMatch(/<EventCreateClient locale={locale} onBack={\(\) => setFoundryView\("rooms"\)}/);
+    expect(src).toMatch(/onOpenEvent={\(\) => setFoundryView\("event-create"\)}/);
+  });
+
   it("Learn renders the unchanged Foundry surface + all its sub-views", () => {
     expect(src).toMatch(/tab === "learn" &&/);
     expect(src).toMatch(/<FoundryEventRooms[\s\S]*?onOpenReview={setReviewId}/);

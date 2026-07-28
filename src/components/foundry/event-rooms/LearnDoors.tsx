@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import type { Locale } from "./copy";
 
 /**
@@ -55,12 +54,15 @@ export function LearnDoors({
   canCreate,
   onOpenLearning,
   onCreate,
+  onOpenEvent,
 }: {
   locale: Locale;
   /** True only when the user holds the existing training-creation capability. */
   canCreate: boolean;
   onOpenLearning: () => void;
   onCreate: () => void;
+  /** Opens the in-shell Event-create view (Slice 3.2D-EVENT-R1). Omitted → the door is hidden. */
+  onOpenEvent?: () => void;
 }) {
   const t = COPY[locale];
   return (
@@ -88,17 +90,19 @@ export function LearnDoors({
         </button>
       ) : null}
 
-      {/* Reality Event Host entry (Slice 3.2D-EVENT). Visibility mirrors the creator
-          capability; the leader-track authority is enforced by POST /api/bty/events. */}
-      {canCreate ? (
-        <Link
-          href={`/${locale}/bty/events/new`}
+      {/* Reality Event Host entry (Slice 3.2D-EVENT-R1). IN-SHELL callback (not a route
+          link) so it never leaves the installed app webview; visibility mirrors the creator
+          capability, and the leader-track authority is enforced by POST /api/bty/events. */}
+      {canCreate && onOpenEvent ? (
+        <button
+          type="button"
+          onClick={onOpenEvent}
           data-testid="door-open-event"
           className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
         >
           <span className="text-lg font-semibold text-white">{t.eventTitle}</span>
           <span className="text-sm leading-6 text-white/60">{t.eventBody}</span>
-        </Link>
+        </button>
       ) : null}
     </section>
   );

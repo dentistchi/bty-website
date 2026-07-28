@@ -75,7 +75,7 @@ const COPY = {
 
 type CreatedEvent = { title: string; qrUrl: string };
 
-export default function EventCreateClient({ locale }: { locale: string }) {
+export default function EventCreateClient({ locale, onBack }: { locale: string; onBack?: () => void }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
   const [title, setTitle] = useState("");
@@ -131,6 +131,19 @@ export default function EventCreateClient({ locale }: { locale: string }) {
     setErrorReason(null);
   }
 
+  // Back returns to Learn. In-shell (onBack provided) → a local callback so the installed app
+  // never leaves the webview (Slice 3.2D-EVENT-R1); standalone/web fallback → a same-origin link.
+  const back = (extra: string) =>
+    onBack ? (
+      <button type="button" onClick={onBack} data-testid="event-create-back" className={`text-xs font-medium text-white/45 hover:text-white/70 ${extra}`}>
+        {t.backLearn}
+      </button>
+    ) : (
+      <Link href={`/${loc}/app?tab=learn`} data-testid="event-create-back" className={`text-xs font-medium text-white/45 hover:text-white/70 ${extra}`}>
+        {t.backLearn}
+      </Link>
+    );
+
   if (created) {
     return (
       <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-5 px-6 py-10 text-white" data-testid="event-create-done">
@@ -145,9 +158,7 @@ export default function EventCreateClient({ locale }: { locale: string }) {
           <button type="button" onClick={reset} data-testid="event-create-another" className="text-sm font-semibold text-[#C9A66B]">
             {t.another}
           </button>
-          <Link href={`/${loc}/app?tab=learn`} data-testid="event-create-back" className="text-xs font-medium text-white/45 hover:text-white/70">
-            {t.backLearn}
-          </Link>
+          {back("")}
         </div>
       </main>
     );
@@ -191,9 +202,7 @@ export default function EventCreateClient({ locale }: { locale: string }) {
         {submitting ? t.working : t.submit}
       </button>
 
-      <Link href={`/${loc}/app?tab=learn`} data-testid="event-create-back" className="text-center text-xs font-medium text-white/45 hover:text-white/70">
-        {t.backLearn}
-      </Link>
+      {back("text-center")}
     </main>
   );
 }

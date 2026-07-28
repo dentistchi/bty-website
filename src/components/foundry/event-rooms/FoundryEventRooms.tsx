@@ -45,6 +45,7 @@ export default function FoundryEventRooms({
   locale,
   onOpenReview = () => {},
   onOpenMyLearning = () => {},
+  onOpenEvent,
   initialEventId = null,
   initialFocusSection = null,
   initialFocusId = null,
@@ -55,6 +56,8 @@ export default function FoundryEventRooms({
   onOpenReview?: (assignmentId: string) => void;
   /** Open the learner's own My Learning / private reflection history (in-shell, Slice 3.1B-3H). */
   onOpenMyLearning?: () => void;
+  /** Open the in-shell Reality Event create view (Slice 3.2D-EVENT-R1). */
+  onOpenEvent?: () => void;
   /** Host Leadership Attention deep link (Slice 3.1B-3L): open this OWNED event's control room on
    *  mount, focused on the given section/row. Null = normal Foundry home. Server owner-scopes the
    *  control-room reads; a not-owned event simply resolves to an empty room (no disclosure). */
@@ -251,7 +254,7 @@ export default function FoundryEventRooms({
     }
   }, []);
   const learnDoors = (
-    <LearnDoors locale={loc} canCreate={access === "host"} onOpenLearning={openLearning} onCreate={startNewDraft} />
+    <LearnDoors locale={loc} canCreate={access === "host"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} />
   );
   const requiredLearning = (
     <div id="learn-required">
