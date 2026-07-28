@@ -28,6 +28,30 @@ export const CreateRequestSchema = z
   });
 export type CreateRequestInput = z.infer<typeof CreateRequestSchema>;
 
+// My Songs (BUILD 20A) — the account saves ONE YouTube song into its personal
+// library. Ownership is the canonical account, always derived server-side from the
+// session, so NO accountId/roomId/eventId/requestId/cancelToken is accepted here:
+// `.strict()` rejects every field outside this contract. videoId is enforced to the
+// exact canonical 11-char form (mirrors domain/youtube.ts VIDEO_ID and the DB CHECK)
+// — stricter than the guest request path, which only length-bounds it. Snapshots are
+// trimmed + bounded; the thumbnail must be an https URL.
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+export const SaveSongSchema = z
+  .object({
+    videoId: z.string().trim().regex(YOUTUBE_VIDEO_ID, 'Invalid video id'),
+    title: z.string().trim().min(1, 'Title is required').max(300),
+    artist: z.string().trim().min(1).max(200).nullish(),
+    thumbnailUrl: z
+      .string()
+      .trim()
+      .url()
+      .max(600)
+      .refine((u) => u.startsWith('https://'), 'Thumbnail must be https')
+      .nullish(),
+  })
+  .strict();
+export type SaveSongInput = z.infer<typeof SaveSongSchema>;
+
 // First-room onboarding: the Host supplies ONLY a Norebang display name. The slug
 // is generated server-side; no owner, slug, or redirect is ever accepted from the
 // client. Bounded 1..80 to match the workspace-name and account display-name limits.
