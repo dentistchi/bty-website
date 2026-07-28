@@ -82,22 +82,30 @@ describe("POST /api/bty/events/scan", () => {
     reprojectCoreDerivedFields.mockResolvedValue(undefined);
   });
 
-  it("(1) non-approved member → 403 and NO insert/award (rpc not called)", async () => {
-    requireApprovedMembership.mockResolvedValue({
-      approved: false,
-      status: 403,
-      error: "MEMBERSHIP_REQUIRED",
-      reason: "pending",
-    });
+  it("(R3-1) an authenticated account WITHOUT approved membership CAN record participation", async () => {
+    // The Event QR is the participation invitation — no pre-existing approved membership is
+    // required (R3). Even a not-approved gate result must not block the scan.
+    requireApprovedMembership.mockResolvedValue({ approved: false, status: 403, error: "MEMBERSHIP_REQUIRED", reason: "no_request" });
+    rpc.mockResolvedValue({ data: [{ fresh_insert: true, already_scanned: false, xp_awarded: 50, new_core_xp: 50 }], error: null });
     const token = tokenFor(EVENT_ID, Date.now() + 3_600_000);
 
     const res = await POST(post({ token }));
     const json = await res.json();
 
-    expect(res.status).toBe(403);
-    expect(json).toMatchObject({ ok: false, error: "MEMBERSHIP_REQUIRED" });
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({ ok: true, already_scanned: false, xp_awarded: 50 });
+    // user_id stays SERVER-derived (session), xp is the event's — never client-supplied.
+    expect(rpc).toHaveBeenCalledWith("bty_event_scan_award", { p_event_id: EVENT_ID, p_user_id: USER.id, p_xp: 50 });
+  });
+
+  it("(R3-2) anonymous → 401 and NO insert/award (rpc not called)", async () => {
+    getUser.mockResolvedValue({ data: { user: null } });
+    const token = tokenFor(EVENT_ID, Date.now() + 3_600_000);
+    const res = await POST(post({ token }));
+    const json = await res.json();
+    expect(res.status).toBe(401);
+    expect(json).toMatchObject({ ok: false, error: "UNAUTHENTICATED" });
     expect(rpc).not.toHaveBeenCalled();
-    expect(reprojectCoreDerivedFields).not.toHaveBeenCalled();
   });
 
   it("(R2) an unexpected throw returns a CLEAN JSON 500 (never a raw Internal Server Error)", async () => {

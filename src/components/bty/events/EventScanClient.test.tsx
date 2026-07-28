@@ -83,14 +83,25 @@ describe("EventScanClient — member scan flow (3.2D-EVENT)", () => {
     // (retry path: the error view returns to Today; a fresh scan of the same QR would re-POST)
   });
 
-  it("not-eligible (403) → calm eligibility denial, distinct from an unexpected failure — R2", async () => {
-    mockScan({ status: 403, body: { ok: false, error: "MEMBERSHIP_REQUIRED" } });
+  it("renders on a readable dark surface with a visible Back-to-Today control — R3", () => {
+    mockScan();
+    render(<EventScanClient locale="en" token={TOKEN} />);
+    const main = screen.getByTestId("event-scan");
+    // Full-viewport BTY-navy background + white text (fixes white-on-pale invisibility).
+    expect(main.className).toMatch(/bg-\[#0B1F3A\]/);
+    expect(main.className).toMatch(/text-white/);
+    const back = screen.getByTestId("event-scan-today");
+    expect(back.className).toMatch(/border/); // a clearly actionable pill, not faint text
+    expect(back.getAttribute("href")).toBe("/en/app?tab=today");
+  });
+
+  it("no membership-denial copy appears in the normal scan flow — R3", async () => {
+    // Approved membership is no longer required, so the denial state is gone.
+    mockScan({ status: 200, body: { ok: true, already_scanned: false, xp_awarded: 20, event: { title: "Standup" } } });
     render(<EventScanClient locale="en" token={TOKEN} />);
     fireEvent.click(screen.getByTestId("event-scan-confirm"));
-    const err = await screen.findByTestId("event-scan-error");
-    expect(err.textContent).toMatch(/could not be recorded for this account/i);
-    expect(err.textContent).not.toMatch(/internal server error/i);
-    expect(err.textContent).not.toMatch(/try again/i);
+    expect(await screen.findByTestId("event-scan-verified")).toBeTruthy();
+    expect(screen.queryByText(/could not be recorded for this account/i)).toBeNull();
   });
 
   it("unexpected server failure (500) → clear retry message, not 'Internal Server Error' — R2", async () => {

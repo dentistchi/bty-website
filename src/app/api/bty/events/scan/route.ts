@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyEventQrToken } from "@/lib/bty/event-qr/event-qr-token";
 import { reprojectCoreDerivedFields } from "@/lib/bty/event-qr/reprojectCoreDerivedFields";
@@ -10,13 +9,13 @@ export const runtime = "nodejs";
 /**
  * POST /api/bty/events/scan — Reality Event scan + Core XP award (Slice 2b).
  *
- * An approved member scans a Reality Event QR (`btyev1` token) and is awarded the
- * event's Core XP exactly once. Mirrors the 2a creation route's gate order but
- * drops the leader-track gate (creation-only) — any approved member may scan.
+ * Any authenticated account scans a Reality Event QR (`btyev1` token) and is awarded
+ * the event's Core XP exactly once. The Event QR is the participation invitation, so
+ * this route does NOT require approved Arena membership (R3) — only a signed-in
+ * session; Event CREATION still requires approved + leader-track (unchanged).
  *
- * Auth/gate order: requireUser (401) → approved member (403) → body { token } (400)
- * → verifyEventQrToken (401) → DB event guard (404 / 409 cancelled / 410 expired)
- * → atomic scan-award RPC → response.
+ * Auth/gate order: requireUser (401) → body { token } (400) → verifyEventQrToken (401)
+ * → DB event guard (404 / 409 cancelled / 410 expired) → atomic scan-award RPC → response.
  *
  * The participation insert and the permanent Core XP add are bound atomically by
  * the `bty_event_scan_award` Postgres function (idempotent via
@@ -39,11 +38,11 @@ async function handleScan(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
 
-  // Approved-member gate (RLS self-read). Leader-track is creation-only — not here.
-  const gate = await requireApprovedMembership(supabase, user.id);
-  if (!gate.approved) {
-    return NextResponse.json({ ok: false, error: gate.error }, { status: gate.status });
-  }
+  // Participant authorization (Slice 3.2D-EVENT-R3): a valid Event QR is the participation
+  // invitation capability. Recording participation requires ONLY an authenticated server session
+  // (above) + a valid btyev1 token (below) + an active Event — NOT pre-existing approved Arena
+  // membership (that gate is for Arena runs / Event CREATION, unchanged). user_id stays
+  // server-derived; anonymous is still blocked by the 401 above.
 
   const body = await req.json().catch(() => ({}));
   const token = typeof body?.token === "string" ? body.token.trim() : "";

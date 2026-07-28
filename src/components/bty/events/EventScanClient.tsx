@@ -32,7 +32,7 @@ const COPY = {
     verifiedTitle: "Participation verified",
     verifiedBody: "Your participation was recorded.",
     alreadyTitle: "Already recorded",
-    alreadyBody: "Your participation for this event is already recorded.",
+    alreadyBody: "Your participation was already recorded for this event.",
     xp: (n: number) => `+${n} XP`,
     signIn: "Sign in to record participation",
     backToday: "Back to Today",
@@ -45,9 +45,7 @@ const COPY = {
       event_expired: "This event has ended.",
       event_cancelled: "This event was cancelled.",
       event_not_found: "This event could not be found.",
-      not_eligible: "Participation could not be recorded for this account.",
-      MEMBERSHIP_REQUIRED: "Participation could not be recorded for this account.",
-      server: "We couldn't record your participation. Please try again.",
+      server: "We couldn't record your participation. Try again.",
     } as Record<string, string>,
   },
   ko: {
@@ -58,7 +56,7 @@ const COPY = {
     verifiedTitle: "참여 확인됨",
     verifiedBody: "참여가 기록되었습니다.",
     alreadyTitle: "이미 기록됨",
-    alreadyBody: "이 이벤트에 대한 참여가 이미 기록되어 있습니다.",
+    alreadyBody: "이 이벤트에 대한 참여가 이미 기록되었습니다.",
     xp: (n: number) => `+${n} XP`,
     signIn: "로그인하여 참여 기록",
     backToday: "오늘로 돌아가기",
@@ -71,8 +69,6 @@ const COPY = {
       event_expired: "이 이벤트는 종료되었습니다.",
       event_cancelled: "취소된 이벤트입니다.",
       event_not_found: "이벤트를 찾을 수 없습니다.",
-      not_eligible: "이 계정으로는 참여를 기록할 수 없습니다.",
-      MEMBERSHIP_REQUIRED: "이 계정으로는 참여를 기록할 수 없습니다.",
       server: "참여를 기록하지 못했습니다. 다시 시도하세요.",
     } as Record<string, string>,
   },
@@ -116,13 +112,6 @@ export default function EventScanClient({ locale, token }: { locale: string; tok
         setPhase("error");
         return;
       }
-      if (res.status === 403) {
-        // Authenticated but not eligible/approved → a calm, distinct eligibility denial
-        // (never the generic "internal error"). Not a participation, not XP.
-        setErrorReason(data?.error ?? "not_eligible");
-        setPhase("error");
-        return;
-      }
       if (!res.ok || !data?.ok) {
         setErrorReason(data?.error ?? "server");
         setPhase("error");
@@ -142,7 +131,11 @@ export default function EventScanClient({ locale, token }: { locale: string; tok
     : `/${loc}/bty/login`;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-5 px-6 py-10 text-white" data-testid="event-scan">
+    // R3 readability: a full-viewport BTY-navy surface so the white result/error copy and the
+    // Back-to-Today control are clearly legible on physical iPhone Safari (the standalone scan
+    // route has no dark app-shell background of its own).
+    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0B1F3A] px-6 py-10 text-white" data-testid="event-scan">
+      <div className="flex w-full max-w-sm flex-col items-center gap-6">
       {phase === "verified" ? (
         <section className="flex flex-col items-center gap-2 text-center" data-testid="event-scan-verified">
           <span className="text-3xl">✅</span>
@@ -188,9 +181,14 @@ export default function EventScanClient({ locale, token }: { locale: string; tok
         </section>
       )}
 
-      <Link href={todayHref} data-testid="event-scan-today" className="text-xs font-medium text-white/45 hover:text-white/70">
-        {t.backToday}
-      </Link>
+        <Link
+          href={todayHref}
+          data-testid="event-scan-today"
+          className="mt-2 rounded-full border border-white/25 px-5 py-2 text-sm font-medium text-white/90 hover:bg-white/10"
+        >
+          {t.backToday}
+        </Link>
+      </div>
     </main>
   );
 }
