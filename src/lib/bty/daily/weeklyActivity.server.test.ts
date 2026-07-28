@@ -13,13 +13,14 @@ import { loadWeeklyActivity } from "./weeklyActivity.server";
  * fail-soft WITHOUT a live DB. `dear_me_letters` deliberately errors to prove a
  * failing source is OMITTED (undefined) rather than shown as 0.
  */
-function fakeAdmin(now: Date) {
+function fakeAdmin(now: Date, opts: { eventsError?: boolean } = {}) {
   const gte: Record<string, string> = {};
   const lt: Record<string, string> = {};
+  const eqs: Record<string, Array<[string, string]>> = {};
   function builder(table: string) {
     const b: any = {
       select: () => b,
-      eq: () => b,
+      eq: (c: string, v: string) => ((eqs[table] ??= []).push([c, v]), b),
       is: () => b,
       not: () => b,
       gte: (_c: string, v: string) => ((gte[table] = v), b),
@@ -41,6 +42,8 @@ function fakeAdmin(now: Date) {
           resolve({ count: 1, error: null });
         } else if (table === "bty_action_contracts") {
           resolve({ count: 2, error: null });
+        } else if (table === "bty_event_participation") {
+          resolve(opts.eventsError ? { count: null, error: { message: "boom" } } : { count: 4, error: null });
         } else {
           resolve({ count: 0, error: null });
         }
@@ -48,7 +51,7 @@ function fakeAdmin(now: Date) {
     };
     return b;
   }
-  return { from: (t: string) => builder(t), _gte: gte, _lt: lt } as any;
+  return { from: (t: string) => builder(t), _gte: gte, _lt: lt, _eqs: eqs } as any;
 }
 
 describe("loadWeeklyActivity — canonical window + per-category fail-soft", () => {
@@ -63,8 +66,25 @@ describe("loadWeeklyActivity — canonical window + per-category fail-soft", () 
     expect(s.trainingsCompleted).toBe(1); // training progress
     expect(s.trainingsCreated).toBe(1); // first owned run in window
     expect(s.actionPlansCompleted).toBe(2); // approved field_action reviewed in window
+    expect(s.eventsParticipated).toBe(4); // 3.2F: the user's own Reality Event participations
     // dear_me_letters errored → OMITTED, never coerced to 0.
     expect(s.centerReflections).toBeUndefined();
+  });
+
+  it("(3.2F) event participation is OWNER-SCOPED and uses the same 7-day/05:00 window", async () => {
+    const admin = fakeAdmin(now);
+    await loadWeeklyActivity(admin, "u1", now, "UTC");
+    // scoped to the session user_id (never client-supplied)
+    expect(admin._eqs["bty_event_participation"]).toContainEqual(["user_id", "u1"]);
+    // same window bounds as the rest of the weekly story
+    expect(admin._gte["bty_event_participation"]).toBe(admin._gte["user_day"]);
+    expect(admin._lt["bty_event_participation"]).toBe(admin._lt["user_day"]);
+  });
+
+  it("(3.2F) a failing event-participation query is OMITTED (undefined), never a canonical 0", async () => {
+    const admin = fakeAdmin(now, { eventsError: true });
+    const s = await loadWeeklyActivity(admin, "u1", now, "UTC");
+    expect(s.eventsParticipated).toBeUndefined();
   });
 
   it("scopes count windows to the last 7 BTY days (05:00 rollover), ending after today", async () => {

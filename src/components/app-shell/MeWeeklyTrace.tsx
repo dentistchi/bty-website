@@ -20,8 +20,8 @@ import { choosePopupPlacement } from "@/domain/daily/popupPlacement";
  */
 
 const COPY = {
-  en: { show: "Show this week", hide: "Hide this week", title: "This week", activity: "Activity recorded", noActivity: "No activity recorded" },
-  ko: { show: "이번 주 보기", hide: "이번 주 닫기", title: "이번 주", activity: "활동 기록됨", noActivity: "활동 없음" },
+  en: { show: "Show this week", hide: "Hide this week", title: "This week", activity: "Activity recorded", noActivity: "No activity recorded", events: "Events" },
+  ko: { show: "이번 주 보기", hide: "이번 주 닫기", title: "이번 주", activity: "활동 기록됨", noActivity: "활동 없음", events: "이벤트" },
 };
 
 function deviceTz(): string | null {
@@ -159,6 +159,21 @@ export default function MeWeeklyTrace({
             <p className="mt-2 text-[0.78rem] text-white/70" data-testid="me-week-day-detail">
               {fmtDate(attendance[selectedDay].date, loc)} · {attendance[selectedDay].active ? t.activity : t.noActivity}
             </p>
+          ) : null}
+
+          {/* Events this week (Slice 3.2F): the participant's OWN Reality Event participations —
+              "this Event was part of my week". Title + date only; newest-first; omitted when empty
+              (a proven zero is shown by the Me summary chip, per the existing category policy). */}
+          {detail?.eventsParticipated && detail.eventsParticipated.length > 0 ? (
+            <div className="mt-3 flex flex-col gap-1" data-testid="me-week-events">
+              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.events}</span>
+              {detail.eventsParticipated.map((e, i) => (
+                <div key={i} className="flex items-baseline justify-between gap-2 text-[0.8rem]" data-testid="me-week-event-item">
+                  <span className="min-w-0 truncate text-white/75">{e.title}</span>
+                  <span className="shrink-0 text-white/40">{fmtDate(e.date, loc)}</span>
+                </div>
+              ))}
+            </div>
           ) : null}
         </div>
       ) : null}

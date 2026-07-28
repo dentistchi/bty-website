@@ -13,8 +13,9 @@ const DAY = 24 * 3600 * 1000;
  * queries. Routes resolved rows by (table, isCount, selectCols). Records the dear_me_letters
  * select columns so the test can PROVE the reflection body is never read.
  */
-function fakeAdmin(now: Date, sink: { reflectionSelect?: string; userDayGte?: string; userDayLt?: string }) {
+function fakeAdmin(now: Date, sink: { reflectionSelect?: string; userDayGte?: string; userDayLt?: string; eventsGte?: string; eventsLt?: string; eventsOrder?: [string, unknown] }) {
   const todayStart = new Date(Date.UTC(2026, 6, 27, 5, 0, 0)); // 05:00 UTC BTY rollover for now
+  const olderInWindow = new Date(now.getTime() - 3 * DAY).toISOString();
   function builder(table: string) {
     let isCount = false;
     let cols = "";
@@ -29,13 +30,18 @@ function fakeAdmin(now: Date, sink: { reflectionSelect?: string; userDayGte?: st
       is: () => b,
       not: () => b,
       in: () => b,
-      order: () => b,
+      order: (c: string, o: unknown) => {
+        if (table === "bty_event_participation") sink.eventsOrder = [c, o];
+        return b;
+      },
       gte: (_c: string, v: string) => {
         if (table === "user_day" && !isCount) sink.userDayGte = v;
+        if (table === "bty_event_participation" && !isCount) sink.eventsGte = v;
         return b;
       },
       lt: (_c: string, v: string) => {
         if (table === "user_day" && !isCount) sink.userDayLt = v;
+        if (table === "bty_event_participation" && !isCount) sink.eventsLt = v;
         return b;
       },
       maybeSingle: async () =>
@@ -46,8 +52,17 @@ function fakeAdmin(now: Date, sink: { reflectionSelect?: string; userDayGte?: st
             : { data: null, error: null },
       then: (resolve: (v: unknown) => void) => {
         if (isCount) {
-          const counts: Record<string, number> = { user_day: 2, foundry_event_training_progress: 1, dear_me_letters: 0, bty_action_contracts: 3 };
+          const counts: Record<string, number> = { user_day: 2, foundry_event_training_progress: 1, dear_me_letters: 0, bty_action_contracts: 3, bty_event_participation: 2 };
           resolve({ count: counts[table] ?? 0, error: null });
+          return;
+        }
+        if (table === "bty_event_participation") {
+          // newest-first as the DB order returns them; NO user_id / participation id / token / xp.
+          resolve({ data: [{ event_id: "ev2", scanned_at: now.toISOString() }, { event_id: "ev1", scanned_at: olderInWindow }], error: null });
+          return;
+        }
+        if (table === "bty_events") {
+          resolve({ data: [{ id: "ev1", title: "Morning huddle" }, { id: "ev2", title: "Kickoff" }], error: null });
           return;
         }
         if (table === "user_day") {
@@ -100,6 +115,37 @@ describe("loadWeeklyActivityDetail (B3A.2D-R1)", () => {
 
     // Summary still present.
     expect(d.summary.weeklyPoints).toBe(42);
+  });
+
+  it("(3.2F) resolves the participant's OWN event participations: title + scanned_at, newest-first, same window, no PII", async () => {
+    const sink: { eventsGte?: string; eventsLt?: string; eventsOrder?: [string, unknown] } = {};
+    const d = await loadWeeklyActivityDetail(fakeAdmin(now, sink), "u1", now, "UTC");
+    const older = new Date(now.getTime() - 3 * DAY).toISOString();
+    // Titles resolved via bty_events; newest-first as returned; only { title, date }.
+    expect(d.eventsParticipated).toEqual([
+      { title: "Kickoff", date: now.toISOString() },
+      { title: "Morning huddle", date: older },
+    ]);
+    // requested newest-first by scanned_at
+    expect(sink.eventsOrder).toEqual(["scanned_at", { ascending: false }]);
+    // same 7-day/05:00 window as the rest of the weekly story
+    const span = (new Date(sink.eventsLt!).getTime() - new Date(sink.eventsGte!).getTime()) / DAY;
+    expect(span).toBe(7);
+    expect(new Date(sink.eventsGte!).getUTCHours()).toBe(5);
+    // no internal ids / user / token in the serialized items
+    const blob = JSON.stringify(d.eventsParticipated);
+    for (const forbidden of ["event_id", "user_id", "ev1", "ev2", "token"]) expect(blob).not.toContain(forbidden);
+  });
+
+  it("(3.2F) an event with an unresolved title fails soft to a generic label (no id fabrication)", async () => {
+    // bty_events returns no matching title row → item keeps a generic "Event" (never an id).
+    const admin = fakeAdmin(now, {});
+    // shadow bty_events to return nothing
+    const orig = admin.from;
+    admin.from = (t: string) => (t === "bty_events" ? { select: () => ({ in: () => ({ then: (r: any) => r({ data: [], error: null }) }) }) } : orig(t));
+    const d = await loadWeeklyActivityDetail(admin, "u1", now, "UTC");
+    expect(d.eventsParticipated?.every((e) => e.title === "Event")).toBe(true);
+    expect(JSON.stringify(d.eventsParticipated)).not.toMatch(/ev1|ev2/);
   });
 
   it("reads ONLY the date for Center reflections — the body is never selected (privacy)", async () => {

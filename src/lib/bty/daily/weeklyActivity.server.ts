@@ -21,6 +21,9 @@ import { countFirstPublishedRunsInWindow } from "@/domain/daily/yesterdayCreatio
  *   - centerReflections   = dear_me_letters in window.
  *   - actionPlansCompleted= bty_action_contracts action_type='field_action' status='approved'
  *                           (the completed/verified state) with reviewed_at in window.
+ *   - eventsParticipated  = the user's OWN bty_event_participation rows with scanned_at in window
+ *                           (Slice 3.2F: the participant's verified Reality Event presence, made
+ *                           visible in their own week). Attendance/presence only — never Core-XP.
  * Writes nothing.
  */
 
@@ -32,6 +35,7 @@ export type WeeklySummary = {
   trainingsCreated?: number;
   centerReflections?: number;
   actionPlansCompleted?: number;
+  eventsParticipated?: number;
 };
 
 async function safeCount(p: PromiseLike<{ count: number | null; error: unknown }>): Promise<number | undefined> {
@@ -80,7 +84,7 @@ export async function loadWeeklyActivity(
     }
   })();
 
-  const [weeklyPoints, forgeStage, activeDays, trainingsCompleted, trainingsCreated, centerReflections, actionPlansCompleted] = await Promise.all([
+  const [weeklyPoints, forgeStage, activeDays, trainingsCompleted, trainingsCreated, centerReflections, actionPlansCompleted, eventsParticipated] = await Promise.all([
     safeScalar(admin.from("weekly_xp").select("xp_total").eq("user_id", userId).is("league_id", null).maybeSingle(), "xp_total"),
     safeScalar(admin.from("arena_profiles").select("stage").eq("user_id", userId).maybeSingle(), "stage"),
     safeCount(win("user_day", "opened_at").eq("user_id", userId)),
@@ -88,9 +92,11 @@ export async function loadWeeklyActivity(
     runsCreated,
     safeCount(win("dear_me_letters").eq("user_id", userId)),
     safeCount(win("bty_action_contracts", "reviewed_at").eq("user_id", userId).eq("action_type", "field_action").eq("status", "approved")),
+    // The user's OWN verified Reality Event participations (server-scoped by user_id; scanned_at window).
+    safeCount(win("bty_event_participation", "scanned_at").eq("user_id", userId)),
   ]);
 
-  return { weeklyPoints, forgeStage, activeDays, trainingsCompleted, trainingsCreated, centerReflections, actionPlansCompleted };
+  return { weeklyPoints, forgeStage, activeDays, trainingsCompleted, trainingsCreated, centerReflections, actionPlansCompleted, eventsParticipated };
 }
 
 // ── This Week DETAIL (Slice 3.2C-B3A.2D-R1) ──────────────────────────────────────────────────
@@ -113,6 +119,9 @@ export type WeeklyActivityDetail = {
   /** Date only — the reflection BODY is never read/returned (privacy invariant). */
   centerReflections?: { date: string }[];
   actionPlansCompleted?: WeeklyDetailItem[];
+  /** The user's OWN Reality Event participations: event title + scanned_at, newest-first (Slice 3.2F).
+   *  No event_id / user_id / participation id / token / other participant / XP. */
+  eventsParticipated?: WeeklyDetailItem[];
 };
 
 function rows(v: { data: unknown; error: unknown }): Array<Record<string, unknown>> {
@@ -215,5 +224,25 @@ export async function loadWeeklyActivityDetail(
     }
   })();
 
-  return { summary, window: { startIso, endIso }, attendance, learningCompleted, trainingCreated, centerReflections, actionPlansCompleted };
+  // Event participations — the user's OWN rows by scanned_at, newest-first; the canonical Event
+  // title is resolved through bty_events (FK is ON DELETE CASCADE, so a live participation always
+  // has a resolvable event; item-level fail-soft keeps a title miss from fabricating an id).
+  const eventsParticipated = await (async (): Promise<WeeklyDetailItem[] | undefined> => {
+    try {
+      const res = await admin.from("bty_event_participation").select("event_id, scanned_at").eq("user_id", userId).gte("scanned_at", startIso).lt("scanned_at", endIso).order("scanned_at", { ascending: false });
+      if (res.error) return undefined;
+      const list = rows(res);
+      const ids = [...new Set(list.map((r) => str(r.event_id)).filter(Boolean))];
+      const titles = new Map<string, string>();
+      if (ids.length) {
+        const ev = await admin.from("bty_events").select("id, title").in("id", ids);
+        for (const e of rows(ev)) titles.set(str(e.id), str(e.title));
+      }
+      return list.map((r) => ({ title: titles.get(str(r.event_id)) || "Event", date: str(r.scanned_at) }));
+    } catch {
+      return undefined;
+    }
+  })();
+
+  return { summary, window: { startIso, endIso }, attendance, learningCompleted, trainingCreated, centerReflections, actionPlansCompleted, eventsParticipated };
 }

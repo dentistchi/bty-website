@@ -25,6 +25,7 @@ const COPY = {
     created: (n: number) => `${n} created`,
     center: (n: number) => `${n} Center`,
     actions: (n: number) => `${n} action ${n === 1 ? "plan" : "plans"}`,
+    events: (n: number) => `${n} ${n === 1 ? "event" : "events"}`,
     quiet: "A quiet week so far.",
     loading: "Loading your week…",
   },
@@ -38,6 +39,7 @@ const COPY = {
     created: (n: number) => `생성 ${n}`,
     center: (n: number) => `센터 ${n}`,
     actions: (n: number) => `행동 계획 ${n}`,
+    events: (n: number) => `이벤트 ${n}`,
     quiet: "아직 조용한 한 주입니다.",
     loading: "이번 주 불러오는 중…",
   },
@@ -104,6 +106,7 @@ export default function MeThisWeek({
   if (typeof s.trainingsCreated === "number") chips.push(t.created(s.trainingsCreated));
   if (typeof s.centerReflections === "number") chips.push(t.center(s.centerReflections));
   if (typeof s.actionPlansCompleted === "number") chips.push(t.actions(s.actionPlansCompleted));
+  if (typeof s.eventsParticipated === "number") chips.push(t.events(s.eventsParticipated));
 
   const stage = typeof s.forgeStage === "number" ? s.forgeStage : null;
 
