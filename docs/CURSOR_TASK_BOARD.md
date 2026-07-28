@@ -1,5 +1,13 @@
 # CURSOR TASK BOARD — 2026-03-23
 
+**[x] 3.2D-EVENT — REALITY EVENT CREATE-TO-VERIFY UI V1 — PASS · CLOSED (2026-07-28, Founder physical-device gates PASSED + read-only data reconciliation; no migration; production unchanged).** End-to-end Reality Event vertical over the pre-built backend (`bty_events`/`bty_event_participation`/`bty_event_scan_award`/`btyev1` QR): leader opens an event (in-shell Host create → canonical QR), any authenticated participant scans → participation recorded once. Inner closure HEAD `6c4c9517`; staging Worker `46f813d5-0546-4ff6-9721-fda774ed3f71` (100%); production UNCHANGED. Device gates PASS: in-shell Host create (never leaves the app), new-unapproved-account first participation, readable result surface + visible Back-to-Today, repeat scan → "Already recorded" (no duplicate award), Action QR regression preserved, no unexplained 500. Data proof: participation 2 rows / 2 distinct pairs / 0 duplicates / 0 orphans; device-test pair = 1 participation, repeat added 0. Sequence:
+- [x] 3.2D-EVENT V1 create-to-verify UI — `404b257a`
+- [x] R1 In-Shell Host Event Entry Fix (Open-an-event is an in-shell Learn view) — `ad9b43e1`
+- [x] R2 Error Surface + Observability (no raw 500; exact error logged; eligibility vs failure copy) — `d6369f2e`
+- [x] R3 Event QR Participant Authorization Fix (valid QR + auth + active event → participate; creation still approved+leader-track) + readable navy scan surface — `6c4c9517`
+
+Final contract: creator = approved + leader-track; participant = valid `btyev1` QR + authenticated + active Event; `btyev1` ≠ `aalo1`; participant `user_id` server-derived; XP server-authored; one participation + one award per `(event_id,user_id)`; anonymous → 401; creation authority unchanged; no migration.
+
 **[x] 3.2C-B3A — APP SHELL / REALITY-GROUNDED GUIDED JOURNEY SERIES — CLOSED · COMPLETE (2026-07-27, ledger reconciliation; Founder-confirmed physical-device PASS · staging-only · production unchanged).** Inner closure HEAD `8733a71e`; active staging Worker `3491e8d6-f3d8-46e6-8f4d-53d4c7f4c72d` (100%); production UNCHANGED. Tests: full unit 5976 pass / 16 pre-existing / 7 skip (0 new); app-shell 312; startup Orb + /start 30 (unchanged). Sequence:
 - [x] B3A Reality-Grounded Guided Journey — `1c42991d`
 - [x] B3A.1 two-door My learning / Create training — `aa3cf1fc`
