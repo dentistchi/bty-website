@@ -31,6 +31,13 @@ export const dynamic = "force-dynamic";
  */
 type Participant = { displayName: string | null; participatedAt: string };
 
+/** Trim + reject empty / literal "null"/"undefined"; preserve Unicode/Korean; never derive from ids. */
+function normLabel(v: string | null | undefined): string | null {
+  const s = (v ?? "").trim();
+  if (!s || s === "null" || s === "undefined") return null;
+  return s;
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
   const supabase = await getSupabaseServerClient();
@@ -66,14 +73,39 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ even
     return NextResponse.json({ error: "event_read_failed" }, { status: 500 });
   }
   const rows = partData ?? [];
-  const userIds = [...new Set(rows.map((r) => r.user_id as string))];
+  const userIds = [...new Set(rows.map((r) => r.user_id as string))]; // deduped
+
+  // Locked identity precedence (R2): arena_profiles.display_name → auth metadata full_name → name
+  // → canonical email → null (client shows the generic "Participant" last resort). Each label is
+  // trimmed and empties/"null"/"undefined" are rejected. Two distinct accounts are distinguishable
+  // whenever a name or email exists. NEVER returns user_id/email-as-a-separate-field/ids.
   const names = new Map<string, string | null>();
   if (userIds.length > 0) {
     const { data: profs } = await admin.from("arena_profiles").select("user_id, display_name").in("user_id", userIds);
-    for (const p of profs ?? []) names.set(p.user_id as string, (p.display_name as string | null) ?? null);
+    for (const p of profs ?? []) names.set(p.user_id as string, normLabel(p.display_name as string | null));
   }
+  // Only users still missing a display_name get a bounded per-user auth lookup (getUserById — NOT a
+  // directory-wide listUsers), deduped, run once each.
+  const missing = userIds.filter((id) => !names.get(id));
+  await Promise.all(
+    missing.map(async (id) => {
+      try {
+        const { data } = await admin.auth.admin.getUserById(id);
+        const u = data?.user;
+        const meta = (u?.user_metadata ?? {}) as Record<string, unknown>;
+        const label =
+          normLabel(typeof meta.full_name === "string" ? meta.full_name : null) ??
+          normLabel(typeof meta.name === "string" ? meta.name : null) ??
+          normLabel(u?.email ?? null);
+        names.set(id, label);
+      } catch {
+        names.set(id, null);
+      }
+    }),
+  );
+
   const participants: Participant[] = rows.map((r) => ({
-    displayName: names.get(r.user_id as string) ?? null, // client renders a generic fallback when null
+    displayName: names.get(r.user_id as string) ?? null, // null → client renders the generic fallback
     participatedAt: r.scanned_at as string,
   }));
 

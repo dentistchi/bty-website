@@ -36,7 +36,12 @@ describe("EventCreateClient — Host create flow (3.2D-EVENT)", () => {
     fill();
     fireEvent.click(screen.getByTestId("event-create-submit"));
     expect(await screen.findByTestId("event-create-done")).toBeTruthy();
-    expect(screen.getByTestId("event-create-qr-url").textContent).toBe(qrUrl);
+    // R2 accessibility: the QR is a role=img with a safe label; the raw btyev1 payload is in no text node.
+    const img = screen.getByTestId("event-create-qr-image");
+    expect(img.getAttribute("role")).toBe("img");
+    expect(img.getAttribute("aria-label")).toBe("Reality Event QR code");
+    expect(img.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByTestId("event-create-done").textContent ?? "").not.toContain("btyev1");
     expect(screen.getByText("Morning huddle")).toBeTruthy();
     // internal event id is never surfaced
     expect(screen.queryByText(/SECRET-EVENT-ID/)).toBeNull();

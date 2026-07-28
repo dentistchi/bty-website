@@ -28,15 +28,19 @@ function mockDetail(...responses: Array<{ status: number; body?: unknown } | "th
 const noop = () => {};
 
 describe("EventHostDetail (3.2E-EVENT-HOST-R1)", () => {
-  it("loading → renders title/state and the reopened QR (encoded, not shown as raw text)", async () => {
+  it("loading → renders title/state and a safe, non-leaking QR (R2 accessibility)", async () => {
     mockDetail({ status: 200, body: detail() });
     render(<EventHostDetail locale="en" eventId="e1" onBack={noop} />);
     expect(screen.getByTestId("event-detail-loading")).toBeTruthy();
     expect((await screen.findByTestId("event-detail-title")).textContent).toBe("Morning huddle");
     expect(screen.getByTestId("event-detail-state").textContent).toBe("Active");
-    // QR present; the raw payload lives only in an sr-only node (not visible body text).
-    expect(screen.getByTestId("event-detail-qr")).toBeTruthy();
-    expect(screen.getByTestId("event-detail-qr-url").textContent).toBe(QR);
+    // QR wrapper carries a safe accessible name; the SVG is aria-hidden.
+    const img = screen.getByTestId("event-detail-qr-image");
+    expect(img.getAttribute("role")).toBe("img");
+    expect(img.getAttribute("aria-label")).toBe("Reality Event QR code");
+    expect(img.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    // The raw btyev1 token appears in NO text node (visible/hidden/sr-only).
+    expect(screen.getByTestId("event-host-detail").textContent ?? "").not.toContain("btyev1");
   });
 
   it("empty roster shows the honest empty copy", async () => {
@@ -46,26 +50,30 @@ describe("EventHostDetail (3.2E-EVENT-HOST-R1)", () => {
     expect(screen.getByTestId("event-detail-count").textContent).toBe("No participation recorded yet");
   });
 
-  it("renders a roster with human names + time, and a fallback for a null name — no raw ids", async () => {
+  it("renders distinct server-resolved labels (name + email fallback) and a generic last resort — no raw ids", async () => {
     mockDetail({ status: 200, body: detail({}, [
-      { displayName: "Alex", participatedAt: "2026-07-28T01:00:00Z" },
-      { displayName: null, participatedAt: "2026-07-28T02:00:00Z" },
+      { displayName: "Alex Kim", participatedAt: "2026-07-28T01:00:00Z" },
+      { displayName: "bo@example.com", participatedAt: "2026-07-28T02:00:00Z" }, // email fallback = single label
+      { displayName: null, participatedAt: "2026-07-28T03:00:00Z" },            // true last resort
     ]) });
     render(<EventHostDetail locale="en" eventId="e1" onBack={noop} />);
     const rows = await screen.findAllByTestId("event-detail-participant");
-    expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain("Alex");
-    expect(rows[1].textContent).toContain("Participant"); // null → generic fallback
-    expect(screen.getByTestId("event-detail-count").textContent).toBe("2 participations");
-    const blob = screen.getByTestId("event-host-detail").textContent ?? "";
-    expect(blob).not.toMatch(/user_id|@|creator|organization/i);
+    expect(rows).toHaveLength(3);
+    expect(rows[0].textContent).toContain("Alex Kim");
+    expect(rows[1].textContent).toContain("bo@example.com"); // email shown as the one canonical label
+    expect(rows[2].textContent).toContain("Participant");
+    // two different accounts are distinguishable
+    expect(rows[0].textContent).not.toEqual(rows[1].textContent);
+    expect(screen.getByTestId("event-detail-count").textContent).toBe("3 participations");
+    // no internal ids
+    expect(screen.getByTestId("event-detail-roster").textContent ?? "").not.toMatch(/user_id|creator|organization|\bnull\b/i);
   });
 
   it("ENDED event with no QR shows an unavailable state (no QR image)", async () => {
     mockDetail({ status: 200, body: detail({ state: "ENDED", qr: { available: false } }, []) });
     render(<EventHostDetail locale="en" eventId="e1" onBack={noop} />);
     expect(await screen.findByTestId("event-detail-qr-unavailable")).toBeTruthy();
-    expect(screen.queryByTestId("event-detail-qr-url")).toBeNull();
+    expect(screen.queryByTestId("event-detail-qr-image")).toBeNull();
   });
 
   it("manual refresh updates roster + count together, retaining content", async () => {

@@ -31,6 +31,7 @@ const COPY = {
     submit: "Open event",
     working: "Opening…",
     createdHeading: "Event ready",
+    qrAria: "Reality Event QR code",
     scanInstruction: "Show this to participants — they scan to record their participation.",
     viewEvents: "View my events",
     another: "Open another event",
@@ -58,6 +59,7 @@ const COPY = {
     submit: "이벤트 열기",
     working: "여는 중…",
     createdHeading: "이벤트 준비됨",
+    qrAria: "리얼리티 이벤트 QR 코드",
     scanInstruction: "참가자에게 보여주세요 — 스캔하면 참여가 기록됩니다.",
     viewEvents: "내 이벤트 보기",
     another: "다른 이벤트 열기",
@@ -151,10 +153,11 @@ export default function EventCreateClient({ locale, onBack, onViewEvents }: { lo
       <main className="mx-auto flex min-h-screen max-w-sm flex-col items-center justify-center gap-5 px-6 py-10 text-white" data-testid="event-create-done">
         <h1 className="text-xl font-semibold">{t.createdHeading}</h1>
         <p className="text-white/80">{created.title}</p>
-        <div className="rounded-2xl bg-white p-4">
-          <QRCodeSVG key={created.qrUrl} value={created.qrUrl} size={220} bgColor="#ffffff" fgColor="#0B1F3A" level="M" />
+        {/* Accessibility (R2): safe accessible name on the wrapper; SVG aria-hidden; the raw token
+            payload is never placed in any text node. */}
+        <div role="img" aria-label={t.qrAria} data-testid="event-create-qr-image" className="rounded-2xl bg-white p-4">
+          <QRCodeSVG value={created.qrUrl} size={220} bgColor="#ffffff" fgColor="#0B1F3A" level="M" aria-hidden={true} />
         </div>
-        <pre data-testid="event-create-qr-url" className="sr-only">{created.qrUrl}</pre>
         <p className="text-center text-sm text-white/60">{t.scanInstruction}</p>
         <div className="flex flex-col items-center gap-2">
           {onViewEvents ? (

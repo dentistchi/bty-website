@@ -32,6 +32,7 @@ const COPY = {
     closes: (s: string) => `Open until ${s}`,
     closed: (s: string) => `Ended ${s}`,
     qrHeading: "Event QR",
+    qrAria: "Reality Event QR code",
     qrInstruction: "Show this to participants — they scan to record their participation.",
     qrUnavailable: "The QR is available while the event is active.",
     rosterHeading: "Participation",
@@ -50,6 +51,7 @@ const COPY = {
     closes: (s: string) => `${s}까지`,
     closed: (s: string) => `${s} 종료`,
     qrHeading: "이벤트 QR",
+    qrAria: "리얼리티 이벤트 QR 코드",
     qrInstruction: "참가자에게 보여주세요 — 스캔하면 참여가 기록됩니다.",
     qrUnavailable: "QR은 이벤트가 진행 중일 때 사용할 수 있습니다.",
     rosterHeading: "참여",
@@ -153,10 +155,11 @@ export default function EventHostDetail({ locale, eventId, onBack }: { locale: s
             <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.qrHeading}</span>
             {ev.qr.available && ev.qr.payload ? (
               <>
-                <div className="rounded-2xl bg-white p-4">
-                  <QRCodeSVG key={ev.qr.payload} value={ev.qr.payload} size={200} bgColor="#ffffff" fgColor="#0B1F3A" level="M" />
+                {/* Accessibility (R2): the wrapper carries a SAFE accessible name; the SVG is
+                    aria-hidden and the raw token payload is never placed in any text node. */}
+                <div role="img" aria-label={t.qrAria} data-testid="event-detail-qr-image" className="rounded-2xl bg-white p-4">
+                  <QRCodeSVG value={ev.qr.payload} size={200} bgColor="#ffffff" fgColor="#0B1F3A" level="M" aria-hidden={true} />
                 </div>
-                <pre data-testid="event-detail-qr-url" className="sr-only">{ev.qr.payload}</pre>
                 <p className="text-center text-xs text-white/55">{t.qrInstruction}</p>
               </>
             ) : (

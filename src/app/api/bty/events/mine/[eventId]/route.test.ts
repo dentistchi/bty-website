@@ -30,7 +30,10 @@ const adminFrom = vi.fn((table: string) => {
   // arena_profiles
   return { select: () => ({ in: (_c: string, ids: string[]) => ({ data: PROFILES.filter((p) => ids.includes(p.user_id)), error: null }) }) };
 });
-vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ from: adminFrom }) }));
+// Per-user auth lookup (getUserById — NOT directory-wide listUsers). No `listUsers` is provided,
+// so any accidental directory-wide read would throw and fail the test.
+const getUserById = vi.fn();
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ from: adminFrom, auth: { admin: { getUserById } } }) }));
 
 import { GET } from "./route";
 
@@ -44,10 +47,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("EVENT_QR_SECRET", "test-event-secret");
   getUser.mockResolvedValue({ data: { user: USER } });
+  getUserById.mockResolvedValue({ data: { user: null } }); // default: no auth record
   EVENT_ROW = activeEvent();
   PARTICIPATION = [];
   PROFILES = [];
 });
+
+// Helper: stub auth-admin lookups by user id.
+function authUsers(map: Record<string, { user_metadata?: Record<string, unknown>; email?: string | null }>) {
+  getUserById.mockImplementation(async (id: string) => ({ data: { user: map[id] ? { ...map[id] } : null } }));
+}
 
 describe("GET /api/bty/events/mine/[eventId] (3.2E-EVENT-HOST-R1)", () => {
   it("(1) anonymous → 401", async () => {
@@ -109,5 +118,76 @@ describe("GET /api/bty/events/mine/[eventId] (3.2E-EVENT-HOST-R1)", () => {
     expect(json.event.state).toBe("ENDED");
     expect(json.event.qr.available).toBe(false);
     expect(json.event.qr.payload).toBeUndefined();
+  });
+});
+
+describe("participant identity precedence (3.2E-EVENT-HOST-R2)", () => {
+  const at = "2026-07-28T01:00:00Z";
+  async function labels(): Promise<Array<string | null>> {
+    const res = await GET(req(), params(EVENT_ID));
+    const json = await res.json();
+    return json.participants.map((p: { displayName: string | null }) => p.displayName);
+  }
+
+  it("(1) prefers arena_profiles.display_name (no auth lookup needed)", async () => {
+    PARTICIPATION = [{ user_id: "u1", scanned_at: at }];
+    PROFILES = [{ user_id: "u1", display_name: "Nick" }];
+    authUsers({ u1: { user_metadata: { full_name: "Ignored" }, email: "ignored@e.com" } });
+    expect(await labels()).toEqual(["Nick"]);
+    expect(getUserById).not.toHaveBeenCalled(); // display_name present → no per-user lookup
+  });
+
+  it("(2) falls back to auth metadata full_name", async () => {
+    PARTICIPATION = [{ user_id: "u1", scanned_at: at }];
+    PROFILES = [{ user_id: "u1", display_name: null }];
+    authUsers({ u1: { user_metadata: { full_name: "Full Name" }, email: "x@e.com" } });
+    expect(await labels()).toEqual(["Full Name"]);
+  });
+
+  it("(3) falls back to auth metadata name", async () => {
+    PARTICIPATION = [{ user_id: "u1", scanned_at: at }];
+    PROFILES = [{ user_id: "u1", display_name: null }];
+    authUsers({ u1: { user_metadata: { name: "TheName" }, email: "x@e.com" } });
+    expect(await labels()).toEqual(["TheName"]);
+  });
+
+  it("(4) falls back to canonical email (as the single displayName)", async () => {
+    PARTICIPATION = [{ user_id: "u1", scanned_at: at }];
+    PROFILES = [{ user_id: "u1", display_name: null }];
+    authUsers({ u1: { user_metadata: {}, email: "person@example.com" } });
+    expect(await labels()).toEqual(["person@example.com"]);
+  });
+
+  it("(5) truly-missing identity → null (client shows the generic last resort)", async () => {
+    PARTICIPATION = [{ user_id: "u1", scanned_at: at }];
+    PROFILES = [{ user_id: "u1", display_name: null }];
+    authUsers({}); // no auth record
+    expect(await labels()).toEqual([null]);
+  });
+
+  it("(6/7) two accounts resolve to DISTINCT labels; Unicode/Korean preserved; empties rejected", async () => {
+    PARTICIPATION = [
+      { user_id: "u1", scanned_at: "2026-07-28T01:00:00Z" },
+      { user_id: "u2", scanned_at: "2026-07-28T02:00:00Z" },
+      { user_id: "u3", scanned_at: "2026-07-28T03:00:00Z" },
+    ];
+    PROFILES = [{ user_id: "u1", display_name: "김한빛" }, { user_id: "u2", display_name: "   " }];
+    authUsers({ u2: { user_metadata: { full_name: "Bo Park" } }, u3: { email: "c@e.com" } });
+    const out = await labels();
+    expect(out).toEqual(["김한빛", "Bo Park", "c@e.com"]); // whitespace-only display_name rejected → auth fallback
+    expect(new Set(out).size).toBe(3); // all distinguishable
+  });
+
+  it("(11) uses per-user getUserById only for missing users, deduped — never a directory listing", async () => {
+    PARTICIPATION = [
+      { user_id: "u1", scanned_at: "2026-07-28T01:00:00Z" }, // has display_name → no lookup
+      { user_id: "u2", scanned_at: "2026-07-28T02:00:00Z" }, // missing → 1 lookup
+      { user_id: "u2", scanned_at: "2026-07-28T03:00:00Z" }, // same user → NOT looked up again
+    ];
+    PROFILES = [{ user_id: "u1", display_name: "Nick" }];
+    authUsers({ u2: { email: "u2@e.com" } });
+    await labels();
+    expect(getUserById).toHaveBeenCalledTimes(1); // deduped, only the one missing user
+    expect(getUserById).toHaveBeenCalledWith("u2");
   });
 });
