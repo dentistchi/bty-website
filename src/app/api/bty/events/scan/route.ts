@@ -26,8 +26,13 @@ export const runtime = "nodejs";
  * leaderboard, band, or org/TII.
  *
  * Body: { token: string }
+ *
+ * R2: the whole handler is wrapped (below) so an unexpected throw NEVER reaches the
+ * participant as a raw "Internal Server Error" — it returns a clean JSON 500 and the
+ * exact backend error is logged server-side for diagnosis. Expected states (auth /
+ * eligibility / event / idempotent duplicate) keep their canonical status codes.
  */
-export async function POST(req: NextRequest) {
+async function handleScan(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -67,7 +72,11 @@ export async function POST(req: NextRequest) {
     .select("id, title, event_type, xp_value, valid_until, status")
     .eq("id", eventId)
     .maybeSingle();
-  if (evErr) return NextResponse.json({ ok: false, error: "event_lookup_failed" }, { status: 500 });
+  if (evErr) {
+    // Log the exact backend error (server-only; never returned to the client).
+    console.error("[events/scan] event_lookup_failed", { code: evErr.code, message: evErr.message });
+    return NextResponse.json({ ok: false, error: "event_lookup_failed" }, { status: 500 });
+  }
   if (!event) return NextResponse.json({ ok: false, error: "event_not_found" }, { status: 404 });
 
   if (event.status === "cancelled") {
@@ -85,6 +94,10 @@ export async function POST(req: NextRequest) {
     p_xp: event.xp_value,
   });
   if (rpcErr) {
+    // The RPC failed (e.g. a new-participant profile-init / FK / constraint issue). Log the exact
+    // Postgres error server-side so the first canonical backend error is captured (no secrets, and
+    // never returned to the client) — the client only ever sees the generic scan-failed code.
+    console.error("[events/scan] scan_award_failed", { code: rpcErr.code, message: rpcErr.message, details: rpcErr.details });
     return NextResponse.json({ ok: false, error: "scan_award_failed" }, { status: 500 });
   }
   const result = Array.isArray(rpcData) ? rpcData[0] : rpcData;
@@ -120,4 +133,19 @@ export async function POST(req: NextRequest) {
     },
     newCoreTotal,
   });
+}
+
+/**
+ * Wrapper (R2): converts ANY unexpected throw into a clean JSON 500 with a stable code, so a
+ * participant never sees a raw "Internal Server Error". The exact error is logged server-side
+ * (no secrets, never returned to the client). All expected outcomes are already handled inside
+ * `handleScan` with their canonical status codes.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    return await handleScan(req);
+  } catch (err) {
+    console.error("[events/scan] unhandled", err instanceof Error ? { message: err.message, stack: err.stack } : err);
+    return NextResponse.json({ ok: false, error: "scan_failed" }, { status: 500 });
+  }
 }

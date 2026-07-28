@@ -83,6 +83,27 @@ describe("EventScanClient — member scan flow (3.2D-EVENT)", () => {
     // (retry path: the error view returns to Today; a fresh scan of the same QR would re-POST)
   });
 
+  it("not-eligible (403) → calm eligibility denial, distinct from an unexpected failure — R2", async () => {
+    mockScan({ status: 403, body: { ok: false, error: "MEMBERSHIP_REQUIRED" } });
+    render(<EventScanClient locale="en" token={TOKEN} />);
+    fireEvent.click(screen.getByTestId("event-scan-confirm"));
+    const err = await screen.findByTestId("event-scan-error");
+    expect(err.textContent).toMatch(/could not be recorded for this account/i);
+    expect(err.textContent).not.toMatch(/internal server error/i);
+    expect(err.textContent).not.toMatch(/try again/i);
+  });
+
+  it("unexpected server failure (500) → clear retry message, not 'Internal Server Error' — R2", async () => {
+    mockScan({ status: 500, body: { ok: false, error: "scan_award_failed" } });
+    render(<EventScanClient locale="en" token={TOKEN} />);
+    fireEvent.click(screen.getByTestId("event-scan-confirm"));
+    const err = await screen.findByTestId("event-scan-error");
+    expect(err.textContent).toMatch(/couldn't record your participation.*try again/i);
+    expect(err.textContent).not.toMatch(/internal server error/i);
+    // never leaks the raw backend code
+    expect(err.textContent).not.toMatch(/scan_award_failed/);
+  });
+
   it("missing token → invalid QR, confirm disabled", () => {
     mockScan();
     render(<EventScanClient locale="en" token="" />);

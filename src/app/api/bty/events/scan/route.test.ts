@@ -100,6 +100,24 @@ describe("POST /api/bty/events/scan", () => {
     expect(reprojectCoreDerivedFields).not.toHaveBeenCalled();
   });
 
+  it("(R2) an unexpected throw returns a CLEAN JSON 500 (never a raw Internal Server Error)", async () => {
+    getUser.mockRejectedValue(new Error("boom (e.g. cookie/session parse)"));
+    const token = tokenFor(EVENT_ID, Date.now() + 3_600_000);
+    const res = await POST(post({ token }));
+    const json = await res.json();
+    expect(res.status).toBe(500);
+    expect(json).toEqual({ ok: false, error: "scan_failed" });
+  });
+
+  it("(R2) an RPC failure returns a stable 500 code (exact error logged server-side, not leaked)", async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: "23503", message: "insert or update on table violates foreign key" } });
+    const token = tokenFor(EVENT_ID, Date.now() + 3_600_000);
+    const res = await POST(post({ token }));
+    const json = await res.json();
+    expect(res.status).toBe(500);
+    expect(json).toEqual({ ok: false, error: "scan_award_failed" }); // no raw SQL/constraint leaked
+  });
+
   it("(2) fresh scan → 200, awards xp_value via RPC + reprojection", async () => {
     rpc.mockResolvedValue({
       data: [{ fresh_insert: true, already_scanned: false, xp_awarded: 50, new_core_xp: 150 }],

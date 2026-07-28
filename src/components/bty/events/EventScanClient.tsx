@@ -45,7 +45,9 @@ const COPY = {
       event_expired: "This event has ended.",
       event_cancelled: "This event was cancelled.",
       event_not_found: "This event could not be found.",
-      server: "Something went wrong. Please try again.",
+      not_eligible: "Participation could not be recorded for this account.",
+      MEMBERSHIP_REQUIRED: "Participation could not be recorded for this account.",
+      server: "We couldn't record your participation. Please try again.",
     } as Record<string, string>,
   },
   ko: {
@@ -69,7 +71,9 @@ const COPY = {
       event_expired: "이 이벤트는 종료되었습니다.",
       event_cancelled: "취소된 이벤트입니다.",
       event_not_found: "이벤트를 찾을 수 없습니다.",
-      server: "문제가 발생했습니다. 다시 시도하세요.",
+      not_eligible: "이 계정으로는 참여를 기록할 수 없습니다.",
+      MEMBERSHIP_REQUIRED: "이 계정으로는 참여를 기록할 수 없습니다.",
+      server: "참여를 기록하지 못했습니다. 다시 시도하세요.",
     } as Record<string, string>,
   },
 };
@@ -109,6 +113,13 @@ export default function EventScanClient({ locale, token }: { locale: string; tok
           return;
         }
         setErrorReason(data?.error ?? "invalid_token");
+        setPhase("error");
+        return;
+      }
+      if (res.status === 403) {
+        // Authenticated but not eligible/approved → a calm, distinct eligibility denial
+        // (never the generic "internal error"). Not a participation, not XP.
+        setErrorReason(data?.error ?? "not_eligible");
         setPhase("error");
         return;
       }
