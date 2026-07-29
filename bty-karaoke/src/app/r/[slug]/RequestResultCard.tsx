@@ -2,6 +2,7 @@
 
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { badgeForVideo } from '@/domain/video-kind';
+import { songDisplay } from '@/domain/song-title';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -36,6 +37,10 @@ export default function RequestResultCard({
     if (!pending) onRequest(item);
   };
   const label = pending ? '신청 중…' : requested ? '✓ 신청됨' : '신청 →';
+  // Display-only projection — the raw item.title/channelTitle are unchanged and are
+  // what a request/save still stores. The provider name never eats the title line.
+  const disp = songDisplay(item.title, item.channelTitle);
+  const badge = badgeForVideo(item.title, item.channelTitle);
   return (
     <SwipeableCard
       direction="right"
@@ -53,16 +58,18 @@ export default function RequestResultCard({
           <div className="thumb placeholder" aria-hidden />
         )}
         <div className="grow">
-          <div className="title">{item.title}</div>
-          <div className="muted">{item.channelTitle}</div>
-          {(() => {
-            const badge = badgeForVideo(item.title, item.channelTitle);
-            return badge ? (
-              <span className={`vk-badge vk-${badge.tone}`}>
-                {badge.emoji} {badge.label}
-              </span>
-            ) : null;
-          })()}
+          <div className="title clamp-2">{disp.title}</div>
+          {disp.artist && <div className="song-artist">{disp.artist}</div>}
+          {(disp.sourceLabel || badge) && (
+            <div className="song-meta">
+              {disp.sourceLabel && <span className="src-badge">{disp.sourceLabel}</span>}
+              {badge && (
+                <span className={`vk-badge vk-${badge.tone}`}>
+                  {badge.emoji} {badge.label}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="req-card-actions">
           {onToggleSave && (

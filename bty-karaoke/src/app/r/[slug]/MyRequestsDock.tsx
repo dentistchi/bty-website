@@ -13,7 +13,7 @@ import {
   type MyRequest,
   type OwnedRow,
 } from '@/domain/guest-requests';
-import { displaySong } from '@/domain/song-title';
+import { songDisplay } from '@/domain/song-title';
 import { resolvePerfStage } from '@/domain/self-service';
 import type { OwnStatusRow } from '@/domain/recently-sung';
 import type { SavedSongSnapshot } from '@/domain/saved-songs';
@@ -341,7 +341,7 @@ export default function MyRequestsDock({
   // V8.1 — the compact dock exposes Ready for the guest's *nearest* waiting song even
   // when they are #2/#3 (Ready is a pre-signal, not a "your-turn-only" control).
   const waitReady = stage.kind === 'waiting' && !!(stageId && statuses[stageId]?.readyAt);
-  const stageSong = stageReq ? displaySong(stageReq.title, stageReq.artist).song || stageReq.title : '';
+  const stageSong = stageReq ? songDisplay(stageReq.title, stageReq.artist).title || stageReq.title : '';
 
   const summary = collapsedSummary(
     requests.map((r) => {
@@ -549,7 +549,7 @@ export default function MyRequestsDock({
                 const s = statuses[r.requestId];
                 const state = s?.state ?? 'waiting';
                 const confirming = confirmingId === r.requestId;
-                const song = displaySong(r.title, r.artist);
+                const song = songDisplay(r.title, r.artist);
                 const action = cancelRowAction(state, Boolean(r.cancelToken));
                 // V8.1 — Ready is offered on EVERY own waiting song, independently, not
                 // only the one at the front. Terminal / now-playing rows never show it.
@@ -573,7 +573,7 @@ export default function MyRequestsDock({
                     <div className={`sheet-row tone-${state}`}>
                       <span className="sheet-num" aria-hidden>{String(i + 1).padStart(2, '0')}</span>
                       <div className="sheet-row-main">
-                        <div className="sheet-row-song">{song.song || r.title}</div>
+                        <div className="sheet-row-song">{song.title || r.title}</div>
                         {song.artist && <div className="sheet-row-artist">{song.artist}</div>}
                         <div className="sheet-row-status">{rowReady && canReady ? '✓ 준비 완료' : statusText(s)}</div>
                         {/* Per-request Ready — pointer-isolated so a tap never starts the
@@ -640,7 +640,7 @@ export default function MyRequestsDock({
                             type="button"
                             className="linkish cancel-link"
                             onClick={() => setConfirmingId(r.requestId)}
-                            aria-label={`${song.song || r.title} 신청 취소`}
+                            aria-label={`${song.title || r.title} 신청 취소`}
                           >
                             신청 취소
                           </button>
@@ -672,12 +672,12 @@ export default function MyRequestsDock({
                 {historyOpen && (
                   <div className="dock-history-list">
                     {completedRequests.map((r) => {
-                      const song = displaySong(r.title, r.artist);
+                      const song = songDisplay(r.title, r.artist);
                       const dup = hasActiveMedia(r.videoId, ownedRows);
                       return (
                         <div className="history-row" key={r.requestId}>
                           <div className="history-row-main">
-                            <div className="history-row-song">{song.song || r.title}</div>
+                            <div className="history-row-song">{song.title || r.title}</div>
                             {song.artist && <div className="history-row-artist">{song.artist}</div>}
                             <div className="history-row-status">이 곡을 불렀어요</div>
                           </div>

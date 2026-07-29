@@ -9,7 +9,7 @@
 // 저장 해제. Neither section mutates queue/Event state — only the saved library.
 
 import { useState } from 'react';
-import { displaySong } from '@/domain/song-title';
+import { songDisplay } from '@/domain/song-title';
 import type { RecentlySung } from '@/domain/recently-sung';
 import type { SavedSong, SavedSongSnapshot } from '@/domain/saved-songs';
 
@@ -63,13 +63,13 @@ export default function MySongsSections({
           {recentOpen && (
             <ul className="ms-list">
               {recentlySung.map((r) => {
-                const song = displaySong(r.title, r.artist);
+                const song = songDisplay(r.title, r.artist);
                 const canSave = !!r.videoId;
                 const on = canSave && isSaved(r.videoId!);
                 return (
                   <li className="ms-row" key={r.requestId}>
                     <div className="ms-row-main">
-                      <div className="ms-row-song">{song.song || r.title}</div>
+                      <div className="ms-row-song">{song.title || r.title}</div>
                       {song.artist && <div className="ms-row-artist">{song.artist}</div>}
                     </div>
                     {canSave && (
@@ -86,7 +86,7 @@ export default function MySongsSections({
                         }
                         disabled={isSavePending(r.videoId!)}
                         aria-pressed={on}
-                        aria-label={on ? `${song.song || r.title} 저장 해제` : `${song.song || r.title} 저장`}
+                        aria-label={on ? `${song.title || r.title} 저장 해제` : `${song.title || r.title} 저장`}
                         title={on ? '저장 해제' : '내 노래에 저장'}
                       >
                         {on ? '★' : '☆'}
@@ -121,12 +121,12 @@ export default function MySongsSections({
           ) : (
             <ul className="ms-list">
               {saved.map((s) => {
-                const song = displaySong(s.title, s.artist);
+                const song = songDisplay(s.title, s.artist);
                 const pending = requestPendingVideoId === s.videoId;
                 return (
                   <li className="ms-row" key={s.videoId}>
                     <div className="ms-row-main">
-                      <div className="ms-row-song">{song.song || s.title}</div>
+                      <div className="ms-row-song">{song.title || s.title}</div>
                       {song.artist && <div className="ms-row-artist">{song.artist}</div>}
                     </div>
                     <div className="ms-row-actions">
@@ -136,7 +136,7 @@ export default function MySongsSections({
                           className="ms-request"
                           onClick={() => onRequestSaved(s)}
                           disabled={pending}
-                          aria-label={`${song.song || s.title} 신청하기`}
+                          aria-label={`${song.title || s.title} 신청하기`}
                         >
                           {pending ? '신청 중…' : '신청하기'}
                         </button>
@@ -148,7 +148,7 @@ export default function MySongsSections({
                         className="ms-remove linkish"
                         onClick={() => onRemoveSaved(s.videoId)}
                         disabled={isSavePending(s.videoId)}
-                        aria-label={`${song.song || s.title} 저장 해제`}
+                        aria-label={`${song.title || s.title} 저장 해제`}
                       >
                         저장 해제
                       </button>

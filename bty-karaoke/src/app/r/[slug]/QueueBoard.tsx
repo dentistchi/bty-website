@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DisplayState } from '@/domain/display';
 import { badgeForKind } from '@/domain/video-kind';
+import { songDisplay } from '@/domain/song-title';
 import { myRequestsKey, legacyMyRequestsKey } from '@/domain/guest-requests';
 
 interface Props {
@@ -80,7 +81,7 @@ export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Prop
           <div className="qb-now-label">
             <span className="live-dot" aria-hidden /> 지금 부르는 중
           </div>
-          <div className="qb-now-song">{playing.title}</div>
+          <div className="qb-now-song">{songDisplay(playing.title).title || playing.title}</div>
           <div className="qb-now-singer">
             {playing.guestName}
             {mine.has(playing.id) && <span className="qb-me-tag">나</span>}
@@ -102,7 +103,7 @@ export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Prop
             <li key={r.id} className={`qb-row${mine.has(r.id) ? ' me' : ''}`}>
               <span className="qb-pos">{i + 1}</span>
               <span className="qb-row-main">
-                <span className="qb-song">{r.title}</span>
+                <span className="qb-song">{songDisplay(r.title).title || r.title}</span>
                 <span className="qb-singer">
                   {r.guestName}
                   {mine.has(r.id) && <span className="qb-me-tag">나</span>}
