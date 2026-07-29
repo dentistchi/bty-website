@@ -1,17 +1,16 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getCachedSummary, setCachedSummary, getCachedDetail, clearWeeklyActivityCache } from "./weeklyActivityCache";
+import { getCachedSummary, setCachedSummary, clearWeeklyActivityCache } from "./weeklyActivityCache";
 
 afterEach(() => clearWeeklyActivityCache());
 
 describe("weeklyActivityCache — account isolation (B3A.2D-R3.1)", () => {
-  it("clearWeeklyActivityCache wipes all cached weekly data (no cross-account seeding)", () => {
+  it("clearWeeklyActivityCache wipes the cached weekly summary (no cross-account seeding)", () => {
     setCachedSummary({ forgeStage: 5, weeklyPoints: 99 });
     expect(getCachedSummary()).not.toBeNull();
     clearWeeklyActivityCache();
     expect(getCachedSummary()).toBeNull();
-    expect(getCachedDetail()).toBeNull();
   });
 
   it("AccountBlock clears the cache on both switch and sign-out (session teardown)", () => {

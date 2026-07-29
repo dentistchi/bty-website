@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, within, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import BtyDailyAppShell from "./BtyDailyAppShell";
@@ -79,91 +79,39 @@ describe("Bottom Me tab = root reselect (carried)", () => {
   });
 });
 
-// ── R3: This Week card OWNS the weekly popup; the Orb is non-interactive presence. ──────────────
-describe("Me weekly popup — card-owned disclosure + non-interactive Orb (B3A.2D-R2 · R3)", () => {
-  it("renders the weekly seven-light Orb (not the entry Orb) as NON-interactive presence; no 'Hold to enter'", async () => {
+// ── R4: no weekly popup; This Week is a static summary; the Orb is non-interactive presence. ─────
+describe("Me weekly — static summary + non-interactive Orb, no popup (R4)", () => {
+  it("renders the living Orb as NON-interactive presence; no entry door / hold-to-enter", async () => {
     stub();
     await gotoMe();
     expect(await screen.findByTestId("me-weekly-trace")).toBeTruthy();
     const orb = screen.getByTestId("me-weekly-orb");
-    expect(orb.tagName).not.toBe("BUTTON"); // presence, not a control
+    expect(orb.tagName).not.toBe("BUTTON");
     expect(orb.getAttribute("role")).toBe("img");
     expect(orb.hasAttribute("tabindex")).toBe(false); // not keyboard-focusable
     expect(orb.getAttribute("aria-expanded")).toBeNull();
-    expect(orb.getAttribute("aria-controls")).toBeNull();
-    expect(screen.queryByTestId("me-orb-door")).toBeNull(); // the entry door is gone from Me
+    expect(screen.queryByTestId("me-orb-door")).toBeNull();
     expect(screen.queryByText(/Hold to enter/i)).toBeNull();
   });
 
-  it("the This Week CARD opens the popup; the Orb does NOT", async () => {
+  it("This Week is a static summary (not a button); tapping it or the Orb opens NO popup", async () => {
     stub();
     await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-weekly-orb"));
-    expect(screen.queryByTestId("me-week-popup")).toBeNull(); // the Orb is not a trigger
-    const card = await screen.findByTestId("me-week-open");
-    expect(card.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(card);
-    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    expect(card.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByTestId("me-home")).toBeTruthy(); // inline, not a nested view
-  });
-
-  it("the popup's close control dismisses it; the card reopens it", async () => {
-    stub();
-    await gotoMe();
-    const card = await screen.findByTestId("me-week-open");
-    fireEvent.click(card);
-    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("me-week-close"));
-    await waitFor(() => expect(screen.queryByTestId("me-week-popup")).toBeNull());
-    fireEvent.click(card);
-    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-  });
-
-  it("the Orb (canvas) keeps stable identity across open/close — no remount / second canvas", async () => {
-    stub();
-    await gotoMe();
-    const orb = await screen.findByTestId("me-weekly-orb");
-    const canvasBefore = orb.querySelector("canvas");
-    const card = await screen.findByTestId("me-week-open");
-    fireEvent.click(card); // open
-    fireEvent.click(card); // close
-    const canvasesAfter = orb.querySelectorAll("canvas");
-    expect(canvasesAfter.length).toBe(1); // exactly one canvas across open/close
-    expect(canvasesAfter[0]).toBe(canvasBefore); // same DOM node → React kept the instance
-  });
-
-  it("selecting a day discloses only proven activity state and keeps the popup open", async () => {
-    stub();
-    await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-week-open"));
-    const days = within(await screen.findByTestId("me-week-days")).getAllByRole("button");
-    expect(days).toHaveLength(7); // seven dated indicators
-    fireEvent.click(days[0]);
-    const detail = await screen.findByTestId("me-week-day-detail");
-    expect(detail.textContent).toMatch(/Activity recorded|No activity recorded/);
-    // Still open after selecting a day.
-    expect(screen.getByTestId("me-week-popup")).toBeTruthy();
-  });
-
-  it("bottom Me reselect closes an open popup", async () => {
-    stub();
-    const { tapMe } = await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-week-open"));
-    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    tapMe();
-    expect(await screen.findByTestId("me-home")).toBeTruthy();
+    const summary = await screen.findByTestId("me-week-summary");
+    expect(summary.tagName).not.toBe("BUTTON");
+    expect(summary.getAttribute("aria-expanded")).toBeNull();
+    fireEvent.click(summary);
+    fireEvent.click(screen.getByTestId("me-weekly-orb"));
     expect(screen.queryByTestId("me-week-popup")).toBeNull();
+    expect(screen.getByTestId("me-home")).toBeTruthy(); // still the Me root, no nested/dialog view
   });
 
-  it("opening another Me row closes the popup", async () => {
+  it("no weekly popup / close control / day-grid / disclosure trigger remains in the Me DOM", async () => {
     stub();
     await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-week-open"));
-    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("me-row-learned"));
-    expect(await screen.findByTestId("foundry-my-learning")).toBeTruthy();
-    expect(screen.queryByTestId("me-week-popup")).toBeNull();
+    for (const id of ["me-week-popup", "me-week-close", "me-week-days", "me-week-open"]) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
   });
 });
 
