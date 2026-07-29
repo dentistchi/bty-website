@@ -166,6 +166,62 @@ describe("R2 — living-light markers (not donuts)", () => {
   });
 });
 
+describe("R3 — invisible touch hit target (no gray oval)", () => {
+  it("the Orb button is a visually transparent hit target — no border/ring/rounded-oval, tap highlight suppressed", async () => {
+    stubShell();
+    await gotoMe();
+    const orb = await screen.findByTestId("me-weekly-orb");
+    expect(orb.tagName).toBe("BUTTON");
+    // No persistent visible boundary on the large wrapper: no ring, no focus-visible ring, no border,
+    // no rounded-full oval shape, and an explicitly transparent/appearance-none surface.
+    expect(orb.className).not.toMatch(/ring-2/);
+    expect(orb.className).not.toMatch(/focus-visible:ring/);
+    expect(orb.className).not.toMatch(/\bborder-white\b|\bborder-2\b/);
+    expect(orb.className).not.toMatch(/rounded-full/); // the container is no longer an oval
+    expect(orb.className).toMatch(/bg-transparent/);
+    expect(orb.className).toMatch(/appearance-none/);
+    // (WebKit tap-highlight suppression is set inline in source but jsdom drops the vendor property;
+    //  it is verified in the built bundle instead.)
+  });
+
+  it("aria-expanded=true does not add any border/ring to the wrapper (className is stable on open)", async () => {
+    stubShell();
+    await gotoMe();
+    const orb = await screen.findByTestId("me-weekly-orb");
+    const before = orb.className;
+    fireEvent.click(orb);
+    await screen.findByTestId("me-attendance-popup");
+    expect(orb.getAttribute("aria-expanded")).toBe("true");
+    expect(orb.className).toBe(before); // no ring/border toggled by open state
+  });
+
+  it("keyboard focus is preserved but LOCALIZED and fine-pointer-only (Orb-local, not the caption, not on touch)", async () => {
+    stubShell();
+    await gotoMe();
+    const orb = await screen.findByTestId("me-weekly-orb");
+    const ring = within(orb).getByTestId("me-orb-focus-ring");
+    // Focus indicator exists for keyboard use...
+    expect(ring.className).toMatch(/group-focus-visible:ring-2/);
+    // ...but only for fine pointers (never a coarse-pointer touch ring on iPhone)...
+    expect(ring.className).toMatch(/\[@media\(pointer:fine\)\]/);
+    // ...and it hugs the Orb circle (200px) rather than the whole hit target / caption.
+    expect(ring.className).toMatch(/rounded-full/);
+    expect(ring.className).toMatch(/h-\[200px\]/);
+    expect(ring.getAttribute("aria-hidden")).toBe("true");
+    expect(ring.className).toMatch(/pointer-events-none/);
+    expect(ring.textContent).toBe(""); // does not wrap the caption or any content
+  });
+
+  it("still opens the attendance popup on the first tap; hit target still wraps the Orb", async () => {
+    stubShell();
+    await gotoMe();
+    const orb = await screen.findByTestId("me-weekly-orb");
+    expect(orb.querySelector("canvas")).toBeTruthy(); // large Orb hit target preserved
+    fireEvent.click(orb);
+    expect(await screen.findByTestId("me-attendance-popup")).toBeTruthy();
+  });
+});
+
 describe("R1 — interaction reliability", () => {
   it("close works; reopen works repeatedly; only one popup ever", async () => {
     stubShell();

@@ -232,7 +232,14 @@ export default function MeWeeklyTrace({
       {/* The living seven-light Orb owns ONE interaction: reveal weekly attendance. Semantic button
           (aria-expanded/controls), keyboard-activatable (Enter/Space native), press feedback
           (active:scale), animation continues when closed. NOT the cold-launch entry Orb; it opens
-          the attendance-only popup, never the removed full weekly-summary popup. */}
+          the attendance-only popup, never the removed full weekly-summary popup.
+
+          R3 (touch-ring polish): the button is the large, RELIABLE, but visually INVISIBLE hit
+          target — no border/background/outline, and the WebKit tap highlight is suppressed. The
+          previous `focus-visible:ring-2` sat on this whole container (which includes WeeklyOrb's
+          caption) and fired on iOS touch, exposing a large gray oval around the Orb + caption. It's
+          removed; a keyboard focus indicator now lives on an Orb-LOCAL inner element, gated to
+          fine-pointer input so a coarse-pointer touch (iPhone) never shows a ring. */}
       <button
         ref={orbRef}
         type="button"
@@ -253,8 +260,16 @@ export default function MeWeeklyTrace({
             WebkitTapHighlightColor: "transparent",
           } as React.CSSProperties
         }
-        className="select-none rounded-full outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-white/40"
+        className="group relative select-none appearance-none border-0 bg-transparent p-0 outline-none transition-transform active:scale-95"
       >
+        {/* Keyboard-only, Orb-local focus indicator: a circle hugging the Orb, shown ONLY for
+            fine-pointer (mouse/keyboard) focus-visible — never on coarse-pointer touch, and never
+            around the caption below. The outer hit target stays fully transparent. */}
+        <span
+          aria-hidden
+          data-testid="me-orb-focus-ring"
+          className="pointer-events-none absolute left-1/2 top-0 h-[200px] w-[200px] -translate-x-1/2 rounded-full ring-white/40 [@media(pointer:fine)]:group-focus-visible:ring-2"
+        />
         <WeeklyOrb intensities={weeklyRhythm} locale={loc} size={200} />
       </button>
     </div>
