@@ -52,14 +52,15 @@ describe("Compact inline popup — no root duplication (B3A.2D-R3)", () => {
   it("shows date range + seven day indicators, and does NOT repeat the root counts", async () => {
     stub();
     await gotoMe();
-    fireEvent.click(await screen.findByTestId("me-weekly-orb-toggle"));
+    fireEvent.click(await screen.findByTestId("me-week-open")); // R3: the card owns the popup
     const popup = await screen.findByTestId("me-week-popup");
     expect(within(popup).getByTestId("me-week-range")).toBeTruthy();
-    expect(within(popup).getAllByRole("button")).toHaveLength(7); // seven dated indicators
+    const days = await screen.findByTestId("me-week-days");
+    expect(within(days).getAllByRole("button")).toHaveLength(7); // seven dated indicators (scoped, not the close ✕)
     // The popup must not duplicate the root THIS WEEK count rows.
     expect(popup.textContent).not.toMatch(/Weekly points|Active days|Learning completed|Training created/i);
     // Selecting a day discloses only proven activity state; popup stays open.
-    fireEvent.click(within(popup).getAllByRole("button")[0]);
+    fireEvent.click(within(days).getAllByRole("button")[0]);
     expect((await screen.findByTestId("me-week-day-detail")).textContent).toMatch(/Activity recorded|No activity recorded/);
     expect(screen.getByTestId("me-week-popup")).toBeTruthy();
   });

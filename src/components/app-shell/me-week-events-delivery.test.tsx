@@ -86,19 +86,14 @@ describe("R2 — Event content delivery through the real shell path", () => {
     expect(screen.getByTestId("me-week-days")).toBeTruthy();
   });
 
-  it("the Orb opens the SAME popup with identical Event content", async () => {
+  it("the Orb does NOT open the popup — the This Week card is the sole trigger (R3)", async () => {
     stubShell();
     await gotoMe();
-    // open via card, read events
-    fireEvent.click(await screen.findByTestId("me-week-open"));
-    const viaCard = (await screen.findAllByTestId("me-week-event-item")).map((n) => n.textContent);
-    // close, open via Orb
-    fireEvent.click(screen.getByTestId("me-week-open"));
-    await waitFor(() => expect(screen.queryByTestId("me-week-popup")).toBeNull());
-    fireEvent.click(screen.getByTestId("me-weekly-orb-toggle"));
-    await screen.findByTestId("me-week-popup");
-    const viaOrb = (await screen.findAllByTestId("me-week-event-item")).map((n) => n.textContent);
-    expect(viaOrb).toEqual(viaCard);
+    fireEvent.click(await screen.findByTestId("me-weekly-orb")); // presence, not a control
+    expect(screen.queryByTestId("me-week-popup")).toBeNull();
+    fireEvent.click(await screen.findByTestId("me-week-open")); // the card discloses
+    expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
+    expect((await screen.findAllByTestId("me-week-event-item")).length).toBeGreaterThan(0);
   });
 
   it("Events surface ABOVE the attendance grid so they are visible without scrolling", async () => {

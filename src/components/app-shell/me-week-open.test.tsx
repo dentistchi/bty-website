@@ -115,19 +115,19 @@ describe("Me This Week — labeled card opens the shared popup (R1)", () => {
     expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
   });
 
-  it("the Orb and the card share ONE popup — rapid taps never create duplicate dialogs", async () => {
+  it("the This Week card is the SOLE popup trigger — the Orb does not open it; rapid taps never duplicate (R3)", async () => {
     stubShell();
     await gotoMe();
     const card = await screen.findByTestId("me-week-open");
-    const orb = await screen.findByTestId("me-weekly-orb-toggle");
-    fireEvent.click(card); // open via card
+    const orb = await screen.findByTestId("me-weekly-orb");
+    fireEvent.click(orb); // the Orb is presence, not a control → no popup
+    expect(screen.queryByTestId("me-week-popup")).toBeNull();
+    fireEvent.click(card); // the card opens it
     expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    // Orb reflects the SAME shared open state.
-    expect(orb.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(card);
     fireEvent.click(card);
     fireEvent.click(card);
-    // Whatever the final state, there is at most one popup instance (single shared disclosure).
+    // Single card-owned disclosure — at most one popup instance regardless of tap count.
     expect(screen.queryAllByTestId("me-week-popup").length).toBeLessThanOrEqual(1);
   });
 
@@ -173,12 +173,16 @@ describe("MeWeeklyTrace controlled disclosure (R1)", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, summary: { weeklyPoints: 1 }, window: { startIso: "", endIso: "" }, attendance: ATTENDANCE, eventsParticipated: [] }), { status: 200 })));
   }
 
-  it("controlled open renders the popup without an Orb tap; onOpenChange fires when the Orb is tapped", async () => {
+  it("controlled open renders the popup; the close control fires onOpenChange(false); the Orb is non-interactive (R3)", async () => {
     stubDetail();
     const onOpenChange = vi.fn();
     render(<MeWeeklyTrace locale="en" weeklyRhythm={[1, 0, 1]} refreshKey={1} open={true} onOpenChange={onOpenChange} />);
     expect(await screen.findByTestId("me-week-popup")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("me-weekly-orb-toggle")); // toggles shared state → parent notified
+    const orb = screen.getByTestId("me-weekly-orb");
+    expect(orb.tagName).not.toBe("BUTTON");
+    fireEvent.click(orb); // presence only — no disclosure change
+    expect(onOpenChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("me-week-close")); // the reachable close control
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

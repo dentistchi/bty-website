@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import MeThisWeek from "./MeThisWeek";
 import MeWeeklyTrace from "./MeWeeklyTrace";
 import { clearWeeklyActivityCache } from "@/lib/bty/daily/weeklyActivityCache";
@@ -55,8 +55,7 @@ describe("This Week popup — Events section (3.2F)", () => {
         { title: "Morning huddle", date: "2026-07-24T08:00:00.000Z" },
       ],
     });
-    render(<MeWeeklyTrace locale="en" weeklyRhythm={[1, 0, 1]} refreshKey={1} />);
-    fireEvent.click(await screen.findByTestId("me-weekly-orb-toggle"));
+    render(<MeWeeklyTrace locale="en" weeklyRhythm={[1, 0, 1]} refreshKey={1} open={true} onOpenChange={() => {}} />);
     const section = await screen.findByTestId("me-week-events");
     const items = await screen.findAllByTestId("me-week-event-item");
     expect(items).toHaveLength(2);
@@ -67,8 +66,7 @@ describe("This Week popup — Events section (3.2F)", () => {
 
   it("omits the Events section entirely when there are no events (empty array)", async () => {
     stubDetail({ summary: {}, window: { startIso: "", endIso: "" }, attendance, eventsParticipated: [] });
-    render(<MeWeeklyTrace locale="en" weeklyRhythm={[1, 0, 1]} refreshKey={1} />);
-    fireEvent.click(await screen.findByTestId("me-weekly-orb-toggle"));
+    render(<MeWeeklyTrace locale="en" weeklyRhythm={[1, 0, 1]} refreshKey={1} open={true} onOpenChange={() => {}} />);
     await screen.findByTestId("me-week-popup");
     expect(screen.queryByTestId("me-week-events")).toBeNull();
   });

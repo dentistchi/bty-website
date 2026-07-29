@@ -20,8 +20,8 @@ import { choosePopupPlacement } from "@/domain/daily/popupPlacement";
  */
 
 const COPY = {
-  en: { show: "Show this week", hide: "Hide this week", title: "This week", activity: "Activity recorded", noActivity: "No activity recorded", events: "Events" },
-  ko: { show: "이번 주 보기", hide: "이번 주 닫기", title: "이번 주", activity: "활동 기록됨", noActivity: "활동 없음", events: "이벤트" },
+  en: { title: "This week", activity: "Activity recorded", noActivity: "No activity recorded", events: "Events you joined", joinedOn: (d: string) => `Joined ${d}`, close: "Close", orb: "This week's rhythm" },
+  ko: { title: "이번 주", activity: "활동 기록됨", noActivity: "활동 없음", events: "참여한 이벤트", joinedOn: (d: string) => `${d} 참여`, close: "닫기", orb: "이번 주의 리듬" },
 };
 
 function deviceTz(): string | null {
@@ -79,7 +79,7 @@ export default function MeWeeklyTrace({
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [detail, setDetail] = useState<WeeklyActivityDetail | null>(() => getCachedDetail());
   const [placement, setPlacement] = useState<"above" | "below">("above");
-  const toggleRef = useRef<HTMLButtonElement | null>(null);
+  const toggleRef = useRef<HTMLDivElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
   const popupId = "me-week-popup";
 
@@ -154,10 +154,23 @@ export default function MeWeeklyTrace({
           // safe-area-aware bottom pad so the last item never hides behind the bottom dock.
           className={`absolute left-1/2 z-20 w-[min(19rem,86vw)] max-h-[min(70dvh,32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-white/12 bg-[#12161f]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-xl backdrop-blur-sm ${placement === "above" ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
         >
-          {/* Compact — no duplication of the root summary counts. Only what the root doesn't show. */}
-          <div className="flex items-baseline justify-between gap-2">
+          {/* Compact — no duplication of the root summary counts. Only what the root doesn't show.
+              The popup is owned solely by the This Week card (R3); its own reachable close control
+              here means the card need not be tapped again to dismiss it. */}
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/50">{t.title}</span>
-            {range ? <span className="text-[0.72rem] text-white/45" data-testid="me-week-range">{range}</span> : null}
+            <div className="flex items-center gap-2">
+              {range ? <span className="text-[0.72rem] text-white/45" data-testid="me-week-range">{range}</span> : null}
+              <button
+                type="button"
+                data-testid="me-week-close"
+                aria-label={t.close}
+                onClick={() => setOpen(false)}
+                className="-mr-1 shrink-0 rounded-full px-1.5 text-white/45 outline-none hover:text-white/80 focus-visible:ring-2 focus-visible:ring-white/40"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Events this week (Slice 3.2F · surfaced first in R2): the participant's OWN Reality Event
@@ -171,7 +184,7 @@ export default function MeWeeklyTrace({
               {detail.eventsParticipated.map((e, i) => (
                 <div key={i} className="flex items-baseline justify-between gap-2 text-[0.8rem]" data-testid="me-week-event-item">
                   <span className="min-w-0 truncate text-white/75">{e.title}</span>
-                  <span className="shrink-0 text-white/40">{fmtDate(e.date, loc)}</span>
+                  <span className="shrink-0 text-white/40">{t.joinedOn(fmtDate(e.date, loc))}</span>
                 </div>
               ))}
             </div>
@@ -202,32 +215,31 @@ export default function MeWeeklyTrace({
         </div>
       ) : null}
 
-      {/* The living seven-light Orb IS the toggle. Mounted once (stable identity) → no remount / no
-          second canvas·rAF across toggles. Touch-safe (B3A.2D protections). */}
-      <button
+      {/* R3 disclosure separation — the living seven-light Orb is the week's PRESENCE, not a control.
+          "This Week is the record; the Orb is the presence." It visualizes the week's rhythm and
+          anchors the popup's placement, but it does NOT open the weekly popup (that disclosure is
+          owned solely by the This Week card). Non-interactive: `role="img"` with an accessible name,
+          NOT a button, not keyboard-focusable, no aria-expanded/controls, no press/disclosure feedback.
+          Mounted once (stable identity) → no remount / no second canvas·rAF. */}
+      <div
         ref={toggleRef}
-        type="button"
-        data-testid="me-weekly-orb-toggle"
-        aria-expanded={open}
-        aria-controls={open ? popupId : undefined}
-        aria-label={open ? t.hide : t.show}
-        onClick={() => setOpen((v) => !v)}
+        data-testid="me-weekly-orb"
+        role="img"
+        aria-label={t.orb}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
         style={
           {
-            touchAction: "manipulation",
             WebkitTouchCallout: "none",
             WebkitUserSelect: "none",
             userSelect: "none",
             WebkitUserDrag: "none",
-            WebkitTapHighlightColor: "transparent",
           } as React.CSSProperties
         }
-        className="select-none rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="select-none rounded-full"
       >
         <WeeklyOrb intensities={weeklyRhythm} locale={loc} size={200} />
-      </button>
+      </div>
     </div>
   );
 }

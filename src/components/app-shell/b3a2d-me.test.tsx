@@ -61,13 +61,18 @@ describe("Me root — hierarchy (B3A.2D / B3A.2D-R1)", () => {
     expect(screen.getByTestId("me-forge-stage").textContent).toContain("Forge stage 1");
   });
 
-  it("Me Orb is a selection-safe toggle with no 'Hold to enter' entry copy", async () => {
+  it("Me 7-Orb is NON-interactive presence (role=img, not a button, not focusable); no 'Hold to enter'", async () => {
     stub();
     await gotoMe();
-    const toggle = await screen.findByTestId("me-weekly-orb-toggle");
-    // Living weekly trace — an accessible toggle (not an entry door); no hold-to-enter copy.
-    expect(toggle.getAttribute("aria-label")).toMatch(/Show this week/i);
+    const orb = await screen.findByTestId("me-weekly-orb");
+    // R3: the Orb is the week's presence, NOT a control — it must not be a button/toggle and must
+    // not duplicate the This Week card's popup disclosure.
+    expect(orb.tagName).not.toBe("BUTTON");
+    expect(orb.getAttribute("role")).toBe("img");
+    expect(orb.hasAttribute("tabindex")).toBe(false); // not keyboard-focusable
+    expect(orb.getAttribute("aria-expanded")).toBeNull();
+    expect(orb.getAttribute("aria-controls")).toBeNull();
     expect(screen.queryByText(/Hold to enter/i)).toBeNull();
-    expect(toggle.className).toMatch(/select-none/);
+    expect(orb.className).toMatch(/select-none/);
   });
 });
