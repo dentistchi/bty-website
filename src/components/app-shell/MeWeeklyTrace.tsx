@@ -145,13 +145,37 @@ export default function MeWeeklyTrace({
           aria-label={t.title}
           data-testid="me-week-popup"
           data-placement={placement}
-          className={`absolute left-1/2 z-20 w-[min(19rem,86vw)] max-h-[42vh] -translate-x-1/2 overflow-y-auto rounded-2xl border border-white/12 bg-[#12161f]/95 px-4 py-3 shadow-xl backdrop-blur-sm ${placement === "above" ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
+          // R2 layout contract: the disclosed weekly story (range · attendance · selected day ·
+          // Events) must all be REACHABLE on a physical iPhone. The old fixed `max-h-[42vh]` is
+          // unreliable in iOS WKWebView (vh ignores the dynamic toolbars/safe area) and let the
+          // attendance grid consume the visible height, clipping the Events section below the fold.
+          // Fix: dynamic-viewport max-height (`dvh`, iOS-correct) with a rem ceiling, real vertical
+          // scroll contained to the popup (`overscroll-contain` → no body/page escape), and a
+          // safe-area-aware bottom pad so the last item never hides behind the bottom dock.
+          className={`absolute left-1/2 z-20 w-[min(19rem,86vw)] max-h-[min(70dvh,32rem)] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-white/12 bg-[#12161f]/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-xl backdrop-blur-sm ${placement === "above" ? "bottom-full mb-2.5" : "top-full mt-2.5"}`}
         >
           {/* Compact — no duplication of the root summary counts. Only what the root doesn't show. */}
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/50">{t.title}</span>
             {range ? <span className="text-[0.72rem] text-white/45" data-testid="me-week-range">{range}</span> : null}
           </div>
+
+          {/* Events this week (Slice 3.2F · surfaced first in R2): the participant's OWN Reality Event
+              participations — "this Event was part of my week". Title + date only; newest-first; omitted
+              when empty (a proven zero is the Me summary chip, per the existing category policy). Placed
+              directly under the header so it is ALWAYS visible on open — never clipped below the
+              attendance grid on a short iPhone popup. No event_id/user_id/token/other-participant/XP. */}
+          {detail?.eventsParticipated && detail.eventsParticipated.length > 0 ? (
+            <div className="mt-2.5 flex flex-col gap-1" data-testid="me-week-events">
+              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.events}</span>
+              {detail.eventsParticipated.map((e, i) => (
+                <div key={i} className="flex items-baseline justify-between gap-2 text-[0.8rem]" data-testid="me-week-event-item">
+                  <span className="min-w-0 truncate text-white/75">{e.title}</span>
+                  <span className="shrink-0 text-white/40">{fmtDate(e.date, loc)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {attendance && attendance.length > 0 ? (
             <div className="mt-2.5 flex items-center justify-between gap-1" data-testid="me-week-days">
@@ -174,21 +198,6 @@ export default function MeWeeklyTrace({
             <p className="mt-2 text-[0.78rem] text-white/70" data-testid="me-week-day-detail">
               {fmtDate(attendance[selectedDay].date, loc)} · {attendance[selectedDay].active ? t.activity : t.noActivity}
             </p>
-          ) : null}
-
-          {/* Events this week (Slice 3.2F): the participant's OWN Reality Event participations —
-              "this Event was part of my week". Title + date only; newest-first; omitted when empty
-              (a proven zero is shown by the Me summary chip, per the existing category policy). */}
-          {detail?.eventsParticipated && detail.eventsParticipated.length > 0 ? (
-            <div className="mt-3 flex flex-col gap-1" data-testid="me-week-events">
-              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.events}</span>
-              {detail.eventsParticipated.map((e, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-2 text-[0.8rem]" data-testid="me-week-event-item">
-                  <span className="min-w-0 truncate text-white/75">{e.title}</span>
-                  <span className="shrink-0 text-white/40">{fmtDate(e.date, loc)}</span>
-                </div>
-              ))}
-            </div>
           ) : null}
         </div>
       ) : null}
