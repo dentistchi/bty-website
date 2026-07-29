@@ -38,6 +38,9 @@ const TRAILING_BRACKET = /\s*(?:\[([^\]]*)\]|【([^】]*)】)\s*$/;
 const KARAOKE_MENU_TAIL = /\s*(?:[/·|]\s*)?노래\s*\/\s*MR\s*\/\s*가사\s*\/\s*반주\s*$/i;
 // Trailing brand suffix: "/ TJ Karaoke", "/ KY 금영노래방", "· 노래방", …
 const TRAILING_BRAND_SUFFIX = /\s*[/·|]\s*(?:tj|ky|kumyoung|금영|태진)?\s*(?:karaoke|금영노래방|노래방)\b.*$/i;
+// A trailing "… / <anything> Karaoke|노래방" segment (keyword-anchored, e.g.
+// "/ JW Karaoke"). Bounded to a single separator-delimited segment — never generic.
+const TRAILING_KARAOKE_WORD = /\s*[/·|ㆍ]\s*[^/·|ㆍ]*(?:karaoke|노래방)\s*$/i;
 // A provider catalog code: (KY.86188) (KY 86188) (TJ.1234) (금영 123) …
 const PROVIDER_CODE = /\(\s*(?:KY|TJ|KUMYOUNG|금영|태진)\s*[.\s]?\s*\d+\s*\)/gi;
 // Channels that are karaoke companies / auto-generated, never a real singer.
@@ -46,9 +49,66 @@ const NON_ARTIST_CHANNEL = /노래방|가라오케|karaoke|금영|kumyoung|태�
 /** Longest plausible artist string on the right of a "Song - Artist" split. */
 const MAX_ARTIST_LEN = 25;
 
+// Leading separators / punctuation that can precede or glue provider noise —
+// includes the Hangul middle dot ㆍ (U+318D), a bare "]" left by a dangling
+// provider bracket, and a leading ")".
+const LEADING_JUNK = /^[\sㆍㆍ·・|/,\-–—\]) ]+/;
+// Provider phrases that may LEAD a display title, LONGEST-FIRST. Standalone
+// TJ/KY/MR/NWC are included — the hard product rule forbids a title line starting
+// with them — but are stripped ONLY when followed by a separator/end (so a real
+// word like "Mr." or "MRI" is never cut; '.' is deliberately NOT a separator).
+const LEADING_PROVIDER_PHRASES = [
+  'tj노래방', 'tj 노래방', 'ky 금영노래방', 'ky노래방', 'ky 노래방', '금영노래방', '금영 노래방',
+  'mr 노래방', 'mr노래방', 'mr karaoke', 'tj karaoke', 'ky karaoke',
+  '노래방', '가라오케', 'karaoke', 'kumyoung', '금영', '태진', 'nwc', 'tj', 'ky', 'mr',
+].sort((a, b) => b.length - a.length);
+const LEADING_PROVIDER_NEXT = /[\sㆍㆍ·・|/,\-–—\])[【]/;
+
 /** True iff a leading/trailing bracket's inner text is allowlisted provider noise. */
 function isProviderBracket(inner: string | undefined): boolean {
   return !!inner && PROVIDER_SIGNAL.test(inner);
+}
+
+/**
+ * TITLE-FIRST GUARANTEE — strip any run of allowlisted provider noise from the
+ * START of a string: leading separators, a dangling provider fragment ("…]" with
+ * no opening "["), a well-formed provider bracket, or a standalone provider phrase
+ * followed by a separator. Presentation only; never mutates stored data.
+ */
+function stripLeadingProvider(input: string): string {
+  let s = input ?? '';
+  for (let i = 0; i < 10; i++) {
+    const before = s;
+    s = s.replace(LEADING_JUNK, '');
+    // A dangling provider fragment "…]" (no opening bracket), e.g. "MR 노래방ㆍkaraoke]".
+    const dangling = s.match(/^([^[\]【】]{1,40})\]/);
+    if (dangling && PROVIDER_SIGNAL.test(dangling[1])) {
+      s = s.slice(dangling[0].length);
+      continue;
+    }
+    // A well-formed leading provider bracket, e.g. "[TJ노래방] ".
+    const lead = s.match(LEADING_BRACKET);
+    if (lead && isProviderBracket(lead[1] ?? lead[2])) {
+      s = s.slice(lead[0].length);
+      continue;
+    }
+    // A standalone leading provider phrase followed by a separator or the end.
+    const low = s.toLowerCase();
+    let hit = false;
+    for (const p of LEADING_PROVIDER_PHRASES) {
+      if (low.startsWith(p)) {
+        const next = s[p.length];
+        if (next === undefined || LEADING_PROVIDER_NEXT.test(next)) {
+          s = s.slice(p.length);
+          hit = true;
+          break;
+        }
+      }
+    }
+    if (hit) continue;
+    if (s === before) break;
+  }
+  return s.replace(LEADING_JUNK, '').trim();
 }
 
 /** Strip ONLY allowlisted provider noise (leading/trailing brackets, tails, codes). */
@@ -57,14 +117,13 @@ function stripProviderNoise(raw: string): string {
   // Iterate: provider metadata can appear in several positions and orders.
   for (let i = 0; i < 6; i++) {
     const before = s;
-    // Leading provider bracket (e.g. "[TJ노래방] ").
-    const lead = s.match(LEADING_BRACKET);
-    if (lead && isProviderBracket(lead[1] ?? lead[2])) s = s.slice(lead[0].length);
+    // Leading provider run (brackets, dangling "…]", standalone TJ/KY/MR/노래방 …).
+    s = stripLeadingProvider(s);
     // Trailing provider bracket (e.g. " [KY 금영노래방]").
     const tail = s.match(TRAILING_BRACKET);
     if (tail && isProviderBracket(tail[1] ?? tail[2])) s = s.slice(0, s.length - tail[0].length);
-    // Trailing catalog menu + brand suffixes.
-    s = s.replace(KARAOKE_MENU_TAIL, ' ').replace(TRAILING_BRAND_SUFFIX, ' ');
+    // Trailing catalog menu + brand suffixes + "…/… Karaoke" segments.
+    s = s.replace(KARAOKE_MENU_TAIL, ' ').replace(TRAILING_BRAND_SUFFIX, ' ').replace(TRAILING_KARAOKE_WORD, ' ');
     // Provider catalog codes anywhere.
     s = s.replace(PROVIDER_CODE, ' ');
     s = s.replace(/\s+/g, ' ').trim();
@@ -118,12 +177,23 @@ export function songDisplay(rawTitle: string, channel?: string | null): SongDisp
       right.length <= MAX_ARTIST_LEN &&
       !PROVIDER_SIGNAL.test(right);
     if (validArtist) {
-      return { title: spaceBeforeBracket(left), artist: right, sourceLabel };
+      return { title: titleFirst(left, rawTitle), artist: right, sourceLabel };
     }
   }
 
-  const title = spaceBeforeBracket(cleaned || (rawTitle ?? '').trim());
+  const title = titleFirst(cleaned || (rawTitle ?? '').trim(), rawTitle);
   return { title, artist: artistFromChannel(channel), sourceLabel };
+}
+
+/**
+ * Final safeguard: the first visible character of a title must never be provider
+ * text. Re-strip any leading provider run; if that empties the string, fall back to
+ * the cleaned raw so a card is never blank. Presentation only.
+ */
+function titleFirst(candidate: string, rawTitle: string): string {
+  const stripped = stripLeadingProvider(candidate);
+  const chosen = stripped || candidate || (rawTitle ?? '').trim();
+  return spaceBeforeBracket(chosen);
 }
 
 const BRACKET_TAG = /\[[^\]]*\]|【[^】]*】/g; // [KY ENTERTAINMENT], 【MV】

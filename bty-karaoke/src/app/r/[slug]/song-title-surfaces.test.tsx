@@ -18,8 +18,25 @@ import type { MyRequest } from '@/domain/guest-requests';
 
 const NOISY = '[TJ노래방] 난 - 옥주현 / TJ Karaoke';
 const NOISY_CHANNEL = 'TJ노래방 공식 유튜브채널';
+// The EXACT top live result that rendered provider-first before R2 (dangling "]").
+const LIVE_FAIL = 'MR 노래방ㆍkaraoke] 난 - 옥주현 ㆍTroublousness - Oak Joo-hyun';
+const LIVE_FAIL_CHANNEL = 'MR 노래방 l MR karaoke';
 
 afterEach(cleanup);
+
+describe('R2 — the exact live provider-first row (search card)', () => {
+  it('renders the song title first, never "MR 노래방…"', () => {
+    const item: YoutubeSearchItem = { videoId: 'dQw4w9WgXcQ', title: LIVE_FAIL, channelTitle: LIVE_FAIL_CHANNEL, thumbnailUrl: null };
+    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} saved={false} onToggleSave={vi.fn()} />);
+    const titleEl = document.querySelector('.req-card .title') as HTMLElement;
+    expect(titleEl.textContent!.startsWith('난')).toBe(true);
+    expect(titleEl.textContent!.startsWith('MR')).toBe(false);
+    expect(screen.queryByText(/MR 노래방ㆍkaraoke/)).toBeNull();
+    // Bookmark + 신청하기 still reachable (14).
+    expect(screen.getByRole('button', { name: /저장$/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /신청하기/ })).toBeTruthy();
+  });
+});
 
 describe('search card (14, 19, 21, 22)', () => {
   const item: YoutubeSearchItem = { videoId: 'dQw4w9WgXcQ', title: NOISY, channelTitle: NOISY_CHANNEL, thumbnailUrl: null };
