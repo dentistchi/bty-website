@@ -1266,6 +1266,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Weekly-activity refresh signal (B3A.2D-R1): bumped on every Me-tab reselect so the root summary
   // and the This Week detail re-fetch the canonical projection once per reselect.
   const [weeklyRefreshKey, setWeeklyRefreshKey] = useState(0);
+  // R1 (3.2F-EVENT-PARTICIPANT-R1): ONE shared disclosure state for the Me weekly popup so the
+  // labeled "This week" card AND the living Orb both open the SAME popup. Reset on Me-reselect.
+  const [meWeekOpen, setMeWeekOpen] = useState(false);
   // The app-shell scroll owner is the <main> below (flex-1 overflow-y-auto), NOT window — a Me-tab
   // reselect scrolls THIS container to the top.
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -1278,6 +1281,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     if (key === "me") {
       setMeView("home");
       setWeeklyRefreshKey((k) => k + 1);
+      setMeWeekOpen(false); // reselect returns to the canonical Me root with the weekly popup closed
     }
     setTab(key);
     // Scroll after the (possibly root-reset) view paints. rAF avoids scrolling stale nested content.
@@ -1822,11 +1826,24 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             // lift / dead space), then compact nav rows ending with Account. Nothing is
             // absolute/fixed; safe-area padding keeps content clear of the bottom dock.
             <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
-              <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
+              <MeThisWeek
+                locale={locale}
+                weeklyRhythm={weeklyRhythm}
+                refreshKey={weeklyRefreshKey}
+                weekOpen={meWeekOpen}
+                onToggleWeek={() => setMeWeekOpen((o) => !o)}
+              />
               {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup
                   entry Orb. A short tap toggles an inline weekly popover (no route / no meView /
-                  no hold-to-enter); the animation runs uninterrupted across toggles. */}
-              <MeWeeklyTrace locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
+                  no hold-to-enter); the animation runs uninterrupted across toggles. R1: the popup
+                  is now a SHARED disclosure — the labeled card above and this Orb open the same one. */}
+              <MeWeeklyTrace
+                locale={locale}
+                weeklyRhythm={weeklyRhythm}
+                refreshKey={weeklyRefreshKey}
+                open={meWeekOpen}
+                onOpenChange={setMeWeekOpen}
+              />
               <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
                 {[
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },

@@ -54,14 +54,28 @@ export default function MeWeeklyTrace({
   locale,
   weeklyRhythm,
   refreshKey,
+  open: openProp,
+  onOpenChange,
 }: {
   locale: string;
   weeklyRhythm: MeWeeklyRhythm;
   refreshKey?: number;
+  /** R1: optional controlled disclosure so the labeled "This week" card (MeThisWeek) AND the living
+   *  Orb drive ONE shared popup. Uncontrolled (prop omitted) keeps the Orb as a self-contained toggle
+   *  for standalone renders/tests. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [open, setOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const [openState, setOpenState] = useState(false);
+  const open = isControlled ? (openProp as boolean) : openState;
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    const value = typeof next === "function" ? (next as (v: boolean) => boolean)(open) : next;
+    if (!isControlled) setOpenState(value);
+    onOpenChange?.(value);
+  };
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [detail, setDetail] = useState<WeeklyActivityDetail | null>(() => getCachedDetail());
   const [placement, setPlacement] = useState<"above" | "below">("above");
@@ -92,11 +106,12 @@ export default function MeWeeklyTrace({
     };
   }, [refreshKey]);
 
-  // Me-reselect closes the popup + clears any day selection (canonical root-reselect contract).
+  // Me-reselect clears any day selection (canonical root-reselect contract). The popup itself is
+  // closed here when uncontrolled; in controlled mode the parent owns close-on-reselect.
   useEffect(() => {
-    setOpen(false);
+    if (!isControlled) setOpenState(false);
     setSelectedDay(null);
-  }, [refreshKey]);
+  }, [refreshKey, isControlled]);
 
   // Collision-aware placement: measured synchronously before paint. Prefer above the Orb; flip
   // below when the above-top would cross the top safe area (so the heading is never clipped).

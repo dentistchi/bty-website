@@ -57,11 +57,19 @@ export default function MeThisWeek({
   locale,
   weeklyRhythm,
   refreshKey,
+  weekOpen,
+  onToggleWeek,
 }: {
   locale: string;
   weeklyRhythm: MeWeeklyRhythm;
   /** Bumped on Me-tab reselect (B3A.2D-R1) → re-fetch the canonical weekly projection once. */
   refreshKey?: number;
+  /** R1: the labeled "This week" card IS the disclosure trigger for the weekly popup. When
+   *  `onToggleWeek` is provided the card renders as a semantic <button> controlling `me-week-popup`
+   *  (a reliable, full-card mobile hit target — a normal tap, no long-press). Omitted → the card is
+   *  a plain display-only section (standalone/legacy renders keep their prior behavior). */
+  weekOpen?: boolean;
+  onToggleWeek?: () => void;
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -121,33 +129,57 @@ export default function MeThisWeek({
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
-        <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.thisWeek}</span>
-        {dots.length > 0 ? (
-          <div className="flex items-center gap-1.5" data-testid="me-week-dots" aria-hidden>
-            {dots.map((d, i) => (
-              <span key={i} className={`h-2 w-2 rounded-full ${d > 0 ? "bg-[#E5B769]" : "bg-white/12"}`} />
-            ))}
-          </div>
-        ) : null}
-        {chips.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.82rem] text-white/70" data-testid="me-week-counts">
-            {chips.map((c, i) => (
-              <span key={i}>
-                {i > 0 ? <span className="mr-2.5 text-white/25">·</span> : null}
-                {c}
+      {(() => {
+        // Card inner is phrasing-only (spans, not block <div>/<p>) so it is valid inside the
+        // <button> trigger. Same testids/copy/fail-soft as before — only the element tags change.
+        const inner = (
+          <>
+            <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.thisWeek}</span>
+            {dots.length > 0 ? (
+              <span className="flex items-center gap-1.5" data-testid="me-week-dots" aria-hidden>
+                {dots.map((d, i) => (
+                  <span key={i} className={`h-2 w-2 rounded-full ${d > 0 ? "bg-[#E5B769]" : "bg-white/12"}`} />
+                ))}
               </span>
-            ))}
-          </div>
-        ) : loaded ? (
-          // Proven-empty week (a completed load with no canonical values) — never shown merely
-          // because a refresh is pending (that path retains the last values above).
-          <p className="text-[0.82rem] text-white/50">{t.quiet}</p>
+            ) : null}
+            {chips.length > 0 ? (
+              <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.82rem] text-white/70" data-testid="me-week-counts">
+                {chips.map((c, i) => (
+                  <span key={i}>
+                    {i > 0 ? <span className="mr-2.5 text-white/25">·</span> : null}
+                    {c}
+                  </span>
+                ))}
+              </span>
+            ) : loaded ? (
+              // Proven-empty week (a completed load with no canonical values) — never shown merely
+              // because a refresh is pending (that path retains the last values above).
+              <span className="block text-[0.82rem] text-white/50">{t.quiet}</span>
+            ) : (
+              // Initial no-data mount only — a quiet loading state, not a proven-zero claim.
+              <span className="block text-[0.82rem] text-white/30" role="status" data-testid="me-week-loading">{t.loading}</span>
+            )}
+          </>
+        );
+        const cardClass = "flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3";
+        // R1 fix: the whole labeled card is the tap target when wired as a disclosure. A semantic
+        // <button> (not a div) → reliable first-tap open on mobile, keyboard-activatable, no long-press.
+        return onToggleWeek ? (
+          <button
+            type="button"
+            data-testid="me-week-open"
+            aria-expanded={!!weekOpen}
+            aria-controls={weekOpen ? "me-week-popup" : undefined}
+            onClick={onToggleWeek}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" } as React.CSSProperties}
+            className={`${cardClass} w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-white/30`}
+          >
+            {inner}
+          </button>
         ) : (
-          // Initial no-data mount only — a quiet loading state, not a proven-zero claim.
-          <p className="text-[0.82rem] text-white/30" role="status" data-testid="me-week-loading">{t.loading}</p>
-        )}
-      </div>
+          <div className={cardClass}>{inner}</div>
+        );
+      })()}
     </section>
   );
 }
