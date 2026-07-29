@@ -4,6 +4,7 @@ import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
 import RequestForm from './RequestForm';
 import QueueBoard from './QueueBoard';
 import RoomLiveGuard from './RoomLiveGuard';
+import GuestFreshnessGuard from './GuestFreshnessGuard';
 import GuestConsentGate from '@/components/legal/GuestConsentGate';
 import LegalLinks from '@/components/legal/LegalLinks';
 import { normalizeTheme } from '@/domain/branding';
@@ -111,6 +112,7 @@ export default async function RoomPage({
   if (!event) {
     return (
       <main data-theme={normalizeTheme(room.branding_theme)}>
+        <GuestFreshnessGuard />
         <div className="brand-head">
           <span className="brand">{PRODUCT_NAME}</span>
           <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
@@ -127,6 +129,7 @@ export default async function RoomPage({
 
   return (
     <main data-theme={normalizeTheme(room.branding_theme)}>
+      <GuestFreshnessGuard />
       <div className="brand-head">
         <span className="brand">{PRODUCT_NAME}</span>
         <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
