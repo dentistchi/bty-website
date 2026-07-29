@@ -1686,7 +1686,20 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                     (Action Hygiene, Leadership Attention, Field Action plans, Action Reviews, reminders,
                     AI brief). No detailed list renders in the first viewport by default. */}
                 <TodayGreeting greetings={t.today.greetings} ssrDefault={t.today.title} />
-                <TodayHome locale={locale} onNavigate={(dest) => setTab(dest)} />
+                <TodayHome
+                  locale={locale}
+                  onNavigate={(dest) => setTab(dest)}
+                  onOpenLeadershipFollowUp={(target) => {
+                    // 3.2G-R2: in-shell entry — set the canonical control-room state + Today return
+                    // origin directly (the SAME state a direct URL would set), and switch to Learn
+                    // in-shell. No href, no document navigation, no ?from serialized to the address bar.
+                    setTab("learn");
+                    setHostEventId(target.eventId);
+                    setHostSection(target.section);
+                    setHostFocusId(target.focusId);
+                    setHostReturnTab("today");
+                  }}
+                />
               </>
             )}
           </>

@@ -33,38 +33,43 @@ function stub(
   );
 }
 
+// UUID-ish ids so the shared sanitizer (parseHostDeepLink) accepts the canonical deepLink on click.
+const EVENT_ID = "4dc5f309-1111-4222-8333-444444444444";
+const OVERDUE_FOCUS = "9ab0c1d2-5555-4666-8777-888888888888";
+const NEEDED_FOCUS = "1122aabb-6666-4777-8888-999999999999";
+const SHARED_FOCUS = "33445566-7777-4888-8999-aaaaaaaaaaaa";
 const overdue = {
   stableId: "FOLLOW_UP_OVERDUE:1",
   category: "FOLLOW_UP_OVERDUE",
-  eventId: "e1",
-  focusId: "f1",
+  eventId: EVENT_ID,
+  focusId: OVERDUE_FOCUS,
   participantDisplayName: "Jordan",
   trainingTitle: "Handling conflict",
   reason: "Follow-up is 2 days overdue",
   sourceTimestamp: "2026-07-27T00:00:00Z",
-  deepLink: "/en/app?tab=foundry&event=e1&section=followups&focus=f1",
+  deepLink: `/en/app?tab=foundry&event=${EVENT_ID}&section=followups&focus=${OVERDUE_FOCUS}`,
 };
 const needed = {
   stableId: "FOLLOW_UP_NEEDED:2",
   category: "FOLLOW_UP_NEEDED",
-  eventId: "e1",
-  focusId: "p2",
+  eventId: EVENT_ID,
+  focusId: NEEDED_FOCUS,
   participantDisplayName: "Sam",
   trainingTitle: "Difficult feedback",
   reason: "You flagged this response for follow-up",
   sourceTimestamp: "2026-07-28T00:00:00Z",
-  deepLink: "/en/app?tab=foundry&event=e1&section=shared-understanding&focus=p2",
+  deepLink: `/en/app?tab=foundry&event=${EVENT_ID}&section=shared-understanding&focus=${NEEDED_FOCUS}`,
 };
 const sharedDue = {
   stableId: "SHARED_REVIEW_DUE:3",
   category: "SHARED_REVIEW_DUE",
-  eventId: "e1",
-  focusId: "p3",
+  eventId: EVENT_ID,
+  focusId: SHARED_FOCUS,
   participantDisplayName: "Alex",
   trainingTitle: "Onboarding",
   reason: "Shared response awaiting first review",
   sourceTimestamp: "2026-07-28T00:00:00Z",
-  deepLink: "/en/app?tab=foundry&event=e1&section=shared-understanding&focus=p3",
+  deepLink: `/en/app?tab=foundry&event=${EVENT_ID}&section=shared-understanding&focus=${SHARED_FOCUS}`,
 };
 
 // The Today empty state (0 actionable items) carries the calm suggestion CTA. Its
@@ -161,23 +166,47 @@ describe("TodayHome — Host leadership attention follow-ups (3.2G)", () => {
     expect(first.textContent).toContain("Follow-up overdue");
     expect(first.textContent).toContain("Handling conflict");
     expect(first.textContent).toContain("Follow-up is 2 days overdue");
-    // R1: canonical server deepLink preserved as the href prefix (origin tag appended separately).
-    expect(first.querySelector("a")?.getAttribute("href")).toContain(overdue.deepLink);
+    // R2: the row is an app-shell command (button), NEVER a raw navigation anchor.
+    expect(first.querySelector("a")).toBeNull();
+    expect(first.querySelector("button[data-testid='today-followup-open']")).toBeTruthy();
   });
 
-  it("(3.2G-R1) tags the follow-up row href with a bounded Today origin, canonical target preserved", async () => {
+  it("(3.2G-R2) the follow-up row is a button, NOT a raw document-navigation anchor", async () => {
     stub({ hostAttention: [overdue] });
-    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    render(<TodayHome locale="en" onNavigate={() => {}} onOpenLeadershipFollowUp={() => {}} />);
     const row = (await screen.findAllByTestId("today-followup-row"))[0];
-    const href = row.querySelector("a")?.getAttribute("href") ?? "";
-    // Canonical server deepLink is intact (event/section/focus unchanged) and only `from=today` added.
-    expect(href.startsWith(overdue.deepLink + "&")).toBe(true);
-    expect(href).toContain("event=e1");
-    expect(href).toContain("section=followups");
-    expect(href).toContain("focus=f1");
-    expect(href).toContain("from=today");
-    expect(href).not.toContain("http://");
-    expect(href).not.toContain("https://");
+    expect(row.querySelector("a")).toBeNull(); // no anchor at all
+    const btn = row.querySelector("button[data-testid='today-followup-open']") as HTMLButtonElement | null;
+    expect(btn).toBeTruthy();
+    expect(btn!.getAttribute("type")).toBe("button");
+    expect(btn!.getAttribute("href")).toBeNull();
+  });
+
+  it("(3.2G-R2) first activation calls the in-shell callback exactly once with the canonical structured target", async () => {
+    const onOpen = vi.fn();
+    const assign = vi.fn();
+    // Fail loudly if any code path tries a hard navigation.
+    const origLocation = window.location;
+    Object.defineProperty(window, "location", { configurable: true, value: { ...origLocation, assign, href: origLocation.href } });
+    try {
+      stub({ hostAttention: [overdue] });
+      render(<TodayHome locale="en" onNavigate={() => {}} onOpenLeadershipFollowUp={onOpen} />);
+      const btn = await screen.findByTestId("today-followup-open");
+      fireEvent.click(btn);
+      expect(onOpen).toHaveBeenCalledTimes(1);
+      expect(onOpen).toHaveBeenCalledWith({ eventId: EVENT_ID, section: "followups", focusId: OVERDUE_FOCUS });
+      expect(assign).not.toHaveBeenCalled(); // no window.location navigation
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: origLocation });
+    }
+  });
+
+  it("(3.2G-R2) a FOLLOW_UP_NEEDED row carries its canonical shared-understanding section, not a guessed one", async () => {
+    const onOpen = vi.fn();
+    stub({ hostAttention: [needed] });
+    render(<TodayHome locale="en" onNavigate={() => {}} onOpenLeadershipFollowUp={onOpen} />);
+    fireEvent.click(await screen.findByTestId("today-followup-open"));
+    expect(onOpen).toHaveBeenCalledWith({ eventId: EVENT_ID, section: "shared-understanding", focusId: NEEDED_FOCUS });
   });
 
   it("preserves the server (domain-priority) order — overdue before needed — without re-ranking", async () => {

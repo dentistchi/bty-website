@@ -8,6 +8,7 @@ import {
   type PrimaryActionCandidate,
   type PrimaryActionResult,
 } from "@/domain/daily/todayPrimaryAction";
+import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
 
 /**
  * Today — simplified hierarchy (App Shell + Today Simplification V1, Phases 3–4 + empty-state patch).
@@ -167,10 +168,16 @@ function deviceTz(): string | null {
 export default function TodayHome({
   locale,
   onNavigate,
+  onOpenLeadershipFollowUp,
 }: {
   locale: string;
   /** In-shell tab navigation for the deterministic fallback CTAs (no route reload). */
   onNavigate?: (tab: "learn" | "practice") => void;
+  /** 3.2G-R2: open a leadership follow-up's control room IN-SHELL (no href, no document reload). The
+   *  shell sets the canonical Event/section/focus state + Today return origin directly. The structured
+   *  target is derived from the SERVER's canonical deepLink via the shared sanitizer — never from
+   *  display text — so the UI carries no routing/authorization logic of its own. */
+  onOpenLeadershipFollowUp?: (target: { eventId: string; section: HostFocusSection; focusId: string }) => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -392,12 +399,27 @@ export default function TodayHome({
             <ul className="flex flex-col gap-1.5" data-testid="today-followups">
               {followUpVisible.map((h) => (
                 <li key={h.stableId} data-testid="today-followup-row" data-category={h.category}>
-                  <a
-                    // Origin-aware return (3.2G-R1): keep the SERVER's canonical target untouched and
-                    // append only a bounded `from=today` origin so the control room's Back returns to
-                    // Today (not the Learn root). No target/learner/event/focus change; enum, not a URL.
-                    href={h.deepLink ? `${h.deepLink}&from=today` : undefined}
-                    className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
+                  {/* 3.2G-R2: a row already inside the app is an APP-SHELL COMMAND, not a webpage link.
+                      A <button> (never a raw href) so the cold first tap cannot be handled by the
+                      WKWebView navigation policy / activate pre-hydration → no document reload, no
+                      Safari, no second-tap requirement. The canonical Event/section/focus target is
+                      parsed from the SERVER deepLink by the shared sanitizer (not display text). */}
+                  <button
+                    type="button"
+                    data-testid="today-followup-open"
+                    onClick={() => {
+                      if (!h.deepLink) return;
+                      const q = h.deepLink.slice(h.deepLink.indexOf("?"));
+                      const target = parseHostDeepLink(q);
+                      if (target) {
+                        onOpenLeadershipFollowUp?.({
+                          eventId: target.eventId,
+                          section: target.section,
+                          focusId: target.focusId,
+                        });
+                      }
+                    }}
+                    className="flex w-full flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-left"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{h.participantDisplayName}</span>
@@ -407,7 +429,7 @@ export default function TodayHome({
                     </div>
                     {h.trainingTitle ? <span className="truncate text-xs text-white/45">{h.trainingTitle}</span> : null}
                     {h.reason ? <span className="text-xs text-white/60">{h.reason}</span> : null}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
