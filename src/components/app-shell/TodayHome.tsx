@@ -39,7 +39,21 @@ type Reminder = {
   state: PrimaryActionCandidate["state"];
   canonicalDeepLink: string;
 };
-type HostAttention = { stableId: string; category: "FOLLOW_UP_OVERDUE" | "FOLLOW_UP_NEEDED" | "SHARED_REVIEW_DUE" };
+type HostAttentionCategory = "FOLLOW_UP_OVERDUE" | "FOLLOW_UP_NEEDED" | "SHARED_REVIEW_DUE";
+type FollowUpCategory = "FOLLOW_UP_OVERDUE" | "FOLLOW_UP_NEEDED";
+// The brief endpoint already ships the full navigation summary (participant/training/reason/deepLink);
+// earlier this type narrowed to {stableId,category} and dropped the FOLLOW_UP rows on the floor (3.2G).
+type HostAttention = {
+  stableId: string;
+  category: HostAttentionCategory;
+  eventId?: string;
+  focusId?: string;
+  participantDisplayName?: string;
+  trainingTitle?: string;
+  reason?: string;
+  sourceTimestamp?: string;
+  deepLink?: string;
+};
 type HostActionReview = { actionContractId: string };
 
 const COPY: Record<Locale, {
@@ -52,6 +66,8 @@ const COPY: Record<Locale, {
   corrections: (n: number) => string;
   reviews: (n: number) => string;
   followups: (n: number) => string;
+  leadershipSub: string;
+  hostTags: Record<FollowUpCategory, string>;
   showEverything: string;
   showLess: string;
   todayHeader: string;
@@ -77,6 +93,8 @@ const COPY: Record<Locale, {
     corrections: (n) => `${n} action${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} your correction`,
     reviews: (n) => `${n} action plan${n === 1 ? "" : "s"} awaiting your review`,
     followups: (n) => `${n} follow-up${n === 1 ? "" : "s"} due`,
+    leadershipSub: "People who may need your attention today",
+    hostTags: { FOLLOW_UP_OVERDUE: "Follow-up overdue", FOLLOW_UP_NEEDED: "Needs follow-up" },
     showEverything: "Show everything",
     showLess: "Show less",
     todayHeader: "Today",
@@ -107,6 +125,8 @@ const COPY: Record<Locale, {
     corrections: (n) => `${n}개의 행동에 수정이 필요합니다`,
     reviews: (n) => `${n}개의 행동 계획이 검토를 기다리고 있습니다`,
     followups: (n) => `${n}개의 후속 확인이 예정되어 있습니다`,
+    leadershipSub: "오늘 관심을 기울여야 할 사람",
+    hostTags: { FOLLOW_UP_OVERDUE: "후속 확인 지연", FOLLOW_UP_NEEDED: "후속 확인 필요" },
     showEverything: "모두 보기",
     showLess: "접기",
     todayHeader: "오늘",
@@ -128,6 +148,13 @@ const COPY: Record<Locale, {
     findCta: "프로그램 찾기",
   },
 };
+
+const HOST_PREVIEW = 3;
+
+// Row-tag tone: overdue reads as urgent (warm red), needed as the standard gold cue. Pure presentation.
+function followUpTagTone(c: FollowUpCategory): string {
+  return c === "FOLLOW_UP_OVERDUE" ? "text-red-300/80 border-red-400/30" : "text-[#E5B769] border-[#C9A66B]/35";
+}
 
 function deviceTz(): string | null {
   try {
@@ -155,6 +182,7 @@ export default function TodayHome({
   const [hasActiveProgram, setHasActiveProgram] = useState(false);
   const [hasAvailablePractice, setHasAvailablePractice] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [showAllHost, setShowAllHost] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,6 +287,13 @@ export default function TodayHome({
   const { visible: todayVisibleItems, hasMore: todayHasMore } = todayVisible(todayItems, expanded);
   const reviews =
     hostActionReviews.length + hostAttention.filter((h) => h.category === "SHARED_REVIEW_DUE").length;
+  // 3.2G — the leader's overdue/needed follow-ups. `hostAttention` is already sorted by the domain
+  // priority rule server-side (sortHostAttention); filtering PRESERVES that order (no UI re-ranking).
+  const followUpItems = hostAttention.filter(
+    (h): h is HostAttention & { category: FollowUpCategory } =>
+      h.category === "FOLLOW_UP_OVERDUE" || h.category === "FOLLOW_UP_NEEDED",
+  );
+  const followUpVisible = showAllHost ? followUpItems : followUpItems.slice(0, HOST_PREVIEW);
 
   // Yesterday = canonical counts sentence; falls back to the measured self-return line
   // only when the counts source is unavailable (never fabricated).
@@ -340,18 +375,63 @@ export default function TodayHome({
         )}
       </div>
 
-      {/* Host reviews (creator reviewing others) — compact, only when non-zero; never
-          duplicated into the Today list above. */}
-      {reviews > 0 ? (
-        <button
-          type="button"
-          data-testid="today-attention"
-          onClick={() => onNavigate?.("practice")}
-          className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
-        >
-          <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.attention}</span>
-          <span data-testid="attention-reviews" className="text-[0.8rem] text-white/70">{t.reviews(reviews)}</span>
-        </button>
+      {/* Host leadership attention (creator's obligations) — one calm section under a single header:
+          the leader's overdue/needed FOLLOW-UP rows (deep-linked to the control room, 3.2G) plus the
+          compact SHARED_REVIEW_DUE + arena action-review count. Rendered only when non-zero; follow-up
+          rows are NEVER duplicated into the Today learner list above, and carry no private body/PII. */}
+      {followUpItems.length > 0 || reviews > 0 ? (
+        <div className="flex flex-col gap-2" data-testid="today-host-attention">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-[#C9A66B]/70">{t.attention}</span>
+            {followUpItems.length > 0 ? (
+              <span className="text-[0.72rem] text-white/45">{t.leadershipSub}</span>
+            ) : null}
+          </div>
+
+          {followUpItems.length > 0 ? (
+            <ul className="flex flex-col gap-1.5" data-testid="today-followups">
+              {followUpVisible.map((h) => (
+                <li key={h.stableId} data-testid="today-followup-row" data-category={h.category}>
+                  <a
+                    href={h.deepLink}
+                    className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/85">{h.participantDisplayName}</span>
+                      <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.66rem] " + followUpTagTone(h.category)}>
+                        {t.hostTags[h.category]}
+                      </span>
+                    </div>
+                    {h.trainingTitle ? <span className="truncate text-xs text-white/45">{h.trainingTitle}</span> : null}
+                    {h.reason ? <span className="text-xs text-white/60">{h.reason}</span> : null}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {followUpItems.length > HOST_PREVIEW ? (
+            <button
+              type="button"
+              data-testid="today-followups-toggle"
+              onClick={() => setShowAllHost((v) => !v)}
+              className="self-start text-xs font-medium text-white/55 hover:text-white/85"
+            >
+              {showAllHost ? t.showLess : t.showMore}
+            </button>
+          ) : null}
+
+          {reviews > 0 ? (
+            <button
+              type="button"
+              data-testid="today-attention"
+              onClick={() => onNavigate?.("practice")}
+              className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
+            >
+              <span data-testid="attention-reviews" className="text-[0.8rem] text-white/70">{t.reviews(reviews)}</span>
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

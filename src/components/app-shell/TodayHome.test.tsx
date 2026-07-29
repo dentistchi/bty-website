@@ -16,13 +16,15 @@ afterEach(() => {
 
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
-function stub(over: { reminders?: unknown[]; practices?: unknown[]; programs?: unknown[] } = {}) {
+function stub(
+  over: { reminders?: unknown[]; practices?: unknown[]; programs?: unknown[]; hostAttention?: unknown[]; actionReviews?: unknown[] } = {},
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
       const u = String(url);
-      if (u.includes("/api/me/today/brief")) return json({ ok: true, reminders: over.reminders ?? [], hostAttention: [] });
-      if (u.includes("/api/arena/action-review-queue")) return json({ items: [] });
+      if (u.includes("/api/me/today/brief")) return json({ ok: true, reminders: over.reminders ?? [], hostAttention: over.hostAttention ?? [] });
+      if (u.includes("/api/arena/action-review-queue")) return json({ items: over.actionReviews ?? [] });
       if (u.includes("/api/me/daily-trace")) return json({ dailyTrace: [] });
       if (u.includes("/api/arena/practice")) return json({ practices: over.practices ?? [] });
       if (u.includes("/api/bty/foundry/learning-path")) return json({ ok: true, programs: over.programs ?? [] });
@@ -30,6 +32,40 @@ function stub(over: { reminders?: unknown[]; practices?: unknown[]; programs?: u
     }),
   );
 }
+
+const overdue = {
+  stableId: "FOLLOW_UP_OVERDUE:1",
+  category: "FOLLOW_UP_OVERDUE",
+  eventId: "e1",
+  focusId: "f1",
+  participantDisplayName: "Jordan",
+  trainingTitle: "Handling conflict",
+  reason: "Follow-up is 2 days overdue",
+  sourceTimestamp: "2026-07-27T00:00:00Z",
+  deepLink: "/en/app?tab=foundry&event=e1&section=followups&focus=f1",
+};
+const needed = {
+  stableId: "FOLLOW_UP_NEEDED:2",
+  category: "FOLLOW_UP_NEEDED",
+  eventId: "e1",
+  focusId: "p2",
+  participantDisplayName: "Sam",
+  trainingTitle: "Difficult feedback",
+  reason: "You flagged this response for follow-up",
+  sourceTimestamp: "2026-07-28T00:00:00Z",
+  deepLink: "/en/app?tab=foundry&event=e1&section=shared-understanding&focus=p2",
+};
+const sharedDue = {
+  stableId: "SHARED_REVIEW_DUE:3",
+  category: "SHARED_REVIEW_DUE",
+  eventId: "e1",
+  focusId: "p3",
+  participantDisplayName: "Alex",
+  trainingTitle: "Onboarding",
+  reason: "Shared response awaiting first review",
+  sourceTimestamp: "2026-07-28T00:00:00Z",
+  deepLink: "/en/app?tab=foundry&event=e1&section=shared-understanding&focus=p3",
+};
 
 // The Today empty state (0 actionable items) carries the calm suggestion CTA. Its
 // wording distinguishes continue-program / start-practice / find-program.
@@ -110,5 +146,70 @@ describe("TodayHome — Today action list + calm empty state (B3A.2B)", () => {
     render(<TodayHome locale="en" onNavigate={() => {}} />);
     await screen.findByTestId("today-home");
     expect(screen.queryByTestId("today-show-everything-toggle")).toBeNull();
+  });
+});
+
+describe("TodayHome — Host leadership attention follow-ups (3.2G)", () => {
+  it("renders overdue + needed follow-up rows with participant, tag, reason and control-room deep link", async () => {
+    stub({ hostAttention: [overdue, needed] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    const rows = await screen.findAllByTestId("today-followup-row");
+    expect(rows).toHaveLength(2);
+    const first = rows[0];
+    expect(first.getAttribute("data-category")).toBe("FOLLOW_UP_OVERDUE");
+    expect(first.textContent).toContain("Jordan");
+    expect(first.textContent).toContain("Follow-up overdue");
+    expect(first.textContent).toContain("Handling conflict");
+    expect(first.textContent).toContain("Follow-up is 2 days overdue");
+    expect(first.querySelector("a")?.getAttribute("href")).toBe(overdue.deepLink);
+  });
+
+  it("preserves the server (domain-priority) order — overdue before needed — without re-ranking", async () => {
+    // Server ships them already sorted; the UI must render in array order (filter preserves it).
+    stub({ hostAttention: [overdue, needed] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    const rows = await screen.findAllByTestId("today-followup-row");
+    expect(rows.map((r) => r.getAttribute("data-category"))).toEqual(["FOLLOW_UP_OVERDUE", "FOLLOW_UP_NEEDED"]);
+  });
+
+  it("no follow-up items → no follow-up list rendered (no empty shell)", async () => {
+    stub({ hostAttention: [] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    await screen.findByTestId("today-home");
+    expect(screen.queryByTestId("today-followups")).toBeNull();
+    expect(screen.queryByTestId("today-host-attention")).toBeNull();
+  });
+
+  it("SHARED_REVIEW_DUE stays a count in the reviews row and is NOT a follow-up row (no double-count)", async () => {
+    stub({ hostAttention: [sharedDue] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    await screen.findByTestId("today-attention");
+    expect(screen.queryByTestId("today-followup-row")).toBeNull();
+    expect(screen.getByTestId("attention-reviews").textContent).toContain("1 action plan awaiting your review");
+  });
+
+  it("reviews row still navigates IN-SHELL to Practice", async () => {
+    const onNav = vi.fn();
+    stub({ hostAttention: [overdue], actionReviews: [{ actionContractId: "c1" }] });
+    render(<TodayHome locale="en" onNavigate={onNav} />);
+    fireEvent.click(await screen.findByTestId("today-attention"));
+    expect(onNav).toHaveBeenCalledWith("practice");
+  });
+
+  it("collapses to a preview of 3 with a Show more toggle", async () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({ ...overdue, stableId: `FOLLOW_UP_OVERDUE:${i}`, focusId: `f${i}`, deepLink: `/en/app?tab=foundry&event=e1&section=followups&focus=f${i}` }));
+    stub({ hostAttention: many });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    expect((await screen.findAllByTestId("today-followup-row")).length).toBe(3);
+    fireEvent.click(screen.getByTestId("today-followups-toggle"));
+    expect(screen.getAllByTestId("today-followup-row").length).toBe(5);
+  });
+
+  it("KO copy parity for the follow-up tags + subtitle", async () => {
+    stub({ hostAttention: [overdue] });
+    render(<TodayHome locale="ko" onNavigate={() => {}} />);
+    const section = await screen.findByTestId("today-host-attention");
+    expect(section.textContent).toContain("후속 확인 지연");
+    expect(section.textContent).toContain("오늘 관심을 기울여야 할 사람");
   });
 });
