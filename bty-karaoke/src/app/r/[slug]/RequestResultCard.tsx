@@ -11,6 +11,12 @@ interface Props {
   /** Briefly true right after a successful request — shows "✓ 신청됨". */
   requested?: boolean;
   variant?: 'primary' | 'reco';
+  /** BUILD 20B-WEB7 — this videoId is in the device saved library ("내 노래"). */
+  saved?: boolean;
+  /** A save/unsave for this videoId is in flight. */
+  savePending?: boolean;
+  /** Toggle the bookmark. Independent from 신청하기 — never creates a request. */
+  onToggleSave?: (item: YoutubeSearchItem) => void;
 }
 
 // A requestable song card. Right-swipe reveals the gold 🎤 신청하기 surface; the
@@ -22,6 +28,9 @@ export default function RequestResultCard({
   pending,
   requested = false,
   variant = 'primary',
+  saved = false,
+  savePending = false,
+  onToggleSave,
 }: Props) {
   const act = () => {
     if (!pending) onRequest(item);
@@ -55,15 +64,36 @@ export default function RequestResultCard({
             ) : null;
           })()}
         </div>
-        <button
-          type="button"
-          className={`req-btn${requested ? ' done' : ''}`}
-          onClick={act}
-          disabled={pending}
-          aria-label={`${item.title} 신청하기`}
-        >
-          {label}
-        </button>
+        <div className="req-card-actions">
+          {onToggleSave && (
+            <button
+              type="button"
+              className={`save-btn${saved ? ' on' : ''}`}
+              onClick={(e) => {
+                // A bookmark tap must never bubble into the swipe-to-request gesture,
+                // and never triggers 신청 — save is fully independent from the queue.
+                e.stopPropagation();
+                if (!savePending) onToggleSave(item);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              disabled={savePending}
+              aria-pressed={saved}
+              aria-label={saved ? `${item.title} 저장 해제` : `${item.title} 저장`}
+              title={saved ? '저장 해제' : '내 노래에 저장'}
+            >
+              {saved ? '★' : '☆'}
+            </button>
+          )}
+          <button
+            type="button"
+            className={`req-btn${requested ? ' done' : ''}`}
+            onClick={act}
+            disabled={pending}
+            aria-label={`${item.title} 신청하기`}
+          >
+            {label}
+          </button>
+        </div>
       </div>
     </SwipeableCard>
   );

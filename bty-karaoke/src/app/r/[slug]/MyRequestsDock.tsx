@@ -15,16 +15,28 @@ import {
 } from '@/domain/guest-requests';
 import { displaySong } from '@/domain/song-title';
 import { resolvePerfStage } from '@/domain/self-service';
+import type { OwnStatusRow } from '@/domain/recently-sung';
+import type { SavedSongSnapshot } from '@/domain/saved-songs';
+import type { RecordInput } from './my-songs.hooks';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
   slug: string;
   requests: MyRequest[];
+  /** The room's canonical live event id (scopes Recently Sung, gates false history). */
+  eventId?: string | null;
   /** The guest's name — used only for a warm MC-style greeting on the cards. */
   guestName?: string;
   onRemoved: (requestId: string) => void;
   /** Re-request a completed song (creates a NEW request; history is untouched). */
   onReRequest?: (row: MyRequest) => void;
+  /** BUILD 20B-WEB7 — report each poll's own statuses so Recently Sung can record. */
+  onRecordRecentlySung?: (input: RecordInput) => void;
+  /** Whether THIS guest's own now-playing videoId is already saved ("내 노래"). */
+  isSaved?: (videoId: string) => boolean;
+  isSavePending?: (videoId: string) => boolean;
+  /** Toggle the bookmark for the own now-playing song. Never mutates the queue. */
+  onToggleSave?: (song: SavedSongSnapshot) => void;
 }
 
 const POLL_MS = 4000;
@@ -51,7 +63,18 @@ function statusText(s?: GuestQueueStatus): string {
 // auto-expands — a new request only bumps the count and flashes a short gold edge
 // pulse. Tapping the pill opens a clean full-width bottom sheet (not a side
 // column / split-screen). Every status comes from the canonical server resolver.
-export default function MyRequestsDock({ slug, requests, guestName, onRemoved, onReRequest }: Props) {
+export default function MyRequestsDock({
+  slug,
+  requests,
+  eventId = null,
+  guestName,
+  onRemoved,
+  onReRequest,
+  onRecordRecentlySung,
+  isSaved,
+  isSavePending,
+  onToggleSave,
+}: Props) {
   // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
   const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
   const [statuses, setStatuses] = useState<Record<string, GuestQueueStatus>>({});
@@ -79,7 +102,14 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved, o
   const prevCount = useRef(0);
   const terminalSeen = useRef<Set<string>>(new Set());
 
-  const poll = useCallback(async () => {
+  // Latest known statuses, mirrored into a ref so the record pass reads fresh values
+  // without re-subscribing every poll (avoids a stale-closure read of `statuses`).
+  const statusesRef = useRef(statuses);
+  useEffect(() => {
+    statusesRef.current = statuses;
+  }, [statuses]);
+
+  const poll = useCallback(async (): Promise<Record<string, GuestQueueStatus>> => {
     const entries = await Promise.all(
       requests.map(async (r) => {
         try {
@@ -101,40 +131,61 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved, o
         }
       }),
     );
-    setStatuses((prev) => {
-      const next = { ...prev };
-      for (const e of entries) if (e) next[e[0]] = e[1];
-      return next;
-    });
+    const fresh: Record<string, GuestQueueStatus> = {};
+    for (const e of entries) if (e) fresh[e[0]] = e[1];
+    setStatuses((prev) => ({ ...prev, ...fresh }));
+    return fresh;
   }, [slug, requests]);
 
-  // One room-wide read to learn if the stage is open and who is first in line.
-  const pollStage = useCallback(async () => {
+  // One room-wide read to learn if the stage is open, who is first in line, and
+  // whether THIS screen's Event is still the live one (guards false Recently Sung).
+  const pollStage = useCallback(async (): Promise<{ ok: boolean; eventActive: boolean; playing: DisplayState['playing'] }> => {
     try {
       const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/display`, { cache: 'no-store' });
-      if (!res.ok) return;
+      if (!res.ok) return { ok: false, eventActive: true, playing: null };
       const data = (await res.json()) as DisplayState;
       setStageOpen(data.playing == null);
       setNextId(data.next?.id ?? null);
+      // Legacy eventless room → always active. Otherwise the live Event must match
+      // this screen's id AND still be running (an ended/replaced Event is inactive).
+      const eventActive = data.event == null ? true : data.event.id === eventId && data.event.status === 'active';
+      return { ok: true, eventActive, playing: data.playing };
     } catch {
-      /* transient — keep last known stage state */
+      // Transient — keep last known stage state; a blip must never drop proofs.
+      return { ok: false, eventActive: true, playing: null };
     }
-  }, [slug]);
+  }, [slug, eventId]);
 
-  const refreshAll = useCallback(() => {
-    void poll();
-    void pollStage();
-  }, [poll, pollStage]);
+  const refreshAll = useCallback(async () => {
+    const [fresh, stage] = await Promise.all([poll(), pollStage()]);
+    if (!onRecordRecentlySung) return;
+    const merged = { ...statusesRef.current, ...fresh };
+    const own: OwnStatusRow[] = requests.map((r) => {
+      const s = merged[r.requestId];
+      // Thumbnail is only knowable while the song is on stage (display.playing) —
+      // captured exactly when the proof is taken (state === now_playing).
+      const thumb = stage.playing && stage.playing.id === r.requestId ? stage.playing.thumbnailUrl : null;
+      return {
+        requestId: r.requestId,
+        state: s?.state ?? 'waiting',
+        videoId: r.videoId ?? null,
+        title: r.title,
+        artist: r.artist,
+        thumbnailUrl: thumb,
+      };
+    });
+    onRecordRecentlySung({ own, eventActive: stage.eventActive, pollOk: stage.ok });
+  }, [poll, pollStage, requests, onRecordRecentlySung]);
 
   useEffect(() => {
-    refreshAll();
+    void refreshAll();
     const t = window.setInterval(() => {
-      if (!document.hidden) refreshAll();
+      if (!document.hidden) void refreshAll();
     }, POLL_MS);
     // Returning to the tab (app switch, YouTube handoff, screen unlock, bfcache)
     // refreshes #N immediately — the guest never has to reload to see a reorder.
     const onVisible = () => {
-      if (!document.hidden) refreshAll();
+      if (!document.hidden) void refreshAll();
     };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('pageshow', onVisible);
@@ -238,14 +289,14 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved, o
         // handoff still happens on the Admin Player (we never claim TV autoplay).
         const data = (await res.json().catch(() => ({}))) as { autoStarted?: boolean };
         if (data.autoStarted) setJustStarted(true);
-        refreshAll();
+        void refreshAll();
         return;
       }
       if (res.status === 403) setError('이 기기에서는 준비할 수 없어요.');
       else if (res.status === 409) setError('이미 차례가 지나갔어요.');
       else if (res.status === 404) setError('신청곡을 찾을 수 없어요.');
       else setError('지금은 준비할 수 없어요.');
-      refreshAll();
+      void refreshAll();
     } catch {
       setError('네트워크 오류 — 다시 시도해 주세요.');
     } finally {
@@ -334,6 +385,29 @@ export default function MyRequestsDock({ slug, requests, guestName, onRemoved, o
             <div className="perf-sub">
               TV에서 노래가 재생되고 있어요. 노래가 끝나면 Admin이 다음 차례로 넘깁니다.
             </div>
+            {/* BUILD 20B-WEB7 — bookmark THIS song (own, canonically playing by
+                requestId). Save is independent: it never Ready/cancels/starts/
+                finishes/opens YouTube and never mutates the Event. */}
+            {onToggleSave && stageReq.videoId && (
+              <div className="perf-actions">
+                <button
+                  type="button"
+                  className={`perf-btn ghost save-inline${isSaved?.(stageReq.videoId) ? ' on' : ''}`}
+                  onClick={() =>
+                    onToggleSave({
+                      videoId: stageReq.videoId!,
+                      title: stageReq.title,
+                      artist: stageReq.artist ?? null,
+                      thumbnailUrl: null,
+                    })
+                  }
+                  disabled={isSavePending?.(stageReq.videoId)}
+                  aria-pressed={isSaved?.(stageReq.videoId) ?? false}
+                >
+                  {isSaved?.(stageReq.videoId) ? '★ 내 노래에 저장됨' : '☆ 내 노래에 저장'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
