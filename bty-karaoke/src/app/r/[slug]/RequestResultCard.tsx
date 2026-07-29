@@ -62,11 +62,16 @@ export default function RequestResultCard({
           {disp.artist && <div className="song-artist">{disp.artist}</div>}
           {(disp.sourceLabel || badge) && (
             <div className="song-meta">
-              {disp.sourceLabel && <span className="src-badge">{disp.sourceLabel}</span>}
-              {badge && (
-                <span className={`vk-badge vk-${badge.tone}`}>
-                  {badge.emoji} {badge.label}
-                </span>
+              {disp.sourceLabel ? (
+                // Prefer the ONE compact provider indicator (TJ/KY/MR/NWC) over the
+                // generic "노래방" category label when we know the source.
+                <span className="src-badge">{disp.sourceLabel}</span>
+              ) : (
+                badge && (
+                  <span className={`vk-badge vk-${badge.tone}`}>
+                    {badge.emoji} {badge.label}
+                  </span>
+                )
               )}
             </div>
           )}

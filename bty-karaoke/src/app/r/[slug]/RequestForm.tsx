@@ -25,6 +25,7 @@ import {
   type MyRequest,
 } from '@/domain/guest-requests';
 import RequestResultCard from './RequestResultCard';
+import GuestDiagnosticPanel from './GuestDiagnosticPanel';
 import MyRequestsDock from './MyRequestsDock';
 import MySongsSections from './MySongsSections';
 import AppInvitationCard from './AppInvitationCard';
@@ -684,6 +685,10 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
             정확한 MR 영상을 찾지 못했어요. 가까운 노래방·원곡 결과도 함께 보여드려요.
           </p>
         )}
+
+        {/* BUILD 20B-R5 — path-attribution panel, above the FIRST result. Only visible
+            with ?btydiag=1; proves surface/host/build/component + raw→formatted. */}
+        <GuestDiagnosticPanel sample={ranked.top[0] ?? ranked.more[0] ?? null} />
 
         {ranked.top.length > 0 && (
           <div className="result-group" style={{ marginTop: 12 }}>

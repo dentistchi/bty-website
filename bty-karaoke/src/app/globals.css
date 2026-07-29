@@ -4005,3 +4005,43 @@ main[data-theme='warm_stage'] {
   color: var(--muted);
   margin: 0;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   BUILD 20B-R5 — path-attribution diagnostic panel (?btydiag=1 only)
+   ══════════════════════════════════════════════════════════════ */
+.bty-diag {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 196, 81, 0.08);
+  font-size: 0.8rem;
+}
+.bty-diag-head {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.bty-diag-grid {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bty-diag-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.bty-diag-row dt {
+  flex: 0 0 44%;
+  color: var(--muted);
+  font-weight: 700;
+}
+.bty-diag-row dd {
+  flex: 1 1 auto;
+  margin: 0;
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
