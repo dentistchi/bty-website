@@ -156,13 +156,67 @@ function spaceBeforeBracket(s: string): string {
   return s.replace(/([^\s([])([([])/g, '$1 $2');
 }
 
+// ── Bilingual duplicate collapse (R3) ────────────────────────────────────────────
+//
+// Karaoke uploads sometimes carry the SAME "Song - Artist" twice — once in
+// Korean/CJK and once transliterated to Latin — joined by a bilingual separator:
+//   "난 - 옥주현 ㆍTroublousness - Oak Joo-hyun"
+// For a Korean-locale Guest UI we keep the Korean/CJK half. This is deliberately
+// conservative: it fires ONLY on strong duplicate evidence, never on a
+// collaboration ("A · B"), a medley, or a version suffix ("… · Live").
+
+// Measured bilingual separators only (Hangul middle dot U+318D, middle dot U+00B7).
+// '•' (U+2022) is intentionally excluded — no production evidence of identical use.
+const BILINGUAL_SEP = /[ㆍ·]/g;
+// Version/collaboration markers whose presence means a side is NOT a plain duplicate.
+const VERSION_KEYWORD =
+  /\b(?:live|remix|acoustic|cover|inst(?:rumental)?|remaster|edit|ost|feat\.?|featuring|duet|ver(?:sion)?)\b|OST|라이브|리믹스|어쿠스틱|커버|버전|듀엣|메들리|medley/i;
+// Script counters (explicit ranges — no \p{Script=…} dependency).
+const CJK_CHARS = /[가-힣ᄀ-ᇿ㄰-㆏㐀-䶿一-鿿぀-ゟ゠-ヿ]/g;
+const LATIN_CHARS = /[A-Za-zÀ-ɏ]/g;
+
+const countCjk = (s: string) => (s.match(CJK_CHARS) ?? []).length;
+const countLatin = (s: string) => (s.match(LATIN_CHARS) ?? []).length;
+/** A side reads like song metadata (short, has a "Song - Artist" hyphen), not prose. */
+const looksLikeMetaPair = (s: string) => s.length > 0 && s.length <= 40 && /\s[-–—]\s/.test(s);
+
+/**
+ * If `cleaned` is a bilingual DUPLICATE of one "Song - Artist" pair, return the
+ * Korean/CJK half; otherwise return null (keep the full cleaned title). Fires only
+ * when EVERY condition holds: exactly one bilingual separator, both halves are
+ * non-empty hyphen-structured metadata (structural symmetry ⇒ duplicate, not
+ * "Artist · Song"), opposite dominant scripts, and NO unique version/collab marker
+ * on either half.
+ */
+function collapseBilingualDuplicate(cleaned: string): string | null {
+  const seps = cleaned.match(BILINGUAL_SEP);
+  if (!seps || seps.length !== 1) return null; // exactly one recognized separator
+  const idx = cleaned.search(BILINGUAL_SEP);
+  const left = cleaned.slice(0, idx).trim();
+  const right = cleaned.slice(idx + 1).trim();
+  if (!looksLikeMetaPair(left) || !looksLikeMetaPair(right)) return null; // symmetry + not prose
+  if (VERSION_KEYWORD.test(left) || VERSION_KEYWORD.test(right)) return null; // preserve Live/OST/…
+  const lCjk = countCjk(left), lLat = countLatin(left);
+  const rCjk = countCjk(right), rLat = countLatin(right);
+  const leftCjkDom = lCjk > 0 && lCjk >= lLat;
+  const leftLatDom = lLat > 0 && lLat > lCjk;
+  const rightCjkDom = rCjk > 0 && rCjk >= rLat;
+  const rightLatDom = rLat > 0 && rLat > rCjk;
+  if (leftCjkDom && rightLatDom) return left; // Korean-left duplicate → keep Korean
+  if (leftLatDom && rightCjkDom) return right; // English-left duplicate → keep Korean
+  return null; // same script / mixed → not a bilingual duplicate
+}
+
 /**
  * Project a raw karaoke title (+ channel) to a clean display title/artist/source.
  * Display only — inputs are never persisted or sent back.
  */
 export function songDisplay(rawTitle: string, channel?: string | null): SongDisplayMetadata {
   const sourceLabel = detectSourceLabel(rawTitle, channel);
-  const cleaned = stripProviderNoise(rawTitle ?? '');
+  const stripped = stripProviderNoise(rawTitle ?? '');
+  // R3: collapse a clear Korean/Latin bilingual duplicate to its Korean half before
+  // the "Song - Artist" split, so "난 - 옥주현 ㆍTroublousness - Oak Joo-hyun" → 난/옥주현.
+  const cleaned = collapseBilingualDuplicate(stripped) ?? stripped;
 
   // Split on a spaced delimiter ONLY when there is exactly one — a title with two
   // (e.g. "藤井風 - 何なんw 후지이 카제 - 뭐야ㅋ") is ambiguous → keep whole, no artist.
