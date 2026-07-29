@@ -201,13 +201,22 @@ export default function MeWeeklyTrace({
                     aria-label={`${fmtDate(d.date, loc)} — ${d.active ? t.present : t.absent}`}
                   >
                     <span className="text-[0.58rem] text-white/35" aria-hidden>{fmtWeekday(d.date, loc)}</span>
-                    {/* Distinguishable WITHOUT color: filled ● present vs hollow ○ rest (shape + text
-                        + aria-label), so an active/inactive day reads correctly in monochrome too. */}
-                    <span
-                      aria-hidden
-                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-full text-[0.5rem] leading-none ${d.active ? "bg-[#E5B769] text-[#0B1F3A]" : "border border-white/25 bg-transparent text-white/30"}`}
-                    >
-                      {d.active ? "●" : "○"}
+                    {/* R2: a quiet BTY living LIGHT of presence — NOT a ring/donut. Restores the proven
+                        filled-gold marker (R3 me-week-days / MeThisWeek me-week-dots use bg-[#E5B769]
+                        solid, no glyph, no center cutout). Active = a solid warm-gold core with a soft
+                        amber bloom + outer haze (layered box-shadow, gold token #E5B769=rgb(229,183,107),
+                        static, no images). Rest = a smaller, dim, FILLED point (no bright hollow ring).
+                        Distinguishable beyond color: size + luminosity + glow + the Present/Rest aria-label. */}
+                    <span aria-hidden className="flex h-3.5 w-3.5 items-center justify-center">
+                      <span
+                        data-testid="me-attendance-light"
+                        data-light={d.active ? "active" : "rest"}
+                        className={
+                          d.active
+                            ? "h-3 w-3 rounded-full bg-[#E5B769] shadow-[0_0_4px_1px_rgba(229,183,107,0.75),0_0_9px_3px_rgba(229,183,107,0.35)]"
+                            : "h-1.5 w-1.5 rounded-full bg-white/20"
+                        }
+                      />
                     </span>
                   </div>
                 ))}

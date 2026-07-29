@@ -127,6 +127,45 @@ describe("R1 — attendance-only content", () => {
   });
 });
 
+describe("R2 — living-light markers (not donuts)", () => {
+  it("renders seven attendance lights; active = filled gold core with a soft glow, no hollow ring/glyph", async () => {
+    stubShell();
+    await gotoMe();
+    fireEvent.click(await screen.findByTestId("me-weekly-orb"));
+    const daysWrap = await screen.findByTestId("me-attendance-days");
+    const lights = within(daysWrap).getAllByTestId("me-attendance-light");
+    expect(lights).toHaveLength(7);
+    // No glyph characters (the donut cause) anywhere in the marker row.
+    expect(daysWrap.textContent ?? "").not.toMatch(/[●○]/);
+    const active = lights.filter((l) => l.getAttribute("data-light") === "active");
+    const rest = lights.filter((l) => l.getAttribute("data-light") === "rest");
+    expect(active).toHaveLength(5);
+    expect(rest).toHaveLength(2);
+    for (const l of active) {
+      expect(l.className).toContain("bg-[#E5B769]"); // filled warm-gold core (not a cutout)
+      expect(l.className).toMatch(/shadow-\[/); // soft amber bloom + outer haze (living light)
+      expect(l.className).not.toMatch(/border/); // NOT a ring/donut as its primary shape
+      expect(l.querySelector("*")).toBeNull(); // no inner glyph/dark-center element
+    }
+  });
+
+  it("rest days are quieter: smaller, dim, filled — no glow, no bright hollow ring, no red", async () => {
+    stubShell();
+    await gotoMe();
+    fireEvent.click(await screen.findByTestId("me-weekly-orb"));
+    const rest = within(await screen.findByTestId("me-attendance-days"))
+      .getAllByTestId("me-attendance-light")
+      .filter((l) => l.getAttribute("data-light") === "rest");
+    for (const l of rest) {
+      expect(l.className).toMatch(/bg-white\//); // a dim filled point
+      expect(l.className).not.toContain("bg-[#E5B769]"); // clearly less luminous than active
+      expect(l.className).not.toMatch(/shadow-\[/); // no active glow
+      expect(l.className).not.toMatch(/border/); // not a hollow ring
+      expect(l.className).not.toMatch(/red|rose|#f?[0-9a-f]*[fF]0000/i); // never punitive
+    }
+  });
+});
+
 describe("R1 — interaction reliability", () => {
   it("close works; reopen works repeatedly; only one popup ever", async () => {
     stubShell();
