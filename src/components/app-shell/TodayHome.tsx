@@ -393,7 +393,10 @@ export default function TodayHome({
               {followUpVisible.map((h) => (
                 <li key={h.stableId} data-testid="today-followup-row" data-category={h.category}>
                   <a
-                    href={h.deepLink}
+                    // Origin-aware return (3.2G-R1): keep the SERVER's canonical target untouched and
+                    // append only a bounded `from=today` origin so the control room's Back returns to
+                    // Today (not the Learn root). No target/learner/event/focus change; enum, not a URL.
+                    href={h.deepLink ? `${h.deepLink}&from=today` : undefined}
                     className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2"
                   >
                     <div className="flex items-center justify-between gap-3">

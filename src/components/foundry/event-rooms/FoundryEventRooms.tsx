@@ -13,7 +13,7 @@ import FoundryHistoryArchive from "./FoundryHistoryArchive";
 import FoundryRequiredLearning from "./FoundryRequiredLearning";
 import { ArenaPracticeFlow } from "../arena-practice/ArenaPracticeFlow";
 import { LearnDoors } from "./LearnDoors";
-import type { HostFocusSection } from "@/components/app-shell/hostDeepLink";
+import type { HostFocusSection, HostReturnTab } from "@/components/app-shell/hostDeepLink";
 
 /**
  * Foundry Event Rooms — the native Foundry tab (replaces the LockedRoom).
@@ -39,6 +39,9 @@ type View =
       initial?: ManagerSnapshot | null;
       focusSection?: HostFocusSection;
       focusId?: string;
+      /** 3.2G-R1: set ONLY when this room was opened from a Today-tagged deep link, so Back returns
+       *  to Today. Absent for any other entry (event list, re-entry) → existing Learn-home back. */
+      returnTab?: HostReturnTab;
     };
 
 export default function FoundryEventRooms({
@@ -50,6 +53,8 @@ export default function FoundryEventRooms({
   initialEventId = null,
   initialFocusSection = null,
   initialFocusId = null,
+  initialReturnTab = null,
+  onReturnToOrigin,
   onInitialConsumed = () => {},
 }: {
   locale: string;
@@ -67,6 +72,12 @@ export default function FoundryEventRooms({
   initialEventId?: string | null;
   initialFocusSection?: HostFocusSection | null;
   initialFocusId?: string | null;
+  /** 3.2G-R1: bounded return origin for the deep-linked control room. "today" → Back returns to Today
+   *  via {@link onReturnToOrigin}; null/absent → the existing Learn-home back is used. */
+  initialReturnTab?: HostReturnTab | null;
+  /** 3.2G-R1: called when the deep-linked (Today-origin) control room's Back is pressed, so the shell
+   *  switches back to the Today tab in-shell (no reload, no duplicate history entry). */
+  onReturnToOrigin?: () => void;
   /** Called once after the initial deep-linked control room is opened, so the shell clears the
    *  one-shot params (a later tab re-entry then returns to the Foundry home list). */
   onInitialConsumed?: () => void;
@@ -97,10 +108,11 @@ export default function FoundryEventRooms({
         eventId: initialEventId,
         focusSection: initialFocusSection ?? undefined,
         focusId: initialFocusId ?? undefined,
+        returnTab: initialReturnTab ?? undefined,
       });
       onInitialConsumed();
     }
-  }, [initialEventId, initialFocusSection, initialFocusId, onInitialConsumed]);
+  }, [initialEventId, initialFocusSection, initialFocusId, initialReturnTab, onInitialConsumed]);
   const [events, setEvents] = useState<ManagerEventSummary[] | null>(null);
   const [drafts, setDrafts] = useState<ClientDraftSummary[]>([]);
   const [starting, setStarting] = useState(false);
@@ -295,7 +307,9 @@ export default function FoundryEventRooms({
         eventId={view.eventId}
         initialSnapshot={view.initial}
         locale={loc}
-        onBack={backHome}
+        // 3.2G-R1: origin-aware Back. Opened from a Today follow-up (returnTab="today") → return to
+        // Today in-shell; every other entry (event list, re-entry, direct) → existing Learn-home back.
+        onBack={view.returnTab === "today" && onReturnToOrigin ? onReturnToOrigin : backHome}
         onCreateArenaPractice={() => setView({ kind: "arena-practice", eventId: view.eventId })}
         onCreateNewVersion={() => createNewVersion(view.eventId)}
         focusSection={view.focusSection}

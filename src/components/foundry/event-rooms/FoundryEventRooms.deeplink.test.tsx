@@ -125,6 +125,49 @@ describe("FoundryEventRooms — Host deep-link target arriving as a prop update"
     // Control room's back affordance is gone → we are back on the home surface (not a dead end).
     await waitFor(() => expect(screen.queryByText(/←/)).toBeNull());
   });
+
+  // 3.2G-R1 — origin-aware return path.
+  it("(R1) Today-origin (returnTab='today') Back calls onReturnToOrigin and does NOT fall to home", async () => {
+    stubFetch();
+    const onReturnToOrigin = vi.fn();
+    render(
+      <FoundryEventRooms
+        locale="en"
+        initialEventId={EVENT}
+        initialFocusSection="followups"
+        initialFocusId={FOCUS}
+        initialReturnTab="today"
+        onReturnToOrigin={onReturnToOrigin}
+        onInitialConsumed={vi.fn()}
+      />,
+    );
+    const back = await screen.findByText(/←/);
+    fireEvent.click(back);
+    // Origin-aware: the shell handles the return (→ Today). The control room stays mounted (no
+    // in-component home fallback), and the origin callback fires exactly once.
+    expect(onReturnToOrigin).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/←/)).toBeTruthy();
+  });
+
+  it("(R1) Learn-origin (no returnTab) Back returns to home and never calls onReturnToOrigin", async () => {
+    stubFetch();
+    const onReturnToOrigin = vi.fn();
+    render(
+      <FoundryEventRooms
+        locale="en"
+        initialEventId={EVENT}
+        initialFocusSection="followups"
+        initialFocusId={FOCUS}
+        initialReturnTab={null}
+        onReturnToOrigin={onReturnToOrigin}
+        onInitialConsumed={vi.fn()}
+      />,
+    );
+    const back = await screen.findByText(/←/);
+    fireEvent.click(back);
+    await waitFor(() => expect(screen.queryByText(/←/)).toBeNull()); // existing Learn-home back
+    expect(onReturnToOrigin).not.toHaveBeenCalled();
+  });
 });
 
 describe("row focus targeting (Slice 3.1B-3L — #8/#9/#10)", () => {

@@ -161,7 +161,23 @@ describe("TodayHome — Host leadership attention follow-ups (3.2G)", () => {
     expect(first.textContent).toContain("Follow-up overdue");
     expect(first.textContent).toContain("Handling conflict");
     expect(first.textContent).toContain("Follow-up is 2 days overdue");
-    expect(first.querySelector("a")?.getAttribute("href")).toBe(overdue.deepLink);
+    // R1: canonical server deepLink preserved as the href prefix (origin tag appended separately).
+    expect(first.querySelector("a")?.getAttribute("href")).toContain(overdue.deepLink);
+  });
+
+  it("(3.2G-R1) tags the follow-up row href with a bounded Today origin, canonical target preserved", async () => {
+    stub({ hostAttention: [overdue] });
+    render(<TodayHome locale="en" onNavigate={() => {}} />);
+    const row = (await screen.findAllByTestId("today-followup-row"))[0];
+    const href = row.querySelector("a")?.getAttribute("href") ?? "";
+    // Canonical server deepLink is intact (event/section/focus unchanged) and only `from=today` added.
+    expect(href.startsWith(overdue.deepLink + "&")).toBe(true);
+    expect(href).toContain("event=e1");
+    expect(href).toContain("section=followups");
+    expect(href).toContain("focus=f1");
+    expect(href).toContain("from=today");
+    expect(href).not.toContain("http://");
+    expect(href).not.toContain("https://");
   });
 
   it("preserves the server (domain-priority) order — overdue before needed — without re-ranking", async () => {

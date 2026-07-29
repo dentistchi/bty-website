@@ -12,18 +12,34 @@ const EVENT = "4dc5f309-1111-4222-8333-444444444444";
 const FOCUS = "9ab0c1d2-5555-4666-8777-888888888888";
 
 describe("parseHostDeepLink", () => {
-  it("(37) parses a followups deep link", () => {
+  it("(37) parses a followups deep link (no origin → returnTab null)", () => {
     expect(parseHostDeepLink(`?tab=foundry&event=${EVENT}&section=followups&focus=${FOCUS}`)).toEqual({
       eventId: EVENT,
       section: "followups",
       focusId: FOCUS,
+      returnTab: null,
     });
   });
 
-  it("(38) parses a shared-understanding deep link", () => {
+  it("(38) parses a shared-understanding deep link (no origin → returnTab null)", () => {
     expect(
       parseHostDeepLink(`?tab=foundry&event=${EVENT}&section=shared-understanding&focus=${FOCUS}`),
-    ).toEqual({ eventId: EVENT, section: "shared-understanding", focusId: FOCUS });
+    ).toEqual({ eventId: EVENT, section: "shared-understanding", focusId: FOCUS, returnTab: null });
+  });
+
+  it("(3.2G-R1) parses a Today-origin (from=today) into returnTab 'today', target unchanged", () => {
+    expect(
+      parseHostDeepLink(`?tab=foundry&event=${EVENT}&section=followups&focus=${FOCUS}&from=today`),
+    ).toEqual({ eventId: EVENT, section: "followups", focusId: FOCUS, returnTab: "today" });
+  });
+
+  it("(3.2G-R1 security) an unknown/hostile from value falls back to null (no arbitrary nav, no open redirect)", () => {
+    for (const bad of ["learn", "practice", "me", "https://evil.example.com", "//evil.com", "javascript:alert(1)", "", "TODAY"]) {
+      const r = parseHostDeepLink(`?tab=foundry&event=${EVENT}&section=followups&focus=${FOCUS}&from=${encodeURIComponent(bad)}`);
+      expect(r).not.toBeNull();
+      expect(r!.returnTab).toBeNull(); // canonical target still resolves; only the origin is dropped
+      expect(r!.eventId).toBe(EVENT);
+    }
   });
 
   it("(40) an invalid/short event id fails safely to null", () => {

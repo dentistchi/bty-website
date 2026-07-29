@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
-import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
+import { parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
@@ -1292,6 +1292,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   const [hostEventId, setHostEventId] = useState<string | null>(null);
   const [hostSection, setHostSection] = useState<HostFocusSection | null>(null);
   const [hostFocusId, setHostFocusId] = useState<string | null>(null);
+  // 3.2G-R1: bounded one-shot return origin for a host-attention deep link opened FROM Today, so the
+  // control room's Back returns to Today (not the Learn root). Enum, never a URL; cleared on consume.
+  const [hostReturnTab, setHostReturnTab] = useState<HostReturnTab | null>(null);
   // Host Action Review detail deep link (Slice 3.1B-3N Phase 5B): `?tab=today&actionReview=<contractId>`
   // opens the read-only in-shell review detail; onBack clears it (returns to the Today queue). The
   // detail route re-runs the authority resolver — a queue appearance never grants authority.
@@ -1418,6 +1421,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setHostEventId(hostLink.eventId);
       setHostSection(hostLink.section);
       setHostFocusId(hostLink.focusId);
+      // Origin-aware return (3.2G-R1): only a Today-tagged link carries an origin; Learn/My-events/
+      // direct entry has none → the existing safe Learn-home back is preserved.
+      setHostReturnTab(hostLink.returnTab);
     } else if (validReview) {
       setTab("learn");
       setReviewId(validReview);
@@ -1451,6 +1457,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("event");
       params.delete("section");
       params.delete("focus");
+      params.delete("from");
       const qs = params.toString();
       window.history.replaceState(
         null,
@@ -1757,10 +1764,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 initialEventId={hostEventId}
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}
+                initialReturnTab={hostReturnTab}
+                onReturnToOrigin={() => setTab("today")}
                 onInitialConsumed={() => {
                   setHostEventId(null);
                   setHostSection(null);
                   setHostFocusId(null);
+                  setHostReturnTab(null);
                 }}
               />
             </>

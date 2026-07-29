@@ -10,10 +10,17 @@
 
 export type HostFocusSection = "followups" | "shared-understanding";
 
+/** Bounded in-shell return origin (3.2G-R1). NAVIGATION METADATA ONLY — a closed enum, never a URL,
+ *  so it can never authorize, reveal data, override the canonical target, or open-redirect. Any value
+ *  other than the known origins parses to null → the existing safe (Learn/home) back behavior. */
+export type HostReturnTab = "today";
+
 export type HostDeepLink = {
   eventId: string;
   section: HostFocusSection;
   focusId: string;
+  /** Where Back should return to, when a known origin was tagged; null = existing safe fallback. */
+  returnTab: HostReturnTab | null;
 };
 
 /** Same UUID-ish shape the shell already uses for review/followup/entry ids (server does real authz). */
@@ -21,6 +28,11 @@ const UUIDISH = /^[0-9a-fA-F-]{16,}$/;
 
 function isHostFocusSection(v: string | null): v is HostFocusSection {
   return v === "followups" || v === "shared-understanding";
+}
+
+/** Only a known in-shell origin is honored; anything else (missing, "learn", a URL, junk) → null. */
+function parseReturnTab(v: string | null): HostReturnTab | null {
+  return v === "today" ? "today" : null;
 }
 
 /**
@@ -38,7 +50,7 @@ export function parseHostDeepLink(search: string): HostDeepLink | null {
     if (!eventId || !UUIDISH.test(eventId)) return null;
     if (!isHostFocusSection(section)) return null;
     if (!focusId || !UUIDISH.test(focusId)) return null;
-    return { eventId, section, focusId };
+    return { eventId, section, focusId, returnTab: parseReturnTab(sp.get("from")) };
   } catch {
     return null;
   }
