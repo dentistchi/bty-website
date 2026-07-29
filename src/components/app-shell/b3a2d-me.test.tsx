@@ -61,17 +61,17 @@ describe("Me root — hierarchy (B3A.2D / B3A.2D-R1)", () => {
     expect(screen.getByTestId("me-forge-stage").textContent).toContain("Forge stage 1");
   });
 
-  it("Me 7-Orb is NON-interactive presence (role=img, not a button, not focusable); no 'Hold to enter'", async () => {
+  it("Me 7-Orb is a semantic attendance button (opens the attendance popup); no 'Hold to enter'", async () => {
     stub();
     await gotoMe();
     const orb = await screen.findByTestId("me-weekly-orb");
-    // R3: the Orb is the week's presence, NOT a control — it must not be a button/toggle and must
-    // not duplicate the This Week card's popup disclosure.
-    expect(orb.tagName).not.toBe("BUTTON");
-    expect(orb.getAttribute("role")).toBe("img");
-    expect(orb.hasAttribute("tabindex")).toBe(false); // not keyboard-focusable
-    expect(orb.getAttribute("aria-expanded")).toBeNull();
-    expect(orb.getAttribute("aria-controls")).toBeNull();
+    // ORB-ATTENDANCE-R1: the Orb owns ONE interaction — reveal the seven-day attendance rhythm.
+    expect(orb.tagName).toBe("BUTTON");
+    expect(orb.getAttribute("aria-label")).toMatch(/weekly attendance/i);
+    expect(orb.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(orb);
+    expect(await screen.findByTestId("me-attendance-popup")).toBeTruthy();
+    expect(orb.getAttribute("aria-expanded")).toBe("true");
     expect(screen.queryByText(/Hold to enter/i)).toBeNull();
     expect(orb.className).toMatch(/select-none/);
   });

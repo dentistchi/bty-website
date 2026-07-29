@@ -1824,9 +1824,10 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup entry
-                  Orb. R4: purely a non-interactive visual presence — no popup, no disclosure. The
-                  canonical weekly summary lives in the This Week card above. */}
-              <MeWeeklyTrace locale={locale} weeklyRhythm={weeklyRhythm} />
+                  Orb. R1 (ORB-WEEKLY-ATTENDANCE): the Orb owns ONE interaction — tap to reveal the
+                  seven-day ATTENDANCE popup (attendance only; never the removed full weekly summary).
+                  refreshKey resets its attendance on Me-reselect / account switch. */}
+              <MeWeeklyTrace locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
                 {[
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },

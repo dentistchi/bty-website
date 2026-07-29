@@ -79,37 +79,37 @@ describe("Bottom Me tab = root reselect (carried)", () => {
   });
 });
 
-// ── R4: no weekly popup; This Week is a static summary; the Orb is non-interactive presence. ─────
-describe("Me weekly — static summary + non-interactive Orb, no popup (R4)", () => {
-  it("renders the living Orb as NON-interactive presence; no entry door / hold-to-enter", async () => {
+// ── ORB-WEEKLY-ATTENDANCE-R1: This Week is a static summary; the Orb reveals attendance only. ─────
+describe("Me weekly — static summary + Orb-owned attendance (ORB-ATTENDANCE-R1)", () => {
+  it("This Week is a static summary (not a button); the Orb is a semantic attendance button", async () => {
     stub();
     await gotoMe();
     expect(await screen.findByTestId("me-weekly-trace")).toBeTruthy();
+    const summary = await screen.findByTestId("me-week-summary");
+    expect(summary.tagName).not.toBe("BUTTON");
+    expect(summary.getAttribute("aria-expanded")).toBeNull();
     const orb = screen.getByTestId("me-weekly-orb");
-    expect(orb.tagName).not.toBe("BUTTON");
-    expect(orb.getAttribute("role")).toBe("img");
-    expect(orb.hasAttribute("tabindex")).toBe(false); // not keyboard-focusable
-    expect(orb.getAttribute("aria-expanded")).toBeNull();
+    expect(orb.tagName).toBe("BUTTON");
+    expect(orb.getAttribute("aria-label")).toMatch(/weekly attendance/i);
     expect(screen.queryByTestId("me-orb-door")).toBeNull();
     expect(screen.queryByText(/Hold to enter/i)).toBeNull();
   });
 
-  it("This Week is a static summary (not a button); tapping it or the Orb opens NO popup", async () => {
+  it("tapping This Week opens nothing; tapping the Orb opens the attendance popup (not the removed full popup)", async () => {
     stub();
     await gotoMe();
-    const summary = await screen.findByTestId("me-week-summary");
-    expect(summary.tagName).not.toBe("BUTTON");
-    expect(summary.getAttribute("aria-expanded")).toBeNull();
-    fireEvent.click(summary);
+    fireEvent.click(await screen.findByTestId("me-week-summary"));
+    expect(screen.queryByTestId("me-attendance-popup")).toBeNull();
     fireEvent.click(screen.getByTestId("me-weekly-orb"));
-    expect(screen.queryByTestId("me-week-popup")).toBeNull();
-    expect(screen.getByTestId("me-home")).toBeTruthy(); // still the Me root, no nested/dialog view
+    expect(await screen.findByTestId("me-attendance-popup")).toBeTruthy();
+    expect(screen.getByTestId("me-home")).toBeTruthy(); // inline, no route/nested view
   });
 
-  it("no weekly popup / close control / day-grid / disclosure trigger remains in the Me DOM", async () => {
+  it("the removed full weekly-summary popup never returns", async () => {
     stub();
     await gotoMe();
-    for (const id of ["me-week-popup", "me-week-close", "me-week-days", "me-week-open"]) {
+    fireEvent.click(screen.getByTestId("me-weekly-orb")); // even after opening attendance
+    for (const id of ["me-week-popup", "me-week-open", "me-week-events", "me-week-event-item"]) {
       expect(screen.queryByTestId(id)).toBeNull();
     }
   });

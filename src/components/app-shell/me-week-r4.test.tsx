@@ -112,21 +112,6 @@ describe("R4 — no weekly popup anywhere in the Me DOM", () => {
   });
 });
 
-describe("R4 — Orb is non-interactive presence, opens nothing", () => {
-  it("Orb remains a living non-interactive image (role=img, not a button/focusable) and opens no popup", async () => {
-    stubShell(A);
-    await gotoMe();
-    const orb = await screen.findByTestId("me-weekly-orb");
-    expect(orb.tagName).not.toBe("BUTTON");
-    expect(orb.getAttribute("role")).toBe("img");
-    expect(orb.hasAttribute("tabindex")).toBe(false);
-    expect(orb.getAttribute("aria-expanded")).toBeNull();
-    expect(orb.querySelector("canvas")).toBeTruthy(); // animation/presence retained
-    fireEvent.click(orb);
-    expect(screen.queryByTestId("me-week-popup")).toBeNull();
-  });
-});
-
 describe("R4 — detail fetch removed; summary fetch retained; account-scoped", () => {
   it("Me requests the summary endpoint but NOT ?detail=1 (the popup-only request is gone)", async () => {
     const seen: string[] = [];
