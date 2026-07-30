@@ -180,28 +180,82 @@ describe("generateArenaScenarioDraft — LIVE-model only (Slice 3.2I-R2)", () =>
     expect(mockCreate).not.toHaveBeenCalled(); // declined before any provider call
   });
 
-  it("FAILS SAFE (safety_boundary_unresolved) when a safety domain is implied but not established", async () => {
-    mockCreate.mockResolvedValue(aiContent(goodDraft));
-    const ambiguous: ModuleSourceFacts = { ...facts, problem: "There is a patient safety concern the team keeps raising", observableBehavior: null };
-    const r = await generateArenaScenarioDraft({ locale: "en", facts: ambiguous, guided });
-    expect(r).toMatchObject({ ok: false, reason: "safety_boundary_unresolved" });
-    expect(mockCreate).not.toHaveBeenCalled(); // declined before any provider call
-  });
-
-  it("MIXED content: rejects a draft whose choice violates a non-negotiable constraint", async () => {
-    const violating = { ...goodDraft, branches: { primary_1: { ...goodDraft.branches!.primary_1, tradeoffChoices: [{ id: "p1_t1", label: "Skip the required check to protect the schedule" }, { id: "p1_t2", label: "Complete the check and delay treatment" }] }, primary_2: goodDraft.branches!.primary_2 } };
-    mockCreate.mockResolvedValue(aiContent(violating as ArenaScenarioDraft));
-    const mixed: ModuleSourceFacts = { ...facts, problem: "Two patient identifiers must be verified before treatment. Decide how to pause, reassign, and notify.", learningNeeds: ["decide"] };
-    const r = await generateArenaScenarioDraft({ locale: "en", facts: mixed, guided });
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
-    expect(mockCreate).toHaveBeenCalled(); // mixed content DID attempt generation, then rejected
-  });
-
-  it("MIXED content: accepts a constraint-compliant draft", async () => {
+  it("BLOCKS (boundary_confirmation_required) when a possible safety boundary is detected but not confirmed", async () => {
     mockCreate.mockResolvedValue(aiContent(goodDraft));
     const mixed: ModuleSourceFacts = { ...facts, problem: "Two patient identifiers must be verified before treatment. Decide how to pause, reassign, and notify.", learningNeeds: ["decide"] };
-    const r = await generateArenaScenarioDraft({ locale: "en", facts: mixed, guided });
+    const r = await generateArenaScenarioDraft({ locale: "en", facts: mixed, guided }); // no confirmed boundary
+    expect(r).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+    expect(mockCreate).not.toHaveBeenCalled(); // blocked before any provider call
+  });
+});
+
+// --- Slice 3.2I-R4 — the CONFIRMED boundary is the generation authority --------------
+const CONSTRAINTS = [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" as const }];
+function assessAll(draft: ArenaScenarioDraft, ids: string[]): Record<string, unknown> {
+  const map: Record<string, unknown> = {};
+  const add = (id: string) => (map[id] = ids.map((cid) => ({ constraintId: cid, status: "satisfied", rationale: "obeys" })));
+  for (const c of [...draft.primary.choices, ...draft.tradeoff.choices, ...draft.actionDecision.choices]) add(c.id);
+  for (const b of Object.values(draft.branches ?? {})) for (const c of [...b.tradeoffChoices, ...b.actionDecision.choices]) add(c.id);
+  return map;
+}
+const CONSTRAINED_DRAFT = { ...goodDraft, constraintAssessments: assessAll(goodDraft, ["c1_verify"]) };
+const REVIEW_OK = { choices: [{ message: { content: JSON.stringify({ ok: true, violations: [], noSafeJudgmentSpace: false }) } }] };
+const boundary = (mode: "knowledge_check" | "judgment" | "judgment_with_constraints", confirmed: boolean, cons = CONSTRAINTS) => ({ mode, confirmed, constraints: mode === "judgment_with_constraints" ? cons : [] });
+
+describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () => {
+  it("confirmed knowledge_check → declines (fixed_answer_knowledge), provider not called", async () => {
+    mockCreate.mockResolvedValue(aiContent(goodDraft));
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("knowledge_check", true) });
+    expect(r).toMatchObject({ ok: false, reason: "fixed_answer_knowledge" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("confirmed judgment (no rules) → generates, no semantic review call", async () => {
+    mockCreate.mockResolvedValue(aiContent(goodDraft));
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment", true) });
     expect(r.ok).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(1); // generation only, no review
+  });
+
+  it("confirmed judgment_with_constraints + compliant draft + review ok → generates", async () => {
+    mockCreate.mockResolvedValueOnce(aiContent(CONSTRAINED_DRAFT as ArenaScenarioDraft)).mockResolvedValueOnce(REVIEW_OK);
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r.ok).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(2); // 1 generation + 1 semantic review
+  });
+
+  it("confirmed constraints but a choice violates one (lexical) → generation_rejected", async () => {
+    const violating = { ...CONSTRAINED_DRAFT, branches: { primary_1: { ...goodDraft.branches!.primary_1, tradeoffChoices: [{ id: "p1_t1", label: "Skip the required check to protect the schedule" }, { id: "p1_t2", label: "Complete the check and delay" }] }, primary_2: goodDraft.branches!.primary_2 } };
+    mockCreate.mockResolvedValue(aiContent(violating as ArenaScenarioDraft));
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+  });
+
+  it("missing per-choice constraint assessment → generation_rejected", async () => {
+    mockCreate.mockResolvedValue(aiContent(goodDraft)); // no constraintAssessments at all
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+  });
+
+  it("semantic review finds an INDIRECT violation → generation_rejected (after one regen)", async () => {
+    const REVIEW_BAD = { choices: [{ message: { content: JSON.stringify({ ok: false, violations: [{ phase: "action", choiceId: "p1_a1", constraintId: "c1_verify", reason: "implied skip" }], noSafeJudgmentSpace: false }) } }] };
+    mockCreate.mockResolvedValue(aiContent(CONSTRAINED_DRAFT as ArenaScenarioDraft)); // every gen call
+    mockCreate.mockResolvedValueOnce(aiContent(CONSTRAINED_DRAFT as ArenaScenarioDraft)).mockResolvedValueOnce(REVIEW_BAD).mockResolvedValueOnce(aiContent(CONSTRAINED_DRAFT as ArenaScenarioDraft)).mockResolvedValueOnce(REVIEW_BAD);
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(4); // bounded: <= 2 gen + 2 review
+  });
+
+  it("provider signals no safe judgment space → no_safe_judgment_space", async () => {
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ noSafeJudgmentSpace: true }) } }] });
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "no_safe_judgment_space" });
+  });
+
+  it("semantic review transport failure → generation_failed", async () => {
+    mockCreate.mockResolvedValueOnce(aiContent(CONSTRAINED_DRAFT as ArenaScenarioDraft)).mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
   });
 });
 

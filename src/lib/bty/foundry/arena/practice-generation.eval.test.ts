@@ -18,13 +18,16 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 const LIVE = process.env.RUN_LIVE_EVAL === "1";
 
 describe("practice-generation corpus is well-formed", () => {
-  it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety and ambiguous-boundary cases", () => {
+  it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety, ambiguous, and confirmed-boundary cases", () => {
     expect(EVAL_CORPUS.length).toBeGreaterThanOrEqual(16);
     expect(EVAL_CORPUS.filter((c) => c.locale === "en").length).toBeGreaterThanOrEqual(8);
     expect(EVAL_CORPUS.filter((c) => c.locale === "ko").length).toBeGreaterThanOrEqual(4);
     expect(EVAL_CORPUS.some((c) => c.expectClass === "know_only")).toBe(true);
     expect(EVAL_CORPUS.filter((c) => c.expectClass === "mixed_with_non_negotiables").length).toBeGreaterThanOrEqual(3);
     expect(EVAL_CORPUS.some((c) => c.expectClass === "unresolved_safety_boundary")).toBe(true);
+    // R4 — confirmed-boundary cases (judgment + judgment_with_constraints).
+    expect(EVAL_CORPUS.some((c) => c.input.boundary?.confirmed && c.input.boundary.mode === "judgment")).toBe(true);
+    expect(EVAL_CORPUS.some((c) => c.input.boundary?.mode === "judgment_with_constraints")).toBe(true);
   });
 
   it("classifies each labelled case to its expected eligibility (deterministic, no live model)", () => {

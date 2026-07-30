@@ -22,6 +22,13 @@ export type ScenarioGenInput = {
   locale: Locale;
   facts: ModuleSourceFacts;
   guided: GuidedAnswers;
+  /**
+   * Slice 3.2I-R4 — the Manager-CONFIRMED practice boundary (server-supplied). When
+   * present + confirmed it is the generation authority (overrides free-text inference).
+   * The deterministic template ignores it. Typed loosely here to avoid a domain import in
+   * this fixture module; the service reads it via the domain `PracticeBoundary` type.
+   */
+  boundary?: import("@/domain/foundry/arena-draft/boundary").PracticeBoundary;
 };
 
 // ---------------------------------------------------------------------------

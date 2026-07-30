@@ -10,6 +10,7 @@ import {
   validateConstraintCompliance,
   type PracticeEligibility,
 } from "@/domain/foundry/arena-draft/safety";
+import { validateConstraintAssessments, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
@@ -45,7 +46,9 @@ export type GenerationResult =
         | "generation_failed" // transport/exception/timeout — no usable content returned
         | "generation_rejected" // content returned but malformed / gate / safety-constraint failed
         | "fixed_answer_knowledge" // KNOW-only content — not a judgment dilemma
-        | "safety_boundary_unresolved"; // mandatory-vs-judgment boundary cannot be determined safely
+        | "safety_boundary_unresolved" // free-text boundary undetermined (no confirmation)
+        | "boundary_confirmation_required" // a possible boundary is detected but not Manager-confirmed
+        | "no_safe_judgment_space"; // confirmed constraints leave no legitimate difficult choice
     };
 
 /** Map module facts → the pure safety classifier's minimal input. */
@@ -74,15 +77,16 @@ function stripJsonFences(text: string): string {
 }
 
 /** Minimal, PII-free structured context for the provider. */
-function buildLlmMessages(input: ScenarioGenInput, constraints: string[]): LlmChatMessage[] {
+function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"]): LlmChatMessage[] {
   const { locale, facts, guided } = input;
   const isKo = locale === "ko";
 
   const constraintLines = constraints.length
     ? [
-        "NON-NEGOTIABLE CONSTRAINTS — mandatory rules the training establishes. EVERY primary, tradeoff, and action choice, on EVERY branch, MUST fully obey ALL of them:",
-        ...constraints.map((c) => `- ${c}`),
-        "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, patient/stakeholder communication, room/scope, staffing reassignment, escalation, or schedule recovery — with the constraint naturally embedded in the scene, not as a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, return an empty object {}.",
+        "CONFIRMED NON-NEGOTIABLE CONSTRAINTS — mandatory rules the Manager confirmed. EVERY primary, tradeoff, and action choice, on EVERY branch, MUST fully obey ALL of them. You may NOT delete, weaken, reinterpret, or replace any constraint:",
+        ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
+        "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, return exactly {\"noSafeJudgmentSpace\": true}.",
+        "Also return a top-level `constraintAssessments` object keyed by EVERY choice id (primary, flat, and every branch tradeoff/action). For each choice, an array with one entry per constraint id: {\"constraintId\": string, \"status\": \"satisfied\", \"rationale\": short string}. This is internal metadata; do NOT put it in any learner-facing label.",
       ]
     : [];
 
@@ -134,32 +138,27 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: string[]): LlmCh
 
 type LlmOutcome =
   | { ok: true; draft: ArenaScenarioDraft; warnings: string[] }
-  | { ok: false; reason: "generation_failed" | "generation_rejected" };
+  | { ok: false; reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" };
 
 /**
  * One bounded provider attempt. Distinguishes a TRANSPORT failure (no usable content —
- * generation_failed) from CONTENT that was returned but rejected by the gates
- * (generation_rejected). `constraints` (mixed-safety content) are injected into the prompt
- * and enforced deterministically on the output.
+ * generation_failed) from CONTENT returned but rejected (generation_rejected), and honors
+ * the provider signalling that no safe judgment space exists. `constraints` are the CONFIRMED
+ * structured rules; when present, the provider's per-choice `constraintAssessments` are
+ * validated deterministically (then discarded — never persisted, never learner-facing).
  */
-async function generateWithLlm(input: ScenarioGenInput, constraints: string[]): Promise<LlmOutcome> {
+async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"]): Promise<LlmOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
     const client = getLlmClient();
     const completion = await client.chat.completions.create(
-      {
-        model: getLlmModel(),
-        messages: buildLlmMessages(input, constraints),
-        temperature: 0.8,
-        top_p: 0.9,
-        max_tokens: 1100,
-      },
+      { model: getLlmModel(), messages: buildLlmMessages(input, constraints), temperature: 0.8, top_p: 0.9, max_tokens: 1400 },
       { signal: controller.signal },
     );
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      logGenOutcome("provider_failed", "empty_output"); // transport-ish: no usable content
+      logGenOutcome("provider_failed", "empty_output");
       return { ok: false, reason: "generation_failed" };
     }
     let parsed: unknown;
@@ -168,6 +167,10 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: string[]): 
     } catch {
       logGenOutcome("provider_rejected", "malformed_shape");
       return { ok: false, reason: "generation_rejected" };
+    }
+    if (parsed && typeof parsed === "object" && (parsed as { noSafeJudgmentSpace?: unknown }).noSafeJudgmentSpace === true) {
+      logGenOutcome("no_safe_judgment_space");
+      return { ok: false, reason: "no_safe_judgment_space" };
     }
     const result = parseArenaScenarioDraft(parsed);
     if (!result.ok) {
@@ -185,6 +188,18 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: string[]): 
         return { ok: false, reason: "generation_rejected" };
       }
     }
+    // Confirmed constraints → every choice must carry a valid, satisfied assessment.
+    if (constraints.length > 0) {
+      const assess = validateConstraintAssessments(
+        result.value,
+        constraints.map((c) => c.id),
+        (parsed as { constraintAssessments?: unknown }).constraintAssessments,
+      );
+      if (!assess.ok) {
+        logGenOutcome("provider_assessment_invalid", assess.errors[0]);
+        return { ok: false, reason: "generation_rejected" };
+      }
+    }
     const qualityWarnings = validateBranchedScenario(result.value).warnings;
     return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings] };
   } catch {
@@ -195,43 +210,159 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: string[]): 
   }
 }
 
+export type SemanticReview = {
+  ok: boolean;
+  violations: Array<{ phase: string; choiceId?: string; constraintId: string; reason: string }>;
+  noSafeJudgmentSpace: boolean;
+};
+type ReviewOutcome =
+  | { kind: "ok" }
+  | { kind: "violation" }
+  | { kind: "no_safe_space" }
+  | { kind: "malformed" }
+  | { kind: "transport_failed" };
+
 /**
- * KNOW-only classification kept for back-compat (Slice 3.2I-R2). True iff the eligibility
- * classifier returns `know_only`. Prefer `classifyPracticeEligibility` for the full set.
+ * Independent SEMANTIC constraint review (Slice 3.2I-R4) — a second provider pass that reads
+ * only the confirmed constraints + the candidate's learner-facing text and returns structured
+ * JSON. It catches INDIRECT / implied violations the lexical gate cannot. Its output never
+ * reaches the learner. Distinguishes transport failure from a malformed/violating verdict.
+ */
+async function reviewConstraintCompliance(
+  input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
+  draft: ArenaScenarioDraft,
+): Promise<ReviewOutcome> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  try {
+    const system = [
+      "You are a strict SAFETY REVIEWER for a leadership practice scenario. You are given CONFIRMED non-negotiable constraints and a generated scenario's learner-facing choices.",
+      "For EVERY choice, decide whether it obeys every constraint — including INDIRECT or implied violations, and whether any branch consequence assumes a violation occurred, or the dilemma falsely balances compliance against non-compliance, or no legitimate judgment space remains.",
+      "Return ONLY JSON: {\"ok\": boolean, \"violations\": [{\"phase\": string, \"choiceId\": string, \"constraintId\": string, \"reason\": string}], \"noSafeJudgmentSpace\": boolean}. ok=false if any violation exists.",
+    ].join("\n");
+    const payload = {
+      constraints: constraints.map((c) => ({ id: c.id, statement: c.statement })),
+      opening: draft.opening,
+      primary: draft.primary.choices,
+      branches: Object.fromEntries(
+        Object.entries(draft.branches ?? {}).map(([k, b]) => [
+          k,
+          { escalation: b.escalationText, tradeoff: b.tradeoffChoices, action: b.actionDecision.choices },
+        ]),
+      ),
+      flatTradeoff: draft.tradeoff.choices,
+      flatAction: draft.actionDecision.choices,
+    };
+    const completion = await getLlmClient().chat.completions.create(
+      {
+        model: getLlmModel(),
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: JSON.stringify(payload) },
+        ],
+        temperature: 0,
+        max_tokens: 700,
+      },
+      { signal: controller.signal },
+    );
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return { kind: "transport_failed" };
+    let review: SemanticReview;
+    try {
+      review = JSON.parse(stripJsonFences(raw)) as SemanticReview;
+    } catch {
+      return { kind: "malformed" };
+    }
+    if (typeof review.ok !== "boolean" || typeof review.noSafeJudgmentSpace !== "boolean" || !Array.isArray(review.violations)) {
+      return { kind: "malformed" };
+    }
+    if (review.noSafeJudgmentSpace) return { kind: "no_safe_space" };
+    if (!review.ok || review.violations.length > 0) return { kind: "violation" };
+    return { kind: "ok" };
+  } catch {
+    return { kind: "transport_failed" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Max provider calls per generation: 2 generations + 2 reviews (1 regen on a correctable reject). */
+const MAX_GENERATION_ATTEMPTS = 2;
+
+/**
+ * KNOW-only classification kept for back-compat. True iff eligibility is `know_only`.
  */
 export function isFixedAnswerTraining(facts: ModuleSourceFacts): boolean {
   return eligibilityOf(facts).kind === "know_only";
 }
 
 /**
+ * Decide the generation authority from the Manager-CONFIRMED boundary, falling back to
+ * free-text eligibility ONLY to block-until-confirmed (Slice 3.2I-R4). A confirmed boundary
+ * always overrides inference. Pure w.r.t. its inputs.
+ */
+type DeclineReason = "fixed_answer_knowledge" | "boundary_confirmation_required" | "safety_boundary_unresolved";
+function resolveAuthority(
+  input: ScenarioGenInput,
+): { kind: "decline"; reason: DeclineReason } | { kind: "generate"; constraints: PracticeBoundary["constraints"] } {
+  const boundary = input.boundary;
+  if (boundary && boundary.confirmed) {
+    if (boundary.mode === "knowledge_check") return { kind: "decline", reason: "fixed_answer_knowledge" };
+    if (boundary.mode === "judgment") return { kind: "generate", constraints: [] };
+    return { kind: "generate", constraints: boundary.constraints }; // judgment_with_constraints
+  }
+  // No confirmed boundary → free-text classifier only blocks/allows, never authors constraints.
+  const eligibility = eligibilityOf(input.facts);
+  if (eligibility.kind === "know_only") return { kind: "decline", reason: "fixed_answer_knowledge" };
+  if (eligibility.kind === "judgment_only") return { kind: "generate", constraints: [] };
+  // mixed_with_non_negotiables or unresolved → a possible boundary exists but is NOT confirmed.
+  return { kind: "decline", reason: "boundary_confirmation_required" };
+}
+
+/**
  * Generate one live, branch-aware, incident-specific, CONSTRAINT-SAFE draft — LIVE MODEL
- * ONLY (Slice 3.2I-R2/R3). Practice eligibility is classified first: KNOW-only declines;
- * an unresolved safety boundary fails safe; mixed content generates only inside the safe
- * decision space (constraints enforced in the prompt AND on the output). It NEVER returns a
- * generic deterministic scenario.
+ * ONLY (Slice 3.2I). The Manager-confirmed boundary is the generation authority; an
+ * unconfirmed possible boundary blocks (boundary_confirmation_required). Confirmed
+ * constraints are passed exactly, enforced on the output (lexical + per-choice assessment),
+ * and proven by an independent semantic review. Bounded to `MAX_GENERATION_ATTEMPTS`
+ * generation + review cycles. Never returns a generic deterministic scenario.
  */
 export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GenerationResult> {
-  const eligibility = eligibilityOf(input.facts);
-  if (eligibility.kind === "know_only") {
-    logGenOutcome("declined_fixed_answer");
-    return { ok: false, reason: "fixed_answer_knowledge" };
-  }
-  if (eligibility.kind === "unresolved_safety_boundary") {
-    logGenOutcome("declined_safety_unresolved");
-    return { ok: false, reason: "safety_boundary_unresolved" };
+  const authority = resolveAuthority(input);
+  if (authority.kind === "decline") {
+    logGenOutcome("declined", authority.reason);
+    return { ok: false, reason: authority.reason };
   }
   if (!isLlmAvailable()) {
     logGenOutcome("unavailable");
     return { ok: false, reason: "generation_unavailable" };
   }
-  const llm = await generateWithLlm(input, eligibility.constraints);
-  if (!llm.ok) {
-    // generateWithLlm already logged the specific outcome; it distinguishes a transport
-    // failure (generation_failed) from returned-but-rejected content (generation_rejected).
-    return { ok: false, reason: llm.reason };
+  const constraints = authority.constraints;
+
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const llm = await generateWithLlm(input, constraints);
+    if (!llm.ok) {
+      // Transport / no-safe-space are terminal; a correctable rejection may regenerate once.
+      if (llm.reason === "generation_failed" || llm.reason === "no_safe_judgment_space") return { ok: false, reason: llm.reason };
+      if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+      continue;
+    }
+    // Confirmed constraints → prove no INDIRECT crossing with an independent semantic review.
+    if (constraints.length > 0) {
+      const review = await reviewConstraintCompliance(input, constraints, llm.draft);
+      if (review.kind === "transport_failed") return { ok: false, reason: "generation_failed" };
+      if (review.kind === "no_safe_space") return { ok: false, reason: "no_safe_judgment_space" };
+      if (review.kind === "malformed") return { ok: false, reason: "generation_rejected" };
+      if (review.kind === "violation") {
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        continue; // regenerate once
+      }
+    }
+    logGenOutcome("generated_valid");
+    return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings } };
   }
-  logGenOutcome("generated_valid");
-  return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings } };
+  return { ok: false, reason: "generation_rejected" };
 }
 
 export type { Locale };

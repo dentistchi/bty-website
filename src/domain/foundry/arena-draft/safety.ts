@@ -26,15 +26,17 @@ export type PracticeEligibility = {
 };
 
 // A hard-constraint DOMAIN (privacy/clinical/legal/compliance/report), not generic topic words. (en + ko)
+// Prefix-matched (no trailing \b): "identif" must also match "identifiers", "report" →
+// "reporting", etc. A conservative over-match here only pushes toward fail-safe classification.
 const CONSTRAINT_DOMAIN =
-  /\b(patient|medication|dose|dosage|identifier|identit|privacy|private|confidential|consent|clinical|legal|complian|regulat|mandatory|hazard|safety|steril|contraindicat|prohibit|disclos|incident|report)\b|환자|신원|투약|약물|치료|개인정보|기밀|규정|법적|준수|사고|보고|안전|위험/i;
+  /\b(patient|medication|dose|dosage|identif|privacy|private|confidential|consent|clinical|legal|complian|regulat|mandatory|hazard|safety|steril|contraindicat|prohibit|disclos|incident|report)|환자|신원|투약|약물|치료|개인정보|기밀|규정|법적|준수|사고|보고|안전|위험/i;
 
 // A MANDATE modal — turns a domain mention into a stated hard rule. (en + ko)
 const MANDATE_MODAL =
   /\b(must|shall|required?|before |prior to|never |always |do not|don'?t|mandatory|may not|is not allowed|not permitted)\b|반드시|해야\s*한다|필수|하지\s*(말|않아야|않는다)|금지|해선\s*안|전에\s*(반드시|먼저)|먼저\s*확인/i;
 
 /** Sentences that carry BOTH a constraint domain and a mandate — the non-negotiable rules. */
-function extractConstraints(text: string): string[] {
+export function extractConstraintStatements(text: string): string[] {
   return text
     .split(/(?<=[.!?。])\s+|\n+/)
     .map((s) => s.trim())
@@ -57,7 +59,7 @@ export function classifyPracticeEligibility(input: SafetyClassificationInput): P
 
   const hasDomain = CONSTRAINT_DOMAIN.test(text);
   const hasMandate = MANDATE_MODAL.test(text);
-  const constraints = extractConstraints(text);
+  const constraints = extractConstraintStatements(text);
 
   // KNOW-only content is a confirmation check, never a judgment dilemma.
   if (knowOnly) return { kind: "know_only", constraints };
