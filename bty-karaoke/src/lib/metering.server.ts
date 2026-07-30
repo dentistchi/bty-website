@@ -8,6 +8,7 @@
 // RPCs record segments but never block a start and never surface a countdown.
 
 import { karaokeDb } from './supabase.server';
+import { resolveVideoDuration } from './youtube-duration.server';
 
 /** karaoke_begin_song outcomes (superset; callers map to their own result types). */
 export type BeginOutcome =
@@ -22,6 +23,11 @@ export type BeginOutcome =
   | 'not_ready'
   | 'request_state_changed'
   | 'upgrade_required'
+  // BUILD 20M (v2 lease path only): the video's playback duration could not be resolved
+  // (fail closed — no lifecycle mutation, no lease, no handoff); or a timed pass cannot
+  // cover the WHOLE video (proposed end past pass expiry).
+  | 'duration_unavailable'
+  | 'pass_insufficient'
   | 'shadow_metering_error';
 
 /** karaoke_end_song outcomes. */
@@ -60,6 +66,18 @@ export async function beginSong(
   requestId: string,
   mode: 'guest' | 'promote',
 ): Promise<BeginResult> {
+  // BUILD 20M — versioned cutover. When the room owner's account is enabled for v2 lease
+  // WRITES (karaoke_lease_write_enabled_for; 'off' for all ordinary traffic), resolve the
+  // playback duration FIRST and fail closed if it is unavailable — never "open now, meter
+  // later" — then use the non-shrinkable-lease begin_v2. Otherwise the shipped v1 path is
+  // untouched. begin_v2 reads the duration from the cache resolveVideoDuration just upserted.
+  const account = await roomOwnerAccountId(roomId);
+  if (account && (await leaseWriteEnabled(account))) {
+    const videoId = await requestVideoId(roomId, requestId);
+    const dur = videoId ? await resolveVideoDuration(videoId) : null;
+    if (dur == null) return { outcome: 'duration_unavailable' }; // fail closed: no RPC, no mutation
+    return beginSongV2(roomId, requestId, mode);
+  }
   const { data, error } = await karaokeDb().rpc('karaoke_begin_song', {
     p_room_id: roomId,
     p_request_id: requestId,
@@ -68,6 +86,54 @@ export async function beginSong(
   if (error) throw error;
   const row = first(data);
   return { outcome: String(row.outcome ?? 'shadow_metering_error') as BeginOutcome, entitlement: row.entitlement };
+}
+
+/** v2 begin — the non-shrinkable-lease start (duration already cached by the caller). */
+async function beginSongV2(roomId: string, requestId: string, mode: 'guest' | 'promote'): Promise<BeginResult> {
+  const { data, error } = await karaokeDb().rpc('karaoke_begin_song_v2', {
+    p_room_id: roomId,
+    p_request_id: requestId,
+    p_mode: mode,
+  });
+  if (error) throw error;
+  const row = first(data);
+  return { outcome: String(row.outcome ?? 'shadow_metering_error') as BeginOutcome, entitlement: row.entitlement };
+}
+
+/** Whether this account may ISSUE new v2 leases now (karaoke_lease_write_enabled_for). */
+export async function leaseWriteEnabled(accountId: string): Promise<boolean> {
+  const { data, error } = await karaokeDb().rpc('karaoke_lease_write_enabled_for', { p_account_id: accountId });
+  if (error) throw error;
+  return data === true;
+}
+
+/**
+ * Whether READS for this account must use the v2 entitlement: it is write-enabled OR it
+ * already has an issued lease row. Once a lease exists, reads NEVER return to v1 accounting
+ * (a rollback of lease_write_mode does not un-count issued leases).
+ */
+export async function shouldReadV2(accountId: string): Promise<boolean> {
+  if (await leaseWriteEnabled(accountId)) return true;
+  const { data, error } = await karaokeDb()
+    .from('karaoke_event_usage_segments')
+    .select('id')
+    .eq('account_id', accountId)
+    .not('lease_seconds', 'is', null)
+    .limit(1);
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+/** The request's canonical youtube_video_id (for duration resolution). */
+async function requestVideoId(roomId: string, requestId: string): Promise<string | null> {
+  const { data, error } = await karaokeDb()
+    .from('karaoke_requests')
+    .select('youtube_video_id')
+    .eq('id', requestId)
+    .eq('room_id', roomId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data?.youtube_video_id as string | null) ?? null;
 }
 
 /**
@@ -80,7 +146,12 @@ export async function endSong(
   requestId: string,
   action: 'complete' | 'skip' | 'pass' | 'replace',
 ): Promise<EndResult> {
-  const { data, error } = await karaokeDb().rpc('karaoke_end_song', {
+  // BUILD 20M — an account with any v2 lease (or write-enabled) finishes through end_v2 so
+  // the returned entitlement is v2. NEITHER v1 nor v2 end touches lease_ends_at, so Finish
+  // never shrinks the lease on either path — the branch only selects the entitlement model.
+  const account = await roomOwnerAccountId(roomId);
+  const rpc = account && (await shouldReadV2(account)) ? 'karaoke_end_song_v2' : 'karaoke_end_song';
+  const { data, error } = await karaokeDb().rpc(rpc, {
     p_room_id: roomId,
     p_request_id: requestId,
     p_action: action,
@@ -98,6 +169,17 @@ export async function endSong(
 /** Canonical entitlement snapshot for an account (real-time wrapper). B2: read by the
  *  usage projection endpoint and returned on a blocked start. Never mutates. */
 export async function readEntitlement(accountId: string): Promise<Record<string, unknown> | null> {
+  // BUILD 20M — read v2 (SUM(lease_seconds) + legacy fallback) once the account has a lease
+  // or is write-enabled; v2 counts legacy rows identically, so this is safe and never
+  // reverts to v1 after a lease exists. Ordinary accounts keep the v1 read.
+  if (await shouldReadV2(accountId)) {
+    const { data, error } = await karaokeDb().rpc('karaoke_free_minutes_entitlement_at_v2', {
+      p_account_id: accountId,
+      p_as_of: new Date().toISOString(), // day-granular window → worker clock is fine
+    });
+    if (error) throw error;
+    return (first(data) as Record<string, unknown>) ?? null;
+  }
   const { data, error } = await karaokeDb().rpc('karaoke_free_minutes_entitlement', { p_account_id: accountId });
   if (error) throw error;
   return (first(data) as Record<string, unknown>) ?? null;

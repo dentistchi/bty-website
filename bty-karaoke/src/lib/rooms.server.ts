@@ -731,7 +731,11 @@ export type StartOutcome =
   | 'not_waiting'
   | 'not_next'
   | 'already_playing'
-  | 'upgrade_required';
+  | 'upgrade_required'
+  // BUILD 20M (v2 lease path): duration unresolved (fail closed, retryable) / a timed pass
+  // cannot cover the whole video. Nothing was started in either case.
+  | 'duration_unavailable'
+  | 'pass_insufficient';
 
 export interface StartResult {
   outcome: StartOutcome;
@@ -857,6 +861,12 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
       // B2: FREE daily minutes exhausted + enforcement on. NOT an anomaly and NOT a
       // generic failure — the caller must surface the zero-time / upgrade state.
       return 'upgrade_required';
+    case 'duration_unavailable':
+      // BUILD 20M v2: the playback duration could not be resolved → fail closed, retryable.
+      return 'duration_unavailable';
+    case 'pass_insufficient':
+      // BUILD 20M v2: the timed pass cannot cover the whole video → blocked, not started.
+      return 'pass_insufficient';
     default:
       // not_ready (promote race) / event_state_invalid / ownership_state_invalid /
       // request_state_changed / shadow_metering_error → "did not start"; callers treat
@@ -890,7 +900,10 @@ export type EnsurePlayingOutcome =
   | 'conflict'
   | 'not_ready'
   | 'not_found'
-  | 'upgrade_required';
+  | 'upgrade_required'
+  // BUILD 20M (v2 lease path): fail-closed duration / timed-pass-cannot-cover. Not started.
+  | 'duration_unavailable'
+  | 'pass_insufficient';
 
 export interface EnsurePlayingResult {
   outcome: EnsurePlayingOutcome;
@@ -938,6 +951,11 @@ export async function ensurePlaying(
     // FREE minutes exhausted (enforcement on): NOTHING mutated (the RPC rolled back).
     // Surface the block truthfully — no song was started.
     return { outcome: 'upgrade_required', entitlement: flip.entitlement };
+  }
+  if (flip.outcome === 'duration_unavailable' || flip.outcome === 'pass_insufficient') {
+    // BUILD 20M v2: fail closed — nothing mutated, nothing started. Surfaced distinctly so the
+    // client can retry (duration) or explain the pass shortfall.
+    return { outcome: flip.outcome };
   }
   if (flip.outcome === 'already_playing') {
     const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');

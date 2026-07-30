@@ -22,8 +22,12 @@ describe('B2 served-code scan — no unmetered lifecycle path', () => {
   it('all playing/completed/playing-skip transitions go through the metering RPCs', () => {
     // beginSong / endSong are the ONLY seams that write playing/completed/skipped-of-playing.
     expect(rooms).toContain("import { beginSong, endSong");
-    expect(metering).toContain("rpc('karaoke_begin_song'");
-    expect(metering).toContain("rpc('karaoke_end_song'");
+    // BUILD 20M — versioned metering seam: every begin/end flows through v1 OR the v2 lease
+    // RPC (never an app-level lifecycle write). Both RPC names must remain referenced here.
+    expect(metering).toContain("rpc('karaoke_begin_song'"); // v1 begin (default path)
+    expect(metering).toContain("'karaoke_begin_song_v2'"); // v2 begin seam
+    expect(metering).toContain("'karaoke_end_song'"); // v1 end (ternary else)
+    expect(metering).toContain("'karaoke_end_song_v2'"); // v2 end seam
   });
 
   it('the one app-level status update is waiting-guarded (never playing/completed)', () => {

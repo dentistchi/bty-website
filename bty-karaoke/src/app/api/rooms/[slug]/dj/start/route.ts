@@ -73,6 +73,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         },
         { status: 402, headers: NO_STORE },
       );
+    case 'duration_unavailable':
+      // BUILD 20M v2 (allowlist): the video's playback duration could not be resolved. FAIL
+      // CLOSED — nothing started, no lease, no handoff. Retryable (transient lookup blip).
+      return NextResponse.json(
+        { error: '영상 길이를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.', code: 'duration_unavailable' },
+        { status: 503, headers: NO_STORE },
+      );
+    case 'pass_insufficient':
+      // BUILD 20M v2: the timed pass cannot cover the whole video (would play past expiry).
+      return NextResponse.json(
+        { error: '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.', code: 'pass_insufficient' },
+        { status: 402, headers: NO_STORE },
+      );
     case 'conflict':
       return NextResponse.json(
         { error: '다른 곡이 현재 재생 중입니다.', code: 'conflict', playing: result.playing ?? null },
