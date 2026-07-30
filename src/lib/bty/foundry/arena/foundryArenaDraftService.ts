@@ -65,6 +65,8 @@ export async function createArenaDraft(
     facts: source.value.facts,
     guided: input.guidedAnswers,
   });
+  // Slice 3.2I-R1: generation fails safe when it cannot compose a concrete scene.
+  if (!generated) return { ok: false, reason: "generation_insufficient_context" };
 
   // Defense: never persist an invalid structure as valid (generation guarantees
   // validity, but the gate is the single source of truth).
@@ -212,6 +214,7 @@ export async function regenerateArenaDraft(
     facts: source.value.facts,
     guided: current.guided_answers,
   });
+  if (!generated) return { ok: false, reason: "generation_insufficient_context" };
   const check = validateArenaScenarioDraft(generated.draft);
   if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
 

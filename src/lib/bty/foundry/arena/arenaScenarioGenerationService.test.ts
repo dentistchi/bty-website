@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
-import { validateDifficultChoice } from "@/domain/foundry/arena-draft/quality";
+import { validateBranchedScenario, validateConcreteScene } from "@/domain/foundry/arena-draft/quality";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
 // --- mock the shared LLM seam so no live provider is ever contacted ----------
@@ -36,7 +36,7 @@ function aiContent(draft: ArenaScenarioDraft): { choices: { message: { content: 
 const goodDraft: ArenaScenarioDraft = {
   title: "Raising a risk under a deadline",
   opening:
-    "The deadline is hours away and you spot a safety gap. Flagging it stops the line; staying on schedule keeps the commitment but carries the risk.",
+    "A teammate quietly flags a safety gap to you with the deadline only hours away. Raising it now stops the line and the client is already waiting; staying on schedule keeps the commitment but carries the risk.",
   primary: {
     choices: [
       { id: "primary_1", label: "Raise the risk now and accept that the deadline may slip" },
@@ -90,60 +90,76 @@ beforeEach(() => {
   available = true;
 });
 
+/** Assert a non-null draft (generation may now fail safe → null). */
+async function gen(input: Parameters<typeof generateArenaScenarioDraft>[0]) {
+  const r = await generateArenaScenarioDraft(input);
+  if (!r) throw new Error("expected a generated draft, got null");
+  return r;
+}
+
 describe("generateArenaScenarioDraft", () => {
-  it("accepts VALID difficult-choice AI output and marks the source 'ai'", async () => {
+  it("accepts VALID concrete-scene AI output and marks the source 'ai'", async () => {
     mockCreate.mockResolvedValue(aiContent(goodDraft));
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("ai");
     expect(r.draft.title).toBe("Raising a risk under a deadline");
   });
 
   it("falls back to the template when AI output is an OBVIOUS-ANSWER draft (fails the quality gate)", async () => {
     mockCreate.mockResolvedValue(aiContent(obviousDraft));
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
+    expect(r.source).toBe("template");
+  });
+
+  it("falls back to the template when AI output is ABSTRACT (no concrete scene)", async () => {
+    // goodDraft's choices are fine, but a training-description opening with no actor
+    // fails the concrete-scene gate → rejected → template fallback.
+    const abstract = { ...goodDraft, opening: "A realistic moment. The behavior is called for. What do you protect first?" };
+    mockCreate.mockResolvedValue(aiContent(abstract));
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("template");
   });
 
   it("falls back to the template on MALFORMED (non-JSON) AI output", async () => {
     mockCreate.mockResolvedValue({ choices: [{ message: { content: "not json {{{" } }] });
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("template");
   });
 
   it("falls back to the template when AI JSON fails STRUCTURAL validation", async () => {
     const broken = { ...goodDraft, actionDecision: { prompt: "P", choices: [] } };
     mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(broken) } }] });
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("template");
   });
 
   it("falls back to the template when the provider THROWS", async () => {
     mockCreate.mockRejectedValue(new Error("network"));
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("template");
   });
 
   it("uses the template when no provider is configured (never calls the client)", async () => {
     available = false;
-    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
+    const r = await gen({ locale: "en", facts, guided });
     expect(r.source).toBe("template");
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("always returns a structurally valid draft regardless of the path", async () => {
-    mockCreate.mockRejectedValue(new Error("x"));
-    const r = await generateArenaScenarioDraft({ locale: "ko", facts, guided });
-    // the draft is validated inside the service; a template result is always valid
-    expect(r.draft.primary.choices.length).toBeGreaterThanOrEqual(2);
-    expect(r.draft.actionDecision.choices.some((c) => c.isActionCommitment)).toBe(true);
+  it("FAILS SAFE (null) when there is no incident to build a concrete scene", async () => {
+    available = false; // template path
+    const bare: ModuleSourceFacts = { ...facts, problem: null, observableBehavior: null };
+    const r = await generateArenaScenarioDraft({ locale: "en", facts: bare, guided });
+    expect(r).toBeNull(); // a hollow, schema-valid fallback is never returned
   });
 
-  it("the deterministic template PASSES the difficult-choice quality gate (en + ko)", async () => {
+  it("the deterministic template PASSES the difficult-choice AND concrete-scene gates (en + ko)", async () => {
     available = false; // force the template path
     for (const locale of ["en", "ko"] as const) {
-      const r = await generateArenaScenarioDraft({ locale, facts, guided });
+      const r = await gen({ locale, facts, guided });
       expect(r.source).toBe("template");
-      expect(validateDifficultChoice(r.draft).ok).toBe(true);
+      expect(validateBranchedScenario(r.draft).ok).toBe(true);
+      expect(validateConcreteScene(r.draft).ok).toBe(true);
     }
   });
 });

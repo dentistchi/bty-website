@@ -287,6 +287,110 @@ export function validateDifficultChoice(
   return { ok: errors.length === 0, errors: uniq(errors), warnings: uniq(warnings) };
 }
 
+// ---------------------------------------------------------------------------
+// Concrete-scene gate (Slice 3.2I-R1) — realism, not just difficulty. A scenario must
+// read like an actual moment (an actor, an incident, a stakeholder, a decision now),
+// with concrete-action choices and branch-specific reactions — never a training
+// DESCRIPTION, a raw-Capability interpolation, or repetitive machine boilerplate.
+// Deterministic anti-pattern rejection (NOT a proof of natural language).
+// ---------------------------------------------------------------------------
+
+/** Openings that describe training instead of a scene, or raw-Capability interpolation. */
+const NON_SCENE_OPENING: readonly RegExp[] = [
+  /a realistic moment/i,
+  /a difficult situation/i,
+  /leadership is required/i,
+  /\bis called for\b/i,
+  /you cannot (fully )?protect both/i,
+  /this (training|practice|scenario)\b/i,
+  /현실적인 상황|어려운 상황이 발생|리더십이 필요/,
+];
+
+/** Template markers / placeholders that must never reach a learner. */
+const PLACEHOLDER = /\{\{|\}\}|\[[A-Za-z_]{2,}\]|<[a-z_]{2,}>|\bTODO\b|\bTBD\b|\{[a-z_]+\}/;
+
+/** A concrete actor / stakeholder the opening must reference (en + ko). */
+const ACTOR = /\b(teammate|colleague|co-?worker|client|customer|patient|manager|lead|team|the person|a peer|staff|assistant|nurse|doctor|someone|reviewer|supervisor|director|the group|the other|owner|vendor|partner|executive|employee)\b|팀원|동료|고객|환자|담당자|상사|직원|사람|리더|경영진/i;
+
+/** A choice that is abstract INTENT rather than a concrete action. */
+const ABSTRACT_CHOICE = /^\s*(protect|prioriti[sz]e|demonstrate|support|uphold|maintain|ensure|value|embrace|foster|show)\s+(trust|fairness|accountability|leadership|the\s+standard|integrity|transparency|the\s+relationship|respect|honesty)\b/i;
+
+/** At least one concrete action verb every choice must contain (en + ko). */
+const CONCRETE_VERB =
+  /\b(tell|told|pause|call|publish|verify|verif|assign|escalate|meet|document|proceed|delay|narrow|disclose|ask|raise|confirm|move|act|own|correct|address|report|check|bring|give|apply|announce|walk|reset|resolve|stand|change|keep|absorb|explain|send|put|contain|issue|finish|step|record|flag|approve|deny|pull|stop|start|offer|commit|repair|push|decide|take|settle|handle|weigh|split|notice|work|gather|hear|name|back|hold)\b|한다|하겠다|진다|감당|감수|결정|정한다|알린|듣|보내|멈추|다루|나서|짚|처리|옮기|공개|확인|실행|바로잡|좁혀|짊어|미룬|밀고|물러|맡아|끌어|이야기/i;
+
+/** Generic, reaction-free escalations. */
+const GENERIC_ESCALATION =
+  /creates more pressure|people are concerned|questions (now )?surface|more pressure and people|the outcome may be lost|becomes harder for everyone|things get more difficult/i;
+
+function fourGramRepeats(texts: string[]): boolean {
+  const counts = new Map<string, number>();
+  for (const raw of texts) {
+    const words = raw.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, " ").split(/\s+/).filter(Boolean);
+    const seenHere = new Set<string>();
+    for (let i = 0; i + 4 <= words.length; i++) {
+      const gram = words.slice(i, i + 4).join(" ");
+      if (seenHere.has(gram)) continue; // count each text once per gram
+      seenHere.add(gram);
+      counts.set(gram, (counts.get(gram) ?? 0) + 1);
+    }
+  }
+  for (const n of counts.values()) if (n >= 3) return true;
+  return false;
+}
+
+/** Every learner-facing CHOICE label across flat + branches. */
+function allChoiceLabels(draft: ArenaScenarioDraft): string[] {
+  const out = [
+    ...draft.primary.choices,
+    ...draft.tradeoff.choices,
+    ...draft.actionDecision.choices,
+  ].map((c) => c.label);
+  for (const b of Object.values(draft.branches ?? {})) {
+    out.push(...b.tradeoffChoices.map((c) => c.label), ...b.actionDecision.choices.map((c) => c.label));
+  }
+  return out;
+}
+
+/** All escalation texts (flat + per-branch) that must each be a concrete reaction. */
+function allEscalations(draft: ArenaScenarioDraft): string[] {
+  if (isBranchAware(draft)) return Object.values(draft.branches).map((b) => b.escalationText);
+  return [draft.tradeoff.escalationText];
+}
+
+/**
+ * Reject a scenario that is structurally fine but does not read like a real scene
+ * (Slice 3.2I-R1). Applies to flat and branch-aware drafts. Pure.
+ */
+export function validateConcreteScene(draft: ArenaScenarioDraft): QualityValidation {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Placeholder / template-marker leakage anywhere.
+  const everyString = [draft.title, draft.opening, ...allEscalations(draft), ...allChoiceLabels(draft)];
+  if (everyString.some((s) => PLACEHOLDER.test(s))) errors.push("placeholder_leak");
+
+  // Opening must be a SCENE with a concrete actor — not a training description.
+  if (matchesAny(draft.opening, NON_SCENE_OPENING)) errors.push("opening_not_a_scene");
+  if (!ACTOR.test(draft.opening)) errors.push("opening_no_actor");
+
+  // Every choice must be a concrete action, not abstract intent.
+  for (const label of allChoiceLabels(draft)) {
+    if (ABSTRACT_CHOICE.test(label) || !CONCRETE_VERB.test(label)) {
+      errors.push("choice_no_concrete_action");
+      break;
+    }
+  }
+
+  // Each escalation must be a specific reaction, not a generic "more pressure" line.
+  if (allEscalations(draft).some((e) => GENERIC_ESCALATION.test(e))) errors.push("generic_escalation");
+
+  // No repeated machine boilerplate across the opening + escalations.
+  if (fourGramRepeats([draft.opening, ...allEscalations(draft)])) errors.push("boilerplate_repetition");
+
+  return { ok: errors.length === 0, errors: Array.from(new Set(errors)), warnings };
+}
+
 /**
  * Difficult-choice gate for a whole scenario, branch-aware (Slice 3.2I). For a legacy
  * flat draft this is exactly `validateDifficultChoice`. For a branch-aware draft it runs

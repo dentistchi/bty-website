@@ -1,6 +1,6 @@
 import { getLlmClient, getLlmModel, isLlmAvailable, type LlmChatMessage } from "@/lib/bty/llm/client";
 import { parseArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
-import { validateBranchedScenario } from "@/domain/foundry/arena-draft/quality";
+import { validateBranchedScenario, validateConcreteScene } from "@/domain/foundry/arena-draft/quality";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import {
   buildTemplateScenarioDraft,
@@ -54,6 +54,8 @@ function buildLlmMessages(input: ScenarioGenInput): LlmChatMessage[] {
   const system = [
     "You design ONE short leadership DECISION-PRACTICE scenario. Its purpose is NOT to find the right answer — it is to force a difficult choice: which legitimate value to protect, and what cost to accept, under pressure.",
     "The scenario has EXACTLY three phases: PRIMARY (a realistic opening situation with strategic choices), TRADEOFF (a harder escalation that raises the stakes), and ACTION DECISION (a direct decision about a concrete next action).",
+    "CONCRETE SCENE — the opening must read like an actual moment, not a training description. In 2-4 natural sentences establish: WHO (the learner's role/responsibility), WHAT specifically just happened (a concrete incident, request, failure, or risk), WHO is affected (a concrete stakeholder — a teammate, client, patient, the team…), WHY NOW (a deadline, a waiting person, a live decision), and that two legitimate values cannot both be fully protected. NEVER write 'A realistic moment', 'A difficult situation', 'Leadership is required', '<capability> is called for', 'you cannot protect both', or interpolate a raw capability phrase into a sentence. Do not invent named organizations, real people, or specific numbers. Use the training context, target role, and audience for a plausible concrete setting.",
+    "Every choice (primary, tradeoff, action) must begin with or clearly contain a CONCRETE ACTION the learner performs (tell, pause, call, verify, escalate, meet, document, disclose, delay, narrow, proceed, ask…) — not abstract intent ('protect trust', 'demonstrate leadership', 'hold the standard'). Vary phrasing; do not repeat boilerplate like 'accepting that' or 'there isn't enough time' across the opening and every branch.",
     "",
     "DIFFICULT-CHOICE CONTRACT — every selectable option MUST satisfy ALL of:",
     "- a competent, well-intentioned person could reasonably choose it;",
@@ -136,6 +138,12 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
       logGenOutcome("provider_low_quality", quality.errors[0]);
       return null;
     }
+    // Concrete-scene gate (Slice 3.2I-R1): reject a difficult-but-abstract scenario.
+    const scene = validateConcreteScene(result.value);
+    if (!scene.ok) {
+      logGenOutcome("provider_not_a_scene", scene.errors[0]);
+      return null;
+    }
     return { draft: result.value, warnings: [...result.warnings, ...quality.warnings] };
   } catch {
     logGenOutcome(controller.signal.aborted ? "provider_timeout" : "provider_error");
@@ -146,11 +154,13 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
 }
 
 /**
- * Generate one valid three-phase draft. Always resolves to a valid draft: the LLM
- * result if it validates, otherwise the deterministic template. Callers persist the
- * result and the `source` for observability.
+ * Generate one valid branch-aware draft, or NULL when neither the provider nor the
+ * deterministic fallback can produce a scenario that clears every gate (structural +
+ * difficult-choice + concrete-scene). The fallback is a real product surface: a schema-
+ * valid but abstract/malformed scene is NOT returned — the caller then surfaces the
+ * existing safe generation-failure state. Callers persist the result + `source`.
  */
-export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GeneratedDraft> {
+export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GeneratedDraft | null> {
   const llm = await generateWithLlm(input);
   if (llm) {
     logGenOutcome("generated_valid");
@@ -158,13 +168,21 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
   }
   logGenOutcome("fallback_used");
   const draft = buildTemplateScenarioDraft(input);
-  // The template is authored to satisfy BOTH the structural validator and the
-  // difficult-choice gate; re-run both to surface any sensitive-info or quality
-  // warnings that came from the guided answers (host free text).
+  // The deterministic fallback must independently clear the SAME bar as an accepted LLM
+  // draft — structural, difficult-choice, AND concrete-scene. If the module's inputs
+  // cannot compose a concrete, natural scene, fail safe instead of shipping a hollow one.
   const check = parseArenaScenarioDraft(draft);
+  if (!check.ok) {
+    logGenOutcome("fallback_invalid", check.errors[0]);
+    return null;
+  }
   const quality = validateBranchedScenario(draft);
-  const warnings = [...(check.ok ? check.warnings : []), ...quality.warnings];
-  return { draft, source: "template", warnings };
+  const scene = validateConcreteScene(draft);
+  if (!quality.ok || !scene.ok) {
+    logGenOutcome("fallback_insufficient", (quality.errors[0] ?? scene.errors[0]));
+    return null;
+  }
+  return { draft, source: "template", warnings: [...check.warnings, ...quality.warnings] };
 }
 
 export type { Locale };
