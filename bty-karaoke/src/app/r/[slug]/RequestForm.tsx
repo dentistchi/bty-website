@@ -27,11 +27,10 @@ import {
 import RequestResultCard from './RequestResultCard';
 import GuestDiagnosticPanel from './GuestDiagnosticPanel';
 import MyRequestsDock from './MyRequestsDock';
-import MySongsSections from './MySongsSections';
+import RecentlySungSection from './RecentlySungSection';
 import AppInvitationCard from './AppInvitationCard';
 import PersistentAppEntry from './PersistentAppEntry';
-import { useSavedSongs, useRecentlySung } from './my-songs.hooks';
-import type { SavedSong } from '@/domain/saved-songs';
+import { useRecentlySung } from './recently-sung.hooks';
 import {
   inviteShownKey,
   appUrlKey,
@@ -54,6 +53,13 @@ interface Props {
 }
 
 type SearchState = 'idle' | 'searching' | 'done';
+
+/**
+ * BUILD 20M-WEB8 — the RETIRED anonymous saved-song key from BUILD 20B-WEB7. Declared here only
+ * so the obsolete entry can be deleted on Guest init; no code path ever reads its contents, so a
+ * stale value on an existing device can never restore removed UI.
+ */
+const LEGACY_SAVED_SONGS_KEY = 'bty-karaoke:saved-songs';
 
 export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitted }: Props) {
   // Identity — remembered once per room/device (never authentication).
@@ -108,14 +114,18 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   // the server resolver). Persisted per room so a reload keeps continuity.
   const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
 
-  // BUILD 20B-WEB7 — the device saved library ("내 노래", anonymous localStorage) and
-  // the Event-scoped "방금 부른 노래" (Recently Sung) tracker. Both are presentation
-  // state; neither is queue truth. The dock reports poll transitions into the tracker.
-  const saved = useSavedSongs();
   const recentlySung = useRecentlySung(slug, eventId);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // BUILD 20M-WEB8 — retire the BUILD 20B-WEB7 anonymous saved-song library. Nothing reads
+    // this key any more, so drop the one obsolete entry on Guest init. Scoped to EXACTLY that
+    // key: no other localStorage (guest name, my-requests, recently sung, app-entry) is touched.
+    try {
+      window.localStorage.removeItem(LEGACY_SAVED_SONGS_KEY);
+    } catch {
+      /* storage disabled — nothing reads the key regardless */
+    }
     const savedName = window.localStorage.getItem(guestNameKey(slug));
     if (savedName && isValidGuestName(savedName)) {
       setGuestName(normalizeGuestName(savedName));
@@ -502,35 +512,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const requestManual = () =>
     submit({ youtubeInput: manualInput.trim() }, manualInput.trim(), null, 'manual');
 
-  // Bookmark a search result — independent from 신청하기 (never creates a request).
-  const toggleSaveItem = (item: YoutubeSearchItem) =>
-    void saved.toggle({
-      videoId: item.videoId,
-      title: item.title,
-      artist: item.channelTitle || null,
-      thumbnailUrl: item.thumbnailUrl,
-    });
-
-  // "신청하기" from 내 노래 — reuses the SAME canonical submit pipeline (idempotency
-  // key = videoId → in-flight double-tap dedupe; a confirmed success re-taps as a new
-  // request). Saving is never a request and requesting never alters the saved library.
-  const requestSaved = (song: SavedSong) =>
-    submit(
-      {
-        youtubeVideoId: song.videoId,
-        youtubeTitle: song.title,
-        ...(song.artist ? { youtubeChannelTitle: song.artist } : {}),
-        ...(song.thumbnailUrl ? { youtubeThumbnailUrl: song.thumbnailUrl } : {}),
-      },
-      song.title,
-      song.artist,
-      song.videoId,
-    );
-
-  if (!roomOpen) {
-    return <div className="banner error">이 방은 닫혀 있어 신청을 받지 않습니다.</div>;
-  }
-
   const persistentCta = resolvePersistentCta({ universalLink: persistentApp?.url ?? null });
 
   return (
@@ -620,19 +601,8 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
           </div>
         )}
 
-        {/* BUILD 20B-WEB7 — 방금 부른 노래 + 내 노래, above the search (Phase 6 order:
-            own turn area [floating dock] → recently sung → my songs → search). */}
-        <MySongsSections
-          recentlySung={recentlySung.items}
-          saved={saved.items}
-          isSaved={saved.isSaved}
-          isSavePending={saved.isPending}
-          onToggleSave={(s) => void saved.toggle(s)}
-          onRequestSaved={requestSaved}
-          onRemoveSaved={(videoId) => void saved.remove(videoId)}
-          canParticipate={roomOpen}
-          requestPendingVideoId={submittingKey}
-        />
+        {/* BUILD 20M-WEB8 — 방금 부른 노래 only. The web Guest has no saved-song library. */}
+        <RecentlySungSection recentlySung={recentlySung.items} />
 
         <form onSubmit={runSearch}>
           <label htmlFor="q">무슨 노래를 부르고 싶으세요?</label>
@@ -699,9 +669,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                 onRequest={requestItem}
                 pending={submittingKey === r.videoId}
                 requested={requestedIds.includes(r.videoId)}
-                saved={saved.isSaved(r.videoId)}
-                savePending={saved.isPending(r.videoId)}
-                onToggleSave={toggleSaveItem}
               />
             ))}
 
@@ -718,9 +685,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                   onRequest={requestItem}
                   pending={submittingKey === r.videoId}
                   requested={requestedIds.includes(r.videoId)}
-                  saved={saved.isSaved(r.videoId)}
-                  savePending={saved.isPending(r.videoId)}
-                  onToggleSave={toggleSaveItem}
                 />
               ))}
           </div>
@@ -737,9 +701,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                 pending={submittingKey === r.videoId}
                 requested={requestedIds.includes(r.videoId)}
                 variant="reco"
-                saved={saved.isSaved(r.videoId)}
-                savePending={saved.isPending(r.videoId)}
-                onToggleSave={toggleSaveItem}
               />
             ))}
           </div>
@@ -773,9 +734,6 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         onRemoved={removeMyRequest}
         onReRequest={reRequest}
         onRecordRecentlySung={recentlySung.record}
-        isSaved={saved.isSaved}
-        isSavePending={saved.isPending}
-        onToggleSave={(s) => void saved.toggle(s)}
       />
     </>
   );

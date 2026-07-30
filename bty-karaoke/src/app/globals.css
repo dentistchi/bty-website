@@ -3837,12 +3837,11 @@ main[data-theme='warm_stage'] {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   BUILD 20B-WEB7 — Web Guest My Songs parity
-   Search bookmark · 방금 부른 노래 · 내 노래
+   BUILD 20M-WEB8 — Web Guest 방금 부른 노래
+   (WEB7's saved-song library and every bookmark control were removed here.)
    ══════════════════════════════════════════════════════════════ */
 
-/* Search-result card: the request button and the bookmark share a small column so
-   the bookmark reads as a distinct, independent action from 신청하기. */
+/* Search-result card action column. Since WEB8 it holds the request button alone. */
 .req-card-actions {
   flex: 0 0 auto;
   display: flex;
@@ -3850,40 +3849,9 @@ main[data-theme='warm_stage'] {
   gap: 8px;
 }
 
-/* The ☆/★ bookmark toggle — used on search cards and Recently Sung rows. */
-.save-btn {
-  flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  font-size: 1.15rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-.save-btn.on {
-  color: var(--gold);
-  border-color: rgba(245, 196, 81, 0.5);
-  background: rgba(245, 196, 81, 0.1);
-}
-.save-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* The own-NOW-SINGING save action inside the performance hero card. */
-.perf-btn.save-inline.on {
-  color: var(--gold);
-  border-color: rgba(245, 196, 81, 0.55);
-}
-
-/* ── Collapsible sections (방금 부른 노래 / 내 노래) ── */
+/* ── Collapsible section (방금 부른 노래) ──
+   BUILD 20M-WEB8 removed the web Guest saved-song library, so the ☆/★ bookmark, the
+   own-NOW-SINGING save action and every 내 노래 row control are gone with their rules. */
 .my-songs {
   display: flex;
   flex-direction: column;
@@ -3962,48 +3930,6 @@ main[data-theme='warm_stage'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.ms-row-actions {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.ms-request {
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 800;
-  font-size: 0.86rem;
-  background: linear-gradient(180deg, var(--gold), var(--gold-2));
-  color: #241a03;
-  cursor: pointer;
-}
-.ms-request:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.ms-remove {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  font-size: 0.84rem;
-}
-.ms-row-note {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-.ms-empty {
-  padding: 8px 16px 18px;
-}
-.ms-empty-title {
-  font-weight: 700;
-  margin: 0 0 4px;
-}
-.ms-empty-sub {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin: 0;
 }
 
 /* ══════════════════════════════════════════════════════════════

@@ -16,8 +16,7 @@ import {
 import { songDisplay } from '@/domain/song-title';
 import { resolvePerfStage } from '@/domain/self-service';
 import type { OwnStatusRow } from '@/domain/recently-sung';
-import type { SavedSongSnapshot } from '@/domain/saved-songs';
-import type { RecordInput } from './my-songs.hooks';
+import type { RecordInput } from './recently-sung.hooks';
 import SwipeableCard from './SwipeableCard';
 
 interface Props {
@@ -32,11 +31,6 @@ interface Props {
   onReRequest?: (row: MyRequest) => void;
   /** BUILD 20B-WEB7 — report each poll's own statuses so Recently Sung can record. */
   onRecordRecentlySung?: (input: RecordInput) => void;
-  /** Whether THIS guest's own now-playing videoId is already saved ("내 노래"). */
-  isSaved?: (videoId: string) => boolean;
-  isSavePending?: (videoId: string) => boolean;
-  /** Toggle the bookmark for the own now-playing song. Never mutates the queue. */
-  onToggleSave?: (song: SavedSongSnapshot) => void;
 }
 
 const POLL_MS = 4000;
@@ -71,9 +65,6 @@ export default function MyRequestsDock({
   onRemoved,
   onReRequest,
   onRecordRecentlySung,
-  isSaved,
-  isSavePending,
-  onToggleSave,
 }: Props) {
   // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
   const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
@@ -388,26 +379,6 @@ export default function MyRequestsDock({
             {/* BUILD 20B-WEB7 — bookmark THIS song (own, canonically playing by
                 requestId). Save is independent: it never Ready/cancels/starts/
                 finishes/opens YouTube and never mutates the Event. */}
-            {onToggleSave && stageReq.videoId && (
-              <div className="perf-actions">
-                <button
-                  type="button"
-                  className={`perf-btn ghost save-inline${isSaved?.(stageReq.videoId) ? ' on' : ''}`}
-                  onClick={() =>
-                    onToggleSave({
-                      videoId: stageReq.videoId!,
-                      title: stageReq.title,
-                      artist: stageReq.artist ?? null,
-                      thumbnailUrl: null,
-                    })
-                  }
-                  disabled={isSavePending?.(stageReq.videoId)}
-                  aria-pressed={isSaved?.(stageReq.videoId) ?? false}
-                >
-                  {isSaved?.(stageReq.videoId) ? '★ 내 노래에 저장됨' : '☆ 내 노래에 저장'}
-                </button>
-              </div>
-            )}
           </div>
         )}
 

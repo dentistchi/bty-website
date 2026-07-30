@@ -53,14 +53,13 @@ describe('RequestResultCard — title-first view contract', () => {
     expect(screen.queryByText(/노래방/)).toBeNull();
   });
 
-  it('request + save callbacks receive the RAW item unchanged (16, 17)', () => {
+  it('the request callback receives the RAW item unchanged (16, 17)', () => {
     const onRequest = vi.fn();
-    const onToggleSave = vi.fn();
-    render(<RequestResultCard item={item} onRequest={onRequest} pending={false} onToggleSave={onToggleSave} />);
+    render(<RequestResultCard item={item} onRequest={onRequest} pending={false} />);
     fireEvent.click(screen.getByRole('button', { name: /신청하기/ }));
-    fireEvent.click(screen.getByRole('button', { name: /저장$/ }));
     expect(onRequest).toHaveBeenCalledWith(item);
-    expect(onToggleSave).toHaveBeenCalledWith(item);
     expect(onRequest.mock.calls[0][0].title).toBe('[TJ노래방] 영원한사랑 - 핑클 / TJ Karaoke');
+    // BUILD 20M-WEB8 — no bookmark exists on the web Guest card at all.
+    expect(screen.queryByRole('button', { name: /저장/ })).toBeNull();
   });
 });
