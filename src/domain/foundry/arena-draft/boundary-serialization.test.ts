@@ -34,11 +34,13 @@ describe("parseArenaScenarioDraft — practiceBoundary serialization (Slice 3.2I
     if (r.ok) expect(r.value.practiceBoundary).toBeUndefined();
   });
 
-  it("SAFELY OMITS a malformed boundary (never persisted as authoritative)", () => {
+  it("FAILS CLOSED on a malformed PRESENT boundary (rejects — never reinterpreted as legacy)", () => {
+    // Slice 3.2I-R5A.1: a present-but-malformed safety authority must reject the draft,
+    // NOT be silently dropped and treated as a legacy (boundary-absent) draft.
     const bad = { ...draft(), practiceBoundary: { mode: "nope", confirmed: "yes", constraints: "x" } };
     const r = parseArenaScenarioDraft(bad);
-    expect(r.ok).toBe(true); // the scenario itself is valid
-    if (r.ok) expect(r.value.practiceBoundary).toBeUndefined(); // the bad boundary is dropped
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors).toContain("boundary_invalid");
   });
 
   it("NEVER persists provider constraintAssessments or semantic-review output", () => {

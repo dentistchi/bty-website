@@ -446,3 +446,33 @@ describe("regenerateArenaDraft — reads ONLY the canonical server-stored bounda
     expect(mockCreate).toHaveBeenCalledTimes(1); // judgment (no rules) → no semantic review call
   });
 });
+
+describe("initial create — trust boundary (R5A.1)", () => {
+  it("createArenaDraft cannot generate mixed-safety content without a confirmed server boundary", async () => {
+    // A training whose facts imply a mandatory rule → generation blocks for confirmation;
+    // createArenaDraft never accepts a client boundary (its input has no boundary field).
+    const { admin } = makeFakeAdmin({
+      events: [{ id: "evt-owned", owner_user_id: OWNER, title: "T", status: "open" }],
+      modules: [{ event_id: "evt-owned", source_draft_id: "draft-77", module_version: 3, module_snapshot: { problem: "Two patient identifiers must be verified before treatment", observableBehavior: "Verify before every dose", learningNeeds: ["decide"] } }],
+    });
+    const r = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    expect(r).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+  });
+});
+
+describe("knowledge_check end-to-end (R5A.1)", () => {
+  it("save clears the scenario; regenerate declines fixed_answer_knowledge; provider never called", async () => {
+    const { admin, tables } = seedDraft({ scenario_draft: AI_DRAFT, revision: 2 });
+    // Manager confirms this is a knowledge/required-standard check, not a judgment Practice.
+    const saved = await saveDraftBoundary(admin, OWNER, "d1", { mode: "knowledge_check", confirmed: true, constraints: [] }, 2);
+    expect(saved.ok).toBe(true);
+    if (saved.ok) expect(saved.value.invalidated).toBe(true);
+    expect(tables.foundry_arena_scenario_drafts[0].scenario_draft).toBeNull(); // generated scenario cleared
+    expect((tables.foundry_arena_scenario_drafts[0].guided_answers as Record<string, unknown>).hardestWhen).toBeTruthy(); // unrelated answers preserved
+
+    mockCreate.mockClear();
+    const re = await regenerateArenaDraft(admin, OWNER, "d1", "en");
+    expect(re).toMatchObject({ ok: false, reason: "fixed_answer_knowledge" });
+    expect(mockCreate).not.toHaveBeenCalled(); // no generator, no reviewer
+  });
+});

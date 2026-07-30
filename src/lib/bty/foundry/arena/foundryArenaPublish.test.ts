@@ -335,3 +335,50 @@ describe("practice discovery + run lifecycle (zero-XP, isolated)", () => {
     expect(r).toMatchObject({ ok: false, reason: "practice_run_not_found" });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Slice 3.2I-R5A.1 — canonical boundary publish gates
+// ---------------------------------------------------------------------------
+
+const CON = (statement: string) => ({ mode: "judgment_with_constraints" as const, confirmed: true, constraints: [{ id: "c1", statement, provenance: "manager_entered" as const }] });
+
+function seedBoundedDraft(canonical: unknown, scenarioBoundary: unknown, revision = 2) {
+  return {
+    id: "draft-1", owner_user_id: OWNER, source_event_id: "evt-1", source_module_version: 3, source_draft_id: "moduledraft-9",
+    status: "draft", guided_answers: canonical ? { practiceBoundary: canonical } : {},
+    scenario_draft: scenarioBoundary ? scenario({ practiceBoundary: scenarioBoundary as never }) : scenario(),
+    generation_source: "ai", revision, created_at: "t", updated_at: "t",
+  };
+}
+
+describe("publishPractice — canonical boundary gates (R5A.1)", () => {
+  it("publishes when the canonical and generated boundary agree (confirmed, constrained)", async () => {
+    const b = CON("Verify identity before treatment");
+    const { admin } = makeFakeAdmin({ drafts: [seedBoundedDraft(b, b)], events: [{ id: "evt-1", title: "X" }] });
+    const r = await publishPractice(admin, OWNER, "draft-1", 2);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.row.scenario_snapshot.practiceBoundary).toEqual(b);
+  });
+
+  it("rejects an unconfirmed canonical boundary", async () => {
+    const b = { ...CON("Verify identity"), confirmed: false };
+    const { admin } = makeFakeAdmin({ drafts: [seedBoundedDraft(b, b)], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+  });
+
+  it("rejects knowledge_check (no Arena Practice published)", async () => {
+    const b = { mode: "knowledge_check", confirmed: true, constraints: [] };
+    const { admin } = makeFakeAdmin({ drafts: [seedBoundedDraft(b, b)], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "fixed_answer_knowledge" });
+  });
+
+  it("rejects when canonical and generated boundary DIFFER (stale scenario)", async () => {
+    const { admin } = makeFakeAdmin({ drafts: [seedBoundedDraft(CON("Verify identity"), CON("Report the incident"))], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "boundary_mismatch" });
+  });
+
+  it("rejects a scenario that carries a boundary the canonical draft does not", async () => {
+    const { admin } = makeFakeAdmin({ drafts: [seedBoundedDraft(null, CON("Verify identity"))], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "boundary_mismatch" });
+  });
+});

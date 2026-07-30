@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { publishableSnapshot } from "@/domain/foundry/arena-draft/publish";
+import { boundaryChanged, validateBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { getOwnerArenaDraft } from "./foundryArenaDraftService";
 
 /**
@@ -72,6 +73,24 @@ export async function publishPractice(
 
   const publishable = publishableSnapshot(draft.scenario_draft);
   if (!publishable.ok) return { ok: false, reason: "invalid_structure", errors: publishable.errors };
+
+  // CANONICAL BOUNDARY GATES (Slice 3.2I-R5A.1). If a practice boundary is involved on EITHER
+  // side, both the canonical (guided_answers) and the generated (scenario_snapshot) boundary
+  // must be present, valid, confirmed, non-knowledge, and normalized-EQUIVALENT — otherwise the
+  // scenario was produced under a different or stale boundary and must not publish. A legacy
+  // draft with no boundary on either side publishes as before.
+  const canonical = draft.guided_answers.practiceBoundary;
+  const scenarioBoundary = publishable.snapshot.practiceBoundary;
+  if (canonical || scenarioBoundary) {
+    if (!canonical || !scenarioBoundary) return { ok: false, reason: "boundary_mismatch" };
+    if (!validateBoundary(canonical).ok) return { ok: false, reason: "boundary_invalid" };
+    if (!canonical.confirmed) return { ok: false, reason: "boundary_confirmation_required" };
+    if (canonical.mode === "knowledge_check") return { ok: false, reason: "fixed_answer_knowledge" };
+    if (canonical.mode === "judgment_with_constraints" && canonical.constraints.length === 0) {
+      return { ok: false, reason: "boundary_constraints_required" };
+    }
+    if (boundaryChanged(canonical, scenarioBoundary)) return { ok: false, reason: "boundary_mismatch" };
+  }
 
   // Idempotency: same (draft, revision) already published → return it unchanged.
   const existing = await findExisting(admin, draftId, draft.revision);

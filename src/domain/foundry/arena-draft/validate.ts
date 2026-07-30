@@ -263,6 +263,15 @@ export function validateArenaScenarioDraft(draft: unknown): DraftValidation {
     }
   }
 
+  // Practice boundary (Slice 3.2I-R5A.1) — FAIL CLOSED. An ABSENT key is a legacy draft
+  // (handled elsewhere); a PRESENT-but-malformed boundary is a corrupt safety authority and
+  // must reject the draft — it must NEVER be silently dropped and reinterpreted as legacy.
+  if ((d as { practiceBoundary?: unknown }).practiceBoundary !== undefined) {
+    if (!validateBoundary((d as { practiceBoundary?: unknown }).practiceBoundary).ok) {
+      errors.push("boundary_invalid");
+    }
+  }
+
   // Branches (Slice 3.2I) — only when present. A branch-aware draft must still carry
   // valid flat fields (legacy fallback) AND one valid branch per primary choice id.
   if ((d as { branches?: unknown }).branches !== undefined) {
