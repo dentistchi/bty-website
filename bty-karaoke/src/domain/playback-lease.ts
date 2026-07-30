@@ -1,46 +1,38 @@
 // External-playback metering LEASE math — BUILD 20M (P0 entitlement integrity).
 //
-// The exploit (measured): FREE usage is metered over the request's [started_at, ended_at]
+// Exploit (measured): FREE usage is metered over the request's [started_at, ended_at]
 // interval, and Host Finish sets ended_at=now → accrual stops while YouTube keeps playing
 // externally, making the 15-min FREE allowance reusable all day.
 //
-// The fix: once an external YouTube handoff is authorized for a song of duration D at time
-// T, the account is charged for a NON-SHRINKABLE playback lease [T, T+D]. Finish, Queue
-// completion, Event end, background, and relaunch MUST NOT shorten it. Consecutive songs
-// charge only the NON-OVERLAPPING extension (union of intervals — never double-charged).
+// Fix: once an external YouTube handoff is authorized for a song of duration D at time T,
+// the account is charged a NON-SHRINKABLE lease [T, T+D]. Finish / Queue completion / Event
+// end / background / relaunch MUST NOT shorten it. Consecutive songs charge only the
+// NON-OVERLAPPING extension `lease_seconds = max(0, N-E)` (union — never double-charged).
+// Account-level billing sums `lease_seconds` (NOT each row's full interval), so overlap is
+// excluded by construction. Timed passes require the WHOLE video to finish inside the pass
+// window (proposed end ≤ pass.expires_at). Unknown duration FAILS CLOSED (never a fallback).
 //
-// This module is PURE (no DB, no I/O, no clock) so the union math + the pre-handoff
-// authorization decision are fully unit-testable and identical wherever they run. The
-// authoritative persistence (a lease column/table + atomic RPC) calls into this logic;
-// this file commits nothing to the database.
+// PURE (no DB, no I/O, no clock) so union + pre-handoff authorization are unit-testable and
+// identical wherever they run. The authoritative persistence (v2 RPCs + a lease column) calls
+// this logic; this file commits nothing to the database.
 
-/** Karaoke-duration sanity bounds. A resolved duration outside these is NOT trusted:
- *  too-short (<MIN) or a malformed multi-hour value (>MAX) must never silently consume or
- *  bypass entitlement. MAX == the FREE daily limit: one song can never lease more than the
- *  whole free window (a 3-hour "video" is a compilation/mistake → treated as unresolved). */
+/** Karaoke-duration sanity bounds; outside → treated as unresolved (fail closed). MAX == the
+ *  FREE daily limit so one song can never lease more than the whole window. */
 export const MIN_LEASE_SECONDS = 1;
 export const MAX_LEASE_SECONDS = 900; // 15:00 — matches karaoke_usage_policy.free_limit_seconds
 
-/**
- * Parse an ISO-8601 duration (YouTube `contentDetails.duration`, e.g. "PT3M42S", "PT1H2M",
- * "PT45S") to whole seconds. Returns null for anything unparseable — the caller treats null
- * as "duration unknown" and, per the approved policy, FAILS CLOSED (blocks Start).
- */
+/** Parse ISO-8601 duration ("PT3M42S", "PT1H2M", "PT45S") → whole seconds; null if unparseable. */
 export function parseIso8601DurationSeconds(iso: string | null | undefined): number | null {
   if (!iso || typeof iso !== 'string') return null;
   const m = /^P(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso.trim());
   if (!m) return null;
   const [, d, h, min, s] = m;
   if (d === undefined && h === undefined && min === undefined && s === undefined) return null;
-  const total =
-    (Number(d ?? 0) * 86400) + (Number(h ?? 0) * 3600) + (Number(min ?? 0) * 60) + Number(s ?? 0);
+  const total = Number(d ?? 0) * 86400 + Number(h ?? 0) * 3600 + Number(min ?? 0) * 60 + Number(s ?? 0);
   return Number.isFinite(total) && total > 0 ? total : null;
 }
 
-/**
- * Validate a resolved duration against the karaoke sanity bounds. Returns the trusted
- * duration in seconds, or null when it is unknown/malformed/out-of-range → fail closed.
- */
+/** Trust a resolved duration only inside [MIN, MAX]; else null → fail closed. */
 export function trustedLeaseDurationSeconds(rawSeconds: number | null | undefined): number | null {
   if (rawSeconds == null || !Number.isFinite(rawSeconds)) return null;
   const secs = Math.floor(rawSeconds);
@@ -49,19 +41,17 @@ export function trustedLeaseDurationSeconds(rawSeconds: number | null | undefine
 }
 
 export interface LeaseExtension {
-  /** The lease end after this start — never earlier than the prior lease end (non-shrinkable). */
+  /** Lease end after this start — never earlier than the prior end (non-shrinkable). */
   newLeaseEndsAtMs: number;
-  /** Seconds this start adds to the billable union (0 when fully inside the current lease). */
+  /** The billable NON-OVERLAPPING extension (persisted as `lease_seconds`; 0 fully inside lease). */
   chargeSeconds: number;
 }
 
 /**
- * Compute the union extension for starting a song of `durationSeconds` at `nowMs`, given the
- * account's current lease end (`currentLeaseEndsAtMs`, or null/≤now when none/expired).
- *
- *  A/D. no active lease (end ≤ now)      → charge = D,            newEnd = now + D
- *  C.   active lease ending at E (> now) → charge = max(0, N - E) where N = now + D,
- *                                          newEnd = max(E, N)   (union; overlap not charged)
+ * Union extension for starting a song of `durationSeconds` at `nowMs` given the account's
+ * current max lease end (`currentLeaseEndsAtMs`, or null/≤now = none/expired).
+ *   no active lease → charge = D,            newEnd = now + D
+ *   active end E    → charge = max(0, N - E), newEnd = max(E, N)   (N = now + D)
  */
 export function computeLeaseExtension(
   currentLeaseEndsAtMs: number | null,
@@ -71,44 +61,59 @@ export function computeLeaseExtension(
   const proposedEndMs = nowMs + durationSeconds * 1000;
   const activeEndMs = currentLeaseEndsAtMs != null && currentLeaseEndsAtMs > nowMs ? currentLeaseEndsAtMs : nowMs;
   const chargeMs = Math.max(0, proposedEndMs - activeEndMs);
-  return {
-    newLeaseEndsAtMs: Math.max(activeEndMs, proposedEndMs),
-    chargeSeconds: Math.round(chargeMs / 1000),
-  };
+  return { newLeaseEndsAtMs: Math.max(activeEndMs, proposedEndMs), chargeSeconds: Math.round(chargeMs / 1000) };
 }
 
-export type StartAuthorization =
-  | { authorized: true; charge: LeaseExtension }
-  | { authorized: false; reason: 'duration_unknown' | 'insufficient' };
+/** The account's effective entitlement at Start (server-resolved). */
+export type Entitlement =
+  | { kind: 'pro' } // base PRO — unlimited, never metered, never a pass
+  | { kind: 'free'; remainingSeconds: number } // FREE daily allowance remaining
+  | { kind: 'pass_active'; expiresAtMs: number } // an ACTIVE timed pass window
+  | { kind: 'pass_selected'; totalDurationSeconds: number }; // first-start activation candidate
+
+export type StartDecision =
+  | { authorized: true; charge: LeaseExtension; passActivationExpiresAtMs?: number }
+  | { authorized: false; reason: 'duration_unknown' | 'insufficient_free' | 'pass_insufficient' };
 
 export interface AuthorizeStartInput {
-  /** true for PRO / an ACTIVE timed pass — time-unlimited, always authorized, never charged. */
-  unlimited: boolean;
-  /** Remaining FREE seconds for this account's current daily window (ignored when unlimited). */
-  remainingSeconds: number;
-  /** Trusted duration (from trustedLeaseDurationSeconds); null → unresolved. */
+  entitlement: Entitlement;
+  /** Trusted duration (from trustedLeaseDurationSeconds); null → unresolved → fail closed. */
   durationSeconds: number | null;
-  /** Account's current lease end (ms), or null when none/expired. */
+  /** Account-level current lease end (ms) — the MAX across ALL the account's rooms, or null. */
   currentLeaseEndsAtMs: number | null;
   nowMs: number;
 }
 
 /**
- * Atomic PRE-HANDOFF decision (Part 5): resolve the extension and verify entitlement BEFORE
- * a start commits. FAIL CLOSED — an unresolved duration blocks Start (never "open now, meter
- * later"). Exact-boundary (charge == remaining) is authorized (≤). PRO/pass are always
- * authorized with a zero charge (their lease is the pass window, computed by the caller).
+ * Atomic PRE-HANDOFF decision (Part 5). FAIL CLOSED on unknown duration. FREE: the union
+ * extension must fit remaining. Timed pass (ACTIVE or first-activation SELECTED): the WHOLE
+ * video must finish inside the pass window (this song's own end ≤ pass expiry) — closing the
+ * "5s left on a 1h pass → start a 10-min video" bypass. Boundaries use ≤ (deterministic).
  */
-export function authorizeStart(input: AuthorizeStartInput): StartAuthorization {
-  const { unlimited, remainingSeconds, durationSeconds, currentLeaseEndsAtMs, nowMs } = input;
-  if (unlimited) {
-    const dur = durationSeconds ?? 0;
-    return { authorized: true, charge: computeLeaseExtension(currentLeaseEndsAtMs, dur, nowMs) };
-  }
+export function authorizeStart(input: AuthorizeStartInput): StartDecision {
+  const { entitlement, durationSeconds, currentLeaseEndsAtMs, nowMs } = input;
   if (durationSeconds == null) return { authorized: false, reason: 'duration_unknown' };
   const charge = computeLeaseExtension(currentLeaseEndsAtMs, durationSeconds, nowMs);
-  if (charge.chargeSeconds > Math.max(0, Math.floor(remainingSeconds))) {
-    return { authorized: false, reason: 'insufficient' };
+  const songEndMs = nowMs + durationSeconds * 1000; // THIS song's own external-playback end
+
+  switch (entitlement.kind) {
+    case 'pro':
+      return { authorized: true, charge };
+    case 'free':
+      return charge.chargeSeconds > Math.max(0, Math.floor(entitlement.remainingSeconds))
+        ? { authorized: false, reason: 'insufficient_free' }
+        : { authorized: true, charge };
+    case 'pass_active':
+      // The whole video must finish before the pass expires.
+      return songEndMs > entitlement.expiresAtMs
+        ? { authorized: false, reason: 'pass_insufficient' }
+        : { authorized: true, charge };
+    case 'pass_selected': {
+      // First activation: window becomes [now, now + total]. The full video must fit.
+      const activationExpiresMs = nowMs + entitlement.totalDurationSeconds * 1000;
+      return songEndMs > activationExpiresMs
+        ? { authorized: false, reason: 'pass_insufficient' }
+        : { authorized: true, charge, passActivationExpiresAtMs: activationExpiresMs };
+    }
   }
-  return { authorized: true, charge };
 }
