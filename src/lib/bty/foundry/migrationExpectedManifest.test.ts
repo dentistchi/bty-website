@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { computeEffectsDigest } from "./migrationAuditComparator";
 
 /**
  * Guards the checked-in EXPECTED catalog manifest + provenance graph (Slice 3.2I-R5B1A.1-R2.2).
@@ -23,14 +25,14 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(manifest.effects.length).toBeGreaterThan(50);
     for (const e of manifest.effects) {
       expect(e.effectId).toBeTruthy();
-      expect(["column", "table", "constraint", "index", "function", "rls"]).toContain(e.objectType);
+      expect(["column", "table", "constraint", "index", "function", "rls", "policies", "tablepriv", "funcpriv"]).toContain(e.objectType);
       expect(["structured", "structured+digest", "structured+body_digest"]).toContain(e.comparisonMode);
       expect(e.migrationVersion).toMatch(/^2026072[6789]000000$/);
       expect(e.finalAuthorityMigration).toMatch(/^2026072[6789]000000$/);
     }
   });
 
-  it("covers every audited object category (effect-ID coverage)", () => {
+  it("covers every audited object category (effect-ID coverage, incl. policy + privilege)", () => {
     const ids = new Set(manifest.effects.map((e: { effectId: string }) => e.effectId));
     expect(ids.has("table:public.foundry_shared_review_audit")).toBe(true);
     expect(ids.has("table:public.foundry_participant_followups")).toBe(true);
@@ -38,6 +40,49 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(ids.has("index:public.foundry_followups_owner_due_idx")).toBe(true);
     expect([...ids].some((i) => String(i).startsWith("function:public.bty_foundry_submit_followup"))).toBe(true);
     expect([...ids].some((i) => String(i).startsWith("rls:public.foundry_participant_followups"))).toBe(true);
+    // R2.3 — policies + grants modeled as EXACT effects, not counts.
+    expect([...ids].some((i) => String(i).startsWith("policies:public."))).toBe(true);
+    expect([...ids].some((i) => String(i).startsWith("funcpriv:public."))).toBe(true);
+    expect([...ids].some((i) => String(i).startsWith("tablepriv:public."))).toBe(true);
+  });
+
+  it("R2.3 — authoritative build metadata: compile-on, audit schema, integrity digest", () => {
+    expect(manifest.functionBodyChecking).toBe("on"); // Gate 5: not check_function_bodies=off
+    expect(manifest.auditSchemaVersion).toBe("r2.3");
+    expect(manifest.generatorVersion).toBe("r2.3");
+    // Gate 6: self-integrity digest matches the effects it ships.
+    expect(computeEffectsDigest(manifest.effects)).toBe(manifest.expectedManifestDigest);
+  });
+
+  it("R2.3 — records exact checksums of the audited migration files (drift → regenerate)", () => {
+    const MIG = join(process.cwd(), "supabase/migrations");
+    const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+    const files: Record<string, string> = {
+      "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
+      "20260727000000": "20260727000000_personalize_today_from_reflections_v1.sql",
+      "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
+      "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
+    };
+    for (const [ver, file] of Object.entries(files)) {
+      expect(manifest.migrationChecksums[ver]).toBe(sha(join(MIG, file)));
+    }
+    expect(manifest.migrationChecksums.auditQuery).toBe(sha(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql")));
+  });
+
+  it("R2.3 — function bodies use a SHA-256 (64-hex) raw-prosrc digest", () => {
+    for (const e of manifest.effects.filter((x: { objectType: string }) => x.objectType === "function")) {
+      expect(e.definitionDigest).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
+  it("R2.3 — privileges are exact structured effects, not counts", () => {
+    const fp = manifest.effects.find((e: { objectType: string }) => e.objectType === "funcpriv");
+    expect(fp.properties).toHaveProperty("service_role");
+    expect(fp.properties.service_role).toBe(true); // grant execute → service_role
+    expect(fp.properties.public).toBe(false); // revoked
+    const pol = manifest.effects.find((e: { objectType: string }) => e.objectType === "policies");
+    expect(Array.isArray(pol.properties)).toBe(true);
+    expect(pol.properties.length).toBe(0); // deny-all RLS, no policies
   });
 });
 

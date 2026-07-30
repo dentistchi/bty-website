@@ -3,11 +3,10 @@
 -- ONLY dependencies that pre-existed those migrations (FK targets, roles, auth.users) — never an
 -- object whose creation is an effect being audited (those come from the real migration files).
 --
--- check_function_bodies is disabled so a `language sql` function (get_my_followup) can be created
--- without scaffolding the entire application schema it reads. This does NOT change the STORED
--- definition (prosrc / pg_get_functiondef / proconfig) that we extract — only skips validation.
-alter database proofdb set check_function_bodies = off;
-set check_function_bodies = off;
+-- AUTHORITATIVE build runs with check_function_bodies=ON (Gate 5): the only `language sql` function
+-- (get_my_followup) references just public.foundry_participant_followups, which exists (created by
+-- 20260728) before the function, so it compiles against faithful prerequisites — no body checking
+-- is disabled. The stub FK-target tables carry the exact columns the ALTERs/FKs/constraints need.
 
 -- Supabase roles referenced by REVOKE/GRANT in the migrations.
 do $$ begin

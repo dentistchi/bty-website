@@ -25,21 +25,41 @@ done
 # Run the SAME canonical read-only audit query used against live — no expected/live query drift.
 AUDIT=$(psql -tAq -f "$ROOT/docs/audit/foundry_migration_provenance_readonly.sql")
 
-AUDIT="$AUDIT" node --input-type=module -e "
-const { serverVersionNum, effects: facts } = JSON.parse(process.env.AUDIT);
+# Exact checksums of the audited migration files + the audit query (Gate 6/7): a change to any of
+# them without regenerating this manifest is detected by the reproducibility test.
+sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
+CHECKSUMS=$(node -e "console.log(JSON.stringify({
+  '20260726000000': process.argv[1], '20260727000000': process.argv[2],
+  '20260728000000': process.argv[3], '20260729000000': process.argv[4], auditQuery: process.argv[5] }))" \
+  "$(sha "$MIG/20260726000000_foundry_shared_understanding_v1.sql")" \
+  "$(sha "$MIG/20260727000000_personalize_today_from_reflections_v1.sql")" \
+  "$(sha "$MIG/20260728000000_foundry_participant_followups_v1.sql")" \
+  "$(sha "$MIG/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql")" \
+  "$(sha "$ROOT/docs/audit/foundry_migration_provenance_readonly.sql")")
+
+AUDIT="$AUDIT" CHECKSUMS="$CHECKSUMS" node --input-type=module -e "
+import { createHash } from 'node:crypto';
+const { auditSchemaVersion, auditQueryVersion, serverVersionNum, effects: facts } = JSON.parse(process.env.AUDIT);
 const META = { g26:['20260726000000','20260726000000'], g27:['20260727000000','20260727000000'],
                g28:['20260728000000','20260728000000'], g29:['20260728000000','20260729000000'] };
 const effects = facts.map(f => { const [mig,fin]=META[f.grp]||[null,null];
   const { grp, ...rest } = f; return { ...rest, migrationVersion:mig, finalAuthorityMigration:fin }; })
   .sort((a,b)=>a.effectId.localeCompare(b.effectId));
+const digestOf = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const manifest = {
+  generatorVersion: 'r2.3',
   generator: 'scripts/migration-proof/build-expected-manifest.sh',
   regenCommand: 'bash scripts/migration-proof/build-expected-manifest.sh',
   auditQuery: 'docs/audit/foundry_migration_provenance_readonly.sql',
+  auditSchemaVersion, auditQueryVersion,
   provenanceRef: 'docs/audit/foundry_migration_provenance.json',
   postgresServerVersionNum: serverVersionNum,
+  functionBodyChecking: 'on',
+  migrationChecksums: JSON.parse(process.env.CHECKSUMS),
   note: 'Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729.',
-  effectCount: effects.length, effects,
+  effectCount: effects.length,
+  expectedManifestDigest: digestOf(effects),
+  effects,
 };
 process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
 " > "$ROOT/docs/audit/foundry_migration_expected_catalog.json"
