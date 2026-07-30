@@ -1,0 +1,48 @@
+# CI disposable-PostgreSQL migration proof (Slice 3.2I-R5B1A.1-R2.1).
+#
+# INSTALL: GitHub Actions only reads workflows from `.github/workflows/` at the ROOT of the branch
+# it builds. This monorepo's Actions root is the OUTER repo (btytrainingcenter). To activate, copy
+# this file to `.github/workflows/migration-proof.yml` on the outer `main` branch and commit it
+# there. It is kept here (inner, version-controlled) because the outer tree currently carries
+# unrelated WIP; wiring it into the outer root is a separate, authorized outer-tree change.
+#
+# It runs the executable proofs (scripts/migration-proof/run.sh) against a DISPOSABLE postgres
+# service — no Supabase/production credentials, no network to the live DB, no deployment.
+name: migration-proof
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "bty-app/supabase/migrations/20260802000000_foundry_practice_run_selected_path_v1.sql"
+      - "bty-app/supabase/migrations/20260803000000_foundry_arena_draft_one_shell_v1.sql"
+      - "bty-app/scripts/migration-proof/**"
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: proofdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: proofdb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Run executable migration proofs
+        run: bash bty-app/scripts/migration-proof/run.sh

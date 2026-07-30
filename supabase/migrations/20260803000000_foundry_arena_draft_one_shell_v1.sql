@@ -48,20 +48,28 @@ declare
   v_indexrelid oid;
   v_indrelid   oid;
   v_is_unique  boolean;
+  v_relkind    text;
   v_cols       text;
   v_pred       text;
   v_norm       text;
 begin
-  select c.oid, i.indrelid, i.indisunique
-    into v_indexrelid, v_indrelid, v_is_unique
+  select c.oid, c.relkind::text, i.indrelid, i.indisunique
+    into v_indexrelid, v_relkind, v_indrelid, v_is_unique
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
-  join pg_index i on i.indexrelid = c.oid
+  left join pg_index i on i.indexrelid = c.oid
   where c.relname = 'foundry_arena_scenario_drafts_one_shell_idx'
     and n.nspname = 'public';
 
   if not found then
-    return; -- absent → the additive create below establishes the correct index
+    return; -- name is free → the additive create below establishes the correct index
+  end if;
+
+  -- 0) the name must be an INDEX. A same-named table/view/matview/sequence would make
+  -- `create unique index if not exists` silently SKIP (NOTICE, no error) — leaving the invariant
+  -- unenforced while the migration "succeeds". Fail closed instead.
+  if v_relkind is distinct from 'i' then
+    raise exception 'one_shell_idx guard: name is occupied by a non-index relation (relkind=%)', v_relkind;
   end if;
 
   -- 1) exact target table

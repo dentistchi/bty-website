@@ -45,12 +45,19 @@ describe("one-shell migration — fail-closed definition guard (R1)", () => {
   });
 
   it("RAISES (fails closed) when the existing definition differs", () => {
-    // Wrong table, non-unique, wrong columns, non-partial, and wrong-predicate each raise.
+    // Non-index relation, wrong table, non-unique, wrong columns, non-partial, wrong predicate.
     const raises = (SQL.match(/raise exception/g) ?? []).length;
-    expect(raises).toBeGreaterThanOrEqual(5);
+    expect(raises).toBeGreaterThanOrEqual(6);
     expect(SQL).toContain("is not unique");
     expect(SQL).toContain("wrong key columns");
     expect(SQL).toContain("is not partial");
+  });
+
+  it("closes the same-named NON-INDEX relation hole (create index if not exists would silently skip)", () => {
+    // A table/view of the index name must fail closed, not be silently skipped.
+    expect(SQL).toContain("relkind");
+    expect(SQL).toContain("non-index relation");
+    expect(SQL).toContain("left join pg_index"); // so a non-index relation is still detected
   });
 
   it("permits creation when the index is ABSENT (guard returns, does not raise)", () => {
