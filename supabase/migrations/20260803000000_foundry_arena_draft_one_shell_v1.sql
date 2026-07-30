@@ -37,6 +37,68 @@
 -- ROLLBACK:
 --     drop index if exists public.foundry_arena_scenario_drafts_one_shell_idx;
 
+-- DEFINITION GUARD (fail-closed): `create unique index if not exists` is only NAME-idempotent —
+-- it would silently accept a pre-existing index of the SAME NAME but a WRONG definition (e.g. a
+-- non-unique index, wrong columns, or a missing/incorrect partial predicate), leaving the atomic
+-- one-shell invariant unenforced while appearing "applied". Before creating, verify the catalog:
+-- if an index of this name already exists it MUST be the exact required index, else this migration
+-- raises and fails closed. Verified via catalog fields (not brittle string matching).
+do $$
+declare
+  v_indexrelid oid;
+  v_indrelid   oid;
+  v_is_unique  boolean;
+  v_cols       text;
+  v_pred       text;
+begin
+  select c.oid, i.indrelid, i.indisunique
+    into v_indexrelid, v_indrelid, v_is_unique
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  join pg_index i on i.indexrelid = c.oid
+  where c.relname = 'foundry_arena_scenario_drafts_one_shell_idx'
+    and n.nspname = 'public';
+
+  if not found then
+    return; -- absent → the additive create below establishes the correct index
+  end if;
+
+  -- 1) exact target table
+  if v_indrelid is distinct from 'public.foundry_arena_scenario_drafts'::regclass::oid then
+    raise exception 'one_shell_idx guard: existing index is on the wrong table (%)', v_indrelid::regclass;
+  end if;
+
+  -- 2) must be UNIQUE
+  if v_is_unique is distinct from true then
+    raise exception 'one_shell_idx guard: existing index is not UNIQUE';
+  end if;
+
+  -- 3) indexed columns, in exact order = owner_user_id, source_event_id
+  select string_agg(a.attname, ',' order by k.ord)
+    into v_cols
+  from pg_index i
+  cross join lateral unnest(i.indkey) with ordinality as k(attnum, ord)
+  join pg_attribute a on a.attrelid = i.indrelid and a.attnum = k.attnum
+  where i.indexrelid = v_indexrelid;
+  if v_cols is distinct from 'owner_user_id,source_event_id' then
+    raise exception 'one_shell_idx guard: wrong key columns (% ; expected owner_user_id,source_event_id)', v_cols;
+  end if;
+
+  -- 4) partial predicate must be the practiceSetupVersion-present predicate
+  select pg_get_expr(i.indpred, i.indrelid)
+    into v_pred
+  from pg_index i
+  where i.indexrelid = v_indexrelid;
+  if v_pred is null then
+    raise exception 'one_shell_idx guard: existing index is not partial (missing practiceSetupVersion predicate)';
+  end if;
+  if position('practicesetupversion' in lower(v_pred)) = 0
+     or position('guided_answers' in lower(v_pred)) = 0
+     or position('is not null' in lower(v_pred)) = 0 then
+    raise exception 'one_shell_idx guard: predicate is not the required practiceSetupVersion-present predicate (got %)', v_pred;
+  end if;
+end $$;
+
 create unique index if not exists foundry_arena_scenario_drafts_one_shell_idx
   on public.foundry_arena_scenario_drafts (owner_user_id, source_event_id)
   where (guided_answers ->> 'practiceSetupVersion') is not null;
