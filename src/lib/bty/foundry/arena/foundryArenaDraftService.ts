@@ -65,12 +65,13 @@ export async function createArenaDraft(
     facts: source.value.facts,
     guided: input.guidedAnswers,
   });
-  // Slice 3.2I-R1: generation fails safe when it cannot compose a concrete scene.
-  if (!generated) return { ok: false, reason: "generation_insufficient_context" };
+  // Slice 3.2I-R2: LIVE-model only — fails safe (never a generic deterministic scenario).
+  if (!generated.ok) return { ok: false, reason: generated.reason };
+  const gen = generated.value;
 
   // Defense: never persist an invalid structure as valid (generation guarantees
   // validity, but the gate is the single source of truth).
-  const check = validateArenaScenarioDraft(generated.draft);
+  const check = validateArenaScenarioDraft(gen.draft);
   if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
 
   const { data, error } = await admin
@@ -81,15 +82,15 @@ export async function createArenaDraft(
       source_module_version: source.value.moduleVersion,
       source_draft_id: source.value.sourceDraftId,
       guided_answers: input.guidedAnswers,
-      scenario_draft: generated.draft,
-      generation_source: generated.source,
+      scenario_draft: gen.draft,
+      generation_source: gen.source,
       revision: 0,
     })
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
 
   if (error || !data) return { ok: false, reason: error?.message ?? "arena_draft_insert_failed" };
-  return { ok: true, value: { row: data, warnings: [...generated.warnings, ...check.warnings] } };
+  return { ok: true, value: { row: data, warnings: [...gen.warnings, ...check.warnings] } };
 }
 
 // ---------------------------------------------------------------------------
@@ -214,15 +215,16 @@ export async function regenerateArenaDraft(
     facts: source.value.facts,
     guided: current.guided_answers,
   });
-  if (!generated) return { ok: false, reason: "generation_insufficient_context" };
-  const check = validateArenaScenarioDraft(generated.draft);
+  if (!generated.ok) return { ok: false, reason: generated.reason };
+  const gen = generated.value;
+  const check = validateArenaScenarioDraft(gen.draft);
   if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
 
   const { data, error } = await admin
     .from("foundry_arena_scenario_drafts")
     .update({
-      scenario_draft: generated.draft,
-      generation_source: generated.source,
+      scenario_draft: gen.draft,
+      generation_source: gen.source,
       revision: current.revision + 1,
       updated_at: new Date().toISOString(),
     })
@@ -232,7 +234,7 @@ export async function regenerateArenaDraft(
     .single<ArenaDraftRow>();
 
   if (error || !data) return { ok: false, reason: error?.message ?? "arena_draft_save_failed" };
-  return { ok: true, value: { row: data, warnings: [...generated.warnings, ...check.warnings] } };
+  return { ok: true, value: { row: data, warnings: [...gen.warnings, ...check.warnings] } };
 }
 
 // ---------------------------------------------------------------------------

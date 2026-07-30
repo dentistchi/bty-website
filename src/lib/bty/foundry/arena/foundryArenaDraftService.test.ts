@@ -1,5 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+// Slice 3.2I-R2: generation is LIVE-model only. Mock the provider to return a concrete,
+// branch-aware, incident-specific draft so createArenaDraft/regenerate succeed (source "ai").
+const mockCreate = vi.fn();
+vi.mock("@/lib/bty/llm/client", () => ({
+  isLlmAvailable: () => true,
+  getLlmModel: () => "test-model",
+  getLlmClient: () => ({ chat: { completions: { create: mockCreate } } }),
+}));
+
 import {
   createArenaDraft,
   getOwnerArenaDraft,
@@ -9,7 +19,31 @@ import {
 } from "./foundryArenaDraftService";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 
-// No LLM env is set in unit CI → generation deterministically uses the template.
+const AI_DRAFT: ArenaScenarioDraft = {
+  title: "Raising a risk under a deadline",
+  opening:
+    "A teammate quietly flags a safety gap to you with the client's deadline only hours away. Raising it now stops the line while the customer waits; staying on schedule keeps the promise but carries the risk.",
+  primary: { choices: [{ id: "primary_1", label: "Raise the risk with the team now and stop the line" }, { id: "primary_2", label: "Verify the gap yourself first, then decide whether to stop" }] },
+  tradeoff: { escalationText: "Your manager pushes back hard and the deadline is now public.", choices: [{ id: "ft1", label: "Tell the manager plainly and own the call" }, { id: "ft2", label: "Escalate above the manager, accepting the strain" }] },
+  actionDecision: { prompt: "What will you do now?", choices: [{ id: "fa1", label: "Stop the line now and own the delay", isActionCommitment: true }, { id: "fa2", label: "Document the gap in writing, accepting the line keeps running", isActionCommitment: false }] },
+  branches: {
+    primary_1: {
+      escalationText: "You stop the line, and the plant manager confronts you in front of the crew, demanding to know who authorized the shutdown.",
+      tradeoffChoices: [{ id: "p1_t1", label: "Hold the line stopped until the gap is fixed, accepting the manager's anger" }, { id: "p1_t2", label: "Restart under a documented watch, accepting the residual risk" }],
+      actionDecision: { prompt: "What will you do now?", choices: [{ id: "p1_a1", label: "Keep it stopped and put your reasons in writing now", isActionCommitment: true }, { id: "p1_a2", label: "Restart with a monitor and re-check within the hour, accepting the exposure", isActionCommitment: false }] },
+    },
+    primary_2: {
+      escalationText: "While you verify, a unit ships with the suspected defect and a customer calls back within the hour asking why it was not caught.",
+      tradeoffChoices: [{ id: "p2_t1", label: "Recall the shipped unit now and absorb the cost, accepting the delay to others" }, { id: "p2_t2", label: "Contain it to the affected order, accepting the flawed unit stays out" }],
+      actionDecision: { prompt: "What will you do now?", choices: [{ id: "p2_a1", label: "Issue the recall now and own the disruption", isActionCommitment: true }, { id: "p2_a2", label: "Confirm the defect scope first, accepting more may ship meanwhile", isActionCommitment: false }] },
+    },
+  },
+};
+
+beforeEach(() => {
+  mockCreate.mockReset();
+  mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(AI_DRAFT) } }] });
+});
 
 type Row = Record<string, unknown>;
 
@@ -175,8 +209,8 @@ describe("createArenaDraft — exact source version binding + ownership", () => 
       expect(r.value.row.source_draft_id).toBe("draft-77");
       expect(r.value.row.guided_answers).toEqual(guided);
       expect(r.value.row.scenario_draft).not.toBeNull();
-      // no LLM configured → deterministic template
-      expect(r.value.row.generation_source).toBe("template");
+      // live-model runtime → source "ai"
+      expect(r.value.row.generation_source).toBe("ai");
     }
   });
 

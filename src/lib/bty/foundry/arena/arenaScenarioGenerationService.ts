@@ -1,35 +1,46 @@
 import { getLlmClient, getLlmModel, isLlmAvailable, type LlmChatMessage } from "@/lib/bty/llm/client";
 import { parseArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
-import { validateBranchedScenario, validateConcreteScene } from "@/domain/foundry/arena-draft/quality";
-import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import {
-  buildTemplateScenarioDraft,
-  hardestWhenPhrase,
-  type Locale,
-  type ScenarioGenInput,
-} from "./arenaScenarioTemplate";
+  validateBranchedScenario,
+  validateConcreteScene,
+  validateIncidentSpecific,
+} from "@/domain/foundry/arena-draft/quality";
+import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
+import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
 /**
  * Foundry Guided Arena Builder — scenario generation (service).
  *
- * The AI DRAFTS; the domain validator decides validity; the deterministic template
- * guarantees a result. One provider attempt (bounded timeout); on unavailable,
- * timeout, network error, unparseable JSON, or a validator rejection, the template
- * renders a valid draft from the SAME grounding. The provider never sees attachment
- * bytes or PII — only the minimum structured module context + the two guided
- * answers. AI output is always re-validated before it can be used.
- *
- * The AI never decides runtime consequences, XP, verification, or standards — it
- * only re-expresses the practice moment as learner-facing text and choices.
+ * Slice 3.2I-R2: the Manager-facing runtime is LIVE-MODEL ONLY. The provider drafts a
+ * branch-aware scenario; the domain gates (structural + difficult-choice + concrete-scene
+ * + incident-specificity) decide validity. On no provider, provider failure, malformed
+ * output, or ANY gate rejection, generation FAILS SAFE — it never falls back to a generic
+ * deterministic scenario (that is a quietly-delivered product failure). The deterministic
+ * `buildTemplateScenarioDraft` remains ONLY as a test/fixture factory and is not called
+ * here. The provider sees no attachment bytes or PII — only structured context + the two
+ * guided answers, and never decides XP/verification/standards.
  */
 
 export type GeneratedDraft = {
   draft: ArenaScenarioDraft;
-  /** How the draft was produced. */
-  source: "ai" | "template";
+  /** Always "ai" in the runtime — deterministic output is test-only. */
+  source: "ai";
   /** Advisory sensitive-info codes surfaced by the validator (never blocks). */
   warnings: string[];
 };
+
+/** Discriminated generation outcome — a rejection carries a safe, stable reason. */
+export type GenerationResult =
+  | { ok: true; value: GeneratedDraft }
+  | {
+      ok: false;
+      reason:
+        | "generation_unavailable" // no live model configured
+        | "generation_failed" // provider error/timeout/malformed
+        | "generation_rejected" // structurally/quality gate rejected
+        | "fixed_answer_knowledge"; // KNOW/COMPLIANCE — not a judgment dilemma
+    };
 
 /** Bounded provider timeout — generation must never hang the host's flow. */
 const LLM_TIMEOUT_MS = 15_000;
@@ -144,6 +155,12 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
       logGenOutcome("provider_not_a_scene", scene.errors[0]);
       return null;
     }
+    // Incident-specificity gate (Slice 3.2I-R2): require true, non-paraphrased branches.
+    const specific = validateIncidentSpecific(result.value);
+    if (!specific.ok) {
+      logGenOutcome("provider_not_specific", specific.errors[0]);
+      return null;
+    }
     return { draft: result.value, warnings: [...result.warnings, ...quality.warnings] };
   } catch {
     logGenOutcome(controller.signal.aborted ? "provider_timeout" : "provider_error");
@@ -154,35 +171,38 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
 }
 
 /**
- * Generate one valid branch-aware draft, or NULL when neither the provider nor the
- * deterministic fallback can produce a scenario that clears every gate (structural +
- * difficult-choice + concrete-scene). The fallback is a real product surface: a schema-
- * valid but abstract/malformed scene is NOT returned — the caller then surfaces the
- * existing safe generation-failure state. Callers persist the result + `source`.
+ * KNOW / COMPLIANCE classification (Slice 3.2I-R2). A training whose only learning need is
+ * to KNOW a fact is not a judgment dilemma — forcing a difficult-choice scenario would
+ * either fabricate a false tradeoff or offer an unsafe selectable path. Such a training
+ * declines Arena generation. `decide` / `practice` / `shared_standard` are judgment needs.
  */
-export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GeneratedDraft | null> {
+export function isFixedAnswerTraining(facts: ModuleSourceFacts): boolean {
+  const needs = facts.learningNeeds ?? [];
+  return needs.length > 0 && needs.every((n) => n === "know");
+}
+
+/**
+ * Generate one live, branch-aware, incident-specific draft — LIVE MODEL ONLY (Slice
+ * 3.2I-R2). Returns a discriminated result; on no provider / provider failure / malformed
+ * output / any gate rejection it FAILS SAFE with a stable reason. It NEVER returns a generic
+ * deterministic scenario — a low-quality fallback is a quietly-delivered product failure.
+ */
+export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GenerationResult> {
+  if (isFixedAnswerTraining(input.facts)) {
+    logGenOutcome("declined_fixed_answer");
+    return { ok: false, reason: "fixed_answer_knowledge" };
+  }
+  if (!isLlmAvailable()) {
+    logGenOutcome("unavailable");
+    return { ok: false, reason: "generation_unavailable" };
+  }
   const llm = await generateWithLlm(input);
-  if (llm) {
-    logGenOutcome("generated_valid");
-    return { draft: llm.draft, source: "ai", warnings: llm.warnings };
+  if (!llm) {
+    // generateWithLlm already logged the specific outcome (error/timeout/malformed/gate).
+    return { ok: false, reason: "generation_rejected" };
   }
-  logGenOutcome("fallback_used");
-  const draft = buildTemplateScenarioDraft(input);
-  // The deterministic fallback must independently clear the SAME bar as an accepted LLM
-  // draft — structural, difficult-choice, AND concrete-scene. If the module's inputs
-  // cannot compose a concrete, natural scene, fail safe instead of shipping a hollow one.
-  const check = parseArenaScenarioDraft(draft);
-  if (!check.ok) {
-    logGenOutcome("fallback_invalid", check.errors[0]);
-    return null;
-  }
-  const quality = validateBranchedScenario(draft);
-  const scene = validateConcreteScene(draft);
-  if (!quality.ok || !scene.ok) {
-    logGenOutcome("fallback_insufficient", (quality.errors[0] ?? scene.errors[0]));
-    return null;
-  }
-  return { draft, source: "template", warnings: [...check.warnings, ...quality.warnings] };
+  logGenOutcome("generated_valid");
+  return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings } };
 }
 
 export type { Locale };

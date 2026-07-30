@@ -1,0 +1,85 @@
+import { describe, it, expect } from "vitest";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { isLlmAvailable, getLlmModel } from "@/lib/bty/llm/client";
+import { generateArenaScenarioDraft } from "./arenaScenarioGenerationService";
+import { validateIncidentSpecific } from "@/domain/foundry/arena-draft/quality";
+import { EVAL_CORPUS, crossScenarioDiversity } from "./practice-generation.eval";
+import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+
+/**
+ * Live practice-generation evaluation harness (Slice 3.2I-R2). Runs the EXACT production
+ * contract. `npm run evaluate:practice-generation` sets RUN_LIVE_EVAL=1 and, when a live
+ * model credential is present, generates the 12-case corpus and writes a labelled artifact
+ * under the git-ignored `.eval-artifacts/`. It never persists a draft / publishes / writes
+ * Supabase, and NEVER substitutes deterministic output.
+ */
+const LIVE = process.env.RUN_LIVE_EVAL === "1";
+
+describe("practice-generation corpus is well-formed", () => {
+  it("covers >=12 cases, >=8 English, >=4 Korean, with a fixed-answer decline case", () => {
+    expect(EVAL_CORPUS.length).toBeGreaterThanOrEqual(12);
+    expect(EVAL_CORPUS.filter((c) => c.locale === "en").length).toBeGreaterThanOrEqual(8);
+    expect(EVAL_CORPUS.filter((c) => c.locale === "ko").length).toBeGreaterThanOrEqual(4);
+    expect(EVAL_CORPUS.some((c) => c.expectDecline)).toBe(true);
+  });
+});
+
+describe("crossScenarioDiversity", () => {
+  it("flags an identical scaffold reused across unrelated scenarios", () => {
+    const scaffold = (title: string): ArenaScenarioDraft => ({
+      title,
+      opening: "A teammate pulls you aside and the people who rely on this are already affected today.",
+      primary: { choices: [{ id: "primary_1", label: "Raise it openly with the whole team now" }, { id: "primary_2", label: "Check the facts yourself first" }] },
+      tradeoff: { escalationText: "e", choices: [{ id: "t1", label: "x" }, { id: "t2", label: "y" }] },
+      actionDecision: { prompt: "p", choices: [{ id: "a1", label: "x", isActionCommitment: true }, { id: "a2", label: "y", isActionCommitment: false }] },
+    });
+    const d = crossScenarioDiversity([scaffold("A"), scaffold("B"), scaffold("C")]);
+    expect(d.repeatedPrimaryLabels.length).toBeGreaterThan(0); // same Primary labels reused
+    expect(d.repeatedFourGrams.length).toBeGreaterThan(0); // same opening phrasing reused
+  });
+
+  it("stays clean for genuinely distinct scenarios", () => {
+    const a: ArenaScenarioDraft = { title: "A", opening: "The night nurse reports a medication chart mismatch minutes before rounds begin.", primary: { choices: [{ id: "primary_1", label: "Halt the round and reconcile the chart" }, { id: "primary_2", label: "Verify the single dose in question first" }] }, tradeoff: { escalationText: "e1", choices: [{ id: "t1", label: "x1" }, { id: "t2", label: "y1" }] }, actionDecision: { prompt: "p", choices: [{ id: "a1", label: "x1", isActionCommitment: true }, { id: "a2", label: "y1", isActionCommitment: false }] } };
+    const b: ArenaScenarioDraft = { title: "B", opening: "A regional client threatens to cancel after a billing error surfaces on the quarterly invoice.", primary: { choices: [{ id: "primary_1", label: "Call the client and disclose the error" }, { id: "primary_2", label: "Reconcile the invoice before responding" }] }, tradeoff: { escalationText: "e2", choices: [{ id: "t3", label: "x2" }, { id: "t4", label: "y2" }] }, actionDecision: { prompt: "p", choices: [{ id: "a3", label: "x2", isActionCommitment: true }, { id: "a4", label: "y2", isActionCommitment: false }] } };
+    const d = crossScenarioDiversity([a, b]);
+    expect(d.repeatedFourGrams.length).toBe(0);
+    expect(d.repeatedPrimaryLabels.length).toBe(0);
+  });
+});
+
+describe("no deterministic substitution (production contract)", () => {
+  it("returns generation_unavailable — never a deterministic scenario — when no live model is configured", async () => {
+    if (isLlmAvailable()) return; // a credential is present; the live run covers this path
+    const r = await generateArenaScenarioDraft(EVAL_CORPUS[0].input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_unavailable" });
+  });
+});
+
+describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
+  it("generates the 12-case corpus, validates, and writes a labelled artifact", async () => {
+    const model = getLlmModel();
+    const results: Array<Record<string, unknown>> = [];
+    const drafts: ArenaScenarioDraft[] = [];
+    for (const c of EVAL_CORPUS) {
+      const started = Date.now();
+      const r = await generateArenaScenarioDraft(c.input);
+      const ms = Date.now() - started;
+      if (c.expectDecline) {
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, declined: !r.ok, reason: r.ok ? null : r.reason });
+        continue;
+      }
+      if (r.ok) {
+        drafts.push(r.value.draft);
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, ok: true, incidentSpecific: validateIncidentSpecific(r.value.draft).ok, draft: r.value.draft });
+      } else {
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, ok: false, reason: r.reason });
+      }
+    }
+    const diversity = crossScenarioDiversity(drafts);
+    const dir = join(process.cwd(), ".eval-artifacts");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "practice-generation.latest.json"), JSON.stringify({ label: "LIVE MODEL OUTPUT", model, count: results.length, diversity, results }, null, 2));
+    expect(results.length).toBe(EVAL_CORPUS.length);
+  });
+});

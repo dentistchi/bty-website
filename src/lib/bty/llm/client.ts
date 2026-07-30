@@ -90,5 +90,7 @@ export function isLocalLlm(): boolean {
 }
 
 export function isLlmAvailable(): boolean {
-  return !!(process.env.LLM_BASE_URL || process.env.OPENAI_API_KEY);
+  // Honor every credential getLlmClient() accepts — including the LLM_API_KEY alias
+  // (Slice 3.2I-R2: the alias-only case previously read as "unavailable").
+  return !!(process.env.LLM_BASE_URL || process.env.OPENAI_API_KEY || process.env.LLM_API_KEY);
 }

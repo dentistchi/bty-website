@@ -59,3 +59,6 @@ tmp/
 
 # --- BTY hygiene: launch media (inert, not build-referenced) ---
 assets/
+
+# Slice 3.2I-R2 — local live-generation eval artifacts (never committed)
+.eval-artifacts/

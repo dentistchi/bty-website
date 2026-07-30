@@ -312,12 +312,14 @@ const PLACEHOLDER = /\{\{|\}\}|\[[A-Za-z_]{2,}\]|<[a-z_]{2,}>|\bTODO\b|\bTBD\b|\
 /** A concrete actor / stakeholder the opening must reference (en + ko). */
 const ACTOR = /\b(teammate|colleague|co-?worker|client|customer|patient|manager|lead|team|the person|a peer|staff|assistant|nurse|doctor|someone|reviewer|supervisor|director|the group|the other|owner|vendor|partner|executive|employee)\b|팀원|동료|고객|환자|담당자|상사|직원|사람|리더|경영진/i;
 
-/** A choice that is abstract INTENT rather than a concrete action. */
-const ABSTRACT_CHOICE = /^\s*(protect|prioriti[sz]e|demonstrate|support|uphold|maintain|ensure|value|embrace|foster|show)\s+(trust|fairness|accountability|leadership|the\s+standard|integrity|transparency|the\s+relationship|respect|honesty)\b/i;
-
-/** At least one concrete action verb every choice must contain (en + ko). */
-const CONCRETE_VERB =
-  /\b(tell|told|pause|call|publish|verify|verif|assign|escalate|meet|document|proceed|delay|narrow|disclose|ask|raise|confirm|move|act|own|correct|address|report|check|bring|give|apply|announce|walk|reset|resolve|stand|change|keep|absorb|explain|send|put|contain|issue|finish|step|record|flag|approve|deny|pull|stop|start|offer|commit|repair|push|decide|take|settle|handle|weigh|split|notice|work|gather|hear|name|back|hold)\b|한다|하겠다|진다|감당|감수|결정|정한다|알린|듣|보내|멈추|다루|나서|짚|처리|옮기|공개|확인|실행|바로잡|좁혀|짊어|미룬|밀고|물러|맡아|끌어|이야기/i;
+/**
+ * A choice that is abstract INTENT ("protect trust", "demonstrate accountability") rather
+ * than a concrete action. A denylist is more robust than a concrete-verb allowlist (which
+ * whack-a-moles legitimate verbs like "restart"/"recall"); a purely-abstract choice matches
+ * one of these openers + a value noun. (en + ko.)
+ */
+const ABSTRACT_CHOICE =
+  /^\s*(protect|prioriti[sz]e|demonstrate|support|uphold|maintain|ensure|value|embrace|foster|show)\s+(trust|fairness|accountability|leadership|the\s+standard|integrity|transparency|the\s+relationship|respect|honesty)\b/i;
 
 /** Generic, reaction-free escalations. */
 const GENERIC_ESCALATION =
@@ -374,9 +376,9 @@ export function validateConcreteScene(draft: ArenaScenarioDraft): QualityValidat
   if (matchesAny(draft.opening, NON_SCENE_OPENING)) errors.push("opening_not_a_scene");
   if (!ACTOR.test(draft.opening)) errors.push("opening_no_actor");
 
-  // Every choice must be a concrete action, not abstract intent.
+  // No choice may be pure abstract intent (a management value, not a concrete action).
   for (const label of allChoiceLabels(draft)) {
-    if (ABSTRACT_CHOICE.test(label) || !CONCRETE_VERB.test(label)) {
+    if (ABSTRACT_CHOICE.test(label)) {
       errors.push("choice_no_concrete_action");
       break;
     }
@@ -389,6 +391,55 @@ export function validateConcreteScene(draft: ArenaScenarioDraft): QualityValidat
   if (fourGramRepeats([draft.opening, ...allEscalations(draft)])) errors.push("boilerplate_repetition");
 
   return { ok: errors.length === 0, errors: Array.from(new Set(errors)), warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Incident-specificity gate (Slice 3.2I-R2) — the three branches must be genuinely
+// different reactions to the incident, not paraphrases of one continuation or the same
+// generic actor reaction. A real product must never ship a scaffold. Pure heuristic.
+// ---------------------------------------------------------------------------
+
+/** Generic, incident-agnostic branch reactions that could be pasted into any dilemma. */
+const GENERIC_REACTION =
+  /the team splits|people are concerned|someone asks why|a colleague pushes back|questions (now )?surface|팀의 의견이 갈리|사람들이 걱정|왜 그랬냐/i;
+
+function shingles(text: string): Set<string> {
+  const w = text.toLowerCase().replace(/[^a-z0-9가-힣\s]/g, " ").split(/\s+/).filter(Boolean);
+  const out = new Set<string>();
+  for (let i = 0; i + 3 <= w.length; i++) out.add(w.slice(i, i + 3).join(" "));
+  return out;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const s of a) if (b.has(s)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+/**
+ * Reject a scenario whose branches are not incident-specific (Slice 3.2I-R2). Requires
+ * true branches; rejects branch escalations that are paraphrases of each other or all
+ * the same generic actor reaction. Cross-SCENARIO diversity (across a corpus) is the
+ * evaluation harness's job — this is per-draft. Pure.
+ */
+export function validateIncidentSpecific(draft: ArenaScenarioDraft): QualityValidation {
+  const errors: string[] = [];
+  if (!isBranchAware(draft)) {
+    return { ok: false, errors: ["not_branch_aware"], warnings: [] };
+  }
+  const escalations = Object.values(draft.branches).map((b) => b.escalationText);
+  for (let i = 0; i < escalations.length; i++) {
+    for (let j = i + 1; j < escalations.length; j++) {
+      if (jaccard(shingles(escalations[i]), shingles(escalations[j])) >= 0.5) {
+        errors.push("branch_paraphrase");
+      }
+    }
+  }
+  if (escalations.length > 0 && escalations.every((e) => GENERIC_REACTION.test(e))) {
+    errors.push("generic_branch_reaction");
+  }
+  return { ok: errors.length === 0, errors: Array.from(new Set(errors)), warnings: [] };
 }
 
 /**

@@ -2,18 +2,18 @@ import type { ArenaScenarioDraft, GuidedAnswers, HardestWhenOption, ScenarioBran
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
 /**
- * Foundry Guided Arena Builder — deterministic scenario template (service).
+ * Foundry Guided Arena Builder — deterministic scenario template.
  *
- * The provider-free fallback: when the LLM is unavailable/times out/returns output the
- * gates reject, this composes a COMPLETE three-phase branch-aware draft from the module
- * facts + the two guided answers. Slice 3.2I-R1: it composes a CONCRETE SCENE (an actor,
- * an incident, a stakeholder, a decision now) with concrete-action choices and branch-
- * specific reactions — never a raw-Capability interpolation or a training description.
- * It always satisfies `validateArenaScenarioDraft`, `validateBranchedScenario`, and
- * `validateConcreteScene`. Display strings live here (service), never in domain. en/ko.
- *
- * Honest scaffolding — the host edits every line. The service treats a scene that fails
- * the concrete-scene gate (insufficient inputs) as a safe generation failure.
+ * ⚠️ TEST / FIXTURE FACTORY ONLY (Slice 3.2I-R2). This composes a complete, gate-passing
+ * branch-aware draft deterministically, for unit/parser/player tests, golden fixtures, and
+ * offline development. It is DELIBERATELY NOT called by the Manager-facing generation
+ * runtime: a deterministic scaffold reused across unrelated trainings is a quietly-
+ * delivered product failure, so the live path (`generateArenaScenarioDraft`) is LIVE-model
+ * only and fails safe rather than shipping this. Keep it for tests; do not wire it back into
+ * the runtime. It composes a CONCRETE SCENE (actor, incident, stakeholder, decision-now)
+ * and satisfies `validateArenaScenarioDraft` / `validateBranchedScenario` /
+ * `validateConcreteScene` (but NOT `validateIncidentSpecific` — its branches are a shared
+ * scaffold, which is exactly why it is fixture-only). en/ko.
  */
 
 export type Locale = "en" | "ko";
