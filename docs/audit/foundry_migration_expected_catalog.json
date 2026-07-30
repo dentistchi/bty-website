@@ -1,0 +1,1250 @@
+{
+  "generator": "scripts/migration-proof/build-expected-manifest.sh",
+  "regenCommand": "bash scripts/migration-proof/build-expected-manifest.sh",
+  "auditQuery": "docs/audit/foundry_migration_provenance_readonly.sql",
+  "provenanceRef": "docs/audit/foundry_migration_provenance.json",
+  "postgresServerVersionNum": 160014,
+  "note": "Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729.",
+  "effectCount": 76,
+  "effects": [
+    {
+      "effectId": "column:public.foundry_event_document_content.shared_question",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_document_content.shared_question",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_content.shared_question",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_content.shared_question",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.host_review_note",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.host_review_note",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.host_review_status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.host_review_status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.host_reviewed_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.host_reviewed_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.host_reviewed_by",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.host_reviewed_by",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.host_reviewed_by_snapshot",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.host_reviewed_by_snapshot",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.shared_response_submitted_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.shared_response_submitted_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_event_training_progress.shared_understanding_response",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_event_training_progress.shared_understanding_response",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.actor_user_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.actor_user_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.created_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.created_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.event_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.event_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.event_type",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.event_type",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.followup_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.followup_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.new_status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.new_status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.outcome",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.outcome",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.previous_status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.previous_status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followup_audit.user_id_snapshot",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followup_audit.user_id_snapshot",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.assignment_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.assignment_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.completed_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.completed_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.completion_bty_day",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.completion_bty_day",
+      "properties": {
+        "data_type": "date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.created_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.created_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.due_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.due_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.due_bty_day",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.due_bty_day",
+      "properties": {
+        "data_type": "date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.event_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.event_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.follow_up_days",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.follow_up_days",
+      "properties": {
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.organization_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.organization_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.outcome",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.outcome",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.progress_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.progress_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.responded_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.responded_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.source_training_title",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.source_training_title",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": "'PENDING'::text"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.timezone_snapshot",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.timezone_snapshot",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.updated_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.updated_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_participant_followups.user_id_snapshot",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_participant_followups.user_id_snapshot",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.changed_at",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.changed_at",
+      "properties": {
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.event_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.event_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.new_status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.new_status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.note",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.note",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.participant_id",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.participant_id",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.prev_status",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.prev_status",
+      "properties": {
+        "data_type": "text",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.reviewed_by",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.reviewed_by",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.foundry_shared_review_audit.reviewed_by_snapshot",
+      "objectType": "column",
+      "objectIdentity": "public.foundry_shared_review_audit.reviewed_by_snapshot",
+      "properties": {
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "column:public.user_conversation_preferences.personalize_today_from_reflections",
+      "objectType": "column",
+      "objectIdentity": "public.user_conversation_preferences.personalize_today_from_reflections",
+      "properties": {
+        "data_type": "boolean",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260727000000",
+      "finalAuthorityMigration": "20260727000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_document_content.foundry_doc_shared_q_len_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_document_content.foundry_doc_shared_q_len_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "addb53b2aaa631a64e46936829bb8dfb",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_content.foundry_content_shared_q_len_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_content.foundry_content_shared_q_len_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "addb53b2aaa631a64e46936829bb8dfb",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_needs_shared_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_needs_shared_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "a394d73b0fe076196b3482289beb2fd6",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_note_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_note_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "f8017332f968fbf53aa5953f8000bc78",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_status_shape_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_status_shape_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "91fb605fa02c8d9d11a7e6bba03e3a2d",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_shared_resp_len_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_len_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "9752562f8f0294990d82cc45f21ec345",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "efbf6213eb27c6fbcff81f6179e76d70",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "c57c6745ab55b102df8c780411c5828e",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_days_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_days_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "a12a069bb3600adb705d91d00147c0e7",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_outcome_shape_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_outcome_shape_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "89ab8da363f89b9cf8398f7952e5b0ce",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_responded_at_shape_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_responded_at_shape_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "861d4c931ebc471fb8fee6e61d1e29b8",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_status_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_status_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "cfce33bba07c17e0d4b8062ed3535b75",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_title_len_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_title_len_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "179bc4a00269b22676a5ca0a07a366a4",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
+      "properties": {
+        "contype": "u"
+      },
+      "definitionDigest": "2720e43f06e24d25ef206bb90d90bf3d",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "constraint:public.foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
+      "objectType": "constraint",
+      "objectIdentity": "foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
+      "properties": {
+        "contype": "c"
+      },
+      "definitionDigest": "e13d9c68ac7ccc93b998c8b55f042726",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
+      "objectType": "function",
+      "objectIdentity": "public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
+      "properties": {
+        "result": "TABLE(id uuid, event_id uuid, source_training_title text, follow_up_days integer, completed_at timestamp with time zone, due_at timestamp with time zone, due_bty_day date, status text, outcome text, responded_at timestamp with time zone)",
+        "strict": false,
+        "language": "sql",
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "volatility": "s",
+        "identity_args": "p_auth_user_id uuid, p_followup_id uuid",
+        "security_definer": true
+      },
+      "definitionDigest": "da6879b940d6659710f1c9c4ab524b08",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "function:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
+      "objectType": "function",
+      "objectIdentity": "public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
+      "properties": {
+        "result": "TABLE(result text)",
+        "strict": false,
+        "language": "plpgsql",
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "volatility": "v",
+        "identity_args": "p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone",
+        "security_definer": true
+      },
+      "definitionDigest": "410dd3c438af2691e684ee7500d58ece",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
+      "objectType": "function",
+      "objectIdentity": "public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
+      "properties": {
+        "result": "TABLE(result text)",
+        "strict": false,
+        "language": "plpgsql",
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "volatility": "v",
+        "identity_args": "p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text",
+        "security_definer": true
+      },
+      "definitionDigest": "9b59a86c3ba214e62445755821e3697f",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
+      "objectType": "function",
+      "objectIdentity": "public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
+      "properties": {
+        "result": "TABLE(result text, status text, outcome text)",
+        "strict": false,
+        "language": "plpgsql",
+        "proconfig": [
+          "search_path=pg_catalog, public"
+        ],
+        "volatility": "v",
+        "identity_args": "p_followup_id uuid, p_auth_user_id uuid, p_outcome text",
+        "security_definer": true
+      },
+      "definitionDigest": "12491062dd17e8d6b9c11af6fc50af62",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260729000000"
+    },
+    {
+      "effectId": "index:public.foundry_followup_audit_followup_idx",
+      "objectType": "index",
+      "objectIdentity": "public.foundry_followup_audit_followup_idx",
+      "properties": {
+        "keys": "followup_id,created_at",
+        "target": "foundry_participant_followup_audit",
+        "is_unique": false,
+        "predicate": null
+      },
+      "definitionDigest": "94e890b8fd1e0c640602536b8bfd1307",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "index:public.foundry_followups_event_idx",
+      "objectType": "index",
+      "objectIdentity": "public.foundry_followups_event_idx",
+      "properties": {
+        "keys": "event_id",
+        "target": "foundry_participant_followups",
+        "is_unique": false,
+        "predicate": null
+      },
+      "definitionDigest": "5b71f3067d70d2ae3926cc049bce0df1",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "index:public.foundry_followups_owner_due_idx",
+      "objectType": "index",
+      "objectIdentity": "public.foundry_followups_owner_due_idx",
+      "properties": {
+        "keys": "user_id_snapshot,status,due_at",
+        "target": "foundry_participant_followups",
+        "is_unique": false,
+        "predicate": null
+      },
+      "definitionDigest": "4a525b94a9cd18ebd9723bea74635c4a",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "index:public.foundry_shared_review_audit_participant_idx",
+      "objectType": "index",
+      "objectIdentity": "public.foundry_shared_review_audit_participant_idx",
+      "properties": {
+        "keys": "event_id,participant_id,changed_at",
+        "target": "foundry_shared_review_audit",
+        "is_unique": false,
+        "predicate": null
+      },
+      "definitionDigest": "988964b29bea5487e95a40439ed13179",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "rls:public.foundry_participant_followup_audit",
+      "objectType": "rls",
+      "objectIdentity": "public.foundry_participant_followup_audit",
+      "properties": {
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "rls:public.foundry_participant_followups",
+      "objectType": "rls",
+      "objectIdentity": "public.foundry_participant_followups",
+      "properties": {
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "rls:public.foundry_shared_review_audit",
+      "objectType": "rls",
+      "objectIdentity": "public.foundry_shared_review_audit",
+      "properties": {
+        "rls_enabled": true,
+        "policy_count": 0
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "table:public.foundry_participant_followup_audit",
+      "objectType": "table",
+      "objectIdentity": "public.foundry_participant_followup_audit",
+      "properties": [
+        "id",
+        "followup_id",
+        "event_id",
+        "user_id_snapshot",
+        "event_type",
+        "previous_status",
+        "new_status",
+        "outcome",
+        "actor_user_id",
+        "created_at"
+      ],
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "table:public.foundry_participant_followups",
+      "objectType": "table",
+      "objectIdentity": "public.foundry_participant_followups",
+      "properties": [
+        "id",
+        "organization_id",
+        "event_id",
+        "progress_id",
+        "assignment_id",
+        "user_id_snapshot",
+        "source_training_title",
+        "follow_up_days",
+        "completed_at",
+        "timezone_snapshot",
+        "completion_bty_day",
+        "due_bty_day",
+        "due_at",
+        "status",
+        "outcome",
+        "responded_at",
+        "created_at",
+        "updated_at"
+      ],
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "table:public.foundry_shared_review_audit",
+      "objectType": "table",
+      "objectIdentity": "public.foundry_shared_review_audit",
+      "properties": [
+        "id",
+        "event_id",
+        "participant_id",
+        "prev_status",
+        "new_status",
+        "reviewed_by",
+        "reviewed_by_snapshot",
+        "note",
+        "changed_at"
+      ],
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    }
+  ]
+}
