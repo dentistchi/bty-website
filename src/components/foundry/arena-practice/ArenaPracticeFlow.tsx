@@ -44,7 +44,7 @@ type ClientDraft = {
   revision: number;
 };
 
-type Phase = "loading" | "error" | "gone" | "no_module" | "summary" | "q1" | "q2" | "generating" | "editor";
+type Phase = "loading" | "error" | "gone" | "no_module" | "summary" | "setup" | "q1" | "q2" | "generating" | "editor";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function ArenaPracticeFlow({
@@ -144,6 +144,15 @@ export function ArenaPracticeFlow({
                 setDirty(false);
                 void refreshLiveStatus(d.draft.id); // already published at this revision?
                 setPhase("editor");
+                return;
+              }
+              if (d.draft) {
+                // Shell-first (Slice 3.2I-R5A.2/R5B1): a canonical draft shell exists but no
+                // scenario is generated yet. Show the honest Practice-setup state — NOT the old
+                // generation-retry error. The boundary editor arrives in R5B2.
+                setDraftId(d.draft.id);
+                setRevision(d.draft.revision);
+                setPhase("setup");
                 return;
               }
             }
@@ -373,6 +382,27 @@ export function ArenaPracticeFlow({
     return shell(<HonestState title={t.noModuleTitle} lead={t.noModuleLead} />);
   if (phase === "error")
     return shell(<HonestState title={t.genericError} lead={t.loadError} />);
+
+  if (phase === "setup" && source) {
+    // Interim in-shell Practice-setup surface (Slice 3.2I-R5B1). A canonical shell is loaded
+    // but not generated yet. Honest state — no "couldn't generate" error, no raw codes. The
+    // 3-mode boundary editor replaces this in R5B2 without changing the route or shell contract.
+    return shell(
+      <div className="flex flex-col gap-6">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-2xl font-semibold leading-snug text-white">{t.setupTitle}</h1>
+          <p className="text-sm leading-6 text-white/60">{t.setupLead}</p>
+        </header>
+        <dl className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4">
+          <SummaryRow label={t.labelSourceTraining} value={source.event_title} />
+          {source.expected_behavior ? <SummaryRow label={t.labelExpected} value={source.expected_behavior} /> : null}
+        </dl>
+        <p className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
+          {t.setupPending}
+        </p>
+      </div>,
+    );
+  }
 
   if (phase === "summary" && source) {
     return shell(

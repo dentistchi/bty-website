@@ -17,6 +17,10 @@ export type ArenaPracticeCopy = {
   // Source summary
   summaryTitle: string;
   summaryLead: string;
+  // Slice 3.2I-R5B1 — interim shell setup surface (boundary editor arrives in R5B2)
+  setupTitle: string;
+  setupLead: string;
+  setupPending: string;
   labelCapability: string;
   labelForWhom: string;
   labelExpected: string;
@@ -124,6 +128,9 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
 
     summaryTitle: "Create Arena practice",
     summaryLead: "Turn this training into a realistic practice scenario. You'll answer two quick questions.",
+    setupTitle: "Set up practice",
+    setupLead: "Before BTY creates the situations, confirm what kind of decision learners need to practice.",
+    setupPending: "Boundary setup opens next — you'll confirm any rules every option must follow before the situations are created.",
     labelCapability: "What this builds",
     labelForWhom: "For whom",
     labelExpected: "Expected behavior",
@@ -227,6 +234,9 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
 
     summaryTitle: "아레나 연습 만들기",
     summaryLead: "이 교육을 현실적인 연습 시나리오로 바꿉니다. 두 가지 질문에만 답하면 됩니다.",
+    setupTitle: "Practice 설정",
+    setupLead: "BTY가 상황을 만들기 전에 학습자가 어떤 판단을 연습해야 하는지 확인합니다.",
+    setupPending: "다음 단계에서 기준을 설정합니다 — 상황을 만들기 전에 모든 선택이 지켜야 할 규칙이 있는지 확인하게 됩니다.",
     labelCapability: "무엇을 기르나",
     labelForWhom: "대상",
     labelExpected: "기대 행동",
