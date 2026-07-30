@@ -1,14 +1,16 @@
 {
-  "generatorVersion": "r2.4",
+  "generatorVersion": "r2.5",
   "generator": "scripts/migration-proof/build-expected-manifest.sh",
   "regenCommand": "bash scripts/migration-proof/build-expected-manifest.sh",
   "auditQuery": "docs/audit/foundry_migration_provenance_readonly.sql",
   "auditQueryBody": "scripts/migration-proof/audit-query-body.sql",
   "provenanceRef": "docs/audit/foundry_migration_provenance.json",
   "securityStatementMapRef": "docs/audit/foundry_migration_security_statement_map.json",
-  "auditSchemaVersion": "r2.4",
-  "auditPacketVersion": "r2.4",
-  "comparatorContractVersion": "r2.4",
+  "constraintStatementMapRef": "docs/audit/foundry_migration_constraint_statement_map.json",
+  "auditSchemaVersion": "r2.5",
+  "auditPacketVersion": "r2.5",
+  "comparatorContractVersion": "r2.5",
+  "runtimeQueryContractVersion": "r2.5",
   "postgresServerVersionNum": 160014,
   "functionBodyChecking": "on",
   "migrationChecksums": {
@@ -17,13 +19,15 @@
     "20260728000000": "381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027",
     "20260729000000": "abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2"
   },
-  "auditQueryBodyDigest": "4ea030f1a098b1693e3a7da1b8484568e10635c35bf828c01fd229629fed9c0f",
+  "auditQueryBodyDigest": "6611d63efa7fbad4deefd17d5bfd51d7cff34b47281cc44e0aee5f534e41dfab",
   "provenanceDigest": "22fc47c918287661027f041c69647cd28f41491fcc69740b6519afbd81f42767",
-  "securityStatementMapDigest": "f0d46b8b9aa4a13188c578e173183b9257e98d72a168cea5b7ea1aa5ff63120d",
-  "expectedManifestDigest": "ccb5c71fb5956e771b489d5395bc691a770e0cc1309d7cac7739f58eba44fd6d",
-  "packetId": "b841a33b189ac9b8121a4c4edd48c8662c630d483f0391cec05fa71ac244cd35",
-  "note": "Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729. Privileges = exact aclexplode tuples (not effective access).",
-  "effectCount": 86,
+  "securityStatementMapDigest": "fdedf36b1ecfef7050ea1f028532ce7726cf44003f208dd7608c2315b384f8d9",
+  "constraintStatementMapDigest": "0feca8be701ad7e87becdf9cf7b55f00aba792275d1614d4df3386a786fe11d9",
+  "expectedManifestDigest": "a9918fea779bfb02f8aa0ffb3aece5d49f9305222c7920210c593c4c1bb6e733",
+  "expectedRuntimeQueryDigest": "38758e7dfe439ef13af7670db6445a387fd8f16f13adab8c99e0bde367185f7f",
+  "packetId": "8d87c4b16393e030b6c0da906750db5f69ae4a671c00c63468cb0c4f47242152",
+  "note": "Runtime-attested. Privileges = exact aclexplode tuples. PK/FK/UNIQUE/CHECK are first-class. submit_followup finalAuthority=20260729.",
+  "effectCount": 93,
   "effects": [
     {
       "effectId": "acl:function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
@@ -142,6 +146,244 @@
       },
       "definitionDigest": null,
       "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_document_content.foundry_doc_shared_q_len_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_document_content.foundry_doc_shared_q_len_check",
+      "properties": {
+        "table": "foundry_event_document_content",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "c45050f41270f18b90dcf3b1ed50229431c8dfd4eb78983ebe0e15e9cd2ef2ce",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_content.foundry_content_shared_q_len_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_content.foundry_content_shared_q_len_check",
+      "properties": {
+        "table": "foundry_event_training_content",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "c45050f41270f18b90dcf3b1ed50229431c8dfd4eb78983ebe0e15e9cd2ef2ce",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_progress.foundry_progress_review_needs_shared_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_needs_shared_check",
+      "properties": {
+        "table": "foundry_event_training_progress",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "d161f2789f9894c3edd2fd6c30718de71123115558b2fc037d71bd21a05a60b2",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_progress.foundry_progress_review_note_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_note_check",
+      "properties": {
+        "table": "foundry_event_training_progress",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "20b49cb690568da7ec16e3dfb2f3739ff3cd4a95b36617716cd4ea757999d0ad",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_progress.foundry_progress_review_status_shape_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_status_shape_check",
+      "properties": {
+        "table": "foundry_event_training_progress",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "c398f80a2ebfb463b322ec6cfe7fbd071793fc93becea19fa22ba85ae23ea0eb",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_progress.foundry_progress_shared_resp_len_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_len_check",
+      "properties": {
+        "table": "foundry_event_training_progress",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "74212403aa06eb2a75e4966e5c47930783cd308e8835646f9b763fba01695d72",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
+      "properties": {
+        "table": "foundry_event_training_progress",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "022a0065526a9a313921d624e80216846b1b3fd4d197b5ae48da64ef5af4f8cf",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
+      "properties": {
+        "table": "foundry_participant_followup_audit",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "cb0959ab8cf894668278470dbce7960595ada33c3fa44ee0415a6ff071c6d195",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followups.foundry_followup_days_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_days_check",
+      "properties": {
+        "table": "foundry_participant_followups",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "6e2e07e4da7fdab854e0403680148712943e454c0b01c2b0daeea888b76c0336",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followups.foundry_followup_outcome_shape_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_outcome_shape_check",
+      "properties": {
+        "table": "foundry_participant_followups",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "0f4a7ad916a789c782b4c6242d5d98df333e05fe3dcb4d4cfc23d7d144a71eb8",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followups.foundry_followup_responded_at_shape_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_responded_at_shape_check",
+      "properties": {
+        "table": "foundry_participant_followups",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "b8415e3d4a494903da3ba8d64a838cbbbaf42e49b09fa2e3954a3ba460263baa",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followups.foundry_followup_status_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_status_check",
+      "properties": {
+        "table": "foundry_participant_followups",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "23c263e4e89ca87d01ee0c255a909ec5b63a1d82fc7a7caf4578ffe82e51cd0b",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_participant_followups.foundry_followup_title_len_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_title_len_check",
+      "properties": {
+        "table": "foundry_participant_followups",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "477d6124114376163c2662939eb1208fea21a2093588bf3177e4962476f868e7",
+      "comparisonMode": "structured+body_digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "check:foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
+      "objectType": "check",
+      "objectIdentity": "foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
+      "properties": {
+        "table": "foundry_shared_review_audit",
+        "contype": "c",
+        "noInherit": false,
+        "validated": true
+      },
+      "definitionDigest": "0b73c19913c0bc1945ce61c16c26d9559e7925d951604acab58e7d5f60909571",
+      "comparisonMode": "structured+body_digest",
       "autoComparable": true,
       "manualReason": null,
       "migrationVersion": "20260726000000",
@@ -900,111 +1142,27 @@
       "finalAuthorityMigration": "20260727000000"
     },
     {
-      "effectId": "constraint:public.foundry_event_document_content.foundry_doc_shared_q_len_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_document_content.foundry_doc_shared_q_len_check",
+      "effectId": "fk:foundry_participant_followups.foundry_participant_followups_assignment_id_fkey",
+      "objectType": "fk",
+      "objectIdentity": "foundry_participant_followups.foundry_participant_followups_assignment_id_fkey",
       "properties": {
-        "contype": "c"
+        "table": "foundry_participant_followups",
+        "contype": "f",
+        "onDelete": "n",
+        "onUpdate": "a",
+        "refTable": "foundry_event_assignments",
+        "matchType": "s",
+        "validated": true,
+        "deferrable": false,
+        "refColumns": [
+          "id"
+        ],
+        "sourceColumns": [
+          "assignment_id"
+        ],
+        "initiallyDeferred": false
       },
-      "definitionDigest": "addb53b2aaa631a64e46936829bb8dfb",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_content.foundry_content_shared_q_len_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_content.foundry_content_shared_q_len_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "addb53b2aaa631a64e46936829bb8dfb",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_needs_shared_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_needs_shared_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "a394d73b0fe076196b3482289beb2fd6",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_note_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_note_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "f8017332f968fbf53aa5953f8000bc78",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_review_status_shape_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_progress.foundry_progress_review_status_shape_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "91fb605fa02c8d9d11a7e6bba03e3a2d",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_shared_resp_len_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_len_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "9752562f8f0294990d82cc45f21ec345",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_event_training_progress.foundry_progress_shared_resp_submitted_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "efbf6213eb27c6fbcff81f6179e76d70",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followup_audit.foundry_followup_audit_event_type_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "c57c6745ab55b102df8c780411c5828e",
+      "definitionDigest": "f2ddb0455f73cfb26098f4a2bf801a78",
       "comparisonMode": "structured+digest",
       "autoComparable": true,
       "manualReason": null,
@@ -1012,13 +1170,27 @@
       "finalAuthorityMigration": "20260728000000"
     },
     {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_days_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_days_check",
+      "effectId": "fk:foundry_participant_followups.foundry_participant_followups_event_id_fkey",
+      "objectType": "fk",
+      "objectIdentity": "foundry_participant_followups.foundry_participant_followups_event_id_fkey",
       "properties": {
-        "contype": "c"
+        "table": "foundry_participant_followups",
+        "contype": "f",
+        "onDelete": "n",
+        "onUpdate": "a",
+        "refTable": "foundry_events",
+        "matchType": "s",
+        "validated": true,
+        "deferrable": false,
+        "refColumns": [
+          "id"
+        ],
+        "sourceColumns": [
+          "event_id"
+        ],
+        "initiallyDeferred": false
       },
-      "definitionDigest": "a12a069bb3600adb705d91d00147c0e7",
+      "definitionDigest": "e7fbe828f3c935b73abec056f7435340",
       "comparisonMode": "structured+digest",
       "autoComparable": true,
       "manualReason": null,
@@ -1026,13 +1198,27 @@
       "finalAuthorityMigration": "20260728000000"
     },
     {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_outcome_shape_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_outcome_shape_check",
+      "effectId": "fk:foundry_participant_followups.foundry_participant_followups_progress_id_fkey",
+      "objectType": "fk",
+      "objectIdentity": "foundry_participant_followups.foundry_participant_followups_progress_id_fkey",
       "properties": {
-        "contype": "c"
+        "table": "foundry_participant_followups",
+        "contype": "f",
+        "onDelete": "n",
+        "onUpdate": "a",
+        "refTable": "foundry_event_training_progress",
+        "matchType": "s",
+        "validated": true,
+        "deferrable": false,
+        "refColumns": [
+          "id"
+        ],
+        "sourceColumns": [
+          "progress_id"
+        ],
+        "initiallyDeferred": false
       },
-      "definitionDigest": "89ab8da363f89b9cf8398f7952e5b0ce",
+      "definitionDigest": "73d0d79284bc53d76e898a70576cb0ef",
       "comparisonMode": "structured+digest",
       "autoComparable": true,
       "manualReason": null,
@@ -1040,69 +1226,27 @@
       "finalAuthorityMigration": "20260728000000"
     },
     {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_responded_at_shape_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_responded_at_shape_check",
+      "effectId": "fk:foundry_shared_review_audit.foundry_shared_review_audit_reviewed_by_fkey",
+      "objectType": "fk",
+      "objectIdentity": "foundry_shared_review_audit.foundry_shared_review_audit_reviewed_by_fkey",
       "properties": {
-        "contype": "c"
+        "table": "foundry_shared_review_audit",
+        "contype": "f",
+        "onDelete": "n",
+        "onUpdate": "a",
+        "refTable": "auth.users",
+        "matchType": "s",
+        "validated": true,
+        "deferrable": false,
+        "refColumns": [
+          "id"
+        ],
+        "sourceColumns": [
+          "reviewed_by"
+        ],
+        "initiallyDeferred": false
       },
-      "definitionDigest": "861d4c931ebc471fb8fee6e61d1e29b8",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_status_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_status_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "cfce33bba07c17e0d4b8062ed3535b75",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_title_len_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_title_len_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "179bc4a00269b22676a5ca0a07a366a4",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
-      "properties": {
-        "contype": "u"
-      },
-      "definitionDigest": "2720e43f06e24d25ef206bb90d90bf3d",
-      "comparisonMode": "structured+digest",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "constraint:public.foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
-      "objectType": "constraint",
-      "objectIdentity": "foundry_shared_review_audit.foundry_shared_review_audit_new_status_check",
-      "properties": {
-        "contype": "c"
-      },
-      "definitionDigest": "e13d9c68ac7ccc93b998c8b55f042726",
+      "definitionDigest": "f64ec06d4f9bb4a4421251b98777440c",
       "comparisonMode": "structured+digest",
       "autoComparable": true,
       "manualReason": null,
@@ -1274,6 +1418,69 @@
       "finalAuthorityMigration": "20260726000000"
     },
     {
+      "effectId": "pk:foundry_participant_followup_audit.foundry_participant_followup_audit_pkey",
+      "objectType": "pk",
+      "objectIdentity": "foundry_participant_followup_audit.foundry_participant_followup_audit_pkey",
+      "properties": {
+        "keys": [
+          "id"
+        ],
+        "table": "foundry_participant_followup_audit",
+        "contype": "p",
+        "validated": true,
+        "deferrable": false,
+        "initiallyDeferred": false
+      },
+      "definitionDigest": "4c6419b3704337bbfe50f018842a9ad3",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "pk:foundry_participant_followups.foundry_participant_followups_pkey",
+      "objectType": "pk",
+      "objectIdentity": "foundry_participant_followups.foundry_participant_followups_pkey",
+      "properties": {
+        "keys": [
+          "id"
+        ],
+        "table": "foundry_participant_followups",
+        "contype": "p",
+        "validated": true,
+        "deferrable": false,
+        "initiallyDeferred": false
+      },
+      "definitionDigest": "4c6419b3704337bbfe50f018842a9ad3",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "pk:foundry_shared_review_audit.foundry_shared_review_audit_pkey",
+      "objectType": "pk",
+      "objectIdentity": "foundry_shared_review_audit.foundry_shared_review_audit_pkey",
+      "properties": {
+        "keys": [
+          "id"
+        ],
+        "table": "foundry_shared_review_audit",
+        "contype": "p",
+        "validated": true,
+        "deferrable": false,
+        "initiallyDeferred": false
+      },
+      "definitionDigest": "4c6419b3704337bbfe50f018842a9ad3",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
       "effectId": "policies:public.foundry_participant_followup_audit",
       "objectType": "policies",
       "objectIdentity": "public.foundry_participant_followup_audit",
@@ -1426,6 +1633,29 @@
       "manualReason": null,
       "migrationVersion": "20260726000000",
       "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "unique:foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
+      "objectType": "unique",
+      "objectIdentity": "foundry_participant_followups.foundry_followup_unique_progress_checkpoint",
+      "properties": {
+        "keys": [
+          "progress_id",
+          "follow_up_days"
+        ],
+        "table": "foundry_participant_followups",
+        "contype": "u",
+        "validated": true,
+        "deferrable": false,
+        "nullsNotDistinct": false,
+        "initiallyDeferred": false
+      },
+      "definitionDigest": "2720e43f06e24d25ef206bb90d90bf3d",
+      "comparisonMode": "structured+digest",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
     }
   ]
 }

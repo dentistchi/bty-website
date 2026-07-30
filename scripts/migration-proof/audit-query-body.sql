@@ -34,19 +34,59 @@ tbls(effect_id, object_type, object_identity, grp, properties, definition_digest
   from unnest(array['foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit']) as t
   where exists (select 1 from information_schema.tables it where it.table_schema='public' and it.table_name=t)
 ),
-cons(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
-  select 'constraint:public.'||c.conrelid::regclass::text||'.'||c.conname, 'constraint',
-         c.conrelid::regclass::text||'.'||c.conname,
-         case when c.conrelid::regclass::text like '%followup%' then 'g28' else 'g26' end,
-         jsonb_build_object('contype',c.contype::text),
+-- Ordered column names for a constraint key array (conkey / confkey) on a given relation.
+-- (inlined per constraint below via lateral subselects)
+-- PRIMARY KEY — first-class (Gate 4): ordered keys + deferrability + validation + exact def.
+pk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+  select 'pk:'||c.conrelid::regclass::text||'.'||c.conname, 'pk', c.conrelid::regclass::text||'.'||c.conname,
+         case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+         jsonb_build_object('contype','p','table',c.conrelid::regclass::text,
+           'keys',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+           'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
          md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
          'structured+digest', true, null::text
-  from pg_constraint c
-  where c.connamespace='public'::regnamespace
+  from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='p'
+    and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+),
+-- FOREIGN KEY — first-class (Gate 5): full behavioral contract, not just the target name.
+fk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+  select 'fk:'||c.conrelid::regclass::text||'.'||c.conname, 'fk', c.conrelid::regclass::text||'.'||c.conname,
+         case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+         jsonb_build_object('contype','f','table',c.conrelid::regclass::text,
+           'sourceColumns',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+           'refTable',c.confrelid::regclass::text,
+           'refColumns',(select jsonb_agg(a.attname order by k.ord) from unnest(c.confkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.confrelid and a.attnum=k.attnum),
+           'onUpdate',c.confupdtype,'onDelete',c.confdeltype,'matchType',c.confmatchtype,
+           'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
+         md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
+         'structured+digest', true, null::text
+  from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='f'
+    and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+),
+-- UNIQUE — first-class (Gate 6): ordered keys + nulls-not-distinct + deferrability + validation.
+uniq(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+  select 'unique:'||c.conrelid::regclass::text||'.'||c.conname, 'unique', c.conrelid::regclass::text||'.'||c.conname,
+         case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+         jsonb_build_object('contype','u','table',c.conrelid::regclass::text,
+           'keys',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+           'nullsNotDistinct',(select not i.indnullsnotdistinct is not true from pg_index i where i.indexrelid=c.conindid),
+           'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
+         md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
+         'structured+digest', true, null::text
+  from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='u'
+    and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+),
+-- CHECK — first-class (Gate 6): exact expression digest + validation + no-inherit + identity.
+chk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+  select 'check:'||c.conrelid::regclass::text||'.'||c.conname, 'check', c.conrelid::regclass::text||'.'||c.conname,
+         case when c.conrelid::regclass::text like '%followup%' then 'g28' else 'g26' end,
+         jsonb_build_object('contype','c','table',c.conrelid::regclass::text,'validated',c.convalidated,'noInherit',c.connoinherit),
+         encode(sha256(convert_to(pg_get_constraintdef(c.oid),'UTF8')),'hex'),
+         'structured+body_digest', true, null::text
+  from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='c'
     and c.conrelid::regclass::text in (
       'foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit',
       'foundry_event_training_progress','foundry_event_training_content','foundry_event_document_content')
-    and c.contype in ('c','u')
 ),
 idx(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
   select 'index:public.'||ic.relname, 'index', 'public.'||ic.relname,
@@ -138,7 +178,9 @@ tacl(effect_id, object_type, object_identity, grp, properties, definition_digest
     ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
 ),
 allrows as (
-  select * from cols union all select * from tbls union all select * from cons union all select * from idx
+  select * from cols union all select * from tbls
+  union all select * from pk union all select * from fk union all select * from uniq union all select * from chk
+  union all select * from idx
   union all select * from fns union all select * from rls union all select * from pol
   union all select * from facl union all select * from tacl
 )

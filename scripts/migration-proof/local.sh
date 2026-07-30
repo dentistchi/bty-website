@@ -17,3 +17,5 @@ initdb -D "$DATA" -U postgres --auth=trust >/dev/null
 pg_ctl -D "$DATA" -o "-k $SOCK -p $PORT -c listen_addresses=''" -l "$BASE/pg.log" -w start >/dev/null
 createdb -h "$SOCK" -p "$PORT" -U postgres proofdb
 bash "$(dirname "$0")/run.sh"
+# Runtime-query attestation manages its own disposable cluster (needs the migrated schema).
+bash "$(dirname "$0")/runtime-attest.sh"

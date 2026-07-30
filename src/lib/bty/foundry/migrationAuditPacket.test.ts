@@ -90,14 +90,17 @@ describe("ACL effects (exact aclexplode tuples, not effective access)", () => {
 
 function packetMeta(over: Partial<PacketMeta> = {}): PacketMeta {
   const base = {
-    auditSchemaVersion: "r2.4", auditPacketVersion: "r2.4", comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
+    auditSchemaVersion: "r2.5", auditPacketVersion: "r2.5", runtimeQueryContractVersion: "r2.5",
+    comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
     expectedManifestDigest: "m".repeat(64), provenanceDigest: "p".repeat(64), securityStatementMapDigest: "s".repeat(64),
-    auditQueryBodyDigest: "q".repeat(64), migrationChecksums: { "20260726000000": "a".repeat(64) },
+    constraintStatementMapDigest: "c".repeat(64), auditQueryBodyDigest: "q".repeat(64),
+    expectedRuntimeQueryDigest: "r".repeat(64), migrationChecksums: { "20260726000000": "a".repeat(64) },
   };
   return { ...base, packetId: computePacketId(base), ...over };
 }
-function liveOf(meta: PacketMeta, effects: LiveAudit["effects"] = [{ effectId: "a" }, { effectId: "b" }]): LiveAudit & PacketMeta {
-  return { ...meta, serverVersionNum: PG16, effects };
+function liveOf(meta: PacketMeta, effects: LiveAudit["effects"] = [{ effectId: "a" }, { effectId: "b" }]): LiveAudit & PacketMeta & { actualRuntimeQueryDigest: string } {
+  // By default the ACTUAL executed-query digest equals the embedded expectation (honest run).
+  return { ...meta, serverVersionNum: PG16, actualRuntimeQueryDigest: meta.expectedRuntimeQueryDigest, effects };
 }
 
 describe("PACKET handshake — self-authenticating (all components verified)", () => {
@@ -121,6 +124,54 @@ describe("PACKET handshake — self-authenticating (all components verified)", (
     expect(() => assertPacketHandshake(meta, liveOf({ ...meta, auditQueryBodyDigest: "0".repeat(64) }))).toThrow(/auditQueryBodyDigest/));
   it("duplicate effect → rejected", () => expect(() => assertPacketHandshake(meta, liveOf(meta, [{ effectId: "a" }, { effectId: "a" }]))).toThrow(/duplicate/));
   it("truncated (no effects array) → rejected", () => expect(() => assertPacketHandshake(meta, { ...meta, serverVersionNum: PG16 } as unknown as LiveAudit & PacketMeta)).toThrow(/effects array/));
+  it("constraintStatementMapDigest tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, constraintStatementMapDigest: "z".repeat(64) }))).toThrow(/constraintStatementMapDigest/));
+  it("runtimeQueryContractVersion changed → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, runtimeQueryContractVersion: "r9" }))).toThrow(/runtimeQueryContractVersion/));
+
+  // Gate 1 — the ACTUAL executed statement must match the embedded contract.
+  it("EXECUTED QUERY DIGEST MISMATCH when the statement that ran differs (constants retained)", () => {
+    const live = { ...liveOf(meta), actualRuntimeQueryDigest: "9".repeat(64) }; // modified body, stale constants
+    expect(() => assertPacketHandshake(meta, live)).toThrow(/EXECUTED QUERY DIGEST MISMATCH/);
+  });
+  it("missing actualRuntimeQueryDigest → rejected", () => {
+    const live = { ...liveOf(meta) } as Record<string, unknown>; delete live.actualRuntimeQueryDigest;
+    expect(() => assertPacketHandshake(meta, live as unknown as LiveAudit & PacketMeta)).toThrow(/actualRuntimeQueryDigest/);
+  });
+});
+
+describe("CONSTRAINT effects — first-class comparison (Gate 10)", () => {
+  const PK = eff({ effectId: "pk:t.t_pkey", objectType: "pk", comparisonMode: "structured+digest",
+    properties: { contype: "p", table: "t", keys: ["id"], deferrable: false, initiallyDeferred: false, validated: true }, definitionDigest: "d1" });
+  const liveEff = (effectId: string, properties: unknown, definitionDigest?: string) => ({ effectId, properties, definitionDigest });
+  it("PK exact", () => expect(status(PK, liveEff(PK.effectId, PK.properties, "d1"))).toBe("EXACT_MATCH"));
+  it("PK reversed column order → conflict", () => expect(status(PK, liveEff(PK.effectId, { ...(PK.properties as object), keys: ["a", "id"] }, "d1"))).toBe("CONFLICT"));
+  it("PK wrong deferrability → conflict", () => expect(status(PK, liveEff(PK.effectId, { ...(PK.properties as object), deferrable: true }, "d1"))).toBe("CONFLICT"));
+  it("PK wrong validation → conflict", () => expect(status(PK, liveEff(PK.effectId, { ...(PK.properties as object), validated: false }, "d1"))).toBe("CONFLICT"));
+  it("PK missing → conflict (MISSING_OBJECT)", () => expect(compareMigrationAudit(manifest([PK]), live([])).effects[0].status).toBe("MISSING_OBJECT"));
+
+  const FK = eff({ effectId: "fk:t.t_fk", objectType: "fk", comparisonMode: "structured+digest",
+    properties: { contype: "f", table: "t", sourceColumns: ["a"], refTable: "r", refColumns: ["id"], onUpdate: "a", onDelete: "n", matchType: "s", deferrable: false, initiallyDeferred: false, validated: true }, definitionDigest: "d2" });
+  const fkBad = (o: Record<string, unknown>) => status(FK, liveEff(FK.effectId, { ...(FK.properties as object), ...o }, "d2"));
+  it("FK exact", () => expect(status(FK, liveEff(FK.effectId, FK.properties, "d2"))).toBe("EXACT_MATCH"));
+  it("FK wrong source column → conflict", () => expect(fkBad({ sourceColumns: ["b"] })).toBe("CONFLICT"));
+  it("FK wrong referenced table → conflict", () => expect(fkBad({ refTable: "other" })).toBe("CONFLICT"));
+  it("FK wrong referenced column → conflict", () => expect(fkBad({ refColumns: ["other"] })).toBe("CONFLICT"));
+  it("FK wrong ON DELETE → conflict", () => expect(fkBad({ onDelete: "c" })).toBe("CONFLICT"));
+  it("FK wrong ON UPDATE → conflict", () => expect(fkBad({ onUpdate: "c" })).toBe("CONFLICT"));
+  it("FK wrong match type → conflict", () => expect(fkBad({ matchType: "f" })).toBe("CONFLICT"));
+  it("FK wrong deferrability → conflict", () => expect(fkBad({ deferrable: true })).toBe("CONFLICT"));
+  it("FK wrong initially-deferred → conflict", () => expect(fkBad({ initiallyDeferred: true })).toBe("CONFLICT"));
+  it("FK wrong validation → conflict", () => expect(fkBad({ validated: false })).toBe("CONFLICT"));
+
+  const UQ = eff({ effectId: "unique:t.t_key", objectType: "unique", comparisonMode: "structured+digest",
+    properties: { contype: "u", table: "t", keys: ["a", "b"], nullsNotDistinct: false, deferrable: false, validated: true }, definitionDigest: "d3" });
+  it("UNIQUE wrong key order → conflict", () => expect(status(UQ, liveEff(UQ.effectId, { ...(UQ.properties as object), keys: ["b", "a"] }, "d3"))).toBe("CONFLICT"));
+  it("UNIQUE wrong validation → conflict", () => expect(status(UQ, liveEff(UQ.effectId, { ...(UQ.properties as object), validated: false }, "d3"))).toBe("CONFLICT"));
+
+  const CK = eff({ effectId: "check:t.t_chk", objectType: "check", comparisonMode: "structured+body_digest",
+    properties: { contype: "c", table: "t", validated: true, noInherit: false }, definitionDigest: "ck1" });
+  it("CHECK exact", () => expect(status(CK, liveEff(CK.effectId, CK.properties, "ck1"))).toBe("EXACT_MATCH"));
+  it("CHECK wrong expression (digest) → conflict", () => expect(status(CK, liveEff(CK.effectId, CK.properties, "ck2"))).toBe("CONFLICT"));
+  it("CHECK wrong validation → conflict", () => expect(status(CK, liveEff(CK.effectId, { ...(CK.properties as object), validated: false }, "ck1"))).toBe("CONFLICT"));
 });
 
 describe("MANIFEST integrity", () => {

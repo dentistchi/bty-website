@@ -1,8 +1,13 @@
-// Assemble the authoritative audit packet from the disposable-replay effects (env FACTS) + the
-// checked-in files. Writes the expected manifest, the resolved security statement map, and the
-// GENERATED self-authenticating live audit SQL. Invoked by build-expected-manifest.sh.
+// Assemble the RUNTIME-ATTESTED audit packet (Slice 3.2I-R5B1A.1-R2.5). From the disposable-replay
+// effects (env FACTS) + the checked-in files, write: the expected manifest, the DERIVED security +
+// constraint statement maps (exact source-statement provenance via the tokenizer, not grep counts),
+// and the GENERATED single-statement live SQL that measures the ACTUAL executed query via
+// current_query(). Invoked by build-expected-manifest.sh with PG* env set (it shells to psql to
+// obtain the empirical runtime-query digest).
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { splitStatements, classifySecurity, classifyConstraintSource } from "./sqlStatements.mjs";
 
 const ROOT = process.env.ROOT;
 const AUD = ROOT + "/docs/audit", MIG = ROOT + "/supabase/migrations", MP = ROOT + "/scripts/migration-proof";
@@ -10,7 +15,13 @@ const sha = (s) => createHash("sha256").update(s).digest("hex");
 const shaFile = (p) => sha(readFileSync(p));
 const META = { g26: ["20260726000000", "20260726000000"], g27: ["20260727000000", "20260727000000"],
                g28: ["20260728000000", "20260728000000"], g29: ["20260728000000", "20260729000000"] };
-const AUDIT_SCHEMA = "r2.4", PACKET_VERSION = "r2.4", COMPARATOR_CONTRACT = "r2.4";
+const AUDIT_SCHEMA = "r2.5", PACKET_VERSION = "r2.5", COMPARATOR_CONTRACT = "r2.5", RUNTIME_CONTRACT = "r2.5";
+const MIG_FILES = {
+  "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
+  "20260727000000": "20260727000000_personalize_today_from_reflections_v1.sql",
+  "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
+  "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
+};
 
 // 1) EXPECTED MANIFEST
 const facts = JSON.parse(process.env.FACTS);
@@ -19,103 +30,139 @@ const effects = facts.map((f) => { const [mig, fin] = META[f.grp] || [null, null
   .sort((a, b) => a.effectId.localeCompare(b.effectId));
 const expectedManifestDigest = sha(JSON.stringify(effects));
 
-// 2) SECURITY STATEMENT MAP — authored by object; effectIds RESOLVED from the manifest (exact).
-const findFn = (name) => {
-  const e = effects.find((x) => x.objectType === "acl_function" && x.effectId.startsWith("acl:function:public." + name + "("));
-  if (!e) throw new Error("statement-map: no acl_function effect for " + name);
-  return e.effectId;
-};
-const A_T = (t) => "acl:table:public." + t, R = (t) => "rls:public." + t;
-const S = (migrationVersion, statementType, objectKey, roles, privileges, effectIds) =>
-  ({ migrationVersion, statementType, objectKey, roles, privileges, effectIds });
-const raw = [
-  S("20260726000000", "REVOKE_TABLE", "table:foundry_shared_review_audit", ["anon", "PUBLIC", "authenticated"], ["ALL"], [A_T("foundry_shared_review_audit")]),
-  S("20260726000000", "RLS_ENABLE", "table:foundry_shared_review_audit", [], [], [R("foundry_shared_review_audit")]),
-  S("20260726000000", "REVOKE_FUNCTION", "function:bty_foundry_set_shared_review", ["anon", "PUBLIC", "authenticated"], ["EXECUTE"], [findFn("bty_foundry_set_shared_review")]),
-  S("20260726000000", "GRANT_FUNCTION", "function:bty_foundry_set_shared_review", ["service_role"], ["EXECUTE"], [findFn("bty_foundry_set_shared_review")]),
-  S("20260728000000", "REVOKE_TABLE", "table:foundry_participant_followups", ["anon", "PUBLIC", "authenticated"], ["ALL"], [A_T("foundry_participant_followups")]),
-  S("20260728000000", "RLS_ENABLE", "table:foundry_participant_followups", [], [], [R("foundry_participant_followups")]),
-  S("20260728000000", "REVOKE_TABLE", "table:foundry_participant_followup_audit", ["anon", "PUBLIC", "authenticated"], ["ALL"], [A_T("foundry_participant_followup_audit")]),
-  S("20260728000000", "RLS_ENABLE", "table:foundry_participant_followup_audit", [], [], [R("foundry_participant_followup_audit")]),
-  S("20260728000000", "REVOKE_FUNCTION", "function:bty_foundry_materialize_followup", ["anon", "PUBLIC", "authenticated"], ["EXECUTE"], [findFn("bty_foundry_materialize_followup")]),
-  S("20260728000000", "GRANT_FUNCTION", "function:bty_foundry_materialize_followup", ["service_role"], ["EXECUTE"], [findFn("bty_foundry_materialize_followup")]),
-  S("20260728000000", "REVOKE_FUNCTION", "function:bty_foundry_submit_followup", ["anon", "PUBLIC", "authenticated"], ["EXECUTE"], [findFn("bty_foundry_submit_followup")]),
-  S("20260728000000", "GRANT_FUNCTION", "function:bty_foundry_submit_followup", ["service_role"], ["EXECUTE"], [findFn("bty_foundry_submit_followup")]),
-  S("20260728000000", "REVOKE_FUNCTION", "function:bty_foundry_get_my_followup", ["anon", "PUBLIC", "authenticated"], ["EXECUTE"], [findFn("bty_foundry_get_my_followup")]),
-  S("20260728000000", "GRANT_FUNCTION", "function:bty_foundry_get_my_followup", ["service_role"], ["EXECUTE"], [findFn("bty_foundry_get_my_followup")]),
-  S("20260729000000", "REVOKE_FUNCTION", "function:bty_foundry_submit_followup", ["anon", "PUBLIC", "authenticated"], ["EXECUTE"], [findFn("bty_foundry_submit_followup")]),
-  S("20260729000000", "GRANT_FUNCTION", "function:bty_foundry_submit_followup", ["service_role"], ["EXECUTE"], [findFn("bty_foundry_submit_followup")]),
-];
-const statements = raw.map((s, i) => ({ statementId: s.migrationVersion + "#" + String(i).padStart(2, "0"), ...s }));
-const statementMap = {
-  note: "Every explicit GRANT/REVOKE/RLS statement in 20260726-20260729 → the manifest effect(s) it controls; effectIds resolved from the manifest.",
-  auditSchemaVersion: AUDIT_SCHEMA,
-  statementCountsByMigration: { "20260726000000": 4, "20260728000000": 10, "20260729000000": 2 },
-  statements,
-};
-const statementMapJson = JSON.stringify(statementMap, null, 2) + "\n";
-writeFileSync(AUD + "/foundry_migration_security_statement_map.json", statementMapJson);
+// 2) SECURITY STATEMENT MAP — fully DERIVED from the tokenizer (exact source provenance).
+const TABLES = ["foundry_shared_review_audit", "foundry_participant_followups", "foundry_participant_followup_audit"];
+const FNS = ["bty_foundry_set_shared_review", "bty_foundry_materialize_followup", "bty_foundry_submit_followup", "bty_foundry_get_my_followup"];
+const aclFnId = (name) => { const e = effects.find((x) => x.objectType === "acl_function" && x.effectId.startsWith("acl:function:public." + name + "(")); if (!e) throw new Error("no acl_function " + name); return e.effectId; };
+const rolesIn = (text) => ["anon", "public", "authenticated", "service_role"].filter((r) => new RegExp("\\b" + r + "\\b", "i").test(text.replace(/\$[A-Za-z0-9_]*\$[\s\S]*?\$[A-Za-z0-9_]*\$/g, " ")));
+function securityEffectIds(type, text) {
+  if (type === "REVOKE_TABLE" || type === "GRANT_TABLE") { const t = TABLES.find((x) => text.includes(x)); return t ? ["acl:table:public." + t] : []; }
+  if (type === "REVOKE_FUNCTION" || type === "GRANT_FUNCTION") { const f = FNS.find((x) => text.includes(x)); return f ? [aclFnId(f)] : []; }
+  if (type.startsWith("RLS_")) { const t = TABLES.find((x) => text.includes(x)); return t ? ["rls:public." + t] : []; }
+  if (type.endsWith("_POLICY")) { const t = TABLES.find((x) => text.includes(x)); return t ? ["policies:public." + t] : []; }
+  return [];
+}
+const securityStatements = [];
+for (const [ver, file] of Object.entries(MIG_FILES)) {
+  const sql = readFileSync(MIG + "/" + file, "utf8");
+  for (const st of splitStatements(sql)) {
+    const type = classifySecurity(st);
+    if (!type) continue;
+    securityStatements.push({ statementId: ver + "#" + String(st.ordinal).padStart(3, "0"), migrationVersion: ver,
+      statementType: type, startLine: st.startLine, sourceSha256: st.sha256, roles: rolesIn(st.text), effectIds: securityEffectIds(type, st.text) });
+  }
+}
+const securityMap = { note: "DERIVED from the SQL tokenizer — every explicit security statement with exact source SHA-256 + line + resolved manifest effectIds. Grep is diagnostic only.", auditSchemaVersion: AUDIT_SCHEMA, statements: securityStatements };
+const securityMapJson = JSON.stringify(securityMap, null, 2) + "\n";
+writeFileSync(AUD + "/foundry_migration_security_statement_map.json", securityMapJson);
 
-// 3) COMPONENT DIGESTS + PACKET ID (non-circular: over component digests, not whole files)
-const migrationChecksums = {
-  "20260726000000": shaFile(MIG + "/20260726000000_foundry_shared_understanding_v1.sql"),
-  "20260727000000": shaFile(MIG + "/20260727000000_personalize_today_from_reflections_v1.sql"),
-  "20260728000000": shaFile(MIG + "/20260728000000_foundry_participant_followups_v1.sql"),
-  "20260729000000": shaFile(MIG + "/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql"),
-};
+// 3) CONSTRAINT STATEMENT MAP — each pk/fk/unique/check effect → the exact source statement that
+//    carries its constraint name (inline CREATE TABLE or a guarded ALTER … ADD CONSTRAINT).
+const constraintEffects = effects.filter((e) => ["pk", "fk", "unique", "check"].includes(e.objectType));
+const stmtCache = {};
+const stmtsOf = (ver) => (stmtCache[ver] ||= splitStatements(readFileSync(MIG + "/" + MIG_FILES[ver], "utf8")));
+const constraintStatements = constraintEffects.map((e) => {
+  const conname = e.effectId.split(".").pop();
+  const table = e.properties.table; // e.g. 'foundry_participant_followups'
+  // Prefer the statement that names the constraint (explicit / DO-guarded ADD CONSTRAINT); fall back
+  // to the CREATE TABLE that carries it inline (auto-named FK/PK have no name in source text).
+  const stmts = stmtsOf(e.migrationVersion);
+  const src = stmts.find((s) => s.text.includes(conname))
+    || stmts.find((s) => classifyConstraintSource(s) === "CREATE_TABLE" && s.text.includes(table));
+  if (!src) throw new Error("no source statement for constraint " + e.effectId);
+  return { effectId: e.effectId, objectType: e.objectType, migrationVersion: e.migrationVersion, finalAuthorityMigration: e.finalAuthorityMigration,
+    constraintName: conname, table, sourceKind: src.text.includes(conname) ? "named" : "inline_create_table",
+    statementOrdinal: src.ordinal, startLine: src.startLine, sourceSha256: src.sha256 };
+});
+const constraintMap = { note: "Each PK/FK/UNIQUE/CHECK effect → the exact migration statement (by constraint name) that creates it, with source SHA-256.", auditSchemaVersion: AUDIT_SCHEMA, statements: constraintStatements };
+const constraintMapJson = JSON.stringify(constraintMap, null, 2) + "\n";
+writeFileSync(AUD + "/foundry_migration_constraint_statement_map.json", constraintMapJson);
+
+// 4) COMPONENT DIGESTS
+const migrationChecksums = Object.fromEntries(Object.entries(MIG_FILES).map(([v, f]) => [v, shaFile(MIG + "/" + f)]));
 const auditQueryBodyDigest = shaFile(MP + "/audit-query-body.sql");
 const provenanceDigest = shaFile(AUD + "/foundry_migration_provenance.json");
-const securityStatementMapDigest = sha(statementMapJson);
+const securityStatementMapDigest = sha(securityMapJson);
+const constraintStatementMapDigest = sha(constraintMapJson);
+
+// 5) BUILD the single-statement live SQL; obtain the EMPIRICAL runtime-query digest by executing it.
+const body = readFileSync(MP + "/audit-query-body.sql", "utf8").trimEnd();
+const ZERO = "0".repeat(64);
+function buildSql(packetId, runtimeDigest) {
+  const lit = (s) => "'" + String(s).replace(/'/g, "''") + "'";
+  return [
+    "-- ============================================================================",
+    "-- GENERATED — do not hand-edit. Regenerate: bash scripts/migration-proof/build-expected-manifest.sh",
+    "-- Runtime-attested read-only live audit for migrations 20260726-20260729 (Slice R2.5). ONE",
+    "-- statement. Run in a trusted runner (psql -f) that exposes current_query(); returns one JSON",
+    "-- value (column \"audit\") whose actualRuntimeQueryDigest MEASURES the statement that actually ran",
+    "-- (only the self-referential packetId + expectedRuntimeQueryDigest literals are canonicalized).",
+    "-- STRICTLY read-only. Authorizes NO repair or apply.",
+    "-- ============================================================================",
+    "select json_build_object(",
+    "  'auditSchemaVersion', " + lit(AUDIT_SCHEMA) + ",",
+    "  'auditPacketVersion', " + lit(PACKET_VERSION) + ",",
+    "  'runtimeQueryContractVersion', " + lit(RUNTIME_CONTRACT) + ",",
+    "  'comparatorContractVersion', " + lit(COMPARATOR_CONTRACT) + ",",
+    "  'packetId', " + lit(packetId) + ",",
+    "  'expectedManifestDigest', " + lit(expectedManifestDigest) + ",",
+    "  'provenanceDigest', " + lit(provenanceDigest) + ",",
+    "  'securityStatementMapDigest', " + lit(securityStatementMapDigest) + ",",
+    "  'constraintStatementMapDigest', " + lit(constraintStatementMapDigest) + ",",
+    "  'auditQueryBodyDigest', " + lit(auditQueryBodyDigest) + ",",
+    "  'migrationChecksums', " + lit(JSON.stringify(migrationChecksums)) + "::json,",
+    "  'expectedRuntimeQueryDigest', " + lit(runtimeDigest) + ",",
+    "  'actualRuntimeQueryDigest', encode(sha256(convert_to(",
+    "    regexp_replace(",
+    "      regexp_replace(current_query(), $q1$('packetId', ')[0-9a-f]{64}(')$q1$, $r1$\\1__PID__\\2$r1$, 'g'),",
+    "      $q2$('expectedRuntimeQueryDigest', ')[0-9a-f]{64}(')$q2$, $r2$\\1__RQD__\\2$r2$, 'g'),",
+    "    'UTF8')), 'hex'),",
+    "  'serverVersionNum', current_setting('server_version_num')::int,",
+    "  'effects', (",
+    body.split("\n").map((l) => "    " + l).join("\n"),
+    "  )",
+    ") as audit;",
+    "",
+  ].join("\n");
+}
+const runtimeDigestOf = (sqlText) => {
+  const tmp = "/tmp/bty-audit-v.sql";
+  writeFileSync(tmp, sqlText);
+  const out = execFileSync("psql", ["-tAq", "-f", tmp], { encoding: "utf8" });
+  return JSON.parse(out).actualRuntimeQueryDigest;
+};
+const expectedRuntimeQueryDigest = runtimeDigestOf(buildSql(ZERO, ZERO)); // placeholder self-refs → canonicalized away
+
+// 6) PACKET ID binds every component including the runtime-query digest (non-circular).
 const components = {
   auditSchemaVersion: AUDIT_SCHEMA, packetVersion: PACKET_VERSION, comparatorContractVersion: COMPARATOR_CONTRACT,
-  expectedManifestDigest, provenanceDigest, securityStatementMapDigest, auditQueryBodyDigest, migrationChecksums,
+  runtimeQueryContractVersion: RUNTIME_CONTRACT, expectedManifestDigest, provenanceDigest, securityStatementMapDigest,
+  constraintStatementMapDigest, auditQueryBodyDigest, expectedRuntimeQueryDigest, migrationChecksums,
 };
 const packetId = sha(JSON.stringify(components));
 
 const manifest = {
-  generatorVersion: "r2.4", generator: "scripts/migration-proof/build-expected-manifest.sh",
+  generatorVersion: "r2.5", generator: "scripts/migration-proof/build-expected-manifest.sh",
   regenCommand: "bash scripts/migration-proof/build-expected-manifest.sh",
   auditQuery: "docs/audit/foundry_migration_provenance_readonly.sql",
   auditQueryBody: "scripts/migration-proof/audit-query-body.sql",
   provenanceRef: "docs/audit/foundry_migration_provenance.json",
   securityStatementMapRef: "docs/audit/foundry_migration_security_statement_map.json",
+  constraintStatementMapRef: "docs/audit/foundry_migration_constraint_statement_map.json",
   auditSchemaVersion: AUDIT_SCHEMA, auditPacketVersion: PACKET_VERSION, comparatorContractVersion: COMPARATOR_CONTRACT,
+  runtimeQueryContractVersion: RUNTIME_CONTRACT,
   postgresServerVersionNum: Number(process.env.SVN), functionBodyChecking: "on",
-  migrationChecksums, auditQueryBodyDigest, provenanceDigest, securityStatementMapDigest, expectedManifestDigest, packetId,
-  note: "Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729. Privileges = exact aclexplode tuples (not effective access).",
+  migrationChecksums, auditQueryBodyDigest, provenanceDigest, securityStatementMapDigest, constraintStatementMapDigest,
+  expectedManifestDigest, expectedRuntimeQueryDigest, packetId,
+  note: "Runtime-attested. Privileges = exact aclexplode tuples. PK/FK/UNIQUE/CHECK are first-class. submit_followup finalAuthority=20260729.",
   effectCount: effects.length, effects,
 };
 writeFileSync(AUD + "/foundry_migration_expected_catalog.json", JSON.stringify(manifest, null, 2) + "\n");
 
-// 4) GENERATED self-authenticating LIVE SQL (body inlined verbatim + injected packet metadata)
-const body = readFileSync(MP + "/audit-query-body.sql", "utf8").trimEnd();
-const lit = (s) => "'" + String(s).replace(/'/g, "''") + "'";
-const sql = [
-  "-- ============================================================================",
-  "-- GENERATED — do not hand-edit. Regenerate: bash scripts/migration-proof/build-expected-manifest.sh",
-  "-- Self-authenticating read-only live audit for migrations 20260726-20260729 (Slice R2.4).",
-  "-- Paste into the Supabase SQL Editor and run. Returns ONE row / ONE JSON value (column \"audit\")",
-  "-- carrying the packetId + every component digest, so the comparator can prove exactly which",
-  "-- manifest / migration files / security map / query body / comparator contract produced it.",
-  "-- STRICTLY read-only (pg_catalog / information_schema / aclexplode). Authorizes NO repair or apply.",
-  "-- ============================================================================",
-  "select json_build_object(",
-  "  'auditSchemaVersion', " + lit(AUDIT_SCHEMA) + ",",
-  "  'auditPacketVersion', " + lit(PACKET_VERSION) + ",",
-  "  'packetId', " + lit(packetId) + ",",
-  "  'expectedManifestDigest', " + lit(expectedManifestDigest) + ",",
-  "  'provenanceDigest', " + lit(provenanceDigest) + ",",
-  "  'securityStatementMapDigest', " + lit(securityStatementMapDigest) + ",",
-  "  'auditQueryBodyDigest', " + lit(auditQueryBodyDigest) + ",",
-  "  'comparatorContractVersion', " + lit(COMPARATOR_CONTRACT) + ",",
-  "  'migrationChecksums', " + lit(JSON.stringify(migrationChecksums)) + "::json,",
-  "  'serverVersionNum', current_setting('server_version_num')::int,",
-  "  'effects', (",
-  body.split("\n").map((l) => "    " + l).join("\n"),
-  "  )",
-  ") as audit;",
-  "",
-].join("\n");
-writeFileSync(AUD + "/foundry_migration_provenance_readonly.sql", sql);
+// 7) Emit the FINAL SQL and self-check the runtime digest is invariant under real packetId/RQD.
+const finalSql = buildSql(packetId, expectedRuntimeQueryDigest);
+writeFileSync(AUD + "/foundry_migration_provenance_readonly.sql", finalSql);
+const selfCheck = runtimeDigestOf(finalSql);
+if (selfCheck !== expectedRuntimeQueryDigest) throw new Error(`runtime-digest self-check FAILED: ${selfCheck} vs ${expectedRuntimeQueryDigest}`);
 
-process.stdout.write(`packetId ${packetId} | effects ${effects.length} | statements ${statements.length}\n`);
+process.stdout.write(`packetId ${packetId} | effects ${effects.length} | sec-stmts ${securityStatements.length} | con-stmts ${constraintStatements.length} | runtimeDigest ${expectedRuntimeQueryDigest.slice(0, 12)}… (self-check OK)\n`);

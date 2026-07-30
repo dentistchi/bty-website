@@ -200,31 +200,37 @@ export function assertManifestIntegrity(expected: ExpectedManifest): void {
 }
 
 /** The comparator contract version — bound into packetId; a change invalidates every packet. */
-export const COMPARATOR_CONTRACT_VERSION = "r2.4";
+export const COMPARATOR_CONTRACT_VERSION = "r2.5";
 
-/** Self-authenticating packet metadata (Gate 5). The CLI recomputes `expected` from the checked-in
- * files; `live` is what the generated audit SQL embedded. Every field must agree. */
+/** Self-authenticating packet metadata (Gate 5/9). The CLI recomputes `expected` from the checked-in
+ * files; `live` is what the generated audit SQL embedded. Every field must agree, and the live
+ * result additionally carries `actualRuntimeQueryDigest` measured from current_query(). */
 export interface PacketMeta {
   auditSchemaVersion: string;
   auditPacketVersion: string;
+  runtimeQueryContractVersion: string;
   packetId: string;
   expectedManifestDigest: string;
   provenanceDigest: string;
   securityStatementMapDigest: string;
+  constraintStatementMapDigest: string;
   auditQueryBodyDigest: string;
+  expectedRuntimeQueryDigest: string;
   comparatorContractVersion: string;
   migrationChecksums: Record<string, string>;
 }
 
 const PACKET_FIELDS: (keyof PacketMeta)[] = [
-  "auditSchemaVersion", "auditPacketVersion", "packetId", "expectedManifestDigest", "provenanceDigest",
-  "securityStatementMapDigest", "auditQueryBodyDigest", "comparatorContractVersion",
+  "auditSchemaVersion", "auditPacketVersion", "runtimeQueryContractVersion", "packetId", "expectedManifestDigest",
+  "provenanceDigest", "securityStatementMapDigest", "constraintStatementMapDigest", "auditQueryBodyDigest",
+  "expectedRuntimeQueryDigest", "comparatorContractVersion",
 ];
 
-/** Self-authenticating handshake (Gates 6–7): verify EVERY packet-identity component of the live
- * result against `expected` (recomputed from the checked-in authoritative files), then the effect
- * set. Throws AuditPacketError on ANY mismatch — comparison must not proceed after a failure. */
-export function assertPacketHandshake(expected: PacketMeta, live: LiveAudit & Partial<PacketMeta>): void {
+/** Self-authenticating handshake (Gates 6–7–9): verify EVERY packet-identity component of the live
+ * result against `expected` (recomputed from the checked-in authoritative files), verify the ACTUAL
+ * executed-query digest equals the embedded expectation (Gate 1), then the effect set. Throws
+ * AuditPacketError on ANY mismatch — comparison must not proceed after a failure. */
+export function assertPacketHandshake(expected: PacketMeta, live: LiveAudit & Partial<PacketMeta> & { actualRuntimeQueryDigest?: string }): void {
   if (!live || typeof live !== "object") throw new AuditPacketError("live audit is not an object");
   if (!Array.isArray(live.effects)) throw new AuditPacketError("live audit has no effects array (truncated?)");
   if (typeof live.serverVersionNum !== "number") throw new AuditPacketError("live audit missing serverVersionNum");
@@ -240,6 +246,11 @@ export function assertPacketHandshake(expected: PacketMeta, live: LiveAudit & Pa
   for (const k of keys) {
     if (expected.migrationChecksums[k] !== live.migrationChecksums[k]) throw new AuditPacketError(`migrationChecksums[${k}] mismatch — audited migration changed without a regenerated packet`);
   }
+  // Gate 1 — the ACTUAL statement that ran must match the contract (self-labeling is not enough).
+  if (!live.actualRuntimeQueryDigest) throw new AuditPacketError("live audit missing actualRuntimeQueryDigest");
+  if (live.actualRuntimeQueryDigest !== live.expectedRuntimeQueryDigest) {
+    throw new AuditPacketError(`EXECUTED QUERY DIGEST MISMATCH — the statement that ran (${String(live.actualRuntimeQueryDigest).slice(0, 12)}…) is not the generated audit query (${String(live.expectedRuntimeQueryDigest).slice(0, 12)}…). Re-run the UNEDITED generated SQL in a trusted runner`);
+  }
   // Effect-set integrity.
   const seen = new Set<string>();
   for (const e of live.effects) {
@@ -253,9 +264,11 @@ export function assertPacketHandshake(expected: PacketMeta, live: LiveAudit & Pa
 export function computePacketId(c: Omit<PacketMeta, "packetId">): string {
   const components = {
     auditSchemaVersion: c.auditSchemaVersion, packetVersion: c.auditPacketVersion,
-    comparatorContractVersion: c.comparatorContractVersion, expectedManifestDigest: c.expectedManifestDigest,
-    provenanceDigest: c.provenanceDigest, securityStatementMapDigest: c.securityStatementMapDigest,
-    auditQueryBodyDigest: c.auditQueryBodyDigest, migrationChecksums: c.migrationChecksums,
+    comparatorContractVersion: c.comparatorContractVersion, runtimeQueryContractVersion: c.runtimeQueryContractVersion,
+    expectedManifestDigest: c.expectedManifestDigest, provenanceDigest: c.provenanceDigest,
+    securityStatementMapDigest: c.securityStatementMapDigest, constraintStatementMapDigest: c.constraintStatementMapDigest,
+    auditQueryBodyDigest: c.auditQueryBodyDigest, expectedRuntimeQueryDigest: c.expectedRuntimeQueryDigest,
+    migrationChecksums: c.migrationChecksums,
   };
   return createHash("sha256").update(JSON.stringify(components)).digest("hex");
 }

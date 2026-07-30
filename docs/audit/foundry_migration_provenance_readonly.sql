@@ -1,21 +1,29 @@
 -- ============================================================================
 -- GENERATED — do not hand-edit. Regenerate: bash scripts/migration-proof/build-expected-manifest.sh
--- Self-authenticating read-only live audit for migrations 20260726-20260729 (Slice R2.4).
--- Paste into the Supabase SQL Editor and run. Returns ONE row / ONE JSON value (column "audit")
--- carrying the packetId + every component digest, so the comparator can prove exactly which
--- manifest / migration files / security map / query body / comparator contract produced it.
--- STRICTLY read-only (pg_catalog / information_schema / aclexplode). Authorizes NO repair or apply.
+-- Runtime-attested read-only live audit for migrations 20260726-20260729 (Slice R2.5). ONE
+-- statement. Run in a trusted runner (psql -f) that exposes current_query(); returns one JSON
+-- value (column "audit") whose actualRuntimeQueryDigest MEASURES the statement that actually ran
+-- (only the self-referential packetId + expectedRuntimeQueryDigest literals are canonicalized).
+-- STRICTLY read-only. Authorizes NO repair or apply.
 -- ============================================================================
 select json_build_object(
-  'auditSchemaVersion', 'r2.4',
-  'auditPacketVersion', 'r2.4',
-  'packetId', 'b841a33b189ac9b8121a4c4edd48c8662c630d483f0391cec05fa71ac244cd35',
-  'expectedManifestDigest', 'ccb5c71fb5956e771b489d5395bc691a770e0cc1309d7cac7739f58eba44fd6d',
+  'auditSchemaVersion', 'r2.5',
+  'auditPacketVersion', 'r2.5',
+  'runtimeQueryContractVersion', 'r2.5',
+  'comparatorContractVersion', 'r2.5',
+  'packetId', '8d87c4b16393e030b6c0da906750db5f69ae4a671c00c63468cb0c4f47242152',
+  'expectedManifestDigest', 'a9918fea779bfb02f8aa0ffb3aece5d49f9305222c7920210c593c4c1bb6e733',
   'provenanceDigest', '22fc47c918287661027f041c69647cd28f41491fcc69740b6519afbd81f42767',
-  'securityStatementMapDigest', 'f0d46b8b9aa4a13188c578e173183b9257e98d72a168cea5b7ea1aa5ff63120d',
-  'auditQueryBodyDigest', '4ea030f1a098b1693e3a7da1b8484568e10635c35bf828c01fd229629fed9c0f',
-  'comparatorContractVersion', 'r2.4',
+  'securityStatementMapDigest', 'fdedf36b1ecfef7050ea1f028532ce7726cf44003f208dd7608c2315b384f8d9',
+  'constraintStatementMapDigest', '0feca8be701ad7e87becdf9cf7b55f00aba792275d1614d4df3386a786fe11d9',
+  'auditQueryBodyDigest', '6611d63efa7fbad4deefd17d5bfd51d7cff34b47281cc44e0aee5f534e41dfab',
   'migrationChecksums', '{"20260726000000":"8231a657c173dd99b9faa3872a895873fc98ca8b7d092f0cbfd0ccfc27624cd1","20260727000000":"b06b376232b874f1138bdb0419f4113b7decd38a8e0869a052a4af784c6c7cad","20260728000000":"381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027","20260729000000":"abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2"}'::json,
+  'expectedRuntimeQueryDigest', '38758e7dfe439ef13af7670db6445a387fd8f16f13adab8c99e0bde367185f7f',
+  'actualRuntimeQueryDigest', encode(sha256(convert_to(
+    regexp_replace(
+      regexp_replace(current_query(), $q1$('packetId', ')[0-9a-f]{64}(')$q1$, $r1$\1__PID__\2$r1$, 'g'),
+      $q2$('expectedRuntimeQueryDigest', ')[0-9a-f]{64}(')$q2$, $r2$\1__RQD__\2$r2$, 'g'),
+    'UTF8')), 'hex'),
   'serverVersionNum', current_setting('server_version_num')::int,
   'effects', (
     -- CANONICAL audit query BODY (Slice 3.2I-R5B1A.1-R2.4). Returns ONE json array of effects. It is
@@ -54,19 +62,59 @@ select json_build_object(
       from unnest(array['foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit']) as t
       where exists (select 1 from information_schema.tables it where it.table_schema='public' and it.table_name=t)
     ),
-    cons(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
-      select 'constraint:public.'||c.conrelid::regclass::text||'.'||c.conname, 'constraint',
-             c.conrelid::regclass::text||'.'||c.conname,
-             case when c.conrelid::regclass::text like '%followup%' then 'g28' else 'g26' end,
-             jsonb_build_object('contype',c.contype::text),
+    -- Ordered column names for a constraint key array (conkey / confkey) on a given relation.
+    -- (inlined per constraint below via lateral subselects)
+    -- PRIMARY KEY — first-class (Gate 4): ordered keys + deferrability + validation + exact def.
+    pk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+      select 'pk:'||c.conrelid::regclass::text||'.'||c.conname, 'pk', c.conrelid::regclass::text||'.'||c.conname,
+             case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+             jsonb_build_object('contype','p','table',c.conrelid::regclass::text,
+               'keys',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+               'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
              md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
              'structured+digest', true, null::text
-      from pg_constraint c
-      where c.connamespace='public'::regnamespace
+      from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='p'
+        and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+    ),
+    -- FOREIGN KEY — first-class (Gate 5): full behavioral contract, not just the target name.
+    fk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+      select 'fk:'||c.conrelid::regclass::text||'.'||c.conname, 'fk', c.conrelid::regclass::text||'.'||c.conname,
+             case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+             jsonb_build_object('contype','f','table',c.conrelid::regclass::text,
+               'sourceColumns',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+               'refTable',c.confrelid::regclass::text,
+               'refColumns',(select jsonb_agg(a.attname order by k.ord) from unnest(c.confkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.confrelid and a.attnum=k.attnum),
+               'onUpdate',c.confupdtype,'onDelete',c.confdeltype,'matchType',c.confmatchtype,
+               'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
+             md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
+             'structured+digest', true, null::text
+      from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='f'
+        and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+    ),
+    -- UNIQUE — first-class (Gate 6): ordered keys + nulls-not-distinct + deferrability + validation.
+    uniq(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+      select 'unique:'||c.conrelid::regclass::text||'.'||c.conname, 'unique', c.conrelid::regclass::text||'.'||c.conname,
+             case when c.conrelid::regclass::text like '%shared_review%' then 'g26' else 'g28' end,
+             jsonb_build_object('contype','u','table',c.conrelid::regclass::text,
+               'keys',(select jsonb_agg(a.attname order by k.ord) from unnest(c.conkey) with ordinality k(attnum,ord) join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.attnum),
+               'nullsNotDistinct',(select not i.indnullsnotdistinct is not true from pg_index i where i.indexrelid=c.conindid),
+               'deferrable',c.condeferrable,'initiallyDeferred',c.condeferred,'validated',c.convalidated),
+             md5(regexp_replace(pg_get_constraintdef(c.oid),'\s+',' ','g')),
+             'structured+digest', true, null::text
+      from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='u'
+        and c.conrelid::regclass::text in ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
+    ),
+    -- CHECK — first-class (Gate 6): exact expression digest + validation + no-inherit + identity.
+    chk(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
+      select 'check:'||c.conrelid::regclass::text||'.'||c.conname, 'check', c.conrelid::regclass::text||'.'||c.conname,
+             case when c.conrelid::regclass::text like '%followup%' then 'g28' else 'g26' end,
+             jsonb_build_object('contype','c','table',c.conrelid::regclass::text,'validated',c.convalidated,'noInherit',c.connoinherit),
+             encode(sha256(convert_to(pg_get_constraintdef(c.oid),'UTF8')),'hex'),
+             'structured+body_digest', true, null::text
+      from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='c'
         and c.conrelid::regclass::text in (
           'foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit',
           'foundry_event_training_progress','foundry_event_training_content','foundry_event_document_content')
-        and c.contype in ('c','u')
     ),
     idx(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
       select 'index:public.'||ic.relname, 'index', 'public.'||ic.relname,
@@ -158,7 +206,9 @@ select json_build_object(
         ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
     ),
     allrows as (
-      select * from cols union all select * from tbls union all select * from cons union all select * from idx
+      select * from cols union all select * from tbls
+      union all select * from pk union all select * from fk union all select * from uniq union all select * from chk
+      union all select * from idx
       union all select * from fns union all select * from rls union all select * from pol
       union all select * from facl union all select * from tacl
     )

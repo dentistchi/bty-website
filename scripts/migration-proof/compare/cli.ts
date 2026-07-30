@@ -34,13 +34,18 @@ try {
     "20260728000000": shaFile(`${MIG}/20260728000000_foundry_participant_followups_v1.sql`),
     "20260729000000": shaFile(`${MIG}/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql`),
   };
+  const m = expected as unknown as { auditPacketVersion?: string; runtimeQueryContractVersion?: string; expectedRuntimeQueryDigest?: string };
   const base = {
-    auditSchemaVersion: expected.auditSchemaVersion!, auditPacketVersion: (expected as { auditPacketVersion?: string }).auditPacketVersion!,
-    comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
+    auditSchemaVersion: expected.auditSchemaVersion!, auditPacketVersion: m.auditPacketVersion!,
+    runtimeQueryContractVersion: m.runtimeQueryContractVersion!, comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
     expectedManifestDigest: sha(JSON.stringify(expected.effects)),
     provenanceDigest: shaFile("docs/audit/foundry_migration_provenance.json"),
     securityStatementMapDigest: shaFile("docs/audit/foundry_migration_security_statement_map.json"),
+    constraintStatementMapDigest: shaFile("docs/audit/foundry_migration_constraint_statement_map.json"),
     auditQueryBodyDigest: shaFile("scripts/migration-proof/audit-query-body.sql"),
+    // The runtime-query digest is empirical (measured by executing the SQL); trust the manifest's
+    // stored value here and let the packetId binding + the live actual==expected check enforce it.
+    expectedRuntimeQueryDigest: m.expectedRuntimeQueryDigest!,
     migrationChecksums,
   };
   const expectedMeta: PacketMeta = { ...base, packetId: computePacketId(base) };

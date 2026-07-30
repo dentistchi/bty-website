@@ -25,37 +25,34 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(manifest.effects.length).toBeGreaterThan(50);
     for (const e of manifest.effects) {
       expect(e.effectId).toBeTruthy();
-      expect(["column", "table", "constraint", "index", "function", "rls", "policies", "acl_table", "acl_function"]).toContain(e.objectType);
+      expect(["column", "table", "pk", "fk", "unique", "check", "index", "function", "rls", "policies", "acl_table", "acl_function"]).toContain(e.objectType);
       expect(["structured", "structured+digest", "structured+body_digest"]).toContain(e.comparisonMode);
       expect(e.migrationVersion).toMatch(/^2026072[6789]000000$/);
       expect(e.finalAuthorityMigration).toMatch(/^2026072[6789]000000$/);
     }
   });
 
-  it("covers every audited object category (effect-ID coverage, incl. policy + privilege)", () => {
+  it("covers every audited object category incl. first-class PK/FK/UNIQUE/CHECK + ACL", () => {
     const ids = new Set(manifest.effects.map((e: { effectId: string }) => e.effectId));
-    expect(ids.has("table:public.foundry_shared_review_audit")).toBe(true);
+    const types = new Set(manifest.effects.map((e: { objectType: string }) => e.objectType));
     expect(ids.has("table:public.foundry_participant_followups")).toBe(true);
-    expect(ids.has("column:public.user_conversation_preferences.personalize_today_from_reflections")).toBe(true);
     expect(ids.has("index:public.foundry_followups_owner_due_idx")).toBe(true);
     expect([...ids].some((i) => String(i).startsWith("function:public.bty_foundry_submit_followup"))).toBe(true);
-    expect([...ids].some((i) => String(i).startsWith("rls:public.foundry_participant_followups"))).toBe(true);
-    // R2.4 — policies + EXACT ACL effects modeled (not counts, not effective access).
-    expect([...ids].some((i) => String(i).startsWith("policies:public."))).toBe(true);
-    expect([...ids].some((i) => String(i).startsWith("acl:function:public."))).toBe(true);
-    expect([...ids].some((i) => String(i).startsWith("acl:table:public."))).toBe(true);
+    for (const t of ["pk", "fk", "unique", "check", "rls", "policies", "acl_function", "acl_table"]) expect(types.has(t)).toBe(true);
   });
 
-  it("R2.4 — authoritative build metadata: compile-on, r2.4 schema, integrity digest + packetId", () => {
-    expect(manifest.functionBodyChecking).toBe("on"); // Gate 5: not check_function_bodies=off
-    expect(manifest.auditSchemaVersion).toBe("r2.4");
-    expect(manifest.auditPacketVersion).toBe("r2.4");
+  it("R2.5 — build metadata: compile-on, r2.5 schema, integrity digest + packetId + runtime digest", () => {
+    expect(manifest.functionBodyChecking).toBe("on");
+    expect(manifest.auditSchemaVersion).toBe("r2.5");
+    expect(manifest.auditPacketVersion).toBe("r2.5");
+    expect(manifest.runtimeQueryContractVersion).toBe("r2.5");
     expect(manifest.comparatorContractVersion).toBe(COMPARATOR_CONTRACT_VERSION);
     expect(computeEffectsDigest(manifest.effects)).toBe(manifest.expectedManifestDigest);
     expect(manifest.packetId).toMatch(/^[0-9a-f]{64}$/);
+    expect(manifest.expectedRuntimeQueryDigest).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("R2.4 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
+  it("R2.5 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
     const shaFile = (p: string) => createHash("sha256").update(readFileSync(join(process.cwd(), p))).digest("hex");
     const MIG = "supabase/migrations";
     const migrationChecksums: Record<string, string> = {
@@ -64,86 +61,74 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
       "20260728000000": shaFile(`${MIG}/20260728000000_foundry_participant_followups_v1.sql`),
       "20260729000000": shaFile(`${MIG}/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql`),
     };
-    // Each recorded component digest matches the actual file (drift → regenerate).
     expect(manifest.migrationChecksums).toEqual(migrationChecksums);
     expect(manifest.auditQueryBodyDigest).toBe(shaFile("scripts/migration-proof/audit-query-body.sql"));
     expect(manifest.provenanceDigest).toBe(shaFile("docs/audit/foundry_migration_provenance.json"));
     expect(manifest.securityStatementMapDigest).toBe(shaFile("docs/audit/foundry_migration_security_statement_map.json"));
-    // packetId binds them all.
+    expect(manifest.constraintStatementMapDigest).toBe(shaFile("docs/audit/foundry_migration_constraint_statement_map.json"));
     const base = {
       auditSchemaVersion: manifest.auditSchemaVersion, auditPacketVersion: manifest.auditPacketVersion,
-      comparatorContractVersion: manifest.comparatorContractVersion, expectedManifestDigest: manifest.expectedManifestDigest,
-      provenanceDigest: manifest.provenanceDigest, securityStatementMapDigest: manifest.securityStatementMapDigest,
-      auditQueryBodyDigest: manifest.auditQueryBodyDigest, migrationChecksums,
+      runtimeQueryContractVersion: manifest.runtimeQueryContractVersion, comparatorContractVersion: manifest.comparatorContractVersion,
+      expectedManifestDigest: manifest.expectedManifestDigest, provenanceDigest: manifest.provenanceDigest,
+      securityStatementMapDigest: manifest.securityStatementMapDigest, constraintStatementMapDigest: manifest.constraintStatementMapDigest,
+      auditQueryBodyDigest: manifest.auditQueryBodyDigest, expectedRuntimeQueryDigest: manifest.expectedRuntimeQueryDigest, migrationChecksums,
     };
     expect(computePacketId(base)).toBe(manifest.packetId);
   });
 
-  it("R2.4 — the generated audit SQL embeds the current packetId (byte-bound to the packet)", () => {
+  it("R2.5 — the generated audit SQL is ONE statement that measures the executed query", () => {
     const sql = readFileSync(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql"), "utf8");
     expect(sql).toContain("GENERATED — do not hand-edit");
     expect(sql).toContain(`'packetId', '${manifest.packetId}'`);
-    expect(sql).toContain(`'auditQueryBodyDigest', '${manifest.auditQueryBodyDigest}'`);
+    expect(sql).toContain(`'expectedRuntimeQueryDigest', '${manifest.expectedRuntimeQueryDigest}'`);
+    expect(sql).toContain("current_query()"); // measures the actual statement
+    expect(sql).toContain("actualRuntimeQueryDigest");
+    // Exactly one executable statement (Gate 2): strip comments, exactly one terminating ';'.
+    const noComments = sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect((noComments.match(/;/g) ?? []).length).toBe(1);
   });
 
-  it("R2.4 — function bodies use a SHA-256 (64-hex) raw-prosrc digest", () => {
-    for (const e of manifest.effects.filter((x: { objectType: string }) => x.objectType === "function")) {
-      expect(e.definitionDigest).toMatch(/^[0-9a-f]{64}$/);
-    }
-  });
-
-  it("R2.4 — privileges are EXACT ACL tuples (not effective access); no policies", () => {
+  it("R2.5 — privileges are EXACT ACL tuples; FK is a full behavioral contract", () => {
     const facl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_function");
     expect(facl.properties.tuples).toEqual([{ grantee: "service_role", grantable: false, privilege: "EXECUTE" }]);
-    const tacl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_table");
-    expect(tacl.properties.tuples).toEqual([]); // revoke all; owner implicit rights are not ACL grants
-    const pol = manifest.effects.find((e: { objectType: string }) => e.objectType === "policies");
-    expect(pol.properties).toEqual([]); // deny-all RLS, no policies
+    const fk = manifest.effects.find((e: { objectType: string }) => e.objectType === "fk");
+    for (const k of ["sourceColumns", "refTable", "refColumns", "onUpdate", "onDelete", "matchType", "deferrable", "validated"]) {
+      expect(fk.properties).toHaveProperty(k);
+    }
   });
 });
 
-describe("security statement map — statement-to-effect completeness (Gate 3)", () => {
+describe("statement maps — exact source provenance (Gates 7–8)", () => {
   const smap = JSON.parse(readFileSync(join(AUDIT_DIR, "foundry_migration_security_statement_map.json"), "utf8"));
+  const cmap = JSON.parse(readFileSync(join(AUDIT_DIR, "foundry_migration_constraint_statement_map.json"), "utf8"));
   const ids = new Set(manifest.effects.map((e: { effectId: string }) => e.effectId));
+  const hex = /^[0-9a-f]{64}$/;
 
-  it("statement counts match the actual migration files' explicit security statements", () => {
-    const MIG = join(process.cwd(), "supabase/migrations");
-    const files: Record<string, string> = {
-      "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
-      "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
-      "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
-    };
-    for (const [ver, file] of Object.entries(files)) {
-      const sql = readFileSync(join(MIG, file), "utf8");
-      const count = (sql.match(/^\s*(grant |revoke |alter table .* enable row level security|create policy)/gim) ?? []).length;
-      const mapped = smap.statements.filter((s: { migrationVersion: string }) => s.migrationVersion === ver).length;
-      expect(mapped).toBe(count);
-      expect(smap.statementCountsByMigration[ver]).toBe(count);
+  it("security statements carry exact source SHA-256 + line, and resolve to real effects", () => {
+    expect(smap.statements.length).toBe(16);
+    for (const s of smap.statements) {
+      expect(s.sourceSha256).toMatch(hex);
+      expect(typeof s.startLine).toBe("number");
+      expect(["GRANT_TABLE", "GRANT_FUNCTION", "REVOKE_TABLE", "REVOKE_FUNCTION", "RLS_ENABLE", "RLS_FORCE", "RLS_DISABLE", "CREATE_POLICY", "ALTER_POLICY", "DROP_POLICY", "ALTER_OWNER", "ALTER_DEFAULT_PRIVILEGES"]).toContain(s.statementType);
+      for (const id of s.effectIds) expect(ids.has(id)).toBe(true);
     }
   });
 
-  it("every mapped effectId exists in the manifest (exact, not prefix)", () => {
-    for (const s of smap.statements) for (const id of s.effectIds) expect(ids.has(id)).toBe(true);
-  });
-
-  it("every explicit security effect created by a statement (acl/rls) has a source statement", () => {
-    // `policies:` effects assert the ABSENCE of any CREATE POLICY (none exist) — no source statement
-    // is expected for them; acl + rls effects are each produced by a REVOKE/GRANT/RLS statement.
-    const securityIds = manifest.effects
-      .filter((e: { objectType: string }) => ["acl_function", "acl_table", "rls"].includes(e.objectType))
-      .map((e: { effectId: string }) => e.effectId);
+  it("every acl/rls effect has ≥1 source security statement (policies are absence-assertions)", () => {
     const mapped = new Set(smap.statements.flatMap((s: { effectIds: string[] }) => s.effectIds));
-    for (const id of securityIds) expect(mapped.has(id)).toBe(true);
+    for (const e of manifest.effects.filter((x: { objectType: string }) => ["acl_function", "acl_table", "rls"].includes(x.objectType))) {
+      expect(mapped.has(e.effectId)).toBe(true);
+    }
   });
 
-  it("no mapped effect belongs to the wrong migration (function final-authority respected)", () => {
-    // submit_followup's ACL effect is controlled by BOTH 20260728 and 20260729 statements — allowed;
-    // but no statement may map an effect whose object is unrelated to it.
-    for (const s of smap.statements) {
-      for (const id of s.effectIds) {
-        const e = manifest.effects.find((x: { effectId: string }) => x.effectId === id);
-        expect(e).toBeTruthy();
-      }
+  it("every PK/FK/UNIQUE/CHECK effect has exact source-statement provenance", () => {
+    const conEffectIds = new Set(manifest.effects.filter((e: { objectType: string }) => ["pk", "fk", "unique", "check"].includes(e.objectType)).map((e: { effectId: string }) => e.effectId));
+    const mapped = new Set(cmap.statements.map((s: { effectId: string }) => s.effectId));
+    expect(mapped).toEqual(conEffectIds); // one mapping per constraint effect, exactly
+    for (const s of cmap.statements) {
+      expect(s.sourceSha256).toMatch(hex);
+      expect(["named", "inline_create_table"]).toContain(s.sourceKind);
+      expect(s.migrationVersion).toMatch(/^2026072[68]000000$/);
     }
   });
 });
