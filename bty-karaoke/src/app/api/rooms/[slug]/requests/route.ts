@@ -5,7 +5,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseYoutubeVideoId } from '@/domain/youtube';
 import { CreateRequestSchema } from '@/lib/validation';
-import { addRequest, getPublicRoomBySlug, listActiveRequests } from '@/lib/rooms.server';
+import {
+  addRequest,
+  getPublicRoomBySlug,
+  listActiveRequests,
+  toGuestPublicRequest,
+} from '@/lib/rooms.server';
 import { requestAcceptance } from '@/lib/sessions.server';
 import { resolveEventAccess, getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
@@ -28,7 +33,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   return NextResponse.json(
     {
       room,
-      requests,
+      // BUILD 20M-SERVER-R3.1A — explicit Guest-safe projection. The raw row carries
+      // idempotency_key / session_id / room_id and must NEVER reach a public reader
+      // (harvesting the key turned the 18B replay into an ownership oracle).
+      requests: requests.map(toGuestPublicRequest),
       event: event ? { id: event.id, name: event.name, status: event.status } : null,
     },
     // V7.1 PART J: the guest screen polls this to detect an End the instant it
@@ -136,7 +144,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       ok: true,
       // `replayed` lets the client know a retry recovered the SAME row (no duplicate).
       replayed: result.outcome === 'replayed',
-      request,
+      // Same Guest-safe projection as the GET. The submitter already knows their own
+      // key, but a REPLAY returns the matching row — which on this public route must
+      // never carry that row's internal columns back out.
+      request: toGuestPublicRequest(request),
       status,
       activeCount,
       cancelToken,

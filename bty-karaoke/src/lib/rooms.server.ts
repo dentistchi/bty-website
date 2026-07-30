@@ -1164,6 +1164,63 @@ export async function setRequestLyrics(
   return { outcome: data ? 'ok' : 'not_found' };
 }
 
+// ── Public GUEST queue read model (BUILD 20M-SERVER-R3.1A) ─────────────────
+// The ONE projection the public, unauthenticated guest request API returns.
+//
+// SECURITY. This endpoint previously returned the raw `karaoke_requests` row
+// (`select('*')` handed straight to NextResponse.json), which shipped
+// `idempotency_key`, `session_id` and `room_id` to any reader who knew the room
+// slug. That made the BUILD 18B replay path an ownership oracle: harvest a
+// victim's {idempotency_key, youtube_video_id, guest_name} from this response,
+// POST that triple, get `replayed`, and the route signs a cancel capability for
+// the victim's request — which the cancel and ready routes then accept.
+//
+// The fix is an ALLOWLIST BY CONSTRUCTION: every field is named explicitly
+// below, so a column added to the table can never reach a guest without a
+// deliberate edit here. The internal `KaraokeRequest` row stays private and is
+// never returned directly — DJ/admin/display paths keep their own contracts.
+// Fields are the measured union of what the native Guest app and the web guest
+// actually read; nothing is carried over merely because it used to be present.
+
+/** The public, Guest-safe shape of one queued request. NOT a database row. */
+export interface GuestPublicRequest {
+  id: string;
+  guest_name: string;
+  search_query: string | null;
+  youtube_video_id: string;
+  youtube_title: string | null;
+  youtube_channel_title: string | null;
+  position: number;
+  status: RequestStatus;
+  /** V6 ready-to-sing signal (null = not readied). */
+  ready_at: string | null;
+  /** The Event this request belongs to — the client scopes its own state by it. */
+  event_id: string | null;
+}
+
+/**
+ * Project an internal request row to the public Guest shape. Explicit field list
+ * = the security boundary; never spread the row, never delete keys from it.
+ *
+ * Deliberately ABSENT (and must stay absent): idempotency_key (capability-recovery
+ * material), session_id, room_id, and every lyrics_* / *_at lifecycle column no
+ * guest client reads.
+ */
+export function toGuestPublicRequest(r: KaraokeRequest): GuestPublicRequest {
+  return {
+    id: r.id,
+    guest_name: r.guest_name,
+    search_query: r.search_query,
+    youtube_video_id: r.youtube_video_id,
+    youtube_title: r.youtube_title,
+    youtube_channel_title: r.youtube_channel_title,
+    position: r.position,
+    status: r.status,
+    ready_at: r.ready_at,
+    event_id: r.event_id,
+  };
+}
+
 // ── Public display / full-queue read model ─────────────────────────────────
 // The single safe projection the iPad Display and the guest full-queue board
 // both render. NEVER exposes session_id, dj_secret, the room UUID, or any
