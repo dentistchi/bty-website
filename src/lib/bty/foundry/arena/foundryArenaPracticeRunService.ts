@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import type { ArenaScenarioDraft, SelectedPath } from "@/domain/foundry/arena-draft/types";
+import {
+  coerceStoredPath,
+  mergeSelectedPath,
+  validateSelectedPath,
+  type PathInput,
+} from "@/domain/foundry/arena-draft/path";
 
 /**
  * Foundry Guided Arena Builder — practice discovery + run service (Slice 3.0B).
@@ -47,7 +53,14 @@ export function canAccessPractice(
   return isApprovedMember || practice.published_by === userId;
 }
 
-type PracticeRunRow = { id: string; practice_id: string; user_id: string; status: string; completed_at: string | null };
+type PracticeRunRow = {
+  id: string;
+  practice_id: string;
+  user_id: string;
+  status: string;
+  completed_at: string | null;
+  selected_path?: unknown;
+};
 
 // ---------------------------------------------------------------------------
 // Discovery
@@ -143,20 +156,24 @@ export async function startPracticeRun(
   admin: SupabaseClient,
   userId: string,
   practiceId: string,
-): Promise<ServiceResult<{ runId: string; resumed: boolean }>> {
+): Promise<ServiceResult<{ runId: string; resumed: boolean; selectedPath: SelectedPath | null }>> {
   const practice = await getPlayablePractice(admin, practiceId);
   if (!practice) return { ok: false, reason: "practice_not_available" };
 
+  // Resume an in-progress run AND its stored decision path (Slice 3.2I — server-
+  // authoritative branch restoration; the client renders the same branch it left).
   const { data: existing } = await admin
     .from("foundry_arena_practice_runs")
-    .select("id")
+    .select("id, selected_path")
     .eq("user_id", userId)
     .eq("practice_id", practiceId)
     .eq("status", "in_progress")
     .order("started_at", { ascending: false })
     .limit(1)
-    .maybeSingle<{ id: string }>();
-  if (existing) return { ok: true, value: { runId: existing.id, resumed: true } };
+    .maybeSingle<{ id: string; selected_path: unknown }>();
+  if (existing) {
+    return { ok: true, value: { runId: existing.id, resumed: true, selectedPath: coerceStoredPath(existing.selected_path) } };
+  }
 
   const { data, error } = await admin
     .from("foundry_arena_practice_runs")
@@ -164,7 +181,55 @@ export async function startPracticeRun(
     .select("id")
     .single<{ id: string }>();
   if (error || !data) return { ok: false, reason: error?.message ?? "practice_run_start_failed" };
-  return { ok: true, value: { runId: data.id, resumed: false } };
+  return { ok: true, value: { runId: data.id, resumed: false, selectedPath: null } };
+}
+
+/**
+ * Record (idempotently) the learner's cumulative decision path on their own run, after
+ * validating every id against the AUTHORITATIVE published snapshot (Slice 3.2I). Fails
+ * closed on unknown/cross-branch/out-of-order ids, cross-user or cross-practice runs, or
+ * a primary change mid-run. Returns the canonical stored path. Never trusts client text.
+ */
+export async function recordSelectedPath(
+  admin: SupabaseClient,
+  userId: string,
+  practiceId: string,
+  runId: string,
+  input: PathInput,
+): Promise<ServiceResult<{ selectedPath: SelectedPath }>> {
+  const practice = await getPlayablePractice(admin, practiceId);
+  if (!practice) return { ok: false, reason: "practice_not_available" };
+
+  const { data: run } = await admin
+    .from("foundry_arena_practice_runs")
+    .select("id, practice_id, user_id, status, completed_at, selected_path")
+    .eq("id", runId)
+    .eq("user_id", userId)
+    .eq("practice_id", practiceId)
+    .maybeSingle<PracticeRunRow>();
+  if (!run) return { ok: false, reason: "practice_run_not_found" };
+
+  const validated = validateSelectedPath(practice.scenario_snapshot, input);
+  if (!validated.ok) return { ok: false, reason: validated.reason };
+
+  const existing = coerceStoredPath(run.selected_path);
+  const merged = mergeSelectedPath(existing, validated.value);
+  if (!merged.ok) return { ok: false, reason: merged.reason };
+
+  // A completed run's evidence is immutable — accept only an identical (idempotent) write.
+  if (run.status === "completed") {
+    const same = JSON.stringify(existing) === JSON.stringify(merged.value);
+    return same ? { ok: true, value: { selectedPath: merged.value } } : { ok: false, reason: "run_completed" };
+  }
+
+  const { error } = await admin
+    .from("foundry_arena_practice_runs")
+    .update({ selected_path: merged.value })
+    .eq("id", runId)
+    .eq("user_id", userId)
+    .eq("status", "in_progress");
+  if (error) return { ok: false, reason: error.message };
+  return { ok: true, value: { selectedPath: merged.value } };
 }
 
 /**

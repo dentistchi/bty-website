@@ -17,7 +17,7 @@
  * No DB, no I/O, no providers, no display strings.
  */
 
-import type { ActionDecisionChoice, ArenaScenarioDraft, ScenarioDraftChoice } from "./types";
+import { isBranchAware, type ActionDecisionChoice, type ArenaScenarioDraft, type ScenarioDraftChoice } from "./types";
 
 export type QualityValidation = {
   ok: boolean;
@@ -195,7 +195,10 @@ const ASYMMETRY_BLOCK = 6;
  * Run the difficult-choice gate on a STRUCTURALLY-VALID draft. Assumes the schema
  * validator has already passed (phases + cardinality present). Pure.
  */
-export function validateDifficultChoice(draft: ArenaScenarioDraft): QualityValidation {
+export function validateDifficultChoice(
+  draft: ArenaScenarioDraft,
+  opts: { branchMode?: boolean } = {},
+): QualityValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -243,21 +246,27 @@ export function validateDifficultChoice(draft: ArenaScenarioDraft): QualityValid
     warnings.push("escalation_repeats_opening");
   }
 
-  // 6. Branch coherence — the SHARED escalation must not presuppose a specific prior
-  //    action that only some Primary choices took (the flat schema has one escalation
-  //    for every path). Heuristic; documented as anti-pattern rejection, not a semantic
-  //    proof of compatibility.
-  if (matchesAny(draft.tradeoff.escalationText, BRANCH_PRESUPPOSE_PATTERNS)) {
-    errors.push("branch_incoherent_escalation");
-  }
+  // 6 & 7 are FLAT-ONLY coherence rules: they exist because a flat scenario shows ONE
+  // shared escalation to every path. In branch mode (Slice 3.2I) each escalation is
+  // legitimately primary-specific and a branch may reference its OWN primary's action,
+  // so these rules are skipped — cross-branch coherence is enforced structurally by the
+  // parser (keys ↔ primary ids) and the per-branch checks below.
+  if (!opts.branchMode) {
+    // 6. Branch coherence — the SHARED escalation must not presuppose a specific prior
+    //    action that only some Primary choices took (the flat schema has one escalation
+    //    for every path). Heuristic; anti-pattern rejection, not a semantic proof.
+    if (matchesAny(draft.tradeoff.escalationText, BRANCH_PRESUPPOSE_PATTERNS)) {
+      errors.push("branch_incoherent_escalation");
+    }
 
-  // 7. Branch coherence — a follow-on (Tradeoff or Action) choice must not reference an
-  //    artifact/action a branch may never have produced ("stand by your original
-  //    message"). Branch-neutral back-references are allowed.
-  for (const c of [...draft.tradeoff.choices, ...draft.actionDecision.choices]) {
-    if (matchesAny(textOf(c), BRANCH_ARTIFACT_PATTERNS)) {
-      errors.push("branch_incoherent_reference");
-      break;
+    // 7. Branch coherence — a follow-on (Tradeoff or Action) choice must not reference an
+    //    artifact/action a branch may never have produced ("stand by your original
+    //    message"). Branch-neutral back-references are allowed.
+    for (const c of [...draft.tradeoff.choices, ...draft.actionDecision.choices]) {
+      if (matchesAny(textOf(c), BRANCH_ARTIFACT_PATTERNS)) {
+        errors.push("branch_incoherent_reference");
+        break;
+      }
     }
   }
 
@@ -276,4 +285,36 @@ export function validateDifficultChoice(draft: ArenaScenarioDraft): QualityValid
   // de-dupe stable codes
   const uniq = (a: string[]) => Array.from(new Set(a));
   return { ok: errors.length === 0, errors: uniq(errors), warnings: uniq(warnings) };
+}
+
+/**
+ * Difficult-choice gate for a whole scenario, branch-aware (Slice 3.2I). For a legacy
+ * flat draft this is exactly `validateDifficultChoice`. For a branch-aware draft it runs
+ * the gate INDEPENDENTLY on every branch (the shared primary + that branch's escalation /
+ * tradeoff / action) in branch mode, and prefixes each branch's error codes with its
+ * key so a single obvious-answer branch fails the whole draft. Assumes the draft already
+ * passed structural validation (`validateArenaScenarioDraft`). Pure.
+ */
+export function validateBranchedScenario(draft: ArenaScenarioDraft): QualityValidation {
+  if (!isBranchAware(draft)) return validateDifficultChoice(draft);
+
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  for (const [key, branch] of Object.entries(draft.branches)) {
+    // Synthesize a flat draft for this branch: shared opening + primary, this branch's
+    // continuation. Branch mode skips the flat-only escalation/artifact rules.
+    const perBranch = validateDifficultChoice(
+      {
+        title: draft.title,
+        opening: draft.opening,
+        primary: draft.primary,
+        tradeoff: { escalationText: branch.escalationText, choices: branch.tradeoffChoices },
+        actionDecision: branch.actionDecision,
+      },
+      { branchMode: true },
+    );
+    for (const e of perBranch.errors) errors.push(`branch:${key}:${e}`);
+    for (const w of perBranch.warnings) warnings.push(`branch:${key}:${w}`);
+  }
+  return { ok: errors.length === 0, errors, warnings };
 }

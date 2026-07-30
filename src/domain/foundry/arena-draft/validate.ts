@@ -28,6 +28,7 @@ import {
   type ActionDecisionChoice,
   type ArenaScenarioDraft,
   type GuidedAnswers,
+  type ScenarioBranch,
   type ScenarioDraftChoice,
 } from "./types";
 
@@ -83,6 +84,13 @@ function allDraftText(draft: ArenaScenarioDraft): string[] {
   for (const c of draft.primary.choices ?? []) out.push(c.label);
   for (const c of draft.tradeoff.choices ?? []) out.push(c.label);
   for (const c of draft.actionDecision.choices ?? []) out.push(c.label);
+  // Branch-aware (Slice 3.2I): sweep every branch's learner-facing text too.
+  for (const b of Object.values(draft.branches ?? {})) {
+    out.push(b.escalationText, b.actionDecision.prompt);
+    if (b.resultingWorldState) out.push(b.resultingWorldState);
+    for (const c of b.tradeoffChoices ?? []) out.push(c.label);
+    for (const c of b.actionDecision.choices ?? []) out.push(c.label);
+  }
   return out;
 }
 
@@ -121,6 +129,76 @@ function validateChoiceList(
     if (!isNonEmptyString(label)) errors.push(`${phase}_choice_empty_label`);
     else if (label.trim().length > CHOICE_LABEL_MAX) errors.push(`${phase}_choice_label_too_long`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Branch validation (Slice 3.2I) — per-primary causal branches. Fail-closed.
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate the `branches` map of a branch-aware draft against the primary choice ids.
+ * Every primary id must have exactly one structurally-valid branch; no orphan keys, no
+ * missing branches. A malformed branch fails the whole draft (never flattened to legacy).
+ */
+function validateBranches(branchesRaw: unknown, primaryIds: string[], errors: string[]): void {
+  if (!isObject(branchesRaw)) {
+    errors.push("branches_invalid");
+    return;
+  }
+  const keys = Object.keys(branchesRaw);
+  const primarySet = new Set(primaryIds);
+  for (const k of keys) if (!primarySet.has(k)) errors.push("branch_orphan_key");
+  for (const pid of primaryIds) if (!keys.includes(pid)) errors.push("branch_missing");
+
+  // Branch choice ids must be GLOBALLY unique across all branches (+ distinct from the
+  // primary ids) so the runtime can unambiguously reject a cross-branch selection.
+  const seen = new Set<string>(primaryIds);
+
+  for (const b of Object.values(branchesRaw)) {
+    if (!isObject(b)) {
+      errors.push("branch_invalid");
+      continue;
+    }
+    if (b.resultingWorldState !== undefined && typeof b.resultingWorldState !== "string") {
+      errors.push("branch_world_state_invalid");
+    }
+    if (!isNonEmptyString(b.escalationText)) errors.push("branch_missing_escalation");
+    else if (b.escalationText.trim().length > ESCALATION_MAX) errors.push("branch_escalation_too_long");
+    validateChoiceList(b.tradeoffChoices, "branch_tradeoff", TRADEOFF_CHOICES_MIN, TRADEOFF_CHOICES_MAX, seen, errors);
+    if (!isObject(b.actionDecision)) {
+      errors.push("branch_action_missing");
+    } else {
+      if (!isNonEmptyString(b.actionDecision.prompt)) errors.push("branch_missing_action_prompt");
+      else if (b.actionDecision.prompt.trim().length > ACTION_PROMPT_MAX) errors.push("branch_action_prompt_too_long");
+      validateChoiceList(b.actionDecision.choices, "branch_action", ACTION_CHOICES_MIN, ACTION_CHOICES_MAX, seen, errors);
+      const choices = Array.isArray(b.actionDecision.choices) ? b.actionDecision.choices : [];
+      if (!choices.some((c) => isObject(c) && (c as ActionDecisionChoice).isActionCommitment === true)) {
+        errors.push("branch_no_action_commitment");
+      }
+      for (const c of choices) {
+        if (isObject(c) && typeof (c as { isActionCommitment?: unknown }).isActionCommitment !== "boolean") {
+          errors.push("branch_action_choice_missing_commitment_flag");
+        }
+      }
+    }
+  }
+}
+
+/** Normalize one validated branch (trimmed strings, projected choice fields). */
+function normalizeBranch(b: ScenarioBranch): ScenarioBranch {
+  const choice = (c: ScenarioDraftChoice): ScenarioDraftChoice => ({ id: c.id.trim(), label: c.label.trim() });
+  const actionChoice = (c: ActionDecisionChoice): ActionDecisionChoice => ({
+    id: c.id.trim(),
+    label: c.label.trim(),
+    isActionCommitment: c.isActionCommitment === true,
+  });
+  const ws = typeof b.resultingWorldState === "string" ? b.resultingWorldState.trim() : "";
+  return {
+    ...(ws.length > 0 ? { resultingWorldState: ws } : {}),
+    escalationText: b.escalationText.trim(),
+    tradeoffChoices: b.tradeoffChoices.map(choice),
+    actionDecision: { prompt: b.actionDecision.prompt.trim(), choices: b.actionDecision.choices.map(actionChoice) },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +262,17 @@ export function validateArenaScenarioDraft(draft: unknown): DraftValidation {
     }
   }
 
+  // Branches (Slice 3.2I) — only when present. A branch-aware draft must still carry
+  // valid flat fields (legacy fallback) AND one valid branch per primary choice id.
+  if ((d as { branches?: unknown }).branches !== undefined) {
+    const primaryIds = isObject(d.primary)
+      ? (Array.isArray(d.primary.choices) ? d.primary.choices : [])
+          .filter((c): c is ScenarioDraftChoice => isObject(c) && isNonEmptyString((c as { id?: unknown }).id))
+          .map((c) => c.id.trim())
+      : [];
+    validateBranches((d as { branches?: unknown }).branches, primaryIds, errors);
+  }
+
   // Sensitive-info sweep across every learner-facing string (advisory).
   if (errors.length === 0) {
     for (const s of allDraftText(draft as ArenaScenarioDraft)) {
@@ -221,6 +310,15 @@ export function parseArenaScenarioDraft(
     tradeoff: { escalationText: r.tradeoff.escalationText.trim(), choices: r.tradeoff.choices.map(choice) },
     actionDecision: { prompt: r.actionDecision.prompt.trim(), choices: r.actionDecision.choices.map(actionChoice) },
   };
+
+  // Slice 3.2I — PRESERVE branches (the historical flattening bug: this projection
+  // dropped every unknown key). Validation above already proved the branch map valid.
+  if (r.branches && isObject(r.branches)) {
+    const branches: Record<string, ScenarioBranch> = {};
+    for (const [key, b] of Object.entries(r.branches)) branches[key] = normalizeBranch(b as ScenarioBranch);
+    value.branches = branches;
+  }
+
   return { ok: true, value, warnings: v.warnings };
 }
 

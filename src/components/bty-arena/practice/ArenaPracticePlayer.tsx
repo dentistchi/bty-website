@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import { isBranchAware, type ArenaScenarioDraft, type ScenarioDraftChoice, type SelectedPath } from "@/domain/foundry/arena-draft/types";
+import type { PathInput } from "@/domain/foundry/arena-draft/path";
 import { EliteArenaStep2Context } from "@/components/bty-arena/EliteArenaStep2Context";
 
 /**
@@ -87,33 +88,108 @@ function SectionHeading({ children }: { children: string }) {
   return <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-bty-navy/60">{children}</h3>;
 }
 
+/**
+ * Restore the phase + selected primary from a stored path (Slice 3.2I). A path whose
+ * primary no longer exists in the scenario is treated as corrupt → safe restart at the
+ * opening (never guess another branch).
+ */
+function restoreFrom(scenario: ArenaScenarioDraft, path: SelectedPath | null | undefined): { phase: Phase; primaryId: string | null } {
+  if (!path) return { phase: "opening", primaryId: null };
+  const known = scenario.primary.choices.some((c) => c.id === path.primaryChoiceId);
+  const branchOk = !isBranchAware(scenario) || !!scenario.branches[path.primaryChoiceId];
+  if (!known || !branchOk) return { phase: "opening", primaryId: null };
+  if (path.actionChoiceId) return { phase: "complete", primaryId: path.primaryChoiceId };
+  if (path.tradeoffChoiceId) return { phase: "action", primaryId: path.primaryChoiceId };
+  return { phase: "tradeoff", primaryId: path.primaryChoiceId };
+}
+
 export function ArenaPracticePlayer({
   scenario,
   locale,
   mode,
   sourceTrainingTitle,
+  initialPath,
   onExit,
   onComplete,
+  onPath,
 }: {
   scenario: ArenaScenarioDraft;
   locale: string;
   mode: "test" | "play";
   sourceTrainingTitle?: string;
+  /** Play mode — the run's stored decision path, to restore the branch after reload. */
+  initialPath?: SelectedPath | null;
   onExit: () => void;
   onComplete?: () => void;
+  /** Play mode — persist each cumulative decision-path write (server-authoritative). */
+  onPath?: (input: PathInput) => void;
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [phase, setPhase] = useState<Phase>("opening");
+  const restored = restoreFrom(scenario, initialPath);
+  const [phase, setPhase] = useState<Phase>(restored.phase);
+  const [selectedPrimaryId, setSelectedPrimaryId] = useState<string | null>(restored.primaryId);
+  const [selectedTradeoffId, setSelectedTradeoffId] = useState<string | null>(
+    restored.primaryId ? (initialPath?.tradeoffChoiceId ?? null) : null,
+  );
   const completedRef = useRef(false);
 
-  const goComplete = useCallback(() => {
-    setPhase("complete");
-    if (mode === "play" && !completedRef.current) {
-      completedRef.current = true;
-      onComplete?.();
+  // The continuation the learner is actually walking: a branch-aware scenario resolves
+  // branches[selectedPrimaryId]; a legacy flat scenario uses the shared continuation.
+  const active = (() => {
+    if (isBranchAware(scenario) && selectedPrimaryId && scenario.branches[selectedPrimaryId]) {
+      const b = scenario.branches[selectedPrimaryId];
+      return { escalationText: b.escalationText, tradeoffChoices: b.tradeoffChoices, actionDecision: b.actionDecision };
     }
-  }, [mode, onComplete]);
+    return {
+      escalationText: scenario.tradeoff.escalationText,
+      tradeoffChoices: scenario.tradeoff.choices,
+      actionDecision: scenario.actionDecision,
+    };
+  })();
+
+  // Every write sends the FULL cumulative path so far (the server merge is monotonic).
+  const writePath = useCallback(
+    (path: PathInput) => {
+      if (mode !== "play" || !onPath || !path.primaryChoiceId) return;
+      onPath(path);
+    },
+    [mode, onPath],
+  );
+
+  const onPrimary = useCallback(
+    (choice: ScenarioDraftChoice) => {
+      setSelectedPrimaryId(choice.id);
+      setSelectedTradeoffId(null);
+      writePath({ primaryChoiceId: choice.id });
+      setPhase("tradeoff");
+    },
+    [writePath],
+  );
+
+  const onTradeoff = useCallback(
+    (choice: ScenarioDraftChoice) => {
+      setSelectedTradeoffId(choice.id);
+      if (selectedPrimaryId) writePath({ primaryChoiceId: selectedPrimaryId, tradeoffChoiceId: choice.id });
+      setPhase("action");
+    },
+    [writePath, selectedPrimaryId],
+  );
+
+  const goComplete = useCallback(
+    (actionChoiceId?: string) => {
+      // Persist the full path (primary + tradeoff + action) BEFORE marking complete.
+      if (selectedPrimaryId && selectedTradeoffId) {
+        writePath({ primaryChoiceId: selectedPrimaryId, tradeoffChoiceId: selectedTradeoffId, actionChoiceId });
+      }
+      setPhase("complete");
+      if (mode === "play" && !completedRef.current) {
+        completedRef.current = true;
+        onComplete?.();
+      }
+    },
+    [mode, onComplete, writePath, selectedPrimaryId, selectedTradeoffId],
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-1 pb-8">
@@ -146,7 +222,7 @@ export function ArenaPracticePlayer({
           <EliteArenaStep2Context title={scenario.title} contextBody={scenario.opening} locale={loc} />
           <SectionHeading>{t.yourChoice}</SectionHeading>
           {scenario.primary.choices.map((c) => (
-            <ChoiceCard key={c.id} label={c.label} onSelect={() => setPhase("tradeoff")} />
+            <ChoiceCard key={c.id} label={c.label} onSelect={() => onPrimary(c)} />
           ))}
         </div>
       ) : null}
@@ -155,11 +231,11 @@ export function ArenaPracticePlayer({
         <div className="flex flex-col gap-3">
           <SectionHeading>{t.itGetsHarder}</SectionHeading>
           <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-bty-navy/90">
-            {scenario.tradeoff.escalationText}
+            {active.escalationText}
           </p>
           <div className="mt-1 flex flex-col gap-2.5">
-            {scenario.tradeoff.choices.map((c) => (
-              <ChoiceCard key={c.id} label={c.label} onSelect={() => setPhase("action")} />
+            {active.tradeoffChoices.map((c) => (
+              <ChoiceCard key={c.id} label={c.label} onSelect={() => onTradeoff(c)} />
             ))}
           </div>
         </div>
@@ -168,10 +244,10 @@ export function ArenaPracticePlayer({
       {phase === "action" ? (
         <div className="flex flex-col gap-3">
           <SectionHeading>{t.decide}</SectionHeading>
-          <p className="text-[0.98rem] leading-7 text-bty-navy">{scenario.actionDecision.prompt}</p>
+          <p className="text-[0.98rem] leading-7 text-bty-navy">{active.actionDecision.prompt}</p>
           <div className="mt-1 flex flex-col gap-2.5">
-            {scenario.actionDecision.choices.map((c) => (
-              <ChoiceCard key={c.id} label={c.label} onSelect={goComplete} />
+            {active.actionDecision.choices.map((c) => (
+              <ChoiceCard key={c.id} label={c.label} onSelect={() => goComplete(c.id)} />
             ))}
           </div>
         </div>

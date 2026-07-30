@@ -104,13 +104,62 @@ export type ActionDecisionPhase = {
   choices: ActionDecisionChoice[];
 };
 
-/** The complete three-phase draft. `opening` is the realistic opening situation. */
+/**
+ * A primary choice id — for a branch-aware scenario it is ALSO the branch key
+ * (Slice 3.2I). Free-form (Foundry does not use the canonical fixed A/B/C/D ids).
+ */
+export type PrimaryChoiceId = string;
+
+/**
+ * Slice 3.2I — one causal BRANCH: the reality created by a specific PRIMARY choice.
+ * Mirrors the canonical `EscalationBranch` shape (src/domain/arena/scenarios/types.ts)
+ * but with Foundry's free-form choice ids and looser draft cardinality. `escalationText`
+ * / `tradeoffChoices` / `actionDecision` are branch-SPECIFIC — they follow from the
+ * primary choice that keys this branch, not from a shared continuation.
+ */
+export type ScenarioBranch = {
+  /** Optional plain-language "what happened because of this choice" (Manager review). */
+  resultingWorldState?: string;
+  escalationText: string;
+  tradeoffChoices: ScenarioDraftChoice[];
+  actionDecision: ActionDecisionPhase;
+};
+
+/**
+ * The complete draft. `opening` is the realistic opening situation. The flat
+ * `tradeoff` / `actionDecision` are the LEGACY shared continuation (kept for legacy
+ * drafts and as a safe fallback). When `branches` is present (Slice 3.2I) the scenario
+ * is BRANCH-AWARE: exactly one branch per primary choice id, and the runtime resolves
+ * `branches[selectedPrimaryChoiceId]` instead of the shared flat continuation.
+ */
 export type ArenaScenarioDraft = {
   title: string;
   opening: string;
   primary: PrimaryPhase;
   tradeoff: TradeoffPhase;
   actionDecision: ActionDecisionPhase;
+  /** Present → branch-aware; absent/empty → legacy flat. Keyed by primary choice id. */
+  branches?: Record<PrimaryChoiceId, ScenarioBranch>;
+};
+
+/** A scenario is branch-aware iff it carries at least one branch. Pure discriminator. */
+export function isBranchAware(
+  draft: Pick<ArenaScenarioDraft, "branches">,
+): draft is ArenaScenarioDraft & { branches: Record<PrimaryChoiceId, ScenarioBranch> } {
+  return !!draft.branches && Object.keys(draft.branches).length > 0;
+}
+
+/**
+ * Slice 3.2I — the learner's actual decision path through a run, stored server-side
+ * (`foundry_arena_practice_runs.selected_path`) as truthful behavioral evidence. Only
+ * stable choice IDs (never user-facing text, scores, or interpretation).
+ */
+export type SelectedPath = {
+  /** Schema version discriminator for the stored JSON. */
+  v: 1;
+  primaryChoiceId: string;
+  tradeoffChoiceId?: string;
+  actionChoiceId?: string;
 };
 
 // ---------------------------------------------------------------------------

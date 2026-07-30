@@ -1,6 +1,6 @@
 import { getLlmClient, getLlmModel, isLlmAvailable, type LlmChatMessage } from "@/lib/bty/llm/client";
 import { parseArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
-import { validateDifficultChoice } from "@/domain/foundry/arena-draft/quality";
+import { validateBranchedScenario } from "@/domain/foundry/arena-draft/quality";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import {
   buildTemplateScenarioDraft,
@@ -70,11 +70,13 @@ function buildLlmMessages(input: ScenarioGenInput): LlmChatMessage[] {
     "FORBIDDEN in ALL learner-facing text: correct/incorrect, right/wrong answer, best/ideal/poor choice, 'the right thing', 'you should have', moral praise or blame, or any hint of a preferred answer. Do not write reflection or essay questions.",
     "Some behaviors have a fixed correct action (safety, privacy, compliance). Do NOT invent a fake wrong version of the fact. Instead make the tension the COST of upholding the standard under pressure (e.g. upholding the rule vs speed, relationship, or cost).",
     "Plan internally the value each option protects and the cost it accepts — but DO NOT write those labels into the learner-facing copy.",
+    "PER-PRIMARY CAUSAL BRANCHING (required): the learner's PRIMARY choice must change what happens next. For EVERY primary choice id, produce a BRANCH under `branches` keyed by that exact primary id. Each branch's escalation, tradeoff choices, and action decision must follow causally from THAT primary choice — the action it took, the facts it created, the value it protected, the cost it accepted, and the NEW pressure that path creates. Do NOT reuse one shared escalation across branches, and never let a branch reference a fact or action from a DIFFERENT branch. Each branch's tradeoff and action decision must independently satisfy the difficult-choice contract above.",
+    "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
     `Write all learner-facing text in ${isKo ? "Korean" : "English"}.`,
     "Return ONLY a compact JSON object, no markdown or code fences, with EXACTLY this shape:",
-    '{"title": string, "opening": string, "primary": {"choices": [{"id": string, "label": string}] }, "tradeoff": {"escalationText": string, "choices": [{"id": string, "label": string}] }, "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] } }',
+    '{"title": string, "opening": string, "primary": {"choices": [{"id": string, "label": string}] }, "tradeoff": {"escalationText": string, "choices": [{"id": string, "label": string}] }, "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] }, "branches": { "<primaryChoiceId>": {"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"id": string, "label": string}], "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] } } } }',
     "isActionCommitment marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option.",
-    "primary: 2-4 choices. tradeoff: 2-3 choices. actionDecision: 2-3 choices. Every choice id must be a short unique stable slug (e.g. \"primary_1\"). No id may repeat across phases. No empty labels. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
+    "primary: 2-4 choices. tradeoff: 2-3 choices. actionDecision: 2-3 choices. branches: EXACTLY one key per primary choice id, no extra keys, no missing keys; each branch tradeoffChoices 2-3 and actionDecision choices 2-3 with >=1 isActionCommitment. Choice ids are short stable slugs, unique within their phase/branch. No empty labels. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
   ].join("\n");
 
   const contextLines = [
@@ -129,7 +131,7 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
     // is rejected here so it can never be silently used. Rejection → the caller falls
     // back to the authored template (which passes the same gate). Advisory quality
     // warnings ride through to the host without blocking.
-    const quality = validateDifficultChoice(result.value);
+    const quality = validateBranchedScenario(result.value);
     if (!quality.ok) {
       logGenOutcome("provider_low_quality", quality.errors[0]);
       return null;
@@ -160,7 +162,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
   // difficult-choice gate; re-run both to surface any sensitive-info or quality
   // warnings that came from the guided answers (host free text).
   const check = parseArenaScenarioDraft(draft);
-  const quality = validateDifficultChoice(draft);
+  const quality = validateBranchedScenario(draft);
   const warnings = [...(check.ok ? check.warnings : []), ...quality.warnings];
   return { draft, source: "template", warnings };
 }

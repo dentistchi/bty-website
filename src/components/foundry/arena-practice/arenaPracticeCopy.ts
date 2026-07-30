@@ -80,6 +80,9 @@ export type ArenaPracticeCopy = {
   previewAction: string;
   previewNotPlayable: string;
   previewCommitmentTag: string;
+  // Slice 3.2I — branch-aware preview (per-primary continuation)
+  previewBranchFor: string;
+  previewWhatHappensNext: string;
 
   // States / errors
   // 3.0B — test + publish
@@ -191,6 +194,8 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewAction: "Action decision",
     previewNotPlayable: "Preview only — this is a draft, not a live playable run.",
     previewCommitmentTag: "action",
+    previewBranchFor: "If the learner chooses",
+    previewWhatHappensNext: "What happens next",
 
     testInArena: "Test in Arena",
     publishToArena: "Publish to Arena",
@@ -292,6 +297,8 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewAction: "행동 결정",
     previewNotPlayable: "미리보기 전용 — 실제 플레이가 아닌 초안입니다.",
     previewCommitmentTag: "행동",
+    previewBranchFor: "학습자가 이 선택을 하면",
+    previewWhatHappensNext: "다음에 벌어지는 일",
 
     testInArena: "Arena에서 테스트",
     publishToArena: "Arena에 게시",

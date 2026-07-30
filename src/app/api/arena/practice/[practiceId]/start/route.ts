@@ -32,7 +32,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ practiceId: s
     return NextResponse.json({ error: result.reason }, { status });
   }
   return NextResponse.json(
-    { run_id: result.value.runId, resumed: result.value.resumed },
+    // selected_path (Slice 3.2I) lets the client restore the same branch/phase on reload.
+    { run_id: result.value.runId, resumed: result.value.resumed, selected_path: result.value.selectedPath },
     { status: result.value.resumed ? 200 : 201, headers: { "Cache-Control": "no-store" } },
   );
 }

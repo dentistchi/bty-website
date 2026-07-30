@@ -1,6 +1,6 @@
 "use client";
 
-import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import { isBranchAware, type ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import type { ArenaPracticeCopy } from "./arenaPracticeCopy";
 
 /**
@@ -60,28 +60,62 @@ export function ArenaScenarioPreview({
         ))}
       </section>
 
-      {/* Escalation */}
-      <section className="flex flex-col gap-2">
-        <PhaseHeading>{t.previewEscalation}</PhaseHeading>
-        <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-white/80">{draft.tradeoff.escalationText}</p>
-      </section>
-
-      {/* Tradeoff */}
-      <section className="flex flex-col gap-2.5">
-        <PhaseHeading>{t.previewTradeoff}</PhaseHeading>
-        {draft.tradeoff.choices.map((c) => (
-          <InertChoice key={c.id} label={c.label} />
-        ))}
-      </section>
-
-      {/* Action decision */}
-      <section className="flex flex-col gap-2.5">
-        <PhaseHeading>{t.previewAction}</PhaseHeading>
-        <p className="text-[0.98rem] leading-7 text-white/85">{draft.actionDecision.prompt}</p>
-        {draft.actionDecision.choices.map((c) => (
-          <InertChoice key={c.id} label={c.label} tag={c.isActionCommitment ? t.previewCommitmentTag : undefined} />
-        ))}
-      </section>
+      {isBranchAware(draft) ? (
+        // Branch-aware (Slice 3.2I): each Primary choice → its own continuation, so the
+        // Manager can verify causal continuity per path. No answer-key / commitment tag.
+        draft.primary.choices.map((pc) => {
+          const branch = draft.branches[pc.id];
+          if (!branch) return null;
+          return (
+            <section key={pc.id} className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/[0.02] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-[#C9A66B]/90">
+                {t.previewBranchFor}: <span className="text-white/85">{pc.label}</span>
+              </p>
+              {branch.resultingWorldState ? (
+                <p className="text-[0.9rem] leading-6 text-white/60">{branch.resultingWorldState}</p>
+              ) : null}
+              <div className="flex flex-col gap-2">
+                <PhaseHeading>{t.previewEscalation}</PhaseHeading>
+                <p className="whitespace-pre-wrap text-[0.95rem] leading-7 text-white/80">{branch.escalationText}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <PhaseHeading>{t.previewTradeoff}</PhaseHeading>
+                {branch.tradeoffChoices.map((c) => (
+                  <InertChoice key={c.id} label={c.label} />
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                <PhaseHeading>{t.previewAction}</PhaseHeading>
+                <p className="text-[0.95rem] leading-7 text-white/85">{branch.actionDecision.prompt}</p>
+                {branch.actionDecision.choices.map((c) => (
+                  <InertChoice key={c.id} label={c.label} />
+                ))}
+              </div>
+            </section>
+          );
+        })
+      ) : (
+        <>
+          {/* Legacy flat: shared escalation / tradeoff / action (unchanged). */}
+          <section className="flex flex-col gap-2">
+            <PhaseHeading>{t.previewEscalation}</PhaseHeading>
+            <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-white/80">{draft.tradeoff.escalationText}</p>
+          </section>
+          <section className="flex flex-col gap-2.5">
+            <PhaseHeading>{t.previewTradeoff}</PhaseHeading>
+            {draft.tradeoff.choices.map((c) => (
+              <InertChoice key={c.id} label={c.label} />
+            ))}
+          </section>
+          <section className="flex flex-col gap-2.5">
+            <PhaseHeading>{t.previewAction}</PhaseHeading>
+            <p className="text-[0.98rem] leading-7 text-white/85">{draft.actionDecision.prompt}</p>
+            {draft.actionDecision.choices.map((c) => (
+              <InertChoice key={c.id} label={c.label} tag={c.isActionCommitment ? t.previewCommitmentTag : undefined} />
+            ))}
+          </section>
+        </>
+      )}
     </div>
   );
 }
