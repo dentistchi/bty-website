@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { validateBoundary, suggestConstraints, validateConstraintAssessments, constraintId } from "./boundary";
+import { validateBoundary, suggestConstraints, validateConstraintAssessments, constraintId, boundaryChanged, normalizeBoundary } from "./boundary";
 import type { ArenaScenarioDraft } from "./types";
+import type { PracticeBoundary } from "./boundary";
 
 describe("validateBoundary", () => {
   const c = (id: string, statement: string) => ({ id, statement, provenance: "manager_entered" as const });
@@ -26,6 +27,32 @@ describe("validateBoundary", () => {
   });
   it("rejects an invalid provenance", () => {
     expect(validateBoundary({ mode: "judgment", confirmed: true, constraints: [{ id: "c1", statement: "R", provenance: "made_up" }] }).errors).toContain("constraint_provenance_invalid");
+  });
+});
+
+describe("boundaryChanged — invalidation comparator (Slice 3.2I-R5)", () => {
+  const B = (over: Partial<PracticeBoundary> = {}): PracticeBoundary => ({
+    mode: "judgment_with_constraints",
+    confirmed: true,
+    constraints: [{ id: "c1", statement: "Verify identity before treatment", provenance: "manager_entered" }],
+    ...over,
+  });
+
+  it("a previously-absent boundary counts as a change", () => {
+    expect(boundaryChanged(null, B())).toBe(true);
+  });
+  it("does NOT invalidate on a normalized-equivalent re-save (whitespace/case/order)", () => {
+    const a = B({ constraints: [{ id: "c1", statement: "Verify identity before treatment", provenance: "manager_entered" }, { id: "c2", statement: "Report the incident", provenance: "manager_entered" }] });
+    const b = B({ constraints: [{ id: "c2", statement: "  report the INCIDENT ", provenance: "manager_entered" }, { id: "c1", statement: "verify   identity before treatment", provenance: "suggested_from_problem" }] });
+    expect(boundaryChanged(a, b)).toBe(false);
+    expect(normalizeBoundary(a)).toEqual(normalizeBoundary(b));
+  });
+  it("invalidates on mode / confirmed / add / remove / statement change", () => {
+    expect(boundaryChanged(B(), B({ mode: "judgment" }))).toBe(true);
+    expect(boundaryChanged(B(), B({ confirmed: false }))).toBe(true);
+    expect(boundaryChanged(B(), B({ constraints: [...B().constraints, { id: "c2", statement: "New rule", provenance: "manager_entered" }] }))).toBe(true);
+    expect(boundaryChanged(B(), B({ constraints: [] }))).toBe(true);
+    expect(boundaryChanged(B(), B({ constraints: [{ id: "c1", statement: "Verify identity AND allergies before treatment", provenance: "manager_entered" }] }))).toBe(true);
   });
 });
 

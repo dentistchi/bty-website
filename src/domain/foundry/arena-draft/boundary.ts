@@ -79,6 +79,37 @@ export function suggestConstraints(input: SafetyClassificationInput): BoundaryCo
   return out;
 }
 
+/**
+ * Canonical, comparison-stable form of a boundary (Slice 3.2I-R5): mode + confirmed + rules
+ * sorted by id with normalized statements. Two boundaries that differ only in whitespace/case
+ * or rule order normalize identically. Pure.
+ */
+export function normalizeBoundary(b: PracticeBoundary): { mode: PracticeBoundaryMode; confirmed: boolean; constraints: Array<{ id: string; statement: string }> } {
+  const constraints = b.constraints
+    .map((c) => ({ id: c.id, statement: normalize(c.statement) }))
+    .sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+  return { mode: b.mode, confirmed: b.confirmed, constraints };
+}
+
+/**
+ * A MEANINGFUL boundary change that must invalidate an unapproved generated draft (Slice
+ * 3.2I-R5): a mode change, a confirmed-state change, a rule added or removed (by id), or a
+ * rule's statement changed. A normalized-equivalent re-save (whitespace/case/order only) does
+ * NOT count. A previously-absent boundary counts as a change. Pure.
+ */
+export function boundaryChanged(prev: PracticeBoundary | null | undefined, next: PracticeBoundary): boolean {
+  if (!prev) return true;
+  if (prev.mode !== next.mode || prev.confirmed !== next.confirmed) return true;
+  const a = new Map(prev.constraints.map((c) => [c.id, normalize(c.statement)]));
+  const b = new Map(next.constraints.map((c) => [c.id, normalize(c.statement)]));
+  if (a.size !== b.size) return true; // rule added or removed
+  for (const [id, statement] of b) {
+    if (!a.has(id)) return true; // an id changed (add/remove pair)
+    if (a.get(id) !== statement) return true; // statement edited
+  }
+  return false;
+}
+
 export type BoundaryValidation = { ok: boolean; errors: string[] };
 
 /** Validate a (client-submitted or stored) boundary. Fail-closed. Pure. */
