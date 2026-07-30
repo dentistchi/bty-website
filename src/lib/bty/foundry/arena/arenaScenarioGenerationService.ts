@@ -5,6 +5,11 @@ import {
   validateConcreteScene,
   validateIncidentSpecific,
 } from "@/domain/foundry/arena-draft/quality";
+import {
+  classifyPracticeEligibility,
+  validateConstraintCompliance,
+  type PracticeEligibility,
+} from "@/domain/foundry/arena-draft/safety";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
@@ -37,10 +42,21 @@ export type GenerationResult =
       ok: false;
       reason:
         | "generation_unavailable" // no live model configured
-        | "generation_failed" // provider error/timeout/malformed
-        | "generation_rejected" // structurally/quality gate rejected
-        | "fixed_answer_knowledge"; // KNOW/COMPLIANCE — not a judgment dilemma
+        | "generation_failed" // transport/exception/timeout — no usable content returned
+        | "generation_rejected" // content returned but malformed / gate / safety-constraint failed
+        | "fixed_answer_knowledge" // KNOW-only content — not a judgment dilemma
+        | "safety_boundary_unresolved"; // mandatory-vs-judgment boundary cannot be determined safely
     };
+
+/** Map module facts → the pure safety classifier's minimal input. */
+function eligibilityOf(facts: ModuleSourceFacts): PracticeEligibility {
+  return classifyPracticeEligibility({
+    problem: facts.problem,
+    observableBehavior: facts.observableBehavior,
+    successEvidence: facts.successEvidence,
+    learningNeeds: facts.learningNeeds,
+  });
+}
 
 /** Bounded provider timeout — generation must never hang the host's flow. */
 const LLM_TIMEOUT_MS = 15_000;
@@ -58,9 +74,17 @@ function stripJsonFences(text: string): string {
 }
 
 /** Minimal, PII-free structured context for the provider. */
-function buildLlmMessages(input: ScenarioGenInput): LlmChatMessage[] {
+function buildLlmMessages(input: ScenarioGenInput, constraints: string[]): LlmChatMessage[] {
   const { locale, facts, guided } = input;
   const isKo = locale === "ko";
+
+  const constraintLines = constraints.length
+    ? [
+        "NON-NEGOTIABLE CONSTRAINTS — mandatory rules the training establishes. EVERY primary, tradeoff, and action choice, on EVERY branch, MUST fully obey ALL of them:",
+        ...constraints.map((c) => `- ${c}`),
+        "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, patient/stakeholder communication, room/scope, staffing reassignment, escalation, or schedule recovery — with the constraint naturally embedded in the scene, not as a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, return an empty object {}.",
+      ]
+    : [];
 
   const system = [
     "You design ONE short leadership DECISION-PRACTICE scenario. Its purpose is NOT to find the right answer — it is to force a difficult choice: which legitimate value to protect, and what cost to accept, under pressure.",
@@ -90,6 +114,7 @@ function buildLlmMessages(input: ScenarioGenInput): LlmChatMessage[] {
     '{"title": string, "opening": string, "primary": {"choices": [{"id": string, "label": string}] }, "tradeoff": {"escalationText": string, "choices": [{"id": string, "label": string}] }, "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] }, "branches": { "<primaryChoiceId>": {"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"id": string, "label": string}], "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] } } } }',
     "isActionCommitment marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option.",
     "primary: 2-4 choices. tradeoff: 2-3 choices. actionDecision: 2-3 choices. branches: EXACTLY one key per primary choice id, no extra keys, no missing keys; each branch tradeoffChoices 2-3 and actionDecision choices 2-3 with >=1 isActionCommitment. Choice ids are short stable slugs, unique within their phase/branch. No empty labels. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
+    ...constraintLines,
   ].join("\n");
 
   const contextLines = [
@@ -107,8 +132,17 @@ function buildLlmMessages(input: ScenarioGenInput): LlmChatMessage[] {
   ];
 }
 
-async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaScenarioDraft; warnings: string[] } | null> {
-  if (!isLlmAvailable()) return null;
+type LlmOutcome =
+  | { ok: true; draft: ArenaScenarioDraft; warnings: string[] }
+  | { ok: false; reason: "generation_failed" | "generation_rejected" };
+
+/**
+ * One bounded provider attempt. Distinguishes a TRANSPORT failure (no usable content —
+ * generation_failed) from CONTENT that was returned but rejected by the gates
+ * (generation_rejected). `constraints` (mixed-safety content) are injected into the prompt
+ * and enforced deterministically on the output.
+ */
+async function generateWithLlm(input: ScenarioGenInput, constraints: string[]): Promise<LlmOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
@@ -116,90 +150,85 @@ async function generateWithLlm(input: ScenarioGenInput): Promise<{ draft: ArenaS
     const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
-        messages: buildLlmMessages(input),
+        messages: buildLlmMessages(input, constraints),
         temperature: 0.8,
         top_p: 0.9,
-        max_tokens: 900,
+        max_tokens: 1100,
       },
       { signal: controller.signal },
     );
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      logGenOutcome("provider_invalid", "empty_output");
-      return null;
+      logGenOutcome("provider_failed", "empty_output"); // transport-ish: no usable content
+      return { ok: false, reason: "generation_failed" };
     }
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
-      logGenOutcome("provider_invalid", "malformed_shape");
-      return null;
+      logGenOutcome("provider_rejected", "malformed_shape");
+      return { ok: false, reason: "generation_rejected" };
     }
     const result = parseArenaScenarioDraft(parsed);
     if (!result.ok) {
-      logGenOutcome("provider_invalid", result.errors[0]);
-      return null;
+      logGenOutcome("provider_rejected", result.errors[0]);
+      return { ok: false, reason: "generation_rejected" };
     }
-    // Difficult-choice gate (Slice 3.2H): a structurally-valid but OBVIOUS-ANSWER draft
-    // is rejected here so it can never be silently used. Rejection → the caller falls
-    // back to the authored template (which passes the same gate). Advisory quality
-    // warnings ride through to the host without blocking.
-    const quality = validateBranchedScenario(result.value);
-    if (!quality.ok) {
-      logGenOutcome("provider_low_quality", quality.errors[0]);
-      return null;
+    for (const [tag, gate] of [
+      ["provider_low_quality", validateBranchedScenario(result.value)],
+      ["provider_not_a_scene", validateConcreteScene(result.value)],
+      ["provider_not_specific", validateIncidentSpecific(result.value)],
+      ["provider_constraint_violation", validateConstraintCompliance(result.value)],
+    ] as const) {
+      if (!gate.ok) {
+        logGenOutcome(tag, gate.errors[0]);
+        return { ok: false, reason: "generation_rejected" };
+      }
     }
-    // Concrete-scene gate (Slice 3.2I-R1): reject a difficult-but-abstract scenario.
-    const scene = validateConcreteScene(result.value);
-    if (!scene.ok) {
-      logGenOutcome("provider_not_a_scene", scene.errors[0]);
-      return null;
-    }
-    // Incident-specificity gate (Slice 3.2I-R2): require true, non-paraphrased branches.
-    const specific = validateIncidentSpecific(result.value);
-    if (!specific.ok) {
-      logGenOutcome("provider_not_specific", specific.errors[0]);
-      return null;
-    }
-    return { draft: result.value, warnings: [...result.warnings, ...quality.warnings] };
+    const qualityWarnings = validateBranchedScenario(result.value).warnings;
+    return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings] };
   } catch {
     logGenOutcome(controller.signal.aborted ? "provider_timeout" : "provider_error");
-    return null;
+    return { ok: false, reason: "generation_failed" };
   } finally {
     clearTimeout(timer);
   }
 }
 
 /**
- * KNOW / COMPLIANCE classification (Slice 3.2I-R2). A training whose only learning need is
- * to KNOW a fact is not a judgment dilemma — forcing a difficult-choice scenario would
- * either fabricate a false tradeoff or offer an unsafe selectable path. Such a training
- * declines Arena generation. `decide` / `practice` / `shared_standard` are judgment needs.
+ * KNOW-only classification kept for back-compat (Slice 3.2I-R2). True iff the eligibility
+ * classifier returns `know_only`. Prefer `classifyPracticeEligibility` for the full set.
  */
 export function isFixedAnswerTraining(facts: ModuleSourceFacts): boolean {
-  const needs = facts.learningNeeds ?? [];
-  return needs.length > 0 && needs.every((n) => n === "know");
+  return eligibilityOf(facts).kind === "know_only";
 }
 
 /**
- * Generate one live, branch-aware, incident-specific draft — LIVE MODEL ONLY (Slice
- * 3.2I-R2). Returns a discriminated result; on no provider / provider failure / malformed
- * output / any gate rejection it FAILS SAFE with a stable reason. It NEVER returns a generic
- * deterministic scenario — a low-quality fallback is a quietly-delivered product failure.
+ * Generate one live, branch-aware, incident-specific, CONSTRAINT-SAFE draft — LIVE MODEL
+ * ONLY (Slice 3.2I-R2/R3). Practice eligibility is classified first: KNOW-only declines;
+ * an unresolved safety boundary fails safe; mixed content generates only inside the safe
+ * decision space (constraints enforced in the prompt AND on the output). It NEVER returns a
+ * generic deterministic scenario.
  */
 export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GenerationResult> {
-  if (isFixedAnswerTraining(input.facts)) {
+  const eligibility = eligibilityOf(input.facts);
+  if (eligibility.kind === "know_only") {
     logGenOutcome("declined_fixed_answer");
     return { ok: false, reason: "fixed_answer_knowledge" };
+  }
+  if (eligibility.kind === "unresolved_safety_boundary") {
+    logGenOutcome("declined_safety_unresolved");
+    return { ok: false, reason: "safety_boundary_unresolved" };
   }
   if (!isLlmAvailable()) {
     logGenOutcome("unavailable");
     return { ok: false, reason: "generation_unavailable" };
   }
-  const llm = await generateWithLlm(input);
-  if (!llm) {
-    // generateWithLlm already logged the specific outcome (error/timeout/malformed/gate).
-    return { ok: false, reason: "generation_rejected" };
+  const llm = await generateWithLlm(input, eligibility.constraints);
+  if (!llm.ok) {
+    // generateWithLlm already logged the specific outcome; it distinguishes a transport
+    // failure (generation_failed) from returned-but-rejected content (generation_rejected).
+    return { ok: false, reason: llm.reason };
   }
   logGenOutcome("generated_valid");
   return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings } };

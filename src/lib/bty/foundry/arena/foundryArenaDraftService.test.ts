@@ -181,9 +181,10 @@ function seedOwnedEventWithModule() {
         source_draft_id: "draft-77",
         module_version: 3,
         module_snapshot: {
-          problem: "People skip the safety check",
-          observableBehavior: "Raise the risk before the shortcut",
-          successEvidence: "The check is logged",
+          // Clean judgment topic (no mandatory-constraint domain) → judgment_only.
+          problem: "A teammate proposes cutting a planned design review",
+          observableBehavior: "Raise the concern before the shortcut",
+          successEvidence: "The concern is recorded",
           audienceType: "leaders",
           learningNeeds: ["shared_standard"],
           arenaRecommended: true,

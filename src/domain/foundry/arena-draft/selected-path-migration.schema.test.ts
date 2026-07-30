@@ -27,6 +27,12 @@ describe("selected_path migration — additive/nullable/idempotent", () => {
     expect(SQL).toContain("selected_path is null");
   });
 
+  it("scopes the constraint-existence guard to the TARGET table via conrelid (not name-only)", () => {
+    // A same-named constraint on another table must not suppress adding this one.
+    expect(SQL).toContain("conrelid = 'public.foundry_arena_practice_runs'::regclass");
+    expect(SQL).toMatch(/conname = 'foundry_practice_run_selected_path_object_check'\s+and\s+conrelid/);
+  });
+
   it("does NOT add a default, NOT NULL, index, backfill, RLS, or trigger", () => {
     expect(SQL).not.toContain("default");
     expect(SQL).not.toMatch(/not\s+null\s*;/); // no NOT NULL column

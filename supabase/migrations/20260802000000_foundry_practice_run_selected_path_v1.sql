@@ -26,11 +26,14 @@ alter table public.foundry_arena_practice_runs
   add column if not exists selected_path jsonb null;
 
 -- A stored path, when present, must be a JSON object (never an array/scalar).
+-- Guard is TABLE-SCOPED via conrelid (regclass), not name-only: a same-named constraint
+-- on a different table must not suppress adding this one (idempotency hardening, R3).
 do $$
 begin
   if not exists (
     select 1 from pg_constraint
     where conname = 'foundry_practice_run_selected_path_object_check'
+      and conrelid = 'public.foundry_arena_practice_runs'::regclass
   ) then
     alter table public.foundry_arena_practice_runs
       add constraint foundry_practice_run_selected_path_object_check

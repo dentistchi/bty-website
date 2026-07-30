@@ -23,6 +23,8 @@ export type EvalCase = {
   locale: "en" | "ko";
   /** Some cases are KNOW/COMPLIANCE hard-stops that must be DECLINED, not turned into a dilemma. */
   expectDecline?: boolean;
+  /** Expected eligibility class (Slice 3.2I-R3) — the harness asserts generate/decline accordingly. */
+  expectClass?: "know_only" | "judgment_only" | "mixed_with_non_negotiables" | "unresolved_safety_boundary";
   input: ScenarioGenInput;
 };
 
@@ -50,7 +52,7 @@ export const EVAL_CORPUS: EvalCase[] = [
     input: { locale: "en", facts: facts({ problem: "A customer is waiting on a fix that is only ninety percent confirmed", observableBehavior: "Communicate clearly under uncertainty" }), guided: g("time_limited", "sending it before it is confirmed could be wrong") } },
   { id: "c03-fairness-retention", dilemma: "fairness versus retention", role: "office manager", locale: "en",
     input: { locale: "en", facts: facts({ problem: "A top performer is accused of treating a teammate unfairly", observableBehavior: "Hold a fair standard consistently" }), guided: g("other_resists", "acting on it risks losing your best person") } },
-  { id: "c04-safety-hardstop", dilemma: "clinical safety hard stop", role: "clinical leader", locale: "en", expectDecline: true,
+  { id: "c04-safety-hardstop", dilemma: "clinical safety hard stop", role: "clinical leader", locale: "en", expectDecline: true, expectClass: "know_only",
     input: { locale: "en", facts: facts({ problem: "Staff must confirm two patient identifiers before medication administration", observableBehavior: "Confirm two identifiers before every dose", learningNeeds: ["know"] }), guided: g("time_limited", "the ward is busy and it feels like a delay") } },
   { id: "c05-speed-accuracy", dilemma: "operational speed versus accuracy", role: "regional manager", locale: "en",
     input: { locale: "en", facts: facts({ problem: "A dashboard executives rely on shows a figure that looks wrong during a critical week", observableBehavior: "Correct errors even when it is disruptive" }), guided: g("performance_pressure", "pausing reporting during the critical week is costly") } },
@@ -68,6 +70,15 @@ export const EVAL_CORPUS: EvalCase[] = [
     input: { locale: "ko", facts: facts({ problem: "동료의 실수를 공개적으로 책임지게 할지 관계를 지키며 조용히 처리할지 결정해야 한다", observableBehavior: "관계와 공적 책임 사이에서 판단한다" }), guided: g("other_resists", "공개하면 관계가 상한다") } },
   { id: "c12-autonomy-standardization", dilemma: "autonomy versus standardization", role: "team leader", locale: "ko",
     input: { locale: "ko", facts: facts({ problem: "팀에 자율을 줄지 공통 표준을 강제할지 정해야 한다", observableBehavior: "자율성과 표준화 사이에서 판단한다" }), guided: g("authority_unclear", "표준을 강제하면 반발이 생긴다") } },
+  // Slice 3.2I-R3 — mixed safety + judgment, and an ambiguous boundary.
+  { id: "c13-mixed-clinical", dilemma: "mixed clinical safety constraint", role: "clinical leader", locale: "en", expectClass: "mixed_with_non_negotiables",
+    input: { locale: "en", facts: facts({ problem: "Two patient identifiers must be verified before treatment begins. Decide how to pause, reassign, notify, and recover while patients are waiting.", observableBehavior: "Uphold the verification while managing the delay" }), guided: g("time_limited", "the ward is backed up and every pause costs time") } },
+  { id: "c14-mixed-privacy", dilemma: "mixed privacy constraint", role: "office manager", locale: "en", expectClass: "mixed_with_non_negotiables",
+    input: { locale: "en", facts: facts({ problem: "You must not disclose private employee information. Decide how to answer the team, investigate, and communicate timing.", observableBehavior: "Answer honestly without revealing protected details" }), guided: g("other_resists", "the team is pressing for details you cannot share") } },
+  { id: "c15-mixed-reporting", dilemma: "mixed mandatory reporting duty", role: "regional manager", locale: "en", expectClass: "mixed_with_non_negotiables",
+    input: { locale: "en", facts: facts({ problem: "A safety incident must be reported. Decide who to notify first, how much work to pause, and how to communicate.", observableBehavior: "Report the incident while managing operations" }), guided: g("performance_pressure", "reporting will disrupt a critical delivery week") } },
+  { id: "c16-ambiguous-boundary", dilemma: "ambiguous safety boundary", role: "team leader", locale: "en", expectDecline: true, expectClass: "unresolved_safety_boundary",
+    input: { locale: "en", facts: facts({ problem: "There is a recurring safety concern the team keeps raising but no clear rule has been set", observableBehavior: "Address the concern" }), guided: g("authority_unclear", "it is unclear whose call this is") } },
 ];
 
 // ---------------------------------------------------------------------------

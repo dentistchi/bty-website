@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { isLlmAvailable, getLlmModel } from "@/lib/bty/llm/client";
 import { generateArenaScenarioDraft } from "./arenaScenarioGenerationService";
 import { validateIncidentSpecific } from "@/domain/foundry/arena-draft/quality";
+import { classifyPracticeEligibility } from "@/domain/foundry/arena-draft/safety";
 import { EVAL_CORPUS, crossScenarioDiversity } from "./practice-generation.eval";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 
@@ -17,11 +18,22 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 const LIVE = process.env.RUN_LIVE_EVAL === "1";
 
 describe("practice-generation corpus is well-formed", () => {
-  it("covers >=12 cases, >=8 English, >=4 Korean, with a fixed-answer decline case", () => {
-    expect(EVAL_CORPUS.length).toBeGreaterThanOrEqual(12);
+  it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety and ambiguous-boundary cases", () => {
+    expect(EVAL_CORPUS.length).toBeGreaterThanOrEqual(16);
     expect(EVAL_CORPUS.filter((c) => c.locale === "en").length).toBeGreaterThanOrEqual(8);
     expect(EVAL_CORPUS.filter((c) => c.locale === "ko").length).toBeGreaterThanOrEqual(4);
-    expect(EVAL_CORPUS.some((c) => c.expectDecline)).toBe(true);
+    expect(EVAL_CORPUS.some((c) => c.expectClass === "know_only")).toBe(true);
+    expect(EVAL_CORPUS.filter((c) => c.expectClass === "mixed_with_non_negotiables").length).toBeGreaterThanOrEqual(3);
+    expect(EVAL_CORPUS.some((c) => c.expectClass === "unresolved_safety_boundary")).toBe(true);
+  });
+
+  it("classifies each labelled case to its expected eligibility (deterministic, no live model)", () => {
+    for (const c of EVAL_CORPUS) {
+      if (!c.expectClass) continue;
+      const f = c.input.facts;
+      const got = classifyPracticeEligibility({ problem: f.problem, observableBehavior: f.observableBehavior, successEvidence: f.successEvidence, learningNeeds: f.learningNeeds });
+      expect(got.kind, `${c.id}`).toBe(c.expectClass);
+    }
   });
 });
 

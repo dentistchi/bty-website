@@ -14,9 +14,10 @@ vi.mock("@/lib/bty/llm/client", () => ({
 import { generateArenaScenarioDraft, isFixedAnswerTraining } from "./arenaScenarioGenerationService";
 
 const facts: ModuleSourceFacts = {
-  problem: "People skip the safety check under deadline pressure",
-  observableBehavior: "Raise the risk before the shortcut is taken",
-  successEvidence: "The check is logged",
+  // A clean judgment topic (no mandatory-constraint domain) so it classifies judgment_only.
+  problem: "A teammate proposes cutting a planned design review to hit the deadline",
+  observableBehavior: "Raise the concern before the shortcut is taken",
+  successEvidence: "The concern is recorded",
   audienceType: "leaders",
   audienceDetail: null,
   learningNeeds: ["decide"],
@@ -110,10 +111,10 @@ describe("generateArenaScenarioDraft — LIVE-model only (Slice 3.2I-R2)", () =>
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("FAILS SAFE (generation_rejected) when the provider THROWS", async () => {
+  it("FAILS SAFE (generation_failed) when the provider THROWS (transport failure)", async () => {
     mockCreate.mockRejectedValue(new Error("network"));
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided });
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
   });
 
   it("rejects MALFORMED (non-JSON) provider output", async () => {
@@ -177,6 +178,30 @@ describe("generateArenaScenarioDraft — LIVE-model only (Slice 3.2I-R2)", () =>
     const r = await generateArenaScenarioDraft({ locale: "en", facts: knowFacts, guided });
     expect(r).toMatchObject({ ok: false, reason: "fixed_answer_knowledge" });
     expect(mockCreate).not.toHaveBeenCalled(); // declined before any provider call
+  });
+
+  it("FAILS SAFE (safety_boundary_unresolved) when a safety domain is implied but not established", async () => {
+    mockCreate.mockResolvedValue(aiContent(goodDraft));
+    const ambiguous: ModuleSourceFacts = { ...facts, problem: "There is a patient safety concern the team keeps raising", observableBehavior: null };
+    const r = await generateArenaScenarioDraft({ locale: "en", facts: ambiguous, guided });
+    expect(r).toMatchObject({ ok: false, reason: "safety_boundary_unresolved" });
+    expect(mockCreate).not.toHaveBeenCalled(); // declined before any provider call
+  });
+
+  it("MIXED content: rejects a draft whose choice violates a non-negotiable constraint", async () => {
+    const violating = { ...goodDraft, branches: { primary_1: { ...goodDraft.branches!.primary_1, tradeoffChoices: [{ id: "p1_t1", label: "Skip the required check to protect the schedule" }, { id: "p1_t2", label: "Complete the check and delay treatment" }] }, primary_2: goodDraft.branches!.primary_2 } };
+    mockCreate.mockResolvedValue(aiContent(violating as ArenaScenarioDraft));
+    const mixed: ModuleSourceFacts = { ...facts, problem: "Two patient identifiers must be verified before treatment. Decide how to pause, reassign, and notify.", learningNeeds: ["decide"] };
+    const r = await generateArenaScenarioDraft({ locale: "en", facts: mixed, guided });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(mockCreate).toHaveBeenCalled(); // mixed content DID attempt generation, then rejected
+  });
+
+  it("MIXED content: accepts a constraint-compliant draft", async () => {
+    mockCreate.mockResolvedValue(aiContent(goodDraft));
+    const mixed: ModuleSourceFacts = { ...facts, problem: "Two patient identifiers must be verified before treatment. Decide how to pause, reassign, and notify.", learningNeeds: ["decide"] };
+    const r = await generateArenaScenarioDraft({ locale: "en", facts: mixed, guided });
+    expect(r.ok).toBe(true);
   });
 });
 
