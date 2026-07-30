@@ -44,6 +44,31 @@ type View =
       returnTab?: HostReturnTab;
     };
 
+/**
+ * 3.2G-R3 — atomic control-room handoff. When a Host-attention target is present AT MOUNT (the
+ * in-shell Today handoff sets the event + Learn tab in the SAME commit; a direct URL sets them on the
+ * shell's mount parse), the VERY FIRST render must already be the control room — never the Foundry
+ * home. Initializing view=home and switching in a post-render effect painted the Learn root for
+ * ~0.75s (the R2 device flash). Pure so it can be unit-tested as the root-cause detector.
+ */
+export function computeInitialFoundryView(
+  initialEventId: string | null,
+  initialFocusSection: HostFocusSection | null,
+  initialFocusId: string | null,
+  initialReturnTab: HostReturnTab | null,
+): View {
+  if (initialEventId) {
+    return {
+      kind: "control",
+      eventId: initialEventId,
+      focusSection: initialFocusSection ?? undefined,
+      focusId: initialFocusId ?? undefined,
+      returnTab: initialReturnTab ?? undefined,
+    };
+  }
+  return { kind: "home" };
+}
+
 export default function FoundryEventRooms({
   locale,
   onOpenReview = () => {},
@@ -86,30 +111,30 @@ export default function FoundryEventRooms({
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[loc];
   const bt: ModuleBuilderCopy = MODULE_BUILDER_COPY[loc];
 
-  const [view, setView] = useState<View>({ kind: "home" });
+  // 3.2G-R3: lazy-initialize the view FROM the pending target so the first render is already the
+  // control room (atomic handoff — no Foundry-home flash). The effect below still covers the
+  // cold-navigation race (target arriving as a later prop UPDATE) and consumes the one-shot params.
+  const [view, setView] = useState<View>(() =>
+    computeInitialFoundryView(initialEventId, initialFocusSection, initialFocusId, initialReturnTab),
+  );
 
-  // Host Leadership Attention deep link (Slice 3.1B-3L): open the EXACT owned control room whenever the
-  // target becomes available — at first mount OR as a later prop UPDATE. This is the cold-navigation
-  // race the Commander observed on device: FoundryEventRooms can first mount with NO target (the tab
-  // flips to foundry / the surface renders before the shell's parsed event/section/focus have
-  // propagated), then receive the target a render later. A useState lazy-initializer reads
-  // initialEventId only once and would leave the view stuck on the home/event list; this effect opens
-  // control on whichever render the target first appears, EXACTLY ONCE (ref-guarded so a later back-out
-  // or param clear never re-opens it), and consumes the one-shot params only AFTER the handoff. The
-  // control room's reads are server owner-scoped, so a not-owned/invalid event resolves to an empty
-  // room (no disclosure) rather than any foreign data — client-side list matching is deliberately NOT
-  // used as the ownership gate (it would false-negative a valid deep link on a large owned-event set).
+  // Host Leadership Attention deep link (Slice 3.1B-3L; 3.2G-R3): open the EXACT owned control room
+  // whenever the target is available — atomically at mount via the lazy initializer above, OR as a
+  // later prop UPDATE (the cold-navigation race where the tab flips before the shell's event/section/
+  // focus propagate). The effect runs EXACTLY ONCE (ref-guarded); its functional updater is a no-op
+  // when the lazy initializer already opened the same control room (React bails on the same
+  // reference → no redundant render / no flash), but still consumes the one-shot params so the shell
+  // clears them (a later tab re-entry then returns to the Foundry home). Server owner-scopes the
+  // control-room reads, so a not-owned/invalid event resolves to an empty room (no disclosure).
   const deepLinkConsumedRef = useRef(false);
   useEffect(() => {
     if (initialEventId && !deepLinkConsumedRef.current) {
       deepLinkConsumedRef.current = true;
-      setView({
-        kind: "control",
-        eventId: initialEventId,
-        focusSection: initialFocusSection ?? undefined,
-        focusId: initialFocusId ?? undefined,
-        returnTab: initialReturnTab ?? undefined,
-      });
+      setView((cur) =>
+        cur.kind === "control" && cur.eventId === initialEventId
+          ? cur
+          : computeInitialFoundryView(initialEventId, initialFocusSection, initialFocusId, initialReturnTab),
+      );
       onInitialConsumed();
     }
   }, [initialEventId, initialFocusSection, initialFocusId, initialReturnTab, onInitialConsumed]);

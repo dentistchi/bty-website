@@ -9,7 +9,8 @@
  */
 import { afterEach, describe, it, expect, vi } from "vitest";
 import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
-import FoundryEventRooms from "./FoundryEventRooms";
+import { Profiler } from "react";
+import FoundryEventRooms, { computeInitialFoundryView } from "./FoundryEventRooms";
 import FoundrySharedReview from "./FoundrySharedReview";
 import FoundryFollowupStatus from "./FoundryFollowupStatus";
 
@@ -147,6 +148,56 @@ describe("FoundryEventRooms — Host deep-link target arriving as a prop update"
     // in-component home fallback), and the origin callback fires exactly once.
     expect(onReturnToOrigin).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/←/)).toBeTruthy();
+  });
+
+  // 3.2G-R3 — atomic control-room handoff (no Foundry-home flash).
+  it("(R3 root cause) computeInitialFoundryView returns control when a target is present, else home", () => {
+    expect(computeInitialFoundryView(EVENT, "followups", FOCUS, "today")).toEqual({
+      kind: "control",
+      eventId: EVENT,
+      focusSection: "followups",
+      focusId: FOCUS,
+      returnTab: "today",
+    });
+    // No target → normal Foundry home (unchanged Learn-origin behavior).
+    expect(computeInitialFoundryView(null, null, null, null)).toEqual({ kind: "home" });
+  });
+
+  it("(R3) the FIRST committed render is the control room — NO intermediate Foundry-home flash", async () => {
+    stubFetch();
+    // FoundryEventControlRoom renders its "←" Back synchronously; capturing per-commit whether "←"
+    // is in the DOM detects the R2 defect (view=home first → a leading commit with NO "←").
+    const commitHasControl: boolean[] = [];
+    render(
+      <Profiler
+        id="fer"
+        onRender={() => {
+          commitHasControl.push(Boolean(document.body.textContent?.includes("←")));
+        }}
+      >
+        <FoundryEventRooms
+          locale="en"
+          initialEventId={EVENT}
+          initialFocusSection="followups"
+          initialFocusId={FOCUS}
+          initialReturnTab="today"
+          onReturnToOrigin={vi.fn()}
+          onInitialConsumed={vi.fn()}
+        />
+      </Profiler>,
+    );
+    await waitFor(() => expect(screen.getByText(/←/)).toBeTruthy());
+    // Atomic: control present from the very first commit, and EVERY commit — never a home-first render.
+    expect(commitHasControl.length).toBeGreaterThan(0);
+    expect(commitHasControl[0]).toBe(true);
+    expect(commitHasControl.every(Boolean)).toBe(true);
+  });
+
+  it("(R3) no-target mount still renders the Foundry home (Learn-origin unchanged)", async () => {
+    stubFetch();
+    render(<FoundryEventRooms locale="en" initialEventId={null} onInitialConsumed={vi.fn()} />);
+    // Home surface (no control "←") — normal Learn entry is preserved.
+    await waitFor(() => expect(screen.queryByText(/←/)).toBeNull());
   });
 
   it("(R1) Learn-origin (no returnTab) Back returns to home and never calls onReturnToOrigin", async () => {
