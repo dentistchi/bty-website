@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { publishableSnapshot } from "@/domain/foundry/arena-draft/publish";
 import { boundaryChanged, validateBoundary } from "@/domain/foundry/arena-draft/boundary";
-import { getOwnerArenaDraft } from "./foundryArenaDraftService";
+import { getOwnerArenaDraft, PRACTICE_SETUP_VERSION } from "./foundryArenaDraftService";
 
 /**
  * Foundry Guided Arena Builder — publish service (Slice 3.0B).
@@ -81,6 +81,16 @@ export async function publishPractice(
   // draft with no boundary on either side publishes as before.
   const canonical = draft.guided_answers.practiceBoundary;
   const scenarioBoundary = publishable.snapshot.practiceBoundary;
+
+  // LIFECYCLE DISCRIMINATOR (Slice 3.2I-R5A.2). A NEW authoritative draft (has the version)
+  // is boundary-REQUIRED and cannot use the legacy boundaryless path; an unknown version
+  // fails closed. A HISTORICAL legacy draft (no version, no boundary) keeps its behavior.
+  const setupVersion = draft.guided_answers.practiceSetupVersion;
+  if (setupVersion !== undefined) {
+    if (setupVersion !== PRACTICE_SETUP_VERSION) return { ok: false, reason: "unknown_setup_version" };
+    if (!canonical) return { ok: false, reason: "boundary_confirmation_required" };
+  }
+
   if (canonical || scenarioBoundary) {
     if (!canonical || !scenarioBoundary) return { ok: false, reason: "boundary_mismatch" };
     if (!validateBoundary(canonical).ok) return { ok: false, reason: "boundary_invalid" };

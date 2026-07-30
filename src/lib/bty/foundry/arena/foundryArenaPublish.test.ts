@@ -382,3 +382,34 @@ describe("publishPractice — canonical boundary gates (R5A.1)", () => {
     expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "boundary_mismatch" });
   });
 });
+
+describe("publishPractice — lifecycle discriminator gates (R5A.2)", () => {
+  function seedNewAuthority(guidedExtra: Record<string, unknown>, sc: ArenaScenarioDraft | null, revision = 2) {
+    return {
+      id: "draft-1", owner_user_id: OWNER, source_event_id: "evt-1", source_module_version: 3, source_draft_id: "moduledraft-9",
+      status: "draft", guided_answers: guidedExtra, scenario_draft: sc, generation_source: "ai", revision, created_at: "t", updated_at: "t",
+    };
+  }
+
+  it("a NEW authoritative draft with no boundary rejects (never legacy)", async () => {
+    const { admin } = makeFakeAdmin({ drafts: [seedNewAuthority({ practiceSetupVersion: 1 }, scenario())], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+  });
+
+  it("an UNKNOWN lifecycle version fails closed", async () => {
+    const b = { mode: "judgment", confirmed: true, constraints: [] };
+    const { admin } = makeFakeAdmin({ drafts: [seedNewAuthority({ practiceSetupVersion: 99, practiceBoundary: b }, scenario({ practiceBoundary: b as never }))], events: [{ id: "evt-1", title: "X" }] });
+    expect(await publishPractice(admin, OWNER, "draft-1", 2)).toMatchObject({ ok: false, reason: "unknown_setup_version" });
+  });
+
+  it("a NEW authoritative draft with a confirmed matching boundary publishes", async () => {
+    const b = { mode: "judgment", confirmed: true, constraints: [] };
+    const { admin } = makeFakeAdmin({ drafts: [seedNewAuthority({ practiceSetupVersion: 1, practiceBoundary: b }, scenario({ practiceBoundary: b as never }))], events: [{ id: "evt-1", title: "X" }] });
+    expect((await publishPractice(admin, OWNER, "draft-1", 2)).ok).toBe(true);
+  });
+
+  it("a HISTORICAL legacy draft (no version, no boundary) still publishes", async () => {
+    const { admin } = makeFakeAdmin({ drafts: [seedNewAuthority({}, scenario())], events: [{ id: "evt-1", title: "X" }] });
+    expect((await publishPractice(admin, OWNER, "draft-1", 2)).ok).toBe(true);
+  });
+});

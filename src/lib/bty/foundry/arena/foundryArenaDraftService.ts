@@ -5,8 +5,23 @@ import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/doma
 import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, type Locale } from "./arenaScenarioGenerationService";
 
-/** The stored guided-answers value: host Q1/Q2 + the canonical, editable practice boundary. */
-type StoredGuidedAnswers = GuidedAnswers & { practiceBoundary?: PracticeBoundary };
+/**
+ * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
+ * `practiceSetupVersion`; a HISTORICAL legacy draft does not (never auto-added). A new draft
+ * is boundary-REQUIRED: absence of a boundary is NOT treated as legacy.
+ */
+export const PRACTICE_SETUP_VERSION = 1;
+
+/** The stored guided-answers value: host Q1/Q2 + lifecycle discriminator + editable boundary. */
+type StoredGuidedAnswers = GuidedAnswers & {
+  practiceSetupVersion?: number;
+  practiceBoundary?: PracticeBoundary;
+};
+
+/** True for a new authoritative draft (has the lifecycle discriminator). */
+function isNewAuthorityDraft(guided: StoredGuidedAnswers): boolean {
+  return typeof guided.practiceSetupVersion === "number";
+}
 
 /**
  * Foundry Guided Arena Builder — draft persistence (service).
@@ -61,22 +76,15 @@ export async function createArenaDraft(
   ownerUserId: string,
   input: CreateArenaDraftInput,
 ): Promise<ServiceResult<{ row: ArenaDraftRow; warnings: string[] }>> {
+  // SHELL-FIRST (Slice 3.2I-R5A.2): a new Practice begins as a canonical EMPTY draft shell —
+  // NO generation, NO provider/reviewer call. The Manager confirms a boundary next, then
+  // generation happens by draft id (regenerateArenaDraft). Source linkage is server-derived
+  // from the frozen module snapshot (never client facts); the discriminator marks it as a new
+  // authoritative draft so its missing boundary is never mistaken for a historical legacy one.
   const source = await resolveArenaSource(admin, ownerUserId, input.sourceEventId);
   if (!source.ok) return { ok: false, reason: source.reason };
 
-  const generated = await generateArenaScenarioDraft({
-    locale: input.locale,
-    facts: source.value.facts,
-    guided: input.guidedAnswers,
-  });
-  // Slice 3.2I-R2: LIVE-model only — fails safe (never a generic deterministic scenario).
-  if (!generated.ok) return { ok: false, reason: generated.reason };
-  const gen = generated.value;
-
-  // Defense: never persist an invalid structure as valid (generation guarantees
-  // validity, but the gate is the single source of truth).
-  const check = validateArenaScenarioDraft(gen.draft);
-  if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
+  const guided: StoredGuidedAnswers = { ...input.guidedAnswers, practiceSetupVersion: PRACTICE_SETUP_VERSION };
 
   const { data, error } = await admin
     .from("foundry_arena_scenario_drafts")
@@ -85,16 +93,16 @@ export async function createArenaDraft(
       source_event_id: source.value.eventId,
       source_module_version: source.value.moduleVersion,
       source_draft_id: source.value.sourceDraftId,
-      guided_answers: input.guidedAnswers,
-      scenario_draft: gen.draft,
-      generation_source: gen.source,
+      guided_answers: guided,
+      scenario_draft: null, // no scenario until a boundary is confirmed and generation runs
+      generation_source: null,
       revision: 0,
     })
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
 
   if (error || !data) return { ok: false, reason: error?.message ?? "arena_draft_insert_failed" };
-  return { ok: true, value: { row: data, warnings: [...gen.warnings, ...check.warnings] } };
+  return { ok: true, value: { row: data, warnings: [] } };
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +226,13 @@ export async function regenerateArenaDraft(
   // boundary — never a client-supplied one. Snapshot the revision it was generated under.
   const canonicalBoundary = current.guided_answers.practiceBoundary;
   const generatedUnderRevision = current.revision;
+
+  // NEW-AUTHORITY drafts (Slice 3.2I-R5A.2) are boundary-REQUIRED: a missing/unconfirmed
+  // boundary blocks generation (no legacy boundaryless fallback). Legacy drafts (no
+  // discriminator) fall through to the free-text eligibility contract as before.
+  if (isNewAuthorityDraft(current.guided_answers) && !(canonicalBoundary && canonicalBoundary.confirmed)) {
+    return { ok: false, reason: "boundary_confirmation_required" };
+  }
 
   const generated = await generateArenaScenarioDraft({
     locale,

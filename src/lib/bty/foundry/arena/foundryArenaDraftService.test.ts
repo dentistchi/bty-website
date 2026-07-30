@@ -202,19 +202,20 @@ const guided: GuidedAnswers = {
 };
 
 describe("createArenaDraft — exact source version binding + ownership", () => {
-  it("binds the EXACT module version (event id + version + source draft id) at create", async () => {
+  it("creates a canonical SHELL bound to the exact module version — no generation (R5A.2)", async () => {
     const { admin } = seedOwnedEventWithModule();
     const r = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.value.row.source_event_id).toBe("evt-owned");
+      expect(r.value.row.source_event_id).toBe("evt-owned"); // server-derived source linkage
       expect(r.value.row.source_module_version).toBe(3);
       expect(r.value.row.source_draft_id).toBe("draft-77");
-      expect(r.value.row.guided_answers).toEqual(guided);
-      expect(r.value.row.scenario_draft).not.toBeNull();
-      // live-model runtime → source "ai"
-      expect(r.value.row.generation_source).toBe("ai");
+      expect(r.value.row.guided_answers.hardestWhen).toEqual(guided.hardestWhen); // setup preserved
+      expect(r.value.row.guided_answers.practiceSetupVersion).toBe(1); // lifecycle discriminator
+      expect(r.value.row.scenario_draft).toBeNull(); // SHELL — no scenario until boundary + generation
+      expect(r.value.row.generation_source).toBeNull();
     }
+    expect(mockCreate).not.toHaveBeenCalled(); // no generator, no reviewer at create
   });
 
   it("refuses a foreign owner's event (source_not_owned)", async () => {
@@ -254,18 +255,18 @@ describe("read/persistence (owner-scoped)", () => {
 
     const mine = await getOwnerArenaDraft(admin, OWNER, id);
     expect(mine?.id).toBe(id);
-    expect(mine?.scenario_draft).not.toBeNull();
+    expect(mine?.scenario_draft).toBeNull(); // shell — no scenario yet
 
     const foreign = await getOwnerArenaDraft(admin, OTHER, id);
     expect(foreign).toBeNull();
   });
 
-  it("lists an owner's drafts for an event with a derived title", async () => {
+  it("lists an owner's drafts for an event (a shell has no derived title yet)", async () => {
     const { admin } = seedOwnedEventWithModule();
     await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
     const list = await listOwnerArenaDraftsForEvent(admin, OWNER, "evt-owned");
     expect(list.length).toBe(1);
-    expect(typeof list[0].title).toBe("string");
+    expect(list[0].title).toBeNull(); // no scenario_draft → no title until generated
   });
 });
 
@@ -343,21 +344,22 @@ describe("saveArenaDraftEdits — honesty + validity", () => {
 });
 
 describe("regenerateArenaDraft — reuses stored answers, keeps the source", () => {
-  it("regenerates from the same guided answers and source, bumping revision", async () => {
+  it("a new-authority shell blocks regeneration until a boundary is confirmed, then generates", async () => {
     const { admin } = seedOwnedEventWithModule();
-    const created = await createArenaDraft(admin, OWNER, {
-      sourceEventId: "evt-owned",
-      guidedAnswers: guided,
-      locale: "en",
-    });
+    const created = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
     if (!created.ok) throw new Error("setup failed");
     const id = created.value.row.id;
 
+    // New shell has the discriminator but no boundary → generation is blocked.
+    expect(await regenerateArenaDraft(admin, OWNER, id, "en")).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+
+    // Confirm a judgment (no-rule) boundary, then generation proceeds by draft id.
+    const saved = await saveDraftBoundary(admin, OWNER, id, { mode: "judgment", confirmed: true, constraints: [] }, created.value.row.revision);
+    expect(saved.ok).toBe(true);
     const again = await regenerateArenaDraft(admin, OWNER, id, "en");
     expect(again.ok).toBe(true);
     if (again.ok) {
-      expect(again.value.row.revision).toBe(1);
-      expect(again.value.row.guided_answers).toEqual(guided); // answers never lost
+      expect(again.value.row.scenario_draft?.practiceBoundary?.mode).toBe("judgment"); // canonical boundary stamped
       expect(again.value.row.source_module_version).toBe(3); // source never re-pointed
     }
   });
@@ -447,16 +449,21 @@ describe("regenerateArenaDraft — reads ONLY the canonical server-stored bounda
   });
 });
 
-describe("initial create — trust boundary (R5A.1)", () => {
-  it("createArenaDraft cannot generate mixed-safety content without a confirmed server boundary", async () => {
-    // A training whose facts imply a mandatory rule → generation blocks for confirmation;
-    // createArenaDraft never accepts a client boundary (its input has no boundary field).
+describe("initial create — shell-first trust boundary (R5A.2)", () => {
+  it("createArenaDraft never accepts a client boundary and generates nothing (shell); regenerate then requires confirmation", async () => {
     const { admin } = makeFakeAdmin({
       events: [{ id: "evt-owned", owner_user_id: OWNER, title: "T", status: "open" }],
       modules: [{ event_id: "evt-owned", source_draft_id: "draft-77", module_version: 3, module_snapshot: { problem: "Two patient identifiers must be verified before treatment", observableBehavior: "Verify before every dose", learningNeeds: ["decide"] } }],
     });
+    // createArenaDraft's input has no boundary field — a client cannot inject one. It makes a
+    // shell only (no provider call); generation by draft id then requires a confirmed boundary.
     const r = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
-    expect(r).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.row.scenario_draft).toBeNull();
+    expect(r.value.row.guided_answers.practiceSetupVersion).toBe(1);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(await regenerateArenaDraft(admin, OWNER, r.value.row.id, "en")).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
   });
 });
 
