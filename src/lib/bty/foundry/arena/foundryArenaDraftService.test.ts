@@ -12,6 +12,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
 
 import {
   createArenaDraft,
+  createOrOpenArenaDraftShell,
   getOwnerArenaDraft,
   listOwnerArenaDraftsForEvent,
   regenerateArenaDraft,
@@ -481,5 +482,46 @@ describe("knowledge_check end-to-end (R5A.1)", () => {
     const re = await regenerateArenaDraft(admin, OWNER, "d1", "en");
     expect(re).toMatchObject({ ok: false, reason: "fixed_answer_knowledge" });
     expect(mockCreate).not.toHaveBeenCalled(); // no generator, no reviewer
+  });
+});
+
+describe("createOrOpenArenaDraftShell — idempotent create-or-open (R5B1A)", () => {
+  it("no existing draft → creates exactly one shell (opened=false)", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    const r = await createOrOpenArenaDraftShell(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.opened).toBe(false);
+      expect(r.value.row.scenario_draft).toBeNull();
+      expect(r.value.row.guided_answers.practiceSetupVersion).toBe(1);
+    }
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("existing shell → REOPENS it, never a duplicate (opened=true)", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    const first = await createOrOpenArenaDraftShell(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    const second = await createOrOpenArenaDraftShell(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    expect(first.ok && second.ok).toBe(true);
+    if (first.ok && second.ok) {
+      expect(second.value.opened).toBe(true);
+      expect(second.value.row.id).toBe(first.value.row.id); // same canonical shell
+    }
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1); // no duplicate
+  });
+
+  it("reopens an existing GENERATED draft rather than duplicating", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    // Pre-seed a generated draft for the event.
+    tables.foundry_arena_scenario_drafts.push({ id: "gen-1", owner_user_id: OWNER, source_event_id: "evt-owned", source_module_version: 3, source_draft_id: "draft-77", status: "draft", guided_answers: { ...guided, practiceSetupVersion: 1 }, scenario_draft: AI_DRAFT, generation_source: "ai", revision: 4, created_at: "t", updated_at: "t2" });
+    const r = await createOrOpenArenaDraftShell(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.opened).toBe(true);
+      expect(r.value.row.id).toBe("gen-1");
+      expect(r.value.row.scenario_draft).not.toBeNull();
+    }
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1);
   });
 });

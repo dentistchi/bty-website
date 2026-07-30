@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
 import {
-  createArenaDraft,
+  createOrOpenArenaDraftShell,
   listOwnerArenaDraftsForEvent,
   toClientArenaDraft,
 } from "@/lib/bty/foundry/arena/foundryArenaDraftService";
@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
   const guided = parseGuidedAnswers(body?.guidedAnswers);
   if (!guided.ok) return managerJson(base, req, { error: "invalid_guided_answers", fields: guided.errors }, 400);
 
-  const result = await createArenaDraft(admin, user.id, {
+  // Idempotent create-or-OPEN (Slice 3.2I-R5B1A): a repeat "Create practice" reopens the
+  // existing canonical shell instead of duplicating it. The server owns shell authority.
+  const result = await createOrOpenArenaDraftShell(admin, user.id, {
     sourceEventId,
     guidedAnswers: guided.value,
     locale: localeFrom(body?.locale),
@@ -55,8 +57,8 @@ export async function POST(req: NextRequest) {
   return managerJson(
     base,
     req,
-    { draft: toClientArenaDraft(result.value.row), warnings: result.value.warnings },
-    201,
+    { draft: toClientArenaDraft(result.value.row), opened: result.value.opened },
+    result.value.opened ? 200 : 201,
   );
 }
 

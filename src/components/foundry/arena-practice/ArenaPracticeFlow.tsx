@@ -207,9 +207,18 @@ export function ArenaPracticeFlow({
         return;
       }
       const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[] };
-      if (!data.draft?.scenario_draft) {
+      if (!data.draft) {
         setGenError(true);
         setPhase("q2");
+        return;
+      }
+      if (!data.draft.scenario_draft) {
+        // Shell-first (Slice 3.2I-R5B1A): create-or-open returned a canonical shell (no
+        // scenario yet). Go to the honest setup surface — NOT a generation error. The boundary
+        // editor (R5B2) replaces the Q1/Q2 step; generation happens after the boundary is set.
+        setDraftId(data.draft.id);
+        setRevision(data.draft.revision);
+        setPhase("setup");
         return;
       }
       setDraftId(data.draft.id);

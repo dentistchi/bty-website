@@ -105,6 +105,29 @@ export async function createArenaDraft(
   return { ok: true, value: { row: data, warnings: [] } };
 }
 
+/**
+ * Create-or-OPEN the canonical Practice shell for a training (Slice 3.2I-R5B1A). Idempotent
+ * under the existing "latest = current draft" model: if a draft already exists for (owner,
+ * event) it is REOPENED (never duplicated); otherwise a fresh shell is created. So pressing
+ * "Create practice" twice converges to ONE canonical current shell — a rare true race may
+ * leave an extra orphan row, but only the latest is ever canonical (no new DB invariant /
+ * migration required). `opened` distinguishes reuse from fresh creation.
+ */
+export async function createOrOpenArenaDraftShell(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  input: CreateArenaDraftInput,
+): Promise<ServiceResult<{ row: ArenaDraftRow; opened: boolean }>> {
+  const existing = await listOwnerArenaDraftsForEvent(admin, ownerUserId, input.sourceEventId);
+  if (existing.length > 0) {
+    const row = await getOwnerArenaDraft(admin, ownerUserId, existing[0].id); // latest = canonical current
+    if (row) return { ok: true, value: { row, opened: true } };
+  }
+  const created = await createArenaDraft(admin, ownerUserId, input);
+  if (!created.ok) return created;
+  return { ok: true, value: { row: created.value.row, opened: false } };
+}
+
 // ---------------------------------------------------------------------------
 // Read (owner-scoped)
 // ---------------------------------------------------------------------------
