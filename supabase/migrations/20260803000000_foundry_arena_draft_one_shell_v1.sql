@@ -50,6 +50,7 @@ declare
   v_is_unique  boolean;
   v_cols       text;
   v_pred       text;
+  v_norm       text;
 begin
   select c.oid, i.indrelid, i.indisunique
     into v_indexrelid, v_indrelid, v_is_unique
@@ -84,18 +85,24 @@ begin
     raise exception 'one_shell_idx guard: wrong key columns (% ; expected owner_user_id,source_event_id)', v_cols;
   end if;
 
-  -- 4) partial predicate must be the practiceSetupVersion-present predicate
-  select pg_get_expr(i.indpred, i.indrelid)
-    into v_pred
-  from pg_index i
-  where i.indexrelid = v_indexrelid;
+  -- 4) partial predicate must be EXACTLY:  (guided_answers ->> 'practiceSetupVersion') IS NOT NULL
+  --    pg_get_expr renders that as:  ((guided_answers ->> 'practiceSetupVersion'::text) IS NOT NULL)
+  --    Normalize ONLY insignificant, deterministic variance — whitespace, the PostgreSQL-added
+  --    ::text cast, and pg_get_expr's grouping parentheses — while PRESERVING identifier/keyword
+  --    case (the JSON key is case-sensitive). Then require EXACT equality. A loose substring test
+  --    would accept "<pred> OR true", "<pred> AND owner_user_id IS NOT NULL", "= '1'", a different
+  --    JSON key/column, or a broader/narrower lifecycle predicate — all of which change which rows
+  --    are constrained and must fail closed.
+  select pg_get_expr(i.indpred, i.indrelid) into v_pred
+  from pg_index i where i.indexrelid = v_indexrelid;
   if v_pred is null then
-    raise exception 'one_shell_idx guard: existing index is not partial (missing practiceSetupVersion predicate)';
+    raise exception 'one_shell_idx guard: existing index is not partial (expected (guided_answers ->> ''practiceSetupVersion'') IS NOT NULL)';
   end if;
-  if position('practicesetupversion' in lower(v_pred)) = 0
-     or position('guided_answers' in lower(v_pred)) = 0
-     or position('is not null' in lower(v_pred)) = 0 then
-    raise exception 'one_shell_idx guard: predicate is not the required practiceSetupVersion-present predicate (got %)', v_pred;
+  v_norm := regexp_replace(v_pred, '\s+', '', 'g'); -- strip whitespace
+  v_norm := replace(v_norm, '::text', '');          -- strip PostgreSQL-added text cast
+  v_norm := translate(v_norm, '()', '');            -- strip pg_get_expr grouping parentheses
+  if v_norm is distinct from 'guided_answers->>''practiceSetupVersion''ISNOTNULL' then
+    raise exception 'one_shell_idx guard: predicate is not EXACTLY (guided_answers ->> ''practiceSetupVersion'') IS NOT NULL (got: %)', v_pred;
   end if;
 end $$;
 
