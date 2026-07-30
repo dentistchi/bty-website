@@ -101,31 +101,48 @@ export async function createArenaDraft(
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
 
-  if (error || !data) return { ok: false, reason: error?.message ?? "arena_draft_insert_failed" };
+  if (error || !data) {
+    // A unique-violation (23505) means a concurrent request already inserted the authoritative
+    // shell for this (owner, event) relationship — the DB rejected our duplicate. Surface it as a
+    // distinct, recoverable reason so create-or-open converges to the winning row (never a second
+    // authoritative row). Requires the one-shell unique index (migration 20260803000000).
+    if ((error as { code?: string } | null)?.code === "23505") {
+      return { ok: false, reason: "duplicate_relationship" };
+    }
+    return { ok: false, reason: error?.message ?? "arena_draft_insert_failed" };
+  }
   return { ok: true, value: { row: data, warnings: [] } };
 }
 
 /**
- * Create-or-OPEN the canonical Practice shell for a training (Slice 3.2I-R5B1A). Idempotent
- * under the existing "latest = current draft" model: if a draft already exists for (owner,
- * event) it is REOPENED (never duplicated); otherwise a fresh shell is created. So pressing
- * "Create practice" twice converges to ONE canonical current shell — a rare true race may
- * leave an extra orphan row, but only the latest is ever canonical (no new DB invariant /
- * migration required). `opened` distinguishes reuse from fresh creation.
+ * Create-or-OPEN the canonical Practice shell for a training (Slice 3.2I-R5B1A.1) — GLOBALLY
+ * ATOMIC across Worker isolates. Correctness rests on the DB one-shell unique invariant, NOT on a
+ * SELECT-then-INSERT check (which two isolates can both pass):
+ *   1. fast path — reopen the canonical current draft if one already exists (no insert);
+ *   2. otherwise attempt to INSERT the shell. If a concurrent isolate won the race, our INSERT
+ *      loses with a unique violation and we LOAD the winning row and return it.
+ * Every successful caller therefore receives the SAME canonical draft id, and no duplicate/orphan
+ * authoritative shell can ever remain. `opened` distinguishes reuse (or race-loss) from creation.
  */
 export async function createOrOpenArenaDraftShell(
   admin: SupabaseClient,
   ownerUserId: string,
   input: CreateArenaDraftInput,
 ): Promise<ServiceResult<{ row: ArenaDraftRow; opened: boolean }>> {
-  const existing = await listOwnerArenaDraftsForEvent(admin, ownerUserId, input.sourceEventId);
-  if (existing.length > 0) {
-    const row = await getOwnerArenaDraft(admin, ownerUserId, existing[0].id); // latest = canonical current
-    if (row) return { ok: true, value: { row, opened: true } };
-  }
+  // Fast path: an existing canonical shell is reopened, never duplicated.
+  const existing = await getCurrentOwnerArenaDraft(admin, ownerUserId, input.sourceEventId);
+  if (existing) return { ok: true, value: { row: existing, opened: true } };
+
+  // Create path: the DB unique index makes this atomic. Exactly one concurrent INSERT can win.
   const created = await createArenaDraft(admin, ownerUserId, input);
-  if (!created.ok) return created;
-  return { ok: true, value: { row: created.value.row, opened: false } };
+  if (created.ok) return { ok: true, value: { row: created.value.row, opened: false } };
+
+  // Lost the race (another isolate inserted first): converge on THAT winning row.
+  if (created.reason === "duplicate_relationship") {
+    const winner = await getCurrentOwnerArenaDraft(admin, ownerUserId, input.sourceEventId);
+    if (winner) return { ok: true, value: { row: winner, opened: true } };
+  }
+  return created; // a genuine failure (source not owned / missing / no module)
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +159,31 @@ export async function getOwnerArenaDraft(
     .select(DRAFT_COLS)
     .eq("id", draftId)
     .eq("owner_user_id", ownerUserId)
+    .maybeSingle<ArenaDraftRow>();
+  return data ?? null;
+}
+
+/**
+ * The single canonical CURRENT draft for (owner, event). With the one-shell unique invariant
+ * there is at most one new-authority row, so this IS the authoritative Practice shell. Ordering
+ * carries a DETERMINISTIC tie-breaker (updated_at desc, then created_at desc, then id asc) so
+ * historical data with equal timestamps still resolves to the same winner every time — never a
+ * bare `updated_at DESC` that could flip between ties. Returns the full row (owner-scoped).
+ */
+export async function getCurrentOwnerArenaDraft(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  eventId: string,
+): Promise<ArenaDraftRow | null> {
+  const { data } = await admin
+    .from("foundry_arena_scenario_drafts")
+    .select(DRAFT_COLS)
+    .eq("owner_user_id", ownerUserId)
+    .eq("source_event_id", eventId)
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .limit(1)
     .maybeSingle<ArenaDraftRow>();
   return data ?? null;
 }
@@ -168,6 +210,8 @@ export async function listOwnerArenaDraftsForEvent(
     .eq("owner_user_id", ownerUserId)
     .eq("source_event_id", eventId)
     .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
     .returns<
       (Omit<ArenaDraftSummary, "title"> & { scenario_draft: ArenaScenarioDraft | null })[]
     >();

@@ -91,7 +91,9 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
       _filters: [] as Array<{ c: string; v: unknown }>,
       _patch: {} as Row,
       _insert: null as Row | null,
-      _sort: null as { c: string; asc: boolean } | null,
+      _sorts: [] as Array<{ c: string; asc: boolean }>,
+      _limit: null as number | null,
+      _error: null as { code?: string; message: string } | null,
       select() {
         return b;
       },
@@ -114,7 +116,11 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
         return b;
       },
       order(c: string, opts?: { ascending?: boolean }) {
-        b._sort = { c, asc: opts?.ascending ?? true };
+        b._sorts.push({ c, asc: opts?.ascending ?? true });
+        return b;
+      },
+      limit(n: number) {
+        b._limit = n;
         return b;
       },
       returns() {
@@ -123,9 +129,29 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
       _match(r: Row) {
         return b._filters.every((f) => r[f.c] === f.v);
       },
+      // Simulate the R5B1A.1 partial UNIQUE INDEX: at most one NEW-AUTHORITY draft (guided_answers
+      // .practiceSetupVersion present) per (owner_user_id, source_event_id). A duplicate INSERT
+      // fails with SQLSTATE 23505 — exactly as Postgres would across Worker isolates.
+      _violatesUniqueShell(row: Row): boolean {
+        if (table !== "foundry_arena_scenario_drafts") return false;
+        const g = row.guided_answers as Record<string, unknown> | undefined;
+        if (g?.practiceSetupVersion == null) return false;
+        return rows.some((r) => {
+          const rg = r.guided_answers as Record<string, unknown> | undefined;
+          return (
+            rg?.practiceSetupVersion != null &&
+            r.owner_user_id === row.owner_user_id &&
+            r.source_event_id === row.source_event_id
+          );
+        });
+      },
       _run(): Row[] {
         if (b._op === "insert" && b._insert) {
           const row = applyDefaults(table, b._insert);
+          if (b._violatesUniqueShell(row)) {
+            b._error = { code: "23505", message: "duplicate key value violates unique constraint" };
+            return [];
+          }
           rows.push(row);
           return [row];
         }
@@ -143,23 +169,32 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
           return del;
         }
         let out = rows.filter((r) => b._match(r));
-        if (b._sort) {
-          const { c, asc } = b._sort;
-          out = [...out].sort((x, y) => String(x[c] ?? "").localeCompare(String(y[c] ?? "")) * (asc ? 1 : -1));
+        if (b._sorts.length) {
+          out = [...out].sort((x, y) => {
+            for (const { c, asc } of b._sorts) {
+              const cmp = String(x[c] ?? "").localeCompare(String(y[c] ?? "")) * (asc ? 1 : -1);
+              if (cmp !== 0) return cmp;
+            }
+            return 0;
+          });
         }
+        if (b._limit != null) out = out.slice(0, b._limit);
         return out;
       },
       maybeSingle() {
-        return Promise.resolve({ data: b._run()[0] ?? null, error: null });
+        const res = b._run();
+        return Promise.resolve({ data: res[0] ?? null, error: b._error });
       },
       single() {
         const res = b._run();
+        if (b._error) return Promise.resolve({ data: null, error: b._error });
         return res[0]
           ? Promise.resolve({ data: res[0], error: null })
           : Promise.resolve({ data: null, error: { message: "no_row" } });
       },
-      then(resolve: (v: { data: Row[]; error: null }) => unknown, reject?: (e: unknown) => unknown) {
-        return Promise.resolve({ data: b._run(), error: null }).then(resolve, reject);
+      then(resolve: (v: { data: Row[]; error: unknown }) => unknown, reject?: (e: unknown) => unknown) {
+        const data = b._run();
+        return Promise.resolve({ data, error: b._error }).then(resolve, reject);
       },
     };
     return b;
@@ -523,5 +558,102 @@ describe("createOrOpenArenaDraftShell — idempotent create-or-open (R5B1A)", ()
       expect(r.value.row.scenario_draft).not.toBeNull();
     }
     expect(tables.foundry_arena_scenario_drafts.length).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slice 3.2I-R5B1A.1 — ATOMIC one-shell contract. The fake enforces the partial UNIQUE INDEX
+// (one new-authority draft per owner+event), so a duplicate INSERT fails with 23505 exactly as
+// Postgres would. These prove the SERVICE ALGORITHM converges on that DB invariant.
+// NOTE (proof gap): a mocked DB cannot prove real cross-Worker Postgres atomicity — that is
+// guaranteed by migration 20260803000000 once APPLIED. See the slice report.
+// ---------------------------------------------------------------------------
+
+function seedTwoTrainings() {
+  const snap = { problem: "A teammate proposes cutting a planned design review", observableBehavior: "Raise the concern before the shortcut", learningNeeds: ["shared_standard"] };
+  return makeFakeAdmin({
+    events: [
+      { id: "evt-a", owner_user_id: OWNER, title: "A", status: "open" },
+      { id: "evt-b", owner_user_id: OWNER, title: "B", status: "open" },
+      { id: "evt-o", owner_user_id: OTHER, title: "O", status: "open" },
+    ],
+    modules: [
+      { event_id: "evt-a", source_draft_id: "d-a", module_version: 1, module_snapshot: snap },
+      { event_id: "evt-b", source_draft_id: "d-b", module_version: 1, module_snapshot: snap },
+      { event_id: "evt-o", source_draft_id: "d-o", module_version: 1, module_snapshot: snap },
+    ],
+  });
+}
+
+describe("createOrOpenArenaDraftShell — ATOMIC one-shell contract (R5B1A.1)", () => {
+  const open = (admin: SupabaseClient, owner: string, eventId: string) =>
+    createOrOpenArenaDraftShell(admin, owner, { sourceEventId: eventId, guidedAnswers: guided, locale: "en" });
+
+  it("N concurrent create-or-opens for ONE relationship converge to one row + one id", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    const results = await Promise.all(Array.from({ length: 8 }, () => open(admin, OWNER, "evt-owned")));
+    expect(results.every((r) => r.ok)).toBe(true);
+    const ids = new Set(results.map((r) => (r.ok ? r.value.row.id : "x")));
+    expect(ids.size).toBe(1); // every caller received the SAME canonical draft id
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1); // exactly one authoritative row, zero orphans
+    // Exactly one caller CREATED the row; the DB rejected every other insert (23505) → they opened it.
+    expect(results.filter((r) => r.ok && !r.value.opened).length).toBe(1);
+  });
+
+  it("the DB rejects a second authoritative insert for the same relationship (23505 → duplicate_relationship)", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    const first = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    const second = await createArenaDraft(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
+    expect(first.ok).toBe(true);
+    expect(second).toMatchObject({ ok: false, reason: "duplicate_relationship" });
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1); // the loser never persisted a row
+  });
+
+  it("response-loss retry converges to the SAME id (no duplicate)", async () => {
+    const { admin, tables } = seedOwnedEventWithModule();
+    const first = await open(admin, OWNER, "evt-owned"); // row created; imagine the response was lost
+    const retry = await open(admin, OWNER, "evt-owned"); // client retries
+    expect(first.ok && retry.ok).toBe(true);
+    if (first.ok && retry.ok) {
+      expect(retry.value.opened).toBe(true);
+      expect(retry.value.row.id).toBe(first.value.row.id);
+    }
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1);
+  });
+
+  it("different trainings create SEPARATE shells (uniqueness does not collapse unrelated relationships)", async () => {
+    const { admin, tables } = seedTwoTrainings();
+    const a = await open(admin, OWNER, "evt-a");
+    const b = await open(admin, OWNER, "evt-b");
+    expect(a.ok && b.ok).toBe(true);
+    if (a.ok && b.ok) expect(a.value.row.id).not.toBe(b.value.row.id);
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(2);
+  });
+
+  it("different owners create SEPARATE shells", async () => {
+    const { admin, tables } = seedTwoTrainings();
+    const mine = await open(admin, OWNER, "evt-a");
+    const theirs = await open(admin, OTHER, "evt-o");
+    expect(mine.ok && theirs.ok).toBe(true);
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(2);
+  });
+
+  it("an unauthorized owner cannot open another owner's relationship (no row created)", async () => {
+    const { admin, tables } = seedTwoTrainings();
+    const r = await open(admin, OTHER, "evt-a"); // evt-a belongs to OWNER
+    expect(r).toMatchObject({ ok: false, reason: "source_not_owned" });
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(0);
+  });
+
+  it("a legitimate in-place revision does NOT trip the one-shell invariant", async () => {
+    const { admin, tables } = seedTwoTrainings();
+    const created = await open(admin, OWNER, "evt-a");
+    if (!created.ok) throw new Error("setup failed");
+    // Confirm a boundary + generate: these UPDATE the same row (revisions), never insert a new one.
+    const saved = await saveDraftBoundary(admin, OWNER, created.value.row.id, { mode: "judgment", confirmed: true, constraints: [] }, created.value.row.revision);
+    expect(saved.ok).toBe(true);
+    const regen = await regenerateArenaDraft(admin, OWNER, created.value.row.id, "en");
+    expect(regen.ok).toBe(true);
+    expect(tables.foundry_arena_scenario_drafts.length).toBe(1); // still exactly one row
   });
 });
