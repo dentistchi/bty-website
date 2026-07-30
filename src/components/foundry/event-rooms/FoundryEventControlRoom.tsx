@@ -47,7 +47,7 @@ export function FoundryEventControlRoom({
   focusId?: string;
 }) {
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[locale];
-  const { snapshot, setSnapshot, refresh } = useEventSnapshot(eventId, initialSnapshot);
+  const { snapshot, setSnapshot, refresh, error, settled } = useEventSnapshot(eventId, initialSnapshot);
 
   const [busy, setBusy] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -270,8 +270,25 @@ export function FoundryEventControlRoom({
             </button>
           ) : null}
         </>
+      ) : settled || error ? (
+        // 3.2G-R4: the fetch has settled with no owned event (error / not-found / owner-scoped empty) —
+        // a calm, compact NON-resolving surface (never a spinner-forever, never a blank body). The Back
+        // control above stays available. Server authorization is unchanged; nothing is disclosed.
+        <div role="status" className="flex min-h-[30vh] items-center justify-center px-4 text-center text-sm text-white/55" data-testid="control-room-unavailable">
+          {t.controlUnavailable}
+        </div>
       ) : (
-        <div aria-hidden className="min-h-[40vh]" />
+        // 3.2G-R4: control-BOUND resolving surface shown IMMEDIATELY on the first control render while
+        // the Event snapshot loads — replaces the empty body flash. Compact, dark BTY surface, calm.
+        <div
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="flex min-h-[30vh] items-center justify-center px-4 text-center text-sm text-white/55"
+          data-testid="control-room-resolving"
+        >
+          {t.controlResolving}
+        </div>
       )}
     </div>
   );

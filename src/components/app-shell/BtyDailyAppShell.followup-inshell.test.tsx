@@ -46,9 +46,16 @@ function stub() {
             ? { ok: true, reminders: [], hostAttention: [followUp] }
             : u.includes("/api/bty/foundry/events") && !u.match(/events\/[^/?]+/)
               ? { events: [] }
-              : u.includes("/api/bty/foundry/modules")
-                ? { drafts: [] }
-                : { ok: true, event: null, rows: [], responses: [], items: [] };
+              : /\/api\/bty\/foundry\/events\/[^/?]+$/.test(u)
+                ? {
+                    event: { id: EVENT_ID, title: "배가 고파", status: "open", join_url: "https://x/f/t", created_at: "2026-07-27T00:00:00Z", closed_at: null, training: null, document: null },
+                    participants: [],
+                    joined_count: 0,
+                    completed_count: 0,
+                  }
+                : u.includes("/api/bty/foundry/modules")
+                  ? { drafts: [] }
+                  : { ok: true, event: null, rows: [], responses: [], items: [] };
       return new Response(JSON.stringify(body), { status: 200 });
     }),
   );
@@ -69,6 +76,9 @@ describe("3.2G-R2 — first-tap in-shell follow-up entry (shell composition)", (
 
     // The control room opens IN-SHELL on the first tap (its "←" Back affordance appears).
     await waitFor(() => expect(screen.getByText(/←/)).toBeTruthy());
+    // R4: the control room resolves to real content — never an empty Learn body / Foundry home.
+    await waitFor(() => expect(screen.getByText("배가 고파")).toBeTruthy());
+    expect(screen.queryByText(/Required learning|My learning/i)).toBeNull();
     // No URL was used as transport: no deep-link query serialized to the address bar.
     expect(window.location.search).toBe("");
     expect(window.location.pathname).toBe("/");
@@ -76,5 +86,19 @@ describe("3.2G-R2 — first-tap in-shell follow-up entry (shell composition)", (
     // Back returns to Today in-shell (R1 origin-aware return preserved) — the follow-up row is back.
     fireEvent.click(screen.getByText(/←/));
     await waitFor(() => expect(screen.getByTestId("today-followup-open")).toBeTruthy());
+  });
+
+  it("R4: the first control-bound surface is never an empty body (resolving or control content)", async () => {
+    stub();
+    render(<BtyDailyAppShell locale="en" />);
+    fireEvent.click(await screen.findByTestId("today-followup-open"));
+    // Immediately after activation the control room shows either its resolving surface or content —
+    // and the back affordance — but never the retired empty/aria-hidden body or the Foundry home.
+    await waitFor(() => {
+      const resolving = screen.queryByTestId("control-room-resolving");
+      const content = screen.queryByText("배가 고파");
+      expect(Boolean(resolving) || Boolean(content)).toBe(true);
+    });
+    expect(screen.queryByText(/Required learning|My learning/i)).toBeNull();
   });
 });

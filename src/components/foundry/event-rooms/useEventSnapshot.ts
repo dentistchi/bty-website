@@ -20,6 +20,10 @@ const POLL_MS = 3000;
 export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | null) {
   const [snapshot, setSnapshot] = useState<ManagerSnapshot | null>(initial ?? null);
   const [error, setError] = useState(false);
+  // 3.2G-R4: whether the FIRST fetch has completed (any outcome). Lets a control-bound consumer show a
+  // compact resolving surface ONLY while genuinely loading, then an error/empty surface once settled —
+  // never a resolving state forever, never a blank body. Pre-settled when an initial snapshot is given.
+  const [settled, setSettled] = useState(Boolean(initial));
   const inFlight = useRef(false);
   const mounted = useRef(true);
 
@@ -44,6 +48,7 @@ export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | nu
       if (mounted.current) setError(true);
     } finally {
       inFlight.current = false;
+      if (mounted.current) setSettled(true);
     }
   }, [eventId]);
 
@@ -95,5 +100,5 @@ export function useEventSnapshot(eventId: string, initial?: ManagerSnapshot | nu
     };
   }, [isOpen, refresh]);
 
-  return { snapshot, setSnapshot, refresh, error };
+  return { snapshot, setSnapshot, refresh, error, settled };
 }

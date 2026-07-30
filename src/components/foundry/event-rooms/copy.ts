@@ -62,6 +62,9 @@ export type EventRoomsCopy = {
   closedTag: string;
   // control room
   back: string;
+  /** 3.2G-R4: control-bound resolving + unavailable surfaces (deep-link handoff before data loads). */
+  controlResolving: string;
+  controlUnavailable: string;
   statusOpen: string;
   statusClosed: string;
   scanToJoin: string;
@@ -154,6 +157,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     joinedCount: (n) => (n === 1 ? "1 joined" : `${n} joined`),
     closedTag: "Closed",
     back: "Back",
+    controlResolving: "Opening follow-up…",
+    controlUnavailable: "This follow-up couldn't be opened.",
     statusOpen: "OPEN",
     statusClosed: "CLOSED",
     scanToJoin: "Scan to join",
@@ -242,6 +247,8 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     joinedCount: (n) => `${n}명 입장`,
     closedTag: "종료됨",
     back: "뒤로",
+    controlResolving: "후속 조치를 여는 중…",
+    controlUnavailable: "이 후속 조치를 열 수 없습니다.",
     statusOpen: "진행 중",
     statusClosed: "종료됨",
     scanToJoin: "스캔하여 입장",
