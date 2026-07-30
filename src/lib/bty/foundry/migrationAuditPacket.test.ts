@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   compareMigrationAudit, parseLiveAudit, assertPacketHandshake, assertManifestIntegrity,
-  computeEffectsDigest, AuditPacketError,
-  type ExpectedEffect, type ExpectedManifest, type LiveAudit,
+  computeEffectsDigest, computePacketId, COMPARATOR_CONTRACT_VERSION, AuditPacketError,
+  type ExpectedEffect, type ExpectedManifest, type LiveAudit, type PacketMeta,
 } from "./migrationAuditComparator";
 
 /** Gate 10 matrix (R2.3): policy + grant + function-body authority, and packet/ingest integrity. */
@@ -68,27 +68,67 @@ describe("FUNCTION body authority (SHA-256 of raw prosrc, no whitespace normaliz
   });
 });
 
-describe("PACKET handshake + integrity", () => {
+describe("ACL effects (exact aclexplode tuples, not effective access)", () => {
+  const facl = (tuples: unknown) => eff({ effectId: "acl:function:public.f()", objectType: "acl_function", properties: { tuples } });
+  const SR = { grantee: "service_role", privilege: "EXECUTE", grantable: false };
+  it("exact function ACL matches", () => expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [SR] } })).toBe("EXACT_MATCH"));
+  it("missing service_role explicit grant conflicts", () => expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [] } })).toBe("CONFLICT"));
+  it("PUBLIC execute remains → conflict (exact tuple set differs)", () =>
+    expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [{ grantee: "PUBLIC", privilege: "EXECUTE", grantable: false }, SR] } })).toBe("CONFLICT"));
+  it("anon execute remains → conflict", () =>
+    expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [{ grantee: "anon", privilege: "EXECUTE", grantable: false }, SR] } })).toBe("CONFLICT"));
+  it("wrong grantable state → conflict", () =>
+    expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [{ ...SR, grantable: true }] } })).toBe("CONFLICT"));
+  it("wrong privilege → conflict", () =>
+    expect(status(facl([SR]), { effectId: "acl:function:public.f()", properties: { tuples: [{ ...SR, privilege: "USAGE" }] } })).toBe("CONFLICT"));
+  it("exact table revoke state (empty ACL) matches; a forbidden table grant conflicts", () => {
+    const tacl = eff({ effectId: "acl:table:public.t", objectType: "acl_table", properties: { tuples: [] } });
+    expect(status(tacl, { effectId: "acl:table:public.t", properties: { tuples: [] } })).toBe("EXACT_MATCH");
+    expect(status(tacl, { effectId: "acl:table:public.t", properties: { tuples: [{ grantee: "anon", privilege: "SELECT", grantable: false }] } })).toBe("CONFLICT");
+  });
+});
+
+function packetMeta(over: Partial<PacketMeta> = {}): PacketMeta {
+  const base = {
+    auditSchemaVersion: "r2.4", auditPacketVersion: "r2.4", comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
+    expectedManifestDigest: "m".repeat(64), provenanceDigest: "p".repeat(64), securityStatementMapDigest: "s".repeat(64),
+    auditQueryBodyDigest: "q".repeat(64), migrationChecksums: { "20260726000000": "a".repeat(64) },
+  };
+  return { ...base, packetId: computePacketId(base), ...over };
+}
+function liveOf(meta: PacketMeta, effects: LiveAudit["effects"] = [{ effectId: "a" }, { effectId: "b" }]): LiveAudit & PacketMeta {
+  return { ...meta, serverVersionNum: PG16, effects };
+}
+
+describe("PACKET handshake — self-authenticating (all components verified)", () => {
+  const meta = packetMeta();
+  it("exact packet accepted", () => expect(() => assertPacketHandshake(meta, liveOf(meta))).not.toThrow());
+  it("packetId tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, packetId: "z".repeat(64) }))).toThrow(/packetId/));
+  it("expectedManifestDigest tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, expectedManifestDigest: "z".repeat(64) }))).toThrow(/expectedManifestDigest/));
+  it("provenanceDigest tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, provenanceDigest: "z".repeat(64) }))).toThrow(/provenanceDigest/));
+  it("securityStatementMapDigest tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, securityStatementMapDigest: "z".repeat(64) }))).toThrow(/securityStatementMapDigest/));
+  it("migration checksum tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, migrationChecksums: { "20260726000000": "z".repeat(64) } }))).toThrow(/migrationChecksums/));
+  it("query body digest tampered → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, auditQueryBodyDigest: "z".repeat(64) }))).toThrow(/auditQueryBodyDigest/));
+  it("comparator contract version changed → rejected", () => expect(() => assertPacketHandshake({ ...meta, comparatorContractVersion: "r9.9" }, liveOf(meta))).toThrow(/comparator contract/));
+  it("packet version changed → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, auditPacketVersion: "r2.3" }))).toThrow(/auditPacketVersion/));
+  it("missing migration checksum → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, migrationChecksums: {} }))).toThrow(/migrationChecksums/));
+  it("extra replacement checksum → rejected", () => expect(() => assertPacketHandshake(meta, liveOf({ ...meta, migrationChecksums: { ...meta.migrationChecksums, "99999999999999": "z".repeat(64) } }))).toThrow(/migrationChecksums/));
+  it("missing metadata field → rejected", () => {
+    const bad = { ...liveOf(meta) } as Record<string, unknown>; delete bad.provenanceDigest;
+    expect(() => assertPacketHandshake(meta, bad as unknown as LiveAudit & PacketMeta)).toThrow(/provenanceDigest/);
+  });
+  it("stale query with the same human version string but wrong digest → rejected", () =>
+    expect(() => assertPacketHandshake(meta, liveOf({ ...meta, auditQueryBodyDigest: "0".repeat(64) }))).toThrow(/auditQueryBodyDigest/));
+  it("duplicate effect → rejected", () => expect(() => assertPacketHandshake(meta, liveOf(meta, [{ effectId: "a" }, { effectId: "a" }]))).toThrow(/duplicate/));
+  it("truncated (no effects array) → rejected", () => expect(() => assertPacketHandshake(meta, { ...meta, serverVersionNum: PG16 } as unknown as LiveAudit & PacketMeta)).toThrow(/effects array/));
+});
+
+describe("MANIFEST integrity", () => {
   const m = manifest([eff({ effectId: "a" }), eff({ effectId: "b" })]);
-  it("old audit version rejected", () => {
-    expect(() => assertPacketHandshake(m, { auditSchemaVersion: "r2.2", serverVersionNum: PG16, effects: [{ effectId: "a" }, { effectId: "b" }] })).toThrow(AuditPacketError);
-  });
-  it("wrong manifest digest rejected (hand-edited manifest)", () => {
-    expect(() => assertManifestIntegrity({ ...m, expectedManifestDigest: "deadbeef" })).toThrow(/digest mismatch/);
-  });
   it("valid manifest passes integrity", () => expect(() => assertManifestIntegrity(m)).not.toThrow());
-  it("missing metadata rejected", () => {
-    expect(() => assertPacketHandshake(m, { serverVersionNum: PG16, effects: [] } as unknown as LiveAudit)).toThrow(/auditSchemaVersion/);
-  });
-  it("duplicate effectId rejected", () => {
-    expect(() => assertPacketHandshake(m, { auditSchemaVersion: "r2.3", serverVersionNum: PG16, effects: [{ effectId: "a" }, { effectId: "a" }] })).toThrow(/duplicate/);
-  });
-  it("unknown effectId rejected", () => {
-    expect(() => assertPacketHandshake(m, { auditSchemaVersion: "r2.3", serverVersionNum: PG16, effects: [{ effectId: "a" }, { effectId: "b" }, { effectId: "zzz" }] })).toThrow(/unknown/);
-  });
-  it("truncated result rejected", () => {
-    expect(() => assertPacketHandshake(m, { auditSchemaVersion: "r2.3", serverVersionNum: PG16, effects: [] })).toThrow(/truncated/);
-  });
+  it("wrong manifest digest rejected (hand-edited manifest)", () =>
+    expect(() => assertManifestIntegrity({ ...m, expectedManifestDigest: "deadbeef" })).toThrow(/digest mismatch/));
+  it("effects digest is stable", () => expect(computeEffectsDigest(m.effects)).toBe(m.expectedManifestDigest));
 });
 
 describe("INGEST (JSON / CSV / malformed)", () => {

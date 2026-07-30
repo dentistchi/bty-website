@@ -10,4 +10,5 @@ echo "== Part 2: selected_path =="; psql -v ON_ERROR_STOP=1 -f scripts/migration
 echo "== Part 3: one-shell =="; psql -v ON_ERROR_STOP=1 -f scripts/migration-proof/02_one_shell.sql | tail -1
 echo "== Part 4: negative guard matrix =="; PSQL="psql" bash scripts/migration-proof/negatives.sh
 echo "== Part 5: concurrency =="; PSQL="psql" bash scripts/migration-proof/concurrency.sh
+echo "== Part 6: exact-ACL vs effective-access matrix =="; PSQL="psql" bash scripts/migration-proof/acl-matrix.sh
 echo "ALL_MIGRATION_PROOFS: PASS"

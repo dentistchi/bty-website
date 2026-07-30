@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Regenerate docs/audit/foundry_migration_expected_catalog.json by REPLAYING the historical
-# migrations 20260726–20260729 (in canonical order, incl. the 20260729 replace of submit_followup)
-# onto a disposable PostgreSQL, then extracting the expected catalog. NO live DB, NO Docker.
-# Reproducible: same migrations + same PG major → same manifest. Run from anywhere.
+# Regenerate the WHOLE authoritative audit packet (Slice 3.2I-R5B1A.1-R2.4) from the shared query
+# body + the historical migrations, on a disposable PostgreSQL (compile-on, no Docker, no live DB):
+#   docs/audit/foundry_migration_expected_catalog.json       (expected manifest, exact ACL)
+#   docs/audit/foundry_migration_security_statement_map.json  (resolved statement→effect map)
+#   docs/audit/foundry_migration_provenance_readonly.sql      (generated self-authenticating live SQL)
+# Byte-reproducible: same migrations + same body + same PG major → identical outputs + packetId.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # bty-app
 MP="$ROOT/scripts/migration-proof"; MIG="$ROOT/supabase/migrations"
@@ -22,46 +24,8 @@ for v in 20260726000000_foundry_shared_understanding_v1 20260727000000_personali
   psql -q -v ON_ERROR_STOP=1 -f "$MIG/$v.sql"
 done
 
-# Run the SAME canonical read-only audit query used against live — no expected/live query drift.
-AUDIT=$(psql -tAq -f "$ROOT/docs/audit/foundry_migration_provenance_readonly.sql")
+SVN=$(psql -tAq -c "show server_version_num")
+FACTS=$(psql -tAq -f "$MP/audit-query-body.sql")   # the SHARED body → effects array
 
-# Exact checksums of the audited migration files + the audit query (Gate 6/7): a change to any of
-# them without regenerating this manifest is detected by the reproducibility test.
-sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
-CHECKSUMS=$(node -e "console.log(JSON.stringify({
-  '20260726000000': process.argv[1], '20260727000000': process.argv[2],
-  '20260728000000': process.argv[3], '20260729000000': process.argv[4], auditQuery: process.argv[5] }))" \
-  "$(sha "$MIG/20260726000000_foundry_shared_understanding_v1.sql")" \
-  "$(sha "$MIG/20260727000000_personalize_today_from_reflections_v1.sql")" \
-  "$(sha "$MIG/20260728000000_foundry_participant_followups_v1.sql")" \
-  "$(sha "$MIG/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql")" \
-  "$(sha "$ROOT/docs/audit/foundry_migration_provenance_readonly.sql")")
-
-AUDIT="$AUDIT" CHECKSUMS="$CHECKSUMS" node --input-type=module -e "
-import { createHash } from 'node:crypto';
-const { auditSchemaVersion, auditQueryVersion, serverVersionNum, effects: facts } = JSON.parse(process.env.AUDIT);
-const META = { g26:['20260726000000','20260726000000'], g27:['20260727000000','20260727000000'],
-               g28:['20260728000000','20260728000000'], g29:['20260728000000','20260729000000'] };
-const effects = facts.map(f => { const [mig,fin]=META[f.grp]||[null,null];
-  const { grp, ...rest } = f; return { ...rest, migrationVersion:mig, finalAuthorityMigration:fin }; })
-  .sort((a,b)=>a.effectId.localeCompare(b.effectId));
-const digestOf = v => createHash('sha256').update(JSON.stringify(v)).digest('hex');
-const manifest = {
-  generatorVersion: 'r2.3',
-  generator: 'scripts/migration-proof/build-expected-manifest.sh',
-  regenCommand: 'bash scripts/migration-proof/build-expected-manifest.sh',
-  auditQuery: 'docs/audit/foundry_migration_provenance_readonly.sql',
-  auditSchemaVersion, auditQueryVersion,
-  provenanceRef: 'docs/audit/foundry_migration_provenance.json',
-  postgresServerVersionNum: serverVersionNum,
-  functionBodyChecking: 'on',
-  migrationChecksums: JSON.parse(process.env.CHECKSUMS),
-  note: 'Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729.',
-  effectCount: effects.length,
-  expectedManifestDigest: digestOf(effects),
-  effects,
-};
-process.stdout.write(JSON.stringify(manifest, null, 2) + '\n');
-" > "$ROOT/docs/audit/foundry_migration_expected_catalog.json"
-
-echo "wrote docs/audit/foundry_migration_expected_catalog.json ($(grep -c effectId "$ROOT/docs/audit/foundry_migration_expected_catalog.json") effect lines)"
+FACTS="$FACTS" SVN="$SVN" ROOT="$ROOT" node "$MP/expected/assemble.mjs"
+echo "wrote manifest + statement map + generated audit SQL"

@@ -199,28 +199,65 @@ export function assertManifestIntegrity(expected: ExpectedManifest): void {
   }
 }
 
-/** The version/coverage handshake (Gate 7). Throws AuditPacketError on any mismatch. */
-export function assertPacketHandshake(expected: ExpectedManifest, live: LiveAudit): void {
+/** The comparator contract version — bound into packetId; a change invalidates every packet. */
+export const COMPARATOR_CONTRACT_VERSION = "r2.4";
+
+/** Self-authenticating packet metadata (Gate 5). The CLI recomputes `expected` from the checked-in
+ * files; `live` is what the generated audit SQL embedded. Every field must agree. */
+export interface PacketMeta {
+  auditSchemaVersion: string;
+  auditPacketVersion: string;
+  packetId: string;
+  expectedManifestDigest: string;
+  provenanceDigest: string;
+  securityStatementMapDigest: string;
+  auditQueryBodyDigest: string;
+  comparatorContractVersion: string;
+  migrationChecksums: Record<string, string>;
+}
+
+const PACKET_FIELDS: (keyof PacketMeta)[] = [
+  "auditSchemaVersion", "auditPacketVersion", "packetId", "expectedManifestDigest", "provenanceDigest",
+  "securityStatementMapDigest", "auditQueryBodyDigest", "comparatorContractVersion",
+];
+
+/** Self-authenticating handshake (Gates 6–7): verify EVERY packet-identity component of the live
+ * result against `expected` (recomputed from the checked-in authoritative files), then the effect
+ * set. Throws AuditPacketError on ANY mismatch — comparison must not proceed after a failure. */
+export function assertPacketHandshake(expected: PacketMeta, live: LiveAudit & Partial<PacketMeta>): void {
   if (!live || typeof live !== "object") throw new AuditPacketError("live audit is not an object");
   if (!Array.isArray(live.effects)) throw new AuditPacketError("live audit has no effects array (truncated?)");
   if (typeof live.serverVersionNum !== "number") throw new AuditPacketError("live audit missing serverVersionNum");
-  if (!live.auditSchemaVersion) throw new AuditPacketError("live audit missing auditSchemaVersion");
-  if (expected.auditSchemaVersion && live.auditSchemaVersion !== expected.auditSchemaVersion) {
-    throw new AuditPacketError(`audit schema version mismatch: manifest ${expected.auditSchemaVersion} vs result ${live.auditSchemaVersion} — re-run the current audit query`);
+  if (expected.comparatorContractVersion !== COMPARATOR_CONTRACT_VERSION) {
+    throw new AuditPacketError(`comparator contract mismatch: packet ${expected.comparatorContractVersion} vs binary ${COMPARATOR_CONTRACT_VERSION} — regenerate the packet`);
   }
+  for (const f of PACKET_FIELDS) {
+    if (live[f] === undefined || live[f] === null) throw new AuditPacketError(`live audit missing ${f}`);
+    if (live[f] !== expected[f]) throw new AuditPacketError(`${f} mismatch: expected ${String(expected[f]).slice(0, 12)}… vs result ${String(live[f]).slice(0, 12)}… — re-run the CURRENT generated audit query`);
+  }
+  if (!live.migrationChecksums || typeof live.migrationChecksums !== "object") throw new AuditPacketError("live audit missing migrationChecksums");
+  const keys = new Set([...Object.keys(expected.migrationChecksums), ...Object.keys(live.migrationChecksums)]);
+  for (const k of keys) {
+    if (expected.migrationChecksums[k] !== live.migrationChecksums[k]) throw new AuditPacketError(`migrationChecksums[${k}] mismatch — audited migration changed without a regenerated packet`);
+  }
+  // Effect-set integrity.
   const seen = new Set<string>();
   for (const e of live.effects) {
     if (!e.effectId) throw new AuditPacketError("live effect missing effectId");
     if (seen.has(e.effectId)) throw new AuditPacketError(`duplicate live effectId: ${e.effectId}`);
     seen.add(e.effectId);
   }
-  const expectedIds = new Set(expected.effects.map((e) => e.effectId));
-  const unknown = [...seen].filter((id) => !expectedIds.has(id));
-  if (unknown.length) throw new AuditPacketError(`unknown live effectIds not in manifest (wrong query version?): ${unknown.slice(0, 3).join(", ")}`);
-  // Gross truncation: far fewer rows than the manifest expects.
-  if (live.effects.length < expected.effects.length / 2) {
-    throw new AuditPacketError(`live audit looks truncated: ${live.effects.length} effects vs ${expected.effects.length} expected`);
-  }
+}
+
+/** Recompute packetId from component digests exactly as the generator does (non-circular). */
+export function computePacketId(c: Omit<PacketMeta, "packetId">): string {
+  const components = {
+    auditSchemaVersion: c.auditSchemaVersion, packetVersion: c.auditPacketVersion,
+    comparatorContractVersion: c.comparatorContractVersion, expectedManifestDigest: c.expectedManifestDigest,
+    provenanceDigest: c.provenanceDigest, securityStatementMapDigest: c.securityStatementMapDigest,
+    auditQueryBodyDigest: c.auditQueryBodyDigest, migrationChecksums: c.migrationChecksums,
+  };
+  return createHash("sha256").update(JSON.stringify(components)).digest("hex");
 }
 
 /** Parse a live audit result from the Supabase SQL Editor: raw JSON, a {audit:…} wrapper, or the

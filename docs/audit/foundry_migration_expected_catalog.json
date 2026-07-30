@@ -1,24 +1,152 @@
 {
-  "generatorVersion": "r2.3",
+  "generatorVersion": "r2.4",
   "generator": "scripts/migration-proof/build-expected-manifest.sh",
   "regenCommand": "bash scripts/migration-proof/build-expected-manifest.sh",
   "auditQuery": "docs/audit/foundry_migration_provenance_readonly.sql",
-  "auditSchemaVersion": "r2.3",
-  "auditQueryVersion": "2026-07-30-r2.3",
+  "auditQueryBody": "scripts/migration-proof/audit-query-body.sql",
   "provenanceRef": "docs/audit/foundry_migration_provenance.json",
+  "securityStatementMapRef": "docs/audit/foundry_migration_security_statement_map.json",
+  "auditSchemaVersion": "r2.4",
+  "auditPacketVersion": "r2.4",
+  "comparatorContractVersion": "r2.4",
   "postgresServerVersionNum": 160014,
   "functionBodyChecking": "on",
   "migrationChecksums": {
     "20260726000000": "8231a657c173dd99b9faa3872a895873fc98ca8b7d092f0cbfd0ccfc27624cd1",
     "20260727000000": "b06b376232b874f1138bdb0419f4113b7decd38a8e0869a052a4af784c6c7cad",
     "20260728000000": "381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027",
-    "20260729000000": "abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2",
-    "auditQuery": "850cfa9f5e941541318db78062f2f928083c308466c53d45c9f8b0153076634d"
+    "20260729000000": "abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2"
   },
-  "note": "Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729.",
+  "auditQueryBodyDigest": "4ea030f1a098b1693e3a7da1b8484568e10635c35bf828c01fd229629fed9c0f",
+  "provenanceDigest": "22fc47c918287661027f041c69647cd28f41491fcc69740b6519afbd81f42767",
+  "securityStatementMapDigest": "f0d46b8b9aa4a13188c578e173183b9257e98d72a168cea5b7ea1aa5ff63120d",
+  "expectedManifestDigest": "ccb5c71fb5956e771b489d5395bc691a770e0cc1309d7cac7739f58eba44fd6d",
+  "packetId": "b841a33b189ac9b8121a4c4edd48c8662c630d483f0391cec05fa71ac244cd35",
+  "note": "Expected FINAL state after every relevant later migration. submit_followup finalAuthority=20260729. Privileges = exact aclexplode tuples (not effective access).",
   "effectCount": 86,
-  "expectedManifestDigest": "6f773d6a4b64ff6648d6ce8dc9d7705dac8a0f4989385c7fa380817f71c409ac",
   "effects": [
+    {
+      "effectId": "acl:function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
+      "objectType": "acl_function",
+      "objectIdentity": "public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
+      "properties": {
+        "tuples": [
+          {
+            "grantee": "service_role",
+            "grantable": false,
+            "privilege": "EXECUTE"
+          }
+        ]
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "acl:function:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
+      "objectType": "acl_function",
+      "objectIdentity": "public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
+      "properties": {
+        "tuples": [
+          {
+            "grantee": "service_role",
+            "grantable": false,
+            "privilege": "EXECUTE"
+          }
+        ]
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "acl:function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
+      "objectType": "acl_function",
+      "objectIdentity": "public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
+      "properties": {
+        "tuples": [
+          {
+            "grantee": "service_role",
+            "grantable": false,
+            "privilege": "EXECUTE"
+          }
+        ]
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "effectId": "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
+      "objectType": "acl_function",
+      "objectIdentity": "public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
+      "properties": {
+        "tuples": [
+          {
+            "grantee": "service_role",
+            "grantable": false,
+            "privilege": "EXECUTE"
+          }
+        ]
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260729000000"
+    },
+    {
+      "effectId": "acl:table:public.foundry_participant_followup_audit",
+      "objectType": "acl_table",
+      "objectIdentity": "public.foundry_participant_followup_audit",
+      "properties": {
+        "tuples": []
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "acl:table:public.foundry_participant_followups",
+      "objectType": "acl_table",
+      "objectIdentity": "public.foundry_participant_followups",
+      "properties": {
+        "tuples": []
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260728000000",
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "effectId": "acl:table:public.foundry_shared_review_audit",
+      "objectType": "acl_table",
+      "objectIdentity": "public.foundry_shared_review_audit",
+      "properties": {
+        "tuples": []
+      },
+      "definitionDigest": null,
+      "comparisonMode": "structured",
+      "autoComparable": true,
+      "manualReason": null,
+      "migrationVersion": "20260726000000",
+      "finalAuthorityMigration": "20260726000000"
+    },
     {
       "effectId": "column:public.foundry_event_document_content.shared_question",
       "objectType": "column",
@@ -982,74 +1110,6 @@
       "finalAuthorityMigration": "20260726000000"
     },
     {
-      "effectId": "funcpriv:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
-      "objectType": "funcpriv",
-      "objectIdentity": "public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "service_role": true,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "funcpriv:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
-      "objectType": "funcpriv",
-      "objectIdentity": "public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "service_role": true,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "funcpriv:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
-      "objectType": "funcpriv",
-      "objectIdentity": "public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "service_role": true,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "funcpriv:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
-      "objectType": "funcpriv",
-      "objectIdentity": "public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "service_role": true,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260729000000"
-    },
-    {
       "effectId": "function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
       "objectType": "function",
       "objectIdentity": "public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)",
@@ -1360,54 +1420,6 @@
         "note",
         "changed_at"
       ],
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
-    },
-    {
-      "effectId": "tablepriv:public.foundry_participant_followup_audit",
-      "objectType": "tablepriv",
-      "objectIdentity": "public.foundry_participant_followup_audit",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "tablepriv:public.foundry_participant_followups",
-      "objectType": "tablepriv",
-      "objectIdentity": "public.foundry_participant_followups",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "authenticated": false
-      },
-      "definitionDigest": null,
-      "comparisonMode": "structured",
-      "autoComparable": true,
-      "manualReason": null,
-      "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260728000000"
-    },
-    {
-      "effectId": "tablepriv:public.foundry_shared_review_audit",
-      "objectType": "tablepriv",
-      "objectIdentity": "public.foundry_shared_review_audit",
-      "properties": {
-        "anon": false,
-        "public": false,
-        "authenticated": false
-      },
       "definitionDigest": null,
       "comparisonMode": "structured",
       "autoComparable": true,

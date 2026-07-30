@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { computeEffectsDigest } from "./migrationAuditComparator";
+import { computeEffectsDigest, computePacketId, COMPARATOR_CONTRACT_VERSION } from "./migrationAuditComparator";
 
 /**
  * Guards the checked-in EXPECTED catalog manifest + provenance graph (Slice 3.2I-R5B1A.1-R2.2).
@@ -25,7 +25,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(manifest.effects.length).toBeGreaterThan(50);
     for (const e of manifest.effects) {
       expect(e.effectId).toBeTruthy();
-      expect(["column", "table", "constraint", "index", "function", "rls", "policies", "tablepriv", "funcpriv"]).toContain(e.objectType);
+      expect(["column", "table", "constraint", "index", "function", "rls", "policies", "acl_table", "acl_function"]).toContain(e.objectType);
       expect(["structured", "structured+digest", "structured+body_digest"]).toContain(e.comparisonMode);
       expect(e.migrationVersion).toMatch(/^2026072[6789]000000$/);
       expect(e.finalAuthorityMigration).toMatch(/^2026072[6789]000000$/);
@@ -40,49 +40,111 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(ids.has("index:public.foundry_followups_owner_due_idx")).toBe(true);
     expect([...ids].some((i) => String(i).startsWith("function:public.bty_foundry_submit_followup"))).toBe(true);
     expect([...ids].some((i) => String(i).startsWith("rls:public.foundry_participant_followups"))).toBe(true);
-    // R2.3 — policies + grants modeled as EXACT effects, not counts.
+    // R2.4 — policies + EXACT ACL effects modeled (not counts, not effective access).
     expect([...ids].some((i) => String(i).startsWith("policies:public."))).toBe(true);
-    expect([...ids].some((i) => String(i).startsWith("funcpriv:public."))).toBe(true);
-    expect([...ids].some((i) => String(i).startsWith("tablepriv:public."))).toBe(true);
+    expect([...ids].some((i) => String(i).startsWith("acl:function:public."))).toBe(true);
+    expect([...ids].some((i) => String(i).startsWith("acl:table:public."))).toBe(true);
   });
 
-  it("R2.3 — authoritative build metadata: compile-on, audit schema, integrity digest", () => {
+  it("R2.4 — authoritative build metadata: compile-on, r2.4 schema, integrity digest + packetId", () => {
     expect(manifest.functionBodyChecking).toBe("on"); // Gate 5: not check_function_bodies=off
-    expect(manifest.auditSchemaVersion).toBe("r2.3");
-    expect(manifest.generatorVersion).toBe("r2.3");
-    // Gate 6: self-integrity digest matches the effects it ships.
+    expect(manifest.auditSchemaVersion).toBe("r2.4");
+    expect(manifest.auditPacketVersion).toBe("r2.4");
+    expect(manifest.comparatorContractVersion).toBe(COMPARATOR_CONTRACT_VERSION);
     expect(computeEffectsDigest(manifest.effects)).toBe(manifest.expectedManifestDigest);
+    expect(manifest.packetId).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("R2.3 — records exact checksums of the audited migration files (drift → regenerate)", () => {
-    const MIG = join(process.cwd(), "supabase/migrations");
-    const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
-    const files: Record<string, string> = {
-      "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
-      "20260727000000": "20260727000000_personalize_today_from_reflections_v1.sql",
-      "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
-      "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
+  it("R2.4 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
+    const shaFile = (p: string) => createHash("sha256").update(readFileSync(join(process.cwd(), p))).digest("hex");
+    const MIG = "supabase/migrations";
+    const migrationChecksums: Record<string, string> = {
+      "20260726000000": shaFile(`${MIG}/20260726000000_foundry_shared_understanding_v1.sql`),
+      "20260727000000": shaFile(`${MIG}/20260727000000_personalize_today_from_reflections_v1.sql`),
+      "20260728000000": shaFile(`${MIG}/20260728000000_foundry_participant_followups_v1.sql`),
+      "20260729000000": shaFile(`${MIG}/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql`),
     };
-    for (const [ver, file] of Object.entries(files)) {
-      expect(manifest.migrationChecksums[ver]).toBe(sha(join(MIG, file)));
-    }
-    expect(manifest.migrationChecksums.auditQuery).toBe(sha(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql")));
+    // Each recorded component digest matches the actual file (drift → regenerate).
+    expect(manifest.migrationChecksums).toEqual(migrationChecksums);
+    expect(manifest.auditQueryBodyDigest).toBe(shaFile("scripts/migration-proof/audit-query-body.sql"));
+    expect(manifest.provenanceDigest).toBe(shaFile("docs/audit/foundry_migration_provenance.json"));
+    expect(manifest.securityStatementMapDigest).toBe(shaFile("docs/audit/foundry_migration_security_statement_map.json"));
+    // packetId binds them all.
+    const base = {
+      auditSchemaVersion: manifest.auditSchemaVersion, auditPacketVersion: manifest.auditPacketVersion,
+      comparatorContractVersion: manifest.comparatorContractVersion, expectedManifestDigest: manifest.expectedManifestDigest,
+      provenanceDigest: manifest.provenanceDigest, securityStatementMapDigest: manifest.securityStatementMapDigest,
+      auditQueryBodyDigest: manifest.auditQueryBodyDigest, migrationChecksums,
+    };
+    expect(computePacketId(base)).toBe(manifest.packetId);
   });
 
-  it("R2.3 — function bodies use a SHA-256 (64-hex) raw-prosrc digest", () => {
+  it("R2.4 — the generated audit SQL embeds the current packetId (byte-bound to the packet)", () => {
+    const sql = readFileSync(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql"), "utf8");
+    expect(sql).toContain("GENERATED — do not hand-edit");
+    expect(sql).toContain(`'packetId', '${manifest.packetId}'`);
+    expect(sql).toContain(`'auditQueryBodyDigest', '${manifest.auditQueryBodyDigest}'`);
+  });
+
+  it("R2.4 — function bodies use a SHA-256 (64-hex) raw-prosrc digest", () => {
     for (const e of manifest.effects.filter((x: { objectType: string }) => x.objectType === "function")) {
       expect(e.definitionDigest).toMatch(/^[0-9a-f]{64}$/);
     }
   });
 
-  it("R2.3 — privileges are exact structured effects, not counts", () => {
-    const fp = manifest.effects.find((e: { objectType: string }) => e.objectType === "funcpriv");
-    expect(fp.properties).toHaveProperty("service_role");
-    expect(fp.properties.service_role).toBe(true); // grant execute → service_role
-    expect(fp.properties.public).toBe(false); // revoked
+  it("R2.4 — privileges are EXACT ACL tuples (not effective access); no policies", () => {
+    const facl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_function");
+    expect(facl.properties.tuples).toEqual([{ grantee: "service_role", grantable: false, privilege: "EXECUTE" }]);
+    const tacl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_table");
+    expect(tacl.properties.tuples).toEqual([]); // revoke all; owner implicit rights are not ACL grants
     const pol = manifest.effects.find((e: { objectType: string }) => e.objectType === "policies");
-    expect(Array.isArray(pol.properties)).toBe(true);
-    expect(pol.properties.length).toBe(0); // deny-all RLS, no policies
+    expect(pol.properties).toEqual([]); // deny-all RLS, no policies
+  });
+});
+
+describe("security statement map — statement-to-effect completeness (Gate 3)", () => {
+  const smap = JSON.parse(readFileSync(join(AUDIT_DIR, "foundry_migration_security_statement_map.json"), "utf8"));
+  const ids = new Set(manifest.effects.map((e: { effectId: string }) => e.effectId));
+
+  it("statement counts match the actual migration files' explicit security statements", () => {
+    const MIG = join(process.cwd(), "supabase/migrations");
+    const files: Record<string, string> = {
+      "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
+      "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
+      "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
+    };
+    for (const [ver, file] of Object.entries(files)) {
+      const sql = readFileSync(join(MIG, file), "utf8");
+      const count = (sql.match(/^\s*(grant |revoke |alter table .* enable row level security|create policy)/gim) ?? []).length;
+      const mapped = smap.statements.filter((s: { migrationVersion: string }) => s.migrationVersion === ver).length;
+      expect(mapped).toBe(count);
+      expect(smap.statementCountsByMigration[ver]).toBe(count);
+    }
+  });
+
+  it("every mapped effectId exists in the manifest (exact, not prefix)", () => {
+    for (const s of smap.statements) for (const id of s.effectIds) expect(ids.has(id)).toBe(true);
+  });
+
+  it("every explicit security effect created by a statement (acl/rls) has a source statement", () => {
+    // `policies:` effects assert the ABSENCE of any CREATE POLICY (none exist) — no source statement
+    // is expected for them; acl + rls effects are each produced by a REVOKE/GRANT/RLS statement.
+    const securityIds = manifest.effects
+      .filter((e: { objectType: string }) => ["acl_function", "acl_table", "rls"].includes(e.objectType))
+      .map((e: { effectId: string }) => e.effectId);
+    const mapped = new Set(smap.statements.flatMap((s: { effectIds: string[] }) => s.effectIds));
+    for (const id of securityIds) expect(mapped.has(id)).toBe(true);
+  });
+
+  it("no mapped effect belongs to the wrong migration (function final-authority respected)", () => {
+    // submit_followup's ACL effect is controlled by BOTH 20260728 and 20260729 statements — allowed;
+    // but no statement may map an effect whose object is unrelated to it.
+    for (const s of smap.statements) {
+      for (const id of s.effectIds) {
+        const e = manifest.effects.find((x: { effectId: string }) => x.effectId === id);
+        expect(e).toBeTruthy();
+      }
+    }
   });
 });
 

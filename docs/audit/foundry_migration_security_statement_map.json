@@ -1,0 +1,255 @@
+{
+  "note": "Every explicit GRANT/REVOKE/RLS statement in 20260726-20260729 → the manifest effect(s) it controls; effectIds resolved from the manifest.",
+  "auditSchemaVersion": "r2.4",
+  "statementCountsByMigration": {
+    "20260726000000": 4,
+    "20260728000000": 10,
+    "20260729000000": 2
+  },
+  "statements": [
+    {
+      "statementId": "20260726000000#00",
+      "migrationVersion": "20260726000000",
+      "statementType": "REVOKE_TABLE",
+      "objectKey": "table:foundry_shared_review_audit",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "ALL"
+      ],
+      "effectIds": [
+        "acl:table:public.foundry_shared_review_audit"
+      ]
+    },
+    {
+      "statementId": "20260726000000#01",
+      "migrationVersion": "20260726000000",
+      "statementType": "RLS_ENABLE",
+      "objectKey": "table:foundry_shared_review_audit",
+      "roles": [],
+      "privileges": [],
+      "effectIds": [
+        "rls:public.foundry_shared_review_audit"
+      ]
+    },
+    {
+      "statementId": "20260726000000#02",
+      "migrationVersion": "20260726000000",
+      "statementType": "REVOKE_FUNCTION",
+      "objectKey": "function:bty_foundry_set_shared_review",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)"
+      ]
+    },
+    {
+      "statementId": "20260726000000#03",
+      "migrationVersion": "20260726000000",
+      "statementType": "GRANT_FUNCTION",
+      "objectKey": "function:bty_foundry_set_shared_review",
+      "roles": [
+        "service_role"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#04",
+      "migrationVersion": "20260728000000",
+      "statementType": "REVOKE_TABLE",
+      "objectKey": "table:foundry_participant_followups",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "ALL"
+      ],
+      "effectIds": [
+        "acl:table:public.foundry_participant_followups"
+      ]
+    },
+    {
+      "statementId": "20260728000000#05",
+      "migrationVersion": "20260728000000",
+      "statementType": "RLS_ENABLE",
+      "objectKey": "table:foundry_participant_followups",
+      "roles": [],
+      "privileges": [],
+      "effectIds": [
+        "rls:public.foundry_participant_followups"
+      ]
+    },
+    {
+      "statementId": "20260728000000#06",
+      "migrationVersion": "20260728000000",
+      "statementType": "REVOKE_TABLE",
+      "objectKey": "table:foundry_participant_followup_audit",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "ALL"
+      ],
+      "effectIds": [
+        "acl:table:public.foundry_participant_followup_audit"
+      ]
+    },
+    {
+      "statementId": "20260728000000#07",
+      "migrationVersion": "20260728000000",
+      "statementType": "RLS_ENABLE",
+      "objectKey": "table:foundry_participant_followup_audit",
+      "roles": [],
+      "privileges": [],
+      "effectIds": [
+        "rls:public.foundry_participant_followup_audit"
+      ]
+    },
+    {
+      "statementId": "20260728000000#08",
+      "migrationVersion": "20260728000000",
+      "statementType": "REVOKE_FUNCTION",
+      "objectKey": "function:bty_foundry_materialize_followup",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#09",
+      "migrationVersion": "20260728000000",
+      "statementType": "GRANT_FUNCTION",
+      "objectKey": "function:bty_foundry_materialize_followup",
+      "roles": [
+        "service_role"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#10",
+      "migrationVersion": "20260728000000",
+      "statementType": "REVOKE_FUNCTION",
+      "objectKey": "function:bty_foundry_submit_followup",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#11",
+      "migrationVersion": "20260728000000",
+      "statementType": "GRANT_FUNCTION",
+      "objectKey": "function:bty_foundry_submit_followup",
+      "roles": [
+        "service_role"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#12",
+      "migrationVersion": "20260728000000",
+      "statementType": "REVOKE_FUNCTION",
+      "objectKey": "function:bty_foundry_get_my_followup",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)"
+      ]
+    },
+    {
+      "statementId": "20260728000000#13",
+      "migrationVersion": "20260728000000",
+      "statementType": "GRANT_FUNCTION",
+      "objectKey": "function:bty_foundry_get_my_followup",
+      "roles": [
+        "service_role"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)"
+      ]
+    },
+    {
+      "statementId": "20260729000000#14",
+      "migrationVersion": "20260729000000",
+      "statementType": "REVOKE_FUNCTION",
+      "objectKey": "function:bty_foundry_submit_followup",
+      "roles": [
+        "anon",
+        "PUBLIC",
+        "authenticated"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)"
+      ]
+    },
+    {
+      "statementId": "20260729000000#15",
+      "migrationVersion": "20260729000000",
+      "statementType": "GRANT_FUNCTION",
+      "objectKey": "function:bty_foundry_submit_followup",
+      "roles": [
+        "service_role"
+      ],
+      "privileges": [
+        "EXECUTE"
+      ],
+      "effectIds": [
+        "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)"
+      ]
+    }
+  ]
+}
