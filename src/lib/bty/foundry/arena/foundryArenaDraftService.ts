@@ -1,8 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import { validateArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
+import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, type Locale } from "./arenaScenarioGenerationService";
+
+/** The stored guided-answers value: host Q1/Q2 + the canonical, editable practice boundary. */
+type StoredGuidedAnswers = GuidedAnswers & { practiceBoundary?: PracticeBoundary };
 
 /**
  * Foundry Guided Arena Builder — draft persistence (service).
@@ -25,7 +29,7 @@ export type ArenaDraftRow = {
   source_module_version: number;
   source_draft_id: string;
   status: "draft";
-  guided_answers: GuidedAnswers;
+  guided_answers: StoredGuidedAnswers;
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
   revision: number;
@@ -210,31 +214,93 @@ export async function regenerateArenaDraft(
   const source = await resolveArenaSource(admin, ownerUserId, current.source_event_id);
   if (!source.ok) return { ok: false, reason: source.reason };
 
+  // TRUST BOUNDARY (Slice 3.2I-R5A): generation reads ONLY the canonical, server-stored
+  // boundary — never a client-supplied one. Snapshot the revision it was generated under.
+  const canonicalBoundary = current.guided_answers.practiceBoundary;
+  const generatedUnderRevision = current.revision;
+
   const generated = await generateArenaScenarioDraft({
     locale,
     facts: source.value.facts,
     guided: current.guided_answers,
+    boundary: canonicalBoundary,
   });
   if (!generated.ok) return { ok: false, reason: generated.reason };
   const gen = generated.value;
-  const check = validateArenaScenarioDraft(gen.draft);
+  // Copy the boundary onto the scenario so it rides into the published snapshot (audit).
+  const scenario: ArenaScenarioDraft = canonicalBoundary ? { ...gen.draft, practiceBoundary: canonicalBoundary } : gen.draft;
+  const check = validateArenaScenarioDraft(scenario);
   if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
 
+  // RACE PROTECTION: only save if the canonical revision is still the one we generated under
+  // (the Manager may have edited the boundary in another tab while we generated/reviewed).
   const { data, error } = await admin
     .from("foundry_arena_scenario_drafts")
     .update({
-      scenario_draft: gen.draft,
+      scenario_draft: scenario,
       generation_source: gen.source,
-      revision: current.revision + 1,
+      revision: generatedUnderRevision + 1,
       updated_at: new Date().toISOString(),
     })
     .eq("id", draftId)
     .eq("owner_user_id", ownerUserId)
+    .eq("revision", generatedUnderRevision)
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
 
-  if (error || !data) return { ok: false, reason: error?.message ?? "arena_draft_save_failed" };
+  if (error || !data) return { ok: false, reason: "stale_revision" }; // boundary changed mid-generation
   return { ok: true, value: { row: data, warnings: [...gen.warnings, ...check.warnings] } };
+}
+
+/**
+ * Save the Manager-confirmed practice boundary onto a draft (Slice 3.2I-R5A). This is the
+ * ONLY authority for the boundary — generation reads it back from here, never from a client
+ * request. Owner-scoped, stale-revision-guarded, and it INVALIDATES the unapproved generated
+ * scenario (clears `scenario_draft`) when the boundary MEANINGFULLY changes, so branches made
+ * under an old boundary can never be previewed or published. Returns the canonical saved state.
+ */
+export async function saveDraftBoundary(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  boundaryInput: unknown,
+  expectedRevision: number | null,
+): Promise<ServiceResult<{ row: ArenaDraftRow; invalidated: boolean }>> {
+  const check = validateBoundary(boundaryInput);
+  if (!check.ok) return { ok: false, reason: check.errors[0] ?? "boundary_invalid" };
+  const boundary = boundaryInput as PracticeBoundary;
+
+  const current = await getOwnerArenaDraft(admin, ownerUserId, draftId);
+  if (!current) return { ok: false, reason: "arena_draft_not_found" };
+  if (expectedRevision !== null && expectedRevision !== current.revision) {
+    return { ok: false, reason: "stale_revision" };
+  }
+
+  const changed = boundaryChanged(current.guided_answers.practiceBoundary, boundary);
+  const nextGuided: StoredGuidedAnswers = { ...current.guided_answers, practiceBoundary: boundary };
+
+  const patch: Record<string, unknown> = {
+    guided_answers: nextGuided,
+    revision: current.revision + 1,
+    updated_at: new Date().toISOString(),
+  };
+  // A meaningful change invalidates the unapproved generated scenario — it must never be
+  // previewed or published as current under the new boundary.
+  if (changed) {
+    patch.scenario_draft = null;
+    patch.generation_source = null;
+  }
+
+  const { data, error } = await admin
+    .from("foundry_arena_scenario_drafts")
+    .update(patch)
+    .eq("id", draftId)
+    .eq("owner_user_id", ownerUserId)
+    .eq("revision", current.revision)
+    .select(DRAFT_COLS)
+    .single<ArenaDraftRow>();
+  if (error || !data) return { ok: false, reason: "stale_revision" };
+  return { ok: true, value: { row: data, invalidated: changed } };
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +312,7 @@ export type ClientArenaDraft = {
   source_event_id: string;
   source_module_version: number;
   status: "draft";
-  guided_answers: GuidedAnswers;
+  guided_answers: StoredGuidedAnswers;
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
   revision: number;

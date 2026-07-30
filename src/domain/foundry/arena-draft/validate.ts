@@ -31,6 +31,7 @@ import {
   type ScenarioBranch,
   type ScenarioDraftChoice,
 } from "./types";
+import { validateBoundary, type PracticeBoundary } from "./boundary";
 
 export type DraftValidation = {
   ok: boolean;
@@ -317,6 +318,19 @@ export function parseArenaScenarioDraft(
     const branches: Record<string, ScenarioBranch> = {};
     for (const [key, b] of Object.entries(r.branches)) branches[key] = normalizeBranch(b as ScenarioBranch);
     value.branches = branches;
+  }
+
+  // Slice 3.2I-R5A — PRESERVE a valid practiceBoundary (rides into the published snapshot);
+  // a malformed one is SAFELY OMITTED (never persisted as authoritative). Provider assessment
+  // / semantic-review keys are never copied — only the boundary shape survives.
+  const rawBoundary = (raw as { practiceBoundary?: unknown }).practiceBoundary;
+  if (rawBoundary !== undefined && validateBoundary(rawBoundary).ok) {
+    const b = rawBoundary as PracticeBoundary;
+    value.practiceBoundary = {
+      mode: b.mode,
+      confirmed: b.confirmed,
+      constraints: b.constraints.map((c) => ({ id: c.id, statement: c.statement.trim(), provenance: c.provenance })),
+    };
   }
 
   return { ok: true, value, warnings: v.warnings };

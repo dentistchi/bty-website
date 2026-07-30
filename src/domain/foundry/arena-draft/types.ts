@@ -140,6 +140,13 @@ export type ArenaScenarioDraft = {
   actionDecision: ActionDecisionPhase;
   /** Present → branch-aware; absent/empty → legacy flat. Keyed by primary choice id. */
   branches?: Record<PrimaryChoiceId, ScenarioBranch>;
+  /**
+   * Slice 3.2I-R5A — the Manager-confirmed practice boundary this scenario was generated
+   * under, copied onto the scenario at generation so it rides into the immutable published
+   * snapshot (audit + regeneration safety). NOT learner-facing. Provider constraint
+   * assessments and semantic-review output are NEVER stored here.
+   */
+  practiceBoundary?: import("./boundary").PracticeBoundary;
 };
 
 /** A scenario is branch-aware iff it carries at least one branch. Pure discriminator. */

@@ -16,7 +16,9 @@ import {
   listOwnerArenaDraftsForEvent,
   regenerateArenaDraft,
   saveArenaDraftEdits,
+  saveDraftBoundary,
 } from "./foundryArenaDraftService";
+import type { PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 
 const AI_DRAFT: ArenaScenarioDraft = {
@@ -358,5 +360,89 @@ describe("regenerateArenaDraft — reuses stored answers, keeps the source", () 
       expect(again.value.row.guided_answers).toEqual(guided); // answers never lost
       expect(again.value.row.source_module_version).toBe(3); // source never re-pointed
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slice 3.2I-R5A — canonical boundary persistence + generation trust boundary
+// ---------------------------------------------------------------------------
+
+const B_JUDGMENT: PracticeBoundary = { mode: "judgment", confirmed: true, constraints: [] };
+const B_CON = (statements: string[]): PracticeBoundary => ({
+  mode: "judgment_with_constraints",
+  confirmed: true,
+  constraints: statements.map((s, i) => ({ id: `c${i + 1}`, statement: s, provenance: "manager_entered" })),
+});
+
+function seedDraft(over: Row = {}) {
+  const draftRow: Row = {
+    id: "d1", owner_user_id: OWNER, source_event_id: "evt-owned", source_module_version: 3, source_draft_id: "draft-77",
+    status: "draft", guided_answers: { ...guided }, scenario_draft: AI_DRAFT, generation_source: "ai", revision: 2,
+    created_at: "t", updated_at: "t", ...over,
+  };
+  const admin = makeFakeAdmin({
+    events: [{ id: "evt-owned", owner_user_id: OWNER, title: "T", status: "open" }],
+    modules: [{ event_id: "evt-owned", source_draft_id: "draft-77", module_version: 3, module_snapshot: { problem: "A teammate proposes cutting a review", observableBehavior: "Raise the concern", learningNeeds: ["shared_standard"] } }],
+    drafts: [draftRow],
+  });
+  return admin;
+}
+
+describe("saveDraftBoundary — canonical, authorized, stale-guarded, invalidating", () => {
+  it("saves a valid boundary and bumps revision (canonical response, not the client echo)", async () => {
+    const { admin, tables } = seedDraft();
+    const r = await saveDraftBoundary(admin, OWNER, "d1", B_JUDGMENT, 2);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.row.guided_answers.practiceBoundary).toEqual(B_JUDGMENT);
+      expect(r.value.row.revision).toBe(3);
+    }
+    expect((tables.foundry_arena_scenario_drafts[0].guided_answers as Record<string, unknown>).practiceBoundary).toBeTruthy();
+  });
+
+  it("rejects an invalid boundary", async () => {
+    const { admin } = seedDraft();
+    const r = await saveDraftBoundary(admin, OWNER, "d1", { mode: "nope", confirmed: true, constraints: [] }, 2);
+    expect(r).toMatchObject({ ok: false });
+  });
+
+  it("rejects a stale expected revision (never overwrites)", async () => {
+    const { admin } = seedDraft();
+    const r = await saveDraftBoundary(admin, OWNER, "d1", B_JUDGMENT, 1);
+    expect(r).toMatchObject({ ok: false, reason: "stale_revision" });
+  });
+
+  it("rejects another owner's draft (non-disclosing not_found)", async () => {
+    const { admin } = seedDraft();
+    const r = await saveDraftBoundary(admin, OTHER, "d1", B_JUDGMENT, 2);
+    expect(r).toMatchObject({ ok: false, reason: "arena_draft_not_found" });
+  });
+
+  it("a MEANINGFUL boundary change invalidates the unapproved generated scenario", async () => {
+    const { admin, tables } = seedDraft({ guided_answers: { ...guided, practiceBoundary: B_CON(["Verify identity before treatment"]) } });
+    const r = await saveDraftBoundary(admin, OWNER, "d1", B_CON(["Verify identity before treatment", "Report the incident"]), 2);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.invalidated).toBe(true);
+    expect(tables.foundry_arena_scenario_drafts[0].scenario_draft).toBeNull(); // branches under old boundary cleared
+  });
+
+  it("an equivalent normalized re-save does NOT invalidate", async () => {
+    const { admin, tables } = seedDraft({ guided_answers: { ...guided, practiceBoundary: B_CON(["Verify identity before treatment"]) } });
+    const same: PracticeBoundary = { mode: "judgment_with_constraints", confirmed: true, constraints: [{ id: "c1", statement: "  verify identity BEFORE treatment ", provenance: "suggested_from_problem" }] };
+    const r = await saveDraftBoundary(admin, OWNER, "d1", same, 2);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.invalidated).toBe(false);
+    expect(tables.foundry_arena_scenario_drafts[0].scenario_draft).not.toBeNull(); // scenario preserved
+  });
+});
+
+describe("regenerateArenaDraft — reads ONLY the canonical server-stored boundary (trust boundary)", () => {
+  it("passes the stored boundary to generation and stamps it onto the scenario", async () => {
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(AI_DRAFT) } }] });
+    const { admin } = seedDraft({ guided_answers: { ...guided, practiceBoundary: B_JUDGMENT }, scenario_draft: null, revision: 2 });
+    const r = await regenerateArenaDraft(admin, OWNER, "d1", "en");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.row.scenario_draft?.practiceBoundary).toEqual(B_JUDGMENT);
+    expect(mockCreate).toHaveBeenCalledTimes(1); // judgment (no rules) → no semantic review call
   });
 });
