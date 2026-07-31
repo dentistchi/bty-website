@@ -187,6 +187,82 @@ describe('R1 — duration_unavailable', () => {
   });
 });
 
+describe('R4 — FREE Final Song Grace', () => {
+  const GRACE = {
+    outcome: 'started', request: { id: 'req-1' },
+    leaseEndsAt: '2026-07-31T21:10:00.000Z', durationSeconds: 69,
+    finalSongGraceApplied: true, finalSongGraceSeconds: 39,
+    finalSongChargedSeconds: 30, remainingBeforeSeconds: 30,
+  };
+
+  it('publishes the grace fields on a graced start', async () => {
+    state.ensure = GRACE;
+    const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(res.status).toBe(200);
+    const d = await res.json();
+    expect(d.code).toBe('started');
+    expect(d.finalSongGraceApplied).toBe(true);
+    expect(d.finalSongGraceSeconds).toBe(39);
+    expect(d.finalSongChargedSeconds).toBe(30);
+    expect(d.remainingBeforeSeconds).toBe(30);
+    // The lease still covers the WHOLE song even though only 30s was charged.
+    expect(d.durationSeconds).toBe(69);
+    expect(d.leaseEndsAt).toBe('2026-07-31T21:10:00.000Z');
+  });
+
+  it('an ordinary start emits NO grace key at all (older clients unaffected)', async () => {
+    state.ensure = { outcome: 'started', request: { id: 'req-1' }, leaseEndsAt: 'x', durationSeconds: 200 };
+    const d = await (await POST(makeReq({ requestId: 'req-1' }), ctx)).json();
+    expect('finalSongGraceApplied' in d).toBe(false);
+    expect('finalSongGraceSeconds' in d).toBe(false);
+  });
+
+  it('finalSongGraceApplied:false is treated as "no grace" and omitted entirely', async () => {
+    state.ensure = {
+      outcome: 'started', request: { id: 'req-1' }, durationSeconds: 200,
+      finalSongGraceApplied: false, finalSongGraceSeconds: null,
+    };
+    const d = await (await POST(makeReq({ requestId: 'req-1' }), ctx)).json();
+    expect('finalSongGraceApplied' in d).toBe(false);
+  });
+
+  it('a response-loss retry reports the SAME grace facts via already_active', async () => {
+    state.ensure = { ...GRACE, outcome: 'already_active' };
+    const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(res.status).toBe(200);
+    const d = await res.json();
+    expect(d.code).toBe('already_active');
+    expect(d.finalSongGraceApplied).toBe(true);
+    expect(d.finalSongGraceSeconds).toBe(39);
+    expect(d.finalSongChargedSeconds).toBe(30);
+    expect(d.leaseEndsAt).toBe('2026-07-31T21:10:00.000Z');
+  });
+
+  it('a blocked start never carries grace fields', async () => {
+    state.ensure = {
+      outcome: 'upgrade_required', entitlement: ENT_ZERO,
+      durationSeconds: 291, requiredChargeSeconds: 291, remainingSeconds: 200,
+    };
+    const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(res.status).toBe(402);
+    const d = await res.json();
+    expect('finalSongGraceApplied' in d).toBe(false);
+    expect(d.requiredChargeSeconds).toBe(291);
+  });
+
+  it('exposes no ledger internals (account, segment, window)', async () => {
+    state.ensure = {
+      ...GRACE,
+      accountId: 'acct-1', segmentId: 'seg-1', graceId: 'grace-1',
+      chargedWindowStart: '2026-07-31T07:00:00.000Z',
+    };
+    const d = await (await POST(makeReq({ requestId: 'req-1' }), ctx)).json();
+    for (const leak of ['accountId', 'segmentId', 'graceId', 'chargedWindowStart']) {
+      expect(leak in d).toBe(false);
+    }
+  });
+});
+
 describe('R1 — N: status codes are unchanged', () => {
   const cases: Array<[string, unknown, number]> = [
     ['started', { outcome: 'started', request: { id: 'r' } }, 200],

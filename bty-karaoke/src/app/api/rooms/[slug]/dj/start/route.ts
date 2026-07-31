@@ -38,13 +38,25 @@ function admissionFields(r: {
   requiredChargeSeconds?: number | null;
   remainingSeconds?: number | null;
   passExpiresAt?: string | null;
-}): Record<string, string | number> {
-  const out: Record<string, string | number> = {};
+  finalSongGraceApplied?: boolean;
+  finalSongGraceSeconds?: number | null;
+  finalSongChargedSeconds?: number | null;
+  remainingBeforeSeconds?: number | null;
+}): Record<string, string | number | boolean> {
+  const out: Record<string, string | number | boolean> = {};
   if (typeof r.leaseEndsAt === 'string' && r.leaseEndsAt) out.leaseEndsAt = r.leaseEndsAt;
   if (typeof r.durationSeconds === 'number') out.durationSeconds = r.durationSeconds;
   if (typeof r.requiredChargeSeconds === 'number') out.requiredChargeSeconds = r.requiredChargeSeconds;
   if (typeof r.remainingSeconds === 'number') out.remainingSeconds = r.remainingSeconds;
   if (typeof r.passExpiresAt === 'string' && r.passExpiresAt) out.passExpiresAt = r.passExpiresAt;
+  // R4 — grace is published ONLY when it actually applied. An ordinary start emits no grace key
+  // at all, so older clients and the v1 path see the exact payload they saw before.
+  if (r.finalSongGraceApplied === true) {
+    out.finalSongGraceApplied = true;
+    if (typeof r.finalSongGraceSeconds === 'number') out.finalSongGraceSeconds = r.finalSongGraceSeconds;
+    if (typeof r.finalSongChargedSeconds === 'number') out.finalSongChargedSeconds = r.finalSongChargedSeconds;
+    if (typeof r.remainingBeforeSeconds === 'number') out.remainingBeforeSeconds = r.remainingBeforeSeconds;
+  }
   return out;
 }
 

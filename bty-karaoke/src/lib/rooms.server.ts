@@ -901,22 +901,25 @@ export interface AdmissionDetail {
   remainingSeconds?: number | null;
   /** pass_insufficient: the pass expiry the whole video had to finish inside. */
   passExpiresAt?: string | null;
+  // BUILD 20M-R4 — FREE Final Song Grace (success path only).
+  finalSongGraceApplied?: boolean;
+  finalSongGraceSeconds?: number | null;
+  finalSongChargedSeconds?: number | null;
+  remainingBeforeSeconds?: number | null;
 }
 
 /** Copy the admission detail off a BeginResult without inventing anything. */
-function admissionDetailOf(r: {
-  leaseEndsAt?: string | null;
-  durationSeconds?: number | null;
-  requiredChargeSeconds?: number | null;
-  remainingSeconds?: number | null;
-  passExpiresAt?: string | null;
-}): AdmissionDetail {
+function admissionDetailOf(r: AdmissionDetail): AdmissionDetail {
   return {
     leaseEndsAt: r.leaseEndsAt,
     durationSeconds: r.durationSeconds,
     requiredChargeSeconds: r.requiredChargeSeconds,
     remainingSeconds: r.remainingSeconds,
     passExpiresAt: r.passExpiresAt,
+    finalSongGraceApplied: r.finalSongGraceApplied,
+    finalSongGraceSeconds: r.finalSongGraceSeconds,
+    finalSongChargedSeconds: r.finalSongChargedSeconds,
+    remainingBeforeSeconds: r.remainingBeforeSeconds,
   };
 }
 
@@ -942,6 +945,34 @@ async function activeLeaseForRequest(requestId: string): Promise<AdmissionDetail
     return {
       leaseEndsAt: typeof lease === 'string' && lease.length > 0 ? lease : undefined,
       durationSeconds: typeof dur === 'number' && Number.isFinite(dur) ? dur : undefined,
+      // R4 — recover the grace metadata for this already-admitted request, so a response-loss
+      // retry reports the SAME grace facts instead of silently losing them.
+      ...(await graceForRequest(requestId)),
+    };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * BUILD 20M-R4 — the durable grace record for an already-admitted request. Pure READ of the
+ * once-per-window ledger; it grants nothing and consumes nothing. Returns {} when this request
+ * was not admitted by grace, so ordinary starts are entirely unaffected.
+ */
+async function graceForRequest(requestId: string): Promise<AdmissionDetail> {
+  try {
+    const { data, error } = await karaokeDb()
+      .from('karaoke_free_final_song_grace')
+      .select('grace_seconds, charged_seconds, remaining_before_seconds')
+      .eq('request_id', requestId)
+      .maybeSingle();
+    if (error || !data) return {};
+    const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+    return {
+      finalSongGraceApplied: true,
+      finalSongGraceSeconds: n(data.grace_seconds),
+      finalSongChargedSeconds: n(data.charged_seconds),
+      remainingBeforeSeconds: n(data.remaining_before_seconds),
     };
   } catch {
     return {};

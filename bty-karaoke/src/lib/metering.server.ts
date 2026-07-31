@@ -57,6 +57,15 @@ export interface BeginResult {
   remainingSeconds?: number | null;
   /** pass_insufficient: the canonical pass expiry the whole video had to fit inside. */
   passExpiresAt?: string | null;
+  // BUILD 20M-R4 — FREE Final Song Grace. Present only on the v2 success path.
+  /** True when this start was admitted by the once-per-window final-song grace. */
+  finalSongGraceApplied?: boolean;
+  /** The seconds granted beyond the remaining balance (≤ 90). Null unless grace applied. */
+  finalSongGraceSeconds?: number | null;
+  /** What was actually billed to the FREE entitlement (= the remaining balance). */
+  finalSongChargedSeconds?: number | null;
+  /** The FREE remaining at the instant of admission (becomes 0 afterwards). */
+  remainingBeforeSeconds?: number | null;
 }
 export interface EndResult {
   outcome: EndOutcome;
@@ -121,6 +130,13 @@ async function beginSongV2(roomId: string, requestId: string, mode: 'guest' | 'p
     requiredChargeSeconds: num(row.requiredChargeSeconds),
     remainingSeconds: num(row.remainingSeconds),
     passExpiresAt: iso(row.passExpiresAt),
+    // R4 — grace metadata, again passed through verbatim. `finalSongGraceApplied` is a real
+    // boolean on every v2 success (false when grace was not used), so it is narrowed separately
+    // from the nullable numbers.
+    finalSongGraceApplied: row.finalSongGraceApplied === true,
+    finalSongGraceSeconds: num(row.finalSongGraceSeconds),
+    finalSongChargedSeconds: num(row.finalSongChargedSeconds),
+    remainingBeforeSeconds: num(row.remainingBeforeSeconds),
   };
 }
 
