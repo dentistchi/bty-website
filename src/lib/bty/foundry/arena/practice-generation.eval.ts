@@ -48,8 +48,19 @@ const g = (choice: ScenarioGenInput["guided"]["hardestWhen"]["choice"], text: st
 
 /** ≥12 synthetic, non-private inputs across dilemma types, roles, and locales (≥8 en, ≥4 ko). */
 export const EVAL_CORPUS: EvalCase[] = [
+  // R2.20 — the previous wording embedded an ANSWER KEY. `observableBehavior` said "Own the miss and
+  // reset the client honestly" and the pressure was "admitting the miss feels like losing the
+  // client's trust", so the input named the correct behaviour and framed the alternative as
+  // reluctance to admit. Measured consequence: the generator produced admit-versus-conceal twice
+  // (bad_faith_option, moral_decoy) and, in a later pass, an accepted scenario whose second option
+  // was "Assure the client that everything is on schedule" — an outright lie — with the phrase
+  // "the importance of honesty" carried straight into the generated opening.
+  //
+  // Rewritten so the difficulty is WHEN, HOW MUCH and WHO, not whether to be honest. The missed
+  // delivery, the personal commitment, the trust at risk, the incomplete recovery facts and the
+  // time pressure are all preserved; nothing here prescribes the choices.
   { id: "c01-missed-commitment", dilemma: "missed leadership commitment", role: "team leader", locale: "en",
-    input: { locale: "en", facts: facts({ problem: "Your team missed a delivery you personally promised the client", observableBehavior: "Own the miss and reset the client honestly" }), guided: g("time_limited", "admitting the miss feels like losing the client's trust") } },
+    input: { locale: "en", facts: facts({ problem: "Your team missed a delivery you personally promised the client, and the recovery plan is not yet confirmed", observableBehavior: "Restore client trust while deciding the timing, scope and ownership of the update" }), guided: g("time_limited", "going to the client before the recovery plan is confirmed risks committing to a date you cannot hold") } },
   { id: "c02-uncertain-customer", dilemma: "uncertain customer information", role: "customer-facing lead", locale: "en",
     input: { locale: "en", facts: facts({ problem: "A customer is waiting on a fix that is only ninety percent confirmed", observableBehavior: "Communicate clearly under uncertainty" }), guided: g("time_limited", "sending it before it is confirmed could be wrong") } },
   { id: "c03-fairness-retention", dilemma: "fairness versus retention", role: "office manager", locale: "en",

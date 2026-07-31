@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { isLlmAvailable, getLlmModel } from "@/lib/bty/llm/client";
 import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
@@ -25,7 +26,16 @@ const LIVE = process.env.RUN_LIVE_EVAL === "1";
  */
 const ONLY = (process.env.EVAL_CASE_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const SELECTED = ONLY.length ? EVAL_CORPUS.filter((c) => ONLY.includes(c.id)) : EVAL_CORPUS;
-const ARTIFACT = ONLY.length ? "practice-generation.canary.json" : "practice-generation.latest.json";
+/**
+ * IMMUTABLE artifact naming (R2.20). Every filtered run previously wrote the SAME
+ * `practice-generation.canary.json`, so each canary destroyed the evidence of the one before it —
+ * four prior artifacts are permanently gone. Each run now writes a unique path first; the
+ * convenience `latest` copy is written afterwards and is never the authority.
+ */
+const RUN_ID = process.env.EVAL_RUN_ID?.trim() || `${process.env.EVAL_SLICE?.trim() || "run"}-${Date.now()}`;
+const RUN_KIND = ONLY.length ? "subset" : "full";
+const IMMUTABLE_ARTIFACT = `practice-generation.${RUN_KIND}.${RUN_ID}.json`;
+const LATEST_ARTIFACT = ONLY.length ? "practice-generation.canary.json" : "practice-generation.latest.json";
 
 describe("practice-generation corpus is well-formed", () => {
   it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety, ambiguous, and confirmed-boundary cases", () => {
@@ -112,7 +122,14 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
     const diversity = crossScenarioDiversity(drafts);
     const dir = join(process.cwd(), ".eval-artifacts");
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, ARTIFACT), JSON.stringify({ label: "LIVE MODEL OUTPUT", model, selectedIds: SELECTED.map((c) => c.id), count: results.length, diversity, results }, null, 2));
+    const payload = JSON.stringify({ label: "LIVE MODEL OUTPUT", runId: RUN_ID, model, selectedIds: SELECTED.map((c) => c.id), count: results.length, diversity, results }, null, 2);
+    // Immutable first — a run must never be able to destroy the sole copy of a previous one.
+    const immutablePath = join(dir, IMMUTABLE_ARTIFACT);
+    if (existsSync(immutablePath)) throw new Error(`refusing to overwrite an existing run artifact: ${IMMUTABLE_ARTIFACT}`);
+    writeFileSync(immutablePath, payload);
+    // Convenience pointer only, written after the authoritative copy is safe.
+    writeFileSync(join(dir, LATEST_ARTIFACT), payload);
+    console.info(`[eval] artifact ${IMMUTABLE_ARTIFACT} sha256=${createHash("sha256").update(payload).digest("hex")}`);
 
     // ---- HARD GATES (Slice 3.2I-R2.14) -------------------------------------
     // The artifact is written FIRST so a failing run still leaves full evidence to inspect.
