@@ -27,6 +27,26 @@
  */
 
 import { BOUNDARY_DEFECT_CODES, DECISION_STAGES, OPERATIVE_STAGES, type DecisionStage } from "./boundaryGrounding";
+import { type ChoicePhase, type ChoiceRef } from "./choiceConstruction";
+import {
+  PHASE_CHOICE_DEFECT_CODES,
+  PHASE_CHOICE_REVIEW_JSON_SCHEMA,
+  choiceKey,
+  collectPhaseChoiceReviews,
+  refKey,
+  type PhaseChoiceReview,
+} from "./choiceReview";
+import {
+  BRANCH_PROGRESSION_DEFECT_CODES,
+  BRANCH_PROGRESSION_REQUIRED,
+  BRANCH_PROGRESSION_SCHEMA_PROPERTIES,
+  CROSS_BRANCH_DEFECT_CODES,
+  CROSS_BRANCH_REVIEW_JSON_SCHEMA,
+  collectBranchProgressionDefects,
+  collectCrossBranchDefects,
+  type BranchProgressionFields,
+  type CrossBranchReview,
+} from "./branchProgression";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -92,6 +112,9 @@ export const TERMINAL_CODES = [
 export const RETRYABLE_CODES = [
   ...CHOICE_DEFECT_CODES,
   ...BRANCH_DEFECT_CODES,
+  ...PHASE_CHOICE_DEFECT_CODES,
+  ...BRANCH_PROGRESSION_DEFECT_CODES,
+  ...CROSS_BRANCH_DEFECT_CODES,
   ...BOUNDARY_DEFECT_CODES,
   ...URGENCY_DEFECT_CODES,
   "branch_paraphrase",
@@ -130,7 +153,7 @@ export type BranchReview = {
   overlapReason: string;
   branchDistinct: boolean;
   defectCodes: string[];
-};
+} & BranchProgressionFields;
 
 /**
  * One INDEPENDENT assessment per confirmed boundary (R2.21). This replaces the single global
@@ -189,6 +212,10 @@ export type SemanticReview = {
   tensionValueA: string;
   tensionValueB: string;
   branches: BranchReview[];
+  /** R2.22 — EVERY visible choice, every phase, reviewed exactly once. */
+  phaseChoices: PhaseChoiceReview[];
+  /** R2.22 — the whole-set comparison across sibling branches. */
+  crossBranch: CrossBranchReview;
   boundaryCompliant: boolean;
   boundaryAssessments: BoundaryAssessment[];
   urgency: UrgencyReview;
@@ -245,14 +272,18 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
           overlapReason: { type: "string" },
           branchDistinct: { type: "boolean" },
           defectCodes: { type: "array", items: { type: "string", enum: BRANCH_DEFECT_CODES } },
+          ...BRANCH_PROGRESSION_SCHEMA_PROPERTIES,
         },
         required: [
           "index", "selectedPrimarySummary", "resultingWorldState", "newConstraintOrPressure",
           "nextDecisionDimension", "repeatsPrimaryDecision", "overlapsOtherBranchIndex",
           "overlapReason", "branchDistinct", "defectCodes",
+          ...BRANCH_PROGRESSION_REQUIRED,
         ],
       },
     },
+    phaseChoices: PHASE_CHOICE_REVIEW_JSON_SCHEMA,
+    crossBranch: CROSS_BRANCH_REVIEW_JSON_SCHEMA,
     boundaryCompliant: { type: "boolean" },
     boundaryAssessments: {
       type: "array",
@@ -319,8 +350,8 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
   required: [
     "noSafeJudgmentSpace", "noSafeReasonCode", "boundaryIdsConsidered", "remainingJudgmentDimensions",
     "violatedBoundaryIds", "explanation", "primaryChoices", "twoValuesInTension", "tensionValueA",
-    "tensionValueB", "branches", "boundaryCompliant", "boundaryAssessments", "urgency",
-    "overallVerdict", "defectCodes", "retryInstruction",
+    "tensionValueB", "branches", "phaseChoices", "crossBranch", "boundaryCompliant",
+    "boundaryAssessments", "urgency", "overallVerdict", "defectCodes", "retryInstruction",
   ],
 } as const;
 
@@ -346,7 +377,7 @@ const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is st
  */
 export function validateSemanticReview(
   raw: unknown,
-  ctx: { primaryCount: number; branchCount: number; constraintIds: string[] },
+  ctx: { primaryCount: number; branchCount: number; constraintIds: string[]; choices: ChoiceRef[] },
 ): ReviewValidation {
   const errors: string[] = [];
   if (!isObj(raw)) return { ok: false, errors: ["review_not_an_object"] };
@@ -412,6 +443,20 @@ export function validateSemanticReview(
       overlapReason: typeof o.overlapReason === "string" ? o.overlapReason : "",
       branchDistinct: o.branchDistinct === true,
       defectCodes: strs(o.defectCodes),
+      // R2.22 progression + causal identity.
+      primaryDecisionPreserved: o.primaryDecisionPreserved === true,
+      tradeoffDecisionDimension: typeof o.tradeoffDecisionDimension === "string" ? o.tradeoffDecisionDimension : "",
+      actionDecisionDimension: typeof o.actionDecisionDimension === "string" ? o.actionDecisionDimension : "",
+      tradeoffAdvancesScenario: o.tradeoffAdvancesScenario === true,
+      actionAdvancesScenario: o.actionAdvancesScenario === true,
+      repeatedMeaningPairs: strs(o.repeatedMeaningPairs).filter((x) => x.trim().length > 0),
+      progressionValid: o.progressionValid === true,
+      selectedPrimaryEffect: typeof o.selectedPrimaryEffect === "string" ? o.selectedPrimaryEffect : "",
+      affectedStakeholders: strs(o.affectedStakeholders).filter((x) => x.trim().length > 0),
+      resourceOrRelationshipChange: typeof o.resourceOrRelationshipChange === "string" ? o.resourceOrRelationshipChange : "",
+      causalLink: typeof o.causalLink === "string" ? o.causalLink : "",
+      boundaryState: typeof o.boundaryState === "string" ? o.boundaryState : "",
+      urgencyState: typeof o.urgencyState === "string" ? o.urgencyState : "",
     };
   });
 
@@ -518,6 +563,28 @@ export function validateSemanticReview(
     }
   }
 
+  // --- all-phase choice review (R2.22) --------------------------------------
+  // The old contract judged PRIMARY choices only, so c01's "trust your timeline without further
+  // explanation" and "Continue to deflect questions" — both tradeoff/action phase — were never
+  // individually reviewed. Coverage is measured against the real visible-choice inventory.
+  const labels = new Map(ctx.choices.map((c) => [refKey(c), c.label]));
+  const phase = collectPhaseChoiceReviews(raw.phaseChoices, ctx.choices, labels);
+  errors.push(...phase.errors);
+
+  // --- cross-branch causal diversity (R2.22) --------------------------------
+  const rawCross = isObj(raw.crossBranch) ? raw.crossBranch : null;
+  if (!rawCross && ctx.branchCount >= 2) errors.push("review_cross_branch_missing");
+  const crossBranch: CrossBranchReview = {
+    resultingWorldOverlapPairs: strs(rawCross?.resultingWorldOverlapPairs),
+    nextDecisionAxisOverlapPairs: strs(rawCross?.nextDecisionAxisOverlapPairs),
+    stakeholderOverlapPairs: strs(rawCross?.stakeholderOverlapPairs),
+    repeatedActionMeaningPairs: strs(rawCross?.repeatedActionMeaningPairs),
+    branchesInterchangeable: rawCross?.branchesInterchangeable === true,
+    allBranchesSameGenericAxis: rawCross?.allBranchesSameGenericAxis === true,
+    defectCodes: strs(rawCross?.defectCodes),
+    conciseExplanation: typeof rawCross?.conciseExplanation === "string" ? rawCross.conciseExplanation : "",
+  };
+
   const verdictRaw = raw.overallVerdict;
   if (verdictRaw !== "accept" && verdictRaw !== "reject") errors.push("review_verdict_invalid");
   const boundaryCompliant = raw.boundaryCompliant === true;
@@ -536,6 +603,8 @@ export function validateSemanticReview(
     tensionValueA: typeof raw.tensionValueA === "string" ? raw.tensionValueA : "",
     tensionValueB: typeof raw.tensionValueB === "string" ? raw.tensionValueB : "",
     branches: branchReviews,
+    phaseChoices: phase.reviews,
+    crossBranch,
     boundaryCompliant,
     boundaryAssessments,
     urgency,
@@ -580,6 +649,30 @@ export function validateSemanticReview(
     defects.push(...b.defectCodes);
   }
 
+  // ALL-PHASE CHOICE QUALITY — the same standard at every phase. A good primary choice does not
+  // license a defective tradeoff or action.
+  defects.push(...phase.defects);
+
+  // SAME-BRANCH PROGRESSION (c09) and CROSS-BRANCH CAUSAL DIVERSITY (c18).
+  const progression = collectBranchProgressionDefects(branchReviews);
+  defects.push(...progression.defects);
+  const cross = collectCrossBranchDefects(branchReviews, ctx.branchCount >= 2 ? crossBranch : null);
+  defects.push(...cross.defects);
+
+  // Part 8 rule 3 — identical next-decision axes cannot coexist with "every branch is distinct".
+  if (cross.defects.includes("cross_branch_axis_collapse") && branchReviews.every((b) => b.branchDistinct)) {
+    defects.push("branch_semantic_collapse");
+  }
+  // Part 8 rule 4 — repeated meaning inside a branch cannot coexist with valid progression.
+  if (branchReviews.some((b) => b.progressionValid && b.repeatedMeaningPairs.length > 0)) {
+    defects.push("repeated_choice_meaning_within_branch");
+  }
+  // Part 8 rule 1 (primary cross-check) — the two per-choice contracts must agree about primary.
+  for (const c of choiceReviews) {
+    const p = phase.reviews.find((x) => x.phase === "primary" && x.choiceIndex === c.index);
+    if (p && p.defensible !== c.defensible) defects.push("review_contradictory");
+  }
+
   // URGENCY SAFETY — a pause to satisfy a safety rule is legitimate; a pause for convenience is not.
   if (urgency.overallUrgencyVerdict === "unsafe") defects.push("unsafe_delay");
   for (const c of urgency.choices) {
@@ -612,6 +705,8 @@ export type RetryContext = {
   boundaryDefects?: Array<{ boundaryId: string; statement: string; codes: string[] }>;
   /** R2.21 — per-primary-choice urgency correction. */
   urgencyDefects?: Array<{ index: number; codes: string[] }>;
+  /** R2.22 — exact phase/branch/choice coordinates for all-phase defects. */
+  phaseDefects?: Array<{ phase: string; branchIndex: number; choiceIndex: number; codes: string[] }>;
   reviewerInstruction?: string;
 };
 
@@ -711,6 +806,62 @@ export function buildRetryFeedback(ctx: RetryContext): string {
         `Primary choice ${n} leaves an unsafe capacity or supervision situation un-escalated. Give it a defensible escalation, staffing, supervision or referral response using only resources the training context supports — do not invent people, teams or capacity that were never mentioned.`,
       );
     }
+  }
+
+  // ALL-PHASE CHOICE DEFECTS (R2.22) — named at their exact coordinate, because "fix the decoy" was
+  // never actionable when the decoy sat in a branch's action phase.
+  const where = (d: { phase: string; branchIndex: number; choiceIndex: number }) =>
+    d.branchIndex >= 0
+      ? `branch ${d.branchIndex + 1}, ${d.phase.replace("branch_", "")} choice ${d.choiceIndex + 1}`
+      : `${d.phase.replace("flat_", "")} choice ${d.choiceIndex + 1}`;
+
+  for (const d of ctx.phaseDefects ?? []) {
+    const at = where(d);
+    if (d.codes.includes("bad_faith_option") || d.codes.includes("moral_decoy") || d.codes.includes("false_reassurance")) {
+      lines.push(
+        `At ${at}: this option is not defensible — it relies on concealment, false reassurance or bad faith. ` +
+          `Delete it and construct a replacement that protects a NAMED legitimate value and accepts a REAL stated cost, which a competent, well-intentioned person could choose. Keep the scenario facts exactly as they are.`,
+      );
+    }
+    if (d.codes.includes("vague_reassurance") || d.codes.includes("non_commitment_decoy") || d.codes.includes("passive_delay") || d.codes.includes("deflection_without_value")) {
+      lines.push(
+        `At ${at}: this option reassures or defers without deciding anything. Replace it with an OWNED, actionable response — say who acts, what they do, and the trigger, checkpoint or threshold that follows. ` +
+          `Use only what the training input supports; invent no dates, people or resources. A deliberately limited disclosure or a pause that protects accuracy is fine ONLY if it states its action and its basis.`,
+      );
+    }
+    if (d.codes.includes("dominated_choice")) lines.push(`At ${at}: this option gives up nothing its sibling keeps, so it is not a real alternative. Give it a genuine sacrifice.`);
+    if (d.codes.includes("unsafe_option")) lines.push(`At ${at}: this option is knowingly unsafe. Replace it with one that protects safety and a real operational value.`);
+    if (d.codes.includes("vague_evasion")) lines.push(`At ${at}: this option names no concrete action. State what the person actually does.`);
+  }
+  if (ctx.defects.includes("repeated_decoy_across_branches")) {
+    lines.push("The SAME reassurance-shaped option recurs in more than one branch. Replace EVERY occurrence, not just the first — each branch needs its own concrete response.");
+  }
+
+  // SAME-BRANCH PROGRESSION (c09).
+  if (ctx.defects.includes("repeated_choice_meaning_within_branch") || ctx.defects.includes("action_repeats_tradeoff")) {
+    lines.push(
+      "Inside a branch, an action choice repeats a tradeoff choice already offered one phase earlier. The tradeoff decision has ALREADY been made — treat it as settled, show what it produced, then pose a genuinely NEW action commitment. Rewording the same option is not a new decision.",
+    );
+  }
+  if (ctx.defects.includes("tradeoff_repeats_primary") || ctx.defects.includes("action_reopens_primary") || ctx.defects.includes("branch_decision_loop") || ctx.defects.includes("no_new_decision_dimension")) {
+    lines.push(
+      "A branch loops instead of progressing. The sequence is: the primary choice is already made → the world it produced → a NEW tradeoff → an action commitment on a FURTHER new dimension. No later phase may re-open or reverse the primary choice without a new causal event.",
+    );
+  }
+
+  // CROSS-BRANCH CAUSAL DIVERSITY (c18).
+  if (
+    ctx.defects.includes("cross_branch_axis_collapse") ||
+    ctx.defects.includes("interchangeable_branch_consequence") ||
+    ctx.defects.includes("generic_communication_collapse") ||
+    ctx.defects.includes("sibling_world_state_overlap") ||
+    ctx.defects.includes("repeated_action_meaning") ||
+    ctx.defects.includes("primary_choice_has_no_causal_effect")
+  ) {
+    lines.push(
+      "The branches collapse into one problem: every path ends up asking the same next question. Each branch must follow from ITS OWN primary choice — a different resulting world, a different new pressure, a different next decision dimension. " +
+        "If the branches could be swapped without becoming incoherent, the primary choice changed nothing. Do NOT solve this by renaming things: synonyms are not causal difference. Not every branch may be about what to tell people and when.",
+    );
   }
 
   if (ctx.reviewerInstruction?.trim()) lines.push(`Reviewer note: ${ctx.reviewerInstruction.trim()}`);

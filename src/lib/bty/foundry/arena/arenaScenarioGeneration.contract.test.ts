@@ -24,9 +24,10 @@ vi.mock("@/lib/bty/llm/client", () => ({
   getLlmClient: () => ({ chat: { completions: { create: mockCreate } } }),
 }));
 
-import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
+import { generateArenaScenarioDraft, __setGenObserver, PRACTICE_SAMPLING, type GenObservation } from "./arenaScenarioGenerationService";
 import { providerJson, toProviderDto, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { PROVIDER_SCHEMA_NAME } from "@/domain/foundry/arena-draft/providerDto";
+import { detectMeasuredLabelDefects } from "@/domain/foundry/arena-draft/choiceConstruction";
 
 const facts: ModuleSourceFacts = {
   problem: "A teammate proposes cutting a planned design review to hit the deadline",
@@ -751,5 +752,171 @@ describe("R2.21 — an ungrounded confirmed boundary is corrected, then terminat
     expect(params.response_format.json_schema.name).toBe(PROVIDER_SCHEMA_NAME);
     expect(params.response_format.json_schema.strict).toBe(true);
     expect(params.response_format.json_schema.schema.required).toContain("boundaryGrounding");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("R2.22 — sampling configuration is explicit and environment-independent", () => {
+  it("46. generator settings are named constants, sent verbatim on every request", async () => {
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
+    await generateArenaScenarioDraft(input);
+    const gen = mockCreate.mock.calls.find(([p]) => !isReviewRequest(p))![0];
+    expect(PRACTICE_SAMPLING.generation).toEqual({ temperature: 0.8, topP: 0.9, maxTokens: 4000, timeoutMs: 45000 });
+    expect(gen.temperature).toBe(PRACTICE_SAMPLING.generation.temperature);
+    expect(gen.top_p).toBe(PRACTICE_SAMPLING.generation.topP);
+    expect(gen.max_tokens).toBe(PRACTICE_SAMPLING.generation.maxTokens);
+  });
+
+  it("47. reviewer determinism is STATED, never left to a provider default", async () => {
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
+    await generateArenaScenarioDraft(input);
+    const rev = mockCreate.mock.calls.find(([p]) => isReviewRequest(p))![0];
+    expect(PRACTICE_SAMPLING.review.temperature).toBe(0);
+    expect(rev.temperature).toBe(0);
+    // top_p was previously UNSET on the review call — a hidden default in the one deterministic call.
+    expect(rev.top_p).toBe(PRACTICE_SAMPLING.review.topP);
+    expect(rev.max_tokens).toBe(PRACTICE_SAMPLING.review.maxTokens);
+  });
+
+  it("48. the retry reuses the generation settings — there is no second sampling path", async () => {
+    const reject = acceptReview(goodDraft, {
+      primaryChoices: [
+        { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
+        { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
+      ],
+      overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace it.",
+    });
+    let rev = 0;
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) => {
+      if (isReviewRequest(params)) {
+        rev += 1;
+        return envelope(JSON.stringify(rev === 1 ? reject : acceptReview(goodDraft)));
+      }
+      return envelope(providerJson(goodDraft));
+    });
+    await generateArenaScenarioDraft(input);
+    const gens = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p)).map(([p]) => p);
+    expect(gens).toHaveLength(2);
+    expect(PRACTICE_SAMPLING.retry).toEqual({ maxAttempts: 2, inheritsGenerationSampling: true });
+    for (const g of gens) {
+      expect([g.temperature, g.top_p, g.max_tokens]).toEqual([0.8, 0.9, 4000]);
+    }
+  });
+
+  it("49. NO sampling value is environment-dependent — only endpoint, key and model are", async () => {
+    expect(PRACTICE_SAMPLING.environmentOverrides).toEqual([]);
+    const before = { ...process.env };
+    process.env.LLM_TEMPERATURE = "1.5";
+    process.env.LLM_TOP_P = "0.1";
+    process.env.LLM_MAX_TOKENS = "10";
+    try {
+      routeWithAcceptReview(envelope(providerJson(goodDraft)));
+      await generateArenaScenarioDraft(input);
+      const gen = mockCreate.mock.calls.find(([p]) => !isReviewRequest(p))![0];
+      expect([gen.temperature, gen.top_p, gen.max_tokens]).toEqual([0.8, 0.9, 4000]);
+    } finally {
+      process.env = before;
+    }
+  });
+
+  it("a TRUNCATED reviewer verdict is named, not parsed and misreported", async () => {
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params)
+        ? envelope(JSON.stringify(acceptReview(goodDraft)).slice(0, 400), { finish_reason: "length" })
+        : envelope(providerJson(goodDraft)),
+    );
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(observed.map((o) => o.code)).toContain("review_truncated");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
+  // The exact accepted scenario: primary 2 claimed the work was on schedule when the facts say the
+  // delivery was missed, and its branch offered deflection. Everything downstream reported it fine.
+  const c01Input = {
+    locale: "en" as const,
+    facts: { ...facts, problem: "Your team missed a delivery you personally promised the client, and the recovery plan is not yet confirmed", observableBehavior: "Restore client trust while deciding the timing, scope and ownership of the update" },
+    guided,
+  };
+  const lying: ArenaScenarioDraft = {
+    ...goodDraft,
+    primary: {
+      choices: [
+        { id: "primary_1", label: "Disclose the missed deadline and commit to a new timeline" },
+        { id: "primary_2", label: "Assure the client that everything is on schedule, but investigate internally" },
+      ],
+    },
+  };
+
+  it("the false-reassurance option is rejected BEFORE the reviewer is ever consulted", async () => {
+    mockCreate.mockImplementation(async () => envelope(providerJson(lying)));
+    const r = await generateArenaScenarioDraft(c01Input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(r as unknown as { value?: unknown }).not.toHaveProperty("value");
+    // The construction gate catches it first, and names exactly what is wrong: the metadata claims a
+    // competent intent for a label the facts contradict. The reviewer is never reached, so the
+    // measured reviewer variance that accepted this scenario cannot occur at all.
+    expect(observed.map((o) => o.outcome)).toContain("provider_choice_unconstructed");
+    expect(observed.map((o) => o.code)).toContain("construction_contradicts_label");
+    expect(mockCreate.mock.calls.filter(([p]) => isReviewRequest(p))).toHaveLength(0);
+  });
+
+  it("THE c09 DEFECT — a choice repeated one phase later in a branch is rejected deterministically", async () => {
+    const repeated = "Wait until the verification finishes";
+    const looping: ArenaScenarioDraft = {
+      ...goodDraft,
+      branches: {
+        ...goodDraft.branches!,
+        primary_1: {
+          ...goodDraft.branches!.primary_1,
+          tradeoffChoices: [{ id: "b1_t1", label: repeated }, goodDraft.branches!.primary_1.tradeoffChoices[1]],
+          actionDecision: {
+            ...goodDraft.branches!.primary_1.actionDecision,
+            choices: [goodDraft.branches!.primary_1.actionDecision.choices[0], { id: "b1_a2", label: repeated, isActionCommitment: false }],
+          },
+        },
+      },
+    };
+    mockCreate.mockImplementation(async () => envelope(providerJson(looping)));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    // Measured gate order: an older quality gate happens to reject this exact byte-identical shape
+    // first, so the R2.22 rule is asserted directly rather than claimed from the log. It is the rule
+    // that survives when the wording differs, which the byte-equality gate cannot catch.
+    expect(observed.map((o) => o.outcome)).toContain("provider_low_quality");
+    expect(detectMeasuredLabelDefects(looping, "").errors).toContain("repeated_choice_meaning_within_branch");
+  });
+
+  it("45. the retry states the defect, and a second failure terminates with no fallback", async () => {
+    mockCreate.mockImplementation(async () => envelope(providerJson(lying)));
+    await generateArenaScenarioDraft(c01Input);
+    const gens = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p));
+    expect(gens).toHaveLength(2); // bounded — never open-ended
+    const second = gens[1][0].messages.map((m: { content: string }) => m.content).join("\n");
+    expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
+    expect(second).toContain("construction_contradicts_label");
+    expect(second).toContain("Your team missed a delivery you personally promised the client");
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+  });
+
+  it("the same label is NOT rejected when the facts do not contradict it", async () => {
+    // Over-reach guard: this is a truth rule, not a vocabulary ban.
+    routeWithAcceptReview(envelope(providerJson(lying)));
+    const r = await generateArenaScenarioDraft(input); // design-review facts: nothing has slipped
+    expect(r.ok).toBe(true);
+  });
+
+  it("the generation request asks for a construction on every choice", async () => {
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
+    await generateArenaScenarioDraft(input);
+    const [params] = mockCreate.mock.calls[0];
+    const text = params.messages.map((m: { content: string }) => m.content).join("\n");
+    expect(text).toMatch(/CONSTRUCT EVERY CHOICE/);
+    expect(text).toMatch(/NO VAGUE REASSURANCE/);
+    expect(text).toMatch(/BRANCH PROGRESSION/);
+    expect(text).toMatch(/BRANCH DIVERSITY/);
+    expect(params.response_format.json_schema.schema.properties.primaryChoices.items.required).toContain("construction");
   });
 });

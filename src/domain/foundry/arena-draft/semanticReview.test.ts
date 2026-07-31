@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { ChoiceRef } from "./choiceConstruction";
 import {
   SEMANTIC_REVIEW_JSON_SCHEMA,
   buildRetryFeedback,
@@ -16,7 +17,85 @@ import {
  * that let c09 "recover" into an equally collapsed scenario.
  */
 
-const CTX = { primaryCount: 2, branchCount: 2, constraintIds: ["c1_verify"] };
+/**
+ * R2.22 — the reviewer now covers EVERY visible choice, so the context carries the real inventory:
+ * 2 primary + 2 flat tradeoff + 2 flat action + 2 branches x (2 tradeoff + 2 action) = 14.
+ */
+const CHOICES: ChoiceRef[] = [
+  ...[0, 1].map((i) => ({ id: `p${i + 1}`, label: `primary ${i + 1}`, phase: "primary" as const, branchIndex: -1, index: i })),
+  ...[0, 1].map((i) => ({ id: `ft${i + 1}`, label: `flat tradeoff ${i + 1}`, phase: "flat_tradeoff" as const, branchIndex: -1, index: i })),
+  ...[0, 1].map((i) => ({ id: `fa${i + 1}`, label: `flat action ${i + 1}`, phase: "flat_action" as const, branchIndex: -1, index: i })),
+  ...[0, 1].flatMap((b) => [
+    ...[0, 1].map((i) => ({ id: `p${b + 1}-t${i + 1}`, label: `branch ${b} tradeoff ${i}`, phase: "branch_tradeoff" as const, branchIndex: b, index: i })),
+    ...[0, 1].map((i) => ({ id: `p${b + 1}-a${i + 1}`, label: `branch ${b} action ${i}`, phase: "branch_action" as const, branchIndex: b, index: i })),
+  ]),
+];
+const CTX = { primaryCount: 2, branchCount: 2, constraintIds: ["c1_verify"], choices: CHOICES };
+
+/** A defensible all-phase review entry for one visible choice. */
+const phaseChoice = (c: ChoiceRef, over: Partial<SemanticReview["phaseChoices"][number]> = {}): SemanticReview["phaseChoices"][number] => ({
+  phase: c.phase,
+  branchIndex: c.branchIndex,
+  choiceIndex: c.index,
+  legitimateValue: c.index === 0 ? "speed" : "certainty",
+  acceptedCost: c.index === 0 ? "less verification" : "more elapsed time",
+  competentIntent: "a capable lead could reasonably choose this",
+  actionable: true,
+  defensible: true,
+  dominatedBySibling: false,
+  badFaith: false,
+  vagueReassurance: false,
+  nonCommitmentDecoy: false,
+  unsafe: false,
+  constructionAgrees: true,
+  constructionDispute: "",
+  defectCodes: [],
+  conciseExplanation: "Concrete action with a real cost.",
+  ...over,
+});
+const allPhaseChoices = () => CHOICES.map((c) => phaseChoice(c));
+/** Replace the entry for one coordinate, leaving every other choice defensible. */
+const withPhaseDefect = (phase: ChoiceRef["phase"], branchIndex: number, index: number, over: Partial<SemanticReview["phaseChoices"][number]>) =>
+  CHOICES.map((c) => (c.phase === phase && c.branchIndex === branchIndex && c.index === index ? phaseChoice(c, over) : phaseChoice(c)));
+
+const progression = (i: number, over: Partial<SemanticReview["branches"][number]> = {}) => ({
+  index: i,
+  selectedPrimarySummary: `primary ${i + 1} already chosen`,
+  resultingWorldState: `world after primary ${i + 1}`,
+  newConstraintOrPressure: `new pressure ${i + 1}`,
+  nextDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
+  repeatsPrimaryDecision: false,
+  overlapsOtherBranchIndex: -1,
+  overlapReason: "",
+  branchDistinct: true,
+  defectCodes: [] as string[],
+  primaryDecisionPreserved: true,
+  tradeoffDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
+  actionDecisionDimension: i === 0 ? "who owns the recovery" : "what scope is committed",
+  tradeoffAdvancesScenario: true,
+  actionAdvancesScenario: true,
+  repeatedMeaningPairs: [] as string[],
+  progressionValid: true,
+  selectedPrimaryEffect: `primary ${i + 1} changed who is available`,
+  affectedStakeholders: [i === 0 ? "the director" : "the wider team"],
+  resourceOrRelationshipChange: `resource state ${i + 1}`,
+  causalLink: `follows from primary ${i + 1}`,
+  boundaryState: "unchanged",
+  urgencyState: "no time-sensitive harm",
+  ...over,
+});
+
+const crossOk = (over: Partial<SemanticReview["crossBranch"]> = {}): SemanticReview["crossBranch"] => ({
+  resultingWorldOverlapPairs: [],
+  nextDecisionAxisOverlapPairs: [],
+  stakeholderOverlapPairs: [],
+  repeatedActionMeaningPairs: [],
+  branchesInterchangeable: false,
+  allBranchesSameGenericAxis: false,
+  defectCodes: [],
+  conciseExplanation: "Each branch follows from its own primary choice.",
+  ...over,
+});
 
 /** A compliant, grounded assessment for CTX's single confirmed rule (R2.21). */
 const groundedAssessment = (over: Partial<SemanticReview["boundaryAssessments"][number]> = {}): SemanticReview["boundaryAssessments"][number] => ({
@@ -58,6 +137,8 @@ const noUrgency = (over: Partial<SemanticReview["urgency"]> = {}): SemanticRevie
 
 function review(over: Partial<SemanticReview> = {}): SemanticReview {
   return {
+    phaseChoices: allPhaseChoices(),
+    crossBranch: crossOk(),
     boundaryAssessments: [groundedAssessment()],
     urgency: noUrgency(),
     noSafeJudgmentSpace: false,
@@ -74,8 +155,8 @@ function review(over: Partial<SemanticReview> = {}): SemanticReview {
     tensionValueA: "speed",
     tensionValueB: "certainty",
     branches: [
-      { index: 0, selectedPrimarySummary: "moved first", resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting", nextDecisionDimension: "escalation order", repeatsPrimaryDecision: false, overlapsOtherBranchIndex: -1, overlapReason: "", branchDistinct: true, defectCodes: [] },
-      { index: 1, selectedPrimarySummary: "verified first", resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap", nextDecisionDimension: "who covers the gap", repeatsPrimaryDecision: false, overlapsOtherBranchIndex: -1, overlapReason: "", branchDistinct: true, defectCodes: [] },
+      progression(0, { selectedPrimarySummary: "moved first", resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting" }),
+      progression(1, { selectedPrimarySummary: "verified first", resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap", nextDecisionDimension: "who covers the gap", tradeoffDecisionDimension: "who covers the gap" }),
     ],
     boundaryCompliant: true,
     overallVerdict: "accept",
@@ -248,9 +329,13 @@ describe("branch consequence contract", () => {
   });
 
   it("15/18. shared vocabulary but genuinely different causal states is ACCEPTED", () => {
-    const b = review().branches.map((x) => ({ ...x, nextDecisionDimension: "escalation" }));
-    b[0] = { ...b[0], resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting" };
-    b[1] = { ...b[1], resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap" };
+    // R2.22 sharpened this. The old version gave BOTH branches the literal dimension "escalation",
+    // which is not shared vocabulary — it is one axis, and R2.22 rejects that as
+    // cross_branch_axis_collapse (see the cross-branch suite). The intent the test was written for
+    // survives intact: branches may share words as long as the axes genuinely differ.
+    const b = review().branches;
+    b[0] = { ...b[0], resultingWorldState: "queue re-ordered", newConstraintOrPressure: "family waiting", nextDecisionDimension: "escalation to the director", tradeoffDecisionDimension: "escalation to the director" };
+    b[1] = { ...b[1], resultingWorldState: "buffer consumed", newConstraintOrPressure: "staffing gap", nextDecisionDimension: "escalation of staffing cover", tradeoffDecisionDimension: "escalation of staffing cover" };
     expect(validateSemanticReview(review({ branches: b }), CTX).ok).toBe(true);
   });
 });
@@ -365,7 +450,7 @@ describe("reviewer boundary grounding (R2.21)", () => {
   });
 
   it("an unconstrained scenario needs no assessments at all", () => {
-    const free = { primaryCount: 2, branchCount: 2, constraintIds: [] as string[] };
+    const free = { primaryCount: 2, branchCount: 2, constraintIds: [] as string[], choices: CHOICES };
     expect(validateSemanticReview(review({ boundaryAssessments: [] }), free).ok).toBe(true);
   });
 });
@@ -513,6 +598,140 @@ describe("urgency safety (R2.21)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// R2.22 — ALL-PHASE DEFENSIBILITY + REVIEWER FALSE-NEGATIVE RESISTANCE
+// ---------------------------------------------------------------------------
+
+describe("all-phase defensibility (R2.22)", () => {
+  const rejecting = (phaseChoices: SemanticReview["phaseChoices"], codes: string[]) =>
+    validateSemanticReview(review({ phaseChoices, overallVerdict: "reject", defectCodes: codes }), CTX);
+
+  it("18. a valid primary with a defective FLAT TRADEOFF is rejected", () => {
+    const r = rejecting(withPhaseDefect("flat_tradeoff", -1, 0, { defensible: false, vagueReassurance: true, defectCodes: ["vague_reassurance"] }), ["vague_reassurance"]);
+    expect(r.ok && r.verdict).toBe("reject");
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("vague_reassurance");
+  });
+
+  it("19. a valid primary and tradeoff with a defective BRANCH ACTION is rejected", () => {
+    // The measured c01 shape: the decoy sat in a branch's later phase, which was never reviewed.
+    const r = rejecting(withPhaseDefect("branch_action", 1, 1, { defensible: false, badFaith: true, defectCodes: ["bad_faith_option"] }), ["bad_faith_option"]);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("bad_faith_option");
+  });
+
+  it("19b. a defective FLAT ACTION and a defective BRANCH TRADEOFF are each rejected", () => {
+    expect(rejecting(withPhaseDefect("flat_action", -1, 1, { dominatedBySibling: true, defectCodes: ["dominated_choice"] }), ["dominated_choice"]).ok && true).toBe(true);
+    const r = rejecting(withPhaseDefect("branch_tradeoff", 0, 0, { unsafe: true, defectCodes: ["unsafe_option"] }), ["unsafe_option"]);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("unsafe_option");
+  });
+
+  it("20. a non-commitment decoy at the action phase is rejected", () => {
+    const r = rejecting(withPhaseDefect("branch_action", 0, 1, { nonCommitmentDecoy: true, defectCodes: ["non_commitment_decoy"] }), ["non_commitment_decoy"]);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("non_commitment_decoy");
+  });
+
+  it("20b. a choice with no concrete action is vague evasion whatever else it claims", () => {
+    const r = rejecting(withPhaseDefect("primary", -1, 0, { actionable: false, defectCodes: ["vague_evasion"] }), ["vague_evasion"]);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("vague_evasion");
+  });
+
+  it("14/17. the SAME decoy recurring in two branches is named as a pattern", () => {
+    const pc = allPhaseChoices().map((c) =>
+      c.phase === "branch_action" && c.choiceIndex === 1
+        ? { ...c, defensible: false, vagueReassurance: true, defectCodes: ["vague_reassurance"] }
+        : c,
+    );
+    const r = rejecting(pc, ["vague_reassurance"]);
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("repeated_decoy_across_branches");
+  });
+
+  it("21. every visible choice must be reviewed exactly once", () => {
+    const missing = allPhaseChoices().filter((c) => !(c.phase === "branch_tradeoff" && c.branchIndex === 1));
+    const r = validateSemanticReview(review({ phaseChoices: missing }), CTX);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errors).toContain("review_phase_choice_uncovered");
+
+    const duplicated = [...allPhaseChoices(), allPhaseChoices()[0]];
+    expect(!validateSemanticReview(review({ phaseChoices: duplicated }), CTX).ok).toBe(true);
+    expect((validateSemanticReview(review({ phaseChoices: duplicated }), CTX) as { errors: string[] }).errors).toContain("review_phase_choice_duplicated");
+  });
+
+  it("21b. a coordinate that is not in the scenario is rejected", () => {
+    const bogus = [...allPhaseChoices(), { ...allPhaseChoices()[0], choiceIndex: 9 }];
+    expect((validateSemanticReview(review({ phaseChoices: bogus }), CTX) as { errors: string[] }).errors).toContain("review_phase_choice_unknown");
+  });
+
+  it("21c. a missing all-phase review is rejected, never assumed clean", () => {
+    const r = validateSemanticReview(review({ phaseChoices: undefined as unknown as SemanticReview["phaseChoices"] }), CTX);
+    expect(!r.ok && r.errors).toContain("review_phase_choices_missing");
+  });
+});
+
+describe("reviewer false-negative resistance (R2.22)", () => {
+  it("35. an ACCEPT verdict beside a bad-faith choice is contradictory", () => {
+    const r = validateSemanticReview(review({
+      phaseChoices: withPhaseDefect("branch_action", 0, 0, { badFaith: true, defectCodes: ["bad_faith_option"] }),
+      overallVerdict: "accept",
+    }), CTX);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+  });
+
+  it("36. 'defensible' with no legitimate value or no real cost is contradictory", () => {
+    const noValue = validateSemanticReview(review({ phaseChoices: withPhaseDefect("primary", -1, 1, { legitimateValue: "" }), overallVerdict: "accept" }), CTX);
+    expect(!noValue.ok && noValue.errors).toContain("review_verdict_contradicts_details");
+    const noCost = validateSemanticReview(review({ phaseChoices: withPhaseDefect("flat_action", -1, 0, { acceptedCost: "  " }), overallVerdict: "accept" }), CTX);
+    expect(!noCost.ok && noCost.errors).toContain("review_verdict_contradicts_details");
+  });
+
+  it("37. an ACCEPT verdict while every branch shares one decision axis is contradictory", () => {
+    const b = review().branches;
+    b[1] = { ...b[1], nextDecisionDimension: b[0].nextDecisionDimension, tradeoffDecisionDimension: b[0].nextDecisionDimension };
+    const r = validateSemanticReview(review({ branches: b, overallVerdict: "accept" }), CTX);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errors).toContain("review_verdict_contradicts_details");
+  });
+
+  it("38. an ACCEPT verdict from a review that skipped a phase is rejected before the verdict is read", () => {
+    const skipped = allPhaseChoices().filter((c) => c.phase !== "flat_action");
+    const r = validateSemanticReview(review({ phaseChoices: skipped, overallVerdict: "accept" }), CTX);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errors).toContain("review_phase_choice_uncovered");
+  });
+
+  it("39. a disputed construction record is CAPTURED, and a dispute with no content is malformed", () => {
+    const disputed = validateSemanticReview(review({
+      phaseChoices: withPhaseDefect("primary", -1, 0, { constructionAgrees: false, constructionDispute: "the claimed cost is not real — nothing is given up" }),
+    }), CTX);
+    expect(disputed.ok).toBe(true); // a disagreement is a finding, not a broken review
+    const empty = validateSemanticReview(review({ phaseChoices: withPhaseDefect("primary", -1, 0, { constructionAgrees: false, constructionDispute: "" }) }), CTX);
+    expect(!empty.ok && empty.errors).toContain("review_construction_dispute_empty");
+  });
+
+  it("39b. the two primary-choice contracts must agree with each other", () => {
+    const r = validateSemanticReview(review({
+      phaseChoices: withPhaseDefect("primary", -1, 0, { defensible: false, defectCodes: ["moral_decoy"] }),
+      overallVerdict: "reject",
+      defectCodes: ["moral_decoy"],
+    }), CTX);
+    // primaryChoices still says index 0 is defensible — the disagreement is recorded, not ignored.
+    expect(r.ok && r.verdict === "reject" && r.defects).toContain("review_contradictory");
+  });
+
+  it("40. a REJECT verdict with no defect anywhere is still rejected", () => {
+    const r = validateSemanticReview(review({ overallVerdict: "reject" }), CTX);
+    expect(!r.ok && r.errors).toContain("review_reject_without_defect");
+  });
+
+  it("a competence claim over a measurably bad-faith label is a broken review", () => {
+    // The label is ground truth the reviewer was handed; asserting competence over it is not a
+    // judgment call, it is a review that did not read what it reviewed.
+    const ctx = { ...CTX, choices: CTX.choices.map((c) => (c.phase === "branch_action" && c.branchIndex === 0 && c.index === 1 ? { ...c, label: "Continue to deflect questions" } : c)) };
+    const r = validateSemanticReview(review(), ctx);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.errors).toContain("review_intent_contradicts_label");
+  });
+});
+
 describe("terminal versus retryable classification", () => {
   it("capability, unresolved boundary and true no-safe are terminal", () => {
     for (const c of ["structured_output_unavailable", "provider_refusal", "unresolved_boundary_requires_confirmation", "all_options_violate_confirmed_boundary", "prohibited_choice_only"]) {
@@ -622,6 +841,66 @@ describe("defect-specific retry feedback", () => {
       boundaryDefects: [{ boundaryId: "c1_verify", statement: "Two identifiers must be verified before treatment", codes: ["confirmed_boundary_absent"] }],
     });
     expect(m).toMatch(/UNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose/);
+  });
+
+  it("41. all-phase feedback names the exact phase, branch and choice index", () => {
+    const m = buildRetryFeedback({
+      attempt: 1, defects: ["vague_reassurance"], choiceDefects: [], branchDefects: [],
+      phaseDefects: [{ phase: "branch_action", branchIndex: 1, choiceIndex: 0, codes: ["vague_reassurance"] }],
+    });
+    expect(m).toMatch(/At branch 2, action choice 1:/);
+    expect(m).toMatch(/reassures or defers without deciding anything/);
+    expect(m).toMatch(/who acts, what they do, and the trigger, checkpoint or threshold/);
+  });
+
+  it("41b. a flat-phase defect is named without a branch number", () => {
+    const m = buildRetryFeedback({
+      attempt: 1, defects: ["dominated_choice"], choiceDefects: [], branchDefects: [],
+      phaseDefects: [{ phase: "flat_tradeoff", branchIndex: -1, choiceIndex: 1, codes: ["dominated_choice"] }],
+    });
+    expect(m).toMatch(/At tradeoff choice 2:/);
+    expect(m).not.toMatch(/branch 0/);
+  });
+
+  it("43. decoy replacement must name a legitimate value and a real cost", () => {
+    const m = buildRetryFeedback({
+      attempt: 1, defects: ["bad_faith_option"], choiceDefects: [], branchDefects: [],
+      phaseDefects: [{ phase: "branch_tradeoff", branchIndex: 0, choiceIndex: 1, codes: ["bad_faith_option"] }],
+    });
+    expect(m).toMatch(/NAMED legitimate value/);
+    expect(m).toMatch(/REAL stated cost/);
+    expect(m).toMatch(/competent, well-intentioned person/);
+    expect(m).toMatch(/Keep the scenario facts exactly as they are/);
+  });
+
+  it("14. a repeated decoy must be replaced everywhere, not only where it was spotted", () => {
+    const m = buildRetryFeedback({ attempt: 1, defects: ["repeated_decoy_across_branches"], choiceDefects: [], branchDefects: [] });
+    expect(m).toMatch(/Replace EVERY occurrence, not just the first/);
+  });
+
+  it("44. branch-collapse feedback demands causal difference, not synonyms", () => {
+    const m = buildRetryFeedback({ attempt: 1, defects: ["cross_branch_axis_collapse"], choiceDefects: [], branchDefects: [] });
+    expect(m).toMatch(/follow from ITS OWN primary choice/);
+    expect(m).toMatch(/different resulting world, a different new pressure, a different next decision/);
+    expect(m).toMatch(/synonyms are not causal difference/);
+    expect(m).toMatch(/Not every branch may be about what to tell people and when/);
+  });
+
+  it("44b. same-branch repetition feedback preserves the settled decisions", () => {
+    const m = buildRetryFeedback({ attempt: 1, defects: ["repeated_choice_meaning_within_branch"], choiceDefects: [], branchDefects: [] });
+    expect(m).toMatch(/tradeoff decision has ALREADY been made/);
+    expect(m).toMatch(/genuinely NEW action commitment/);
+    expect(m).toMatch(/Rewording the same option is not a new decision/);
+  });
+
+  it("42. every all-phase correction still pins the facts and boundaries", () => {
+    const m = buildRetryFeedback({
+      attempt: 2, defects: ["vague_reassurance"], choiceDefects: [], branchDefects: [],
+      phaseDefects: [{ phase: "branch_action", branchIndex: 0, choiceIndex: 0, codes: ["vague_reassurance"] }],
+    });
+    expect(m).toMatch(/^ATTEMPT 2 CORRECTION/);
+    expect(m).toMatch(/UNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose/);
+    expect(m).toMatch(/invent no dates, people or resources/);
   });
 
   it("carries no credential, header or reviewer chain-of-thought", () => {

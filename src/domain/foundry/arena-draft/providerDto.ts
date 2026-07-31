@@ -37,6 +37,7 @@ import {
 } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import { BOUNDARY_GROUNDING_JSON_SCHEMA, DECISION_STAGES, type DecisionStage, type ProviderBoundaryGrounding } from "./boundaryGrounding";
+import { CHOICE_CONSTRUCTION_JSON_SCHEMA, type ProviderChoiceConstruction } from "./choiceConstruction";
 
 // ---------------------------------------------------------------------------
 // The DTO — array-based, no model-authored identifiers, no dynamic keys.
@@ -46,6 +47,11 @@ export type ProviderChoice = {
   label: string;
   /** One entry per confirmed constraint. Empty array when the boundary has no constraints. */
   constraintAssessments: ConstraintAssessment[];
+  /**
+   * R2.22 — how this choice was CONSTRUCTED: the value it protects, the cost it accepts, why a
+   * competent person could choose it. Provider-only: validated, reviewed, then discarded.
+   */
+  construction: ProviderChoiceConstruction;
 };
 export type ProviderActionChoice = ProviderChoice & { isActionCommitment: boolean };
 export type ProviderActionDecision = { prompt: string; choices: ProviderActionChoice[] };
@@ -101,8 +107,8 @@ const assessmentSchema = {
 const choiceSchema = {
   type: "object",
   additionalProperties: false,
-  properties: { label: { type: "string" }, constraintAssessments: assessmentSchema },
-  required: ["label", "constraintAssessments"],
+  properties: { label: { type: "string" }, constraintAssessments: assessmentSchema, construction: CHOICE_CONSTRUCTION_JSON_SCHEMA },
+  required: ["label", "constraintAssessments", "construction"],
 } as const;
 
 const actionChoiceSchema = {
@@ -112,8 +118,9 @@ const actionChoiceSchema = {
     label: { type: "string" },
     isActionCommitment: { type: "boolean" },
     constraintAssessments: assessmentSchema,
+    construction: CHOICE_CONSTRUCTION_JSON_SCHEMA,
   },
-  required: ["label", "isActionCommitment", "constraintAssessments"],
+  required: ["label", "isActionCommitment", "constraintAssessments", "construction"],
 } as const;
 
 const actionDecisionSchema = {
@@ -193,6 +200,28 @@ function validateAssessments(v: unknown, errors: string[], where: string): Const
   return out;
 }
 
+/**
+ * Structural shape of the construction record only (R2.22). Whether the stated value is genuine and
+ * the cost real is decided by `validateChoiceConstructions` + the semantic reviewer.
+ */
+function parseConstruction(v: unknown, errors: string[], where: string): ProviderChoiceConstruction {
+  if (!isObj(v)) {
+    errors.push(`dto_construction_missing:${where}`);
+    return { legitimateValue: "", acceptedCost: "", competentIntent: "", concreteAction: "", boundaryCompliance: [], urgencySafetyBasis: "", whyNotDominated: "", distinguishesFromSibling: "" };
+  }
+  const s = (k: string) => (typeof v[k] === "string" ? (v[k] as string) : "");
+  return {
+    legitimateValue: s("legitimateValue"),
+    acceptedCost: s("acceptedCost"),
+    competentIntent: s("competentIntent"),
+    concreteAction: s("concreteAction"),
+    boundaryCompliance: Array.isArray(v.boundaryCompliance) ? v.boundaryCompliance.filter((b): b is string => typeof b === "string") : [],
+    urgencySafetyBasis: s("urgencySafetyBasis"),
+    whyNotDominated: s("whyNotDominated"),
+    distinguishesFromSibling: s("distinguishesFromSibling"),
+  };
+}
+
 function validateChoices(v: unknown, min: number, max: number, where: string, errors: string[]): ProviderChoice[] {
   if (!Array.isArray(v)) {
     errors.push(`dto_choices_not_array:${where}`);
@@ -202,9 +231,13 @@ function validateChoices(v: unknown, min: number, max: number, where: string, er
   return v.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}[${i}]`);
-      return { label: "", constraintAssessments: [] };
+      return { label: "", constraintAssessments: [], construction: parseConstruction(null, [], "") };
     }
-    return { label: c.label, constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}[${i}]`) };
+    return {
+      label: c.label,
+      constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}[${i}]`),
+      construction: parseConstruction(c.construction, errors, `${where}[${i}]`),
+    };
   });
 }
 
@@ -220,7 +253,7 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
   const choices: ProviderActionChoice[] = raw.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}.action[${i}]`);
-      return { label: "", isActionCommitment: false, constraintAssessments: [] };
+      return { label: "", isActionCommitment: false, constraintAssessments: [], construction: parseConstruction(null, [], "") };
     }
     // The exact invariant the canonical validator enforces — an explicit boolean, never inferred.
     if (typeof c.isActionCommitment !== "boolean") errors.push("action_choice_missing_commitment_flag");
@@ -228,6 +261,7 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
       label: c.label,
       isActionCommitment: c.isActionCommitment === true,
       constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}.action[${i}]`),
+      construction: parseConstruction(c.construction, errors, `${where}.action[${i}]`),
     };
   });
   // Preserve the existing product rule: at least one real action commitment per phase.
@@ -352,6 +386,11 @@ export type CanonicalizedScenario = {
   /** Keyed by ASSIGNED canonical choice id — exactly what validateConstraintAssessments expects. */
   assessmentsByChoiceId: Record<string, ConstraintAssessment[]>;
   /**
+   * Per-choice construction records keyed by ASSIGNED canonical choice id (R2.22). Carried outside
+   * the draft for the same reason as the grounding: provider-only, never persisted, never rendered.
+   */
+  constructionsByChoiceId: Record<string, ProviderChoiceConstruction>;
+  /**
    * Grounding declarations, carried OUTSIDE the draft (R2.21). They are generation/review-time
    * analysis: validated, used for retry feedback, then dropped. Keeping them off `draft` is what
    * guarantees they are never persisted and never rendered.
@@ -368,22 +407,24 @@ export type CanonicalizedScenario = {
  */
 export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): CanonicalizedScenario {
   const assessmentsByChoiceId: Record<string, ConstraintAssessment[]> = {};
-  const put = (id: string, a: ConstraintAssessment[]) => {
-    assessmentsByChoiceId[id] = a;
+  const constructionsByChoiceId: Record<string, ProviderChoiceConstruction> = {};
+  const put = (id: string, c: ProviderChoice) => {
+    assessmentsByChoiceId[id] = c.constraintAssessments;
+    constructionsByChoiceId[id] = c.construction;
   };
 
   const primary = dto.primaryChoices.map((c, i) => {
-    put(primaryId(i), c.constraintAssessments);
+    put(primaryId(i), c);
     return { id: primaryId(i), label: c.label };
   });
 
   const flatTradeoff = dto.flatTradeoffChoices.map((c, i) => {
-    put(flatTradeoffId(i), c.constraintAssessments);
+    put(flatTradeoffId(i), c);
     return { id: flatTradeoffId(i), label: c.label };
   });
 
   const flatAction = dto.flatActionDecision.choices.map((c, i) => {
-    put(flatActionId(i), c.constraintAssessments);
+    put(flatActionId(i), c);
     return { id: flatActionId(i), label: c.label, isActionCommitment: c.isActionCommitment };
   });
 
@@ -391,11 +432,11 @@ export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): Can
   const branches: Record<string, ScenarioBranch> = {};
   dto.branches.forEach((b, p) => {
     const tradeoffChoices = b.tradeoffChoices.map((c, i) => {
-      put(branchTradeoffId(p, i), c.constraintAssessments);
+      put(branchTradeoffId(p, i), c);
       return { id: branchTradeoffId(p, i), label: c.label };
     });
     const choices = b.actionDecision.choices.map((c, i) => {
-      put(branchActionId(p, i), c.constraintAssessments);
+      put(branchActionId(p, i), c);
       return { id: branchActionId(p, i), label: c.label, isActionCommitment: c.isActionCommitment };
     });
     branches[primaryId(p)] = {
@@ -415,5 +456,5 @@ export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): Can
     ...(dto.branches.length ? { branches } : {}),
   };
 
-  return { draft, assessmentsByChoiceId, boundaryGrounding: dto.boundaryGrounding };
+  return { draft, assessmentsByChoiceId, constructionsByChoiceId, boundaryGrounding: dto.boundaryGrounding };
 }

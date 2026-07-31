@@ -12,20 +12,56 @@ import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
 import type { ProviderBoundaryGrounding } from "./boundaryGrounding";
+import type { ProviderChoiceConstruction } from "./choiceConstruction";
 
 type AssessmentsByChoiceId = Record<string, ConstraintAssessment[]>;
 
-const choiceOf = (c: { id: string; label: string }, a?: AssessmentsByChoiceId): ProviderChoice => ({
+/**
+ * R2.22 — a VALID, sibling-distinct construction record. Every provider choice now carries one, so
+ * canonical fixtures need a default that clears the deterministic construction gate without
+ * asserting anything about the scenario: the value/cost/intent tuple varies by position so siblings
+ * never share a profile, and a safety basis is always stated so a delay-shaped label is supported.
+ *
+ * Tests that exercise a construction DEFECT override the field they are testing.
+ */
+const VALUES = ["operational continuity", "accuracy of the record", "the client relationship", "team capacity"];
+const COSTS = [
+  "the queue lengthens behind you",
+  "the decision takes longer to reach",
+  "another commitment slips this week",
+  "you carry the exposure personally",
+];
+export function constructionFor(label: string, i: number, boundaryIds: string[] = []): ProviderChoiceConstruction {
+  return {
+    legitimateValue: VALUES[i % VALUES.length],
+    acceptedCost: COSTS[i % COSTS.length],
+    competentIntent: `a capable lead could protect ${VALUES[i % VALUES.length]} here, option ${i + 1}`,
+    concreteAction: label,
+    boundaryCompliance: boundaryIds,
+    urgencySafetyBasis: "no urgent care is delayed; any pause is bounded and stated",
+    whyNotDominated: `it gives up ${COSTS[i % COSTS.length]} that the alternative keeps`,
+    distinguishesFromSibling: `different value and cost profile from option ${((i + 1) % 2) + 1}`,
+  };
+}
+
+const choiceOf = (c: { id: string; label: string }, i: number, a?: AssessmentsByChoiceId, b: string[] = []): ProviderChoice => ({
   label: c.label,
   constraintAssessments: a?.[c.id] ?? [],
+  construction: constructionFor(c.label, i, b),
 });
 
 const actionOf = (
   d: { prompt: string; choices: Array<{ id: string; label: string; isActionCommitment: boolean }> },
   a?: AssessmentsByChoiceId,
+  b: string[] = [],
 ): ProviderActionDecision => ({
   prompt: d.prompt,
-  choices: d.choices.map((c) => ({ label: c.label, isActionCommitment: c.isActionCommitment, constraintAssessments: a?.[c.id] ?? [] })),
+  choices: d.choices.map((c, i) => ({
+    label: c.label,
+    isActionCommitment: c.isActionCommitment,
+    constraintAssessments: a?.[c.id] ?? [],
+    construction: constructionFor(c.label, i, b),
+  })),
 });
 
 /**
@@ -38,6 +74,7 @@ export function toProviderDto(
   assessmentsByChoiceId?: AssessmentsByChoiceId,
   boundaryGrounding: ProviderBoundaryGrounding[] = [],
 ): ProviderPracticeScenario {
+  const boundaryIds = boundaryGrounding.map((g) => g.boundaryId);
   const primaryIds = draft.primary.choices.map((c) => c.id);
   const branches = draft.branches ?? {};
   return {
@@ -45,10 +82,10 @@ export function toProviderDto(
     noSafeJudgmentSpace: false,
     title: draft.title,
     opening: draft.opening,
-    primaryChoices: draft.primary.choices.map((c) => choiceOf(c, assessmentsByChoiceId)),
+    primaryChoices: draft.primary.choices.map((c, i) => choiceOf(c, i, assessmentsByChoiceId, boundaryIds)),
     flatEscalationText: draft.tradeoff.escalationText,
-    flatTradeoffChoices: draft.tradeoff.choices.map((c) => choiceOf(c, assessmentsByChoiceId)),
-    flatActionDecision: actionOf(draft.actionDecision, assessmentsByChoiceId),
+    flatTradeoffChoices: draft.tradeoff.choices.map((c, i) => choiceOf(c, i, assessmentsByChoiceId, boundaryIds)),
+    flatActionDecision: actionOf(draft.actionDecision, assessmentsByChoiceId, boundaryIds),
     // Positional: branch i is the continuation of primary choice i, in the draft's own order.
     // A primary with no branch simply yields no entry — the resulting count mismatch is the
     // correct rejection for a flat draft, and is what the flat-draft test asserts.
@@ -58,8 +95,8 @@ export function toProviderDto(
       return [{
         resultingWorldState: b.resultingWorldState ?? "",
         escalationText: b.escalationText,
-        tradeoffChoices: b.tradeoffChoices.map((c) => choiceOf(c, assessmentsByChoiceId)),
-        actionDecision: actionOf(b.actionDecision, assessmentsByChoiceId),
+        tradeoffChoices: b.tradeoffChoices.map((c, i) => choiceOf(c, i, assessmentsByChoiceId, boundaryIds)),
+        actionDecision: actionOf(b.actionDecision, assessmentsByChoiceId, boundaryIds),
       }];
     }),
   };
@@ -75,6 +112,7 @@ export const providerJson = (draft: ArenaScenarioDraft, a?: AssessmentsByChoiceI
 // ---------------------------------------------------------------------------
 
 import type { SemanticReview } from "./semanticReview";
+import { enumerateChoices } from "./choiceConstruction";
 
 /**
  * A consistent ACCEPT review sized to the draft it reviews.
@@ -139,13 +177,58 @@ export function acceptReview(draft: ArenaScenarioDraft, over: Partial<SemanticRe
       selectedPrimarySummary: `primary ${i + 1} already chosen`,
       resultingWorldState: `world after primary ${i + 1}`,
       newConstraintOrPressure: `new pressure ${i + 1}`,
-      nextDecisionDimension: i === 0 ? "escalation order" : "scope of disclosure",
+      nextDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
       repeatsPrimaryDecision: false,
       overlapsOtherBranchIndex: -1,
       overlapReason: "",
       branchDistinct: true,
       defectCodes: [],
+      // R2.22 — progression + causal identity. Distinct axes per branch, and a different dimension
+      // at the action phase than at the tradeoff phase, so the branch actually advances.
+      primaryDecisionPreserved: true,
+      tradeoffDecisionDimension: i === 0 ? "escalation order" : "staffing coverage",
+      actionDecisionDimension: i === 0 ? "who owns the recovery" : "what scope is committed",
+      tradeoffAdvancesScenario: true,
+      actionAdvancesScenario: true,
+      repeatedMeaningPairs: [],
+      progressionValid: true,
+      selectedPrimaryEffect: `primary ${i + 1} changed who is available`,
+      affectedStakeholders: [i === 0 ? "the director" : "the wider team"],
+      resourceOrRelationshipChange: `resource state ${i + 1}`,
+      causalLink: `this follows directly from primary ${i + 1}`,
+      boundaryState: "unchanged and still in force",
+      urgencyState: "no time-sensitive harm introduced",
     })),
+    // Every visible choice, every phase, reviewed exactly once.
+    phaseChoices: enumerateChoices(draft).map((c, n) => ({
+      phase: c.phase,
+      branchIndex: c.branchIndex,
+      choiceIndex: c.index,
+      legitimateValue: n % 2 === 0 ? "speed" : "certainty",
+      acceptedCost: n % 2 === 0 ? "less verification" : "more elapsed time",
+      competentIntent: "a capable lead could reasonably choose this",
+      actionable: true,
+      defensible: true,
+      dominatedBySibling: false,
+      badFaith: false,
+      vagueReassurance: false,
+      nonCommitmentDecoy: false,
+      unsafe: false,
+      constructionAgrees: true,
+      constructionDispute: "",
+      defectCodes: [],
+      conciseExplanation: "Names a concrete action with a real cost.",
+    })),
+    crossBranch: {
+      resultingWorldOverlapPairs: [],
+      nextDecisionAxisOverlapPairs: [],
+      stakeholderOverlapPairs: [],
+      repeatedActionMeaningPairs: [],
+      branchesInterchangeable: false,
+      allBranchesSameGenericAxis: false,
+      defectCodes: [],
+      conciseExplanation: "Each branch follows from its own primary choice.",
+    },
     boundaryCompliant: true,
     overallVerdict: "accept",
     defectCodes: [],

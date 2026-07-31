@@ -13,6 +13,11 @@ import {
 import { validateConstraintAssessments, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import {
+  detectMeasuredLabelDefects,
+  enumerateChoices,
+  validateChoiceConstructions,
+} from "@/domain/foundry/arena-draft/choiceConstruction";
+import {
   PROVIDER_SCENARIO_JSON_SCHEMA,
   PROVIDER_SCHEMA_NAME,
   canonicalizeProviderScenario,
@@ -67,6 +72,13 @@ export type GenerationResult =
         | "no_safe_judgment_space"; // confirmed constraints leave no legitimate difficult choice
     };
 
+/** The training input as one string — read only by the measured false-reassurance rule. */
+function factsTextOf(input: ScenarioGenInput): string {
+  return [input.facts.problem, input.facts.observableBehavior, input.facts.successEvidence, input.guided.avoidancePressure.text]
+    .filter(Boolean)
+    .join(" ");
+}
+
 /** Map module facts → the pure safety classifier's minimal input. */
 function eligibilityOf(facts: ModuleSourceFacts): PracticeEligibility {
   return classifyPracticeEligibility({
@@ -89,9 +101,46 @@ function eligibilityOf(facts: ModuleSourceFacts): PracticeEligibility {
  * together. The small semantic-review call keeps its own tight budget.
  */
 const LLM_GEN_TIMEOUT_MS = 45_000;
-const LLM_REVIEW_TIMEOUT_MS = 15_000;
+/**
+ * The reviewer's own budget. R2.22 grew its schema from a primary-only verdict to one entry per
+ * VISIBLE CHOICE (up to 33 at maximum cardinality) plus per-branch progression, per-boundary
+ * grounding, urgency and a cross-branch comparison. R2.15 established what happens when a ceiling
+ * sits below a schema's worst case: the body truncates mid-object and the outcome is misreported.
+ * Both reviewer numbers move with the schema, and truncation is now detected explicitly.
+ */
+const LLM_REVIEW_TIMEOUT_MS = 30_000;
 /** Output ceiling for generation. Sized from the schema's worst case, not guessed. */
 const LLM_GEN_MAX_TOKENS = 4_000;
+const LLM_GEN_TEMPERATURE = 0.8;
+const LLM_GEN_TOP_P = 0.9;
+/** The reviewer is a judge, not an author: determinism is stated, never left to a provider default. */
+const LLM_REVIEW_TEMPERATURE = 0;
+const LLM_REVIEW_TOP_P = 1;
+const LLM_REVIEW_MAX_TOKENS = 6_000;
+
+/**
+ * MEASURED sampling inventory (Slice 3.2I-R5B1A.1-R2.22 Part 11).
+ *
+ * Every value the generation contract samples with, in one place. Previously `0.8`, `0.9`, `0` and
+ * `1600` were inline literals at the call sites and the reviewer's `top_p` was unset — a hidden
+ * provider default in the one call that must be deterministic.
+ *
+ * The retry reuses the GENERATION settings by construction: it is the same `generateWithLlm` call
+ * with correction text appended, so there is no second, divergent sampling path.
+ *
+ * Only the endpoint, key and model come from the environment (`LLM_BASE_URL`, `LLM_API_KEY` /
+ * `OPENAI_API_KEY`, `LLM_MODEL`). No temperature, top_p, token ceiling or timeout is
+ * environment-dependent — verified by test, so a deploy cannot silently change generation
+ * behaviour. Tuning is deliberately NOT performed here; the next slice measures whether it is needed
+ * once the content contract is complete.
+ */
+export const PRACTICE_SAMPLING = {
+  generation: { temperature: LLM_GEN_TEMPERATURE, topP: LLM_GEN_TOP_P, maxTokens: LLM_GEN_MAX_TOKENS, timeoutMs: LLM_GEN_TIMEOUT_MS },
+  review: { temperature: LLM_REVIEW_TEMPERATURE, topP: LLM_REVIEW_TOP_P, maxTokens: LLM_REVIEW_MAX_TOKENS, timeoutMs: LLM_REVIEW_TIMEOUT_MS },
+  retry: { maxAttempts: 2, inheritsGenerationSampling: true },
+  /** Environment-controlled sampling knobs. Measured: none. */
+  environmentOverrides: [] as readonly string[],
+} as const;
 
 /**
  * EVALUATION-ONLY observability (Slice 3.2I-R2.15).
@@ -213,7 +262,13 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
     `Write all learner-facing text in ${isKo ? "Korean" : "English"}.`,
     "Return ONLY a compact JSON object, no markdown or code fences, with EXACTLY this shape:",
-    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": []}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": []}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": []}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}}], "boundaryGrounding": []}',
+    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": [], "construction": {}}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": [], "construction": {}}]}}], "boundaryGrounding": []}',
+    "",
+    "CONSTRUCT EVERY CHOICE — each choice object (primary, flat tradeoff, flat action, and every branch tradeoff/action) carries its own `construction`: {\"legitimateValue\": the concrete value it protects, \"acceptedCost\": the real downside it accepts, \"competentIntent\": why a capable well-intentioned person could choose it, \"concreteAction\": what the person actually does, \"boundaryCompliance\": the confirmed boundary ids it obeys (empty when there are none), \"urgencySafetyBasis\": why any delay it introduces is safe (required whenever it waits, pauses or defers), \"whyNotDominated\": what it gives up that its sibling keeps, \"distinguishesFromSibling\": the different value/cost profile, not different wording}. This is internal metadata; never put it in a learner-facing label.",
+    "If you cannot state a legitimate value and a real cost for an option, it is not a choice — replace it. Siblings may not share the same value/cost/intent profile. NEVER justify an option by concealment, deflection, stalling or false reassurance.",
+    "NO VAGUE REASSURANCE: never offer an option that promises progress with no owner, action, threshold or next step, that says 'as soon as possible' or 'trust the timeline' while withholding what is known, that pacifies or deflects instead of deciding, or that asserts something the situation contradicts (claiming work is on schedule when it has already slipped). A concise update with clear ownership and a next checkpoint, a limited disclosure required by privacy or incomplete verification, and a pause that protects accuracy are all fine — they name an action and a basis.",
+    "BRANCH PROGRESSION: inside each branch the tradeoff must pose a NEW question the primary choice did not answer, and the action decision must commit on a FURTHER new dimension. Never offer the same option twice in one branch, however reworded, and never re-open the primary decision.",
+    "BRANCH DIVERSITY: each branch is the consequence of ITS OWN primary choice — a different resulting world, a different new pressure, a different next decision. If two branches could be swapped without becoming incoherent, the primary choice changed nothing. Do NOT make every branch about what to tell someone and when. A shared stakeholder is fine; a shared decision axis is not.",
     "DO NOT invent any id field. You author the words; the server assigns every identifier.",
     "`branches` is an ARRAY, not an object. branches[i] is the continuation of primaryChoices[i] — the ORDER is the relationship. branches MUST have exactly the same length as primaryChoices.",
     "isActionCommitment is REQUIRED on every action choice (true or false, never omitted) and marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option. At least one action choice in each actionDecision must be true.",
@@ -241,12 +296,14 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
 }
 
 type LlmOutcome =
-  | { ok: true; draft: ArenaScenarioDraft; warnings: string[] }
+  | { ok: true; draft: ArenaScenarioDraft; warnings: string[]; constructions: Record<string, unknown> }
   | {
       ok: false;
       reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" | "structured_output_unavailable";
       /** R2.21 — deterministic grounding failures, so the retry states what was missing. */
       groundingDefects?: string[];
+      /** R2.22 — deterministic construction / measured-label failures. */
+      qualityDefects?: string[];
     };
 
 /**
@@ -265,8 +322,8 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       {
         model: getLlmModel(),
         messages: buildLlmMessages(input, constraints, retryFeedback),
-        temperature: 0.8,
-        top_p: 0.9,
+        temperature: LLM_GEN_TEMPERATURE,
+        top_p: LLM_GEN_TOP_P,
         max_tokens: LLM_GEN_MAX_TOKENS,
         // STRICT structured output (Slice 3.2I-R2.16). The provider-facing DTO is array-based
         // with no model-authored identifiers and no dynamic keys, so — unlike the canonical
@@ -357,8 +414,27 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       logGenOutcome("provider_boundary_ungrounded", grounding.errors[0]);
       return { ok: false, reason: "generation_rejected", groundingDefects: grounding.errors };
     }
+    // CHOICE CONSTRUCTION (R2.22). Every visible choice, in every phase, must be CONSTRUCTED: a
+    // named value, a real cost, a competent intent that does not rest on concealment. c01's
+    // "Assure the client that everything is on schedule" reached a learner because nothing before
+    // this point asked the model to justify a choice at all.
+    const factsText = factsTextOf(input);
+    const construction = validateChoiceConstructions(result.value, canonical.constructionsByChoiceId, {
+      constraintIds: constraints.map((c) => c.id),
+      factsText,
+    });
+    if (!construction.ok) {
+      logGenOutcome("provider_choice_unconstructed", construction.errors[0]);
+      return { ok: false, reason: "generation_rejected", qualityDefects: construction.errors };
+    }
+    // MEASURED label defects — narrow rules, each tied to a defect observed in ACCEPTED output.
+    const measured = detectMeasuredLabelDefects(result.value, factsText);
+    if (!measured.ok) {
+      logGenOutcome("provider_measured_defect", measured.errors[0]);
+      return { ok: false, reason: "generation_rejected", qualityDefects: measured.errors };
+    }
     const qualityWarnings = validateBranchedScenario(result.value).warnings;
-    return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings] };
+    return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings], constructions: canonical.constructionsByChoiceId };
   } catch (e) {
     if (controller.signal.aborted) {
       logGenOutcome("provider_timeout");
@@ -391,6 +467,8 @@ type ReviewOutcome =
       branchDefects: Array<{ index: number; codes: string[] }>;
       boundaryDefects: Array<{ boundaryId: string; statement: string; codes: string[] }>;
       urgencyDefects: Array<{ index: number; codes: string[] }>;
+      /** R2.22 — exact phase/branch/choice coordinates for every all-phase defect. */
+      phaseDefects: Array<{ phase: string; branchIndex: number; choiceIndex: number; codes: string[] }>;
       instruction: string;
     }
   | { kind: "no_safe_space"; reasonCode: string }
@@ -407,6 +485,7 @@ async function reviewConstraintCompliance(
   input: ScenarioGenInput,
   constraints: PracticeBoundary["constraints"],
   draft: ArenaScenarioDraft,
+  constructions: Record<string, unknown> = {},
 ): Promise<ReviewOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
@@ -435,6 +514,20 @@ async function reviewConstraintCompliance(
       "Set overlapsOtherBranchIndex to the index of any sibling branch whose consequence or next decision means the same thing (synonyms and reordered wording still count as the same); otherwise -1. Set branchDistinct accordingly.",
       "",
       "",
+      "ALL-PHASE CHOICE REVIEW — return ONE phaseChoices entry for EVERY entry in visibleChoices, matched by phase + branchIndex + choiceIndex, exactly once, and none that is not there. A good primary choice does NOT license a defective tradeoff or action: the same standard applies to primary, flat tradeoff, flat action, branch tradeoff and branch action alike.",
+      "For each: the legitimate value it protects, the real cost it accepts, whether a competent well-intentioned person could choose it, whether it names a concrete action, and whether it is dominated by a sibling, bad faith, vague reassurance, a non-commitment decoy, or unsafe.",
+      "Each visibleChoices entry carries the generator's own `construction` record. You must CONFIRM or DISPUTE it: set constructionAgrees=false and say what you dispute in constructionDispute when the claimed value, cost or intent is not actually true of the visible label. Never inherit it silently.",
+      "",
+      "VAGUE REASSURANCE — a response that reduces a stakeholder's concern without making a real decision. Set vagueReassurance=true when an option promises progress with no owner, action, threshold or next step; says 'soon', 'as soon as possible' or 'trust the timeline' while withholding actionable information; pacifies or deflects instead of deciding; or delays responsibility without protecting a legitimate value. Use false_reassurance when it asserts something the situation contradicts (for example claiming work is on schedule after the schedule has already slipped).",
+      "Set nonCommitmentDecoy=true for an option that exists only to be rejected — waiting or deferring with no stated cost and no protected value.",
+      "Do NOT flag: a concise update with clear ownership and a next checkpoint; a deliberately limited disclosure required by privacy or incomplete verification; a temporary communication plan with an explicit action and threshold; or a justified pause that protects accuracy or safety. Those are legitimate strategies.",
+      "",
+      "SAME-BRANCH PROGRESSION — a branch runs: primary choice already made → resulting world → tradeoff decision → action commitment. For each branch state tradeoffDecisionDimension and actionDecisionDimension, and whether each phase actually advances the scenario. List in repeatedMeaningPairs any two choices in that branch that MEAN the same thing, even when worded differently. Set progressionValid=false when the tradeoff re-asks the primary question, the action re-asks the tradeoff, a later phase reverses the primary decision without a new causal event, or the action phase contains no commitment.",
+      "",
+      "CROSS-BRANCH CAUSAL DIVERSITY — each branch must be the consequence of a DIFFERENT primary choice. For each branch state selectedPrimaryEffect, affectedStakeholders, resourceOrRelationshipChange, causalLink, boundaryState and urgencyState. Then in crossBranch report overlapping resulting worlds, overlapping next-decision axes, overlapping stakeholders and repeated action meanings as index pairs like '0-1'.",
+      "Set branchesInterchangeable=true when branch content could be swapped between primary choices without becoming incoherent. Set allBranchesSameGenericAxis=true when every branch reduces to one generic problem — most often 'what do we tell people, and when'.",
+      "A SHARED STAKEHOLDER IS NOT A DEFECT: the same client or manager may appear in every branch when the causal state and the next decision genuinely differ. Do not demand vocabulary variety; demand causal difference.",
+      "",
       "CONFIRMED-BOUNDARY GROUNDING — return ONE boundaryAssessments entry for EVERY confirmed boundary id you were given, exactly once, and never an id you were not given.",
       "SILENCE ABOUT A RULE IS NOT COMPLIANCE. Judge each boundary on two separate questions:",
       "  presentInScenario — is the rule actually established in the learner-facing text (opening or immediate context), in natural language, so the learner knows it holds? A rule that appears nowhere is ABSENT, however compliant the choices happen to be: set false and use confirmed_boundary_absent.",
@@ -450,11 +543,20 @@ async function reviewConstraintCompliance(
       "REJECT a choice that knowingly delays urgent action for convenience (unsafe_delay, convenience_over_safety), creates avoidable foreseeable deterioration (avoidable_foreseeable_harm), substitutes vague reassurance for operational action, leaves an unsafe capacity situation un-escalated (missing_required_escalation), or treats a confirmed safety rule as optional (boundary_treated_as_optional).",
       "ACCEPT a choice that takes a short operational pause REQUIRED by a confirmed safety rule, escalates staffing while preserving the rule, redirects or refers when safe capacity is unavailable, seeks supervision, or sequences work so both the urgency and the mandatory check are honoured. Time cost alone is NOT a defect — do not mark a required safety pause unsafe merely because it takes time.",
       "",
-      "overallVerdict='accept' ONLY when every choice is defensible, no branch repeats the primary decision, no branch overlaps a sibling, every confirmed boundary is PRESENT and OPERATIONALIZED and obeyed at every stage, and no choice is an unsafe delay. Otherwise 'reject', with exact defectCodes and a short retryInstruction saying what must change. Your verdict must not contradict your own detail fields.",
+      "overallVerdict='accept' ONLY when EVERY visible choice at EVERY phase is defensible, no branch loops or repeats a decision, no branch is interchangeable with a sibling, every confirmed boundary is PRESENT and OPERATIONALIZED and obeyed at every stage, and no choice is an unsafe delay or vague reassurance. Otherwise 'reject', with exact defectCodes and a short retryInstruction saying what must change. Your verdict must not contradict your own detail fields.",
       "Return ONLY the JSON object required by the schema.",
     ].join("\n");
     const payload = {
       constraints: constraints.map((c) => ({ id: c.id, statement: c.statement })),
+      // R2.22 — the reviewer must judge every visible choice AT ITS COORDINATE, and must confirm or
+      // dispute the provider's construction record rather than silently inheriting it.
+      visibleChoices: enumerateChoices(draft).map((c) => ({
+        phase: c.phase,
+        branchIndex: c.branchIndex,
+        choiceIndex: c.index,
+        label: c.label,
+        construction: constructions[c.id] ?? null,
+      })),
       opening: draft.opening,
       primary: draft.primary.choices,
       branches: Object.fromEntries(
@@ -473,8 +575,9 @@ async function reviewConstraintCompliance(
           { role: "system", content: system },
           { role: "user", content: JSON.stringify(payload) },
         ],
-        temperature: 0,
-        max_tokens: 1600,
+        temperature: LLM_REVIEW_TEMPERATURE,
+        top_p: LLM_REVIEW_TOP_P,
+        max_tokens: LLM_REVIEW_MAX_TOKENS,
         response_format: {
           type: "json_schema",
           json_schema: { name: SEMANTIC_REVIEW_SCHEMA_NAME, strict: true, schema: SEMANTIC_REVIEW_JSON_SCHEMA },
@@ -482,7 +585,11 @@ async function reviewConstraintCompliance(
       },
       { signal: controller.signal },
     );
-    const raw = completion.choices[0]?.message?.content;
+    const rc = completion.choices[0];
+    // R2.22 — the reviewer schema grew with the all-phase contract. A truncated verdict must be
+    // named, not parsed and misreported as unstructured nonsense.
+    if (rc?.finish_reason === "length") return { kind: "malformed", errors: ["review_truncated"] };
+    const raw = rc?.message?.content;
     if (!raw) return { kind: "transport_failed" };
     let parsed: unknown;
     try {
@@ -495,6 +602,9 @@ async function reviewConstraintCompliance(
       primaryCount: draft.primary.choices.length,
       branchCount,
       constraintIds: constraints.map((c) => c.id),
+      // R2.22 — the real visible-choice inventory. "Reviewed exactly once" is measured against it,
+      // so a review that skipped the tradeoff or action phase can no longer accept.
+      choices: enumerateChoices(draft),
     });
     // A contradictory or unsupported review is NOT a safety outcome — it is a broken review.
     if (!v.ok) return { kind: "malformed", errors: v.errors };
@@ -546,6 +656,18 @@ async function reviewConstraintCompliance(
             ],
           }))
           .filter((c) => c.codes.length > 0),
+        phaseDefects: v.value.phaseChoices
+          .map((c) => {
+            const codes = new Set<string>(c.defectCodes);
+            if (c.badFaith) codes.add("bad_faith_option");
+            if (c.dominatedBySibling) codes.add("dominated_choice");
+            if (c.unsafe) codes.add("unsafe_option");
+            if (c.vagueReassurance) codes.add("vague_reassurance");
+            if (c.nonCommitmentDecoy) codes.add("non_commitment_decoy");
+            if (!c.actionable) codes.add("vague_evasion");
+            return { phase: c.phase, branchIndex: c.branchIndex, choiceIndex: c.choiceIndex, codes: [...codes] };
+          })
+          .filter((c) => c.codes.length > 0),
         instruction: v.value.retryInstruction,
       };
     }
@@ -558,7 +680,7 @@ async function reviewConstraintCompliance(
 }
 
 /** Max provider calls per generation: 2 generations + 2 reviews (1 regen on a correctable reject). */
-const MAX_GENERATION_ATTEMPTS = 2;
+const MAX_GENERATION_ATTEMPTS = PRACTICE_SAMPLING.retry.maxAttempts;
 
 /**
  * KNOW-only classification kept for back-compat. True iff eligibility is `know_only`.
@@ -630,6 +752,15 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
       // R2.21 — a deterministic grounding failure carries actionable, boundary-specific correction
       // into the single retry. Without it the second request repeats the first, which is exactly how
       // an ungrounded scenario used to "recover" into another ungrounded one.
+      if (llm.qualityDefects?.length) {
+        retryFeedback = buildRetryFeedback({
+          attempt,
+          defects: llm.qualityDefects,
+          choiceDefects: [],
+          branchDefects: [],
+          phaseDefects: [],
+        });
+      }
       if (llm.groundingDefects?.length) {
         retryFeedback = buildRetryFeedback({
           attempt,
@@ -647,7 +778,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     // semantically reviewed — the deterministic gates passed both. That gap, not model luck, is
     // why defective content reached a green run.
     {
-      const review = await reviewConstraintCompliance(input, constraints, llm.draft);
+      const review = await reviewConstraintCompliance(input, constraints, llm.draft, llm.constructions);
       if (review.kind === "transport_failed") {
         logGenOutcome("review_transport_failed");
         return { ok: false, reason: "generation_failed" };
@@ -661,7 +792,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
       if (review.kind === "malformed") {
         // Includes a contradictory or unsupported no-safe claim — a broken review, never a safety
         // outcome, so it must not terminate as no_safe_judgment_space.
-        const fb = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [] });
+        const fb = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [], phaseDefects: [] });
         logGenOutcome("review_malformed", review.errors[0], captured({ scenario: llm.draft, review: review.errors, retryFeedback: fb }));
         if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
         retryFeedback = fb;
@@ -677,6 +808,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           branchDefects: review.branchDefects,
           boundaryDefects: review.boundaryDefects,
           urgencyDefects: review.urgencyDefects,
+          phaseDefects: review.phaseDefects,
           reviewerInstruction: review.instruction,
         });
         logGenOutcome(
@@ -690,6 +822,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
               branchDefects: review.branchDefects,
               boundaryDefects: review.boundaryDefects,
               urgencyDefects: review.urgencyDefects,
+              phaseDefects: review.phaseDefects,
               instruction: review.instruction,
             },
             retryFeedback: fb,

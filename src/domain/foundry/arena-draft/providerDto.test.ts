@@ -6,6 +6,7 @@ import {
   type ProviderPracticeScenario,
 } from "./providerDto";
 import { parseArenaScenarioDraft } from "./validate";
+import { constructionFor } from "./providerDto.fixture";
 import { validateConstraintAssessments } from "./boundary";
 
 /**
@@ -16,8 +17,10 @@ import { validateConstraintAssessments } from "./boundary";
  * and canonicalization must never invent, merge, reorder or edit content.
  */
 
-const choice = (label: string) => ({ label, constraintAssessments: [] });
-const act = (label: string, commit: boolean) => ({ label, isActionCommitment: commit, constraintAssessments: [] });
+// R2.22 — every provider choice carries a construction record. `constructionFor` supplies a valid,
+// sibling-distinct default so these transport-identity tests keep testing transport identity.
+const choice = (label: string, i = 0) => ({ label, constraintAssessments: [], construction: constructionFor(label, i) });
+const act = (label: string, commit: boolean, i = 0) => ({ label, isActionCommitment: commit, constraintAssessments: [], construction: constructionFor(label, i) });
 
 function dto(over: Partial<ProviderPracticeScenario> = {}): ProviderPracticeScenario {
   return {
