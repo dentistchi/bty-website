@@ -21,8 +21,17 @@ type LlmCreateParams = {
   [key: string]: unknown;
 };
 
+/**
+ * OpenAI-compatible completion envelope. `finish_reason` and `refusal` are part of the contract
+ * and are NOT decorative: `finish_reason: "length"` means the body was truncated (parsing it would
+ * misreport a malformed shape), and a non-null `refusal` is an explicit safe refusal that must
+ * never be treated as generated content (Slice 3.2I-R2.15).
+ */
 type LlmCompletion = {
-  choices: { message: { content: string | null }; finish_reason?: string }[];
+  choices: {
+    message: { content: string | null; refusal?: string | null };
+    finish_reason?: string;
+  }[];
 };
 
 type LlmCreateOptions = { signal?: AbortSignal };

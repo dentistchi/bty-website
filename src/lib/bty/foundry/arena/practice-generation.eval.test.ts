@@ -16,6 +16,16 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
  * Supabase, and NEVER substitutes deterministic output.
  */
 const LIVE = process.env.RUN_LIVE_EVAL === "1";
+/**
+ * Optional case filter (Slice 3.2I-R2.15). `EVAL_CASE_IDS=c01-…,c09-…` runs a fixed SUBSET — used
+ * by the 3-case canary so a small, cheap run can prove the corrected output contract before paying
+ * for the full corpus. Unset → the complete corpus. A filtered run writes its own artifact so it
+ * can never overwrite full-corpus evidence, and every expected count below is derived from the
+ * SELECTED cases, never hard-coded.
+ */
+const ONLY = (process.env.EVAL_CASE_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const SELECTED = ONLY.length ? EVAL_CORPUS.filter((c) => ONLY.includes(c.id)) : EVAL_CORPUS;
+const ARTIFACT = ONLY.length ? "practice-generation.canary.json" : "practice-generation.latest.json";
 
 describe("practice-generation corpus is well-formed", () => {
   it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety, ambiguous, and confirmed-boundary cases", () => {
@@ -31,7 +41,7 @@ describe("practice-generation corpus is well-formed", () => {
   });
 
   it("classifies each labelled case to its expected eligibility (deterministic, no live model)", () => {
-    for (const c of EVAL_CORPUS) {
+    for (const c of SELECTED) {
       if (!c.expectClass) continue;
       const f = c.input.facts;
       const got = classifyPracticeEligibility({ problem: f.problem, observableBehavior: f.observableBehavior, successEvidence: f.successEvidence, learningNeeds: f.learningNeeds });
@@ -72,11 +82,11 @@ describe("no deterministic substitution (production contract)", () => {
 });
 
 describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
-  it("generates the full 20-case corpus, validates, and writes a labelled artifact", async () => {
+  it("generates the selected corpus (full 20 cases, or the EVAL_CASE_IDS subset), validates, and writes a labelled artifact", async () => {
     const model = getLlmModel();
     const results: Array<Record<string, unknown>> = [];
     const drafts: ArenaScenarioDraft[] = [];
-    for (const c of EVAL_CORPUS) {
+    for (const c of SELECTED) {
       const started = Date.now();
       const r = await generateArenaScenarioDraft(c.input);
       const ms = Date.now() - started;
@@ -94,14 +104,15 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
     const diversity = crossScenarioDiversity(drafts);
     const dir = join(process.cwd(), ".eval-artifacts");
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "practice-generation.latest.json"), JSON.stringify({ label: "LIVE MODEL OUTPUT", model, count: results.length, diversity, results }, null, 2));
+    writeFileSync(join(dir, ARTIFACT), JSON.stringify({ label: "LIVE MODEL OUTPUT", model, selectedIds: SELECTED.map((c) => c.id), count: results.length, diversity, results }, null, 2));
 
     // ---- HARD GATES (Slice 3.2I-R2.14) -------------------------------------
     // The artifact is written FIRST so a failing run still leaves full evidence to inspect.
     // Before this, the only assertion was `results.length`, so a run in which the provider
     // rejected every single call still passed — a total infrastructure failure was reported as
     // a green evaluation. A model failure must never be presented as generation evidence.
-    expect(results.length).toBe(EVAL_CORPUS.length); // 1. every case actually executed
+    if (ONLY.length) expect(SELECTED.length).toBe(ONLY.length); // a typo in EVAL_CASE_IDS must not silently shrink the run
+    expect(results.length).toBe(SELECTED.length); // 1. every selected case actually executed
 
     // 2. A provider/transport error is infrastructure failure, never product evidence.
     const providerFailures = results.filter((r) => r.reason === "generation_failed").map((r) => r.id);
@@ -109,7 +120,7 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
 
     // 3. Declines must actually decline (hard-stops are never turned into dilemmas).
     const declined = results.filter((r) => r.declined === true).map((r) => r.id);
-    expect(declined.sort()).toEqual(EVAL_CORPUS.filter((c) => c.expectDecline).map((c) => c.id).sort());
+    expect(declined.sort()).toEqual(SELECTED.filter((c) => c.expectDecline).map((c) => c.id).sort());
 
     // 4. The run must contain real generated scenarios, not only refusals.
     const generated = results.filter((r) => r.ok === true);

@@ -61,11 +61,43 @@ function eligibilityOf(facts: ModuleSourceFacts): PracticeEligibility {
   });
 }
 
-/** Bounded provider timeout — generation must never hang the host's flow. */
-const LLM_TIMEOUT_MS = 15_000;
+/**
+ * Bounded provider timeouts — generation must never hang the host's flow.
+ *
+ * Slice 3.2I-R2.15 (measured): the first full live run rejected 14/20 cases with the model
+ * genuinely responding (14.9–25.3 s). Generation must emit the flat phases PLUS one full branch
+ * per primary choice PLUS a `constraintAssessments` entry for every choice id — a worst case near
+ * 4,000 output tokens. The previous 1,400-token ceiling truncated that mid-object, so `JSON.parse`
+ * failed and the outcome was recorded as `malformed_shape`. Raising the ceiling without also
+ * raising the generation timeout would simply convert truncation into aborts, so both move
+ * together. The small semantic-review call keeps its own tight budget.
+ */
+const LLM_GEN_TIMEOUT_MS = 45_000;
+const LLM_REVIEW_TIMEOUT_MS = 15_000;
+/** Output ceiling for generation. Sized from the schema's worst case, not guessed. */
+const LLM_GEN_MAX_TOKENS = 4_000;
 
-function logGenOutcome(outcome: string, code?: string): void {
+/**
+ * EVALUATION-ONLY observability (Slice 3.2I-R2.15).
+ *
+ * The first full live run recorded only `generation_rejected` per case, so which stage actually
+ * rejected each one — JSON validity, truncation, schema, identifier, safety or quality — could not
+ * be read from the artifact. This sink lets the evaluation harness collect the exact stage without
+ * production ever emitting raw generated content.
+ *
+ * It is OFF unless the harness installs a sink, and it records NO credential, NO Authorization
+ * header, NO request headers and NO provider account identifier.
+ */
+export type GenObservation = { outcome: string; code?: string; finishReason?: string; rawLength?: number; rawSample?: string };
+let genObserver: ((o: GenObservation) => void) | null = null;
+/** Install/clear the evaluation sink. Test/eval harness only — never called by product code. */
+export function __setGenObserver(fn: ((o: GenObservation) => void) | null): void {
+  genObserver = fn;
+}
+
+function logGenOutcome(outcome: string, code?: string, extra?: Omit<GenObservation, "outcome" | "code">): void {
   console.info(`[arenaScenarioGen] ${outcome}${code ? ` code=${code}` : ""}`);
+  genObserver?.({ outcome, code, ...extra });
 }
 
 function stripJsonFences(text: string): string {
@@ -149,14 +181,39 @@ type LlmOutcome =
  */
 async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"]): Promise<LlmOutcome> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), LLM_GEN_TIMEOUT_MS);
   try {
     const client = getLlmClient();
     const completion = await client.chat.completions.create(
-      { model: getLlmModel(), messages: buildLlmMessages(input, constraints), temperature: 0.8, top_p: 0.9, max_tokens: 1400 },
+      {
+        model: getLlmModel(),
+        messages: buildLlmMessages(input, constraints),
+        temperature: 0.8,
+        top_p: 0.9,
+        max_tokens: LLM_GEN_MAX_TOKENS,
+        // Provider-supported structured output. The canonical shape keys `branches` by the
+        // model-authored primary choice id, which OpenAI strict `json_schema` cannot express
+        // (strict mode requires every property named with additionalProperties:false), so the
+        // supported constraint here is JSON object mode — the system prompt already instructs
+        // the exact shape. This eliminates the "valid text, invalid JSON" failure class; it does
+        // NOT relax any downstream schema, safety or quality gate.
+        response_format: { type: "json_object" },
+      },
       { signal: controller.signal },
     );
-    const raw = completion.choices[0]?.message?.content;
+    const choice = completion.choices[0];
+    // A provider refusal is an explicit safe refusal, never scenario content.
+    if (choice?.message?.refusal) {
+      logGenOutcome("provider_refused", "provider_refusal", { finishReason: choice?.finish_reason });
+      return { ok: false, reason: "generation_rejected" };
+    }
+    // A truncated body is not malformed authoring — it is an output-budget failure. Parsing it
+    // would report a misleading `malformed_shape`, so it is detected and named explicitly.
+    if (choice?.finish_reason === "length") {
+      logGenOutcome("provider_rejected", "truncated_output", { finishReason: choice?.finish_reason, rawLength: choice?.message?.content?.length });
+      return { ok: false, reason: "generation_rejected" };
+    }
+    const raw = choice?.message?.content;
     if (!raw) {
       logGenOutcome("provider_failed", "empty_output");
       return { ok: false, reason: "generation_failed" };
@@ -165,7 +222,7 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
-      logGenOutcome("provider_rejected", "malformed_shape");
+      logGenOutcome("provider_rejected", "malformed_shape", { finishReason: choice?.finish_reason, rawLength: raw.length, rawSample: raw.slice(-200) });
       return { ok: false, reason: "generation_rejected" };
     }
     if (parsed && typeof parsed === "object" && (parsed as { noSafeJudgmentSpace?: unknown }).noSafeJudgmentSpace === true) {
@@ -174,7 +231,7 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     }
     const result = parseArenaScenarioDraft(parsed);
     if (!result.ok) {
-      logGenOutcome("provider_rejected", result.errors[0]);
+      logGenOutcome("provider_rejected", result.errors[0], { finishReason: choice?.finish_reason, rawLength: raw.length });
       return { ok: false, reason: "generation_rejected" };
     }
     for (const [tag, gate] of [
@@ -234,7 +291,7 @@ async function reviewConstraintCompliance(
   draft: ArenaScenarioDraft,
 ): Promise<ReviewOutcome> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
   try {
     const system = [
       "You are a strict SAFETY REVIEWER for a leadership practice scenario. You are given CONFIRMED non-negotiable constraints and a generated scenario's learner-facing choices.",
