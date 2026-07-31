@@ -17,6 +17,14 @@ import {
   canonicalizeProviderScenario,
   validateProviderScenario,
 } from "@/domain/foundry/arena-draft/providerDto";
+import {
+  SEMANTIC_REVIEW_JSON_SCHEMA,
+  SEMANTIC_REVIEW_SCHEMA_NAME,
+  buildRetryFeedback,
+  validateSemanticReview,
+  type BranchDefectCode,
+  type ChoiceDefectCode,
+} from "@/domain/foundry/arena-draft/semanticReview";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
@@ -128,7 +136,7 @@ function stripJsonFences(text: string): string {
 }
 
 /** Minimal, PII-free structured context for the provider. */
-function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"]): LlmChatMessage[] {
+function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"], retryFeedback = ""): LlmChatMessage[] {
   const { locale, facts, guided } = input;
   const isKo = locale === "ko";
 
@@ -183,9 +191,12 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     `Pressure that makes people avoid it (host answer 2): ${guided.avoidancePressure.text}`,
   ].filter(Boolean);
 
+  const user = retryFeedback.trim()
+    ? `${contextLines.join("\n")}\n\n${retryFeedback.trim()}`
+    : contextLines.join("\n");
   return [
     { role: "system", content: system },
-    { role: "user", content: contextLines.join("\n") },
+    { role: "user", content: user },
   ];
 }
 
@@ -200,7 +211,7 @@ type LlmOutcome =
  * structured rules; when present, the provider's per-choice `constraintAssessments` are
  * validated deterministically (then discarded — never persisted, never learner-facing).
  */
-async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"]): Promise<LlmOutcome> {
+async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"], retryFeedback = ""): Promise<LlmOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_GEN_TIMEOUT_MS);
   try {
@@ -208,7 +219,7 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
-        messages: buildLlmMessages(input, constraints),
+        messages: buildLlmMessages(input, constraints, retryFeedback),
         temperature: 0.8,
         top_p: 0.9,
         max_tokens: LLM_GEN_MAX_TOKENS,
@@ -317,9 +328,15 @@ export type SemanticReview = {
 };
 type ReviewOutcome =
   | { kind: "ok" }
-  | { kind: "violation" }
-  | { kind: "no_safe_space" }
-  | { kind: "malformed" }
+  | {
+      kind: "reject";
+      defects: string[];
+      choiceDefects: Array<{ index: number; codes: string[] }>;
+      branchDefects: Array<{ index: number; codes: string[] }>;
+      instruction: string;
+    }
+  | { kind: "no_safe_space"; reasonCode: string }
+  | { kind: "malformed"; errors: string[] }
   | { kind: "transport_failed" };
 
 /**
@@ -337,9 +354,30 @@ async function reviewConstraintCompliance(
   const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
   try {
     const system = [
-      "You are a strict SAFETY REVIEWER for a leadership practice scenario. You are given CONFIRMED non-negotiable constraints and a generated scenario's learner-facing choices.",
-      "For EVERY choice, decide whether it obeys every constraint — including INDIRECT or implied violations, and whether any branch consequence assumes a violation occurred, or the dilemma falsely balances compliance against non-compliance, or no legitimate judgment space remains.",
-      "Return ONLY JSON: {\"ok\": boolean, \"violations\": [{\"phase\": string, \"choiceId\": string, \"constraintId\": string, \"reason\": string}], \"noSafeJudgmentSpace\": boolean}. ok=false if any violation exists.",
+      "You are a strict REVIEWER of a leadership DECISION-PRACTICE scenario. You EVALUATE only — never rewrite, never author replacement content.",
+      "",
+      "NO-SAFE-JUDGMENT CONTRACT (read carefully — this is the most misused field).",
+      "Set noSafeJudgmentSpace=true ONLY when one of these is established:",
+      "  (a) every plausible action would violate a CONFIRMED non-negotiable boundary → all_options_violate_confirmed_boundary;",
+      "  (b) the learner is being asked to choose among unsafe or prohibited actions → prohibited_choice_only;",
+      "  (c) a required safety boundary is unresolved and must be confirmed first → unresolved_boundary_requires_confirmation.",
+      "Otherwise set noSafeJudgmentSpace=false with noSafeReasonCode=judgment_space_remains.",
+      "A CONFIRMED RULE NARROWS THE CHOICE SPACE; IT DOES NOT ELIMINATE JUDGMENT. Legitimate judgment still remains when the learner can decide about sequencing, timing, communication, escalation, verification order, staffing, documentation, supervision, recovery, referral, delay management or resource allocation. In that case you MUST return false and list those dimensions in remainingJudgmentDimensions.",
+      "Never claim no-safe merely because the decision is constrained, risky, clinical, urgent, or difficult.",
+      "When noSafeJudgmentSpace=true, remainingJudgmentDimensions MUST be empty and violatedBoundaryIds or boundaryIdsConsidered must support the claim. When false, remainingJudgmentDimensions MUST be non-empty.",
+      "",
+      "DIFFICULT-CHOICE REVIEW — for EVERY primary choice, by array index, state the concrete legitimate value it protects and the real cost it accepts, and whether a competent, well-intentioned person could choose it.",
+      "Mark defensible=false and give a defect code when a choice: protects no legitimate value (no_legitimate_value); depends on lying, concealment, negligence, bad faith or knowingly unsafe action (bad_faith_option, moral_decoy, unsafe_option); is vague evasion (vague_evasion); accepts no real cost so it dominates the alternatives (dominated_choice); reads as the intended answer (obvious_correct_answer); or merely duplicates another option's tradeoff (duplicate_tradeoff).",
+      "A dilemma framed as honesty versus concealment, responsibility versus irresponsibility, or care versus indifference is ALWAYS defective — flag moral_decoy.",
+      "Also report whether two legitimate values are genuinely in tension, naming both.",
+      "",
+      "BRANCH REVIEW — for EVERY branch, by array index, the branch is the world AFTER that primary choice was already made.",
+      "State: what the learner already chose, the resulting world state, the new concrete constraint or pressure it introduced, and the NEXT decision dimension it creates.",
+      "Set repeatsPrimaryDecision=true when the branch asks the learner to decide the SAME question the primary choice already answered (for example: primary asked 'notify now vs verify first' and the branch asks it again).",
+      "Set overlapsOtherBranchIndex to the index of any sibling branch whose consequence or next decision means the same thing (synonyms and reordered wording still count as the same); otherwise -1. Set branchDistinct accordingly.",
+      "",
+      "overallVerdict='accept' ONLY when every choice is defensible, no branch repeats the primary decision, no branch overlaps a sibling, and every confirmed boundary is obeyed. Otherwise 'reject', with exact defectCodes and a short retryInstruction saying what must change. Your verdict must not contradict your own detail fields.",
+      "Return ONLY the JSON object required by the schema.",
     ].join("\n");
     const payload = {
       constraints: constraints.map((c) => ({ id: c.id, statement: c.statement })),
@@ -362,23 +400,51 @@ async function reviewConstraintCompliance(
           { role: "user", content: JSON.stringify(payload) },
         ],
         temperature: 0,
-        max_tokens: 700,
+        max_tokens: 1600,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: SEMANTIC_REVIEW_SCHEMA_NAME, strict: true, schema: SEMANTIC_REVIEW_JSON_SCHEMA },
+        },
       },
       { signal: controller.signal },
     );
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return { kind: "transport_failed" };
-    let review: SemanticReview;
+    let parsed: unknown;
     try {
-      review = JSON.parse(stripJsonFences(raw)) as SemanticReview;
+      parsed = JSON.parse(stripJsonFences(raw));
     } catch {
-      return { kind: "malformed" };
+      return { kind: "malformed", errors: ["review_not_json"] };
     }
-    if (typeof review.ok !== "boolean" || typeof review.noSafeJudgmentSpace !== "boolean" || !Array.isArray(review.violations)) {
-      return { kind: "malformed" };
+    const branchCount = Object.keys(draft.branches ?? {}).length;
+    const v = validateSemanticReview(parsed, {
+      primaryCount: draft.primary.choices.length,
+      branchCount,
+      constraintIds: constraints.map((c) => c.id),
+    });
+    // A contradictory or unsupported review is NOT a safety outcome — it is a broken review.
+    if (!v.ok) return { kind: "malformed", errors: v.errors };
+    if (v.verdict === "no_safe") return { kind: "no_safe_space", reasonCode: v.reasonCode };
+    if (v.verdict === "reject") {
+      return {
+        kind: "reject",
+        defects: v.defects,
+        choiceDefects: v.value.primaryChoices
+          .filter((c) => !c.defensible || c.defectCodes.length > 0)
+          .map((c) => ({ index: c.index, codes: c.defectCodes.length ? c.defectCodes : ["bad_faith_option"] })),
+        branchDefects: v.value.branches
+          .filter((b) => b.repeatsPrimaryDecision || !b.branchDistinct || b.defectCodes.length > 0)
+          .map((b) => ({
+            index: b.index,
+            codes: [
+              ...(b.repeatsPrimaryDecision ? ["branch_repeats_primary"] : []),
+              ...(!b.branchDistinct || b.overlapsOtherBranchIndex >= 0 ? ["branch_semantic_collapse"] : []),
+              ...b.defectCodes,
+            ],
+          })),
+        instruction: v.value.retryInstruction,
+      };
     }
-    if (review.noSafeJudgmentSpace) return { kind: "no_safe_space" };
-    if (!review.ok || review.violations.length > 0) return { kind: "violation" };
     return { kind: "ok" };
   } catch {
     return { kind: "transport_failed" };
@@ -440,8 +506,11 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
   }
   const constraints = authority.constraints;
 
+  /** Defect-specific correction appended to the SECOND request. Empty on the first attempt. */
+  let retryFeedback = "";
+
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const llm = await generateWithLlm(input, constraints);
+    const llm = await generateWithLlm(input, constraints, retryFeedback);
     if (!llm.ok) {
       // Transport / no-safe-space are terminal; a correctable rejection may regenerate once.
       // A capability gap is terminal — retrying the same unsupported schema cannot succeed, and
@@ -456,29 +525,44 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
       if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
       continue;
     }
-    // Confirmed constraints → prove no INDIRECT crossing with an independent semantic review.
-    if (constraints.length > 0) {
+    // SEMANTIC REVIEW — R2.18: runs for EVERY generation, not only constrained ones.
+    // c01 (honesty-vs-concealment) and c09 (branches re-asking the primary question) both carried
+    // NO confirmed constraints, so under the old `constraints.length > 0` gate neither was ever
+    // semantically reviewed — the deterministic gates passed both. That gap, not model luck, is
+    // why defective content reached a green run.
+    {
       const review = await reviewConstraintCompliance(input, constraints, llm.draft);
-      // R2.17 — these four outcomes previously returned WITHOUT logging, so an evaluation run
-      // recorded an empty attempt trace and the stage that actually decided was unknowable. The
-      // c18 canary refusal was invisible for exactly this reason: the generator succeeded and the
-      // semantic REVIEWER declared no-safe-space, leaving zero observer records.
       if (review.kind === "transport_failed") {
         logGenOutcome("review_transport_failed");
         return { ok: false, reason: "generation_failed" };
       }
       if (review.kind === "no_safe_space") {
-        logGenOutcome("review_no_safe_space", "reviewer_declared_no_judgment_space");
+        // Only a review that SURVIVED the consistency gates can reach here, so this is a supported
+        // refusal rather than the unsupported assertion that produced the c18 over-refusal.
+        logGenOutcome("review_no_safe_space", review.reasonCode);
         return { ok: false, reason: "no_safe_judgment_space" };
       }
       if (review.kind === "malformed") {
-        logGenOutcome("review_malformed");
-        return { ok: false, reason: "generation_rejected" };
-      }
-      if (review.kind === "violation") {
-        logGenOutcome("review_violation");
+        // Includes a contradictory or unsupported no-safe claim — a broken review, never a safety
+        // outcome, so it must not terminate as no_safe_judgment_space.
+        logGenOutcome("review_malformed", review.errors[0]);
         if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
-        continue; // regenerate once
+        retryFeedback = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [] });
+        continue;
+      }
+      if (review.kind === "reject") {
+        logGenOutcome("review_reject", review.defects[0]);
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        // DEFECT-SPECIFIC retry: the previous contract re-sent the identical prompt, so the model
+        // never learned what failed and c09 "recovered" into an equally collapsed scenario.
+        retryFeedback = buildRetryFeedback({
+          attempt,
+          defects: review.defects,
+          choiceDefects: review.choiceDefects,
+          branchDefects: review.branchDefects,
+          reviewerInstruction: review.instruction,
+        });
+        continue;
       }
     }
     logGenOutcome("generated_valid");

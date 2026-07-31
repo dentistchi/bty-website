@@ -1,4 +1,4 @@
-import { providerJson } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { providerJson, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -46,7 +46,10 @@ const AI_DRAFT: ArenaScenarioDraft = {
 
 beforeEach(() => {
   mockCreate.mockReset();
-  mockCreate.mockResolvedValue({ choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
+  mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+    isReviewRequest(params)
+      ? { choices: [{ message: { content: JSON.stringify(acceptReview(AI_DRAFT)) } }] }
+      : { choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
 });
 
 type Row = Record<string, unknown>;
@@ -477,12 +480,15 @@ describe("saveDraftBoundary — canonical, authorized, stale-guarded, invalidati
 
 describe("regenerateArenaDraft — reads ONLY the canonical server-stored boundary (trust boundary)", () => {
   it("passes the stored boundary to generation and stamps it onto the scenario", async () => {
-    mockCreate.mockResolvedValue({ choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+    isReviewRequest(params)
+      ? { choices: [{ message: { content: JSON.stringify(acceptReview(AI_DRAFT)) } }] }
+      : { choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
     const { admin } = seedDraft({ guided_answers: { ...guided, practiceBoundary: B_JUDGMENT }, scenario_draft: null, revision: 2 });
     const r = await regenerateArenaDraft(admin, OWNER, "d1", "en");
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value.row.scenario_draft?.practiceBoundary).toEqual(B_JUDGMENT);
-    expect(mockCreate).toHaveBeenCalledTimes(1); // judgment (no rules) → no semantic review call
+    expect(mockCreate).toHaveBeenCalledTimes(2); // R2.18 — generation + quality review (review is no longer conditional on constraints)
   });
 });
 

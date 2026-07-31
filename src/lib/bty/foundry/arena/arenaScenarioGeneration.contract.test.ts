@@ -25,7 +25,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
 }));
 
 import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
-import { providerJson, toProviderDto } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { providerJson, toProviderDto, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { PROVIDER_SCHEMA_NAME } from "@/domain/foundry/arena-draft/providerDto";
 
 const facts: ModuleSourceFacts = {
@@ -107,6 +107,13 @@ function envelope(
   return { choices: [{ message: { content, refusal: over.refusal ?? null }, finish_reason: over.finish_reason ?? "stop" }] };
 }
 
+/** Answer the review call with an ACCEPT so a generation-shaped mock is not mistaken for a review. */
+function routeWithAcceptReview(genContent: unknown) {
+  mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+    isReviewRequest(params) ? { choices: [{ message: { content: JSON.stringify(acceptReview(goodDraft)) } }] } : genContent,
+  );
+}
+
 let observed: GenObservation[] = [];
 beforeEach(() => {
   available = true;
@@ -121,7 +128,7 @@ const lastCode = () => observed[observed.length - 1]?.code;
 // ---------------------------------------------------------------------------
 describe("request contract — the model is constrained, not merely asked", () => {
   it("sends a STRICT json_schema response_format, a sufficient token budget, and the model id", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
     await generateArenaScenarioDraft(input);
     const [params] = mockCreate.mock.calls[0];
     expect(params.response_format.type).toBe("json_schema");
@@ -132,7 +139,7 @@ describe("request contract — the model is constrained, not merely asked", () =
   });
 
   it("the prompt still names JSON — json_object mode requires it", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
     await generateArenaScenarioDraft(input);
     const [params] = mockCreate.mock.calls[0];
     const text = params.messages.map((m: { content: string }) => m.content).join("\n");
@@ -140,7 +147,7 @@ describe("request contract — the model is constrained, not merely asked", () =
   });
 
   it("ACCEPTED — a well-formed branch-aware draft generates", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
+    routeWithAcceptReview(envelope(providerJson(goodDraft)));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
   });
@@ -165,7 +172,7 @@ describe("provider envelope shapes", () => {
   });
 
   it("ACCEPTED — markdown code-fenced JSON is unwrapped, not rejected", async () => {
-    mockCreate.mockResolvedValueOnce(envelope("```json\n" + providerJson(goodDraft) + "\n```"));
+    routeWithAcceptReview(envelope("```json\n" + providerJson(goodDraft) + "\n```"));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
   });
@@ -239,7 +246,7 @@ describe("canonical schema rejections — exact codes, no invented content", () 
     const wire = JSON.parse(providerJson(goodDraft));
     wire.primaryChoices[0].id = "hacked";
     wire.primaryChoices[1].id = "hacked"; // the old duplicate defect, now inert
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    routeWithAcceptReview(envelope(JSON.stringify(wire)));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
     const ids = (r as { value: { draft: ArenaScenarioDraft } }).value.draft.primary.choices.map((c) => c.id);
@@ -251,7 +258,7 @@ describe("canonical schema rejections — exact codes, no invented content", () 
     // Duplicate wording is a QUALITY question judged elsewhere; it must not collapse identity.
     const wire = JSON.parse(providerJson(goodDraft));
     wire.primaryChoices[1].label = wire.primaryChoices[0].label;
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    routeWithAcceptReview(envelope(JSON.stringify(wire)));
     const r = await generateArenaScenarioDraft(input);
     if (r.ok) {
       const choices = r.value.draft.primary.choices;
@@ -301,7 +308,7 @@ describe("canonical schema rejections — exact codes, no invented content", () 
   it("R2.16 — branch ORDER is the relationship: reordering re-zips deterministically", async () => {
     const wire = JSON.parse(providerJson(goodDraft));
     [wire.branches[0], wire.branches[1]] = [wire.branches[1], wire.branches[0]];
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    routeWithAcceptReview(envelope(JSON.stringify(wire)));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
     const draft = (r as { value: { draft: ArenaScenarioDraft } }).value.draft;
@@ -312,9 +319,9 @@ describe("canonical schema rejections — exact codes, no invented content", () 
 
   it("R2.16 — canonical ids are deterministic across identical DTOs", async () => {
     const wire = providerJson(goodDraft);
-    mockCreate.mockResolvedValueOnce(envelope(wire));
+    routeWithAcceptReview(envelope(wire));
     const a = await generateArenaScenarioDraft(input);
-    mockCreate.mockResolvedValueOnce(envelope(wire));
+    routeWithAcceptReview(envelope(wire));
     const b = await generateArenaScenarioDraft(input);
     expect(a.ok && b.ok).toBe(true);
     const ids = (x: typeof a) => JSON.stringify((x as { value: { draft: ArenaScenarioDraft } }).value.draft);
@@ -401,43 +408,155 @@ describe("R2.17 — every reviewer outcome is observable", () => {
     }
     return JSON.stringify(wire);
   };
-  const reviewSays = (body: unknown) => envelope(JSON.stringify(body));
+  /** Route generation + a REVIEW body of our choosing. */
+  const routeReview = (review: unknown) =>
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params) ? envelope(JSON.stringify(review)) : envelope(withAssessments()),
+    );
 
-  it("a reviewer no-safe verdict is recorded, not silent", async () => {
-    mockCreate
-      .mockResolvedValueOnce(envelope(withAssessments()))
-      .mockResolvedValueOnce(reviewSays({ ok: true, violations: [], noSafeJudgmentSpace: true }));
+  it("a SUPPORTED reviewer no-safe verdict is recorded and terminates", async () => {
+    routeReview(acceptReview(goodDraft, {
+      noSafeJudgmentSpace: true,
+      noSafeReasonCode: "all_options_violate_confirmed_boundary",
+      remainingJudgmentDimensions: [],
+      violatedBoundaryIds: ["c1"],
+      overallVerdict: "reject",
+      defectCodes: ["boundary_violation"],
+    }));
     const r = await generateArenaScenarioDraft(constrained);
     expect(r).toMatchObject({ ok: false, reason: "no_safe_judgment_space" });
     expect(observed.map((o) => o.outcome)).toContain("review_no_safe_space");
-    expect(lastCode()).toBe("reviewer_declared_no_judgment_space");
+    expect(lastCode()).toBe("all_options_violate_confirmed_boundary");
   });
 
-  it("a reviewer violation is recorded", async () => {
-    mockCreate
-      .mockResolvedValue(envelope(withAssessments()))
-      .mockResolvedValueOnce(envelope(withAssessments()))
-      .mockResolvedValueOnce(reviewSays({ ok: false, violations: [{ phase: "primary", choiceId: "p1", constraintId: "c1", reason: "x" }], noSafeJudgmentSpace: false }));
+  it("the c18 OVER-REFUSAL shape is rejected as contradictory, NOT accepted as no-safe", async () => {
+    // Unsupported refusal: claims no-safe while still naming remaining judgment. This is the exact
+    // shape that terminated c18; it must now be treated as a broken review, never a safety outcome.
+    routeReview(acceptReview(goodDraft, {
+      noSafeJudgmentSpace: true,
+      noSafeReasonCode: "all_options_violate_confirmed_boundary",
+      remainingJudgmentDimensions: ["sequencing", "notification"],
+      violatedBoundaryIds: [],
+    }));
+    const r = await generateArenaScenarioDraft(constrained);
+    expect(r).not.toMatchObject({ reason: "no_safe_judgment_space" });
+    expect(observed.map((o) => o.outcome)).toContain("review_malformed");
+  });
+
+  it("a reviewer rejection is recorded with its defect code", async () => {
+    routeReview(acceptReview(goodDraft, {
+      primaryChoices: [
+        { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
+        { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
+      ],
+      overallVerdict: "reject",
+      defectCodes: ["moral_decoy"],
+      retryInstruction: "Replace the concealment option.",
+    }));
     await generateArenaScenarioDraft(constrained);
-    expect(observed.map((o) => o.outcome)).toContain("review_violation");
+    expect(observed.map((o) => o.outcome)).toContain("review_reject");
+    expect(observed.map((o) => o.code)).toContain("moral_decoy");
   });
 
   it("a malformed reviewer response is recorded", async () => {
-    mockCreate
-      .mockResolvedValueOnce(envelope(withAssessments()))
-      .mockResolvedValueOnce(envelope("not json"));
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params) ? envelope("not json") : envelope(withAssessments()),
+    );
     const r = await generateArenaScenarioDraft(constrained);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(observed.map((o) => o.outcome)).toContain("review_malformed");
   });
 
   it("a reviewer transport failure is recorded", async () => {
-    mockCreate
-      .mockResolvedValueOnce(envelope(withAssessments()))
-      .mockResolvedValueOnce(envelope(null));
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params) ? envelope(null) : envelope(withAssessments()),
+    );
     const r = await generateArenaScenarioDraft(constrained);
     expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
     expect(observed.map((o) => o.outcome)).toContain("review_transport_failed");
+  });
+});
+
+describe("R2.18 — defect-specific retry feedback reaches the model", () => {
+  const rejectThenAccept = (rejectReview: unknown) => {
+    let gen = 0, rev = 0;
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) => {
+      if (isReviewRequest(params)) {
+        rev += 1;
+        return envelope(JSON.stringify(rev === 1 ? rejectReview : acceptReview(goodDraft)));
+      }
+      gen += 1;
+      return envelope(providerJson(goodDraft));
+    });
+  };
+  const decoyReview = acceptReview(goodDraft, {
+    primaryChoices: [
+      { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
+      { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
+    ],
+    overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace the concealment option.",
+  });
+
+  it("the SECOND request carries the exact defect codes — it is no longer identical to the first", async () => {
+    rejectThenAccept(decoyReview);
+    const r = await generateArenaScenarioDraft(input);
+    expect(r.ok).toBe(true);
+    const genCalls = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p));
+    expect(genCalls).toHaveLength(2);
+    const first = genCalls[0][0].messages.map((m: { content: string }) => m.content).join("\n");
+    const second = genCalls[1][0].messages.map((m: { content: string }) => m.content).join("\n");
+    expect(second).not.toBe(first); // the measured R2.17 defect was a byte-identical retry
+    expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
+    expect(second).toContain("moral_decoy");
+    expect(second).toMatch(/Primary choice 2/);
+  });
+
+  it("21. the retry preserves the original facts and boundaries verbatim", async () => {
+    rejectThenAccept(decoyReview);
+    await generateArenaScenarioDraft(input);
+    const genCalls = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p));
+    const first = genCalls[0][0].messages.map((m: { content: string }) => m.content).join("\n");
+    const second = genCalls[1][0].messages.map((m: { content: string }) => m.content).join("\n");
+    expect(second).toContain("A teammate proposes cutting a planned design review to hit the deadline");
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+    expect(second.startsWith(first.slice(0, 200))).toBe(true); // same system contract, appended correction
+  });
+
+  it("24. a SECOND rejection terminates cleanly with no fallback and no draft", async () => {
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params) ? envelope(JSON.stringify(decoyReview)) : envelope(providerJson(goodDraft)),
+    );
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(r as unknown as { value?: unknown }).not.toHaveProperty("value");
+    const genCalls = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p));
+    expect(genCalls).toHaveLength(2); // bounded — never open-ended
+  });
+
+  it("23. rejected first-attempt content never becomes the returned draft", async () => {
+    rejectThenAccept(decoyReview);
+    const r = await generateArenaScenarioDraft(input);
+    expect(r.ok).toBe(true);
+    // Only an accepted review yields a draft; the rejected attempt produced none.
+    expect((r as { value: { source: string } }).value.source).toBe("ai");
+  });
+
+  it("25. an UNSUPPORTED reviewer no-safe does not terminate as an expected decline", async () => {
+    let rev = 0;
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) => {
+      if (isReviewRequest(params)) {
+        rev += 1;
+        return envelope(JSON.stringify(rev === 1
+          ? acceptReview(goodDraft, { noSafeJudgmentSpace: true, noSafeReasonCode: "all_options_violate_confirmed_boundary", remainingJudgmentDimensions: ["sequencing"], violatedBoundaryIds: [] })
+          : acceptReview(goodDraft)));
+      }
+      return envelope(providerJson(goodDraft));
+    });
+    const r = await generateArenaScenarioDraft(input);
+    // The unsupported refusal is a broken review, so generation retries and succeeds — it is NOT
+    // reported as no_safe_judgment_space, which is how c18 was wrongly terminated.
+    expect(r.ok).toBe(true);
+    expect(observed.map((o) => o.outcome)).toContain("review_malformed");
   });
 });
 

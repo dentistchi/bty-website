@@ -61,3 +61,54 @@ export function toProviderDto(draft: ArenaScenarioDraft, assessmentsByChoiceId?:
 /** Convenience: the provider wire STRING for a canonical fixture. */
 export const providerJson = (draft: ArenaScenarioDraft, a?: AssessmentsByChoiceId): string =>
   JSON.stringify(toProviderDto(draft, a));
+
+// ---------------------------------------------------------------------------
+// Semantic review fixtures (R2.18). The reviewer now runs for EVERY generation, so any test that
+// expects a successful generation must also supply a review that ACCEPTS.
+// ---------------------------------------------------------------------------
+
+import type { SemanticReview } from "./semanticReview";
+
+/** A consistent ACCEPT review sized to the draft it reviews. */
+export function acceptReview(draft: ArenaScenarioDraft, over: Partial<SemanticReview> = {}): SemanticReview {
+  const branchKeys = Object.keys(draft.branches ?? {});
+  return {
+    noSafeJudgmentSpace: false,
+    noSafeReasonCode: "judgment_space_remains",
+    boundaryIdsConsidered: [],
+    remainingJudgmentDimensions: ["sequencing", "communication timing"],
+    violatedBoundaryIds: [],
+    explanation: "Legitimate judgment remains inside the confirmed boundary.",
+    primaryChoices: draft.primary.choices.map((_, i) => ({
+      index: i,
+      legitimateValue: i === 0 ? "transparency" : "certainty",
+      acceptedCost: i === 0 ? "slows the schedule" : "delays the disclosure",
+      defensible: true,
+      defectCodes: [],
+    })),
+    twoValuesInTension: true,
+    tensionValueA: "transparency",
+    tensionValueB: "certainty",
+    branches: branchKeys.map((_, i) => ({
+      index: i,
+      selectedPrimarySummary: `primary ${i + 1} already chosen`,
+      resultingWorldState: `world after primary ${i + 1}`,
+      newConstraintOrPressure: `new pressure ${i + 1}`,
+      nextDecisionDimension: i === 0 ? "escalation order" : "scope of disclosure",
+      repeatsPrimaryDecision: false,
+      overlapsOtherBranchIndex: -1,
+      overlapReason: "",
+      branchDistinct: true,
+      defectCodes: [],
+    })),
+    boundaryCompliant: true,
+    overallVerdict: "accept",
+    defectCodes: [],
+    retryInstruction: "",
+    ...over,
+  };
+}
+
+/** True when this request is the semantic-review call rather than the generation call. */
+export const isReviewRequest = (params: { messages?: Array<{ content?: string }> }): boolean =>
+  (params.messages ?? []).some((m) => typeof m.content === "string" && m.content.includes("You are a strict REVIEWER"));
