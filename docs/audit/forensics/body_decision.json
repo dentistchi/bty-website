@@ -1,0 +1,68 @@
+{
+  "note": "Machine-readable FUNCTION BODY DRIFT decision record (Slice 3.2I-R5B1A.1-R2.7). Forensic evidence only — NOT migration authority, and NOT authorization to repair, apply, or deploy.",
+  "sliceVerdict": "HALTED · TRUSTED LIVE FUNCTION BODY TEXT ABSENT",
+  "boundPacketId": "d5171bbd503388a1ec9ac34aa11e05026b800f79f607697e809e416b2f1705d8",
+  "liveEvidence": {
+    "source": "untouched local live_audit_result.r2.6.json (never committed)",
+    "sha256": "bf7d389f6942c0ba3c3a50a54c6f850c7d514018644501d5c48430b857964663",
+    "packetHandshake": "PASS",
+    "runtimeQueryAttestation": "PASS",
+    "serverVersionNum": 170006,
+    "totals": { "effects": 93, "exact": 91, "conflict": 2, "missing": 0, "evidenceAbsent": 0, "manual": 0 },
+    "carriesBodyText": false,
+    "carriesBodyDigest": true
+  },
+  "repositorySweep": {
+    "method": "blob-level enumeration of every object in every commit of BOTH repositories, content-matched on the function definition (not the name alone), plus 1260 transport-transformation variants of each candidate body",
+    "innerCommits": 1732,
+    "innerBlobs": 10390,
+    "outerCommits": 1768,
+    "outerBlobs": 10822,
+    "definitionBearingBlobs": 3,
+    "distinctVersionsPerMigration": 1,
+    "transportTransformationsTested": 1260,
+    "transportArtifactExplainsLive": false
+  },
+  "functions": [
+    {
+      "function": "public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)",
+      "blocksMigration": "20260726000000",
+      "finalAuthorityMigration": "20260726000000",
+      "repositoryBodies": [
+        { "label": "repo-20260726", "prosrcSha256": "ea74856969177950a0c6e59fd1dc2fd766f4161b1289f360bc22d61980bc2af9", "introducedBy": "66a5eefb", "blob": "4997135d6ac2250927d9cd906cf9afaf40dfbacf", "contractCasesPassed": 24, "contractCasesTotal": 24, "failingCases": [] }
+      ],
+      "liveBody": { "prosrcSha256": "52cc335a92cf65351cfc5b2378ba9c587af51e35bfd02273a26dce71909c753b", "textAvailable": false, "provenance": "UNKNOWN VERSION", "matchesAnyRepositoryBody": false },
+      "structuredPropertiesMatchLive": true,
+      "canonicalDecision": "D_UNRESOLVED",
+      "decisionReason": "The repository body satisfies 24/24 measured caller-contract cases, but the live body's text does not exist anywhere in either repository's history and cannot be read from the r2.6 evidence, which carries digests only. Whether live is a stale regression (→ A) or a superior unrecorded hotfix (→ B) is not decidable from a digest.",
+      "excludedDecisions": [],
+      "unblockedBy": "a trusted read-only run of docs/audit/forensics/foundry_function_body_export_readonly.sql"
+    },
+    {
+      "function": "public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
+      "blocksMigration": "20260729000000",
+      "finalAuthorityMigration": "20260729000000",
+      "repositoryBodies": [
+        { "label": "repo-20260728", "prosrcSha256": "ba0ba9e6122e94b30ea1e1109a69551247c444f3ab3725a81c40fbce85301860", "introducedBy": "1594a1fa", "blob": "c2975052eb99736245281291328f1ac82b5620bc", "contractCasesPassed": 5, "contractCasesTotal": 22, "failingCases": [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 20, 21, 22], "defect": "raises 42702 on every valid submission (OUT params status/outcome collide with columns); this is the device-gate defect 20260729 exists to fix" },
+        { "label": "repo-20260729", "prosrcSha256": "99c66ac7785ad2a3d20c4e99e981f09498876ede1ac31f989f12febc3cb0269f", "introducedBy": "518e6aa7", "blob": "e9897d9f20114324008fec685319d358890e767a", "contractCasesPassed": 16, "contractCasesTotal": 22, "failingCases": [5, 7, 16, 20, 21, 22], "defect": "MISSING `return;` after the RESPONDED-branch `return query`: plpgsql continues executing, so an idempotent retry AND a conflicting second outcome both fall through to the UPDATE + audit INSERT. The caller reads data[0] and sees 'unchanged'/'already_responded' while the row was actually overwritten and a spurious audit row written. Violates first-response-wins, retry idempotency, and append-only audit fidelity." }
+      ],
+      "liveBody": { "prosrcSha256": "21cdd472fd38a9cc7414eabeda1d028857aeddccb057f9ae956b52f793f43958", "textAvailable": false, "provenance": "UNKNOWN VERSION", "matchesAnyRepositoryBody": false },
+      "structuredPropertiesMatchLive": true,
+      "canonicalDecision": "D_UNRESOLVED",
+      "decisionReason": "The live body's text is unavailable, so no candidate can be chosen. Independently of that, the repository final-authority body is DISQUALIFIED as a reconciliation target on its own measured behavior.",
+      "excludedDecisions": ["A_REPOSITORY_BODY_CANONICAL"],
+      "excludedReason": "Pushing the repository body live would install a body that silently overwrites a learner's first recorded follow-up outcome and writes duplicate audit rows. The directive forbids a candidate that 'silently overwrites completed state', 'creates non-idempotent retries', or corrupts required audit writes.",
+      "resolutionPath": "B_LIVE_BODY_CANONICAL (only if the live text proves to already contain the fix) or C_NEW_RECONCILED_BODY_REQUIRED (otherwise)",
+      "unblockedBy": "a trusted read-only run of docs/audit/forensics/foundry_function_body_export_readonly.sql"
+    }
+  ],
+  "migrationEvidence": {
+    "20260727000000": "A candidate — repair-eligible evidence retained",
+    "20260728000000": "A candidate — repair-eligible evidence retained",
+    "20260726000000": "D — blocked solely by set_shared_review body drift",
+    "20260729000000": "D — blocked solely by submit_followup body drift"
+  },
+  "liveMutation": "NONE",
+  "migrationRepair": "NOT AUTHORIZED · NOT PERFORMED",
+  "practiceMigrationsPending": ["20260802000000_foundry_practice_run_selected_path_v1.sql", "20260803000000_foundry_arena_draft_one_shell_v1.sql"]
+}

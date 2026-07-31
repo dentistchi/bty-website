@@ -47,6 +47,7 @@
     "db:push": "supabase db push",
     "compare:foundry-migration-audit": "npx tsx scripts/migration-proof/compare/cli.ts",
     "build:foundry-migration-manifest": "bash scripts/migration-proof/build-expected-manifest.sh",
+    "forensics:foundry-function-bodies": "bash scripts/migration-proof/body-forensics/run.sh",
     "db:apply-memory-align": "npx tsx scripts/apply-memory-engine-align.ts",
     "storage:cors": "bash scripts/storage-cors.sh",
     "verify:avatar-composite-snapshot": "npx --yes tsx scripts/verify-avatar-composite-snapshot.ts",
