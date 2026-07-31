@@ -66,6 +66,11 @@ function makeDb() {
         ctx.eqs[col] = val;
         return b;
       };
+      // R1: activeLeaseForRequest reads the open usage segment with
+      // from().select().eq('request_id').is('ended_at', null).maybeSingle(). This fake table
+      // holds requests, not segments, so the filter is a no-op and maybeSingle returns null —
+      // i.e. "no authoritative lease", which is exactly the case these autopilot tests assert.
+      b.is = () => b;
       b.maybeSingle = async () => {
         if (ctx.op === 'update') return runUpdate(ctx.patch!, ctx.eqs);
         const id = ctx.eqs.id as string | undefined;

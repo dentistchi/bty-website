@@ -231,6 +231,108 @@ console.log('\n# two-Room same-account concurrency (separate connections, accoun
   await cA.end(); await cB.end();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD 20M-GLOBAL-CUTOVER-R1 — admission RESPONSE completeness.
+// The gate values themselves are already covered above; these pin that the function
+// REPORTS them, that the reported values equal what was persisted, and that a blocked
+// admission still writes nothing.
+console.log('\n# R1 admission response completeness');
+{
+  // A/B/C — started reports the authoritative lease end + trusted duration, and both
+  // equal the row the SAME transaction wrote (they cannot drift by construction).
+  const a = await seedAccount(); const r = await seedRoom(a.ws);
+  const req = await seedRequest(r.room, r.event, 230);
+  const b = await begin(r.room, req);
+  ok(b.outcome === 'ok', 'R1: sufficient FREE time → ok');
+  ok(typeof b.leaseEndsAt === 'string' && b.leaseEndsAt.length > 0, 'R1-A: started returns leaseEndsAt');
+  ok(b.durationSeconds === 230, 'R1-C: started returns the trusted durationSeconds');
+  const s = await seg(req);
+  ok(new Date(b.leaseEndsAt).getTime() === new Date(s.lease_ends_at).getTime(),
+     'R1-B: returned leaseEndsAt EQUALS the persisted usage segment lease_ends_at');
+  ok(s.duration_seconds === 230, 'R1-B: persisted duration matches the reported duration');
+}
+{
+  // F/G/H/I — pass_insufficient reports the boundary, and the boundary itself is unchanged.
+  const a = await seedAccount(); const r = await seedRoom(a.ws);
+  await db.query(`insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,activated_at,expires_at,issue_idempotency_key)
+     values($1,'ONE_HOUR',3600,'ACTIVE',now() - interval '3400 seconds', now() + interval '200 seconds',gen_random_uuid()::text)`, [a.id]);
+  const req = await seedRequest(r.room, r.event, 600);          // 600s cannot fit in ~200s
+  const b = await begin(r.room, req);
+  ok(b.outcome === 'pass_insufficient', 'R1: 600s video vs ~200s pass → pass_insufficient');
+  ok(b.durationSeconds === 600, 'R1-F: pass_insufficient returns durationSeconds');
+  ok(typeof b.passExpiresAt === 'string' && b.passExpiresAt.length > 0, 'R1-F: returns passExpiresAt');
+  ok(Number.isInteger(b.remainingSeconds) && b.remainingSeconds >= 0 && b.remainingSeconds <= 200,
+     'R1-F: returns clamped integer remainingSeconds matching canonical pass semantics');
+  ok(b.remainingSeconds < b.durationSeconds, 'R1: the reported remaining is genuinely shorter than the song');
+  // I — a blocked admission mutates NOTHING.
+  ok((await one(`select status from karaoke_requests where id=$1`, [req])).status === 'waiting', 'R1-I: no queue transition');
+  ok((await one(`select count(*)::int c from karaoke_event_usage_segments where request_id=$1`, [req])).c === 0, 'R1-I: no usage segment / lease');
+  ok((await one(`select count(*)::int c from timed_access_pass_audit where account_id=$1 and action='ACTIVATED'`, [a.id])).c === 0,
+     'R1-I: no pass activation audit from the rejected attempt');
+}
+{
+  // G/H — the boundary is still exact after the response change: equality admitted,
+  // one second short blocked. Pass expiry is set relative to the video length.
+  const a = await seedAccount(); const r = await seedRoom(a.ws);
+  await db.query(`insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,activated_at,expires_at,issue_idempotency_key)
+     values($1,'ONE_HOUR',3600,'ACTIVE',now() - interval '3300 seconds', now() + interval '300 seconds',gen_random_uuid()::text)`, [a.id]);
+  const eq = await seedRequest(r.room, r.event, 299);   // finishes just inside the window
+  const bEq = await begin(r.room, eq);
+  ok(bEq.outcome === 'ok', 'R1-G: a video that finishes inside the pass window is still ADMITTED');
+  await end(r.room, eq);
+  const a2 = await seedAccount(); const r2 = await seedRoom(a2.ws);
+  await db.query(`insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,activated_at,expires_at,issue_idempotency_key)
+     values($1,'ONE_HOUR',3600,'ACTIVE',now() - interval '3300 seconds', now() + interval '300 seconds',gen_random_uuid()::text)`, [a2.id]);
+  const over = await seedRequest(r2.room, r2.event, 302);   // ends past expiry
+  const bOver = await begin(r2.room, over);
+  ok(bOver.outcome === 'pass_insufficient', 'R1-H: a video ending past pass expiry is still BLOCKED');
+}
+{
+  // J/K — upgrade_required reports duration AND the union charge actually compared.
+  // A first song opens a lease; a second overlapping song charges only the extension,
+  // so requiredChargeSeconds < durationSeconds — the exact case the client must not misreport.
+  const a = await seedAccount(); const r = await seedRoom(a.ws);
+  // Pre-consume 500s of the 900s FREE window with a LEGACY (v1) completed segment — the same
+  // fixture shape the FREE-boundary test above uses, so the CHECK constraints all still hold.
+  const spent = await one(`insert into karaoke_requests(room_id,event_id,status,position,youtube_video_id)
+     values($1,$2,'completed',9,'r1spent0001') returning id`, [r.room, r.event]);
+  await db.query(`insert into karaoke_event_usage_segments(account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,ended_at,close_reason,timezone_snapshot)
+     values($1,$2,$3,$4,'FREE',true, now() - interval '500 seconds', now(),'completed','America/Los_Angeles')`,
+     [a.id, r.event, r.room, spent.id]);
+  await db.query(`update karaoke_requests set completed_at=(select ended_at from karaoke_event_usage_segments where request_id=$1) where id=$1`, [spent.id]);
+  // A 300s song fits in the remaining ~400s and opens a lease to now+300.
+  const first = await seedRequest(r.room, r.event, 300, 1);
+  const b1 = await begin(r.room, first);
+  ok(b1.outcome === 'ok' && b1.chargeSeconds === 300, 'R1-K: first start charges the full 300s');
+  await end(r.room, first);   // Finish never shrinks the lease — it still runs to now+300.
+  // A 600s song now overlaps that live lease, so the UNION charge is only ~300s — while the
+  // remaining allowance is ~100s. Blocked, and charge (300) is provably < duration (600).
+  const second = await seedRequest(r.room, r.event, 600, 2);
+  const b2 = await begin(r.room, second);
+  if (b2.outcome === 'upgrade_required') {
+    ok(b2.durationSeconds === 600, 'R1-J: upgrade_required returns durationSeconds (the full 600s song)');
+    ok(Number.isInteger(b2.requiredChargeSeconds), 'R1-J: upgrade_required returns requiredChargeSeconds');
+    ok(Number.isInteger(b2.remainingSeconds), 'R1-J: upgrade_required returns remainingSeconds');
+    ok(b2.requiredChargeSeconds < b2.durationSeconds,
+       'R1-K: requiredChargeSeconds is the UNION extension, STRICTLY less than the raw song length');
+    ok(b2.requiredChargeSeconds > b2.remainingSeconds, 'R1-J: the block is exactly charge > remaining');
+    ok((await one(`select count(*)::int c from karaoke_event_usage_segments where request_id=$1`, [second])).c === 0,
+       'R1-I: blocked FREE start wrote no lease');
+  } else {
+    ok(false, `R1-J: expected upgrade_required for the exhausted FREE account (got ${b2.outcome})`);
+  }
+}
+{
+  // L — duration_unavailable must carry NO duration field at all (no fabricated zero).
+  const a = await seedAccount(); const r = await seedRoom(a.ws);
+  const req = await one(`insert into karaoke_requests(room_id,event_id,status,position,youtube_video_id)
+     values($1,$2,'waiting',1,'r1nocache01') returning id`, [r.room, r.event]);
+  const b = await begin(r.room, req.id);
+  ok(b.outcome === 'duration_unavailable', 'R1-L: unresolved duration → duration_unavailable');
+  ok(b.durationSeconds === undefined, 'R1-L: no durationSeconds key (never a fabricated 0)');
+  ok(b.remainingSeconds === undefined, 'R1-L: no remainingSeconds key');
+}
+
 console.log(`\nRESULT: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { for (const f of fails) console.log('  FAILED: ' + f); }
 await db.end();

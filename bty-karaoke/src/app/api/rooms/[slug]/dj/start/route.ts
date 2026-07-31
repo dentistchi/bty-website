@@ -20,6 +20,34 @@ export const runtime = 'nodejs';
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
 
+/**
+ * BUILD 20M-GLOBAL-CUTOVER-R1 — the ONE place that decides which authoritative admission values
+ * are safe to publish. Purely additive and camelCase, matching the rest of this response body.
+ *
+ * A field is emitted ONLY when the admission transaction actually produced it, so an older
+ * server payload and a v1 start both simply omit them and older clients are unaffected. Nothing
+ * is defaulted to 0 — a missing value must read as "unknown" so the client falls back to its
+ * generic copy instead of showing a fabricated number.
+ *
+ * Deliberately NOT exposed: account id, pass grant id, usage-segment id, charge window,
+ * passCovered/passActivated flags, and every other billing or security internal.
+ */
+function admissionFields(r: {
+  leaseEndsAt?: string | null;
+  durationSeconds?: number | null;
+  requiredChargeSeconds?: number | null;
+  remainingSeconds?: number | null;
+  passExpiresAt?: string | null;
+}): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  if (typeof r.leaseEndsAt === 'string' && r.leaseEndsAt) out.leaseEndsAt = r.leaseEndsAt;
+  if (typeof r.durationSeconds === 'number') out.durationSeconds = r.durationSeconds;
+  if (typeof r.requiredChargeSeconds === 'number') out.requiredChargeSeconds = r.requiredChargeSeconds;
+  if (typeof r.remainingSeconds === 'number') out.remainingSeconds = r.remainingSeconds;
+  if (typeof r.passExpiresAt === 'string' && r.passExpiresAt) out.passExpiresAt = r.passExpiresAt;
+  return out;
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   const cred = roomCredentialFromRequest(req);
@@ -55,11 +83,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     case 'started':
       // Newly on stage → resolve its lyrics server-side, in the background.
       void scheduleLyricsResolve(auth.room.id, requestId);
-      return NextResponse.json({ ok: true, request: result.request ?? null, code: 'started' }, { headers: NO_STORE });
+      return NextResponse.json(
+        { ok: true, request: result.request ?? null, code: 'started', ...admissionFields(result) },
+        { headers: NO_STORE },
+      );
     case 'already_active':
       // Auto-promotion (or a prior tap) already made it the stage — that is success.
+      // R1: report the lease ALREADY in force, so a retry / response-loss recovery does not
+      // lose lease visibility. Nothing new is created to populate it.
       return NextResponse.json(
-        { ok: true, request: result.request ?? null, code: 'already_active' },
+        { ok: true, request: result.request ?? null, code: 'already_active', ...admissionFields(result) },
         { headers: NO_STORE },
       );
     case 'upgrade_required':
@@ -70,6 +103,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
           error: '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.',
           code: 'upgrade_required',
           usage: projectEntitlement(result.entitlement),
+          // R1 §D — requiredChargeSeconds is the value actually compared with the remaining
+          // time; it is ≤ durationSeconds when an active lease already covers part of the song.
+          ...admissionFields(result),
         },
         { status: 402, headers: NO_STORE },
       );
@@ -82,8 +118,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       );
     case 'pass_insufficient':
       // BUILD 20M v2: the timed pass cannot cover the whole video (would play past expiry).
+      // R1 §C — carry the boundary detail so the client can state it concretely. No account,
+      // pass, or segment identifier is exposed.
       return NextResponse.json(
-        { error: '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.', code: 'pass_insufficient' },
+        {
+          error: '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.',
+          code: 'pass_insufficient',
+          ...admissionFields(result),
+        },
         { status: 402, headers: NO_STORE },
       );
     case 'conflict':

@@ -44,6 +44,19 @@ export type EndOutcome =
 export interface BeginResult {
   outcome: BeginOutcome;
   entitlement?: unknown;
+  // BUILD 20M-GLOBAL-CUTOVER-R1 — authoritative admission detail, passed through VERBATIM from
+  // the v2 RPC (which computes all of it inside the admission transaction). Never recomputed
+  // here and never present on the v1 path. All optional: absent = the RPC did not supply it.
+  /** Success: the non-shrinkable lease end actually written for this start (ISO-8601). */
+  leaseEndsAt?: string | null;
+  /** Trusted video duration (seconds) — the same v_dur the gate compared. */
+  durationSeconds?: number | null;
+  /** upgrade_required: the union charge ACTUALLY compared with remainingSeconds (≤ duration). */
+  requiredChargeSeconds?: number | null;
+  /** Blocked: the finite remaining seconds at the moment of the decision. */
+  remainingSeconds?: number | null;
+  /** pass_insufficient: the canonical pass expiry the whole video had to fit inside. */
+  passExpiresAt?: string | null;
 }
 export interface EndResult {
   outcome: EndOutcome;
@@ -97,7 +110,27 @@ async function beginSongV2(roomId: string, requestId: string, mode: 'guest' | 'p
   });
   if (error) throw error;
   const row = first(data);
-  return { outcome: String(row.outcome ?? 'shadow_metering_error') as BeginOutcome, entitlement: row.entitlement };
+  // R1 — carry the RPC's authoritative admission detail through unchanged. `num`/`iso` only
+  // narrow the type; they never substitute a value, so a field the RPC omitted stays undefined
+  // (the client then falls back to its generic copy rather than showing a fabricated number).
+  return {
+    outcome: String(row.outcome ?? 'shadow_metering_error') as BeginOutcome,
+    entitlement: row.entitlement,
+    leaseEndsAt: iso(row.leaseEndsAt),
+    durationSeconds: num(row.durationSeconds),
+    requiredChargeSeconds: num(row.requiredChargeSeconds),
+    remainingSeconds: num(row.remainingSeconds),
+    passExpiresAt: iso(row.passExpiresAt),
+  };
+}
+
+/** Narrow an RPC value to a finite integer, or undefined. Never coerces a missing value to 0. */
+function num(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : undefined;
+}
+/** Narrow an RPC value to a non-empty timestamp string, or undefined. */
+function iso(v: unknown): string | undefined {
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
 
 /** Whether this account may ISSUE new v2 leases now (karaoke_lease_write_enabled_for). */

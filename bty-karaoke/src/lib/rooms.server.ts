@@ -879,9 +879,73 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
 }
 
 /** promoteRequestToPlaying result — carries the entitlement snapshot on a blocked start. */
-interface PromoteFlip {
+interface PromoteFlip extends AdmissionDetail {
   outcome: StartOutcome;
   entitlement?: unknown;
+}
+
+/**
+ * BUILD 20M-GLOBAL-CUTOVER-R1 — the authoritative admission detail the v2 transaction already
+ * computed, threaded up unchanged so the route can explain a decision concretely. Every field is
+ * optional: the v1 path supplies none, and an absent field means "the authority did not give us
+ * this" — callers must fall back to generic copy, never to a fabricated value.
+ */
+export interface AdmissionDetail {
+  /** Success: the non-shrinkable lease end written for this start (ISO-8601). */
+  leaseEndsAt?: string | null;
+  /** Trusted video duration in seconds (the v_dur the gate compared). */
+  durationSeconds?: number | null;
+  /** upgrade_required: the union charge actually compared with remainingSeconds (≤ duration). */
+  requiredChargeSeconds?: number | null;
+  /** Blocked: finite remaining seconds at the decision instant. */
+  remainingSeconds?: number | null;
+  /** pass_insufficient: the pass expiry the whole video had to finish inside. */
+  passExpiresAt?: string | null;
+}
+
+/** Copy the admission detail off a BeginResult without inventing anything. */
+function admissionDetailOf(r: {
+  leaseEndsAt?: string | null;
+  durationSeconds?: number | null;
+  requiredChargeSeconds?: number | null;
+  remainingSeconds?: number | null;
+  passExpiresAt?: string | null;
+}): AdmissionDetail {
+  return {
+    leaseEndsAt: r.leaseEndsAt,
+    durationSeconds: r.durationSeconds,
+    requiredChargeSeconds: r.requiredChargeSeconds,
+    remainingSeconds: r.remainingSeconds,
+    passExpiresAt: r.passExpiresAt,
+  };
+}
+
+/**
+ * R1 §B — the lease already in force for a request that is ALREADY playing. Pure READ of the
+ * canonical open usage segment: it creates no lease, extends nothing, opens no segment, and
+ * activates no pass. Returns {} when no authoritative lease exists (v1 rows, or no open
+ * segment) so `already_active` reports nil rather than a guessed end.
+ */
+async function activeLeaseForRequest(requestId: string): Promise<AdmissionDetail> {
+  // Best-effort by design: this only enriches an ALREADY-decided success. A lookup failure must
+  // degrade to "no lease detail" and never turn a canonical already_active into an error.
+  try {
+    const { data, error } = await karaokeDb()
+      .from('karaoke_event_usage_segments')
+      .select('lease_ends_at, duration_seconds')
+      .eq('request_id', requestId)
+      .is('ended_at', null)
+      .maybeSingle();
+    if (error || !data) return {};
+    const lease = data.lease_ends_at as string | null;
+    const dur = data.duration_seconds as number | null;
+    return {
+      leaseEndsAt: typeof lease === 'string' && lease.length > 0 ? lease : undefined,
+      durationSeconds: typeof dur === 'number' && Number.isFinite(dur) ? dur : undefined,
+    };
+  } catch {
+    return {};
+  }
 }
 
 // B1 metering: the waiting→playing flip + its usage segment are opened in ONE atomic
@@ -891,7 +955,11 @@ interface PromoteFlip {
 // `upgrade_required` + its entitlement, which we thread up unchanged.
 async function promoteRequestToPlaying(roomId: string, requestId: string): Promise<PromoteFlip> {
   const r = await beginSong(roomId, requestId, 'promote');
-  return { outcome: beginToStartOutcome(r.outcome, { roomId, requestId }), entitlement: r.entitlement };
+  return {
+    outcome: beginToStartOutcome(r.outcome, { roomId, requestId }),
+    entitlement: r.entitlement,
+    ...admissionDetailOf(r),   // R1 — thread the transaction's own values up unchanged
+  };
 }
 
 export type EnsurePlayingOutcome =
@@ -905,7 +973,7 @@ export type EnsurePlayingOutcome =
   | 'duration_unavailable'
   | 'pass_insufficient';
 
-export interface EnsurePlayingResult {
+export interface EnsurePlayingResult extends AdmissionDetail {
   outcome: EnsurePlayingOutcome;
   /** The canonical playing request (started / already_active). */
   request?: KaraokeRequest;
@@ -933,7 +1001,12 @@ export async function ensurePlaying(
 
   const playing = active.find((r) => r.status === 'playing');
   if (playing) {
-    if (playing.id === requestId) return { outcome: 'already_active', request: playing };
+    if (playing.id === requestId) {
+      // R1 §B — this song is ALREADY the stage (a retry, or response-loss recovery). Report the
+      // lease already in force so recovery never loses lease visibility. Read-only: no new lease,
+      // no segment, no pass activation, no second playing mutation.
+      return { outcome: 'already_active', request: playing, ...(await activeLeaseForRequest(playing.id)) };
+    }
     return { outcome: 'conflict', playing };
   }
   if (target.status !== 'waiting' || target.ready_at == null) {
@@ -945,21 +1018,27 @@ export async function ensurePlaying(
   const flip = await promoteRequestToPlaying(roomId, requestId);
   if (flip.outcome === 'ok') {
     const now = (await listActiveRequests(roomId, eventId)).find((r) => r.id === requestId);
-    return { outcome: 'started', request: now ?? target };
+    // R1 §A — leaseEndsAt/durationSeconds come from the RPC that WROTE the lease, so they can
+    // never disagree with the persisted segment.
+    return { outcome: 'started', request: now ?? target, ...admissionDetailOf(flip) };
   }
   if (flip.outcome === 'upgrade_required') {
     // FREE minutes exhausted (enforcement on): NOTHING mutated (the RPC rolled back).
     // Surface the block truthfully — no song was started.
-    return { outcome: 'upgrade_required', entitlement: flip.entitlement };
+    // R1 §D — plus duration + the union charge actually compared, so the client never
+    // presents raw song length as the required time.
+    return { outcome: 'upgrade_required', entitlement: flip.entitlement, ...admissionDetailOf(flip) };
   }
   if (flip.outcome === 'duration_unavailable' || flip.outcome === 'pass_insufficient') {
     // BUILD 20M v2: fail closed — nothing mutated, nothing started. Surfaced distinctly so the
     // client can retry (duration) or explain the pass shortfall.
-    return { outcome: flip.outcome };
+    // R1 §C/§E — pass_insufficient carries its boundary detail; duration_unavailable stays bare
+    // (admissionDetailOf yields all-undefined there, so no fabricated zero can leak out).
+    return { outcome: flip.outcome, ...admissionDetailOf(flip) };
   }
   if (flip.outcome === 'already_playing') {
     const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
-    if (p?.id === requestId) return { outcome: 'already_active', request: p };
+    if (p?.id === requestId) return { outcome: 'already_active', request: p, ...(await activeLeaseForRequest(p.id)) };
     return { outcome: 'conflict', playing: p };
   }
   // not_waiting / not_found → the queue changed under us; report "not ready now".
