@@ -91,7 +91,8 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
       // final reason, so the per-attempt stage (JSON validity, truncation, DTO, schema, safety)
       // could not be read back from it; the sub-codes only ever reached stdout.
       const attempts: GenObservation[] = [];
-      __setGenObserver((o) => attempts.push(o));
+      // R2.19 — capture rejected scenarios / reviewer verdicts / retry feedback for forensics.
+      __setGenObserver((o) => attempts.push(o), { captureContent: true });
       const started = Date.now();
       const r = await generateArenaScenarioDraft(c.input);
       const ms = Date.now() - started;

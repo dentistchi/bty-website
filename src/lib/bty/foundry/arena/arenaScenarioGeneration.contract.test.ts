@@ -560,6 +560,65 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
   });
 });
 
+describe("R2.19 — rejected-attempt content capture is opt-in", () => {
+  const decoyReview = acceptReview(goodDraft, {
+    primaryChoices: [
+      { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
+      { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
+    ],
+    overallVerdict: "reject", defectCodes: ["moral_decoy"], retryInstruction: "Replace the concealment option.",
+  });
+  const routeReject = () =>
+    mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
+      isReviewRequest(params) ? envelope(JSON.stringify(decoyReview)) : envelope(providerJson(goodDraft)),
+    );
+
+  it("is DISABLED by default — a rejection records the code but no content", async () => {
+    __setGenObserver((o) => observed.push(o)); // no captureContent
+    routeReject();
+    await generateArenaScenarioDraft(input);
+    const rej = observed.filter((o) => o.outcome === "review_reject");
+    expect(rej.length).toBeGreaterThan(0);
+    for (const o of rej) {
+      expect(o.scenario).toBeUndefined();
+      expect(o.review).toBeUndefined();
+      expect(o.retryFeedback).toBeUndefined();
+    }
+  });
+
+  it("when ENABLED it captures the rejected scenario, reviewer verdict and retry feedback", async () => {
+    __setGenObserver((o) => observed.push(o), { captureContent: true });
+    routeReject();
+    await generateArenaScenarioDraft(input);
+    const first = observed.find((o) => o.outcome === "review_reject");
+    expect(first).toBeDefined();
+    // the rejected scenario itself — the evidence missing from the R2.18 c01 artifact
+    expect((first!.scenario as ArenaScenarioDraft).primary.choices).toHaveLength(2);
+    expect(JSON.stringify(first!.review)).toContain("moral_decoy");
+    expect(first!.retryFeedback).toMatch(/ATTEMPT 1 CORRECTION/);
+    expect(first!.retryFeedback).toMatch(/Primary choice 2/);
+  });
+
+  it("captured evidence carries no credential, header or account metadata", async () => {
+    __setGenObserver((o) => observed.push(o), { captureContent: true });
+    routeReject();
+    await generateArenaScenarioDraft(input);
+    const blob = JSON.stringify(observed);
+    expect(blob).not.toMatch(/sk-[A-Za-z0-9]/);
+    expect(blob).not.toMatch(/Authorization|Bearer /);
+  });
+
+  it("production generation is unchanged — the returned result is identical either way", async () => {
+    __setGenObserver(null);
+    routeReject();
+    const a = await generateArenaScenarioDraft(input);
+    __setGenObserver((o) => observed.push(o), { captureContent: true });
+    routeReject();
+    const b = await generateArenaScenarioDraft(input);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
 describe("evaluation observability records the stage, never a secret", () => {
   it("captures the exact rejection code and finish reason", async () => {
     mockCreate.mockResolvedValue(envelope(providerJson(goodDraft).slice(0, 900), { finish_reason: "length" }));

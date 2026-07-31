@@ -103,11 +103,35 @@ const LLM_GEN_MAX_TOKENS = 4_000;
  * It is OFF unless the harness installs a sink, and it records NO credential, NO Authorization
  * header, NO request headers and NO provider account identifier.
  */
-export type GenObservation = { outcome: string; code?: string; finishReason?: string; rawLength?: number; rawSample?: string };
+export type GenObservation = {
+  outcome: string;
+  code?: string;
+  finishReason?: string;
+  rawLength?: number;
+  rawSample?: string;
+  /** R2.19 — captured ONLY when the harness opts in. See `__setGenObserver`. */
+  scenario?: unknown;
+  review?: unknown;
+  retryFeedback?: string;
+};
 let genObserver: ((o: GenObservation) => void) | null = null;
-/** Install/clear the evaluation sink. Test/eval harness only — never called by product code. */
-export function __setGenObserver(fn: ((o: GenObservation) => void) | null): void {
+/**
+ * R2.19 — rejected-attempt CONTENT capture, off by default.
+ *
+ * The R2.18 canary recorded only `bad_faith_option` then `moral_decoy` for c01: the rejection gate
+ * worked, but the rejected scenarios, the reviewer's per-choice verdict and the retry correction
+ * were all lost, so the root cause could not be discriminated. With `captureContent` the harness
+ * additionally receives the rejected canonical scenario, the structured review and the exact retry
+ * message. Production never sets it, so production logging is unchanged.
+ */
+let genCaptureContent = false;
+export function __setGenObserver(fn: ((o: GenObservation) => void) | null, opts?: { captureContent?: boolean }): void {
   genObserver = fn;
+  genCaptureContent = fn ? opts?.captureContent === true : false;
+}
+/** Evidence is attached only when the harness explicitly opted in. */
+function captured(payload: Pick<GenObservation, "scenario" | "review" | "retryFeedback">): Partial<GenObservation> {
+  return genCaptureContent ? payload : {};
 }
 
 function logGenOutcome(outcome: string, code?: string, extra?: Omit<GenObservation, "outcome" | "code">): void {
@@ -545,23 +569,33 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
       if (review.kind === "malformed") {
         // Includes a contradictory or unsupported no-safe claim — a broken review, never a safety
         // outcome, so it must not terminate as no_safe_judgment_space.
-        logGenOutcome("review_malformed", review.errors[0]);
+        const fb = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [] });
+        logGenOutcome("review_malformed", review.errors[0], captured({ scenario: llm.draft, review: review.errors, retryFeedback: fb }));
         if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
-        retryFeedback = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [] });
+        retryFeedback = fb;
         continue;
       }
       if (review.kind === "reject") {
-        logGenOutcome("review_reject", review.defects[0]);
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
         // DEFECT-SPECIFIC retry: the previous contract re-sent the identical prompt, so the model
         // never learned what failed and c09 "recovered" into an equally collapsed scenario.
-        retryFeedback = buildRetryFeedback({
+        const fb = buildRetryFeedback({
           attempt,
           defects: review.defects,
           choiceDefects: review.choiceDefects,
           branchDefects: review.branchDefects,
           reviewerInstruction: review.instruction,
         });
+        logGenOutcome(
+          "review_reject",
+          review.defects[0],
+          captured({
+            scenario: llm.draft,
+            review: { defects: review.defects, choiceDefects: review.choiceDefects, branchDefects: review.branchDefects, instruction: review.instruction },
+            retryFeedback: fb,
+          }),
+        );
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        retryFeedback = fb;
         continue;
       }
     }
