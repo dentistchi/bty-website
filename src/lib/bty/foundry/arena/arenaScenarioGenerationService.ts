@@ -11,6 +11,12 @@ import {
   type PracticeEligibility,
 } from "@/domain/foundry/arena-draft/safety";
 import { validateConstraintAssessments, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import {
+  PROVIDER_SCENARIO_JSON_SCHEMA,
+  PROVIDER_SCHEMA_NAME,
+  canonicalizeProviderScenario,
+  validateProviderScenario,
+} from "@/domain/foundry/arena-draft/providerDto";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { hardestWhenPhrase, type Locale, type ScenarioGenInput } from "./arenaScenarioTemplate";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
@@ -48,6 +54,7 @@ export type GenerationResult =
         | "fixed_answer_knowledge" // KNOW-only content — not a judgment dilemma
         | "safety_boundary_unresolved" // free-text boundary undetermined (no confirmation)
         | "boundary_confirmation_required" // a possible boundary is detected but not Manager-confirmed
+        | "structured_output_unavailable" // provider rejected the strict schema — never downgraded silently
         | "no_safe_judgment_space"; // confirmed constraints leave no legitimate difficult choice
     };
 
@@ -100,6 +107,18 @@ function logGenOutcome(outcome: string, code?: string, extra?: Omit<GenObservati
   genObserver?.({ outcome, code, ...extra });
 }
 
+/**
+ * Does this transport error mean the endpoint/model cannot honour a strict JSON Schema?
+ * OpenAI-compatible providers answer 400 with a response_format/json_schema complaint. Matching is
+ * deliberately narrow — an unrelated 400 must stay `generation_failed`, not be mistaken for a
+ * capability gap.
+ */
+function isStructuredOutputUnsupported(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (!/\b(400|404|422)\b/.test(msg)) return false;
+  return /response_format|json_schema|structured output|schema/i.test(msg);
+}
+
 function stripJsonFences(text: string): string {
   return text
     .trim()
@@ -117,8 +136,8 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     ? [
         "CONFIRMED NON-NEGOTIABLE CONSTRAINTS — mandatory rules the Manager confirmed. EVERY primary, tradeoff, and action choice, on EVERY branch, MUST fully obey ALL of them. You may NOT delete, weaken, reinterpret, or replace any constraint:",
         ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
-        "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, return exactly {\"noSafeJudgmentSpace\": true}.",
-        "Also return a top-level `constraintAssessments` object keyed by EVERY choice id (primary, flat, and every branch tradeoff/action). For each choice, an array with one entry per constraint id: {\"constraintId\": string, \"status\": \"satisfied\", \"rationale\": short string}. This is internal metadata; do NOT put it in any learner-facing label.",
+        "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, set noSafeJudgmentSpace to true.",
+        "Every choice object carries its OWN `constraintAssessments` array — one entry per constraint id: {\"constraintId\": string, \"status\": \"satisfied\", \"rationale\": short string}. Fill it for EVERY choice (primary, flat tradeoff, flat action, and every branch tradeoff/action). This is internal metadata; do NOT put it in any learner-facing label.",
       ]
     : [];
 
@@ -147,9 +166,11 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
     `Write all learner-facing text in ${isKo ? "Korean" : "English"}.`,
     "Return ONLY a compact JSON object, no markdown or code fences, with EXACTLY this shape:",
-    '{"title": string, "opening": string, "primary": {"choices": [{"id": string, "label": string}] }, "tradeoff": {"escalationText": string, "choices": [{"id": string, "label": string}] }, "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] }, "branches": { "<primaryChoiceId>": {"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"id": string, "label": string}], "actionDecision": {"prompt": string, "choices": [{"id": string, "label": string, "isActionCommitment": boolean}] } } } }',
-    "isActionCommitment marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option.",
-    "primary: 2-4 choices. tradeoff: 2-3 choices. actionDecision: 2-3 choices. branches: EXACTLY one key per primary choice id, no extra keys, no missing keys; each branch tradeoffChoices 2-3 and actionDecision choices 2-3 with >=1 isActionCommitment. Choice ids are short stable slugs, unique within their phase/branch. No empty labels. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
+    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": []}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": []}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": []}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}}]}',
+    "DO NOT invent any id field. You author the words; the server assigns every identifier.",
+    "`branches` is an ARRAY, not an object. branches[i] is the continuation of primaryChoices[i] — the ORDER is the relationship. branches MUST have exactly the same length as primaryChoices.",
+    "isActionCommitment is REQUIRED on every action choice (true or false, never omitted) and marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option. At least one action choice in each actionDecision must be true.",
+    "primaryChoices: 2-4. flatTradeoffChoices: 2-3. every actionDecision.choices: 2-3. Each branch tradeoffChoices 2-3. No empty labels. Set noSafeJudgmentSpace to false for a normal scenario. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
     ...constraintLines,
   ].join("\n");
 
@@ -170,7 +191,7 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
 
 type LlmOutcome =
   | { ok: true; draft: ArenaScenarioDraft; warnings: string[] }
-  | { ok: false; reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" };
+  | { ok: false; reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" | "structured_output_unavailable" };
 
 /**
  * One bounded provider attempt. Distinguishes a TRANSPORT failure (no usable content —
@@ -191,13 +212,15 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
         temperature: 0.8,
         top_p: 0.9,
         max_tokens: LLM_GEN_MAX_TOKENS,
-        // Provider-supported structured output. The canonical shape keys `branches` by the
-        // model-authored primary choice id, which OpenAI strict `json_schema` cannot express
-        // (strict mode requires every property named with additionalProperties:false), so the
-        // supported constraint here is JSON object mode — the system prompt already instructs
-        // the exact shape. This eliminates the "valid text, invalid JSON" failure class; it does
-        // NOT relax any downstream schema, safety or quality gate.
-        response_format: { type: "json_object" },
+        // STRICT structured output (Slice 3.2I-R2.16). The provider-facing DTO is array-based
+        // with no model-authored identifiers and no dynamic keys, so — unlike the canonical
+        // shape — it CAN be expressed as a strict JSON Schema. A provider that rejects the
+        // schema fails closed as `structured_output_unavailable`; it is never silently
+        // downgraded to unconstrained JSON.
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: PROVIDER_SCHEMA_NAME, strict: true, schema: PROVIDER_SCENARIO_JSON_SCHEMA },
+        },
       },
       { signal: controller.signal },
     );
@@ -229,7 +252,17 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       logGenOutcome("no_safe_judgment_space");
       return { ok: false, reason: "no_safe_judgment_space" };
     }
-    const result = parseArenaScenarioDraft(parsed);
+    // PROVIDER DTO → CANONICAL. The model authored judgment content only; transport identity is
+    // assigned here, deterministically, and ONLY after the DTO fully validates. An invalid
+    // provider result can never reach canonicalization or persistence.
+    const dto = validateProviderScenario(parsed);
+    if (!dto.ok) {
+      logGenOutcome("provider_rejected", dto.errors[0], { finishReason: choice?.finish_reason, rawLength: raw.length });
+      return { ok: false, reason: "generation_rejected" };
+    }
+    const canonical = canonicalizeProviderScenario(dto.value);
+    // Re-validate the COMPLETED canonical object — canonicalization is never trusted blindly.
+    const result = parseArenaScenarioDraft(canonical.draft);
     if (!result.ok) {
       logGenOutcome("provider_rejected", result.errors[0], { finishReason: choice?.finish_reason, rawLength: raw.length });
       return { ok: false, reason: "generation_rejected" };
@@ -250,7 +283,7 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       const assess = validateConstraintAssessments(
         result.value,
         constraints.map((c) => c.id),
-        (parsed as { constraintAssessments?: unknown }).constraintAssessments,
+        canonical.assessmentsByChoiceId,
       );
       if (!assess.ok) {
         logGenOutcome("provider_assessment_invalid", assess.errors[0]);
@@ -259,8 +292,18 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     }
     const qualityWarnings = validateBranchedScenario(result.value).warnings;
     return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings] };
-  } catch {
-    logGenOutcome(controller.signal.aborted ? "provider_timeout" : "provider_error");
+  } catch (e) {
+    if (controller.signal.aborted) {
+      logGenOutcome("provider_timeout");
+      return { ok: false, reason: "generation_failed" };
+    }
+    // A provider that cannot honour the strict schema must FAIL CLOSED. Downgrading to
+    // unconstrained JSON here would silently restore the exact contract this slice removed.
+    if (isStructuredOutputUnsupported(e)) {
+      logGenOutcome("provider_rejected", "structured_output_unavailable");
+      return { ok: false, reason: "structured_output_unavailable" };
+    }
+    logGenOutcome("provider_error");
     return { ok: false, reason: "generation_failed" };
   } finally {
     clearTimeout(timer);
@@ -401,7 +444,15 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     const llm = await generateWithLlm(input, constraints);
     if (!llm.ok) {
       // Transport / no-safe-space are terminal; a correctable rejection may regenerate once.
-      if (llm.reason === "generation_failed" || llm.reason === "no_safe_judgment_space") return { ok: false, reason: llm.reason };
+      // A capability gap is terminal — retrying the same unsupported schema cannot succeed, and
+      // must never be retried as unconstrained JSON.
+      if (
+        llm.reason === "generation_failed" ||
+        llm.reason === "no_safe_judgment_space" ||
+        llm.reason === "structured_output_unavailable"
+      ) {
+        return { ok: false, reason: llm.reason };
+      }
       if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
       continue;
     }

@@ -25,6 +25,8 @@ vi.mock("@/lib/bty/llm/client", () => ({
 }));
 
 import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
+import { providerJson, toProviderDto } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { PROVIDER_SCHEMA_NAME } from "@/domain/foundry/arena-draft/providerDto";
 
 const facts: ModuleSourceFacts = {
   problem: "A teammate proposes cutting a planned design review to hit the deadline",
@@ -118,17 +120,19 @@ const lastCode = () => observed[observed.length - 1]?.code;
 
 // ---------------------------------------------------------------------------
 describe("request contract — the model is constrained, not merely asked", () => {
-  it("sends response_format json_object, a sufficient token budget, and the model id", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(goodDraft)));
+  it("sends a STRICT json_schema response_format, a sufficient token budget, and the model id", async () => {
+    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
     await generateArenaScenarioDraft(input);
     const [params] = mockCreate.mock.calls[0];
-    expect(params.response_format).toEqual({ type: "json_object" });
+    expect(params.response_format.type).toBe("json_schema");
+    expect(params.response_format.json_schema.strict).toBe(true);
+    expect(params.response_format.json_schema.name).toBe(PROVIDER_SCHEMA_NAME);
     expect(params.max_tokens).toBeGreaterThanOrEqual(4000); // ~4,000-token worst case
     expect(params.model).toBe("test-model");
   });
 
   it("the prompt still names JSON — json_object mode requires it", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(goodDraft)));
+    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
     await generateArenaScenarioDraft(input);
     const [params] = mockCreate.mock.calls[0];
     const text = params.messages.map((m: { content: string }) => m.content).join("\n");
@@ -136,7 +140,7 @@ describe("request contract — the model is constrained, not merely asked", () =
   });
 
   it("ACCEPTED — a well-formed branch-aware draft generates", async () => {
-    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(goodDraft)));
+    mockCreate.mockResolvedValueOnce(envelope(providerJson(goodDraft)));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
   });
@@ -146,7 +150,7 @@ describe("request contract — the model is constrained, not merely asked", () =
 describe("provider envelope shapes", () => {
   it("REJECTED truncated_output — finish_reason 'length' is never parsed as content", async () => {
     // The measured defect: a truncated body used to reach JSON.parse and be misreported.
-    const cut = JSON.stringify(goodDraft).slice(0, 900);
+    const cut = providerJson(goodDraft).slice(0, 900);
     mockCreate.mockResolvedValue(envelope(cut, { finish_reason: "length" }));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
@@ -161,27 +165,27 @@ describe("provider envelope shapes", () => {
   });
 
   it("ACCEPTED — markdown code-fenced JSON is unwrapped, not rejected", async () => {
-    mockCreate.mockResolvedValueOnce(envelope("```json\n" + JSON.stringify(goodDraft) + "\n```"));
+    mockCreate.mockResolvedValueOnce(envelope("```json\n" + providerJson(goodDraft) + "\n```"));
     const r = await generateArenaScenarioDraft(input);
     expect(r.ok).toBe(true);
   });
 
   it("REJECTED malformed_shape — a prose preamble before the JSON", async () => {
-    mockCreate.mockResolvedValue(envelope("Here is the scenario you asked for:\n" + JSON.stringify(goodDraft)));
+    mockCreate.mockResolvedValue(envelope("Here is the scenario you asked for:\n" + providerJson(goodDraft)));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(lastCode()).toBe("malformed_shape");
   });
 
   it("REJECTED malformed_shape — truncated JSON without a finish_reason signal", async () => {
-    mockCreate.mockResolvedValue(envelope(JSON.stringify(goodDraft).slice(0, 400)));
+    mockCreate.mockResolvedValue(envelope(providerJson(goodDraft).slice(0, 400)));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(lastCode()).toBe("malformed_shape");
   });
 
   it("REJECTED — valid JSON with the wrong root (array)", async () => {
-    mockCreate.mockResolvedValue(envelope(JSON.stringify([goodDraft])));
+    mockCreate.mockResolvedValue(envelope(JSON.stringify([toProviderDto(goodDraft)])));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
@@ -190,6 +194,20 @@ describe("provider envelope shapes", () => {
     mockCreate.mockResolvedValue(envelope(null));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
+  });
+
+  it("structured_output_unavailable — a provider that rejects the strict schema FAILS CLOSED", async () => {
+    mockCreate.mockRejectedValue(new Error("LLM API error: 400 Bad Request — response_format.json_schema is not supported"));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "structured_output_unavailable" });
+    expect(lastCode()).toBe("structured_output_unavailable");
+    // and it must NOT retry with a downgraded request
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("an unrelated 400 stays generation_failed — capability detection is narrow", async () => {
+    mockCreate.mockRejectedValue(new Error("LLM API error: 400 Bad Request — context_length_exceeded"));
+    expect(await generateArenaScenarioDraft(input)).toMatchObject({ ok: false, reason: "generation_failed" });
   });
 
   it("generation_failed — a thrown provider error never becomes content", async () => {
@@ -204,19 +222,103 @@ describe("canonical schema rejections — exact codes, no invented content", () 
   const mutate = (fn: (d: ArenaScenarioDraft) => void): string => {
     const d = JSON.parse(JSON.stringify(goodDraft)) as ArenaScenarioDraft;
     fn(d);
-    return JSON.stringify(d);
+    return providerJson(d);
   };
 
-  it("REJECTED duplicate_choice_id — duplicate primary identifiers", async () => {
-    mockCreate.mockResolvedValue(envelope(mutate((d) => { d.primary.choices[1].id = d.primary.choices[0].id; })));
-    const r = await generateArenaScenarioDraft(input);
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
-    expect(lastCode()).toBe("duplicate_choice_id");
+  it("R2.16 — a duplicate model-authored id is UNREPRESENTABLE: the DTO has no id fields", async () => {
+    // The old contract asked the model to invent unique ids; duplicates produced
+    // `duplicate_choice_id`. The DTO carries no identifiers at all, so the failure class is gone.
+    const wire = JSON.parse(providerJson(goodDraft));
+    const all = [...wire.primaryChoices, ...wire.flatTradeoffChoices, ...wire.flatActionDecision.choices];
+    for (const c of all) expect(c).not.toHaveProperty("id");
+    expect(wire).not.toHaveProperty("constraintAssessments"); // no id-keyed map either
+    expect(Array.isArray(wire.branches)).toBe(true); // no dynamic keys
   });
 
-  it("REJECTED — a duplicate identifier inside one branch", async () => {
-    mockCreate.mockResolvedValue(envelope(mutate((d) => { d.branches!.primary_1.tradeoffChoices[1].id = d.branches!.primary_1.tradeoffChoices[0].id; })));
+  it("R2.16 — model-authored id fields are ignored, and the server still assigns its own", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    wire.primaryChoices[0].id = "hacked";
+    wire.primaryChoices[1].id = "hacked"; // the old duplicate defect, now inert
+    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r.ok).toBe(true);
+    const ids = (r as { value: { draft: ArenaScenarioDraft } }).value.draft.primary.choices.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length); // unique regardless of what the model sent
+    expect(ids).not.toContain("hacked");
+  });
+
+  it("R2.16 — repeated LABELS are structurally accepted and never merged", async () => {
+    // Duplicate wording is a QUALITY question judged elsewhere; it must not collapse identity.
+    const wire = JSON.parse(providerJson(goodDraft));
+    wire.primaryChoices[1].label = wire.primaryChoices[0].label;
+    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    const r = await generateArenaScenarioDraft(input);
+    if (r.ok) {
+      const choices = r.value.draft.primary.choices;
+      expect(choices).toHaveLength(2); // not merged
+      expect(choices[0].id).not.toBe(choices[1].id); // distinct identity
+      expect(Object.keys(r.value.draft.branches ?? {})).toHaveLength(2); // both continuations kept
+    } else {
+      // If a quality gate rejects duplicate wording, it must NOT be an identity failure.
+      expect(lastCode()).not.toBe("duplicate_choice_id");
+    }
+  });
+
+  it("REJECTED dto_branch_count_mismatch — fewer branches than primary choices", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    wire.branches.pop();
+    mockCreate.mockResolvedValue(envelope(JSON.stringify(wire)));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(lastCode()).toBe("dto_branch_count_mismatch");
+  });
+
+  it("REJECTED dto_branch_count_mismatch — an extra branch", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    wire.branches.push(JSON.parse(JSON.stringify(wire.branches[0])));
+    mockCreate.mockResolvedValue(envelope(JSON.stringify(wire)));
     expect(await generateArenaScenarioDraft(input)).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(lastCode()).toBe("dto_branch_count_mismatch");
+  });
+
+  it("REJECTED action_choice_missing_commitment_flag — the exact canary failure", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    delete wire.branches[0].actionDecision.choices[0].isActionCommitment;
+    mockCreate.mockResolvedValue(envelope(JSON.stringify(wire)));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(lastCode()).toBe("action_choice_missing_commitment_flag");
+  });
+
+  it("REJECTED no_action_commitment — the existing product rule is preserved, not invented", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    for (const c of wire.flatActionDecision.choices) c.isActionCommitment = false;
+    mockCreate.mockResolvedValue(envelope(JSON.stringify(wire)));
+    expect(await generateArenaScenarioDraft(input)).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(lastCode()).toBe("no_action_commitment");
+  });
+
+  it("R2.16 — branch ORDER is the relationship: reordering re-zips deterministically", async () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    [wire.branches[0], wire.branches[1]] = [wire.branches[1], wire.branches[0]];
+    mockCreate.mockResolvedValueOnce(envelope(JSON.stringify(wire)));
+    const r = await generateArenaScenarioDraft(input);
+    expect(r.ok).toBe(true);
+    const draft = (r as { value: { draft: ArenaScenarioDraft } }).value.draft;
+    // branch p1 now carries what was authored second — position, not a model-authored key.
+    expect(draft.branches!.p1.escalationText).toBe(wire.branches[0].escalationText);
+    expect(draft.branches!.p2.escalationText).toBe(wire.branches[1].escalationText);
+  });
+
+  it("R2.16 — canonical ids are deterministic across identical DTOs", async () => {
+    const wire = providerJson(goodDraft);
+    mockCreate.mockResolvedValueOnce(envelope(wire));
+    const a = await generateArenaScenarioDraft(input);
+    mockCreate.mockResolvedValueOnce(envelope(wire));
+    const b = await generateArenaScenarioDraft(input);
+    expect(a.ok && b.ok).toBe(true);
+    const ids = (x: typeof a) => JSON.stringify((x as { value: { draft: ArenaScenarioDraft } }).value.draft);
+    expect(ids(a)).toBe(ids(b));
   });
 
   it("REJECTED — too few primary choices", async () => {
@@ -281,7 +383,7 @@ describe("no fallback, ever", () => {
 // ---------------------------------------------------------------------------
 describe("evaluation observability records the stage, never a secret", () => {
   it("captures the exact rejection code and finish reason", async () => {
-    mockCreate.mockResolvedValue(envelope(JSON.stringify(goodDraft).slice(0, 900), { finish_reason: "length" }));
+    mockCreate.mockResolvedValue(envelope(providerJson(goodDraft).slice(0, 900), { finish_reason: "length" }));
     await generateArenaScenarioDraft(input);
     const o = observed[observed.length - 1];
     expect(o.code).toBe("truncated_output");

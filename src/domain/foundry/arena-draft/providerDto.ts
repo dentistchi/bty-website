@@ -1,0 +1,367 @@
+/**
+ * PROVIDER-FACING generation DTO + deterministic canonicalization (Slice 3.2I-R5B1A.1-R2.16).
+ *
+ * WHY THIS EXISTS
+ * The 3-case canary generated 0 of 3 with the model responding normally (16.4–24.6 s). Every
+ * rejection was a TRANSPORT-IDENTITY failure, not a judgment-content failure:
+ *   action_choice_missing_commitment_flag · duplicate_choice_id · branch_orphan_key
+ * The old contract asked the model to author relational identity — unique choice ids, and a
+ * `branches` object whose KEYS had to exactly match the primary choice ids it had just invented.
+ * A dynamic-key object keyed by model-authored strings is not a reliable relational contract, and
+ * it cannot be expressed in a provider strict JSON Schema at all (strict mode requires every
+ * property named with additionalProperties:false).
+ *
+ * SEPARATION OF AUTHORITY
+ *   The model authors user-facing judgment content: title, opening, labels, escalations, prompts,
+ *   the commitment flag, and constraint rationales.
+ *   The SERVER authors transport identity: every choice id, and the branch→primary relationship,
+ *   assigned deterministically from array position AFTER the provider result fully validates.
+ *
+ * Choice ids were confirmed to be pure transport: they are never rendered (the player renders
+ * `label`), no code parses or derives meaning from their text, and they are used only as React
+ * keys and as `selected_path` values. Assignment happens at generation ingestion, BEFORE first
+ * persistence — an already-published scenario is never re-identified.
+ *
+ * Pure domain: no I/O, no provider calls, no DB. Never invents, merges, reorders or edits content.
+ */
+
+import {
+  ACTION_CHOICES_MAX,
+  ACTION_CHOICES_MIN,
+  PRIMARY_CHOICES_MAX,
+  PRIMARY_CHOICES_MIN,
+  TRADEOFF_CHOICES_MAX,
+  TRADEOFF_CHOICES_MIN,
+  type ArenaScenarioDraft,
+  type ScenarioBranch,
+} from "./types";
+import type { ConstraintAssessment } from "./boundary";
+
+// ---------------------------------------------------------------------------
+// The DTO — array-based, no model-authored identifiers, no dynamic keys.
+// ---------------------------------------------------------------------------
+
+export type ProviderChoice = {
+  label: string;
+  /** One entry per confirmed constraint. Empty array when the boundary has no constraints. */
+  constraintAssessments: ConstraintAssessment[];
+};
+export type ProviderActionChoice = ProviderChoice & { isActionCommitment: boolean };
+export type ProviderActionDecision = { prompt: string; choices: ProviderActionChoice[] };
+export type ProviderBranch = {
+  resultingWorldState: string;
+  escalationText: string;
+  tradeoffChoices: ProviderChoice[];
+  actionDecision: ProviderActionDecision;
+};
+
+/**
+ * `branches[i]` is the continuation of `primaryChoices[i]` — position IS the relationship, so the
+ * model never authors a key that can orphan.
+ */
+export type ProviderPracticeScenario = {
+  noSafeJudgmentSpace: boolean;
+  title: string;
+  opening: string;
+  primaryChoices: ProviderChoice[];
+  flatEscalationText: string;
+  flatTradeoffChoices: ProviderChoice[];
+  flatActionDecision: ProviderActionDecision;
+  branches: ProviderBranch[];
+};
+
+export const PROVIDER_SCHEMA_NAME = "bty_practice_scenario_v1";
+
+// ---------------------------------------------------------------------------
+// Strict JSON Schema — every property required, additionalProperties false,
+// bounded arrays, no dynamic property names, explicit booleans.
+// ---------------------------------------------------------------------------
+
+const assessmentSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      constraintId: { type: "string" },
+      status: { type: "string", enum: ["satisfied"] },
+      rationale: { type: "string" },
+    },
+    required: ["constraintId", "status", "rationale"],
+  },
+} as const;
+
+const choiceSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: { label: { type: "string" }, constraintAssessments: assessmentSchema },
+  required: ["label", "constraintAssessments"],
+} as const;
+
+const actionChoiceSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    label: { type: "string" },
+    isActionCommitment: { type: "boolean" },
+    constraintAssessments: assessmentSchema,
+  },
+  required: ["label", "isActionCommitment", "constraintAssessments"],
+} as const;
+
+const actionDecisionSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    prompt: { type: "string" },
+    choices: { type: "array", minItems: ACTION_CHOICES_MIN, maxItems: ACTION_CHOICES_MAX, items: actionChoiceSchema },
+  },
+  required: ["prompt", "choices"],
+} as const;
+
+export const PROVIDER_SCENARIO_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    noSafeJudgmentSpace: { type: "boolean" },
+    title: { type: "string" },
+    opening: { type: "string" },
+    primaryChoices: { type: "array", minItems: PRIMARY_CHOICES_MIN, maxItems: PRIMARY_CHOICES_MAX, items: choiceSchema },
+    flatEscalationText: { type: "string" },
+    flatTradeoffChoices: { type: "array", minItems: TRADEOFF_CHOICES_MIN, maxItems: TRADEOFF_CHOICES_MAX, items: choiceSchema },
+    flatActionDecision: actionDecisionSchema,
+    branches: {
+      type: "array",
+      minItems: PRIMARY_CHOICES_MIN,
+      maxItems: PRIMARY_CHOICES_MAX,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          resultingWorldState: { type: "string" },
+          escalationText: { type: "string" },
+          tradeoffChoices: { type: "array", minItems: TRADEOFF_CHOICES_MIN, maxItems: TRADEOFF_CHOICES_MAX, items: choiceSchema },
+          actionDecision: actionDecisionSchema,
+        },
+        required: ["resultingWorldState", "escalationText", "tradeoffChoices", "actionDecision"],
+      },
+    },
+  },
+  required: [
+    "noSafeJudgmentSpace",
+    "title",
+    "opening",
+    "primaryChoices",
+    "flatEscalationText",
+    "flatTradeoffChoices",
+    "flatActionDecision",
+    "branches",
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
+// DTO validation — structural only. Content gates stay in the canonical layer.
+// ---------------------------------------------------------------------------
+
+export type DtoValidation = { ok: true; value: ProviderPracticeScenario } | { ok: false; errors: string[] };
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
+
+function validateAssessments(v: unknown, errors: string[], where: string): ConstraintAssessment[] {
+  if (!Array.isArray(v)) {
+    errors.push(`dto_assessments_not_array:${where}`);
+    return [];
+  }
+  const out: ConstraintAssessment[] = [];
+  for (const a of v) {
+    if (!isObj(a) || !isNonEmpty(a.constraintId) || a.status !== "satisfied" || !isNonEmpty(a.rationale)) {
+      errors.push(`dto_assessment_malformed:${where}`);
+      continue;
+    }
+    out.push({ constraintId: a.constraintId, status: "satisfied", rationale: a.rationale });
+  }
+  return out;
+}
+
+function validateChoices(v: unknown, min: number, max: number, where: string, errors: string[]): ProviderChoice[] {
+  if (!Array.isArray(v)) {
+    errors.push(`dto_choices_not_array:${where}`);
+    return [];
+  }
+  if (v.length < min || v.length > max) errors.push(`dto_choice_count:${where}`);
+  return v.map((c, i) => {
+    if (!isObj(c) || !isNonEmpty(c.label)) {
+      errors.push(`dto_choice_malformed:${where}[${i}]`);
+      return { label: "", constraintAssessments: [] };
+    }
+    return { label: c.label, constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}[${i}]`) };
+  });
+}
+
+function validateActionDecision(v: unknown, where: string, errors: string[]): ProviderActionDecision {
+  if (!isObj(v)) {
+    errors.push(`dto_action_missing:${where}`);
+    return { prompt: "", choices: [] };
+  }
+  if (!isNonEmpty(v.prompt)) errors.push(`dto_action_prompt_missing:${where}`);
+  const raw = Array.isArray(v.choices) ? v.choices : [];
+  if (!Array.isArray(v.choices)) errors.push(`dto_choices_not_array:${where}.action`);
+  if (raw.length < ACTION_CHOICES_MIN || raw.length > ACTION_CHOICES_MAX) errors.push(`dto_choice_count:${where}.action`);
+  const choices: ProviderActionChoice[] = raw.map((c, i) => {
+    if (!isObj(c) || !isNonEmpty(c.label)) {
+      errors.push(`dto_choice_malformed:${where}.action[${i}]`);
+      return { label: "", isActionCommitment: false, constraintAssessments: [] };
+    }
+    // The exact invariant the canonical validator enforces — an explicit boolean, never inferred.
+    if (typeof c.isActionCommitment !== "boolean") errors.push("action_choice_missing_commitment_flag");
+    return {
+      label: c.label,
+      isActionCommitment: c.isActionCommitment === true,
+      constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}.action[${i}]`),
+    };
+  });
+  // Preserve the existing product rule: at least one real action commitment per phase.
+  if (choices.length > 0 && !choices.some((c) => c.isActionCommitment)) errors.push("no_action_commitment");
+  return { prompt: isObj(v) && isNonEmpty(v.prompt) ? v.prompt : "", choices };
+}
+
+/** Structurally validate a raw provider result against the DTO contract. Content is untouched. */
+export function validateProviderScenario(raw: unknown): DtoValidation {
+  const errors: string[] = [];
+  if (!isObj(raw)) return { ok: false, errors: ["dto_not_an_object"] };
+
+  if (raw.noSafeJudgmentSpace === true) {
+    // The safe-refusal signal. No further structure is required or inspected.
+    return {
+      ok: true,
+      value: {
+        noSafeJudgmentSpace: true,
+        title: "",
+        opening: "",
+        primaryChoices: [],
+        flatEscalationText: "",
+        flatTradeoffChoices: [],
+        flatActionDecision: { prompt: "", choices: [] },
+        branches: [],
+      },
+    };
+  }
+
+  if (!isNonEmpty(raw.title)) errors.push("dto_title_missing");
+  if (!isNonEmpty(raw.opening)) errors.push("dto_opening_missing");
+  const primaryChoices = validateChoices(raw.primaryChoices, PRIMARY_CHOICES_MIN, PRIMARY_CHOICES_MAX, "primary", errors);
+  if (!isNonEmpty(raw.flatEscalationText)) errors.push("dto_flat_escalation_missing");
+  const flatTradeoffChoices = validateChoices(raw.flatTradeoffChoices, TRADEOFF_CHOICES_MIN, TRADEOFF_CHOICES_MAX, "flatTradeoff", errors);
+  const flatActionDecision = validateActionDecision(raw.flatActionDecision, "flat", errors);
+
+  const rawBranches = Array.isArray(raw.branches) ? raw.branches : null;
+  if (rawBranches === null) errors.push("dto_branches_not_array");
+  const branches: ProviderBranch[] = (rawBranches ?? []).map((b, i) => {
+    if (!isObj(b)) {
+      errors.push(`dto_branch_malformed:[${i}]`);
+      return { resultingWorldState: "", escalationText: "", tradeoffChoices: [], actionDecision: { prompt: "", choices: [] } };
+    }
+    if (!isNonEmpty(b.escalationText)) errors.push(`dto_branch_escalation_missing:[${i}]`);
+    return {
+      resultingWorldState: typeof b.resultingWorldState === "string" ? b.resultingWorldState : "",
+      escalationText: isNonEmpty(b.escalationText) ? b.escalationText : "",
+      tradeoffChoices: validateChoices(b.tradeoffChoices, TRADEOFF_CHOICES_MIN, TRADEOFF_CHOICES_MAX, `branch[${i}]`, errors),
+      actionDecision: validateActionDecision(b.actionDecision, `branch[${i}]`, errors),
+    };
+  });
+
+  // POSITIONAL RELATIONSHIP: exactly one continuation per primary choice. This replaces the
+  // model-authored branch key that produced `branch_orphan_key` — an orphan is now unrepresentable.
+  if (rawBranches !== null && branches.length !== primaryChoices.length) errors.push("dto_branch_count_mismatch");
+
+  return errors.length ? { ok: false, errors } : {
+    ok: true,
+    value: {
+      noSafeJudgmentSpace: false,
+      title: raw.title as string,
+      opening: raw.opening as string,
+      primaryChoices,
+      flatEscalationText: raw.flatEscalationText as string,
+      flatTradeoffChoices,
+      flatActionDecision,
+      branches,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic server-side transport identity.
+// ---------------------------------------------------------------------------
+
+/** Stable hierarchy-and-position ids. No randomness, no hashing of user text, no label identity. */
+export const primaryId = (i: number): string => `p${i + 1}`;
+export const branchTradeoffId = (p: number, i: number): string => `p${p + 1}-t${i + 1}`;
+export const branchActionId = (p: number, i: number): string => `p${p + 1}-a${i + 1}`;
+export const flatTradeoffId = (i: number): string => `ft${i + 1}`;
+export const flatActionId = (i: number): string => `fa${i + 1}`;
+
+export type CanonicalizedScenario = {
+  draft: ArenaScenarioDraft;
+  /** Keyed by ASSIGNED canonical choice id — exactly what validateConstraintAssessments expects. */
+  assessmentsByChoiceId: Record<string, ConstraintAssessment[]>;
+};
+
+/**
+ * Convert a VALIDATED provider DTO into the canonical draft, assigning transport ids by position.
+ *
+ * Content is copied verbatim: no text is edited, translated, merged, reordered, inserted or
+ * dropped. Duplicate labels stay duplicated — that is a quality question judged elsewhere, never
+ * an identity question resolved by merging.
+ */
+export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): CanonicalizedScenario {
+  const assessmentsByChoiceId: Record<string, ConstraintAssessment[]> = {};
+  const put = (id: string, a: ConstraintAssessment[]) => {
+    assessmentsByChoiceId[id] = a;
+  };
+
+  const primary = dto.primaryChoices.map((c, i) => {
+    put(primaryId(i), c.constraintAssessments);
+    return { id: primaryId(i), label: c.label };
+  });
+
+  const flatTradeoff = dto.flatTradeoffChoices.map((c, i) => {
+    put(flatTradeoffId(i), c.constraintAssessments);
+    return { id: flatTradeoffId(i), label: c.label };
+  });
+
+  const flatAction = dto.flatActionDecision.choices.map((c, i) => {
+    put(flatActionId(i), c.constraintAssessments);
+    return { id: flatActionId(i), label: c.label, isActionCommitment: c.isActionCommitment };
+  });
+
+  // Zip branch N to primary N, then key the canonical map by the ASSIGNED primary id.
+  const branches: Record<string, ScenarioBranch> = {};
+  dto.branches.forEach((b, p) => {
+    const tradeoffChoices = b.tradeoffChoices.map((c, i) => {
+      put(branchTradeoffId(p, i), c.constraintAssessments);
+      return { id: branchTradeoffId(p, i), label: c.label };
+    });
+    const choices = b.actionDecision.choices.map((c, i) => {
+      put(branchActionId(p, i), c.constraintAssessments);
+      return { id: branchActionId(p, i), label: c.label, isActionCommitment: c.isActionCommitment };
+    });
+    branches[primaryId(p)] = {
+      ...(b.resultingWorldState.trim() ? { resultingWorldState: b.resultingWorldState } : {}),
+      escalationText: b.escalationText,
+      tradeoffChoices,
+      actionDecision: { prompt: b.actionDecision.prompt, choices },
+    };
+  });
+
+  const draft: ArenaScenarioDraft = {
+    title: dto.title,
+    opening: dto.opening,
+    primary: { choices: primary },
+    tradeoff: { escalationText: dto.flatEscalationText, choices: flatTradeoff },
+    actionDecision: { prompt: dto.flatActionDecision.prompt, choices: flatAction },
+    ...(dto.branches.length ? { branches } : {}),
+  };
+
+  return { draft, assessmentsByChoiceId };
+}

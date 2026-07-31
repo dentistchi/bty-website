@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { isLlmAvailable, getLlmModel } from "@/lib/bty/llm/client";
-import { generateArenaScenarioDraft } from "./arenaScenarioGenerationService";
+import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
 import { validateIncidentSpecific } from "@/domain/foundry/arena-draft/quality";
 import { classifyPracticeEligibility } from "@/domain/foundry/arena-draft/safety";
 import { EVAL_CORPUS, crossScenarioDiversity } from "./practice-generation.eval";
@@ -87,18 +87,25 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
     const results: Array<Record<string, unknown>> = [];
     const drafts: ArenaScenarioDraft[] = [];
     for (const c of SELECTED) {
+      // R2.16 — record EVERY provider attempt for this case. The R2.15 artifact carried only the
+      // final reason, so the per-attempt stage (JSON validity, truncation, DTO, schema, safety)
+      // could not be read back from it; the sub-codes only ever reached stdout.
+      const attempts: GenObservation[] = [];
+      __setGenObserver((o) => attempts.push(o));
       const started = Date.now();
       const r = await generateArenaScenarioDraft(c.input);
       const ms = Date.now() - started;
+      __setGenObserver(null);
+      const trace = attempts.map((a, i) => ({ attempt: i + 1, ...a }));
       if (c.expectDecline) {
-        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, declined: !r.ok, reason: r.ok ? null : r.reason });
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, attempts: trace, declined: !r.ok, reason: r.ok ? null : r.reason });
         continue;
       }
       if (r.ok) {
         drafts.push(r.value.draft);
-        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, ok: true, incidentSpecific: validateIncidentSpecific(r.value.draft).ok, draft: r.value.draft });
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, attempts: trace, ok: true, incidentSpecific: validateIncidentSpecific(r.value.draft).ok, draft: r.value.draft });
       } else {
-        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, ok: false, reason: r.reason });
+        results.push({ id: c.id, dilemma: c.dilemma, role: c.role, locale: c.locale, kind: "LIVE MODEL OUTPUT", ms, attempts: trace, ok: false, reason: r.reason });
       }
     }
     const diversity = crossScenarioDiversity(drafts);
@@ -115,6 +122,10 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
     expect(results.length).toBe(SELECTED.length); // 1. every selected case actually executed
 
     // 2. A provider/transport error is infrastructure failure, never product evidence.
+    // A strict-schema capability gap is a contract failure, never a quality result.
+    const capabilityGaps = results.filter((r) => r.reason === "structured_output_unavailable").map((r) => r.id);
+    expect(capabilityGaps).toEqual([]);
+
     const providerFailures = results.filter((r) => r.reason === "generation_failed").map((r) => r.id);
     expect(providerFailures).toEqual([]);
 

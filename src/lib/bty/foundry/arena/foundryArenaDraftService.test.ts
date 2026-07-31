@@ -1,3 +1,4 @@
+import { providerJson } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -45,7 +46,7 @@ const AI_DRAFT: ArenaScenarioDraft = {
 
 beforeEach(() => {
   mockCreate.mockReset();
-  mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(AI_DRAFT) } }] });
+  mockCreate.mockResolvedValue({ choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
 });
 
 type Row = Record<string, unknown>;
@@ -476,7 +477,7 @@ describe("saveDraftBoundary — canonical, authorized, stale-guarded, invalidati
 
 describe("regenerateArenaDraft — reads ONLY the canonical server-stored boundary (trust boundary)", () => {
   it("passes the stored boundary to generation and stamps it onto the scenario", async () => {
-    mockCreate.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(AI_DRAFT) } }] });
+    mockCreate.mockResolvedValue({ choices: [{ message: { content: providerJson(AI_DRAFT) } }] });
     const { admin } = seedDraft({ guided_answers: { ...guided, practiceBoundary: B_JUDGMENT }, scenario_draft: null, revision: 2 });
     const r = await regenerateArenaDraft(admin, OWNER, "d1", "en");
     expect(r.ok).toBe(true);
