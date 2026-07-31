@@ -13,14 +13,19 @@ const ROOT = process.env.ROOT;
 const AUD = ROOT + "/docs/audit", MIG = ROOT + "/supabase/migrations", MP = ROOT + "/scripts/migration-proof";
 const sha = (s) => createHash("sha256").update(s).digest("hex");
 const shaFile = (p) => sha(readFileSync(p));
+// [introducedBy, finalAuthority]. g26b/g28b are the two FUNCTION BODIES whose final authority moved
+// to the 20260804 reconciliation migration (R2.8). Their introducing migration is preserved, so the
+// packet never implies the reconciled body existed in 20260726 or 20260729.
 const META = { g26: ["20260726000000", "20260726000000"], g27: ["20260727000000", "20260727000000"],
-               g28: ["20260728000000", "20260728000000"], g29: ["20260728000000", "20260729000000"] };
-const AUDIT_SCHEMA = "r2.6", PACKET_VERSION = "r2.6", COMPARATOR_CONTRACT = "r2.6", RUNTIME_CONTRACT = "r2.6";
+               g28: ["20260728000000", "20260728000000"], g29: ["20260728000000", "20260729000000"],
+               g26b: ["20260726000000", "20260804000000"], g28b: ["20260728000000", "20260804000000"] };
+const AUDIT_SCHEMA = "r2.7", PACKET_VERSION = "r2.7", COMPARATOR_CONTRACT = "r2.7", RUNTIME_CONTRACT = "r2.7";
 const MIG_FILES = {
   "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
   "20260727000000": "20260727000000_personalize_today_from_reflections_v1.sql",
   "20260728000000": "20260728000000_foundry_participant_followups_v1.sql",
   "20260729000000": "20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql",
+  "20260804000000": "20260804000000_foundry_function_body_reconciliation_v1.sql",
 };
 
 // 1) EXPECTED MANIFEST

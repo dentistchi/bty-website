@@ -24,7 +24,8 @@ createdb -h "$SOCK" -p "$PORT" -U postgres proofdb
 
 psql -q -v ON_ERROR_STOP=1 -f "$MP/expected/bootstrap.sql"
 for v in 20260726000000_foundry_shared_understanding_v1 20260727000000_personalize_today_from_reflections_v1 \
-         20260728000000_foundry_participant_followups_v1 20260729000000_foundry_submit_followup_ambiguity_fix_v1; do
+         20260728000000_foundry_participant_followups_v1 20260729000000_foundry_submit_followup_ambiguity_fix_v1 \
+         20260804000000_foundry_function_body_reconciliation_v1; do
   echo "  apply $v" >&2
   psql -q -v ON_ERROR_STOP=1 -f "$MIG/$v.sql"
 done

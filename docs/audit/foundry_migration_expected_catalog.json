@@ -7,25 +7,26 @@
   "provenanceRef": "docs/audit/foundry_migration_provenance.json",
   "securityStatementMapRef": "docs/audit/foundry_migration_security_statement_map.json",
   "constraintStatementMapRef": "docs/audit/foundry_migration_constraint_statement_map.json",
-  "auditSchemaVersion": "r2.6",
-  "auditPacketVersion": "r2.6",
-  "comparatorContractVersion": "r2.6",
-  "runtimeQueryContractVersion": "r2.6",
+  "auditSchemaVersion": "r2.7",
+  "auditPacketVersion": "r2.7",
+  "comparatorContractVersion": "r2.7",
+  "runtimeQueryContractVersion": "r2.7",
   "postgresServerVersionNum": 170010,
   "functionBodyChecking": "on",
   "migrationChecksums": {
     "20260726000000": "8231a657c173dd99b9faa3872a895873fc98ca8b7d092f0cbfd0ccfc27624cd1",
     "20260727000000": "b06b376232b874f1138bdb0419f4113b7decd38a8e0869a052a4af784c6c7cad",
     "20260728000000": "381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027",
-    "20260729000000": "abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2"
+    "20260729000000": "abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2",
+    "20260804000000": "a4e5a9ae2acea971c8a438e5f9337677cad30f956b4c0aeaa51c6263f2f9baaa"
   },
-  "auditQueryBodyDigest": "d055bf79ecd1366ce72ecf15b1f7d2c115b635117377ad96592aa175337d8bf6",
-  "provenanceDigest": "22fc47c918287661027f041c69647cd28f41491fcc69740b6519afbd81f42767",
-  "securityStatementMapDigest": "ebee25acb1705deeae62235a090c372f58552534e0f684598b904655e8b0c4cf",
-  "constraintStatementMapDigest": "cfcd0c08f7c2f5ae63a05aa9948d1d59732cb575a34c3f31693f56b50bb943e2",
-  "expectedManifestDigest": "78f5ebdb9fb13fc8a6bf4ea4306bae675ac743a2524c34919d947fd833a7d82a",
-  "expectedRuntimeQueryDigest": "0681b082199b2e8250a93a820cc9ee9c5236e808017f37ac86380b96078b256e",
-  "packetId": "d5171bbd503388a1ec9ac34aa11e05026b800f79f607697e809e416b2f1705d8",
+  "auditQueryBodyDigest": "106bd6adb693215b93b1fc933bf559e8e09184143f69df11c4c34eda9389a03e",
+  "provenanceDigest": "d74ca2a8d8a94010cc9508fcfe8bb5e74fe6dcd48c540969efe4b055be3fd5d8",
+  "securityStatementMapDigest": "51102f327d2a75034bd3243b2ebc031106084292b48106ea2a18ce4fe4aa30d9",
+  "constraintStatementMapDigest": "67b794196044ce6b45557159ccfaa10ec5934ebb55a8425de0616ea9ee1a3ddd",
+  "expectedManifestDigest": "7d5a79dd48acd8c272a59cebf3b869a9c53d85831a51998ee3468d03c5998e01",
+  "expectedRuntimeQueryDigest": "69ac6a5436905b98548ef49fe5beaf791e20b205f504dde8e5dbaabc08c7564a",
+  "packetId": "a2725391048c6e049ed92e0ec3703de4c20c11a60ea565b71d9cb02a9be5294d",
   "note": "Runtime-attested. Privileges = exact aclexplode tuples. PK/FK/UNIQUE/CHECK are first-class. submit_followup finalAuthority=20260729.",
   "effectCount": 93,
   "effects": [
@@ -1369,7 +1370,7 @@
       "autoComparable": true,
       "manualReason": null,
       "migrationVersion": "20260726000000",
-      "finalAuthorityMigration": "20260726000000"
+      "finalAuthorityMigration": "20260804000000"
     },
     {
       "effectId": "function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)",
@@ -1388,12 +1389,12 @@
         "identity_args": "p_followup_id uuid, p_auth_user_id uuid, p_outcome text",
         "security_definer": true
       },
-      "definitionDigest": "99c66ac7785ad2a3d20c4e99e981f09498876ede1ac31f989f12febc3cb0269f",
+      "definitionDigest": "4826ad0d0359719b67433a131c5595c1402067259f2294bcfb6da9f08ef47b59",
       "comparisonMode": "structured+body_digest",
       "autoComparable": true,
       "manualReason": null,
       "migrationVersion": "20260728000000",
-      "finalAuthorityMigration": "20260729000000"
+      "finalAuthorityMigration": "20260804000000"
     },
     {
       "effectId": "index:public.foundry_followup_audit_followup_idx",

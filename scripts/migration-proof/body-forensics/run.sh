@@ -82,6 +82,8 @@ run_variant() {
   printf '%s\t%s\t%s\t%s\t%s\n' "$fn" "$label" "$d" "$tot" "$failing" >> "$MEASURED"
 }
 
+RECON="$MIG/20260804000000_foundry_function_body_reconciliation_v1.sql"
+
 echo "############################################################"
 echo "# bty_foundry_set_shared_review"
 echo "############################################################"
@@ -95,6 +97,21 @@ echo "############################################################"
 run_variant submit_followup "repo-20260728"                          # pre-hotfix body (42702 defect)
 run_variant submit_followup "repo-20260729" "$MIG/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql"
 run_variant submit_followup "live" "$FORENSIC_DIR/live_body_submit_followup.sql"
+
+echo ""
+echo "############################################################"
+echo "# RECONCILED — 20260804 (final authority for BOTH functions)"
+echo "############################################################"
+run_variant set_shared_review "reconciled-20260804" "$RECON"
+run_variant submit_followup   "reconciled-20260804"   # same migration already applied above
+
+echo ""
+echo "############################################################"
+echo "# Concurrency — real separate connections, reconciled bodies"
+echo "############################################################"
+CONC_OUT="$BASE/conc.failing" PSQL="psql" bash "$BF/concurrency.sh"
+CONC_FAIL=$(cat "$BASE/conc.failing")
+printf 'concurrency\treconciled-20260804\t%s\t35\t%s\n' "$(digest_of submit_followup)" "$CONC_FAIL" >> "$MEASURED"
 
 echo ""
 echo "############################################################"

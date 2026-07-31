@@ -7,18 +7,18 @@
 -- STRICTLY read-only. Authorizes NO repair or apply.
 -- ============================================================================
 select json_build_object(
-  'auditSchemaVersion', 'r2.6',
-  'auditPacketVersion', 'r2.6',
-  'runtimeQueryContractVersion', 'r2.6',
-  'comparatorContractVersion', 'r2.6',
-  'packetId', 'd5171bbd503388a1ec9ac34aa11e05026b800f79f607697e809e416b2f1705d8',
-  'expectedManifestDigest', '78f5ebdb9fb13fc8a6bf4ea4306bae675ac743a2524c34919d947fd833a7d82a',
-  'provenanceDigest', '22fc47c918287661027f041c69647cd28f41491fcc69740b6519afbd81f42767',
-  'securityStatementMapDigest', 'ebee25acb1705deeae62235a090c372f58552534e0f684598b904655e8b0c4cf',
-  'constraintStatementMapDigest', 'cfcd0c08f7c2f5ae63a05aa9948d1d59732cb575a34c3f31693f56b50bb943e2',
-  'auditQueryBodyDigest', 'd055bf79ecd1366ce72ecf15b1f7d2c115b635117377ad96592aa175337d8bf6',
-  'migrationChecksums', '{"20260726000000":"8231a657c173dd99b9faa3872a895873fc98ca8b7d092f0cbfd0ccfc27624cd1","20260727000000":"b06b376232b874f1138bdb0419f4113b7decd38a8e0869a052a4af784c6c7cad","20260728000000":"381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027","20260729000000":"abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2"}'::json,
-  'expectedRuntimeQueryDigest', '0681b082199b2e8250a93a820cc9ee9c5236e808017f37ac86380b96078b256e',
+  'auditSchemaVersion', 'r2.7',
+  'auditPacketVersion', 'r2.7',
+  'runtimeQueryContractVersion', 'r2.7',
+  'comparatorContractVersion', 'r2.7',
+  'packetId', 'a2725391048c6e049ed92e0ec3703de4c20c11a60ea565b71d9cb02a9be5294d',
+  'expectedManifestDigest', '7d5a79dd48acd8c272a59cebf3b869a9c53d85831a51998ee3468d03c5998e01',
+  'provenanceDigest', 'd74ca2a8d8a94010cc9508fcfe8bb5e74fe6dcd48c540969efe4b055be3fd5d8',
+  'securityStatementMapDigest', '51102f327d2a75034bd3243b2ebc031106084292b48106ea2a18ce4fe4aa30d9',
+  'constraintStatementMapDigest', '67b794196044ce6b45557159ccfaa10ec5934ebb55a8425de0616ea9ee1a3ddd',
+  'auditQueryBodyDigest', '106bd6adb693215b93b1fc933bf559e8e09184143f69df11c4c34eda9389a03e',
+  'migrationChecksums', '{"20260726000000":"8231a657c173dd99b9faa3872a895873fc98ca8b7d092f0cbfd0ccfc27624cd1","20260727000000":"b06b376232b874f1138bdb0419f4113b7decd38a8e0869a052a4af784c6c7cad","20260728000000":"381246235014f5da761d44fcd0d0e13d4cee0c373c71edc35f73fed8b2453027","20260729000000":"abe8ae0b206bf5002edae9383fc057fcbfce7a25cd7462d973ec73d3e8a3abc2","20260804000000":"a4e5a9ae2acea971c8a438e5f9337677cad30f956b4c0aeaa51c6263f2f9baaa"}'::json,
+  'expectedRuntimeQueryDigest', '69ac6a5436905b98548ef49fe5beaf791e20b205f504dde8e5dbaabc08c7564a',
   'actualRuntimeQueryDigest', encode(sha256(convert_to(
     regexp_replace(
       regexp_replace(current_query(), $q1$('packetId', ')[0-9a-f]{64}(')$q1$, $r1$\1__PID__\2$r1$, 'g'),
@@ -133,8 +133,11 @@ select json_build_object(
     fns(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
       select 'function:public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')', 'function',
              'public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',
-             case when p.proname='bty_foundry_submit_followup' then 'g29'
-                  when p.proname='bty_foundry_set_shared_review' then 'g26' else 'g28' end,
+             -- BODY authority (R2.8): both drifting bodies are finally defined by the 20260804
+             -- reconciliation migration. Introduction is NOT rewritten — g26b/g28b still record
+             -- 20260726 / 20260728 as the migration that introduced each function.
+             case when p.proname='bty_foundry_set_shared_review' then 'g26b'
+                  when p.proname='bty_foundry_submit_followup' then 'g28b' else 'g28' end,
              jsonb_build_object('identity_args',pg_get_function_identity_arguments(p.oid),
                'result',pg_get_function_result(p.oid),'language',l.lanname,'volatility',p.provolatile,
                'strict',p.proisstrict,'leakproof',p.proleakproof,'parallel',p.proparallel,

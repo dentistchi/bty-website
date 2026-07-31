@@ -27,8 +27,8 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
       expect(e.effectId).toBeTruthy();
       expect(["column", "table", "pk", "fk", "unique", "check", "index", "function", "rls", "policies", "acl_table", "acl_function"]).toContain(e.objectType);
       expect(["structured", "structured+digest", "structured+body_digest"]).toContain(e.comparisonMode);
-      expect(e.migrationVersion).toMatch(/^2026072[6789]000000$/);
-      expect(e.finalAuthorityMigration).toMatch(/^2026072[6789]000000$/);
+      expect(e.migrationVersion).toMatch(/^2026072[6789]000000$/); // introduction is never rewritten
+      expect(e.finalAuthorityMigration).toMatch(/^(2026072[6789]|20260804)000000$/);
     }
   });
 
@@ -47,18 +47,18 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(Math.floor(manifest.postgresServerVersionNum / 10000)).toBe(17);
   });
 
-  it("R2.6 — build metadata: compile-on, r2.6 schema, integrity digest + packetId + runtime digest", () => {
+  it("R2.7 — build metadata: compile-on, r2.7 schema, integrity digest + packetId + runtime digest", () => {
     expect(manifest.functionBodyChecking).toBe("on");
-    expect(manifest.auditSchemaVersion).toBe("r2.6");
-    expect(manifest.auditPacketVersion).toBe("r2.6");
-    expect(manifest.runtimeQueryContractVersion).toBe("r2.6");
+    expect(manifest.auditSchemaVersion).toBe("r2.7");
+    expect(manifest.auditPacketVersion).toBe("r2.7");
+    expect(manifest.runtimeQueryContractVersion).toBe("r2.7");
     expect(manifest.comparatorContractVersion).toBe(COMPARATOR_CONTRACT_VERSION);
     expect(computeEffectsDigest(manifest.effects)).toBe(manifest.expectedManifestDigest);
     expect(manifest.packetId).toMatch(/^[0-9a-f]{64}$/);
     expect(manifest.expectedRuntimeQueryDigest).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("R2.6 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
+  it("R2.7 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
     const shaFile = (p: string) => createHash("sha256").update(readFileSync(join(process.cwd(), p))).digest("hex");
     const MIG = "supabase/migrations";
     const migrationChecksums: Record<string, string> = {
@@ -66,6 +66,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
       "20260727000000": shaFile(`${MIG}/20260727000000_personalize_today_from_reflections_v1.sql`),
       "20260728000000": shaFile(`${MIG}/20260728000000_foundry_participant_followups_v1.sql`),
       "20260729000000": shaFile(`${MIG}/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql`),
+      "20260804000000": shaFile(`${MIG}/20260804000000_foundry_function_body_reconciliation_v1.sql`),
     };
     expect(manifest.migrationChecksums).toEqual(migrationChecksums);
     expect(manifest.auditQueryBodyDigest).toBe(shaFile("scripts/migration-proof/audit-query-body.sql"));
@@ -82,7 +83,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(computePacketId(base)).toBe(manifest.packetId);
   });
 
-  it("R2.6 — the generated audit SQL is ONE statement that measures the executed query", () => {
+  it("R2.7 — the generated audit SQL is ONE statement that measures the executed query", () => {
     const sql = readFileSync(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql"), "utf8");
     expect(sql).toContain("GENERATED — do not hand-edit");
     expect(sql).toContain(`'packetId', '${manifest.packetId}'`);
@@ -94,7 +95,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect((noComments.match(/;/g) ?? []).length).toBe(1);
   });
 
-  it("R2.6 — privileges are EXACT ACL tuples; FK is a full behavioral contract", () => {
+  it("R2.7 — privileges are EXACT ACL tuples; FK is a full behavioral contract", () => {
     const facl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_function");
     expect(facl.properties.tuples).toEqual([{ grantee: "service_role", grantable: false, privilege: "EXECUTE" }]);
     const fk = manifest.effects.find((e: { objectType: string }) => e.objectType === "fk");
@@ -192,22 +193,99 @@ describe("R2.6 — ACL authority boundary (only statement-controlled tuples are 
   });
 });
 
-describe("provenance — final authority follows the whole migration chain", () => {
-  it("submit_followup's final authority is 20260729 (replaced), everything else its introducing migration", () => {
-    const submit = manifest.effects.find((e: { effectId: string }) => e.effectId.startsWith("function:public.bty_foundry_submit_followup"));
-    expect(submit.migrationVersion).toBe("20260728000000");
-    expect(submit.finalAuthorityMigration).toBe("20260729000000");
+describe("R2.8 — the 20260804 reconciliation migration is FINAL body authority", () => {
+  const RECON = "supabase/migrations/20260804000000_foundry_function_body_reconciliation_v1.sql";
+  const sql = readFileSync(join(process.cwd(), RECON), "utf8");
+  const fnEffect = (name: string) =>
+    manifest.effects.find((e: { objectType: string; effectId: string }) => e.objectType === "function" && e.effectId.startsWith(`function:public.${name}(`));
 
-    const setReview = manifest.effects.find((e: { effectId: string }) => e.effectId.startsWith("function:public.bty_foundry_set_shared_review"));
-    expect(setReview.finalAuthorityMigration).toBe("20260726000000");
-    const materialize = manifest.effects.find((e: { effectId: string }) => e.effectId.startsWith("function:public.bty_foundry_materialize_followup"));
-    expect(materialize.finalAuthorityMigration).toBe("20260728000000");
+  it("both drifted bodies now resolve to 20260804 WITHOUT rewriting where they were introduced", () => {
+    const ssr = fnEffect("bty_foundry_set_shared_review");
+    expect(ssr.migrationVersion).toBe("20260726000000"); // introduction preserved
+    expect(ssr.finalAuthorityMigration).toBe("20260804000000");
+    const sf = fnEffect("bty_foundry_submit_followup");
+    expect(sf.migrationVersion).toBe("20260728000000"); // introduction preserved
+    expect(sf.finalAuthorityMigration).toBe("20260804000000");
   });
 
-  it("provenance manifest agrees: only submit_followup has a non-empty modifiedBy", () => {
+  it("the untouched functions keep their original authority", () => {
+    expect(fnEffect("bty_foundry_materialize_followup").finalAuthorityMigration).toBe("20260728000000");
+    expect(fnEffect("bty_foundry_get_my_followup").finalAuthorityMigration).toBe("20260728000000");
+  });
+
+  it("ACL authority does NOT move — the migration grants and revokes nothing", () => {
+    const acl = (name: string) => manifest.effects.find((e: { objectType: string; effectId: string }) =>
+      e.objectType === "acl_function" && e.effectId.startsWith(`acl:function:public.${name}(`));
+    expect(acl("bty_foundry_set_shared_review").finalAuthorityMigration).toBe("20260726000000");
+    expect(acl("bty_foundry_submit_followup").finalAuthorityMigration).toBe("20260729000000");
+    expect(sql).not.toMatch(/^\s*(grant|revoke)\b/im);
+  });
+
+  it("the expected body digests are the reconciled ones", () => {
+    // set_shared_review is the 20260726 body reinstated verbatim — its digest must NOT change.
+    expect(fnEffect("bty_foundry_set_shared_review").definitionDigest).toBe("ea74856969177950a0c6e59fd1dc2fd766f4161b1289f360bc22d61980bc2af9");
+    expect(fnEffect("bty_foundry_submit_followup").definitionDigest).toBe("4826ad0d0359719b67433a131c5595c1402067259f2294bcfb6da9f08ef47b59");
+  });
+
+  it("carries the fall-through fix: the RESPONDED branch terminates explicitly", () => {
+    // The defect was `return query …` with no `return;`, so PL/pgSQL fell through into the UPDATE.
+    const branch = /if v_row\.status = 'RESPONDED' then([\s\S]*?)end if;/.exec(sql);
+    expect(branch).not.toBeNull();
+    expect(branch![1]).toContain("'unchanged'");
+    expect(branch![1]).toContain("'already_responded'");
+    // the `return;` immediately after the inner if/else, before the UPDATE
+    expect(sql).toMatch(/end if;\s*\n\s*return;\s*\n\s*end if;/);
+  });
+
+  it("preserves the 20260729 ambiguity correction and the security contract", () => {
+    expect(sql).toContain("#variable_conflict use_column");
+    expect((sql.match(/security definer/g) ?? []).length).toBe(2);
+    expect((sql.match(/set search_path = pg_catalog, public/g) ?? []).length).toBe(2);
+  });
+
+  it("touches ONLY the two function bodies — no table/column/policy/index change", () => {
+    const executable = sql.replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(executable).not.toMatch(/\b(create|alter|drop)\s+(table|index|policy|type|schema)\b/i);
+    expect((executable.match(/create or replace function/g) ?? []).length).toBe(2);
+  });
+});
+
+describe("provenance — final authority follows the whole migration chain", () => {
+  it("each function's final authority is the LAST migration that redefines it", () => {
+    const fn = (n: string) => manifest.effects.find((e: { objectType: string; effectId: string }) =>
+      e.objectType === "function" && e.effectId.startsWith(`function:public.${n}`));
+
+    // Reconciled by 20260804 (R2.8) — introduction still records where each first appeared.
+    expect(fn("bty_foundry_submit_followup").migrationVersion).toBe("20260728000000");
+    expect(fn("bty_foundry_submit_followup").finalAuthorityMigration).toBe("20260804000000");
+    expect(fn("bty_foundry_set_shared_review").migrationVersion).toBe("20260726000000");
+    expect(fn("bty_foundry_set_shared_review").finalAuthorityMigration).toBe("20260804000000");
+
+    // Never redefined — authority stays with the introducing migration.
+    expect(fn("bty_foundry_materialize_followup").finalAuthorityMigration).toBe("20260728000000");
+    expect(fn("bty_foundry_get_my_followup").finalAuthorityMigration).toBe("20260728000000");
+  });
+
+  it("provenance graph agrees with the manifest on exactly which objects were modified", () => {
     const modified = provenance.objects.filter((o: { modifiedBy: string[] }) => o.modifiedBy.length > 0);
-    expect(modified.length).toBe(1);
-    expect(modified[0].id).toContain("bty_foundry_submit_followup");
-    expect(modified[0].finalAuthorityMigration).toBe("20260729000000");
+    expect(modified.map((o: { id: string }) => o.id).sort()).toEqual([
+      "function:public.bty_foundry_set_shared_review(uuid,uuid,uuid,text,text)",
+      "function:public.bty_foundry_submit_followup(uuid,uuid,text)",
+    ]);
+    const by = Object.fromEntries(modified.map((o: { id: string; modifiedBy: string[]; finalAuthorityMigration: string }) =>
+      [o.id.includes("submit_followup") ? "submit" : "review", o]));
+    // submit_followup was corrected twice: 42702 ambiguity, then the fall-through defect.
+    expect(by.submit.modifiedBy).toEqual(["20260729000000", "20260804000000"]);
+    expect(by.submit.finalAuthorityMigration).toBe("20260804000000");
+    expect(by.review.modifiedBy).toEqual(["20260804000000"]);
+    expect(by.review.finalAuthorityMigration).toBe("20260804000000");
+
+    // Provenance and manifest must not disagree about final authority.
+    for (const o of modified) {
+      const name = o.id.slice("function:public.".length).split("(")[0];
+      const eff = manifest.effects.find((e: { objectType: string; effectId: string }) =>
+        e.objectType === "function" && e.effectId.startsWith(`function:public.${name}(`));
+      expect(eff.finalAuthorityMigration).toBe(o.finalAuthorityMigration);
+    }
   });
 });

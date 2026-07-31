@@ -224,7 +224,7 @@ export function assertManifestIntegrity(expected: ExpectedManifest): void {
 }
 
 /** The comparator contract version — bound into packetId; a change invalidates every packet. */
-export const COMPARATOR_CONTRACT_VERSION = "r2.6";
+export const COMPARATOR_CONTRACT_VERSION = "r2.7";
 
 /** Self-authenticating packet metadata (Gate 5/9). The CLI recomputes `expected` from the checked-in
  * files; `live` is what the generated audit SQL embedded. Every field must agree, and the live

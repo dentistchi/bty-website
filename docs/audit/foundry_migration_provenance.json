@@ -1,19 +1,107 @@
 {
-  "note": "Object provenance graph for migrations 20260726-20260729. Verified by searching ALL local migrations for each object name (not only 20260730-20260801). The ONLY object whose expected state differs from its introducing migration is bty_foundry_submit_followup, replaced by 20260729.",
-  "verifiedAgainst": "all supabase/migrations/*.sql at inner 3ca0eee3",
+  "note": "Object provenance graph for migrations 20260726-20260729 plus the 20260804 function-body reconciliation. Verified by searching ALL local migrations for each object name. Two function BODIES are finally defined by 20260804: set_shared_review (introduced 20260726; live had a whitespace/comment-only variant, token-identical) and submit_followup (introduced 20260728, 42702 ambiguity corrected by 20260729, then idempotency/fall-through/first-response-wins/audit integrity corrected by 20260804). Introduction is never rewritten.",
+  "verifiedAgainst": "all supabase/migrations/*.sql at inner 3d18ec13",
   "objects": [
-    { "id": "table:public.foundry_shared_review_audit", "objectType": "table", "introducedBy": "20260726000000", "modifiedBy": [], "finalAuthorityMigration": "20260726000000" },
-    { "id": "index:public.foundry_shared_review_audit_participant_idx", "objectType": "index", "introducedBy": "20260726000000", "modifiedBy": [], "finalAuthorityMigration": "20260726000000" },
-    { "id": "function:public.bty_foundry_set_shared_review(uuid,uuid,uuid,text,text)", "objectType": "function", "introducedBy": "20260726000000", "modifiedBy": [], "finalAuthorityMigration": "20260726000000" },
-    { "id": "columns:public.foundry_event_training_content.shared_question + document_content.shared_question + training_progress.(shared_understanding_response,shared_response_submitted_at,host_review_status,host_reviewed_at,host_reviewed_by,host_reviewed_by_snapshot,host_review_note) + 7 check constraints", "objectType": "alter", "introducedBy": "20260726000000", "modifiedBy": [], "finalAuthorityMigration": "20260726000000" },
-    { "id": "column:public.user_conversation_preferences.personalize_today_from_reflections", "objectType": "column", "introducedBy": "20260727000000", "modifiedBy": [], "finalAuthorityMigration": "20260727000000" },
-    { "id": "table:public.foundry_participant_followups", "objectType": "table", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000", "referencedBy": ["20260729000000 (function body only, no table alter)"] },
-    { "id": "table:public.foundry_participant_followup_audit", "objectType": "table", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "index:public.foundry_followups_owner_due_idx", "objectType": "index", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "index:public.foundry_followups_event_idx", "objectType": "index", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "index:public.foundry_followup_audit_followup_idx", "objectType": "index", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "function:public.bty_foundry_materialize_followup(...)", "objectType": "function", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "function:public.bty_foundry_get_my_followup(uuid,uuid)", "objectType": "function", "introducedBy": "20260728000000", "modifiedBy": [], "finalAuthorityMigration": "20260728000000" },
-    { "id": "function:public.bty_foundry_submit_followup(uuid,uuid,text)", "objectType": "function", "introducedBy": "20260728000000", "modifiedBy": ["20260729000000"], "finalAuthorityMigration": "20260729000000" }
+    {
+      "id": "table:public.foundry_shared_review_audit",
+      "objectType": "table",
+      "introducedBy": "20260726000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "id": "index:public.foundry_shared_review_audit_participant_idx",
+      "objectType": "index",
+      "introducedBy": "20260726000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "id": "function:public.bty_foundry_set_shared_review(uuid,uuid,uuid,text,text)",
+      "objectType": "function",
+      "introducedBy": "20260726000000",
+      "modifiedBy": [
+        "20260804000000"
+      ],
+      "finalAuthorityMigration": "20260804000000",
+      "note": "Body reconciled by 20260804 (repository body reinstated verbatim; live differed only in whitespace + one comment, 258 tokens identical)."
+    },
+    {
+      "id": "columns:public.foundry_event_training_content.shared_question + document_content.shared_question + training_progress.(shared_understanding_response,shared_response_submitted_at,host_review_status,host_reviewed_at,host_reviewed_by,host_reviewed_by_snapshot,host_review_note) + 7 check constraints",
+      "objectType": "alter",
+      "introducedBy": "20260726000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260726000000"
+    },
+    {
+      "id": "column:public.user_conversation_preferences.personalize_today_from_reflections",
+      "objectType": "column",
+      "introducedBy": "20260727000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260727000000"
+    },
+    {
+      "id": "table:public.foundry_participant_followups",
+      "objectType": "table",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000",
+      "referencedBy": [
+        "20260729000000 (function body only, no table alter)"
+      ]
+    },
+    {
+      "id": "table:public.foundry_participant_followup_audit",
+      "objectType": "table",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "index:public.foundry_followups_owner_due_idx",
+      "objectType": "index",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "index:public.foundry_followups_event_idx",
+      "objectType": "index",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "index:public.foundry_followup_audit_followup_idx",
+      "objectType": "index",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "function:public.bty_foundry_materialize_followup(...)",
+      "objectType": "function",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "function:public.bty_foundry_get_my_followup(uuid,uuid)",
+      "objectType": "function",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [],
+      "finalAuthorityMigration": "20260728000000"
+    },
+    {
+      "id": "function:public.bty_foundry_submit_followup(uuid,uuid,text)",
+      "objectType": "function",
+      "introducedBy": "20260728000000",
+      "modifiedBy": [
+        "20260729000000",
+        "20260804000000"
+      ],
+      "finalAuthorityMigration": "20260804000000",
+      "note": "20260729 corrected the 42702 ambiguity; 20260804 corrected the RESPONDED-branch fall-through (first-response-wins, retry idempotency, audit append-only, exactly one returned row)."
+    }
   ]
 }

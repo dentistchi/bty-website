@@ -1,6 +1,7 @@
 # Live function body drift — forensics + reconciliation plan (Slice 3.2I-R5B1A.1-R2.7)
 
-**Verdict: HALTED · TRUSTED LIVE FUNCTION BODY TEXT ABSENT.**
+**R2.7 verdict: HALTED · TRUSTED LIVE FUNCTION BODY TEXT ABSENT.**
+**R2.8 verdict (this document's current state): RESOLVED — both live bodies exported, verified and measured; a reconciliation migration is proven offline. See §9–§11.**
 Forensic evidence only. Authorizes no repair, no apply, no deploy. Nothing here was run against the live database.
 
 ## 1. What the r2.6 audit established
@@ -137,3 +138,79 @@ Not executed. Every live step needs separate explicit authorization.
 **STOP conditions.** Any of these halts the pass: the body export fails digest verification; the harness disagrees with its baseline without a recorded human decision; the post-reconciliation audit still reports a conflict; the pending-migration list contains anything other than the two Practice migrations; a repair would mark a migration applied while its final-authority function is still unexplained.
 
 **Rollback.** Steps 1–2 are read-only. Step 5 is reversible by re-applying the previous body, whose exact text is by then captured as forensic evidence on both sides. Step 7 is ledger-only and reversible. No data is migrated at any point.
+
+---
+
+# R2.8 — resolution (live bodies measured, reconciliation proven offline)
+
+## 9. The live bodies, verified and measured
+
+Both were exported read-only, ingested only after the text re-hashed to the r2.6-attested digest, and run through the identical matrix.
+
+| Variant | Digest | Result |
+|---|---|---|
+| `set_shared_review` / repo-20260726 | `ea748569…` | 24/24 |
+| `set_shared_review` / **live** | `52cc335a…` | **24/24** |
+| `submit_followup` / repo-20260728 | `ba0ba9e6…` | 5/22 |
+| `submit_followup` / repo-20260729 | `99c66ac7…` | 16/22 — fails 5,7,16,20,21,22 |
+| `submit_followup` / **live** | `21cdd472…` | **16/22 — fails 5,7,16,20,21,22** |
+| `set_shared_review` / **reconciled-20260804** | `ea748569…` | **24/24** |
+| `submit_followup` / **reconciled-20260804** | `4826ad0d…` | **22/22** |
+| concurrency / reconciled-20260804 | `4826ad0d…` | **35/35** |
+
+**Live carries exactly the same defect as repository authority** — the identical six failing cases. The fall-through was never fixed anywhere.
+
+### 9.1 `set_shared_review` — the difference is nothing
+
+A literal-aware tokenizer (string literals preserved verbatim, `--` comments dropped, whitespace collapsed) gives **258 identical tokens** on both sides. No string literal contains whitespace, so the collapse is sound. The only non-whitespace difference is one deleted comment:
+
+```
+-- Idempotent: an identical (status, note) resubmission writes nothing new.
+```
+
+Classification: **formatting only** and **comment only**. Nothing authorization-, mutation-, audit-, return-shape- or concurrency-material.
+
+## 10. Canonical decisions
+
+| Function | Decision | Why |
+|---|---|---|
+| `set_shared_review` | **A — repository body canonical** | Provably semantically identical to live (258 identical tokens); both 24/24. The repository body wins on provenance: known migration source, known tests. Reinstating it makes the repository the single source of truth, and the apply proof shows the digest does not move — a genuine no-op. |
+| `submit_followup` | **C — new reconciled body required** | Repository authority *and* live fail the identical six cases. Neither may be canonical; keeping live merely to avoid touching production would preserve a body that silently overwrites a learner's first recorded outcome. |
+
+## 11. The reconciliation migration
+
+`supabase/migrations/20260804000000_foundry_function_body_reconciliation_v1.sql` — bodies only, `create or replace`, safe to reapply. It does **not** edit 20260726/27/28/29.
+
+Fix applied to `submit_followup`: an explicit `return;` terminating the RESPONDED branch, a NULL-safe `is not distinct from` outcome comparison, and an explicit terminal `return;`. Preserved verbatim: signature, return shape, `SECURITY DEFINER`, `search_path`, the 20260729 `#variable_conflict use_column` correction, and the EXECUTE ACL (the migration grants and revokes nothing).
+
+**Offline proof (PostgreSQL 17.10, disposable; PostgreSQL 16.14 compatibility identical):**
+apply PASS · reapply byte-identical PASS · only `submit_followup`'s body changed · `set_shared_review` byte-identical, proving the reinstatement is a no-op · `pg_proc` structured properties unchanged · every exact ACL tuple unchanged · 22/22 + 24/24 contract cases · 35/35 real multi-connection concurrency cases.
+
+**New packet:** `a2725391048c…` (r2.7), binding the reconciliation checksum and both final body digests, with `20260804` as final authority for both functions while `migrationVersion` still records 20260726/20260728. The r2.5 and r2.6 live results are rejected at the handshake.
+
+## 12. Future live gate — plan only, nothing executed
+
+Because `20260802` and `20260803` are still pending, a normal `supabase db push` would try to apply them **together with** the reconciliation. The live step must therefore be a direct, explicit, single-file transaction — never a push.
+
+```
+# 1. Apply ONLY the reconciliation, in one transaction, after Commander authorization.
+psql "<read-write conn>" -v ON_ERROR_STOP=1 --single-transaction \
+  -f bty-app/supabase/migrations/20260804000000_foundry_function_body_reconciliation_v1.sql
+
+# 2. Re-export the bodies (read-only) and confirm the post-apply digests.
+psql "<read-only conn>" -tAq \
+  -f bty-app/docs/audit/forensics/foundry_function_body_export_readonly.sql > post_apply_bodies.json
+#    require: set_shared_review = ea748569…   submit_followup = 4826ad0d…
+
+# 3. Trusted read-only audit under the NEW packet a2725391…
+psql "<read-only conn>" -tAq \
+  -f bty-app/docs/audit/foundry_migration_provenance_readonly.sql > live_audit_result.r2.7.json
+cd bty-app && npm run compare:foundry-migration-audit -- live_audit_result.r2.7.json
+#    require: packet PASS · runtime attestation PASS · 93 effects / 93 exact / 0 conflict
+```
+
+**Then, and only then, the ledger.** Repair ascending — `20260726 → 20260727 → 20260728 → 20260729` — each marked applied only once its final-authority effects are exact. `20260804` is marked applied **last**, and only after step 2 confirms both body digests. Before and after, record what the pending list actually shows rather than assuming CLI behavior; the expected end state is that `20260802000000` and `20260803000000` are the **only** pending migrations. Applying those two needs **separate** authorization and is out of scope.
+
+**STOP immediately if:** the live pre-apply bodies no longer match `52cc335a…` / `21cdd472…` (something changed after the forensic export); the transaction reports anything other than two `CREATE FUNCTION` replacements; a post-apply digest differs; the behavior smoke proof fails; the audit packet rejects; any unexpected pending migration appears; a repair order would produce an untruthful ledger; or `20260802`/`20260803` would be applied unintentionally.
+
+**Rollback:** re-apply the authentic pre-reconciliation bodies, whose exact text is preserved as packet-bound fixtures in `live_body_set_shared_review.sql` and `live_body_submit_followup.sql`. The migration touches no rows, so there is nothing to undo in data. No deployment is required either way — this is DB-only, as `bb7347cb` already established for the 20260729 hotfix.

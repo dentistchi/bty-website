@@ -105,8 +105,11 @@ idx(effect_id, object_type, object_identity, grp, properties, definition_digest,
 fns(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
   select 'function:public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')', 'function',
          'public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',
-         case when p.proname='bty_foundry_submit_followup' then 'g29'
-              when p.proname='bty_foundry_set_shared_review' then 'g26' else 'g28' end,
+         -- BODY authority (R2.8): both drifting bodies are finally defined by the 20260804
+         -- reconciliation migration. Introduction is NOT rewritten — g26b/g28b still record
+         -- 20260726 / 20260728 as the migration that introduced each function.
+         case when p.proname='bty_foundry_set_shared_review' then 'g26b'
+              when p.proname='bty_foundry_submit_followup' then 'g28b' else 'g28' end,
          jsonb_build_object('identity_args',pg_get_function_identity_arguments(p.oid),
            'result',pg_get_function_result(p.oid),'language',l.lanname,'volatility',p.provolatile,
            'strict',p.proisstrict,'leakproof',p.proleakproof,'parallel',p.proparallel,

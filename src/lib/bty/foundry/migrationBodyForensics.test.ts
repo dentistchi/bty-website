@@ -136,9 +136,9 @@ describe("forensic fixture rendering", () => {
 
   it("round-trips the body byte-for-byte inside the dollar quote", () => {
     const sql = renderBodyInstallSql(fn(), ok());
-    const m = /as \$(bodyfx x*)\$([\s\S]*)\$\1\$;/.exec(sql.replace(/\$(bodyfx x*)\$/g, (s) => s));
-    expect(sql).toContain(`$bodyfx$${BODY}$bodyfx$;`);
-    expect(m === null || m[2] === BODY).toBe(true);
+    const m = /as \$(bodyfxx*)\$([\s\S]*)\$\1\$;/.exec(sql);
+    expect(m).not.toBeNull();
+    expect(m![2]).toBe(BODY); // exact bytes, not merely "contains"
   });
 
   it("escalates the dollar-quote tag when the body already contains it", () => {
@@ -165,8 +165,13 @@ describe("the checked-in export query is read-only and bound to the r2.6 packet"
   it("is exactly one statement", () => {
     expect((executable.match(/;/g) ?? []).length).toBe(1);
   });
-  it("binds the CURRENT committed packetId, so a stale export cannot be ingested", () => {
-    expect(sql).toContain(`'boundPacketId', '${manifest.packetId}'`);
+  it("stays bound to the r2.6 ATTESTATION packet, not the current packet", () => {
+    // The live bodies were attested under packet d5171bbd… (r2.6). That binding is the export's
+    // whole trust anchor and must NOT drift onto the r2.7 packet, which describes the POST-
+    // reconciliation expected state that live does not have yet. Re-pointing it would let an
+    // export be checked against digests nothing ever measured on the live database.
+    expect(sql).toContain("'boundPacketId', 'd5171bbd503388a1ec9ac34aa11e05026b800f79f607697e809e416b2f1705d8'");
+    expect(manifest.packetId).not.toBe("d5171bbd503388a1ec9ac34aa11e05026b800f79f607697e809e416b2f1705d8");
   });
   it("reads only pg_catalog — never an application table, and writes nothing", () => {
     expect(executable).toContain("from pg_proc p");

@@ -33,6 +33,7 @@ try {
     "20260727000000": shaFile(`${MIG}/20260727000000_personalize_today_from_reflections_v1.sql`),
     "20260728000000": shaFile(`${MIG}/20260728000000_foundry_participant_followups_v1.sql`),
     "20260729000000": shaFile(`${MIG}/20260729000000_foundry_submit_followup_ambiguity_fix_v1.sql`),
+    "20260804000000": shaFile(`${MIG}/20260804000000_foundry_function_body_reconciliation_v1.sql`),
   };
   const m = expected as unknown as { auditPacketVersion?: string; runtimeQueryContractVersion?: string; expectedRuntimeQueryDigest?: string };
   const base = {

@@ -1,6 +1,6 @@
 {
   "note": "DERIVED from the SQL tokenizer — every explicit security statement with exact source SHA-256 + line + resolved manifest effectIds. Grep is diagnostic only.",
-  "auditSchemaVersion": "r2.6",
+  "auditSchemaVersion": "r2.7",
   "statements": [
     {
       "statementId": "20260726000000#006",

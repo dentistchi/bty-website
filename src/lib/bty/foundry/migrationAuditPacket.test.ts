@@ -150,7 +150,7 @@ describe("R2.6 — ACL authority scope: environment tuples are diagnostic, contr
 
 function packetMeta(over: Partial<PacketMeta> = {}): PacketMeta {
   const base = {
-    auditSchemaVersion: "r2.6", auditPacketVersion: "r2.6", runtimeQueryContractVersion: "r2.6",
+    auditSchemaVersion: "r2.7", auditPacketVersion: "r2.7", runtimeQueryContractVersion: "r2.7",
     comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
     expectedManifestDigest: "m".repeat(64), provenanceDigest: "p".repeat(64), securityStatementMapDigest: "s".repeat(64),
     constraintStatementMapDigest: "c".repeat(64), auditQueryBodyDigest: "q".repeat(64),
@@ -199,12 +199,23 @@ describe("PACKET handshake — self-authenticating (all components verified)", (
 
   // Gate 9 (R2.6) — a live result exported under the PREVIOUS (r2.5, PostgreSQL-16) packet is not
   // evidence against the new packet. It must be rejected outright, never silently re-compared.
-  it("an r2.5 live result is REJECTED by the r2.6 packet (no cross-packet comparison)", () => {
-    const stale = { ...liveOf(meta), auditSchemaVersion: "r2.5", auditPacketVersion: "r2.5", runtimeQueryContractVersion: "r2.5" };
+  it.each(["r2.5", "r2.6"])("a %s live result is REJECTED by the r2.7 packet (no cross-packet comparison)", (v) => {
+    const stale = { ...liveOf(meta), auditSchemaVersion: v, auditPacketVersion: v, runtimeQueryContractVersion: v };
     expect(() => assertPacketHandshake(meta, stale)).toThrow(/auditSchemaVersion/);
   });
-  it("an r2.5 comparator contract cannot validate an r2.6 binary", () => {
-    expect(() => assertPacketHandshake({ ...meta, comparatorContractVersion: "r2.5" }, liveOf(meta))).toThrow(/comparator contract/);
+  it("an older comparator contract cannot validate an r2.7 binary", () => {
+    expect(() => assertPacketHandshake({ ...meta, comparatorContractVersion: "r2.6" }, liveOf(meta))).toThrow(/comparator contract/);
+  });
+  // R2.8 — the reconciliation migration is part of packet identity.
+  it("a changed RECONCILIATION migration checksum is rejected", () => {
+    const m2 = packetMeta({ migrationChecksums: { ...meta.migrationChecksums, "20260804000000": "b".repeat(64) } });
+    expect(() => assertPacketHandshake(meta, liveOf(m2))).toThrow(/migrationChecksums/);
+  });
+  it("a result carrying only ONE reconciled body (stale manifest digest) is rejected", () => {
+    expect(() => assertPacketHandshake(meta, liveOf({ ...meta, expectedManifestDigest: "e".repeat(64) }))).toThrow(/expectedManifestDigest/);
+  });
+  it("a changed runtime query is rejected", () => {
+    expect(() => assertPacketHandshake(meta, liveOf({ ...meta, expectedRuntimeQueryDigest: "f".repeat(64) }))).toThrow(/expectedRuntimeQueryDigest/);
   });
 });
 
