@@ -1,6 +1,6 @@
 {
   "note": "DERIVED from the SQL tokenizer — every explicit security statement with exact source SHA-256 + line + resolved manifest effectIds. Grep is diagnostic only.",
-  "auditSchemaVersion": "r2.5",
+  "auditSchemaVersion": "r2.6",
   "statements": [
     {
       "statementId": "20260726000000#006",
@@ -231,5 +231,46 @@
         "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)"
       ]
     }
-  ]
+  ],
+  "aclAuthorityScope": {
+    "acl:function:public.bty_foundry_get_my_followup(p_auth_user_id uuid, p_followup_id uuid)": [
+      "PUBLIC",
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
+    "acl:function:public.bty_foundry_materialize_followup(p_event_id uuid, p_progress_id uuid, p_assignment_id uuid, p_organization_id uuid, p_user_id_snapshot uuid, p_source_training_title text, p_follow_up_days integer, p_completed_at timestamp with time zone, p_timezone_snapshot text, p_completion_bty_day date, p_due_bty_day date, p_due_at timestamp with time zone)": [
+      "PUBLIC",
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
+    "acl:function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)": [
+      "PUBLIC",
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
+    "acl:function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)": [
+      "PUBLIC",
+      "anon",
+      "authenticated",
+      "service_role"
+    ],
+    "acl:table:public.foundry_participant_followup_audit": [
+      "PUBLIC",
+      "anon",
+      "authenticated"
+    ],
+    "acl:table:public.foundry_participant_followups": [
+      "PUBLIC",
+      "anon",
+      "authenticated"
+    ],
+    "acl:table:public.foundry_shared_review_audit": [
+      "PUBLIC",
+      "anon",
+      "authenticated"
+    ]
+  }
 }

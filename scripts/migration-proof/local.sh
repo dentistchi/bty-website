@@ -3,6 +3,9 @@
 # private unix socket), run the executable migration proofs, then destroy it. Nothing persists; the
 # cluster never touches the live Supabase database. CI uses a postgres service instead (run.sh).
 set -euo pipefail
+# Choose the PostgreSQL major (R2.6): PGPROOF_BINDIR selects a specific installation's bin/ (e.g.
+# /opt/homebrew/opt/postgresql@17/bin). Unset → whatever `initdb`/`psql` the PATH already resolves.
+if [ -n "${PGPROOF_BINDIR:-}" ]; then export PATH="$PGPROOF_BINDIR:$PATH"; fi
 # Cluster lives OUTSIDE the repo (short path — unix socket paths are length-limited; never pollutes
 # the working tree). Override with PGPROOF_DIR if /tmp is unsuitable.
 BASE="${PGPROOF_DIR:-/tmp/bty-pgproof}"

@@ -15,7 +15,7 @@ const sha = (s) => createHash("sha256").update(s).digest("hex");
 const shaFile = (p) => sha(readFileSync(p));
 const META = { g26: ["20260726000000", "20260726000000"], g27: ["20260727000000", "20260727000000"],
                g28: ["20260728000000", "20260728000000"], g29: ["20260728000000", "20260729000000"] };
-const AUDIT_SCHEMA = "r2.5", PACKET_VERSION = "r2.5", COMPARATOR_CONTRACT = "r2.5", RUNTIME_CONTRACT = "r2.5";
+const AUDIT_SCHEMA = "r2.6", PACKET_VERSION = "r2.6", COMPARATOR_CONTRACT = "r2.6", RUNTIME_CONTRACT = "r2.6";
 const MIG_FILES = {
   "20260726000000": "20260726000000_foundry_shared_understanding_v1.sql",
   "20260727000000": "20260727000000_personalize_today_from_reflections_v1.sql",
@@ -52,7 +52,31 @@ for (const [ver, file] of Object.entries(MIG_FILES)) {
       statementType: type, startLine: st.startLine, sourceSha256: st.sha256, roles: rolesIn(st.text), effectIds: securityEffectIds(type, st.text) });
   }
 }
-const securityMap = { note: "DERIVED from the SQL tokenizer — every explicit security statement with exact source SHA-256 + line + resolved manifest effectIds. Grep is diagnostic only.", auditSchemaVersion: AUDIT_SCHEMA, statements: securityStatements };
+// 2b) ACL AUTHORITY-SCOPE PROOF (R2.6). The audit query DECLARES, per ACL effect, which grantees the
+// migrations explicitly control (`controlledRoles`). That declaration is only trustworthy if it
+// equals the role set DERIVED from the tokenized GRANT/REVOKE statements themselves. Assert it here,
+// at generation time, so the packet can never ship an authority boundary that was widened or
+// narrowed to make a result pass. Anything outside this set is environment state (diagnostic only).
+const NORMALIZE_ROLE = (r) => (r === "public" ? "PUBLIC" : r);
+const derivedControlled = {};
+for (const s of securityStatements) {
+  if (!/^(GRANT|REVOKE)_(TABLE|FUNCTION)$/.test(s.statementType)) continue;
+  for (const id of s.effectIds) {
+    derivedControlled[id] ||= new Set();
+    for (const r of s.roles) derivedControlled[id].add(NORMALIZE_ROLE(r));
+  }
+}
+for (const e of effects.filter((x) => x.objectType === "acl_table" || x.objectType === "acl_function")) {
+  const declared = e.properties.controlledRoles;
+  if (!Array.isArray(declared)) throw new Error(`ACL effect ${e.effectId} has no declared controlledRoles — regenerate audit-query-body.sql`);
+  const derived = [...(derivedControlled[e.effectId] ?? new Set())].sort();
+  if (JSON.stringify(declared) !== JSON.stringify(derived)) {
+    throw new Error(`ACL AUTHORITY SCOPE MISMATCH for ${e.effectId}: query declares ${JSON.stringify(declared)} but the migration statements control ${JSON.stringify(derived)}`);
+  }
+  if (!Array.isArray(e.properties.environmentTuples)) throw new Error(`ACL effect ${e.effectId} has no environmentTuples channel`);
+}
+
+const securityMap = { note: "DERIVED from the SQL tokenizer — every explicit security statement with exact source SHA-256 + line + resolved manifest effectIds. Grep is diagnostic only.", auditSchemaVersion: AUDIT_SCHEMA, statements: securityStatements, aclAuthorityScope: Object.fromEntries(Object.entries(derivedControlled).map(([k, v]) => [k, [...v].sort()]).sort(([a], [b]) => a.localeCompare(b))) };
 const securityMapJson = JSON.stringify(securityMap, null, 2) + "\n";
 writeFileSync(AUD + "/foundry_migration_security_statement_map.json", securityMapJson);
 

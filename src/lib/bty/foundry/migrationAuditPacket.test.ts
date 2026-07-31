@@ -88,9 +88,69 @@ describe("ACL effects (exact aclexplode tuples, not effective access)", () => {
   });
 });
 
+/**
+ * R2.6 — the three ACL conflicts observed in the PostgreSQL-17 live audit, as exact fixtures.
+ * Root cause: the audited migrations' ONLY table privilege statement is
+ *   revoke all on public.<t> from anon, public, authenticated;
+ * so service_role's table privileges are Supabase ENVIRONMENT defaults, outside migration authority.
+ * The r2.5 packet compared them anyway and reported CONFLICT. Scoping the comparison to
+ * statement-controlled grantees fixes the model WITHOUT weakening any real check.
+ */
+describe("R2.6 — ACL authority scope: environment tuples are diagnostic, controlled tuples are not", () => {
+  // Exactly what the live PostgreSQL-17 audit returned for all three tables (incl. PG17's MAINTAIN).
+  const LIVE_ENV_TUPLES = ["DELETE", "INSERT", "MAINTAIN", "REFERENCES", "SELECT", "TRIGGER", "TRUNCATE", "UPDATE"]
+    .map((privilege) => ({ grantee: "service_role", privilege, grantable: false }));
+  const tacl = (over: Record<string, unknown> = {}) => eff({
+    effectId: "acl:table:public.foundry_participant_followups", objectType: "acl_table",
+    properties: { controlledRoles: ["PUBLIC", "anon", "authenticated"], tuples: [], environmentTuples: [], ...over },
+  });
+  const liveTacl = (props: Record<string, unknown>) => ({
+    effectId: "acl:table:public.foundry_participant_followups",
+    properties: { controlledRoles: ["PUBLIC", "anon", "authenticated"], tuples: [], environmentTuples: [], ...props },
+  });
+
+  it("the r2.5 defect reproduced: comparing the environment grant as a controlled tuple → CONFLICT", () => {
+    const r25 = eff({ effectId: "acl:table:public.foundry_participant_followups", objectType: "acl_table", properties: { tuples: [] } });
+    expect(status(r25, { effectId: r25.effectId, properties: { tuples: LIVE_ENV_TUPLES } })).toBe("CONFLICT");
+  });
+
+  it("R2.6: the same live state, scoped to migration authority → EXACT_MATCH", () => {
+    expect(status(tacl(), liveTacl({ environmentTuples: LIVE_ENV_TUPLES }))).toBe("EXACT_MATCH");
+  });
+
+  it("the environment-only difference is REPORTED, not silently dropped", () => {
+    const r = compareMigrationAudit(manifest([tacl()]), live([liveTacl({ environmentTuples: LIVE_ENV_TUPLES })]));
+    expect(r.effects[0].detail).toContain("environment-only ACL difference");
+  });
+
+  it("an explicitly REVOKED privilege present live is STILL a real conflict (anon)", () => {
+    expect(status(tacl(), liveTacl({ tuples: [{ grantee: "anon", privilege: "SELECT", grantable: false }] }))).toBe("CONFLICT");
+  });
+
+  it("an explicitly REVOKED privilege present live is STILL a real conflict (PUBLIC)", () => {
+    expect(status(tacl(), liveTacl({ tuples: [{ grantee: "PUBLIC", privilege: "SELECT", grantable: false }] }))).toBe("CONFLICT");
+  });
+
+  it("a required explicit GRANT missing live is STILL a real conflict (function service_role EXECUTE)", () => {
+    const facl = eff({ effectId: "acl:function:public.f()", objectType: "acl_function",
+      properties: { controlledRoles: ["PUBLIC", "anon", "authenticated", "service_role"], tuples: [{ grantee: "service_role", privilege: "EXECUTE", grantable: false }], environmentTuples: [] } });
+    expect(status(facl, { effectId: "acl:function:public.f()", properties: { controlledRoles: ["PUBLIC", "anon", "authenticated", "service_role"], tuples: [], environmentTuples: [] } })).toBe("CONFLICT");
+  });
+
+  it("service_role on a FUNCTION stays controlled — an environment channel cannot launder it", () => {
+    const facl = eff({ effectId: "acl:function:public.f()", objectType: "acl_function",
+      properties: { controlledRoles: ["PUBLIC", "anon", "authenticated", "service_role"], tuples: [{ grantee: "service_role", privilege: "EXECUTE", grantable: false }], environmentTuples: [] } });
+    expect(status(facl, { effectId: "acl:function:public.f()", properties: { controlledRoles: ["PUBLIC", "anon", "authenticated", "service_role"], tuples: [], environmentTuples: [{ grantee: "service_role", privilege: "EXECUTE", grantable: false }] } })).toBe("CONFLICT");
+  });
+
+  it("a widened/narrowed authority boundary is itself a conflict (controlledRoles IS compared)", () => {
+    expect(status(tacl(), liveTacl({ controlledRoles: ["PUBLIC", "anon"] }))).toBe("CONFLICT");
+  });
+});
+
 function packetMeta(over: Partial<PacketMeta> = {}): PacketMeta {
   const base = {
-    auditSchemaVersion: "r2.5", auditPacketVersion: "r2.5", runtimeQueryContractVersion: "r2.5",
+    auditSchemaVersion: "r2.6", auditPacketVersion: "r2.6", runtimeQueryContractVersion: "r2.6",
     comparatorContractVersion: COMPARATOR_CONTRACT_VERSION,
     expectedManifestDigest: "m".repeat(64), provenanceDigest: "p".repeat(64), securityStatementMapDigest: "s".repeat(64),
     constraintStatementMapDigest: "c".repeat(64), auditQueryBodyDigest: "q".repeat(64),
@@ -135,6 +195,16 @@ describe("PACKET handshake — self-authenticating (all components verified)", (
   it("missing actualRuntimeQueryDigest → rejected", () => {
     const live = { ...liveOf(meta) } as Record<string, unknown>; delete live.actualRuntimeQueryDigest;
     expect(() => assertPacketHandshake(meta, live as unknown as LiveAudit & PacketMeta)).toThrow(/actualRuntimeQueryDigest/);
+  });
+
+  // Gate 9 (R2.6) — a live result exported under the PREVIOUS (r2.5, PostgreSQL-16) packet is not
+  // evidence against the new packet. It must be rejected outright, never silently re-compared.
+  it("an r2.5 live result is REJECTED by the r2.6 packet (no cross-packet comparison)", () => {
+    const stale = { ...liveOf(meta), auditSchemaVersion: "r2.5", auditPacketVersion: "r2.5", runtimeQueryContractVersion: "r2.5" };
+    expect(() => assertPacketHandshake(meta, stale)).toThrow(/auditSchemaVersion/);
+  });
+  it("an r2.5 comparator contract cannot validate an r2.6 binary", () => {
+    expect(() => assertPacketHandshake({ ...meta, comparatorContractVersion: "r2.5" }, liveOf(meta))).toThrow(/comparator contract/);
   });
 });
 

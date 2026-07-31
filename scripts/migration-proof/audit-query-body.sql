@@ -139,39 +139,61 @@ pol(effect_id, object_type, object_identity, grp, properties, definition_digest,
   where n.nspname='public' and c.relname in
     ('foundry_shared_review_audit','foundry_participant_followups','foundry_participant_followup_audit')
 ),
--- EXACT function ACL (Gate 1): the explicit tuple set for migration-controlled roles only. Expected
--- = exactly [{service_role, EXECUTE, grantable:false}]; PUBLIC/anon/authenticated revoked → absent.
+-- EXACT function ACL (Gate 1) scoped to MIGRATION AUTHORITY (R2.6). The migrations both REVOKE from
+-- PUBLIC/anon/authenticated AND GRANT EXECUTE to service_role, so all four grantees are explicitly
+-- statement-controlled and belong in `tuples`. Expected = exactly [{service_role, EXECUTE, false}];
+-- PUBLIC/anon/authenticated revoked → absent. `environmentTuples` is empty BY CONSTRUCTION here:
+-- no Supabase-managed role sits outside function-migration authority.
 facl(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
   select 'acl:function:public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')', 'acl_function',
          'public.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')',
          case when p.proname='bty_foundry_submit_followup' then 'g29'
               when p.proname='bty_foundry_set_shared_review' then 'g26' else 'g28' end,
-         jsonb_build_object('tuples', coalesce((
+         jsonb_build_object(
+           'controlledRoles', '["PUBLIC","anon","authenticated","service_role"]'::jsonb,
+           'tuples', coalesce((
            select jsonb_agg(jsonb_build_object(
                'grantee', case when a.grantee=0 then 'PUBLIC' else gr.rolname end,
                'privilege', a.privilege_type, 'grantable', a.is_grantable)
              order by (case when a.grantee=0 then 'PUBLIC' else gr.rolname end), a.privilege_type)
            from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
            left join pg_roles gr on gr.oid=a.grantee
-           where a.grantee=0 or gr.rolname in ('anon','authenticated','service_role')), '[]'::jsonb)),
+           where a.grantee=0 or gr.rolname in ('anon','authenticated','service_role')), '[]'::jsonb),
+           'environmentTuples', '[]'::jsonb),
          null::text, 'structured', true, null::text
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname='public' and p.proname in
     ('bty_foundry_set_shared_review','bty_foundry_materialize_followup','bty_foundry_submit_followup','bty_foundry_get_my_followup')
 ),
--- EXACT table ACL (Gate 1): explicit tuples for controlled roles. Expected = [] (revoke all;
--- owner implicit rights are NOT explicit ACL grants and are excluded).
+-- EXACT table ACL (Gate 1) scoped to MIGRATION AUTHORITY (R2.6). The ONLY table privilege statement
+-- in these migrations is `revoke all on public.<t> from anon, public, authenticated;` — there is no
+-- table GRANT at all. So migration authority over these tables covers PUBLIC/anon/authenticated
+-- ONLY, and expected `tuples` = [] (all revoked; owner implicit rights are NOT explicit ACL grants).
+-- service_role's table privileges come from the Supabase ENVIRONMENT (default privileges), never
+-- from these migrations, so they are reported separately as `environmentTuples` — DIAGNOSTIC, never
+-- compared. An environment privilege is not migration drift unless it contradicts a privilege the
+-- migration explicitly controlled; if service_role were ever explicitly revoked or granted here,
+-- it would move into controlledRoles/tuples and a live mismatch would again be a real conflict.
 tacl(effect_id, object_type, object_identity, grp, properties, definition_digest, comparison_mode, auto_comparable, manual_reason) as (
   select 'acl:table:public.'||c.relname, 'acl_table', 'public.'||c.relname,
          case when c.relname like '%shared_review%' then 'g26' else 'g28' end,
-         jsonb_build_object('tuples', coalesce((
+         jsonb_build_object(
+           'controlledRoles', '["PUBLIC","anon","authenticated"]'::jsonb,
+           'tuples', coalesce((
            select jsonb_agg(jsonb_build_object(
                'grantee', case when a.grantee=0 then 'PUBLIC' else gr.rolname end,
                'privilege', a.privilege_type, 'grantable', a.is_grantable)
              order by (case when a.grantee=0 then 'PUBLIC' else gr.rolname end), a.privilege_type)
            from aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
            left join pg_roles gr on gr.oid=a.grantee
-           where a.grantee=0 or gr.rolname in ('anon','authenticated','service_role')), '[]'::jsonb)),
+           where a.grantee=0 or gr.rolname in ('anon','authenticated')), '[]'::jsonb),
+           'environmentTuples', coalesce((
+           select jsonb_agg(jsonb_build_object(
+               'grantee', gr.rolname, 'privilege', a.privilege_type, 'grantable', a.is_grantable)
+             order by gr.rolname, a.privilege_type)
+           from aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+           join pg_roles gr on gr.oid=a.grantee
+           where gr.rolname in ('service_role')), '[]'::jsonb)),
          null::text, 'structured', true, null::text
   from pg_class c join pg_namespace n on n.oid=c.relnamespace
   where n.nspname='public' and c.relname in

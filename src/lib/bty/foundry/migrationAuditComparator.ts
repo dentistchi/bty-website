@@ -1,5 +1,5 @@
 /**
- * Offline comparator for the Foundry migration provenance audit (Slice 3.2I-R5B1A.1-R2.2).
+ * Offline comparator for the Foundry migration provenance audit (Slice 3.2I-R5B1A.1-R2.6).
  *
  * PURE: given the checked-in EXPECTED catalog manifest (built by replaying the historical
  * migrations on disposable Postgres) and a LIVE read-only audit result (exported from the Supabase
@@ -103,6 +103,27 @@ function stableStringify(v: unknown): string {
 }
 const deepEqual = (a: unknown, b: unknown): boolean => stableStringify(a) === stableStringify(b);
 
+/**
+ * Top-level property keys that are DIAGNOSTIC ONLY (R2.6): observed environment state that lies
+ * OUTSIDE explicit migration authority. They are carried in the packet so a human can see them, but
+ * they are never compared — an environment privilege is not migration drift unless it contradicts a
+ * privilege the migration explicitly controlled (such a privilege lives in `tuples`, which IS
+ * compared, together with `controlledRoles` which pins the authority boundary itself).
+ */
+export const DIAGNOSTIC_PROPERTY_KEYS: readonly string[] = ["environmentTuples"];
+
+/** Strip diagnostic-only keys from an effect's properties before comparison. */
+export function comparableProperties(properties: unknown): unknown {
+  if (!properties || typeof properties !== "object" || Array.isArray(properties)) return properties;
+  const entries = Object.entries(properties as Record<string, unknown>).filter(([k]) => !DIAGNOSTIC_PROPERTY_KEYS.includes(k));
+  return Object.fromEntries(entries);
+}
+
+/** True when the two sides agree on everything compared but differ in diagnostic-only state. */
+function environmentOnlyDifference(a: unknown, b: unknown): boolean {
+  return !deepEqual(a, b) && deepEqual(comparableProperties(a), comparableProperties(b));
+}
+
 /** Compare one expected effect against the live audit. `expectedPgNum` gates cross-major digests. */
 function compareEffect(exp: ExpectedEffect, live: LiveAudit, expectedPgNum: number): EffectResult {
   const base = { effectId: exp.effectId, finalAuthorityMigration: exp.finalAuthorityMigration };
@@ -119,8 +140,11 @@ function compareEffect(exp: ExpectedEffect, live: LiveAudit, expectedPgNum: numb
   }
 
   // Structured properties must always match — a structural difference is a real conflict regardless
-  // of PostgreSQL version.
-  if (!deepEqual(exp.properties, liveEff.properties)) {
+  // of PostgreSQL version. Diagnostic-only keys (environment ACL outside migration authority) are
+  // excluded from the comparison but reported when they differ.
+  const envOnly = environmentOnlyDifference(exp.properties, liveEff.properties);
+  const envNote = envOnly ? " (environment-only ACL difference outside migration authority — diagnostic, not drift)" : "";
+  if (!deepEqual(comparableProperties(exp.properties), comparableProperties(liveEff.properties))) {
     return { ...base, status: "CONFLICT", detail: "structured properties differ" };
   }
 
@@ -131,9 +155,9 @@ function compareEffect(exp: ExpectedEffect, live: LiveAudit, expectedPgNum: numb
     if ((exp.definitionDigest ?? null) !== (liveEff.definitionDigest ?? null)) {
       return { ...base, status: "CONFLICT", detail: "definition/body digest differs" };
     }
-    return { ...base, status: "EXACT_MATCH", detail: "structured properties + digest match" };
+    return { ...base, status: "EXACT_MATCH", detail: `structured properties + digest match${envNote}` };
   }
-  return { ...base, status: "EXACT_MATCH", detail: "structured properties match" };
+  return { ...base, status: "EXACT_MATCH", detail: `structured properties match${envNote}` };
 }
 
 function verdictFor(effects: EffectResult[]): { verdict: MigrationVerdict; repairEligible: boolean } {
@@ -200,7 +224,7 @@ export function assertManifestIntegrity(expected: ExpectedManifest): void {
 }
 
 /** The comparator contract version — bound into packetId; a change invalidates every packet. */
-export const COMPARATOR_CONTRACT_VERSION = "r2.5";
+export const COMPARATOR_CONTRACT_VERSION = "r2.6";
 
 /** Self-authenticating packet metadata (Gate 5/9). The CLI recomputes `expected` from the checked-in
  * files; `live` is what the generated audit SQL embedded. Every field must agree, and the live

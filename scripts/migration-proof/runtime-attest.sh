@@ -4,6 +4,7 @@
 # meaningful edit that RETAINS the embedded constants is detected (actual != expected). Self-
 # contained disposable PostgreSQL (no Docker, no live DB).
 set -euo pipefail
+if [ -n "${PGPROOF_BINDIR:-}" ]; then export PATH="$PGPROOF_BINDIR:$PATH"; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 MP="$ROOT/scripts/migration-proof"; MIG="$ROOT/supabase/migrations"; SQLF="$ROOT/docs/audit/foundry_migration_provenance_readonly.sql"
 BASE="/tmp/bty-runtime"; DATA="$BASE/data"; SOCK="$BASE/sock"; PORT=5477
@@ -41,6 +42,10 @@ tamper "altered ACL role filter" "s/'anon','authenticated','service_role'/'anon'
 tamper "altered policy extraction column" "s/pp.polname/pp.polcmd/"
 # 6) alter one object name in a column filter
 tamper "altered an object name" "s/personalize_today_from_reflections/some_other_column/"
+# 7) R2.6 — widen/narrow the DECLARED ACL authority scope (the boundary itself must be measured)
+tamper "altered declared ACL authority scope" 's/"PUBLIC","anon","authenticated"/"PUBLIC","anon"/'
+# 8) R2.6 — collapse the diagnostic environment-ACL channel into the compared tuple set
+tamper "removed the environmentTuples channel" "s/'environmentTuples'/'tuples2'/"
 
 echo "----"
 if [ "$fails" -eq 0 ]; then echo "RUNTIME_ATTEST: PASS"; else echo "RUNTIME_ATTEST: FAIL ($fails)"; exit 1; fi

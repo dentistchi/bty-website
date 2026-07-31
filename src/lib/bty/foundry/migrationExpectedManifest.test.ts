@@ -41,18 +41,24 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     for (const t of ["pk", "fk", "unique", "check", "rls", "policies", "acl_function", "acl_table"]) expect(types.has(t)).toBe(true);
   });
 
-  it("R2.5 — build metadata: compile-on, r2.5 schema, integrity digest + packetId + runtime digest", () => {
+  it("R2.6 — the release-authority manifest is built on the LIVE PostgreSQL major (17)", () => {
+    // A PostgreSQL-16 digest cannot authoritatively judge PostgreSQL 17: with a cross-major packet
+    // every digest-mode effect degrades to MANUAL and no migration can reach a clean verdict.
+    expect(Math.floor(manifest.postgresServerVersionNum / 10000)).toBe(17);
+  });
+
+  it("R2.6 — build metadata: compile-on, r2.6 schema, integrity digest + packetId + runtime digest", () => {
     expect(manifest.functionBodyChecking).toBe("on");
-    expect(manifest.auditSchemaVersion).toBe("r2.5");
-    expect(manifest.auditPacketVersion).toBe("r2.5");
-    expect(manifest.runtimeQueryContractVersion).toBe("r2.5");
+    expect(manifest.auditSchemaVersion).toBe("r2.6");
+    expect(manifest.auditPacketVersion).toBe("r2.6");
+    expect(manifest.runtimeQueryContractVersion).toBe("r2.6");
     expect(manifest.comparatorContractVersion).toBe(COMPARATOR_CONTRACT_VERSION);
     expect(computeEffectsDigest(manifest.effects)).toBe(manifest.expectedManifestDigest);
     expect(manifest.packetId).toMatch(/^[0-9a-f]{64}$/);
     expect(manifest.expectedRuntimeQueryDigest).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("R2.5 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
+  it("R2.6 — packetId is reproducible from the checked-in component digests (self-authenticating)", () => {
     const shaFile = (p: string) => createHash("sha256").update(readFileSync(join(process.cwd(), p))).digest("hex");
     const MIG = "supabase/migrations";
     const migrationChecksums: Record<string, string> = {
@@ -76,7 +82,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect(computePacketId(base)).toBe(manifest.packetId);
   });
 
-  it("R2.5 — the generated audit SQL is ONE statement that measures the executed query", () => {
+  it("R2.6 — the generated audit SQL is ONE statement that measures the executed query", () => {
     const sql = readFileSync(join(process.cwd(), "docs/audit/foundry_migration_provenance_readonly.sql"), "utf8");
     expect(sql).toContain("GENERATED — do not hand-edit");
     expect(sql).toContain(`'packetId', '${manifest.packetId}'`);
@@ -88,7 +94,7 @@ describe("expected catalog manifest — integrity + reproducibility pointer", ()
     expect((noComments.match(/;/g) ?? []).length).toBe(1);
   });
 
-  it("R2.5 — privileges are EXACT ACL tuples; FK is a full behavioral contract", () => {
+  it("R2.6 — privileges are EXACT ACL tuples; FK is a full behavioral contract", () => {
     const facl = manifest.effects.find((e: { objectType: string }) => e.objectType === "acl_function");
     expect(facl.properties.tuples).toEqual([{ grantee: "service_role", grantable: false, privilege: "EXECUTE" }]);
     const fk = manifest.effects.find((e: { objectType: string }) => e.objectType === "fk");
@@ -130,6 +136,59 @@ describe("statement maps — exact source provenance (Gates 7–8)", () => {
       expect(["named", "inline_create_table"]).toContain(s.sourceKind);
       expect(s.migrationVersion).toMatch(/^2026072[68]000000$/);
     }
+  });
+});
+
+describe("R2.6 — ACL authority boundary (only statement-controlled tuples are compared)", () => {
+  const smap = JSON.parse(readFileSync(join(AUDIT_DIR, "foundry_migration_security_statement_map.json"), "utf8"));
+  const aclEffects = manifest.effects.filter((e: { objectType: string }) => ["acl_table", "acl_function"].includes(e.objectType));
+
+  it("every ACL effect declares a controlled-role scope and a separate diagnostic channel", () => {
+    expect(aclEffects.length).toBe(7);
+    for (const e of aclEffects) {
+      expect(Array.isArray(e.properties.controlledRoles)).toBe(true);
+      expect(Array.isArray(e.properties.tuples)).toBe(true);
+      expect(Array.isArray(e.properties.environmentTuples)).toBe(true);
+    }
+  });
+
+  it("the declared scope EQUALS the roles the migration statements actually control (derived, not asserted)", () => {
+    // The boundary must come from the tokenized GRANT/REVOKE statements, so it can be neither
+    // widened nor narrowed to make a result pass.
+    for (const e of aclEffects) {
+      expect(smap.aclAuthorityScope[e.effectId]).toEqual(e.properties.controlledRoles);
+    }
+  });
+
+  it("TABLE authority covers PUBLIC/anon/authenticated only — service_role is never granted or revoked on these tables", () => {
+    // The only table privilege statement in the audited migrations is
+    //   revoke all on public.<t> from anon, public, authenticated;
+    // There is no table GRANT at all, so service_role sits outside migration authority.
+    const tableStmts = smap.statements.filter((s: { statementType: string }) => s.statementType.endsWith("_TABLE"));
+    expect(tableStmts.length).toBe(3);
+    for (const s of tableStmts) {
+      expect(s.statementType).toBe("REVOKE_TABLE");
+      expect(s.roles.slice().sort()).toEqual(["anon", "authenticated", "public"]);
+    }
+    for (const e of manifest.effects.filter((x: { objectType: string }) => x.objectType === "acl_table")) {
+      expect(e.properties.controlledRoles).toEqual(["PUBLIC", "anon", "authenticated"]);
+      expect(e.properties.tuples).toEqual([]); // revoked → no explicit controlled tuple survives
+    }
+  });
+
+  it("FUNCTION authority additionally covers service_role — it IS explicitly granted EXECUTE", () => {
+    for (const e of manifest.effects.filter((x: { objectType: string }) => x.objectType === "acl_function")) {
+      expect(e.properties.controlledRoles).toEqual(["PUBLIC", "anon", "authenticated", "service_role"]);
+      expect(e.properties.tuples).toEqual([{ grantee: "service_role", grantable: false, privilege: "EXECUTE" }]);
+      expect(e.properties.environmentTuples).toEqual([]); // no Supabase role outside function authority
+    }
+  });
+
+  it("the audit query itself carries the authority boundary (so live and expected can never diverge)", () => {
+    const body = readFileSync(join(process.cwd(), "scripts/migration-proof/audit-query-body.sql"), "utf8");
+    expect(body).toContain(`'["PUBLIC","anon","authenticated"]'::jsonb`);
+    expect(body).toContain(`'["PUBLIC","anon","authenticated","service_role"]'::jsonb`);
+    expect(body).toContain("'environmentTuples'");
   });
 });
 

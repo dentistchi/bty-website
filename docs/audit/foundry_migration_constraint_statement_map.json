@@ -1,6 +1,6 @@
 {
   "note": "Each PK/FK/UNIQUE/CHECK effect → the exact migration statement (by constraint name) that creates it, with source SHA-256.",
-  "auditSchemaVersion": "r2.5",
+  "auditSchemaVersion": "r2.6",
   "statements": [
     {
       "effectId": "check:foundry_event_document_content.foundry_doc_shared_q_len_check",

@@ -20,11 +20,18 @@ permissions:
   contents: read
 jobs:
   proof:
+    # PostgreSQL 17 is the RELEASE AUTHORITY major (it is what the live database runs); 16 is kept as
+    # a compatibility regression. A PostgreSQL-16 digest cannot authoritatively judge PostgreSQL 17.
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["17", "16"]
+    name: proof (postgres ${{ matrix.pg }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:16
+        image: postgres:${{ matrix.pg }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres

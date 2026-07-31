@@ -5,7 +5,12 @@
 #   docs/audit/foundry_migration_security_statement_map.json  (resolved statement→effect map)
 #   docs/audit/foundry_migration_provenance_readonly.sql      (generated self-authenticating live SQL)
 # Byte-reproducible: same migrations + same body + same PG major → identical outputs + packetId.
+#
+# PostgreSQL major (R2.6): the RELEASE-AUTHORITY packet must be built on the major the LIVE database
+# runs (17) — a PostgreSQL-16 digest cannot authoritatively judge PostgreSQL 17. Point PGPROOF_BINDIR
+# at that major's bin/ (e.g. /opt/homebrew/opt/postgresql@17/bin) when it is not the linked default.
 set -euo pipefail
+if [ -n "${PGPROOF_BINDIR:-}" ]; then export PATH="$PGPROOF_BINDIR:$PATH"; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # bty-app
 MP="$ROOT/scripts/migration-proof"; MIG="$ROOT/supabase/migrations"
 BASE="${PGPROOF_DIR:-/tmp/bty-expected}"; DATA="$BASE/data"; SOCK="$BASE/sock"; PORT="${PGPROOF_PORT:-5463}"
