@@ -32,7 +32,7 @@ const COPY = {
     from: "From",
     start: "Start practice",
     done: "Done",
-    empty: "No Arena practices yet.",
+    empty: "No practice situations yet.",
     error: "Couldn't load practices — Retry",
   },
   ko: {
@@ -40,7 +40,7 @@ const COPY = {
     from: "원본",
     start: "연습 시작",
     done: "완료",
-    empty: "아직 Arena 연습이 없습니다.",
+    empty: "아직 연습 상황이 없습니다.",
     error: "연습 목록을 불러오지 못했습니다 — 다시 시도",
   },
 };

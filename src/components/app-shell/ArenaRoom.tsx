@@ -31,7 +31,7 @@ type CompleteStatus = "none" | "saving" | "saved" | "error";
 
 const COPY = {
   en: {
-    eyebrow: "ARENA",
+    eyebrow: "PRACTICE",
     loading: "Preparing your decision training…",
     from: "From",
     start: "Start practice",
@@ -46,7 +46,7 @@ const COPY = {
     completeError: "We couldn't save your completion.",
   },
   ko: {
-    eyebrow: "아레나",
+    eyebrow: "연습",
     loading: "결정 훈련 공간을 준비하고 있습니다…",
     from: "원본",
     start: "연습 시작",

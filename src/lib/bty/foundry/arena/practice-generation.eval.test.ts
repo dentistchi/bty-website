@@ -11,7 +11,7 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 /**
  * Live practice-generation evaluation harness (Slice 3.2I-R2). Runs the EXACT production
  * contract. `npm run evaluate:practice-generation` sets RUN_LIVE_EVAL=1 and, when a live
- * model credential is present, generates the 12-case corpus and writes a labelled artifact
+ * model credential is present, generates the full 20-case corpus and writes a labelled artifact
  * under the git-ignored `.eval-artifacts/`. It never persists a draft / publishes / writes
  * Supabase, and NEVER substitutes deterministic output.
  */
@@ -72,7 +72,7 @@ describe("no deterministic substitution (production contract)", () => {
 });
 
 describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
-  it("generates the 12-case corpus, validates, and writes a labelled artifact", async () => {
+  it("generates the full 20-case corpus, validates, and writes a labelled artifact", async () => {
     const model = getLlmModel();
     const results: Array<Record<string, unknown>> = [];
     const drafts: ArenaScenarioDraft[] = [];
@@ -95,6 +95,35 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
     const dir = join(process.cwd(), ".eval-artifacts");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "practice-generation.latest.json"), JSON.stringify({ label: "LIVE MODEL OUTPUT", model, count: results.length, diversity, results }, null, 2));
-    expect(results.length).toBe(EVAL_CORPUS.length);
+
+    // ---- HARD GATES (Slice 3.2I-R2.14) -------------------------------------
+    // The artifact is written FIRST so a failing run still leaves full evidence to inspect.
+    // Before this, the only assertion was `results.length`, so a run in which the provider
+    // rejected every single call still passed — a total infrastructure failure was reported as
+    // a green evaluation. A model failure must never be presented as generation evidence.
+    expect(results.length).toBe(EVAL_CORPUS.length); // 1. every case actually executed
+
+    // 2. A provider/transport error is infrastructure failure, never product evidence.
+    const providerFailures = results.filter((r) => r.reason === "generation_failed").map((r) => r.id);
+    expect(providerFailures).toEqual([]);
+
+    // 3. Declines must actually decline (hard-stops are never turned into dilemmas).
+    const declined = results.filter((r) => r.declined === true).map((r) => r.id);
+    expect(declined.sort()).toEqual(EVAL_CORPUS.filter((c) => c.expectDecline).map((c) => c.id).sort());
+
+    // 4. The run must contain real generated scenarios, not only refusals.
+    const generated = results.filter((r) => r.ok === true);
+    expect(generated.length).toBeGreaterThan(0);
+
+    // 5. Any remaining non-generated case must be an explainable product state (awaiting
+    //    manager-confirmed boundaries) — never an unexplained failure.
+    const unexplained = results
+      .filter((r) => r.ok === false && r.reason !== "boundary_confirmation_required")
+      .map((r) => `${r.id}: ${r.reason}`);
+    expect(unexplained).toEqual([]);
+
+    // 6. Generated output must carry no internal Arena terminology.
+    const leaked = generated.filter((r) => /Arena|아레나/.test(JSON.stringify(r.draft))).map((r) => r.id);
+    expect(leaked).toEqual([]);
   });
 });

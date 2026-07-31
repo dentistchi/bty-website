@@ -541,7 +541,7 @@ export function ArenaPracticeFlow({
         </div>
         <h1 className="text-xl font-semibold text-white">{t.publishedTitle}</h1>
         {/* No route navigation: the native app tab is owned by BtyDailyAppShell.
-            Guide the host to the Arena tab instead of ejecting to a web route. */}
+            Guide the host to the Practice tab instead of ejecting to a web route. */}
         <p className="max-w-[20rem] text-sm leading-6 text-white/60">{t.openArenaTabHint}</p>
         <button
           type="button"
@@ -579,7 +579,7 @@ export function ArenaPracticeFlow({
         ) : null}
 
         {/* Already published at this revision → the host sees it is live. No route
-            navigation: they start it from the Arena tab (shell-owned). */}
+            navigation: learners start it from the Practice tab (shell-owned). */}
         {livePracticeId && !dirty ? (
           <div className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
             <span className="text-sm text-[#C9A66B]">✓ {t.liveBanner}</span>
@@ -624,7 +624,7 @@ export function ArenaPracticeFlow({
           </div>
           {saveState === "error" ? <p className="text-sm text-red-300/90">{t.saveError}</p> : null}
 
-          {/* Test in Arena — prominent (not a subtle header link). Always shown; if a
+          {/* Try it as a learner — prominent (not a subtle header link). Always shown; if a
               save is required first it is disabled with an honest explanation, never
               silently hidden. Tests the exact current SAVED revision. */}
           <button
@@ -637,7 +637,7 @@ export function ArenaPracticeFlow({
           </button>
           {dirty ? <p className="text-center text-xs text-white/40">{t.saveBeforeTesting}</p> : null}
 
-          {/* Publish to Arena — the exact SAVED revision. Disabled while there are
+          {/* Publish practice — the exact SAVED revision. Disabled while there are
               unsaved edits so the host never publishes bytes they didn't see. */}
           <button
             type="button"

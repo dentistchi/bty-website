@@ -99,8 +99,6 @@ export type ArenaPracticeCopy = {
   saveBeforePublish: string;
   // 3.0B.1 — prominent success + honest test gating
   publishedTitle: string;
-  publishedBody: string;
-  openInArena: string;
   openArenaTabHint: string;
   returnToTraining: string;
   backToEditor: string;
@@ -123,10 +121,10 @@ export const AUDIENCE_LABELS: Record<Locale, Record<AudienceType, string>> = {
 
 export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
   en: {
-    eyebrow: "ARENA PRACTICE",
+    eyebrow: "PRACTICE",
     back: "Back",
 
-    summaryTitle: "Create Arena practice",
+    summaryTitle: "Create practice",
     summaryLead: "Turn this training into a realistic practice scenario. You'll answer two quick questions.",
     setupTitle: "Set up practice",
     setupLead: "Before BTY creates the situations, confirm what kind of decision learners need to practice.",
@@ -204,35 +202,33 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewBranchFor: "If the learner chooses",
     previewWhatHappensNext: "What happens next",
 
-    testInArena: "Test in Arena",
-    publishToArena: "Publish to Arena",
+    testInArena: "Try it as a learner",
+    publishToArena: "Publish practice",
     publishing: "Publishing…",
-    published: "Published to Arena ✓",
+    published: "Published ✓",
     publishStale: "Save your latest edits, then publish.",
     publishError: "Couldn't publish — check the scenario and retry.",
     saveBeforePublish: "Save your edits before publishing.",
-    publishedTitle: "Published to Arena",
-    publishedBody: "Learners can now find this practice in the Arena tab.",
-    openInArena: "Open in Arena",
-    openArenaTabHint: "Open the Arena tab to start this practice.",
+    publishedTitle: "Practice published",
+    openArenaTabHint: "Learners start it from the Practice tab.",
     returnToTraining: "Return to training",
     backToEditor: "Back to editor",
-    liveBanner: "This version is published to Arena.",
+    liveBanner: "This practice is published.",
     saveBeforeTesting: "Save this draft before testing",
 
     loadError: "Couldn't load this training. Go back and retry.",
     sourceGoneTitle: "This training is no longer available",
     sourceGoneLead: "The source training was removed or you no longer have access.",
     noModuleTitle: "No published module yet",
-    noModuleLead: "Create Arena practice from a published training module.",
+    noModuleLead: "Create practice from a published training module.",
     genericError: "Something went wrong. Please retry.",
     sensitiveWarning: "Possible personal or sensitive details — please review before saving.",
   },
   ko: {
-    eyebrow: "아레나 연습",
+    eyebrow: "연습",
     back: "뒤로",
 
-    summaryTitle: "아레나 연습 만들기",
+    summaryTitle: "연습 만들기",
     summaryLead: "이 교육을 현실적인 연습 시나리오로 바꿉니다. 두 가지 질문에만 답하면 됩니다.",
     setupTitle: "Practice 설정",
     setupLead: "BTY가 상황을 만들기 전에 학습자가 어떤 판단을 연습해야 하는지 확인합니다.",
@@ -310,27 +306,25 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     previewBranchFor: "학습자가 이 선택을 하면",
     previewWhatHappensNext: "다음에 벌어지는 일",
 
-    testInArena: "Arena에서 테스트",
-    publishToArena: "Arena에 게시",
+    testInArena: "학습자로 해보기",
+    publishToArena: "연습 게시",
     publishing: "게시하는 중…",
-    published: "Arena에 게시됨 ✓",
+    published: "게시됨 ✓",
     publishStale: "최신 편집을 저장한 뒤 게시하세요.",
     publishError: "게시하지 못했습니다 — 시나리오를 확인하고 다시 시도하세요.",
     saveBeforePublish: "게시하기 전에 편집 내용을 저장하세요.",
-    publishedTitle: "Arena에 게시되었습니다",
-    publishedBody: "이제 학습자가 Arena 탭에서 이 연습을 찾을 수 있습니다.",
-    openInArena: "Arena에서 열기",
-    openArenaTabHint: "Arena 탭에서 연습을 시작하세요.",
+    publishedTitle: "연습이 게시되었습니다",
+    openArenaTabHint: "학습자는 연습 탭에서 시작합니다.",
     returnToTraining: "교육으로 돌아가기",
     backToEditor: "편집기로 돌아가기",
-    liveBanner: "이 버전이 Arena에 게시되어 있습니다.",
+    liveBanner: "이 연습은 게시된 상태입니다.",
     saveBeforeTesting: "테스트하기 전에 이 초안을 저장하세요",
 
     loadError: "이 교육을 불러오지 못했습니다. 뒤로 가서 다시 시도하세요.",
     sourceGoneTitle: "이 교육을 더 이상 사용할 수 없습니다",
     sourceGoneLead: "원본 교육이 삭제되었거나 접근 권한이 없습니다.",
     noModuleTitle: "아직 게시된 모듈이 없습니다",
-    noModuleLead: "게시된 교육 모듈에서 아레나 연습을 만들 수 있습니다.",
+    noModuleLead: "게시된 교육 모듈에서 연습을 만들 수 있습니다.",
     genericError: "문제가 발생했습니다. 다시 시도해 주세요.",
     sensitiveWarning: "개인·민감 정보가 포함되었을 수 있습니다 — 저장 전에 확인하세요.",
   },

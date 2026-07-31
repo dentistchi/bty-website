@@ -39,7 +39,7 @@ const COPY: Record<Locale, {
   en: {
     eyebrow: "Practice",
     title: "Practice it before you need it.",
-    arena: "Arena practice",
+    arena: "Practice situations",
     arenaSub: "Rehearse a real decision in a safe room.",
     fieldActions: "Action plans",
     fieldActionsSub: "Your action plans for real life.",
@@ -53,7 +53,7 @@ const COPY: Record<Locale, {
   ko: {
     eyebrow: "연습",
     title: "필요해지기 전에 미리 연습하세요.",
-    arena: "아레나 연습",
+    arena: "연습 상황",
     arenaSub: "안전한 방에서 실제 결정을 미리 연습합니다.",
     fieldActions: "행동 계획",
     fieldActionsSub: "실제 삶을 위한 나의 행동 계획.",
