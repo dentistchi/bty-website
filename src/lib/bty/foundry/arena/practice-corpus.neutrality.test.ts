@@ -102,22 +102,37 @@ describe("no corpus case tells the generator the right answer", () => {
 });
 
 describe("evaluation artifacts are immutable per run", () => {
+  /**
+   * R2.20 introduced immutable artifact naming inline in the harness. R2.23 promoted it to
+   * `evalArtifact.ts`, where path construction, fail-closed collision and the lineage index are
+   * unit-tested directly (see evalArtifact.test.ts). These cases keep asserting the HARNESS still
+   * uses that authority and still writes evidence before it asserts — the properties R2.20 was
+   * written to protect, now checked against where the behaviour actually lives.
+   */
   const harness = readFileSync(join(process.cwd(), "src/lib/bty/foundry/arena/practice-generation.eval.test.ts"), "utf8");
 
-  it("builds a unique per-run artifact path", () => {
-    expect(harness).toMatch(/IMMUTABLE_ARTIFACT/);
+  it("delegates to the immutable artifact authority rather than building a path inline", () => {
+    expect(harness).toMatch(/writeImmutableArtifact/);
+    expect(harness).toMatch(/from "\.\/evalArtifact"/);
     expect(harness).toMatch(/RUN_ID/);
-    expect(harness).toMatch(/practice-generation\.\$\{RUN_KIND\}\.\$\{RUN_ID\}\.json/);
+    expect(harness).toMatch(/PASS_ID/);
+  });
+
+  it("binds every artifact to the source HEAD and the contract manifest that produced it", () => {
+    expect(harness).toMatch(/manifestSha256/);
+    expect(harness).toMatch(/buildContractManifest/);
+    expect(harness).toMatch(/sourceHead\(\)/);
   });
 
   it("refuses to overwrite an existing run artifact", () => {
-    expect(harness).toMatch(/existsSync\(immutablePath\)/);
-    expect(harness).toMatch(/refusing to overwrite an existing run artifact/);
+    const authority = readFileSync(join(process.cwd(), "src/lib/bty/foundry/arena/evalArtifact.ts"), "utf8");
+    expect(authority).toMatch(/ARTIFACT COLLISION/);
+    expect(authority).toMatch(/existsSync\(full\)/);
   });
 
   it("writes the immutable copy BEFORE the convenience pointer, and both before the assertions", () => {
-    const iImmutable = harness.indexOf("writeFileSync(immutablePath");
-    const iLatest = harness.indexOf("writeFileSync(join(dir, LATEST_ARTIFACT)");
+    const iImmutable = harness.indexOf("writeImmutableArtifact(dir");
+    const iLatest = harness.indexOf("writeLatestPointer(dir");
     const iAssert = harness.indexOf("HARD GATES");
     expect(iImmutable).toBeGreaterThan(-1);
     expect(iLatest).toBeGreaterThan(iImmutable); // pointer is never the authority
@@ -125,7 +140,7 @@ describe("evaluation artifacts are immutable per run", () => {
   });
 
   it("emits a digest for the run", () => {
-    expect(harness).toMatch(/sha256=\$\{createHash\("sha256"\)/);
+    expect(harness).toMatch(/sha256=\$\{written\.sha256\}/);
   });
 
   it("captures no credential in the artifact payload", () => {

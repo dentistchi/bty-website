@@ -499,8 +499,11 @@ describe("R2.17 — every reviewer outcome is observable", () => {
       retryInstruction: "Replace the concealment option.",
     }));
     await generateArenaScenarioDraft(constrained);
-    expect(observed.map((o) => o.outcome)).toContain("review_reject");
+    // R2.23 — the reviewer's findings now go through the SAME precedence authority as the
+    // deterministic gates, so the outcome names the gate level. moral_decoy is Level 5.
+    expect(observed.map((o) => o.outcome)).toContain("gate_level_5");
     expect(observed.map((o) => o.code)).toContain("moral_decoy");
+    expect(observed[0].correctionPacketSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("a malformed reviewer response is recorded", async () => {
@@ -553,7 +556,7 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
     expect(second).not.toBe(first); // the measured R2.17 defect was a byte-identical retry
     expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
     expect(second).toContain("moral_decoy");
-    expect(second).toMatch(/Primary choice 2/);
+    expect(second).toMatch(/primary choice 2/i); // R2.23 correction-packet coordinate wording
   });
 
   it("21. the retry preserves the original facts and boundaries verbatim", async () => {
@@ -563,7 +566,7 @@ describe("R2.18 — defect-specific retry feedback reaches the model", () => {
     const first = genCalls[0][0].messages.map((m: { content: string }) => m.content).join("\n");
     const second = genCalls[1][0].messages.map((m: { content: string }) => m.content).join("\n");
     expect(second).toContain("A teammate proposes cutting a planned design review to hit the deadline");
-    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundary ids and statements/);
     expect(second.startsWith(first.slice(0, 200))).toBe(true); // same system contract, appended correction
   });
 
@@ -622,7 +625,7 @@ describe("R2.19 — rejected-attempt content capture is opt-in", () => {
     __setGenObserver((o) => observed.push(o)); // no captureContent
     routeReject();
     await generateArenaScenarioDraft(input);
-    const rej = observed.filter((o) => o.outcome === "review_reject");
+    const rej = observed.filter((o) => o.code === "moral_decoy"); // R2.23: outcome is now gate_level_5
     expect(rej.length).toBeGreaterThan(0);
     for (const o of rej) {
       expect(o.scenario).toBeUndefined();
@@ -635,13 +638,13 @@ describe("R2.19 — rejected-attempt content capture is opt-in", () => {
     __setGenObserver((o) => observed.push(o), { captureContent: true });
     routeReject();
     await generateArenaScenarioDraft(input);
-    const first = observed.find((o) => o.outcome === "review_reject");
+    const first = observed.find((o) => o.code === "moral_decoy"); // R2.23: outcome is now gate_level_5
     expect(first).toBeDefined();
     // the rejected scenario itself — the evidence missing from the R2.18 c01 artifact
     expect((first!.scenario as ArenaScenarioDraft).primary.choices).toHaveLength(2);
     expect(JSON.stringify(first!.review)).toContain("moral_decoy");
     expect(first!.retryFeedback).toMatch(/ATTEMPT 1 CORRECTION/);
-    expect(first!.retryFeedback).toMatch(/Primary choice 2/);
+    expect(first!.retryFeedback).toMatch(/primary choice 2/i); // R2.23 packet coordinate wording
   });
 
   it("captured evidence carries no credential, header or account metadata", async () => {
@@ -732,17 +735,20 @@ describe("R2.21 — an ungrounded confirmed boundary is corrected, then terminat
     expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
     expect(second).toContain("confirmed_boundary_absent");
     expect(second).toContain('"Two identifiers must be verified before treatment"');
-    // Everything that must NOT drift is still pinned.
+    // Everything that must NOT drift is still pinned (R2.23 correction-packet wording).
     expect(second).toContain("A teammate proposes cutting a planned design review to hit the deadline");
-    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundary ids and statements/);
   });
 
   it("the reviewer is never even consulted for an ungrounded scenario", async () => {
     mockCreate.mockImplementation(async () => envelope(silentButAttested()));
     await generateArenaScenarioDraft(constrained);
     expect(mockCreate.mock.calls.filter(([p]) => isReviewRequest(p))).toHaveLength(0);
-    expect(observed.map((o) => o.outcome)).toContain("provider_boundary_ungrounded");
+    // R2.23 — the outcome now names the GATE LEVEL, and the boundary finding is Level 3.
+    expect(observed.map((o) => o.outcome)).toContain("gate_level_3");
     expect(observed.map((o) => o.code)).toContain("confirmed_boundary_absent");
+    expect(observed[0].level).toBe(3);
+    expect(observed[0].gate).toBe("boundary_grounding");
   });
 
   it("36. the strict generation schema still requires boundaryGrounding on every request", async () => {
@@ -761,7 +767,8 @@ describe("R2.22 — sampling configuration is explicit and environment-independe
     routeWithAcceptReview(envelope(providerJson(goodDraft)));
     await generateArenaScenarioDraft(input);
     const gen = mockCreate.mock.calls.find(([p]) => !isReviewRequest(p))![0];
-    expect(PRACTICE_SAMPLING.generation).toEqual({ temperature: 0.8, topP: 0.9, maxTokens: 4000, timeoutMs: 45000 });
+    // R2.23 raised both ceilings against a MEASURED requirement — see tokenBudget.test.ts.
+    expect(PRACTICE_SAMPLING.generation).toEqual({ temperature: 0.8, topP: 0.9, maxTokens: 16000, timeoutMs: 120000 });
     expect(gen.temperature).toBe(PRACTICE_SAMPLING.generation.temperature);
     expect(gen.top_p).toBe(PRACTICE_SAMPLING.generation.topP);
     expect(gen.max_tokens).toBe(PRACTICE_SAMPLING.generation.maxTokens);
@@ -799,7 +806,7 @@ describe("R2.22 — sampling configuration is explicit and environment-independe
     expect(gens).toHaveLength(2);
     expect(PRACTICE_SAMPLING.retry).toEqual({ maxAttempts: 2, inheritsGenerationSampling: true });
     for (const g of gens) {
-      expect([g.temperature, g.top_p, g.max_tokens]).toEqual([0.8, 0.9, 4000]);
+      expect([g.temperature, g.top_p, g.max_tokens]).toEqual([0.8, 0.9, 16000]);
     }
   });
 
@@ -813,7 +820,7 @@ describe("R2.22 — sampling configuration is explicit and environment-independe
       routeWithAcceptReview(envelope(providerJson(goodDraft)));
       await generateArenaScenarioDraft(input);
       const gen = mockCreate.mock.calls.find(([p]) => !isReviewRequest(p))![0];
-      expect([gen.temperature, gen.top_p, gen.max_tokens]).toEqual([0.8, 0.9, 4000]);
+      expect([gen.temperature, gen.top_p, gen.max_tokens]).toEqual([0.8, 0.9, 16000]);
     } finally {
       process.env = before;
     }
@@ -855,11 +862,13 @@ describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
     const r = await generateArenaScenarioDraft(c01Input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(r as unknown as { value?: unknown }).not.toHaveProperty("value");
-    // The construction gate catches it first, and names exactly what is wrong: the metadata claims a
-    // competent intent for a label the facts contradict. The reviewer is never reached, so the
-    // measured reviewer variance that accepted this scenario cannot occur at all.
-    expect(observed.map((o) => o.outcome)).toContain("provider_choice_unconstructed");
+    // R2.23 — construction integrity is Level 4 and outranks content quality, so the primary code
+    // is `construction_contradicts_label`. The measured-label finding is no longer LOST to gate
+    // order: both codes now travel together in the aggregated defect list, and both reach the retry.
+    expect(observed.map((o) => o.outcome)).toContain("gate_level_4");
     expect(observed.map((o) => o.code)).toContain("construction_contradicts_label");
+    expect(observed[0].defectCodes).toContain("construction_contradicts_label");
+    expect(observed[0].defectCodes).toContain("false_reassurance");
     expect(mockCreate.mock.calls.filter(([p]) => isReviewRequest(p))).toHaveLength(0);
   });
 
@@ -882,10 +891,12 @@ describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
     mockCreate.mockImplementation(async () => envelope(providerJson(looping)));
     const r = await generateArenaScenarioDraft(input);
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
-    // Measured gate order: an older quality gate happens to reject this exact byte-identical shape
-    // first, so the R2.22 rule is asserted directly rather than claimed from the log. It is the rule
-    // that survives when the wording differs, which the byte-equality gate cannot catch.
-    expect(observed.map((o) => o.outcome)).toContain("provider_low_quality");
+    // R2.23 FIXED THE MEASURED GAP. Under R2.22 an older quality gate rejected this shape first and
+    // `repeated_choice_meaning_within_branch` never appeared anywhere — it was lost to gate order.
+    // Both findings are now aggregated at Level 6 and both reach the artifact and the retry.
+    expect(observed.map((o) => o.outcome)).toContain("gate_level_6");
+    expect(observed[0].defectCodes).toContain("repeated_choice_meaning_within_branch");
+    expect(observed[0].evidenceSources).toBeDefined();
     expect(detectMeasuredLabelDefects(looping, "").errors).toContain("repeated_choice_meaning_within_branch");
   });
 
@@ -896,9 +907,11 @@ describe("R2.22 — the measured c01 output is rejected end-to-end", () => {
     expect(gens).toHaveLength(2); // bounded — never open-ended
     const second = gens[1][0].messages.map((m: { content: string }) => m.content).join("\n");
     expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
+    // BOTH measured defects reach the retry — the R2.23 correction, in one packet.
     expect(second).toContain("construction_contradicts_label");
+    expect(second).toContain("false_reassurance");
     expect(second).toContain("Your team missed a delivery you personally promised the client");
-    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundary ids and statements/);
   });
 
   it("the same label is NOT rejected when the facts do not contradict it", async () => {

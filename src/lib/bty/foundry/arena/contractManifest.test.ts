@@ -1,0 +1,169 @@
+import { describe, it, expect } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { ARTIFACT_SCHEMA_VERSION, buildContractManifest, canonicalJson, caseDigest, digest, manifestDigest } from "./contractManifest";
+import { EVAL_CORPUS } from "./practice-generation.eval";
+import { PRACTICE_SAMPLING, REVIEW_SYSTEM_PROMPT, buildGenerationSystemPrompt } from "./arenaScenarioGenerationService";
+import { PROVIDER_SCENARIO_JSON_SCHEMA } from "@/domain/foundry/arena-draft/providerDto";
+import { SEMANTIC_REVIEW_JSON_SCHEMA } from "@/domain/foundry/arena-draft/semanticReview";
+
+/**
+ * GENERATION-CONTRACT MANIFEST (Slice 3.2I-R5B1A.1-R2.23).
+ *
+ * A live artifact is evidence for exactly one contract. R2.20 measured the cost of not binding
+ * evidence to its contract: four artifacts destroyed, and a runner that outlived its source. The
+ * manifest digest is what a runner checks BEFORE asking for a credential.
+ */
+
+const HEAD = "0".repeat(40);
+const MODEL = "gpt-4o-mini";
+const base = () => buildContractManifest(HEAD, MODEL);
+
+const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
+
+describe("27/28. reproducibility", () => {
+  it("27. the same source contract produces the same digest, every time", () => {
+    expect(manifestDigest(base())).toBe(manifestDigest(base()));
+    expect(canonicalJson(base())).toBe(canonicalJson(base()));
+  });
+
+  it("32. key insertion order cannot change the digest", () => {
+    const m = base();
+    const shuffled = JSON.parse(JSON.stringify({
+      sampling: m.sampling,
+      model: m.model,
+      components: Object.fromEntries(Object.entries(m.components).reverse()),
+      head: m.head,
+      artifactSchemaVersion: m.artifactSchemaVersion,
+    }));
+    expect(digest(shuffled)).toBe(digest(m));
+  });
+
+  it("28. it carries no timestamp, no file mtime and no clock-derived value", () => {
+    const a = canonicalJson(base());
+    expect(a).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
+    expect(a).not.toMatch(/"(timestamp|generatedAt|mtime|date|now)"/i);
+  });
+
+  it("a different HEAD is a different contract instance", () => {
+    expect(manifestDigest(buildContractManifest("1".repeat(40), MODEL))).not.toBe(manifestDigest(base()));
+  });
+
+  it("the model NAME is part of the contract", () => {
+    expect(manifestDigest(buildContractManifest(HEAD, "some-other-model"))).not.toBe(manifestDigest(base()));
+    expect(base().model).toBe(MODEL);
+  });
+});
+
+describe("28-31. sensitivity — a contract change MUST move the digest", () => {
+  const m = base();
+
+  it("28. a generator-prompt change changes its component digest", () => {
+    expect(m.components.generatorSystemPromptEn).toBe(digest(buildGenerationSystemPrompt("en", [])));
+    // The constrained variant is digested separately, so a boundary-only prompt change is visible.
+    expect(m.components.generatorSystemPromptConstrained).not.toBe(m.components.generatorSystemPromptEn);
+    expect(m.components.generatorSystemPromptKo).not.toBe(m.components.generatorSystemPromptEn);
+    expect(digest(`${buildGenerationSystemPrompt("en", [])} MUTATED`)).not.toBe(m.components.generatorSystemPromptEn);
+  });
+
+  it("28b. a reviewer-prompt change changes its component digest", () => {
+    expect(m.components.reviewSystemPrompt).toBe(digest(REVIEW_SYSTEM_PROMPT));
+    expect(digest(`${REVIEW_SYSTEM_PROMPT} MUTATED`)).not.toBe(m.components.reviewSystemPrompt);
+  });
+
+  it("29. a schema change changes its component digest", () => {
+    expect(m.components.providerSchema).toBe(digest(PROVIDER_SCENARIO_JSON_SCHEMA));
+    expect(m.components.reviewSchema).toBe(digest(SEMANTIC_REVIEW_JSON_SCHEMA));
+    const mutated = JSON.parse(JSON.stringify(PROVIDER_SCENARIO_JSON_SCHEMA));
+    mutated.properties.title = { type: "number" };
+    expect(digest(mutated)).not.toBe(m.components.providerSchema);
+  });
+
+  it("30. a corpus change changes the corpus digest — including a single case edit", () => {
+    const mutated = EVAL_CORPUS.map((c) =>
+      c.id === "c01-missed-commitment" ? { ...c, input: { ...c.input, facts: { ...c.input.facts, problem: "edited" } } } : c,
+    ).map((c) => ({ id: c.id, locale: c.locale, expectDecline: c.expectDecline ?? false, expectClass: c.expectClass ?? null, input: c.input }));
+    expect(digest(mutated)).not.toBe(m.components.corpus);
+    // Removing a case moves it too, so a corpus deletion cannot pass unnoticed.
+    expect(digest(EVAL_CORPUS.slice(1).map((c) => c.id))).not.toBe(m.components.corpusIds);
+  });
+
+  it("30b. the canary-case digest isolates the three bound cases", () => {
+    expect(caseDigest(CANARY_CASES)).toBe(caseDigest([...CANARY_CASES].reverse())); // order-insensitive
+    expect(caseDigest(CANARY_CASES)).not.toBe(caseDigest(["c01-missed-commitment"]));
+    expect(caseDigest(CANARY_CASES)).not.toBe(m.components.corpus); // narrower than the whole corpus
+  });
+
+  it("31. a sampling change changes the sampling digest", () => {
+    expect(m.components.sampling).toBe(digest({ generation: PRACTICE_SAMPLING.generation, review: PRACTICE_SAMPLING.review, retry: PRACTICE_SAMPLING.retry }));
+    expect(digest({ generation: { ...PRACTICE_SAMPLING.generation, temperature: 0.7 }, review: PRACTICE_SAMPLING.review, retry: PRACTICE_SAMPLING.retry }))
+      .not.toBe(m.components.sampling);
+    expect(digest({ generation: { ...PRACTICE_SAMPLING.generation, maxTokens: 4000 }, review: PRACTICE_SAMPLING.review, retry: PRACTICE_SAMPLING.retry }))
+      .not.toBe(m.components.sampling);
+  });
+
+  it("a precedence-registry change changes the manifest — gate order IS part of the contract", () => {
+    expect(m.components.rejectionPrecedence).toMatch(/^[0-9a-f]{64}$/);
+    expect(digest(["a", "b"])).not.toBe(m.components.rejectionPrecedence);
+  });
+
+  it("the artifact schema version is pinned, so old evidence is never read as new", () => {
+    expect(m.artifactSchemaVersion).toBe(ARTIFACT_SCHEMA_VERSION);
+    expect(ARTIFACT_SCHEMA_VERSION).toMatch(/^r2\.\d+\.\d+$/);
+  });
+});
+
+describe("33/34. secrets and environment", () => {
+  it("33. no credential, endpoint or account identifier can reach the manifest", () => {
+    const before = { ...process.env };
+    process.env.OPENAI_API_KEY = "sk-should-never-appear-abcdef";
+    process.env.LLM_API_KEY = "sk-also-never-appear-123456";
+    process.env.LLM_BASE_URL = "https://secret.endpoint.example/v1";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-should-never-appear";
+    try {
+      const text = canonicalJson(buildContractManifest(HEAD, MODEL));
+      expect(text).not.toContain("sk-should-never-appear");
+      expect(text).not.toContain("sk-also-never-appear");
+      expect(text).not.toContain("secret.endpoint.example");
+      expect(text).not.toContain("service-role-should-never-appear");
+      expect(text).not.toMatch(/api[_-]?key|authorization|bearer|base_?url/i);
+    } finally {
+      process.env = before;
+    }
+  });
+
+  it("34. unrelated environment variables cannot change the digest", () => {
+    const before = { ...process.env };
+    const baseline = manifestDigest(base());
+    (process.env as Record<string, string>).NODE_ENV = "production";
+    process.env.CI = "1";
+    process.env.SOME_UNRELATED_FLAG = "whatever";
+    process.env.OPENAI_API_KEY = "sk-rotated";
+    try {
+      expect(manifestDigest(base())).toBe(baseline);
+    } finally {
+      process.env = before;
+    }
+  });
+});
+
+describe("the manifest CLI is the runner's binding source", () => {
+  it("exists, prints canonical JSON, and reads no secret", () => {
+    const p = join(process.cwd(), "scripts/practice-contract-manifest.ts");
+    expect(existsSync(p)).toBe(true);
+    const src = readFileSync(p, "utf8");
+    expect(src).toContain("manifestSha256");
+    expect(src).toContain("--json");
+    expect(src).not.toMatch(/OPENAI_API_KEY|LLM_API_KEY|LLM_BASE_URL/);
+    // The model NAME is contract, and is the only environment value read.
+    expect(src).toContain("process.env.LLM_MODEL");
+  });
+
+  it("binds the three canary cases by name, and all three still exist in the corpus", () => {
+    const src = readFileSync(join(process.cwd(), "scripts/practice-contract-manifest.ts"), "utf8");
+    for (const id of CANARY_CASES) {
+      expect(src, `${id} is not bound in the manifest CLI`).toContain(id);
+      expect(EVAL_CORPUS.some((c) => c.id === id), `${id} is missing from the corpus`).toBe(true);
+    }
+  });
+});

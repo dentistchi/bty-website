@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { isLlmAvailable, getLlmModel } from "@/lib/bty/llm/client";
 import { generateArenaScenarioDraft, __setGenObserver, type GenObservation } from "./arenaScenarioGenerationService";
 import { validateIncidentSpecific } from "@/domain/foundry/arena-draft/quality";
 import { classifyPracticeEligibility } from "@/domain/foundry/arena-draft/safety";
 import { EVAL_CORPUS, crossScenarioDiversity } from "./practice-generation.eval";
+import { ARTIFACT_DIR, artifactPath, lineageIndex, writeImmutableArtifact, writeLatestPointer } from "./evalArtifact";
+import { buildContractManifest, caseDigest, manifestDigest } from "./contractManifest";
+import { PRACTICE_SAMPLING } from "./arenaScenarioGenerationService";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 
 /**
@@ -33,9 +35,23 @@ const SELECTED = ONLY.length ? EVAL_CORPUS.filter((c) => ONLY.includes(c.id)) : 
  * convenience `latest` copy is written afterwards and is never the authority.
  */
 const RUN_ID = process.env.EVAL_RUN_ID?.trim() || `${process.env.EVAL_SLICE?.trim() || "run"}-${Date.now()}`;
-const RUN_KIND = ONLY.length ? "subset" : "full";
-const IMMUTABLE_ARTIFACT = `practice-generation.${RUN_KIND}.${RUN_ID}.json`;
+const PASS_ID = process.env.EVAL_PASS_ID?.trim() || "pass1";
+const RUN_KIND = process.env.EVAL_KIND?.trim() || (ONLY.length ? "subset" : "full");
 const LATEST_ARTIFACT = ONLY.length ? "practice-generation.canary.json" : "practice-generation.latest.json";
+
+/**
+ * R2.23 — an artifact is evidence for exactly ONE contract. Its identity carries the source HEAD and
+ * the generation-contract manifest digest, so a result can never be attributed to a contract that
+ * did not produce it, and a runner bound to a stale contract cannot quietly write over fresh
+ * evidence.
+ */
+function sourceHead(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
 
 describe("practice-generation corpus is well-formed", () => {
   it("covers >=16 cases, >=8 English, >=4 Korean, incl. mixed-safety, ambiguous, and confirmed-boundary cases", () => {
@@ -120,16 +136,43 @@ describe.runIf(LIVE)("LIVE corpus (RUN_LIVE_EVAL=1)", () => {
       }
     }
     const diversity = crossScenarioDiversity(drafts);
-    const dir = join(process.cwd(), ".eval-artifacts");
-    mkdirSync(dir, { recursive: true });
-    const payload = JSON.stringify({ label: "LIVE MODEL OUTPUT", runId: RUN_ID, model, selectedIds: SELECTED.map((c) => c.id), count: results.length, diversity, results }, null, 2);
-    // Immutable first — a run must never be able to destroy the sole copy of a previous one.
-    const immutablePath = join(dir, IMMUTABLE_ARTIFACT);
-    if (existsSync(immutablePath)) throw new Error(`refusing to overwrite an existing run artifact: ${IMMUTABLE_ARTIFACT}`);
-    writeFileSync(immutablePath, payload);
-    // Convenience pointer only, written after the authoritative copy is safe.
-    writeFileSync(join(dir, LATEST_ARTIFACT), payload);
-    console.info(`[eval] artifact ${IMMUTABLE_ARTIFACT} sha256=${createHash("sha256").update(payload).digest("hex")}`);
+    const dir = join(process.cwd(), ARTIFACT_DIR);
+    const head = sourceHead();
+    const manifest = buildContractManifest(head, model);
+    const manifestSha256 = manifestDigest(manifest);
+    const identity = { kind: RUN_KIND, runId: RUN_ID, head, manifestSha256, passId: PASS_ID };
+    const payload = JSON.stringify(
+      {
+        label: "LIVE MODEL OUTPUT",
+        artifactSchemaVersion: manifest.artifactSchemaVersion,
+        runId: RUN_ID,
+        passId: PASS_ID,
+        head,
+        manifestSha256,
+        corpusSha256: manifest.components.corpus,
+        selectedCaseSha256: caseDigest(SELECTED.map((c) => c.id)),
+        providerSchemaSha256: manifest.components.providerSchema,
+        reviewSchemaSha256: manifest.components.reviewSchema,
+        generatorPromptSha256: manifest.components.generatorSystemPromptEn,
+        reviewPromptSha256: manifest.components.reviewSystemPrompt,
+        model,
+        sampling: PRACTICE_SAMPLING,
+        selectedIds: SELECTED.map((c) => c.id),
+        expectedCount: SELECTED.length,
+        executedCount: results.length,
+        diversity,
+        results,
+      },
+      null,
+      2,
+    );
+    // Immutable FIRST — a run must never be able to destroy the sole copy of a previous one, and a
+    // failing run must still leave its complete evidence behind.
+    const written = writeImmutableArtifact(dir, identity, payload);
+    // Convenience pointer only, written after the authoritative copy is safe. Never the authority.
+    writeLatestPointer(dir, payload, LATEST_ARTIFACT);
+    console.info(`[eval] artifact ${written.path} sha256=${written.sha256} head=${head} manifest=${manifestSha256}`);
+    console.info(`[eval] lineage: ${lineageIndex(dir).length} immutable artifact(s) present`);
 
     // ---- HARD GATES (Slice 3.2I-R2.14) -------------------------------------
     // The artifact is written FIRST so a failing run still leaves full evidence to inspect.
