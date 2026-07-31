@@ -20,14 +20,25 @@
  */
 
 import {
-  ACTION_CHOICES_MAX,
-  ACTION_PROMPT_MAX,
-  CHOICE_LABEL_MAX,
-  ESCALATION_MAX,
-  OPENING_MAX,
-  PRIMARY_CHOICES_MAX,
-  TITLE_MAX,
-  TRADEOFF_CHOICES_MAX,
+  GENERATED_ACTION_CHOICES,
+  GENERATED_PRIMARY_CHOICES,
+  GENERATED_TRADEOFF_CHOICES,
+  GEN_ACTION_PROMPT_MAX,
+  GEN_ACTION_TEXT_MAX,
+  GEN_CHOICE_LABEL_MAX,
+  GEN_COST_MAX,
+  GEN_DIMENSIONS_MAX_ITEMS,
+  GEN_DIMENSION_MAX,
+  GEN_ESCALATION_MAX,
+  GEN_GROUNDING_STATEMENT_MAX,
+  GEN_GROUNDING_TEXT_MAX,
+  GEN_INTENT_MAX,
+  GEN_OPENING_MAX,
+  GEN_RATIONALE_MAX,
+  GEN_SHORT_REASON_MAX,
+  GEN_TITLE_MAX,
+  GEN_REVIEW_TEXT_MAX,
+  GEN_VALUE_MAX,
 } from "./types";
 import { CONSTRAINTS_MAX } from "./boundary";
 import type { ProviderPracticeScenario } from "./providerDto";
@@ -72,11 +83,15 @@ type Sizes = {
 };
 
 const SIZES: Record<FixtureProfile, Sizes> = {
+  // R2.23A — the `schema` profile is now the GENERATION schema's permitted maximum: every string at
+  // its bounded limit, every array at its exact/maximum count. It is finite by construction.
   schema: {
-    title: TITLE_MAX, opening: OPENING_MAX, escalation: ESCALATION_MAX, prompt: ACTION_PROMPT_MAX, label: CHOICE_LABEL_MAX,
-    value: 120, cost: 200, intent: 300, action: 300, safety: 200, notDominated: 200, distinguishes: 200,
-    rationale: 160, boundaries: CONSTRAINTS_MAX,
-    gStatement: 300, gPresence: 240, gEffect: 240, gProhibited: 200, gRemaining: 60, gRemainingCount: 4,
+    title: GEN_TITLE_MAX, opening: GEN_OPENING_MAX, escalation: GEN_ESCALATION_MAX, prompt: GEN_ACTION_PROMPT_MAX, label: GEN_CHOICE_LABEL_MAX,
+    value: GEN_VALUE_MAX, cost: GEN_COST_MAX, intent: GEN_INTENT_MAX, action: GEN_ACTION_TEXT_MAX,
+    safety: GEN_SHORT_REASON_MAX, notDominated: GEN_SHORT_REASON_MAX, distinguishes: GEN_SHORT_REASON_MAX,
+    rationale: GEN_RATIONALE_MAX, boundaries: CONSTRAINTS_MAX,
+    gStatement: GEN_GROUNDING_STATEMENT_MAX, gPresence: GEN_GROUNDING_TEXT_MAX, gEffect: GEN_GROUNDING_TEXT_MAX,
+    gProhibited: GEN_SHORT_REASON_MAX, gRemaining: GEN_DIMENSION_MAX, gRemainingCount: GEN_DIMENSIONS_MAX_ITEMS,
   },
   // Measured from the R2.19 canary artifacts: labels ran 60-110 chars, openings ~350, escalations
   // ~150, prompts ~45. Every number below is generous against those observations.
@@ -89,7 +104,7 @@ const SIZES: Record<FixtureProfile, Sizes> = {
 };
 
 /** Total user-facing choices at maximum cardinality: 4 primary + 3 + 3 flat + 4 branches x 6. */
-export const MAX_VISIBLE_CHOICES = PRIMARY_CHOICES_MAX + TRADEOFF_CHOICES_MAX + ACTION_CHOICES_MAX + PRIMARY_CHOICES_MAX * (TRADEOFF_CHOICES_MAX + ACTION_CHOICES_MAX);
+export const MAX_VISIBLE_CHOICES = GENERATED_PRIMARY_CHOICES + GENERATED_TRADEOFF_CHOICES + GENERATED_ACTION_CHOICES + GENERATED_PRIMARY_CHOICES * (GENERATED_TRADEOFF_CHOICES + GENERATED_ACTION_CHOICES);
 
 /**
  * Deterministic filler of an exact length. Latin text stands in for a realistic English scenario;
@@ -135,7 +150,7 @@ const actionChoice = (seed: string, boundaryIds: string[], hangul: boolean, z: S
   isActionCommitment: commit,
 });
 
-const actionDecision = (seed: string, boundaryIds: string[], hangul: boolean, z: Sizes, n: number = ACTION_CHOICES_MAX) => ({
+const actionDecision = (seed: string, boundaryIds: string[], hangul: boolean, z: Sizes, n: number = GENERATED_ACTION_CHOICES) => ({
   prompt: filler(z.prompt, `${seed}p`, hangul),
   choices: Array.from({ length: n }, (_, i) => actionChoice(`${seed}a${i}`, boundaryIds, hangul, z, i === 0)),
 });
@@ -160,9 +175,9 @@ const grounding = (ids: string[], hangul: boolean, z: Sizes): ProviderBoundaryGr
  */
 export function buildMaxProviderScenario(hangul = false, profile: FixtureProfile = "schema", card: Cardinality = {}): ProviderPracticeScenario {
   const z = SIZES[profile];
-  const primaryCount = card.primary ?? PRIMARY_CHOICES_MAX;
-  const tradeoffCount = card.tradeoff ?? TRADEOFF_CHOICES_MAX;
-  const actionCount = card.action ?? ACTION_CHOICES_MAX;
+  const primaryCount = card.primary ?? GENERATED_PRIMARY_CHOICES;
+  const tradeoffCount = card.tradeoff ?? GENERATED_TRADEOFF_CHOICES;
+  const actionCount = card.action ?? GENERATED_ACTION_CHOICES;
   const ids = maxBoundaryIds(card.boundaries ?? z.boundaries);
   return {
     noSafeJudgmentSpace: false,
@@ -214,12 +229,13 @@ export function buildMinProviderScenario(): ProviderPracticeScenario {
  */
 export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile = "schema", card: Cardinality = {}): SemanticReview {
   const z = SIZES[profile];
-  const primaryCount = card.primary ?? PRIMARY_CHOICES_MAX;
-  const tradeoffCount = card.tradeoff ?? TRADEOFF_CHOICES_MAX;
-  const actionCount = card.action ?? ACTION_CHOICES_MAX;
+  const primaryCount = card.primary ?? GENERATED_PRIMARY_CHOICES;
+  const tradeoffCount = card.tradeoff ?? GENERATED_TRADEOFF_CHOICES;
+  const actionCount = card.action ?? GENERATED_ACTION_CHOICES;
   const ids = maxBoundaryIds(card.boundaries ?? z.boundaries);
-  const scale = profile === "schema" ? 1 : 0.6;
-  const text = (n: number, seed: string) => filler(Math.max(8, Math.round(n * scale)), seed, hangul);
+  // R2.23A — reviewer text is bounded too, so the review maximum is finite and measurable.
+  const cap = profile === "schema" ? GEN_REVIEW_TEXT_MAX : Math.round(GEN_REVIEW_TEXT_MAX * 0.6);
+  const text = (n: number, seed: string) => filler(Math.max(8, Math.min(n, cap)), seed, hangul);
   const phases: Array<{ phase: "primary" | "flat_tradeoff" | "flat_action" | "branch_tradeoff" | "branch_action"; branchIndex: number; count: number }> = [
     { phase: "primary", branchIndex: -1, count: primaryCount },
     { phase: "flat_tradeoff", branchIndex: -1, count: tradeoffCount },
@@ -231,7 +247,7 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
     noSafeJudgmentSpace: false,
     noSafeReasonCode: "judgment_space_remains",
     boundaryIdsConsidered: ids,
-    remainingJudgmentDimensions: Array.from({ length: 8 }, (_, i) => text(60, `rjd${i}`)),
+    remainingJudgmentDimensions: Array.from({ length: 4 }, (_, i) => text(60, `rjd${i}`)),
     violatedBoundaryIds: [],
     explanation: text(600, "expl"),
     primaryChoices: Array.from({ length: primaryCount }, (_, i) => ({
@@ -260,7 +276,7 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
       actionDecisionDimension: text(160, `bad${i}`),
       tradeoffAdvancesScenario: true,
       actionAdvancesScenario: true,
-      repeatedMeaningPairs: Array.from({ length: 3 }, (_, j) => text(120, `brm${i}${j}`)),
+      repeatedMeaningPairs: Array.from({ length: 4 }, (_, j) => text(140, `brm${i}${j}`)),
       progressionValid: true,
       selectedPrimaryEffect: text(240, `bse${i}`),
       affectedStakeholders: Array.from({ length: 4 }, (_, j) => text(60, `bas${i}${j}`)),
@@ -291,10 +307,10 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
       })),
     ),
     crossBranch: {
-      resultingWorldOverlapPairs: Array.from({ length: 6 }, (_, i) => text(40, `cwo${i}`)),
-      nextDecisionAxisOverlapPairs: Array.from({ length: 6 }, (_, i) => text(40, `cna${i}`)),
-      stakeholderOverlapPairs: Array.from({ length: 6 }, (_, i) => text(40, `cso${i}`)),
-      repeatedActionMeaningPairs: Array.from({ length: 6 }, (_, i) => text(40, `cra${i}`)),
+      resultingWorldOverlapPairs: Array.from({ length: 6 }, (_, i) => text(16, `cwo${i}`)),
+      nextDecisionAxisOverlapPairs: Array.from({ length: 6 }, (_, i) => text(16, `cna${i}`)),
+      stakeholderOverlapPairs: Array.from({ length: 6 }, (_, i) => text(16, `cso${i}`)),
+      repeatedActionMeaningPairs: Array.from({ length: 6 }, (_, i) => text(16, `cra${i}`)),
       branchesInterchangeable: false,
       allBranchesSameGenericAxis: false,
       defectCodes: [],

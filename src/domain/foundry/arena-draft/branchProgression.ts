@@ -25,6 +25,8 @@
  * Pure domain: no I/O, no provider, no DB.
  */
 
+import { GEN_EXPLANATION_MAX, GEN_PAIRS_MAX_ITEMS, GEN_PAIR_MAX, GEN_REVIEW_TEXT_MAX } from "./types";
+
 // ---------------------------------------------------------------------------
 // Codes
 // ---------------------------------------------------------------------------
@@ -74,18 +76,18 @@ export type BranchProgressionFields = {
 
 export const BRANCH_PROGRESSION_SCHEMA_PROPERTIES = {
   primaryDecisionPreserved: { type: "boolean" },
-  tradeoffDecisionDimension: { type: "string" },
-  actionDecisionDimension: { type: "string" },
+  tradeoffDecisionDimension: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+  actionDecisionDimension: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
   tradeoffAdvancesScenario: { type: "boolean" },
   actionAdvancesScenario: { type: "boolean" },
-  repeatedMeaningPairs: { type: "array", items: { type: "string" } },
+  repeatedMeaningPairs: { type: "array", maxItems: 4, items: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX } },
   progressionValid: { type: "boolean" },
-  selectedPrimaryEffect: { type: "string" },
-  affectedStakeholders: { type: "array", items: { type: "string" } },
-  resourceOrRelationshipChange: { type: "string" },
-  causalLink: { type: "string" },
-  boundaryState: { type: "string" },
-  urgencyState: { type: "string" },
+  selectedPrimaryEffect: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+  affectedStakeholders: { type: "array", maxItems: 4, items: { type: "string", maxLength: 60 } },
+  resourceOrRelationshipChange: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+  causalLink: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+  boundaryState: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+  urgencyState: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
 } as const;
 
 export const BRANCH_PROGRESSION_REQUIRED = [
@@ -114,14 +116,14 @@ export const CROSS_BRANCH_REVIEW_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    resultingWorldOverlapPairs: { type: "array", items: { type: "string" } },
-    nextDecisionAxisOverlapPairs: { type: "array", items: { type: "string" } },
-    stakeholderOverlapPairs: { type: "array", items: { type: "string" } },
-    repeatedActionMeaningPairs: { type: "array", items: { type: "string" } },
+    resultingWorldOverlapPairs: { type: "array", maxItems: GEN_PAIRS_MAX_ITEMS, items: { type: "string", maxLength: GEN_PAIR_MAX } },
+    nextDecisionAxisOverlapPairs: { type: "array", maxItems: GEN_PAIRS_MAX_ITEMS, items: { type: "string", maxLength: GEN_PAIR_MAX } },
+    stakeholderOverlapPairs: { type: "array", maxItems: GEN_PAIRS_MAX_ITEMS, items: { type: "string", maxLength: GEN_PAIR_MAX } },
+    repeatedActionMeaningPairs: { type: "array", maxItems: GEN_PAIRS_MAX_ITEMS, items: { type: "string", maxLength: GEN_PAIR_MAX } },
     branchesInterchangeable: { type: "boolean" },
     allBranchesSameGenericAxis: { type: "boolean" },
     defectCodes: { type: "array", items: { type: "string", enum: CROSS_BRANCH_DEFECT_CODES } },
-    conciseExplanation: { type: "string" },
+    conciseExplanation: { type: "string", maxLength: GEN_EXPLANATION_MAX },
   },
   required: [
     "resultingWorldOverlapPairs", "nextDecisionAxisOverlapPairs", "stakeholderOverlapPairs",

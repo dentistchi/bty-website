@@ -27,6 +27,7 @@
  */
 
 import { BOUNDARY_DEFECT_CODES, DECISION_STAGES, OPERATIVE_STAGES, type DecisionStage } from "./boundaryGrounding";
+import { GENERATED_PRIMARY_CHOICES, GEN_BOUNDARY_ID_MAX, GEN_DIMENSIONS_MAX_ITEMS, GEN_DIMENSION_MAX, GEN_EXPLANATION_MAX, GEN_PAIRS_MAX_ITEMS, GEN_PAIR_MAX, GEN_REVIEW_TEXT_MAX, GEN_SHORT_REASON_MAX } from "./types";
 import { type ChoicePhase, type ChoiceRef } from "./choiceConstruction";
 import {
   PHASE_CHOICE_DEFECT_CODES,
@@ -235,18 +236,21 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
     noSafeJudgmentSpace: { type: "boolean" },
     noSafeReasonCode: { type: "string", enum: NO_SAFE_REASON_CODES },
     boundaryIdsConsidered: strArray,
-    remainingJudgmentDimensions: strArray,
+    remainingJudgmentDimensions: { type: "array", maxItems: GEN_DIMENSIONS_MAX_ITEMS, items: { type: "string", maxLength: GEN_DIMENSION_MAX } },
     violatedBoundaryIds: strArray,
-    explanation: { type: "string" },
+    explanation: { type: "string", maxLength: GEN_EXPLANATION_MAX },
     primaryChoices: {
+      // R2.23A — generated Practice offers EXACTLY two primary choices.
       type: "array",
+      minItems: GENERATED_PRIMARY_CHOICES,
+      maxItems: GENERATED_PRIMARY_CHOICES,
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
           index: { type: "integer" },
-          legitimateValue: { type: "string" },
-          acceptedCost: { type: "string" },
+          legitimateValue: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+          acceptedCost: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
           defensible: { type: "boolean" },
           defectCodes: { type: "array", items: { type: "string", enum: CHOICE_DEFECT_CODES } },
         },
@@ -254,22 +258,25 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
       },
     },
     twoValuesInTension: { type: "boolean" },
-    tensionValueA: { type: "string" },
-    tensionValueB: { type: "string" },
+    tensionValueA: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+    tensionValueB: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
     branches: {
+      // One branch per primary choice — exactly two.
       type: "array",
+      minItems: GENERATED_PRIMARY_CHOICES,
+      maxItems: GENERATED_PRIMARY_CHOICES,
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
           index: { type: "integer" },
-          selectedPrimarySummary: { type: "string" },
-          resultingWorldState: { type: "string" },
-          newConstraintOrPressure: { type: "string" },
-          nextDecisionDimension: { type: "string" },
+          selectedPrimarySummary: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
+          resultingWorldState: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+          newConstraintOrPressure: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+          nextDecisionDimension: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
           repeatsPrimaryDecision: { type: "boolean" },
           overlapsOtherBranchIndex: { type: "integer" },
-          overlapReason: { type: "string" },
+          overlapReason: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
           branchDistinct: { type: "boolean" },
           defectCodes: { type: "array", items: { type: "string", enum: BRANCH_DEFECT_CODES } },
           ...BRANCH_PROGRESSION_SCHEMA_PROPERTIES,
@@ -291,7 +298,7 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
         type: "object",
         additionalProperties: false,
         properties: {
-          boundaryId: { type: "string" },
+          boundaryId: { type: "string", maxLength: GEN_BOUNDARY_ID_MAX },
           presentInScenario: { type: "boolean" },
           operationalized: { type: "boolean" },
           affectedStages: { type: "array", items: { type: "string", enum: DECISION_STAGES } },
@@ -300,11 +307,11 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
           allTradeoffChoicesComply: { type: "boolean" },
           allActionChoicesComply: { type: "boolean" },
           prohibitedAlternativeExcluded: { type: "boolean" },
-          remainingJudgmentDimensions: strArray,
-          violatedChoiceReferences: strArray,
-          violatedBranchReferences: strArray,
+          remainingJudgmentDimensions: { type: "array", maxItems: GEN_DIMENSIONS_MAX_ITEMS, items: { type: "string", maxLength: GEN_DIMENSION_MAX } },
+          violatedChoiceReferences: { type: "array", maxItems: 4, items: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX } },
+          violatedBranchReferences: { type: "array", maxItems: 4, items: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX } },
           defectCodes: { type: "array", items: { type: "string", enum: BOUNDARY_DEFECT_CODES } },
-          conciseExplanation: { type: "string" },
+          conciseExplanation: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
         },
         required: [
           "boundaryId", "presentInScenario", "operationalized", "affectedStages",
@@ -319,19 +326,21 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
       additionalProperties: false,
       properties: {
         urgencyPresent: { type: "boolean" },
-        urgencySource: { type: "string" },
+        urgencySource: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
         timeSensitiveHarmPossible: { type: "boolean" },
         choices: {
           type: "array",
+          minItems: GENERATED_PRIMARY_CHOICES,
+          maxItems: GENERATED_PRIMARY_CHOICES,
           items: {
             type: "object",
             additionalProperties: false,
             properties: {
               index: { type: "integer" },
               introducesDelay: { type: "boolean" },
-              delayPurpose: { type: "string" },
-              safetyBasis: { type: "string" },
-              foreseeableHarm: { type: "string" },
+              delayPurpose: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+              safetyBasis: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+              foreseeableHarm: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
               escalationUsed: { type: "boolean" },
               defensible: { type: "boolean" },
               defectCodes: { type: "array", items: { type: "string", enum: URGENCY_DEFECT_CODES } },
@@ -345,7 +354,7 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
     },
     overallVerdict: { type: "string", enum: ["accept", "reject"] },
     defectCodes: strArray,
-    retryInstruction: { type: "string" },
+    retryInstruction: { type: "string", maxLength: GEN_EXPLANATION_MAX },
   },
   required: [
     "noSafeJudgmentSpace", "noSafeReasonCode", "boundaryIdsConsidered", "remainingJudgmentDimensions",

@@ -30,6 +30,10 @@ describe("27/28. reproducibility", () => {
   it("32. key insertion order cannot change the digest", () => {
     const m = base();
     const shuffled = JSON.parse(JSON.stringify({
+      schemaCanExceedBudget: m.schemaCanExceedBudget,
+      modelOutputCap: m.modelOutputCap,
+      fieldBounds: m.fieldBounds,
+      cardinality: m.cardinality,
       sampling: m.sampling,
       model: m.model,
       components: Object.fromEntries(Object.entries(m.components).reverse()),
@@ -109,7 +113,37 @@ describe("28-31. sensitivity — a contract change MUST move the digest", () => 
 
   it("the artifact schema version is pinned, so old evidence is never read as new", () => {
     expect(m.artifactSchemaVersion).toBe(ARTIFACT_SCHEMA_VERSION);
-    expect(ARTIFACT_SCHEMA_VERSION).toMatch(/^r2\.\d+\.\d+$/);
+    expect(ARTIFACT_SCHEMA_VERSION).toMatch(/^r2\.\d+[a-z]?\.\d+$/);
+  });
+});
+
+describe("R2.23A — cardinality, bounds and budget are part of the contract", () => {
+  const m = base();
+
+  it("26. a cardinality mutation changes the manifest", () => {
+    expect(m.cardinality).toEqual({ primaryChoices: 2, branches: 2, tradeoffChoicesPerBranch: 2, actionChoicesPerBranch: 2, flatTradeoffChoices: 2, flatActionChoices: 2 });
+    expect(digest({ ...m.cardinality, primaryChoices: 4 })).not.toBe(m.components.generatedCardinality);
+    expect(m.components.generatedCardinality).toBe(digest(m.cardinality));
+  });
+
+  it("27. a field-bound mutation changes the manifest", () => {
+    expect(m.components.generatedFieldBounds).toBe(digest(m.fieldBounds));
+    expect(digest({ ...m.fieldBounds, choiceLabel: 400 })).not.toBe(m.components.generatedFieldBounds);
+  });
+
+  it("28. a budget mutation changes the manifest, and the model cap is recorded", () => {
+    expect(m.modelOutputCap).toBe(16384);
+    expect(m.components.tokenBudget).toMatch(/^[0-9a-f]{64}$/);
+    expect(digest({ modelOutputCap: 32768 })).not.toBe(m.components.tokenBudget);
+  });
+
+  it("29. the R2.23 manifest no longer matches — a prior artifact cannot be attributed to this contract", () => {
+    expect(manifestDigest(m)).not.toBe("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10");
+    expect(m.artifactSchemaVersion).toBe("r2.23a.1");
+  });
+
+  it("the measured budget acceptance is carried in the manifest, not asserted away", () => {
+    expect(typeof m.schemaCanExceedBudget).toBe("boolean");
   });
 });
 

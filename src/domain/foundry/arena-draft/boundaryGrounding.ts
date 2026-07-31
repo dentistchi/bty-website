@@ -35,7 +35,14 @@
  * Pure domain: no I/O, no provider, no DB. Never rewrites a scenario.
  */
 
-import type { ArenaScenarioDraft } from "./types";
+import {
+  GEN_DIMENSIONS_MAX_ITEMS,
+  GEN_DIMENSION_MAX,
+  GEN_GROUNDING_STATEMENT_MAX,
+  GEN_GROUNDING_TEXT_MAX,
+  GEN_SHORT_REASON_MAX,
+  type ArenaScenarioDraft,
+} from "./types";
 import type { BoundaryConstraint } from "./boundary";
 
 // ---------------------------------------------------------------------------
@@ -97,17 +104,18 @@ const strArray = { type: "array", items: { type: "string" } } as const;
 /** Strict schema fragment — composed into the provider scenario schema. */
 export const BOUNDARY_GROUNDING_JSON_SCHEMA = {
   type: "array",
+  maxItems: 10, // CONSTRAINTS_MAX — one grounding record per confirmed boundary, never more
   items: {
     type: "object",
     additionalProperties: false,
     properties: {
-      boundaryId: { type: "string" },
-      boundaryStatement: { type: "string" },
-      scenarioPresence: { type: "string" },
-      operationalEffect: { type: "string" },
-      affectedDecisionStages: { type: "array", items: { type: "string", enum: DECISION_STAGES } },
-      prohibitedAlternativeExcluded: { type: "string" },
-      remainingJudgmentDimensions: strArray,
+      boundaryId: { type: "string", maxLength: 120 },
+      boundaryStatement: { type: "string", maxLength: GEN_GROUNDING_STATEMENT_MAX },
+      scenarioPresence: { type: "string", maxLength: GEN_GROUNDING_TEXT_MAX },
+      operationalEffect: { type: "string", maxLength: GEN_GROUNDING_TEXT_MAX },
+      affectedDecisionStages: { type: "array", maxItems: DECISION_STAGES.length, items: { type: "string", enum: DECISION_STAGES } },
+      prohibitedAlternativeExcluded: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
+      remainingJudgmentDimensions: { type: "array", maxItems: GEN_DIMENSIONS_MAX_ITEMS, items: { type: "string", maxLength: GEN_DIMENSION_MAX } },
     },
     required: [
       "boundaryId",

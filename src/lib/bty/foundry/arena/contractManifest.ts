@@ -27,9 +27,72 @@ import { registeredCodes } from "@/domain/foundry/arena-draft/gatePrecedence";
 import { MUST_REMAIN_UNCHANGED } from "@/domain/foundry/arena-draft/correctionPacket";
 import { PRACTICE_SAMPLING, REVIEW_SYSTEM_PROMPT, buildGenerationSystemPrompt } from "./arenaScenarioGenerationService";
 import { EVAL_CORPUS } from "./practice-generation.eval";
+import {
+  GENERATED_ACTION_CHOICES,
+  GENERATED_PRIMARY_CHOICES,
+  GENERATED_TRADEOFF_CHOICES,
+  GEN_ACTION_PROMPT_MAX,
+  GEN_ACTION_TEXT_MAX,
+  GEN_BOUNDARY_ID_MAX,
+  GEN_CHOICE_LABEL_MAX,
+  GEN_COST_MAX,
+  GEN_DIMENSIONS_MAX_ITEMS,
+  GEN_DIMENSION_MAX,
+  GEN_ESCALATION_MAX,
+  GEN_EXPLANATION_MAX,
+  GEN_GROUNDING_STATEMENT_MAX,
+  GEN_GROUNDING_TEXT_MAX,
+  GEN_INTENT_MAX,
+  GEN_OPENING_MAX,
+  GEN_PAIRS_MAX_ITEMS,
+  GEN_PAIR_MAX,
+  GEN_RATIONALE_MAX,
+  GEN_REVIEW_TEXT_MAX,
+  GEN_SHORT_REASON_MAX,
+  GEN_TITLE_MAX,
+  GEN_VALUE_MAX,
+} from "@/domain/foundry/arena-draft/types";
+import { MODEL_OUTPUT_CAP, measureProviderBudget, measureReviewBudget } from "./tokenBudget";
+
+/**
+ * R2.23A — the GENERATED cardinality contract, digested into the manifest. A change here changes
+ * what a generated Practice IS, so no prior artifact may be attributed to the new contract.
+ */
+export const GENERATED_CARDINALITY = {
+  primaryChoices: GENERATED_PRIMARY_CHOICES,
+  branches: GENERATED_PRIMARY_CHOICES,
+  tradeoffChoicesPerBranch: GENERATED_TRADEOFF_CHOICES,
+  actionChoicesPerBranch: GENERATED_ACTION_CHOICES,
+  flatTradeoffChoices: GENERATED_TRADEOFF_CHOICES,
+  flatActionChoices: GENERATED_ACTION_CHOICES,
+} as const;
+
+/** R2.23A — the concise bounds that make the generation schema's permitted maximum finite. */
+export const GENERATED_FIELD_BOUNDS = {
+  title: GEN_TITLE_MAX,
+  opening: GEN_OPENING_MAX,
+  escalation: GEN_ESCALATION_MAX,
+  actionPrompt: GEN_ACTION_PROMPT_MAX,
+  choiceLabel: GEN_CHOICE_LABEL_MAX,
+  legitimateValue: GEN_VALUE_MAX,
+  acceptedCost: GEN_COST_MAX,
+  competentIntent: GEN_INTENT_MAX,
+  concreteAction: GEN_ACTION_TEXT_MAX,
+  shortReason: GEN_SHORT_REASON_MAX,
+  assessmentRationale: GEN_RATIONALE_MAX,
+  boundaryId: GEN_BOUNDARY_ID_MAX,
+  groundingStatement: GEN_GROUNDING_STATEMENT_MAX,
+  groundingText: GEN_GROUNDING_TEXT_MAX,
+  dimension: GEN_DIMENSION_MAX,
+  dimensionsMaxItems: GEN_DIMENSIONS_MAX_ITEMS,
+  reviewText: GEN_REVIEW_TEXT_MAX,
+  explanation: GEN_EXPLANATION_MAX,
+  pair: GEN_PAIR_MAX,
+  pairsMaxItems: GEN_PAIRS_MAX_ITEMS,
+} as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.23.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.23a.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -52,6 +115,16 @@ export function canonicalJson(value: unknown): string {
 export const digest = (value: unknown): string => createHash("sha256").update(typeof value === "string" ? value : canonicalJson(value)).digest("hex");
 export const short = (d: string): string => d.slice(0, 12);
 
+/** The budget facts that belong in the contract — not the whole measurement object. */
+const budgetFingerprint = (m: ReturnType<typeof measureProviderBudget>) => ({
+  fixtureSha256: m.fixtureSha256,
+  schemaFixtureSha256: m.schemaFixtureSha256,
+  schemaBoundKorean: m.schemaBoundKorean.tokens,
+  configuredBudget: m.configuredBudget,
+  schemaCanExceedBudget: m.schemaCanExceedBudget,
+  schemaExceedsModelCap: m.schemaExceedsModelCap,
+});
+
 export type ContractManifest = {
   artifactSchemaVersion: string;
   head: string;
@@ -63,6 +136,11 @@ export type ContractManifest = {
     environmentOverrides: readonly string[];
   };
   model: string;
+  cardinality: typeof GENERATED_CARDINALITY;
+  fieldBounds: typeof GENERATED_FIELD_BOUNDS;
+  modelOutputCap: number;
+  /** Measured acceptance: false means every valid generated Practice fits the configured budget. */
+  schemaCanExceedBudget: boolean;
 };
 
 /**
@@ -76,6 +154,12 @@ export function buildContractManifest(head: string, model: string): ContractMani
     artifactSchemaVersion: ARTIFACT_SCHEMA_VERSION,
     head,
     model,
+    cardinality: GENERATED_CARDINALITY,
+    fieldBounds: GENERATED_FIELD_BOUNDS,
+    modelOutputCap: MODEL_OUTPUT_CAP,
+    schemaCanExceedBudget:
+      measureProviderBudget(PRACTICE_SAMPLING.generation.maxTokens).schemaCanExceedBudget ||
+      measureReviewBudget(PRACTICE_SAMPLING.review.maxTokens).schemaCanExceedBudget,
     components: {
       corpus: digest(EVAL_CORPUS.map((c) => ({ id: c.id, locale: c.locale, expectDecline: c.expectDecline ?? false, expectClass: c.expectClass ?? null, input: c.input }))),
       corpusIds: digest(EVAL_CORPUS.map((c) => c.id)),
@@ -98,6 +182,14 @@ export function buildContractManifest(head: string, model: string): ContractMani
       rejectionPrecedence: digest(registeredCodes()),
       retryPolicy: digest({ maxAttempts: PRACTICE_SAMPLING.retry.maxAttempts, mustRemainUnchanged: MUST_REMAIN_UNCHANGED }),
       sampling: digest({ generation: PRACTICE_SAMPLING.generation, review: PRACTICE_SAMPLING.review, retry: PRACTICE_SAMPLING.retry }),
+      // R2.23A — cardinality, field bounds and the measured budget are all part of the contract.
+      generatedCardinality: digest(GENERATED_CARDINALITY),
+      generatedFieldBounds: digest(GENERATED_FIELD_BOUNDS),
+      tokenBudget: digest({
+        modelOutputCap: MODEL_OUTPUT_CAP,
+        generation: budgetFingerprint(measureProviderBudget(PRACTICE_SAMPLING.generation.maxTokens)),
+        review: budgetFingerprint(measureReviewBudget(PRACTICE_SAMPLING.review.maxTokens)),
+      }),
     },
     sampling: {
       generation: PRACTICE_SAMPLING.generation,

@@ -40,8 +40,9 @@ describe("estimator", () => {
 describe("18/19. maximum fixtures", () => {
   it("18. the maximum provider fixture is built at the real product cardinality and VALIDATES", () => {
     const max = buildMaxProviderScenario(false, "realistic");
-    expect(max.primaryChoices).toHaveLength(4);
-    expect(max.branches).toHaveLength(4);
+    // R2.23A — generated Practice is EXACTLY two at every decision point.
+    expect(max.primaryChoices).toHaveLength(2);
+    expect(max.branches).toHaveLength(2);
     const total = max.primaryChoices.length + max.flatTradeoffChoices.length + max.flatActionDecision.choices.length
       + max.branches.reduce((n, b) => n + b.tradeoffChoices.length + b.actionDecision.choices.length, 0);
     expect(total).toBe(MAX_VISIBLE_CHOICES);
@@ -56,6 +57,7 @@ describe("18/19. maximum fixtures", () => {
       expect(c.constraintAssessments.length).toBe(3);
     }
     expect(max.boundaryGrounding).toHaveLength(3);
+    expect(MAX_VISIBLE_CHOICES).toBe(14); // 2 primary + 2 flat tradeoff + 2 flat action + 2 branches x 4
   });
 
   it("19. the fixture digest is stable across builds and MOVES when the profile changes", () => {
@@ -69,9 +71,9 @@ describe("18/19. maximum fixtures", () => {
   it("24. the maximum review fixture covers every visible choice and every branch", () => {
     const r = buildMaxSemanticReview(false, "realistic");
     expect(r.phaseChoices).toHaveLength(MAX_VISIBLE_CHOICES);
-    expect(r.branches).toHaveLength(4);
+    expect(r.branches).toHaveLength(2);
     expect(r.boundaryAssessments).toHaveLength(3);
-    expect(r.urgency.choices).toHaveLength(4);
+    expect(r.urgency.choices).toHaveLength(2);
     expect(r.crossBranch).toBeDefined();
   });
 });

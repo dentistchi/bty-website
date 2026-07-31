@@ -69,11 +69,15 @@ describe("strict JSON Schema shape", () => {
     expect(a.additionalProperties).toBe(false);
   });
 
-  it("bounds every array to the product cardinality", () => {
+  it("R2.23A — pins EXACTLY two at every generated decision point", () => {
     const p = PROVIDER_SCENARIO_JSON_SCHEMA.properties;
-    expect([p.primaryChoices.minItems, p.primaryChoices.maxItems]).toEqual([2, 4]);
-    expect([p.flatTradeoffChoices.minItems, p.flatTradeoffChoices.maxItems]).toEqual([2, 3]);
-    expect([p.flatActionDecision.properties.choices.minItems, p.flatActionDecision.properties.choices.maxItems]).toEqual([2, 3]);
+    expect([p.primaryChoices.minItems, p.primaryChoices.maxItems]).toEqual([2, 2]);
+    expect([p.branches.minItems, p.branches.maxItems]).toEqual([2, 2]);
+    expect([p.flatTradeoffChoices.minItems, p.flatTradeoffChoices.maxItems]).toEqual([2, 2]);
+    expect([p.flatActionDecision.properties.choices.minItems, p.flatActionDecision.properties.choices.maxItems]).toEqual([2, 2]);
+    const b = p.branches.items.properties;
+    expect([b.tradeoffChoices.minItems, b.tradeoffChoices.maxItems]).toEqual([2, 2]);
+    expect([b.actionDecision.properties.choices.minItems, b.actionDecision.properties.choices.maxItems]).toEqual([2, 2]);
   });
 });
 

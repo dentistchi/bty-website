@@ -34,7 +34,14 @@
  * Pure domain: no I/O, no provider, no DB.
  */
 
-import type { ArenaScenarioDraft } from "./types";
+import {
+  GEN_ACTION_TEXT_MAX,
+  GEN_COST_MAX,
+  GEN_INTENT_MAX,
+  GEN_SHORT_REASON_MAX,
+  GEN_VALUE_MAX,
+  type ArenaScenarioDraft,
+} from "./types";
 
 // ---------------------------------------------------------------------------
 // Phases and choice enumeration
@@ -107,14 +114,17 @@ export const CHOICE_CONSTRUCTION_JSON_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    legitimateValue: { type: "string" },
-    acceptedCost: { type: "string" },
-    competentIntent: { type: "string" },
-    concreteAction: { type: "string" },
-    boundaryCompliance: strArray,
-    urgencySafetyBasis: { type: "string" },
-    whyNotDominated: { type: "string" },
-    distinguishesFromSibling: { type: "string" },
+    // R2.23A — every field is BOUNDED so the generation schema has a finite permitted maximum.
+    // These are concise-product limits, generous against measured live output; over-limit output
+    // fails schema validation and is never truncated after the fact.
+    legitimateValue: { type: "string", maxLength: GEN_VALUE_MAX },
+    acceptedCost: { type: "string", maxLength: GEN_COST_MAX },
+    competentIntent: { type: "string", maxLength: GEN_INTENT_MAX },
+    concreteAction: { type: "string", maxLength: GEN_ACTION_TEXT_MAX },
+    boundaryCompliance: { type: "array", maxItems: 10, items: { type: "string", maxLength: 120 } },
+    urgencySafetyBasis: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
+    whyNotDominated: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
+    distinguishesFromSibling: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
   },
   required: [
     "legitimateValue",

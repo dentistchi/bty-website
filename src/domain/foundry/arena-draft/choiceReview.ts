@@ -24,6 +24,7 @@
  */
 
 import { CHOICE_PHASES, type ChoicePhase, type ChoiceRef } from "./choiceConstruction";
+import { GEN_REVIEW_TEXT_MAX } from "./types";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -104,9 +105,9 @@ export const PHASE_CHOICE_REVIEW_JSON_SCHEMA = {
       phase: { type: "string", enum: CHOICE_PHASES },
       branchIndex: { type: "integer" },
       choiceIndex: { type: "integer" },
-      legitimateValue: { type: "string" },
-      acceptedCost: { type: "string" },
-      competentIntent: { type: "string" },
+      legitimateValue: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+      acceptedCost: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
+      competentIntent: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
       actionable: { type: "boolean" },
       defensible: { type: "boolean" },
       dominatedBySibling: { type: "boolean" },
@@ -115,9 +116,9 @@ export const PHASE_CHOICE_REVIEW_JSON_SCHEMA = {
       nonCommitmentDecoy: { type: "boolean" },
       unsafe: { type: "boolean" },
       constructionAgrees: { type: "boolean" },
-      constructionDispute: { type: "string" },
+      constructionDispute: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
       defectCodes: { type: "array", items: { type: "string", enum: PHASE_CHOICE_DEFECT_CODES } },
-      conciseExplanation: { type: "string" },
+      conciseExplanation: { type: "string", maxLength: GEN_REVIEW_TEXT_MAX },
     },
     required: [
       "phase", "branchIndex", "choiceIndex", "legitimateValue", "acceptedCost", "competentIntent",

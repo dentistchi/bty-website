@@ -26,12 +26,15 @@
  */
 
 import {
-  ACTION_CHOICES_MAX,
-  ACTION_CHOICES_MIN,
-  PRIMARY_CHOICES_MAX,
-  PRIMARY_CHOICES_MIN,
-  TRADEOFF_CHOICES_MAX,
-  TRADEOFF_CHOICES_MIN,
+  GENERATED_ACTION_CHOICES,
+  GENERATED_PRIMARY_CHOICES,
+  GENERATED_TRADEOFF_CHOICES,
+  GEN_ACTION_PROMPT_MAX,
+  GEN_CHOICE_LABEL_MAX,
+  GEN_ESCALATION_MAX,
+  GEN_OPENING_MAX,
+  GEN_RATIONALE_MAX,
+  GEN_TITLE_MAX,
   type ArenaScenarioDraft,
   type ScenarioBranch,
 } from "./types";
@@ -96,9 +99,9 @@ const assessmentSchema = {
     type: "object",
     additionalProperties: false,
     properties: {
-      constraintId: { type: "string" },
+      constraintId: { type: "string", maxLength: 120 },
       status: { type: "string", enum: ["satisfied"] },
-      rationale: { type: "string" },
+      rationale: { type: "string", maxLength: GEN_RATIONALE_MAX },
     },
     required: ["constraintId", "status", "rationale"],
   },
@@ -107,7 +110,7 @@ const assessmentSchema = {
 const choiceSchema = {
   type: "object",
   additionalProperties: false,
-  properties: { label: { type: "string" }, constraintAssessments: assessmentSchema, construction: CHOICE_CONSTRUCTION_JSON_SCHEMA },
+  properties: { label: { type: "string", maxLength: GEN_CHOICE_LABEL_MAX }, constraintAssessments: assessmentSchema, construction: CHOICE_CONSTRUCTION_JSON_SCHEMA },
   required: ["label", "constraintAssessments", "construction"],
 } as const;
 
@@ -115,7 +118,7 @@ const actionChoiceSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    label: { type: "string" },
+    label: { type: "string", maxLength: GEN_CHOICE_LABEL_MAX },
     isActionCommitment: { type: "boolean" },
     constraintAssessments: assessmentSchema,
     construction: CHOICE_CONSTRUCTION_JSON_SCHEMA,
@@ -127,8 +130,8 @@ const actionDecisionSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    prompt: { type: "string" },
-    choices: { type: "array", minItems: ACTION_CHOICES_MIN, maxItems: ACTION_CHOICES_MAX, items: actionChoiceSchema },
+    prompt: { type: "string", maxLength: GEN_ACTION_PROMPT_MAX },
+    choices: { type: "array", minItems: GENERATED_ACTION_CHOICES, maxItems: GENERATED_ACTION_CHOICES, items: actionChoiceSchema },
   },
   required: ["prompt", "choices"],
 } as const;
@@ -138,23 +141,23 @@ export const PROVIDER_SCENARIO_JSON_SCHEMA = {
   additionalProperties: false,
   properties: {
     noSafeJudgmentSpace: { type: "boolean" },
-    title: { type: "string" },
-    opening: { type: "string" },
-    primaryChoices: { type: "array", minItems: PRIMARY_CHOICES_MIN, maxItems: PRIMARY_CHOICES_MAX, items: choiceSchema },
-    flatEscalationText: { type: "string" },
-    flatTradeoffChoices: { type: "array", minItems: TRADEOFF_CHOICES_MIN, maxItems: TRADEOFF_CHOICES_MAX, items: choiceSchema },
+    title: { type: "string", maxLength: GEN_TITLE_MAX },
+    opening: { type: "string", maxLength: GEN_OPENING_MAX },
+    primaryChoices: { type: "array", minItems: GENERATED_PRIMARY_CHOICES, maxItems: GENERATED_PRIMARY_CHOICES, items: choiceSchema },
+    flatEscalationText: { type: "string", maxLength: GEN_ESCALATION_MAX },
+    flatTradeoffChoices: { type: "array", minItems: GENERATED_TRADEOFF_CHOICES, maxItems: GENERATED_TRADEOFF_CHOICES, items: choiceSchema },
     flatActionDecision: actionDecisionSchema,
     branches: {
       type: "array",
-      minItems: PRIMARY_CHOICES_MIN,
-      maxItems: PRIMARY_CHOICES_MAX,
+      minItems: GENERATED_PRIMARY_CHOICES,
+      maxItems: GENERATED_PRIMARY_CHOICES,
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
-          resultingWorldState: { type: "string" },
-          escalationText: { type: "string" },
-          tradeoffChoices: { type: "array", minItems: TRADEOFF_CHOICES_MIN, maxItems: TRADEOFF_CHOICES_MAX, items: choiceSchema },
+          resultingWorldState: { type: "string", maxLength: GEN_ESCALATION_MAX },
+          escalationText: { type: "string", maxLength: GEN_ESCALATION_MAX },
+          tradeoffChoices: { type: "array", minItems: GENERATED_TRADEOFF_CHOICES, maxItems: GENERATED_TRADEOFF_CHOICES, items: choiceSchema },
           actionDecision: actionDecisionSchema,
         },
         required: ["resultingWorldState", "escalationText", "tradeoffChoices", "actionDecision"],
@@ -222,17 +225,24 @@ function parseConstruction(v: unknown, errors: string[], where: string): Provide
   };
 }
 
-function validateChoices(v: unknown, min: number, max: number, where: string, errors: string[]): ProviderChoice[] {
+/** Generated text is CONCISE by contract. Over-limit output fails validation; it is never truncated. */
+function checkLen(value: string, max: number, code: string, errors: string[]): void {
+  if (value.length > max) errors.push(code);
+}
+
+function validateChoices(v: unknown, exact: number, where: string, errors: string[]): ProviderChoice[] {
   if (!Array.isArray(v)) {
     errors.push(`dto_choices_not_array:${where}`);
     return [];
   }
-  if (v.length < min || v.length > max) errors.push(`dto_choice_count:${where}`);
+  // R2.23A — EXACTLY `exact`. A generated Practice offers two defensible options at every decision.
+  if (v.length !== exact) errors.push(`dto_choice_count:${where}`);
   return v.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}[${i}]`);
       return { label: "", constraintAssessments: [], construction: parseConstruction(null, [], "") };
     }
+    checkLen(c.label, GEN_CHOICE_LABEL_MAX, "dto_label_too_long", errors);
     return {
       label: c.label,
       constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}[${i}]`),
@@ -247,9 +257,10 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
     return { prompt: "", choices: [] };
   }
   if (!isNonEmpty(v.prompt)) errors.push(`dto_action_prompt_missing:${where}`);
+  else checkLen(v.prompt, GEN_ACTION_PROMPT_MAX, "dto_action_prompt_too_long", errors);
   const raw = Array.isArray(v.choices) ? v.choices : [];
   if (!Array.isArray(v.choices)) errors.push(`dto_choices_not_array:${where}.action`);
-  if (raw.length < ACTION_CHOICES_MIN || raw.length > ACTION_CHOICES_MAX) errors.push(`dto_choice_count:${where}.action`);
+  if (raw.length !== GENERATED_ACTION_CHOICES) errors.push(`dto_choice_count:${where}.action`);
   const choices: ProviderActionChoice[] = raw.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}.action[${i}]`);
@@ -257,6 +268,7 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
     }
     // The exact invariant the canonical validator enforces — an explicit boolean, never inferred.
     if (typeof c.isActionCommitment !== "boolean") errors.push("action_choice_missing_commitment_flag");
+    checkLen(c.label, GEN_CHOICE_LABEL_MAX, "dto_label_too_long", errors);
     return {
       label: c.label,
       isActionCommitment: c.isActionCommitment === true,
@@ -326,10 +338,13 @@ export function validateProviderScenario(raw: unknown): DtoValidation {
   }
 
   if (!isNonEmpty(raw.title)) errors.push("dto_title_missing");
+  else checkLen(raw.title, GEN_TITLE_MAX, "dto_title_too_long", errors);
   if (!isNonEmpty(raw.opening)) errors.push("dto_opening_missing");
-  const primaryChoices = validateChoices(raw.primaryChoices, PRIMARY_CHOICES_MIN, PRIMARY_CHOICES_MAX, "primary", errors);
+  else checkLen(raw.opening, GEN_OPENING_MAX, "dto_opening_too_long", errors);
+  const primaryChoices = validateChoices(raw.primaryChoices, GENERATED_PRIMARY_CHOICES, "primary", errors);
   if (!isNonEmpty(raw.flatEscalationText)) errors.push("dto_flat_escalation_missing");
-  const flatTradeoffChoices = validateChoices(raw.flatTradeoffChoices, TRADEOFF_CHOICES_MIN, TRADEOFF_CHOICES_MAX, "flatTradeoff", errors);
+  else checkLen(raw.flatEscalationText, GEN_ESCALATION_MAX, "dto_escalation_too_long", errors);
+  const flatTradeoffChoices = validateChoices(raw.flatTradeoffChoices, GENERATED_TRADEOFF_CHOICES, "flatTradeoff", errors);
   const flatActionDecision = validateActionDecision(raw.flatActionDecision, "flat", errors);
 
   const rawBranches = Array.isArray(raw.branches) ? raw.branches : null;
@@ -340,15 +355,17 @@ export function validateProviderScenario(raw: unknown): DtoValidation {
       return { resultingWorldState: "", escalationText: "", tradeoffChoices: [], actionDecision: { prompt: "", choices: [] } };
     }
     if (!isNonEmpty(b.escalationText)) errors.push(`dto_branch_escalation_missing:[${i}]`);
+    else checkLen(b.escalationText, GEN_ESCALATION_MAX, "dto_escalation_too_long", errors);
+    if (typeof b.resultingWorldState === "string") checkLen(b.resultingWorldState, GEN_ESCALATION_MAX, "dto_escalation_too_long", errors);
     return {
       resultingWorldState: typeof b.resultingWorldState === "string" ? b.resultingWorldState : "",
       escalationText: isNonEmpty(b.escalationText) ? b.escalationText : "",
-      tradeoffChoices: validateChoices(b.tradeoffChoices, TRADEOFF_CHOICES_MIN, TRADEOFF_CHOICES_MAX, `branch[${i}]`, errors),
+      tradeoffChoices: validateChoices(b.tradeoffChoices, GENERATED_TRADEOFF_CHOICES, `branch[${i}]`, errors),
       actionDecision: validateActionDecision(b.actionDecision, `branch[${i}]`, errors),
     };
   });
 
-  // POSITIONAL RELATIONSHIP: exactly one continuation per primary choice. This replaces the
+  // POSITIONAL RELATIONSHIP: exactly one continuation per primary choice (R2.23A: exactly two). This replaces the
   // model-authored branch key that produced `branch_orphan_key` — an orphan is now unrepresentable.
   if (rawBranches !== null && branches.length !== primaryChoices.length) errors.push("dto_branch_count_mismatch");
 

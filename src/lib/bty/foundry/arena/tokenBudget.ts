@@ -94,6 +94,11 @@ export type BudgetMeasurement = {
   sufficient: boolean;
   /** True when the schema permits a response the configured budget cannot hold. */
   schemaCanExceedBudget: boolean;
+  /** True when the schema's permitted maximum passes the MODEL's own output ceiling. */
+  schemaExceedsModelCap: boolean;
+  modelOutputCap: number;
+  /** Measured headroom of the configured budget over the schema-permitted Korean maximum. */
+  measuredHeadroom: number;
 };
 
 /** Round a budget up to a readable step so the configured value is never an odd measured number. */
@@ -101,6 +106,13 @@ const roundBudget = (n: number): number => Math.ceil(n / 500) * 500;
 
 /** Safety headroom over the measured maximum. Absorbs estimator error and model verbosity. */
 export const BUDGET_HEADROOM = 1.25;
+
+/**
+ * The configured model class's OUTPUT ceiling (gpt-4o-mini: 16,384). A budget above this is not a
+ * budget — the provider will refuse or truncate regardless. It is the hard authority every
+ * measurement is checked against.
+ */
+export const MODEL_OUTPUT_CAP = 16_384;
 
 function measure(
   label: string,
@@ -133,6 +145,9 @@ function measure(
     configuredBudget: configured,
     sufficient: configured >= recommendedBudget,
     schemaCanExceedBudget: Math.max(schemaBoundEnglish.tokens, schemaBoundKorean.tokens) > configured,
+    schemaExceedsModelCap: Math.max(schemaBoundEnglish.tokens, schemaBoundKorean.tokens) > MODEL_OUTPUT_CAP,
+    modelOutputCap: MODEL_OUTPUT_CAP,
+    measuredHeadroom: configured / Math.max(schemaBoundEnglish.tokens, schemaBoundKorean.tokens),
   };
 }
 

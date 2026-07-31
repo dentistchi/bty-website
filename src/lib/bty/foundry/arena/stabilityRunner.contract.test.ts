@@ -18,7 +18,8 @@ import { buildContractManifest, caseDigest, manifestDigest } from "./contractMan
  * rather than hidden behind a skip, so a green suite never implies the runner was inspected.
  */
 
-const RUNNER = "/tmp/r223_live_practice_stability_canary.sh";
+const RUNNER_R223 = "/tmp/r223_live_practice_stability_canary.sh";
+const RUNNER = "/tmp/r223a_live_practice_stability_canary.sh";
 const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
 const runnerSource = (): string | null => (existsSync(RUNNER) ? readFileSync(RUNNER, "utf8") : null);
 
@@ -62,11 +63,34 @@ describe("44/45/48. binding data — what makes a stale runner detectable", () =
   });
 });
 
+describe("R2.23A — cardinality and budget are part of what the runner binds", () => {
+  it("34. the generated cardinality is exactly two, and the manifest carries its digest", () => {
+    const m = buildContractManifest("a".repeat(40), "gpt-4o-mini");
+    expect(m.cardinality.primaryChoices).toBe(2);
+    expect(m.cardinality.branches).toBe(2);
+    expect(m.components.generatedCardinality).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("35. the measured budget acceptance is exposed, so a runner can refuse on it", () => {
+    const m = buildContractManifest("a".repeat(40), "gpt-4o-mini");
+    expect(typeof m.schemaCanExceedBudget).toBe("boolean");
+    expect(m.modelOutputCap).toBe(16384);
+  });
+
+  it("31. the R2.23 runner is PRESERVED and is not this slice's runner", () => {
+    expect(RUNNER_R223).not.toBe(RUNNER);
+    if (!existsSync(RUNNER_R223)) return expect(existsSync(RUNNER_R223)).toBe(false);
+    const old = readFileSync(RUNNER_R223, "utf8");
+    // Untouched: it still binds the R2.23 manifest, not this one.
+    expect(old).toContain("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10");
+  });
+});
+
 describe(`runner file properties (${existsSync(RUNNER) ? "runner present — asserted" : "RUNNER ABSENT ON THIS MACHINE — file-level properties NOT asserted"})`, () => {
   it("43/44/45. it binds HEAD, manifest and BOTH schema digests, and halts on any mismatch", () => {
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false); // absence is recorded, never asserted away
-    for (const bound of ["EXPECT_HEAD", "EXPECT_MANIFEST", "EXPECT_PROVIDER_SCHEMA", "EXPECT_REVIEW_SCHEMA", "EXPECT_CORPUS", "EXPECT_CANARY_CASES", "EXPECT_ARTIFACT_SCHEMA", "EXPECT_GEN_SAMPLING", "EXPECT_REVIEW_SAMPLING"]) {
+    for (const bound of ["EXPECT_HEAD", "EXPECT_MANIFEST", "EXPECT_PROVIDER_SCHEMA", "EXPECT_REVIEW_SCHEMA", "EXPECT_CORPUS", "EXPECT_CANARY_CASES", "EXPECT_ARTIFACT_SCHEMA", "EXPECT_GEN_SAMPLING", "EXPECT_REVIEW_SAMPLING", "EXPECT_CARDINALITY", "EXPECT_FIELD_BOUNDS", "EXPECT_TOKEN_BUDGET"]) {
       expect(src, `${bound} is not bound`).toContain(bound);
     }
     expect(src).toContain("CONTRACT MISMATCH · RUNNER STALE");
@@ -84,6 +108,7 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
       /\[ "\$ACTUAL_MANIFEST"\s+= "\$EXPECT_MANIFEST" \]/,
       /tracked tree is dirty/,
       /canary case missing/,
+      /schemaCanExceedBudget/,
     ]) {
       const at = src.search(check);
       expect(at, `${check} is missing`).toBeGreaterThan(-1);

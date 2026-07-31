@@ -186,3 +186,63 @@ export const OPENING_MAX = 1200;
 export const ESCALATION_MAX = 1200;
 export const ACTION_PROMPT_MAX = 600;
 export const CHOICE_LABEL_MAX = 400;
+
+// ---------------------------------------------------------------------------
+// GENERATED-PRACTICE CONTRACT (Slice 3.2I-R5B1A.1-R2.23A)
+// ---------------------------------------------------------------------------
+
+/**
+ * NEWLY GENERATED Practice uses EXACTLY two choices at every decision point.
+ *
+ * WHAT "THREE" MEANS IN THIS PRODUCT
+ * The three-part architecture is the three DECISION STAGES — Primary, Tradeoff, Action Decision.
+ * It has never meant three or four buttons at a stage. The full loop is preserved unchanged here.
+ *
+ * WHY EXACTLY TWO
+ * Every generated option must be defensible by a competent, well-intentioned person, protect a
+ * distinct legitimate value, accept a real cost, stay inside every confirmed boundary, produce a
+ * causally distinct branch, and survive independent review at every phase. Two options that each
+ * clear that bar is a better rehearsal than four that do not — and four shallow options is exactly
+ * the shape the R2.19-R2.22 measurements kept producing. This is a product decision about depth.
+ *
+ * These constants govern GENERATION ONLY. The canonical validator below keeps its 2-4 range so
+ * legacy Arena scenarios, existing static content and already-persisted Practice snapshots continue
+ * to parse, publish and play untouched. No migration, no stored row rewritten.
+ */
+export const GENERATED_PRIMARY_CHOICES = 2;
+export const GENERATED_TRADEOFF_CHOICES = 2;
+export const GENERATED_ACTION_CHOICES = 2;
+
+/**
+ * CONCISE BOUNDS for generated text (R2.23A Part 8).
+ *
+ * Product-motivated first: a Practice scene is a short moment, and a choice is one readable line —
+ * measured live output ran 60-140 characters per label and 350-500 for an opening, so these are
+ * generous against real content while making the generation schema's permitted maximum FINITE.
+ * Without them the schema had no upper bound at all, which is why a valid generated Practice could
+ * exceed the model's own output ceiling. They are stricter than the canonical limits above and
+ * apply to generation only; legacy content is measured against the canonical limits.
+ */
+export const GEN_TITLE_MAX = 90;
+export const GEN_OPENING_MAX = 600;
+export const GEN_ESCALATION_MAX = 320;
+export const GEN_ACTION_PROMPT_MAX = 120;
+export const GEN_CHOICE_LABEL_MAX = 160;
+export const GEN_VALUE_MAX = 60;
+export const GEN_COST_MAX = 120;
+export const GEN_INTENT_MAX = 140;
+export const GEN_ACTION_TEXT_MAX = 120;
+export const GEN_SHORT_REASON_MAX = 120;
+export const GEN_RATIONALE_MAX = 100;
+export const GEN_GROUNDING_STATEMENT_MAX = 240;
+export const GEN_GROUNDING_TEXT_MAX = 180;
+export const GEN_DIMENSION_MAX = 60;
+export const GEN_DIMENSIONS_MAX_ITEMS = 4;
+export const GEN_EXPLANATION_MAX = 300;
+/** A reviewer field is one clause of product judgment, never an essay. */
+export const GEN_REVIEW_TEXT_MAX = 140;
+/** Cross-branch overlap pairs are index pairs like "0-1". */
+export const GEN_PAIR_MAX = 16;
+export const GEN_PAIRS_MAX_ITEMS = 6;
+/** Server-assigned constraint ids are `c{n}_{slug<=24}` — 48 is generous. */
+export const GEN_BOUNDARY_ID_MAX = 48;
