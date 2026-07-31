@@ -11,6 +11,7 @@
 import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
+import type { ProviderBoundaryGrounding } from "./boundaryGrounding";
 
 type AssessmentsByChoiceId = Record<string, ConstraintAssessment[]>;
 
@@ -30,11 +31,17 @@ const actionOf = (
 /**
  * @param draft canonical fixture
  * @param assessmentsByChoiceId optional canonical-id-keyed assessments to inline onto each choice
+ * @param boundaryGrounding optional R2.21 grounding declarations (empty for unconstrained fixtures)
  */
-export function toProviderDto(draft: ArenaScenarioDraft, assessmentsByChoiceId?: AssessmentsByChoiceId): ProviderPracticeScenario {
+export function toProviderDto(
+  draft: ArenaScenarioDraft,
+  assessmentsByChoiceId?: AssessmentsByChoiceId,
+  boundaryGrounding: ProviderBoundaryGrounding[] = [],
+): ProviderPracticeScenario {
   const primaryIds = draft.primary.choices.map((c) => c.id);
   const branches = draft.branches ?? {};
   return {
+    boundaryGrounding,
     noSafeJudgmentSpace: false,
     title: draft.title,
     opening: draft.opening,
@@ -59,8 +66,8 @@ export function toProviderDto(draft: ArenaScenarioDraft, assessmentsByChoiceId?:
 }
 
 /** Convenience: the provider wire STRING for a canonical fixture. */
-export const providerJson = (draft: ArenaScenarioDraft, a?: AssessmentsByChoiceId): string =>
-  JSON.stringify(toProviderDto(draft, a));
+export const providerJson = (draft: ArenaScenarioDraft, a?: AssessmentsByChoiceId, g: ProviderBoundaryGrounding[] = []): string =>
+  JSON.stringify(toProviderDto(draft, a, g));
 
 // ---------------------------------------------------------------------------
 // Semantic review fixtures (R2.18). The reviewer now runs for EVERY generation, so any test that
@@ -69,10 +76,48 @@ export const providerJson = (draft: ArenaScenarioDraft, a?: AssessmentsByChoiceI
 
 import type { SemanticReview } from "./semanticReview";
 
-/** A consistent ACCEPT review sized to the draft it reviews. */
-export function acceptReview(draft: ArenaScenarioDraft, over: Partial<SemanticReview> = {}): SemanticReview {
+/**
+ * A consistent ACCEPT review sized to the draft it reviews.
+ *
+ * R2.21: the reviewer now returns one boundary assessment per CONFIRMED constraint plus a urgency
+ * block sized to the primary choices. `constraintIds` defaults to none — pass it for a constrained
+ * fixture, or the count gate rejects the review.
+ */
+export function acceptReview(draft: ArenaScenarioDraft, over: Partial<SemanticReview> = {}, constraintIds: string[] = []): SemanticReview {
   const branchKeys = Object.keys(draft.branches ?? {});
   return {
+    boundaryAssessments: constraintIds.map((boundaryId) => ({
+      boundaryId,
+      presentInScenario: true,
+      operationalized: true,
+      affectedStages: ["opening", "primary", "branch_tradeoff"],
+      allPrimaryChoicesComply: true,
+      allBranchesPreserve: true,
+      allTradeoffChoicesComply: true,
+      allActionChoicesComply: true,
+      prohibitedAlternativeExcluded: true,
+      remainingJudgmentDimensions: ["sequencing", "escalation order"],
+      violatedChoiceReferences: [],
+      violatedBranchReferences: [],
+      defectCodes: [],
+      conciseExplanation: "The rule is established up front and every option stays inside it.",
+    })),
+    urgency: {
+      urgencyPresent: false,
+      urgencySource: "",
+      timeSensitiveHarmPossible: false,
+      choices: draft.primary.choices.map((_, index) => ({
+        index,
+        introducesDelay: false,
+        delayPurpose: "",
+        safetyBasis: "",
+        foreseeableHarm: "",
+        escalationUsed: false,
+        defensible: true,
+        defectCodes: [],
+      })),
+      overallUrgencyVerdict: "not_applicable",
+    },
     noSafeJudgmentSpace: false,
     noSafeReasonCode: "judgment_space_remains",
     boundaryIdsConsidered: [],

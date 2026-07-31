@@ -11,6 +11,7 @@ import {
   type PracticeEligibility,
 } from "@/domain/foundry/arena-draft/safety";
 import { validateConstraintAssessments, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import {
   PROVIDER_SCENARIO_JSON_SCHEMA,
   PROVIDER_SCHEMA_NAME,
@@ -170,8 +171,22 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
         ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
         "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, set noSafeJudgmentSpace to true.",
         "Every choice object carries its OWN `constraintAssessments` array — one entry per constraint id: {\"constraintId\": string, \"status\": \"satisfied\", \"rationale\": short string}. Fill it for EVERY choice (primary, flat tradeoff, flat action, and every branch tradeoff/action). This is internal metadata; do NOT put it in any learner-facing label.",
+        "GROUND EVERY CONSTRAINT — silence about a rule is NOT compliance. A scenario that simply never mentions the rule is REJECTED even if no choice happens to break it. For each constraint: (1) make it OPERATIVE in the opening or immediate context, in natural language a person in this role would really use — never a policy quotation or a lecture; (2) let it visibly rule out the tempting non-compliant option, so the learner sees it excluded rather than offered; (3) keep it in force through EVERY branch, tradeoff and action decision — no phase may reopen, waive or quietly drop it; (4) put the real difficulty in the judgment that survives inside it.",
+        "TEST YOURSELF: if the constraint were deleted, would your scenario read exactly the same? If yes, it is decorative — rewrite it so the rule actually changes what can be chosen.",
+        "Also return `boundaryGrounding`: one entry per constraint id — {\"boundaryId\": the exact id, \"boundaryStatement\": the confirmed rule restated faithfully (never weakened), \"scenarioPresence\": where and how the rule is made operative in the learner-facing text, \"operationalEffect\": what it forces or forbids in the decisions, \"affectedDecisionStages\": which of opening/primary/flat_tradeoff/flat_action/branch_tradeoff/branch_action it constrains (it MUST constrain at least one decision stage, not just the opening), \"prohibitedAlternativeExcluded\": the tempting option the rule takes off the table, \"remainingJudgmentDimensions\": the judgment that genuinely remains}. This is internal metadata; never put it in a learner-facing label.",
       ]
     : [];
+
+  /**
+   * URGENCY SAFETY (R2.21) — domain-neutral. c18 produced a primary option that delayed urgent care
+   * with foreseeable deterioration. The correction is a competent alternative, NOT a refusal to
+   * generate, and NOT clinical guidance: Practice evaluates leadership judgment, never treatment.
+   */
+  const urgencyLines = [
+    "URGENT / TIME-SENSITIVE SITUATIONS — when the situation carries time-sensitive harm, NO option may knowingly delay urgent action for convenience, appearance or speed of paperwork, and no option may create avoidable foreseeable deterioration. Never offer vague reassurance in place of an operational action.",
+    "Legitimate options under urgency include: taking the short pause a mandatory safety check REQUIRES, escalating staffing or supervision, sequencing work so both the urgent need and the mandatory check are honoured, redirecting or referring when safe capacity is unavailable, and managing recovery after a delay. Use only resources the training context actually supports — do not invent teams, people or capacity.",
+    "Do not fabricate urgency, clinical risk or medical detail that the training context does not contain, and never write treatment guidance. The decision under practice is a LEADERSHIP decision.",
+  ];
 
   const system = [
     "You design ONE short leadership DECISION-PRACTICE scenario. Its purpose is NOT to find the right answer — it is to force a difficult choice: which legitimate value to protect, and what cost to accept, under pressure.",
@@ -198,11 +213,12 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
     "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
     `Write all learner-facing text in ${isKo ? "Korean" : "English"}.`,
     "Return ONLY a compact JSON object, no markdown or code fences, with EXACTLY this shape:",
-    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": []}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": []}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": []}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}}]}',
+    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": []}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": []}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": []}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": []}]}}], "boundaryGrounding": []}',
     "DO NOT invent any id field. You author the words; the server assigns every identifier.",
     "`branches` is an ARRAY, not an object. branches[i] is the continuation of primaryChoices[i] — the ORDER is the relationship. branches MUST have exactly the same length as primaryChoices.",
     "isActionCommitment is REQUIRED on every action choice (true or false, never omitted) and marks the immediate-action option for INTERNAL use only — it must not read as the 'correct' option. At least one action choice in each actionDecision must be true.",
-    "primaryChoices: 2-4. flatTradeoffChoices: 2-3. every actionDecision.choices: 2-3. Each branch tradeoffChoices 2-3. No empty labels. Set noSafeJudgmentSpace to false for a normal scenario. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
+    "primaryChoices: 2-4. flatTradeoffChoices: 2-3. every actionDecision.choices: 2-3. Each branch tradeoffChoices 2-3. No empty labels. Set noSafeJudgmentSpace to false for a normal scenario. `boundaryGrounding` is an ARRAY — one entry per confirmed constraint, or [] when there are none. Ground everything in the training context and the two host answers; invent no real names, organizations, patient details, numbers, or private data.",
+    ...urgencyLines,
     ...constraintLines,
   ].join("\n");
 
@@ -226,7 +242,12 @@ function buildLlmMessages(input: ScenarioGenInput, constraints: PracticeBoundary
 
 type LlmOutcome =
   | { ok: true; draft: ArenaScenarioDraft; warnings: string[] }
-  | { ok: false; reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" | "structured_output_unavailable" };
+  | {
+      ok: false;
+      reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" | "structured_output_unavailable";
+      /** R2.21 — deterministic grounding failures, so the retry states what was missing. */
+      groundingDefects?: string[];
+    };
 
 /**
  * One bounded provider attempt. Distinguishes a TRANSPORT failure (no usable content —
@@ -325,6 +346,17 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
         return { ok: false, reason: "generation_rejected" };
       }
     }
+    // BOUNDARY GROUNDING (R2.21). The per-choice assessment above only proves the model SAID
+    // "satisfied" for every rule — its `status` enum cannot even express a violation. c18 passed it
+    // while never mentioning its confirmed rule. This gate proves the necessary conditions the
+    // assessment cannot: coverage, statement fidelity, a declared effect at a real decision stage,
+    // and that the rule's own vocabulary actually reaches the learner-facing scenario. Whether it
+    // genuinely constrains the judgment is decided independently by the semantic review below.
+    const grounding = validateBoundaryGrounding(canonical.boundaryGrounding, constraints, result.value);
+    if (!grounding.ok) {
+      logGenOutcome("provider_boundary_ungrounded", grounding.errors[0]);
+      return { ok: false, reason: "generation_rejected", groundingDefects: grounding.errors };
+    }
     const qualityWarnings = validateBranchedScenario(result.value).warnings;
     return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings] };
   } catch (e) {
@@ -357,6 +389,8 @@ type ReviewOutcome =
       defects: string[];
       choiceDefects: Array<{ index: number; codes: string[] }>;
       branchDefects: Array<{ index: number; codes: string[] }>;
+      boundaryDefects: Array<{ boundaryId: string; statement: string; codes: string[] }>;
+      urgencyDefects: Array<{ index: number; codes: string[] }>;
       instruction: string;
     }
   | { kind: "no_safe_space"; reasonCode: string }
@@ -400,7 +434,23 @@ async function reviewConstraintCompliance(
       "Set repeatsPrimaryDecision=true when the branch asks the learner to decide the SAME question the primary choice already answered (for example: primary asked 'notify now vs verify first' and the branch asks it again).",
       "Set overlapsOtherBranchIndex to the index of any sibling branch whose consequence or next decision means the same thing (synonyms and reordered wording still count as the same); otherwise -1. Set branchDistinct accordingly.",
       "",
-      "overallVerdict='accept' ONLY when every choice is defensible, no branch repeats the primary decision, no branch overlaps a sibling, and every confirmed boundary is obeyed. Otherwise 'reject', with exact defectCodes and a short retryInstruction saying what must change. Your verdict must not contradict your own detail fields.",
+      "",
+      "CONFIRMED-BOUNDARY GROUNDING — return ONE boundaryAssessments entry for EVERY confirmed boundary id you were given, exactly once, and never an id you were not given.",
+      "SILENCE ABOUT A RULE IS NOT COMPLIANCE. Judge each boundary on two separate questions:",
+      "  presentInScenario — is the rule actually established in the learner-facing text (opening or immediate context), in natural language, so the learner knows it holds? A rule that appears nowhere is ABSENT, however compliant the choices happen to be: set false and use confirmed_boundary_absent.",
+      "  operationalized — does the rule CHANGE the decisions? Ask: if this rule were deleted, would the scenario still read exactly the same? If yes it is decorative — set false and use boundary_not_operationalized or vacuous_boundary_compliance.",
+      "List in affectedStages every stage the rule actually constrains. A rule that affects only the opening and no decision stage is vacuous.",
+      "Then check compliance stage by stage: allPrimaryChoicesComply, allTradeoffChoicesComply, allActionChoicesComply, allBranchesPreserve. Name the offending labels in violatedChoiceReferences / violatedBranchReferences and use choice_bypasses_boundary, action_reopens_boundary or branch_drops_boundary. A branch that quietly stops honouring the rule after the primary consequence is branch_drops_boundary.",
+      "prohibitedAlternativeExcluded — is the tempting non-compliant option visibly OFF the table rather than offered as a choice? If the rule reads as advisory, set false.",
+      "remainingJudgmentDimensions — name the judgment that genuinely survives inside the rule (sequencing, notification order, staffing, escalation, supervision, documentation, delay recovery, resource allocation…). This must be non-empty whenever a scenario is expected.",
+      "",
+      "URGENCY SAFETY — you are NOT choosing clinical treatment and must not invent medical guidance. You are judging whether LEADERSHIP choices respect safety and escalation boundaries.",
+      "Set urgencyPresent only when the situation itself carries time-sensitive harm, and name urgencySource. If there is no urgency, set urgencyPresent=false, timeSensitiveHarmPossible=false, leave every foreseeableHarm empty and set overallUrgencyVerdict='not_applicable'. NEVER fabricate clinical or safety risk that the situation does not contain.",
+      "For EVERY primary choice by index: does it introduce delay, what is the delay FOR, what SAFETY OR VERIFICATION BASIS makes it legitimate, what concrete foreseeable harm it creates, whether it uses escalation, and whether a competent leader could responsibly choose it.",
+      "REJECT a choice that knowingly delays urgent action for convenience (unsafe_delay, convenience_over_safety), creates avoidable foreseeable deterioration (avoidable_foreseeable_harm), substitutes vague reassurance for operational action, leaves an unsafe capacity situation un-escalated (missing_required_escalation), or treats a confirmed safety rule as optional (boundary_treated_as_optional).",
+      "ACCEPT a choice that takes a short operational pause REQUIRED by a confirmed safety rule, escalates staffing while preserving the rule, redirects or refers when safe capacity is unavailable, seeks supervision, or sequences work so both the urgency and the mandatory check are honoured. Time cost alone is NOT a defect — do not mark a required safety pause unsafe merely because it takes time.",
+      "",
+      "overallVerdict='accept' ONLY when every choice is defensible, no branch repeats the primary decision, no branch overlaps a sibling, every confirmed boundary is PRESENT and OPERATIONALIZED and obeyed at every stage, and no choice is an unsafe delay. Otherwise 'reject', with exact defectCodes and a short retryInstruction saying what must change. Your verdict must not contradict your own detail fields.",
       "Return ONLY the JSON object required by the schema.",
     ].join("\n");
     const payload = {
@@ -466,6 +516,36 @@ async function reviewConstraintCompliance(
               ...b.defectCodes,
             ],
           })),
+        boundaryDefects: v.value.boundaryAssessments
+          .map((b) => {
+            const codes = [
+              ...(!b.presentInScenario ? ["confirmed_boundary_absent"] : []),
+              ...(!b.operationalized ? ["boundary_not_operationalized"] : []),
+              ...(!b.allPrimaryChoicesComply || !b.allTradeoffChoicesComply || b.violatedChoiceReferences.length > 0 ? ["choice_bypasses_boundary"] : []),
+              ...(!b.allActionChoicesComply ? ["action_reopens_boundary"] : []),
+              ...(!b.allBranchesPreserve || b.violatedBranchReferences.length > 0 ? ["branch_drops_boundary"] : []),
+              ...(!b.prohibitedAlternativeExcluded ? ["boundary_treated_as_optional"] : []),
+              ...b.defectCodes,
+            ];
+            // The CONFIRMED statement, never the reviewer's or the model's restatement — a retry must
+            // not be able to narrow the rule the Manager actually confirmed.
+            const statement = constraints.find((c) => c.id === b.boundaryId)?.statement ?? "";
+            return { boundaryId: b.boundaryId, statement, codes: [...new Set(codes)] };
+          })
+          .filter((b) => b.codes.length > 0),
+        urgencyDefects: v.value.urgency.choices
+          .map((c) => ({
+            index: c.index,
+            codes: [
+              ...new Set([
+                ...(c.introducesDelay && !c.safetyBasis.trim() ? ["unsafe_delay"] : []),
+                ...(c.foreseeableHarm.trim() && !c.safetyBasis.trim() ? ["avoidable_foreseeable_harm"] : []),
+                ...(!c.defensible && c.defectCodes.length === 0 ? ["unsafe_delay"] : []),
+                ...c.defectCodes,
+              ]),
+            ],
+          }))
+          .filter((c) => c.codes.length > 0),
         instruction: v.value.retryInstruction,
       };
     }
@@ -547,6 +627,18 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         return { ok: false, reason: llm.reason };
       }
       if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+      // R2.21 — a deterministic grounding failure carries actionable, boundary-specific correction
+      // into the single retry. Without it the second request repeats the first, which is exactly how
+      // an ungrounded scenario used to "recover" into another ungrounded one.
+      if (llm.groundingDefects?.length) {
+        retryFeedback = buildRetryFeedback({
+          attempt,
+          defects: llm.groundingDefects,
+          choiceDefects: [],
+          branchDefects: [],
+          boundaryDefects: constraints.map((c) => ({ boundaryId: c.id, statement: c.statement, codes: llm.groundingDefects ?? [] })),
+        });
+      }
       continue;
     }
     // SEMANTIC REVIEW — R2.18: runs for EVERY generation, not only constrained ones.
@@ -583,6 +675,8 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           defects: review.defects,
           choiceDefects: review.choiceDefects,
           branchDefects: review.branchDefects,
+          boundaryDefects: review.boundaryDefects,
+          urgencyDefects: review.urgencyDefects,
           reviewerInstruction: review.instruction,
         });
         logGenOutcome(
@@ -590,7 +684,14 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           review.defects[0],
           captured({
             scenario: llm.draft,
-            review: { defects: review.defects, choiceDefects: review.choiceDefects, branchDefects: review.branchDefects, instruction: review.instruction },
+            review: {
+              defects: review.defects,
+              choiceDefects: review.choiceDefects,
+              branchDefects: review.branchDefects,
+              boundaryDefects: review.boundaryDefects,
+              urgencyDefects: review.urgencyDefects,
+              instruction: review.instruction,
+            },
             retryFeedback: fb,
           }),
         );

@@ -21,6 +21,7 @@ const act = (label: string, commit: boolean) => ({ label, isActionCommitment: co
 
 function dto(over: Partial<ProviderPracticeScenario> = {}): ProviderPracticeScenario {
   return {
+    boundaryGrounding: [], // no confirmed constraints in this fixture (see boundaryGrounding.test.ts)
     noSafeJudgmentSpace: false,
     title: "Raising a risk under a deadline",
     opening: "A teammate flags a safety gap hours before the client deadline; both promises cannot hold.",

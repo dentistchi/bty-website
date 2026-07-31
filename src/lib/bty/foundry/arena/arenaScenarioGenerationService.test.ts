@@ -1,6 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import type { ConstraintAssessment } from "@/domain/foundry/arena-draft/boundary";
+import type { ProviderBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { providerJson, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
@@ -31,8 +32,12 @@ const guided: GuidedAnswers = {
 
 // R2.16 — the provider now answers in the PROVIDER DTO wire shape (no model-authored ids, branches
 // as a positional array). Fixtures stay canonical for readability and are converted here.
-function aiContent(draft: ArenaScenarioDraft, assessments?: Record<string, ConstraintAssessment[]>): { choices: { message: { content: string } }[] } {
-  return { choices: [{ message: { content: providerJson(draft, assessments) } }] };
+function aiContent(
+  draft: ArenaScenarioDraft,
+  assessments?: Record<string, ConstraintAssessment[]>,
+  grounding: ProviderBoundaryGrounding[] = [],
+): { choices: { message: { content: string } }[] } {
+  return { choices: [{ message: { content: providerJson(draft, assessments, grounding) } }] };
 }
 /**
  * R2.18 — the semantic reviewer now runs for EVERY generation, so a bare generation mock would also
@@ -42,9 +47,15 @@ function aiContent(draft: ArenaScenarioDraft, assessments?: Record<string, Const
 function reviewContent(review: unknown) {
   return { choices: [{ message: { content: JSON.stringify(review) } }] };
 }
-function mockGenThenReview(draft: ArenaScenarioDraft, assessments?: Record<string, ConstraintAssessment[]>, review?: unknown) {
+function mockGenThenReview(
+  draft: ArenaScenarioDraft,
+  assessments?: Record<string, ConstraintAssessment[]>,
+  review?: unknown,
+  grounding: ProviderBoundaryGrounding[] = [],
+  constraintIds: string[] = [],
+) {
   mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-    isReviewRequest(params) ? reviewContent(review ?? acceptReview(draft)) : aiContent(draft, assessments),
+    isReviewRequest(params) ? reviewContent(review ?? acceptReview(draft, {}, constraintIds)) : aiContent(draft, assessments, grounding),
   );
 }
 
@@ -217,9 +228,36 @@ function assessAll(draft: ArenaScenarioDraft, ids: string[]): Record<string, Con
 }
 // R2.16 — assessments now ride NESTED on each choice in the provider DTO, so the canonical-id-keyed
 // map is passed to the fixture converter instead of being a top-level provider field.
-const CONSTRAINED_ASSESSMENTS = assessAll(goodDraft, ["c1_verify"]);
+/**
+ * R2.21 — a GROUNDED constrained draft. The old fixture reused `goodDraft`, which never mentions
+ * identity verification at all: it proved only that a scenario silent about the rule passes, which
+ * is precisely the measured c18 defect. The rule is now established in the opening AND decided
+ * about in the choices, so the difficulty is WHO verifies and WHEN the line pauses — never whether.
+ */
+const groundedDraft: ArenaScenarioDraft = {
+  ...goodDraft,
+  opening: `${goodDraft.opening} Two identifiers must be verified before treatment begins, and that is not open to negotiation here.`,
+  primary: {
+    choices: [
+      { id: "primary_1", label: "Verify both identifiers yourself now and hold the queue while you do it" },
+      { id: "primary_2", label: "Assign a second colleague to verify both identifiers so the queue keeps moving" },
+    ],
+  },
+};
+const GROUNDING: ProviderBoundaryGrounding[] = [
+  {
+    boundaryId: "c1_verify",
+    boundaryStatement: "Two identifiers must be verified before treatment",
+    scenarioPresence: "The opening establishes that two identifiers are verified before treatment begins.",
+    operationalEffect: "No option may begin treatment before both identifiers are verified; the decision is who verifies and what the pause costs.",
+    affectedDecisionStages: ["opening", "primary", "branch_tradeoff"],
+    prohibitedAlternativeExcluded: "Beginning treatment and verifying afterwards is never offered as a choice.",
+    remainingJudgmentDimensions: ["sequencing", "staffing"],
+  },
+];
+const CONSTRAINED_ASSESSMENTS = assessAll(groundedDraft, ["c1_verify"]);
 /** Provider content for a constrained run: assessments derived from the draft actually sent. */
-const constrainedContent = (d: ArenaScenarioDraft) => aiContent(d, assessAll(d, ["c1_verify"]));
+const constrainedContent = (d: ArenaScenarioDraft) => aiContent(d, assessAll(d, ["c1_verify"]), GROUNDING);
 const REVIEW_OK = { choices: [{ message: { content: JSON.stringify({ ok: true, violations: [], noSafeJudgmentSpace: false }) } }] };
 const boundary = (mode: "knowledge_check" | "judgment" | "judgment_with_constraints", confirmed: boolean, cons = CONSTRAINTS) => ({ mode, confirmed, constraints: mode === "judgment_with_constraints" ? cons : [] });
 
@@ -241,30 +279,44 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
     expect(mockCreate).toHaveBeenCalledTimes(2); // 1 generation + 1 quality review
   });
 
-  it("confirmed judgment_with_constraints + compliant draft + review ok → generates", async () => {
-    mockGenThenReview(goodDraft, CONSTRAINED_ASSESSMENTS);
+  it("confirmed judgment_with_constraints + GROUNDED compliant draft + review ok → generates", async () => {
+    mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, GROUNDING, ["c1_verify"]);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r.ok).toBe(true);
     expect(mockCreate).toHaveBeenCalledTimes(2); // 1 generation + 1 semantic review
   });
 
+  it("R2.21 — a compliant draft that never MENTIONS the confirmed rule is rejected (the c18 shape)", async () => {
+    // Silence about a boundary is not compliance: `goodDraft` breaks no rule only because no choice
+    // touches identity verification at all. Under the old contract this passed.
+    mockGenThenReview(goodDraft, assessAll(goodDraft, ["c1_verify"]), undefined, GROUNDING, ["c1_verify"]);
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+  });
+
+  it("R2.21 — a grounded draft with NO grounding declaration is rejected", async () => {
+    mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, [], ["c1_verify"]);
+    const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+  });
+
   it("confirmed constraints but a choice violates one (lexical) → generation_rejected", async () => {
-    const violating = { ...goodDraft, branches: { primary_1: { ...goodDraft.branches!.primary_1, tradeoffChoices: [{ id: "p1_t1", label: "Skip the required check to protect the schedule" }, { id: "p1_t2", label: "Complete the check and delay" }] }, primary_2: goodDraft.branches!.primary_2 } };
-    mockCreate.mockResolvedValue(aiContent(violating as ArenaScenarioDraft));
+    const violating = { ...groundedDraft, branches: { primary_1: { ...goodDraft.branches!.primary_1, tradeoffChoices: [{ id: "p1_t1", label: "Skip the required check to protect the schedule" }, { id: "p1_t2", label: "Complete the check and delay" }] }, primary_2: goodDraft.branches!.primary_2 } };
+    mockCreate.mockResolvedValue(aiContent(violating as ArenaScenarioDraft, assessAll(violating as ArenaScenarioDraft, ["c1_verify"]), GROUNDING));
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
 
   it("missing per-choice constraint assessment → generation_rejected", async () => {
-    mockGenThenReview(goodDraft); // no constraintAssessments at all
+    mockGenThenReview(groundedDraft, undefined, undefined, GROUNDING, ["c1_verify"]); // no constraintAssessments at all
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
 
   it("semantic review finds an INDIRECT violation → generation_rejected (after one regen)", async () => {
     const REVIEW_BAD = { choices: [{ message: { content: JSON.stringify({ ok: false, violations: [{ phase: "action", choiceId: "p1_a1", constraintId: "c1_verify", reason: "implied skip" }], noSafeJudgmentSpace: false }) } }] };
-    mockGenThenReview(goodDraft, assessAll(goodDraft, ["c1_verify"])); // every gen call
-    mockCreate.mockResolvedValueOnce(constrainedContent(goodDraft)).mockResolvedValueOnce(REVIEW_BAD).mockResolvedValueOnce(constrainedContent(goodDraft)).mockResolvedValueOnce(REVIEW_BAD);
+    mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, GROUNDING, ["c1_verify"]); // every gen call
+    mockCreate.mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD).mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
     expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(4); // bounded: <= 2 gen + 2 review
@@ -277,7 +329,7 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
   });
 
   it("semantic review transport failure → generation_failed", async () => {
-    mockCreate.mockResolvedValueOnce(constrainedContent(goodDraft)).mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
+    mockCreate.mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
   });

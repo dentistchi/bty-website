@@ -36,6 +36,7 @@ import {
   type ScenarioBranch,
 } from "./types";
 import type { ConstraintAssessment } from "./boundary";
+import { BOUNDARY_GROUNDING_JSON_SCHEMA, DECISION_STAGES, type DecisionStage, type ProviderBoundaryGrounding } from "./boundaryGrounding";
 
 // ---------------------------------------------------------------------------
 // The DTO — array-based, no model-authored identifiers, no dynamic keys.
@@ -68,6 +69,12 @@ export type ProviderPracticeScenario = {
   flatTradeoffChoices: ProviderChoice[];
   flatActionDecision: ProviderActionDecision;
   branches: ProviderBranch[];
+  /**
+   * One grounding declaration per CONFIRMED boundary (R2.21) — empty when the boundary has no
+   * constraints. Provider/reviewer-only: it is validated then discarded, never persisted in the
+   * canonical draft and never rendered to a learner.
+   */
+  boundaryGrounding: ProviderBoundaryGrounding[];
 };
 
 export const PROVIDER_SCHEMA_NAME = "bty_practice_scenario_v1";
@@ -146,6 +153,7 @@ export const PROVIDER_SCENARIO_JSON_SCHEMA = {
         required: ["resultingWorldState", "escalationText", "tradeoffChoices", "actionDecision"],
       },
     },
+    boundaryGrounding: BOUNDARY_GROUNDING_JSON_SCHEMA,
   },
   required: [
     "noSafeJudgmentSpace",
@@ -156,6 +164,7 @@ export const PROVIDER_SCENARIO_JSON_SCHEMA = {
     "flatTradeoffChoices",
     "flatActionDecision",
     "branches",
+    "boundaryGrounding",
   ],
 } as const;
 
@@ -226,6 +235,39 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
   return { prompt: isObj(v) && isNonEmpty(v.prompt) ? v.prompt : "", choices };
 }
 
+/**
+ * Structural shape of the grounding declaration only. Whether it MATCHES the confirmed constraints
+ * and the scenario is decided by `validateBoundaryGrounding`, which needs both — see
+ * `boundaryGrounding.ts`.
+ */
+function validateGrounding(v: unknown, errors: string[]): ProviderBoundaryGrounding[] {
+  if (!Array.isArray(v)) {
+    errors.push("dto_grounding_not_array");
+    return [];
+  }
+  const out: ProviderBoundaryGrounding[] = [];
+  for (const g of v) {
+    if (!isObj(g) || !isNonEmpty(g.boundaryId)) {
+      errors.push("dto_grounding_malformed");
+      continue;
+    }
+    out.push({
+      boundaryId: g.boundaryId,
+      boundaryStatement: typeof g.boundaryStatement === "string" ? g.boundaryStatement : "",
+      scenarioPresence: typeof g.scenarioPresence === "string" ? g.scenarioPresence : "",
+      operationalEffect: typeof g.operationalEffect === "string" ? g.operationalEffect : "",
+      affectedDecisionStages: (Array.isArray(g.affectedDecisionStages) ? g.affectedDecisionStages : []).filter(
+        (s): s is DecisionStage => (DECISION_STAGES as readonly string[]).includes(s as string),
+      ),
+      prohibitedAlternativeExcluded: typeof g.prohibitedAlternativeExcluded === "string" ? g.prohibitedAlternativeExcluded : "",
+      remainingJudgmentDimensions: (Array.isArray(g.remainingJudgmentDimensions) ? g.remainingJudgmentDimensions : []).filter(
+        (d): d is string => isNonEmpty(d),
+      ),
+    });
+  }
+  return out;
+}
+
 /** Structurally validate a raw provider result against the DTO contract. Content is untouched. */
 export function validateProviderScenario(raw: unknown): DtoValidation {
   const errors: string[] = [];
@@ -244,6 +286,7 @@ export function validateProviderScenario(raw: unknown): DtoValidation {
         flatTradeoffChoices: [],
         flatActionDecision: { prompt: "", choices: [] },
         branches: [],
+        boundaryGrounding: [],
       },
     };
   }
@@ -275,6 +318,8 @@ export function validateProviderScenario(raw: unknown): DtoValidation {
   // model-authored branch key that produced `branch_orphan_key` — an orphan is now unrepresentable.
   if (rawBranches !== null && branches.length !== primaryChoices.length) errors.push("dto_branch_count_mismatch");
 
+  const boundaryGrounding = validateGrounding(raw.boundaryGrounding, errors);
+
   return errors.length ? { ok: false, errors } : {
     ok: true,
     value: {
@@ -286,6 +331,7 @@ export function validateProviderScenario(raw: unknown): DtoValidation {
       flatTradeoffChoices,
       flatActionDecision,
       branches,
+      boundaryGrounding,
     },
   };
 }
@@ -305,6 +351,12 @@ export type CanonicalizedScenario = {
   draft: ArenaScenarioDraft;
   /** Keyed by ASSIGNED canonical choice id — exactly what validateConstraintAssessments expects. */
   assessmentsByChoiceId: Record<string, ConstraintAssessment[]>;
+  /**
+   * Grounding declarations, carried OUTSIDE the draft (R2.21). They are generation/review-time
+   * analysis: validated, used for retry feedback, then dropped. Keeping them off `draft` is what
+   * guarantees they are never persisted and never rendered.
+   */
+  boundaryGrounding: ProviderBoundaryGrounding[];
 };
 
 /**
@@ -363,5 +415,5 @@ export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): Can
     ...(dto.branches.length ? { branches } : {}),
   };
 
-  return { draft, assessmentsByChoiceId };
+  return { draft, assessmentsByChoiceId, boundaryGrounding: dto.boundaryGrounding };
 }

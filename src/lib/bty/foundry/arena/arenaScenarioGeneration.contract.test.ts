@@ -396,8 +396,35 @@ describe("R2.17 — every reviewer outcome is observable", () => {
     ...input,
     boundary: { mode: "judgment_with_constraints" as const, confirmed: true, constraints: [{ id: "c1", statement: "Verify two identifiers before treatment", provenance: "manager_entered" as const }] },
   };
+  /**
+   * R2.21 — a GROUNDED constrained draft. `goodDraft` never mentions identity verification, so it
+   * "complied" with the confirmed rule only by silence — the measured c18 shape, which the grounding
+   * gate now rejects before the reviewer is ever called. The rule is therefore established in the
+   * opening AND decided about in the choices.
+   */
+  const groundedDraft: ArenaScenarioDraft = {
+    ...goodDraft,
+    opening: `${goodDraft.opening} Two identifiers must be verified before treatment begins, without exception.`,
+    primary: {
+      choices: [
+        { id: "primary_1", label: "Verify both identifiers yourself now and hold the queue while you do it" },
+        { id: "primary_2", label: "Assign a colleague to verify both identifiers so the queue keeps moving" },
+      ],
+    },
+  };
+  const GROUNDING = [{
+    boundaryId: "c1",
+    boundaryStatement: "Verify two identifiers before treatment",
+    scenarioPresence: "The opening establishes that two identifiers are verified before treatment begins.",
+    operationalEffect: "No option may begin treatment before both identifiers are verified; the decision is who verifies and what the pause costs.",
+    affectedDecisionStages: ["opening", "primary", "branch_tradeoff"] as const,
+    prohibitedAlternativeExcluded: "Beginning treatment and verifying afterwards is never offered.",
+    remainingJudgmentDimensions: ["sequencing", "staffing"],
+  }];
+  /** An accept-shaped review sized to the CONSTRAINED context (one boundary assessment). */
+  const groundedReview = (over: Parameters<typeof acceptReview>[1] = {}) => acceptReview(groundedDraft, over, ["c1"]);
   const withAssessments = () => {
-    const wire = JSON.parse(providerJson(goodDraft));
+    const wire = JSON.parse(providerJson(groundedDraft, undefined, [...GROUNDING] as never));
     const a = [{ constraintId: "c1", status: "satisfied", rationale: "complies" }];
     for (const c of wire.primaryChoices) c.constraintAssessments = a;
     for (const c of wire.flatTradeoffChoices) c.constraintAssessments = a;
@@ -415,11 +442,28 @@ describe("R2.17 — every reviewer outcome is observable", () => {
     );
 
   it("a SUPPORTED reviewer no-safe verdict is recorded and terminates", async () => {
-    routeReview(acceptReview(goodDraft, {
+    routeReview(groundedReview({
       noSafeJudgmentSpace: true,
       noSafeReasonCode: "all_options_violate_confirmed_boundary",
       remainingJudgmentDimensions: [],
       violatedBoundaryIds: ["c1"],
+      // R2.21 — a refusal must be SHOWN in the per-boundary detail, not merely asserted.
+      boundaryAssessments: [{
+        boundaryId: "c1",
+        presentInScenario: true,
+        operationalized: true,
+        affectedStages: ["opening", "primary"],
+        allPrimaryChoicesComply: false,
+        allBranchesPreserve: false,
+        allTradeoffChoicesComply: false,
+        allActionChoicesComply: false,
+        prohibitedAlternativeExcluded: false,
+        remainingJudgmentDimensions: [],
+        violatedChoiceReferences: ["every option starts treatment before verification"],
+        violatedBranchReferences: [],
+        defectCodes: ["choice_bypasses_boundary"],
+        conciseExplanation: "No path leaves room to verify first.",
+      }],
       overallVerdict: "reject",
       defectCodes: ["boundary_violation"],
     }));
@@ -432,7 +476,7 @@ describe("R2.17 — every reviewer outcome is observable", () => {
   it("the c18 OVER-REFUSAL shape is rejected as contradictory, NOT accepted as no-safe", async () => {
     // Unsupported refusal: claims no-safe while still naming remaining judgment. This is the exact
     // shape that terminated c18; it must now be treated as a broken review, never a safety outcome.
-    routeReview(acceptReview(goodDraft, {
+    routeReview(groundedReview({
       noSafeJudgmentSpace: true,
       noSafeReasonCode: "all_options_violate_confirmed_boundary",
       remainingJudgmentDimensions: ["sequencing", "notification"],
@@ -444,7 +488,7 @@ describe("R2.17 — every reviewer outcome is observable", () => {
   });
 
   it("a reviewer rejection is recorded with its defect code", async () => {
-    routeReview(acceptReview(goodDraft, {
+    routeReview(groundedReview({
       primaryChoices: [
         { index: 0, legitimateValue: "transparency", acceptedCost: "slows delivery", defensible: true, defectCodes: [] },
         { index: 1, legitimateValue: "", acceptedCost: "", defensible: false, defectCodes: ["moral_decoy"] },
@@ -641,5 +685,71 @@ describe("evaluation observability records the stage, never a secret", () => {
     mockCreate.mockResolvedValue(envelope("not json"));
     await generateArenaScenarioDraft(input);
     expect(observed).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("R2.21 — an ungrounded confirmed boundary is corrected, then terminates", () => {
+  const CONSTRAINT = { id: "c1", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" as const };
+  const constrained = { ...input, boundary: { mode: "judgment_with_constraints" as const, confirmed: true, constraints: [CONSTRAINT] } };
+  /** Compliant-by-silence provider output: assessments say satisfied, the scenario never mentions the rule. */
+  const silentButAttested = () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    const a = [{ constraintId: "c1", status: "satisfied", rationale: "complies" }];
+    for (const c of wire.primaryChoices) c.constraintAssessments = a;
+    for (const c of wire.flatTradeoffChoices) c.constraintAssessments = a;
+    for (const c of wire.flatActionDecision.choices) c.constraintAssessments = a;
+    for (const b of wire.branches) {
+      for (const c of b.tradeoffChoices) c.constraintAssessments = a;
+      for (const c of b.actionDecision.choices) c.constraintAssessments = a;
+    }
+    wire.boundaryGrounding = [{
+      boundaryId: "c1",
+      boundaryStatement: CONSTRAINT.statement,
+      scenarioPresence: "The rule is understood by everyone on the ward.",
+      operationalEffect: "Every option respects it.",
+      affectedDecisionStages: ["primary"],
+      prohibitedAlternativeExcluded: "Skipping the check is not offered.",
+      remainingJudgmentDimensions: ["sequencing"],
+    }];
+    return JSON.stringify(wire);
+  };
+
+  it("34. the ungrounded scenario is rejected and NO draft is ever returned", async () => {
+    mockCreate.mockImplementation(async () => envelope(silentButAttested()));
+    const r = await generateArenaScenarioDraft(constrained);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(r as unknown as { value?: unknown }).not.toHaveProperty("value");
+  });
+
+  it("30/33. the retry states the confirmed rule, and a second failure terminates with no fallback", async () => {
+    mockCreate.mockImplementation(async () => envelope(silentButAttested()));
+    await generateArenaScenarioDraft(constrained);
+    const genCalls = mockCreate.mock.calls.filter(([p]) => !isReviewRequest(p));
+    expect(genCalls).toHaveLength(2); // bounded — never open-ended
+    const second = genCalls[1][0].messages.map((m: { content: string }) => m.content).join("\n");
+    expect(second).toMatch(/ATTEMPT 1 CORRECTION/);
+    expect(second).toContain("confirmed_boundary_absent");
+    expect(second).toContain('"Two identifiers must be verified before treatment"');
+    // Everything that must NOT drift is still pinned.
+    expect(second).toContain("A teammate proposes cutting a planned design review to hit the deadline");
+    expect(second).toMatch(/UNCHANGED: the training facts, the confirmed boundaries/);
+  });
+
+  it("the reviewer is never even consulted for an ungrounded scenario", async () => {
+    mockCreate.mockImplementation(async () => envelope(silentButAttested()));
+    await generateArenaScenarioDraft(constrained);
+    expect(mockCreate.mock.calls.filter(([p]) => isReviewRequest(p))).toHaveLength(0);
+    expect(observed.map((o) => o.outcome)).toContain("provider_boundary_ungrounded");
+    expect(observed.map((o) => o.code)).toContain("confirmed_boundary_absent");
+  });
+
+  it("36. the strict generation schema still requires boundaryGrounding on every request", async () => {
+    mockCreate.mockImplementation(async () => envelope(silentButAttested()));
+    await generateArenaScenarioDraft(constrained);
+    const [params] = mockCreate.mock.calls[0];
+    expect(params.response_format.json_schema.name).toBe(PROVIDER_SCHEMA_NAME);
+    expect(params.response_format.json_schema.strict).toBe(true);
+    expect(params.response_format.json_schema.schema.required).toContain("boundaryGrounding");
   });
 });
