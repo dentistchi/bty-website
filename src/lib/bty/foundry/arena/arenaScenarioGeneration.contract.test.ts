@@ -381,6 +381,66 @@ describe("no fallback, ever", () => {
 });
 
 // ---------------------------------------------------------------------------
+describe("R2.17 — every reviewer outcome is observable", () => {
+  // The c18 canary recorded an EMPTY attempt trace: the generator succeeded and the semantic
+  // reviewer declared no-safe-space, but that return site logged nothing, so the deciding stage
+  // was unknowable from the artifact. Each reviewer outcome must now leave a record.
+  const constrained = {
+    ...input,
+    boundary: { mode: "judgment_with_constraints" as const, confirmed: true, constraints: [{ id: "c1", statement: "Verify two identifiers before treatment", provenance: "manager_entered" as const }] },
+  };
+  const withAssessments = () => {
+    const wire = JSON.parse(providerJson(goodDraft));
+    const a = [{ constraintId: "c1", status: "satisfied", rationale: "complies" }];
+    for (const c of wire.primaryChoices) c.constraintAssessments = a;
+    for (const c of wire.flatTradeoffChoices) c.constraintAssessments = a;
+    for (const c of wire.flatActionDecision.choices) c.constraintAssessments = a;
+    for (const b of wire.branches) {
+      for (const c of b.tradeoffChoices) c.constraintAssessments = a;
+      for (const c of b.actionDecision.choices) c.constraintAssessments = a;
+    }
+    return JSON.stringify(wire);
+  };
+  const reviewSays = (body: unknown) => envelope(JSON.stringify(body));
+
+  it("a reviewer no-safe verdict is recorded, not silent", async () => {
+    mockCreate
+      .mockResolvedValueOnce(envelope(withAssessments()))
+      .mockResolvedValueOnce(reviewSays({ ok: true, violations: [], noSafeJudgmentSpace: true }));
+    const r = await generateArenaScenarioDraft(constrained);
+    expect(r).toMatchObject({ ok: false, reason: "no_safe_judgment_space" });
+    expect(observed.map((o) => o.outcome)).toContain("review_no_safe_space");
+    expect(lastCode()).toBe("reviewer_declared_no_judgment_space");
+  });
+
+  it("a reviewer violation is recorded", async () => {
+    mockCreate
+      .mockResolvedValue(envelope(withAssessments()))
+      .mockResolvedValueOnce(envelope(withAssessments()))
+      .mockResolvedValueOnce(reviewSays({ ok: false, violations: [{ phase: "primary", choiceId: "p1", constraintId: "c1", reason: "x" }], noSafeJudgmentSpace: false }));
+    await generateArenaScenarioDraft(constrained);
+    expect(observed.map((o) => o.outcome)).toContain("review_violation");
+  });
+
+  it("a malformed reviewer response is recorded", async () => {
+    mockCreate
+      .mockResolvedValueOnce(envelope(withAssessments()))
+      .mockResolvedValueOnce(envelope("not json"));
+    const r = await generateArenaScenarioDraft(constrained);
+    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    expect(observed.map((o) => o.outcome)).toContain("review_malformed");
+  });
+
+  it("a reviewer transport failure is recorded", async () => {
+    mockCreate
+      .mockResolvedValueOnce(envelope(withAssessments()))
+      .mockResolvedValueOnce(envelope(null));
+    const r = await generateArenaScenarioDraft(constrained);
+    expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
+    expect(observed.map((o) => o.outcome)).toContain("review_transport_failed");
+  });
+});
+
 describe("evaluation observability records the stage, never a secret", () => {
   it("captures the exact rejection code and finish reason", async () => {
     mockCreate.mockResolvedValue(envelope(providerJson(goodDraft).slice(0, 900), { finish_reason: "length" }));

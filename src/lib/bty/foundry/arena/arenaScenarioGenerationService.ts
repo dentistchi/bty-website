@@ -459,10 +459,24 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     // Confirmed constraints → prove no INDIRECT crossing with an independent semantic review.
     if (constraints.length > 0) {
       const review = await reviewConstraintCompliance(input, constraints, llm.draft);
-      if (review.kind === "transport_failed") return { ok: false, reason: "generation_failed" };
-      if (review.kind === "no_safe_space") return { ok: false, reason: "no_safe_judgment_space" };
-      if (review.kind === "malformed") return { ok: false, reason: "generation_rejected" };
+      // R2.17 — these four outcomes previously returned WITHOUT logging, so an evaluation run
+      // recorded an empty attempt trace and the stage that actually decided was unknowable. The
+      // c18 canary refusal was invisible for exactly this reason: the generator succeeded and the
+      // semantic REVIEWER declared no-safe-space, leaving zero observer records.
+      if (review.kind === "transport_failed") {
+        logGenOutcome("review_transport_failed");
+        return { ok: false, reason: "generation_failed" };
+      }
+      if (review.kind === "no_safe_space") {
+        logGenOutcome("review_no_safe_space", "reviewer_declared_no_judgment_space");
+        return { ok: false, reason: "no_safe_judgment_space" };
+      }
+      if (review.kind === "malformed") {
+        logGenOutcome("review_malformed");
+        return { ok: false, reason: "generation_rejected" };
+      }
       if (review.kind === "violation") {
+        logGenOutcome("review_violation");
         if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
         continue; // regenerate once
       }
