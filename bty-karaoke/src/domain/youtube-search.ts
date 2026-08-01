@@ -2,6 +2,8 @@
 // entity decoding, safe API-item projection, and fallback/watch URLs.
 // No network, no API key, no side effects.
 
+import type { DurationAdmission } from './duration-admission';
+
 export const MAX_QUERY_LEN = 100;
 export const SEARCH_MAX_RESULTS = 8;
 
@@ -52,6 +54,16 @@ export interface YoutubeSearchItem {
   title: string;
   channelTitle: string;
   thumbnailUrl: string | null;
+  // ── BUILD 22 — additive duration admission (present only after server enrichment) ──
+  //
+  // OPTIONAL on purpose. `projectYoutubeItem` runs before any duration is known, and the KV
+  // search cache holds pre-enrichment items with a 1-hour TTL — so entries written by the
+  // previous build must keep type-checking and keep working. Enrichment happens AFTER the KV
+  // read, which is why every API response still carries a verdict even on a cache hit.
+  /** RAW provider length in seconds. Null/absent = not established (never render as 0:00). */
+  durationSeconds?: number | null;
+  /** Tri-state verdict. Absent is read as 'unknown' — NEVER as 'too_long'. */
+  durationAdmission?: DurationAdmission;
 }
 
 /**

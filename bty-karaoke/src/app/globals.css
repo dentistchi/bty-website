@@ -1254,6 +1254,30 @@ main.dj-console {
   background: linear-gradient(180deg, var(--gold), var(--gold-2));
   color: #241a03;
 }
+/* BUILD 22 — the song's length, beside the source badge. Subordinate to the title, but always
+   legible: this is the number the Guest uses to judge a result before choosing it. */
+.song-duration {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+/* BUILD 22 — an over-limit result stays VISIBLE and readable (so the Guest understands why it
+   cannot be picked) and carries its reason as TEXT, never as colour alone. */
+.song-blocked-note {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--gold);
+}
+.req-btn.blocked {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--muted);
+  /* The CTA keeps its footprint so a blocked row never reflows next to its neighbours. */
+  cursor: not-allowed;
+}
 .more-results {
   display: block;
   margin: 8px auto 2px;

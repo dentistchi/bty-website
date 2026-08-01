@@ -8,9 +8,15 @@ import { CreateRequestSchema } from '@/lib/validation';
 import {
   addRequest,
   getPublicRoomBySlug,
+  hasExistingRequestForKey,
   listActiveRequests,
   toGuestPublicRequest,
 } from '@/lib/rooms.server';
+import { resolveRawVideoDuration } from '@/lib/youtube-duration.server';
+import {
+  classifyDurationAdmission,
+  MAX_REQUESTABLE_DURATION_SECONDS,
+} from '@/domain/duration-admission';
 import { requestAcceptance } from '@/lib/sessions.server';
 import { resolveEventAccess, getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
@@ -105,6 +111,54 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       { error: 'Could not read a YouTube video from that link or ID', code: 'INVALID_REQUEST' },
       { status: 400 },
     );
+  }
+
+  // ── BUILD 22 — PRE-QUEUE SONG DURATION ADMISSION ──────────────────────────────────────────
+  //
+  // The 900-second playback bound used to be enforced ONLY inside the Host Start transaction, so
+  // a Guest could be confirmed into the queue for a video that can never play and would not find
+  // out — the block surfaced minutes later, to the Host, on another device. This is the earliest
+  // point at which the request is known to be authentic, authorized, event-valid, well-formed,
+  // and NEW; it is therefore the earliest point at which a lookup is legitimate.
+  //
+  // ORDER IS THE CONTRACT. Everything above already rejected unauthorized, closed-room,
+  // ended-event, night-not-open, and malformed submissions, so none of those can reach an
+  // external call — the endpoint cannot be used as an unauthenticated YouTube lookup proxy.
+  //
+  // An 18B replay is resolved as a replay: if this key already holds a row, the song was
+  // admitted when it was created and is NOT re-adjudicated. Re-checking it would make an
+  // accepted request retroactively rejectable by a later provider outage, and would spend quota
+  // on every retry of a request that already exists.
+  const isReplay = parsed.data.idempotencyKey
+    ? await hasExistingRequestForKey(room.id, access.event?.id ?? null, parsed.data.idempotencyKey)
+    : false;
+
+  if (!isReplay) {
+    const raw = await resolveRawVideoDuration(videoId);
+    // FAIL OPEN on anything that is not a positively-established length. Quota exhaustion, a
+    // network failure, a deleted video, an unparseable payload — none of these are "too long",
+    // and blocking on them would let one YouTube outage stop every Guest in every room from
+    // requesting anything. The Host Start gate stays the final, fail-CLOSED defense.
+    const admission = classifyDurationAdmission(raw.ok ? raw.seconds : null);
+    if (admission === 'too_long') {
+      return NextResponse.json(
+        {
+          // Action-first and honest about permanence: this video will never become requestable,
+          // so the copy names the limit and points at the remedy instead of inviting a retry.
+          error: '이 영상은 15분을 초과해 신청할 수 없어요. 더 짧은 버전을 선택해 주세요.',
+          // 400 + a stable code. An older client that does not know `song_too_long` falls through
+          // its `status === 400` branch to `validation` → NON-RETRYABLE with re-pick copy, which
+          // is already the correct instruction. That is what makes a server-first deploy safe.
+          code: 'song_too_long',
+          reason: 'too_long',
+          durationSeconds: raw.ok ? raw.seconds : null,
+          maxDurationSeconds: MAX_REQUESTABLE_DURATION_SECONDS,
+        },
+        { status: 400 },
+      );
+      // NOTHING is written: no request row, no queue position, no ready state, no session
+      // mutation, no cancel capability. The next statement is the only insert in this route.
+    }
   }
 
   const result = await addRequest({

@@ -24,6 +24,7 @@ export type SubmitErrorClass =
   | 'server_temporary' //    5xx / unknown — retryable
   | 'quota' //               429 / rate-limited — retryable (after a pause)
   | 'validation' //          400 bad request — non-retryable (re-pick the song)
+  | 'song_too_long' //       BUILD 22: positively over the 15-min limit — non-retryable, re-pick
   | 'event_closed' //        event ended / night not started — non-retryable (host action)
   | 'room_unavailable' //    room closed / not found / QR mismatch — non-retryable (re-check link)
   | 'unauthorized' //        session expired — non-retryable (re-enter the room)
@@ -62,6 +63,11 @@ function classifyServer(status: number, code: string | null | undefined): Submit
       return 'idempotency_conflict';
     case 'INVALID_REQUEST':
       return 'validation';
+    // BUILD 22 — a positively-established over-limit video. A distinct class from `validation`
+    // because the remedy is specific ("pick a shorter version"), not "check your details", and
+    // because it must never be retryable: the same video will be refused forever.
+    case 'song_too_long':
+      return 'song_too_long';
   }
   if (status === 429) return 'quota';
   if (status === 401 || status === 403) return 'unauthorized';
@@ -115,6 +121,8 @@ export function submitCopy(errorClass: SubmitErrorClass): string {
       return '세션이 만료되었어요. 노래방에 다시 입장해 주세요.';
     case 'validation':
       return '신청 정보를 확인한 뒤 곡을 다시 선택해 주세요.';
+    case 'song_too_long':
+      return '이 영상은 15분을 초과해 신청할 수 없어요. 더 짧은 버전을 선택해 주세요.';
     case 'idempotency_conflict':
       return '신청을 다시 시도해 주세요.';
   }

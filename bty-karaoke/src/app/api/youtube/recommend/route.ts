@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeSearchQuery } from '@/domain/youtube-search';
 import { getRecommendations } from '@/lib/recommendations.server';
+import { enrichItemsWithDuration } from '@/lib/youtube-duration.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,7 +19,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const items = await getRecommendations({ title, channelTitle: channel }, videoId);
-    return NextResponse.json({ items });
+    // BUILD 22 — recommendations render through the SAME result card as search, so they carry
+    // the same duration verdict. Without this a Guest could sidestep the search-time block by
+    // picking an over-limit song from the "이 노래와 잘 어울려요" strip.
+    return NextResponse.json({ items: await enrichItemsWithDuration(items) });
   } catch {
     // Recommendations are best-effort; never surface an error to the guest.
     return NextResponse.json({ items: [] });

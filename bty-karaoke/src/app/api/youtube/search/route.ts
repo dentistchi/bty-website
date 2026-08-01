@@ -10,6 +10,7 @@ import { normalizeSearchQuery } from '@/domain/youtube-search';
 import { normalizeStyle } from '@/domain/performance-style';
 import { SearchQuerySchema } from '@/lib/validation';
 import { searchYoutube } from '@/lib/youtube.server';
+import { enrichItemsWithDuration } from '@/lib/youtube-duration.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,6 +35,13 @@ export async function GET(req: NextRequest) {
   const result = style
     ? await searchYoutube(parsed.data.q, { style })
     : await searchYoutube(parsed.data.q, { bias: true });
+
+  // BUILD 22 — attach the duration verdict so a Guest sees a song's length BEFORE choosing it.
+  // Deliberately AFTER the search (including its KV cache read): enrichment costs at most ONE
+  // additional videos.list unit for the whole page, versus 100 for the search itself, and a
+  // full duration-cache hit costs zero. It never fails the response — an unresolved item comes
+  // back `unknown` and stays selectable, so a duration outage can never block requesting.
+  const items = await enrichItemsWithDuration(result.items);
   // result never contains the API key.
-  return NextResponse.json(result);
+  return NextResponse.json({ ...result, items });
 }

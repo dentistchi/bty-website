@@ -541,6 +541,25 @@ export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult
   return { outcome: 'created', request, status, activeCount: active.length };
 }
 
+/**
+ * BUILD 22 — does this room+event+key bucket ALREADY hold a request?
+ *
+ * Used by the submit route to answer one question before spending an external duration lookup:
+ * is this a genuinely NEW logical request, or an 18B retry of one that already landed? A replay
+ * must never be re-adjudicated — the song was admitted when it was created, and re-checking it
+ * would let a later YouTube outage retroactively reject an accepted request.
+ *
+ * This is a READ-ONLY pre-check and is deliberately NOT the idempotency decision: `addRequest`
+ * remains the sole authority on created / replayed / conflict, exactly as BUILD 18B shipped it.
+ */
+export async function hasExistingRequestForKey(
+  roomId: string,
+  eventId: string | null,
+  key: string,
+): Promise<boolean> {
+  return (await findRequestByKey(karaokeDb(), roomId, eventId, key)) !== null;
+}
+
 /** Read the single row matching a room+event+key tuple (the unique-index bucket). */
 async function findRequestByKey(
   db: ReturnType<typeof karaokeDb>,
