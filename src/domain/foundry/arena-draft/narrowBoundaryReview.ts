@@ -30,6 +30,14 @@
 
 import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT, type BoundarySurface } from "./boundarySurfaces";
+import { explainAll, type ServerExplanation } from "./boundaryExplanation";
+import {
+  GENERIC_REASON_PHRASES,
+  MODEL_REASON_MIN_CHARS,
+  classifyAssessmentState,
+  normalizeReason,
+  type AssessmentStateRule,
+} from "./boundaryReasonParity";
 
 export const NARROW_BOUNDARY_SCHEMA_NAME = "bty_practice_boundary_surface_review_v2";
 export const NARROW_BOUNDARY_CONTRACT_VERSION = "practice-narrow-boundary-review/2";
@@ -155,7 +163,14 @@ export const NARROW_GROUNDING_CODES = [
   "boundary_evidence_from_other_surface",
   "boundary_evidence_restates_boundary",
   "boundary_evidence_ungrounded",
-  "boundary_reason_missing",
+  /**
+   * R2.32 — `boundary_reason_missing` (an unconditional non-empty requirement) is REMOVED. It
+   * discarded two complete live responses over a field no verdict used. Its replacements fire only
+   * where the parity table says the model's own words are the only possible source.
+   */
+  "boundary_reason_required_missing",
+  "boundary_reason_generic",
+  "boundary_assessment_state_invalid",
   /** `violates` with no governed action shown — the R2.28/R2.29 "does not mention it" shape. */
   "boundary_violation_mechanism_missing",
   "boundary_violation_governed_action_missing",
@@ -166,6 +181,30 @@ export const NARROW_GROUNDING_CODES = [
 
 export const NARROW_BOUNDARY_CODES = [...NARROW_COVERAGE_CODES, ...NARROW_GROUNDING_CODES] as const;
 export type NarrowBoundaryCode = (typeof NARROW_BOUNDARY_CODES)[number];
+
+/**
+ * R2.32 Part 7 — codes where the response satisfied the PROVIDER contract (parsed, schema-valid,
+ * fully covered) and failed the SERVER's state contract. Distinct from a coverage failure and from
+ * a grounding failure, because the remedy is different: the parity table or the prompt is wrong,
+ * not the model's evidence.
+ */
+export const OUTPUT_CONTRACT_CODES = [
+  "boundary_reason_required_missing",
+  "boundary_reason_generic",
+  "boundary_assessment_state_invalid",
+  "boundary_applicability_compliance_mismatch",
+] as const;
+
+export const COVERAGE_FAILURE_CODES = [...NARROW_COVERAGE_CODES] as readonly string[];
+
+export type NarrowFailureClass = "coverage" | "grounding" | "output_contract";
+
+/** The single classifier. Coverage outranks output-contract, which outranks grounding. */
+export function classifyFailure(codes: readonly string[]): NarrowFailureClass {
+  if (codes.some((c) => COVERAGE_FAILURE_CODES.includes(c))) return "coverage";
+  if (codes.some((c) => (OUTPUT_CONTRACT_CODES as readonly string[]).includes(c))) return "output_contract";
+  return "grounding";
+}
 
 /**
  * Phrases that assert a conclusion instead of showing the text that supports it, PLUS the exact
@@ -321,13 +360,25 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
       findings.push({ boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, code });
     };
 
-    if (!a.reason.trim()) push("boundary_reason_missing");
+    // R2.32 — the CANONICAL PARITY TABLE decides what this assessment must carry. There is no
+    // second hand-written rule set here; a state that is not in the table is not a state.
+    const state: AssessmentStateRule | null = classifyAssessmentState(a);
+    if (!state) {
+      push("boundary_assessment_state_invalid");
+      continue;
+    }
 
-    // Applicability and compliance must agree about whether a judgment was made at all.
-    const judged = a.applicability === "applies";
-    if (!judged && a.compliance !== "not_assessed") push("boundary_applicability_compliance_mismatch");
-    if (judged && a.compliance === "not_assessed") push("boundary_applicability_compliance_mismatch");
-    if (a.compliance !== "violates" && a.violationMechanism !== "none") push("boundary_applicability_compliance_mismatch");
+    // `reason` is required ONLY where no structured field can carry the meaning: which ambiguity
+    // blocks the judgment, or which mechanism the enum could not name. Everywhere else the server
+    // renders the explanation and prose here is IGNORED — never an alternate authority, and never
+    // a failure. R2.31 measured two complete live responses discarded by the old blanket rule.
+    if (state.reasonAuthority === "model_required") {
+      const trimmed = a.reason.trim();
+      if (trimmed.length < MODEL_REASON_MIN_CHARS) push("boundary_reason_required_missing");
+      else if (GENERIC_REASON_PHRASES.includes(normalizeReason(trimmed) as (typeof GENERIC_REASON_PHRASES)[number])) {
+        push("boundary_reason_generic");
+      }
+    }
 
     /** Grounded excerpt check against one corpus. Returns a code, or null when grounded. */
     const check = (excerpt: string, corpus: string, allowOtherSurfaceScan: boolean): NarrowBoundaryCode | null => {
@@ -347,15 +398,11 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
     const own = ownText.get(a.surfaceRef) ?? "";
     const premise = premiseText.get(a.surfaceRef) ?? "";
 
-    if (a.applicability === "uncertain") {
-      // Only the ambiguity must be named; there may genuinely be nothing to excerpt.
-      continue;
+    // Required evidence comes from the table, so a state's obligations live in exactly one place.
+    if (state.requiredEvidence.includes("governedActionEvidence")) {
+      const govCode = check(a.governedActionEvidence, own, true);
+      if (govCode) push(govCode);
     }
-
-    // What the surface DOES is always required, for `applies` and `not_applicable` alike. This is
-    // what makes "not applicable" an evidenced answer rather than a shrug.
-    const govCode = check(a.governedActionEvidence, own, true);
-    if (govCode) push(govCode);
 
     if (a.compliance === "violates") {
       // A VIOLATION MUST SHOW A MECHANISM. Absence of mention cannot reach this point.
@@ -366,8 +413,8 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
         const preCode = check(a.prerequisiteFailureEvidence, premise, false);
         if (preCode) push(preCode);
       }
-    } else if (a.prerequisiteFailureEvidence.trim()) {
-      // A non-violation that claims a prerequisite failure disagrees with itself.
+    } else if (state.prohibitedEvidence.includes("prerequisiteFailureEvidence") && a.prerequisiteFailureEvidence.trim()) {
+      // A state that cannot have a prerequisite failure claims one. It disagrees with itself.
       push("boundary_applicability_compliance_mismatch");
     }
   }
@@ -408,7 +455,7 @@ export type BoundaryViolation = {
 export type BoundaryUncertainty = { boundaryId: string; surfaceRef: string; reason: string; level: "applicability" | "compliance" };
 
 export type DerivedBoundaryVerdict =
-  | { outcome: "boundary_review_pass"; assessedPairs: number; notApplicableCount: number }
+  | { outcome: "boundary_review_pass"; assessedPairs: number; notApplicableCount: number; explanations: ServerExplanation[] }
   | {
       outcome: "boundary_review_reject";
       /** Every grounded violation, in surface order. */
@@ -418,9 +465,16 @@ export type DerivedBoundaryVerdict =
       /** Descendants that merely repeat an ancestor's violation. Evidence only. */
       downstreamViolations: BoundaryViolation[];
       assessedPairs: number;
+      explanations: ServerExplanation[];
     }
-  | { outcome: "boundary_review_inconclusive"; uncertainties: BoundaryUncertainty[]; assessedPairs: number }
-  | { outcome: "boundary_review_malformed"; codes: NarrowBoundaryCode[]; findings: GroundingFinding[] };
+  | { outcome: "boundary_review_inconclusive"; uncertainties: BoundaryUncertainty[]; assessedPairs: number; explanations: ServerExplanation[] }
+  | {
+      outcome: "boundary_review_malformed";
+      codes: NarrowBoundaryCode[];
+      findings: GroundingFinding[];
+      /** R2.32 Part 7 — WHY it is unusable. The remedy differs by class. */
+      failureClass: NarrowFailureClass;
+    };
 
 /**
  * Derive the boundary result from the per-surface answers. THE SERVER, NOT THE MODEL.
@@ -430,9 +484,27 @@ export type DerivedBoundaryVerdict =
  */
 export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): DerivedBoundaryVerdict {
   const v = validateNarrowBoundaryReview(raw, ctx);
-  if (!v.ok) return { outcome: "boundary_review_malformed", codes: v.codes, findings: v.findings };
+  if (!v.ok) return { outcome: "boundary_review_malformed", codes: v.codes, findings: v.findings, failureClass: classifyFailure(v.codes) };
 
   const statements = new Map(ctx.boundaries.map((b) => [b.id, b.statement]));
+  /**
+   * R2.32 — the explanation is RENDERED from findings the validator already established, after the
+   * response is known valid. Nothing below reads it back: every verdict branch is computed from the
+   * structured fields alone, so a rendering change can never move a verdict.
+   */
+  const explanations = explainAll(
+    v.value.assessments.map((a) => ({
+      boundaryId: a.boundaryId,
+      boundaryStatement: statements.get(a.boundaryId) ?? "",
+      surfaceRef: a.surfaceRef,
+      applicability: a.applicability,
+      compliance: a.compliance,
+      violationMechanism: a.violationMechanism,
+      governedActionEvidence: a.governedActionEvidence,
+      prerequisiteFailureEvidence: a.prerequisiteFailureEvidence,
+      modelReason: a.reason,
+    })),
+  );
   const lineageOf = new Map(ctx.surfaces.map((s) => [s.coordinate, s.lineage]));
   const selectableOf = new Map(ctx.surfaces.map((s) => [s.coordinate, s.independentlySelectable]));
   const order = new Map(ctx.surfaces.map((s, i) => [s.coordinate, i]));
@@ -481,6 +553,7 @@ export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): D
       causalViolations: violations.filter((x) => !x.downstreamOfPriorViolation),
       downstreamViolations: violations.filter((x) => x.downstreamOfPriorViolation),
       assessedPairs,
+      explanations,
     };
   }
 
@@ -492,19 +565,20 @@ export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): D
       reason: a.reason,
       level: a.applicability === "uncertain" ? ("applicability" as const) : ("compliance" as const),
     }));
-  if (uncertainties.length > 0) return { outcome: "boundary_review_inconclusive", uncertainties, assessedPairs };
+  if (uncertainties.length > 0) return { outcome: "boundary_review_inconclusive", uncertainties, assessedPairs, explanations };
 
   const requiredPairs = ctx.boundaries.length * ctx.surfaces.length;
   const settled = v.value.assessments.every(
     (a) => a.applicability === "not_applicable" || (a.applicability === "applies" && a.compliance === "complies"),
   );
   if (assessedPairs !== requiredPairs || !settled) {
-    return { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] };
+    return { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [], failureClass: "coverage" };
   }
   return {
     outcome: "boundary_review_pass",
     assessedPairs,
     notApplicableCount: v.value.assessments.filter((a) => a.applicability === "not_applicable").length,
+    explanations,
   };
 }
 

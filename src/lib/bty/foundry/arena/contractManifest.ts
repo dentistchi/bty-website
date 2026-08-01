@@ -59,6 +59,7 @@ import {
   NARROW_BOUNDARY_CODES,
   BOUNDARY_REVIEW_OUTCOMES,
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
+  OUTPUT_CONTRACT_CODES,
   GENERIC_EVIDENCE_PHRASES,
   MIN_EVIDENCE_CHARS,
   APPLICABILITY_RESULTS,
@@ -75,6 +76,9 @@ import {
   SURFACE_MAP_CODES,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { NARROW_BOUNDARY_SAMPLING, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
+import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
+import { BOUNDARY_REPORTABLE_OUTCOMES, BOUNDARY_TERMINAL_SUBCODES } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { BOUNDARY_SCOPE_CODES, MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
 import { READINESS_STATES } from "@/domain/foundry/arena-draft/practiceReadiness";
 
@@ -141,7 +145,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.30.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.32.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -283,6 +287,12 @@ export function buildContractManifest(head: string, model: string): ContractMani
         silenceIsNotViolation: true,
       }),
       boundaryReviewRerunPolicy: digest({ maxCallsPerSubject: MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT, rerunIsGenerationRetry: false }),
+      // R2.32 — one table decides what the prompt asks and what the validator requires; the server
+      // owns the explanation; and one enumeration names every outcome a run may end on.
+      boundaryReasonParityTable: parityTableSha256(),
+      boundaryServerExplanationAuthority: explanationAuthoritySha256(),
+      boundaryOutputContractClassification: digest({ codes: OUTPUT_CONTRACT_CODES, terminalSubcodes: BOUNDARY_TERMINAL_SUBCODES }),
+      boundaryOutcomeEnumeration: digest([...BOUNDARY_REPORTABLE_OUTCOMES]),
     },
     sampling: {
       generation: PRACTICE_SAMPLING.generation,

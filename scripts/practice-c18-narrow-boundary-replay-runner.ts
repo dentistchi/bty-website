@@ -22,6 +22,9 @@ import {
   NARROW_BOUNDARY_JSON_SCHEMA,
   VIOLATION_MECHANISMS,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
+import { BOUNDARY_REPORTABLE_OUTCOMES, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import {
   BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
   compatibilitySurfaces,
@@ -114,9 +117,14 @@ const binding = {
   violationMechanismContractSha256: d(VIOLATION_MECHANISMS),
   correctionPacketContractSha256: d({ correctionFrom: "causal_violations_only", downstreamIsEvidenceOnly: true, notApplicableNeverCorrects: true }),
   worldStateAuthoritySha256: d({ escalationFallback: false, missingIsAuthorityFailure: true }),
+  // R2.32 — the reason parity table, the explanation renderer and the outcome enumeration are all
+  // part of what the reviewer is asked and how the answer is read.
+  reasonParityTableSha256: parityTableSha256(),
+  serverExplanationSha256: explanationAuthoritySha256(),
+  outcomeEnumSha256: d([...BOUNDARY_REPORTABLE_OUTCOMES]),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
-  artifactSchemaVersion: "practice-narrow-boundary-replay/2",
+  artifactSchemaVersion: "practice-narrow-boundary-replay/3",
   replayRuntimeSha256: d(runtime),
 };
 
@@ -141,10 +149,17 @@ const CHECKS: Array<[string, string]> = [
   ["violation-mechanism contract", "violationMechanismContractSha256"],
   ["correction-packet contract", "correctionPacketContractSha256"],
   ["world-state authority", "worldStateAuthoritySha256"],
+  ["reason parity table", "reasonParityTableSha256"],
+  ["server explanation authority", "serverExplanationSha256"],
+  ["outcome enumeration", "outcomeEnumSha256"],
   ["active boundary ids", "activeBoundaryIds"],
   ["boundary text", "boundaryText"],
   ["replay runtime", "replayRuntimeSha256"],
 ];
+
+const ALLOWED_OUTCOME_LINES = renderAllowedOutcomes()
+  .map((line) => `printf '  ${line}\\n'`)
+  .join("\n");
 
 const checkLines = CHECKS.map(([label, path]) =>
   `check ${shq(label)} ${shq(path)} ${shq(JSON.stringify((binding as Record<string, unknown>)[path]))}`,
@@ -152,8 +167,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.30 BOUNDARY PRECISION REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.30
+# BTY Practice — R2.32 BOUNDARY EXPLANATION REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.32
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -175,6 +190,19 @@ const script = `#!/usr/bin/env bash
 #   * A violation must prove a MECHANISM: the governed action present AND the
 #     prerequisite missing, each with a grounded excerpt.
 #   * The correction packet carries EARLIEST CAUSAL findings only.
+#
+#   R2.30  BOTH live responses completed normally, passed the provider schema and
+#          covered every surface — and were discarded because applies-state rows
+#          carried reason:"". The prompt had never asked for one there.
+#
+# WHAT R2.32 CHANGES
+#   * ONE canonical parity table drives the prompt, the validator and the tests.
+#   * reason is required ONLY where no structured field can carry the meaning:
+#     applicability uncertainty, compliance uncertainty, other_grounded_violation.
+#   * Everywhere else the SERVER renders the explanation. Model prose there is
+#     ignored, never a failure.
+#   * boundary_output_contract_failure names a response that satisfied the
+#     provider contract and failed the server's state contract.
 #
 #   Active boundary: [${BOUNDARY_ID}] ${BOUNDARY_TEXT}
 #
@@ -207,7 +235,7 @@ die() { printf '\\n%s\\n' "$*" >&2; exit 1; }
 mismatch() { printf '\\nCONTRACT MISMATCH · RUNNER STALE\\n  %s\\n    expected: %s\\n    actual:   %s\\n' "$1" "$2" "$3" >&2; exit 3; }
 step() { printf '  [%s] %s\\n' "$1" "$2"; }
 
-printf '\\nR2.30 BOUNDARY PRECISION REPLAY — PREFLIGHT\\n\\n'
+printf '\\nR2.32 BOUNDARY EXPLANATION REPLAY — PREFLIGHT\\n\\n'
 
 [ -d "$REPO/.git" ] || die "CONTRACT MISMATCH · RUNNER STALE
   repository not found at $REPO"
@@ -292,6 +320,11 @@ printf 'LIVE PROVIDER NOT CALLED\\n'
 wiring_cleanup
 trap - EXIT INT TERM
 
+printf '\nCAPTURED LIVE DTO REGRESSION (no credential, no network)\n'
+npx --yes vitest run src/domain/foundry/arena-draft/r230LiveDtoRegression.test.ts src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
+  || wiring_failed 'the captured R2.30 live DTOs no longer reproduce a server-derived verdict'
+printf 'BOTH CAPTURED LIVE ATTEMPTS REPRODUCE A SERVER-DERIVED VERDICT\n'
+
 if [ "$CHECK_ONLY" = '1' ]; then
   printf '\\nCREDENTIAL NOT REQUESTED\\n\\n'
   exit 0
@@ -323,10 +356,9 @@ printf 'BOUNDARY REVIEWER BEHAVIOUR MEASURED · PRODUCT QUALITY NOT MEASURED\\n'
 printf 'replay status: %s\\n' "$REPLAY_STATUS"
 printf 'artifacts:     %s\\n' "$OUT_DIR"
 printf '============================================================\\n'
-printf '\\nAllowed outcomes: boundary_review_pass | boundary_review_reject |\\n'
-printf 'boundary_review_inconclusive | boundary_review_malformed |\\n'
-printf 'provider_failure | subject_digest_mismatch | surface_map_mismatch |\\n'
-printf 'surface_authority_failure\\n'
+printf '\\nALLOWED OUTCOMES (rendered from the ONE canonical enumeration — R2.30 printed a\\n'
+printf 'list that did not contain the outcome it actually produced):\\n'
+${ALLOWED_OUTCOME_LINES}
 printf '\\nThe subject was RECONSTRUCTED. This result says what the boundary reviewer\\n'
 printf 'does when the confirmed rule and every decision surface are put in front of\\n'
 printf 'it. It is not a product-quality verdict.\\n\\n'

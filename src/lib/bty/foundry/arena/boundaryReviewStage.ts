@@ -15,6 +15,9 @@
  */
 
 import type { Finding } from "@/domain/foundry/arena-draft/gatePrecedence";
+import { BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES, type BoundaryStageOutcome as StageOutcome } from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import { classifyAssessmentState, requiresModelReason } from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import { explanationSha256, type ServerExplanation } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import {
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
@@ -36,18 +39,11 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildNarrowBoundarySubject, narrowBoundarySubjectSha256, type NarrowBoundarySubject } from "./narrowBoundaryContract";
 import type { NarrowBoundaryCallResult, NarrowBoundaryEvidence } from "./narrowBoundaryReviewer";
 
-export const BOUNDARY_STAGE_OUTCOMES = [
-  "boundary_review_pass",
-  "boundary_review_not_applicable",
-  "boundary_review_reject",
-  "boundary_review_inconclusive",
-  "boundary_reviewer_terminal_failure",
-  "boundary_review_authority_failure",
-] as const;
-export type BoundaryStageOutcome = (typeof BOUNDARY_STAGE_OUTCOMES)[number];
+// R2.32 Part 9 — ONE canonical enumeration, re-exported so existing importers keep working.
+export { BOUNDARY_STAGE_OUTCOMES, type BoundaryStageOutcome } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 
 export type BoundaryStageResult = {
-  outcome: BoundaryStageOutcome;
+  outcome: StageOutcome;
   /** Every narrow call made, in order. Empty when the stage never reached the provider. */
   evidences: NarrowBoundaryEvidence[];
   subject: NarrowBoundarySubject | null;
@@ -70,6 +66,15 @@ export type BoundaryStageResult = {
   findings: Finding[];
   /** Authority / surface-map failure codes. */
   codes: string[];
+  /** R2.32 — server-rendered explanations from the deciding attempt. Never a semantic finding. */
+  explanations: ServerExplanation[];
+  explanationSha256: string | null;
+  /** The precise subcode when a response failed the SERVER state contract, not the provider's. */
+  outputContractFailure: boolean;
+  /** Per-attempt reason bookkeeping, so an auditor can tell correct silence from a real omission. */
+  modelReasonRequiredCount: number;
+  modelReasonMissingCount: number;
+  modelReasonUnexpectedCount: number;
   /** True exactly when the broad semantic reviewer is permitted to run next. */
   broadReviewAllowed: boolean;
 };
@@ -97,7 +102,7 @@ export function surfaceDefectCode(surface: BoundarySurface | undefined): string 
   }
 }
 
-const empty = (outcome: BoundaryStageOutcome, codes: string[] = []): BoundaryStageResult => ({
+const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult => ({
   outcome,
   evidences: [],
   subject: null,
@@ -113,6 +118,12 @@ const empty = (outcome: BoundaryStageOutcome, codes: string[] = []): BoundarySta
   uncertainties: [],
   findings: [],
   codes,
+  explanations: [],
+  explanationSha256: null,
+  outputContractFailure: false,
+  modelReasonRequiredCount: 0,
+  modelReasonMissingCount: 0,
+  modelReasonUnexpectedCount: 0,
   broadReviewAllowed: outcome === "boundary_review_not_applicable",
 });
 
@@ -221,6 +232,9 @@ export async function runBoundaryReviewStage(
       call.kind === "transport_failed" ? { kind: "transport_failed" } : { kind: "derived", verdict: call.verdict },
     );
 
+    const tally = tallyModelReason(call.evidence.parsed);
+    const verdict = call.evidence.verdict;
+    const explanations = "explanations" in verdict ? verdict.explanations : [];
     const base = {
       evidences,
       subject,
@@ -230,13 +244,25 @@ export async function runBoundaryReviewStage(
       excludedCompatibilitySurfaces: excluded.map((s) => s.coordinate),
       calls: evidences.length,
       reruns,
+      explanations,
+      explanationSha256: explanations.length ? explanationSha256(explanations) : null,
+      outputContractFailure: verdict.outcome === "boundary_review_malformed" && verdict.failureClass === "output_contract",
+      modelReasonRequiredCount: tally.required,
+      modelReasonMissingCount: tally.missing,
+      modelReasonUnexpectedCount: tally.unexpected,
     };
 
     if (decision.action === "rerun_boundary_review") {
       reruns++;
-      log("boundary_review_rerun", call.evidence.verdict.outcome === "boundary_review_malformed" ? call.evidence.verdict.codes[0] : undefined, {
+      log("boundary_review_rerun", verdict.outcome === "boundary_review_malformed" ? verdict.codes[0] : undefined, {
         boundaryReviewSubjectSha256: subjectSha,
         because: decision.because,
+        // R2.32 — name the precise class so an output-contract failure is never read as a coverage
+        // or grounding failure. They have different remedies.
+        boundaryReviewOutcome: base.outputContractFailure ? "boundary_output_contract_failure" : "boundary_review_malformed",
+        modelReasonRequiredCount: tally.required,
+        modelReasonMissingCount: tally.missing,
+        modelReasonUnexpectedCount: tally.unexpected,
       });
       continue;
     }
@@ -293,12 +319,22 @@ export async function runBoundaryReviewStage(
     }
 
     if (decision.action === "boundary_reviewer_terminal_failure") {
-      log("boundary_reviewer_terminal_failure", call.evidence.verdict.outcome === "boundary_review_malformed" ? call.evidence.verdict.codes[0] : undefined, {
+      // The terminal CLASS stays `boundary_reviewer_terminal_failure` (R2.32 Part 8 preserves the
+      // existing policy); the precise SUBCODE travels with it.
+      const subcode = base.outputContractFailure ? "boundary_output_contract_failure" : undefined;
+      log("boundary_reviewer_terminal_failure", subcode ?? (verdict.outcome === "boundary_review_malformed" ? verdict.codes[0] : undefined), {
         boundaryReviewSubjectSha256: subjectSha,
         scenarioUnjudged: true,
         because: decision.because,
+        boundaryReviewOutcome: subcode ?? "boundary_review_malformed",
       });
-      return { ...empty("boundary_reviewer_terminal_failure"), ...base, outcome: "boundary_reviewer_terminal_failure", reruns };
+      return {
+        ...empty("boundary_reviewer_terminal_failure"),
+        ...base,
+        outcome: "boundary_reviewer_terminal_failure",
+        codes: subcode ? [subcode] : [],
+        reruns,
+      };
     }
 
     // Transport / budget failure. Never a scenario verdict.
@@ -316,6 +352,36 @@ export async function runBoundaryReviewStage(
     calls: evidences.length,
     reruns,
   };
+}
+
+/**
+ * R2.32 — count what the model was ASKED for versus what it supplied, per attempt. This is how an
+ * auditor distinguishes "returned empty reason correctly" (the R2.30 case, now valid) from
+ * "omitted a reason the state genuinely required".
+ */
+export function tallyModelReason(parsed: unknown): { required: number; missing: number; unexpected: number } {
+  const rows = ((parsed as { assessments?: unknown[] } | null)?.assessments ?? []) as Array<Record<string, string>>;
+  let required = 0;
+  let missing = 0;
+  let unexpected = 0;
+  for (const a of rows) {
+    const state = classifyAssessmentState({
+      applicability: String(a.applicability ?? ""),
+      compliance: String(a.compliance ?? ""),
+      violationMechanism: String(a.violationMechanism ?? ""),
+    });
+    if (!state) continue;
+    const has = String(a.reason ?? "").trim().length > 0;
+    if (requiresModelReason(state)) {
+      required += 1;
+      if (!has) missing += 1;
+    } else if (has) {
+      // Prose where the server owns the explanation. IGNORED for authority — never a failure — but
+      // counted, because a rising count means the prompt has drifted from the parity table again.
+      unexpected += 1;
+    }
+  }
+  return { required, missing, unexpected };
 }
 
 /** Aggregate stability metrics (R2.29 Part 12). Any nonzero terminal count fails a hard gate. */
@@ -340,6 +406,13 @@ export type BoundaryReviewMetrics = {
   /** Violations the model asserted that grounding refused — the R2.29 false-positive family. */
   administrativeFalsePositivePreventedCount: number;
   missingWorldStateCount: number;
+  // R2.32 — explanation and reason-contract counters.
+  serverDerivedExplanationCount: number;
+  modelReasonRequiredCount: number;
+  modelReasonMissingCount: number;
+  /** Prose supplied where the server owns the explanation. Ignored for authority; a drift signal. */
+  modelReasonUnexpectedCount: number;
+  boundaryOutputContractFailureCount: number;
 };
 
 export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
@@ -361,6 +434,11 @@ export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
   downstreamViolationCount: 0,
   administrativeFalsePositivePreventedCount: 0,
   missingWorldStateCount: 0,
+  serverDerivedExplanationCount: 0,
+  modelReasonRequiredCount: 0,
+  modelReasonMissingCount: 0,
+  modelReasonUnexpectedCount: 0,
+  boundaryOutputContractFailureCount: 0,
 });
 
 const UNGROUNDED_CODES = new Set([
@@ -409,9 +487,20 @@ export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryS
     downstreamViolationCount: m.downstreamViolationCount + r.downstreamViolations.length,
     administrativeFalsePositivePreventedCount: m.administrativeFalsePositivePreventedCount + prevented,
     missingWorldStateCount: m.missingWorldStateCount + (r.codes.includes("boundary_world_state_missing") ? 1 : 0),
+    // A server-derived explanation is NOT a reviewer call and NOT a semantic finding.
+    serverDerivedExplanationCount: m.serverDerivedExplanationCount + r.explanations.filter((e) => e.authority === "server").length,
+    modelReasonRequiredCount: m.modelReasonRequiredCount + r.modelReasonRequiredCount,
+    modelReasonMissingCount: m.modelReasonMissingCount + r.modelReasonMissingCount,
+    modelReasonUnexpectedCount: m.modelReasonUnexpectedCount + r.modelReasonUnexpectedCount,
+    boundaryOutputContractFailureCount:
+      m.boundaryOutputContractFailureCount +
+      r.evidences.filter((e) => e.verdict.outcome === "boundary_review_malformed" && e.verdict.failureClass === "output_contract").length,
   };
 }
 
 /** Any nonzero terminal / inconclusive / ungrounded count fails the stability hard gate. */
 export const boundaryMetricsPass = (m: BoundaryReviewMetrics): boolean =>
-  m.boundaryReviewerTerminalFailureCount === 0 && m.boundaryReviewInconclusiveCount === 0 && m.boundaryEvidenceUngroundedCount === 0;
+  m.boundaryReviewerTerminalFailureCount === 0 &&
+  m.boundaryReviewInconclusiveCount === 0 &&
+  m.boundaryEvidenceUngroundedCount === 0 &&
+  m.boundaryOutputContractFailureCount === 0;

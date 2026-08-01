@@ -12,6 +12,7 @@
 
 import { canonicalJson } from "@/domain/foundry/arena-draft/reviewSubject";
 import {
+  classifyFailure,
   deriveBoundaryVerdict,
   type DerivedBoundaryVerdict,
   type NarrowBoundaryCode,
@@ -82,7 +83,7 @@ export async function reviewBoundarySurfaces(
     parsed: unknown,
     finishReason: string | null,
   ): NarrowBoundaryCallResult => {
-    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: [code], findings: [] };
+    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: [code], findings: [], failureClass: classifyFailure([code]) };
     return {
       kind: "derived",
       verdict,
@@ -112,7 +113,7 @@ export async function reviewBoundarySurfaces(
 
     const raw = rc?.message?.content;
     if (!raw) {
-      const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: ["boundary_review_not_json"], findings: [] };
+      const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: ["boundary_review_not_json"], findings: [], failureClass: classifyFailure(["boundary_review_not_json"]) };
       return {
         kind: "transport_failed",
         evidence: { ...base, parsed: null, outcome: verdict.outcome, verdict, finishReason, latencyMs: now() - startedAt, sanitizedError: "empty_boundary_review_content" },
@@ -134,7 +135,7 @@ export async function reviewBoundarySurfaces(
       evidence: { ...base, parsed, outcome: verdict.outcome, verdict, finishReason, latencyMs: now() - startedAt, sanitizedError: null },
     };
   } catch {
-    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: ["boundary_review_not_json"], findings: [] };
+    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: ["boundary_review_not_json"], findings: [], failureClass: classifyFailure(["boundary_review_not_json"]) };
     return {
       kind: "transport_failed",
       evidence: { ...base, parsed: null, outcome: verdict.outcome, verdict, finishReason: null, latencyMs: now() - startedAt, sanitizedError: "boundary_review_request_failed" },

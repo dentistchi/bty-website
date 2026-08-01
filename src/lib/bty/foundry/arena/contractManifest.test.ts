@@ -149,7 +149,10 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // R2.30 replaced the surface map with a reachability-derived one and added applicability, so an
     // R2.29 artifact was produced under a materially different boundary contract.
     expect(manifestDigest(m)).not.toBe("bec8d7872e35d7aa631c5e4fed6bf024b722ae65e4a1a5dc392d3f7a64e0ebef"); // R2.29
-    expect(m.artifactSchemaVersion).toBe("r2.30.1");
+    // R2.32 changed which field carries authority and who writes the explanation, so an R2.30
+    // artifact was produced under a different reviewer output contract.
+    expect(manifestDigest(m)).not.toBe("25cb0451a20791053d6a6861236f3eed2097eb5662bdd80c9b4276fff8ba2895"); // R2.30
+    expect(m.artifactSchemaVersion).toBe("r2.32.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

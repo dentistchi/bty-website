@@ -12,6 +12,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import { canonicalJson } from "@/domain/foundry/arena-draft/reviewSubject";
 import {
   NARROW_BOUNDARY_JSON_SCHEMA,
@@ -29,6 +30,14 @@ import {
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
+// R2.32 — the state rules and the reason policy are GENERATED from the canonical parity table, so
+// the prompt cannot say something the validator does not enforce. That drift discarded two complete
+// live responses in R2.30.
+import {
+  parityTableSha256,
+  renderPromptStateRules,
+  renderReasonPolicyLines,
+} from "@/domain/foundry/arena-draft/boundaryReasonParity";
 
 const d = (v: unknown): string => createHash("sha256").update(typeof v === "string" ? v : canonicalJson(v)).digest("hex");
 
@@ -62,14 +71,14 @@ export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "QUESTION 1 — APPLICABILITY. Does the boundary GOVERN this surface at all?",
   "  applies        — the surface initiates, authorizes, continues, reopens or produces the action or state the rule governs.",
   "  not_applicable — the surface does none of those. It does something else: staffing, notification, documentation, reporting, escalation, sequencing, communication.",
-  "  uncertain      — the surface text is genuinely insufficient to tell. Name the exact ambiguity.",
+  "  uncertain      — the surface text is genuinely insufficient to tell.",
   "",
   "A SURFACE IS NOT GOVERNED MERELY BY BEING SILENT ABOUT THE RULE. Not repeating the rule, not mentioning the prerequisite, and not restating a required check are NOT evidence that a surface breaks it. Requesting extra staff, preparing a summary, sending a report to an administrator and choosing what to tell someone do not perform the governed action. Answer `not_applicable` and show what the surface actually does.",
   "",
   "QUESTION 2 — COMPLIANCE. Ask this ONLY when applicability is `applies`. Otherwise set compliance to `not_assessed`.",
   "  complies  — the governed action happens WITH the rule satisfied, or the surface preserves the rule.",
   "  violates  — the governed action or state happens WITHOUT the rule satisfied.",
-  "  uncertain — you cannot settle it from the text. Name the exact ambiguity.",
+  "  uncertain — you cannot settle it from the text.",
   "",
   "A VIOLATION MUST PROVE A MECHANISM, NOT AN ABSENCE. To answer `violates` you must show BOTH:",
   "  governedActionEvidence      — a verbatim excerpt of THIS surface's own text showing the governed action or state is actually present.",
@@ -79,11 +88,16 @@ export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "  resulting_state_missing_prerequisite      — the asserted state already contains the governed action having happened without the prerequisite.",
   "  boundary_reopened_after_prior_compliance  — the prerequisite was satisfied earlier and this surface undoes or bypasses it.",
   "  explicit_boundary_contradiction           — the surface states something the rule forbids outright.",
-  "  other_grounded_violation                  — a real mechanism none of the above names; explain it in reason.",
+  "  other_grounded_violation                  — a real mechanism none of the above names.",
   "If you cannot show BOTH excerpts, it is not a violation. Answer `not_applicable`, `complies` or `uncertain` instead.",
   "",
-  "EVIDENCE IS MANDATORY AND MUST BE CONCRETE.",
-  "`governedActionEvidence` is required for `applies` AND for `not_applicable`: it is how you show what the surface does. Excerpt it VERBATIM from that surface's own text.",
+  "EVERY VALID ANSWER IS ONE OF THESE SIX STATES. Fill exactly the fields the state calls for:",
+  ...renderPromptStateRules(),
+  "",
+  ...renderReasonPolicyLines(),
+  "",
+  "EVIDENCE MUST BE CONCRETE.",
+  "`governedActionEvidence` is what shows the surface's own behaviour. Excerpt it VERBATIM from that surface's own text.",
   "  It must NOT be the boundary statement repeated back.",
   "  It must NOT be text belonging to a different surface.",
   "  It must NOT be a conclusion such as \'complies with the boundary\', \'follows the rule\' or \'does not address verification\'.",
@@ -113,6 +127,10 @@ export function buildNarrowBoundaryContract(): { sha256: string; parts: Record<s
     schema: d(NARROW_BOUNDARY_JSON_SCHEMA),
     sampling: d(NARROW_BOUNDARY_SAMPLING),
     surfaceMapVersion: d(SURFACE_MAP_VERSION),
+    // The parity table is part of the review contract: it decides what the prompt says AND what the
+    // validator requires, so a change to it changes the question being asked.
+    reasonParityTable: parityTableSha256(),
+    explanationAuthority: explanationAuthoritySha256(),
   };
   return { sha256: d(parts), parts };
 }

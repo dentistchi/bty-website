@@ -16,11 +16,17 @@ import {
 } from "./boundaryReviewStage";
 import { narrowBoundarySubjectSha256, type NarrowBoundarySubject } from "./narrowBoundaryContract";
 import type { NarrowBoundaryCallResult } from "./narrowBoundaryReviewer";
-import { deriveBoundaryVerdict, type DerivedBoundaryVerdict } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { classifyFailure, deriveBoundaryVerdict, type DerivedBoundaryVerdict } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { enumerateBoundarySurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { buildBoundaryProvenance, noBoundaryProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { draftFixture } from "@/domain/foundry/arena-draft/boundarySurfaces.test";
 import { registeredCodes } from "@/domain/foundry/arena-draft/gatePrecedence";
+import {
+  BOUNDARY_REPORTABLE_OUTCOMES,
+  BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
+  isReportableOutcome,
+  renderAllowedOutcomes,
+} from "@/domain/foundry/arena-draft/boundaryOutcomes";
 
 const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified before treatment" };
 const draft = draftFixture();
@@ -65,7 +71,8 @@ const baseAssessments = (subject: NarrowBoundarySubject) =>
     governedActionEvidence: s.text.slice(0, 100),
     prerequisiteFailureEvidence: "",
     violationMechanism: "none" as const,
-    reason: "does not perform the governed action",
+    // R2.32 — an EMPTY reason is correct here: the server owns this explanation.
+    reason: "",
   }));
 
 /** Turn one surface into a fully grounded violation. */
@@ -81,7 +88,7 @@ const asViolation = (subject: NarrowBoundarySubject, ref: string, mechanism = "g
         governedActionEvidence: s.text.slice(0, 100),
         prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 100),
         violationMechanism: mechanism as "governed_action_without_prerequisite",
-        reason: "governed action proceeds with the prerequisite unmet",
+        reason: "",
       };
     });
 
@@ -151,7 +158,7 @@ describe("[25][26] pipeline order", () => {
   it("[28] an inconclusive SKIPS the broad review", async () => {
     const r = await runBoundaryReviewStage(
       deps(async (s, a) =>
-        call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "ambiguous" } : x)))),
+        call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "the label does not say whether caring means treating" } : x)))),
       ),
       args(),
     );
@@ -194,7 +201,7 @@ describe("[21][22] rerun authority in the stage", () => {
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => {
       seen.push(narrowBoundarySubjectSha256(s));
       return a === 1
-        ? call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] })
+        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })
         : call(s, a, responseFor(s, asViolation(s, "primary[1]")));
     });
     const r = await runBoundaryReviewStage(deps(review), args());
@@ -207,7 +214,7 @@ describe("[21][22] rerun authority in the stage", () => {
 
   it("[22] two malformed responses → terminal reviewer failure, and never a third call", async () => {
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) =>
-      call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_evidence_ungrounded"], findings: [] }),
+      call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_evidence_ungrounded"], findings: [], failureClass: classifyFailure(["boundary_evidence_ungrounded"]) }),
     );
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(2);
@@ -218,7 +225,7 @@ describe("[21][22] rerun authority in the stage", () => {
   it("a transport failure is terminal and never a scenario verdict", async () => {
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => ({
       kind: "transport_failed" as const,
-      evidence: call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_review_not_json"], findings: [] }).evidence,
+      evidence: call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_not_json"], findings: [], failureClass: classifyFailure(["boundary_review_not_json"]) }).evidence,
     }));
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(1);
@@ -251,12 +258,14 @@ describe("correction-packet authority", () => {
 
   it("an inconclusive or malformed result produces NO correction findings — no blind rewrite", async () => {
     const inconclusive = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, applicability: "uncertain" as const } : x))))),
+      deps(async (s, a) =>
+        call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, applicability: "uncertain" as const, reason: "the label does not settle whether it treats" } : x)))),
+      ),
       args(),
     );
     expect(inconclusive.findings).toEqual([]);
     const malformed = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] })),
+      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })),
       args(),
     );
     expect(malformed.findings).toEqual([]);
@@ -277,11 +286,17 @@ describe("aggregate metrics", () => {
       compatibilitySurfaceCount: 4,
       notApplicableSurfaceCount: 12,
       complianceViolationCount: 0,
+      // R2.32 — twelve server-rendered explanations, and no model prose was required or missing.
+      serverDerivedExplanationCount: 12,
+      modelReasonRequiredCount: 0,
+      modelReasonMissingCount: 0,
+      modelReasonUnexpectedCount: 0,
+      boundaryOutputContractFailureCount: 0,
     });
     expect(boundaryMetricsPass(m)).toBe(true);
 
     const ungrounded = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_evidence_ungrounded"], findings: [] })),
+      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_evidence_ungrounded"], findings: [], failureClass: classifyFailure(["boundary_evidence_ungrounded"]) })),
       args(),
     );
     m = accumulateBoundaryMetrics(m, ungrounded);
@@ -289,5 +304,79 @@ describe("aggregate metrics", () => {
     expect(m.boundaryReviewerTerminalFailureCount).toBe(1);
     expect(m.broadReviewSkippedByBoundaryCount).toBe(1);
     expect(boundaryMetricsPass(m)).toBe(false);
+  });
+});
+
+describe("[R2.32] reason parity, explanations and the output-contract subcode", () => {
+  /** A response that omits a reason the parity table genuinely requires. */
+  const missingRequiredReason = (s: NarrowBoundarySubject) =>
+    responseFor(s, (l) =>
+      l.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "" } : x)),
+    );
+
+  it("an EMPTY reason in a server-derived state is valid and produces a pass", async () => {
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, responseFor(s))), args());
+    expect(r.outcome).toBe("boundary_review_pass");
+    expect(r.outputContractFailure).toBe(false);
+    expect(r.explanations).toHaveLength(12);
+    expect(r.explanationSha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("[4][14][15][16] a missing REQUIRED reason reruns once, then terminates with the subcode", async () => {
+    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => call(s, a, missingRequiredReason(s)));
+    const r = await runBoundaryReviewStage(deps(review), args());
+    expect(review).toHaveBeenCalledTimes(2); // one rerun, never a third
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    // The terminal CLASS is preserved; the precise SUBCODE travels with it.
+    expect(r.outputContractFailure).toBe(true);
+    expect(r.codes).toContain("boundary_output_contract_failure");
+    expect(r.evidences.every((e) => e.verdict.outcome === "boundary_review_malformed" && e.verdict.failureClass === "output_contract")).toBe(true);
+  });
+
+  it("counts required / missing / unexpected model reasons per attempt", async () => {
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, missingRequiredReason(s))), args());
+    expect(r.modelReasonRequiredCount).toBe(1);
+    expect(r.modelReasonMissingCount).toBe(1);
+    expect(r.modelReasonUnexpectedCount).toBe(0);
+  });
+
+  it("[7] prose where the server owns the explanation is IGNORED but COUNTED as drift", async () => {
+    const withProse = (s: NarrowBoundarySubject) =>
+      responseFor(s, (l) => l.map((x) => ({ ...x, reason: "This surface does something else: it prepares a report." })));
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, withProse(s))), args());
+    expect(r.outcome).toBe("boundary_review_pass"); // never a failure
+    expect(r.modelReasonUnexpectedCount).toBe(12);
+    expect(r.modelReasonRequiredCount).toBe(0);
+  });
+
+  it("an output-contract failure fails the stability hard gate on its own", async () => {
+    let m = emptyBoundaryMetrics();
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, missingRequiredReason(s))), args());
+    m = accumulateBoundaryMetrics(m, r);
+    expect(m.boundaryOutputContractFailureCount).toBe(2);
+    expect(boundaryMetricsPass(m)).toBe(false);
+  });
+
+  it("a grounding failure is NOT classified as an output-contract failure", async () => {
+    const ungrounded = (s: NarrowBoundarySubject) =>
+      responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, governedActionEvidence: "invented text nobody wrote" } : x)));
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, ungrounded(s))), args());
+    expect(r.outputContractFailure).toBe(false);
+    expect(r.codes).not.toContain("boundary_output_contract_failure");
+  });
+});
+
+describe("[18][22] canonical outcome enumeration", () => {
+  it("every stage outcome is reportable, including the terminal failure R2.30 printed without", () => {
+    for (const o of STAGE_OUTCOMES) expect(BOUNDARY_REPORTABLE_OUTCOMES).toContain(o);
+    expect(BOUNDARY_REPORTABLE_OUTCOMES).toContain("boundary_reviewer_terminal_failure");
+    expect(BOUNDARY_REPORTABLE_OUTCOMES).toContain("boundary_output_contract_failure");
+    expect(isReportableOutcome("boundary_reviewer_terminal_failure")).toBe(true);
+    expect(isReportableOutcome("not_a_real_outcome")).toBe(false);
+  });
+
+  it("the rendered list covers the whole enumeration", () => {
+    const rendered = renderAllowedOutcomes().join(" | ");
+    for (const o of BOUNDARY_REPORTABLE_OUTCOMES) expect(rendered).toContain(o);
   });
 });

@@ -189,16 +189,39 @@ describe("[4][5][6][9][23] the R2.29 false positives are prevented", () => {
 
   it("[9] each measured R2.29 rationale, submitted as a violation, is REFUSED as unsupported", () => {
     for (const reason of C18_MEASURED_FALSE_POSITIVE_REASONS) {
+      // R2.32 — with a NAMED mechanism the claim reaches the evidence rules and fails there for
+      // the right reason: it shows neither the governed action nor a prerequisite failure. The
+      // prose, whatever it says, carries no authority at all.
       const rows = oracleResponse().map((a) =>
         a.surfaceRef === "branch[1].action[0]"
-          ? { ...a, applicability: "applies" as const, compliance: "violates" as const, governedActionEvidence: "", prerequisiteFailureEvidence: "", violationMechanism: "none" as const, reason }
+          ? {
+              ...a,
+              applicability: "applies" as const,
+              compliance: "violates" as const,
+              governedActionEvidence: "",
+              prerequisiteFailureEvidence: "",
+              violationMechanism: "governed_action_without_prerequisite" as const,
+              reason,
+            }
           : a,
       );
       const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
       expect(v.outcome, `reason: ${reason}`).toBe("boundary_review_malformed");
       if (v.outcome !== "boundary_review_malformed") throw new Error("unreachable");
       expect(v.codes).toContain("boundary_violation_governed_action_missing");
+      expect(v.codes).toContain("boundary_violation_prerequisite_evidence_missing");
     }
+
+    // And with mechanism `none`, the same claim is not even a valid state.
+    const noMechanism = oracleResponse().map((a) =>
+      a.surfaceRef === "branch[1].action[0]"
+        ? { ...a, applicability: "applies" as const, compliance: "violates" as const, violationMechanism: "none" as const }
+        : a,
+    );
+    const v2 = deriveBoundaryVerdict({ assessments: noMechanism }, ctx);
+    expect(v2.outcome).toBe("boundary_review_malformed");
+    if (v2.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    expect(v2.codes).toContain("boundary_assessment_state_invalid");
   });
 
   it("[12] the flat compatibility surfaces R2.29 judged are not even in the matrix", () => {

@@ -18,6 +18,7 @@ import {
   allowsBroadReview,
   boundaryReviewCountsAsGenerationRetry,
   decideAfterBoundaryReview,
+  classifyFailure,
   deriveBoundaryVerdict,
   producesCorrectionPacket,
   validateNarrowBoundaryReview,
@@ -143,10 +144,31 @@ describe("[9][14] silence is not a violation", () => {
       ctx,
     );
     expect(r.ok).toBe(false);
+    // R2.32 — `violates` with mechanism `none` is not a state in the canonical table at all, so it
+    // is refused one step earlier and more precisely than by the three separate evidence codes.
+    expect(r.ok === false && r.codes).toContain("boundary_assessment_state_invalid");
+  });
+
+  it("a violates row WITH a mechanism but no evidence still fails on the evidence rules", () => {
+    const r = validateNarrowBoundaryReview(
+      {
+        assessments: withRow("branch[1].tradeoff[0]", {
+          applicability: "applies",
+          compliance: "violates",
+          governedActionEvidence: "",
+          prerequisiteFailureEvidence: "",
+          violationMechanism: "governed_action_without_prerequisite",
+          reason: "",
+        }),
+      },
+      ctx,
+    );
+    expect(r.ok).toBe(false);
     const codes = r.ok === false ? r.codes : [];
     expect(codes).toContain("boundary_violation_governed_action_missing");
-    expect(codes).toContain("boundary_violation_mechanism_missing");
     expect(codes).toContain("boundary_violation_prerequisite_evidence_missing");
+    // …and NOT on the reason, which this state does not require.
+    expect(codes).not.toContain("boundary_reason_required_missing");
   });
 
   it("[10] a violation with NO governed-action evidence is malformed, never a reject", () => {
@@ -216,11 +238,15 @@ describe("evidence grounding", () => {
     expect(r.ok === false && r.codes).toContain("boundary_applicability_compliance_mismatch");
   });
 
-  it("applicability and compliance must agree about whether a judgment was made", () => {
-    const a = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { applicability: "not_applicable", compliance: "complies" }) }, ctx);
-    expect(a.ok === false && a.codes).toContain("boundary_applicability_compliance_mismatch");
-    const b = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { applicability: "applies", compliance: "not_assessed" }) }, ctx);
-    expect(b.ok === false && b.codes).toContain("boundary_applicability_compliance_mismatch");
+  it("an applicability/compliance combination outside the table is an INVALID STATE", () => {
+    for (const over of [
+      { applicability: "not_applicable" as const, compliance: "complies" as const },
+      { applicability: "applies" as const, compliance: "not_assessed" as const },
+    ]) {
+      const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", over) }, ctx);
+      expect(r.ok).toBe(false);
+      expect(r.ok === false && r.codes).toContain("boundary_assessment_state_invalid");
+    }
   });
 });
 
@@ -258,7 +284,9 @@ describe("[15] server-derived verdict", () => {
 
   it("a violation OUTRANKS an uncertainty elsewhere", () => {
     const mixed = violationAt("primary[1]").map((a) =>
-      a.surfaceRef === "branch[0].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "ambiguous" } : a,
+      a.surfaceRef === "branch[0].tradeoff[1]"
+        ? { ...a, applicability: "uncertain" as const, reason: "the label does not say whether care means treatment" }
+        : a,
     );
     expect(deriveBoundaryVerdict({ assessments: mixed }, ctx).outcome).toBe("boundary_review_reject");
   });
@@ -359,7 +387,10 @@ describe("[15][16] earliest causal violation and descendant deduplication", () =
 
 describe("rerun authority", () => {
   it("first malformed reruns once, second terminates, and there is never a third call", () => {
-    const malformed = { kind: "derived" as const, verdict: { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [] } };
+    const malformed = {
+      kind: "derived" as const,
+      verdict: { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [], failureClass: "coverage" as const },
+    };
     expect(decideAfterBoundaryReview(1, malformed).action).toBe("rerun_boundary_review");
     expect(decideAfterBoundaryReview(2, malformed).action).toBe("boundary_reviewer_terminal_failure");
     expect(MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT).toBe(2);

@@ -23,6 +23,9 @@ import type { NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBou
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
 import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type ViolationMechanism } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
+import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import { BOUNDARY_REPORTABLE_OUTCOMES, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { compatibilitySurfaces, enumerateBoundarySurfaces, reviewableSurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { RECONSTRUCTION_DISCLAIMER } from "@/lib/bty/foundry/arena/historicalBoundaryReconstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
@@ -63,6 +66,11 @@ export type NarrowReplaySummary = {
   excludedCompatibilitySurfaces: string[];
   causalViolations: string[];
   authorityCodes: string[];
+  outputContractFailure: boolean;
+  serverDerivedExplanations: number;
+  modelReasonRequiredCount: number;
+  modelReasonMissingCount: number;
+  uncertainties: Array<{ surfaceRef: string; reason: string }>;
 };
 
 /**
@@ -143,6 +151,17 @@ export async function runC18NarrowBoundaryReplay(
       uncertainties: stage.uncertainties,
       findings: stage.findings,
       authorityCodes: stage.codes,
+      // R2.32 — the explanation is rendered evidence, never a semantic finding. It is stored beside
+      // the original DTO, which is preserved untouched in `boundaryReviewEvidence`.
+      serverDerivedExplanations: stage.explanations,
+      explanationSha256: stage.explanationSha256,
+      explanationAuthoritySha256: explanationAuthoritySha256(),
+      reasonParityTableSha256: parityTableSha256(),
+      outputContractFailure: stage.outputContractFailure,
+      modelReasonRequiredCount: stage.modelReasonRequiredCount,
+      modelReasonMissingCount: stage.modelReasonMissingCount,
+      modelReasonUnexpectedCount: stage.modelReasonUnexpectedCount,
+      allowedOutcomes: [...BOUNDARY_REPORTABLE_OUTCOMES],
       broadReviewStarted: false,
       broadReviewAllowed: stage.broadReviewAllowed,
       generationCallCount: 0,
@@ -164,6 +183,11 @@ export async function runC18NarrowBoundaryReplay(
     excludedCompatibilitySurfaces: stage.excludedCompatibilitySurfaces,
     causalViolations: stage.causalViolations.map((v) => v.surfaceRef),
     authorityCodes: stage.codes,
+    outputContractFailure: stage.outputContractFailure,
+    serverDerivedExplanations: stage.explanations.filter((e) => e.authority === "server").length,
+    modelReasonRequiredCount: stage.modelReasonRequiredCount,
+    modelReasonMissingCount: stage.modelReasonMissingCount,
+    uncertainties: stage.uncertainties.map((u) => ({ surfaceRef: u.surfaceRef, reason: u.reason })),
   };
 }
 
@@ -180,7 +204,8 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
     governedActionEvidence: s.text.slice(0, 120),
     prerequisiteFailureEvidence: "",
     violationMechanism: "none",
-    reason: "does not perform the governed action",
+    // R2.32 — empty is CORRECT here: the server owns this explanation.
+    reason: "",
   }));
 
   const violate = (ref: string, mechanism: ViolationMechanism) =>
@@ -195,7 +220,7 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
           violationMechanism: mechanism,
           governedActionEvidence: s.text.slice(0, 120),
           prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 120),
-          reason: "governed action proceeds with the prerequisite unmet",
+          reason: "",
         };
       });
 
@@ -219,7 +244,7 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
       parsed = {
         assessments: settled.map((a) =>
           a.surfaceRef === "branch[1].action[0]"
-            ? { ...a, applicability: "applies" as const, compliance: "violates" as const, governedActionEvidence: "", prerequisiteFailureEvidence: "", violationMechanism: "none" as const, reason: "Does not address verification of identifiers." }
+            ? { ...a, applicability: "applies" as const, compliance: "violates" as const, governedActionEvidence: "", prerequisiteFailureEvidence: "", violationMechanism: "governed_action_without_prerequisite" as const, reason: "" }
             : a,
         ),
       };
@@ -227,12 +252,21 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
     case "uncertain":
       parsed = {
         assessments: settled.map((a) =>
-          a.surfaceRef === "branch[1].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "'caring for' may or may not mean treatment" } : a,
+          a.surfaceRef === "branch[1].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "'caring for' may or may not mean treating" } : a,
         ),
       };
       break;
     case "malformed":
       parsed = { assessments: settled.slice(1) };
+      break;
+    case "output_contract":
+      // R2.32 — the shape that MUST still fail: a state whose explanation only the model can give,
+      // with the explanation missing. Distinct from a coverage or grounding failure.
+      parsed = {
+        assessments: settled.map((a) =>
+          a.surfaceRef === "branch[1].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "" } : a,
+        ),
+      };
       break;
     default:
       parsed = { assessments: settled };
@@ -299,9 +333,18 @@ async function main(): Promise<void> {
 
   if (useMock) process.stdout.write("C18 NARROW BOUNDARY REPLAY MOCK · LIVE PROVIDER NOT CALLED\n");
   process.stdout.write(`OUTCOME: ${summary.outcome}\nCALLS: ${summary.calls}\nRERUNS: ${summary.reruns}\n`);
+  // R2.32 Part 14 — the semantic verdict and the contract bookkeeping are DIFFERENT questions and
+  // are printed apart, so a reject is never read as a precision pass.
+  process.stdout.write(`\n-- SEMANTIC VERDICT --\n`);
   process.stdout.write(`EARLIEST CAUSAL VIOLATIONS: ${summary.causalViolations.join(", ") || "(none)"}\n`);
+  process.stdout.write(`UNCERTAINTY FINDINGS:       ${summary.uncertainties.map((u) => `${u.surfaceRef}: ${u.reason}`).join(" | ") || "(none)"}\n`);
+  process.stdout.write(`\n-- SERVER-DERIVED EXPLANATIONS (rendered, never a finding) --\n`);
+  process.stdout.write(`count: ${summary.serverDerivedExplanations}\n`);
+  process.stdout.write(`\n-- MODEL REASON CONTRACT --\n`);
+  process.stdout.write(`required: ${summary.modelReasonRequiredCount}  missing: ${summary.modelReasonMissingCount}  outputContractFailure: ${summary.outputContractFailure}\n`);
   process.stdout.write(`PREVENTED UNSUPPORTED FINDINGS: violations asserted without a grounded mechanism are refused, never reported\n`);
   if (summary.authorityCodes.length) process.stdout.write(`AUTHORITY CODES: ${summary.authorityCodes.join(", ")}\n`);
+  process.stdout.write(`\nALLOWED OUTCOMES:\n${renderAllowedOutcomes().map((l) => `  ${l}`).join("\n")}\n`);
   process.stdout.write(`ARTIFACT: ${summary.artifactPath} ${summary.artifactSha256}\n`);
   process.stdout.write("A PASS IS A REVIEWER MEASUREMENT · NEVER A PRODUCT-QUALITY PASS\n");
   if (summary.outcome === "boundary_reviewer_terminal_failure" || summary.outcome === "boundary_review_authority_failure") process.exitCode = 4;
