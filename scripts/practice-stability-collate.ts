@@ -16,6 +16,12 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseRuntimeConfig } from "@/lib/bty/foundry/arena/runtimeConfig";
+import {
+  deriveStabilityMetrics,
+  evaluateStabilityVerdict,
+  type CaseEvidence,
+} from "@/domain/foundry/arena-draft/stabilityVerdict";
+import { stabilityTerminalLabel } from "@/lib/bty/foundry/arena/stabilityReport";
 import { listCaseArtifacts, sha256 } from "@/lib/bty/foundry/arena/caseArtifact";
 import type { CaseResult } from "@/lib/bty/foundry/arena/liveEvaluation";
 
@@ -91,31 +97,58 @@ function main(): void {
   if (manifests.size > 1) problems.push(`artifacts span ${manifests.size} different contract manifests`);
 
   const infrastructure = results.filter((r) => r.classification === "infrastructure");
+  // R2.24 — `complete` is EVIDENCE completeness and nothing more. It used to be the only thing
+  // standing between a run and the words "GATES PASS"; a run of six rejections satisfied it.
   const complete = missing.length === 0 && problems.length === 0;
   const generated = results.filter((r) => r.ok);
-  const firstAttempt = generated.filter((r) => r.attempts.filter((a) => String(a.outcome ?? "").startsWith("gate_level_")).length === 0);
+
+  // The verdict is computed by the pure domain authority from the artifacts, never from the
+  // orchestrator's exit status.
+  const metrics = deriveStabilityMetrics(results as unknown as CaseEvidence[], expected.length);
+  const verdict = evaluateStabilityVerdict(metrics, { missingCases: missing, problems });
 
   const summary = {
     runId,
     mode,
     complete,
-    status: complete ? "COMPLETE" : infrastructure.length > 0 ? "INCOMPLETE · INFRASTRUCTURE ABORT" : "INCOMPLETE",
+    status: !complete
+      ? infrastructure.length > 0
+        ? "INCOMPLETE · INFRASTRUCTURE ABORT"
+        : "INCOMPLETE"
+      : verdict.stabilityHardGatesPass
+        ? "COMPLETE · STABILITY HARD GATES PASS"
+        : "COMPLETE · STABILITY HARD GATES FAILED",
     head: results[0]?.head ?? null,
     manifestSha256: results[0]?.manifestSha256 ?? null,
     model: results[0]?.model ?? null,
     sampling: results[0]?.sampling ?? null,
+    // --- R2.24 machine-readable verdict: six independent dimensions ---
+    executionComplete: verdict.executionComplete,
+    evidenceComplete: verdict.evidenceComplete,
+    infrastructureHealthy: verdict.infrastructureHealthy,
+    stabilityHardGatesPass: verdict.stabilityHardGatesPass,
+    humanReviewRequired: verdict.humanReviewRequired,
+    productQualityPass: verdict.productQualityPass,
+    productQualityAuthority: verdict.productQualityAuthority,
+    hardGateFailures: verdict.hardGateFailures,
+    metrics,
+    generatedCaseIds: generated.map((r) => `${r.passId}/${r.caseId}`),
+    rejectedCaseIds: results.filter((r) => !r.ok).map((r) => `${r.passId}/${r.caseId}`),
+    reviewerMalformedCount: metrics.reviewerMalformed,
     expectedCases: expected.length,
     presentCases: results.length,
     missingCases: missing,
     problems,
     artifacts: results.map((r) => ({ file: r.__file, sha256: r.__sha256, passId: r.passId, caseId: r.caseId })),
     generated: generated.length,
-    firstAttemptValid: firstAttempt.length,
-    retryRecovered: generated.length - firstAttempt.length,
+    firstAttemptValid: metrics.firstAttemptValid,
+    retryRecovered: metrics.retryRecovered,
+    retryExhausted: metrics.retryExhausted,
     contentFailures: results.filter((r) => !r.ok && r.classification === "content").length,
     infrastructureFailures: infrastructure.length,
     abortClassification: infrastructure[0]?.reason ?? null,
-    requiresNewRunnerAuthorization: !complete,
+    // A run whose hard gates failed cannot be re-executed on the old authorization either.
+    requiresNewRunnerAuthorization: !verdict.stabilityHardGatesPass,
     defectFrequency: results
       .flatMap((r) => r.attempts.flatMap((a) => a.defectCodes ?? []))
       .reduce<Record<string, number>>((m, c) => ({ ...m, [c]: (m[c] ?? 0) + 1 }), {}),
@@ -125,16 +158,15 @@ function main(): void {
   writeFileSync(outJson, JSON.stringify(summary, null, 2));
 
   const lines: string[] = [
-    `# R2.23D-R4 Practice stability review — ${summary.status}${mode === "mock" ? " · MOCK" : ""}`,
+    `# Practice stability review — ${summary.status}${mode === "mock" ? " · MOCK" : ""}`,
     "",
     // An incomplete run is incomplete in EVERY mode. A mock that did not finish must never
     // print a PASS line just because it was a mock.
-    !complete
-      ? "THIS RUN IS INCOMPLETE — it is not stability evidence."
+    ...(!complete
+      ? ["THIS RUN IS INCOMPLETE — it is not stability evidence."]
       : mode === "mock"
-        ? "FULL STABILITY MOCK PASS · LIVE PRODUCT QUALITY NOT MEASURED"
-        : "STRUCTURAL + SEMANTIC GATES: see result JSON",
-    "HUMAN PRODUCT REVIEW REQUIRED",
+        ? ["FULL STABILITY MOCK PASS · LIVE PRODUCT QUALITY NOT MEASURED"]
+        : stabilityTerminalLabel(verdict, metrics)),
     "",
     `- run: ${runId}`,
     `- head: ${summary.head ?? "(no artifacts)"}`,
@@ -188,7 +220,9 @@ function main(): void {
       ? `COLLATION MOCK PASS · ${summary.presentCases} IMMUTABLE CASE ARTIFACTS\n`
       : `wrote ${outJson} and ${outMd} · ${summary.status} · ${summary.presentCases}/${summary.expectedCases} cases\n`,
   );
-  if (!complete) process.exitCode = 6;
+  // R2.24 — a failed hard gate is a nonzero exit, exactly like an incomplete run. The runner reads
+  // this status, and a zero here is what let a 1-of-6 run read as success.
+  if (!complete || !verdict.stabilityHardGatesPass) process.exitCode = 6;
 }
 
 try {

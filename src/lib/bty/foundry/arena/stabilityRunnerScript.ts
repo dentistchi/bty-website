@@ -391,20 +391,27 @@ esac
 printf '\\nCOLLATING\\n'
 # The SIX case artifacts are the authority, and only the LIVE ones: the collator
 # filters by the config's mode, so a mock artifact cannot enter live evidence.
+#
+# R2.24 — the collator is also the ONLY authority on the verdict. This script used
+# to print its own pass line gated on EVAL_STATUS, but EXIT_CODES.contentFailure is
+# deliberately 0 so a quality rejection keeps the remaining cases running. A run
+# that generated 1 valid scenario out of 6 therefore printed GATES PASS. The shell
+# no longer forms an opinion; it echoes the packet the collator wrote.
+set +e
 npx --yes tsx scripts/practice-stability-collate.ts --config "$LIVE_CONFIG" \\
-  --json "$OUT_JSON" --md "$OUT_MD" || true
+  --json "$OUT_JSON" --md "$OUT_MD"
+COLLATE_STATUS=$?
+set -e
 
 printf '\\n============================================================\\n'
-if [ "$EVAL_STATUS" = '0' ]; then
-  printf 'STRUCTURAL + SEMANTIC GATES PASS\\n'
-else
-  printf 'RUN INCOMPLETE — NOT STABILITY EVIDENCE\\n'
-fi
-printf 'HUMAN PRODUCT REVIEW REQUIRED\\n'
+# Lines 1..3 of the review packet carry the verdict the collator computed from the
+# artifacts. Reproducing them here cannot disagree with the packet.
+sed -n '3,5p' "$OUT_MD" 2>/dev/null || printf 'VERDICT UNAVAILABLE — the collator wrote no review packet\\n'
 printf '============================================================\\n'
 printf '  result:   %s\\n' "$OUT_JSON"
 printf '  review:   %s\\n' "$OUT_MD"
 printf '  config:   %s\\n' "$LIVE_CONFIG"
+printf '  collator exit: %s (0 = hard gates passed, 6 = hard gates failed or run incomplete)\\n' "$COLLATE_STATUS"
 printf '\\nThis is NOT a product-quality pass. Read all six scenarios.\\n\\n'
 `;
 }

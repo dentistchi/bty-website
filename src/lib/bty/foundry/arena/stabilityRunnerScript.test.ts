@@ -255,8 +255,9 @@ describe("the generated runner stays inside its scope", () => {
   it("binds the three canary cases and never labels the result a product-quality pass", () => {
     const script = runner();
     for (const id of CANARY_CASE_IDS) expect(script).toContain(id);
-    expect(script).toContain("STRUCTURAL + SEMANTIC GATES PASS");
-    expect(script).toContain("HUMAN PRODUCT REVIEW REQUIRED");
+    // R2.24 — neither verdict string is produced here any more. The collator owns both,
+    // and it reaches the pass wording only when every hard gate holds.
+    expect(script).not.toContain("STRUCTURAL + SEMANTIC GATES PASS");
     expect(script).not.toContain("PRODUCT QUALITY PASS");
   });
 
@@ -399,8 +400,10 @@ describe("R2.23D-R3 — Vitest no longer holds live-execution authority", () => 
   });
 
   it("an incomplete run is never labelled a gates pass", () => {
-    expect(script).toMatch(/if \[ "\$EVAL_STATUS" = '0' \]; then\n  printf 'STRUCTURAL \+ SEMANTIC GATES PASS/);
-    expect(script).toContain("RUN INCOMPLETE — NOT STABILITY EVIDENCE");
+    // R2.24 — the shell no longer decides. The collator computes the verdict from the
+    // artifacts and this script reproduces the packet's own lines.
+    expect(script).not.toContain("STRUCTURAL + SEMANTIC GATES PASS");
+    expect(script).toContain("COLLATE_STATUS");
     expect(script).not.toContain("PRODUCT QUALITY PASS");
   });
 });
@@ -516,10 +519,15 @@ describe("R2.23D-R4 — the full mock run is executed, not merely described", ()
     }
   });
 
-  it("never lets a mock run print the live product verdict", () => {
+  it("never forms its own opinion about the verdict", () => {
     const s = src();
-    // The one live verdict string must sit strictly after the credential prompt.
-    expect(s.indexOf("STRUCTURAL + SEMANTIC GATES PASS")).toBeGreaterThan(s.indexOf("read -rs LLM_API_KEY"));
+    // R2.24 — the shell must not contain the pass string AT ALL. It printed one on the
+    // R2.23D-R4 run (1 valid scenario out of 6) because it was gated on EVAL_STATUS, and
+    // EXIT_CODES.contentFailure is deliberately 0 so quality rejections keep measuring.
+    expect(s).not.toContain("STRUCTURAL + SEMANTIC GATES PASS");
+    expect(s).not.toMatch(/if \[ "\$EVAL_STATUS" = '0' \]; then\n  printf 'STRUCTURAL/);
+    // It echoes the collator's packet instead.
+    expect(s).toMatch(/sed -n '3,5p' "\$OUT_MD"/);
   });
 
   it("discards mock evidence before the live run so it can never be collated", () => {

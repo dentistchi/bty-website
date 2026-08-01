@@ -29,9 +29,14 @@ const PRIOR_RUNNERS = [
   "/tmp/r223d_r1_live_practice_stability_canary.sh",
   "/tmp/r223d_r2_live_practice_stability_canary.sh",
   "/tmp/r223d_r3_live_practice_stability_canary.sh",
+  // SPENT. The R2.23D-R4 runner performed the first complete six-case live run
+  // (20260801T024949Z) and its evidence is collated. R2.24 corrected the verdict
+  // authority it printed, so it is now stale by construction and is retired here
+  // rather than regenerated — R2.24 creates no runner.
+  "/tmp/r223d_r4_live_practice_stability_canary.sh",
 ];
 const RUNNER_R223 = PRIOR_RUNNERS[0];
-const RUNNER = "/tmp/r223d_r4_live_practice_stability_canary.sh";
+const RUNNER = "/tmp/r224_live_practice_stability_canary.sh";
 const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
 const runnerSource = (): string | null => (existsSync(RUNNER) ? readFileSync(RUNNER, "utf8") : null);
 
@@ -121,7 +126,7 @@ describe("R2.23A — cardinality and budget are part of what the runner binds", 
 });
 
 describe(`runner file properties (${existsSync(RUNNER) ? "runner present — asserted" : "RUNNER ABSENT ON THIS MACHINE — file-level properties NOT asserted"})`, () => {
-  it("R2.23D-R4. the runner is byte-identical to what the tracked generator produces", () => {
+  it("R2.24. the runner is byte-identical to what the tracked generator produces", () => {
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false);
     // The runner on disk must be exactly what the tested builder emits for its own bound HEAD —
@@ -202,8 +207,8 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
     // what that duplication cost: it survived every presence assertion and died under `set -u`.
     expect(src).toContain('scripts/practice-live-stability.ts --config "$LIVE_CONFIG"');
     expect(src).toContain('scripts/practice-stability-collate.ts --config "$LIVE_CONFIG"');
-    expect(src).toContain("STRUCTURAL + SEMANTIC GATES PASS");
-    expect(src).toContain("HUMAN PRODUCT REVIEW REQUIRED");
+    // R2.24 — the shell reproduces the collator's verdict; it never forms its own.
+    expect(src).not.toContain("STRUCTURAL + SEMANTIC GATES PASS");
     expect(src).not.toContain("PRODUCT QUALITY PASS");
   });
 
