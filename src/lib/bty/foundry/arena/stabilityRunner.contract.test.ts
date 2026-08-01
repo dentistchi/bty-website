@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { EVAL_CORPUS } from "./practice-generation.eval";
 import { buildContractManifest, caseDigest, manifestDigest } from "./contractManifest";
+import { manifestPayload, renderRunner } from "./stabilityRunnerScript";
 
 /**
  * STABILITY-RUNNER CONTRACT (Slice 3.2I-R5B1A.1-R2.23).
@@ -107,6 +108,16 @@ describe("R2.23A — cardinality and budget are part of what the runner binds", 
 });
 
 describe(`runner file properties (${existsSync(RUNNER) ? "runner present — asserted" : "RUNNER ABSENT ON THIS MACHINE — file-level properties NOT asserted"})`, () => {
+  it("R2.23D-R1. the runner is byte-identical to what the tracked generator produces", () => {
+    const src = runnerSource();
+    if (!src) return expect(existsSync(RUNNER)).toBe(false);
+    // The runner on disk must be exactly what the tested builder emits for its own bound HEAD —
+    // proving no hand edit and no leftover from a previous runner.
+    const head = /EXPECT_HEAD='([0-9a-f]{40})'/.exec(src)?.[1];
+    expect(head, "the runner does not bind a HEAD").toBeTruthy();
+    expect(src).toBe(renderRunner(manifestPayload(head!, "gpt-4o-mini"), head!));
+  });
+
   it("43/44/45. it binds HEAD, manifest and BOTH schema digests, and halts on any mismatch", () => {
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false); // absence is recorded, never asserted away
