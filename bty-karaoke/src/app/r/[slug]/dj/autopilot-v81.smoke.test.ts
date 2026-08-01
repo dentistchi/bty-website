@@ -135,7 +135,14 @@ describe('V9.0 one-tap play — every transition, then navigate last', () => {
     expect(fn).toContain('/dj/start');
     expect(fn).toMatch(/find\(\(r\) => r\.status === 'playing'\)/);
     // Only navigate when the next singer is actually promoted onto the stage.
-    expect(fn).toMatch(/reason !== 'promoted'/);
+    // BUILD 23 — this test used to assert the literal `reason !== 'promoted'` inline. The branch
+    // now goes through the PURE `resolvePassTurnDecision`, which is a strictly stronger guarantee
+    // (it is unit-tested per branch in DjConsole.build23.test.ts, including the two fail-closed
+    // admission blocks that used to be misread as "waiting for a Ready participant"). What this
+    // smoke test still owns is the ORDERING property: no navigation on any non-promoted outcome.
+    expect(fn).toMatch(/resolvePassTurnDecision\(body, nextId\)/);
+    expect(fn).toMatch(/decision\.kind === 'not_promoted'/);
+    expect(fn).toMatch(/decision\.kind === 'admission_block'/);
     // Precise server reason on failure — never a generic error.
     expect(fn).toContain("body?.error ?? '재생 상태를 변경하지 못했습니다.'");
   });

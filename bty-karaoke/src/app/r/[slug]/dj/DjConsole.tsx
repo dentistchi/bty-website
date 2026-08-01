@@ -105,6 +105,72 @@ export function reconcileAdmissionBlock(
   return queueRequestIds.includes(block.requestId) ? block : null;
 }
 
+/** BUILD 23 — the `/dj/pass-turn` 200 body, as far as this console cares. */
+export interface PassTurnBody {
+  reason?: string;
+  blockedRequestId?: string | null;
+  message?: string;
+  durationFailureReason?: string;
+  promoted?: { id: string } | null;
+}
+
+/**
+ * BUILD 23 — what the console must do with a `/dj/pass-turn` success body.
+ *
+ * `upgrade_required` and `not_promoted` are the SHIPPED branches, unchanged. `admission_block` is
+ * the new one: the current song completed, but the next start was refused fail-closed. It used to
+ * fall into `not_promoted` and render "다음 준비된 참가자를 기다리는 중이에요." — a claim that the
+ * next singer had not pressed Ready, when pressing Ready is precisely why the server chose them.
+ *
+ * Pure so every branch is testable without rendering the console. It decides NOTHING about the
+ * queue: no retry, no removal, no skip, no reorder is representable in the return type.
+ */
+export type PassTurnDecision =
+  | { kind: 'upgrade_required' }
+  | { kind: 'admission_block'; block: AdmissionBlock }
+  | { kind: 'not_promoted' }
+  | { kind: 'promoted'; promotedId: string | null };
+
+export function resolvePassTurnDecision(
+  body: PassTurnBody,
+  fallbackRequestId: string,
+): PassTurnDecision {
+  if (body.reason === 'upgrade_required') return { kind: 'upgrade_required' };
+  if (body.reason === 'duration_unavailable' || body.reason === 'pass_insufficient') {
+    return {
+      kind: 'admission_block',
+      block: {
+        // Identity is the server's canonical blocked id. `fallbackRequestId` is the console's own
+        // ready-first promote target — resolved by the SAME canonical rule — so it is the honest
+        // degradation if an older server omits the id. Never videoId/title/artist/position: an 18B
+        // same-song repeat is a genuinely different request.
+        requestId: body.blockedRequestId ?? fallbackRequestId,
+        // Absent only on an older server; the reason is never inferred from anything else.
+        reason: body.durationFailureReason,
+        // The server owns the wording (one shared source with /dj/start), so this client can
+        // never invent an explanation it cannot justify.
+        message: body.message ?? '다음 곡을 시작하지 못했습니다.',
+      },
+    };
+  }
+  if (body.reason !== 'promoted') return { kind: 'not_promoted' };
+  return { kind: 'promoted', promotedId: body.promoted?.id ?? null };
+}
+
+/**
+ * BUILD 23 — a promotion supersedes ONLY that song's own block.
+ *
+ * A DIFFERENT request starting is deliberately NOT a clear: the blocked song is still queued and
+ * still unplayable, so its explanation must survive the operator moving on to another song.
+ */
+export function clearBlockSupersededBy(
+  block: AdmissionBlock | null,
+  startedRequestId: string | null,
+): AdmissionBlock | null {
+  if (!block || !startedRequestId) return block;
+  return block.requestId === startedRequestId ? null : block;
+}
+
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
   role: 'dj' | 'admin';
@@ -486,26 +552,39 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           setError(body?.error ?? '다음 곡을 재생하지 못했습니다.');
           return;
         }
-        const body = (await res.json().catch(() => ({}))) as {
-          reason?: string;
+        const body = (await res.json().catch(() => ({}))) as PassTurnBody & {
           usage?: UsageProjection | null;
         };
+        // Reload FIRST, then publish: `loadQueue` reconciles the notice against canonical rows,
+        // and a notice set before it would be reconciled against a queue that predates the block.
         await loadQueue(cred);
+        const decision = resolvePassTurnDecision(body, nextId);
         // B2: the current song completed (§6 — never force-stopped), but the FREE daily
         // limit blocked the next start. Surface the upgrade state and update the banner
         // from server truth; the next request stays waiting/ready and we do NOT hand off.
-        if (body.reason === 'upgrade_required') {
+        if (decision.kind === 'upgrade_required') {
           closePlayerOnFailure();
           if (body.usage) setUsage(body.usage);
           setError('오늘의 무료 이용 시간을 모두 사용했어요 — PRO로 업그레이드하면 다음 곡을 시작할 수 있어요.');
           return;
         }
+        // BUILD 23 — the current song completed, but the NEXT one was refused fail-closed.
+        // Published to the DURABLE request-keyed notice rather than `error`, which the 4s poll
+        // erases within one tick — and for `too_long` / `video_unavailable` this song will never
+        // become playable, so the one sentence that says so must survive. Nothing is retried,
+        // removed, skipped, or reordered: the song stays waiting + Ready where the server left it.
+        if (decision.kind === 'admission_block') {
+          closePlayerOnFailure();
+          setAdmissionBlock(decision.block);
+          return;
+        }
         // The next singer must actually be on stage before we command the Player.
-        if (body.reason !== 'promoted') {
+        if (decision.kind === 'not_promoted') {
           closePlayerOnFailure();
           setError('다음 준비된 참가자를 기다리는 중이에요.');
           return;
         }
+        setAdmissionBlock((prev) => clearBlockSupersededBy(prev, decision.promotedId));
       } else {
         const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/dj/start`, {
           method: 'POST',

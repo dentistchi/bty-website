@@ -196,6 +196,23 @@ describe('BUILD 23 — passTurnAndPromote reports the block without disowning th
     expect(r.blocked?.id).toBe('req-next');
   });
 
+  // `passTurnAndPromote` RE-SPREADS the reason, so the "never default" rule has to be pinned at
+  // this layer too — pinning it only on promoteNextReady leaves a default free to be introduced
+  // one function later (a mutant that survived until this test existed).
+  it('omits durationFailureReason when the resolver classified nothing — never defaults it', async () => {
+    beginSong.mockResolvedValueOnce({ outcome: 'duration_unavailable' });
+    const r = await passTurnAndPromote('room-1', 'req-cur', 'evt-1');
+    expect(r.reason).toBe('duration_unavailable');
+    expect('durationFailureReason' in r).toBe(false);
+    expect(r.durationFailureReason).toBeUndefined();
+  });
+
+  it('never attaches a duration reason to a pass block', async () => {
+    beginSong.mockResolvedValueOnce({ outcome: 'pass_insufficient', passExpiresAt: '2026-08-01T01:00:00.000Z' });
+    const r = await passTurnAndPromote('room-1', 'req-cur', 'evt-1');
+    expect('durationFailureReason' in r).toBe(false);
+  });
+
   it('pass_insufficient → completed true, promoted null, boundary detail carried', async () => {
     beginSong.mockResolvedValueOnce({ outcome: 'pass_insufficient', passExpiresAt: '2026-08-01T01:00:00.000Z' });
     const r = await passTurnAndPromote('room-1', 'req-cur', 'evt-1');
