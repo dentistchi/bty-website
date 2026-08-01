@@ -362,10 +362,16 @@ printf 'LIVE PROVIDER NOT CALLED\\n'
 wiring_cleanup
 trap - EXIT INT TERM
 
-printf '\nCAPTURED LIVE DTO REGRESSION (no credential, no network)\n'
-npx --yes vitest run src/domain/foundry/arena-draft/r230LiveDtoRegression.test.ts src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
-  || wiring_failed 'the captured R2.30 live DTOs no longer reproduce a server-derived verdict'
-printf 'BOTH CAPTURED LIVE ATTEMPTS REPRODUCE A SERVER-DERIVED VERDICT\n'
+printf '\nLOCAL MOCK TRANSPORT MATRIX + CAPTURED REGRESSIONS (no credential, no network)\n'
+npx --yes vitest run \\
+  src/domain/foundry/arena-draft/boundaryTransportEvidence.test.ts \\
+  src/domain/foundry/arena-draft/r232TransportRegression.test.ts \\
+  src/lib/bty/foundry/arena/narrowBoundaryTransport.contract.test.ts \\
+  src/domain/foundry/arena-draft/r230LiveDtoRegression.test.ts \\
+  src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
+  || wiring_failed 'the transport matrix or the captured regressions failed'
+printf 'TRANSPORT MATRIX PASS · CAPTURED LIVE ATTEMPTS REPRODUCE A SERVER-DERIVED VERDICT\n'
+printf 'HISTORICAL R2.32 EVIDENCE CLASSIFIES AS provider_failure_unknown · INSUFFICIENT TO AUTHORIZE A RETRY\n'
 
 if [ "$CHECK_ONLY" = '1' ]; then
   printf '\\nCREDENTIAL NOT REQUESTED\\n\\n'
