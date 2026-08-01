@@ -47,11 +47,10 @@ import type { ProviderBoundaryGrounding } from "./boundaryGrounding";
 import type { ProviderChoiceConstruction } from "./choiceConstruction";
 import type { SemanticReview } from "./semanticReview";
 import {
-  NARROW_EVIDENCE_MAX,
   NARROW_REASON_MAX,
-  NARROW_SEGMENT_REF_MAX,
   type NarrowBoundaryReview,
 } from "./narrowBoundaryReview";
+import { CANDIDATE_ID_MAX } from "./boundaryEvidenceCandidates";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "./boundarySurfaces";
 
 /**
@@ -360,12 +359,12 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
 }
 
 /**
- * The largest narrow boundary review the R2.36 contract permits: `boundaryCount` boundaries ×
+ * The largest boundary TRUTH review the R2.38 contract permits: `boundaryCount` boundaries ×
  * BRANCH_AWARE_REACHABLE_SURFACE_COUNT surfaces, every string at its bound.
  *
- * This is the fixture the narrow budget is sized from. Every character here is multiplied by 36 at
- * the 3-boundary bound, and in Korean by roughly one token per character — which is exactly why the
- * evidence bound is what it is, and why prerequisite SATISFACTION and FAILURE share one reference.
+ * R2.38 removed the two 100-character excerpts, the applicability enum, the compliance enum and the
+ * mechanism enum from every row and replaced the evidence with three short ids. This fixture is
+ * what proves the resulting budget rather than assuming it.
  */
 export function buildMaxNarrowBoundaryReview(
   hangul = false,
@@ -373,11 +372,8 @@ export function buildMaxNarrowBoundaryReview(
   boundaryCount: number = MAX_ACTIVE_BOUNDARIES,
 ): NarrowBoundaryReview {
   const boundaries = maxBoundaryIds(boundaryCount);
-  const evidenceCap = profile === "schema" ? NARROW_EVIDENCE_MAX : Math.round(NARROW_EVIDENCE_MAX * 0.6);
   const reasonCap = profile === "schema" ? NARROW_REASON_MAX : Math.round(NARROW_REASON_MAX * 0.6);
-  const refCap = profile === "schema" ? NARROW_SEGMENT_REF_MAX : Math.round(NARROW_SEGMENT_REF_MAX * 0.6);
-  // The REACHABLE coordinates at their longest shape: `branch[N].resulting_world_state`. Flat
-  // compatibility projections are excluded from the matrix, so they are excluded from the budget.
+  const idCap = profile === "schema" ? CANDIDATE_ID_MAX : Math.round(CANDIDATE_ID_MAX * 0.6);
   const refs = [
     ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, i) => `primary[${i}]`),
     ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, b) => [
@@ -394,20 +390,13 @@ export function buildMaxNarrowBoundaryReview(
       refs.map((surfaceRef) => ({
         boundaryId,
         surfaceRef,
-        applicability: "applies" as const,
         governedActionStatus: "present" as const,
         prerequisiteStatus: "explicitly_missing" as const,
         temporalRelation: "action_before_prerequisite" as const,
-        compliance: "violates" as const,
-        violationMechanism: "governed_action_without_prerequisite" as const,
-        actionEvidence: {
-          segmentRef: filler(refCap, `${boundaryId}${surfaceRef}sa`, false),
-          excerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}g`, hangul),
-        },
-        prerequisiteEvidence: {
-          segmentRef: filler(refCap, `${boundaryId}${surfaceRef}sp`, false),
-          excerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}p`, hangul),
-        },
+        // The worst case fills all three ids even though the state table never requires all three.
+        governedActionCandidateId: filler(idCap, `${boundaryId}${surfaceRef}a`, false),
+        prerequisiteSatisfactionCandidateId: filler(idCap, `${boundaryId}${surfaceRef}s`, false),
+        prerequisiteFailureCandidateId: filler(idCap, `${boundaryId}${surfaceRef}f`, false),
         reason: filler(reasonCap, `${boundaryId}${surfaceRef}r`, hangul),
       })),
     ),

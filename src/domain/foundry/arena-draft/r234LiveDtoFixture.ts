@@ -47,8 +47,7 @@
  * Pure domain: no I/O.
  */
 
-import type { LegacyBoundaryAssessment } from "./legacyBoundaryDto";
-import type { NarrowBoundaryAssessment } from "./narrowBoundaryReview";
+import type { LegacyBoundaryAssessment, R236BoundaryAssessment } from "./legacyBoundaryDto";
 
 export const R234_LIVE_RUN_ID = "20260801T160205Z";
 export const R234_BOUNDARY_REVIEW_SUBJECT_SHA256 = "b15bfb8f703b17b2379ffe4222fb623149e74e0350f3e5e0516ab4a02a867280";
@@ -194,12 +193,14 @@ export const R234_MEASURED = {
 } as const;
 
 /**
- * The capture re-expressed under the truth contract, charitably (see the header).
+ * The capture re-expressed under the R2.36 truth contract, charitably (see the header). R2.38 has
+ * since replaced that contract with server-owned candidates, so this array is a historical record of
+ * the R2.36 shape and is exercised by `r236LegacyUpgrade`, not by the live validator.
  *
  * Segment refs follow `buildContextSegments` over `C18_REACHABLE_SURFACES`: index 0 is the scenario
  * opening, and each reachable surface takes a 1-based index shared by all of its segments.
  */
-export const R234_UPGRADED_TO_TRUTH_CONTRACT: NarrowBoundaryAssessment[] = [
+export const R234_UPGRADED_TO_TRUTH_CONTRACT: R236BoundaryAssessment[] = [
   {
     boundaryId: "c1_verify",
     surfaceRef: "primary[0]",

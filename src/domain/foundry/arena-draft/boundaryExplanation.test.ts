@@ -14,7 +14,9 @@ import {
   explanationSha256,
   type ExplainableAssessment,
 } from "./boundaryExplanation";
-import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type NarrowReviewContext } from "./narrowBoundaryReview";
+import { deriveBoundaryVerdict, type BoundaryTruthAssessment, type NarrowReviewContext } from "./narrowBoundaryReview";
+import { buildAllEvidenceCandidates, poolFor } from "./boundaryEvidenceCandidates";
+import { NO_CANDIDATE } from "./boundaryTruthContractTypes";
 import { MODEL_REQUIRED_STATES, SERVER_DERIVED_STATES } from "./boundaryReasonParity";
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
@@ -25,9 +27,13 @@ const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified
 const draft = draftFixture();
 const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft));
 const segments = buildContextSegments(draft, surfaces);
-const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, segments, frames: buildSemanticFrames([BOUNDARY]) };
-const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
-const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+const frames = buildSemanticFrames([BOUNDARY]);
+const { candidates } = buildAllEvidenceCandidates([BOUNDARY], frames, surfaces, segments);
+const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, frames, candidates };
+const firstId = (ref: string, role: "governed_action" | "prerequisite_failure") =>
+  poolFor(candidates, BOUNDARY.id, ref, role)[0]?.candidateId ?? NO_CANDIDATE;
+const failureId = (ref: string) =>
+  poolFor(candidates, BOUNDARY.id, ref, "prerequisite_failure").find((c) => /unverified/i.test(c.excerpt))?.candidateId ?? NO_CANDIDATE;
 const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
 
 const explainable = (over: Partial<ExplainableAssessment>): ExplainableAssessment => ({
@@ -129,32 +135,29 @@ describe("[4] the renderer places grounded excerpts into a frame — it conclude
 });
 
 describe("[10] the explanation cannot move a verdict", () => {
-  const rows = (mechanism: string): NarrowBoundaryAssessment[] =>
+  const rows = (mechanism: string): BoundaryTruthAssessment[] =>
     surfaces.map((s) =>
       s.coordinate === "branch[1].action[1]"
         ? {
             boundaryId: BOUNDARY.id,
             surfaceRef: s.coordinate,
-            applicability: "applies" as const,
             governedActionStatus: "present" as const,
             prerequisiteStatus: "explicitly_missing" as const,
             temporalRelation: "action_before_prerequisite" as const,
-            compliance: "violates" as const,
-            violationMechanism: mechanism as NarrowBoundaryAssessment["violationMechanism"],
-            actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-            prerequisiteEvidence: { segmentRef: parRef(s.coordinate), excerpt: s.inheritedWorldState.slice(0, 90) },
+            governedActionCandidateId: firstId(s.coordinate, "governed_action"),
+            prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+            prerequisiteFailureCandidateId: failureId(s.coordinate),
             reason: "",
           }
         : {
             boundaryId: BOUNDARY.id,
             surfaceRef: s.coordinate,
-            applicability: "not_applicable" as const,
             governedActionStatus: "absent" as const,
             prerequisiteStatus: "not_applicable" as const,
             temporalRelation: "not_applicable" as const,
-            compliance: "not_assessed" as const,
-            actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-            prerequisiteEvidence: { segmentRef: "", excerpt: "" },
+            governedActionCandidateId: firstId(s.coordinate, "governed_action"),
+            prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+            prerequisiteFailureCandidateId: NO_CANDIDATE,
             violationMechanism: "none" as const,
             reason: "",
           },

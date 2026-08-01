@@ -108,13 +108,13 @@ export async function reviewBoundarySurfaces(
   const now = deps?.now ?? (() => Date.now());
   const startedAt = now();
   const request = buildNarrowBoundaryRequest(subject);
-  // R2.36 — the validator now needs the SAME labelled context and rule decomposition the model was
-  // sent, so "own text" and "the prerequisite" mean the same thing on both sides of the call.
+  // R2.38 — the validator resolves the SAME candidate menu the model chose from, so an id becomes
+  // evidence only through the server's own map. There is no path from model text to authority.
   const ctx: NarrowReviewContext = {
     boundaries: subject.boundaries,
     surfaces: subject.surfaces,
-    segments: subject.contextSegments,
     frames: subject.semanticFrames,
+    candidates: subject.evidenceCandidates,
   };
 
   const subjectSha = narrowBoundarySubjectSha256(subject);
@@ -160,6 +160,9 @@ export async function reviewBoundarySurfaces(
       codes: ["boundary_review_transport_failed"],
       findings: [],
       failureClass: "transport",
+      validSurfaceRefs: [],
+      failedSurfaceRefs: [],
+      derived: [],
     };
     return {
       kind: "transport_failed",
@@ -179,7 +182,7 @@ export async function reviewBoundarySurfaces(
 
   /** A response DID arrive and was readable, but the body is unusable. This IS a semantic attempt. */
   const malformed = (code: NarrowBoundaryCode, parsed: unknown, finishReason: string | null): NarrowBoundaryCallResult => {
-    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: [code], findings: [], failureClass: classifyFailure([code]) };
+    const verdict: DerivedBoundaryVerdict = { outcome: "boundary_review_malformed", codes: [code], findings: [], failureClass: classifyFailure([code]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] };
     return {
       kind: "derived",
       verdict,

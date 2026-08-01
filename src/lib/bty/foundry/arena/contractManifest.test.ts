@@ -159,7 +159,11 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // labelled, un-merged context and a decomposed rule, and every excerpt names its source. An
     // R2.34 artifact answered a materially weaker question and cannot be attributed to this one.
     expect(manifestDigest(m)).not.toBe("4a9d22712038dff94c5a49f064277d35c924e165ad27215dc3e4fd46f6ce5936"); // R2.34
-    expect(m.artifactSchemaVersion).toBe("r2.36.1");
+    // R2.38 removed applicability, compliance, the mechanism and every model-authored excerpt from
+    // the reviewer's output and replaced evidence with server-issued candidate ids. An R2.36
+    // artifact answered a materially different question and cannot be attributed to this contract.
+    expect(manifestDigest(m)).not.toBe("3b4f9612a2a3ba0c55fd47198b5d8f1e1fe92fd48e1b91da51f3371a55092821"); // R2.36
+    expect(m.artifactSchemaVersion).toBe("r2.38.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

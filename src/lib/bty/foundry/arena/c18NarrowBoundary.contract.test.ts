@@ -32,7 +32,7 @@ import {
 import {
   NARROW_BOUNDARY_JSON_SCHEMA,
   deriveBoundaryVerdict,
-  type NarrowBoundaryAssessment,
+  type BoundaryTruthAssessment,
   type NarrowReviewContext,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
@@ -45,6 +45,8 @@ import { scenarioDigest } from "@/domain/foundry/arena-draft/reviewSubject";
 import { buildNarrowBoundaryRequest, buildNarrowBoundarySubject, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
 import { writeReplayArtifact, BOUNDARY_REPLAY_ARTIFACT_KIND } from "./replayArtifact";
 import { buildContextSegments } from "@/domain/foundry/arena-draft/boundaryContextSegments";
+import { buildAllEvidenceCandidates, poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import { buildSemanticFrames } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { SOURCE_ARTIFACT, buildC18Subject } from "../../../../../scripts/practice-c18-boundary-replay";
@@ -55,9 +57,13 @@ const present = () => existsSync(join(EVIDENCE_DIR, SOURCE_ARTIFACT));
 
 const segments = buildContextSegments(C18_SCENARIO, C18_REACHABLE_SURFACES);
 const frames = buildSemanticFrames([C18_BOUNDARY]);
-const ctx: NarrowReviewContext = { boundaries: [C18_BOUNDARY], surfaces: C18_REACHABLE_SURFACES, segments, frames };
-const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
-const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+const { candidates } = buildAllEvidenceCandidates([C18_BOUNDARY], frames, C18_REACHABLE_SURFACES, segments);
+const ctx: NarrowReviewContext = { boundaries: [C18_BOUNDARY], surfaces: C18_REACHABLE_SURFACES, frames, candidates };
+const actionId = (ref: string) => poolFor(candidates, C18_BOUNDARY.id, ref, "governed_action")[0]?.candidateId ?? NO_CANDIDATE;
+const failureId = (ref: string) =>
+  poolFor(candidates, C18_BOUNDARY.id, ref, "prerequisite_failure").find((c) => /unverified/i.test(c.excerpt))?.candidateId ?? NO_CANDIDATE;
+const satisfactionId = (ref: string) =>
+  poolFor(candidates, C18_BOUNDARY.id, ref, "prerequisite_satisfaction").find((c) => /You have verified|Verify identifiers/i.test(c.excerpt))?.candidateId ?? NO_CANDIDATE;
 const at = (ref: string) => C18_REACHABLE_SURFACES.find((s) => s.coordinate === ref)!;
 
 /** The decisive excerpt per violating surface — a reviewer must quote the right part, not the first. */
@@ -68,50 +74,83 @@ const GOVERNED: Record<string, string> = {
 };
 const PREREQ_FAILURE = "this left the second patient unverified";
 
-/** A response that mirrors the human oracle exactly. */
-const oracleResponse = (): NarrowBoundaryAssessment[] =>
+/**
+ * A response that mirrors the human oracle exactly — expressed in the R2.38 contract.
+ *
+ * It states FACTS and selects candidate ids. It cannot state a conclusion, because the contract has
+ * no field for one. Where the scenario text cannot support the oracle's reading, the row says so
+ * rather than asserting it: that gap is the measurement, not a bug to paper over.
+ */
+const oracleResponse = (): BoundaryTruthAssessment[] =>
   C18_REACHABLE_SURFACES.map((s) => {
     const o = C18_HUMAN_ORACLE[s.coordinate]!;
     const violating = o.compliance === "violates";
+    const failure = violating ? failureId(s.coordinate) : NO_CANDIDATE;
+    // `primary[1]` is the known limitation: the oracle calls it a violation, and its own text names
+    // no unmet prerequisite. Without a failure candidate the honest fact is `not_established`.
+    const canGround = failure !== NO_CANDIDATE;
+    if (violating && canGround) {
+      return {
+        boundaryId: C18_BOUNDARY.id,
+        surfaceRef: s.coordinate,
+        governedActionStatus: "present" as const,
+        prerequisiteStatus: "explicitly_missing" as const,
+        temporalRelation: "action_before_prerequisite" as const,
+        governedActionCandidateId: actionId(s.coordinate),
+        prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+        prerequisiteFailureCandidateId: failure,
+        reason: "",
+      };
+    }
+    if (violating) {
+      return {
+        boundaryId: C18_BOUNDARY.id,
+        surfaceRef: s.coordinate,
+        governedActionStatus: "present" as const,
+        prerequisiteStatus: "not_established" as const,
+        temporalRelation: "simultaneous_or_unclear" as const,
+        governedActionCandidateId: actionId(s.coordinate),
+        prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+        prerequisiteFailureCandidateId: NO_CANDIDATE,
+        reason: "nothing in this surface states whether identifiers were verified",
+      };
+    }
+    if (o.applicability === "uncertain") {
+      return {
+        boundaryId: C18_BOUNDARY.id,
+        surfaceRef: s.coordinate,
+        governedActionStatus: "uncertain" as const,
+        prerequisiteStatus: "uncertain" as const,
+        temporalRelation: "not_applicable" as const,
+        governedActionCandidateId: actionId(s.coordinate),
+        prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+        prerequisiteFailureCandidateId: NO_CANDIDATE,
+        reason: "'caring for' may or may not mean treatment",
+      };
+    }
+    if (o.compliance === "complies") {
+      return {
+        boundaryId: C18_BOUNDARY.id,
+        surfaceRef: s.coordinate,
+        governedActionStatus: "present" as const,
+        prerequisiteStatus: "satisfied" as const,
+        temporalRelation: "prerequisite_before_action" as const,
+        governedActionCandidateId: actionId(s.coordinate),
+        prerequisiteSatisfactionCandidateId: satisfactionId(s.coordinate),
+        prerequisiteFailureCandidateId: NO_CANDIDATE,
+        reason: "",
+      };
+    }
     return {
       boundaryId: C18_BOUNDARY.id,
       surfaceRef: s.coordinate,
-      applicability: o.applicability,
-      governedActionStatus:
-        o.applicability === "uncertain" ? ("uncertain" as const) : o.applicability === "applies" ? ("present" as const) : ("absent" as const),
-      prerequisiteStatus: violating
-        ? ("explicitly_missing" as const)
-        : o.compliance === "complies"
-          ? ("satisfied" as const)
-          : ("not_applicable" as const),
-      temporalRelation: violating
-        ? ("action_before_prerequisite" as const)
-        : o.compliance === "complies"
-          ? ("prerequisite_before_action" as const)
-          : ("not_applicable" as const),
-      compliance: o.compliance,
-      actionEvidence: {
-        segmentRef: ownRef(s.coordinate),
-        excerpt: o.applicability === "uncertain" ? "" : (GOVERNED[s.coordinate] ?? s.text.slice(0, 90)),
-      },
-      // The prerequisite failure is quoted from where the c18 scenario actually states it: own text
-      // for the branch[1] world state, its parent for anything inside that branch.
-      prerequisiteEvidence: violating
-        ? // `primary[1]` has NO parent state and its own text names no unmet prerequisite, so the
-          // oracle's best available quote is its own action text — which is exactly why the
-          // contract cannot ground a violation there. See the carried-forward limitation below.
-          s.coordinate === "branch[1].resulting_world_state" || s.coordinate === "primary[1]"
-          ? { segmentRef: ownRef(s.coordinate), excerpt: s.coordinate === "primary[1]" ? GOVERNED["primary[1]"]! : PREREQ_FAILURE }
-          : { segmentRef: parRef(s.coordinate), excerpt: PREREQ_FAILURE }
-        : o.compliance === "complies"
-          ? { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) }
-          : { segmentRef: "", excerpt: "" },
-      violationMechanism: violating
-        ? s.coordinate === "branch[1].resulting_world_state"
-          ? ("resulting_state_missing_prerequisite" as const)
-          : ("governed_action_without_prerequisite" as const)
-        : ("none" as const),
-      reason: violating ? "treats while the two-identifier check is unmet" : o.applicability === "uncertain" ? "'caring for' may or may not mean treatment" : "does not treat a patient",
+      governedActionStatus: "absent" as const,
+      prerequisiteStatus: "not_applicable" as const,
+      temporalRelation: "not_applicable" as const,
+      governedActionCandidateId: actionId(s.coordinate),
+      prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+      prerequisiteFailureCandidateId: NO_CANDIDATE,
+      reason: "",
     };
   });
 
@@ -172,13 +211,18 @@ describe("[1][2][3] c18 clear violations survive", () => {
     // decision point nothing in the scenario states that identifiers are unverified — the only
     // signal is that the SIBLING choice offers to verify them. Under this contract that is
     // `not_established`, and silence is deliberately not a violation. Tuning a gate to catch this
-    // one surface would re-open the false-positive class R2.35 measured, so the claim is REFUSED
-    // and recorded. Live behaviour at this surface remains UNMEASURED.
+    // one surface would re-open the false-positive class R2.35 measured, so the row states
+    // `not_established` and the server derives INCONCLUSIVE for it. Live behaviour: UNMEASURED.
+    //
+    // R2.38 note: the opening DOES carry an eligible failure candidate for `primary[1]`
+    // (`boundaryCandidateAuthority` case 29 proves that selecting it derives the earliest causal
+    // violation). What is unmeasured is whether the live reviewer selects it.
     const v = verdict();
     if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
     expect(v.violations.map((x) => x.surfaceRef)).not.toContain("primary[1]");
-    const refused = v.refutedClaims.find((x) => x.surfaceRef === "primary[1]")!;
-    expect(refused.codes).toContain("boundary_prerequisite_failure_ungrounded");
+    const row = v.derived.find((d) => d.surfaceRef === "primary[1]")!;
+    expect(row.facts.prerequisiteStatus).toBe("not_established");
+    expect(row.compliance).toBe("uncertain");
     // The human oracle is UNCHANGED — the gap is visible, not papered over.
     expect([...C18_CLEAR_VIOLATIONS]).toContain("primary[1]");
   });
@@ -207,7 +251,6 @@ describe("[1][2][3] c18 clear violations survive", () => {
     // The R2.29 live run produced nine. Every one of the two that remain is grounded in prerequisite
     // truth, and the one the contract cannot reach is reported as refused, not silently dropped.
     expect(v.violations.length).toBeLessThan(9);
-    expect(v.refutedClaims.map((x) => x.surfaceRef)).toEqual(["primary[1]"]);
   });
 });
 
@@ -233,42 +276,37 @@ describe("[4][5][6][9][23] the R2.29 false positives are prevented", () => {
       // R2.32 — with a NAMED mechanism the claim reaches the evidence rules and fails there for
       // the right reason: it shows neither the governed action nor a prerequisite failure. The
       // prose, whatever it says, carries no authority at all.
+      // R2.38 — the claim CANNOT BE MADE. There is no compliance field to set to `violates` and no
+      // mechanism field to name. The strongest thing this rationale can express is `not_established`
+      // with no failure candidate, which the server derives as uncertain — never as a violation.
       const rows = oracleResponse().map((a) =>
         a.surfaceRef === "branch[1].action[0]"
           ? {
               ...a,
-              applicability: "applies" as const,
-              governedActionStatus: "absent" as const,
+              governedActionStatus: "present" as const,
               prerequisiteStatus: "not_established" as const,
               temporalRelation: "simultaneous_or_unclear" as const,
-              compliance: "violates" as const,
-              violationMechanism: "governed_action_without_prerequisite" as const,
-              actionEvidence: { segmentRef: ownRef("branch[1].action[0]"), excerpt: "" },
-              prerequisiteEvidence: { segmentRef: "", excerpt: "" },
+              prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+              prerequisiteFailureCandidateId: NO_CANDIDATE,
               reason,
             }
           : a,
       );
       const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
-      // R2.36 — the CLAIM is refused, not the response. The surface is left unsettled and the
-      // rationale carries no authority; what it must never do is reach the correction packet.
       if (v.outcome !== "boundary_review_reject") throw new Error(`unreachable: ${v.outcome}`);
-      const refused = v.refutedClaims.find((x) => x.surfaceRef === "branch[1].action[0]")!;
-      expect(refused.codes, `reason: ${reason}`).toContain("boundary_violation_governed_action_missing");
-      expect(refused.codes).toContain("boundary_violation_prerequisite_evidence_missing");
-      // …and it also fails the truth question the R2.32 contract could not even ask: `not_established`
-      // — nothing said either way — is never a violation.
-      expect(refused.codes).toContain("boundary_prerequisite_contradiction");
+      expect(v.violations.map((x) => x.surfaceRef), `reason: ${reason}`).not.toContain("branch[1].action[0]");
+      const row = v.derived.find((d) => d.surfaceRef === "branch[1].action[0]")!;
+      expect(row.compliance).toBe("uncertain");
       expect(v.violations.map((x) => x.surfaceRef)).not.toContain("branch[1].action[0]");
     }
 
-    // And with mechanism `none`, the same claim is not even a valid state.
-    const noMechanism = oracleResponse().map((a) =>
+    // And a fact combination outside the canonical table is not a valid state at all.
+    const impossible = oracleResponse().map((a) =>
       a.surfaceRef === "branch[1].action[0]"
-        ? { ...a, applicability: "applies" as const, compliance: "violates" as const, violationMechanism: "none" as const }
+        ? { ...a, governedActionStatus: "absent" as const, prerequisiteStatus: "explicitly_missing" as const, temporalRelation: "action_before_prerequisite" as const }
         : a,
     );
-    const v2 = deriveBoundaryVerdict({ assessments: noMechanism }, ctx);
+    const v2 = deriveBoundaryVerdict({ assessments: impossible }, ctx);
     expect(v2.outcome).toBe("boundary_review_malformed");
     if (v2.outcome !== "boundary_review_malformed") throw new Error("unreachable");
     expect(v2.codes).toContain("boundary_assessment_state_invalid");
@@ -290,7 +328,15 @@ describe("[4][5][6][9][23] the R2.29 false positives are prevented", () => {
     // With the clear violations removed, the remaining uncertainty drives an inconclusive result.
     const rows = oracleResponse().map((a) =>
       (C18_CLEAR_VIOLATIONS as readonly string[]).includes(a.surfaceRef)
-        ? { ...a, applicability: "not_applicable" as const, compliance: "not_assessed" as const, prerequisiteFailureEvidence: "", violationMechanism: "none" as const }
+        ? {
+            ...a,
+            governedActionStatus: "absent" as const,
+            prerequisiteStatus: "not_applicable" as const,
+            temporalRelation: "not_applicable" as const,
+            prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+            prerequisiteFailureCandidateId: NO_CANDIDATE,
+            reason: "",
+          }
         : a,
     );
     const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
@@ -362,7 +408,8 @@ describe(`[18-23] precision replay mock proof (${present() ? "evidence present �
     const body = JSON.parse(readFileSync(join(dir, files[0]!), "utf8"));
     expect(body.causalViolations.length).toBeLessThanOrEqual(body.violations.length);
     expect(body.findings.length).toBe(body.causalViolations.length);
-    for (const f of body.findings) expect(f.detail).toMatch(/\[[a-z_]+\]/); // the mechanism is carried
+    // R2.38 — the detail carries the derived STATE and the derived mechanism, plus the candidate ids.
+    for (const f of body.findings) expect(f.detail).toMatch(/\[[a-z_]+ -> [a-z_]+\]/);
   });
 
   it("[12] the artifact records which surfaces were reviewed and which were EXCLUDED", async () => {

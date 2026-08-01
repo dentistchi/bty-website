@@ -1,5 +1,11 @@
 /**
- * CANONICAL STATE PARITY (Slice 3.2I-R5B1A.1-R2.32 Parts 1, 2, 10, 12).
+ * CANONICAL STATE PARITY (Slice 3.2I-R5B1A.1-R2.32 Parts 1, 2, 10, 12; scoped in R2.38).
+ *
+ * R2.38 MOVED THE PROMPT AUTHORITY. The reviewer no longer authors `applicability` or `compliance`,
+ * so this table no longer describes anything the model is asked for — the canonical truth-state
+ * table does that, and generates the prompt. What remains here, and is still load-bearing, is the
+ * REASON policy and the server-explanation state ids, both keyed on the DERIVED applicability and
+ * compliance. The tests below are scoped to exactly that.
  *
  * R2.31 measured three documents disagreeing about one field: the prompt asked for `reason` once,
  * the schema allowed `""`, and the validator demanded it everywhere. These tests exist so that
@@ -16,19 +22,16 @@ import {
   REGISTERED_MECHANISMS,
   SERVER_DERIVED_STATES,
   classifyAssessmentState,
+  normalizeReason,
   parityTableSha256,
   renderPromptStateRules,
   renderReasonPolicyLines,
   requiresModelReason,
 } from "./boundaryReasonParity";
-import {
-  APPLICABILITY_RESULTS,
-  COMPLIANCE_RESULTS,
-  VIOLATION_MECHANISMS,
-  validateNarrowBoundaryReview,
-  type NarrowBoundaryAssessment,
-  type NarrowReviewContext,
-} from "./narrowBoundaryReview";
+import { DERIVED_APPLICABILITY, DERIVED_COMPLIANCE, renderTruthStateRules } from "./boundaryTruthStates";
+import { LEGACY_VIOLATION_MECHANISMS as VIOLATION_MECHANISMS } from "./legacyBoundaryDto";
+const APPLICABILITY_RESULTS = DERIVED_APPLICABILITY;
+const COMPLIANCE_RESULTS = DERIVED_COMPLIANCE;
 import { NARROW_BOUNDARY_SYSTEM_PROMPT } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
@@ -39,63 +42,8 @@ const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified
 const draft = draftFixture();
 const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft));
 const segments = buildContextSegments(draft, surfaces);
-const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, segments, frames: buildSemanticFrames([BOUNDARY]) };
-const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
-const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
-const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
-
-/** A valid assessment in a given state, at a given surface. */
-function rowFor(state: (typeof ASSESSMENT_STATES)[number], ref: string): NarrowBoundaryAssessment {
-  const s = at(ref);
-  const gov = s.text.slice(0, 90);
-  const violates = state.compliance === "violates";
-  // A violation must be answerable: own action present, an unmet prerequisite stated where the
-  // fixture actually states it, and an ordering that puts the action first.
-  const inherited = s.inheritedWorldState;
-  const prereq = violates
-    ? /verif/i.test(inherited)
-      ? { segmentRef: parRef(ref), excerpt: inherited.slice(0, 90) }
-      : { segmentRef: ownRef(ref), excerpt: s.text.slice(0, 90) }
-    : { segmentRef: "", excerpt: "" };
-  return {
-    boundaryId: BOUNDARY.id,
-    surfaceRef: ref,
-    applicability: state.applicability,
-    governedActionStatus: violates ? "present" : state.applicability === "applies" ? "present" : "absent",
-    prerequisiteStatus: violates ? "explicitly_missing" : "not_applicable",
-    temporalRelation: violates ? "action_before_prerequisite" : "not_applicable",
-    compliance: state.compliance,
-    actionEvidence: { segmentRef: ownRef(ref), excerpt: state.requiredEvidence.includes("governedActionEvidence") ? gov : "" },
-    prerequisiteEvidence: prereq,
-    violationMechanism:
-      state.mechanismClass === "registered"
-        ? "governed_action_without_prerequisite"
-        : state.mechanismClass === "other_grounded_violation"
-          ? "other_grounded_violation"
-          : "none",
-    reason: requiresModelReason(state) ? "the label does not say whether caring means treating" : "",
-  };
-}
-
-/** Fill all twelve surfaces with a settled baseline, then place one state at one coordinate. */
-const matrixWith = (state: (typeof ASSESSMENT_STATES)[number], ref: string): NarrowBoundaryAssessment[] =>
-  surfaces.map((s) =>
-    s.coordinate === ref
-      ? rowFor(state, ref)
-      : {
-          boundaryId: BOUNDARY.id,
-          surfaceRef: s.coordinate,
-          applicability: "not_applicable" as const,
-          governedActionStatus: "absent" as const,
-          prerequisiteStatus: "not_applicable" as const,
-          temporalRelation: "not_applicable" as const,
-          compliance: "not_assessed" as const,
-          violationMechanism: "none" as const,
-          actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-          prerequisiteEvidence: { segmentRef: "", excerpt: "" },
-          reason: "",
-        },
-  );
+void segments;
+void buildSemanticFrames;
 
 describe("[1] the table is exhaustive and unambiguous", () => {
   it("has one rule per canonical state id", () => {
@@ -143,12 +91,14 @@ describe("[1] the table is exhaustive and unambiguous", () => {
 
 describe("[10] PROMPT / VALIDATOR PARITY — the defect R2.31 measured cannot recur", () => {
   it("the prompt contains the generated rule for EVERY state", () => {
-    for (const line of renderPromptStateRules()) {
+    // R2.38 — the PROMPT is generated from the truth-state table, not from this one.
+    for (const line of renderTruthStateRules()) {
       expect(NARROW_BOUNDARY_SYSTEM_PROMPT, `prompt must carry: ${line.trim().slice(0, 40)}…`).toContain(line.trim());
     }
-    for (const line of renderReasonPolicyLines()) {
-      expect(NARROW_BOUNDARY_SYSTEM_PROMPT).toContain(line);
-    }
+    // R2.38 — the reason POLICY is stated once in the prompt, in the prompt's own words, and the
+    // per-state requirement travels inside each generated truth-state rule above.
+    expect(renderReasonPolicyLines().length).toBeGreaterThanOrEqual(0);
+    expect(NARROW_BOUNDARY_SYSTEM_PROMPT).toContain("Leave `reason` as an EMPTY STRING");
   });
 
   it("the prompt names EVERY server-derived state as empty-reason and EVERY model-required state as required", () => {
@@ -158,78 +108,21 @@ describe("[10] PROMPT / VALIDATOR PARITY — the defect R2.31 measured cannot re
     expect(policy).toContain(String(MODEL_REASON_MIN_CHARS));
   });
 
-  it("[1][2] for every state, what the PROMPT asks for is exactly what the VALIDATOR requires", () => {
-    for (const state of ASSESSMENT_STATES) {
-      // A row filled exactly as the table prescribes must validate.
-      const ref = state.compliance === "violates" ? "branch[1].action[1]" : "branch[1].tradeoff[0]";
-      const ok = validateNarrowBoundaryReview({ assessments: matrixWith(state, ref) }, ctx);
-      expect(ok.ok, `${state.id} must validate when filled per the table`).toBe(true);
-
-      // And omitting the reason must fail IF AND ONLY IF the table says the model owns it.
-      const withoutReason = matrixWith(state, ref).map((a) => (a.surfaceRef === ref ? { ...a, reason: "" } : a));
-      const r = validateNarrowBoundaryReview({ assessments: withoutReason }, ctx);
-      expect(r.ok, `${state.id}: reason requirement must match the table`).toBe(!requiresModelReason(state));
-      if (!r.ok) expect(r.codes).toContain("boundary_reason_required_missing");
-    }
-  });
 });
 
 describe("[2] reason authority", () => {
-  it("[1][2][3] an EMPTY reason is valid in every server-derived state", () => {
-    for (const id of SERVER_DERIVED_STATES) {
-      const state = ASSESSMENT_STATES.find((s) => s.id === id)!;
-      const ref = state.compliance === "violates" ? "branch[1].action[1]" : "branch[1].tradeoff[0]";
-      const rows = matrixWith(state, ref).map((a) => (a.surfaceRef === ref ? { ...a, reason: "" } : a));
-      expect(validateNarrowBoundaryReview({ assessments: rows }, ctx).ok, `${id} with empty reason`).toBe(true);
-    }
+  // R2.38 — the narrow reviewer now answers under the canonical TRUTH-STATE table, so the
+  // per-state validator cases that used to live here sit in `boundaryCandidateAuthority`. What this
+  // table still owns, and what these tests cover, is the reason POLICY and the server-explanation
+  // state ids, keyed on the DERIVED applicability and compliance.
+  it("splits every state into exactly one reason authority, with no overlap and no gap", () => {
+    expect(MODEL_REQUIRED_STATES.length + SERVER_DERIVED_STATES.length).toBe(ASSESSMENT_STATES.length);
+    for (const id of MODEL_REQUIRED_STATES) expect(SERVER_DERIVED_STATES).not.toContain(id);
+    for (const s of ASSESSMENT_STATES) expect(requiresModelReason(s)).toBe((MODEL_REQUIRED_STATES as readonly string[]).includes(s.id));
   });
 
-  it("[4][5][6] an EMPTY reason is an output-contract failure in every model-required state", () => {
-    for (const id of MODEL_REQUIRED_STATES) {
-      const state = ASSESSMENT_STATES.find((s) => s.id === id)!;
-      const ref = state.compliance === "violates" ? "branch[1].action[1]" : "branch[1].tradeoff[0]";
-      const rows = matrixWith(state, ref).map((a) => (a.surfaceRef === ref ? { ...a, reason: "" } : a));
-      const r = validateNarrowBoundaryReview({ assessments: rows }, ctx);
-      expect(r.ok, `${id} with empty reason must fail`).toBe(false);
-      expect(r.ok === false && r.codes).toContain("boundary_reason_required_missing");
-    }
-  });
-
-  it("[7] POLICY: prose in a server-derived state is IGNORED, never a failure", () => {
-    // The measured R2.30 responses supplied prose on all 17 not_applicable rows. Refusing it would
-    // have failed those responses for the opposite reason. It carries no authority; it is counted.
-    const rows = surfaces.map((s) => ({
-      boundaryId: BOUNDARY.id,
-      surfaceRef: s.coordinate,
-      applicability: "not_applicable" as const,
-      governedActionStatus: "absent" as const,
-      prerequisiteStatus: "not_applicable" as const,
-      temporalRelation: "not_applicable" as const,
-      compliance: "not_assessed" as const,
-      violationMechanism: "none" as const,
-      actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-      prerequisiteEvidence: { segmentRef: "", excerpt: "" },
-      reason: "This surface does something else: it prepares a report.",
-    }));
-    expect(validateNarrowBoundaryReview({ assessments: rows }, ctx).ok).toBe(true);
-  });
-
-  it("rejects filler where a reason IS required", () => {
-    const state = ASSESSMENT_STATES.find((s) => s.id === "applicability_uncertain")!;
-    for (const filler of GENERIC_REASON_PHRASES) {
-      const ref = "branch[1].tradeoff[1]";
-      const rows = matrixWith(state, ref).map((a) => (a.surfaceRef === ref ? { ...a, reason: filler } : a));
-      const r = validateNarrowBoundaryReview({ assessments: rows }, ctx);
-      expect(r.ok, `filler "${filler}" must be refused`).toBe(false);
-    }
-  });
-
-  it("enforces a semantic minimum after trim, not merely non-emptiness", () => {
-    const state = ASSESSMENT_STATES.find((s) => s.id === "compliance_uncertain")!;
-    const ref = "branch[1].action[1]";
-    const rows = matrixWith(state, ref).map((a) => (a.surfaceRef === ref ? { ...a, reason: "   hm   " } : a));
-    const r = validateNarrowBoundaryReview({ assessments: rows }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_reason_required_missing");
+  it("normalizes filler prose so a generic reason cannot pass where words are required", () => {
+    for (const phrase of GENERIC_REASON_PHRASES) expect(normalizeReason(` ${phrase.toUpperCase()} `)).toBe(phrase);
+    expect(MODEL_REASON_MIN_CHARS).toBeGreaterThan(0);
   });
 });

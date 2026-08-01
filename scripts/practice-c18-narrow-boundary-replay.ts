@@ -22,7 +22,7 @@ import { buildNarrowBoundaryRequest, narrowBoundarySubjectSha256, type NarrowBou
 import type { NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
-import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type ViolationMechanism } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { deriveBoundaryVerdict, type BoundaryTruthAssessment } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import { emptyTransportEvidence, transportEvidenceSha256 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { NARROW_TIMEOUT_OWNER } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
@@ -30,7 +30,8 @@ import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonPa
 import { BOUNDARY_REPORTABLE_OUTCOMES, NARROW_REPLAY_ARTIFACT_VERSION as ARTIFACT_VERSION, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { compatibilitySurfaces, enumerateBoundarySurfaces, reviewableSurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { OPENING_SEGMENT_REF } from "@/domain/foundry/arena-draft/boundaryContextSegments";
-import { excerptConcernsPrerequisite } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import { RECONSTRUCTION_DISCLAIMER } from "@/lib/bty/foundry/arena/historicalBoundaryReconstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildC18Subject, CASE_ID, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, SOURCE_ATTEMPT_INDEX } from "./practice-c18-boundary-replay";
@@ -229,228 +230,74 @@ export async function runC18NarrowBoundaryReplay(
 }
 
 /** Deterministic mock responses. Never a network call; used by the mock proof and `--mock`. */
-export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, attempt: number): NarrowBoundaryCallResult {
-  const surfaces = subject.surfaces;
+export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]): NarrowBoundaryCallResult {
+  const surfaces = surfaceRefs ? subject.surfaces.filter((s) => surfaceRefs.includes(s.coordinate)) : subject.surfaces;
   const b = subject.boundaries[0]!;
-  // R2.36 — the mock speaks the SAME segment vocabulary the live reviewer is given, so a mock case
-  // cannot pass by citing evidence no real response could have produced.
-  const segs = subject.contextSegments;
-  const ownRef = (ref: string) => segs.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")?.segmentRef ?? "";
-  const parRef = (ref: string) => segs.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
-  const parText = (ref: string) => segs.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.text ?? "";
 
-  /** Everything settles as not_applicable, each showing what the surface actually does. */
-  const settled: NarrowBoundaryAssessment[] = surfaces.map((s) => ({
-    boundaryId: b.id,
-    surfaceRef: s.coordinate,
-    applicability: "not_applicable",
-    governedActionStatus: "absent",
-    prerequisiteStatus: "not_applicable",
-    temporalRelation: "not_applicable",
-    compliance: "not_assessed",
-    violationMechanism: "none",
-    actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-    prerequisiteEvidence: { segmentRef: "", excerpt: "" },
-    // R2.32 — empty is CORRECT here: the server owns this explanation.
-    reason: "",
-  }));
+  // R2.38 — the mock SELECTS from the same server-issued menu a live response must use. A mock that
+  // authored its own excerpt would pass a check no real answer could, which is exactly how the
+  // R2.36 defects stayed invisible to CI.
+  const pick = (surfaceRef: string, role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure", match?: RegExp): string => {
+    const pool = poolFor(subject.evidenceCandidates, b.id, surfaceRef, role);
+    const hit = match ? pool.find((c) => match.test(c.excerpt)) : pool[0];
+    return hit ? hit.candidateId : NO_CANDIDATE;
+  };
 
-  const at = (rows: NarrowBoundaryAssessment[], ref: string, patch: Partial<NarrowBoundaryAssessment>): NarrowBoundaryAssessment[] =>
+  /** Every surface non-governing: the administrative shape, and the cheapest settled truth. */
+  const settled = (): BoundaryTruthAssessment[] =>
+    surfaces.map((s) => ({
+      boundaryId: b.id,
+      surfaceRef: s.coordinate,
+      governedActionStatus: "absent" as const,
+      prerequisiteStatus: "not_applicable" as const,
+      temporalRelation: "not_applicable" as const,
+      governedActionCandidateId: pick(s.coordinate, "governed_action"),
+      prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+      prerequisiteFailureCandidateId: NO_CANDIDATE,
+      reason: "",
+    }));
+
+  const at = (rows: BoundaryTruthAssessment[], ref: string, patch: Partial<BoundaryTruthAssessment>): BoundaryTruthAssessment[] =>
     rows.map((a) => (a.surfaceRef === ref ? { ...a, ...patch } : a));
 
-  /**
-   * A fully-supported violation: own governed action, own-or-inherited prerequisite failure that is
-   * genuinely ABOUT the prerequisite, and an ordering that puts the action first.
-   */
-  const violate = (ref: string, mechanism: ViolationMechanism) =>
-    (rows: NarrowBoundaryAssessment[]): NarrowBoundaryAssessment[] => {
-      const s = surfaces.find((x) => x.coordinate === ref);
-      if (!s) return rows;
-      // Quote the prerequisite failure from wherever it actually is, and quote the RIGHT PART: a
-      // window that genuinely concerns the prerequisite, not simply the first 90 characters. The
-      // contract refuses an excerpt about anything else, so a mock that grabs a prefix would be
-      // asserting a claim the validator is correct to reject.
-      const frame = subject.semanticFrames.find((f) => f.boundaryId === b.id);
-      const window = (text: string): string | null => {
-        for (let i = 0; i + 20 <= text.length; i += 10) {
-          const w = text.slice(i, i + 90);
-          if (excerptConcernsPrerequisite(w, frame)) return w;
-        }
-        return null;
-      };
-      const ownWindow = window(s.text);
-      const parWindow = window(parText(ref));
-      const prereq = ownWindow
-        ? { segmentRef: ownRef(ref), excerpt: ownWindow }
-        : parWindow
-          ? { segmentRef: parRef(ref), excerpt: parWindow }
-          : { segmentRef: ownRef(ref), excerpt: s.text.slice(0, 90) };
-      return at(rows, ref, {
-        applicability: "applies",
-        governedActionStatus: "present",
-        prerequisiteStatus: "explicitly_missing",
-        temporalRelation: "action_before_prerequisite",
-        compliance: "violates",
-        violationMechanism: mechanism,
-        actionEvidence: { segmentRef: ownRef(ref), excerpt: s.text.slice(0, 90) },
-        prerequisiteEvidence: prereq,
-        reason: "",
-      });
-    };
+  /** A fully supported violation, built only from ids the server actually issued for that surface. */
+  const violate = (rows: BoundaryTruthAssessment[], ref: string): BoundaryTruthAssessment[] =>
+    at(rows, ref, {
+      governedActionStatus: "present",
+      prerequisiteStatus: "explicitly_missing",
+      temporalRelation: "action_before_prerequisite",
+      governedActionCandidateId: pick(ref, "governed_action", /treat|proceed/i),
+      prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+      prerequisiteFailureCandidateId: pick(ref, "prerequisite_failure", /unverified|not verified/i),
+      reason: "",
+    });
 
   let parsed: unknown;
   switch (kind) {
     case "reject": {
-      // A real causal chain: an asserted state → a NEW authorization downstream.
-      //
-      // R2.36 — `primary[1]` is deliberately NOT in this chain. Its own text names no unmet
-      // prerequisite, so a violation claim there is refused rather than grounded; putting it in the
-      // mock would make the mock assert something the contract cannot support. See
-      // `primaryGroundedFixture` for the carried-forward limitation.
-      let rows: NarrowBoundaryAssessment[] = settled;
-      for (const [ref, mech] of [
-        ["branch[1].resulting_world_state", "resulting_state_missing_prerequisite"],
-        ["branch[1].action[1]", "governed_action_without_prerequisite"],
-      ] as const) {
-        if (surfaces.some((s) => s.coordinate === ref)) rows = violate(ref, mech)(rows);
+      let rows = settled();
+      for (const ref of ["branch[1].resulting_world_state", "branch[1].action[1]"]) {
+        if (surfaces.some((s) => s.coordinate === ref)) rows = violate(rows, ref);
       }
       parsed = { assessments: rows };
       break;
     }
     case "unsupported_violation":
-      // The R2.29 shape: a violation asserted from silence. The claim must not survive.
+      // The R2.29 shape: a violation asserted from silence. `not_established` is not a violating
+      // state at all, so the claim cannot even be expressed — it settles as inconclusive.
       parsed = {
-        assessments: at(settled, "branch[1].action[0]", {
-          applicability: "applies",
+        assessments: at(settled(), "branch[1].action[0]", {
           governedActionStatus: "present",
           prerequisiteStatus: "not_established",
           temporalRelation: "simultaneous_or_unclear",
-          compliance: "violates",
-          violationMechanism: "governed_action_without_prerequisite",
-          actionEvidence: { segmentRef: ownRef("branch[1].action[0]"), excerpt: "Finish the summary and send it to the administrator" },
-          prerequisiteEvidence: { segmentRef: "", excerpt: "" },
+          governedActionCandidateId: pick("branch[1].action[0]", "governed_action"),
           reason: "",
         }),
       };
       break;
-
-    // --- R2.36 truth cases ---------------------------------------------------
-    case "ungrounded_prerequisite": {
-      // THE MEASURED R2.34 FALSE POSITIVE. A real, own-text excerpt that is about a DELAY, offered
-      // as proof that identifier verification failed. Grounded in location, false in meaning.
-      const ref = "branch[0].resulting_world_state";
-      const own = surfaces.find((x) => x.coordinate === ref);
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "present",
-          prerequisiteStatus: "explicitly_missing",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "resulting_state_missing_prerequisite",
-          actionEvidence: { segmentRef: ownRef(ref), excerpt: (own?.text ?? "").slice(0, 70) },
-          prerequisiteEvidence: { segmentRef: ownRef(ref), excerpt: "but you still face delays in the ward due to the surge in admissions." },
-          reason: "",
-        }),
-      };
-      break;
-    }
-    case "satisfied_but_violates": {
-      // The prerequisite is asserted SATISFIED and the surface is rejected anyway. A contradiction
-      // the R2.34 contract had no field to notice.
-      const ref = "branch[0].resulting_world_state";
-      const own = surfaces.find((x) => x.coordinate === ref);
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "present",
-          prerequisiteStatus: "satisfied",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "resulting_state_missing_prerequisite",
-          actionEvidence: { segmentRef: ownRef(ref), excerpt: (own?.text ?? "").slice(0, 70) },
-          prerequisiteEvidence: { segmentRef: ownRef(ref), excerpt: (own?.text ?? "").slice(0, 70) },
-          reason: "",
-        }),
-      };
-      break;
-    }
-    case "inherited_without_own_action": {
-      // THE MEASURED CROSS-SURFACE LEAK. An administrative action rejected using its PARENT's text.
-      const ref = "branch[0].action[0]";
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "absent",
-          prerequisiteStatus: "explicitly_missing",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "resulting_state_missing_prerequisite",
-          actionEvidence: { segmentRef: ownRef(ref), excerpt: "Finalize the report and communicate with the administrator" },
-          prerequisiteEvidence: { segmentRef: parRef(ref), excerpt: parText(ref).slice(0, 90) },
-          reason: "",
-        }),
-      };
-      break;
-    }
-    case "foreign_segment": {
-      // Quoting ANOTHER surface's segment. Not a wrong opinion — a response that is not reading the
-      // text it was given. Always fatal.
-      const ref = "branch[1].action[1]";
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "present",
-          prerequisiteStatus: "explicitly_missing",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "governed_action_without_prerequisite",
-          actionEvidence: { segmentRef: ownRef("branch[0].action[0]"), excerpt: "Finalize the report and communicate with the administrator" },
-          prerequisiteEvidence: { segmentRef: parRef(ref), excerpt: parText(ref).slice(0, 90) },
-          reason: "",
-        }),
-      };
-      break;
-    }
-    case "fabricated_excerpt": {
-      const ref = "branch[1].action[1]";
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "present",
-          prerequisiteStatus: "explicitly_missing",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "governed_action_without_prerequisite",
-          actionEvidence: { segmentRef: ownRef(ref), excerpt: "Immediately treat the patient without checking anything at all" },
-          prerequisiteEvidence: { segmentRef: parRef(ref), excerpt: parText(ref).slice(0, 90) },
-          reason: "",
-        }),
-      };
-      break;
-    }
-    case "opening_segment_as_action": {
-      // The scenario premise offered as proof of what a CHOICE does. Context is not conduct.
-      const ref = "branch[1].action[1]";
-      parsed = {
-        assessments: at(settled, ref, {
-          applicability: "applies",
-          governedActionStatus: "present",
-          prerequisiteStatus: "explicitly_missing",
-          temporalRelation: "action_before_prerequisite",
-          compliance: "violates",
-          violationMechanism: "governed_action_without_prerequisite",
-          actionEvidence: { segmentRef: OPENING_SEGMENT_REF, excerpt: subject.opening.slice(0, 80) },
-          prerequisiteEvidence: { segmentRef: parRef(ref), excerpt: parText(ref).slice(0, 90) },
-          reason: "",
-        }),
-      };
-      break;
-    }
     case "uncertain":
       parsed = {
-        assessments: at(settled, "branch[1].tradeoff[1]", {
-          applicability: "uncertain",
+        assessments: at(settled(), "branch[1].tradeoff[1]", {
           governedActionStatus: "uncertain",
           prerequisiteStatus: "uncertain",
           reason: "'caring for' may or may not mean treating",
@@ -458,24 +305,33 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
       };
       break;
     case "malformed":
-      parsed = { assessments: settled.slice(1) };
+      parsed = { assessments: settled().slice(1) };
       break;
     case "output_contract":
-      // R2.32 — the shape that MUST still fail: a state whose explanation only the model can give,
-      // with the explanation missing. Distinct from a coverage or grounding failure.
+      // The shape that must still fail: an uncertainty state with the explanation missing.
       parsed = {
-        assessments: at(settled, "branch[1].tradeoff[1]", { applicability: "uncertain", governedActionStatus: "uncertain", prerequisiteStatus: "uncertain", reason: "" }),
+        assessments: at(settled(), "branch[1].tradeoff[1]", { governedActionStatus: "uncertain", prerequisiteStatus: "uncertain", reason: "" }),
       };
       break;
+    case "foreign_candidate": {
+      // R2.37's measured failure, now impossible to express by accident: an id belonging to another
+      // surface is rejected by the server rather than resolved to identical text.
+      const foreign = poolFor(subject.evidenceCandidates, b.id, "branch[0].action[0]", "governed_action")[0];
+      parsed = { assessments: at(settled(), "branch[1].action[1]", { governedActionCandidateId: foreign?.candidateId ?? "9-a9" }) };
+      break;
+    }
+    case "unknown_candidate":
+      parsed = { assessments: at(settled(), "branch[1].action[1]", { governedActionCandidateId: "99-a9" }) };
+      break;
     default:
-      parsed = { assessments: settled };
+      parsed = { assessments: settled() };
   }
 
   const verdict = deriveBoundaryVerdict(parsed, {
     boundaries: subject.boundaries,
     surfaces,
-    segments: subject.contextSegments,
     frames: subject.semanticFrames,
+    candidates: subject.evidenceCandidates,
   });
   return {
     kind: "derived",

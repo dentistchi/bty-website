@@ -29,7 +29,7 @@
 
 import { compatibilitySurfaces, enumerateBoundarySurfaces, reviewableSurfaces, type BoundarySurface } from "./boundarySurfaces";
 import type { ArenaScenarioDraft } from "./types";
-import type { ApplicabilityResult, ComplianceResult } from "./narrowBoundaryReview";
+import type { LegacyApplicability as ApplicabilityResult, LegacyCompliance as ComplianceResult } from "./legacyBoundaryDto";
 
 export const C18_CASE_ID = "c18-constrained-clinical";
 export const C18_SCENARIO_SHA256 = "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6";

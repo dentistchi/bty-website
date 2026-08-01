@@ -13,18 +13,39 @@
  * Pure domain: no I/O.
  */
 
-import type { ApplicabilityResult, ComplianceResult, ViolationMechanism } from "./narrowBoundaryReview";
+/**
+ * The legacy vocabularies, declared HERE rather than imported.
+ *
+ * R2.38 removed `applicability`, `compliance` and `violationMechanism` from the model's output
+ * entirely — the server derives all three. Importing them back from the live contract would make a
+ * historical capture depend on a contract it predates, and would break again at the next change.
+ */
+export const LEGACY_APPLICABILITY = ["applies", "not_applicable", "uncertain"] as const;
+export type LegacyApplicability = (typeof LEGACY_APPLICABILITY)[number];
+
+export const LEGACY_COMPLIANCE = ["complies", "violates", "uncertain", "not_assessed"] as const;
+export type LegacyCompliance = (typeof LEGACY_COMPLIANCE)[number];
+
+export const LEGACY_VIOLATION_MECHANISMS = [
+  "none",
+  "governed_action_without_prerequisite",
+  "resulting_state_missing_prerequisite",
+  "boundary_reopened_after_prior_compliance",
+  "explicit_boundary_contradiction",
+  "other_grounded_violation",
+] as const;
+export type LegacyViolationMechanism = (typeof LEGACY_VIOLATION_MECHANISMS)[number];
 
 export type LegacyBoundaryAssessment = {
   boundaryId: string;
   surfaceRef: string;
-  applicability: ApplicabilityResult;
-  compliance: ComplianceResult;
+  applicability: LegacyApplicability;
+  compliance: LegacyCompliance;
   /** An unqualified string. Nothing recorded WHICH text it came from — the R2.35 root cause. */
   governedActionEvidence: string;
   /** Likewise unqualified, and never checked for being about the prerequisite at all. */
   prerequisiteFailureEvidence: string;
-  violationMechanism: ViolationMechanism;
+  violationMechanism: LegacyViolationMechanism;
   reason: string;
 };
 
@@ -36,3 +57,18 @@ export const LEGACY_MISSING_TRUTH_FIELDS = [
   "actionEvidence.segmentRef",
   "prerequisiteEvidence.segmentRef",
 ] as const;
+
+/** The R2.36 shape: truth axes plus `{segmentRef, excerpt}` evidence, before candidate authority. */
+export type R236BoundaryAssessment = {
+  boundaryId: string;
+  surfaceRef: string;
+  applicability: LegacyApplicability;
+  governedActionStatus: "present" | "absent" | "uncertain";
+  prerequisiteStatus: "satisfied" | "explicitly_missing" | "contradicted" | "not_established" | "uncertain" | "not_applicable";
+  temporalRelation: "prerequisite_before_action" | "action_before_prerequisite" | "simultaneous_or_unclear" | "unrelated" | "not_applicable";
+  compliance: LegacyCompliance;
+  violationMechanism: LegacyViolationMechanism;
+  actionEvidence: { segmentRef: string; excerpt: string };
+  prerequisiteEvidence: { segmentRef: string; excerpt: string };
+  reason: string;
+};

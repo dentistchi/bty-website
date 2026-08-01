@@ -10,6 +10,8 @@
 
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { buildContextSegments } from "./boundaryContextSegments";
+import { buildAllEvidenceCandidates, poolFor } from "./boundaryEvidenceCandidates";
+import { buildSemanticFrames } from "./boundarySemanticFrame";
 import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
@@ -249,7 +251,7 @@ export const isReviewRequest = (params: { messages?: Array<{ content?: string }>
  * would now stall the pipeline at the narrow stage, so routing must recognise all three.
  */
 export const isBoundaryReviewRequest = (params: { messages?: Array<{ content?: string }> }): boolean =>
-  (params.messages ?? []).some((m) => typeof m.content === "string" && m.content.includes("CONFIRMED-BOUNDARY COMPLIANCE CHECKER"));
+  (params.messages ?? []).some((m) => typeof m.content === "string" && m.content.includes("CONFIRMED-BOUNDARY TRUTH REPORTER"));
 
 /**
  * Build an all-complies narrow response DERIVED FROM THE REQUEST, so it satisfies exact Cartesian
@@ -262,27 +264,28 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
   const req = JSON.parse(user?.content ?? "{}") as {
     constraints?: Array<{ id: string }>;
     surfaces?: Array<{ surfaceRef: string; text: string }>;
-    contextSegments?: Array<{ segmentRef: string; segmentKind: string; surfaceRef: string }>;
+    evidenceCandidates?: Array<{
+      boundaryId: string;
+      surfaces: Array<{ surfaceRef: string; governedActionCandidates: Array<{ candidateId: string }> }>;
+    }>;
   };
-  // R2.30 — applicability first. `not_applicable` with a same-surface excerpt is the cheapest
-  // settled answer a transport double can give, and it exercises the real grounding rules.
-  // R2.36 — the double cites the SERVER-ASSIGNED segment, exactly as a real response must; a double
-  // that invented a reference would pass a check no live response could.
-  const ownRef = (surfaceRef: string) =>
-    (req.contextSegments ?? []).find((x) => x.surfaceRef === surfaceRef && x.segmentKind === "own_surface")?.segmentRef ?? "";
+  // R2.38 — the double SELECTS a server-issued candidate id, exactly as a real response must. A
+  // double that authored its own excerpt would pass a check no live answer could, which is how the
+  // R2.36 defects stayed invisible to CI. `absent` + `not_applicable` is the cheapest settled truth.
+  const actionId = (boundaryId: string, surfaceRef: string) =>
+    (req.evidenceCandidates ?? []).find((e) => e.boundaryId === boundaryId)?.surfaces.find((s) => s.surfaceRef === surfaceRef)
+      ?.governedActionCandidates[0]?.candidateId ?? "none";
   const assessments = (req.constraints ?? []).flatMap((b) =>
     (req.surfaces ?? []).map((s) => ({
       boundaryId: b.id,
       surfaceRef: s.surfaceRef,
-      applicability: "not_applicable",
       governedActionStatus: "absent",
       prerequisiteStatus: "not_applicable",
       temporalRelation: "not_applicable",
-      compliance: "not_assessed",
-      violationMechanism: "none",
-      actionEvidence: { segmentRef: ownRef(s.surfaceRef), excerpt: s.text.slice(0, 90) },
-      prerequisiteEvidence: { segmentRef: "", excerpt: "" },
-      reason: "does not perform the governed action",
+      governedActionCandidateId: actionId(b.id, s.surfaceRef),
+      prerequisiteSatisfactionCandidateId: "none",
+      prerequisiteFailureCandidateId: "none",
+      reason: "",
     })),
   );
   return JSON.stringify({ assessments });
@@ -295,24 +298,22 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
 export function compliantBoundaryReviewFor(draft: ArenaScenarioDraft, constraintIds: string[]): string {
   // Only the REACHABLE surfaces are ever handed to the reviewer (R2.30).
   const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft, {}));
-  // The same segment refs the server will assign, derived the same way.
+  // The same candidate ids the server will issue, derived the same way.
   const segments = buildContextSegments(draft, surfaces);
-  const ownRef = (surfaceRef: string) =>
-    segments.find((x) => x.sourceSurfaceRef === surfaceRef && x.segmentKind === "own_surface")?.segmentRef ?? "";
+  const boundaries = constraintIds.map((id) => ({ id, statement: "Two identifiers must be verified before treatment" }));
+  const { candidates } = buildAllEvidenceCandidates(boundaries, buildSemanticFrames(boundaries), surfaces, segments);
   return JSON.stringify({
     assessments: constraintIds.flatMap((boundaryId) =>
       surfaces.map((s) => ({
         boundaryId,
         surfaceRef: s.coordinate,
-        applicability: "not_applicable",
         governedActionStatus: "absent",
         prerequisiteStatus: "not_applicable",
         temporalRelation: "not_applicable",
-        compliance: "not_assessed",
-        violationMechanism: "none",
-        actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
-        prerequisiteEvidence: { segmentRef: "", excerpt: "" },
-        reason: "does not perform the governed action",
+        governedActionCandidateId: poolFor(candidates, boundaryId, s.coordinate, "governed_action")[0]?.candidateId ?? "none",
+        prerequisiteSatisfactionCandidateId: "none",
+        prerequisiteFailureCandidateId: "none",
+        reason: "",
       })),
     ),
   });

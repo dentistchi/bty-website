@@ -27,13 +27,16 @@ import { explanationSha256, type ServerExplanation } from "@/domain/foundry/aren
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import {
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
+  NARROW_BOUNDARY_JSON_SCHEMA,
+  REMOVED_MODEL_AUTHORED_FIELDS,
   decideAfterBoundaryReview,
+  mergeSubsetRepair,
+  verdictFromDerived,
   type BoundaryUncertainty,
   type BoundaryViolation,
-  type NarrowBoundaryCode,
-  type RefutedViolationClaim,
+  type DerivedAssessment,
+  type NarrowReviewContext,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
-import { segmentIndex, type ContextSegment } from "@/domain/foundry/arena-draft/boundaryContextSegments";
 import {
   compatibilitySurfaces,
   enumerateBoundarySurfaces,
@@ -43,9 +46,21 @@ import {
   validateSurfaceMap,
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
+import { classifyTruthState, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
+import {
+  checkPromptFieldParity,
+  instructiveRemovedFieldMentions,
+} from "@/domain/foundry/arena-draft/promptFieldParity";
 import { isBranchAware } from "@/domain/foundry/arena-draft/types";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
-import { buildNarrowBoundarySubject, narrowBoundarySubjectSha256, type NarrowBoundarySubject } from "./narrowBoundaryContract";
+import {
+  NARROW_BOUNDARY_SYSTEM_PROMPT,
+  PROMPT_EXPLANATORY_VOCABULARY,
+  buildNarrowBoundarySubject,
+  narrowBoundarySubjectSha256,
+  type NarrowBoundarySubject,
+} from "./narrowBoundaryContract";
 import type { NarrowBoundaryCallResult, NarrowBoundaryEvidence } from "./narrowBoundaryReviewer";
 
 // R2.32 Part 9 — ONE canonical enumeration, re-exported so existing importers keep working.
@@ -85,14 +100,6 @@ export type BoundaryStageResult = {
   excludedCompatibilitySurfaces: string[];
   /** Populated only on a valid inconclusive. */
   uncertainties: BoundaryUncertainty[];
-  /**
-   * R2.36 — VIOLATION CLAIMS THE SERVER REFUSED. Reported next to the surviving ones and never
-   * merged with them: this is the only record that the reviewer asserted something the evidence did
-   * not support, and it is what makes the R2.34 false positives auditable rather than invisible.
-   */
-  refutedClaims: RefutedViolationClaim[];
-  refutedClaimCount: number;
-  refutedClaimCodes: string[];
   /** Context authority actually used for this subject. */
   contextSegmentCount: number;
   contextSegmentMapSha256: string | null;
@@ -104,10 +111,30 @@ export type BoundaryStageResult = {
   governedActionStatusCounts: Record<string, number>;
   prerequisiteStatusCounts: Record<string, number>;
   temporalRelationCounts: Record<string, number>;
-  /** How many accepted prerequisite excerpts came from an inherited parent state rather than own text. */
-  inheritedPrerequisiteEvidenceCount: number;
-  /** Evidence that named a segment the surface could not cite. Always fatal; counted for trend. */
-  evidenceLocalityFailureCount: number;
+  // --- R2.38 candidate authority -------------------------------------------------------------
+  boundaryEvidenceCandidateCount: number;
+  boundaryEvidenceCandidateAliasRemovedCount: number;
+  boundaryEvidenceCandidateProvenanceRetainedCount: number;
+  evidenceCandidateMapSha256: string | null;
+  truthStateTableSha256: string | null;
+  governedActionCandidateSelectedCount: number;
+  prerequisiteSatisfactionCandidateSelectedCount: number;
+  prerequisiteFailureCandidateSelectedCount: number;
+  unknownCandidateIdCount: number;
+  ambiguousLegacyCandidateCount: number;
+  /**
+   * The three numbers that prove the R2.37 root cause is gone. `modelAuthored*` must be 0: the
+   * model has no field in which to author either conclusion.
+   */
+  derivedApplicabilityCount: number;
+  derivedComplianceCount: number;
+  modelAuthoredApplicabilityCount: number;
+  modelAuthoredComplianceCount: number;
+  promptSchemaFieldDriftCount: number;
+  // --- R2.38 failed-subset repair --------------------------------------------------------------
+  failedSubsetRepairSurfaceCount: number;
+  failedSubsetRepairInvocationCount: number;
+  preservedValidAssessmentCount: number;
   /** Server-authored findings for the correction packet. Only a valid reject produces them. */
   findings: Finding[];
   /** Authority / surface-map failure codes. */
@@ -126,8 +153,13 @@ export type BoundaryStageResult = {
 };
 
 export type BoundaryStageDeps = {
-  /** One narrow provider call. Injected so the stage is provable without a network. */
-  review: (subject: NarrowBoundarySubject, attempt: number) => Promise<NarrowBoundaryCallResult>;
+  /**
+   * One narrow provider call. Injected so the stage is provable without a network.
+   *
+   * `surfaceRefs` is present ONLY on a failed-subset repair, and names exactly the surfaces whose
+   * assessments were refused. Rows the first response got right are never re-requested.
+   */
+  review: (subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]) => Promise<NarrowBoundaryCallResult>;
   log?: (outcome: string, code: string | undefined, extra: Record<string, unknown>) => void;
 };
 
@@ -169,9 +201,6 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   reachableSurfaces: [],
   excludedCompatibilitySurfaces: [],
   uncertainties: [],
-  refutedClaims: [],
-  refutedClaimCount: 0,
-  refutedClaimCodes: [],
   contextSegmentCount: 0,
   contextSegmentMapSha256: null,
   openingPresent: false,
@@ -180,8 +209,24 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   governedActionStatusCounts: {},
   prerequisiteStatusCounts: {},
   temporalRelationCounts: {},
-  inheritedPrerequisiteEvidenceCount: 0,
-  evidenceLocalityFailureCount: 0,
+  boundaryEvidenceCandidateCount: 0,
+  boundaryEvidenceCandidateAliasRemovedCount: 0,
+  boundaryEvidenceCandidateProvenanceRetainedCount: 0,
+  evidenceCandidateMapSha256: null,
+  truthStateTableSha256: null,
+  governedActionCandidateSelectedCount: 0,
+  prerequisiteSatisfactionCandidateSelectedCount: 0,
+  prerequisiteFailureCandidateSelectedCount: 0,
+  unknownCandidateIdCount: 0,
+  ambiguousLegacyCandidateCount: 0,
+  derivedApplicabilityCount: 0,
+  derivedComplianceCount: 0,
+  modelAuthoredApplicabilityCount: 0,
+  modelAuthoredComplianceCount: 0,
+  promptSchemaFieldDriftCount: 0,
+  failedSubsetRepairSurfaceCount: 0,
+  failedSubsetRepairInvocationCount: 0,
+  preservedValidAssessmentCount: 0,
   findings: [],
   codes,
   explanations: [],
@@ -291,6 +336,12 @@ export async function runBoundaryReviewStage(
   let providerResponses = 0;
   let semanticAttempts = 0;
   let transportFailures = 0;
+  // R2.38 — a failed-subset repair carries these forward. `preserved` rows are IMMUTABLE: the repair
+  // may only supply the surfaces the server names, and merging refuses anything else.
+  let repairSurfaceRefs: string[] | undefined;
+  let preserved: DerivedAssessment[] = [];
+  let failedSubsetRepairSurfaceCount = 0;
+  let failedSubsetRepairInvocationCount = 0;
 
   for (let attempt = 1; attempt <= MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT; attempt++) {
     // BOTH caps apply, and the invocation cap is checked first because it is the cost authority.
@@ -314,22 +365,37 @@ export async function runBoundaryReviewStage(
     }
 
     providerInvocations += 1; // incremented for the invocation itself, before any outcome is known
-    const call = await deps.review(subject, attempt);
+    const call = await deps.review(subject, attempt, repairSurfaceRefs);
     evidences.push(call.evidence);
     if (call.evidence.transport?.responseState === "response_received") providerResponses += 1;
     if (call.kind === "transport_failed") transportFailures += 1;
     else semanticAttempts += 1; // ONLY a response that reached schema/semantic validation
 
-    const decision = decideAfterBoundaryReview(
-      attempt,
-      call.kind === "transport_failed" ? { kind: "transport_failed" } : { kind: "derived", verdict: call.verdict },
-    );
-
     const tally = tallyModelReason(call.evidence.parsed);
     const verdict = call.evidence.verdict;
-    const explanations = "explanations" in verdict ? verdict.explanations : [];
-    const truth = tallyTruthFields(call.evidence.parsed, subject.contextSegments);
-    const refutedClaims = "refutedClaims" in verdict ? verdict.refutedClaims : [];
+    const truth = tallyTruthFields(call.evidence.parsed);
+    const ctx: NarrowReviewContext = {
+      boundaries: subject.boundaries,
+      surfaces: subject.surfaces,
+      frames: subject.semanticFrames,
+      candidates: subject.evidenceCandidates,
+    };
+
+    // A repair response covers only the failed surfaces. Merge it onto the preserved rows and
+    // derive ONE verdict from the complete matrix — never from a partial one.
+    let effective = verdict;
+    if (repairSurfaceRefs && verdict.outcome !== "boundary_review_malformed") {
+      const merge = mergeSubsetRepair(preserved, verdict.derived, repairSurfaceRefs);
+      effective = merge.ok
+        ? verdictFromDerived(merge.derived, ctx)
+        : { outcome: "boundary_review_malformed", codes: [], findings: [], failureClass: "coverage", validSurfaceRefs: [], failedSurfaceRefs: repairSurfaceRefs, derived: [] };
+      if (!merge.ok) log("boundary_review_authority_failure", merge.code, { detail: merge.detail });
+    }
+    const explanations = "explanations" in effective ? effective.explanations : [];
+    const decision = decideAfterBoundaryReview(
+      attempt,
+      call.kind === "transport_failed" ? { kind: "transport_failed" } : { kind: "derived", verdict: effective },
+    );
     const base = {
       evidences,
       subject,
@@ -348,14 +414,10 @@ export async function runBoundaryReviewStage(
       invocationBudgetExhausted: providerInvocations >= MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
       explanations,
       explanationSha256: explanations.length ? explanationSha256(explanations) : null,
-      outputContractFailure: verdict.outcome === "boundary_review_malformed" && verdict.failureClass === "output_contract",
+      outputContractFailure: effective.outcome === "boundary_review_malformed" && effective.failureClass === "output_contract",
       modelReasonRequiredCount: tally.required,
       modelReasonMissingCount: tally.missing,
       modelReasonUnexpectedCount: tally.unexpected,
-      // R2.36 metrics.
-      refutedClaims,
-      refutedClaimCount: refutedClaims.length,
-      refutedClaimCodes: [...new Set(refutedClaims.flatMap((r) => r.codes))],
       contextSegmentCount: subject.contextSegments.length,
       contextSegmentMapSha256: subject.contextSegmentMapSha256,
       openingPresent: subject.opening.trim().length > 0,
@@ -364,16 +426,49 @@ export async function runBoundaryReviewStage(
       governedActionStatusCounts: truth.governedActionStatusCounts,
       prerequisiteStatusCounts: truth.prerequisiteStatusCounts,
       temporalRelationCounts: truth.temporalRelationCounts,
-      inheritedPrerequisiteEvidenceCount: truth.inheritedPrerequisiteEvidenceCount,
-      evidenceLocalityFailureCount:
-        verdict.outcome === "boundary_review_malformed"
-          ? verdict.findings.filter((f) => EVIDENCE_LOCALITY_CODES.includes(f.code)).length
-          : 0,
+      // R2.38 candidate authority.
+      boundaryEvidenceCandidateCount: subject.evidenceCandidates.length,
+      boundaryEvidenceCandidateAliasRemovedCount: subject.candidateAliasRemovedCount,
+      boundaryEvidenceCandidateProvenanceRetainedCount: subject.candidateProvenanceRetainedCount,
+      evidenceCandidateMapSha256: subject.evidenceCandidateMapSha256,
+      truthStateTableSha256: truthStateTableSha256(),
+      governedActionCandidateSelectedCount: truth.governedActionCandidateSelectedCount,
+      prerequisiteSatisfactionCandidateSelectedCount: truth.prerequisiteSatisfactionCandidateSelectedCount,
+      prerequisiteFailureCandidateSelectedCount: truth.prerequisiteFailureCandidateSelectedCount,
+      unknownCandidateIdCount:
+        effective.outcome === "boundary_review_malformed" ? effective.findings.filter((f) => f.code === "boundary_candidate_unknown").length : 0,
+      ambiguousLegacyCandidateCount: 0,
+      derivedApplicabilityCount: effective.derived.length,
+      derivedComplianceCount: effective.derived.length,
+      modelAuthoredApplicabilityCount: truth.modelAuthoredApplicabilityCount,
+      modelAuthoredComplianceCount: truth.modelAuthoredComplianceCount,
+      promptSchemaFieldDriftCount: promptFieldDriftCount(),
+      failedSubsetRepairSurfaceCount,
+      failedSubsetRepairInvocationCount,
+      preservedValidAssessmentCount: preserved.length,
     };
+
+    if (decision.action === "repair_failed_subset") {
+      // Only the refused surfaces are re-requested. Everything the first response got right is kept
+      // exactly as derived and is never sent back to the provider.
+      reruns++;
+      repairSurfaceRefs = decision.surfaceRefs;
+      preserved = effective.outcome === "boundary_review_malformed" ? effective.derived : [];
+      failedSubsetRepairSurfaceCount = decision.surfaceRefs.length;
+      failedSubsetRepairInvocationCount += 1;
+      log("boundary_review_failed_subset_repair", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
+        boundaryReviewSubjectSha256: subjectSha,
+        because: decision.because,
+        repairSurfaceRefs: decision.surfaceRefs,
+        preservedSurfaceCount: preserved.length,
+        boundaryReviewOutcome: "boundary_output_contract_failure",
+      });
+      continue;
+    }
 
     if (decision.action === "rerun_boundary_review") {
       reruns++;
-      log("boundary_review_rerun", verdict.outcome === "boundary_review_malformed" ? verdict.codes[0] : undefined, {
+      log("boundary_review_rerun", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
         boundaryReviewSubjectSha256: subjectSha,
         because: decision.because,
         // R2.32 — name the precise class so an output-contract failure is never read as a coverage
@@ -392,7 +487,7 @@ export async function runBoundaryReviewStage(
     }
 
     if (decision.action === "correction_path") {
-      const rejected = call.evidence.verdict.outcome === "boundary_review_reject" ? call.evidence.verdict : null;
+      const rejected = effective.outcome === "boundary_review_reject" ? effective : null;
       const violations = rejected?.violations ?? [];
       const causal = rejected?.causalViolations ?? [];
       const downstream = rejected?.downstreamViolations ?? [];
@@ -412,10 +507,13 @@ export async function runBoundaryReviewStage(
           // R2.36 — the packet states WHAT was proved and FROM WHERE. A Manager reading a finding
           // can now see that the prerequisite excerpt came from the surface's own text or from its
           // parent state, and which prerequisite status was asserted, rather than two bare strings.
+          // R2.38 — every excerpt here was RESOLVED by the server from a candidate id the reviewer
+          // selected. A Manager reading a finding sees the state, the ids, and the canonical
+          // provenance of both spans; nothing in this string came from model-authored prose.
           detail:
-            `${v.surfaceRef} [${v.violationMechanism}] ` +
-            `action(${v.governedActionSegmentRef}): ${v.governedActionEvidence} || ` +
-            `prerequisite ${v.prerequisiteStatus} (${v.prerequisiteSegmentRef}/${v.prerequisiteSegmentKind}, ${v.temporalRelation}): ` +
+            `${v.surfaceRef} [${v.stateId} -> ${v.violationMechanism}] ` +
+            `action(${v.governedActionCandidateId}@${v.governedActionSegmentRef}): ${v.governedActionEvidence} || ` +
+            `prerequisite ${v.prerequisiteStatus} (${v.prerequisiteFailureCandidateId}@${v.prerequisiteSegmentRef}/${v.prerequisiteSegmentKind}, ${v.temporalRelation}): ` +
             v.prerequisiteFailureEvidence,
         };
       });
@@ -425,9 +523,6 @@ export async function runBoundaryReviewStage(
         violations,
         causalViolations: causal.map((v) => v.surfaceRef),
         downstreamViolations: downstream.map((v) => v.surfaceRef),
-        // Refused claims are logged with the rejection, never folded into it. The correction packet
-        // must contain ONLY what survived the truth gates.
-        refutedClaims: refutedClaims.map((r) => `${r.surfaceRef}: ${r.codes.join(",")}`),
       });
       return {
         ...empty("boundary_review_reject"),
@@ -442,7 +537,7 @@ export async function runBoundaryReviewStage(
     }
 
     if (decision.action === "inconclusive") {
-      const uncertainties = call.evidence.verdict.outcome === "boundary_review_inconclusive" ? call.evidence.verdict.uncertainties : [];
+      const uncertainties = effective.outcome === "boundary_review_inconclusive" ? effective.uncertainties : [];
       log("boundary_review_inconclusive", uncertainties[0]?.surfaceRef, { boundaryReviewSubjectSha256: subjectSha, uncertainties });
       return { ...empty("boundary_review_inconclusive"), ...base, outcome: "boundary_review_inconclusive", uncertainties, reruns };
     }
@@ -451,7 +546,7 @@ export async function runBoundaryReviewStage(
       // The terminal CLASS stays `boundary_reviewer_terminal_failure` (R2.32 Part 8 preserves the
       // existing policy); the precise SUBCODE travels with it.
       const subcode = base.outputContractFailure ? "boundary_output_contract_failure" : undefined;
-      log("boundary_reviewer_terminal_failure", subcode ?? (verdict.outcome === "boundary_review_malformed" ? verdict.codes[0] : undefined), {
+      log("boundary_reviewer_terminal_failure", subcode ?? (effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined), {
         boundaryReviewSubjectSha256: subjectSha,
         scenarioUnjudged: true,
         because: decision.because,
@@ -512,37 +607,45 @@ export async function runBoundaryReviewStage(
  * "omitted a reason the state genuinely required".
  */
 /**
- * Codes that mean an excerpt named a segment the surface could not legitimately cite. Counted for
- * trend even though each one is fatal on its own — a rise here means the labelled context is not
- * being read, which is a different remedy from a rise in refuted claims.
+ * PROMPT / SCHEMA FIELD DRIFT, counted every run.
+ *
+ * R2.36 shipped a prompt naming two fields the schema had already deleted, and nothing noticed for a
+ * whole slice. This must read ZERO. A non-zero value means the prompt is instructing the reviewer to
+ * fill something that does not exist.
  */
-const EVIDENCE_LOCALITY_CODES: readonly NarrowBoundaryCode[] = [
-  "boundary_evidence_unknown_segment",
-  "boundary_evidence_segment_not_visible",
-  "boundary_evidence_wrong_segment_kind",
-  "boundary_evidence_excerpt_not_in_segment",
-  "boundary_inherited_state_without_own_action",
-];
+export function promptFieldDriftCount(): number {
+  const fields = Object.keys(NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items.properties);
+  const parity = checkPromptFieldParity(NARROW_BOUNDARY_SYSTEM_PROMPT, fields, PROMPT_EXPLANATORY_VOCABULARY);
+  return parity.unknownTokens.length + instructiveRemovedFieldMentions(NARROW_BOUNDARY_SYSTEM_PROMPT, REMOVED_MODEL_AUTHORED_FIELDS).length;
+}
 
 /**
  * Distributions over the truth fields of the deciding attempt. These are the numbers that make the
  * R2.35 defect visible in aggregate: a reviewer answering `not_established` and rejecting anyway, or
  * one whose prerequisite evidence is overwhelmingly inherited rather than own, is now countable.
  */
-export function tallyTruthFields(
-  parsed: unknown,
-  segments: ContextSegment[],
-): {
+export function tallyTruthFields(parsed: unknown): {
   governedActionStatusCounts: Record<string, number>;
   prerequisiteStatusCounts: Record<string, number>;
   temporalRelationCounts: Record<string, number>;
-  inheritedPrerequisiteEvidenceCount: number;
+  governedActionCandidateSelectedCount: number;
+  prerequisiteSatisfactionCandidateSelectedCount: number;
+  prerequisiteFailureCandidateSelectedCount: number;
+  /**
+   * R2.38 — these MUST stay zero. The model has no applicability or compliance field, so a non-zero
+   * count means something re-introduced the axis R2.37 proved was the root cause.
+   */
+  modelAuthoredApplicabilityCount: number;
+  modelAuthoredComplianceCount: number;
 } {
   const governedActionStatusCounts: Record<string, number> = {};
   const prerequisiteStatusCounts: Record<string, number> = {};
   const temporalRelationCounts: Record<string, number> = {};
-  let inheritedPrerequisiteEvidenceCount = 0;
-  const byRef = segmentIndex(segments);
+  let governedActionCandidateSelectedCount = 0;
+  let prerequisiteSatisfactionCandidateSelectedCount = 0;
+  let prerequisiteFailureCandidateSelectedCount = 0;
+  let modelAuthoredApplicabilityCount = 0;
+  let modelAuthoredComplianceCount = 0;
   const rows = parsed && typeof parsed === "object" && Array.isArray((parsed as { assessments?: unknown[] }).assessments)
     ? ((parsed as { assessments: unknown[] }).assessments as Array<Record<string, unknown>>)
     : [];
@@ -553,36 +656,61 @@ export function tallyTruthFields(
     bump(governedActionStatusCounts, r.governedActionStatus);
     bump(prerequisiteStatusCounts, r.prerequisiteStatus);
     bump(temporalRelationCounts, r.temporalRelation);
-    const ref = (r.prerequisiteEvidence as { segmentRef?: unknown } | undefined)?.segmentRef;
-    if (typeof ref === "string" && byRef.get(ref)?.segmentKind === "parent_generated_state") inheritedPrerequisiteEvidenceCount++;
+    const chose = (v: unknown) => typeof v === "string" && v.trim() !== "" && v !== NO_CANDIDATE;
+    if (chose(r.governedActionCandidateId)) governedActionCandidateSelectedCount++;
+    if (chose(r.prerequisiteSatisfactionCandidateId)) prerequisiteSatisfactionCandidateSelectedCount++;
+    if (chose(r.prerequisiteFailureCandidateId)) prerequisiteFailureCandidateSelectedCount++;
+    if ("applicability" in r) modelAuthoredApplicabilityCount++;
+    if ("compliance" in r) modelAuthoredComplianceCount++;
   }
-  return { governedActionStatusCounts, prerequisiteStatusCounts, temporalRelationCounts, inheritedPrerequisiteEvidenceCount };
+  return {
+    governedActionStatusCounts,
+    prerequisiteStatusCounts,
+    temporalRelationCounts,
+    governedActionCandidateSelectedCount,
+    prerequisiteSatisfactionCandidateSelectedCount,
+    prerequisiteFailureCandidateSelectedCount,
+    modelAuthoredApplicabilityCount,
+    modelAuthoredComplianceCount,
+  };
 }
 
+/**
+ * Per-attempt reason bookkeeping, keyed on the CANONICAL TRUTH-STATE TABLE.
+ *
+ * R2.32 established that correct silence must never be read as an omission. R2.38 keeps that policy
+ * and moves its authority: the state table now says which states require the model's own words, so
+ * this counter reads the same table the prompt and the validator do.
+ */
 export function tallyModelReason(parsed: unknown): { required: number; missing: number; unexpected: number } {
-  const rows = ((parsed as { assessments?: unknown[] } | null)?.assessments ?? []) as Array<Record<string, string>>;
+  const rows =
+    parsed && typeof parsed === "object" && Array.isArray((parsed as { assessments?: unknown[] }).assessments)
+      ? ((parsed as { assessments: unknown[] }).assessments as Array<Record<string, unknown>>)
+      : [];
   let required = 0;
   let missing = 0;
   let unexpected = 0;
-  for (const a of rows) {
-    const state = classifyAssessmentState({
-      applicability: String(a.applicability ?? ""),
-      compliance: String(a.compliance ?? ""),
-      violationMechanism: String(a.violationMechanism ?? ""),
-    });
+  for (const r of rows) {
+    const state = classifyTruthState(
+      {
+        governedActionStatus: r.governedActionStatus as never,
+        prerequisiteStatus: r.prerequisiteStatus as never,
+        temporalRelation: r.temporalRelation as never,
+      },
+      "prerequisite_before_action",
+    );
     if (!state) continue;
-    const has = String(a.reason ?? "").trim().length > 0;
-    if (requiresModelReason(state)) {
-      required += 1;
-      if (!has) missing += 1;
-    } else if (has) {
-      // Prose where the server owns the explanation. IGNORED for authority — never a failure — but
-      // counted, because a rising count means the prompt has drifted from the parity table again.
-      unexpected += 1;
+    const prose = typeof r.reason === "string" && r.reason.trim().length > 0;
+    if (state.reasonAuthority === "model_required") {
+      required++;
+      if (!prose) missing++;
+    } else if (prose) {
+      unexpected++;
     }
   }
   return { required, missing, unexpected };
 }
+
 
 /** Aggregate stability metrics (R2.29 Part 12). Any nonzero terminal count fails a hard gate. */
 export type BoundaryReviewMetrics = {
@@ -653,20 +781,26 @@ export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
   boundaryTransportRetryCount: 0,
 });
 
+/**
+ * Evidence that could not be resolved to a server-issued candidate.
+ *
+ * R2.38 replaced the R2.29-R2.36 grounding codes: a model can no longer author an excerpt, so
+ * "ungrounded" now means "named an id the server did not issue for this surface and role". The
+ * counter keeps its name and its meaning — evidence that carries no authority.
+ */
 const UNGROUNDED_CODES = new Set([
-  "boundary_evidence_missing",
-  "boundary_evidence_generic",
-  "boundary_evidence_too_short",
-  "boundary_evidence_from_other_surface",
-  "boundary_evidence_restates_boundary",
-  "boundary_evidence_ungrounded",
+  "boundary_candidate_unknown",
+  "boundary_candidate_wrong_surface",
+  "boundary_candidate_wrong_role",
+  "boundary_candidate_wrong_boundary",
 ]);
 
-/** Codes that fire when a claimed violation could not prove a mechanism — a prevented false positive. */
+/** Codes that fire when a claimed violation could not supply the evidence its state requires. */
 const UNSUPPORTED_VIOLATION_CODES = new Set([
-  "boundary_violation_mechanism_missing",
-  "boundary_violation_governed_action_missing",
-  "boundary_violation_prerequisite_evidence_missing",
+  "boundary_candidate_required_missing",
+  "boundary_candidate_forbidden_present",
+  "boundary_prerequisite_contradiction",
+  "boundary_assessment_state_invalid",
 ]);
 
 /** Fold one stage result into the running metrics. Pure. */
@@ -674,10 +808,10 @@ export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryS
   const malformedCodes = r.evidences.flatMap((e) => (e.verdict.outcome === "boundary_review_malformed" ? e.verdict.codes : []));
   const ungrounded = malformedCodes.filter((c) => UNGROUNDED_CODES.has(c)).length;
   const prevented = malformedCodes.filter((c) => UNSUPPORTED_VIOLATION_CODES.has(c)).length;
-  // Applicability counters come from the LAST usable response, which is the one that decided.
+  // R2.38 — applicability counters read the SERVER'S derivation, not a model field. The model has
+  // no applicability field, so counting one would silently read zero forever.
   const last = [...r.evidences].reverse().find((e) => e.verdict.outcome !== "boundary_review_malformed");
-  const parsed = (last?.parsed ?? null) as { assessments?: Array<{ applicability?: string; compliance?: string }> } | null;
-  const rows = parsed?.assessments ?? [];
+  const rows = (last?.verdict.derived ?? []).map((d) => ({ applicability: d.applicability }));
   return {
     boundaryReviewCallCount: m.boundaryReviewCallCount + r.calls,
     // Semantic reruns only. A transport failure never increments this — it never reached the reviewer.

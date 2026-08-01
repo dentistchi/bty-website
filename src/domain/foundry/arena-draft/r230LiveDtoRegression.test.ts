@@ -87,7 +87,14 @@ describe("[6] these captures cannot answer the R2.36 question — which is why R
 
   it("the current schema REQUIRES exactly those fields, so a legacy response is refused outright", () => {
     const required = [...NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items.required];
-    for (const f of ["governedActionStatus", "prerequisiteStatus", "temporalRelation", "actionEvidence", "prerequisiteEvidence"]) {
+    for (const f of [
+      "governedActionStatus",
+      "prerequisiteStatus",
+      "temporalRelation",
+      "governedActionCandidateId",
+      "prerequisiteSatisfactionCandidateId",
+      "prerequisiteFailureCandidateId",
+    ]) {
       expect(required).toContain(f);
     }
   });

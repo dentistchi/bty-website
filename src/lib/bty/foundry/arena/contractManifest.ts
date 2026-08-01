@@ -60,16 +60,27 @@ import {
   BOUNDARY_REVIEW_OUTCOMES,
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
   OUTPUT_CONTRACT_CODES,
-  GENERIC_EVIDENCE_PHRASES,
-  MIN_EVIDENCE_CHARS,
-  APPLICABILITY_RESULTS,
-  COMPLIANCE_RESULTS,
-  VIOLATION_MECHANISMS,
   GOVERNED_ACTION_STATUSES,
   PREREQUISITE_STATUSES,
   TEMPORAL_RELATIONS,
-  NARROW_SEGMENT_REF_MAX,
+  REMOVED_MODEL_AUTHORED_FIELDS,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import {
+  CANDIDATE_EXCERPT_MAX,
+  CANDIDATE_ID_MAX,
+  CANDIDATE_RESOLUTION_CODES,
+  MAX_CANDIDATES_PER_POOL,
+  candidateContractSha256,
+} from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import {
+  DERIVED_APPLICABILITY,
+  DERIVED_COMPLIANCE,
+  TRUTH_STATE_IDS,
+  truthStateCoverage,
+  truthStateTableSha256,
+} from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { EVIDENCE_ROLES } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
+import { SUBSET_REPAIR_CODES } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
   BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
   FLAT_REACHABLE_SURFACE_COUNT,
@@ -164,7 +175,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.36.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.38.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -287,20 +298,17 @@ export function buildContractManifest(head: string, model: string): ContractMani
         reachability: SURFACE_REACHABILITY,
         codes: SURFACE_MAP_CODES,
       }),
-      boundaryEvidenceGrounding: digest({
-        genericPhrases: GENERIC_EVIDENCE_PHRASES,
-        minEvidenceChars: MIN_EVIDENCE_CHARS,
-        codes: NARROW_BOUNDARY_CODES,
-      }),
-      // R2.30 — applicability is asked BEFORE compliance, and a violation must name a mechanism.
-      boundaryApplicabilityContract: digest({ applicability: APPLICABILITY_RESULTS, compliance: COMPLIANCE_RESULTS }),
-      boundaryViolationMechanism: digest(VIOLATION_MECHANISMS),
+      boundaryEvidenceGrounding: digest({ codes: NARROW_BOUNDARY_CODES }),
+      // R2.38 — applicability and compliance are DERIVED. The model has no field for either, so the
+      // contract records the derivation vocabulary rather than a model-authored enum.
+      boundaryApplicabilityContract: digest({ applicability: DERIVED_APPLICABILITY, compliance: DERIVED_COMPLIANCE, modelAuthored: false }),
+      boundaryViolationMechanism: digest({ derivedFrom: ["ruleKind", "surfaceKind", "lineagePosition", "truthState"], modelAuthored: false }),
       boundaryCausalLineage: digest({ version: SURFACE_MAP_VERSION, earliestCausalDerivation: "mechanism+governed_action_dedup_over_lineage" }),
       boundaryCorrectionPrecision: digest({ correctionFrom: "causal_violations_only", downstreamIsEvidenceOnly: true, notApplicableNeverCorrects: true }),
       boundaryWorldStateAuthority: digest({ escalationFallback: false, missingIsAuthorityFailure: true }),
       serverDerivedBoundaryVerdict: digest({
-        applicability: APPLICABILITY_RESULTS,
-        compliance: COMPLIANCE_RESULTS,
+        applicability: DERIVED_APPLICABILITY,
+        compliance: DERIVED_COMPLIANCE,
         outcomes: BOUNDARY_REVIEW_OUTCOMES,
         modelAuthoredVerdict: false,
         silenceIsNotViolation: true,
@@ -338,6 +346,8 @@ export function buildContractManifest(head: string, model: string): ContractMani
         governedActionStatuses: GOVERNED_ACTION_STATUSES,
         prerequisiteStatuses: PREREQUISITE_STATUSES,
         temporalRelations: TEMPORAL_RELATIONS,
+        modelAuthorsApplicability: false,
+        modelAuthorsCompliance: false,
         // The rules a violation must clear, stated as data so a silent relaxation moves the digest.
         notEstablishedIsNeverViolation: true,
         satisfiedCannotViolate: true,
@@ -345,18 +355,37 @@ export function buildContractManifest(head: string, model: string): ContractMani
         governedActionMustBeOwnSurface: true,
         inheritedStateRequiresOwnGovernedAction: true,
       }),
-      boundaryEvidenceLocality: digest({
-        actionEvidenceSources: ["own_surface"],
-        prerequisiteEvidenceSources: ["own_surface", "parent_generated_state"],
-        segmentRefMax: NARROW_SEGMENT_REF_MAX,
-        fabricationIsAlwaysFatal: true,
+      // R2.38 — the server owns every evidence span and every id. There is no path from a
+      // model-authored string to semantic authority, so locality is a property of the MENU.
+      boundaryEvidenceCandidateAuthority: digest({
+        roles: EVIDENCE_ROLES,
+        excerptMax: CANDIDATE_EXCERPT_MAX,
+        idMax: CANDIDATE_ID_MAX,
+        maxPerPool: MAX_CANDIDATES_PER_POOL,
+        resolutionCodes: CANDIDATE_RESOLUTION_CODES,
+        modelAuthorsExcerpts: false,
+        modelAuthorsSegmentMetadata: false,
+        candidateIdsAreSurfaceScoped: true,
       }),
-      // A refuted claim is narrower than a refused response. That distinction decides whether a
-      // scenario is re-reviewed or blocked, so it belongs to the contract.
-      boundaryClaimRefutationPolicy: digest({
-        refutedClaimDemotesSurfaceToUncertain: true,
-        refutedClaimNeverEntersCorrectionPacket: true,
-        survivingViolationsStillReject: true,
+      boundaryCandidateExtractionContract: candidateContractSha256(),
+      boundaryTruthStateTable: truthStateTableSha256(),
+      boundaryTruthStateCoverage: digest({
+        states: TRUTH_STATE_IDS,
+        ...truthStateCoverage(GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS),
+      }),
+      boundaryRemovedModelAuthoredFields: digest(REMOVED_MODEL_AUTHORED_FIELDS),
+      boundarySubsetRepairAuthority: digest({
+        codes: SUBSET_REPAIR_CODES,
+        repairableFailureClass: "output_contract",
+        preservedRowsImmutable: true,
+        maxRepairInvocations: 1,
+        partialMatrixNeverAVerdict: true,
+      }),
+      boundaryCorrectionPacketAuthority: digest({
+        findingsFromCausalViolationsOnly: true,
+        everyExcerptServerResolved: true,
+        candidateIdsRecorded: true,
+        partialMatrixExcluded: true,
       }),
     },
     sampling: {

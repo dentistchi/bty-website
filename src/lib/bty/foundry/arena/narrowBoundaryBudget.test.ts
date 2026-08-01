@@ -8,12 +8,8 @@
 import { describe, expect, it } from "vitest";
 import { BUDGET_HEADROOM, MODEL_OUTPUT_CAP, measureNarrowBoundaryBudget } from "./tokenBudget";
 import { NARROW_BOUNDARY_SAMPLING } from "./narrowBoundaryContract";
-import {
-  MAX_NARROW_ASSESSMENTS,
-  NARROW_EVIDENCE_MAX,
-  NARROW_REASON_MAX,
-  NARROW_SEGMENT_REF_MAX,
-} from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { MAX_NARROW_ASSESSMENTS, NARROW_REASON_MAX } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { CANDIDATE_ID_MAX } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
 import { buildMaxNarrowBoundaryReview } from "@/domain/foundry/arena-draft/maxFixture";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
@@ -60,13 +56,13 @@ describe("narrow boundary-review budget", () => {
   });
 
   it("every text field is bounded, so the permitted maximum is finite by construction", () => {
-    expect(NARROW_EVIDENCE_MAX).toBeGreaterThan(0);
+    expect(CANDIDATE_ID_MAX).toBeGreaterThan(0);
     expect(NARROW_REASON_MAX).toBeGreaterThan(0);
     for (const a of buildMaxNarrowBoundaryReview(false, "schema").assessments) {
-      expect(a.actionEvidence.excerpt.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
-      expect(a.prerequisiteEvidence.excerpt.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
-      expect(a.actionEvidence.segmentRef.length).toBeLessThanOrEqual(NARROW_SEGMENT_REF_MAX);
-      expect(a.prerequisiteEvidence.segmentRef.length).toBeLessThanOrEqual(NARROW_SEGMENT_REF_MAX);
+      // R2.38 — the output carries three short IDS, not two 100-character excerpts.
+      expect(a.governedActionCandidateId.length).toBeLessThanOrEqual(CANDIDATE_ID_MAX);
+      expect(a.prerequisiteSatisfactionCandidateId.length).toBeLessThanOrEqual(CANDIDATE_ID_MAX);
+      expect(a.prerequisiteFailureCandidateId.length).toBeLessThanOrEqual(CANDIDATE_ID_MAX);
       expect(a.reason.length).toBeLessThanOrEqual(NARROW_REASON_MAX);
     }
   });

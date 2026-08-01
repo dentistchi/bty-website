@@ -18,9 +18,26 @@ import {
   NARROW_BOUNDARY_JSON_SCHEMA,
   NARROW_BOUNDARY_SCHEMA_NAME,
   NARROW_BOUNDARY_CONTRACT_VERSION,
-  NARROW_EVIDENCE_MAX,
   NARROW_REASON_MAX,
+  REMOVED_MODEL_AUTHORED_FIELDS,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+// R2.38 — the reviewer selects SERVER-ISSUED candidate ids. It authors no excerpt, no segment ref
+// and no segment kind, so the R2.37 duplicate-alias failure is not merely refused: it is not
+// offered. And ONE canonical table decides what every fact combination means.
+import {
+  EVIDENCE_CANDIDATE_VERSION,
+  buildAllEvidenceCandidates,
+  candidateContractSha256,
+  evidenceCandidateMapSha256,
+  poolFor,
+  type BoundaryEvidenceCandidate,
+} from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import {
+  TRUTH_STATE_TABLE_VERSION,
+  renderTruthStateRules,
+  truthStateTableSha256,
+} from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 // R2.36 — the un-merged context and the decomposed rule. Evidence cites a SEGMENT, so the server can
 // prove not only that an excerpt exists but where it came from.
 import {
@@ -54,11 +71,7 @@ import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boun
 // R2.32 — the state rules and the reason policy are GENERATED from the canonical parity table, so
 // the prompt cannot say something the validator does not enforce. That drift discarded two complete
 // live responses in R2.30.
-import {
-  parityTableSha256,
-  renderPromptStateRules,
-  renderReasonPolicyLines,
-} from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 
 const d = (v: unknown): string => createHash("sha256").update(typeof v === "string" ? v : canonicalJson(v)).digest("hex");
 
@@ -80,101 +93,88 @@ export const NARROW_BOUNDARY_SAMPLING = {
 } as const;
 
 /**
- * FOUR QUESTIONS, ASKED ONCE PER SURFACE — R2.36.
+ * THREE FACTS AND THREE CHOICES — R2.38.
  *
- * R2.29 asked two (applicability, compliance). R2.35 measured what two could not catch: a branch
- * whose own text said "you have VERIFIED identifiers for both patients" was rejected for a
- * PREREQUISITE FAILURE quoted as "you still face delays in the ward". Both excerpts were real, both
- * were grounded, and the assessment was nonsense — nothing in the contract represented whether the
- * prerequisite was satisfied, so nothing could refuse it.
+ * R2.36 asked four questions and then asked the model to draw conclusions from its own answers.
+ * R2.37 measured what that cost: all 24 live rows said `applies`, twelve of them alongside
+ * `governedActionStatus: absent`, and both complete responses were discarded — including one that
+ * was semantically correct.
  *
- * The two added questions are the truth questions: is the governed action present ON THIS SURFACE,
- * and what is the state of the prerequisite. Every excerpt now cites a server-labelled segment, so
- * "this surface's own text" is checkable rather than assumed.
+ * This prompt asks for facts and offers a menu. Every conclusion — applicability, compliance, the
+ * mechanism, the verdict — is the server's, and every excerpt is the server's. The reviewer cannot
+ * disagree with a conclusion it is not asked to draw, and cannot cite text it is not offered.
+ *
+ * The state rules below are GENERATED from the canonical truth-state table, so the prompt cannot
+ * describe a state the validator does not accept. That drift discarded a complete live response in
+ * R2.36, where the prompt still named two evidence fields the schema had already removed.
  */
 export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
-  "You are a CONFIRMED-BOUNDARY COMPLIANCE CHECKER for a leadership decision-practice scenario. You do exactly one job and no other.",
+  "You are a CONFIRMED-BOUNDARY TRUTH REPORTER for a leadership decision-practice scenario. You report facts. You do not draw conclusions.",
   "",
-  "THE JOB. You are given CONFIRMED BOUNDARIES (non-negotiable rules that hold in this situation), each already decomposed into the PREREQUISITE it requires and the ACTION it governs, and the DECISION SURFACES a learner actually reaches. For EVERY boundary paired with EVERY surface, answer FOUR questions IN ORDER.",
+  "THE JOB. You are given CONFIRMED BOUNDARIES — non-negotiable rules, each already decomposed into the PREREQUISITE it requires and the ACTION it governs — and the DECISION SURFACES a learner actually reaches. For EVERY boundary paired with EVERY surface, report three facts and select your evidence from the candidates provided.",
   "",
-  "CONTEXT COMES AS NUMBERED SEGMENTS. Every piece of text you are given carries a `segmentRef` and a `segmentKind`:",
-  "  scenario_opening       — the situation everyone is inside. Context for every surface. NEVER evidence of what a surface does.",
-  "  own_surface            — THIS surface's own text. The only place its own action can be proved.",
-  "  parent_generated_state — the world state this surface sits inside, asserted by an earlier choice.",
-  "  ancestor_primary       — the earlier choice that produced this branch.",
-  "  branch_escalation      — what has since developed in this branch.",
-  "EVERY excerpt you quote must name the `segmentRef` it came from and must be VERBATIM text from that segment. A quote whose segmentRef does not contain it is rejected.",
+  "YOU DO NOT DECIDE WHETHER A SURFACE COMPLIES. There is no applicability field, no compliance field, no violation-mechanism field and no overall verdict. Those are computed from your three facts. Report what is true and stop.",
   "",
-  "QUESTION 1 — APPLICABILITY. Does the boundary GOVERN this surface at all?",
-  "  applies        — the surface initiates, authorizes, continues, reopens or produces the action or state the rule governs.",
-  "  not_applicable — the surface does none of those. It does something else: staffing, notification, documentation, reporting, escalation, sequencing, communication.",
-  "  uncertain      — the surface text is genuinely insufficient to tell.",
-  "",
-  "A SURFACE IS NOT GOVERNED MERELY BY BEING SILENT ABOUT THE RULE. Not repeating the rule, not mentioning the prerequisite, and not restating a required check are NOT evidence that a surface breaks it. Requesting extra staff, preparing a summary, sending a report to an administrator and choosing what to tell someone do not perform the governed action.",
-  "",
-  "QUESTION 2 — GOVERNED ACTION. Is the action the boundary governs present in THIS SURFACE'S OWN TEXT?",
+  "FACT 1 — governedActionStatus. Is the action the boundary governs present in THIS SURFACE'S OWN TEXT?",
   "  present   — this surface's own text performs, commits to, authorizes or asserts the governed action.",
-  "  absent    — it does not. Something in the surrounding context may describe it; that is not this surface doing it.",
-  "  uncertain — the text is insufficient to tell.",
-  "Put the excerpt in `actionEvidence`, and its `segmentRef` MUST be an `own_surface` segment. Context cannot make a surface guilty of an action it does not take.",
+  "  absent    — it does not. It does something else: staffing, notification, documentation, reporting, escalation, sequencing, communication. Surrounding context may describe the governed action; that is not this surface doing it.",
+  "  uncertain — the text is genuinely insufficient to tell.",
   "",
-  "QUESTION 3 — PREREQUISITE. What is the state of the prerequisite the boundary requires?",
-  "  satisfied          — the text says the prerequisite HAS been met. Quote it.",
-  "  explicitly_missing — the text says it has NOT been met, was skipped, bypassed or left undone. Quote it.",
+  "FACT 2 — prerequisiteStatus. What is the state of the prerequisite the boundary requires?",
+  "  satisfied          — the text says the prerequisite HAS been met.",
+  "  explicitly_missing — the text says it has NOT been met, was skipped, bypassed or left undone.",
   "  contradicted       — the text asserts something incompatible with the prerequisite holding.",
   "  not_established    — nothing says either way. THIS IS NOT A VIOLATION. Silence is not failure.",
   "  uncertain          — you cannot tell.",
   "  not_applicable     — the boundary has no prerequisite, or the governed action is absent.",
-  "Put the supporting excerpt in `prerequisiteEvidence`. It may come from an `own_surface` or a `parent_generated_state` segment — never from any other kind.",
-  "THE EXCERPT MUST BE ABOUT THE PREREQUISITE ITSELF. The boundary names a specific prerequisite; your quote must concern THAT. A quote about delay, cost, workload, staffing, morale, scheduling or any other bad consequence is NOT a prerequisite failure, however serious it sounds.",
   "",
-  "QUESTION 4 — ORDER. How does the governed action stand in time against the prerequisite?",
+  "FACT 3 — temporalRelation. How does the governed action stand in time against the prerequisite?",
   "  prerequisite_before_action  — the prerequisite is met first. This is the rule being KEPT.",
   "  action_before_prerequisite  — the governed action happens while the prerequisite is still unmet.",
-  "  simultaneous_or_unclear     — they are committed together, or the ordering cannot be settled.",
+  "  simultaneous_or_unclear     — committed together, or the ordering cannot be settled.",
   "  unrelated / not_applicable  — no ordering question arises.",
   "",
-  "COMPLIANCE follows from the four answers. Ask it ONLY when applicability is `applies`; otherwise set compliance to `not_assessed`.",
-  "  complies  — the governed action happens WITH the prerequisite satisfied, or the surface preserves the rule.",
-  "  violates  — the governed action happens WITHOUT it.",
-  "  uncertain — you cannot settle it from the text.",
+  "EVIDENCE IS A MENU, NOT A QUOTE. Each surface comes with candidate lists, one per role:",
+  "  governedActionCandidates            — spans of THIS surface's own text.",
+  "  prerequisiteSatisfactionCandidates  — spans that could show the prerequisite HAS been met.",
+  "  prerequisiteFailureCandidates       — spans that could show it has NOT been met.",
+  "Select a candidateId. NEVER write an excerpt, a segment reference or a source name — there are no fields for them.",
   "",
-  "A VIOLATION MUST PROVE A MECHANISM, NOT AN ABSENCE. `violates` requires ALL FOUR of:",
-  "  governedActionStatus = present, proved from this surface's OWN segment;",
-  "  prerequisiteStatus = explicitly_missing OR contradicted — never `not_established`;",
-  "  prerequisiteEvidence that is genuinely ABOUT the prerequisite the boundary names;",
-  "  temporalRelation = action_before_prerequisite OR simultaneous_or_unclear.",
-  "and a named violationMechanism:",
-  "  governed_action_without_prerequisite      — this surface commits to the governed action while the prerequisite is unmet.",
-  "  resulting_state_missing_prerequisite      — the asserted state already contains the governed action having happened without the prerequisite.",
-  "  boundary_reopened_after_prior_compliance  — the prerequisite was satisfied earlier and this surface undoes or bypasses it.",
-  "  explicit_boundary_contradiction           — the surface states something the rule forbids outright.",
-  "  other_grounded_violation                  — a real mechanism none of the above names.",
-  "If any of the four is missing, it is NOT a violation. Answer `not_applicable`, `complies` or `uncertain` instead.",
+  "CANDIDATE RULES.",
+  "  A candidate list belongs to ONE surface. Never use an id from another surface's list, even if its text looks identical — identical text at a different place in the path means something different, and the id you need is already in your own list.",
+  `  Use the exact value \`${NO_CANDIDATE}\` when a role needs no evidence. Never use an empty string.`,
+  "  If no candidate in a list fits, that is itself a fact: it usually means the prerequisite is `not_established` and there is nothing to select.",
+  "  A candidate list may be empty. That is normal for an administrative surface.",
   "",
-  "IF THE PREREQUISITE IS SATISFIED, THE SURFACE DOES NOT VIOLATE. A surface whose own state says the required check has been done complies — even if that state also describes delay, pressure, shortage or difficulty. Those are costs, not boundary violations.",
+  "EVERY VALID ANSWER IS ONE OF THESE STATES. Fill exactly the fields the state calls for:",
+  ...renderTruthStateRules(),
   "",
-  "EVERY VALID ANSWER IS ONE OF THESE SIX STATES. Fill exactly the fields the state calls for:",
-  ...renderPromptStateRules(),
-  "",
-  ...renderReasonPolicyLines(),
-  "",
-  "EVIDENCE MUST BE CONCRETE.",
-  "  It must NOT be the boundary statement repeated back.",
-  "  It must NOT be text belonging to a different surface.",
-  "  It must NOT be a conclusion such as 'complies with the boundary', 'follows the rule' or 'does not address verification'.",
-  "Set violationMechanism to `none` unless compliance is `violates`.",
+  "REASON. Leave `reason` as an EMPTY STRING for every state above that does not ask for it — those are fully described by the facts and the server writes the human-readable explanation. Where a state DOES ask for it, name the exact ambiguity in your own words; do not restate the rule and do not write a generic phrase.",
   "",
   "SURFACES ARE OF TWO KINDS.",
-  "  kind=choice — an option the learner can pick. Judge what choosing it commits the learner to.",
-  "  kind=resulting_world_state — a state the scenario ASSERTS has already happened after a primary choice. Judge the state itself: if it says the governed action occurred while the prerequisite was unmet, that surface VIOLATES even though the learner picks nothing there.",
+  "  kind=choice — an option the learner can pick. Report what choosing it commits the learner to.",
+  "  kind=resulting_world_state — a state the scenario ASSERTS has already happened after a primary choice. Report the state itself: if it says the governed action occurred while the prerequisite was unmet, that is `present` + `explicitly_missing` even though the learner picks nothing there.",
   "",
-  "COVERAGE. Return exactly one assessment for every (boundary, surface) pair — `activeBoundaryCount` x `decisionSurfaceCount` assessments. Never fewer, never more, never a duplicate. Copy `surfaceRef` and `boundaryId` VERBATIM. Never invent, abbreviate, renumber or omit a coordinate.",
+  "COVERAGE. Return exactly one assessment for every (boundary, surface) pair — `activeBoundaryCount` x `decisionSurfaceCount` assessments. Never fewer, never more, never a duplicate. Copy `surfaceRef` and `boundaryId` VERBATIM.",
   "",
-  "A CONFIRMED RULE NARROWS THE CHOICE SPACE; IT DOES NOT ELIMINATE JUDGMENT. A surface that takes time, escalates, seeks supervision, sequences work or communicates while KEEPING the rule complies — time cost alone is never a violation.",
+  "A CONFIRMED RULE NARROWS THE CHOICE SPACE; IT DOES NOT ELIMINATE JUDGMENT. A surface that takes time, escalates, seeks supervision, sequences work or communicates while KEEPING the rule is not breaking it — time cost alone is never a prerequisite failure.",
   "",
-  "You have no summary field, no overall verdict and no retry instruction, and you must not attempt one. Your per-surface answers are the entire output. Return ONLY the JSON object required by the schema.",
+  "Return ONLY the JSON object required by the schema.",
 ].join("\n");
+
+/**
+ * Every field-like token the prompt mentions. The source gate in `promptFieldParity` proves each one
+ * exists in the active schema or in the explicitly allowed explanatory vocabulary — the check that
+ * would have caught R2.36 shipping a prompt naming two deleted fields.
+ */
+export const PROMPT_EXPLANATORY_VOCABULARY = [
+  "governedActionCandidates",
+  "prerequisiteSatisfactionCandidates",
+  "prerequisiteFailureCandidates",
+  "activeBoundaryCount",
+  "decisionSurfaceCount",
+  "candidateId",
+] as const;
 
 /**
  * Digest over everything that defines HOW a narrow boundary review is conducted. Part of the frozen
@@ -199,6 +199,12 @@ export function buildNarrowBoundaryContract(): { sha256: string; parts: Record<s
     contextSegmentKinds: d(SEGMENT_KINDS),
     semanticFrameVersion: d(SEMANTIC_FRAME_VERSION),
     semanticFrameContract: semanticFrameContractSha256(),
+    // R2.38 — the candidate authority and the truth-state table each change the QUESTION, so both
+    // belong to the contract identity.
+    evidenceCandidateVersion: d(EVIDENCE_CANDIDATE_VERSION),
+    evidenceCandidateContract: candidateContractSha256(),
+    truthStateTableVersion: d(TRUTH_STATE_TABLE_VERSION),
+    truthStateTable: truthStateTableSha256(),
   };
   return { sha256: d(parts), parts };
 }
@@ -240,6 +246,15 @@ export type NarrowBoundarySubject = {
   /** One decomposed frame per boundary. An undecomposable rule fails the subject closed. */
   semanticFrames: BoundarySemanticFrame[];
   semanticFramesSha256: string;
+  /**
+   * Every evidence span the reviewer may select, scoped to one surface and one semantic role.
+   * The reviewer receives ids; the server owns the text, the provenance and the digest.
+   */
+  evidenceCandidates: BoundaryEvidenceCandidate[];
+  evidenceCandidateMapSha256: string;
+  /** Measured collapse of the R2.37 duplicate exposure. Reported, never assumed. */
+  candidateAliasRemovedCount: number;
+  candidateProvenanceRetainedCount: number;
   /** Fail-closed reasons discovered while building the subject — checked BEFORE a provider call. */
   subjectDefects: string[];
   boundaryReviewContractSha256: string;
@@ -268,6 +283,9 @@ export function narrowBoundarySubjectSha256(s: NarrowBoundarySubject): string {
     // R2.36 — the context the reviewer actually sees, and the rule decomposition it answers under.
     contextSegmentMapSha256: s.contextSegmentMapSha256,
     semanticFramesSha256: s.semanticFramesSha256,
+    // R2.38 — the exact menu the reviewer was offered is part of the question it was asked.
+    evidenceCandidateMapSha256: s.evidenceCandidateMapSha256,
+    truthStateTableSha256: truthStateTableSha256(),
     boundaryReviewContractSha256: s.boundaryReviewContractSha256,
     boundaryProvenanceSha256: s.boundaryProvenanceSha256,
     language: s.language,
@@ -294,6 +312,7 @@ export function buildNarrowBoundarySubject(args: {
   // NAMED refusal, never a silently thinner question — which is exactly what R2.35 measured.
   const contextCheck = validateContextSegments(contextSegments, reviewable);
   const frameCheck = validateSemanticFrames(semanticFrames);
+  const candidateBuild = buildAllEvidenceCandidates(args.boundaries, semanticFrames, reviewable, contextSegments);
   return {
     scenarioSha256: args.scenarioSha256,
     reviewSubjectSha256: args.reviewSubjectSha256,
@@ -312,6 +331,10 @@ export function buildNarrowBoundarySubject(args: {
     contextSegmentMapSha256: contextSegmentMapSha256(contextSegments),
     semanticFrames,
     semanticFramesSha256: framesSha256(semanticFrames),
+    evidenceCandidates: candidateBuild.candidates,
+    evidenceCandidateMapSha256: evidenceCandidateMapSha256(candidateBuild.candidates),
+    candidateAliasRemovedCount: candidateBuild.aliasRemovedCount,
+    candidateProvenanceRetainedCount: candidateBuild.provenanceRetainedCount,
     subjectDefects: [...contextCheck.codes, ...frameCheck.codes],
     boundaryReviewContractSha256: buildNarrowBoundaryContract().sha256,
     language: args.language,
@@ -373,15 +396,26 @@ export type NarrowBoundaryRequest = {
     lineage: string[];
     isActionCommitment: boolean;
     acceptedCost: string;
-    /** The refs this surface may cite, so the model never has to guess a segment identifier. */
-    citableSegmentRefs: string[];
   }>;
   /**
-   * The un-merged context, labelled and separately addressable. The R2.34 leak — a branch action
-   * rejected on its PARENT's "delays in the ward" — was invisible because own text, inherited state
-   * and branch context arrived as one blob. This is that blob taken apart.
+   * The ONLY evidence the reviewer may select, per boundary, per surface, per role. R2.37 measured
+   * the alternative: 41 global refs carrying 15 distinct texts, and a correct answer discarded for
+   * choosing the byte-identical alias that belonged to another surface.
+   *
+   * Eligibility depends on the BOUNDARY (a failure span must concern that rule's prerequisite), so
+   * the menus hang off the constraint rather than off the surface.
    */
-  contextSegments: Array<{ segmentRef: string; segmentKind: string; surfaceRef: string; text: string }>;
+  evidenceCandidates: Array<{
+    boundaryId: string;
+    surfaces: Array<{
+      surfaceRef: string;
+      governedActionCandidates: Array<{ candidateId: string; excerpt: string }>;
+      prerequisiteSatisfactionCandidates: Array<{ candidateId: string; excerpt: string }>;
+      prerequisiteFailureCandidates: Array<{ candidateId: string; excerpt: string }>;
+    }>;
+  }>;
+  /** The sentinel that means "no evidence for this role". Never an empty string. */
+  noCandidateSentinel: string;
   /** Count of unreachable duplicates excluded from the matrix. Never assessable. */
   excludedCompatibilitySurfaceCount: number;
   authority: {
@@ -392,9 +426,19 @@ export type NarrowBoundaryRequest = {
     lineageSha256: string;
     contextSegmentMapSha256: string;
     semanticFramesSha256: string;
+    evidenceCandidateMapSha256: string;
+    truthStateTableSha256: string;
     boundaryReviewSubjectSha256: string;
   };
 };
+
+/** One surface's menu for one role. Ids and text only — provenance stays server-side. */
+const menu = (
+  subject: NarrowBoundarySubject,
+  boundaryId: string,
+  surfaceRef: string,
+  role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure",
+) => poolFor(subject.evidenceCandidates, boundaryId, surfaceRef, role).map((c) => ({ candidateId: c.candidateId, excerpt: c.excerpt }));
 
 /** Build the exact user payload. Deterministic: same subject in, byte-identical request out. */
 export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): NarrowBoundaryRequest {
@@ -430,14 +474,17 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
       lineage: s.lineage,
       isActionCommitment: s.isActionCommitment,
       acceptedCost: s.acceptedCost,
-      citableSegmentRefs: segmentsForSurface(subject.contextSegments, s.coordinate).map((x) => x.segmentRef),
     })),
-    contextSegments: subject.contextSegments.map((x) => ({
-      segmentRef: x.segmentRef,
-      segmentKind: x.segmentKind,
-      surfaceRef: x.sourceSurfaceRef,
-      text: x.text,
+    evidenceCandidates: subject.boundaries.map((b) => ({
+      boundaryId: b.id,
+      surfaces: subject.surfaces.map((s) => ({
+        surfaceRef: s.coordinate,
+        governedActionCandidates: menu(subject, b.id, s.coordinate, "governed_action"),
+        prerequisiteSatisfactionCandidates: menu(subject, b.id, s.coordinate, "prerequisite_satisfaction"),
+        prerequisiteFailureCandidates: menu(subject, b.id, s.coordinate, "prerequisite_failure"),
+      })),
     })),
+    noCandidateSentinel: NO_CANDIDATE,
     excludedCompatibilitySurfaceCount: subject.compatibilitySurfaces.length,
     authority: {
       scenarioSha256: subject.scenarioSha256,
@@ -447,6 +494,8 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
       lineageSha256: subject.lineageSha256,
       contextSegmentMapSha256: subject.contextSegmentMapSha256,
       semanticFramesSha256: subject.semanticFramesSha256,
+      evidenceCandidateMapSha256: subject.evidenceCandidateMapSha256,
+      truthStateTableSha256: truthStateTableSha256(),
       boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
     },
   };

@@ -6,7 +6,7 @@
  * the boundary reviewer is asked — including the surface map, which is the thing R2.28 proved was
  * missing. PREPARED in R2.29, deliberately not executed.
  *
- *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r236_c18_prerequisite_truth_replay_canary.sh
+ *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r238_c18_evidence_candidate_replay_canary.sh
  *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --binding-json
  */
 import { writeFileSync, readFileSync } from "node:fs";
@@ -17,13 +17,12 @@ import { buildContractManifest, manifestDigest } from "@/lib/bty/foundry/arena/c
 import { subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import {
-  APPLICABILITY_RESULTS,
-  COMPLIANCE_RESULTS,
   NARROW_BOUNDARY_JSON_SCHEMA,
-  VIOLATION_MECHANISMS,
   GOVERNED_ACTION_STATUSES,
   PREREQUISITE_STATUSES,
   TEMPORAL_RELATIONS,
+  REMOVED_MODEL_AUTHORED_FIELDS,
+  SUBSET_REPAIR_CODES,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
@@ -53,6 +52,9 @@ import {
 } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
+import { candidateContractSha256, evidenceCandidateMapSha256 } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { DERIVED_APPLICABILITY, DERIVED_COMPLIANCE, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { promptFieldDriftCount } from "@/lib/bty/foundry/arena/boundaryReviewStage";
 import { buildC18Subject, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, CASE_ID } from "./practice-c18-boundary-replay";
 
 const REPO = "/Users/hanbit/Dev/btytrainingcenter/bty-app";
@@ -105,6 +107,10 @@ const runtime = [
   "src/domain/foundry/arena-draft/boundaryProvenance.ts",
   "src/domain/foundry/arena-draft/boundaryContextSegments.ts",
   "src/domain/foundry/arena-draft/boundarySemanticFrame.ts",
+  "src/domain/foundry/arena-draft/boundaryEvidenceCandidates.ts",
+  "src/domain/foundry/arena-draft/boundaryTruthStates.ts",
+  "src/domain/foundry/arena-draft/boundaryTruthContractTypes.ts",
+  "src/domain/foundry/arena-draft/promptFieldParity.ts",
   "scripts/practice-c18-narrow-boundary-replay.ts",
   "scripts/practice-c18-boundary-replay.ts",
 ].map((f) => readFileSync(join(process.cwd(), f), "utf8")).join("\n");
@@ -128,8 +134,10 @@ const binding = {
   reachableSurfaceCount: reachable.length,
   reachableSurfaceCoordinates: reachable.map((s) => s.coordinate),
   excludedCompatibilitySurfaces: excluded.map((s) => `${s.coordinate}->${s.compatibilitySource}`),
-  applicabilityContractSha256: d({ applicability: APPLICABILITY_RESULTS, compliance: COMPLIANCE_RESULTS }),
-  violationMechanismContractSha256: d(VIOLATION_MECHANISMS),
+  // R2.38 — applicability, compliance and the mechanism are DERIVED. The contract records the
+  // derivation vocabulary; the model has no field for any of them.
+  applicabilityContractSha256: d({ applicability: DERIVED_APPLICABILITY, compliance: DERIVED_COMPLIANCE, modelAuthored: false }),
+  violationMechanismContractSha256: d({ derivedFrom: ["ruleKind", "surfaceKind", "lineagePosition", "truthState"], modelAuthored: false }),
   correctionPacketContractSha256: d({ correctionFrom: "causal_violations_only", downstreamIsEvidenceOnly: true, notApplicableNeverCorrects: true }),
   worldStateAuthoritySha256: d({ escalationFallback: false, missingIsAuthorityFailure: true }),
   // R2.32 — the reason parity table, the explanation renderer and the outcome enumeration are all
@@ -163,11 +171,21 @@ const binding = {
     satisfiedCannotViolate: true,
     failureMustConcernPrerequisite: true,
   }),
-  evidenceLocalityContractSha256: d({
-    actionEvidenceSources: ["own_surface"],
-    prerequisiteEvidenceSources: ["own_surface", "parent_generated_state"],
-    fabricationIsAlwaysFatal: true,
+  // R2.38 — the MENU the reviewer is offered and the TABLE its answers are read under.
+  evidenceCandidateMapSha256: evidenceCandidateMapSha256(narrowSubject.evidenceCandidates),
+  evidenceCandidateCount: narrowSubject.evidenceCandidates.length,
+  evidenceCandidateContractSha256: candidateContractSha256(),
+  candidateAliasRemovedCount: narrowSubject.candidateAliasRemovedCount,
+  candidateProvenanceRetainedCount: narrowSubject.candidateProvenanceRetainedCount,
+  truthStateTableSha256: truthStateTableSha256(),
+  removedModelAuthoredFieldsSha256: d(REMOVED_MODEL_AUTHORED_FIELDS),
+  subsetRepairContractSha256: d({
+    codes: SUBSET_REPAIR_CODES,
+    repairableFailureClass: "output_contract",
+    preservedRowsImmutable: true,
+    maxRepairInvocations: 1,
   }),
+  promptSchemaFieldDriftCount: promptFieldDriftCount(),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
   artifactSchemaVersion: NARROW_REPLAY_ARTIFACT_VERSION,
@@ -209,7 +227,15 @@ const CHECKS: Array<[string, string]> = [
   ["semantic frames", "semanticFramesSha256"],
   ["semantic frame contract", "semanticFrameContractSha256"],
   ["prerequisite truth contract", "prerequisiteTruthContractSha256"],
-  ["evidence locality contract", "evidenceLocalityContractSha256"],
+  ["evidence candidate map", "evidenceCandidateMapSha256"],
+  ["evidence candidate count", "evidenceCandidateCount"],
+  ["evidence candidate contract", "evidenceCandidateContractSha256"],
+  ["candidate aliases removed", "candidateAliasRemovedCount"],
+  ["candidate provenance retained", "candidateProvenanceRetainedCount"],
+  ["canonical truth-state table", "truthStateTableSha256"],
+  ["removed model-authored fields", "removedModelAuthoredFieldsSha256"],
+  ["failed-subset repair contract", "subsetRepairContractSha256"],
+  ["prompt/schema field drift", "promptSchemaFieldDriftCount"],
   ["active boundary ids", "activeBoundaryIds"],
   ["boundary text", "boundaryText"],
   ["replay runtime", "replayRuntimeSha256"],
@@ -225,8 +251,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.36 PREREQUISITE-TRUTH REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.36
+# BTY Practice — R2.38 EVIDENCE-CANDIDATE REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.38
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -268,7 +294,32 @@ const script = `#!/usr/bin/env bash
 #          provider-side cause was unknowable and a retry would have produced a
 #          second silent artifact.
 #
-# WHAT R2.36 CHANGES
+# WHAT R2.38 CHANGES
+#   * The reviewer authors SEMANTIC FACTS ONLY: governedActionStatus,
+#     prerequisiteStatus, temporalRelation, plus three candidate IDs and a
+#     reason. There is no applicability field, no compliance field, no
+#     mechanism field and no excerpt field.
+#   * applicability, compliance, the violation mechanism and the case verdict
+#     are DERIVED by the server from one canonical truth-state table. R2.37
+#     measured all 24 live rows saying 'applies', twelve of them alongside
+#     'governedActionStatus: absent' — a state that table did not contain.
+#   * Evidence is a MENU. The server issues surface-local, role-scoped candidate
+#     IDs; the reviewer selects one. R2.37 measured a correct answer discarded
+#     because the model cited '8:own' instead of the byte-identical '12:par'.
+#     That choice no longer exists: another surface's id is not offered.
+#   * Prerequisite SATISFACTION and FAILURE have separate pools with different
+#     legal sources. A prerequisite satisfied by an earlier choice may cite the
+#     ancestor primary — the R2.36 homeless-satisfaction defect.
+#   * An output-contract failure repairs only the FAILED SUBSET. Rows the first
+#     response got right are preserved unchanged and never re-requested.
+#
+# WHAT R2.38 DOES NOT CLAIM
+#   primary[1] detection is still UNMEASURED. The opening now carries an
+#   eligible failure candidate for it, and selecting that candidate derives the
+#   earliest causal violation — but whether the live reviewer selects it is
+#   exactly what the next authorized replay is for.
+#
+# WHAT R2.36 CHANGED
 #   * The reviewer is no longer handed one merged blob. Context arrives as
 #     LABELLED SEGMENTS (scenario opening, own surface, parent generated state,
 #     ancestor primary, branch escalation) and every excerpt must name the

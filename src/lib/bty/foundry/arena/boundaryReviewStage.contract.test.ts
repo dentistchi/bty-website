@@ -6,6 +6,8 @@
  * prove the order and the precedence without a provider: every narrow call is injected.
  */
 import { describe, expect, it, vi } from "vitest";
+import { poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import {
   accumulateBoundaryMetrics,
   boundaryMetricsPass,
@@ -59,35 +61,31 @@ const args = (over: Partial<Parameters<typeof runBoundaryReviewStage>[1]> = {}) 
 /** Returns BOTH the parsed rows and the derived verdict, so evidence carries what the model said. */
 const responseFor = (subject: NarrowBoundarySubject, mutate: (a: ReturnType<typeof baseAssessments>) => unknown = (a) => a) => {
   const parsed = { assessments: mutate(baseAssessments(subject)) };
-  return {
-    parsed,
-    verdict: deriveBoundaryVerdict(parsed, {
-      boundaries: subject.boundaries,
-      surfaces: subject.surfaces,
-      segments: subject.contextSegments,
-      frames: subject.semanticFrames,
-    }),
-  };
+  return { parsed, verdict: deriveBoundaryVerdict(parsed, ctxFor(subject)) };
 };
 
 /** R2.30 — every reachable surface settles as `not_applicable`, each showing what it does. */
-const ownRefIn = (subject: NarrowBoundarySubject, ref: string) =>
-  subject.contextSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
-const parRefIn = (subject: NarrowBoundarySubject, ref: string) =>
-  subject.contextSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+const ctxFor = (subject: NarrowBoundarySubject) => ({
+  boundaries: subject.boundaries,
+  surfaces: subject.surfaces,
+  frames: subject.semanticFrames,
+  candidates: subject.evidenceCandidates,
+});
+const actionIn = (subject: NarrowBoundarySubject, ref: string) =>
+  poolFor(subject.evidenceCandidates, subject.boundaries[0]!.id, ref, "governed_action")[0]?.candidateId ?? NO_CANDIDATE;
+const failureIn = (subject: NarrowBoundarySubject, ref: string) =>
+  poolFor(subject.evidenceCandidates, subject.boundaries[0]!.id, ref, "prerequisite_failure").find((c) => /unverified/i.test(c.excerpt))?.candidateId ?? NO_CANDIDATE;
 
 const baseAssessments = (subject: NarrowBoundarySubject) =>
   subject.surfaces.map((s) => ({
     boundaryId: subject.boundaries[0]!.id,
     surfaceRef: s.coordinate,
-    applicability: "not_applicable" as const,
     governedActionStatus: "absent" as const,
     prerequisiteStatus: "not_applicable" as const,
     temporalRelation: "not_applicable" as const,
-    compliance: "not_assessed" as const,
-    violationMechanism: "none" as const,
-    actionEvidence: { segmentRef: ownRefIn(subject, s.coordinate), excerpt: s.text.slice(0, 90) },
-    prerequisiteEvidence: { segmentRef: "", excerpt: "" },
+    governedActionCandidateId: actionIn(subject, s.coordinate),
+    prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+    prerequisiteFailureCandidateId: NO_CANDIDATE,
     // R2.32 — an EMPTY reason is correct here: the server owns this explanation.
     reason: "",
   }));
@@ -98,21 +96,17 @@ const asViolation = (subject: NarrowBoundarySubject, ref: string, mechanism = "g
     rows.map((a) => {
       if (a.surfaceRef !== ref) return a;
       const s = subject.surfaces.find((x) => x.coordinate === ref)!;
-      // A violation the truth gates accept: own action, an unmet prerequisite quoted where the
-      // fixture states it, and an ordering that puts the action first.
-      const usesInherited = /verif/i.test(s.inheritedWorldState);
+      // A violation the server derives: own governed action plus an eligible failure candidate.
+      void mechanism; // R2.38 — the mechanism is DERIVED; the model has no field for it.
+      void s;
       return {
         ...a,
-        applicability: "applies" as const,
         governedActionStatus: "present" as const,
         prerequisiteStatus: "explicitly_missing" as const,
         temporalRelation: "action_before_prerequisite" as const,
-        compliance: "violates" as const,
-        violationMechanism: mechanism as "governed_action_without_prerequisite",
-        actionEvidence: { segmentRef: ownRefIn(subject, ref), excerpt: s.text.slice(0, 90) },
-        prerequisiteEvidence: usesInherited
-          ? { segmentRef: parRefIn(subject, ref), excerpt: s.inheritedWorldState.slice(0, 90) }
-          : { segmentRef: ownRefIn(subject, ref), excerpt: s.text.slice(0, 90) },
+        governedActionCandidateId: actionIn(subject, ref),
+        prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+        prerequisiteFailureCandidateId: failureIn(subject, ref),
         reason: "",
       };
     });
@@ -170,6 +164,9 @@ const transportCall = (
     codes: ["boundary_review_transport_failed"],
     findings: [],
     failureClass: "transport",
+    validSurfaceRefs: [],
+    failedSurfaceRefs: [],
+    derived: [],
   };
   return {
     kind: "transport_failed",
@@ -232,7 +229,7 @@ describe("[25][26] pipeline order", () => {
   it("[28] an inconclusive SKIPS the broad review", async () => {
     const r = await runBoundaryReviewStage(
       deps(async (s, a) =>
-        call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "the label does not say whether caring means treating" } : x)))),
+        call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, governedActionStatus: "uncertain" as const, prerequisiteStatus: "uncertain" as const, reason: "the label does not say whether caring means treating" } : x)))),
       ),
       args(),
     );
@@ -275,7 +272,7 @@ describe("[21][22] rerun authority in the stage", () => {
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => {
       seen.push(narrowBoundarySubjectSha256(s));
       return a === 1
-        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })
+        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] })
         : call(s, a, responseFor(s, asViolation(s, "branch[1].action[1]")));
     });
     const r = await runBoundaryReviewStage(deps(review), args());
@@ -288,7 +285,7 @@ describe("[21][22] rerun authority in the stage", () => {
 
   it("[22] two malformed responses → terminal reviewer failure, and never a third call", async () => {
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) =>
-      call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_evidence_ungrounded"], findings: [], failureClass: classifyFailure(["boundary_evidence_ungrounded"]) }),
+      call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_candidate_unknown"], findings: [], failureClass: classifyFailure(["boundary_candidate_unknown"]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] }),
     );
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(2);
@@ -341,7 +338,7 @@ describe("correction-packet authority", () => {
     );
     expect(inconclusive.findings).toEqual([]);
     const malformed = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })),
+      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] })),
       args(),
     );
     expect(malformed.findings).toEqual([]);
@@ -372,7 +369,7 @@ describe("aggregate metrics", () => {
     expect(boundaryMetricsPass(m)).toBe(true);
 
     const ungrounded = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_evidence_ungrounded"], findings: [], failureClass: classifyFailure(["boundary_evidence_ungrounded"]) })),
+      deps(async (s, a) => call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_candidate_unknown"], findings: [], failureClass: classifyFailure(["boundary_candidate_unknown"]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] })),
       args(),
     );
     m = accumulateBoundaryMetrics(m, ungrounded);
@@ -387,7 +384,7 @@ describe("[R2.32] reason parity, explanations and the output-contract subcode", 
   /** A response that omits a reason the parity table genuinely requires. */
   const missingRequiredReason = (s: NarrowBoundarySubject) =>
     responseFor(s, (l) =>
-      l.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "" } : x)),
+      l.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, governedActionStatus: "uncertain" as const, prerequisiteStatus: "uncertain" as const, reason: "" } : x)),
     );
 
   it("an EMPTY reason in a server-derived state is valid and produces a pass", async () => {
@@ -509,7 +506,7 @@ describe("[R2.34] transport failure is a PROVIDER failure, not a reviewer failur
     const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => {
       n += 1;
       return n === 1
-        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })
+        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]), validSurfaceRefs: [], failedSurfaceRefs: [], derived: [] })
         : transportCall(s, a);
     });
     const r = await runBoundaryReviewStage(deps(review), args());
