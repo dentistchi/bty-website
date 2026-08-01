@@ -13,6 +13,11 @@ import { authorizeDj, ensurePlaying } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 import { projectEntitlement } from '@/domain/usage';
+import {
+  durationBlockCopy,
+  publishAdmissionFields as admissionFields,
+  PASS_INSUFFICIENT_COPY,
+} from '@/domain/admission-copy';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,75 +25,11 @@ export const runtime = 'nodejs';
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
 
-/**
- * BUILD 20M-GLOBAL-CUTOVER-R1 — the ONE place that decides which authoritative admission values
- * are safe to publish. Purely additive and camelCase, matching the rest of this response body.
- *
- * A field is emitted ONLY when the admission transaction actually produced it, so an older
- * server payload and a v1 start both simply omit them and older clients are unaffected. Nothing
- * is defaulted to 0 — a missing value must read as "unknown" so the client falls back to its
- * generic copy instead of showing a fabricated number.
- *
- * Deliberately NOT exposed: account id, pass grant id, usage-segment id, charge window,
- * passCovered/passActivated flags, and every other billing or security internal.
- */
-function admissionFields(r: {
-  leaseEndsAt?: string | null;
-  durationSeconds?: number | null;
-  requiredChargeSeconds?: number | null;
-  remainingSeconds?: number | null;
-  passExpiresAt?: string | null;
-  finalSongGraceApplied?: boolean;
-  finalSongGraceSeconds?: number | null;
-  finalSongChargedSeconds?: number | null;
-  remainingBeforeSeconds?: number | null;
-}): Record<string, string | number | boolean> {
-  const out: Record<string, string | number | boolean> = {};
-  if (typeof r.leaseEndsAt === 'string' && r.leaseEndsAt) out.leaseEndsAt = r.leaseEndsAt;
-  if (typeof r.durationSeconds === 'number') out.durationSeconds = r.durationSeconds;
-  if (typeof r.requiredChargeSeconds === 'number') out.requiredChargeSeconds = r.requiredChargeSeconds;
-  if (typeof r.remainingSeconds === 'number') out.remainingSeconds = r.remainingSeconds;
-  if (typeof r.passExpiresAt === 'string' && r.passExpiresAt) out.passExpiresAt = r.passExpiresAt;
-  // R4 — grace is published ONLY when it actually applied. An ordinary start emits no grace key
-  // at all, so older clients and the v1 path see the exact payload they saw before.
-  if (r.finalSongGraceApplied === true) {
-    out.finalSongGraceApplied = true;
-    if (typeof r.finalSongGraceSeconds === 'number') out.finalSongGraceSeconds = r.finalSongGraceSeconds;
-    if (typeof r.finalSongChargedSeconds === 'number') out.finalSongChargedSeconds = r.finalSongChargedSeconds;
-    if (typeof r.remainingBeforeSeconds === 'number') out.remainingBeforeSeconds = r.remainingBeforeSeconds;
-  }
-  return out;
-}
-
-/**
- * BUILD 21 — the ONE place a fail-closed duration block's wording is decided.
- *
- * The shipped sentence told every Host to "try again in a moment". For a 40-minute medley, a
- * deleted video, or an exhausted daily quota that is simply false, and it leaves the Host
- * tapping Start forever. Each reason therefore states what actually happened and what to do
- * next; the song is never lost, so every branch says the queue is untouched.
- *
- * `lookup_failed` deliberately REUSES the shipped generic sentence — it is the one cause for
- * which "try again in a moment" is true. An absent or unrecognized reason falls back to that
- * same sentence, so an older/unclassified payload renders exactly as it does today.
- */
-const DURATION_BLOCK_GENERIC = '영상 길이를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.';
-
-const DURATION_BLOCK_COPY: Record<string, string> = {
-  too_long:
-    '이 영상은 너무 길어요 (15분을 넘습니다). 노래는 대기열에 그대로 있습니다.\n더 짧은 버전을 선택해 주세요.',
-  video_unavailable:
-    '이 영상을 재생할 수 없어요 (삭제되었거나 비공개일 수 있어요). 노래는 대기열에 그대로 있습니다.\n다른 영상을 선택해 주세요.',
-  quota_exceeded:
-    'YouTube 일일 조회 한도를 초과해 영상 길이를 확인할 수 없어요. 노래는 대기열에 그대로 있습니다.\n한도가 복구된 뒤 다시 시도해 주세요.',
-  lookup_failed: DURATION_BLOCK_GENERIC,
-  not_configured:
-    '영상 길이 확인이 설정되지 않아 재생을 시작할 수 없어요. 노래는 대기열에 그대로 있습니다.\n관리자에게 문의해 주세요.',
-};
-
-function durationBlockCopy(reason: string | undefined): string {
-  return (reason && DURATION_BLOCK_COPY[reason]) || DURATION_BLOCK_GENERIC;
-}
+// BUILD 23 — the publication allowlist (BUILD 20M-GLOBAL-CUTOVER-R1) and the fail-closed block
+// wording (BUILD 21) moved VERBATIM into `@/domain/admission-copy`, because the auto-advance path
+// must now say the same sentences and publish the same approved subset. Nothing about this route's
+// behaviour changed: same fields, same omission rules, same Korean text, same fallbacks.
+// A route must never import another route's private constants — hence a shared pure module.
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
@@ -173,7 +114,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       // pass, or segment identifier is exposed.
       return NextResponse.json(
         {
-          error: '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.',
+          error: PASS_INSUFFICIENT_COPY,
           code: 'pass_insufficient',
           ...admissionFields(result),
         },

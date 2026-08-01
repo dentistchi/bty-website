@@ -823,7 +823,7 @@ export async function finishOwnRequest(
   }
 }
 
-export interface PassTurnResult {
+export interface PassTurnResult extends AdmissionDetail {
   /** The current song was completed (or was already terminal — idempotent). */
   completed: boolean;
   /** The next song auto-started in BTY (Ready + Queued), else null. */
@@ -832,10 +832,24 @@ export interface PassTurnResult {
    * 'promoted' on success; 'upgrade_required' when the current song was completed but
    * the next start is blocked by the FREE daily limit; else why the next song did not
    * auto-start.
+   *
+   * BUILD 23 — `duration_unavailable` and `pass_insufficient` are now first-class reasons here.
+   * They were previously indistinguishable from `needs_ready`, which told the Host to wait for a
+   * Ready signal the next singer had ALREADY given. Adding them narrows `needs_ready` back to
+   * what it actually means and never widens it.
    */
-  reason: 'promoted' | 'upgrade_required' | NoPromoteReason;
+  reason: 'promoted' | 'upgrade_required' | 'duration_unavailable' | 'pass_insufficient' | NoPromoteReason;
   /** Present when reason === 'upgrade_required' — the truthful usage snapshot. */
   entitlement?: unknown;
+  /**
+   * BUILD 23 — the canonical request whose start was REFUSED (duration_unavailable /
+   * pass_insufficient). Both clients bind their durable notice to this id, so identity is
+   * server truth rather than a client's guess at "which song was next".
+   */
+  blocked?: KaraokeRequest | null;
+  /** BUILD 23 — why the duration was untrusted. Present ONLY on `duration_unavailable`, and only
+   *  when the resolver actually classified one. Never derived at this layer. */
+  durationFailureReason?: DurationFailureReason;
 }
 
 export type PromoteOutcome =
@@ -843,16 +857,28 @@ export type PromoteOutcome =
   | 'blocked_not_ready'
   | 'already_playing'
   | 'queue_empty'
-  | 'upgrade_required';
+  | 'upgrade_required'
+  // BUILD 23 — the two fail-closed admission blocks the v2 begin transaction can return on an
+  // AUTO-ADVANCE. `promoteRequestToPlaying` has always produced them; this type used to be too
+  // narrow to represent them, so they fell into the caller's catch-all and were reported as
+  // "the next singer isn't ready". Nothing was started in either case.
+  | 'duration_unavailable'
+  | 'pass_insufficient';
 
-export interface PromoteResult {
+export interface PromoteResult extends AdmissionDetail {
   outcome: PromoteOutcome;
   /** The song now on stage (started / already_playing). */
   request?: KaraokeRequest;
-  /** The earliest waiting song when NONE is Ready yet (blocked_not_ready). */
+  /**
+   * The waiting song that did NOT start: the earliest waiting song when none is Ready
+   * (blocked_not_ready), or — BUILD 23 — the Ready song whose start the authority refused
+   * (duration_unavailable / pass_insufficient). It stays `waiting` + Ready either way.
+   */
   nextRequest?: KaraokeRequest;
   /** Present when outcome === 'upgrade_required' — the truthful usage snapshot. */
   entitlement?: unknown;
+  /** BUILD 23 — pure passthrough of the resolver's classification (duration_unavailable only). */
+  durationFailureReason?: DurationFailureReason;
 }
 
 /**
@@ -1150,6 +1176,23 @@ export async function promoteNextReady(
         // opened (the RPC rolled back). The next request stays waiting/ready.
         return { outcome: 'upgrade_required', nextRequest: first, entitlement: flip.entitlement };
       }
+      if (flip.outcome === 'duration_unavailable' || flip.outcome === 'pass_insufficient') {
+        // BUILD 23 — the SAME auto-next boundary, for the two fail-closed admission blocks.
+        // Identical guarantees to `upgrade_required`: the current song already completed, the
+        // RPC rolled back, nothing was started, no lease was written, no handoff occurred, and
+        // `first` stays `waiting` + Ready exactly where the server left it.
+        //
+        // These used to fall through to the catch-all below and be reported as "not ready", which
+        // was the one thing they definitively were not — `first` was SELECTED because it is Ready.
+        // Everything here is passthrough: this layer classifies nothing and defaults nothing, and
+        // the conditional spread keeps an unclassified failure's key ABSENT rather than undefined.
+        return {
+          outcome: flip.outcome,
+          nextRequest: first,
+          ...admissionDetailOf(flip),
+          ...(flip.durationFailureReason ? { durationFailureReason: flip.durationFailureReason } : {}),
+        };
+      }
       if (flip.outcome === 'already_playing') {
         const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');
         return { outcome: 'already_playing', request: p };
@@ -1211,7 +1254,22 @@ export async function passTurnAndPromote(
     // next request stays waiting/ready — no segment opened, no YouTube handoff.
     return { completed, promoted: null, reason: 'upgrade_required', entitlement: adv.next.entitlement };
   }
-  // Ready-only reasons: no next song, or the next guest hasn't Readied yet.
+  if (adv.next.outcome === 'duration_unavailable' || adv.next.outcome === 'pass_insufficient') {
+    // BUILD 23 — the same §8 boundary. `completed` stays TRUE: the current song genuinely
+    // reached `completed`, and disowning that would invite a client to re-fire a terminal
+    // mutation that already succeeded. Only the NEXT start was refused.
+    return {
+      completed,
+      promoted: null,
+      reason: adv.next.outcome,
+      blocked: adv.next.nextRequest ?? null,
+      ...admissionDetailOf(adv.next),
+      ...(adv.next.durationFailureReason ? { durationFailureReason: adv.next.durationFailureReason } : {}),
+    };
+  }
+  // Ready-only reasons: no next song, or the next guest hasn't Readied yet. BUILD 23 narrowed
+  // what can reach here — an admission block is no longer disguised as a missing Ready signal —
+  // but the meaning of these two reasons is otherwise unchanged.
   const reason: NoPromoteReason =
     adv.next.outcome === 'queue_empty' || adv.next.outcome === 'already_playing' ? 'no_next' : 'needs_ready';
   return { completed, promoted: null, reason };

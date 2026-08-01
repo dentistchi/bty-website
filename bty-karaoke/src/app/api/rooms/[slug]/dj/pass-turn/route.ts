@@ -10,6 +10,11 @@ import { authorizeDj, passTurnAndPromote } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 import { projectEntitlement } from '@/domain/usage';
+import {
+  durationBlockCopy,
+  publishAdmissionFields,
+  PASS_INSUFFICIENT_COPY,
+} from '@/domain/admission-copy';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,6 +56,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // B2: the current song completed (§6 — never force-stopped); when the next start is
   // blocked by the FREE limit the response carries reason='upgrade_required' + the usage
   // snapshot. The next request stays waiting/ready and no YouTube handoff occurs.
+  //
+  // BUILD 23 — the same is now true for the two fail-closed admission blocks, which used to be
+  // flattened into `needs_ready`. THE STATUS STAYS 200 AND `completed` STAYS TRUE: the current
+  // song genuinely completed, and turning this into a 4xx/5xx would make every shipped client
+  // treat a successful terminal transition as a total failure and re-fire the mutation.
+  const blocked = result.reason === 'duration_unavailable' || result.reason === 'pass_insufficient';
   return NextResponse.json(
     {
       ok: true,
@@ -58,6 +69,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       promoted: result.promoted ? { id: result.promoted.id } : null,
       reason: result.reason,
       usage: result.reason === 'upgrade_required' ? projectEntitlement(result.entitlement) : null,
+      // Everything below is ADDITIVE and present only on the two new reasons. An older client
+      // never sees these keys, and — because it does not recognise the new `reason` — falls
+      // through its existing `reason !== 'promoted'` branch to exactly today's behaviour.
+      ...(blocked
+        ? {
+            // The canonical id of the request that was REFUSED. Both clients key their durable
+            // notice to this and nothing else: a same-song repeat (18B) is a legitimately
+            // different request, so videoId/title/position could never identify it correctly.
+            blockedRequestId: result.blocked?.id ?? null,
+            // One wording source shared with /dj/start (@/domain/admission-copy), so the two
+            // paths can never drift into describing the same block differently.
+            message:
+              result.reason === 'pass_insufficient'
+                ? PASS_INSUFFICIENT_COPY
+                : durationBlockCopy(result.durationFailureReason),
+            // Only when the resolver actually classified one — never defaulted.
+            ...(result.durationFailureReason ? { durationFailureReason: result.durationFailureReason } : {}),
+            // The approved public admission subset, omitted key-by-key when the authority did
+            // not supply it. No account id, pass grant id, segment id, or charge window can
+            // reach this response — the allowlist is the only path in.
+            ...publishAdmissionFields(result),
+          }
+        : {}),
     },
     { headers: NO_STORE },
   );

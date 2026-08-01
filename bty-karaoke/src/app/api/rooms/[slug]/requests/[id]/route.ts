@@ -15,6 +15,11 @@ import {
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 import { projectEntitlement } from '@/domain/usage';
+import {
+  durationBlockCopy,
+  publishAdmissionFields,
+  PASS_INSUFFICIENT_COPY,
+} from '@/domain/admission-copy';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -119,6 +124,10 @@ export async function PATCH(
   // upgrade state + usage so the Admin sees why nothing auto-started.
   let upgradeRequired = false;
   let usage: ReturnType<typeof projectEntitlement> = null;
+  // BUILD 23 — the same advance seam can also be refused fail-closed (duration_unavailable /
+  // pass_insufficient). It silently reported `promoted: null` for both, which is indistinguishable
+  // from "nobody was ready". These fields are additive and present only on those two outcomes.
+  let admissionBlock: Record<string, unknown> | null = null;
   if ((action === 'complete' || action === 'skip') && result.outcome === 'ok' && result.from === 'playing') {
     const event = await getCanonicalEvent(auth.room.id);
     const p = await promoteNextReady(auth.room.id, event?.id ?? null);
@@ -128,8 +137,29 @@ export async function PATCH(
     } else if (p.outcome === 'upgrade_required') {
       upgradeRequired = true;
       usage = projectEntitlement(p.entitlement);
+    } else if (p.outcome === 'duration_unavailable' || p.outcome === 'pass_insufficient') {
+      // Parity with /dj/pass-turn: same reason vocabulary, same wording source, same publication
+      // allowlist, same request-keyed identity. The terminal transition above already succeeded
+      // and is NOT retried; the refused song stays `waiting` + Ready, untouched.
+      admissionBlock = {
+        reason: p.outcome,
+        blockedRequestId: p.nextRequest?.id ?? null,
+        message:
+          p.outcome === 'pass_insufficient'
+            ? PASS_INSUFFICIENT_COPY
+            : durationBlockCopy(p.durationFailureReason),
+        ...(p.durationFailureReason ? { durationFailureReason: p.durationFailureReason } : {}),
+        ...publishAdmissionFields(p),
+      };
     }
   }
 
-  return NextResponse.json({ ok: true, request: result.request, promoted, upgradeRequired, usage });
+  return NextResponse.json({
+    ok: true,
+    request: result.request,
+    promoted,
+    upgradeRequired,
+    usage,
+    ...(admissionBlock ?? {}),
+  });
 }
