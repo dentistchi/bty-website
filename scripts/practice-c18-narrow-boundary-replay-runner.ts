@@ -471,12 +471,15 @@ printf 'LIVE PROVIDER NOT CALLED\\n'
 wiring_cleanup
 trap - EXIT INT TERM
 
-printf '\nLOCAL MOCK TRANSPORT MATRIX + CAPTURED REGRESSIONS (no credential, no network)\n'
+printf '\nLOCAL MOCK MATRIX + CAPTURED REGRESSIONS + RESTORED SAFETY ASSERTIONS (no credential, no network)\n'
 npx --yes vitest run \\
   src/domain/foundry/arena-draft/boundaryTransportEvidence.test.ts \\
   src/domain/foundry/arena-draft/r232TransportRegression.test.ts \\
   src/lib/bty/foundry/arena/narrowBoundaryTransport.contract.test.ts \\
   src/domain/foundry/arena-draft/r230LiveDtoRegression.test.ts \\
+  src/domain/foundry/arena-draft/r236TruthRegression.test.ts \\
+  src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts \\
+  src/domain/foundry/arena-draft/narrowBoundaryReview.test.ts \\
   src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
   || wiring_failed 'the transport matrix or the captured regressions failed'
 printf 'TRANSPORT MATRIX PASS · CAPTURED LIVE ATTEMPTS REPRODUCE A SERVER-DERIVED VERDICT\n'
