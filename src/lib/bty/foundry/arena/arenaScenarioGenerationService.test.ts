@@ -2,7 +2,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import type { ConstraintAssessment } from "@/domain/foundry/arena-draft/boundary";
 import type { ProviderBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
-import { providerJson, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { providerJson, acceptReview, isReviewRequest, isBoundaryReviewRequest, compliantBoundaryReview, compliantBoundaryReviewFor } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import type { ModuleSourceFacts } from "./arenaScenarioSource";
 
 // --- mock the shared LLM seam so no live provider is ever contacted ----------
@@ -55,7 +55,12 @@ function mockGenThenReview(
   constraintIds: string[] = [],
 ) {
   mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-    isReviewRequest(params) ? reviewContent(review ?? acceptReview(draft, {}, constraintIds)) : aiContent(draft, assessments, grounding),
+    // R2.29 — the narrow boundary stage runs FIRST; answer it before the broad review.
+    isBoundaryReviewRequest(params)
+      ? { choices: [{ message: { content: compliantBoundaryReview(params) } }] }
+      : isReviewRequest(params)
+        ? reviewContent(review ?? acceptReview(draft, {}, constraintIds))
+        : aiContent(draft, assessments, grounding),
   );
 }
 
@@ -283,7 +288,9 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
     mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, GROUNDING, ["c1_verify"]);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r.ok).toBe(true);
-    expect(mockCreate).toHaveBeenCalledTimes(2); // 1 generation + 1 semantic review
+    // R2.29 — a boundary-bearing scenario now costs one extra call: the NARROW boundary review runs
+    // before the broad semantic review, and the broad review only runs because it passed.
+    expect(mockCreate).toHaveBeenCalledTimes(3); // 1 generation + 1 narrow boundary + 1 semantic review
   });
 
   it("R2.21 — a compliant draft that never MENTIONS the confirmed rule is rejected (the c18 shape)", async () => {
@@ -322,12 +329,16 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
     // for the reviewer's failure. That is exactly the misattribution this slice removes.
     const REVIEW_BAD = { choices: [{ message: { content: JSON.stringify({ ok: false, violations: [{ phase: "action", choiceId: "p1_a1", constraintId: "c1_verify", reason: "implied skip" }], noSafeJudgmentSpace: false }) } }] };
     mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, GROUNDING, ["c1_verify"]); // every gen call
-    mockCreate.mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD).mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD);
+    // R2.29 — the narrow boundary review passes first; only the BROAD reviewer is schema-invalid.
+    const NARROW_OK = { choices: [{ message: { content: compliantBoundaryReviewFor(groundedDraft, ["c1_verify"]) } }] };
+    mockCreate
+      .mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(NARROW_OK).mockResolvedValueOnce(REVIEW_BAD)
+      .mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(NARROW_OK).mockResolvedValueOnce(REVIEW_BAD);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "reviewer_terminal_failure" });
     // A structurally broken response is NOT rerun — rerunning it would only be guesswork — so the
     // run stops at 1 generation + 1 review.
-    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(4);
+    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(6);
   });
 
   it("provider signals no safe judgment space → no_safe_judgment_space", async () => {
@@ -337,7 +348,10 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
   });
 
   it("semantic review transport failure → generation_failed", async () => {
-    mockCreate.mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
+    mockCreate
+      .mockResolvedValueOnce(constrainedContent(groundedDraft))
+      .mockResolvedValueOnce({ choices: [{ message: { content: compliantBoundaryReviewFor(groundedDraft, ["c1_verify"]) } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: "" } }] });
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_failed" });
   });

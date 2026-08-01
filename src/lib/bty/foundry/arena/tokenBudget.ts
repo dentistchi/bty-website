@@ -26,7 +26,12 @@
  */
 
 import { createHash } from "node:crypto";
-import { buildMaxProviderScenario, buildMaxSemanticReview, buildMinProviderScenario } from "@/domain/foundry/arena-draft/maxFixture";
+import {
+  buildMaxNarrowBoundaryReview,
+  buildMaxProviderScenario,
+  buildMaxSemanticReview,
+  buildMinProviderScenario,
+} from "@/domain/foundry/arena-draft/maxFixture";
 
 export const TOKEN_ESTIMATOR_ID = "bty-conservative-char-model-v1";
 
@@ -175,6 +180,26 @@ export function measureReviewBudget(configured: number): BudgetMeasurement {
     JSON.stringify(buildMaxSemanticReview(true, "realistic")),
     JSON.stringify(buildMaxSemanticReview(false, "schema")),
     JSON.stringify(buildMaxSemanticReview(true, "schema")),
+    configured,
+  );
+}
+
+/**
+ * Measure the NARROW boundary-review budget (Slice 3.2I-R5B1A.1-R2.29).
+ *
+ * The worst case is MAX_ACTIVE_BOUNDARIES × CANONICAL_SURFACE_COUNT = 48 assessments. The narrow
+ * contract's evidence and reason bounds were chosen FROM this measurement, not before it: the
+ * schema-permitted Korean maximum must fit under the model output cap with real headroom, because a
+ * truncated safety review is the one failure mode this stage cannot afford.
+ */
+export function measureNarrowBoundaryBudget(configured: number): BudgetMeasurement {
+  return measure(
+    "narrow_boundary_review",
+    JSON.stringify({ assessments: [] }),
+    JSON.stringify(buildMaxNarrowBoundaryReview(false, "realistic")),
+    JSON.stringify(buildMaxNarrowBoundaryReview(true, "realistic")),
+    JSON.stringify(buildMaxNarrowBoundaryReview(false, "schema")),
+    JSON.stringify(buildMaxNarrowBoundaryReview(true, "schema")),
     configured,
   );
 }

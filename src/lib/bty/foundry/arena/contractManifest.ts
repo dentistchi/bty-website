@@ -52,7 +52,25 @@ import {
   GEN_TITLE_MAX,
   GEN_VALUE_MAX,
 } from "@/domain/foundry/arena-draft/types";
-import { MODEL_OUTPUT_CAP, measureProviderBudget, measureReviewBudget } from "./tokenBudget";
+import { MODEL_OUTPUT_CAP, measureNarrowBoundaryBudget, measureProviderBudget, measureReviewBudget } from "./tokenBudget";
+import {
+  NARROW_BOUNDARY_JSON_SCHEMA,
+  NARROW_BOUNDARY_SCHEMA_NAME,
+  NARROW_BOUNDARY_CODES,
+  BOUNDARY_REVIEW_OUTCOMES,
+  MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
+  GENERIC_EVIDENCE_PHRASES,
+  MIN_EVIDENCE_CHARS,
+  SURFACE_RESULTS,
+} from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import {
+  CANONICAL_SURFACE_COUNT,
+  SURFACE_KINDS,
+  SURFACE_MAP_VERSION,
+  SURFACE_PHASES,
+  SURFACE_MAP_CODES,
+} from "@/domain/foundry/arena-draft/boundarySurfaces";
+import { NARROW_BOUNDARY_SAMPLING, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
 import { BOUNDARY_SCOPE_CODES, MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
 import { READINESS_STATES } from "@/domain/foundry/arena-draft/practiceReadiness";
 
@@ -119,7 +137,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.23d.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.29.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -188,7 +206,8 @@ export function buildContractManifest(head: string, model: string): ContractMani
     modelOutputCap: MODEL_OUTPUT_CAP,
     schemaCanExceedBudget:
       measureProviderBudget(PRACTICE_SAMPLING.generation.maxTokens).schemaCanExceedBudget ||
-      measureReviewBudget(PRACTICE_SAMPLING.review.maxTokens).schemaCanExceedBudget,
+      measureReviewBudget(PRACTICE_SAMPLING.review.maxTokens).schemaCanExceedBudget ||
+      measureNarrowBoundaryBudget(NARROW_BOUNDARY_SAMPLING.maxTokens).schemaCanExceedBudget,
     components: {
       corpus: digest(EVAL_CORPUS.map((c) => ({ id: c.id, locale: c.locale, expectDecline: c.expectDecline ?? false, expectClass: c.expectClass ?? null, input: c.input }))),
       corpusIds: digest(EVAL_CORPUS.map((c) => c.id)),
@@ -221,7 +240,29 @@ export function buildContractManifest(head: string, model: string): ContractMani
         modelOutputCap: MODEL_OUTPUT_CAP,
         generation: budgetFingerprint(measureProviderBudget(PRACTICE_SAMPLING.generation.maxTokens)),
         review: budgetFingerprint(measureReviewBudget(PRACTICE_SAMPLING.review.maxTokens)),
+        // R2.29 — the narrow boundary review is a PRODUCT contract component, so its budget is too.
+        narrowBoundaryReview: budgetFingerprint(measureNarrowBoundaryBudget(NARROW_BOUNDARY_SAMPLING.maxTokens)),
       }),
+      // R2.29 — the narrow confirmed-boundary review stage. Each component is separate so a prompt
+      // change, a schema change and a verdict-authority change are individually visible.
+      narrowBoundaryPrompt: digest(NARROW_BOUNDARY_SYSTEM_PROMPT),
+      narrowBoundarySchema: digest(NARROW_BOUNDARY_JSON_SCHEMA),
+      narrowBoundarySchemaName: digest(NARROW_BOUNDARY_SCHEMA_NAME),
+      narrowBoundarySampling: digest(NARROW_BOUNDARY_SAMPLING),
+      canonicalSurfaceMap: digest({
+        version: SURFACE_MAP_VERSION,
+        count: CANONICAL_SURFACE_COUNT,
+        kinds: SURFACE_KINDS,
+        phases: SURFACE_PHASES,
+        codes: SURFACE_MAP_CODES,
+      }),
+      boundaryEvidenceGrounding: digest({
+        genericPhrases: GENERIC_EVIDENCE_PHRASES,
+        minEvidenceChars: MIN_EVIDENCE_CHARS,
+        codes: NARROW_BOUNDARY_CODES,
+      }),
+      serverDerivedBoundaryVerdict: digest({ results: SURFACE_RESULTS, outcomes: BOUNDARY_REVIEW_OUTCOMES, modelAuthoredVerdict: false }),
+      boundaryReviewRerunPolicy: digest({ maxCallsPerSubject: MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT, rerunIsGenerationRetry: false }),
     },
     sampling: {
       generation: PRACTICE_SAMPLING.generation,

@@ -25,7 +25,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
 }));
 
 import { generateArenaScenarioDraft, __setGenObserver, PRACTICE_SAMPLING, type GenObservation } from "./arenaScenarioGenerationService";
-import { providerJson, toProviderDto, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { providerJson, toProviderDto, acceptReview, isReviewRequest, isBoundaryReviewRequest, compliantBoundaryReview } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { PROVIDER_SCHEMA_NAME } from "@/domain/foundry/arena-draft/providerDto";
 import { detectMeasuredLabelDefects } from "@/domain/foundry/arena-draft/choiceConstruction";
 
@@ -111,7 +111,11 @@ function envelope(
 /** Answer the review call with an ACCEPT so a generation-shaped mock is not mistaken for a review. */
 function routeWithAcceptReview(genContent: unknown) {
   mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-    isReviewRequest(params) ? { choices: [{ message: { content: JSON.stringify(acceptReview(goodDraft)) } }] } : genContent,
+    isBoundaryReviewRequest(params)
+      ? { choices: [{ message: { content: compliantBoundaryReview(params) } }] }
+      : isReviewRequest(params)
+        ? { choices: [{ message: { content: JSON.stringify(acceptReview(goodDraft)) } }] }
+        : genContent,
   );
 }
 
@@ -439,7 +443,11 @@ describe("R2.17 — every reviewer outcome is observable", () => {
   /** Route generation + a REVIEW body of our choosing. */
   const routeReview = (review: unknown) =>
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-      isReviewRequest(params) ? envelope(JSON.stringify(review)) : envelope(withAssessments()),
+      isBoundaryReviewRequest(params)
+        ? envelope(compliantBoundaryReview(params))
+        : isReviewRequest(params)
+          ? envelope(JSON.stringify(review))
+          : envelope(withAssessments()),
     );
 
   it("a SUPPORTED reviewer no-safe verdict is recorded and terminates", async () => {
@@ -510,7 +518,7 @@ describe("R2.17 — every reviewer outcome is observable", () => {
 
   it("a malformed reviewer response is recorded", async () => {
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-      isReviewRequest(params) ? envelope("not json") : envelope(withAssessments()),
+      isBoundaryReviewRequest(params) ? envelope(compliantBoundaryReview(params)) : isReviewRequest(params) ? envelope("not json") : envelope(withAssessments()),
     );
     const r = await generateArenaScenarioDraft(constrained);
     // R2.25 — an unparseable review is a REVIEWER failure. It is no longer reported as a generator
@@ -521,7 +529,7 @@ describe("R2.17 — every reviewer outcome is observable", () => {
 
   it("a reviewer transport failure is recorded", async () => {
     mockCreate.mockImplementation(async (params: { messages?: Array<{ content?: string }> }) =>
-      isReviewRequest(params) ? envelope(null) : envelope(withAssessments()),
+      isBoundaryReviewRequest(params) ? envelope(compliantBoundaryReview(params)) : isReviewRequest(params) ? envelope(null) : envelope(withAssessments()),
     );
     const r = await generateArenaScenarioDraft(constrained);
     expect(r).toMatchObject({ ok: false, reason: "generation_failed" });

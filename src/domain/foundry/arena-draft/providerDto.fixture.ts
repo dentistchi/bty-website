@@ -8,6 +8,7 @@
  * array ordered by the draft's own primary-choice order.
  */
 
+import { enumerateBoundarySurfaces } from "./boundarySurfaces";
 import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
@@ -240,3 +241,55 @@ export function acceptReview(draft: ArenaScenarioDraft, over: Partial<SemanticRe
 /** True when this request is the semantic-review call rather than the generation call. */
 export const isReviewRequest = (params: { messages?: Array<{ content?: string }> }): boolean =>
   (params.messages ?? []).some((m) => typeof m.content === "string" && m.content.includes("You are a strict REVIEWER"));
+
+/**
+ * R2.29 — the NARROW boundary review runs BEFORE the broad semantic review for every
+ * boundary-bearing scenario. A test double that answers only the generation and broad-review calls
+ * would now stall the pipeline at the narrow stage, so routing must recognise all three.
+ */
+export const isBoundaryReviewRequest = (params: { messages?: Array<{ content?: string }> }): boolean =>
+  (params.messages ?? []).some((m) => typeof m.content === "string" && m.content.includes("CONFIRMED-BOUNDARY COMPLIANCE CHECKER"));
+
+/**
+ * Build an all-complies narrow response DERIVED FROM THE REQUEST, so it satisfies exact Cartesian
+ * coverage and same-surface evidence grounding for whatever scenario the test happens to use.
+ *
+ * It is a transport double, not an oracle: a test that wants a violation states one explicitly.
+ */
+export function compliantBoundaryReview(params: { messages?: Array<{ content?: string }> }): string {
+  const user = (params.messages ?? []).find((m) => typeof m.content === "string" && m.content.includes("\"surfaces\""));
+  const req = JSON.parse(user?.content ?? "{}") as {
+    constraints?: Array<{ id: string }>;
+    surfaces?: Array<{ surfaceRef: string; text: string }>;
+  };
+  const assessments = (req.constraints ?? []).flatMap((b) =>
+    (req.surfaces ?? []).map((s) => ({
+      boundaryId: b.id,
+      surfaceRef: s.surfaceRef,
+      result: "complies",
+      // A faithful excerpt of THIS surface's own text — what the grounding validator requires.
+      evidenceExcerpt: s.text.slice(0, 120),
+      reason: "keeps the confirmed rule",
+    })),
+  );
+  return JSON.stringify({ assessments });
+}
+
+/**
+ * The same all-complies narrow response, built from a DRAFT rather than a captured request — for
+ * tests that queue ordered responses with `mockResolvedValueOnce` and so never see the request.
+ */
+export function compliantBoundaryReviewFor(draft: ArenaScenarioDraft, constraintIds: string[]): string {
+  const surfaces = enumerateBoundarySurfaces(draft, {});
+  return JSON.stringify({
+    assessments: constraintIds.flatMap((boundaryId) =>
+      surfaces.map((s) => ({
+        boundaryId,
+        surfaceRef: s.coordinate,
+        result: "complies",
+        evidenceExcerpt: s.text.slice(0, 120),
+        reason: "keeps the confirmed rule",
+      })),
+    ),
+  });
+}

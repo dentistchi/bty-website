@@ -46,6 +46,11 @@ import type { ProviderPracticeScenario } from "./providerDto";
 import type { ProviderBoundaryGrounding } from "./boundaryGrounding";
 import type { ProviderChoiceConstruction } from "./choiceConstruction";
 import type { SemanticReview } from "./semanticReview";
+import {
+  NARROW_EVIDENCE_MAX,
+  NARROW_REASON_MAX,
+  type NarrowBoundaryReview,
+} from "./narrowBoundaryReview";
 
 /**
  * Two profiles, because they answer different questions.
@@ -349,5 +354,41 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
     overallVerdict: "accept",
     defectCodes: [],
     retryInstruction: text(400, "ri"),
+  };
+}
+
+/**
+ * The largest narrow boundary review the R2.29 contract permits: MAX_ACTIVE_BOUNDARIES boundaries ×
+ * CANONICAL_SURFACE_COUNT surfaces, every string at its bound.
+ *
+ * This is the fixture the narrow budget is sized from. Every character here is multiplied by 48, and
+ * in Korean by roughly one token per character — which is exactly why the narrow evidence and reason
+ * bounds are as tight as they are.
+ */
+export function buildMaxNarrowBoundaryReview(hangul = false, profile: FixtureProfile = "schema"): NarrowBoundaryReview {
+  const boundaries = maxBoundaryIds(MAX_ACTIVE_BOUNDARIES);
+  const evidenceCap = profile === "schema" ? NARROW_EVIDENCE_MAX : Math.round(NARROW_EVIDENCE_MAX * 0.6);
+  const reasonCap = profile === "schema" ? NARROW_REASON_MAX : Math.round(NARROW_REASON_MAX * 0.6);
+  // The coordinates are the real ones, at their longest shape: `branch[N].resulting_world_state`.
+  const refs = [
+    ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, i) => `primary[${i}]`),
+    ...Array.from({ length: GENERATED_TRADEOFF_CHOICES }, (_, i) => `flat_tradeoff[${i}]`),
+    ...Array.from({ length: GENERATED_ACTION_CHOICES }, (_, i) => `flat_action[${i}]`),
+    ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, b) => [
+      `branch[${b}].resulting_world_state`,
+      ...Array.from({ length: GENERATED_TRADEOFF_CHOICES }, (_, i) => `branch[${b}].tradeoff[${i}]`),
+      ...Array.from({ length: GENERATED_ACTION_CHOICES }, (_, i) => `branch[${b}].action[${i}]`),
+    ]).flat(),
+  ];
+  return {
+    assessments: boundaries.flatMap((boundaryId) =>
+      refs.map((surfaceRef) => ({
+        boundaryId,
+        surfaceRef,
+        result: "complies" as const,
+        evidenceExcerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}e`, hangul),
+        reason: filler(reasonCap, `${boundaryId}${surfaceRef}r`, hangul),
+      })),
+    ),
   };
 }

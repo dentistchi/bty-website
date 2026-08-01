@@ -142,7 +142,11 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     expect(manifestDigest(m)).not.toBe("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10"); // R2.23
     expect(manifestDigest(m)).not.toBe("64bcbcf9a0f08aa8a2b02c4eb8b8ecdff2b1b098e389e8ad6984964c39269b0d"); // R2.23A
     expect(manifestDigest(m)).not.toBe("d8f8e60cba1ec23388f988fc74a9e484b2d703ec58b3d8db46cacdd65f66ffe2"); // R2.23C
-    expect(m.artifactSchemaVersion).toBe("r2.23d.1");
+    // R2.29 added the narrow boundary-review stage to the contract, so the R2.23D manifest is now a
+    // prior one too — an artifact produced before the boundary stage existed cannot be attributed to
+    // a contract that has it.
+    expect(manifestDigest(m)).not.toBe("1deeb9372131550c63fc3ca98fcd877840411d1714b7c66a68c80e33edae6dda"); // R2.23D / R2.28
+    expect(m.artifactSchemaVersion).toBe("r2.29.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

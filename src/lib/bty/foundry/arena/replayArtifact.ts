@@ -14,6 +14,12 @@ import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, re
 import { join } from "node:path";
 
 export const REPLAY_ARTIFACT_KIND = "reviewreplay";
+/**
+ * R2.29 — the NARROW boundary replay writes into its own namespace. A boundary measurement is a
+ * different question from a broad-review measurement, and mixing the two would let a boundary
+ * artifact be collated as broad-review evidence.
+ */
+export const BOUNDARY_REPLAY_ARTIFACT_KIND = "boundaryreplay";
 
 export type ReplayArtifactId = {
   mode: "mock" | "live";
@@ -48,9 +54,14 @@ export class ReplayWriteError extends Error {
   readonly code = "infrastructure_artifact_write_failure";
 }
 
-export function writeReplayArtifact(dir: string, id: ReplayArtifactId, payload: string): { path: string; sha256: string; bytes: number } {
+/** `practice-review.boundaryreplay.<mode>.<replayRunId>.<pass>.<case>.a<idx>.<subject12>.json` */
+export function boundaryReplayArtifactPath(id: ReplayArtifactId): string {
+  return replayArtifactPath(id).replace(`.${REPLAY_ARTIFACT_KIND}.`, `.${BOUNDARY_REPLAY_ARTIFACT_KIND}.`);
+}
+
+export function writeReplayArtifact(dir: string, id: ReplayArtifactId, payload: string, kind: string = REPLAY_ARTIFACT_KIND): { path: string; sha256: string; bytes: number } {
   mkdirSync(dir, { recursive: true });
-  const name = replayArtifactPath(id);
+  const name = kind === BOUNDARY_REPLAY_ARTIFACT_KIND ? boundaryReplayArtifactPath(id) : replayArtifactPath(id);
   const finalPath = join(dir, name);
   if (existsSync(finalPath)) {
     throw new ReplayWriteError(`ARTIFACT COLLISION · refusing to overwrite ${name} — a replay result already exists for this subject`);
@@ -88,10 +99,10 @@ export function writeReplayArtifact(dir: string, id: ReplayArtifactId, payload: 
 
 export type ReplayArtifactEntry = { file: string; mode: "mock" | "live"; replayRunId: string; sourcePassId: string; sourceCaseId: string };
 
-export function listReplayArtifacts(dir: string, replayRunId?: string, mode?: "mock" | "live"): ReplayArtifactEntry[] {
+export function listReplayArtifacts(dir: string, replayRunId?: string, mode?: "mock" | "live", kind: string = REPLAY_ARTIFACT_KIND): ReplayArtifactEntry[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
-    .filter((f) => f.startsWith(`practice-review.${REPLAY_ARTIFACT_KIND}.`) && f.endsWith(".json"))
+    .filter((f) => f.startsWith(`practice-review.${kind}.`) && f.endsWith(".json"))
     .map((file) => {
       const p = file.split(".");
       if (p.length !== 9) return null;

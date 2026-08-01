@@ -8,9 +8,10 @@
  * Not executed in R2.25 — the replay runner is prepared and bound, not run.
  */
 
-import { canonicalJson, type ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
+import type { ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
 import { SEMANTIC_REVIEW_JSON_SCHEMA, SEMANTIC_REVIEW_SCHEMA_NAME, validateSemanticReview } from "@/domain/foundry/arena-draft/semanticReview";
 import { enumerateChoices } from "@/domain/foundry/arena-draft/choiceConstruction";
+import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRequestProjection";
 import { isContradiction } from "@/domain/foundry/arena-draft/reviewRerun";
 import { getLlmClient, getLlmModel } from "@/lib/bty/llm/client";
 import { PRACTICE_SAMPLING, REVIEW_SYSTEM_PROMPT } from "./arenaScenarioGenerationService";
@@ -19,24 +20,18 @@ import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 
 export async function reviewFrozenSubject(subject: ReviewSubject): Promise<ReplayReviewResult> {
   const draft = subject.scenario as ArenaScenarioDraft;
-  const payload = {
-    constraints: subject.confirmedBoundaries,
-    visibleChoices: enumerateChoices(draft).map((c) => ({ phase: c.phase, branchIndex: c.branchIndex, choiceIndex: c.index, label: c.label, construction: null })),
-    opening: draft.opening,
-    primary: draft.primary.choices,
-    branches: Object.fromEntries(
-      Object.entries(draft.branches ?? {}).map(([k, b]) => [k, { escalation: b.escalationText, tradeoff: b.tradeoffChoices, action: b.actionDecision.choices }]),
-    ),
-    flatTradeoff: draft.tradeoff.choices,
-    flatAction: draft.actionDecision.choices,
-  };
+  // R2.29 Part 15 — REQUEST PARITY. R2.28 measured this payload missing `activeBoundaryCount` and
+  // `boundaryComplianceScope`, the only place in the contract that names resulting world states as a
+  // compliance surface. The replay therefore asked a WEAKER question than production and its verdict
+  // could not be attributed to the production contract. Both callers now build the same projection.
+  const payload = buildBroadReviewRequest(draft, subject.confirmedBoundaries);
 
   try {
     const completion = await getLlmClient().chat.completions.create({
       model: getLlmModel(),
       messages: [
         { role: "system", content: REVIEW_SYSTEM_PROMPT },
-        { role: "user", content: canonicalJson(payload) },
+        { role: "user", content: serializeBroadReviewRequest(payload) },
       ],
       temperature: PRACTICE_SAMPLING.review.temperature,
       top_p: PRACTICE_SAMPLING.review.topP,

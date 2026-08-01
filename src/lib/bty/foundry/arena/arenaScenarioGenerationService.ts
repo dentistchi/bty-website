@@ -30,6 +30,14 @@ import {
   decideAfterReview,
   isContradiction,
 } from "@/domain/foundry/arena-draft/reviewRerun";
+import {
+  accumulateBoundaryMetrics,
+  emptyBoundaryMetrics,
+  runBoundaryReviewStage,
+  type BoundaryReviewMetrics,
+} from "./boundaryReviewStage";
+import { reviewBoundarySurfaces } from "./narrowBoundaryReviewer";
+import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRequestProjection";
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
@@ -111,7 +119,13 @@ export type GenerationFailureReason =
   /** R2.25 — the reviewer failed twice over an identical frozen subject; content never judged. */
   | "reviewer_terminal_failure"
   /** R2.27 — boundary provenance was missing, incomplete or drifted. No reviewer call was made. */
-  | "review_boundary_authority_failed";
+  | "review_boundary_authority_failed"
+  /** R2.29 — the narrow boundary reviewer could not settle a surface. Content never fully judged. */
+  | "boundary_review_inconclusive"
+  /** R2.29 — two unusable narrow boundary reviews over an identical frozen subject. */
+  | "boundary_reviewer_terminal_failure"
+  /** R2.29 — the surface map or boundary mode was unusable. No narrow provider call was made. */
+  | "boundary_review_authority_failure";
 
 export type GenerationResult =
   | { ok: true; value: GeneratedDraft }
@@ -134,7 +148,11 @@ export type GenerationResult =
         | "active_boundary_set_changed"
         | "boundary_scope_not_confirmed"
         | "reviewer_terminal_failure"
-        | "review_boundary_authority_failed";
+        | "review_boundary_authority_failed"
+        // R2.29 narrow boundary-review stage outcomes — never a broad-review verdict.
+        | "boundary_review_inconclusive"
+        | "boundary_reviewer_terminal_failure"
+        | "boundary_review_authority_failure";
     };
 
 /** Deterministic digest of the correction an attempt received. Evidence, not configuration. */
@@ -286,6 +304,23 @@ export type GenObservation = {
   reviewRequestBoundaries?: Array<{ id: string; statement: string }>;
   /** Whether the reviewer answered about exactly the active set. */
   boundaryCoverage?: { ok: boolean; codes: string[]; boundaryIdsConsidered: string[]; assessmentIds: string[] };
+  /** R2.29 — narrow boundary-review stage evidence. */
+  boundaryReviewSubjectSha256?: string;
+  surfaceMapSha256?: string;
+  surfaceCount?: number;
+  activeBoundaryIds?: string[];
+  boundaryMode?: string;
+  boundaryReviewOutcome?: string;
+  boundaryReviewCalls?: number;
+  boundaryReviewReruns?: number;
+  /** Every narrow call's complete parsed DTO and derived verdict, in order. */
+  boundaryReviewEvidence?: unknown;
+  violations?: unknown;
+  uncertainties?: unknown;
+  because?: string;
+  boundaryMetrics?: BoundaryReviewMetrics;
+  /** Whether the broad semantic reviewer was permitted to run after the boundary stage. */
+  broadReviewStarted?: boolean;
 };
 let genObserver: ((o: GenObservation) => void) | null = null;
 /**
@@ -718,40 +753,15 @@ async function reviewConstraintCompliance(
     const system = REVIEW_SYSTEM_PROMPT;
     // R2.27 — the ACTIVE boundary projection, with its count made explicit so the reviewer cannot
     // silently answer about a subset. The judgment instructions themselves are unchanged.
+    // R2.29 Part 15 — built by the SHARED projection, so the replay path cannot drift from it again.
     const activeBoundaries = constraints.map((c) => ({ id: c.id, statement: c.statement }));
-    const payload = {
-      constraints: activeBoundaries,
-      activeBoundaryCount: activeBoundaries.length,
-      boundaryComplianceScope:
-        activeBoundaries.length === 0
-          ? "No confirmed boundary applies to this case."
-          : "Every primary, tradeoff and action choice — and every resulting world state — must comply with EVERY boundary listed in `constraints`. Return exactly one boundaryAssessment per listed id.",
-      // R2.22 — the reviewer must judge every visible choice AT ITS COORDINATE, and must confirm or
-      // dispute the provider's construction record rather than silently inheriting it.
-      visibleChoices: enumerateChoices(draft).map((c) => ({
-        phase: c.phase,
-        branchIndex: c.branchIndex,
-        choiceIndex: c.index,
-        label: c.label,
-        construction: constructions[c.id] ?? null,
-      })),
-      opening: draft.opening,
-      primary: draft.primary.choices,
-      branches: Object.fromEntries(
-        Object.entries(draft.branches ?? {}).map(([k, b]) => [
-          k,
-          { escalation: b.escalationText, tradeoff: b.tradeoffChoices, action: b.actionDecision.choices },
-        ]),
-      ),
-      flatTradeoff: draft.tradeoff.choices,
-      flatAction: draft.actionDecision.choices,
-    };
+    const payload = buildBroadReviewRequest(draft, activeBoundaries, constructions);
     const completion = await getLlmClient().chat.completions.create(
       {
         model: getLlmModel(),
         messages: [
           { role: "system", content: system },
-          { role: "user", content: JSON.stringify(payload) },
+          { role: "user", content: serializeBroadReviewRequest(payload) },
         ],
         temperature: LLM_REVIEW_TEMPERATURE,
         top_p: LLM_REVIEW_TOP_P,
@@ -1010,6 +1020,8 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
   let retryFeedback = "";
   /** The correction packet the second attempt received — recorded as evidence, with its digest. */
   let lastPacket: CorrectionPacket | null = null;
+  /** R2.29 — narrow boundary-review counters, accumulated across generation attempts. */
+  let boundaryMetrics: BoundaryReviewMetrics = emptyBoundaryMetrics();
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
     const llm = await generateWithLlm(input, constraints, retryFeedback);
@@ -1106,6 +1118,75 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         });
         return { ok: false, reason: "review_boundary_authority_failed" };
       }
+
+      // ---------------------------------------------------------------------
+      // R2.29 — NARROW BOUNDARY REVIEW FIRST. THE BROAD REVIEWER IS SECONDARY.
+      //
+      // R2.28 measured the broad reviewer receiving `c1_verify`, writing "One patient is treated
+      // without verification, risking safety" into its own detail fields, and returning
+      // `boundaryCompliant: true` with `overallVerdict: accept`. Four booleans carried fourteen
+      // choices and nothing carried the two resulting world states, so no derivation could see it.
+      //
+      // The narrow stage asks one question per (boundary × surface) pair, requires a same-surface
+      // evidence excerpt for every answer, and derives the verdict on the SERVER. The broad reviewer
+      // does not run at all unless this passes, so it can never convert a boundary reject into an
+      // accept.
+      // ---------------------------------------------------------------------
+      const boundaryStage = await runBoundaryReviewStage(
+        { review: (s, a) => reviewBoundarySurfaces(s, a), log: (outcome, code, extra) => logGenOutcome(outcome, code, extra) },
+        {
+          draft: llm.draft,
+          constructions: llm.constructions,
+          boundaries: frozen.confirmedBoundaries,
+          boundaryProvenance,
+          boundaryProvenanceSha256: provenanceSha,
+          scenarioSha256: frozen.scenarioSha256,
+          reviewSubjectSha256: subjectSha,
+          language: input.locale,
+          generationAttemptId: `gen${attempt}`,
+          caseId: frozen.caseId,
+        },
+      );
+      boundaryMetrics = accumulateBoundaryMetrics(boundaryMetrics, boundaryStage);
+      logGenOutcome("boundary_review_stage", boundaryStage.codes[0], {
+        reviewSubjectSha256: subjectSha,
+        boundaryProvenanceSha256: provenanceSha,
+        boundaryMode: boundaryProvenance.boundaryMode,
+        boundaryReviewOutcome: boundaryStage.outcome,
+        boundaryReviewSubjectSha256: boundaryStage.boundaryReviewSubjectSha256 ?? undefined,
+        surfaceMapSha256: boundaryStage.surfaceMapSha256 ?? undefined,
+        boundaryReviewCalls: boundaryStage.calls,
+        boundaryReviewReruns: boundaryStage.reruns,
+        boundaryMetrics,
+        broadReviewStarted: boundaryStage.broadReviewAllowed,
+        ...(genCaptureContent ? { boundaryReviewEvidence: boundaryStage.evidences, violations: boundaryStage.violations, uncertainties: boundaryStage.uncertainties } : {}),
+      });
+
+      if (boundaryStage.outcome === "boundary_review_reject") {
+        // A GROUNDED violation is a generator content defect. The server authors the correction from
+        // the per-surface findings; the reviewer never writes a retry instruction.
+        const resolved = resolveRejection(boundaryStage.findings)!;
+        const packet = buildCorrectionPacket(attempt, resolved.primaryCode, resolved.findings, immutableContext(input, constraints));
+        const fb = renderCorrectionPacket(packet);
+        lastPacket = packet;
+        logGenOutcome(`gate_level_${resolved.primaryLevel}`, resolved.primaryCode, {
+          gate: resolved.primaryGate,
+          level: resolved.primaryLevel,
+          defectCodes: resolved.defectCodes,
+          findings: resolved.findings,
+          evidenceSources: resolved.evidenceSources,
+          correctionPacketSha256: packetDigest(packet),
+          boundaryReviewSubjectSha256: boundaryStage.boundaryReviewSubjectSha256 ?? undefined,
+          ...captured({ scenario: llm.draft, retryFeedback: fb }),
+          ...(genCaptureContent ? { correctionPacket: packet, violations: boundaryStage.violations } : {}),
+        });
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        retryFeedback = fb;
+        continue;
+      }
+      if (boundaryStage.outcome === "boundary_review_inconclusive") return { ok: false, reason: "boundary_review_inconclusive" };
+      if (boundaryStage.outcome === "boundary_reviewer_terminal_failure") return { ok: false, reason: "boundary_reviewer_terminal_failure" };
+      if (boundaryStage.outcome === "boundary_review_authority_failure") return { ok: false, reason: "boundary_review_authority_failure" };
 
       let review: ReviewOutcome | null = null;
       let terminal: { reason: GenerationFailureReason } | null = null;

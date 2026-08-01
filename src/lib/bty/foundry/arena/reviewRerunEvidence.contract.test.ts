@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { deriveStabilityMetrics, evaluateStabilityVerdict, type CaseEvidence } from "@/domain/foundry/arena-draft/stabilityVerdict";
 import { classifyReason } from "./liveEvaluation";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
-import { providerJson, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
+import { providerJson, acceptReview, isReviewRequest, isBoundaryReviewRequest, compliantBoundaryReview } from "@/domain/foundry/arena-draft/providerDto.fixture";
 
 /**
  * R2.25 — EVIDENCE, RETRY AUTHORITY AND AGGREGATION.
@@ -380,6 +380,8 @@ describe("R2.27 — boundary provenance reaches the reviewer, or nothing does", 
   it("1/20/21. a boundary-bearing case carries the exact id and text into the review request", async () => {
     const requests: string[] = [];
     mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      // R2.29 — the narrow boundary review runs first; this test measures the BROAD request.
+      if (isBoundaryReviewRequest(p)) return envelope(compliantBoundaryReview(p));
       if (isReview(p)) {
         requests.push(p.messages?.[1]?.content ?? "");
         return envelope(groundedReviewJson(["c1_verify"]));
