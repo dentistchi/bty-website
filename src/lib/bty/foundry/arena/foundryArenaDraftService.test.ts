@@ -19,6 +19,7 @@ import {
   regenerateArenaDraft,
   saveArenaDraftEdits,
   saveDraftBoundary,
+  saveDraftBoundaryScope,
 } from "./foundryArenaDraftService";
 import type { PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
@@ -662,5 +663,90 @@ describe("createOrOpenArenaDraftShell — ATOMIC one-shell contract (R5B1A.1)", 
     const regen = await regenerateArenaDraft(admin, OWNER, created.value.row.id, "en");
     expect(regen.ok).toBe(true);
     expect(tables.foundry_arena_scenario_drafts.length).toBe(1); // still exactly one row
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.23D — Host ACTIVE-BOUNDARY scoping. Owner-scoped, stale-guarded, and the server never
+// selects, trims or reorders: an out-of-range or unknown selection is rejected with its exact
+// reason so the Host corrects it deliberately.
+// ---------------------------------------------------------------------------
+
+const B5 = B_CON(["Verify identity first", "Never disclose private data", "Report incidents in shift", "Approve overtime first", "Client data stays managed"]);
+const ID = (n: number) => B5.constraints[n].id;
+
+describe("saveDraftBoundaryScope — Host active-boundary selection (R2.23D)", () => {
+  const seeded = (over: Record<string, unknown> = {}) =>
+    seedDraft({ guided_answers: { ...guided, practiceBoundary: B5, ...over } } as never);
+
+  it("16/17. persists the EXACT selected ids and bumps revision", async () => {
+    const { admin, tables } = seeded();
+    const r = await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(1), ID(3)], 2);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.row.guided_answers.practiceBoundaryScope?.activeIds).toEqual([ID(1), ID(3)]);
+      expect(r.value.row.guided_answers.practiceBoundaryScope?.confirmed).toBe(true);
+      expect(r.value.row.revision).toBe(3);
+    }
+    // 22/26. The available boundaries are untouched — nothing summarised, reordered or dropped.
+    const stored = tables.foundry_arena_scenario_drafts[0].guided_answers as Record<string, unknown>;
+    expect(stored.practiceBoundary).toEqual(B5);
+  });
+
+  it("23. it rides inside guided_answers beside practiceSetupVersion — NO migration", async () => {
+    const { admin, tables } = seeded();
+    await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(0)], 2);
+    const stored = tables.foundry_arena_scenario_drafts[0].guided_answers as Record<string, unknown>;
+    expect(Object.keys(stored)).toContain("practiceBoundaryScope");
+    expect(Object.keys(stored)).toContain("practiceBoundary");
+    // The row's own columns are unchanged — only the JSONB value moved.
+    expect(Object.keys(tables.foundry_arena_scenario_drafts[0])).not.toContain("boundary_scope");
+  });
+
+  it("15. more than three is REJECTED, never trimmed to three", async () => {
+    const { admin, tables } = seeded();
+    const r = await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(0), ID(1), ID(2), ID(3)], 2);
+    expect(r).toMatchObject({ ok: false, reason: "too_many_active_boundaries" });
+    expect((tables.foundry_arena_scenario_drafts[0].guided_answers as Record<string, unknown>).practiceBoundaryScope).toBeUndefined();
+  });
+
+  it("16b. an unknown id, a non-array body and an empty selection are each rejected", async () => {
+    const { admin } = seeded();
+    expect(await saveDraftBoundaryScope(admin, OWNER, "d1", ["c9_invented"], 2)).toMatchObject({ ok: false, reason: "unknown_active_boundary" });
+    expect(await saveDraftBoundaryScope(admin, OWNER, "d1", "not-an-array", 2)).toMatchObject({ ok: false, reason: "unknown_active_boundary" });
+    expect(await saveDraftBoundaryScope(admin, OWNER, "d1", [], 2)).toMatchObject({ ok: false, reason: "missing_required_active_boundary" });
+  });
+
+  it("scoping requires a CONFIRMED boundary to scope", async () => {
+    const { admin } = seedDraft();
+    expect(await saveDraftBoundaryScope(admin, OWNER, "d1", ["c1"], 2)).toMatchObject({ ok: false, reason: "boundary_confirmation_required" });
+  });
+
+  it("26/38-41. only the owner may scope — another Host and a stale revision are both refused", async () => {
+    const { admin } = seeded();
+    expect(await saveDraftBoundaryScope(admin, OTHER, "d1", [ID(0)], 2)).toMatchObject({ ok: false, reason: "arena_draft_not_found" });
+    expect(await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(0)], 1)).toMatchObject({ ok: false, reason: "stale_revision" });
+  });
+
+  it("20. a changed selection invalidates the unapproved generated scenario", async () => {
+    const { admin, tables } = seeded();
+    await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(0)], 2);
+    const r = await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(2)], 3);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.invalidated).toBe(true);
+    expect(tables.foundry_arena_scenario_drafts[0].scenario_draft).toBeNull();
+  });
+
+  it("23/24/25. editing the BOUNDARY afterwards invalidates the confirmation without losing the choice", async () => {
+    const { admin } = seeded();
+    await saveDraftBoundaryScope(admin, OWNER, "d1", [ID(0), ID(1)], 2);
+    // The Manager rewords one rule. The prior selection is preserved but no longer confirmed.
+    const reworded = { ...B5, constraints: B5.constraints.map((c, i) => (i === 4 ? { ...c, statement: "Client data stays in the managed environment" } : c)) };
+    const r = await saveDraftBoundary(admin, OWNER, "d1", reworded, 3);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.row.guided_answers.practiceBoundaryScope?.confirmed).toBe(false);
+      expect(r.value.row.guided_answers.practiceBoundaryScope?.activeIds).toEqual([ID(0), ID(1)]);
+    }
   });
 });

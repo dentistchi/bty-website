@@ -12,6 +12,10 @@ import type { AudienceType } from "@/domain/foundry/module/module-builder";
 import { ARENA_PRACTICE_COPY, AUDIENCE_LABELS, type ArenaPracticeCopy, type Locale } from "./arenaPracticeCopy";
 import { ArenaScenarioPreview } from "./ArenaScenarioPreview";
 import { ArenaPracticePlayer } from "@/components/bty-arena/practice/ArenaPracticePlayer";
+import { BoundaryScopePanel } from "./BoundaryScopePanel";
+import { resolvePracticeReadiness, type PracticeReadiness } from "@/domain/foundry/arena-draft/practiceReadiness";
+import type { PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 
 /**
  * Foundry Guided Arena Builder — the in-app, iPhone-first guided flow.
@@ -42,6 +46,11 @@ type ClientDraft = {
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
   revision: number;
+  /** R2.23D — the setup surface needs the confirmed boundary and the Host's active selection. */
+  guided_answers?: {
+    practiceBoundary?: PracticeBoundary;
+    practiceBoundaryScope?: PracticeBoundaryScope;
+  };
 };
 
 type Phase = "loading" | "error" | "gone" | "no_module" | "summary" | "setup" | "q1" | "q2" | "generating" | "editor";
@@ -71,6 +80,10 @@ export function ArenaPracticeFlow({
   const [genSource, setGenSource] = useState<"ai" | "template" | "edited" | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [genError, setGenError] = useState(false);
+  // R2.23D — the setup surface reads readiness from ONE domain resolver, never from local rules.
+  const [setupDraft, setSetupDraft] = useState<ClientDraft | null>(null);
+  const [scopeSaving, setScopeSaving] = useState(false);
+  const [scopeSaveError, setScopeSaveError] = useState(false);
 
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -152,6 +165,7 @@ export function ArenaPracticeFlow({
                 // generation-retry error. The boundary editor arrives in R5B2.
                 setDraftId(d.draft.id);
                 setRevision(d.draft.revision);
+                setSetupDraft(d.draft);
                 setPhase("setup");
                 return;
               }
@@ -177,6 +191,44 @@ export function ArenaPracticeFlow({
     setGenError(false);
     setPhase("q1");
   }, []);
+
+  /**
+   * R2.23D — persist the Host's ACTIVE-boundary selection. The server is the authority: it
+   * validates, rejects (never trims) and returns canonical state, which replaces the local copy so
+   * the screen can never drift from what is stored.
+   */
+  const saveBoundaryScope = useCallback(
+    async (activeBoundaryIds: string[]) => {
+      if (!draftId || scopeSaving) return;
+      setScopeSaving(true);
+      setScopeSaveError(false);
+      try {
+        const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/boundary-scope`, {
+          method: "PUT",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activeBoundaryIds, expectedRevision: revision }),
+        });
+        if (!res.ok) {
+          setScopeSaveError(true);
+          return;
+        }
+        const data = (await res.json()) as { draft?: ClientDraft };
+        if (!data.draft) {
+          setScopeSaveError(true);
+          return;
+        }
+        setSetupDraft(data.draft);
+        setRevision(data.draft.revision);
+      } catch {
+        setScopeSaveError(true);
+      } finally {
+        setScopeSaving(false);
+      }
+    },
+    [draftId, revision, scopeSaving],
+  );
 
   const q1Ready = q1 !== null && (q1 !== "other" || q1Custom.trim().length > 0);
   const q2Ready = q2.trim().length > 0;
@@ -218,6 +270,7 @@ export function ArenaPracticeFlow({
         // editor (R5B2) replaces the Q1/Q2 step; generation happens after the boundary is set.
         setDraftId(data.draft.id);
         setRevision(data.draft.revision);
+        setSetupDraft(data.draft);
         setPhase("setup");
         return;
       }
@@ -393,9 +446,16 @@ export function ArenaPracticeFlow({
     return shell(<HonestState title={t.genericError} lead={t.loadError} />);
 
   if (phase === "setup" && source) {
-    // Interim in-shell Practice-setup surface (Slice 3.2I-R5B1). A canonical shell is loaded
-    // but not generated yet. Honest state — no "couldn't generate" error, no raw codes. The
-    // 3-mode boundary editor replaces this in R5B2 without changing the route or shell contract.
+    // In-shell Practice setup (Slice 3.2I-R5B1, completed R2.23D). A canonical shell is loaded but
+    // not generated yet. Honest state — never a "couldn't generate" error and never a raw code.
+    //
+    // R2.23C made generation block once four or more boundaries are confirmed and gave the Host no
+    // way out; this surface is that way out. Readiness comes from the domain resolver, so the
+    // screen cannot disagree with the server about why generation is unavailable.
+    const readiness: PracticeReadiness = resolvePracticeReadiness(
+      setupDraft?.guided_answers?.practiceBoundary,
+      setupDraft?.guided_answers?.practiceBoundaryScope,
+    );
     return shell(
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
@@ -406,8 +466,17 @@ export function ArenaPracticeFlow({
           <SummaryRow label={t.labelSourceTraining} value={source.event_title} />
           {source.expected_behavior ? <SummaryRow label={t.labelExpected} value={source.expected_behavior} /> : null}
         </dl>
+
+        <BoundaryScopePanel
+          readiness={readiness}
+          copy={t}
+          saving={scopeSaving}
+          saveError={scopeSaveError}
+          onConfirm={saveBoundaryScope}
+        />
+
         <p className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
-          {t.setupPending}
+          {readiness.canGenerate ? t.boundaryScopeReady : t.setupPending}
         </p>
       </div>,
     );

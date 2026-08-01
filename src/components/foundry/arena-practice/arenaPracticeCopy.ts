@@ -22,10 +22,19 @@ export type ArenaPracticeCopy = {
   // because the reason is that a situation with too many rules at once stops teaching anything.
   boundaryScopeTitle: string;
   boundaryScopeHint: string;
-  boundaryScopeRemaining: string;
-  boundaryScopeRequired: string;
-  boundaryScopeTooMany: string;
-  boundaryScopeChanged: string;
+  boundaryScopeCount: (n: number, max: number) => string;
+  boundaryScopeConfirm: string;
+  boundaryScopeChange: string;
+  boundaryScopeAllActive: string;
+  boundaryScopeAnother: string;
+  boundaryScopeMaxReached: string;
+  boundaryScopeConfirmed: string;
+  boundaryScopeChangedNotice: string;
+  boundaryScopeUnknownNotice: string;
+  boundaryScopeSaving: string;
+  boundaryScopeSaveError: string;
+  boundaryScopeInactive: string;
+  boundaryScopeReady: string;
 
   // Slice 3.2I-R5B1 — interim shell setup surface (boundary editor arrives in R5B2)
   setupTitle: string;
@@ -234,12 +243,21 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     genericError: "Something went wrong. Please retry.",
     sensitiveWarning: "Possible personal or sensitive details — please review before saving.",
 
-    boundaryScopeTitle: "Which boundaries does this situation rehearse?",
-    boundaryScopeHint: "Choose up to 3. Create another practice situation for the rest.",
-    boundaryScopeRemaining: "The boundaries you do not choose stay available.",
-    boundaryScopeRequired: "Choose up to 3 boundaries before generating this situation.",
-    boundaryScopeTooMany: "Choose no more than 3 for one situation.",
-    boundaryScopeChanged: "The boundaries changed. Choose again for this situation.",
+    boundaryScopeTitle: "Choose up to 3 boundaries",
+    boundaryScopeHint: "Select the boundaries this practice situation will rehearse.",
+    boundaryScopeCount: (n, max) => `${n} of ${max} selected`,
+    boundaryScopeConfirm: "Confirm boundaries",
+    boundaryScopeChange: "Change selection",
+    boundaryScopeAllActive: "All confirmed boundaries are active for this practice.",
+    boundaryScopeAnother: "Create another practice situation to rehearse different boundaries.",
+    boundaryScopeMaxReached: "You can choose up to 3. Unselect one to choose another.",
+    boundaryScopeConfirmed: "These boundaries are active for this practice situation.",
+    boundaryScopeChangedNotice: "The confirmed boundaries changed. Choose again for this situation.",
+    boundaryScopeUnknownNotice: "A boundary you chose is no longer confirmed. Choose again.",
+    boundaryScopeSaving: "Saving…",
+    boundaryScopeSaveError: "That selection could not be saved. Please retry.",
+    boundaryScopeInactive: "Not in this practice situation",
+    boundaryScopeReady: "Ready to create this practice situation.",
   },
   ko: {
     eyebrow: "연습",
@@ -345,11 +363,20 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     genericError: "문제가 발생했습니다. 다시 시도해 주세요.",
     sensitiveWarning: "개인·민감 정보가 포함되었을 수 있습니다 — 저장 전에 확인하세요.",
 
-    boundaryScopeTitle: "이 상황에서 다룰 경계",
-    boundaryScopeHint: "최대 3개까지 선택하세요. 나머지는 별도의 연습 상황으로 만들 수 있습니다.",
-    boundaryScopeRemaining: "선택하지 않은 경계는 그대로 남아 있습니다.",
-    boundaryScopeRequired: "이 상황을 만들기 전에 경계를 최대 3개 선택하세요.",
-    boundaryScopeTooMany: "한 상황에는 3개까지만 선택할 수 있습니다.",
-    boundaryScopeChanged: "경계가 바뀌었습니다. 이 상황에서 다룰 경계를 다시 선택하세요.",
+    boundaryScopeTitle: "경계를 최대 3개 선택하세요",
+    boundaryScopeHint: "이 연습 상황에서 다룰 경계를 선택하세요.",
+    boundaryScopeCount: (n, max) => `${max}개 중 ${n}개 선택`,
+    boundaryScopeConfirm: "경계 확인",
+    boundaryScopeChange: "선택 변경",
+    boundaryScopeAllActive: "이 연습에는 확인된 모든 경계가 적용됩니다.",
+    boundaryScopeAnother: "다른 경계는 별도의 연습 상황으로 만들 수 있습니다.",
+    boundaryScopeMaxReached: "최대 3개까지 선택할 수 있습니다. 다른 경계를 선택하려면 하나를 해제하세요.",
+    boundaryScopeConfirmed: "이 연습 상황에는 아래 경계가 적용됩니다.",
+    boundaryScopeChangedNotice: "확인된 경계가 바뀌었습니다. 이 상황에서 다룰 경계를 다시 선택하세요.",
+    boundaryScopeUnknownNotice: "선택한 경계 중 확인되지 않은 항목이 있습니다. 다시 선택하세요.",
+    boundaryScopeSaving: "저장 중…",
+    boundaryScopeSaveError: "선택을 저장하지 못했습니다. 다시 시도해 주세요.",
+    boundaryScopeInactive: "이 연습 상황에는 적용되지 않음",
+    boundaryScopeReady: "이 연습 상황을 만들 준비가 되었습니다.",
   },
 };

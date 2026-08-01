@@ -141,7 +141,8 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
   it("29/33/46. NEITHER prior manifest matches — no earlier artifact can be attributed to this contract", () => {
     expect(manifestDigest(m)).not.toBe("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10"); // R2.23
     expect(manifestDigest(m)).not.toBe("64bcbcf9a0f08aa8a2b02c4eb8b8ecdff2b1b098e389e8ad6984964c39269b0d"); // R2.23A
-    expect(m.artifactSchemaVersion).toBe("r2.23c.1");
+    expect(manifestDigest(m)).not.toBe("d8f8e60cba1ec23388f988fc74a9e484b2d703ec58b3d8db46cacdd65f66ffe2"); // R2.23C
+    expect(m.artifactSchemaVersion).toBe("r2.23d.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {
@@ -173,6 +174,15 @@ describe("R2.23C — evidence authority is part of the contract", () => {
   it("47. changing the reviewer text bound changes the manifest", () => {
     expect(m.fieldBounds.reviewText).toBe(100);
     expect(digest({ ...m.fieldBounds, reviewText: 140 })).not.toBe(m.components.generatedFieldBounds);
+  });
+
+  it("R2.23D — the Host scope selector and readiness resolver are part of the contract", () => {
+    expect(m.evidenceAuthority.hostScopeSelectorExists).toBe(true);
+    expect(m.evidenceAuthority.readinessStates).toHaveLength(8);
+    expect(m.components.readinessResolver).toMatch(/^[0-9a-f]{64}$/);
+    // Removing the selector, or changing which states exist, changes the contract.
+    expect(digest({ ...m.evidenceAuthority, hostScopeSelectorExists: false })).not.toBe(m.components.evidenceAuthority);
+    expect(digest(["ready_no_boundaries"])).not.toBe(m.components.readinessResolver);
   });
 
   it("the evidence contract records that the projection follows acceptance, and nothing is auto-selected", () => {

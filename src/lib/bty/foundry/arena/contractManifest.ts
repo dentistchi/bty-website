@@ -54,6 +54,7 @@ import {
 } from "@/domain/foundry/arena-draft/types";
 import { MODEL_OUTPUT_CAP, measureProviderBudget, measureReviewBudget } from "./tokenBudget";
 import { BOUNDARY_SCOPE_CODES, MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
+import { READINESS_STATES } from "@/domain/foundry/arena-draft/practiceReadiness";
 
 /**
  * R2.23A — the GENERATED cardinality contract, digested into the manifest. A change here changes
@@ -76,6 +77,12 @@ export const EVIDENCE_AUTHORITY = {
   hostScopeRequiredAbove: MAX_ACTIVE_BOUNDARIES,
   automaticBoundarySelection: false,
   scopeCodes: BOUNDARY_SCOPE_CODES,
+  /**
+   * R2.23D — the Host scoping flow materially determines WHICH boundaries reach generation, so the
+   * readiness contract is part of the generation contract.
+   */
+  hostScopeSelectorExists: true,
+  readinessStates: READINESS_STATES,
 } as const;
 
 export const GENERATED_CARDINALITY = {
@@ -112,7 +119,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.23c.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.23d.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -208,6 +215,7 @@ export function buildContractManifest(head: string, model: string): ContractMani
       generatedCardinality: digest(GENERATED_CARDINALITY),
       evidenceAuthority: digest(EVIDENCE_AUTHORITY),
       boundaryScopeContract: digest({ max: MAX_ACTIVE_BOUNDARIES, codes: BOUNDARY_SCOPE_CODES }),
+      readinessResolver: digest(READINESS_STATES),
       generatedFieldBounds: digest(GENERATED_FIELD_BOUNDS),
       tokenBudget: digest({
         modelOutputCap: MODEL_OUTPUT_CAP,
