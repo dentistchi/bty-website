@@ -299,7 +299,9 @@ describe("PART 7 — no inline async TypeScript survives in the runner path", ()
 
   it("9/18. the provider preflight precedes every generation execution", () => {
     const preflight = script.lastIndexOf("scripts/practice-provider-preflight.ts");
-    const generation = script.indexOf("RUN_LIVE_EVAL=1");
+    // R2.23D-R3 — generation runs through the tracked orchestrator, never through Vitest. The
+    // FIRST mention is the artifact-authority grep in check 7; the invocation is the last.
+    const generation = script.lastIndexOf("npx --yes tsx scripts/practice-live-stability.ts");
     expect(preflight).toBeGreaterThan(-1);
     expect(generation).toBeGreaterThan(preflight);
     // …and `die` exits before reaching it.
@@ -339,7 +341,9 @@ describe("PART 6 — credential lifecycle", () => {
     expect(script).toMatch(/OUT_JSON='live_practice_stability_result/);
     expect(script).toMatch(/OUT_MD='live_practice_stability_review/);
     const collate = readFileSync(join(process.cwd(), "scripts/practice-stability-collate.ts"), "utf8");
-    expect(collate).not.toMatch(/LLM_API_KEY|OPENAI_API_KEY|Authorization/);
+    // Credential USE, not a substring: `requiresNewRunnerAuthorization` legitimately ends in
+    // "Authorization". The collator must read no credential and build no auth header.
+    expect(collate).not.toMatch(/LLM_API_KEY|OPENAI_API_KEY|Bearer |["']Authorization["']\s*:/);
   });
 });
 
@@ -355,5 +359,44 @@ describe("PART 9 — BOUNDARY 2, the mock runtime proof", () => {
 
   it("the mock env var is set ONLY in the boundary mode — never on the live path", () => {
     expect(script.split("BTY_PREFLIGHT_MOCK").length - 1).toBe(1);
+  });
+});
+
+describe("R2.23D-R3 — Vitest no longer holds live-execution authority", () => {
+  const script = runner();
+
+  it("the runner invokes NO test framework — the 5,000 ms default that killed R2.23D-R2 is gone", () => {
+    // Comments legitimately explain the defect; what matters is that nothing EXECUTES a test runner.
+    const code = script.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
+    expect(code).not.toMatch(/vitest/i);
+    expect(code).not.toContain("RUN_LIVE_EVAL");
+    expect(code).not.toContain("practice-generation.eval.test.ts");
+  });
+
+  it("generation runs through the tracked orchestrator, and collation through the tracked collator", () => {
+    expect(script).toContain("npx --yes tsx scripts/practice-live-stability.ts");
+    expect(script).toContain("npx --yes tsx scripts/practice-stability-collate.ts");
+    expect(script).toContain("--cases \"$CASE_IDS\"");
+  });
+
+  it("every documented exit code is handled, and 4/5 are reported distinctly", () => {
+    expect(script).toMatch(/EVAL_STATUS=\$\?/);
+    expect(script).toMatch(/4\) printf '  INFRASTRUCTURE FAILURE/);
+    expect(script).toMatch(/5\) printf '  ARTIFACT WRITE FAILURE/);
+  });
+
+  it("PART 8 — the version label is R2.23D-R3 everywhere, with no stale predecessor", () => {
+    expect(script).toContain("R2.23D-R3 PRACTICE STABILITY CANARY");
+    expect(script).toContain("Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R3");
+    expect(script).toMatch(/live_practice_stability_result\.r2\.23d-r3\.json/);
+    expect(script).toMatch(/live_practice_stability_review\.r2\.23d-r3\.md/);
+    const code = script.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
+    expect(code).not.toMatch(/R2\.23D-R1|R2\.23D-R2|r2\.23d-r1|r2\.23d-r2/);
+  });
+
+  it("an incomplete run is never labelled a gates pass", () => {
+    expect(script).toMatch(/if \[ "\$EVAL_STATUS" = '0' \]; then\n  printf 'STRUCTURAL \+ SEMANTIC GATES PASS/);
+    expect(script).toContain("RUN INCOMPLETE — NOT STABILITY EVIDENCE");
+    expect(script).not.toContain("PRODUCT QUALITY PASS");
   });
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * PRACTICE STABILITY-RUNNER SCRIPT BUILDER (Slice 3.2I-R5B1A.1-R2.23D-R1).
+ * PRACTICE STABILITY-RUNNER SCRIPT BUILDER (Slice 3.2I-R5B1A.1-R2.23D-R3).
  *
  * WHY THIS FILE EXISTS
  *
@@ -76,7 +76,7 @@ export function buildChecks(payload: {
     { label: "evidence authority", path: "manifest.components.evidenceAuthority", expected: j(c.evidenceAuthority), kind: "digest" },
     { label: "boundary scope contract", path: "manifest.components.boundaryScopeContract", expected: j(c.boundaryScopeContract), kind: "digest" },
     { label: "readiness resolver", path: "manifest.components.readinessResolver", expected: j(c.readinessResolver), kind: "digest" },
-    // R2.23D-R1 — sampling is compared by the digest the manifest ALREADY computes over
+    // R2.23D-R3 — sampling is compared by the digest the manifest ALREADY computes over
     // {generation, review, retry}. This replaces the runtime-specific object text that produced the
     // false mismatch, and it is strictly stronger: a retry-policy change moves it too.
     { label: "sampling (generation + review + retry)", path: "manifest.components.sampling", expected: j(c.sampling), kind: "digest" },
@@ -107,8 +107,8 @@ export function renderRunner(payload: Parameters<typeof buildChecks>[0], head: s
 
   return `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.23D-R1 IMMUTABLE STABILITY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R1
+# BTY Practice — R2.23D-R3 IMMUTABLE STABILITY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R3
 #
 # 3 fixed cases x 2 independent passes = 6 case executions, against the EXACT
 # production generation contract bound below.
@@ -139,8 +139,8 @@ EXPECTED_EXECUTIONS=6
 MIN_HEADROOM=1.25
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT_JSON='live_practice_stability_result.r2.23d-r1.json'
-OUT_MD='live_practice_stability_review.r2.23d-r1.md'
+OUT_JSON='live_practice_stability_result.r2.23d-r3.json'
+OUT_MD='live_practice_stability_review.r2.23d-r3.md'
 
 # Credential-boundary mode: runs every credential-free check and stops immediately
 # before the prompt. It ADDS a stop; it cannot skip a check or relax a comparison.
@@ -151,7 +151,7 @@ die() { printf '\\n%s\\n' "$*" >&2; exit 1; }
 mismatch() { printf '\\nCONTRACT MISMATCH · RUNNER STALE\\n  %s\\n    expected: %s\\n    actual:   %s\\n' "$1" "$2" "$3" >&2; exit 3; }
 step() { printf '  [%s] %s\\n' "$1" "$2"; }
 
-printf '\\nR2.23D-R1 PRACTICE STABILITY CANARY — PREFLIGHT\\n\\n'
+printf '\\nR2.23D-R3 PRACTICE STABILITY CANARY — PREFLIGHT\\n\\n'
 
 # ---- 1. repository ----------------------------------------------------------
 [ -d "$REPO/.git" ] || die "CONTRACT MISMATCH · RUNNER STALE
@@ -209,10 +209,15 @@ if g < lo or r < lo:
 step 6 "provider ${gen.measuredHeadroom.toFixed(3)}x and reviewer ${rev.measuredHeadroom.toFixed(3)}x headroom at generation time; both re-measured >= $MIN_HEADROOM"
 
 # ---- 7. immutable artifact authority ---------------------------------------
-grep -q 'writeImmutableArtifact' src/lib/bty/foundry/arena/practice-generation.eval.test.ts \\
-  || mismatch 'artifact authority' 'harness uses writeImmutableArtifact' 'absent'
-grep -q 'ARTIFACT COLLISION' src/lib/bty/foundry/arena/evalArtifact.ts \\
+# R2.23D-R3 — evidence is now PER CASE, written by the orchestrator the moment a
+# case terminates. R2.23D-R2 wrote one artifact after the whole loop, so a
+# mid-loop kill left nothing at all.
+grep -q 'writeCaseArtifact' scripts/practice-live-stability.ts \\
+  || mismatch 'artifact authority' 'orchestrator writes per-case artifacts' 'absent'
+grep -q 'ARTIFACT COLLISION' src/lib/bty/foundry/arena/caseArtifact.ts \\
   || mismatch 'artifact authority' 'fail-closed collision' 'absent'
+grep -q 'renameSync' src/lib/bty/foundry/arena/caseArtifact.ts \\
+  || mismatch 'artifact authority' 'atomic rename' 'absent'
 step 7 "immutable artifact authority present"
 
 # ---- 8. c01 carries no answer-key wording ----------------------------------
@@ -257,7 +262,7 @@ step 11 "preflight complete"
 if [ "$CHECK_ONLY" = '1' ]; then
   printf '\\nPREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED\\n'
   # BOUNDARY 2 — prove the EXACT provider-preflight program this runner invokes compiles and runs
-  # end to end, against a mock transport, with no credential and no network. R2.23D-R1 shipped a
+  # end to end, against a mock transport, with no credential and no network. R2.23D-R3 shipped a
   # program nobody had ever executed; that is what let a CommonJS transform error reach an operator
   # who had already typed a key. The mock prints its own distinct marker and can never be mistaken
   # for a live pass.
@@ -282,7 +287,7 @@ cleanup() { unset LLM_API_KEY OPENAI_API_KEY || true; }
 trap cleanup EXIT INT TERM
 
 # ---- provider preflight: BOTH capability checks -----------------------------
-# A tracked entry point, not inline TypeScript. R2.23D-R1 embedded a top-level
+# A tracked entry point, not inline TypeScript. R2.23D-R3 embedded a top-level
 # await here; tsx compiles to CommonJS (package.json declares no "type"), which
 # cannot represent one, so the runner died AFTER the credential was entered and
 # BEFORE any request was sent. The program below is unit-tested and proven to run.
@@ -292,28 +297,45 @@ if ! npx --yes tsx scripts/practice-provider-preflight.ts; then
 fi
 
 # =============================================================================
-# EXECUTION — 3 cases x 2 independent passes
+# EXECUTION — 3 cases x 2 independent passes, via the TRACKED orchestrator
+#
+# Vitest no longer executes anything live. R2.23D-R2 ran the evaluation through
+# practice-generation.eval.test.ts, so Vitest's default 5,000 ms testTimeout killed
+# both passes at 5.01 s — against stage budgets of 120 s per request. The
+# orchestrator below owns the clock, writes one immutable artifact per case the
+# moment it terminates, and aborts every remaining case on an infrastructure
+# failure while letting a content failure continue.
 # =============================================================================
-for pass in $(seq 1 "$PASSES"); do
-  printf '\\nPASS %d of %d\\n' "$pass" "$PASSES"
-  RUN_LIVE_EVAL=1 \\
-  EVAL_CASE_IDS="$CASE_IDS" \\
-  EVAL_RUN_ID="$RUN_ID" \\
-  EVAL_PASS_ID="pass\${pass}" \\
-  EVAL_KIND='r2.23d-r1.stability' \\
-  npx vitest run src/lib/bty/foundry/arena/practice-generation.eval.test.ts --reporter=verbose \\
-    || printf '  pass %d recorded a failing gate — evidence was written before assertions\\n' "$pass"
-done
+printf '\\nEXECUTION\\n'
+set +e
+npx --yes tsx scripts/practice-live-stability.ts \\
+  --run-id "$RUN_ID" \\
+  --head "$EXPECT_HEAD" \\
+  --manifest "$EXPECT_MANIFEST" \\
+  --passes 'pass1,pass2' \\
+  --cases "$CASE_IDS"
+EVAL_STATUS=$?
+set -e
+case "$EVAL_STATUS" in
+  0) printf '  every scheduled case completed\\n' ;;
+  4) printf '  INFRASTRUCTURE FAILURE — remaining cases were aborted; evidence for completed cases is preserved\\n' ;;
+  5) printf '  ARTIFACT WRITE FAILURE — no evidence was preserved for the failing case\\n' ;;
+  *) printf '  evaluation exited with status %s\\n' "$EVAL_STATUS" ;;
+esac
 
-# =============================================================================
-# COLLATE — immutable artifacts are the authority
-# =============================================================================
 printf '\\nCOLLATING\\n'
+# The SIX case artifacts are the authority. A missing summary can no longer erase
+# completed case evidence, and an incomplete run is reported as incomplete.
 npx --yes tsx scripts/practice-stability-collate.ts \\
-  --run-id "$RUN_ID" --passes "$PASSES" --json "$OUT_JSON" --md "$OUT_MD"
+  --run-id "$RUN_ID" --passes 'pass1,pass2' --cases "$CASE_IDS" \\
+  --json "$OUT_JSON" --md "$OUT_MD" || true
 
 printf '\\n============================================================\\n'
-printf 'STRUCTURAL + SEMANTIC GATES PASS\\n'
+if [ "$EVAL_STATUS" = '0' ]; then
+  printf 'STRUCTURAL + SEMANTIC GATES PASS\\n'
+else
+  printf 'RUN INCOMPLETE — NOT STABILITY EVIDENCE\\n'
+fi
 printf 'HUMAN PRODUCT REVIEW REQUIRED\\n'
 printf '============================================================\\n'
 printf '  result:   %s\\n' "$OUT_JSON"

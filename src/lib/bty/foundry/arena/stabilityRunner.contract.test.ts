@@ -26,9 +26,10 @@ const PRIOR_RUNNERS = [
   "/tmp/r223c_live_practice_stability_canary.sh",
   "/tmp/r223d_live_practice_stability_canary.sh",
   "/tmp/r223d_r1_live_practice_stability_canary.sh",
+  "/tmp/r223d_r2_live_practice_stability_canary.sh",
 ];
 const RUNNER_R223 = PRIOR_RUNNERS[0];
-const RUNNER = "/tmp/r223d_r2_live_practice_stability_canary.sh";
+const RUNNER = "/tmp/r223d_r3_live_practice_stability_canary.sh";
 const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
 const runnerSource = (): string | null => (existsSync(RUNNER) ? readFileSync(RUNNER, "utf8") : null);
 
@@ -110,11 +111,15 @@ describe("R2.23A — cardinality and budget are part of what the runner binds", 
     if (existsSync(PRIOR_RUNNERS[4])) {
       expect(readFileSync(PRIOR_RUNNERS[4], "utf8")).toMatch(/^const r = await getLlmClient/m);
     }
+    // R2.23D-R2 ran the live evaluation through Vitest, whose 5,000 ms default killed both passes.
+    if (existsSync(PRIOR_RUNNERS[5])) {
+      expect(readFileSync(PRIOR_RUNNERS[5], "utf8")).toMatch(/npx vitest run src\/lib\/bty\/foundry\/arena\/practice-generation\.eval\.test\.ts/);
+    }
   });
 });
 
 describe(`runner file properties (${existsSync(RUNNER) ? "runner present — asserted" : "RUNNER ABSENT ON THIS MACHINE — file-level properties NOT asserted"})`, () => {
-  it("R2.23D-R1. the runner is byte-identical to what the tracked generator produces", () => {
+  it("R2.23D-R3. the runner is byte-identical to what the tracked generator produces", () => {
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false);
     // The runner on disk must be exactly what the tested builder emits for its own bound HEAD —
@@ -191,7 +196,8 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
     expect(src).toContain("PASSES=2");
     expect(src).toContain("EXPECTED_EXECUTIONS=6");
     for (const id of CANARY_CASES) expect(src).toContain(id);
-    expect(src).toContain('EVAL_PASS_ID="pass${pass}"');
+    // R2.23D-R3 — pass identity is a CLI argument to the tracked orchestrator, not a Vitest env var.
+    expect(src).toContain("--passes 'pass1,pass2'");
     expect(src).toContain("STRUCTURAL + SEMANTIC GATES PASS");
     expect(src).toContain("HUMAN PRODUCT REVIEW REQUIRED");
     expect(src).not.toContain("PRODUCT QUALITY PASS");
