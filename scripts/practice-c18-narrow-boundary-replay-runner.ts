@@ -6,7 +6,7 @@
  * the boundary reviewer is asked — including the surface map, which is the thing R2.28 proved was
  * missing. PREPARED in R2.29, deliberately not executed.
  *
- *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r229_c18_narrow_boundary_review_canary.sh
+ *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r236_c18_prerequisite_truth_replay_canary.sh
  *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --binding-json
  */
 import { writeFileSync, readFileSync } from "node:fs";
@@ -21,6 +21,9 @@ import {
   COMPLIANCE_RESULTS,
   NARROW_BOUNDARY_JSON_SCHEMA,
   VIOLATION_MECHANISMS,
+  GOVERNED_ACTION_STATUSES,
+  PREREQUISITE_STATUSES,
+  TEMPORAL_RELATIONS,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
@@ -49,6 +52,7 @@ import {
   narrowBoundarySubjectSha256,
 } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
+import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { buildC18Subject, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, CASE_ID } from "./practice-c18-boundary-replay";
 
 const REPO = "/Users/hanbit/Dev/btytrainingcenter/bty-app";
@@ -84,6 +88,7 @@ const narrowSubject = buildNarrowBoundarySubject({
   boundaryProvenanceSha256: boundaryProvenanceSha256(provenance),
   boundaries: broad.subject.confirmedBoundaries,
   surfaces,
+  draft: broad.subject.scenario as ArenaScenarioDraft,
   language: broad.subject.language,
   generationAttemptId: broad.subject.generationAttemptId,
   caseId: CASE_ID,
@@ -98,6 +103,8 @@ const runtime = [
   "src/domain/foundry/arena-draft/narrowBoundaryReview.ts",
   "src/domain/foundry/arena-draft/boundarySurfaces.ts",
   "src/domain/foundry/arena-draft/boundaryProvenance.ts",
+  "src/domain/foundry/arena-draft/boundaryContextSegments.ts",
+  "src/domain/foundry/arena-draft/boundarySemanticFrame.ts",
   "scripts/practice-c18-narrow-boundary-replay.ts",
   "scripts/practice-c18-boundary-replay.ts",
 ].map((f) => readFileSync(join(process.cwd(), f), "utf8")).join("\n");
@@ -140,6 +147,27 @@ const binding = {
     automaticTransportRetry: false,
   }),
   artifactVersionSha256: d(NARROW_REPLAY_ARTIFACT_VERSION),
+  // R2.36 — the CONTEXT the reviewer sees, the DECOMPOSITION of the rule, and what counts as
+  // prerequisite truth. A replay run under a different context map is answering a different
+  // question, and R2.35 measured exactly what that costs.
+  contextSegmentMapSha256: narrowSubject.contextSegmentMapSha256,
+  contextSegmentCount: narrowSubject.contextSegments.length,
+  openingPresent: narrowSubject.opening.trim().length > 0,
+  semanticFramesSha256: narrowSubject.semanticFramesSha256,
+  semanticFrameContractSha256: semanticFrameContractSha256(),
+  prerequisiteTruthContractSha256: d({
+    governedActionStatuses: GOVERNED_ACTION_STATUSES,
+    prerequisiteStatuses: PREREQUISITE_STATUSES,
+    temporalRelations: TEMPORAL_RELATIONS,
+    notEstablishedIsNeverViolation: true,
+    satisfiedCannotViolate: true,
+    failureMustConcernPrerequisite: true,
+  }),
+  evidenceLocalityContractSha256: d({
+    actionEvidenceSources: ["own_surface"],
+    prerequisiteEvidenceSources: ["own_surface", "parent_generated_state"],
+    fabricationIsAlwaysFatal: true,
+  }),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
   artifactSchemaVersion: NARROW_REPLAY_ARTIFACT_VERSION,
@@ -175,6 +203,13 @@ const CHECKS: Array<[string, string]> = [
   ["timeout owner", "timeoutOwnerSha256"],
   ["provider call budget", "callBudgetSha256"],
   ["artifact version", "artifactVersionSha256"],
+  ["context segment map", "contextSegmentMapSha256"],
+  ["context segment count", "contextSegmentCount"],
+  ["scenario opening present", "openingPresent"],
+  ["semantic frames", "semanticFramesSha256"],
+  ["semantic frame contract", "semanticFrameContractSha256"],
+  ["prerequisite truth contract", "prerequisiteTruthContractSha256"],
+  ["evidence locality contract", "evidenceLocalityContractSha256"],
   ["active boundary ids", "activeBoundaryIds"],
   ["boundary text", "boundaryText"],
   ["replay runtime", "replayRuntimeSha256"],
@@ -190,8 +225,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.34 BOUNDARY TRANSPORT DIAGNOSTIC CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.34
+# BTY Practice — R2.36 PREREQUISITE-TRUTH REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.36
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -233,7 +268,30 @@ const script = `#!/usr/bin/env bash
 #          provider-side cause was unknowable and a retry would have produced a
 #          second silent artifact.
 #
-# WHAT R2.34 CHANGES
+# WHAT R2.36 CHANGES
+#   * The reviewer is no longer handed one merged blob. Context arrives as
+#     LABELLED SEGMENTS (scenario opening, own surface, parent generated state,
+#     ancestor primary, branch escalation) and every excerpt must name the
+#     segment it came from. The server verifies the source, not just the text.
+#   * The scenario OPENING is always sent. R2.35 measured it absent, and
+#     primary[1] judged as a bare label in 3 of 3 live runs.
+#   * The boundary arrives DECOMPOSED into its prerequisite and its governed
+#     action, so "the prerequisite" is a clause both sides point at.
+#   * A violation must now state PREREQUISITE TRUTH: the governed action present
+#     on this surface's own text, a prerequisite explicitly_missing or
+#     contradicted (never merely not_established), an excerpt that genuinely
+#     concerns that prerequisite, and an ordering that puts the action first.
+#   * A claim that fails a truth gate is REFUTED, not fatal: the surface is
+#     demoted to uncertain and recorded, and the surviving violations still
+#     reject. Refusing the whole response would send the scenario back for a
+#     rerun, and a clean rerun would ship the real violation.
+#
+# WHAT R2.36 DOES NOT CLAIM
+#   The false negative at primary[1] is NOT fixed and remains UNMEASURED. Its
+#   own text names no unmet prerequisite, so the contract answers
+#   not_established — and silence is deliberately not a violation.
+#
+# WHAT R2.34 CHANGED
 #   * The error is BOUND. Status, provider code, retry-after, response state,
 #     failure layer, retriability and a sanitized cause chain are all recorded.
 #   * A transport failure is reported as provider_failure, never as

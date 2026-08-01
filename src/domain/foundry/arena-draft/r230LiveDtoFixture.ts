@@ -27,14 +27,16 @@
  * Pure domain: no I/O.
  */
 
-import type { NarrowBoundaryAssessment } from "./narrowBoundaryReview";
+// R2.36 — these captures predate the truth contract and keep the shape they were returned in.
+// See `legacyBoundaryDto` for why they are NOT retyped.
+import type { LegacyBoundaryAssessment } from "./legacyBoundaryDto";
 
 export const R230_LIVE_RUN_ID = "20260801T142606Z";
 export const R230_LIVE_ARTIFACT_SHA256 = "bd904d61412aa9c47832485c4e96b0b588210034a8251c701b64f3e4f407210d";
 export const R230_BOUNDARY_REVIEW_SUBJECT_SHA256 = "eeffd9ccf60c6d1d912ec72af79025d78dcebd79b104b8254e0b1d11372b3afe";
 
 /** Attempt 1 — 4 `applies` rows, all with `reason: ""`. finishReason `stop`, no truncation. */
-export const R230_LIVE_ATTEMPT_1: NarrowBoundaryAssessment[] = [
+export const R230_LIVE_ATTEMPT_1: LegacyBoundaryAssessment[] = [
     {
       boundaryId: "c1_verify",
       surfaceRef: "primary[0]",
@@ -158,7 +160,7 @@ export const R230_LIVE_ATTEMPT_1: NarrowBoundaryAssessment[] = [
 ];
 
 /** Attempt 2 — 3 `applies` rows, all with `reason: ""`. Byte-identical subject, temperature 0. */
-export const R230_LIVE_ATTEMPT_2: NarrowBoundaryAssessment[] = [
+export const R230_LIVE_ATTEMPT_2: LegacyBoundaryAssessment[] = [
     {
       boundaryId: "c1_verify",
       surfaceRef: "primary[0]",

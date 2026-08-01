@@ -65,6 +65,10 @@ import {
   APPLICABILITY_RESULTS,
   COMPLIANCE_RESULTS,
   VIOLATION_MECHANISMS,
+  GOVERNED_ACTION_STATUSES,
+  PREREQUISITE_STATUSES,
+  TEMPORAL_RELATIONS,
+  NARROW_SEGMENT_REF_MAX,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
   BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
@@ -77,6 +81,13 @@ import {
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { NARROW_BOUNDARY_SAMPLING, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
+import {
+  CONTEXT_SEGMENT_CODES,
+  CONTEXT_SEGMENT_VERSION,
+  OPENING_SEGMENT_REF,
+  SEGMENT_KINDS,
+} from "@/domain/foundry/arena-draft/boundaryContextSegments";
+import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import {
   BOUNDARY_REPORTABLE_OUTCOMES,
@@ -153,7 +164,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.34.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.36.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -312,6 +323,41 @@ export function buildContractManifest(head: string, model: string): ContractMani
         automaticTransportRetry: false,
       }),
       boundaryReplayArtifactVersion: digest(NARROW_REPLAY_ARTIFACT_VERSION),
+      // R2.36 — three new authorities, each digested separately so a change to the CONTEXT the
+      // reviewer sees, to how a RULE is decomposed, or to what counts as PREREQUISITE TRUTH is
+      // individually visible in a diff of the manifest.
+      boundaryContextSegmentation: digest({
+        version: CONTEXT_SEGMENT_VERSION,
+        kinds: SEGMENT_KINDS,
+        openingSegmentRef: OPENING_SEGMENT_REF,
+        codes: CONTEXT_SEGMENT_CODES,
+        openingAlwaysSent: true,
+      }),
+      boundarySemanticFrameContract: semanticFrameContractSha256(),
+      boundaryPrerequisiteTruth: digest({
+        governedActionStatuses: GOVERNED_ACTION_STATUSES,
+        prerequisiteStatuses: PREREQUISITE_STATUSES,
+        temporalRelations: TEMPORAL_RELATIONS,
+        // The rules a violation must clear, stated as data so a silent relaxation moves the digest.
+        notEstablishedIsNeverViolation: true,
+        satisfiedCannotViolate: true,
+        failureMustConcernPrerequisite: true,
+        governedActionMustBeOwnSurface: true,
+        inheritedStateRequiresOwnGovernedAction: true,
+      }),
+      boundaryEvidenceLocality: digest({
+        actionEvidenceSources: ["own_surface"],
+        prerequisiteEvidenceSources: ["own_surface", "parent_generated_state"],
+        segmentRefMax: NARROW_SEGMENT_REF_MAX,
+        fabricationIsAlwaysFatal: true,
+      }),
+      // A refuted claim is narrower than a refused response. That distinction decides whether a
+      // scenario is re-reviewed or blocked, so it belongs to the contract.
+      boundaryClaimRefutationPolicy: digest({
+        refutedClaimDemotesSurfaceToUncertain: true,
+        refutedClaimNeverEntersCorrectionPacket: true,
+        survivingViolationsStillReject: true,
+      }),
     },
     sampling: {
       generation: PRACTICE_SAMPLING.generation,

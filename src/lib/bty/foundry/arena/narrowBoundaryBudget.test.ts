@@ -8,7 +8,12 @@
 import { describe, expect, it } from "vitest";
 import { BUDGET_HEADROOM, MODEL_OUTPUT_CAP, measureNarrowBoundaryBudget } from "./tokenBudget";
 import { NARROW_BOUNDARY_SAMPLING } from "./narrowBoundaryContract";
-import { MAX_NARROW_ASSESSMENTS, NARROW_EVIDENCE_MAX, NARROW_REASON_MAX } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import {
+  MAX_NARROW_ASSESSMENTS,
+  NARROW_EVIDENCE_MAX,
+  NARROW_REASON_MAX,
+  NARROW_SEGMENT_REF_MAX,
+} from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { buildMaxNarrowBoundaryReview } from "@/domain/foundry/arena-draft/maxFixture";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
@@ -58,8 +63,10 @@ describe("narrow boundary-review budget", () => {
     expect(NARROW_EVIDENCE_MAX).toBeGreaterThan(0);
     expect(NARROW_REASON_MAX).toBeGreaterThan(0);
     for (const a of buildMaxNarrowBoundaryReview(false, "schema").assessments) {
-      expect(a.governedActionEvidence.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
-      expect(a.prerequisiteFailureEvidence.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
+      expect(a.actionEvidence.excerpt.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
+      expect(a.prerequisiteEvidence.excerpt.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
+      expect(a.actionEvidence.segmentRef.length).toBeLessThanOrEqual(NARROW_SEGMENT_REF_MAX);
+      expect(a.prerequisiteEvidence.segmentRef.length).toBeLessThanOrEqual(NARROW_SEGMENT_REF_MAX);
       expect(a.reason.length).toBeLessThanOrEqual(NARROW_REASON_MAX);
     }
   });

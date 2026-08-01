@@ -155,7 +155,11 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // R2.34 added transport observability and corrected the failure classification, so an R2.32
     // artifact cannot prove what an R2.34 artifact can.
     expect(manifestDigest(m)).not.toBe("5b2abf97a1de5074af0f47f6f63cc641757a1bd0a87e5253ff8926394c446463"); // R2.32
-    expect(m.artifactSchemaVersion).toBe("r2.34.1");
+    // R2.36 replaced location-only grounding with prerequisite TRUTH: the reviewer now receives a
+    // labelled, un-merged context and a decomposed rule, and every excerpt names its source. An
+    // R2.34 artifact answered a materially weaker question and cannot be attributed to this one.
+    expect(manifestDigest(m)).not.toBe("4a9d22712038dff94c5a49f064277d35c924e165ad27215dc3e4fd46f6ce5936"); // R2.34
+    expect(m.artifactSchemaVersion).toBe("r2.36.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

@@ -49,6 +49,7 @@ import type { SemanticReview } from "./semanticReview";
 import {
   NARROW_EVIDENCE_MAX,
   NARROW_REASON_MAX,
+  NARROW_SEGMENT_REF_MAX,
   type NarrowBoundaryReview,
 } from "./narrowBoundaryReview";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "./boundarySurfaces";
@@ -359,17 +360,22 @@ export function buildMaxSemanticReview(hangul = false, profile: FixtureProfile =
 }
 
 /**
- * The largest narrow boundary review the R2.29 contract permits: MAX_ACTIVE_BOUNDARIES boundaries ×
- * CANONICAL_SURFACE_COUNT surfaces, every string at its bound.
+ * The largest narrow boundary review the R2.36 contract permits: `boundaryCount` boundaries ×
+ * BRANCH_AWARE_REACHABLE_SURFACE_COUNT surfaces, every string at its bound.
  *
- * This is the fixture the narrow budget is sized from. Every character here is multiplied by 48, and
- * in Korean by roughly one token per character — which is exactly why the narrow evidence and reason
- * bounds are as tight as they are.
+ * This is the fixture the narrow budget is sized from. Every character here is multiplied by 36 at
+ * the 3-boundary bound, and in Korean by roughly one token per character — which is exactly why the
+ * evidence bound is what it is, and why prerequisite SATISFACTION and FAILURE share one reference.
  */
-export function buildMaxNarrowBoundaryReview(hangul = false, profile: FixtureProfile = "schema"): NarrowBoundaryReview {
-  const boundaries = maxBoundaryIds(MAX_ACTIVE_BOUNDARIES);
+export function buildMaxNarrowBoundaryReview(
+  hangul = false,
+  profile: FixtureProfile = "schema",
+  boundaryCount: number = MAX_ACTIVE_BOUNDARIES,
+): NarrowBoundaryReview {
+  const boundaries = maxBoundaryIds(boundaryCount);
   const evidenceCap = profile === "schema" ? NARROW_EVIDENCE_MAX : Math.round(NARROW_EVIDENCE_MAX * 0.6);
   const reasonCap = profile === "schema" ? NARROW_REASON_MAX : Math.round(NARROW_REASON_MAX * 0.6);
+  const refCap = profile === "schema" ? NARROW_SEGMENT_REF_MAX : Math.round(NARROW_SEGMENT_REF_MAX * 0.6);
   // The REACHABLE coordinates at their longest shape: `branch[N].resulting_world_state`. Flat
   // compatibility projections are excluded from the matrix, so they are excluded from the budget.
   const refs = [
@@ -389,10 +395,19 @@ export function buildMaxNarrowBoundaryReview(hangul = false, profile: FixturePro
         boundaryId,
         surfaceRef,
         applicability: "applies" as const,
+        governedActionStatus: "present" as const,
+        prerequisiteStatus: "explicitly_missing" as const,
+        temporalRelation: "action_before_prerequisite" as const,
         compliance: "violates" as const,
-        governedActionEvidence: filler(evidenceCap, `${boundaryId}${surfaceRef}g`, hangul),
-        prerequisiteFailureEvidence: filler(evidenceCap, `${boundaryId}${surfaceRef}p`, hangul),
         violationMechanism: "governed_action_without_prerequisite" as const,
+        actionEvidence: {
+          segmentRef: filler(refCap, `${boundaryId}${surfaceRef}sa`, false),
+          excerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}g`, hangul),
+        },
+        prerequisiteEvidence: {
+          segmentRef: filler(refCap, `${boundaryId}${surfaceRef}sp`, false),
+          excerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}p`, hangul),
+        },
         reason: filler(reasonCap, `${boundaryId}${surfaceRef}r`, hangul),
       })),
     ),

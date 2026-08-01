@@ -28,11 +28,20 @@ import {
 import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
 import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT, enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
+import { buildContextSegments } from "./boundaryContextSegments";
+import { buildSemanticFrames } from "./boundarySemanticFrame";
+import { GROUNDED_PRIMARY_TEXT, groundedPrimaryDraft } from "./primaryGroundedFixture";
 
 const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified before treatment" };
-const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draftFixture()));
-const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces };
+const draft = draftFixture();
+const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft));
+const segments = buildContextSegments(draft, surfaces);
+const frames = buildSemanticFrames([BOUNDARY]);
+const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, segments, frames };
 const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
+const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
+const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+const parText = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.text ?? "";
 
 /** Baseline: every surface `not_applicable`, each showing what it actually does. */
 const baseline = (): NarrowBoundaryAssessment[] =>
@@ -40,28 +49,63 @@ const baseline = (): NarrowBoundaryAssessment[] =>
     boundaryId: BOUNDARY.id,
     surfaceRef: s.coordinate,
     applicability: "not_applicable" as const,
+    governedActionStatus: "absent" as const,
+    prerequisiteStatus: "not_applicable" as const,
+    temporalRelation: "not_applicable" as const,
     compliance: "not_assessed" as const,
-    governedActionEvidence: s.text.slice(0, NARROW_EVIDENCE_MAX),
-    prerequisiteFailureEvidence: "",
     violationMechanism: "none" as const,
+    actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, NARROW_EVIDENCE_MAX) },
+    prerequisiteEvidence: { segmentRef: "", excerpt: "" },
     reason: "this surface does not treat a patient",
   }));
+
+/**
+ * An evidence reference that names WHERE the excerpt actually is. The tests never hand-pick a
+ * segment: if the surface's own text contains it, it is own evidence; otherwise it belongs to the
+ * inherited state. A quote that is in neither keeps its own ref and is caught by the validator.
+ */
+const evi = (ref: string, excerpt: string): { segmentRef: string; excerpt: string } => {
+  if (!excerpt) return { segmentRef: "", excerpt };
+  const inParentOnly =
+    !at(ref).text.toLowerCase().includes(excerpt.toLowerCase()) && parText(ref).toLowerCase().includes(excerpt.toLowerCase());
+  return { segmentRef: inParentOnly ? parRef(ref) : ownRef(ref), excerpt };
+};
+
+/** A violation's four truth answers, all consistent. Tests that need one wrong override it. */
+const VIOLATES = {
+  applicability: "applies",
+  governedActionStatus: "present",
+  prerequisiteStatus: "explicitly_missing",
+  temporalRelation: "action_before_prerequisite",
+  compliance: "violates",
+} as const;
 
 const withRow = (ref: string, over: Partial<NarrowBoundaryAssessment>) =>
   baseline().map((a) => (a.surfaceRef === ref ? { ...a, ...over } : a));
 
-/** A fully grounded violation at one surface. */
-const violationAt = (ref: string, mechanism: NarrowBoundaryAssessment["violationMechanism"] = "governed_action_without_prerequisite", governed?: string) =>
-  withRow(ref, {
+/**
+ * A FULLY SUPPORTED violation: own governed action, a prerequisite failure that is genuinely about
+ * the prerequisite, and an ordering that puts the action first. Every gate the R2.36 contract adds
+ * is satisfied, so what these tests exercise is the coverage and causal logic — not the truth gates.
+ */
+const violationAt = (ref: string, mechanism: NarrowBoundaryAssessment["violationMechanism"] = "governed_action_without_prerequisite", governed?: string) => {
+  // Quote the prerequisite from wherever the fixture actually states it.
+  const inherited = parText(ref);
+  const prereq = /verif/i.test(inherited)
+    ? { segmentRef: parRef(ref), excerpt: inherited.slice(0, NARROW_EVIDENCE_MAX) }
+    : { segmentRef: ownRef(ref), excerpt: at(ref).text.slice(0, NARROW_EVIDENCE_MAX) };
+  return withRow(ref, {
     applicability: "applies",
+    governedActionStatus: "present",
+    prerequisiteStatus: "explicitly_missing",
+    temporalRelation: "action_before_prerequisite",
     compliance: "violates",
-    governedActionEvidence: governed ?? at(ref).text.slice(0, NARROW_EVIDENCE_MAX),
-    prerequisiteFailureEvidence: at(ref).inheritedWorldState
-      ? at(ref).inheritedWorldState.slice(0, NARROW_EVIDENCE_MAX)
-      : at(ref).text.slice(0, NARROW_EVIDENCE_MAX),
     violationMechanism: mechanism,
+    actionEvidence: { segmentRef: ownRef(ref), excerpt: governed ?? at(ref).text.slice(0, NARROW_EVIDENCE_MAX) },
+    prerequisiteEvidence: prereq,
     reason: "treats without the two-identifier check",
   });
+};
 
 describe("[11][12][13] strict schema", () => {
   it("asks applicability and compliance separately, and has NO model-authored verdict", () => {
@@ -69,7 +113,19 @@ describe("[11][12][13] strict schema", () => {
     expect(props).toEqual(["assessments"]);
     const item = NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items;
     expect([...item.required].sort()).toEqual(
-      ["applicability", "boundaryId", "compliance", "governedActionEvidence", "prerequisiteFailureEvidence", "reason", "surfaceRef", "violationMechanism"].sort(),
+      [
+        "applicability",
+        "actionEvidence",
+        "boundaryId",
+        "compliance",
+        "governedActionStatus",
+        "prerequisiteEvidence",
+        "prerequisiteStatus",
+        "reason",
+        "surfaceRef",
+        "temporalRelation",
+        "violationMechanism",
+      ].sort(),
     );
     expect(item.additionalProperties).toBe(false);
     const flat = JSON.stringify(NARROW_BOUNDARY_JSON_SCHEMA);
@@ -90,8 +146,11 @@ describe("[11][12][13] strict schema", () => {
 
   it("bounds every text field, and the matrix is boundaries x REACHABLE surfaces", () => {
     const p = NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items.properties;
-    expect(p.governedActionEvidence.maxLength).toBe(NARROW_EVIDENCE_MAX);
-    expect(p.prerequisiteFailureEvidence.maxLength).toBe(NARROW_EVIDENCE_MAX);
+    expect(p.actionEvidence.properties.excerpt.maxLength).toBe(NARROW_EVIDENCE_MAX);
+    expect(p.prerequisiteEvidence.properties.excerpt.maxLength).toBe(NARROW_EVIDENCE_MAX);
+    // R2.36 — every excerpt carries the segment it came from, so locality is declared not inferred.
+    expect(p.actionEvidence.required).toEqual(["segmentRef", "excerpt"]);
+    expect(p.prerequisiteEvidence.required).toEqual(["segmentRef", "excerpt"]);
     expect(p.reason.maxLength).toBe(NARROW_REASON_MAX);
     expect(MAX_NARROW_ASSESSMENTS).toBe(MAX_ACTIVE_BOUNDARIES * BRANCH_AWARE_REACHABLE_SURFACE_COUNT);
     expect([...p.applicability.enum]).toEqual([...APPLICABILITY_RESULTS]);
@@ -110,7 +169,7 @@ describe("coverage over REACHABLE surfaces only", () => {
     const flat = all.find((s) => s.coordinate === "flat_action[1]")!;
     const r = validateNarrowBoundaryReview(
       { assessments: [...baseline(), { ...baseline()[0]!, surfaceRef: flat.coordinate }] },
-      { boundaries: [BOUNDARY], surfaces: [...surfaces, flat] },
+      { ...ctx, surfaces: [...surfaces, flat] },
     );
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.codes).toContain("boundary_review_unreviewable_surface");
@@ -133,10 +192,9 @@ describe("[9][14] silence is not a violation", () => {
     const r = validateNarrowBoundaryReview(
       {
         assessments: withRow("branch[1].tradeoff[0]", {
-          applicability: "applies",
-          compliance: "violates",
-          governedActionEvidence: "",
-          prerequisiteFailureEvidence: "",
+          ...VIOLATES,
+          actionEvidence: evi("branch[1].tradeoff[0]", ""),
+          prerequisiteEvidence: evi("branch[1].tradeoff[0]", ""),
           violationMechanism: "none",
           reason: "Does not address verification of identifiers.",
         }),
@@ -149,49 +207,53 @@ describe("[9][14] silence is not a violation", () => {
     expect(r.ok === false && r.codes).toContain("boundary_assessment_state_invalid");
   });
 
-  it("a violates row WITH a mechanism but no evidence still fails on the evidence rules", () => {
+  it("a violates row WITH a mechanism but no evidence is REFUTED, not accepted", () => {
+    // R2.36 — the response is intact; the CLAIM is not. Refusing the whole response here would send
+    // the scenario back for a rerun, and a clean rerun would ship a scenario nobody re-checked.
     const r = validateNarrowBoundaryReview(
       {
         assessments: withRow("branch[1].tradeoff[0]", {
-          applicability: "applies",
-          compliance: "violates",
-          governedActionEvidence: "",
-          prerequisiteFailureEvidence: "",
+          ...VIOLATES,
+          actionEvidence: evi("branch[1].tradeoff[0]", ""),
+          prerequisiteEvidence: evi("branch[1].tradeoff[0]", ""),
           violationMechanism: "governed_action_without_prerequisite",
           reason: "",
         }),
       },
       ctx,
     );
-    expect(r.ok).toBe(false);
-    const codes = r.ok === false ? r.codes : [];
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("unreachable");
+    const codes = r.refutations[0]!.codes;
     expect(codes).toContain("boundary_violation_governed_action_missing");
     expect(codes).toContain("boundary_violation_prerequisite_evidence_missing");
     // …and NOT on the reason, which this state does not require.
     expect(codes).not.toContain("boundary_reason_required_missing");
+    // The surface is left UNSETTLED, so the review can never pass on it.
+    expect(r.value.assessments.find((a) => a.surfaceRef === "branch[1].tradeoff[0]")!.compliance).toBe("uncertain");
   });
 
-  it("[10] a violation with NO governed-action evidence is malformed, never a reject", () => {
+  it("[10] a violation with NO governed-action evidence is never a reject", () => {
     const v = deriveBoundaryVerdict(
-      { assessments: withRow("branch[1].action[0]", { applicability: "applies", compliance: "violates", governedActionEvidence: "", prerequisiteFailureEvidence: "unverified", violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
+      { assessments: withRow("branch[1].action[0]", { ...VIOLATES, actionEvidence: evi("branch[1].action[0]", ""), prerequisiteEvidence: evi("branch[1].action[0]", "unverified"), violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
       ctx,
     );
-    expect(v.outcome).toBe("boundary_review_malformed");
+    expect(v.outcome).toBe("boundary_review_inconclusive");
   });
 
-  it("[11] a violation with NO prerequisite-failure evidence is malformed", () => {
+  it("[11] a violation with NO prerequisite-failure evidence is refuted", () => {
     const v = deriveBoundaryVerdict(
-      { assessments: withRow("branch[1].action[1]", { applicability: "applies", compliance: "violates", governedActionEvidence: "Immediately treat the second patient", prerequisiteFailureEvidence: "", violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
+      { assessments: withRow("branch[1].action[1]", { ...VIOLATES, actionEvidence: evi("branch[1].action[1]", "Immediately treat the second patient"), prerequisiteEvidence: evi("branch[1].action[1]", ""), violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
       ctx,
     );
-    expect(v.outcome).toBe("boundary_review_malformed");
-    if (v.outcome !== "boundary_review_malformed") throw new Error("unreachable");
-    expect(v.codes).toContain("boundary_violation_prerequisite_evidence_missing");
+    expect(v.outcome).toBe("boundary_review_inconclusive");
+    if (v.outcome !== "boundary_review_inconclusive") throw new Error("unreachable");
+    expect(v.refutedClaims[0]!.codes).toContain("boundary_violation_prerequisite_evidence_missing");
   });
 
   it("rejects the absence-of-mention phrase as evidence anywhere", () => {
     const r = validateNarrowBoundaryReview(
-      { assessments: withRow("branch[1].tradeoff[0]", { governedActionEvidence: "does not address verification of identifiers" }) },
+      { assessments: withRow("branch[1].tradeoff[0]", { actionEvidence: evi("branch[1].tradeoff[0]", "does not address verification of identifiers") }) },
       ctx,
     );
     expect(r.ok).toBe(false);
@@ -208,19 +270,19 @@ describe("[9][14] silence is not a violation", () => {
 
 describe("evidence grounding", () => {
   it("requires governedActionEvidence for not_applicable too — an evidenced answer, not a shrug", () => {
-    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { governedActionEvidence: "" }) }, ctx);
+    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { actionEvidence: evi("primary[0]", "") }) }, ctx);
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.codes).toContain("boundary_evidence_missing");
   });
 
   it("rejects evidence lifted from another surface", () => {
-    const r = validateNarrowBoundaryReview({ assessments: withRow("branch[1].action[1]", { governedActionEvidence: "Prepare a summary of events" }) }, ctx);
+    const r = validateNarrowBoundaryReview({ assessments: withRow("branch[1].action[1]", { actionEvidence: evi("branch[1].action[1]", "Prepare a summary of events") }) }, ctx);
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.codes).toContain("boundary_evidence_from_other_surface");
   });
 
   it("rejects evidence that merely repeats the boundary statement", () => {
-    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { governedActionEvidence: BOUNDARY.statement }) }, ctx);
+    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { actionEvidence: evi("primary[0]", BOUNDARY.statement) }) }, ctx);
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.codes).toContain("boundary_evidence_restates_boundary");
   });
@@ -232,10 +294,21 @@ describe("evidence grounding", () => {
     expect(v.violations[0]!.prerequisiteFailureEvidence).toContain("remains unverified");
   });
 
-  it("a non-violation that claims a prerequisite failure disagrees with itself", () => {
-    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { prerequisiteFailureEvidence: "Verify identifiers for both" }) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_applicability_compliance_mismatch");
+  it("a not_applicable row that claims the prerequisite is explicitly missing is an INVALID STATE", () => {
+    const r = validateNarrowBoundaryReview(
+      {
+        assessments: withRow("primary[0]", {
+          prerequisiteStatus: "explicitly_missing",
+          prerequisiteEvidence: evi("primary[0]", "Verify identifiers for both"),
+        }),
+      },
+      ctx,
+    );
+    // The parity table settles this one step earlier: `not_applicable` has no prerequisite question.
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("unreachable");
+    // …and it produces no violation, which is the property that matters.
+    expect(r.value.assessments.find((a) => a.surfaceRef === "primary[0]")!.compliance).toBe("not_assessed");
   });
 
   it("an applicability/compliance combination outside the table is an INVALID STATE", () => {
@@ -252,14 +325,33 @@ describe("evidence grounding", () => {
 
 describe("[15] server-derived verdict", () => {
   it("all settled → pass", () => {
-    const all = withRow("primary[0]", { applicability: "applies", compliance: "complies", reason: "verifies both before treating" });
+    const all = withRow("primary[0]", {
+      applicability: "applies",
+      governedActionStatus: "present",
+      prerequisiteStatus: "satisfied",
+      temporalRelation: "prerequisite_before_action",
+      compliance: "complies",
+      prerequisiteEvidence: evi("primary[0]", "Verify identifiers for both patients now"),
+      reason: "verifies both before treating",
+    });
     expect(deriveBoundaryVerdict({ assessments: all }, ctx).outcome).toBe("boundary_review_pass");
   });
 
   it("[1] one grounded violation → reject", () => {
-    const v = deriveBoundaryVerdict({ assessments: violationAt("primary[1]") }, ctx);
+    const v = deriveBoundaryVerdict({ assessments: violationAt("branch[1].action[1]") }, ctx);
     expect(v.outcome).toBe("boundary_review_reject");
     expect(producesCorrectionPacket(v)).toBe(true);
+  });
+
+  it("[1] the SAME claim at primary[1] is REFUSED — its own text names no unmet prerequisite", () => {
+    // The R2.35 false negative, stated as a property rather than tuned away: "Notify the families
+    // and proceed with one patient" says nothing about identifiers being unverified. Under this
+    // contract the prerequisite is `not_established`, and silence is not failure. Live detection at
+    // this surface remains UNMEASURED — see `primaryGroundedFixture`.
+    const v = deriveBoundaryVerdict({ assessments: violationAt("primary[1]") }, ctx);
+    expect(v.outcome).toBe("boundary_review_inconclusive");
+    if (v.outcome !== "boundary_review_inconclusive") throw new Error("unreachable");
+    expect(v.refutedClaims[0]!.codes).toContain("boundary_prerequisite_failure_ungrounded");
   });
 
   it("[7][8] applicability uncertainty → inconclusive, at the applicability level", () => {
@@ -274,7 +366,16 @@ describe("[15] server-derived verdict", () => {
 
   it("compliance uncertainty → inconclusive, at the compliance level", () => {
     const v = deriveBoundaryVerdict(
-      { assessments: withRow("branch[1].action[1]", { applicability: "applies", compliance: "uncertain", governedActionEvidence: "Immediately treat the second patient", reason: "order relative to the check is unstated" }) },
+      {
+        assessments: withRow("branch[1].action[1]", {
+          applicability: "applies",
+          governedActionStatus: "present",
+          prerequisiteStatus: "uncertain",
+          compliance: "uncertain",
+          actionEvidence: evi("branch[1].action[1]", "Immediately treat the second patient"),
+          reason: "order relative to the check is unstated",
+        }),
+      },
       ctx,
     );
     expect(v.outcome).toBe("boundary_review_inconclusive");
@@ -283,7 +384,7 @@ describe("[15] server-derived verdict", () => {
   });
 
   it("a violation OUTRANKS an uncertainty elsewhere", () => {
-    const mixed = violationAt("primary[1]").map((a) =>
+    const mixed = violationAt("branch[1].action[1]").map((a) =>
       a.surfaceRef === "branch[0].tradeoff[1]"
         ? { ...a, applicability: "uncertain" as const, reason: "the label does not say whether care means treatment" }
         : a,
@@ -293,26 +394,57 @@ describe("[15] server-derived verdict", () => {
 });
 
 describe("[15][16] earliest causal violation and descendant deduplication", () => {
+  /**
+   * These tests need a violation AT A PRIMARY, which requires that primary's own text to state the
+   * prerequisite is unmet — see `primaryGroundedFixture` for why the stock fixture cannot, and why
+   * that limitation is carried forward rather than engineered away.
+   */
+  const gDraft = groundedPrimaryDraft(draftFixture());
+  const gSurfaces = reviewableSurfaces(enumerateBoundarySurfaces(gDraft));
+  const gSegments = buildContextSegments(gDraft, gSurfaces);
+  const gCtx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces: gSurfaces, segments: gSegments, frames };
+  const gOwnRef = (ref: string) => gSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
+  const gParRef = (ref: string) => gSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+  const gParText = (ref: string) => gSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.text ?? "";
+  const gAt = (ref: string) => gSurfaces.find((x) => x.coordinate === ref)!;
+  const gEvi = (ref: string, excerpt: string) => {
+    if (!excerpt) return { segmentRef: "", excerpt };
+    const parentOnly = !gAt(ref).text.toLowerCase().includes(excerpt.toLowerCase()) && gParText(ref).toLowerCase().includes(excerpt.toLowerCase());
+    return { segmentRef: parentOnly ? gParRef(ref) : gOwnRef(ref), excerpt };
+  };
+  const gBaseline = (): NarrowBoundaryAssessment[] =>
+    gSurfaces.map((s) => ({
+      boundaryId: BOUNDARY.id,
+      surfaceRef: s.coordinate,
+      applicability: "not_applicable" as const,
+      governedActionStatus: "absent" as const,
+      prerequisiteStatus: "not_applicable" as const,
+      temporalRelation: "not_applicable" as const,
+      compliance: "not_assessed" as const,
+      violationMechanism: "none" as const,
+      actionEvidence: { segmentRef: gOwnRef(s.coordinate), excerpt: s.text.slice(0, NARROW_EVIDENCE_MAX) },
+      prerequisiteEvidence: { segmentRef: "", excerpt: "" },
+      reason: "this surface does not treat a patient",
+    }));
+
   /** primary[1] → branch[1].resulting_world_state → branch[1].action[1] */
   const chain = () => {
-    const rows = baseline();
+    const rows = gBaseline();
     const set = (ref: string, over: Partial<NarrowBoundaryAssessment>) => {
       const i = rows.findIndex((r) => r.surfaceRef === ref);
       rows[i] = { ...rows[i]!, ...over };
     };
     set("primary[1]", {
-      applicability: "applies",
-      compliance: "violates",
-      governedActionEvidence: "Notify the families and proceed with one patient",
-      prerequisiteFailureEvidence: "Notify the families and proceed with one patient",
+      ...VIOLATES,
+      actionEvidence: gEvi("primary[1]", GROUNDED_PRIMARY_TEXT),
+      prerequisiteEvidence: gEvi("primary[1]", "still unverified patient"),
       violationMechanism: "governed_action_without_prerequisite",
       reason: "treats before verifying",
     });
     set("branch[1].resulting_world_state", {
-      applicability: "applies",
-      compliance: "violates",
-      governedActionEvidence: "One patient was treated while the second patient remains unverified",
-      prerequisiteFailureEvidence: "the second patient remains unverified",
+      ...VIOLATES,
+      actionEvidence: gEvi("branch[1].resulting_world_state", "One patient was treated while the second patient remains unverified"),
+      prerequisiteEvidence: gEvi("branch[1].resulting_world_state", "the second patient remains unverified"),
       violationMechanism: "resulting_state_missing_prerequisite",
       reason: "state asserts treatment without the check",
     });
@@ -322,35 +454,33 @@ describe("[15][16] earliest causal violation and descendant deduplication", () =
   it("[15] an ASSERTED STATE that repeats its ancestor's mechanism is downstream, not a new instruction", () => {
     // The world state authorizes nothing the learner can pick; with the SAME mechanism as its
     // primary it only restates the violation already established upstream.
-    const rows = baseline();
+    const rows = gBaseline();
     const set = (ref: string, over: Partial<NarrowBoundaryAssessment>) => {
       const i = rows.findIndex((r) => r.surfaceRef === ref);
       rows[i] = { ...rows[i]!, ...over };
     };
     set("primary[1]", {
-      applicability: "applies",
-      compliance: "violates",
-      governedActionEvidence: "Notify the families and proceed with one patient",
-      prerequisiteFailureEvidence: "Notify the families and proceed with one patient",
+      ...VIOLATES,
+      actionEvidence: gEvi("primary[1]", GROUNDED_PRIMARY_TEXT),
+      prerequisiteEvidence: gEvi("primary[1]", "still unverified patient"),
       violationMechanism: "governed_action_without_prerequisite",
       reason: "treats before verifying",
     });
     set("branch[1].resulting_world_state", {
-      applicability: "applies",
-      compliance: "violates",
-      governedActionEvidence: "One patient was treated while the second patient remains unverified",
-      prerequisiteFailureEvidence: "the second patient remains unverified",
+      ...VIOLATES,
+      actionEvidence: gEvi("branch[1].resulting_world_state", "One patient was treated while the second patient remains unverified"),
+      prerequisiteEvidence: gEvi("branch[1].resulting_world_state", "the second patient remains unverified"),
       violationMechanism: "governed_action_without_prerequisite", // SAME mechanism as the ancestor
       reason: "restates the primary violation",
     });
-    const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
+    const v = deriveBoundaryVerdict({ assessments: rows }, gCtx);
     if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
     expect(v.downstreamViolations.map((x) => x.surfaceRef)).toEqual(["branch[1].resulting_world_state"]);
     expect(v.causalViolations.map((x) => x.surfaceRef)).toEqual(["primary[1]"]);
   });
 
   it("[16] a descendant with a DISTINCT mechanism is retained as its own finding", () => {
-    const v = deriveBoundaryVerdict({ assessments: chain() }, ctx);
+    const v = deriveBoundaryVerdict({ assessments: chain() }, gCtx);
     if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
     const world = v.violations.find((x) => x.surfaceRef === "branch[1].resulting_world_state")!;
     expect(world.downstreamOfPriorViolation).toBe(false);
@@ -363,21 +493,20 @@ describe("[15][16] earliest causal violation and descendant deduplication", () =
     const i = rows.findIndex((r) => r.surfaceRef === "branch[1].action[1]");
     rows[i] = {
       ...rows[i]!,
-      applicability: "applies",
-      compliance: "violates",
-      governedActionEvidence: "Immediately treat the second patient",
-      prerequisiteFailureEvidence: "the second patient remains unverified",
+      ...VIOLATES,
+      actionEvidence: gEvi("branch[1].action[1]", "Immediately treat the second patient"),
+      prerequisiteEvidence: gEvi("branch[1].action[1]", "the second patient remains unverified"),
       violationMechanism: "governed_action_without_prerequisite",
       reason: "newly treats the second, still-unverified patient",
     };
-    const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
+    const v = deriveBoundaryVerdict({ assessments: rows }, gCtx);
     if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
     expect(v.causalViolations.map((x) => x.surfaceRef)).toEqual(["primary[1]", "branch[1].resulting_world_state", "branch[1].action[1]"]);
     expect(v.downstreamViolations).toHaveLength(0);
   });
 
   it("marks the root violation earliestCausal, and keeps violations in surface order", () => {
-    const v = deriveBoundaryVerdict({ assessments: chain() }, ctx);
+    const v = deriveBoundaryVerdict({ assessments: chain() }, gCtx);
     if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
     expect(v.violations[0]!.surfaceRef).toBe("primary[1]");
     expect(v.violations[0]!.earliestCausal).toBe(true);

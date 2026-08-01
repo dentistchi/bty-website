@@ -32,24 +32,41 @@ import {
 import { NARROW_BOUNDARY_SYSTEM_PROMPT } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
+import { buildContextSegments } from "./boundaryContextSegments";
+import { buildSemanticFrames } from "./boundarySemanticFrame";
 
 const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified before treatment" };
-const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draftFixture()));
-const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces };
+const draft = draftFixture();
+const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft));
+const segments = buildContextSegments(draft, surfaces);
+const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, segments, frames: buildSemanticFrames([BOUNDARY]) };
 const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
+const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
+const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
 
 /** A valid assessment in a given state, at a given surface. */
 function rowFor(state: (typeof ASSESSMENT_STATES)[number], ref: string): NarrowBoundaryAssessment {
   const s = at(ref);
-  const gov = s.text.slice(0, 120);
+  const gov = s.text.slice(0, 90);
   const violates = state.compliance === "violates";
+  // A violation must be answerable: own action present, an unmet prerequisite stated where the
+  // fixture actually states it, and an ordering that puts the action first.
+  const inherited = s.inheritedWorldState;
+  const prereq = violates
+    ? /verif/i.test(inherited)
+      ? { segmentRef: parRef(ref), excerpt: inherited.slice(0, 90) }
+      : { segmentRef: ownRef(ref), excerpt: s.text.slice(0, 90) }
+    : { segmentRef: "", excerpt: "" };
   return {
     boundaryId: BOUNDARY.id,
     surfaceRef: ref,
     applicability: state.applicability,
+    governedActionStatus: violates ? "present" : state.applicability === "applies" ? "present" : "absent",
+    prerequisiteStatus: violates ? "explicitly_missing" : "not_applicable",
+    temporalRelation: violates ? "action_before_prerequisite" : "not_applicable",
     compliance: state.compliance,
-    governedActionEvidence: state.requiredEvidence.includes("governedActionEvidence") ? gov : "",
-    prerequisiteFailureEvidence: violates ? (s.inheritedWorldState || s.text).slice(0, 120) : "",
+    actionEvidence: { segmentRef: ownRef(ref), excerpt: state.requiredEvidence.includes("governedActionEvidence") ? gov : "" },
+    prerequisiteEvidence: prereq,
     violationMechanism:
       state.mechanismClass === "registered"
         ? "governed_action_without_prerequisite"
@@ -69,10 +86,13 @@ const matrixWith = (state: (typeof ASSESSMENT_STATES)[number], ref: string): Nar
           boundaryId: BOUNDARY.id,
           surfaceRef: s.coordinate,
           applicability: "not_applicable" as const,
+          governedActionStatus: "absent" as const,
+          prerequisiteStatus: "not_applicable" as const,
+          temporalRelation: "not_applicable" as const,
           compliance: "not_assessed" as const,
-          governedActionEvidence: s.text.slice(0, 120),
-          prerequisiteFailureEvidence: "",
           violationMechanism: "none" as const,
+          actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
+          prerequisiteEvidence: { segmentRef: "", excerpt: "" },
           reason: "",
         },
   );
@@ -182,10 +202,13 @@ describe("[2] reason authority", () => {
       boundaryId: BOUNDARY.id,
       surfaceRef: s.coordinate,
       applicability: "not_applicable" as const,
+      governedActionStatus: "absent" as const,
+      prerequisiteStatus: "not_applicable" as const,
+      temporalRelation: "not_applicable" as const,
       compliance: "not_assessed" as const,
-      governedActionEvidence: s.text.slice(0, 120),
-      prerequisiteFailureEvidence: "",
       violationMechanism: "none" as const,
+      actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
+      prerequisiteEvidence: { segmentRef: "", excerpt: "" },
       reason: "This surface does something else: it prepares a report.",
     }));
     expect(validateNarrowBoundaryReview({ assessments: rows }, ctx).ok).toBe(true);

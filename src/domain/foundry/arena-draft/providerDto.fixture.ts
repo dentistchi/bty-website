@@ -9,6 +9,7 @@
  */
 
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
+import { buildContextSegments } from "./boundaryContextSegments";
 import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
@@ -261,18 +262,26 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
   const req = JSON.parse(user?.content ?? "{}") as {
     constraints?: Array<{ id: string }>;
     surfaces?: Array<{ surfaceRef: string; text: string }>;
+    contextSegments?: Array<{ segmentRef: string; segmentKind: string; surfaceRef: string }>;
   };
   // R2.30 — applicability first. `not_applicable` with a same-surface excerpt is the cheapest
   // settled answer a transport double can give, and it exercises the real grounding rules.
+  // R2.36 — the double cites the SERVER-ASSIGNED segment, exactly as a real response must; a double
+  // that invented a reference would pass a check no live response could.
+  const ownRef = (surfaceRef: string) =>
+    (req.contextSegments ?? []).find((x) => x.surfaceRef === surfaceRef && x.segmentKind === "own_surface")?.segmentRef ?? "";
   const assessments = (req.constraints ?? []).flatMap((b) =>
     (req.surfaces ?? []).map((s) => ({
       boundaryId: b.id,
       surfaceRef: s.surfaceRef,
       applicability: "not_applicable",
+      governedActionStatus: "absent",
+      prerequisiteStatus: "not_applicable",
+      temporalRelation: "not_applicable",
       compliance: "not_assessed",
-      governedActionEvidence: s.text.slice(0, 120),
-      prerequisiteFailureEvidence: "",
       violationMechanism: "none",
+      actionEvidence: { segmentRef: ownRef(s.surfaceRef), excerpt: s.text.slice(0, 90) },
+      prerequisiteEvidence: { segmentRef: "", excerpt: "" },
       reason: "does not perform the governed action",
     })),
   );
@@ -286,16 +295,23 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
 export function compliantBoundaryReviewFor(draft: ArenaScenarioDraft, constraintIds: string[]): string {
   // Only the REACHABLE surfaces are ever handed to the reviewer (R2.30).
   const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft, {}));
+  // The same segment refs the server will assign, derived the same way.
+  const segments = buildContextSegments(draft, surfaces);
+  const ownRef = (surfaceRef: string) =>
+    segments.find((x) => x.sourceSurfaceRef === surfaceRef && x.segmentKind === "own_surface")?.segmentRef ?? "";
   return JSON.stringify({
     assessments: constraintIds.flatMap((boundaryId) =>
       surfaces.map((s) => ({
         boundaryId,
         surfaceRef: s.coordinate,
         applicability: "not_applicable",
+        governedActionStatus: "absent",
+        prerequisiteStatus: "not_applicable",
+        temporalRelation: "not_applicable",
         compliance: "not_assessed",
-        governedActionEvidence: s.text.slice(0, 120),
-        prerequisiteFailureEvidence: "",
         violationMechanism: "none",
+        actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
+        prerequisiteEvidence: { segmentRef: "", excerpt: "" },
         reason: "does not perform the governed action",
       })),
     ),

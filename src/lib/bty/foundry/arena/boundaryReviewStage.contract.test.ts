@@ -59,19 +59,35 @@ const args = (over: Partial<Parameters<typeof runBoundaryReviewStage>[1]> = {}) 
 /** Returns BOTH the parsed rows and the derived verdict, so evidence carries what the model said. */
 const responseFor = (subject: NarrowBoundarySubject, mutate: (a: ReturnType<typeof baseAssessments>) => unknown = (a) => a) => {
   const parsed = { assessments: mutate(baseAssessments(subject)) };
-  return { parsed, verdict: deriveBoundaryVerdict(parsed, { boundaries: subject.boundaries, surfaces: subject.surfaces }) };
+  return {
+    parsed,
+    verdict: deriveBoundaryVerdict(parsed, {
+      boundaries: subject.boundaries,
+      surfaces: subject.surfaces,
+      segments: subject.contextSegments,
+      frames: subject.semanticFrames,
+    }),
+  };
 };
 
 /** R2.30 — every reachable surface settles as `not_applicable`, each showing what it does. */
+const ownRefIn = (subject: NarrowBoundarySubject, ref: string) =>
+  subject.contextSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
+const parRefIn = (subject: NarrowBoundarySubject, ref: string) =>
+  subject.contextSegments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
+
 const baseAssessments = (subject: NarrowBoundarySubject) =>
   subject.surfaces.map((s) => ({
     boundaryId: subject.boundaries[0]!.id,
     surfaceRef: s.coordinate,
     applicability: "not_applicable" as const,
+    governedActionStatus: "absent" as const,
+    prerequisiteStatus: "not_applicable" as const,
+    temporalRelation: "not_applicable" as const,
     compliance: "not_assessed" as const,
-    governedActionEvidence: s.text.slice(0, 100),
-    prerequisiteFailureEvidence: "",
     violationMechanism: "none" as const,
+    actionEvidence: { segmentRef: ownRefIn(subject, s.coordinate), excerpt: s.text.slice(0, 90) },
+    prerequisiteEvidence: { segmentRef: "", excerpt: "" },
     // R2.32 — an EMPTY reason is correct here: the server owns this explanation.
     reason: "",
   }));
@@ -82,13 +98,21 @@ const asViolation = (subject: NarrowBoundarySubject, ref: string, mechanism = "g
     rows.map((a) => {
       if (a.surfaceRef !== ref) return a;
       const s = subject.surfaces.find((x) => x.coordinate === ref)!;
+      // A violation the truth gates accept: own action, an unmet prerequisite quoted where the
+      // fixture states it, and an ordering that puts the action first.
+      const usesInherited = /verif/i.test(s.inheritedWorldState);
       return {
         ...a,
         applicability: "applies" as const,
+        governedActionStatus: "present" as const,
+        prerequisiteStatus: "explicitly_missing" as const,
+        temporalRelation: "action_before_prerequisite" as const,
         compliance: "violates" as const,
-        governedActionEvidence: s.text.slice(0, 100),
-        prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 100),
         violationMechanism: mechanism as "governed_action_without_prerequisite",
+        actionEvidence: { segmentRef: ownRefIn(subject, ref), excerpt: s.text.slice(0, 90) },
+        prerequisiteEvidence: usesInherited
+          ? { segmentRef: parRefIn(subject, ref), excerpt: s.inheritedWorldState.slice(0, 90) }
+          : { segmentRef: ownRefIn(subject, ref), excerpt: s.text.slice(0, 90) },
         reason: "",
       };
     });
@@ -198,7 +222,7 @@ describe("[25][26] pipeline order", () => {
 
   it("[27] a reject SKIPS the broad review", async () => {
     const r = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, responseFor(s, asViolation(s, "primary[1]")))),
+      deps(async (s, a) => call(s, a, responseFor(s, asViolation(s, "branch[1].action[1]")))),
       args(),
     );
     expect(r.outcome).toBe("boundary_review_reject");
@@ -252,7 +276,7 @@ describe("[21][22] rerun authority in the stage", () => {
       seen.push(narrowBoundarySubjectSha256(s));
       return a === 1
         ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair"], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })
-        : call(s, a, responseFor(s, asViolation(s, "primary[1]")));
+        : call(s, a, responseFor(s, asViolation(s, "branch[1].action[1]")));
     });
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(2);

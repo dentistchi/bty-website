@@ -25,6 +25,7 @@ import { canonicalJson } from "@/domain/foundry/arena-draft/reviewSubject";
 import {
   classifyFailure,
   deriveBoundaryVerdict,
+  type NarrowReviewContext,
   type DerivedBoundaryVerdict,
   type NarrowBoundaryCode,
   NARROW_BOUNDARY_JSON_SCHEMA,
@@ -107,7 +108,14 @@ export async function reviewBoundarySurfaces(
   const now = deps?.now ?? (() => Date.now());
   const startedAt = now();
   const request = buildNarrowBoundaryRequest(subject);
-  const ctx = { boundaries: subject.boundaries, surfaces: subject.surfaces };
+  // R2.36 — the validator now needs the SAME labelled context and rule decomposition the model was
+  // sent, so "own text" and "the prerequisite" mean the same thing on both sides of the call.
+  const ctx: NarrowReviewContext = {
+    boundaries: subject.boundaries,
+    surfaces: subject.surfaces,
+    segments: subject.contextSegments,
+    frames: subject.semanticFrames,
+  };
 
   const subjectSha = narrowBoundarySubjectSha256(subject);
   const transport = emptyTransportEvidence(`${subjectSha.slice(0, 12)}#${attempt}`);

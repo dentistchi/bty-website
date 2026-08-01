@@ -45,6 +45,7 @@ const subject = buildNarrowBoundarySubject({
   boundaryProvenanceSha256: "p".repeat(64),
   boundaries: [C18_BOUNDARY],
   surfaces: enumerateBoundarySurfaces(C18_SCENARIO, {}),
+  draft: C18_SCENARIO,
   language: "en",
   generationAttemptId: "gen1",
   caseId: "c18",

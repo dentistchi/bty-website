@@ -65,6 +65,7 @@ describe("narrow boundary request", () => {
     boundaryProvenanceSha256: "p".repeat(64),
     boundaries: [BOUNDARY],
     surfaces: enumerateBoundarySurfaces(draft),
+    draft,
     language: "en",
     generationAttemptId: "gen1",
     caseId: "c18",
@@ -73,7 +74,18 @@ describe("narrow boundary request", () => {
   it("carries the active boundary count, the exact ids/text and the required assessment count", () => {
     const r = buildNarrowBoundaryRequest(subject);
     expect(r.activeBoundaryCount).toBe(1);
-    expect(r.constraints).toEqual([BOUNDARY]);
+    // R2.36 — the boundary arrives DECOMPOSED. The exact statement is still carried verbatim; the
+    // prerequisite and the governed action are named separately so "the prerequisite" is a clause
+    // the server and the model both point at, not a whole sentence each reads its own way.
+    expect(r.constraints).toEqual([
+      {
+        ...BOUNDARY,
+        ruleKind: "prerequisite_before_action",
+        prerequisite: "Two identifiers must be verified",
+        governedAction: "treatment",
+        temporalRequirement: "prerequisite_before_action",
+      },
+    ]);
     // R2.30 — only the TWELVE learner-reachable surfaces enter the matrix.
     expect(r.decisionSurfaceCount).toBe(12);
     expect(r.requiredAssessmentCount).toBe(12);

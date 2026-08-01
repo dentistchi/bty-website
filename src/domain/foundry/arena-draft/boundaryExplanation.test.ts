@@ -18,10 +18,16 @@ import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type NarrowReview
 import { MODEL_REQUIRED_STATES, SERVER_DERIVED_STATES } from "./boundaryReasonParity";
 import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
+import { buildContextSegments } from "./boundaryContextSegments";
+import { buildSemanticFrames } from "./boundarySemanticFrame";
 
 const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified before treatment" };
-const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draftFixture()));
-const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces };
+const draft = draftFixture();
+const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft));
+const segments = buildContextSegments(draft, surfaces);
+const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces, segments, frames: buildSemanticFrames([BOUNDARY]) };
+const ownRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "own_surface")!.segmentRef;
+const parRef = (ref: string) => segments.find((x) => x.sourceSurfaceRef === ref && x.segmentKind === "parent_generated_state")?.segmentRef ?? "";
 const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
 
 const explainable = (over: Partial<ExplainableAssessment>): ExplainableAssessment => ({
@@ -130,19 +136,25 @@ describe("[10] the explanation cannot move a verdict", () => {
             boundaryId: BOUNDARY.id,
             surfaceRef: s.coordinate,
             applicability: "applies" as const,
+            governedActionStatus: "present" as const,
+            prerequisiteStatus: "explicitly_missing" as const,
+            temporalRelation: "action_before_prerequisite" as const,
             compliance: "violates" as const,
-            governedActionEvidence: s.text.slice(0, 120),
-            prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 120),
             violationMechanism: mechanism as NarrowBoundaryAssessment["violationMechanism"],
+            actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
+            prerequisiteEvidence: { segmentRef: parRef(s.coordinate), excerpt: s.inheritedWorldState.slice(0, 90) },
             reason: "",
           }
         : {
             boundaryId: BOUNDARY.id,
             surfaceRef: s.coordinate,
             applicability: "not_applicable" as const,
+            governedActionStatus: "absent" as const,
+            prerequisiteStatus: "not_applicable" as const,
+            temporalRelation: "not_applicable" as const,
             compliance: "not_assessed" as const,
-            governedActionEvidence: s.text.slice(0, 120),
-            prerequisiteFailureEvidence: "",
+            actionEvidence: { segmentRef: ownRef(s.coordinate), excerpt: s.text.slice(0, 90) },
+            prerequisiteEvidence: { segmentRef: "", excerpt: "" },
             violationMechanism: "none" as const,
             reason: "",
           },

@@ -30,7 +30,10 @@ import {
   decideAfterBoundaryReview,
   type BoundaryUncertainty,
   type BoundaryViolation,
+  type NarrowBoundaryCode,
+  type RefutedViolationClaim,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { segmentIndex, type ContextSegment } from "@/domain/foundry/arena-draft/boundaryContextSegments";
 import {
   compatibilitySurfaces,
   enumerateBoundarySurfaces,
@@ -82,6 +85,29 @@ export type BoundaryStageResult = {
   excludedCompatibilitySurfaces: string[];
   /** Populated only on a valid inconclusive. */
   uncertainties: BoundaryUncertainty[];
+  /**
+   * R2.36 — VIOLATION CLAIMS THE SERVER REFUSED. Reported next to the surviving ones and never
+   * merged with them: this is the only record that the reviewer asserted something the evidence did
+   * not support, and it is what makes the R2.34 false positives auditable rather than invisible.
+   */
+  refutedClaims: RefutedViolationClaim[];
+  refutedClaimCount: number;
+  refutedClaimCodes: string[];
+  /** Context authority actually used for this subject. */
+  contextSegmentCount: number;
+  contextSegmentMapSha256: string | null;
+  openingPresent: boolean;
+  /** Rule decomposition. A non-empty `undecomposableBoundaryIds` fails the subject closed. */
+  semanticFramesSha256: string | null;
+  undecomposableBoundaryIds: string[];
+  /** Truth-field distributions over the deciding attempt. */
+  governedActionStatusCounts: Record<string, number>;
+  prerequisiteStatusCounts: Record<string, number>;
+  temporalRelationCounts: Record<string, number>;
+  /** How many accepted prerequisite excerpts came from an inherited parent state rather than own text. */
+  inheritedPrerequisiteEvidenceCount: number;
+  /** Evidence that named a segment the surface could not cite. Always fatal; counted for trend. */
+  evidenceLocalityFailureCount: number;
   /** Server-authored findings for the correction packet. Only a valid reject produces them. */
   findings: Finding[];
   /** Authority / surface-map failure codes. */
@@ -143,6 +169,19 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   reachableSurfaces: [],
   excludedCompatibilitySurfaces: [],
   uncertainties: [],
+  refutedClaims: [],
+  refutedClaimCount: 0,
+  refutedClaimCodes: [],
+  contextSegmentCount: 0,
+  contextSegmentMapSha256: null,
+  openingPresent: false,
+  semanticFramesSha256: null,
+  undecomposableBoundaryIds: [],
+  governedActionStatusCounts: {},
+  prerequisiteStatusCounts: {},
+  temporalRelationCounts: {},
+  inheritedPrerequisiteEvidenceCount: 0,
+  evidenceLocalityFailureCount: 0,
   findings: [],
   codes,
   explanations: [],
@@ -210,10 +249,23 @@ export async function runBoundaryReviewStage(
     boundaryProvenanceSha256: args.boundaryProvenanceSha256,
     boundaries: args.boundaries,
     surfaces,
+    draft: args.draft,
     language: args.language,
     generationAttemptId: args.generationAttemptId,
     caseId: args.caseId,
   });
+  // R2.36 — a missing scenario opening or an undecomposable rule is a NAMED refusal BEFORE a
+  // credential is spent. R2.35 measured the opening simply absent and the question silently thinner:
+  // `primary[1]` was judged as a bare label with no clinical premise in 3 of 3 live runs.
+  if (subject.subjectDefects.length > 0) {
+    log("boundary_review_authority_failure", subject.subjectDefects[0], {
+      defectCodes: subject.subjectDefects,
+      openingPresent: subject.opening.trim().length > 0,
+      undecomposableBoundaryIds: subject.semanticFrames.filter((f) => f.ruleKind === "uncertain").map((f) => f.boundaryId),
+    });
+    return empty("boundary_review_authority_failure", subject.subjectDefects);
+  }
+
   const subjectSha = narrowBoundarySubjectSha256(subject);
   const mapSha = subject.surfaceMapSha256;
   const surfaceByRef = new Map(surfaces.map((s) => [s.coordinate, s]));
@@ -276,6 +328,8 @@ export async function runBoundaryReviewStage(
     const tally = tallyModelReason(call.evidence.parsed);
     const verdict = call.evidence.verdict;
     const explanations = "explanations" in verdict ? verdict.explanations : [];
+    const truth = tallyTruthFields(call.evidence.parsed, subject.contextSegments);
+    const refutedClaims = "refutedClaims" in verdict ? verdict.refutedClaims : [];
     const base = {
       evidences,
       subject,
@@ -298,6 +352,23 @@ export async function runBoundaryReviewStage(
       modelReasonRequiredCount: tally.required,
       modelReasonMissingCount: tally.missing,
       modelReasonUnexpectedCount: tally.unexpected,
+      // R2.36 metrics.
+      refutedClaims,
+      refutedClaimCount: refutedClaims.length,
+      refutedClaimCodes: [...new Set(refutedClaims.flatMap((r) => r.codes))],
+      contextSegmentCount: subject.contextSegments.length,
+      contextSegmentMapSha256: subject.contextSegmentMapSha256,
+      openingPresent: subject.opening.trim().length > 0,
+      semanticFramesSha256: subject.semanticFramesSha256,
+      undecomposableBoundaryIds: subject.semanticFrames.filter((f) => f.ruleKind === "uncertain").map((f) => f.boundaryId),
+      governedActionStatusCounts: truth.governedActionStatusCounts,
+      prerequisiteStatusCounts: truth.prerequisiteStatusCounts,
+      temporalRelationCounts: truth.temporalRelationCounts,
+      inheritedPrerequisiteEvidenceCount: truth.inheritedPrerequisiteEvidenceCount,
+      evidenceLocalityFailureCount:
+        verdict.outcome === "boundary_review_malformed"
+          ? verdict.findings.filter((f) => EVIDENCE_LOCALITY_CODES.includes(f.code)).length
+          : 0,
     };
 
     if (decision.action === "rerun_boundary_review") {
@@ -338,7 +409,14 @@ export async function runBoundaryReviewStage(
           phase: s?.phase,
           branchIndex: s?.branchIndex,
           choiceIndex: s && s.index >= 0 ? s.index : undefined,
-          detail: `${v.surfaceRef} [${v.violationMechanism}]: ${v.governedActionEvidence} || ${v.prerequisiteFailureEvidence}`,
+          // R2.36 — the packet states WHAT was proved and FROM WHERE. A Manager reading a finding
+          // can now see that the prerequisite excerpt came from the surface's own text or from its
+          // parent state, and which prerequisite status was asserted, rather than two bare strings.
+          detail:
+            `${v.surfaceRef} [${v.violationMechanism}] ` +
+            `action(${v.governedActionSegmentRef}): ${v.governedActionEvidence} || ` +
+            `prerequisite ${v.prerequisiteStatus} (${v.prerequisiteSegmentRef}/${v.prerequisiteSegmentKind}, ${v.temporalRelation}): ` +
+            v.prerequisiteFailureEvidence,
         };
       });
       log("boundary_review_reject", findings[0]?.code, {
@@ -347,6 +425,9 @@ export async function runBoundaryReviewStage(
         violations,
         causalViolations: causal.map((v) => v.surfaceRef),
         downstreamViolations: downstream.map((v) => v.surfaceRef),
+        // Refused claims are logged with the rejection, never folded into it. The correction packet
+        // must contain ONLY what survived the truth gates.
+        refutedClaims: refutedClaims.map((r) => `${r.surfaceRef}: ${r.codes.join(",")}`),
       });
       return {
         ...empty("boundary_review_reject"),
@@ -430,6 +511,54 @@ export async function runBoundaryReviewStage(
  * auditor distinguishes "returned empty reason correctly" (the R2.30 case, now valid) from
  * "omitted a reason the state genuinely required".
  */
+/**
+ * Codes that mean an excerpt named a segment the surface could not legitimately cite. Counted for
+ * trend even though each one is fatal on its own — a rise here means the labelled context is not
+ * being read, which is a different remedy from a rise in refuted claims.
+ */
+const EVIDENCE_LOCALITY_CODES: readonly NarrowBoundaryCode[] = [
+  "boundary_evidence_unknown_segment",
+  "boundary_evidence_segment_not_visible",
+  "boundary_evidence_wrong_segment_kind",
+  "boundary_evidence_excerpt_not_in_segment",
+  "boundary_inherited_state_without_own_action",
+];
+
+/**
+ * Distributions over the truth fields of the deciding attempt. These are the numbers that make the
+ * R2.35 defect visible in aggregate: a reviewer answering `not_established` and rejecting anyway, or
+ * one whose prerequisite evidence is overwhelmingly inherited rather than own, is now countable.
+ */
+export function tallyTruthFields(
+  parsed: unknown,
+  segments: ContextSegment[],
+): {
+  governedActionStatusCounts: Record<string, number>;
+  prerequisiteStatusCounts: Record<string, number>;
+  temporalRelationCounts: Record<string, number>;
+  inheritedPrerequisiteEvidenceCount: number;
+} {
+  const governedActionStatusCounts: Record<string, number> = {};
+  const prerequisiteStatusCounts: Record<string, number> = {};
+  const temporalRelationCounts: Record<string, number> = {};
+  let inheritedPrerequisiteEvidenceCount = 0;
+  const byRef = segmentIndex(segments);
+  const rows = parsed && typeof parsed === "object" && Array.isArray((parsed as { assessments?: unknown[] }).assessments)
+    ? ((parsed as { assessments: unknown[] }).assessments as Array<Record<string, unknown>>)
+    : [];
+  for (const r of rows) {
+    const bump = (m: Record<string, number>, k: unknown) => {
+      if (typeof k === "string" && k) m[k] = (m[k] ?? 0) + 1;
+    };
+    bump(governedActionStatusCounts, r.governedActionStatus);
+    bump(prerequisiteStatusCounts, r.prerequisiteStatus);
+    bump(temporalRelationCounts, r.temporalRelation);
+    const ref = (r.prerequisiteEvidence as { segmentRef?: unknown } | undefined)?.segmentRef;
+    if (typeof ref === "string" && byRef.get(ref)?.segmentKind === "parent_generated_state") inheritedPrerequisiteEvidenceCount++;
+  }
+  return { governedActionStatusCounts, prerequisiteStatusCounts, temporalRelationCounts, inheritedPrerequisiteEvidenceCount };
+}
+
 export function tallyModelReason(parsed: unknown): { required: number; missing: number; unexpected: number } {
   const rows = ((parsed as { assessments?: unknown[] } | null)?.assessments ?? []) as Array<Record<string, string>>;
   let required = 0;
