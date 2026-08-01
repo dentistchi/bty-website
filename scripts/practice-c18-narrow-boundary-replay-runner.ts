@@ -6,7 +6,7 @@
  * the boundary reviewer is asked — including the surface map, which is the thing R2.28 proved was
  * missing. PREPARED in R2.29, deliberately not executed.
  *
- *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r240_c18_candidate_role_replay_canary.sh
+ *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r242_c18_absent_parity_repair_replay_canary.sh
  *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --binding-json
  */
 import { writeFileSync, readFileSync } from "node:fs";
@@ -113,6 +113,7 @@ const runtime = [
   "src/domain/foundry/arena-draft/boundaryTruthContractTypes.ts",
   "src/domain/foundry/arena-draft/promptFieldParity.ts",
   "src/domain/foundry/arena-draft/boundaryCandidateRole.ts",
+  "src/lib/bty/foundry/arena/narrowBoundaryReviewer.ts",
   "scripts/practice-c18-narrow-boundary-replay.ts",
   "scripts/practice-c18-boundary-replay.ts",
 ].map((f) => readFileSync(join(process.cwd(), f), "utf8")).join("\n");
@@ -192,6 +193,21 @@ const binding = {
   candidateRoleContractSha256: candidateRoleContractSha256(),
   governedActionRoleRefusedCount: narrowSubject.candidateRoleMetrics.governedActionPrerequisiteOperationRefusedCount,
   governedActionRoleUncertainCount: narrowSubject.candidateRoleMetrics.governedActionRoleUncertainCount,
+  // R2.42 — the instruction the reviewer is actually given, and the projection authority.
+  promptParityContractSha256: d({
+    decisionTableKeyedOnPoolCardinality: true,
+    sentinelOnlyWhenPoolEmpty: true,
+    absentWithNonEmptyPoolSelects: true,
+    contradictoryAbsentImpliesNoneRemoved: true,
+  }),
+  repairSubsetProjectionSha256: d({
+    projectsFrozenSubject: true,
+    canonicalOrderPreserved: true,
+    unknownRefThrows: true,
+    duplicateRefThrows: true,
+    subjectDigestUnchanged: true,
+    separateRepairSubsetDigest: true,
+  }),
   poolAwareRequirementContractSha256: d({
     requiredOnlyWhenPoolNonEmpty: true,
     presentStatusRequiresNonEmptyPool: true,
@@ -245,6 +261,9 @@ const CHECKS: Array<[string, string]> = [
   ["governed-action role refusals", "governedActionRoleRefusedCount"],
   ["governed-action role uncertain", "governedActionRoleUncertainCount"],
   ["pool-aware requirement contract", "poolAwareRequirementContractSha256"],
+  ["prompt parity contract", "promptParityContractSha256"],
+  ["repair subset projection contract", "repairSubsetProjectionSha256"],
+  ["repair merge authority", "subsetRepairContractSha256"],
   ["candidate aliases removed", "candidateAliasRemovedCount"],
   ["candidate provenance retained", "candidateProvenanceRetainedCount"],
   ["canonical truth-state table", "truthStateTableSha256"],
@@ -266,8 +285,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.40 CANDIDATE-ROLE REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.40
+# BTY Practice — R2.42 ABSENT-PARITY + REPAIR-SCOPING REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.42
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -309,7 +328,30 @@ const script = `#!/usr/bin/env bash
 #          provider-side cause was unknowable and a retry would have produced a
 #          second silent artifact.
 #
-# WHAT R2.40 CHANGES
+# WHAT R2.42 CHANGES
+#   * The prompt now carries ONE decision table keyed on pool cardinality:
+#       empty     + absent  -> the none sentinel
+#       empty     + present -> not valid
+#       non-empty + absent  -> a pool member
+#       non-empty + present -> a pool member
+#     R2.40 shipped a line that read as "absent means none" and the reviewer
+#     generalized it; six surfaces came back absent+none on non-empty pools and
+#     the whole review died an output-contract death. The CONTRACT was right and
+#     is unchanged -- non_governing still requires a candidate, and the
+#     validator has a zero diff.
+#   * The failed-subset repair now actually asks about the failed subset. The
+#     stage had computed six repair surfaces since R2.38 and the reviewer had
+#     always rebuilt the full twelve-surface request; the merge authority would
+#     have refused that answer anyway. buildNarrowBoundaryRequest now projects
+#     the frozen subject and binds a separate repairSubsetSha256.
+#
+# WHAT R2.42 DOES NOT CHANGE
+#   The R2.40 role classifier, candidate identity/locality/provenance, the
+#   semantic frame and the token budget are untouched. primary[0] keeps its
+#   empty-pool exemption. Satisfaction/failure polarity remains OBSERVED and NOT
+#   enforced. primary[1]: MISSED 6/6 historically, NOT JUDGED in R2.40.
+#
+# WHAT R2.40 CHANGED
 #   * A governed-action candidate must now express the boundary's GOVERNED
 #     ACTION, judged against the frame's own two clauses. R2.39 measured the
 #     alternative: eligibility returned true unconditionally, so the server
@@ -518,6 +560,7 @@ npx --yes vitest run \\
   src/domain/foundry/arena-draft/r236TruthRegression.test.ts \\
   src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts \\
   src/domain/foundry/arena-draft/boundaryCandidateRole.test.ts \\
+  src/domain/foundry/arena-draft/boundaryAbsentCandidateParity.test.ts \\
   src/domain/foundry/arena-draft/narrowBoundaryReview.test.ts \\
   src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
   || wiring_failed 'the transport matrix or the captured regressions failed'
