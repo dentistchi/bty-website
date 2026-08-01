@@ -22,9 +22,10 @@ const PRIOR_RUNNERS = [
   "/tmp/r223_live_practice_stability_canary.sh",
   "/tmp/r223a_live_practice_stability_canary.sh",
   "/tmp/r223c_live_practice_stability_canary.sh",
+  "/tmp/r223d_live_practice_stability_canary.sh",
 ];
 const RUNNER_R223 = PRIOR_RUNNERS[0];
-const RUNNER = "/tmp/r223d_live_practice_stability_canary.sh";
+const RUNNER = "/tmp/r223d_r1_live_practice_stability_canary.sh";
 const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
 const runnerSource = (): string | null => (existsSync(RUNNER) ? readFileSync(RUNNER, "utf8") : null);
 
@@ -98,6 +99,10 @@ describe("R2.23A — cardinality and budget are part of what the runner binds", 
     if (existsSync(PRIOR_RUNNERS[2])) {
       expect(readFileSync(PRIOR_RUNNERS[2], "utf8")).toContain("d8f8e60cba1ec23388f988fc74a9e484b2d703ec58b3d8db46cacdd65f66ffe2");
     }
+    // The DEFECTIVE R2.23D runner is preserved unchanged as evidence of the measured fault.
+    if (existsSync(PRIOR_RUNNERS[3])) {
+      expect(readFileSync(PRIOR_RUNNERS[3], "utf8")).toMatch(/\}'temperature':/);
+    }
   });
 });
 
@@ -105,12 +110,16 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
   it("43/44/45. it binds HEAD, manifest and BOTH schema digests, and halts on any mismatch", () => {
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false); // absence is recorded, never asserted away
-    for (const bound of ["EXPECT_HEAD", "EXPECT_MANIFEST", "EXPECT_PROVIDER_SCHEMA", "EXPECT_REVIEW_SCHEMA", "EXPECT_CORPUS", "EXPECT_CANARY_CASES", "EXPECT_ARTIFACT_SCHEMA", "EXPECT_GEN_SAMPLING", "EXPECT_REVIEW_SAMPLING", "EXPECT_CARDINALITY", "EXPECT_FIELD_BOUNDS", "EXPECT_TOKEN_BUDGET", "EXPECT_EVIDENCE_AUTHORITY", "EXPECT_BOUNDARY_SCOPE", "EXPECT_READINESS"]) {
-      expect(src, `${bound} is not bound`).toContain(bound);
+    // R2.23D-R1 — the runner is GENERATED, so every contract is a `check` line rather than an
+    // EXPECT_ variable, and structured values are compared by digest.
+    for (const path of ["manifest.components.sampling", "manifest.components.providerSchema", "manifest.components.reviewSchema", "manifest.components.readinessResolver", "manifest.components.evidenceAuthority", "manifest.components.tokenBudget"]) {
+      expect(src, `${path} is not checked`).toContain(`'${path}'`);
     }
+    expect(src).toContain("EXPECT_HEAD=");
     expect(src).toContain("CONTRACT MISMATCH · RUNNER STALE");
-    // Every placeholder must have been substituted with a real value.
     expect(src, "runner still contains unsubstituted placeholders").not.toMatch(/__EXPECT_[A-Z_]+__/);
+    // The measured R2.23D defect: a Python dict repr in a shell assignment.
+    expect(src, "a runtime object representation is being compared").not.toMatch(/\{'[a-zA-Z]+':/);
   });
 
   it("43b/46. every check runs BEFORE the credential prompt", () => {
@@ -120,13 +129,13 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
     expect(prompt).toBeGreaterThan(-1);
     for (const check of [
       /\[ "\$ACTUAL_HEAD"\s+= "\$EXPECT_HEAD" \]/,
-      /\[ "\$ACTUAL_MANIFEST"\s+= "\$EXPECT_MANIFEST" \]/,
+      /check 'contract manifest'/,
       /tracked tree is dirty/,
       /canary case missing/,
-      /schemaCanExceedBudget/,
-      /measured headroom below 25 percent/,
+      /check 'schema can exceed budget'/,
+      /measured headroom below/,
       /at most 3 may be active/,
-      /Host scope selector/,
+      /check 'Host scope selector'/,
     ]) {
       const at = src.search(check);
       expect(at, `${check} is missing`).toBeGreaterThan(-1);
