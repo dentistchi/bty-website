@@ -11,12 +11,11 @@
  * A missing summary can no longer erase completed case evidence, and an incomplete run is reported
  * as incomplete rather than as nothing.
  *
- *   npx tsx scripts/practice-stability-collate.ts --run-id <id> --passes pass1,pass2 \
- *     --cases c01-…,c09-…,c18-… --json <path> --md <path>
+ *   npx tsx scripts/practice-stability-collate.ts --config <path> --json <path> --md <path>
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ARTIFACT_DIR } from "@/lib/bty/foundry/arena/evalArtifact";
+import { parseRuntimeConfig } from "@/lib/bty/foundry/arena/runtimeConfig";
 import { listCaseArtifacts, sha256 } from "@/lib/bty/foundry/arena/caseArtifact";
 import type { CaseResult } from "@/lib/bty/foundry/arena/liveEvaluation";
 
@@ -40,15 +39,23 @@ function arg(name: string, fallback?: string): string {
   return v;
 }
 
+/** Every artifact must attest to the SAME contract the config names. */
+function anyManifestMismatch(seen: Map<string, { manifestSha256: string }>, expected: string): boolean {
+  return [...seen.values()].some((r) => r.manifestSha256 !== expected);
+}
+
 function main(): void {
-  const runId = arg("run-id");
-  const passes = arg("passes").split(",").map((s) => s.trim()).filter(Boolean);
-  const caseIds = arg("cases").split(",").map((s) => s.trim()).filter(Boolean);
+  // R2.23D-R4 — ONE validated config, the same file the orchestrator read.
+  const parsed = parseRuntimeConfig(JSON.parse(readFileSync(arg("config"), "utf8")));
+  if (!parsed.ok) throw new Error(`runtime config invalid: ${parsed.errors.join(", ")}`);
+  const cfg = parsed.value;
+  const { runId, passIds: passes, caseIds, mode } = cfg;
   const outJson = arg("json");
   const outMd = arg("md");
 
-  const dir = arg("artifact-dir", join(process.cwd(), ARTIFACT_DIR));
-  const entries = listCaseArtifacts(dir, runId);
+  const dir = cfg.artifactDir;
+  // Mode isolation: a live collation never reads mock evidence, and vice versa.
+  const entries = listCaseArtifacts(dir, runId, mode);
   const expected = passes.flatMap((p) => caseIds.map((c) => `${p}/${c}`));
 
   const problems: string[] = [];
@@ -65,13 +72,17 @@ function main(): void {
       continue;
     }
     const raw = readFileSync(join(dir, e.file), "utf8");
-    const parsed = JSON.parse(raw) as CaseResult;
+    const result = JSON.parse(raw) as CaseResult;
     // Verify what is ON DISK, not what a summary claimed about it.
-    seen.set(key, { ...parsed, __file: e.file, __sha256: sha256(raw) });
+    seen.set(key, { ...result, __file: e.file, __sha256: sha256(raw) });
   }
 
   const missing = expected.filter((k) => !seen.has(k));
   const results = expected.map((k) => seen.get(k)).filter((r): r is CaseResult & { __file: string; __sha256: string } => r !== undefined);
+
+  // Mode must match the config on BOTH sides — the filename and the payload.
+  for (const [key, r] of seen) if (r.mode !== mode) problems.push(`mode mismatch in ${key}: artifact is ${r.mode}, run is ${mode}`);
+  if (anyManifestMismatch(seen, cfg.contractManifestSha256)) problems.push("artifact manifest differs from the runtime config");
 
   // One HEAD and one manifest, or the artifacts are not evidence for one contract.
   const heads = new Set(results.map((r) => r.head));
@@ -86,6 +97,7 @@ function main(): void {
 
   const summary = {
     runId,
+    mode,
     complete,
     status: complete ? "COMPLETE" : infrastructure.length > 0 ? "INCOMPLETE · INFRASTRUCTURE ABORT" : "INCOMPLETE",
     head: results[0]?.head ?? null,
@@ -113,9 +125,15 @@ function main(): void {
   writeFileSync(outJson, JSON.stringify(summary, null, 2));
 
   const lines: string[] = [
-    `# R2.23D-R3 Practice stability review — ${summary.status}`,
+    `# R2.23D-R4 Practice stability review — ${summary.status}${mode === "mock" ? " · MOCK" : ""}`,
     "",
-    complete ? "STRUCTURAL + SEMANTIC GATES: see result JSON" : "THIS RUN IS INCOMPLETE — it is not stability evidence.",
+    // An incomplete run is incomplete in EVERY mode. A mock that did not finish must never
+    // print a PASS line just because it was a mock.
+    !complete
+      ? "THIS RUN IS INCOMPLETE — it is not stability evidence."
+      : mode === "mock"
+        ? "FULL STABILITY MOCK PASS · LIVE PRODUCT QUALITY NOT MEASURED"
+        : "STRUCTURAL + SEMANTIC GATES: see result JSON",
     "HUMAN PRODUCT REVIEW REQUIRED",
     "",
     `- run: ${runId}`,
@@ -165,7 +183,11 @@ function main(): void {
     );
   }
   writeFileSync(outMd, lines.join("\n"));
-  process.stdout.write(`wrote ${outJson} and ${outMd} · ${summary.status} · ${summary.presentCases}/${summary.expectedCases} cases\n`);
+  process.stdout.write(
+    mode === "mock" && complete
+      ? `COLLATION MOCK PASS · ${summary.presentCases} IMMUTABLE CASE ARTIFACTS\n`
+      : `wrote ${outJson} and ${outMd} · ${summary.status} · ${summary.presentCases}/${summary.expectedCases} cases\n`,
+  );
   if (!complete) process.exitCode = 6;
 }
 

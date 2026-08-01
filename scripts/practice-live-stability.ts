@@ -17,8 +17,8 @@
  * Calls the canonical generation service. No database, no Wrangler, no production endpoint, no
  * fallback. Every case writes its own immutable artifact the moment it terminates.
  */
-import { join } from "node:path";
-import { ARTIFACT_DIR } from "@/lib/bty/foundry/arena/evalArtifact";
+import { readFileSync } from "node:fs";
+import { parseRuntimeConfig } from "@/lib/bty/foundry/arena/runtimeConfig";
 import { writeCaseArtifact } from "@/lib/bty/foundry/arena/caseArtifact";
 import { EXIT_CODES, runLiveStability, type LiveDeps } from "@/lib/bty/foundry/arena/liveEvaluation";
 import { EVAL_CORPUS } from "@/lib/bty/foundry/arena/practice-generation.eval";
@@ -76,11 +76,17 @@ function arg(name: string, fallback?: string): string {
 }
 
 async function main(): Promise<void> {
-  const runId = arg("run-id");
-  const head = arg("head");
-  const manifestSha256 = arg("manifest");
-  const passes = arg("passes").split(",").map((s) => s.trim()).filter(Boolean);
-  const caseIds = arg("cases").split(",").map((s) => s.trim()).filter(Boolean);
+  // R2.23D-R4 — ONE validated config path. The shell no longer reconstructs the contract after the
+  // credential prompt; R2.23D-R3 died on `EXPECT_MANIFEST: unbound variable` doing exactly that.
+  const configPath = arg("config");
+  const parsed = parseRuntimeConfig(JSON.parse(readFileSync(configPath, "utf8")));
+  if (!parsed.ok) {
+    process.stderr.write(`RUNTIME CONFIG INVALID · ${parsed.errors.join(", ")}\n`);
+    process.exitCode = EXIT_CODES.infrastructure;
+    return;
+  }
+  const cfg = parsed.value;
+  const { runId, head, contractManifestSha256: manifestSha256, passIds: passes, caseIds } = cfg;
 
   const cases = caseIds.map((id) => {
     const c = EVAL_CORPUS.find((x) => x.id === id);
@@ -88,8 +94,19 @@ async function main(): Promise<void> {
     return c;
   });
 
-  const useMock = process.env[MOCK_ENV] === "1";
-  const dir = arg("artifact-dir", join(process.cwd(), ARTIFACT_DIR));
+  // The config's own mode is the authority; the env var only supplies the mock transport.
+  const useMock = cfg.mode === "mock";
+  if (useMock && process.env[MOCK_ENV] !== "1") {
+    process.stderr.write("RUNTIME CONFIG INVALID · mock mode requires the mock transport to be enabled\n");
+    process.exitCode = EXIT_CODES.infrastructure;
+    return;
+  }
+  if (!useMock && process.env[MOCK_ENV] === "1") {
+    process.stderr.write("RUNTIME CONFIG INVALID · a live run may not use the mock transport\n");
+    process.exitCode = EXIT_CODES.infrastructure;
+    return;
+  }
+  const dir = cfg.artifactDir;
   const deps: LiveDeps = {
     generate: useMock
       ? mockGenerate((process.env[MOCK_PLAN_ENV] ?? "").split(",").map((s) => s.trim()).filter(Boolean), Number(process.env[MOCK_DELAY_ENV] ?? "0"))
@@ -105,12 +122,14 @@ async function main(): Promise<void> {
   };
 
   const summary = await runLiveStability(deps, {
+    mode: cfg.mode,
     runId,
     head,
     manifestSha256,
     model: useMock ? "mock-model" : getLlmModel(),
     passes,
     cases,
+    caseDeadlineMs: cfg.caseDeadlineMs,
   });
 
   if (useMock) process.stdout.write("LIVE EVALUATION MOCK · LIVE PROVIDER NOT CALLED\n");

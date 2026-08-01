@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -16,6 +16,7 @@ import {
 import { ArtifactWriteError, caseArtifactPath, listCaseArtifacts, sha256, writeCaseArtifact } from "./caseArtifact";
 import { EVAL_CORPUS } from "./practice-generation.eval";
 import { PRACTICE_SAMPLING } from "./arenaScenarioGenerationService";
+import { RUNTIME_CONFIG_SCHEMA_VERSION, canonicalRuntimeConfigJson, type StabilityRuntimeConfig } from "./runtimeConfig";
 
 /**
  * LIVE EVALUATION RUNTIME (Slice 3.2I-R5B1A.1-R2.23D-R3).
@@ -73,6 +74,7 @@ function deps(plan: Step[], over: Partial<LiveDeps> = {}): LiveDeps & { logs: st
 }
 
 const config = (over: Record<string, unknown> = {}) => ({
+  mode: "mock" as const,
   runId: "20260801T000000Z",
   head: HEAD,
   manifestSha256: MANIFEST,
@@ -184,8 +186,8 @@ describe("PART 4/5 — six authoritative case artifacts, written before any aggr
   });
 
   it("13. the path carries run, pass, case, HEAD and manifest", () => {
-    expect(caseArtifactPath({ runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST })).toBe(
-      "practice-generation.stability.R.pass1.c01.aaaaaaaaaaaa.bbbbbbbbbbbb.json",
+    expect(caseArtifactPath({ mode: "mock" as const, runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST })).toBe(
+      "practice-generation.stability.mock.R.pass1.c01.aaaaaaaaaaaa.bbbbbbbbbbbb.json",
     );
   });
 
@@ -200,7 +202,7 @@ describe("PART 4/5 — six authoritative case artifacts, written before any aggr
   });
 
   it("14/15. the write is atomic and the digest is verified FROM DISK", () => {
-    const id = { runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST };
+    const id = { mode: "mock" as const, runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST };
     const payload = JSON.stringify({ hello: "world" });
     const w = writeCaseArtifact(dir, id, payload);
     expect(w.sha256).toBe(sha256(payload));
@@ -210,7 +212,7 @@ describe("PART 4/5 — six authoritative case artifacts, written before any aggr
   });
 
   it("9. a collision FAILS CLOSED and leaves the original untouched", () => {
-    const id = { runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST };
+    const id = { mode: "mock" as const, runId: "R", passId: "pass1", caseId: "c01", head: HEAD, manifestSha256: MANIFEST };
     writeCaseArtifact(dir, id, '{"first":true}');
     expect(() => writeCaseArtifact(dir, id, '{"second":true}')).toThrow(ArtifactWriteError);
     expect(readFileSync(join(dir, caseArtifactPath(id)), "utf8")).toBe('{"first":true}');
@@ -265,23 +267,46 @@ function runCli(env: Record<string, string>, args: string[]): { code: number; st
   }
 }
 
-/** Later values OVERRIDE earlier ones — `arg()` reads the first occurrence, so extras must replace. */
-const cliArgs = (over: Record<string, string> = {}) => {
-  const base: Record<string, string> = {
-    "run-id": "MOCKRUN",
+/**
+ * R2.23D-R4 — ONE validated config file, exactly as the runner produces it.
+ *
+ * The old helper passed nine loose flags and the shell passed its own set; a name could drift
+ * between the two, and one did: `EXPECT_MANIFEST` reached an operator as an unbound variable.
+ * Both consumers now read the same file through the same parser, so a drifted name is a parse
+ * error here rather than a runtime death after a credential prompt.
+ */
+let configSeq = 0;
+const writeConfig = (over: Partial<StabilityRuntimeConfig> = {}): string[] => {
+  const caseIds = over.caseIds ?? CASES.map((c) => c.id);
+  const passIds = over.passIds ?? ["pass1", "pass2"];
+  const cfg: StabilityRuntimeConfig = {
+    schemaVersion: RUNTIME_CONFIG_SCHEMA_VERSION,
+    mode: "mock",
+    runId: "MOCKRUN",
     head: HEAD,
-    manifest: MANIFEST,
-    passes: "pass1,pass2",
-    cases: CASES.map((c) => c.id).join(","),
-    "artifact-dir": dir,
+    contractManifestSha256: MANIFEST,
+    corpusSha256: "c".repeat(64),
+    canaryCaseSha256: "d".repeat(64),
+    providerSchemaSha256: "e".repeat(64),
+    reviewSchemaSha256: "f".repeat(64),
+    samplingSha256: "0".repeat(64),
+    tokenBudgetSha256: "1".repeat(64),
+    artifactSchemaVersion: "practice-generation-eval/3",
+    caseIds,
+    passIds,
+    caseDeadlineMs: 510_000,
+    artifactDir: dir,
+    expectedCases: caseIds.length * passIds.length,
     ...over,
   };
-  return Object.entries(base).flatMap(([k, v]) => [`--${k}`, v]);
+  const path = join(dir, `runtime-config.${configSeq++}.json`);
+  writeFileSync(path, canonicalRuntimeConfigJson(cfg));
+  return ["--config", path];
 };
 
 describe("PART 9 — the exact tracked orchestrator, run end to end", () => {
   it("1/2/14. six cases complete with NO provider call, and six artifacts exist", () => {
-    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1" }, cliArgs());
+    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1" }, writeConfig());
     expect(r.stderr).not.toMatch(/Top-level await|cjs output format/);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("LIVE EVALUATION MOCK · LIVE PROVIDER NOT CALLED");
@@ -295,7 +320,7 @@ describe("PART 9 — the exact tracked orchestrator, run end to end", () => {
     const started = Date.now();
     const r = runCli(
       { BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_DELAY_MS: "5500" },
-      cliArgs({ passes: "pass1", cases: CASES[0].id }),
+      writeConfig({ passIds: ["pass1"], caseIds: [CASES[0].id] }),
     );
     const elapsed = Date.now() - started;
     expect(r.code).toBe(0);
@@ -305,21 +330,21 @@ describe("PART 9 — the exact tracked orchestrator, run end to end", () => {
   }, 90_000);
 
   it("5/6. an infrastructure failure aborts the run and returns exit code 4", () => {
-    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "ok,infra" }, cliArgs());
+    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "ok,infra" }, writeConfig());
     expect(r.code).toBe(EXIT_CODES.infrastructure);
     expect(r.stdout).toContain("ABORTED (infrastructure: generation_failed)");
     expect(listCaseArtifacts(dir, "MOCKRUN")).toHaveLength(2);
   });
 
   it("4. a content rejection does not abort — all six still run", () => {
-    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "content" }, cliArgs());
+    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "content" }, writeConfig());
     expect(r.code).toBe(0);
     expect(r.stdout).toContain("completed 6/6");
   });
 
   it("13. no credential reaches stdout, stderr or any artifact", () => {
     const SENTINEL = "sk-sentinel-MUST-NOT-APPEAR-7c2b";
-    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", LLM_API_KEY: SENTINEL, OPENAI_API_KEY: SENTINEL }, cliArgs());
+    const r = runCli({ BTY_LIVE_EVAL_MOCK: "1", LLM_API_KEY: SENTINEL, OPENAI_API_KEY: SENTINEL }, writeConfig());
     expect(r.stdout).not.toContain(SENTINEL);
     expect(r.stderr).not.toContain(SENTINEL);
     for (const f of readdirSync(dir)) {
@@ -363,10 +388,10 @@ describe("PART 7 — the six case artifacts are the collation authority", () => 
   }
 
   it("11. a complete run of six is reported COMPLETE", () => {
-    runCli({ BTY_LIVE_EVAL_MOCK: "1" }, cliArgs());
+    runCli({ BTY_LIVE_EVAL_MOCK: "1" }, writeConfig());
     const json = join(dir, "out.json");
     const md = join(dir, "out.md");
-    const r = runCollator(["--run-id", "MOCKRUN", "--passes", "pass1,pass2", "--cases", CASES.map((c) => c.id).join(","), "--json", json, "--md", md, "--artifact-dir", dir]);
+    const r = runCollator([...writeConfig(), "--json", json, "--md", md]);
     expect(r.code).toBe(0);
     const s = JSON.parse(readFileSync(json, "utf8"));
     expect(s.complete).toBe(true);
@@ -376,10 +401,10 @@ describe("PART 7 — the six case artifacts are the collation authority", () => 
   });
 
   it("12. a PARTIAL run reports what exists truthfully — never zero when artifacts are present", () => {
-    runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "ok,infra" }, cliArgs());
+    runCli({ BTY_LIVE_EVAL_MOCK: "1", BTY_LIVE_EVAL_MOCK_PLAN: "ok,infra" }, writeConfig());
     const json = join(dir, "partial.json");
     const md = join(dir, "partial.md");
-    const r = runCollator(["--run-id", "MOCKRUN", "--passes", "pass1,pass2", "--cases", CASES.map((c) => c.id).join(","), "--json", json, "--md", md, "--artifact-dir", dir]);
+    const r = runCollator([...writeConfig(), "--json", json, "--md", md]);
     expect(r.code).toBe(6); // incomplete
     const s = JSON.parse(readFileSync(json, "utf8"));
     expect(s.complete).toBe(false);
@@ -392,7 +417,7 @@ describe("PART 7 — the six case artifacts are the collation authority", () => 
 
   it("a run with NO artifacts says so without inventing any", () => {
     const json = join(dir, "empty.json");
-    const r = runCollator(["--run-id", "NOSUCHRUN", "--passes", "pass1", "--cases", CASES[0].id, "--json", json, "--md", join(dir, "empty.md"), "--artifact-dir", dir]);
+    const r = runCollator([...writeConfig({ runId: "NOSUCHRUN", passIds: ["pass1"], caseIds: [CASES[0].id] }), "--json", json, "--md", join(dir, "empty.md")]);
     expect(r.code).toBe(6);
     const s = JSON.parse(readFileSync(json, "utf8"));
     expect(s.presentCases).toBe(0);

@@ -107,8 +107,8 @@ export function renderRunner(payload: Parameters<typeof buildChecks>[0], head: s
 
   return `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.23D-R3 IMMUTABLE STABILITY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R3
+# BTY Practice — R2.23D-R4 IMMUTABLE STABILITY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R4
 #
 # 3 fixed cases x 2 independent passes = 6 case executions, against the EXACT
 # production generation contract bound below.
@@ -126,6 +126,16 @@ export function renderRunner(payload: Parameters<typeof buildChecks>[0], head: s
 # production endpoint. It reads a provider credential from an interactive prompt
 # only, never from a file, and never echoes it.
 #
+# R2.23D-R4 — the post-credential shell no longer reconstructs the contract. R3
+# cleared all 22 checks and both provider checks, then died at the EXECUTION
+# block on "EXPECT_MANIFEST: unbound variable": R1 had replaced the EXPECT_*
+# variables with check lines, and R3 wrote the orchestrator call against the
+# older naming. The --credential-boundary-check mode exited before that line, so no
+# check ever executed it. Every value now travels in ONE validated JSON config,
+# written and parsed BEFORE the credential is requested, and the whole runtime
+# is executed end to end against a mock first. A wiring defect can no longer be
+# discovered after an operator has typed a key.
+#
 # There is no override flag. A stale runner is REGENERATED, never bypassed.
 # =============================================================================
 set -Eeuo pipefail
@@ -133,14 +143,12 @@ set -Eeuo pipefail
 REPO=${shq(REPO)}
 BRANCH=${shq(BRANCH)}
 EXPECT_HEAD=${shq(head)}
-CASE_IDS=${shq(CANARY_CASE_IDS.join(","))}
-PASSES=2
 EXPECTED_EXECUTIONS=6
 MIN_HEADROOM=1.25
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
-OUT_JSON='live_practice_stability_result.r2.23d-r3.json'
-OUT_MD='live_practice_stability_review.r2.23d-r3.md'
+OUT_JSON='live_practice_stability_result.r2.23d-r4.json'
+OUT_MD='live_practice_stability_review.r2.23d-r4.md'
 
 # Credential-boundary mode: runs every credential-free check and stops immediately
 # before the prompt. It ADDS a stop; it cannot skip a check or relax a comparison.
@@ -151,7 +159,7 @@ die() { printf '\\n%s\\n' "$*" >&2; exit 1; }
 mismatch() { printf '\\nCONTRACT MISMATCH · RUNNER STALE\\n  %s\\n    expected: %s\\n    actual:   %s\\n' "$1" "$2" "$3" >&2; exit 3; }
 step() { printf '  [%s] %s\\n' "$1" "$2"; }
 
-printf '\\nR2.23D-R3 PRACTICE STABILITY CANARY — PREFLIGHT\\n\\n'
+printf '\\nR2.23D-R4 PRACTICE STABILITY CANARY — PREFLIGHT\\n\\n'
 
 # ---- 1. repository ----------------------------------------------------------
 [ -d "$REPO/.git" ] || die "CONTRACT MISMATCH · RUNNER STALE
@@ -259,23 +267,92 @@ step 10 "scope: generation only"
 
 step 11 "preflight complete"
 
+printf '\\nPREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED\\n'
+
+# =============================================================================
+# RUNTIME WIRING PROOF — everything below runs BEFORE the credential prompt.
+#
+# R2.23D-R3 proved the CONTRACT and then died on its own EXECUTION wiring, after
+# a key had been entered. So the runtime is now proven the same way the contract
+# is: by executing it. The exact orchestrator, the exact collator and the exact
+# config parser that the live run will use are run end to end against a mock
+# transport — no network, no credential, six real immutable artifacts written and
+# collated. A mock artifact carries "mock" in its filename AND in its payload, so
+# it can never be read as product evidence.
+# =============================================================================
+printf '\\nRUNTIME WIRING PROOF (no credential, no network)\\n'
+
+MOCK_DIR="$(mktemp -d)"
+MOCK_CONFIG="$MOCK_DIR/runtime-config.mock.json"
+LIVE_CONFIG="$MOCK_DIR/runtime-config.live.json"
+wiring_cleanup() { rm -rf "$MOCK_DIR"; }
+trap wiring_cleanup EXIT INT TERM
+
+wiring_failed() {
+  printf '\\n%s\\n' "$*" >&2
+  printf '\\nRUNTIME WIRING FAILED · LIVE RUN BLOCKED\\n' >&2
+  exit 7
+}
+
+# ---- W1. both runtime configs, written and validated by the tracked parser --
+# The LIVE config is built here too. It carries no credential, and building it
+# now is the whole point: the post-credential shell passes one --config path and
+# reconstructs nothing.
+MOCK_CONFIG_SHA="$(npx --yes tsx scripts/practice-runtime-config.ts \\
+  --mode mock --run-id "mock-$RUN_ID" --head "$EXPECT_HEAD" \\
+  --out "$MOCK_CONFIG" --artifact-dir "$MOCK_DIR")" \\
+  || wiring_failed 'the mock runtime config could not be built or did not validate'
+LIVE_CONFIG_SHA="$(npx --yes tsx scripts/practice-runtime-config.ts \\
+  --mode live --run-id "$RUN_ID" --head "$EXPECT_HEAD" \\
+  --out "$LIVE_CONFIG")" \\
+  || wiring_failed 'the live runtime config could not be built or did not validate'
+step W1 "runtime configs validated · mock $MOCK_CONFIG_SHA · live $LIVE_CONFIG_SHA"
+
+# ---- W2. the exact provider-preflight program, against a mock transport -----
+BTY_PREFLIGHT_MOCK=1 npx --yes tsx scripts/practice-provider-preflight.ts \\
+  || wiring_failed 'the provider preflight program failed before any credential was requested'
+
+# ---- W3. the exact orchestrator, all 6 cases, real immutable artifacts ------
+set +e
+BTY_LIVE_EVAL_MOCK=1 npx --yes tsx scripts/practice-live-stability.ts --config "$MOCK_CONFIG"
+MOCK_STATUS=$?
+set -e
+[ "$MOCK_STATUS" = '0' ] \\
+  || wiring_failed "the orchestrator exited with status $MOCK_STATUS on the mock transport"
+
+# Count what EXISTS on disk. The orchestrator's own report is not the authority here.
+MOCK_ARTIFACTS="$(find "$MOCK_DIR" -maxdepth 1 -name 'practice-generation.stability.mock.*.json' | wc -l | tr -d ' ')"
+[ "$MOCK_ARTIFACTS" = "$EXPECTED_EXECUTIONS" ] \\
+  || wiring_failed "expected $EXPECTED_EXECUTIONS mock case artifacts, found $MOCK_ARTIFACTS"
+printf '\\nFULL STABILITY MOCK PASS · %s/%s CASES\\n' "$MOCK_ARTIFACTS" "$EXPECTED_EXECUTIONS"
+
+# ---- W4. the exact collator, over those artifacts ---------------------------
+npx --yes tsx scripts/practice-stability-collate.ts --config "$MOCK_CONFIG" \\
+  --json "$MOCK_DIR/mock-result.json" --md "$MOCK_DIR/mock-review.md" \\
+  || wiring_failed 'the collator could not collate the mock case artifacts'
+
+printf 'LIVE PROVIDER NOT CALLED\\n'
+printf 'MOCK EVIDENCE DISCARDED · LIVE PRODUCT QUALITY NOT MEASURED\\n'
+
 if [ "$CHECK_ONLY" = '1' ]; then
-  printf '\\nPREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED\\n'
-  # BOUNDARY 2 — prove the EXACT provider-preflight program this runner invokes compiles and runs
-  # end to end, against a mock transport, with no credential and no network. R2.23D-R3 shipped a
-  # program nobody had ever executed; that is what let a CommonJS transform error reach an operator
-  # who had already typed a key. The mock prints its own distinct marker and can never be mistaken
-  # for a live pass.
-  BTY_PREFLIGHT_MOCK=1 npx --yes tsx scripts/practice-provider-preflight.ts \\
-    || die 'PROVIDER PREFLIGHT MOCK FAILED — the runner would die after the credential prompt.'
-  printf '\\n'
+  # Move the live config somewhere the wiring cleanup will not delete, so the
+  # operator can inspect exactly what a live run would consume.
+  cp "$LIVE_CONFIG" "./runtime-config.live.$RUN_ID.json"
+  printf '\\nCREDENTIAL NOT REQUESTED\\n'
+  printf '  live runtime config: ./runtime-config.live.%s.json · sha256 %s\\n\\n' "$RUN_ID" "$LIVE_CONFIG_SHA"
   exit 0
 fi
 
+# Keep the live config; drop every mock artifact so it can never be collated later.
+KEEP_CONFIG="./runtime-config.live.$RUN_ID.json"
+cp "$LIVE_CONFIG" "$KEEP_CONFIG"
+wiring_cleanup
+LIVE_CONFIG="$KEEP_CONFIG"
+
 # =============================================================================
-# CREDENTIAL — prompted only AFTER every contract check has passed
+# CREDENTIAL — prompted only AFTER the contract AND the runtime are both proven
 # =============================================================================
-printf '\\nContract verified. 6 live generations will now be performed.\\n'
+printf '\\nContract and runtime verified. 6 live generations will now be performed.\\n'
 printf 'Provider API key (input hidden, never written to disk or history): '
 read -rs LLM_API_KEY
 printf '\\n'
@@ -287,11 +364,8 @@ cleanup() { unset LLM_API_KEY OPENAI_API_KEY || true; }
 trap cleanup EXIT INT TERM
 
 # ---- provider preflight: BOTH capability checks -----------------------------
-# A tracked entry point, not inline TypeScript. R2.23D-R3 embedded a top-level
-# await here; tsx compiles to CommonJS (package.json declares no "type"), which
-# cannot represent one, so the runner died AFTER the credential was entered and
-# BEFORE any request was sent. The program below is unit-tested and proven to run.
-printf '\nPROVIDER PREFLIGHT\n'
+# The same tracked entry point W2 just executed, now with a real credential.
+printf '\\nPROVIDER PREFLIGHT\\n'
 if ! npx --yes tsx scripts/practice-provider-preflight.ts; then
   die 'PROVIDER PREFLIGHT FAILED — no generation was attempted.'
 fi
@@ -299,21 +373,12 @@ fi
 # =============================================================================
 # EXECUTION — 3 cases x 2 independent passes, via the TRACKED orchestrator
 #
-# Vitest no longer executes anything live. R2.23D-R2 ran the evaluation through
-# practice-generation.eval.test.ts, so Vitest's default 5,000 ms testTimeout killed
-# both passes at 5.01 s — against stage budgets of 120 s per request. The
-# orchestrator below owns the clock, writes one immutable artifact per case the
-# moment it terminates, and aborts every remaining case on an infrastructure
-# failure while letting a content failure continue.
+# One argument. Every run parameter comes from the config validated in W1, by
+# the same parser, so a name cannot drift between the shell and the orchestrator.
 # =============================================================================
 printf '\\nEXECUTION\\n'
 set +e
-npx --yes tsx scripts/practice-live-stability.ts \\
-  --run-id "$RUN_ID" \\
-  --head "$EXPECT_HEAD" \\
-  --manifest "$EXPECT_MANIFEST" \\
-  --passes 'pass1,pass2' \\
-  --cases "$CASE_IDS"
+npx --yes tsx scripts/practice-live-stability.ts --config "$LIVE_CONFIG"
 EVAL_STATUS=$?
 set -e
 case "$EVAL_STATUS" in
@@ -324,10 +389,9 @@ case "$EVAL_STATUS" in
 esac
 
 printf '\\nCOLLATING\\n'
-# The SIX case artifacts are the authority. A missing summary can no longer erase
-# completed case evidence, and an incomplete run is reported as incomplete.
-npx --yes tsx scripts/practice-stability-collate.ts \\
-  --run-id "$RUN_ID" --passes 'pass1,pass2' --cases "$CASE_IDS" \\
+# The SIX case artifacts are the authority, and only the LIVE ones: the collator
+# filters by the config's mode, so a mock artifact cannot enter live evidence.
+npx --yes tsx scripts/practice-stability-collate.ts --config "$LIVE_CONFIG" \\
   --json "$OUT_JSON" --md "$OUT_MD" || true
 
 printf '\\n============================================================\\n'
@@ -340,6 +404,7 @@ printf 'HUMAN PRODUCT REVIEW REQUIRED\\n'
 printf '============================================================\\n'
 printf '  result:   %s\\n' "$OUT_JSON"
 printf '  review:   %s\\n' "$OUT_MD"
+printf '  config:   %s\\n' "$LIVE_CONFIG"
 printf '\\nThis is NOT a product-quality pass. Read all six scenarios.\\n\\n'
 `;
 }

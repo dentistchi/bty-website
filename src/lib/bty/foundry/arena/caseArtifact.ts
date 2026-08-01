@@ -25,6 +25,11 @@ import { join } from "node:path";
 export const CASE_ARTIFACT_KIND = "stability";
 
 export type CaseArtifactIdentity = {
+  /**
+   * R2.23D-R4 — `mock` proves runtime wiring only and can NEVER be read as product evidence. It is
+   * in the path AND in the payload, so neither a filename nor a file body alone can be mistaken.
+   */
+  mode: "mock" | "live";
   runId: string;
   passId: string;
   caseId: string;
@@ -48,6 +53,7 @@ export function caseArtifactPath(id: CaseArtifactIdentity): string {
   return [
     "practice-generation",
     CASE_ARTIFACT_KIND,
+    id.mode,
     safe(id.runId),
     safe(id.passId),
     safe(id.caseId),
@@ -118,6 +124,7 @@ export function writeCaseArtifact(dir: string, id: CaseArtifactIdentity, payload
 
 export type CaseArtifactEntry = {
   file: string;
+  mode: "mock" | "live";
   runId: string;
   passId: string;
   caseId: string;
@@ -126,16 +133,17 @@ export type CaseArtifactEntry = {
 };
 
 /** List the case artifacts actually present. Reports what EXISTS; never infers a missing one. */
-export function listCaseArtifacts(dir: string, runId?: string): CaseArtifactEntry[] {
+export function listCaseArtifacts(dir: string, runId?: string, mode?: "mock" | "live"): CaseArtifactEntry[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir)
     .filter((f) => f.startsWith(`practice-generation.${CASE_ARTIFACT_KIND}.`) && f.endsWith(".json"))
     .map((file) => {
       const p = file.split(".");
-      // practice-generation . stability . runId . passId . caseId . head12 . manifest12 . json
-      if (p.length !== 8) return null;
-      return { file, runId: p[2], passId: p[3], caseId: p[4], head: p[5], manifest: p[6] };
+      // practice-generation . stability . mode . runId . passId . caseId . head12 . manifest12 . json
+      if (p.length !== 9) return null;
+      if (p[2] !== "mock" && p[2] !== "live") return null;
+      return { file, mode: p[2], runId: p[3], passId: p[4], caseId: p[5], head: p[6], manifest: p[7] };
     })
-    .filter((e): e is CaseArtifactEntry => e !== null && (runId === undefined || e.runId === runId))
+    .filter((e): e is CaseArtifactEntry => e !== null && (runId === undefined || e.runId === runId) && (mode === undefined || e.mode === mode))
     .sort((a, b) => (a.file < b.file ? -1 : 1));
 }

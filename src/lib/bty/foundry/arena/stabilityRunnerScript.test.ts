@@ -376,7 +376,9 @@ describe("R2.23D-R3 — Vitest no longer holds live-execution authority", () => 
   it("generation runs through the tracked orchestrator, and collation through the tracked collator", () => {
     expect(script).toContain("npx --yes tsx scripts/practice-live-stability.ts");
     expect(script).toContain("npx --yes tsx scripts/practice-stability-collate.ts");
-    expect(script).toContain("--cases \"$CASE_IDS\"");
+    // R2.23D-R4 — the case list travels in the validated config, not in a shell
+    // variable the script has to keep in step with the orchestrator's flag names.
+    expect(script).toContain("scripts/practice-live-stability.ts --config \"$LIVE_CONFIG\"");
   });
 
   it("every documented exit code is handled, and 4/5 are reported distinctly", () => {
@@ -385,18 +387,144 @@ describe("R2.23D-R3 — Vitest no longer holds live-execution authority", () => 
     expect(script).toMatch(/5\) printf '  ARTIFACT WRITE FAILURE/);
   });
 
-  it("PART 8 — the version label is R2.23D-R3 everywhere, with no stale predecessor", () => {
-    expect(script).toContain("R2.23D-R3 PRACTICE STABILITY CANARY");
-    expect(script).toContain("Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R3");
-    expect(script).toMatch(/live_practice_stability_result\.r2\.23d-r3\.json/);
-    expect(script).toMatch(/live_practice_stability_review\.r2\.23d-r3\.md/);
+  it("PART 8 — the version label is R2.23D-R4 everywhere, with no stale predecessor", () => {
+    expect(script).toContain("R2.23D-R4 PRACTICE STABILITY CANARY");
+    expect(script).toContain("Slice 3.2I-PRACTICE-R5B1A.1-R2.23D-R4");
+    expect(script).toMatch(/live_practice_stability_result\.r2\.23d-r4\.json/);
+    expect(script).toMatch(/live_practice_stability_review\.r2\.23d-r4\.md/);
+    // Executable lines may never carry a predecessor label — that is how an output
+    // path from an earlier revision could silently overwrite newer evidence.
     const code = script.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
-    expect(code).not.toMatch(/R2\.23D-R1|R2\.23D-R2|r2\.23d-r1|r2\.23d-r2/);
+    expect(code).not.toMatch(/R2\.23D-R1|R2\.23D-R2|R2\.23D-R3|r2\.23d-r1|r2\.23d-r2|r2\.23d-r3/);
   });
 
   it("an incomplete run is never labelled a gates pass", () => {
     expect(script).toMatch(/if \[ "\$EVAL_STATUS" = '0' \]; then\n  printf 'STRUCTURAL \+ SEMANTIC GATES PASS/);
     expect(script).toContain("RUN INCOMPLETE — NOT STABILITY EVIDENCE");
     expect(script).not.toContain("PRODUCT QUALITY PASS");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.23D-R4 — THE DEFECT THAT REACHED AN OPERATOR
+//
+// R2.23D-R3 cleared all 22 contract checks and both provider checks, then died at
+// the EXECUTION block on `EXPECT_MANIFEST: unbound variable`. R2.23D-R1 had
+// replaced the EXPECT_* variables with `check` lines; only EXPECT_HEAD survived.
+// R2.23D-R3 then wrote `--manifest "$EXPECT_MANIFEST"`, against a naming
+// convention that no longer existed.
+//
+// It survived every test because the tests asserted that strings were PRESENT,
+// and `--credential-boundary-check` exited before the line could ever execute.
+// Presence is not binding. These tests check BINDING.
+// ---------------------------------------------------------------------------
+
+/** Shell scope, ignoring quoted heredoc bodies — those are Python, not shell. */
+function shellScope(src: string): { declared: Set<string>; used: Set<string> } {
+  const shell = src.replace(/<<'PY'[\s\S]*?\nPY\n/g, "").replace(/<<'\w+'[\s\S]*?\n\w+\n/g, "");
+  const declared = new Set(["1", "2", "3", "*", "@", "?", "#", "0"]);
+  for (const m of shell.matchAll(/^\s*(?:local\s+|export\s+)?([A-Za-z_][A-Za-z0-9_]*)=/gm)) declared.add(m[1]);
+  // `local a="$1" b="$2" c` declares every name on the line, assigned or not.
+  for (const m of shell.matchAll(/^\s*local\s+(.+)$/gm)) {
+    for (const tok of m[1].split(/\s+/)) {
+      const name = tok.split("=")[0];
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) declared.add(name);
+    }
+  }
+  for (const m of shell.matchAll(/\bread\s+-\w+\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  for (const m of shell.matchAll(/\bexport\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  const used = new Set([...shell.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
+  return { declared, used };
+}
+
+/** Names the environment supplies. Everything else must be bound by the script. */
+const ENV_SUPPLIED = new Set(["HISTFILE", "PATH", "HOME", "OPENAI_API_KEY", "BTY_PREFLIGHT_MOCK", "BTY_LIVE_EVAL_MOCK", "LLM_MODEL"]);
+
+describe("R2.23D-R4 — every shell expansion is bound, including after the credential", () => {
+  it("has no undeclared variable expansion anywhere in the script", () => {
+    const { declared, used } = shellScope(runner());
+    const undeclared = [...used].filter((n) => !declared.has(n) && !ENV_SUPPLIED.has(n));
+    expect(undeclared).toEqual([]);
+  });
+
+  it("detects the exact R2.23D-R3 defect when it is reintroduced", () => {
+    // The regression proof: inject the retired naming back into the EXECUTION block
+    // and the audit must FAIL. A test that cannot fail on the real defect is not a test.
+    const broken = runner().replace('--config "$LIVE_CONFIG"', '--manifest "$EXPECT_MANIFEST"');
+    expect(broken).toContain("EXPECT_MANIFEST");
+    const { declared, used } = shellScope(broken);
+    const undeclared = [...used].filter((n) => !declared.has(n) && !ENV_SUPPLIED.has(n));
+    expect(undeclared).toContain("EXPECT_MANIFEST");
+  });
+
+  it("binds every expansion that appears AFTER the credential prompt", () => {
+    const src = runner();
+    const after = src.slice(src.indexOf("read -rs LLM_API_KEY"));
+    const { declared } = shellScope(src);
+    const used = new Set([...after.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
+    expect([...used].filter((n) => !declared.has(n) && !ENV_SUPPLIED.has(n))).toEqual([]);
+  });
+});
+
+describe("R2.23D-R4 — the post-credential path reconstructs nothing", () => {
+  it("passes exactly one argument to the orchestrator and to the collator", () => {
+    const src = runner();
+    const after = src.slice(src.indexOf("read -rs LLM_API_KEY"));
+    // One --config, no per-value flags. Those flags are what drifted.
+    for (const retired of ["--run-id", "--head", "--manifest", "--passes", "--cases"]) {
+      expect(after).not.toContain(retired);
+    }
+    expect(after).toContain("scripts/practice-live-stability.ts --config");
+    expect(after).toContain("scripts/practice-stability-collate.ts --config");
+  });
+
+  it("builds and validates both runtime configs BEFORE the credential prompt", () => {
+    const src = runner();
+    const prompt = src.indexOf("read -rs LLM_API_KEY");
+    expect(src.indexOf("--mode mock")).toBeLessThan(prompt);
+    expect(src.indexOf("--mode live")).toBeLessThan(prompt);
+    expect(src.indexOf("practice-runtime-config.ts")).toBeLessThan(prompt);
+  });
+});
+
+describe("R2.23D-R4 — the full mock run is executed, not merely described", () => {
+  const src = () => runner();
+
+  it("runs the orchestrator and the collator on the mock transport before the prompt", () => {
+    const s = src();
+    const prompt = s.indexOf("read -rs LLM_API_KEY");
+    expect(s.indexOf("BTY_LIVE_EVAL_MOCK=1 npx --yes tsx scripts/practice-live-stability.ts")).toBeLessThan(prompt);
+    expect(s.indexOf("practice-stability-collate.ts --config \"$MOCK_CONFIG\"")).toBeLessThan(prompt);
+  });
+
+  it("counts the mock artifacts that EXIST rather than trusting the exit status", () => {
+    const s = src();
+    expect(s).toMatch(/find "\$MOCK_DIR".*practice-generation\.stability\.mock\./);
+    expect(s).toContain('[ "$MOCK_ARTIFACTS" = "$EXPECTED_EXECUTIONS" ]');
+  });
+
+  it("prints every required marker and blocks the live run on any wiring failure", () => {
+    const s = src();
+    for (const marker of [
+      "PREFLIGHT CONTRACT PASS",
+      "FULL STABILITY MOCK PASS",
+      "LIVE PROVIDER NOT CALLED",
+      "CREDENTIAL NOT REQUESTED",
+      "RUNTIME WIRING FAILED · LIVE RUN BLOCKED",
+    ]) {
+      expect(s).toContain(marker);
+    }
+  });
+
+  it("never lets a mock run print the live product verdict", () => {
+    const s = src();
+    // The one live verdict string must sit strictly after the credential prompt.
+    expect(s.indexOf("STRUCTURAL + SEMANTIC GATES PASS")).toBeGreaterThan(s.indexOf("read -rs LLM_API_KEY"));
+  });
+
+  it("discards mock evidence before the live run so it can never be collated", () => {
+    const s = src();
+    expect(s).toContain("wiring_cleanup");
+    expect(s.indexOf("wiring_cleanup\nLIVE_CONFIG=")).toBeGreaterThan(0);
   });
 });

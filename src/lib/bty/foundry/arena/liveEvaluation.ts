@@ -104,6 +104,7 @@ export const EXIT_CODES = { ok: 0, contentFailure: 0, infrastructure: 4, artifac
 export type AttemptRecord = { outcome: string; code?: string; finishReason?: string; defectCodes?: string[] };
 
 export type CaseResult = {
+  mode: "mock" | "live";
   runId: string;
   passId: string;
   caseId: string;
@@ -138,6 +139,8 @@ export type LiveDeps = {
 };
 
 export type LiveConfig = {
+  /** `mock` proves wiring only; it is recorded in every artifact path and payload. */
+  mode: "mock" | "live";
   runId: string;
   head: string;
   manifestSha256: string;
@@ -221,6 +224,7 @@ export async function runLiveCase(deps: LiveDeps, config: LiveConfig, passId: st
 
   const last = attempts[attempts.length - 1];
   const result: CaseResult = {
+    mode: config.mode,
     runId: config.runId,
     passId,
     caseId: evalCase.id,
@@ -243,6 +247,7 @@ export async function runLiveCase(deps: LiveDeps, config: LiveConfig, passId: st
   };
 
   const identity: CaseArtifactIdentity = {
+    mode: config.mode,
     runId: config.runId,
     passId,
     caseId: evalCase.id,
@@ -252,7 +257,7 @@ export async function runLiveCase(deps: LiveDeps, config: LiveConfig, passId: st
   // Throws ArtifactWriteError on collision or verification failure — the caller must NOT claim
   // evidence was preserved when this fails.
   const written = deps.writeArtifact(identity, JSON.stringify(result, null, 2));
-  deps.log(`IMMUTABLE CASE ARTIFACT WRITTEN · ${written.path} · sha256=${written.sha256}`);
+  deps.log(`IMMUTABLE CASE ARTIFACT WRITTEN · mode=${config.mode} · ${written.path} · sha256=${written.sha256}`);
   return { result, written };
 }
 
