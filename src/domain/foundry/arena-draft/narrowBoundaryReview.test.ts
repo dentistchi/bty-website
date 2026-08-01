@@ -213,6 +213,91 @@ describe("earliest causal violation and descendant deduplication", () => {
   });
 });
 
+/**
+ * R2.38-CLOSURE-R1 — CORRECTION PRECISION, restored.
+ *
+ * R2.29's live run produced nine defects where four described the whole problem. R2.30 fixed that by
+ * separating CAUSAL violations, which become correction instructions, from DOWNSTREAM ones, which
+ * are evidence that the same failure persists. The assertion was lost when the R2.36 test files were
+ * replaced; the production rule was never touched.
+ *
+ * Under R2.38 the mechanism is DERIVED, so the shape that exercises this is precise: a descendant
+ * shares its ancestor's mechanism only when both derive the same one, and it is treated as
+ * downstream only when the learner cannot select it independently — which is exactly a generated
+ * resulting world state.
+ */
+describe("[R1] downstream causal deduplication", () => {
+  // A violation AT A PRIMARY needs that primary's own text to name the unmet prerequisite, so this
+  // block uses the grounded fixture — the stock one correctly offers no failure candidate there.
+  const gDraft = groundedPrimaryDraft(draftFixture());
+  const gSurfaces = reviewableSurfaces(enumerateBoundarySurfaces(gDraft));
+  const gCandidates = buildAllEvidenceCandidates([BOUNDARY], frames, gSurfaces, buildContextSegments(gDraft, gSurfaces)).candidates;
+  const gCtx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces: gSurfaces, frames, candidates: gCandidates };
+  const gId = (ref: string, role: "governed_action" | "prerequisite_failure") =>
+    poolFor(gCandidates, BOUNDARY.id, ref, role)[0]?.candidateId ?? NO_CANDIDATE;
+
+  const gBaseline = (): BoundaryTruthAssessment[] =>
+    gSurfaces.map((s) => ({
+      boundaryId: BOUNDARY.id,
+      surfaceRef: s.coordinate,
+      governedActionStatus: "absent",
+      prerequisiteStatus: "not_applicable",
+      temporalRelation: "not_applicable",
+      governedActionCandidateId: gId(s.coordinate, "governed_action"),
+      prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+      prerequisiteFailureCandidateId: NO_CANDIDATE,
+      reason: "",
+    }));
+
+  const contradicted = (ref: string): Partial<BoundaryTruthAssessment> => ({
+    governedActionStatus: "present",
+    prerequisiteStatus: "contradicted",
+    temporalRelation: "action_before_prerequisite",
+    governedActionCandidateId: gId(ref, "governed_action"),
+    prerequisiteFailureCandidateId: gId(ref, "prerequisite_failure"),
+  });
+  const chain = (descendant: string) =>
+    gBaseline()
+      .map((a) => (a.surfaceRef === "primary[1]" ? { ...a, ...contradicted("primary[1]") } : a))
+      .map((a) => (a.surfaceRef === descendant ? { ...a, ...contradicted(descendant) } : a));
+
+  it("[R1d] a descendant repeating its ancestor's mechanism is DOWNSTREAM, not a second root", () => {
+    const v = deriveBoundaryVerdict({ assessments: chain("branch[1].resulting_world_state") }, gCtx);
+    expect(v.outcome).toBe("boundary_review_reject");
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+
+    const descendant = v.violations.find((x) => x.surfaceRef === "branch[1].resulting_world_state")!;
+    const ancestor = v.violations.find((x) => x.surfaceRef === "primary[1]")!;
+    // Both derive the same mechanism, and the descendant cannot be selected on its own.
+    expect(descendant.violationMechanism).toBe(ancestor.violationMechanism);
+    expect(descendant.downstreamOfPriorViolation).toBe(true);
+    expect(descendant.earliestCausal).toBe(false);
+    expect(descendant.lineage).toContain("primary[1]");
+
+    // It remains fully inspectable as evidence…
+    expect(v.downstreamViolations.map((x) => x.surfaceRef)).toEqual(["branch[1].resulting_world_state"]);
+    // …and is excluded from the set the correction packet is built from, so a Manager is told to
+    // fix the root once rather than the same failure twice. `boundaryReviewStage` builds `findings`
+    // from `causalViolations` alone; `c18NarrowBoundary` asserts that packet end to end.
+    expect(v.causalViolations.map((x) => x.surfaceRef)).toEqual(["primary[1]"]);
+    expect(v.causalViolations.map((x) => x.surfaceRef)).not.toContain("branch[1].resulting_world_state");
+    expect(ancestor.earliestCausal).toBe(true);
+    expect(producesCorrectionPacket(v)).toBe(true);
+  });
+
+  it("[R1e] a descendant the learner can select INDEPENDENTLY stays causal, not deduplicated", () => {
+    // Being later in the branch is never on its own a reason to suppress a finding: this surface
+    // newly authorizes the governed action, so it is a root the learner can reach by itself.
+    const v = deriveBoundaryVerdict({ assessments: chain("branch[1].action[1]") }, gCtx);
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    const descendant = v.violations.find((x) => x.surfaceRef === "branch[1].action[1]")!;
+    expect(descendant.downstreamOfPriorViolation).toBe(false);
+    expect(descendant.earliestCausal).toBe(false); // it HAS a violating ancestor…
+    expect(v.causalViolations.map((x) => x.surfaceRef)).toContain("branch[1].action[1]"); // …and is still its own root
+    expect(v.downstreamViolations).toHaveLength(0);
+  });
+});
+
 describe("rerun authority", () => {
   const malformed = (codes: DerivedBoundaryVerdict extends never ? never : string[], failed: string[]): DerivedBoundaryVerdict => ({
     outcome: "boundary_review_malformed",

@@ -390,6 +390,79 @@ describe("[32-36] captured-DTO regressions live in r236TruthRegression", () => {
   });
 });
 
+/**
+ * R2.38-CLOSURE-R1 — two enforcement paths that lost their assertion when the R2.36 test files were
+ * replaced rather than merged. The production code was correct throughout; only the proof was lost.
+ * Both tests drive the REAL validator, not a helper in isolation.
+ */
+describe("[R1] restored reason and candidate-role enforcement", () => {
+  const UNCERTAIN = "branch[1].tradeoff[1]";
+
+  it("[R1a] a generic filler reason is REFUSED where the state requires the model's own words", () => {
+    // `governed_action_uncertain` is a model_required state: only the reviewer can say what is
+    // unclear. Filler passes the length gate (`needs review` is exactly MODEL_REASON_MIN_CHARS) and
+    // must still be refused, or "uncertain" becomes a way to say nothing and be believed.
+    for (const filler of ["needs review", "see evidence"]) {
+      const r = validateNarrowBoundaryReview(
+        { assessments: withRow(UNCERTAIN, { governedActionStatus: "uncertain", prerequisiteStatus: "uncertain", reason: filler }) },
+        ctx,
+      );
+      expect(r.ok, `filler: ${filler}`).toBe(false);
+      if (r.ok) throw new Error("unreachable");
+      expect(r.codes, `filler: ${filler}`).toContain("boundary_reason_generic");
+      // The row carries no authority: it is not accepted, and it derives nothing.
+      expect(r.derived.some((d) => d.surfaceRef === UNCERTAIN)).toBe(false);
+      expect(r.failedSurfaceRefs).toContain(UNCERTAIN);
+    }
+    // The CONTRAST that makes the gate meaningful: a specific reason in the same state passes.
+    const good = validateNarrowBoundaryReview(
+      {
+        assessments: withRow(UNCERTAIN, {
+          governedActionStatus: "uncertain",
+          prerequisiteStatus: "uncertain",
+          reason: "'caring for' may or may not mean treating",
+        }),
+      },
+      ctx,
+    );
+    expect(good.ok).toBe(true);
+  });
+
+  it("[R1b] a candidate supplied in a role the state FORBIDS is refused", () => {
+    // `non_governing` forbids both prerequisite roles: a surface that does not perform the governed
+    // action has no prerequisite to prove either way. The id used here is deliberately VALID —
+    // known, surface-local and correctly provenanced — so the refusal cannot come from an unknown
+    // or wrong-surface error instead.
+    const ref = "branch[1].tradeoff[0]";
+    const validSatisfaction = first(ref, "prerequisite_satisfaction");
+    expect(validSatisfaction).not.toBe(NO_CANDIDATE);
+    const resolved = candidates.find((c) => c.candidateId === validSatisfaction)!;
+    expect(resolved.assessedSurfaceRef).toBe(ref);
+    expect(resolved.semanticRole).toBe("prerequisite_satisfaction");
+
+    const r = validateNarrowBoundaryReview({ assessments: withRow(ref, { prerequisiteSatisfactionCandidateId: validSatisfaction }) }, ctx);
+    expect(r.ok).toBe(false);
+    if (r.ok) throw new Error("unreachable");
+    expect(r.codes).toContain("boundary_candidate_forbidden_present");
+    expect(r.codes).not.toContain("boundary_candidate_unknown");
+    expect(r.codes).not.toContain("boundary_candidate_wrong_surface");
+    expect(r.derived.some((d) => d.surfaceRef === ref)).toBe(false);
+    const v = deriveBoundaryVerdict({ assessments: withRow(ref, { prerequisiteSatisfactionCandidateId: validSatisfaction }) }, ctx);
+    expect(v.outcome).toBe("boundary_review_malformed");
+  });
+
+  it("[R1c] the SAME state with the sentinel validates and derives non_governing", () => {
+    const ref = "branch[1].tradeoff[0]";
+    const r = validateNarrowBoundaryReview({ assessments: withRow(ref, { prerequisiteSatisfactionCandidateId: NO_CANDIDATE }) }, ctx);
+    expect(r.ok).toBe(true);
+    if (!r.ok) throw new Error("unreachable");
+    const row = r.derived.find((d) => d.surfaceRef === ref)!;
+    expect(row.stateId).toBe("non_governing");
+    expect(row.applicability).toBe("not_applicable");
+    expect(row.compliance).toBe("not_assessed");
+  });
+});
+
 describe("[42-45] structural and hygiene properties", () => {
   it("[42] the truth table accepts a small fraction of the schema's combinations", () => {
     const c = truthStateCoverage(GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS);
