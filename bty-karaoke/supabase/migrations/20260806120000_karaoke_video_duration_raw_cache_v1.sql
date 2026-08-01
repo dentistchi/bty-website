@@ -1,3 +1,4 @@
+-- Copy-friendly (LF, no trailing spaces). Select all to copy.
 -- BUILD 22 — PRE-QUEUE SONG DURATION ADMISSION V1 (additive; constraint broadening only).
 --
 -- WHY: karaoke_video_durations was created (20260803120000) as an ADMISSIBLE-duration cache —
@@ -44,15 +45,24 @@ alter table public.karaoke_video_durations
 alter table public.karaoke_video_durations
   drop constraint if exists karaoke_video_duration_seconds_positive;
 
--- The new bound is POSITIVE-ONLY, with a generous 24-hour sanity ceiling that no real YouTube
--- video reaches (the platform maximum is 12 hours). 0 and negatives remain rejected because they
--- are not lengths — the exact rule `classifyDurationAdmission` applies in the application layer.
--- Explicitly named so the deployed constraint is inspectable in pg_constraint by a stable name.
+-- The new bound is POSITIVE-ONLY, and deliberately carries NO upper limit.
+--
+-- R1 CORRECTION: an earlier draft of this migration added a 24-hour ceiling. That reintroduced
+-- exactly the defect this table is being fixed for — a policy number constraining the RAW cache.
+-- Any ceiling makes durations above it unstorable, so they fall back to a live lookup on every
+-- single resolution: the same quota amplification, just relocated from 901s to 86401s. The cache
+-- stores what the provider said; ONE place decides admissibility, and that place is
+-- `classifyDurationAdmission` (1..900 allowed, 901+ too_long).
+--
+-- 0 and negatives remain rejected because they are not lengths — the same rule the application
+-- classifier applies. Explicitly named so the deployed constraint is inspectable in pg_constraint
+-- by a stable name.
 alter table public.karaoke_video_durations
   add constraint karaoke_video_duration_seconds_positive
-  check (duration_seconds > 0 and duration_seconds <= 86400);
+  check (duration_seconds > 0);
 
 comment on column public.karaoke_video_durations.duration_seconds is
   'BUILD 22: RAW trusted duration in seconds as reported by the provider. NOT pre-filtered for '
-  'admissibility — values above 900 are stored deliberately so the too-long verdict is durable '
-  'and costs no repeat quota. Readers apply the 900s admission policy (classifyDurationAdmission).';
+  'admissibility and deliberately unbounded above — any positive integer is storable so the '
+  'too-long verdict is durable and costs no repeat quota. Readers apply the 900s admission '
+  'policy (classifyDurationAdmission); this column carries no policy of its own.';

@@ -36,9 +36,6 @@ const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 /** YouTube `videos.list` accepts at most 50 ids per call — one quota unit regardless of count. */
 export const DURATION_BATCH_MAX = 50;
 
-/** Upper sanity bound mirroring the DB check (24h). Beyond this the value is not a real length. */
-const MAX_STORABLE_DURATION_SECONDS = 86400;
-
 /** A positively-established provider duration, or a classified reason it is unavailable. */
 export type RawDurationResolution =
   | { ok: true; seconds: number }
@@ -46,13 +43,21 @@ export type RawDurationResolution =
 
 /**
  * Is this a duration the provider positively stated? Deliberately NOT the admission check —
- * 901 is a perfectly trustworthy length. Fractions and out-of-sanity values are rejected because
- * the provider contract cannot produce them.
+ * 901 is a perfectly trustworthy length, and so is 86401.
+ *
+ * R1 CORRECTION: this predicate previously carried a 24-hour ceiling mirroring an earlier draft
+ * of the DB constraint. That was the raw-cache defect in miniature — a value above the ceiling
+ * was reported as "not a length", so it could neither be cached nor classified from cache, and
+ * every resolution paid for a fresh lookup. There is now NO upper bound: any positive integer is
+ * a trusted length, and `classifyDurationAdmission` alone decides whether it may be requested.
+ *
+ * (`duration_seconds` is a Postgres int4, so a pathological multi-century value would be rejected
+ * by the column type on write. That path is harmless: the write is best-effort, the failure is
+ * logged, and the verdict — too_long — is already correct without it.)
  */
 function trustedRawSeconds(parsed: number | null): number | null {
   if (parsed == null || !Number.isFinite(parsed) || !Number.isInteger(parsed)) return null;
-  if (parsed < 1 || parsed > MAX_STORABLE_DURATION_SECONDS) return null;
-  return parsed;
+  return parsed < 1 ? null : parsed;
 }
 
 /**

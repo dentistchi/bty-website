@@ -17,8 +17,9 @@ const state = {
   cache: new Map<string, number>(),
   cacheReadThrows: false,
   cacheWriteThrows: false,
-  /** The DB CHECK ceiling. 86400 = BUILD 22 applied; 900 = the un-migrated production schema. */
-  checkMaxSeconds: 86400,
+  /** The DB CHECK ceiling. Infinity = BUILD 22-R1 applied (no upper bound at all);
+   *  900 = the un-migrated production schema. */
+  checkMaxSeconds: Number.POSITIVE_INFINITY,
   /** Every row handed to the cache upsert, flattened. */
   written: [] as Array<{ video_id: string; duration_seconds: number }>,
   apiKey: 'test-key' as string | null,
@@ -112,7 +113,7 @@ beforeEach(() => {
   state.cache = new Map();
   state.cacheReadThrows = false;
   state.cacheWriteThrows = false;
-  state.checkMaxSeconds = 86400;
+  state.checkMaxSeconds = Number.POSITIVE_INFINITY;
   state.written = [];
   state.apiKey = 'test-key';
   fetchMock = vi.fn();
@@ -186,6 +187,43 @@ describe('BUILD 22 — the cache is now RAW, and an over-limit duration is durab
     state.cacheReadThrows = true;
     fetchMock.mockResolvedValueOnce(okItem('PT3M05S'));
     expect(await resolveRawVideoDuration(A)).toEqual({ ok: true, seconds: 185 });
+  });
+
+  // ── R1: the raw cache has NO upper bound ───────────────────────────────────────────────────
+  //
+  // An earlier draft capped storage at 86400. That put the original defect back one order of
+  // magnitude up: a duration above the cap was unstorable, so it was re-looked-up on every single
+  // resolution. These pin that no such cliff exists at any value.
+
+  it('a cached 86401 returns too_long with ZERO upstream calls', async () => {
+    state.cache.set(A, 86401);
+    expect(await resolveRawVideoDuration(A)).toEqual({ ok: true, seconds: 86401 });
+    expect(await resolveVideoDuration(A)).toEqual({ ok: false, reason: 'too_long' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('a cached 100000 also returns too_long with ZERO upstream calls', async () => {
+    state.cache.set(A, 100000);
+    expect(await resolveVideoDuration(A)).toEqual({ ok: false, reason: 'too_long' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('a FRESH 86401 is PERSISTED (previously discarded by the ceiling)', async () => {
+    fetchMock.mockResolvedValueOnce(okItem('PT24H0M1S'));
+    expect(await resolveRawVideoDuration(A)).toEqual({ ok: true, seconds: 86401 });
+    expect(state.written).toEqual([
+      { video_id: A, duration_seconds: 86401, source: 'youtube_contentDetails' },
+    ]);
+  });
+
+  it('a SECOND resolution of that 86401 uses the cache — no repeat quota', async () => {
+    fetchMock.mockResolvedValueOnce(okItem('PT24H0M1S'));
+    expect(await resolveVideoDuration(A)).toEqual({ ok: false, reason: 'too_long' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockClear();
+    expect(await resolveVideoDuration(A)).toEqual({ ok: false, reason: 'too_long' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('a nonsense cached row is not treated as an answer', async () => {
@@ -303,6 +341,20 @@ describe('BUILD 22 — enrichment failure degrades to unknown, never to an outag
   it('an empty result list costs nothing', async () => {
     expect(await enrichItemsWithDuration([])).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // R1 — a search page containing a >24h cached video must behave like any other blocked result:
+  // represented as too_long, no upstream call, and the response still fully usable.
+  it('a cached duration over 24 hours enriches as too_long, with no upstream call and no failure', async () => {
+    state.cache.set(A, 86401);
+    state.cache.set(B, 185);
+    const out = await enrichItemsWithDuration(items);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ durationSeconds: 86401, durationAdmission: 'too_long' });
+    expect(out[1]).toMatchObject({ durationSeconds: 185, durationAdmission: 'allowed' });
+    // The other results are unaffected — one over-limit row never degrades the page.
+    expect(out.map((i) => i.videoId)).toEqual([A, B]);
   });
 });
 

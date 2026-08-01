@@ -41,7 +41,11 @@ describe('BUILD 22 — allowed / too_long boundary', () => {
     [901, 'one second past the bound'],
     [1200, 'a 20-minute video'],
     [8917, 'the real 2.5-hour medley measured in production'],
-    [86400, 'the storage ceiling'],
+    [86400, 'a full 24 hours'],
+    // R1: the raw cache has no ceiling, so the classifier must keep answering past the point
+    // where an earlier draft of the migration would have refused to store the value at all.
+    [86401, 'one second past the REMOVED storage ceiling'],
+    [100000, 'well past any plausible video length'],
   ])('%d seconds → too_long (%s)', (secs) => {
     expect(classifyDurationAdmission(secs)).toBe('too_long');
     expect(isTooLong(secs)).toBe(true);

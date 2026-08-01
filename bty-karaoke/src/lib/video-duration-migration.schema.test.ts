@@ -33,25 +33,40 @@ describe('20260806120000 — BUILD 22 raw duration cache', () => {
 
   it('adds an EXPLICITLY NAMED, inspectable check constraint', () => {
     expect(code).toMatch(
-      /add constraint karaoke_video_duration_seconds_positive check \(duration_seconds > 0 and duration_seconds <= 86400\)/,
+      /add constraint karaoke_video_duration_seconds_positive check \(duration_seconds > 0\)/,
     );
   });
 
-  it('accepts 900, 901 and larger positive durations under the new bound', () => {
-    // The predicate the migration installs, evaluated directly.
-    const accepts = (n: number) => n > 0 && n <= 86400;
-    expect(accepts(900)).toBe(true); //  the old ceiling — still valid
-    expect(accepts(901)).toBe(true); //  THE POINT: previously rejected outright
-    expect(accepts(8917)).toBe(true); // the real production medley
-    expect(accepts(86400)).toBe(true);
+  // R1: the raw cache must carry NO policy number of its own. Any ceiling would make durations
+  // above it unstorable and therefore re-looked-up forever — the exact quota amplification this
+  // table is being fixed for, merely relocated to a larger number.
+  it('carries NO upper bound whatsoever', () => {
+    // Structural, not lexical: the `comment on column` prose legitimately references the 900s
+    // admission policy to explain where that number DOES live, so it is excluded here.
+    const ddl = code.replace(/comment on column[^;]*;/g, ' ');
+    expect(ddl).not.toContain('86400');
+    expect(ddl).not.toMatch(/duration_seconds\s*<=?\s*\d+/);
+    expect(ddl).not.toMatch(/\bbetween\b/);
+    expect(ddl).not.toContain('900'); // the admission bound lives ONLY in the application layer
   });
 
-  it('still rejects 0, negatives, and absurd values (not lengths)', () => {
-    const accepts = (n: number) => n > 0 && n <= 86400;
+  it('accepts every trusted positive duration, with no ceiling', () => {
+    // The predicate the migration installs, evaluated directly.
+    const accepts = (n: number) => n > 0;
+    expect(accepts(1)).toBe(true);
+    expect(accepts(900)).toBe(true); //   the admission bound — irrelevant to storage
+    expect(accepts(901)).toBe(true); //   previously rejected outright
+    expect(accepts(8917)).toBe(true); //  the real production medley
+    expect(accepts(86400)).toBe(true); // 24h
+    expect(accepts(86401)).toBe(true); // R1: past the removed ceiling
+    expect(accepts(100000)).toBe(true);
+  });
+
+  it('still rejects 0 and negatives — they are not lengths', () => {
+    const accepts = (n: number) => n > 0;
     expect(accepts(0)).toBe(false);
     expect(accepts(-1)).toBe(false);
     expect(accepts(-8917)).toBe(false);
-    expect(accepts(86401)).toBe(false);
   });
 
   it('PRESERVES every existing row — no insert/update/delete/backfill anywhere', () => {
