@@ -24,15 +24,18 @@ import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryP
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
 import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type ViolationMechanism } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
+import { emptyTransportEvidence, transportEvidenceSha256 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
+import { NARROW_TIMEOUT_OWNER } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
-import { BOUNDARY_REPORTABLE_OUTCOMES, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import { BOUNDARY_REPORTABLE_OUTCOMES, NARROW_REPLAY_ARTIFACT_VERSION as ARTIFACT_VERSION, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { compatibilitySurfaces, enumerateBoundarySurfaces, reviewableSurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { RECONSTRUCTION_DISCLAIMER } from "@/lib/bty/foundry/arena/historicalBoundaryReconstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildC18Subject, CASE_ID, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, SOURCE_ATTEMPT_INDEX } from "./practice-c18-boundary-replay";
 
 const MOCK_ENV = "BTY_C18_NARROW_MOCK";
-export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/1";
+// R2.34 — re-exported from the ONE canonical source; never redeclared here.
+export { NARROW_REPLAY_ARTIFACT_VERSION } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 
 function arg(name: string, fallback?: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -67,6 +70,17 @@ export type NarrowReplaySummary = {
   causalViolations: string[];
   authorityCodes: string[];
   outputContractFailure: boolean;
+  providerFailureCode: string | null;
+  providerInvocations: number;
+  providerResponses: number;
+  semanticAttempts: number;
+  transportFailures: number;
+  responseState: string | null;
+  httpStatus: number | null;
+  retriability: string | null;
+  failureLayer: string | null;
+  timeoutState: string | null;
+  retryAfterMs: number | null;
   serverDerivedExplanations: number;
   modelReasonRequiredCount: number;
   modelReasonMissingCount: number;
@@ -117,7 +131,7 @@ export async function runC18NarrowBoundaryReplay(
   // The artifact carries the complete evidence chain, never just the outcome label.
   const payload = JSON.stringify(
     {
-      artifactVersion: NARROW_REPLAY_ARTIFACT_VERSION,
+      artifactVersion: ARTIFACT_VERSION,
       mode,
       replayRunId,
       sourceRunId: broad.sourceRunId,
@@ -158,6 +172,16 @@ export async function runC18NarrowBoundaryReplay(
       explanationAuthoritySha256: explanationAuthoritySha256(),
       reasonParityTableSha256: parityTableSha256(),
       outputContractFailure: stage.outputContractFailure,
+      // R2.34 — transport evidence, separated counts and the invocation budget.
+      transportEvidence: stage.transportEvidence,
+      transportEvidenceSha256: transportEvidenceSha256(),
+      providerFailureCode: stage.providerFailureCode,
+      boundaryProviderInvocationCount: stage.providerInvocations,
+      boundaryProviderResponseCount: stage.providerResponses,
+      boundarySemanticReviewAttemptCount: stage.semanticAttempts,
+      boundaryTransportFailureCount: stage.transportFailures,
+      boundaryTransportRetryCount: 0,
+      invocationBudgetExhausted: stage.invocationBudgetExhausted,
       modelReasonRequiredCount: stage.modelReasonRequiredCount,
       modelReasonMissingCount: stage.modelReasonMissingCount,
       modelReasonUnexpectedCount: stage.modelReasonUnexpectedCount,
@@ -184,6 +208,17 @@ export async function runC18NarrowBoundaryReplay(
     causalViolations: stage.causalViolations.map((v) => v.surfaceRef),
     authorityCodes: stage.codes,
     outputContractFailure: stage.outputContractFailure,
+    providerFailureCode: stage.providerFailureCode,
+    providerInvocations: stage.providerInvocations,
+    providerResponses: stage.providerResponses,
+    semanticAttempts: stage.semanticAttempts,
+    transportFailures: stage.transportFailures,
+    responseState: stage.transportEvidence.at(-1)?.responseState ?? null,
+    httpStatus: stage.transportEvidence.at(-1)?.httpStatus ?? null,
+    retriability: stage.transportEvidence.at(-1)?.retriability ?? null,
+    failureLayer: stage.transportEvidence.at(-1)?.failureLayer ?? null,
+    timeoutState: stage.transportEvidence.at(-1)?.timeoutState ?? null,
+    retryAfterMs: stage.transportEvidence.at(-1)?.retryAfterMs ?? null,
     serverDerivedExplanations: stage.explanations.filter((e) => e.authority === "server").length,
     modelReasonRequiredCount: stage.modelReasonRequiredCount,
     modelReasonMissingCount: stage.modelReasonMissingCount,
@@ -288,6 +323,24 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
       finishReason: "stop",
       latencyMs: 0,
       sanitizedError: null,
+      // A mock response DID arrive; the transport record says so honestly.
+      transport: {
+        ...emptyTransportEvidence(`mock#${attempt}`),
+        requestConstructed: true,
+        clientInvocationStarted: true,
+        providerInvocationStarted: true,
+        providerInvocationStartedAt: 0,
+        providerInvocationEndedAt: 0,
+        latencyMs: 0,
+        responseState: "response_received",
+        responseEnvelopePresent: true,
+        structuredOutputPresent: true,
+        timeoutState: "armed_not_fired",
+        timeoutOwner: NARROW_TIMEOUT_OWNER,
+        evidenceSource: "structured",
+        artifactWriteResult: "pending",
+      },
+      providerFailureCode: null,
     },
   };
 }
@@ -333,8 +386,26 @@ async function main(): Promise<void> {
 
   if (useMock) process.stdout.write("C18 NARROW BOUNDARY REPLAY MOCK · LIVE PROVIDER NOT CALLED\n");
   process.stdout.write(`OUTCOME: ${summary.outcome}\nCALLS: ${summary.calls}\nRERUNS: ${summary.reruns}\n`);
-  // R2.32 Part 14 — the semantic verdict and the contract bookkeeping are DIFFERENT questions and
-  // are printed apart, so a reject is never read as a precision pass.
+  // R2.34 Part 10 — the TRANSPORT layer is reported before and apart from any semantic claim, so a
+  // provider failure can never be read as a reviewer verdict.
+  process.stdout.write(`\n-- TRANSPORT --\n`);
+  process.stdout.write(`TOP-LEVEL OUTCOME:      ${summary.outcome}\n`);
+  process.stdout.write(`PROVIDER FAILURE CODE:  ${summary.providerFailureCode ?? "(none — no provider failure)"}\n`);
+  process.stdout.write(`FAILURE LAYER:          ${summary.failureLayer ?? "(n/a)"}\n`);
+  process.stdout.write(`RESPONSE STATE:         ${summary.responseState ?? "(n/a)"}\n`);
+  process.stdout.write(`HTTP STATUS:            ${summary.httpStatus ?? "(none recorded)"}\n`);
+  process.stdout.write(`RETRIABILITY:           ${summary.retriability ?? "(n/a)"}\n`);
+  process.stdout.write(`RETRY-AFTER:            ${summary.retryAfterMs === null ? "(none)" : `${summary.retryAfterMs} ms`}\n`);
+  process.stdout.write(`TIMEOUT / ABORT:        ${summary.timeoutState ?? "(n/a)"}\n`);
+  process.stdout.write(`\n-- COUNTS --\n`);
+  process.stdout.write(`provider invocations:   ${summary.providerInvocations}\n`);
+  process.stdout.write(`provider responses:     ${summary.providerResponses}\n`);
+  process.stdout.write(`semantic attempts:      ${summary.semanticAttempts}\n`);
+  process.stdout.write(`semantic reruns:        ${summary.reruns}\n`);
+  process.stdout.write(`transport failures:     ${summary.transportFailures}\n`);
+  process.stdout.write(`generation calls:       0\n`);
+  process.stdout.write(`broad-review calls:     0\n`);
+
   process.stdout.write(`\n-- SEMANTIC VERDICT --\n`);
   process.stdout.write(`EARLIEST CAUSAL VIOLATIONS: ${summary.causalViolations.join(", ") || "(none)"}\n`);
   process.stdout.write(`UNCERTAINTY FINDINGS:       ${summary.uncertainties.map((u) => `${u.surfaceRef}: ${u.reason}`).join(" | ") || "(none)"}\n`);

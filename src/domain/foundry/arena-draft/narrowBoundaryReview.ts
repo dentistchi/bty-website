@@ -143,6 +143,9 @@ export const NARROW_BOUNDARY_JSON_SCHEMA = {
 // ---------------------------------------------------------------------------
 
 export const NARROW_COVERAGE_CODES = [
+  /** R2.34 — a transport failure has its own code. It is NOT `boundary_review_not_json`: no body
+   *  ever arrived to fail at parsing, and labelling it a coverage failure was measurably wrong. */
+  "boundary_review_transport_failed",
   "boundary_review_truncated",
   "boundary_review_not_json",
   "boundary_review_not_an_object",
@@ -197,10 +200,12 @@ export const OUTPUT_CONTRACT_CODES = [
 
 export const COVERAGE_FAILURE_CODES = [...NARROW_COVERAGE_CODES] as readonly string[];
 
-export type NarrowFailureClass = "coverage" | "grounding" | "output_contract";
+/** R2.34 — `transport` is a fourth class: the call never reached the semantic layer at all. */
+export type NarrowFailureClass = "coverage" | "grounding" | "output_contract" | "transport";
 
-/** The single classifier. Coverage outranks output-contract, which outranks grounding. */
+/** The single classifier. Transport outranks everything — nothing else could have happened yet. */
 export function classifyFailure(codes: readonly string[]): NarrowFailureClass {
+  if (codes.includes("boundary_review_transport_failed")) return "transport";
   if (codes.some((c) => COVERAGE_FAILURE_CODES.includes(c))) return "coverage";
   if (codes.some((c) => (OUTPUT_CONTRACT_CODES as readonly string[]).includes(c))) return "output_contract";
   return "grounding";

@@ -15,7 +15,13 @@
  */
 
 import type { Finding } from "@/domain/foundry/arena-draft/gatePrecedence";
-import { BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES, type BoundaryStageOutcome as StageOutcome } from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import {
+  BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
+  MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
+  MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT,
+  type BoundaryStageOutcome as StageOutcome,
+} from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import { validateTransportEvidence, type BoundaryTransportEvidence, type ProviderFailureCode } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { classifyAssessmentState, requiresModelReason } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationSha256, type ServerExplanation } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import type { BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
@@ -49,8 +55,22 @@ export type BoundaryStageResult = {
   subject: NarrowBoundarySubject | null;
   boundaryReviewSubjectSha256: string | null;
   surfaceMapSha256: string | null;
+  /**
+   * R2.34 — SEPARATED COUNTS. `calls` was one number doing three jobs, which is how a transport
+   * failure came to consume reviewer rerun authority it never earned.
+   */
+  providerInvocations: number;
+  providerResponses: number;
+  semanticAttempts: number;
+  transportFailures: number;
+  /** DEPRECATED alias of `providerInvocations`, kept so existing readers do not silently change
+   *  meaning. Old meaning: "review calls". New meaning: provider invocations. */
   calls: number;
   reruns: number;
+  /** Populated when the stage ended below the semantic layer. */
+  providerFailureCode: ProviderFailureCode | null;
+  transportEvidence: BoundaryTransportEvidence[];
+  invocationBudgetExhausted: boolean;
   /** Populated only on a valid reject. */
   violations: BoundaryViolation[];
   /** Earliest causal + independently-new violations — the only ones that drive a correction. */
@@ -108,8 +128,15 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   subject: null,
   boundaryReviewSubjectSha256: null,
   surfaceMapSha256: null,
+  providerInvocations: 0,
+  providerResponses: 0,
+  semanticAttempts: 0,
+  transportFailures: 0,
   calls: 0,
   reruns: 0,
+  providerFailureCode: null,
+  transportEvidence: [],
+  invocationBudgetExhausted: false,
   violations: [],
   causalViolations: [],
   downstreamViolations: [],
@@ -205,8 +232,18 @@ export async function runBoundaryReviewStage(
 
   const evidences: NarrowBoundaryEvidence[] = [];
   let reruns = 0;
+  // R2.34 — three independent counters. `providerInvocations` is the COST authority (every call,
+  // response or not); `semanticAttempts` is the RERUN authority (only responses that reached the
+  // semantic layer). Collapsing them is how a transport failure spent rerun budget it never earned.
+  let providerInvocations = 0;
+  let providerResponses = 0;
+  let semanticAttempts = 0;
+  let transportFailures = 0;
 
   for (let attempt = 1; attempt <= MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT; attempt++) {
+    // BOTH caps apply, and the invocation cap is checked first because it is the cost authority.
+    if (providerInvocations >= MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT) break;
+    if (semanticAttempts >= MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT) break;
     if (attempt > 1) {
       // FAIL CLOSED before the second call: the subject and its surface map must be identical.
       const current = surfaceMapSha256(enumerateBoundarySurfaces(args.draft, args.constructions));
@@ -224,8 +261,12 @@ export async function runBoundaryReviewStage(
       }
     }
 
+    providerInvocations += 1; // incremented for the invocation itself, before any outcome is known
     const call = await deps.review(subject, attempt);
     evidences.push(call.evidence);
+    if (call.evidence.transport?.responseState === "response_received") providerResponses += 1;
+    if (call.kind === "transport_failed") transportFailures += 1;
+    else semanticAttempts += 1; // ONLY a response that reached schema/semantic validation
 
     const decision = decideAfterBoundaryReview(
       attempt,
@@ -242,8 +283,15 @@ export async function runBoundaryReviewStage(
       surfaceMapSha256: mapSha,
       reachableSurfaces: reachable.map((s) => s.coordinate),
       excludedCompatibilitySurfaces: excluded.map((s) => s.coordinate),
-      calls: evidences.length,
+      providerInvocations,
+      providerResponses,
+      semanticAttempts,
+      transportFailures,
+      calls: providerInvocations,
       reruns,
+      providerFailureCode: call.evidence.providerFailureCode ?? null,
+      transportEvidence: evidences.map((e) => e.transport).filter(Boolean),
+      invocationBudgetExhausted: providerInvocations >= MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
       explanations,
       explanationSha256: explanations.length ? explanationSha256(explanations) : null,
       outputContractFailure: verdict.outcome === "boundary_review_malformed" && verdict.failureClass === "output_contract",
@@ -337,9 +385,32 @@ export async function runBoundaryReviewStage(
       };
     }
 
-    // Transport / budget failure. Never a scenario verdict.
-    log("boundary_reviewer_terminal_failure", decision.code, { boundaryReviewSubjectSha256: subjectSha, scenarioUnjudged: true });
-    return { ...empty("boundary_reviewer_terminal_failure"), ...base, outcome: "boundary_reviewer_terminal_failure", codes: [decision.code], reruns };
+    // R2.34 — A PROVIDER FAILURE IS NOT A REVIEWER FAILURE. R2.33 measured this reported as
+    // `boundary_reviewer_terminal_failure`, which asserts the reviewer produced two unusable
+    // responses over an identical subject. It never saw the subject. The top level is now
+    // `provider_failure`; the precise class and the stage subcode both travel with it.
+    const providerCode = call.evidence.providerFailureCode ?? "provider_failure_unknown";
+    log("provider_failure", providerCode, {
+      boundaryReviewSubjectSha256: subjectSha,
+      scenarioUnjudged: true,
+      boundaryReviewOutcome: "provider_failure",
+      providerFailureCode: providerCode,
+      responseState: call.evidence.transport?.responseState,
+      httpStatus: call.evidence.transport?.httpStatus ?? undefined,
+      retriability: call.evidence.transport?.retriability,
+      failureLayer: call.evidence.transport?.failureLayer,
+      providerInvocations,
+      semanticAttempts,
+    });
+    return {
+      ...empty("provider_failure"),
+      ...base,
+      outcome: "provider_failure",
+      // The stage compatibility subcode is preserved beneath the corrected top level.
+      codes: [decision.code],
+      providerFailureCode: providerCode,
+      reruns,
+    };
   }
 
   // Budget exhausted without a decision — defensive; `decideAfterBoundaryReview` terminates first.
@@ -413,6 +484,13 @@ export type BoundaryReviewMetrics = {
   /** Prose supplied where the server owns the explanation. Ignored for authority; a drift signal. */
   modelReasonUnexpectedCount: number;
   boundaryOutputContractFailureCount: number;
+  // R2.34 — invocation / response / semantic / transport are four different questions.
+  boundaryProviderInvocationCount: number;
+  boundaryProviderResponseCount: number;
+  boundarySemanticReviewAttemptCount: number;
+  boundaryTransportFailureCount: number;
+  /** Reserved. No automatic transport retry exists; an authorized one would increment this. */
+  boundaryTransportRetryCount: number;
 };
 
 export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
@@ -439,6 +517,11 @@ export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
   modelReasonMissingCount: 0,
   modelReasonUnexpectedCount: 0,
   boundaryOutputContractFailureCount: 0,
+  boundaryProviderInvocationCount: 0,
+  boundaryProviderResponseCount: 0,
+  boundarySemanticReviewAttemptCount: 0,
+  boundaryTransportFailureCount: 0,
+  boundaryTransportRetryCount: 0,
 });
 
 const UNGROUNDED_CODES = new Set([
@@ -468,6 +551,7 @@ export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryS
   const rows = parsed?.assessments ?? [];
   return {
     boundaryReviewCallCount: m.boundaryReviewCallCount + r.calls,
+    // Semantic reruns only. A transport failure never increments this — it never reached the reviewer.
     boundaryReviewRerunCount: m.boundaryReviewRerunCount + r.reruns,
     boundaryReviewPassCount: m.boundaryReviewPassCount + (r.outcome === "boundary_review_pass" ? 1 : 0),
     boundaryReviewRejectCount: m.boundaryReviewRejectCount + (r.outcome === "boundary_review_reject" ? 1 : 0),
@@ -495,6 +579,11 @@ export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryS
     boundaryOutputContractFailureCount:
       m.boundaryOutputContractFailureCount +
       r.evidences.filter((e) => e.verdict.outcome === "boundary_review_malformed" && e.verdict.failureClass === "output_contract").length,
+    boundaryProviderInvocationCount: m.boundaryProviderInvocationCount + r.providerInvocations,
+    boundaryProviderResponseCount: m.boundaryProviderResponseCount + r.providerResponses,
+    boundarySemanticReviewAttemptCount: m.boundarySemanticReviewAttemptCount + r.semanticAttempts,
+    boundaryTransportFailureCount: m.boundaryTransportFailureCount + r.transportFailures,
+    boundaryTransportRetryCount: m.boundaryTransportRetryCount, // no automatic transport retry exists
   };
 }
 
@@ -503,4 +592,5 @@ export const boundaryMetricsPass = (m: BoundaryReviewMetrics): boolean =>
   m.boundaryReviewerTerminalFailureCount === 0 &&
   m.boundaryReviewInconclusiveCount === 0 &&
   m.boundaryEvidenceUngroundedCount === 0 &&
-  m.boundaryOutputContractFailureCount === 0;
+  m.boundaryOutputContractFailureCount === 0 &&
+  m.boundaryTransportFailureCount === 0;

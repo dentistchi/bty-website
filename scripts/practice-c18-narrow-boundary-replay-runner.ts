@@ -24,7 +24,15 @@ import {
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
-import { BOUNDARY_REPORTABLE_OUTCOMES, renderAllowedOutcomes } from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import {
+  BOUNDARY_REPORTABLE_OUTCOMES,
+  MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
+  MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT,
+  NARROW_REPLAY_ARTIFACT_VERSION,
+  renderAllowedOutcomes,
+} from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import { PROVIDER_FAILURE_CODES, transportEvidenceSha256 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
+import { NARROW_TIMEOUT_OWNER } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import {
   BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
   compatibilitySurfaces,
@@ -122,9 +130,19 @@ const binding = {
   reasonParityTableSha256: parityTableSha256(),
   serverExplanationSha256: explanationAuthoritySha256(),
   outcomeEnumSha256: d([...BOUNDARY_REPORTABLE_OUTCOMES]),
+  // R2.34 — what an artifact can PROVE about a failed call is part of the contract.
+  transportEvidenceSha256: transportEvidenceSha256(),
+  failureClassifierSha256: d([...PROVIDER_FAILURE_CODES]),
+  timeoutOwnerSha256: d({ owner: NARROW_TIMEOUT_OWNER, timeoutMs: NARROW_BOUNDARY_SAMPLING.timeoutMs, signalWired: true }),
+  callBudgetSha256: d({
+    maxProviderInvocations: MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
+    maxSemanticResponses: MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT,
+    automaticTransportRetry: false,
+  }),
+  artifactVersionSha256: d(NARROW_REPLAY_ARTIFACT_VERSION),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
-  artifactSchemaVersion: "practice-narrow-boundary-replay/3",
+  artifactSchemaVersion: NARROW_REPLAY_ARTIFACT_VERSION,
   replayRuntimeSha256: d(runtime),
 };
 
@@ -152,6 +170,11 @@ const CHECKS: Array<[string, string]> = [
   ["reason parity table", "reasonParityTableSha256"],
   ["server explanation authority", "serverExplanationSha256"],
   ["outcome enumeration", "outcomeEnumSha256"],
+  ["transport evidence contract", "transportEvidenceSha256"],
+  ["provider failure classifier", "failureClassifierSha256"],
+  ["timeout owner", "timeoutOwnerSha256"],
+  ["provider call budget", "callBudgetSha256"],
+  ["artifact version", "artifactVersionSha256"],
   ["active boundary ids", "activeBoundaryIds"],
   ["boundary text", "boundaryText"],
   ["replay runtime", "replayRuntimeSha256"],
@@ -167,8 +190,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.32 BOUNDARY EXPLANATION REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.32
+# BTY Practice — R2.34 BOUNDARY TRANSPORT DIAGNOSTIC CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.34
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -204,6 +227,25 @@ const script = `#!/usr/bin/env bash
 #   * boundary_output_contract_failure names a response that satisfied the
 #     provider contract and failed the server's state contract.
 #
+#   R2.32  one authorized live call produced NOTHING usable. The client threw
+#          with the HTTP status inside its message and an unbound catch { }
+#          discarded it, so the artifact said only "request failed". The
+#          provider-side cause was unknowable and a retry would have produced a
+#          second silent artifact.
+#
+# WHAT R2.34 CHANGES
+#   * The error is BOUND. Status, provider code, retry-after, response state,
+#     failure layer, retriability and a sanitized cause chain are all recorded.
+#   * A transport failure is reported as provider_failure, never as
+#     boundary_reviewer_terminal_failure. The reviewer never saw the subject.
+#   * Provider invocations, provider responses and SEMANTIC attempts are counted
+#     separately. A failed call still costs an invocation; it never spends
+#     semantic rerun authority.
+#   * ONE timeout owner now exists and its signal reaches the client.
+#   * NO automatic transport retry. Unknown retriability authorizes nothing.
+#
+#   Either outcome of this run is informative.
+#
 #   Active boundary: [${BOUNDARY_ID}] ${BOUNDARY_TEXT}
 #
 # THIS SUBJECT IS RECONSTRUCTED. It is NOT evidence of what the historical
@@ -235,7 +277,7 @@ die() { printf '\\n%s\\n' "$*" >&2; exit 1; }
 mismatch() { printf '\\nCONTRACT MISMATCH · RUNNER STALE\\n  %s\\n    expected: %s\\n    actual:   %s\\n' "$1" "$2" "$3" >&2; exit 3; }
 step() { printf '  [%s] %s\\n' "$1" "$2"; }
 
-printf '\\nR2.32 BOUNDARY EXPLANATION REPLAY — PREFLIGHT\\n\\n'
+printf '\\nR2.34 BOUNDARY TRANSPORT DIAGNOSTIC — PREFLIGHT\\n\\n'
 
 [ -d "$REPO/.git" ] || die "CONTRACT MISMATCH · RUNNER STALE
   repository not found at $REPO"
@@ -336,6 +378,8 @@ printf 'Reachable decision surfaces: %s (including both resulting world states)\
 printf 'Excluded compatibility projections: %s\\n' "$EXPECTED_EXCLUDED"
 printf 'Applicability is judged BEFORE compliance; silence is never a violation.\\n'
 printf 'NO scenario will be generated. NO scenario will be rewritten. NO broad review will run.\\n'
+printf 'Exactly ONE provider invocation. NO automatic retry on failure.\\n'
+printf 'Provider invocation cap: %s · semantic response cap: %s\\n' '${MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT}' '${MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT}'
 printf 'Provider API key (input hidden, never written to disk or history): '
 read -rs LLM_API_KEY
 printf '\\n'

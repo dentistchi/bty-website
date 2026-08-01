@@ -36,6 +36,29 @@ type LlmCompletion = {
 
 type LlmCreateOptions = { signal?: AbortSignal };
 
+/**
+ * A provider HTTP failure, with the status STRUCTURED rather than encoded in a message.
+ *
+ * R2.33 measured the cost of the previous shape: the client threw `Error("LLM API error: 401 ...")`,
+ * the status existed only inside the string, and a caller's `catch { }` discarded it. Classification
+ * then had to guess. These fields let a caller classify from structured evidence and fall back to
+ * message parsing only when it must — and say which it did.
+ *
+ * `body` is the provider's error payload when it parsed; never a request, never a header.
+ */
+export class LlmHttpError extends Error {
+  readonly name = "LlmHttpError";
+  constructor(
+    readonly status: number,
+    readonly statusText: string,
+    readonly body: unknown = null,
+    readonly retryAfterSeconds: number | null = null,
+    readonly requestId: string | null = null,
+  ) {
+    super(`LLM API error: ${status} ${statusText}`);
+  }
+}
+
 class LlmChatCompletions {
   constructor(
     private readonly url: string,
@@ -54,7 +77,23 @@ class LlmChatCompletions {
       signal: options?.signal,
     });
     if (!response.ok) {
-      throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
+      // Read the provider's error payload when it offers one. A failure here must never mask the
+      // status, so parsing is best-effort and the status is carried regardless.
+      let body: unknown = null;
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
+      const retryAfterRaw = response.headers.get("retry-after");
+      const retryAfterSeconds = retryAfterRaw && /^\d+$/.test(retryAfterRaw.trim()) ? Number(retryAfterRaw.trim()) : null;
+      throw new LlmHttpError(
+        response.status,
+        response.statusText,
+        body,
+        retryAfterSeconds,
+        response.headers.get("x-request-id"),
+      );
     }
     return response.json() as Promise<LlmCompletion>;
   }

@@ -15,6 +15,13 @@
  * Pure domain: no I/O.
  */
 
+/**
+ * R2.34 Part 9 — ONE tracked source for the replay artifact version. R2.33 measured the writer
+ * emitting `/1` while the runner bound `/3`: two constants, no relationship, and an artifact that
+ * could not be attributed to the contract that produced it.
+ */
+export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/4";
+
 /** Outcomes the narrow boundary STAGE can return. */
 export const BOUNDARY_STAGE_OUTCOMES = [
   "boundary_review_pass",
@@ -23,6 +30,13 @@ export const BOUNDARY_STAGE_OUTCOMES = [
   "boundary_review_inconclusive",
   "boundary_reviewer_terminal_failure",
   "boundary_review_authority_failure",
+  /**
+   * R2.34 — a PROVIDER failure is now a stage outcome in its own right. R2.33 measured a transport
+   * failure reported as `boundary_reviewer_terminal_failure`, which asserts something false: that
+   * the reviewer produced two unusable responses over an identical frozen subject. The reviewer
+   * never saw the subject at all.
+   */
+  "provider_failure",
 ] as const;
 export type BoundaryStageOutcome = (typeof BOUNDARY_STAGE_OUTCOMES)[number];
 
@@ -36,11 +50,27 @@ export const BOUNDARY_ATTEMPT_OUTCOMES = ["boundary_review_malformed", "boundary
 export type BoundaryAttemptOutcome = (typeof BOUNDARY_ATTEMPT_OUTCOMES)[number];
 
 /** Terminal subcodes preserved alongside `boundary_reviewer_terminal_failure`. */
-export const BOUNDARY_TERMINAL_SUBCODES = ["boundary_output_contract_failure", "boundary_review_transport_failed", "boundary_review_attempt_budget_violated"] as const;
+export const BOUNDARY_TERMINAL_SUBCODES = [
+  "boundary_output_contract_failure",
+  "boundary_review_transport_failed",
+  "boundary_review_attempt_budget_violated",
+  "boundary_provider_invocation_budget_exhausted",
+] as const;
+
+/**
+ * R2.34 Part 5 — TWO independent caps over one frozen subject, and BOTH apply.
+ *
+ *   invocations — every provider call, whether or not it produced a semantic response. This is the
+ *                 cost authority: a transport failure still spent a call.
+ *   semantic    — only responses that reached schema/semantic validation. This is the rerun
+ *                 authority: it exists to absorb reviewer self-inconsistency, and a call the
+ *                 reviewer never saw must not consume it.
+ */
+export const MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT = 2;
+export const MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT = 2;
 
 /** Runner-level results that are not review verdicts at all — transport and binding failures. */
 export const BOUNDARY_RUNNER_OUTCOMES = [
-  "provider_failure",
   "subject_digest_mismatch",
   "provenance_digest_mismatch",
   "surface_map_mismatch",

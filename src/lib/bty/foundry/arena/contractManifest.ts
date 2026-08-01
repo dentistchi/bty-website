@@ -78,7 +78,15 @@ import {
 import { NARROW_BOUNDARY_SAMPLING, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
 import { parityTableSha256 } from "@/domain/foundry/arena-draft/boundaryReasonParity";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
-import { BOUNDARY_REPORTABLE_OUTCOMES, BOUNDARY_TERMINAL_SUBCODES } from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import {
+  BOUNDARY_REPORTABLE_OUTCOMES,
+  BOUNDARY_TERMINAL_SUBCODES,
+  MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
+  MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT,
+  NARROW_REPLAY_ARTIFACT_VERSION,
+} from "@/domain/foundry/arena-draft/boundaryOutcomes";
+import { PROVIDER_FAILURE_CODES, transportEvidenceSha256 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
+import { NARROW_TIMEOUT_OWNER } from "./narrowBoundaryReviewer";
 import { BOUNDARY_SCOPE_CODES, MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
 import { READINESS_STATES } from "@/domain/foundry/arena-draft/practiceReadiness";
 
@@ -145,7 +153,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.32.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.34.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -293,6 +301,17 @@ export function buildContractManifest(head: string, model: string): ContractMani
       boundaryServerExplanationAuthority: explanationAuthoritySha256(),
       boundaryOutputContractClassification: digest({ codes: OUTPUT_CONTRACT_CODES, terminalSubcodes: BOUNDARY_TERMINAL_SUBCODES }),
       boundaryOutcomeEnumeration: digest([...BOUNDARY_REPORTABLE_OUTCOMES]),
+      // R2.34 — transport observability is part of the review contract: it decides what an artifact
+      // can prove about a failed call, and therefore whether a retry is authorizable at all.
+      boundaryTransportEvidence: transportEvidenceSha256(),
+      boundaryProviderFailureClassifier: digest([...PROVIDER_FAILURE_CODES]),
+      boundaryTimeoutOwnership: digest({ owner: NARROW_TIMEOUT_OWNER, timeoutMs: NARROW_BOUNDARY_SAMPLING.timeoutMs, signalWired: true }),
+      boundaryInvocationBudget: digest({
+        maxProviderInvocations: MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
+        maxSemanticResponses: MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT,
+        automaticTransportRetry: false,
+      }),
+      boundaryReplayArtifactVersion: digest(NARROW_REPLAY_ARTIFACT_VERSION),
     },
     sampling: {
       generation: PRACTICE_SAMPLING.generation,

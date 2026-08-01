@@ -152,7 +152,10 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // R2.32 changed which field carries authority and who writes the explanation, so an R2.30
     // artifact was produced under a different reviewer output contract.
     expect(manifestDigest(m)).not.toBe("25cb0451a20791053d6a6861236f3eed2097eb5662bdd80c9b4276fff8ba2895"); // R2.30
-    expect(m.artifactSchemaVersion).toBe("r2.32.1");
+    // R2.34 added transport observability and corrected the failure classification, so an R2.32
+    // artifact cannot prove what an R2.34 artifact can.
+    expect(manifestDigest(m)).not.toBe("5b2abf97a1de5074af0f47f6f63cc641757a1bd0a87e5253ff8926394c446463"); // R2.32
+    expect(m.artifactSchemaVersion).toBe("r2.34.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

@@ -21,6 +21,7 @@ import { enumerateBoundarySurfaces } from "@/domain/foundry/arena-draft/boundary
 import { buildBoundaryProvenance, noBoundaryProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { draftFixture } from "@/domain/foundry/arena-draft/boundarySurfaces.test";
 import { registeredCodes } from "@/domain/foundry/arena-draft/gatePrecedence";
+import { emptyTransportEvidence } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import {
   BOUNDARY_REPORTABLE_OUTCOMES,
   BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
@@ -113,7 +114,56 @@ const call = (
     finishReason: "stop",
     latencyMs: 1,
     sanitizedError: null,
+    // A response DID arrive in these doubles; the transport record says so.
+    transport: {
+      ...emptyTransportEvidence("test"),
+      requestConstructed: true,
+      clientInvocationStarted: true,
+      providerInvocationStarted: true,
+      latencyMs: 1,
+      responseState: "response_received" as const,
+      responseEnvelopePresent: true,
+      structuredOutputPresent: true,
+      timeoutState: "armed_not_fired" as const,
+      timeoutOwner: "test",
+      evidenceSource: "structured" as const,
+    },
+    providerFailureCode: null,
   },
+  };
+};
+
+/** A TRANSPORT failure double: no semantic DTO, complete transport evidence. */
+const transportCall = (
+  subject: NarrowBoundarySubject,
+  attempt: number,
+  over: Partial<ReturnType<typeof emptyTransportEvidence>> = {},
+  providerFailureCode = "provider_failure_unknown",
+): NarrowBoundaryCallResult => {
+  const transport = { ...emptyTransportEvidence(`t#${attempt}`), requestConstructed: true, clientInvocationStarted: true, providerInvocationStarted: true, latencyMs: 5, ...over };
+  const verdict: DerivedBoundaryVerdict = {
+    outcome: "boundary_review_malformed",
+    codes: ["boundary_review_transport_failed"],
+    findings: [],
+    failureClass: "transport",
+  };
+  return {
+    kind: "transport_failed",
+    evidence: {
+      boundaryReviewAttempt: attempt,
+      boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+      surfaceMapSha256: subject.surfaceMapSha256,
+      activeBoundaryIds: subject.activeBoundaryIds,
+      requiredAssessmentCount: 12,
+      parsed: null,
+      outcome: verdict.outcome,
+      verdict,
+      finishReason: null,
+      latencyMs: 5,
+      sanitizedError: transport.sanitizedMessage || "boundary_review_request_failed",
+      transport,
+      providerFailureCode: providerFailureCode as never,
+    },
   };
 };
 
@@ -223,13 +273,15 @@ describe("[21][22] rerun authority in the stage", () => {
   });
 
   it("a transport failure is terminal and never a scenario verdict", async () => {
-    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => ({
-      kind: "transport_failed" as const,
-      evidence: call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_not_json"], findings: [], failureClass: classifyFailure(["boundary_review_not_json"]) }).evidence,
-    }));
+    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => transportCall(s, a));
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(1);
-    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    // R2.34 — still terminal for the run, but the top level now names the PROVIDER. Reporting it as
+    // `boundary_reviewer_terminal_failure` asserted the reviewer failed twice over an identical
+    // subject; it never saw the subject at all.
+    expect(r.outcome).toBe("provider_failure");
+    expect(r.broadReviewAllowed).toBe(false);
+    expect(r.semanticAttempts).toBe(0);
   });
 });
 
@@ -378,5 +430,100 @@ describe("[18][22] canonical outcome enumeration", () => {
   it("the rendered list covers the whole enumeration", () => {
     const rendered = renderAllowedOutcomes().join(" | ");
     for (const o of BOUNDARY_REPORTABLE_OUTCOMES) expect(rendered).toContain(o);
+  });
+});
+
+describe("[R2.34] transport failure is a PROVIDER failure, not a reviewer failure", () => {
+  it("[19][20] a transport failure produces provider_failure, never reviewer terminal failure", async () => {
+    const r = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a, { responseState: "response_received", httpStatus: 401 }, "provider_authentication_failure")), args());
+    expect(r.outcome).toBe("provider_failure");
+    expect(r.outcome).not.toBe("boundary_reviewer_terminal_failure");
+    expect(r.providerFailureCode).toBe("provider_authentication_failure");
+    // The stage compatibility subcode is preserved beneath the corrected top level.
+    expect(r.codes).toContain("boundary_review_transport_failed");
+    expect(r.broadReviewAllowed).toBe(false);
+  });
+
+  it("[19] a transport failure never records boundary_review_not_json", async () => {
+    const r = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a, { responseState: "no_response" }, "provider_network_failure")), args());
+    for (const e of r.evidences) {
+      expect(e.verdict.outcome === "boundary_review_malformed" && e.verdict.codes).not.toContain("boundary_review_not_json");
+      expect(e.verdict.outcome === "boundary_review_malformed" && e.verdict.failureClass).toBe("transport");
+    }
+  });
+
+  it("[18][20][21] counts: invocation increments, semantic attempt does NOT, rerun does NOT", async () => {
+    const r = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a)), args());
+    expect(r.providerInvocations).toBe(1);
+    expect(r.semanticAttempts).toBe(0);
+    expect(r.transportFailures).toBe(1);
+    expect(r.reruns).toBe(0);
+    // The deprecated alias now means provider invocations, and is documented as such.
+    expect(r.calls).toBe(r.providerInvocations);
+  });
+
+  it("counts a provider RESPONSE only when one was confirmed", async () => {
+    const withResponse = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a, { responseState: "response_received", httpStatus: 500 })), args());
+    expect(withResponse.providerResponses).toBe(1);
+    const without = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a, { responseState: "no_response" })), args());
+    expect(without.providerResponses).toBe(0);
+    const unknown = await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a, { responseState: "unknown" })), args());
+    expect(unknown.providerResponses).toBe(0);
+  });
+
+  it("[23] performs NO automatic transport retry — one invocation, then stop", async () => {
+    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => transportCall(s, a));
+    const r = await runBoundaryReviewStage(deps(review), args());
+    expect(review).toHaveBeenCalledTimes(1);
+    expect(r.providerInvocations).toBe(1);
+  });
+
+  it("[22] the invocation cap applies even when semantic budget remains", async () => {
+    // One malformed semantic response reruns; the second call is a transport failure. Both caps are
+    // now spent, so no third invocation may occur.
+    let n = 0;
+    const review = vi.fn(async (s: NarrowBoundarySubject, a: number) => {
+      n += 1;
+      return n === 1
+        ? call(s, a, { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [], failureClass: classifyFailure(["boundary_review_missing_pair"]) })
+        : transportCall(s, a);
+    });
+    const r = await runBoundaryReviewStage(deps(review), args());
+    expect(review).toHaveBeenCalledTimes(2);
+    expect(r.providerInvocations).toBe(2);
+    expect(r.invocationBudgetExhausted).toBe(true);
+    expect(r.outcome).toBe("provider_failure");
+  });
+
+  it("carries complete transport evidence into the stage result", async () => {
+    const r = await runBoundaryReviewStage(
+      deps(async (s, a) => transportCall(s, a, { responseState: "response_received", httpStatus: 429, retryAfterMs: 3000, retriability: "retriable", failureLayer: "http_error_response" }, "provider_rate_limit")),
+      args(),
+    );
+    expect(r.transportEvidence).toHaveLength(1);
+    expect(r.transportEvidence[0]).toMatchObject({ httpStatus: 429, retryAfterMs: 3000, retriability: "retriable", failureLayer: "http_error_response" });
+  });
+
+  it("a transport failure fails the stability hard gate", async () => {
+    let m = emptyBoundaryMetrics();
+    m = accumulateBoundaryMetrics(m, await runBoundaryReviewStage(deps(async (s, a) => transportCall(s, a)), args()));
+    expect(m).toMatchObject({
+      boundaryProviderInvocationCount: 1,
+      boundarySemanticReviewAttemptCount: 0,
+      boundaryTransportFailureCount: 1,
+      boundaryReviewRerunCount: 0,
+      boundaryTransportRetryCount: 0,
+    });
+    expect(boundaryMetricsPass(m)).toBe(false);
+  });
+
+  it("a SUCCESSFUL call records a semantic attempt and no transport failure", async () => {
+    let m = emptyBoundaryMetrics();
+    const r = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, responseFor(s))), args());
+    m = accumulateBoundaryMetrics(m, r);
+    expect(r.providerInvocations).toBe(1);
+    expect(r.semanticAttempts).toBe(1);
+    expect(r.transportFailures).toBe(0);
+    expect(m.boundaryProviderResponseCount).toBe(1);
   });
 });
