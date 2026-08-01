@@ -91,6 +91,7 @@ const goodDraft: ArenaScenarioDraft = {
   },
   branches: {
     primary_1: {
+      resultingWorldState: "The world after choosing primary_1: the situation has moved on and the earlier decision now holds.",
       escalationText: "You stop the line, and the plant manager confronts you in front of the crew, demanding to know who authorized the shutdown.",
       tradeoffChoices: [
         { id: "p1_t1", label: "Hold the line stopped until the gap is fixed, accepting the manager's anger" },
@@ -105,6 +106,7 @@ const goodDraft: ArenaScenarioDraft = {
       },
     },
     primary_2: {
+      resultingWorldState: "The world after choosing primary_2: the situation has moved on and the earlier decision now holds.",
       escalationText: "While you verify, a unit ships with the suspected defect and a customer calls back within the hour asking why it was not caught.",
       tradeoffChoices: [
         { id: "p2_t1", label: "Recall the shipped unit now and absorb the cost, accepting the delay to others" },

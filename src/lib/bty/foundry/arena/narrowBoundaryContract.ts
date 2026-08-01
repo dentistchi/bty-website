@@ -22,6 +22,9 @@ import {
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
   SURFACE_MAP_VERSION,
+  compatibilitySurfaces,
+  lineageSha256,
+  reviewableSurfaces,
   surfaceMapSha256,
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
@@ -54,30 +57,44 @@ export const NARROW_BOUNDARY_SAMPLING = {
 export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "You are a CONFIRMED-BOUNDARY COMPLIANCE CHECKER for a leadership decision-practice scenario. You do exactly one job and no other.",
   "",
-  "THE JOB. You are given a list of CONFIRMED BOUNDARIES (non-negotiable rules that hold in this situation) and a list of DECISION SURFACES (every place in the scenario where a boundary can be honoured or broken). For EVERY boundary paired with EVERY surface, answer one question:",
-  "  Does this surface comply with this boundary?",
+  "THE JOB. You are given CONFIRMED BOUNDARIES (non-negotiable rules that hold in this situation) and the DECISION SURFACES a learner actually reaches. For EVERY boundary paired with EVERY surface, answer TWO questions IN ORDER.",
   "",
-  "COVERAGE. Return exactly one assessment for every (boundary, surface) pair — `activeBoundaryCount` × `decisionSurfaceCount` assessments. Never fewer, never more, never a duplicate pair.",
-  "Copy `surfaceRef` VERBATIM from the `surfaces` list. Never invent, abbreviate, renumber or omit a coordinate. Copy `boundaryId` verbatim from `constraints`.",
+  "QUESTION 1 — APPLICABILITY. Does the boundary GOVERN this surface at all?",
+  "  applies        — the surface initiates, authorizes, continues, reopens or produces the action or state the rule governs.",
+  "  not_applicable — the surface does none of those. It does something else: staffing, notification, documentation, reporting, escalation, sequencing, communication.",
+  "  uncertain      — the surface text is genuinely insufficient to tell. Name the exact ambiguity.",
+  "",
+  "A SURFACE IS NOT GOVERNED MERELY BY BEING SILENT ABOUT THE RULE. Not repeating the rule, not mentioning the prerequisite, and not restating a required check are NOT evidence that a surface breaks it. Requesting extra staff, preparing a summary, sending a report to an administrator and choosing what to tell someone do not perform the governed action. Answer `not_applicable` and show what the surface actually does.",
+  "",
+  "QUESTION 2 — COMPLIANCE. Ask this ONLY when applicability is `applies`. Otherwise set compliance to `not_assessed`.",
+  "  complies  — the governed action happens WITH the rule satisfied, or the surface preserves the rule.",
+  "  violates  — the governed action or state happens WITHOUT the rule satisfied.",
+  "  uncertain — you cannot settle it from the text. Name the exact ambiguity.",
+  "",
+  "A VIOLATION MUST PROVE A MECHANISM, NOT AN ABSENCE. To answer `violates` you must show BOTH:",
+  "  governedActionEvidence      — a verbatim excerpt of THIS surface's own text showing the governed action or state is actually present.",
+  "  prerequisiteFailureEvidence — a verbatim excerpt (from this surface, its resulting world state, or its branch context) showing the prerequisite is missing, skipped, bypassed, contradicted or reopened.",
+  "and name violationMechanism:",
+  "  governed_action_without_prerequisite      — this surface commits to the governed action while the prerequisite is unmet.",
+  "  resulting_state_missing_prerequisite      — the asserted state already contains the governed action having happened without the prerequisite.",
+  "  boundary_reopened_after_prior_compliance  — the prerequisite was satisfied earlier and this surface undoes or bypasses it.",
+  "  explicit_boundary_contradiction           — the surface states something the rule forbids outright.",
+  "  other_grounded_violation                  — a real mechanism none of the above names; explain it in reason.",
+  "If you cannot show BOTH excerpts, it is not a violation. Answer `not_applicable`, `complies` or `uncertain` instead.",
+  "",
+  "EVIDENCE IS MANDATORY AND MUST BE CONCRETE.",
+  "`governedActionEvidence` is required for `applies` AND for `not_applicable`: it is how you show what the surface does. Excerpt it VERBATIM from that surface's own text.",
+  "  It must NOT be the boundary statement repeated back.",
+  "  It must NOT be text belonging to a different surface.",
+  "  It must NOT be a conclusion such as \'complies with the boundary\', \'follows the rule\' or \'does not address verification\'.",
+  "Set prerequisiteFailureEvidence to an empty string unless compliance is `violates`. Set violationMechanism to `none` unless compliance is `violates`.",
   "",
   "SURFACES ARE OF TWO KINDS.",
   "  kind=choice — an option the learner can pick. Judge what choosing it commits the learner to.",
-  "  kind=resulting_world_state — a state the scenario ASSERTS has already happened after a primary choice. Judge the state itself. A boundary can be broken by a state as surely as by an action: if the state says a required check was skipped, or that something the rule forbids has occurred, that surface VIOLATES the boundary even though the learner picks nothing there.",
+  "  kind=resulting_world_state — a state the scenario ASSERTS has already happened after a primary choice. Judge the state itself: if it says the governed action occurred while the prerequisite was unmet, that surface VIOLATES even though the learner picks nothing there.",
   "",
-  "RESULTS.",
-  "  complies  — this surface honours the boundary. Your evidence must show the required prerequisite or action actually being satisfied in the surface's own text.",
-  "  violates  — this surface breaks, skips, bypasses, reverses or proceeds without the boundary. Your evidence must identify the conflicting action or the conflicting state.",
-  "  uncertain — the surface text genuinely does not settle the question. Your reason must name the EXACT ambiguity. Do not use `uncertain` to avoid a judgment you can make.",
+  "COVERAGE. Return exactly one assessment for every (boundary, surface) pair — `activeBoundaryCount` x `decisionSurfaceCount` assessments. Never fewer, never more, never a duplicate. Copy `surfaceRef` and `boundaryId` VERBATIM. Never invent, abbreviate, renumber or omit a coordinate.",
   "",
-  "EVIDENCE IS MANDATORY AND MUST BE CONCRETE.",
-  "`evidenceExcerpt` must be a short VERBATIM excerpt of THAT SURFACE'S OWN text — the words shown to you for that exact coordinate.",
-  "  It must NOT be the boundary statement repeated back.",
-  "  It must NOT be text belonging to a different surface.",
-  "  It must NOT be a conclusion such as 'complies with the boundary', 'follows the rule', 'safe and appropriate' or 'ensuring compliance'.",
-  "A compliance claim you cannot support with the surface's own words is not a compliance claim. If the surface text does not let you quote support, answer `uncertain` and say why.",
-  `Keep evidenceExcerpt within ${NARROW_EVIDENCE_MAX} characters and reason within ${NARROW_REASON_MAX} characters. Excerpt faithfully; do not paraphrase.`,
-  "",
-  "SILENCE IS NOT COMPLIANCE. A surface that simply does not mention the rule has not thereby obeyed it — ask whether what it commits to, or what it asserts, is possible while the rule holds.",
   "A CONFIRMED RULE NARROWS THE CHOICE SPACE; IT DOES NOT ELIMINATE JUDGMENT. A surface that takes time, escalates, seeks supervision, sequences work or communicates while KEEPING the rule complies — time cost alone is never a violation.",
   "",
   "You have no summary field, no overall verdict and no retry instruction, and you must not attempt one. Your per-surface answers are the entire output. Return ONLY the JSON object required by the schema.",
@@ -114,9 +131,17 @@ export type NarrowBoundarySubject = {
   /** Active boundaries, id + exact statement, in canonical order. */
   boundaries: Array<{ id: string; statement: string }>;
   activeBoundaryIds: string[];
-  /** The server's canonical decision-surface map. */
+  /**
+   * The REVIEWABLE surfaces — the ones the learner actually reaches. R2.30: compatibility
+   * projections are held separately and never handed to the reviewer.
+   */
   surfaces: BoundarySurface[];
+  /** Unreachable duplicates, retained as compatibility evidence with their derivation linkage. */
+  compatibilitySurfaces: BoundarySurface[];
+  /** Digest over the WHOLE map, reachable and compatibility alike. */
   surfaceMapSha256: string;
+  /** Digest over the causal lineage relation, so a re-parented surface is detectable on its own. */
+  lineageSha256: string;
   boundaryReviewContractSha256: string;
   language: string;
   /** Which generation attempt produced the scenario under review. */
@@ -138,6 +163,8 @@ export function narrowBoundarySubjectSha256(s: NarrowBoundarySubject): string {
     boundaries: s.boundaries.map((b) => ({ id: b.id, statement: b.statement })),
     activeBoundaryIds: [...s.activeBoundaryIds].sort(),
     surfaceMapSha256: s.surfaceMapSha256,
+    lineageSha256: s.lineageSha256,
+    reviewableCoordinates: s.surfaces.map((x) => x.coordinate),
     boundaryReviewContractSha256: s.boundaryReviewContractSha256,
     boundaryProvenanceSha256: s.boundaryProvenanceSha256,
     language: s.language,
@@ -162,8 +189,12 @@ export function buildNarrowBoundarySubject(args: {
     boundaryProvenance: args.boundaryProvenance,
     boundaries: args.boundaries,
     activeBoundaryIds: args.boundaries.map((b) => b.id),
-    surfaces: args.surfaces,
+    // The reviewer sees ONLY what the learner can reach. Compatibility projections are kept for
+    // evidence and excluded from the matrix, so they can never produce a product finding.
+    surfaces: reviewableSurfaces(args.surfaces),
+    compatibilitySurfaces: compatibilitySurfaces(args.surfaces),
     surfaceMapSha256: surfaceMapSha256(args.surfaces),
+    lineageSha256: lineageSha256(args.surfaces),
     boundaryReviewContractSha256: buildNarrowBoundaryContract().sha256,
     language: args.language,
     generationAttemptId: args.generationAttemptId,
@@ -183,8 +214,9 @@ export function buildNarrowBoundarySubject(args: {
 export function boundaryComplianceScopeText(activeBoundaryCount: number, surfaceCount: number): string {
   if (activeBoundaryCount === 0) return "No confirmed boundary applies to this case.";
   return (
-    `Every one of the ${surfaceCount} listed decision surfaces — including every resulting world state — ` +
-    `must comply with EVERY boundary listed in \`constraints\`. ` +
+    `Judge EVERY one of the ${surfaceCount} listed decision surfaces — including every resulting world state — ` +
+    `against EVERY boundary listed in \`constraints\`. For each pair decide APPLICABILITY first, then ` +
+    `COMPLIANCE only when it applies. A surface that is silent about the rule is not thereby a violation. ` +
     `Return exactly ${activeBoundaryCount * surfaceCount} assessments: one per (boundary, surface) pair.`
   );
 }
@@ -202,14 +234,21 @@ export type NarrowBoundaryRequest = {
     text: string;
     selectedPrimary: string;
     branchContext: string;
+    /** The asserted world this surface happens inside of — where a missing prerequisite is stated. */
+    inheritedWorldState: string;
+    /** Causal ancestors, nearest-first. Context only; the server derives lineage findings. */
+    lineage: string[];
     isActionCommitment: boolean;
     acceptedCost: string;
   }>;
+  /** Count of unreachable duplicates excluded from the matrix. Never assessable. */
+  excludedCompatibilitySurfaceCount: number;
   authority: {
     scenarioSha256: string;
     reviewSubjectSha256: string;
     boundaryProvenanceSha256: string;
     surfaceMapSha256: string;
+    lineageSha256: string;
     boundaryReviewSubjectSha256: string;
   };
 };
@@ -231,14 +270,18 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
       text: s.text,
       selectedPrimary: s.selectedPrimaryLabel,
       branchContext: s.branchContext,
+      inheritedWorldState: s.inheritedWorldState,
+      lineage: s.lineage,
       isActionCommitment: s.isActionCommitment,
       acceptedCost: s.acceptedCost,
     })),
+    excludedCompatibilitySurfaceCount: subject.compatibilitySurfaces.length,
     authority: {
       scenarioSha256: subject.scenarioSha256,
       reviewSubjectSha256: subject.reviewSubjectSha256,
       boundaryProvenanceSha256: subject.boundaryProvenanceSha256,
       surfaceMapSha256: subject.surfaceMapSha256,
+      lineageSha256: subject.lineageSha256,
       boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
     },
   };

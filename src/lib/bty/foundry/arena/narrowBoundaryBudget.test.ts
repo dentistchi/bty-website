@@ -10,7 +10,7 @@ import { BUDGET_HEADROOM, MODEL_OUTPUT_CAP, measureNarrowBoundaryBudget } from "
 import { NARROW_BOUNDARY_SAMPLING } from "./narrowBoundaryContract";
 import { MAX_NARROW_ASSESSMENTS, NARROW_EVIDENCE_MAX, NARROW_REASON_MAX } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import { buildMaxNarrowBoundaryReview } from "@/domain/foundry/arena-draft/maxFixture";
-import { CANONICAL_SURFACE_COUNT } from "@/domain/foundry/arena-draft/boundarySurfaces";
+import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
 
 const m = measureNarrowBoundaryBudget(NARROW_BOUNDARY_SAMPLING.maxTokens);
@@ -41,15 +41,15 @@ describe("narrow boundary-review budget", () => {
     expect(m.schemaBoundKorean.tokens).toBeGreaterThan(m.schemaBoundEnglish.tokens);
   });
 
-  it("the worst case is three boundaries × sixteen surfaces", () => {
-    expect(MAX_NARROW_ASSESSMENTS).toBe(MAX_ACTIVE_BOUNDARIES * CANONICAL_SURFACE_COUNT);
+  it("the worst case is three boundaries x the REACHABLE surface count — compatibility is excluded", () => {
+    expect(MAX_NARROW_ASSESSMENTS).toBe(MAX_ACTIVE_BOUNDARIES * BRANCH_AWARE_REACHABLE_SURFACE_COUNT);
     expect(buildMaxNarrowBoundaryReview(false, "schema").assessments).toHaveLength(MAX_NARROW_ASSESSMENTS);
   });
 
   it("a ONE-boundary review costs a third of the three-boundary worst case", () => {
     const three = buildMaxNarrowBoundaryReview(true, "schema").assessments;
-    const one = three.slice(0, CANONICAL_SURFACE_COUNT);
-    expect(one).toHaveLength(16);
+    const one = three.slice(0, BRANCH_AWARE_REACHABLE_SURFACE_COUNT);
+    expect(one).toHaveLength(BRANCH_AWARE_REACHABLE_SURFACE_COUNT);
     // Serialized size scales linearly in the assessment count; both fit the budget with room.
     expect(JSON.stringify({ assessments: one }).length).toBeLessThan(JSON.stringify({ assessments: three }).length);
   });
@@ -58,7 +58,8 @@ describe("narrow boundary-review budget", () => {
     expect(NARROW_EVIDENCE_MAX).toBeGreaterThan(0);
     expect(NARROW_REASON_MAX).toBeGreaterThan(0);
     for (const a of buildMaxNarrowBoundaryReview(false, "schema").assessments) {
-      expect(a.evidenceExcerpt.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
+      expect(a.governedActionEvidence.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
+      expect(a.prerequisiteFailureEvidence.length).toBeLessThanOrEqual(NARROW_EVIDENCE_MAX);
       expect(a.reason.length).toBeLessThanOrEqual(NARROW_REASON_MAX);
     }
   });

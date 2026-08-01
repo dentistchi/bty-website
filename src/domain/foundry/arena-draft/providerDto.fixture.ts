@@ -8,7 +8,7 @@
  * array ordered by the draft's own primary-choice order.
  */
 
-import { enumerateBoundarySurfaces } from "./boundarySurfaces";
+import { enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import type { ArenaScenarioDraft } from "./types";
 import type { ConstraintAssessment } from "./boundary";
 import type { ProviderActionDecision, ProviderChoice, ProviderPracticeScenario } from "./providerDto";
@@ -262,14 +262,18 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
     constraints?: Array<{ id: string }>;
     surfaces?: Array<{ surfaceRef: string; text: string }>;
   };
+  // R2.30 — applicability first. `not_applicable` with a same-surface excerpt is the cheapest
+  // settled answer a transport double can give, and it exercises the real grounding rules.
   const assessments = (req.constraints ?? []).flatMap((b) =>
     (req.surfaces ?? []).map((s) => ({
       boundaryId: b.id,
       surfaceRef: s.surfaceRef,
-      result: "complies",
-      // A faithful excerpt of THIS surface's own text — what the grounding validator requires.
-      evidenceExcerpt: s.text.slice(0, 120),
-      reason: "keeps the confirmed rule",
+      applicability: "not_applicable",
+      compliance: "not_assessed",
+      governedActionEvidence: s.text.slice(0, 120),
+      prerequisiteFailureEvidence: "",
+      violationMechanism: "none",
+      reason: "does not perform the governed action",
     })),
   );
   return JSON.stringify({ assessments });
@@ -280,15 +284,19 @@ export function compliantBoundaryReview(params: { messages?: Array<{ content?: s
  * tests that queue ordered responses with `mockResolvedValueOnce` and so never see the request.
  */
 export function compliantBoundaryReviewFor(draft: ArenaScenarioDraft, constraintIds: string[]): string {
-  const surfaces = enumerateBoundarySurfaces(draft, {});
+  // Only the REACHABLE surfaces are ever handed to the reviewer (R2.30).
+  const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draft, {}));
   return JSON.stringify({
     assessments: constraintIds.flatMap((boundaryId) =>
       surfaces.map((s) => ({
         boundaryId,
         surfaceRef: s.coordinate,
-        result: "complies",
-        evidenceExcerpt: s.text.slice(0, 120),
-        reason: "keeps the confirmed rule",
+        applicability: "not_applicable",
+        compliance: "not_assessed",
+        governedActionEvidence: s.text.slice(0, 120),
+        prerequisiteFailureEvidence: "",
+        violationMechanism: "none",
+        reason: "does not perform the governed action",
       })),
     ),
   });

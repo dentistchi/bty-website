@@ -1,299 +1,377 @@
 /**
- * NARROW BOUNDARY REVIEW — SCHEMA, COVERAGE, GROUNDING, SERVER VERDICT
- * (Slice 3.2I-R5B1A.1-R2.29 Part 18 · SCHEMA / GROUNDING / VERDICT).
+ * NARROW BOUNDARY REVIEW — APPLICABILITY, GROUNDED MECHANISM, CAUSAL DERIVATION
+ * (Slice 3.2I-R5B1A.1-R2.30 Parts 4-7).
  *
- * Every test here traces to the R2.28 measurement: a reviewer that asserted compliance without
- * evidence, in an aggregate field, under a model-authored top-level verdict.
+ * Every test traces to a measured R2.29 finding: a correct rejection, plus five violations the
+ * reviewer asserted from silence rather than from a mechanism.
  */
 import { describe, expect, it } from "vitest";
 import {
-  BOUNDARY_REVIEW_OUTCOMES,
+  APPLICABILITY_RESULTS,
+  COMPLIANCE_RESULTS,
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
   MAX_NARROW_ASSESSMENTS,
   NARROW_BOUNDARY_JSON_SCHEMA,
   NARROW_EVIDENCE_MAX,
   NARROW_REASON_MAX,
-  SURFACE_RESULTS,
+  VIOLATION_MECHANISMS,
   allowsBroadReview,
   boundaryReviewCountsAsGenerationRetry,
   decideAfterBoundaryReview,
   deriveBoundaryVerdict,
   producesCorrectionPacket,
   validateNarrowBoundaryReview,
+  type NarrowBoundaryAssessment,
   type NarrowReviewContext,
 } from "./narrowBoundaryReview";
 import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
-import { CANONICAL_SURFACE_COUNT, enumerateBoundarySurfaces } from "./boundarySurfaces";
+import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT, enumerateBoundarySurfaces, reviewableSurfaces } from "./boundarySurfaces";
 import { draftFixture } from "./boundarySurfaces.test";
 
 const BOUNDARY = { id: "c1_verify", statement: "Two identifiers must be verified before treatment" };
-const surfaces = enumerateBoundarySurfaces(draftFixture());
+const surfaces = reviewableSurfaces(enumerateBoundarySurfaces(draftFixture()));
 const ctx: NarrowReviewContext = { boundaries: [BOUNDARY], surfaces };
+const at = (ref: string) => surfaces.find((s) => s.coordinate === ref)!;
 
-/** A fully compliant response: one assessment per surface, each quoting its OWN surface text. */
-const allComply = () =>
+/** Baseline: every surface `not_applicable`, each showing what it actually does. */
+const baseline = (): NarrowBoundaryAssessment[] =>
   surfaces.map((s) => ({
     boundaryId: BOUNDARY.id,
     surfaceRef: s.coordinate,
-    result: "complies" as const,
-    evidenceExcerpt: s.text.slice(0, NARROW_EVIDENCE_MAX),
-    reason: "keeps the two-identifier check",
+    applicability: "not_applicable" as const,
+    compliance: "not_assessed" as const,
+    governedActionEvidence: s.text.slice(0, NARROW_EVIDENCE_MAX),
+    prerequisiteFailureEvidence: "",
+    violationMechanism: "none" as const,
+    reason: "this surface does not treat a patient",
   }));
 
-const withResult = (ref: string, result: "violates" | "uncertain", reason = "proceeds without the check") =>
-  allComply().map((a) => (a.surfaceRef === ref ? { ...a, result, reason } : a));
+const withRow = (ref: string, over: Partial<NarrowBoundaryAssessment>) =>
+  baseline().map((a) => (a.surfaceRef === ref ? { ...a, ...over } : a));
 
-describe("strict schema", () => {
-  it("[7] has NO model-authored aggregate verdict of any kind", () => {
+/** A fully grounded violation at one surface. */
+const violationAt = (ref: string, mechanism: NarrowBoundaryAssessment["violationMechanism"] = "governed_action_without_prerequisite", governed?: string) =>
+  withRow(ref, {
+    applicability: "applies",
+    compliance: "violates",
+    governedActionEvidence: governed ?? at(ref).text.slice(0, NARROW_EVIDENCE_MAX),
+    prerequisiteFailureEvidence: at(ref).inheritedWorldState
+      ? at(ref).inheritedWorldState.slice(0, NARROW_EVIDENCE_MAX)
+      : at(ref).text.slice(0, NARROW_EVIDENCE_MAX),
+    violationMechanism: mechanism,
+    reason: "treats without the two-identifier check",
+  });
+
+describe("[11][12][13] strict schema", () => {
+  it("asks applicability and compliance separately, and has NO model-authored verdict", () => {
     const props = Object.keys(NARROW_BOUNDARY_JSON_SCHEMA.properties);
     expect(props).toEqual(["assessments"]);
+    const item = NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items;
+    expect([...item.required].sort()).toEqual(
+      ["applicability", "boundaryId", "compliance", "governedActionEvidence", "prerequisiteFailureEvidence", "reason", "surfaceRef", "violationMechanism"].sort(),
+    );
+    expect(item.additionalProperties).toBe(false);
     const flat = JSON.stringify(NARROW_BOUNDARY_JSON_SCHEMA);
-    for (const banned of ["overallVerdict", "boundaryCompliant", "violatedBoundaryIds", "retryInstruction", "conciseExplanation"]) {
+    for (const banned of ["overallVerdict", "boundaryCompliant", "violatedBoundaryIds", "retryInstruction"]) {
       expect(flat).not.toContain(banned);
     }
   });
 
-  it("requires every assessment field and forbids extra properties", () => {
-    const item = NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items;
-    expect(item.additionalProperties).toBe(false);
-    expect([...item.required].sort()).toEqual(["boundaryId", "evidenceExcerpt", "reason", "result", "surfaceRef"]);
-    expect(Object.keys(item.properties).sort()).toEqual([...item.required].sort());
-    expect(NARROW_BOUNDARY_JSON_SCHEMA.additionalProperties).toBe(false);
+  it("[13] enumerates the violation mechanisms, with `none` as the non-violation value", () => {
+    expect([...NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items.properties.violationMechanism.enum]).toEqual([...VIOLATION_MECHANISMS]);
+    expect(VIOLATION_MECHANISMS[0]).toBe("none");
+    expect(VIOLATION_MECHANISMS).toContain("governed_action_without_prerequisite");
+    expect(VIOLATION_MECHANISMS).toContain("resulting_state_missing_prerequisite");
+    expect(VIOLATION_MECHANISMS).toContain("boundary_reopened_after_prior_compliance");
+    expect(VIOLATION_MECHANISMS).toContain("explicit_boundary_contradiction");
+    expect(VIOLATION_MECHANISMS).toContain("other_grounded_violation");
   });
 
-  it("bounds every text field so the permitted maximum is finite", () => {
+  it("bounds every text field, and the matrix is boundaries x REACHABLE surfaces", () => {
     const p = NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.items.properties;
-    expect(p.evidenceExcerpt.maxLength).toBe(NARROW_EVIDENCE_MAX);
+    expect(p.governedActionEvidence.maxLength).toBe(NARROW_EVIDENCE_MAX);
+    expect(p.prerequisiteFailureEvidence.maxLength).toBe(NARROW_EVIDENCE_MAX);
     expect(p.reason.maxLength).toBe(NARROW_REASON_MAX);
-    expect([...p.result.enum]).toEqual([...SURFACE_RESULTS]);
-  });
-
-  it("[11] permits at most MAX_ACTIVE_BOUNDARIES × sixteen assessments", () => {
-    expect(MAX_NARROW_ASSESSMENTS).toBe(MAX_ACTIVE_BOUNDARIES * CANONICAL_SURFACE_COUNT);
-    expect(NARROW_BOUNDARY_JSON_SCHEMA.properties.assessments.maxItems).toBe(MAX_NARROW_ASSESSMENTS);
+    expect(MAX_NARROW_ASSESSMENTS).toBe(MAX_ACTIVE_BOUNDARIES * BRANCH_AWARE_REACHABLE_SURFACE_COUNT);
+    expect([...p.applicability.enum]).toEqual([...APPLICABILITY_RESULTS]);
+    expect([...p.compliance.enum]).toEqual([...COMPLIANCE_RESULTS]);
   });
 });
 
-describe("[6] exact Cartesian coverage", () => {
-  it("accepts exactly one assessment per (boundary, surface) pair", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply() }, ctx);
-    expect(r.ok).toBe(true);
+describe("coverage over REACHABLE surfaces only", () => {
+  it("accepts exactly one assessment per (boundary, reachable surface) pair", () => {
+    expect(validateNarrowBoundaryReview({ assessments: baseline() }, ctx).ok).toBe(true);
+    expect(baseline()).toHaveLength(12);
   });
 
-  it("requires boundaryCount × surfaceCount assessments for multiple boundaries", () => {
-    const two = [BOUNDARY, { id: "c2_consent", statement: "Consent must be recorded before treatment" }];
-    const full = two.flatMap((b) => allComply().map((a) => ({ ...a, boundaryId: b.id })));
-    const r = validateNarrowBoundaryReview({ assessments: full }, { boundaries: two, surfaces });
-    expect(r.ok).toBe(true);
-    expect(full).toHaveLength(2 * CANONICAL_SURFACE_COUNT);
-  });
-
-  it("[8] rejects a missing assessment", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply().slice(1) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_review_missing_pair");
-  });
-
-  it("[9] rejects an extra assessment for a surface that is not in the map", () => {
-    const r = validateNarrowBoundaryReview({ assessments: [...allComply(), { ...allComply()[0]!, surfaceRef: "primary[99]" }] }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_review_unknown_surface");
-  });
-
-  it("[10] rejects a duplicate (boundary, surface) pair", () => {
-    const r = validateNarrowBoundaryReview({ assessments: [...allComply(), allComply()[0]!] }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_review_duplicate_pair");
-  });
-
-  it("rejects an unknown boundary id", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply().map((a) => ({ ...a, boundaryId: "c9_invented" })) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_review_unknown_boundary");
-  });
-
-  it("rejects a non-object and a missing assessments array", () => {
-    expect(validateNarrowBoundaryReview(null, ctx)).toMatchObject({ ok: false, codes: ["boundary_review_not_an_object"] });
-    expect(validateNarrowBoundaryReview({}, ctx)).toMatchObject({ ok: false, codes: ["boundary_review_assessments_missing"] });
-  });
-
-  it("rejects a result outside the enum", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply().map((a) => ({ ...a, result: "probably_fine" })) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_review_invalid_result");
-  });
-});
-
-describe("evidence grounding", () => {
-  it("[12] requires evidence — an empty excerpt can never assert compliance", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "  " })) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_evidence_missing");
-  });
-
-  it("[13] accepts a faithful excerpt of the SAME surface, including a partial one", () => {
-    const partial = allComply().map((a, i) => (i === 1 ? { ...a, evidenceExcerpt: "proceed with one patient" } : a));
-    expect(validateNarrowBoundaryReview({ assessments: partial }, ctx).ok).toBe(true);
-  });
-
-  it("[13b] is punctuation- and case-insensitive, so a faithful quote is not rejected on typography", () => {
-    const quoted = allComply().map((a, i) => (i === 1 ? { ...a, evidenceExcerpt: "PROCEED with one patient." } : a));
-    expect(validateNarrowBoundaryReview({ assessments: quoted }, ctx).ok).toBe(true);
-  });
-
-  it("[14] rejects evidence lifted from a DIFFERENT surface", () => {
-    const stolen = allComply().map((a) =>
-      a.surfaceRef === "branch[1].action[1]" ? { ...a, evidenceExcerpt: "Prepare a summary of events" } : a,
-    );
-    const r = validateNarrowBoundaryReview({ assessments: stolen }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_evidence_from_other_surface");
-    expect(r.ok === false && r.findings.map((f) => f.surfaceRef)).toContain("branch[1].action[1]");
-  });
-
-  it("[15] rejects evidence that merely repeats the boundary statement", () => {
+  it("[12] refuses an answer about a COMPATIBILITY projection", () => {
+    const all = enumerateBoundarySurfaces(draftFixture());
+    const flat = all.find((s) => s.coordinate === "flat_action[1]")!;
     const r = validateNarrowBoundaryReview(
-      { assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "Two identifiers must be verified before treatment" })) },
+      { assessments: [...baseline(), { ...baseline()[0]!, surfaceRef: flat.coordinate }] },
+      { boundaries: [BOUNDARY], surfaces: [...surfaces, flat] },
+    );
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.codes).toContain("boundary_review_unreviewable_surface");
+  });
+
+  it("rejects missing, extra, duplicate and unknown pairs", () => {
+    const miss = validateNarrowBoundaryReview({ assessments: baseline().slice(1) }, ctx);
+    expect(miss.ok === false && miss.codes).toContain("boundary_review_missing_pair");
+    const dup = validateNarrowBoundaryReview({ assessments: [...baseline(), baseline()[0]!] }, ctx);
+    expect(dup.ok === false && dup.codes).toContain("boundary_review_duplicate_pair");
+    const unknownSurface = validateNarrowBoundaryReview({ assessments: [...baseline(), { ...baseline()[0]!, surfaceRef: "primary[9]" }] }, ctx);
+    expect(unknownSurface.ok === false && unknownSurface.codes).toContain("boundary_review_unknown_surface");
+    const unknownBoundary = validateNarrowBoundaryReview({ assessments: baseline().map((a) => ({ ...a, boundaryId: "c9" })) }, ctx);
+    expect(unknownBoundary.ok === false && unknownBoundary.codes).toContain("boundary_review_unknown_boundary");
+  });
+});
+
+describe("[9][14] silence is not a violation", () => {
+  it("the exact R2.29 rationale cannot establish a violation — governed action missing", () => {
+    const r = validateNarrowBoundaryReview(
+      {
+        assessments: withRow("branch[1].tradeoff[0]", {
+          applicability: "applies",
+          compliance: "violates",
+          governedActionEvidence: "",
+          prerequisiteFailureEvidence: "",
+          violationMechanism: "none",
+          reason: "Does not address verification of identifiers.",
+        }),
+      },
       ctx,
     );
     expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_evidence_restates_boundary");
+    const codes = r.ok === false ? r.codes : [];
+    expect(codes).toContain("boundary_violation_governed_action_missing");
+    expect(codes).toContain("boundary_violation_mechanism_missing");
+    expect(codes).toContain("boundary_violation_prerequisite_evidence_missing");
   });
 
-  it("[16] rejects the exact generic assertion R2.28 measured", () => {
-    // "The verification boundary is present and operationalized, ensuring compliance."
-    const r = validateNarrowBoundaryReview({ assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "ensuring compliance" })) }, ctx);
+  it("[10] a violation with NO governed-action evidence is malformed, never a reject", () => {
+    const v = deriveBoundaryVerdict(
+      { assessments: withRow("branch[1].action[0]", { applicability: "applies", compliance: "violates", governedActionEvidence: "", prerequisiteFailureEvidence: "unverified", violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
+      ctx,
+    );
+    expect(v.outcome).toBe("boundary_review_malformed");
+  });
+
+  it("[11] a violation with NO prerequisite-failure evidence is malformed", () => {
+    const v = deriveBoundaryVerdict(
+      { assessments: withRow("branch[1].action[1]", { applicability: "applies", compliance: "violates", governedActionEvidence: "Immediately treat the second patient", prerequisiteFailureEvidence: "", violationMechanism: "governed_action_without_prerequisite", reason: "x" }) },
+      ctx,
+    );
+    expect(v.outcome).toBe("boundary_review_malformed");
+    if (v.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    expect(v.codes).toContain("boundary_violation_prerequisite_evidence_missing");
+  });
+
+  it("rejects the absence-of-mention phrase as evidence anywhere", () => {
+    const r = validateNarrowBoundaryReview(
+      { assessments: withRow("branch[1].tradeoff[0]", { governedActionEvidence: "does not address verification of identifiers" }) },
+      ctx,
+    );
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.codes).toContain("boundary_evidence_generic");
   });
 
-  it("[16b] rejects a coincidental fragment too short to prove anything", () => {
-    const r = validateNarrowBoundaryReview({ assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "the" })) }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_evidence_too_short");
-  });
-
-  it("[16c] rejects invented text grounded in nothing", () => {
-    const r = validateNarrowBoundaryReview(
-      { assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "the nurse scanned both wristbands twice" })) },
-      ctx,
-    );
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_evidence_ungrounded");
-  });
-
-  it("requires a reason on every result, including uncertain", () => {
-    const r = validateNarrowBoundaryReview({ assessments: withResult("primary[1]", "uncertain", "  ") }, ctx);
-    expect(r.ok).toBe(false);
-    expect(r.ok === false && r.codes).toContain("boundary_reason_missing");
-  });
-
-  it("[17] PRESERVES the violation excerpt through derivation", () => {
-    const v = deriveBoundaryVerdict({ assessments: withResult("branch[1].resulting_world_state", "violates") }, ctx);
-    expect(v.outcome).toBe("boundary_review_reject");
-    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
-    expect(v.violations[0]).toMatchObject({
-      boundaryId: "c1_verify",
-      boundaryStatement: "Two identifiers must be verified before treatment",
-      surfaceRef: "branch[1].resulting_world_state",
-      reason: "proceeds without the check",
-    });
-    expect(v.violations[0]!.evidenceExcerpt).toContain("remains unverified");
+  it("[4][5][6] administrative and staffing surfaces settle as not_applicable and PASS", () => {
+    const v = deriveBoundaryVerdict({ assessments: baseline() }, ctx);
+    expect(v.outcome).toBe("boundary_review_pass");
+    if (v.outcome !== "boundary_review_pass") throw new Error("unreachable");
+    expect(v.notApplicableCount).toBe(12);
   });
 });
 
-describe("server-derived verdict", () => {
-  it("[18] all comply → pass", () => {
-    expect(deriveBoundaryVerdict({ assessments: allComply() }, ctx)).toEqual({ outcome: "boundary_review_pass", assessedPairs: 16 });
+describe("evidence grounding", () => {
+  it("requires governedActionEvidence for not_applicable too — an evidenced answer, not a shrug", () => {
+    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { governedActionEvidence: "" }) }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.codes).toContain("boundary_evidence_missing");
   });
 
-  it("[19] one violation → reject, carrying boundary id, coordinate, evidence and reason", () => {
-    const v = deriveBoundaryVerdict({ assessments: withResult("primary[1]", "violates") }, ctx);
+  it("rejects evidence lifted from another surface", () => {
+    const r = validateNarrowBoundaryReview({ assessments: withRow("branch[1].action[1]", { governedActionEvidence: "Prepare a summary of events" }) }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.codes).toContain("boundary_evidence_from_other_surface");
+  });
+
+  it("rejects evidence that merely repeats the boundary statement", () => {
+    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { governedActionEvidence: BOUNDARY.statement }) }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.codes).toContain("boundary_evidence_restates_boundary");
+  });
+
+  it("lets prerequisite-failure evidence come from the INHERITED WORLD STATE, where it is stated", () => {
+    const v = deriveBoundaryVerdict({ assessments: violationAt("branch[1].action[1]") }, ctx);
+    expect(v.outcome).toBe("boundary_review_reject");
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    expect(v.violations[0]!.prerequisiteFailureEvidence).toContain("remains unverified");
+  });
+
+  it("a non-violation that claims a prerequisite failure disagrees with itself", () => {
+    const r = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { prerequisiteFailureEvidence: "Verify identifiers for both" }) }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.codes).toContain("boundary_applicability_compliance_mismatch");
+  });
+
+  it("applicability and compliance must agree about whether a judgment was made", () => {
+    const a = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { applicability: "not_applicable", compliance: "complies" }) }, ctx);
+    expect(a.ok === false && a.codes).toContain("boundary_applicability_compliance_mismatch");
+    const b = validateNarrowBoundaryReview({ assessments: withRow("primary[0]", { applicability: "applies", compliance: "not_assessed" }) }, ctx);
+    expect(b.ok === false && b.codes).toContain("boundary_applicability_compliance_mismatch");
+  });
+});
+
+describe("[15] server-derived verdict", () => {
+  it("all settled → pass", () => {
+    const all = withRow("primary[0]", { applicability: "applies", compliance: "complies", reason: "verifies both before treating" });
+    expect(deriveBoundaryVerdict({ assessments: all }, ctx).outcome).toBe("boundary_review_pass");
+  });
+
+  it("[1] one grounded violation → reject", () => {
+    const v = deriveBoundaryVerdict({ assessments: violationAt("primary[1]") }, ctx);
     expect(v.outcome).toBe("boundary_review_reject");
     expect(producesCorrectionPacket(v)).toBe(true);
   });
 
-  it("[19b] a violation OUTRANKS an uncertainty elsewhere", () => {
-    const mixed = allComply().map((a) =>
-      a.surfaceRef === "primary[1]"
-        ? { ...a, result: "violates" as const }
-        : a.surfaceRef === "flat_action[1]"
-          ? { ...a, result: "uncertain" as const, reason: "label does not say whether verification happened" }
-          : a,
+  it("[7][8] applicability uncertainty → inconclusive, at the applicability level", () => {
+    const v = deriveBoundaryVerdict(
+      { assessments: withRow("branch[1].tradeoff[1]", { applicability: "uncertain", compliance: "not_assessed", reason: "'caring for' may or may not mean treatment" }) },
+      ctx,
+    );
+    expect(v.outcome).toBe("boundary_review_inconclusive");
+    if (v.outcome !== "boundary_review_inconclusive") throw new Error("unreachable");
+    expect(v.uncertainties[0]).toMatchObject({ surfaceRef: "branch[1].tradeoff[1]", level: "applicability" });
+  });
+
+  it("compliance uncertainty → inconclusive, at the compliance level", () => {
+    const v = deriveBoundaryVerdict(
+      { assessments: withRow("branch[1].action[1]", { applicability: "applies", compliance: "uncertain", governedActionEvidence: "Immediately treat the second patient", reason: "order relative to the check is unstated" }) },
+      ctx,
+    );
+    expect(v.outcome).toBe("boundary_review_inconclusive");
+    if (v.outcome !== "boundary_review_inconclusive") throw new Error("unreachable");
+    expect(v.uncertainties[0]!.level).toBe("compliance");
+  });
+
+  it("a violation OUTRANKS an uncertainty elsewhere", () => {
+    const mixed = violationAt("primary[1]").map((a) =>
+      a.surfaceRef === "branch[0].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "ambiguous" } : a,
     );
     expect(deriveBoundaryVerdict({ assessments: mixed }, ctx).outcome).toBe("boundary_review_reject");
   });
+});
 
-  it("[20] uncertain → inconclusive, and is NOT a generator content defect", () => {
-    const v = deriveBoundaryVerdict({ assessments: withResult("flat_action[1]", "uncertain", "the label does not state the order") }, ctx);
-    expect(v.outcome).toBe("boundary_review_inconclusive");
-    expect(producesCorrectionPacket(v)).toBe(false);
-    if (v.outcome !== "boundary_review_inconclusive") throw new Error("unreachable");
-    expect(v.uncertainties[0]).toMatchObject({ surfaceRef: "flat_action[1]", reason: "the label does not state the order" });
-  });
-
-  it("[21] coverage or grounding failure → malformed", () => {
-    expect(deriveBoundaryVerdict({ assessments: allComply().slice(2) }, ctx).outcome).toBe("boundary_review_malformed");
-    expect(deriveBoundaryVerdict({ assessments: allComply().map((a) => ({ ...a, evidenceExcerpt: "" })) }, ctx).outcome).toBe("boundary_review_malformed");
-  });
-
-  it("never infers pass from the absence of violations — every pair must be explicitly compliant", () => {
-    // A response the model could produce by answering about only some surfaces must not pass.
-    const partial = allComply().slice(0, 8);
-    expect(deriveBoundaryVerdict({ assessments: partial }, ctx).outcome).toBe("boundary_review_malformed");
-  });
-
-  it("[23] the R2.28 aggregate shape has no representation here", () => {
-    // The old DTO's whole boundary claim, submitted as this schema, is not even parseable as
-    // coverage — there is no field in which "all choices comply" can be said.
-    const aggregate = {
-      assessments: [],
-      boundaryCompliant: true,
-      violatedBoundaryIds: [],
-      overallVerdict: "accept",
+describe("[15][16] earliest causal violation and descendant deduplication", () => {
+  /** primary[1] → branch[1].resulting_world_state → branch[1].action[1] */
+  const chain = () => {
+    const rows = baseline();
+    const set = (ref: string, over: Partial<NarrowBoundaryAssessment>) => {
+      const i = rows.findIndex((r) => r.surfaceRef === ref);
+      rows[i] = { ...rows[i]!, ...over };
     };
-    const v = deriveBoundaryVerdict(aggregate, ctx);
-    expect(v.outcome).toBe("boundary_review_malformed");
-    expect(BOUNDARY_REVIEW_OUTCOMES).not.toContain("accept");
+    set("primary[1]", {
+      applicability: "applies",
+      compliance: "violates",
+      governedActionEvidence: "Notify the families and proceed with one patient",
+      prerequisiteFailureEvidence: "Notify the families and proceed with one patient",
+      violationMechanism: "governed_action_without_prerequisite",
+      reason: "treats before verifying",
+    });
+    set("branch[1].resulting_world_state", {
+      applicability: "applies",
+      compliance: "violates",
+      governedActionEvidence: "One patient was treated while the second patient remains unverified",
+      prerequisiteFailureEvidence: "the second patient remains unverified",
+      violationMechanism: "resulting_state_missing_prerequisite",
+      reason: "state asserts treatment without the check",
+    });
+    return rows;
+  };
+
+  it("[15] an ASSERTED STATE that repeats its ancestor's mechanism is downstream, not a new instruction", () => {
+    // The world state authorizes nothing the learner can pick; with the SAME mechanism as its
+    // primary it only restates the violation already established upstream.
+    const rows = baseline();
+    const set = (ref: string, over: Partial<NarrowBoundaryAssessment>) => {
+      const i = rows.findIndex((r) => r.surfaceRef === ref);
+      rows[i] = { ...rows[i]!, ...over };
+    };
+    set("primary[1]", {
+      applicability: "applies",
+      compliance: "violates",
+      governedActionEvidence: "Notify the families and proceed with one patient",
+      prerequisiteFailureEvidence: "Notify the families and proceed with one patient",
+      violationMechanism: "governed_action_without_prerequisite",
+      reason: "treats before verifying",
+    });
+    set("branch[1].resulting_world_state", {
+      applicability: "applies",
+      compliance: "violates",
+      governedActionEvidence: "One patient was treated while the second patient remains unverified",
+      prerequisiteFailureEvidence: "the second patient remains unverified",
+      violationMechanism: "governed_action_without_prerequisite", // SAME mechanism as the ancestor
+      reason: "restates the primary violation",
+    });
+    const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    expect(v.downstreamViolations.map((x) => x.surfaceRef)).toEqual(["branch[1].resulting_world_state"]);
+    expect(v.causalViolations.map((x) => x.surfaceRef)).toEqual(["primary[1]"]);
+  });
+
+  it("[16] a descendant with a DISTINCT mechanism is retained as its own finding", () => {
+    const v = deriveBoundaryVerdict({ assessments: chain() }, ctx);
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    const world = v.violations.find((x) => x.surfaceRef === "branch[1].resulting_world_state")!;
+    expect(world.downstreamOfPriorViolation).toBe(false);
+    expect(world.earliestCausal).toBe(false); // it HAS a violating ancestor…
+    expect(v.causalViolations.map((x) => x.surfaceRef)).toContain("branch[1].resulting_world_state"); // …but is still new
+  });
+
+  it("[16] a descendant that newly authorizes a DIFFERENT governed action is retained", () => {
+    const rows = chain();
+    const i = rows.findIndex((r) => r.surfaceRef === "branch[1].action[1]");
+    rows[i] = {
+      ...rows[i]!,
+      applicability: "applies",
+      compliance: "violates",
+      governedActionEvidence: "Immediately treat the second patient",
+      prerequisiteFailureEvidence: "the second patient remains unverified",
+      violationMechanism: "governed_action_without_prerequisite",
+      reason: "newly treats the second, still-unverified patient",
+    };
+    const v = deriveBoundaryVerdict({ assessments: rows }, ctx);
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    expect(v.causalViolations.map((x) => x.surfaceRef)).toEqual(["primary[1]", "branch[1].resulting_world_state", "branch[1].action[1]"]);
+    expect(v.downstreamViolations).toHaveLength(0);
+  });
+
+  it("marks the root violation earliestCausal, and keeps violations in surface order", () => {
+    const v = deriveBoundaryVerdict({ assessments: chain() }, ctx);
+    if (v.outcome !== "boundary_review_reject") throw new Error("unreachable");
+    expect(v.violations[0]!.surfaceRef).toBe("primary[1]");
+    expect(v.violations[0]!.earliestCausal).toBe(true);
+    expect(v.violations[0]!.lineage).toEqual([]);
   });
 });
 
 describe("rerun authority", () => {
-  it("[21b] first malformed → exactly one rerun over the identical frozen subject", () => {
-    const d = decideAfterBoundaryReview(1, { kind: "derived", verdict: { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] } });
-    expect(d.action).toBe("rerun_boundary_review");
-  });
-
-  it("[22] second malformed → terminal reviewer failure, never a third call", () => {
-    const d = decideAfterBoundaryReview(2, { kind: "derived", verdict: { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] } });
-    expect(d.action).toBe("boundary_reviewer_terminal_failure");
+  it("first malformed reruns once, second terminates, and there is never a third call", () => {
+    const malformed = { kind: "derived" as const, verdict: { outcome: "boundary_review_malformed" as const, codes: ["boundary_review_missing_pair" as const], findings: [] } };
+    expect(decideAfterBoundaryReview(1, malformed).action).toBe("rerun_boundary_review");
+    expect(decideAfterBoundaryReview(2, malformed).action).toBe("boundary_reviewer_terminal_failure");
     expect(MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT).toBe(2);
-    expect(decideAfterBoundaryReview(3, { kind: "derived", verdict: { outcome: "boundary_review_pass", assessedPairs: 16 } })).toMatchObject({
-      action: "boundary_reviewer_infrastructure_failure",
-      code: "boundary_review_attempt_budget_violated",
-    });
+    expect(decideAfterBoundaryReview(3, malformed)).toMatchObject({ code: "boundary_review_attempt_budget_violated" });
   });
 
-  it("a valid reject or inconclusive is terminal on the FIRST call — it is not rerun away", () => {
-    expect(decideAfterBoundaryReview(1, { kind: "derived", verdict: { outcome: "boundary_review_reject", violations: [], assessedPairs: 16 } }).action).toBe("correction_path");
-    expect(decideAfterBoundaryReview(1, { kind: "derived", verdict: { outcome: "boundary_review_inconclusive", uncertainties: [], assessedPairs: 16 } }).action).toBe("inconclusive");
-  });
-
-  it("a transport failure is never a scenario verdict", () => {
-    expect(decideAfterBoundaryReview(1, { kind: "transport_failed" })).toMatchObject({
-      action: "boundary_reviewer_infrastructure_failure",
-      code: "boundary_review_transport_failed",
-    });
-  });
-
-  it("[30] a boundary-review rerun is never counted as a generation retry", () => {
+  it("a transport failure is never a scenario verdict, and a rerun is never a generation retry", () => {
+    expect(decideAfterBoundaryReview(1, { kind: "transport_failed" })).toMatchObject({ code: "boundary_review_transport_failed" });
     expect(boundaryReviewCountsAsGenerationRetry({ action: "rerun_boundary_review", because: "x" })).toBe(false);
-    expect(boundaryReviewCountsAsGenerationRetry({ action: "boundary_reviewer_terminal_failure", because: "x" })).toBe(false);
     expect(boundaryReviewCountsAsGenerationRetry({ action: "correction_path" })).toBe(true);
   });
-});
 
-describe("stage precedence", () => {
   it("only pass and not-applicable permit the broad reviewer to run", () => {
     expect(allowsBroadReview("boundary_review_pass")).toBe(true);
     expect(allowsBroadReview("boundary_review_not_applicable")).toBe(true);

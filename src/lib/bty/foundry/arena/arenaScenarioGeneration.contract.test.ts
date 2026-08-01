@@ -70,6 +70,7 @@ const goodDraft: ArenaScenarioDraft = {
   },
   branches: {
     primary_1: {
+      resultingWorldState: "The world after choosing primary_1: the situation has moved on and the earlier decision now holds.",
       escalationText: "Stopping the line frees the reviewers, but the client escalates to your director within the hour.",
       tradeoffChoices: [
         { id: "b1_t1", label: "Brief the director yourself before the client reaches them" },
@@ -84,6 +85,7 @@ const goodDraft: ArenaScenarioDraft = {
       },
     },
     primary_2: {
+      resultingWorldState: "The world after choosing primary_2: the situation has moved on and the earlier decision now holds.",
       escalationText: "Your own check narrows the gap, but the verification consumes the buffer the schedule depended on.",
       tradeoffChoices: [
         { id: "b2_t1", label: "Ship the verified portion and hold the rest for the next window" },

@@ -61,13 +61,17 @@ import {
   MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT,
   GENERIC_EVIDENCE_PHRASES,
   MIN_EVIDENCE_CHARS,
-  SURFACE_RESULTS,
+  APPLICABILITY_RESULTS,
+  COMPLIANCE_RESULTS,
+  VIOLATION_MECHANISMS,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
-  CANONICAL_SURFACE_COUNT,
+  BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
+  FLAT_REACHABLE_SURFACE_COUNT,
   SURFACE_KINDS,
   SURFACE_MAP_VERSION,
   SURFACE_PHASES,
+  SURFACE_REACHABILITY,
   SURFACE_MAP_CODES,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { NARROW_BOUNDARY_SAMPLING, NARROW_BOUNDARY_SYSTEM_PROMPT } from "./narrowBoundaryContract";
@@ -137,7 +141,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.29.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.30.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -249,11 +253,15 @@ export function buildContractManifest(head: string, model: string): ContractMani
       narrowBoundarySchema: digest(NARROW_BOUNDARY_JSON_SCHEMA),
       narrowBoundarySchemaName: digest(NARROW_BOUNDARY_SCHEMA_NAME),
       narrowBoundarySampling: digest(NARROW_BOUNDARY_SAMPLING),
+      // R2.30 — the surface map is derived from LEARNER REACHABILITY, so the reachability vocabulary
+      // and both cardinalities are part of the contract.
       canonicalSurfaceMap: digest({
         version: SURFACE_MAP_VERSION,
-        count: CANONICAL_SURFACE_COUNT,
+        branchAwareReachable: BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
+        flatReachable: FLAT_REACHABLE_SURFACE_COUNT,
         kinds: SURFACE_KINDS,
         phases: SURFACE_PHASES,
+        reachability: SURFACE_REACHABILITY,
         codes: SURFACE_MAP_CODES,
       }),
       boundaryEvidenceGrounding: digest({
@@ -261,7 +269,19 @@ export function buildContractManifest(head: string, model: string): ContractMani
         minEvidenceChars: MIN_EVIDENCE_CHARS,
         codes: NARROW_BOUNDARY_CODES,
       }),
-      serverDerivedBoundaryVerdict: digest({ results: SURFACE_RESULTS, outcomes: BOUNDARY_REVIEW_OUTCOMES, modelAuthoredVerdict: false }),
+      // R2.30 — applicability is asked BEFORE compliance, and a violation must name a mechanism.
+      boundaryApplicabilityContract: digest({ applicability: APPLICABILITY_RESULTS, compliance: COMPLIANCE_RESULTS }),
+      boundaryViolationMechanism: digest(VIOLATION_MECHANISMS),
+      boundaryCausalLineage: digest({ version: SURFACE_MAP_VERSION, earliestCausalDerivation: "mechanism+governed_action_dedup_over_lineage" }),
+      boundaryCorrectionPrecision: digest({ correctionFrom: "causal_violations_only", downstreamIsEvidenceOnly: true, notApplicableNeverCorrects: true }),
+      boundaryWorldStateAuthority: digest({ escalationFallback: false, missingIsAuthorityFailure: true }),
+      serverDerivedBoundaryVerdict: digest({
+        applicability: APPLICABILITY_RESULTS,
+        compliance: COMPLIANCE_RESULTS,
+        outcomes: BOUNDARY_REVIEW_OUTCOMES,
+        modelAuthoredVerdict: false,
+        silenceIsNotViolation: true,
+      }),
       boundaryReviewRerunPolicy: digest({ maxCallsPerSubject: MAX_BOUNDARY_REVIEW_CALLS_PER_SUBJECT, rerunIsGenerationRetry: false }),
     },
     sampling: {

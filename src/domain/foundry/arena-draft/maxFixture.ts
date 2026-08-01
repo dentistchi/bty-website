@@ -51,6 +51,7 @@ import {
   NARROW_REASON_MAX,
   type NarrowBoundaryReview,
 } from "./narrowBoundaryReview";
+import { BRANCH_AWARE_REACHABLE_SURFACE_COUNT } from "./boundarySurfaces";
 
 /**
  * Two profiles, because they answer different questions.
@@ -369,24 +370,29 @@ export function buildMaxNarrowBoundaryReview(hangul = false, profile: FixturePro
   const boundaries = maxBoundaryIds(MAX_ACTIVE_BOUNDARIES);
   const evidenceCap = profile === "schema" ? NARROW_EVIDENCE_MAX : Math.round(NARROW_EVIDENCE_MAX * 0.6);
   const reasonCap = profile === "schema" ? NARROW_REASON_MAX : Math.round(NARROW_REASON_MAX * 0.6);
-  // The coordinates are the real ones, at their longest shape: `branch[N].resulting_world_state`.
+  // The REACHABLE coordinates at their longest shape: `branch[N].resulting_world_state`. Flat
+  // compatibility projections are excluded from the matrix, so they are excluded from the budget.
   const refs = [
     ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, i) => `primary[${i}]`),
-    ...Array.from({ length: GENERATED_TRADEOFF_CHOICES }, (_, i) => `flat_tradeoff[${i}]`),
-    ...Array.from({ length: GENERATED_ACTION_CHOICES }, (_, i) => `flat_action[${i}]`),
     ...Array.from({ length: GENERATED_PRIMARY_CHOICES }, (_, b) => [
       `branch[${b}].resulting_world_state`,
       ...Array.from({ length: GENERATED_TRADEOFF_CHOICES }, (_, i) => `branch[${b}].tradeoff[${i}]`),
       ...Array.from({ length: GENERATED_ACTION_CHOICES }, (_, i) => `branch[${b}].action[${i}]`),
     ]).flat(),
   ];
+  if (refs.length !== BRANCH_AWARE_REACHABLE_SURFACE_COUNT) {
+    throw new Error(`reachable surface fixture drifted: ${refs.length} != ${BRANCH_AWARE_REACHABLE_SURFACE_COUNT}`);
+  }
   return {
     assessments: boundaries.flatMap((boundaryId) =>
       refs.map((surfaceRef) => ({
         boundaryId,
         surfaceRef,
-        result: "complies" as const,
-        evidenceExcerpt: filler(evidenceCap, `${boundaryId}${surfaceRef}e`, hangul),
+        applicability: "applies" as const,
+        compliance: "violates" as const,
+        governedActionEvidence: filler(evidenceCap, `${boundaryId}${surfaceRef}g`, hangul),
+        prerequisiteFailureEvidence: filler(evidenceCap, `${boundaryId}${surfaceRef}p`, hangul),
+        violationMechanism: "governed_action_without_prerequisite" as const,
         reason: filler(reasonCap, `${boundaryId}${surfaceRef}r`, hangul),
       })),
     ),

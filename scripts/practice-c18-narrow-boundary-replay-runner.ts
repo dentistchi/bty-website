@@ -16,8 +16,20 @@ import { join } from "node:path";
 import { buildContractManifest, manifestDigest } from "@/lib/bty/foundry/arena/contractManifest";
 import { subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
-import { NARROW_BOUNDARY_JSON_SCHEMA } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
-import { CANONICAL_SURFACE_COUNT, enumerateBoundarySurfaces, surfaceMapSha256 } from "@/domain/foundry/arena-draft/boundarySurfaces";
+import {
+  APPLICABILITY_RESULTS,
+  COMPLIANCE_RESULTS,
+  NARROW_BOUNDARY_JSON_SCHEMA,
+  VIOLATION_MECHANISMS,
+} from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import {
+  BRANCH_AWARE_REACHABLE_SURFACE_COUNT,
+  compatibilitySurfaces,
+  enumerateBoundarySurfaces,
+  lineageSha256,
+  reviewableSurfaces,
+  surfaceMapSha256,
+} from "@/domain/foundry/arena-draft/boundarySurfaces";
 import {
   NARROW_BOUNDARY_SAMPLING,
   NARROW_BOUNDARY_SYSTEM_PROMPT,
@@ -52,6 +64,8 @@ const broad = buildC18Subject(process.cwd(), join(process.cwd(), ".eval-artifact
 const digests = subjectDigests(broad.subject);
 const provenance = broad.subject.boundaryProvenance!;
 const surfaces = enumerateBoundarySurfaces(broad.subject.scenario as ArenaScenarioDraft, {});
+const reachable = reviewableSurfaces(surfaces);
+const excluded = compatibilitySurfaces(surfaces);
 const narrowSubject = buildNarrowBoundarySubject({
   scenarioSha256: broad.subject.scenarioSha256,
   reviewSubjectSha256: digests.reviewSubjectSha256,
@@ -92,11 +106,17 @@ const binding = {
   boundarySchemaSha256: d(NARROW_BOUNDARY_JSON_SCHEMA),
   boundarySamplingSha256: d(NARROW_BOUNDARY_SAMPLING),
   surfaceMapSha256: surfaceMapSha256(surfaces),
-  surfaceCount: surfaces.length,
-  surfaceCoordinates: surfaces.map((s) => s.coordinate),
+  lineageSha256: lineageSha256(surfaces),
+  reachableSurfaceCount: reachable.length,
+  reachableSurfaceCoordinates: reachable.map((s) => s.coordinate),
+  excludedCompatibilitySurfaces: excluded.map((s) => `${s.coordinate}->${s.compatibilitySource}`),
+  applicabilityContractSha256: d({ applicability: APPLICABILITY_RESULTS, compliance: COMPLIANCE_RESULTS }),
+  violationMechanismContractSha256: d(VIOLATION_MECHANISMS),
+  correctionPacketContractSha256: d({ correctionFrom: "causal_violations_only", downstreamIsEvidenceOnly: true, notApplicableNeverCorrects: true }),
+  worldStateAuthoritySha256: d({ escalationFallback: false, missingIsAuthorityFailure: true }),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
-  artifactSchemaVersion: "practice-narrow-boundary-replay/1",
+  artifactSchemaVersion: "practice-narrow-boundary-replay/2",
   replayRuntimeSha256: d(runtime),
 };
 
@@ -113,8 +133,14 @@ const CHECKS: Array<[string, string]> = [
   ["boundary schema", "boundarySchemaSha256"],
   ["boundary sampling", "boundarySamplingSha256"],
   ["surface map", "surfaceMapSha256"],
-  ["surface count", "surfaceCount"],
-  ["surface coordinates", "surfaceCoordinates"],
+  ["causal lineage", "lineageSha256"],
+  ["reachable surface count", "reachableSurfaceCount"],
+  ["reachable surface coordinates", "reachableSurfaceCoordinates"],
+  ["excluded compatibility surfaces", "excludedCompatibilitySurfaces"],
+  ["applicability contract", "applicabilityContractSha256"],
+  ["violation-mechanism contract", "violationMechanismContractSha256"],
+  ["correction-packet contract", "correctionPacketContractSha256"],
+  ["world-state authority", "worldStateAuthoritySha256"],
   ["active boundary ids", "activeBoundaryIds"],
   ["boundary text", "boundaryText"],
   ["replay runtime", "replayRuntimeSha256"],
@@ -126,22 +152,31 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.29 NARROW BOUNDARY-ONLY REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.29
+# BTY Practice — R2.30 BOUNDARY PRECISION REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.30
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
 #
-# THE QUESTION R2.28 PROVED THE BROAD REVIEWER COULD NOT ANSWER
-#   Given [${BOUNDARY_ID}] ${BOUNDARY_TEXT}
-#   the broad reviewer wrote "One patient is treated without verification,
-#   risking safety" into its own detail fields and returned boundaryCompliant:
-#   true with overallVerdict: accept. Four booleans carried fourteen choices and
-#   NOTHING carried the two resulting world states.
+# WHAT THE ARC MEASURED
+#   R2.28  the broad reviewer wrote "One patient is treated without
+#          verification" and returned boundaryCompliant: true. FALSE NEGATIVE.
+#   R2.29  the narrow review correctly rejected the scenario, and also produced
+#          NINE violations where four describe the problem — five asserted from
+#          "Does not address verification of identifiers." FALSE POSITIVES.
 #
-#   This stage asks one question per (boundary x surface) pair over all
-#   ${CANONICAL_SURFACE_COUNT} canonical decision surfaces, requires a same-surface evidence excerpt
-#   for every answer, and derives the verdict on the SERVER.
+# WHAT R2.30 CHANGES
+#   * ${BRANCH_AWARE_REACHABLE_SURFACE_COUNT} LEARNER-REACHABLE surfaces are reviewed. The flat tradeoff/action
+#     fields are compatibility projections — MEASURED unreachable, because
+#     ArenaPracticePlayer resolves branches[selectedPrimaryId] for every
+#     branch-aware draft. They carry no product authority.
+#   * APPLICABILITY is asked BEFORE compliance. Silence about the rule is not a
+#     violation.
+#   * A violation must prove a MECHANISM: the governed action present AND the
+#     prerequisite missing, each with a grounded excerpt.
+#   * The correction packet carries EARLIEST CAUSAL findings only.
+#
+#   Active boundary: [${BOUNDARY_ID}] ${BOUNDARY_TEXT}
 #
 # THIS SUBJECT IS RECONSTRUCTED. It is NOT evidence of what the historical
 # reviewer received.
@@ -158,7 +193,8 @@ REPO=${shq(REPO)}
 BRANCH=${shq(BRANCH)}
 EXPECT_HEAD=${shq(head)}
 EXPECTED_SUBJECTS=1
-EXPECTED_SURFACES=${CANONICAL_SURFACE_COUNT}
+EXPECTED_SURFACES=${BRANCH_AWARE_REACHABLE_SURFACE_COUNT}
+EXPECTED_EXCLUDED=${excluded.length}
 EXPECTED_GENERATION_CALLS=0
 EXPECTED_BROAD_REVIEW_CALLS=0
 OUT_DIR='.eval-artifacts'
@@ -171,7 +207,7 @@ die() { printf '\\n%s\\n' "$*" >&2; exit 1; }
 mismatch() { printf '\\nCONTRACT MISMATCH · RUNNER STALE\\n  %s\\n    expected: %s\\n    actual:   %s\\n' "$1" "$2" "$3" >&2; exit 3; }
 step() { printf '  [%s] %s\\n' "$1" "$2"; }
 
-printf '\\nR2.29 NARROW BOUNDARY-ONLY REPLAY — PREFLIGHT\\n\\n'
+printf '\\nR2.30 BOUNDARY PRECISION REPLAY — PREFLIGHT\\n\\n'
 
 [ -d "$REPO/.git" ] || die "CONTRACT MISMATCH · RUNNER STALE
   repository not found at $REPO"
@@ -206,7 +242,7 @@ sys.stdout.write(json.dumps(d, sort_keys=True, separators=(",", ":")))
 }
 
 ${checkLines}
-step 5 "all ${CHECKS.length} bound contracts match, including the exact boundary text and all $EXPECTED_SURFACES surface coordinates"
+step 5 "all ${CHECKS.length} bound contracts match, including the exact boundary text, all $EXPECTED_SURFACES reachable coordinates and the $EXPECTED_EXCLUDED excluded projections"
 
 # ---- 6. the replay program cannot call generation ---------------------------
 for f in src/lib/bty/foundry/arena/boundaryReviewStage.ts \\
@@ -263,7 +299,9 @@ fi
 
 printf '\\nContract and runtime verified. ONE narrow boundary-review call will be performed.\\n'
 printf 'Active boundary: [${BOUNDARY_ID}] ${BOUNDARY_TEXT}\\n'
-printf 'Decision surfaces: %s (including both resulting world states)\\n' "$EXPECTED_SURFACES"
+printf 'Reachable decision surfaces: %s (including both resulting world states)\\n' "$EXPECTED_SURFACES"
+printf 'Excluded compatibility projections: %s\\n' "$EXPECTED_EXCLUDED"
+printf 'Applicability is judged BEFORE compliance; silence is never a violation.\\n'
 printf 'NO scenario will be generated. NO scenario will be rewritten. NO broad review will run.\\n'
 printf 'Provider API key (input hidden, never written to disk or history): '
 read -rs LLM_API_KEY
@@ -287,8 +325,8 @@ printf 'artifacts:     %s\\n' "$OUT_DIR"
 printf '============================================================\\n'
 printf '\\nAllowed outcomes: boundary_review_pass | boundary_review_reject |\\n'
 printf 'boundary_review_inconclusive | boundary_review_malformed |\\n'
-printf 'provider_failure | subject_digest_mismatch | provenance_digest_mismatch |\\n'
-printf 'surface_map_mismatch\\n'
+printf 'provider_failure | subject_digest_mismatch | surface_map_mismatch |\\n'
+printf 'surface_authority_failure\\n'
 printf '\\nThe subject was RECONSTRUCTED. This result says what the boundary reviewer\\n'
 printf 'does when the confirmed rule and every decision surface are put in front of\\n'
 printf 'it. It is not a product-quality verdict.\\n\\n'
@@ -306,7 +344,9 @@ if (process.argv.includes("--binding-json")) {
       `  broad subject   ${binding.reconstructedSubjectSha256}\n` +
       `  narrow subject  ${binding.boundaryReviewSubjectSha256}\n` +
       `  surface map     ${binding.surfaceMapSha256}\n` +
-      `  surfaces        ${binding.surfaceCount}\n` +
+      `  lineage         ${binding.lineageSha256}\n` +
+      `  reachable       ${binding.reachableSurfaceCount}\n` +
+      `  excluded        ${binding.excludedCompatibilitySurfaces.length}\n` +
       `  provenance      ${binding.boundaryProvenanceSha256}\n` +
       `  scenario        ${binding.scenarioSha256}\n` +
       `  boundary        ${binding.activeBoundaryIds.join(",")}\n`,

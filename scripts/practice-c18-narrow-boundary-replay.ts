@@ -22,8 +22,8 @@ import { buildNarrowBoundaryRequest, narrowBoundarySubjectSha256, type NarrowBou
 import type { NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
-import { deriveBoundaryVerdict } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
-import { enumerateBoundarySurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
+import { deriveBoundaryVerdict, type NarrowBoundaryAssessment, type ViolationMechanism } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import { compatibilitySurfaces, enumerateBoundarySurfaces, reviewableSurfaces } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { RECONSTRUCTION_DISCLAIMER } from "@/lib/bty/foundry/arena/historicalBoundaryReconstruction";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildC18Subject, CASE_ID, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, SOURCE_ATTEMPT_INDEX } from "./practice-c18-boundary-replay";
@@ -45,6 +45,11 @@ export type NarrowReplayDeps = {
   review: (subject: NarrowBoundarySubject, attempt: number) => Promise<NarrowBoundaryCallResult>;
   writeArtifact: (payload: string, subjectSha: string) => { path: string; sha256: string; bytes: number };
   log?: (line: string) => void;
+  /**
+   * TEST-ONLY seam for proving fail-closed behaviour (e.g. a missing resulting world state) over the
+   * real frozen subject. Never used by the live path — the runner passes no mutation.
+   */
+  mutateDraft?: (draft: ArenaScenarioDraft) => ArenaScenarioDraft;
 };
 
 export type NarrowReplaySummary = {
@@ -54,6 +59,10 @@ export type NarrowReplaySummary = {
   artifactPath: string | null;
   artifactSha256: string | null;
   boundaryReviewSubjectSha256: string | null;
+  reachableSurfaces: string[];
+  excludedCompatibilitySurfaces: string[];
+  causalViolations: string[];
+  authorityCodes: string[];
 };
 
 /**
@@ -76,10 +85,14 @@ export async function runC18NarrowBoundaryReplay(
   const provenanceSha = boundaryProvenanceSha256(provenance);
   const digests = subjectDigests(subject);
 
+  const draft = deps.mutateDraft
+    ? deps.mutateDraft(JSON.parse(JSON.stringify(subject.scenario)) as ArenaScenarioDraft)
+    : (subject.scenario as ArenaScenarioDraft);
+
   const stage = await runBoundaryReviewStage(
     { review: deps.review, log: (outcome, code, extra) => log(`${outcome}${code ? ` code=${code}` : ""} ${canonicalJson(extra)}`) },
     {
-      draft: subject.scenario as ArenaScenarioDraft,
+      draft,
       // The reconstructed subject carries no generator construction records, and none are invented.
       constructions: {},
       boundaries: subject.confirmedBoundaries,
@@ -113,13 +126,20 @@ export async function runC18NarrowBoundaryReplay(
       activeBoundaryIds: subject.activeBoundaryIds,
       boundaryReviewSubjectSha256: stage.boundaryReviewSubjectSha256,
       surfaceMapSha256: stage.surfaceMapSha256,
+      lineageSha256: stage.subject?.lineageSha256 ?? null,
+      // R2.30 — what was reviewed, and what was excluded as unreachable, are both evidence.
+      reachableSurfaces: stage.reachableSurfaces,
+      excludedCompatibilitySurfaces: stage.excludedCompatibilitySurfaces,
       surfaces: stage.subject?.surfaces ?? [],
+      compatibilitySurfaces: stage.subject?.compatibilitySurfaces ?? [],
       request: stage.subject ? buildNarrowBoundaryRequest(stage.subject) : null,
       boundaryReviewOutcome: stage.outcome,
       boundaryReviewCalls: stage.calls,
       boundaryReviewReruns: stage.reruns,
       boundaryReviewEvidence: stage.evidences,
       violations: stage.violations,
+      causalViolations: stage.causalViolations,
+      downstreamViolations: stage.downstreamViolations,
       uncertainties: stage.uncertainties,
       findings: stage.findings,
       authorityCodes: stage.codes,
@@ -140,34 +160,84 @@ export async function runC18NarrowBoundaryReplay(
     artifactPath: written.path,
     artifactSha256: written.sha256,
     boundaryReviewSubjectSha256: stage.boundaryReviewSubjectSha256,
+    reachableSurfaces: stage.reachableSurfaces,
+    excludedCompatibilitySurfaces: stage.excludedCompatibilitySurfaces,
+    causalViolations: stage.causalViolations.map((v) => v.surfaceRef),
+    authorityCodes: stage.codes,
   };
 }
 
-/** Deterministic mock responses. Never a network call; used only by the mock proof and `--mock`. */
+/** Deterministic mock responses. Never a network call; used by the mock proof and `--mock`. */
 export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, attempt: number): NarrowBoundaryCallResult {
   const surfaces = subject.surfaces;
   const b = subject.boundaries[0]!;
-  const complies = surfaces.map((s) => ({
+  /** Everything settles as not_applicable, each showing what the surface actually does. */
+  const settled: NarrowBoundaryAssessment[] = surfaces.map((s) => ({
     boundaryId: b.id,
     surfaceRef: s.coordinate,
-    result: "complies" as const,
-    evidenceExcerpt: s.text.slice(0, 100),
-    reason: "keeps the rule",
+    applicability: "not_applicable",
+    compliance: "not_assessed",
+    governedActionEvidence: s.text.slice(0, 120),
+    prerequisiteFailureEvidence: "",
+    violationMechanism: "none",
+    reason: "does not perform the governed action",
   }));
-  const withViolation = (ref: string) =>
-    complies.map((a) => (a.surfaceRef === ref ? { ...a, result: "violates" as const, reason: "proceeds without the check" } : a));
+
+  const violate = (ref: string, mechanism: ViolationMechanism) =>
+    (rows: NarrowBoundaryAssessment[]): NarrowBoundaryAssessment[] =>
+      rows.map((a) => {
+        if (a.surfaceRef !== ref) return a;
+        const s = surfaces.find((x) => x.coordinate === ref)!;
+        return {
+          ...a,
+          applicability: "applies" as const,
+          compliance: "violates" as const,
+          violationMechanism: mechanism,
+          governedActionEvidence: s.text.slice(0, 120),
+          prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 120),
+          reason: "governed action proceeds with the prerequisite unmet",
+        };
+      });
 
   let parsed: unknown;
   switch (kind) {
-    case "reject":
-      parsed = { assessments: withViolation("primary[1]") };
+    case "reject": {
+      // A real causal chain: primary → asserted state → a NEW authorization downstream.
+      let rows: NarrowBoundaryAssessment[] = settled;
+      for (const [ref, mech] of [
+        ["primary[1]", "governed_action_without_prerequisite"],
+        ["branch[1].resulting_world_state", "resulting_state_missing_prerequisite"],
+        ["branch[1].action[1]", "governed_action_without_prerequisite"],
+      ] as const) {
+        if (surfaces.some((s) => s.coordinate === ref)) rows = violate(ref, mech)(rows);
+      }
+      parsed = { assessments: rows };
+      break;
+    }
+    case "unsupported_violation":
+      // The R2.29 shape: a violation asserted from silence. Must be refused as malformed.
+      parsed = {
+        assessments: settled.map((a) =>
+          a.surfaceRef === "branch[1].action[0]"
+            ? { ...a, applicability: "applies" as const, compliance: "violates" as const, governedActionEvidence: "", prerequisiteFailureEvidence: "", violationMechanism: "none" as const, reason: "Does not address verification of identifiers." }
+            : a,
+        ),
+      };
+      break;
+    case "uncertain":
+      parsed = {
+        assessments: settled.map((a) =>
+          a.surfaceRef === "branch[1].tradeoff[1]" ? { ...a, applicability: "uncertain" as const, reason: "'caring for' may or may not mean treatment" } : a,
+        ),
+      };
       break;
     case "malformed":
-      parsed = { assessments: complies.slice(1) };
+      parsed = { assessments: settled.slice(1) };
       break;
     default:
-      parsed = { assessments: complies };
+      parsed = { assessments: settled };
   }
+
   const verdict = deriveBoundaryVerdict(parsed, { boundaries: subject.boundaries, surfaces });
   return {
     kind: "derived",
@@ -196,11 +266,14 @@ async function main(): Promise<void> {
   const mode: "mock" | "live" = useMock ? "mock" : "live";
 
   const broad = buildC18Subject(process.cwd(), evidenceDir);
-  const surfaces = enumerateBoundarySurfaces(broad.subject.scenario as ArenaScenarioDraft, {});
+  const all = enumerateBoundarySurfaces(broad.subject.scenario as ArenaScenarioDraft, {});
+  const reachable = reviewableSurfaces(all);
+  const excluded = compatibilitySurfaces(all);
   process.stdout.write(`${RECONSTRUCTION_DISCLAIMER}\n`);
   process.stdout.write(`ACTIVE BOUNDARY: ${broad.subject.activeBoundaryIds.join(",")}\n`);
   process.stdout.write(`BOUNDARY TEXT:   ${broad.subject.confirmedBoundaries.map((b) => b.statement).join(" | ")}\n`);
-  process.stdout.write(`DECISION SURFACES (${surfaces.length}):\n${surfaces.map((s) => `  ${s.coordinate}`).join("\n")}\n`);
+  process.stdout.write(`REACHABLE DECISION SURFACES (${reachable.length}):\n${reachable.map((s) => `  ${s.coordinate}  [${s.reachability}] lineage=${s.lineage.join("<-") || "root"}`).join("\n")}\n`);
+  process.stdout.write(`EXCLUDED COMPATIBILITY PROJECTIONS (${excluded.length}):\n${excluded.map((s) => `  ${s.coordinate} -> ${s.compatibilitySource}`).join("\n")}\n`);
 
   const summary = await runC18NarrowBoundaryReplay(
     {
@@ -226,6 +299,9 @@ async function main(): Promise<void> {
 
   if (useMock) process.stdout.write("C18 NARROW BOUNDARY REPLAY MOCK · LIVE PROVIDER NOT CALLED\n");
   process.stdout.write(`OUTCOME: ${summary.outcome}\nCALLS: ${summary.calls}\nRERUNS: ${summary.reruns}\n`);
+  process.stdout.write(`EARLIEST CAUSAL VIOLATIONS: ${summary.causalViolations.join(", ") || "(none)"}\n`);
+  process.stdout.write(`PREVENTED UNSUPPORTED FINDINGS: violations asserted without a grounded mechanism are refused, never reported\n`);
+  if (summary.authorityCodes.length) process.stdout.write(`AUTHORITY CODES: ${summary.authorityCodes.join(", ")}\n`);
   process.stdout.write(`ARTIFACT: ${summary.artifactPath} ${summary.artifactSha256}\n`);
   process.stdout.write("A PASS IS A REVIEWER MEASUREMENT · NEVER A PRODUCT-QUALITY PASS\n");
   if (summary.outcome === "boundary_reviewer_terminal_failure" || summary.outcome === "boundary_review_authority_failure") process.exitCode = 4;

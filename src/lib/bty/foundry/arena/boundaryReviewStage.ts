@@ -23,12 +23,15 @@ import {
   type BoundaryViolation,
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
-  CANONICAL_SURFACE_COUNT,
+  compatibilitySurfaces,
   enumerateBoundarySurfaces,
+  lineageSha256,
+  reviewableSurfaces,
   surfaceMapSha256,
   validateSurfaceMap,
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
+import { isBranchAware } from "@/domain/foundry/arena-draft/types";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { buildNarrowBoundarySubject, narrowBoundarySubjectSha256, type NarrowBoundarySubject } from "./narrowBoundaryContract";
 import type { NarrowBoundaryCallResult, NarrowBoundaryEvidence } from "./narrowBoundaryReviewer";
@@ -54,6 +57,13 @@ export type BoundaryStageResult = {
   reruns: number;
   /** Populated only on a valid reject. */
   violations: BoundaryViolation[];
+  /** Earliest causal + independently-new violations — the only ones that drive a correction. */
+  causalViolations: BoundaryViolation[];
+  /** Descendants that repeat an ancestor's violation. Evidence only, never an instruction. */
+  downstreamViolations: BoundaryViolation[];
+  /** The reachable surfaces actually reviewed, and the unreachable duplicates excluded. */
+  reachableSurfaces: string[];
+  excludedCompatibilitySurfaces: string[];
   /** Populated only on a valid inconclusive. */
   uncertainties: BoundaryUncertainty[];
   /** Server-authored findings for the correction packet. Only a valid reject produces them. */
@@ -96,6 +106,10 @@ const empty = (outcome: BoundaryStageOutcome, codes: string[] = []): BoundarySta
   calls: 0,
   reruns: 0,
   violations: [],
+  causalViolations: [],
+  downstreamViolations: [],
+  reachableSurfaces: [],
+  excludedCompatibilitySurfaces: [],
   uncertainties: [],
   findings: [],
   codes,
@@ -144,7 +158,8 @@ export async function runBoundaryReviewStage(
 
   // The server owns the coordinates. A malformed map is refused BEFORE a credential is spent.
   const surfaces = enumerateBoundarySurfaces(args.draft, args.constructions);
-  const mapCheck = validateSurfaceMap(surfaces, CANONICAL_SURFACE_COUNT);
+  // R2.30 — the expected reachable count follows the RUNTIME shape, never a hardcoded number.
+  const mapCheck = validateSurfaceMap(surfaces, { branchAware: isBranchAware(args.draft) });
   if (!mapCheck.ok) {
     log("boundary_review_authority_failure", mapCheck.codes[0], { surfaceCount: surfaces.length, defectCodes: mapCheck.codes });
     return empty("boundary_review_authority_failure", mapCheck.codes);
@@ -164,11 +179,16 @@ export async function runBoundaryReviewStage(
   const subjectSha = narrowBoundarySubjectSha256(subject);
   const mapSha = subject.surfaceMapSha256;
   const surfaceByRef = new Map(surfaces.map((s) => [s.coordinate, s]));
+  const reachable = reviewableSurfaces(surfaces);
+  const excluded = compatibilitySurfaces(surfaces);
 
   log("boundary_review_subject_frozen", undefined, {
     boundaryReviewSubjectSha256: subjectSha,
     surfaceMapSha256: mapSha,
-    surfaceCount: surfaces.length,
+    lineageSha256: subject.lineageSha256,
+    surfaceCount: reachable.length,
+    reachableSurfaces: reachable.map((s) => s.coordinate),
+    excludedCompatibilitySurfaces: excluded.map((s) => `${s.coordinate}${s.compatibilitySource ? ` -> ${s.compatibilitySource}` : ""}`),
     activeBoundaryIds: subject.activeBoundaryIds,
   });
 
@@ -206,6 +226,8 @@ export async function runBoundaryReviewStage(
       subject,
       boundaryReviewSubjectSha256: subjectSha,
       surfaceMapSha256: mapSha,
+      reachableSurfaces: reachable.map((s) => s.coordinate),
+      excludedCompatibilitySurfaces: excluded.map((s) => s.coordinate),
       calls: evidences.length,
       reruns,
     };
@@ -225,9 +247,15 @@ export async function runBoundaryReviewStage(
     }
 
     if (decision.action === "correction_path") {
-      const violations = call.evidence.verdict.outcome === "boundary_review_reject" ? call.evidence.verdict.violations : [];
-      // Server-authored findings. The reviewer never writes a retry instruction — R2.23C authority.
-      const findings: Finding[] = violations.map((v: BoundaryViolation) => {
+      const rejected = call.evidence.verdict.outcome === "boundary_review_reject" ? call.evidence.verdict : null;
+      const violations = rejected?.violations ?? [];
+      const causal = rejected?.causalViolations ?? [];
+      const downstream = rejected?.downstreamViolations ?? [];
+      // R2.30 Part 9 — CORRECTION PRECISION. Only EARLIEST CAUSAL and independently-new violations
+      // become correction findings. A descendant that repeats its ancestor's mechanism and governed
+      // action is kept as evidence, never as a separate instruction: the R2.29 live run produced
+      // nine defects where four describe the whole problem.
+      const findings: Finding[] = causal.map((v: BoundaryViolation) => {
         const s = surfaceByRef.get(v.surfaceRef);
         return {
           code: surfaceDefectCode(s),
@@ -236,15 +264,26 @@ export async function runBoundaryReviewStage(
           phase: s?.phase,
           branchIndex: s?.branchIndex,
           choiceIndex: s && s.index >= 0 ? s.index : undefined,
-          detail: `${v.surfaceRef}: ${v.evidenceExcerpt}`,
+          detail: `${v.surfaceRef} [${v.violationMechanism}]: ${v.governedActionEvidence} || ${v.prerequisiteFailureEvidence}`,
         };
       });
       log("boundary_review_reject", findings[0]?.code, {
         boundaryReviewSubjectSha256: subjectSha,
         defectCodes: [...new Set(findings.map((f) => f.code))],
         violations,
+        causalViolations: causal.map((v) => v.surfaceRef),
+        downstreamViolations: downstream.map((v) => v.surfaceRef),
       });
-      return { ...empty("boundary_review_reject"), ...base, outcome: "boundary_review_reject", violations, findings, reruns };
+      return {
+        ...empty("boundary_review_reject"),
+        ...base,
+        outcome: "boundary_review_reject",
+        violations,
+        causalViolations: causal,
+        downstreamViolations: downstream,
+        findings,
+        reruns,
+      };
     }
 
     if (decision.action === "inconclusive") {
@@ -289,6 +328,18 @@ export type BoundaryReviewMetrics = {
   boundaryReviewerTerminalFailureCount: number;
   boundaryEvidenceUngroundedCount: number;
   broadReviewSkippedByBoundaryCount: number;
+  // R2.30 — precision counters. Compatibility projections are NEVER counted as reviewed surfaces.
+  reachableSurfaceCount: number;
+  compatibilitySurfaceCount: number;
+  applicableSurfaceCount: number;
+  notApplicableSurfaceCount: number;
+  applicabilityUncertainCount: number;
+  complianceViolationCount: number;
+  earliestCausalViolationCount: number;
+  downstreamViolationCount: number;
+  /** Violations the model asserted that grounding refused — the R2.29 false-positive family. */
+  administrativeFalsePositivePreventedCount: number;
+  missingWorldStateCount: number;
 };
 
 export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
@@ -300,6 +351,16 @@ export const emptyBoundaryMetrics = (): BoundaryReviewMetrics => ({
   boundaryReviewerTerminalFailureCount: 0,
   boundaryEvidenceUngroundedCount: 0,
   broadReviewSkippedByBoundaryCount: 0,
+  reachableSurfaceCount: 0,
+  compatibilitySurfaceCount: 0,
+  applicableSurfaceCount: 0,
+  notApplicableSurfaceCount: 0,
+  applicabilityUncertainCount: 0,
+  complianceViolationCount: 0,
+  earliestCausalViolationCount: 0,
+  downstreamViolationCount: 0,
+  administrativeFalsePositivePreventedCount: 0,
+  missingWorldStateCount: 0,
 });
 
 const UNGROUNDED_CODES = new Set([
@@ -311,12 +372,22 @@ const UNGROUNDED_CODES = new Set([
   "boundary_evidence_ungrounded",
 ]);
 
+/** Codes that fire when a claimed violation could not prove a mechanism — a prevented false positive. */
+const UNSUPPORTED_VIOLATION_CODES = new Set([
+  "boundary_violation_mechanism_missing",
+  "boundary_violation_governed_action_missing",
+  "boundary_violation_prerequisite_evidence_missing",
+]);
+
 /** Fold one stage result into the running metrics. Pure. */
 export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryStageResult): BoundaryReviewMetrics {
-  const ungrounded = r.evidences.reduce(
-    (n, e) => n + (e.verdict.outcome === "boundary_review_malformed" ? e.verdict.codes.filter((c) => UNGROUNDED_CODES.has(c)).length : 0),
-    0,
-  );
+  const malformedCodes = r.evidences.flatMap((e) => (e.verdict.outcome === "boundary_review_malformed" ? e.verdict.codes : []));
+  const ungrounded = malformedCodes.filter((c) => UNGROUNDED_CODES.has(c)).length;
+  const prevented = malformedCodes.filter((c) => UNSUPPORTED_VIOLATION_CODES.has(c)).length;
+  // Applicability counters come from the LAST usable response, which is the one that decided.
+  const last = [...r.evidences].reverse().find((e) => e.verdict.outcome !== "boundary_review_malformed");
+  const parsed = (last?.parsed ?? null) as { assessments?: Array<{ applicability?: string; compliance?: string }> } | null;
+  const rows = parsed?.assessments ?? [];
   return {
     boundaryReviewCallCount: m.boundaryReviewCallCount + r.calls,
     boundaryReviewRerunCount: m.boundaryReviewRerunCount + r.reruns,
@@ -328,6 +399,16 @@ export function accumulateBoundaryMetrics(m: BoundaryReviewMetrics, r: BoundaryS
       (r.outcome === "boundary_reviewer_terminal_failure" || r.outcome === "boundary_review_authority_failure" ? 1 : 0),
     boundaryEvidenceUngroundedCount: m.boundaryEvidenceUngroundedCount + ungrounded,
     broadReviewSkippedByBoundaryCount: m.broadReviewSkippedByBoundaryCount + (r.broadReviewAllowed ? 0 : 1),
+    reachableSurfaceCount: m.reachableSurfaceCount + r.reachableSurfaces.length,
+    compatibilitySurfaceCount: m.compatibilitySurfaceCount + r.excludedCompatibilitySurfaces.length,
+    applicableSurfaceCount: m.applicableSurfaceCount + rows.filter((a) => a.applicability === "applies").length,
+    notApplicableSurfaceCount: m.notApplicableSurfaceCount + rows.filter((a) => a.applicability === "not_applicable").length,
+    applicabilityUncertainCount: m.applicabilityUncertainCount + rows.filter((a) => a.applicability === "uncertain").length,
+    complianceViolationCount: m.complianceViolationCount + r.violations.length,
+    earliestCausalViolationCount: m.earliestCausalViolationCount + r.causalViolations.length,
+    downstreamViolationCount: m.downstreamViolationCount + r.downstreamViolations.length,
+    administrativeFalsePositivePreventedCount: m.administrativeFalsePositivePreventedCount + prevented,
+    missingWorldStateCount: m.missingWorldStateCount + (r.codes.includes("boundary_world_state_missing") ? 1 : 0),
   };
 }
 

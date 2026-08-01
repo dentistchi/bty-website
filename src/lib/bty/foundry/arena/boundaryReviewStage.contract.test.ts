@@ -49,21 +49,49 @@ const args = (over: Partial<Parameters<typeof runBoundaryReviewStage>[1]> = {}) 
   ...over,
 });
 
+/** Returns BOTH the parsed rows and the derived verdict, so evidence carries what the model said. */
 const responseFor = (subject: NarrowBoundarySubject, mutate: (a: ReturnType<typeof baseAssessments>) => unknown = (a) => a) => {
   const parsed = { assessments: mutate(baseAssessments(subject)) };
-  return deriveBoundaryVerdict(parsed, { boundaries: subject.boundaries, surfaces: subject.surfaces });
+  return { parsed, verdict: deriveBoundaryVerdict(parsed, { boundaries: subject.boundaries, surfaces: subject.surfaces }) };
 };
 
+/** R2.30 — every reachable surface settles as `not_applicable`, each showing what it does. */
 const baseAssessments = (subject: NarrowBoundarySubject) =>
   subject.surfaces.map((s) => ({
     boundaryId: subject.boundaries[0]!.id,
     surfaceRef: s.coordinate,
-    result: "complies" as const,
-    evidenceExcerpt: s.text.slice(0, 100),
-    reason: "keeps the rule",
+    applicability: "not_applicable" as const,
+    compliance: "not_assessed" as const,
+    governedActionEvidence: s.text.slice(0, 100),
+    prerequisiteFailureEvidence: "",
+    violationMechanism: "none" as const,
+    reason: "does not perform the governed action",
   }));
 
-const call = (subject: NarrowBoundarySubject, attempt: number, verdict: DerivedBoundaryVerdict): NarrowBoundaryCallResult => ({
+/** Turn one surface into a fully grounded violation. */
+const asViolation = (subject: NarrowBoundarySubject, ref: string, mechanism = "governed_action_without_prerequisite") =>
+  (rows: ReturnType<typeof baseAssessments>) =>
+    rows.map((a) => {
+      if (a.surfaceRef !== ref) return a;
+      const s = subject.surfaces.find((x) => x.coordinate === ref)!;
+      return {
+        ...a,
+        applicability: "applies" as const,
+        compliance: "violates" as const,
+        governedActionEvidence: s.text.slice(0, 100),
+        prerequisiteFailureEvidence: (s.inheritedWorldState || s.text).slice(0, 100),
+        violationMechanism: mechanism as "governed_action_without_prerequisite",
+        reason: "governed action proceeds with the prerequisite unmet",
+      };
+    });
+
+const call = (
+  subject: NarrowBoundarySubject,
+  attempt: number,
+  response: DerivedBoundaryVerdict | { parsed: unknown; verdict: DerivedBoundaryVerdict },
+): NarrowBoundaryCallResult => {
+  const { parsed, verdict } = "verdict" in response ? response : { parsed: { assessments: [] }, verdict: response };
+  return {
   kind: "derived",
   verdict,
   evidence: {
@@ -72,14 +100,15 @@ const call = (subject: NarrowBoundarySubject, attempt: number, verdict: DerivedB
     surfaceMapSha256: subject.surfaceMapSha256,
     activeBoundaryIds: subject.activeBoundaryIds,
     requiredAssessmentCount: subject.boundaries.length * subject.surfaces.length,
-    parsed: { assessments: [] },
+    parsed,
     outcome: verdict.outcome,
     verdict,
     finishReason: "stop",
     latencyMs: 1,
     sanitizedError: null,
   },
-});
+  };
+};
 
 const deps = (review: BoundaryStageDeps["review"]): BoundaryStageDeps => ({ review });
 
@@ -90,7 +119,10 @@ describe("[25][26] pipeline order", () => {
     expect(review).toHaveBeenCalledTimes(1);
     expect(r.outcome).toBe("boundary_review_pass");
     expect(r.calls).toBe(1);
-    expect(r.subject!.surfaces).toHaveLength(16);
+    // R2.30 — only the TWELVE reachable surfaces reach the reviewer.
+    expect(r.subject!.surfaces).toHaveLength(12);
+    expect(r.subject!.compatibilitySurfaces).toHaveLength(4);
+    expect(r.excludedCompatibilitySurfaces).toEqual(["flat_tradeoff[0]", "flat_tradeoff[1]", "flat_action[0]", "flat_action[1]"]);
   });
 
   it("[26] permits the broad review ONLY after a pass", async () => {
@@ -109,7 +141,7 @@ describe("[25][26] pipeline order", () => {
 
   it("[27] a reject SKIPS the broad review", async () => {
     const r = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "primary[1]" ? { ...x, result: "violates" as const } : x))))),
+      deps(async (s, a) => call(s, a, responseFor(s, asViolation(s, "primary[1]")))),
       args(),
     );
     expect(r.outcome).toBe("boundary_review_reject");
@@ -118,7 +150,9 @@ describe("[25][26] pipeline order", () => {
 
   it("[28] an inconclusive SKIPS the broad review", async () => {
     const r = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "flat_action[1]" ? { ...x, result: "uncertain" as const } : x))))),
+      deps(async (s, a) =>
+        call(s, a, responseFor(s, (list) => list.map((x) => (x.surfaceRef === "branch[1].tradeoff[1]" ? { ...x, applicability: "uncertain" as const, reason: "ambiguous" } : x)))),
+      ),
       args(),
     );
     expect(r.outcome).toBe("boundary_review_inconclusive");
@@ -145,12 +179,12 @@ describe("[25][26] pipeline order", () => {
   it("refuses a malformed surface map BEFORE any provider call", async () => {
     const broken = draftFixture();
     broken.branches!.p2!.resultingWorldState = "";
-    broken.branches!.p2!.escalationText = "";
     const review = vi.fn();
     const r = await runBoundaryReviewStage(deps(review as never), args({ draft: broken }));
     expect(review).not.toHaveBeenCalled();
     expect(r.outcome).toBe("boundary_review_authority_failure");
-    expect(r.codes).toContain("surface_map_missing_world_state");
+    // R2.30 — a missing world state is an AUTHORITY failure, and the escalation is NOT substituted.
+    expect(r.codes).toContain("boundary_world_state_missing");
   });
 });
 
@@ -161,7 +195,7 @@ describe("[21][22] rerun authority in the stage", () => {
       seen.push(narrowBoundarySubjectSha256(s));
       return a === 1
         ? call(s, a, { outcome: "boundary_review_malformed", codes: ["boundary_review_missing_pair"], findings: [] })
-        : call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[1]" ? { ...x, result: "violates" as const } : x))));
+        : call(s, a, responseFor(s, asViolation(s, "primary[1]")));
     });
     const r = await runBoundaryReviewStage(deps(review), args());
     expect(review).toHaveBeenCalledTimes(2);
@@ -205,20 +239,19 @@ describe("correction-packet authority", () => {
 
   it("produces server-authored findings carrying the coordinate and the grounded evidence", async () => {
     const r = await runBoundaryReviewStage(
-      deps(async (s, a) =>
-        call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "branch[1].resulting_world_state" ? { ...x, result: "violates" as const } : x)))),
-      ),
+      deps(async (s, a) => call(s, a, responseFor(s, asViolation(s, "branch[1].resulting_world_state", "resulting_state_missing_prerequisite")))),
       args(),
     );
     expect(r.findings).toHaveLength(1);
     expect(r.findings[0]).toMatchObject({ code: "branch_drops_boundary", gate: "narrow_boundary_review", boundaryId: "c1_verify", branchIndex: 1 });
     expect(r.findings[0]!.detail).toContain("branch[1].resulting_world_state");
+    expect(r.findings[0]!.detail).toContain("resulting_state_missing_prerequisite");
     expect(r.findings[0]!.detail).toContain("remains unverified");
   });
 
   it("an inconclusive or malformed result produces NO correction findings — no blind rewrite", async () => {
     const inconclusive = await runBoundaryReviewStage(
-      deps(async (s, a) => call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, result: "uncertain" as const } : x))))),
+      deps(async (s, a) => call(s, a, responseFor(s, (l) => l.map((x) => (x.surfaceRef === "primary[0]" ? { ...x, applicability: "uncertain" as const } : x))))),
       args(),
     );
     expect(inconclusive.findings).toEqual([]);
@@ -235,7 +268,16 @@ describe("aggregate metrics", () => {
     let m = emptyBoundaryMetrics();
     const pass = await runBoundaryReviewStage(deps(async (s, a) => call(s, a, responseFor(s))), args());
     m = accumulateBoundaryMetrics(m, pass);
-    expect(m).toMatchObject({ boundaryReviewCallCount: 1, boundaryReviewPassCount: 1, broadReviewSkippedByBoundaryCount: 0 });
+    expect(m).toMatchObject({
+      boundaryReviewCallCount: 1,
+      boundaryReviewPassCount: 1,
+      broadReviewSkippedByBoundaryCount: 0,
+      // R2.30 — twelve reachable surfaces reviewed, four compatibility projections excluded.
+      reachableSurfaceCount: 12,
+      compatibilitySurfaceCount: 4,
+      notApplicableSurfaceCount: 12,
+      complianceViolationCount: 0,
+    });
     expect(boundaryMetricsPass(m)).toBe(true);
 
     const ungrounded = await runBoundaryReviewStage(

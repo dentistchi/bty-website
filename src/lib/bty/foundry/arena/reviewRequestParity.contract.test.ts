@@ -74,17 +74,22 @@ describe("narrow boundary request", () => {
     const r = buildNarrowBoundaryRequest(subject);
     expect(r.activeBoundaryCount).toBe(1);
     expect(r.constraints).toEqual([BOUNDARY]);
-    expect(r.decisionSurfaceCount).toBe(16);
-    expect(r.requiredAssessmentCount).toBe(16);
+    // R2.30 — only the TWELVE learner-reachable surfaces enter the matrix.
+    expect(r.decisionSurfaceCount).toBe(12);
+    expect(r.requiredAssessmentCount).toBe(12);
+    expect(r.excludedCompatibilitySurfaceCount).toBe(4);
   });
 
   it("states the decision-surface scope AND the resulting-world-state scope explicitly", () => {
     const scope = buildNarrowBoundaryRequest(subject).boundaryComplianceScope;
-    expect(scope).toContain("16 listed decision surfaces");
+    expect(scope).toContain("12 listed decision surfaces");
     expect(scope).toContain("including every resulting world state");
-    expect(scope).toContain("Return exactly 16 assessments");
-    expect(boundaryComplianceScopeText(3, 16)).toContain("Return exactly 48 assessments");
-    expect(boundaryComplianceScopeText(0, 16)).toBe("No confirmed boundary applies to this case.");
+    expect(scope).toContain("Return exactly 12 assessments");
+    // R2.30 — the scope states applicability-before-compliance, and that silence is not a violation.
+    expect(scope).toContain("APPLICABILITY first");
+    expect(scope).toContain("silent about the rule is not thereby a violation");
+    expect(boundaryComplianceScopeText(3, 12)).toContain("Return exactly 36 assessments");
+    expect(boundaryComplianceScopeText(0, 12)).toBe("No confirmed boundary applies to this case.");
   });
 
   it("carries subject, provenance and surface-map authority so a drifted answer is detectable", () => {
@@ -98,12 +103,14 @@ describe("narrow boundary request", () => {
 
   it("lists every surface with its coordinate, kind and text — and both world states", () => {
     const r = buildNarrowBoundaryRequest(subject);
-    expect(r.surfaces).toHaveLength(16);
+    expect(r.surfaces).toHaveLength(12);
     expect(r.surfaces.filter((s) => s.kind === "resulting_world_state").map((s) => s.surfaceRef)).toEqual([
       "branch[0].resulting_world_state",
       "branch[1].resulting_world_state",
     ]);
     for (const s of r.surfaces) expect(s.text.length).toBeGreaterThan(0);
+    // No compatibility projection is ever named to the model.
+    for (const s of r.surfaces) expect(s.surfaceRef).not.toMatch(/^flat_/);
   });
 
   it("is deterministic — the same subject yields a byte-identical request", () => {
