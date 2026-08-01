@@ -13,6 +13,14 @@ import {
 } from "@/domain/foundry/arena-draft/safety";
 import { validateConstraintAssessments, type ConstraintAssessment, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { MAX_ACTIVE_BOUNDARIES, resolveActiveBoundaries, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
+import { type ReviewSubject, canRerunOverSubject, reviewSubjectSha256, scenarioDigest } from "@/domain/foundry/arena-draft/reviewSubject";
+import { buildReviewSubjectContract } from "./reviewSubjectContract";
+import {
+  MAX_REVIEW_CALLS_PER_SUBJECT,
+  REVIEWER_TERMINAL_FAILURE,
+  decideAfterReview,
+  isContradiction,
+} from "@/domain/foundry/arena-draft/reviewRerun";
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
@@ -75,6 +83,25 @@ export type GeneratedDraft = {
 };
 
 /** Discriminated generation outcome — a rejection carries a safe, stable reason. */
+/** The closed set of terminal failure reasons, named so callers can hold one. */
+export type GenerationFailureReason =
+  | "generation_unavailable"
+  | "generation_failed"
+  | "generation_rejected"
+  | "fixed_answer_knowledge"
+  | "safety_boundary_unresolved"
+  | "boundary_confirmation_required"
+  | "structured_output_unavailable"
+  | "no_safe_judgment_space"
+  | "practice_boundary_scope_required"
+  | "too_many_active_boundaries"
+  | "unknown_active_boundary"
+  | "missing_required_active_boundary"
+  | "active_boundary_set_changed"
+  | "boundary_scope_not_confirmed"
+  /** R2.25 — the reviewer failed twice over an identical frozen subject; content never judged. */
+  | "reviewer_terminal_failure";
+
 export type GenerationResult =
   | { ok: true; value: GeneratedDraft }
   | {
@@ -94,7 +121,8 @@ export type GenerationResult =
         | "unknown_active_boundary"
         | "missing_required_active_boundary"
         | "active_boundary_set_changed"
-        | "boundary_scope_not_confirmed";
+        | "boundary_scope_not_confirmed"
+        | "reviewer_terminal_failure";
     };
 
 /** Deterministic digest of the correction an attempt received. Evidence, not configuration. */
@@ -233,6 +261,12 @@ export type GenObservation = {
   scenario?: unknown;
   review?: unknown;
   retryFeedback?: string;
+  /** R2.25 — frozen-subject identity, carried by every review-related observation. */
+  reviewSubjectSha256?: string;
+  scenarioSha256?: string;
+  reviewContractSha256?: string;
+  /** True when a reviewer terminal failure meant the scenario content was never judged. */
+  scenarioUnjudged?: boolean;
 };
 let genObserver: ((o: GenObservation) => void) | null = null;
 /**
@@ -544,8 +578,37 @@ type ReviewOutcome =
       instruction: string;
     }
   | { kind: "no_safe_space"; reasonCode: string }
-  | { kind: "malformed"; errors: string[] }
+  /**
+   * R2.25 — parsed cleanly, then disagreed with ITSELF. Split out of `malformed` because the two
+   * demand opposite responses: a contradiction is recoverable by rerunning the reviewer over the
+   * frozen scenario, while a truncated or unparseable response is an infrastructure problem that a
+   * rerun would only guess at.
+   */
+  | { kind: "contradiction"; errors: string[]; evidence: ReviewEvidence }
+  | { kind: "malformed"; errors: string[]; evidence?: ReviewEvidence }
   | { kind: "transport_failed" };
+
+/**
+ * Everything needed to identify the EXACT field that contradicted the verdict.
+ *
+ * R2.23D-R4 reduced a malformed review to `["review_verdict_contradicts_details"]` — 38 bytes — and
+ * the derived defect list was discarded on the failure branch, so the contradicting field is
+ * permanently unknowable for that run. Nothing is reduced before it is captured here.
+ */
+export type ReviewEvidence = {
+  reviewAttempt: number;
+  reviewSubjectSha256: string;
+  /** The parsed reviewer DTO, in full: per-choice, per-phase, per-branch, cross-branch, urgency, boundary. */
+  parsed: unknown;
+  overallVerdict: string | null;
+  /** The defect list the server DERIVED from the reviewer's own detail fields. */
+  derivedDefects: string[];
+  consistency: "consistent" | "verdict_contradicts_details" | "reject_without_defect" | "invalid";
+  finishReason: string | null;
+  truncated: boolean;
+  latencyMs: number;
+  errors: string[];
+};
 
 /**
  * The reviewer contract, hoisted so it can be digested into the generation-contract manifest
@@ -619,9 +682,14 @@ async function reviewConstraintCompliance(
   constraints: PracticeBoundary["constraints"],
   draft: ArenaScenarioDraft,
   constructions: Record<string, unknown> = {},
+  /** R2.25 — the frozen subject both attempts share, and which attempt this is. */
+  subject?: { sha256: string; attempt: number },
 ): Promise<ReviewOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
+  const startedAt = Date.now();
+  const subjectSha = subject?.sha256 ?? "";
+  const reviewAttempt = subject?.attempt ?? 1;
   try {
     const system = REVIEW_SYSTEM_PROMPT;
     const payload = {
@@ -666,14 +734,30 @@ async function reviewConstraintCompliance(
     const rc = completion.choices[0];
     // R2.22 — the reviewer schema grew with the all-phase contract. A truncated verdict must be
     // named, not parsed and misreported as unstructured nonsense.
-    if (rc?.finish_reason === "length") return { kind: "malformed", errors: ["review_truncated"] };
+    const finishReason = rc?.finish_reason ?? null;
+    const evidence = (over: Partial<ReviewEvidence>): ReviewEvidence => ({
+      reviewAttempt,
+      reviewSubjectSha256: subjectSha,
+      parsed: null,
+      overallVerdict: null,
+      derivedDefects: [],
+      consistency: "invalid",
+      finishReason,
+      truncated: finishReason === "length",
+      latencyMs: Date.now() - startedAt,
+      errors: [],
+      ...over,
+    });
+    if (finishReason === "length") {
+      return { kind: "malformed", errors: ["review_truncated"], evidence: evidence({ errors: ["review_truncated"] }) };
+    }
     const raw = rc?.message?.content;
     if (!raw) return { kind: "transport_failed" };
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
-      return { kind: "malformed", errors: ["review_not_json"] };
+      return { kind: "malformed", errors: ["review_not_json"], evidence: evidence({ errors: ["review_not_json"] }) };
     }
     const branchCount = Object.keys(draft.branches ?? {}).length;
     const v = validateSemanticReview(parsed, {
@@ -685,7 +769,25 @@ async function reviewConstraintCompliance(
       choices: enumerateChoices(draft),
     });
     // A contradictory or unsupported review is NOT a safety outcome — it is a broken review.
-    if (!v.ok) return { kind: "malformed", errors: v.errors };
+    // R2.25 splits the two responses it can deserve. Everything is captured BEFORE reduction.
+    if (!v.ok) {
+      const ev = evidence({
+        parsed: v.value ?? parsed,
+        overallVerdict: (v.value?.overallVerdict as string | undefined) ?? null,
+        derivedDefects: v.derivedDefects ?? [],
+        consistency:
+          v.errors[0] === "review_verdict_contradicts_details"
+            ? "verdict_contradicts_details"
+            : v.errors[0] === "review_reject_without_defect"
+              ? "reject_without_defect"
+              : "invalid",
+        errors: v.errors,
+      });
+      // Parsed cleanly and disagreed with itself → rerunnable. Anything else → infrastructure.
+      return isContradiction(v.errors)
+        ? { kind: "contradiction", errors: v.errors, evidence: ev }
+        : { kind: "malformed", errors: v.errors, evidence: ev };
+    }
     if (v.verdict === "no_safe") return { kind: "no_safe_space", reasonCode: v.reasonCode };
     if (v.verdict === "reject") {
       return {
@@ -782,7 +884,9 @@ type DeclineReason =
   | "unknown_active_boundary"
   | "missing_required_active_boundary"
   | "active_boundary_set_changed"
-  | "boundary_scope_not_confirmed";
+  | "boundary_scope_not_confirmed"
+  /** R2.25 — the reviewer failed twice over an identical frozen subject; content never judged. */
+  | "reviewer_terminal_failure";
 function resolveAuthority(
   input: ScenarioGenInput,
 ): { kind: "decline"; reason: DeclineReason } | { kind: "generate"; constraints: PracticeBoundary["constraints"] } {
@@ -868,25 +972,122 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     // why defective content reached a green run.
     let reviewEvidence: BoundaryEvidence[] = [];
     {
-      const review = await reviewConstraintCompliance(input, constraints, llm.draft, llm.constructions);
-      if (review.kind === "transport_failed") {
-        logGenOutcome("review_transport_failed");
-        return { ok: false, reason: "generation_failed" };
+      // ---------------------------------------------------------------------
+      // R2.25 — FREEZE THE SUBJECT, THEN REVIEW IT (at most twice).
+      //
+      // The scenario, the confirmed boundaries, the active scope and the review contract are frozen
+      // here and digested. Both review attempts must carry the same `reviewSubjectSha256`, so a
+      // "recovered" verdict is provably a verdict about the same thing.
+      // ---------------------------------------------------------------------
+      const contract = buildReviewSubjectContract();
+      const frozen: ReviewSubject = {
+        scenario: llm.draft,
+        scenarioSha256: scenarioDigest(llm.draft),
+        generationAttemptId: `gen${attempt}`,
+        // No case id exists on the generation input, so the case is identified by a digest of the
+        // source facts — the thing that actually determines which scenario this is.
+        caseId: scenarioDigest(input.facts),
+        confirmedBoundaries: constraints.map((c) => ({ id: c.id, statement: c.statement })),
+        activeBoundaryIds: constraints.map((c) => c.id),
+        language: input.locale,
+        generationModel: getLlmModel(),
+        generationSampling: PRACTICE_SAMPLING.generation,
+        generationFinishReason: null,
+        canonicalValidatorResult: llm.warnings ?? null,
+        deterministicGateResult: null,
+        reviewContractSha256: contract.sha256,
+      };
+      const subjectSha = reviewSubjectSha256(frozen);
+      logGenOutcome("review_subject_frozen", undefined, {
+        reviewSubjectSha256: subjectSha,
+        scenarioSha256: frozen.scenarioSha256,
+        reviewContractSha256: contract.sha256,
+        ...captured({ scenario: llm.draft }),
+      });
+
+      let review: ReviewOutcome | null = null;
+      let terminal: { reason: GenerationFailureReason } | null = null;
+      const reviewEvidences: ReviewEvidence[] = [];
+
+      for (let rAttempt = 1; rAttempt <= MAX_REVIEW_CALLS_PER_SUBJECT; rAttempt++) {
+        if (rAttempt > 1) {
+          // FAIL CLOSED before spending the second call: the subject must be byte-identical.
+          const current: ReviewSubject = { ...frozen, scenarioSha256: scenarioDigest(llm.draft) };
+          const gate = canRerunOverSubject(frozen, current);
+          if (!gate.ok) {
+            logGenOutcome("review_subject_drift", gate.drift[0], {
+              reviewSubjectSha256: subjectSha,
+              defectCodes: gate.drift,
+              ...captured({ scenario: llm.draft, review: reviewEvidences }),
+            });
+            return { ok: false, reason: REVIEWER_TERMINAL_FAILURE };
+          }
+        }
+
+        review = await reviewConstraintCompliance(input, constraints, llm.draft, llm.constructions, {
+          sha256: subjectSha,
+          attempt: rAttempt,
+        });
+        if (review.kind === "contradiction" || (review.kind === "malformed" && review.evidence)) {
+          reviewEvidences.push(review.evidence as ReviewEvidence);
+        }
+        // R2.17 observability: every reviewer outcome remains individually observable.
+        if (review.kind === "contradiction") {
+          logGenOutcome("review_malformed", review.errors[0], {
+            reviewSubjectSha256: subjectSha,
+            ...captured({ scenario: llm.draft, review: reviewEvidences }),
+          });
+        }
+
+        const decision = decideAfterReview(rAttempt, { kind: review.kind, errors: "errors" in review ? review.errors : undefined });
+
+        if (decision.action === "rerun_review") {
+          // The scenario is NOT regenerated and NOT counted as a generation retry. The reviewer
+          // disagreed with itself; the scenario has not been judged yet.
+          logGenOutcome("review_rerun", review.kind === "contradiction" ? review.errors[0] : undefined, {
+            reviewSubjectSha256: subjectSha,
+            ...captured({ scenario: llm.draft, review: reviewEvidences }),
+          });
+          continue;
+        }
+        if (decision.action === "reviewer_terminal_failure") {
+          // Two contradictions over an identical frozen subject. The scenario content remained
+          // UNJUDGED — this is never a generator content rejection.
+          logGenOutcome(REVIEWER_TERMINAL_FAILURE, review.kind === "contradiction" ? review.errors[0] : undefined, {
+            reviewSubjectSha256: subjectSha,
+            defectCodes: review.kind === "contradiction" ? review.errors : [],
+            scenarioUnjudged: true,
+            ...captured({ scenario: llm.draft, review: reviewEvidences }),
+          });
+          terminal = { reason: REVIEWER_TERMINAL_FAILURE };
+          break;
+        }
+        if (decision.action === "reviewer_infrastructure_failure") {
+          // Keep the established observation names — a transport failure and a malformed envelope
+          // were observable before R2.25 and must remain so; only the RESPONSE to them changed.
+          if (review.kind === "transport_failed") {
+            logGenOutcome("review_transport_failed", undefined, { reviewSubjectSha256: subjectSha });
+            terminal = { reason: "generation_failed" };
+          } else {
+            logGenOutcome("review_malformed", decision.code, {
+              reviewSubjectSha256: subjectSha,
+              ...captured({ scenario: llm.draft, review: reviewEvidences.length ? reviewEvidences : [decision.code] }),
+            });
+            terminal = { reason: REVIEWER_TERMINAL_FAILURE };
+          }
+          break;
+        }
+        break; // accept / reject_scenario / no_safe_space — handled below
       }
+
+      if (terminal) return { ok: false, reason: terminal.reason };
+      if (!review) return { ok: false, reason: REVIEWER_TERMINAL_FAILURE };
+
       if (review.kind === "no_safe_space") {
         // Only a review that SURVIVED the consistency gates can reach here, so this is a supported
         // refusal rather than the unsupported assertion that produced the c18 over-refusal.
         logGenOutcome("review_no_safe_space", review.reasonCode);
         return { ok: false, reason: "no_safe_judgment_space" };
-      }
-      if (review.kind === "malformed") {
-        // Includes a contradictory or unsupported no-safe claim — a broken review, never a safety
-        // outcome, so it must not terminate as no_safe_judgment_space.
-        const fb = buildRetryFeedback({ attempt, defects: ["review_contradictory"], choiceDefects: [], branchDefects: [], phaseDefects: [] });
-        logGenOutcome("review_malformed", review.errors[0], captured({ scenario: llm.draft, review: review.errors, retryFeedback: fb }));
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
-        retryFeedback = fb;
-        continue;
       }
       if (review.kind === "ok") reviewEvidence = review.boundaryEvidence;
       if (review.kind === "reject") {

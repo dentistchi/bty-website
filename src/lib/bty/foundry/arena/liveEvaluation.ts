@@ -52,7 +52,14 @@ export const CASE_DEADLINE_MS = MAX_ATTEMPTS * (STAGE_TIMEOUT_MS + REVIEW_TIMEOU
 // Classification
 // ---------------------------------------------------------------------------
 
-export type OutcomeClass = "content" | "infrastructure";
+/**
+ * R2.25 — `reviewer` is a THIRD class, not a flavour of the other two.
+ *
+ * A reviewer terminal failure means the provider answered and the runtime worked, so it is not
+ * infrastructure; and the scenario was never judged, so it is not a content finding either. It does
+ * not abort the run — the remaining cases are still worth measuring — but it fails the hard gates.
+ */
+export type OutcomeClass = "content" | "infrastructure" | "reviewer";
 
 /**
  * INFRASTRUCTURE means the provider or this process failed, so nothing further can be measured and
@@ -88,6 +95,7 @@ const CONTENT_REASONS = new Set([
 ]);
 
 export function classifyReason(reason: string): OutcomeClass {
+  if (reason === "reviewer_terminal_failure") return "reviewer";
   if (INFRASTRUCTURE_REASONS.has(reason)) return "infrastructure";
   if (CONTENT_REASONS.has(reason)) return "content";
   // Unknown reasons fail toward INFRASTRUCTURE: stopping a run that may be broken is recoverable,

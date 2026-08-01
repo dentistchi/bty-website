@@ -435,6 +435,8 @@ function shellScope(src: string): { declared: Set<string>; used: Set<string> } {
     }
   }
   for (const m of shell.matchAll(/\bread\s+-\w+\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  // `for X in ...` binds X for the loop body.
+  for (const m of shell.matchAll(/\bfor\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s/g)) declared.add(m[1]);
   for (const m of shell.matchAll(/\bexport\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
   const used = new Set([...shell.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
   return { declared, used };

@@ -25,6 +25,15 @@ const perfect = (): StabilityMetrics => ({
   truncation: 0,
   fallback: 0,
   semanticDefectTotal: 0,
+  generationCallCount: 6,
+  reviewCallCount: 6,
+  reviewRerunCount: 0,
+  reviewerRecoveredCount: 0,
+  reviewerTerminalFailureCount: 0,
+  generatorRejectedCount: 0,
+  deterministicRejectedCount: 0,
+  semanticRejectedCount: 0,
+  generationRetryCount: 0,
 });
 
 /**
@@ -44,6 +53,17 @@ const R4_MEASURED = (): StabilityMetrics => ({
   truncation: 0,
   fallback: 0,
   semanticDefectTotal: 11,
+  // R2.25 call accounting, recomputed from the same six artifacts. The historical run predates the
+  // rerun authority, so it has zero reruns: every contradiction spent a GENERATION instead.
+  generationCallCount: 11,
+  reviewCallCount: 0,
+  reviewRerunCount: 0,
+  reviewerRecoveredCount: 0,
+  reviewerTerminalFailureCount: 0,
+  generatorRejectedCount: 5,
+  deterministicRejectedCount: 4,
+  semanticRejectedCount: 2,
+  generationRetryCount: 5,
 });
 
 describe("VERDICT AUTHORITY — execution completeness is not stability", () => {
@@ -150,11 +170,12 @@ describe("metrics are derived from artifact evidence, not from terminal text", (
     { passId: "pass1", caseId: "c18", ok: false, classification: "content", attempts: [
       { outcome: "gate_level_4", code: "unsupported_boundary_compliance", defectCodes: ["unsupported_boundary_compliance"] },
       { outcome: "correction_packet", code: "unsupported_boundary_compliance", defectCodes: ["unsupported_boundary_compliance"] },
-      { outcome: "gate_level_3", code: "unsafe_delay", defectCodes: ["unsafe_delay"] },
+      // Rejected by the semantic REVIEWER — it carries a review, unlike the deterministic ones.
+      { outcome: "gate_level_3", code: "unsafe_delay", defectCodes: ["unsafe_delay"], review: { defects: ["unsafe_delay"] } },
     ] },
     { passId: "pass2", caseId: "c01", ok: false, classification: "content", attempts: [
       { outcome: "review_malformed", code: "review_verdict_contradicts_details" },
-      { outcome: "gate_level_3", code: "unsafe_delay", defectCodes: ["unsafe_delay", "bad_faith_option", "vague_reassurance", "branch_semantic_collapse", "cross_branch_axis_collapse"] },
+      { outcome: "gate_level_3", code: "unsafe_delay", defectCodes: ["unsafe_delay", "bad_faith_option", "vague_reassurance", "branch_semantic_collapse", "cross_branch_axis_collapse"], review: { defects: ["unsafe_delay"] } },
     ] },
     { passId: "pass2", caseId: "c09", ok: true, classification: "content", attempts: [{ outcome: "generated_valid" }] },
     { passId: "pass2", caseId: "c18", ok: false, classification: "content", attempts: [

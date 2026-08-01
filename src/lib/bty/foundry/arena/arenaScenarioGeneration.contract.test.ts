@@ -503,7 +503,9 @@ describe("R2.17 — every reviewer outcome is observable", () => {
     // deterministic gates, so the outcome names the gate level. moral_decoy is Level 5.
     expect(observed.map((o) => o.outcome)).toContain("gate_level_5");
     expect(observed.map((o) => o.code)).toContain("moral_decoy");
-    expect(observed[0].correctionPacketSha256).toMatch(/^[0-9a-f]{64}$/);
+    // R2.25 — the first observation is now `review_subject_frozen`, so the packet digest is read
+    // from the rejection observation itself rather than from position 0.
+    expect(observed.find((o) => o.outcome === "gate_level_5")?.correctionPacketSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("a malformed reviewer response is recorded", async () => {
@@ -511,7 +513,9 @@ describe("R2.17 — every reviewer outcome is observable", () => {
       isReviewRequest(params) ? envelope("not json") : envelope(withAssessments()),
     );
     const r = await generateArenaScenarioDraft(constrained);
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    // R2.25 — an unparseable review is a REVIEWER failure. It is no longer reported as a generator
+    // content rejection, because the scenario was never judged.
+    expect(r).toMatchObject({ ok: false, reason: "reviewer_terminal_failure" });
     expect(observed.map((o) => o.outcome)).toContain("review_malformed");
   });
 
@@ -833,7 +837,8 @@ describe("R2.22 — sampling configuration is explicit and environment-independe
         : envelope(providerJson(goodDraft)),
     );
     const r = await generateArenaScenarioDraft(input);
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
+    // R2.25 — truncation is a reviewer infrastructure failure, never a generator rejection.
+    expect(r).toMatchObject({ ok: false, reason: "reviewer_terminal_failure" });
     expect(observed.map((o) => o.code)).toContain("review_truncated");
   });
 });

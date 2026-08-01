@@ -126,6 +126,7 @@ function main(): void {
     executionComplete: verdict.executionComplete,
     evidenceComplete: verdict.evidenceComplete,
     infrastructureHealthy: verdict.infrastructureHealthy,
+    reviewerHealthy: verdict.reviewerHealthy,
     stabilityHardGatesPass: verdict.stabilityHardGatesPass,
     humanReviewRequired: verdict.humanReviewRequired,
     productQualityPass: verdict.productQualityPass,
@@ -135,6 +136,9 @@ function main(): void {
     generatedCaseIds: generated.map((r) => `${r.passId}/${r.caseId}`),
     rejectedCaseIds: results.filter((r) => !r.ok).map((r) => `${r.passId}/${r.caseId}`),
     reviewerMalformedCount: metrics.reviewerMalformed,
+    reviewerTerminalFailureCaseIds: results
+      .filter((r) => r.classification === "reviewer")
+      .map((r) => `${r.passId}/${r.caseId}`),
     expectedCases: expected.length,
     presentCases: results.length,
     missingCases: missing,

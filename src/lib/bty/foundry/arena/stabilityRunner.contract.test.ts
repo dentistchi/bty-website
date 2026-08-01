@@ -246,6 +246,8 @@ function unboundExpansions(shellSrc: string): string[] {
     }
   }
   for (const m of src.matchAll(/\bread\s+-\w+\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  // `for X in ...` binds X for the loop body.
+  for (const m of src.matchAll(/\bfor\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s/g)) declared.add(m[1]);
   for (const m of src.matchAll(/\bexport\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
   const used = new Set([...src.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
   return [...used].filter((n) => !declared.has(n) && !ENV_SUPPLIED.has(n)).sort();

@@ -51,6 +51,24 @@ export type StabilityMetrics = {
   fallback: number;
   /** Total occurrences of every established semantic/safety defect code across all attempts. */
   semanticDefectTotal: number;
+
+  // --- R2.25 — call accounting and reviewer health -------------------------
+  /** Actual generation calls, counted from attempt records. Never inferred from log lines. */
+  generationCallCount: number;
+  /** Actual semantic-review calls, including reruns. */
+  reviewCallCount: number;
+  /** Second reviews issued over a frozen subject after a contradiction. NOT generation retries. */
+  reviewRerunCount: number;
+  /** Cases where a rerun turned a contradiction into an internally consistent verdict. */
+  reviewerRecoveredCount: number;
+  /** Cases that ended because the reviewer contradicted itself twice over an identical subject. */
+  reviewerTerminalFailureCount: number;
+  /** Cases the GENERATOR failed on content. Excludes reviewer terminal failures by construction. */
+  generatorRejectedCount: number;
+  deterministicRejectedCount: number;
+  semanticRejectedCount: number;
+  /** Second GENERATIONS. A reviewer rerun is never counted here. */
+  generationRetryCount: number;
 };
 
 /** Evidence-integrity facts, measured by the collator against the files on disk. */
@@ -66,6 +84,12 @@ export type StabilityVerdict = {
   executionComplete: boolean;
   evidenceComplete: boolean;
   infrastructureHealthy: boolean;
+  /**
+   * R2.25 — independent of infrastructure health. The provider can be perfectly available while the
+   * reviewer contradicts itself; that is a broken MEASUREMENT, and a run cannot be called stable
+   * when the thing doing the judging failed.
+   */
+  reviewerHealthy: boolean;
   stabilityHardGatesPass: boolean;
   humanReviewRequired: boolean;
   /**
@@ -108,6 +132,9 @@ export function evaluateHardGates(m: StabilityMetrics, evidence: EvidenceIntegri
     gate("truncation", m.truncation === 0, "0", `${m.truncation}`),
     gate("fallback", m.fallback === 0, "0", `${m.fallback}`),
     gate("semanticDefectTotal", m.semanticDefectTotal === 0, "0", `${m.semanticDefectTotal}`),
+    // R2.25 — a reviewer that failed twice over an identical frozen subject never judged the
+    // scenario at all. There is nothing to call stable.
+    gate("reviewerTerminalFailure", m.reviewerTerminalFailureCount === 0, "0", `${m.reviewerTerminalFailureCount}`),
     gate("evidenceComplete", evidence.missingCases.length === 0 && evidence.problems.length === 0, "no missing cases, no problems", `${evidence.missingCases.length} missing, ${evidence.problems.length} problems`),
   ].filter((f): f is HardGateFailure => f !== null);
 }
@@ -124,6 +151,7 @@ export function evaluateStabilityVerdict(m: StabilityMetrics, evidence: Evidence
     executionComplete: m.executedCases === m.expectedCases,
     evidenceComplete: evidence.missingCases.length === 0 && evidence.problems.length === 0,
     infrastructureHealthy: m.infrastructureFailure === 0,
+    reviewerHealthy: m.reviewerTerminalFailureCount === 0,
     stabilityHardGatesPass: hardGateFailures.length === 0,
     // A person reads the scenarios in every outcome. Passing gates is what makes human review
     // MEANINGFUL, never what makes it unnecessary.
@@ -146,6 +174,12 @@ export type AttemptEvidence = {
   outcome: string;
   code?: string | null;
   defectCodes?: string[] | null;
+  /**
+   * Present when a semantic review ran for this attempt. Both rejection paths log `gate_level_*`,
+   * so this is the only thing that distinguishes a deterministic-gate rejection from one the
+   * independent reviewer authored.
+   */
+  review?: unknown;
 };
 
 export type CaseEvidence = {
@@ -156,8 +190,22 @@ export type CaseEvidence = {
   attempts: AttemptEvidence[];
 };
 
-/** A `correction_packet` entry restates the previous attempt's defects; it is not a generation. */
-export const isGenerationAttempt = (a: AttemptEvidence): boolean => a.outcome !== "correction_packet";
+/**
+ * Outcomes that are LEDGER rows, not generation calls.
+ *
+ * R2.25 adds the review-lifecycle rows. A reviewer rerun is a REVIEW call over a frozen scenario;
+ * counting it as a generation attempt would report the reviewer's instability as the generator's.
+ */
+const NON_GENERATION_OUTCOMES = new Set([
+  "correction_packet",
+  "review_subject_frozen",
+  "review_rerun",
+  "review_infrastructure_failure",
+  "review_subject_drift",
+]);
+
+export const isGenerationAttempt = (a: AttemptEvidence): boolean => !NON_GENERATION_OUTCOMES.has(a.outcome);
+
 
 /**
  * Count what the artifacts actually show.
@@ -192,5 +240,33 @@ export function deriveStabilityMetrics(cases: CaseEvidence[], expectedCases: num
       (n, c) => n + c.attempts.filter(isGenerationAttempt).reduce((k, a) => k + (a.defectCodes?.length ?? 0), 0),
       0,
     ),
+
+    // --- R2.25 — counted from attempt records, never inferred from log lines ---
+    generationCallCount: cases.reduce((n, c) => n + generations(c).length, 0),
+    reviewCallCount: cases.reduce(
+      (n, c) => n + c.attempts.filter((a) => a.outcome === "review_subject_frozen").length + c.attempts.filter((a) => a.outcome === "review_rerun").length,
+      0,
+    ),
+    reviewRerunCount: cases.reduce((n, c) => n + c.attempts.filter((a) => a.outcome === "review_rerun").length, 0),
+    // A rerun happened and the case did NOT end as a reviewer terminal failure: the reviewer recovered.
+    reviewerRecoveredCount: cases.filter(
+      (c) => c.attempts.some((a) => a.outcome === "review_rerun") && !c.attempts.some((a) => a.outcome === "reviewer_terminal_failure"),
+    ).length,
+    reviewerTerminalFailureCount: cases.filter((c) => c.attempts.some((a) => a.outcome === "reviewer_terminal_failure")).length,
+    // Generator content rejections EXCLUDE reviewer terminal failures: when the reviewer failed
+    // twice the scenario was never judged, so the generator was never found at fault.
+    generatorRejectedCount: cases.filter(
+      (c) => !c.ok && c.classification === "content" && !c.attempts.some((a) => a.outcome === "reviewer_terminal_failure"),
+    ).length,
+    // Both paths log `gate_level_*`; only the semantic one carries a review.
+    deterministicRejectedCount: cases.reduce(
+      (n, c) => n + c.attempts.filter((a) => a.outcome.startsWith("gate_level_") && a.review === undefined).length,
+      0,
+    ),
+    semanticRejectedCount: cases.reduce(
+      (n, c) => n + c.attempts.filter((a) => a.outcome.startsWith("gate_level_") && a.review !== undefined).length,
+      0,
+    ),
+    generationRetryCount: cases.reduce((n, c) => n + Math.max(0, generations(c).length - 1), 0),
   };
 }

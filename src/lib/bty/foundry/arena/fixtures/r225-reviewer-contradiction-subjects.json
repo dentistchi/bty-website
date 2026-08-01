@@ -1,0 +1,490 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.25",
+  "sourceRunId": "20260801T024949Z",
+  "contractManifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+  "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+  "policy": "Learner-facing prose is REDACTED — the repository does not carry live model-generated scenario text. Structure, ids, digests and provenance are preserved, which is everything the contradiction depends on: it is a property of the reviewer disagreeing with itself, not of any particular wording. The live replay reads the real scenario from the untracked immutable artifact and verifies it against liveScenarioSha256 before reviewing it.",
+  "subjectCount": 4,
+  "subjects": [
+    {
+      "sourceRunId": "20260801T024949Z",
+      "sourcePassId": "pass1",
+      "sourceCaseId": "c01-missed-commitment",
+      "sourceAttemptIndex": 0,
+      "sourceArtifactFile": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0",
+      "liveScenarioSha256": "b02820025a8e784f80b5f1c3ab75f3f032043d53d905f79f49cc2b1de6d7d7ee",
+      "redactedScenarioStructure": {
+        "title": "<redacted:title:35>",
+        "opening": "<redacted:opening:375>",
+        "primary": {
+          "choices": [
+            {
+              "id": "p1",
+              "label": "<redacted:label:40>"
+            },
+            {
+              "id": "p2",
+              "label": "<redacted:label:70>"
+            }
+          ]
+        },
+        "tradeoff": {
+          "escalationText": "<redacted:escalationText:202>",
+          "choices": [
+            {
+              "id": "ft1",
+              "label": "<redacted:label:64>"
+            },
+            {
+              "id": "ft2",
+              "label": "<redacted:label:52>"
+            }
+          ]
+        },
+        "actionDecision": {
+          "prompt": "<redacted:prompt:43>",
+          "choices": [
+            {
+              "id": "fa1",
+              "label": "<redacted:label:63>",
+              "isActionCommitment": true
+            },
+            {
+              "id": "fa2",
+              "label": "<redacted:label:60>",
+              "isActionCommitment": false
+            }
+          ]
+        },
+        "branches": {
+          "p1": {
+            "resultingWorldState": "<redacted:resultingWorldState:108>",
+            "escalationText": "<redacted:escalationText:125>",
+            "tradeoffChoices": [
+              {
+                "id": "p1-t1",
+                "label": "<redacted:label:82>"
+              },
+              {
+                "id": "p1-t2",
+                "label": "<redacted:label:59>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:40>",
+              "choices": [
+                {
+                  "id": "p1-a1",
+                  "label": "<redacted:label:79>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p1-a2",
+                  "label": "<redacted:label:86>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          },
+          "p2": {
+            "resultingWorldState": "<redacted:resultingWorldState:86>",
+            "escalationText": "<redacted:escalationText:118>",
+            "tradeoffChoices": [
+              {
+                "id": "p2-t1",
+                "label": "<redacted:label:90>"
+              },
+              {
+                "id": "p2-t2",
+                "label": "<redacted:label:72>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:40>",
+              "choices": [
+                {
+                  "id": "p2-a1",
+                  "label": "<redacted:label:87>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p2-a2",
+                  "label": "<redacted:label:55>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "historicalOverallVerdict": "accept",
+      "triggeringErrors": [
+        "review_verdict_contradicts_details"
+      ],
+      "expectedRerunDecision": "rerun_review",
+      "isSafetyCase": false,
+      "safetyNote": null
+    },
+    {
+      "sourceRunId": "20260801T024949Z",
+      "sourcePassId": "pass1",
+      "sourceCaseId": "c01-missed-commitment",
+      "sourceAttemptIndex": 1,
+      "sourceArtifactFile": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0",
+      "liveScenarioSha256": "ba3b85cd051224966406cb4428d4138f73d2f8761a8fa0b9b7398eae67d4fe7b",
+      "redactedScenarioStructure": {
+        "title": "<redacted:title:30>",
+        "opening": "<redacted:opening:399>",
+        "primary": {
+          "choices": [
+            {
+              "id": "p1",
+              "label": "<redacted:label:47>"
+            },
+            {
+              "id": "p2",
+              "label": "<redacted:label:60>"
+            }
+          ]
+        },
+        "tradeoff": {
+          "escalationText": "<redacted:escalationText:267>",
+          "choices": [
+            {
+              "id": "ft1",
+              "label": "<redacted:label:65>"
+            },
+            {
+              "id": "ft2",
+              "label": "<redacted:label:67>"
+            }
+          ]
+        },
+        "actionDecision": {
+          "prompt": "<redacted:prompt:59>",
+          "choices": [
+            {
+              "id": "fa1",
+              "label": "<redacted:label:39>",
+              "isActionCommitment": true
+            },
+            {
+              "id": "fa2",
+              "label": "<redacted:label:69>",
+              "isActionCommitment": false
+            }
+          ]
+        },
+        "branches": {
+          "p1": {
+            "resultingWorldState": "<redacted:resultingWorldState:109>",
+            "escalationText": "<redacted:escalationText:115>",
+            "tradeoffChoices": [
+              {
+                "id": "p1-t1",
+                "label": "<redacted:label:76>"
+              },
+              {
+                "id": "p1-t2",
+                "label": "<redacted:label:82>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:59>",
+              "choices": [
+                {
+                  "id": "p1-a1",
+                  "label": "<redacted:label:75>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p1-a2",
+                  "label": "<redacted:label:71>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          },
+          "p2": {
+            "resultingWorldState": "<redacted:resultingWorldState:120>",
+            "escalationText": "<redacted:escalationText:144>",
+            "tradeoffChoices": [
+              {
+                "id": "p2-t1",
+                "label": "<redacted:label:72>"
+              },
+              {
+                "id": "p2-t2",
+                "label": "<redacted:label:56>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:73>",
+              "choices": [
+                {
+                  "id": "p2-a1",
+                  "label": "<redacted:label:75>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p2-a2",
+                  "label": "<redacted:label:78>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "historicalOverallVerdict": "accept",
+      "triggeringErrors": [
+        "review_verdict_contradicts_details"
+      ],
+      "expectedRerunDecision": "rerun_review",
+      "isSafetyCase": false,
+      "safetyNote": null
+    },
+    {
+      "sourceRunId": "20260801T024949Z",
+      "sourcePassId": "pass2",
+      "sourceCaseId": "c01-missed-commitment",
+      "sourceAttemptIndex": 0,
+      "sourceArtifactFile": "practice-generation.stability.live.20260801T024949Z.pass2.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "6935d15630a0494299b0e3b96680f641be26a6de390d4649571236675b31f295",
+      "liveScenarioSha256": "1f4bbef97cf21ce0efcd86bfaa72968eb41dd126008e5277e2d62b7651b942b2",
+      "redactedScenarioStructure": {
+        "title": "<redacted:title:22>",
+        "opening": "<redacted:opening:414>",
+        "primary": {
+          "choices": [
+            {
+              "id": "p1",
+              "label": "<redacted:label:47>"
+            },
+            {
+              "id": "p2",
+              "label": "<redacted:label:56>"
+            }
+          ]
+        },
+        "tradeoff": {
+          "escalationText": "<redacted:escalationText:261>",
+          "choices": [
+            {
+              "id": "ft1",
+              "label": "<redacted:label:46>"
+            },
+            {
+              "id": "ft2",
+              "label": "<redacted:label:62>"
+            }
+          ]
+        },
+        "actionDecision": {
+          "prompt": "<redacted:prompt:84>",
+          "choices": [
+            {
+              "id": "fa1",
+              "label": "<redacted:label:57>",
+              "isActionCommitment": true
+            },
+            {
+              "id": "fa2",
+              "label": "<redacted:label:63>",
+              "isActionCommitment": false
+            }
+          ]
+        },
+        "branches": {
+          "p1": {
+            "resultingWorldState": "<redacted:resultingWorldState:202>",
+            "escalationText": "<redacted:escalationText:139>",
+            "tradeoffChoices": [
+              {
+                "id": "p1-t1",
+                "label": "<redacted:label:53>"
+              },
+              {
+                "id": "p1-t2",
+                "label": "<redacted:label:73>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:79>",
+              "choices": [
+                {
+                  "id": "p1-a1",
+                  "label": "<redacted:label:56>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p1-a2",
+                  "label": "<redacted:label:55>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          },
+          "p2": {
+            "resultingWorldState": "<redacted:resultingWorldState:175>",
+            "escalationText": "<redacted:escalationText:141>",
+            "tradeoffChoices": [
+              {
+                "id": "p2-t1",
+                "label": "<redacted:label:59>"
+              },
+              {
+                "id": "p2-t2",
+                "label": "<redacted:label:59>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:58>",
+              "choices": [
+                {
+                  "id": "p2-a1",
+                  "label": "<redacted:label:57>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p2-a2",
+                  "label": "<redacted:label:82>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "historicalOverallVerdict": "accept",
+      "triggeringErrors": [
+        "review_verdict_contradicts_details"
+      ],
+      "expectedRerunDecision": "rerun_review",
+      "isSafetyCase": false,
+      "safetyNote": null
+    },
+    {
+      "sourceRunId": "20260801T024949Z",
+      "sourcePassId": "pass2",
+      "sourceCaseId": "c18-constrained-clinical",
+      "sourceAttemptIndex": 2,
+      "sourceArtifactFile": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb",
+      "liveScenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+      "redactedScenarioStructure": {
+        "title": "<redacted:title:25>",
+        "opening": "<redacted:opening:460>",
+        "primary": {
+          "choices": [
+            {
+              "id": "p1",
+              "label": "<redacted:label:40>"
+            },
+            {
+              "id": "p2",
+              "label": "<redacted:label:48>"
+            }
+          ]
+        },
+        "tradeoff": {
+          "escalationText": "<redacted:escalationText:230>",
+          "choices": [
+            {
+              "id": "ft1",
+              "label": "<redacted:label:63>"
+            },
+            {
+              "id": "ft2",
+              "label": "<redacted:label:49>"
+            }
+          ]
+        },
+        "actionDecision": {
+          "prompt": "<redacted:prompt:51>",
+          "choices": [
+            {
+              "id": "fa1",
+              "label": "<redacted:label:56>",
+              "isActionCommitment": true
+            },
+            {
+              "id": "fa2",
+              "label": "<redacted:label:49>",
+              "isActionCommitment": false
+            }
+          ]
+        },
+        "branches": {
+          "p1": {
+            "resultingWorldState": "<redacted:resultingWorldState:186>",
+            "escalationText": "<redacted:escalationText:126>",
+            "tradeoffChoices": [
+              {
+                "id": "p1-t1",
+                "label": "<redacted:label:47>"
+              },
+              {
+                "id": "p1-t2",
+                "label": "<redacted:label:42>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:53>",
+              "choices": [
+                {
+                  "id": "p1-a1",
+                  "label": "<redacted:label:58>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p1-a2",
+                  "label": "<redacted:label:55>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          },
+          "p2": {
+            "resultingWorldState": "<redacted:resultingWorldState:186>",
+            "escalationText": "<redacted:escalationText:136>",
+            "tradeoffChoices": [
+              {
+                "id": "p2-t1",
+                "label": "<redacted:label:49>"
+              },
+              {
+                "id": "p2-t2",
+                "label": "<redacted:label:50>"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "<redacted:prompt:47>",
+              "choices": [
+                {
+                  "id": "p2-a1",
+                  "label": "<redacted:label:51>",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p2-a2",
+                  "label": "<redacted:label:36>",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "historicalOverallVerdict": "accept",
+      "triggeringErrors": [
+        "review_verdict_contradicts_details"
+      ],
+      "expectedRerunDecision": "rerun_review",
+      "isSafetyCase": true,
+      "safetyNote": "The reviewer voted ACCEPT on a scenario whose own branch text leaves the second patient unverified against the confirmed two-identifier boundary. The consistency gate was the only thing that stopped it. A rerun must never be implemented by trusting the reviewer's top-level verdict."
+    }
+  ]
+}

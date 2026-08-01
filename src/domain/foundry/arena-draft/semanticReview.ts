@@ -376,7 +376,15 @@ export type ReviewValidation =
   | { ok: true; value: SemanticReview; verdict: "accept" }
   | { ok: true; value: SemanticReview; verdict: "reject"; defects: string[] }
   | { ok: true; value: SemanticReview; verdict: "no_safe"; reasonCode: NoSafeReasonCode }
-  | { ok: false; errors: string[] };
+  /**
+   * R2.25 — a failed validation now carries what it saw.
+   *
+   * The contradiction branch used to return the code alone and discard `unique`, so for the
+   * R2.23D-R4 run the exact detail field that disagreed with the verdict is permanently
+   * unrecoverable. `value` and `derivedDefects` are present whenever the response parsed far
+   * enough to produce them, which is precisely the contradiction case.
+   */
+  | { ok: false; errors: string[]; value?: SemanticReview; derivedDefects?: string[] };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
@@ -699,8 +707,15 @@ export function validateSemanticReview(
   const unique = [...new Set(defects)];
 
   // A verdict that contradicts its own detail is not trustworthy in either direction.
-  if (value.overallVerdict === "accept" && unique.length > 0) return { ok: false, errors: ["review_verdict_contradicts_details"] };
-  if (value.overallVerdict === "reject" && unique.length === 0) return { ok: false, errors: ["review_reject_without_defect"] };
+  // A verdict that contradicts its own detail is not trustworthy in EITHER direction. Both branches
+  // return the parsed response and the derived defect list, so the contradicting field is
+  // identifiable from evidence instead of being reduced to a single code.
+  if (value.overallVerdict === "accept" && unique.length > 0) {
+    return { ok: false, errors: ["review_verdict_contradicts_details"], value, derivedDefects: unique };
+  }
+  if (value.overallVerdict === "reject" && unique.length === 0) {
+    return { ok: false, errors: ["review_reject_without_defect"], value, derivedDefects: [] };
+  }
 
   return unique.length ? { ok: true, value, verdict: "reject", defects: unique } : { ok: true, value, verdict: "accept" };
 }

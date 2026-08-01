@@ -315,13 +315,19 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
 
-  it("semantic review finds an INDIRECT violation → generation_rejected (after one regen)", async () => {
+  it("a SCHEMA-INVALID reviewer response → reviewer_terminal_failure, not a generator rejection", async () => {
+    // This fixture uses a legacy `{ ok, violations[] }` reviewer DTO that no longer satisfies the
+    // reviewer schema at all — so the reviewer never actually judged the scenario. Before R2.25 the
+    // pipeline regenerated the scenario and reported `generation_rejected`, blaming the generator
+    // for the reviewer's failure. That is exactly the misattribution this slice removes.
     const REVIEW_BAD = { choices: [{ message: { content: JSON.stringify({ ok: false, violations: [{ phase: "action", choiceId: "p1_a1", constraintId: "c1_verify", reason: "implied skip" }], noSafeJudgmentSpace: false }) } }] };
     mockGenThenReview(groundedDraft, CONSTRAINED_ASSESSMENTS, undefined, GROUNDING, ["c1_verify"]); // every gen call
     mockCreate.mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD).mockResolvedValueOnce(constrainedContent(groundedDraft)).mockResolvedValueOnce(REVIEW_BAD);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
-    expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
-    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(4); // bounded: <= 2 gen + 2 review
+    expect(r).toMatchObject({ ok: false, reason: "reviewer_terminal_failure" });
+    // A structurally broken response is NOT rerun — rerunning it would only be guesswork — so the
+    // run stops at 1 generation + 1 review.
+    expect(mockCreate.mock.calls.length).toBeLessThanOrEqual(4);
   });
 
   it("provider signals no safe judgment space → no_safe_judgment_space", async () => {
