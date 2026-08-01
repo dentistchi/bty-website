@@ -30,6 +30,7 @@ describe("27/28. reproducibility", () => {
   it("32. key insertion order cannot change the digest", () => {
     const m = base();
     const shuffled = JSON.parse(JSON.stringify({
+      evidenceAuthority: m.evidenceAuthority,
       schemaCanExceedBudget: m.schemaCanExceedBudget,
       modelOutputCap: m.modelOutputCap,
       fieldBounds: m.fieldBounds,
@@ -137,13 +138,47 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     expect(digest({ modelOutputCap: 32768 })).not.toBe(m.components.tokenBudget);
   });
 
-  it("29. the R2.23 manifest no longer matches — a prior artifact cannot be attributed to this contract", () => {
-    expect(manifestDigest(m)).not.toBe("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10");
-    expect(m.artifactSchemaVersion).toBe("r2.23a.1");
+  it("29/33/46. NEITHER prior manifest matches — no earlier artifact can be attributed to this contract", () => {
+    expect(manifestDigest(m)).not.toBe("b539c74ed6c97a0d224dd0b60aa25239650288641ac9fc7e37a218d19e567c10"); // R2.23
+    expect(manifestDigest(m)).not.toBe("64bcbcf9a0f08aa8a2b02c4eb8b8ecdff2b1b098e389e8ad6984964c39269b0d"); // R2.23A
+    expect(m.artifactSchemaVersion).toBe("r2.23c.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {
     expect(typeof m.schemaCanExceedBudget).toBe("boolean");
+  });
+});
+
+describe("R2.23C — evidence authority is part of the contract", () => {
+  const m = base();
+
+  it("4/49. restoring generator self-attestation would change the manifest", () => {
+    expect(m.evidenceAuthority.providerSelfAttestation).toBe(false);
+    expect(m.components.evidenceAuthority).toBe(digest(m.evidenceAuthority));
+    expect(digest({ ...m.evidenceAuthority, providerSelfAttestation: true })).not.toBe(m.components.evidenceAuthority);
+  });
+
+  it("48. changing the active-boundary maximum changes the manifest", () => {
+    expect(m.evidenceAuthority.maxActiveBoundaries).toBe(3);
+    expect(digest({ ...m.evidenceAuthority, maxActiveBoundaries: 10 })).not.toBe(m.components.evidenceAuthority);
+    expect(m.components.boundaryScopeContract).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("49. moving retry authority back to the reviewer changes the manifest", () => {
+    expect(m.evidenceAuthority.retryAuthority).toBe("server_deterministic");
+    expect(m.evidenceAuthority.reviewerAuthorsRetryPrompt).toBe(false);
+    expect(digest({ ...m.evidenceAuthority, retryAuthority: "reviewer_authored" })).not.toBe(m.components.evidenceAuthority);
+  });
+
+  it("47. changing the reviewer text bound changes the manifest", () => {
+    expect(m.fieldBounds.reviewText).toBe(100);
+    expect(digest({ ...m.fieldBounds, reviewText: 140 })).not.toBe(m.components.generatedFieldBounds);
+  });
+
+  it("the evidence contract records that the projection follows acceptance, and nothing is auto-selected", () => {
+    expect(m.evidenceAuthority.projectionOnlyAfterAccept).toBe(true);
+    expect(m.evidenceAuthority.automaticBoundarySelection).toBe(false);
+    expect(m.evidenceAuthority.constraintEvidenceSource).toBe("review_derived_projection");
   });
 });
 

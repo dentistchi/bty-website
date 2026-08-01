@@ -44,22 +44,22 @@ export function constructionFor(label: string, i: number, boundaryIds: string[] 
   };
 }
 
-const choiceOf = (c: { id: string; label: string }, i: number, a?: AssessmentsByChoiceId, b: string[] = []): ProviderChoice => ({
+// R2.23C — provider choices no longer carry constraintAssessments. The `a` parameter is retained
+// so existing call sites keep compiling; it is deliberately unused.
+const choiceOf = (c: { id: string; label: string }, i: number, _a?: AssessmentsByChoiceId, b: string[] = []): ProviderChoice => ({
   label: c.label,
-  constraintAssessments: a?.[c.id] ?? [],
   construction: constructionFor(c.label, i, b),
 });
 
 const actionOf = (
   d: { prompt: string; choices: Array<{ id: string; label: string; isActionCommitment: boolean }> },
-  a?: AssessmentsByChoiceId,
+  _a?: AssessmentsByChoiceId,
   b: string[] = [],
 ): ProviderActionDecision => ({
   prompt: d.prompt,
   choices: d.choices.map((c, i) => ({
     label: c.label,
     isActionCommitment: c.isActionCommitment,
-    constraintAssessments: a?.[c.id] ?? [],
     construction: constructionFor(c.label, i, b),
   })),
 });

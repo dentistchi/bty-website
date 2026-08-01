@@ -11,7 +11,9 @@ import {
   validateConstraintCompliance,
   type PracticeEligibility,
 } from "@/domain/foundry/arena-draft/safety";
-import { validateConstraintAssessments, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import { validateConstraintAssessments, type ConstraintAssessment, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import { MAX_ACTIVE_BOUNDARIES, resolveActiveBoundaries, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
+import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
 import { resolveRejection, type Finding, type RejectionOutcome } from "@/domain/foundry/arena-draft/gatePrecedence";
 import {
@@ -37,6 +39,7 @@ import {
   SEMANTIC_REVIEW_SCHEMA_NAME,
   buildRetryFeedback,
   validateSemanticReview,
+  type BoundaryAssessment as BoundaryEvidence,
   type BranchDefectCode,
   type ChoiceDefectCode,
 } from "@/domain/foundry/arena-draft/semanticReview";
@@ -63,6 +66,12 @@ export type GeneratedDraft = {
   source: "ai";
   /** Advisory sensitive-info codes surfaced by the validator (never blocks). */
   warnings: string[];
+  /**
+   * R2.23C — per-choice constraint evidence MATERIALIZED by the server from the ACCEPTED review,
+   * never authored by the generator. Compatibility projection: same shape as before, derived from
+   * independent evidence. Empty when no boundary is active.
+   */
+  constraintEvidence: Record<string, ConstraintAssessment[]>;
 };
 
 /** Discriminated generation outcome — a rejection carries a safe, stable reason. */
@@ -78,7 +87,14 @@ export type GenerationResult =
         | "safety_boundary_unresolved" // free-text boundary undetermined (no confirmation)
         | "boundary_confirmation_required" // a possible boundary is detected but not Manager-confirmed
         | "structured_output_unavailable" // provider rejected the strict schema — never downgraded silently
-        | "no_safe_judgment_space"; // confirmed constraints leave no legitimate difficult choice
+        | "no_safe_judgment_space" // confirmed constraints leave no legitimate difficult choice
+        // R2.23C Host SETUP outcomes — never a no-safe generation result.
+        | "practice_boundary_scope_required"
+        | "too_many_active_boundaries"
+        | "unknown_active_boundary"
+        | "missing_required_active_boundary"
+        | "active_boundary_set_changed"
+        | "boundary_scope_not_confirmed";
     };
 
 /** Deterministic digest of the correction an attempt received. Evidence, not configuration. */
@@ -276,7 +292,6 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
         "CONFIRMED NON-NEGOTIABLE CONSTRAINTS — mandatory rules the Manager confirmed. EVERY primary, tradeoff, and action choice, on EVERY branch, MUST fully obey ALL of them. You may NOT delete, weaken, reinterpret, or replace any constraint:",
         ...constraints.map((c) => `- [${c.id}] ${c.statement}`),
         "Do NOT balance compliance against non-compliance. Never present skipping, bypassing, delaying past, hiding, or disclosing-against a constraint as a defensible option. Put the difficult tradeoff ONLY around HOW to comply — sequencing, communication timing, scope, staffing reassignment, escalation order, schedule recovery, who acts first — with the constraint naturally embedded in the scene, not a lecture. Every path still satisfies every constraint. If no legitimate difficult choice exists inside the safe boundary, set noSafeJudgmentSpace to true.",
-        "Every choice object carries its OWN `constraintAssessments` array — one entry per constraint id: {\"constraintId\": string, \"status\": \"satisfied\", \"rationale\": short string}. Fill it for EVERY choice (primary, flat tradeoff, flat action, and every branch tradeoff/action). This is internal metadata; do NOT put it in any learner-facing label.",
         "GROUND EVERY CONSTRAINT — silence about a rule is NOT compliance. A scenario that simply never mentions the rule is REJECTED even if no choice happens to break it. For each constraint: (1) make it OPERATIVE in the opening or immediate context, in natural language a person in this role would really use — never a policy quotation or a lecture; (2) let it visibly rule out the tempting non-compliant option, so the learner sees it excluded rather than offered; (3) keep it in force through EVERY branch, tradeoff and action decision — no phase may reopen, waive or quietly drop it; (4) put the real difficulty in the judgment that survives inside it.",
         "TEST YOURSELF: if the constraint were deleted, would your scenario read exactly the same? If yes, it is decorative — rewrite it so the rule actually changes what can be chosen.",
         "Also return `boundaryGrounding`: one entry per constraint id — {\"boundaryId\": the exact id, \"boundaryStatement\": the confirmed rule restated faithfully (never weakened), \"scenarioPresence\": where and how the rule is made operative in the learner-facing text, \"operationalEffect\": what it forces or forbids in the decisions, \"affectedDecisionStages\": which of opening/primary/flat_tradeoff/flat_action/branch_tradeoff/branch_action it constrains (it MUST constrain at least one decision stage, not just the opening), \"prohibitedAlternativeExcluded\": the tempting option the rule takes off the table, \"remainingJudgmentDimensions\": the judgment that genuinely remains}. This is internal metadata; never put it in a learner-facing label.",
@@ -320,7 +335,7 @@ export function buildGenerationSystemPrompt(locale: Locale, constraints: Practic
     "The flat top-level `tradeoff` / `actionDecision` remain as a branch-neutral fallback (compatible with every primary): keep them, but the branches carry the real per-choice continuations.",
     `Write all learner-facing text in ${isKo ? "Korean" : "English"}.`,
     "Return ONLY a compact JSON object, no markdown or code fences, with EXACTLY this shape:",
-    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": [], "construction": {}}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "constraintAssessments": [], "construction": {}}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "constraintAssessments": [], "construction": {}}]}}], "boundaryGrounding": []}',
+    '{"noSafeJudgmentSpace": boolean, "title": string, "opening": string, "primaryChoices": [{"label": string, "construction": {}}], "flatEscalationText": string, "flatTradeoffChoices": [{"label": string, "construction": {}}], "flatActionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "construction": {}}]}, "branches": [{"resultingWorldState": string, "escalationText": string, "tradeoffChoices": [{"label": string, "construction": {}}], "actionDecision": {"prompt": string, "choices": [{"label": string, "isActionCommitment": boolean, "construction": {}}]}}], "boundaryGrounding": []}',
     "",
     "CONSTRUCT EVERY CHOICE — each choice object (primary, flat tradeoff, flat action, and every branch tradeoff/action) carries its own `construction`: {\"legitimateValue\": the concrete value it protects, \"acceptedCost\": the real downside it accepts, \"competentIntent\": why a capable well-intentioned person could choose it, \"concreteAction\": what the person actually does, \"boundaryCompliance\": the confirmed boundary ids it obeys (empty when there are none), \"urgencySafetyBasis\": why any delay it introduces is safe (required whenever it waits, pauses or defers), \"whyNotDominated\": what it gives up that its sibling keeps, \"distinguishesFromSibling\": the different value/cost profile, not different wording}. This is internal metadata; never put it in a learner-facing label.",
     "If you cannot state a legitimate value and a real cost for an option, it is not a choice — replace it. Siblings may not share the same value/cost/intent profile. NEVER justify an option by concealment, deflection, stalling or false reassurance.",
@@ -465,10 +480,6 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     ] as const) {
       if (!gate.ok) push(gateName, gate.errors);
     }
-    if (constraints.length > 0) {
-      const assess = validateConstraintAssessments(result.value, constraints.map((c) => c.id), canonical.assessmentsByChoiceId);
-      if (!assess.ok) push("constraint_assessments", assess.errors);
-    }
     // BOUNDARY GROUNDING (R2.21). The per-choice assessment above only proves the model SAID
     // "satisfied" for every rule — its `status` enum cannot even express a violation.
     const grounding = validateBoundaryGrounding(canonical.boundaryGrounding, constraints, result.value);
@@ -520,7 +531,7 @@ export type SemanticReview = {
   noSafeJudgmentSpace: boolean;
 };
 type ReviewOutcome =
-  | { kind: "ok" }
+  | { kind: "ok"; boundaryEvidence: BoundaryEvidence[] }
   | {
       kind: "reject";
       defects: string[];
@@ -735,10 +746,10 @@ async function reviewConstraintCompliance(
             return { phase: c.phase, branchIndex: c.branchIndex, choiceIndex: c.choiceIndex, codes: [...codes] };
           })
           .filter((c) => c.codes.length > 0),
-        instruction: v.value.retryInstruction,
+        instruction: v.value.retryInstruction ?? "",
       };
     }
-    return { kind: "ok" };
+    return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments };
   } catch {
     return { kind: "transport_failed" };
   } finally {
@@ -761,7 +772,17 @@ export function isFixedAnswerTraining(facts: ModuleSourceFacts): boolean {
  * free-text eligibility ONLY to block-until-confirmed (Slice 3.2I-R4). A confirmed boundary
  * always overrides inference. Pure w.r.t. its inputs.
  */
-type DeclineReason = "fixed_answer_knowledge" | "boundary_confirmation_required" | "safety_boundary_unresolved";
+type DeclineReason =
+  | "fixed_answer_knowledge"
+  | "boundary_confirmation_required"
+  | "safety_boundary_unresolved"
+  /** R2.23C — the Host must scope 4+ confirmed rules down to at most three ACTIVE ones. */
+  | "practice_boundary_scope_required"
+  | "too_many_active_boundaries"
+  | "unknown_active_boundary"
+  | "missing_required_active_boundary"
+  | "active_boundary_set_changed"
+  | "boundary_scope_not_confirmed";
 function resolveAuthority(
   input: ScenarioGenInput,
 ): { kind: "decline"; reason: DeclineReason } | { kind: "generate"; constraints: PracticeBoundary["constraints"] } {
@@ -769,7 +790,12 @@ function resolveAuthority(
   if (boundary && boundary.confirmed) {
     if (boundary.mode === "knowledge_check") return { kind: "decline", reason: "fixed_answer_knowledge" };
     if (boundary.mode === "judgment") return { kind: "generate", constraints: [] };
-    return { kind: "generate", constraints: boundary.constraints }; // judgment_with_constraints
+    // R2.23C — ACTIVE boundaries for THIS situation. With 4+ confirmed the Host must choose at most
+    // three; the system never picks a default set, never merges and never silently drops a rule the
+    // Manager confirmed. Every unselected rule stays available for another Practice situation.
+    const scoped = resolveActiveBoundaries(boundary, input.boundaryScope);
+    if (scoped.kind === "scope_required") return { kind: "decline", reason: scoped.code };
+    return { kind: "generate", constraints: scoped.constraints };
   }
   // No confirmed boundary → free-text classifier only blocks/allows, never authors constraints.
   const eligibility = eligibilityOf(input.facts);
@@ -840,6 +866,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     // NO confirmed constraints, so under the old `constraints.length > 0` gate neither was ever
     // semantically reviewed — the deterministic gates passed both. That gap, not model luck, is
     // why defective content reached a green run.
+    let reviewEvidence: BoundaryEvidence[] = [];
     {
       const review = await reviewConstraintCompliance(input, constraints, llm.draft, llm.constructions);
       if (review.kind === "transport_failed") {
@@ -861,6 +888,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         retryFeedback = fb;
         continue;
       }
+      if (review.kind === "ok") reviewEvidence = review.boundaryEvidence;
       if (review.kind === "reject") {
         // R2.23 — the reviewer's findings go through the SAME precedence authority as the
         // deterministic gates, so a boundary or unsafe-delay finding from the review outranks an
@@ -902,8 +930,23 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         continue;
       }
     }
+    // R2.23C — ONLY now, after an accepted review, is per-choice constraint evidence materialized.
+    // A rejected scenario never reaches here, so it can never produce evidence of compliance.
+    const projected = projectConstraintAssessments(llm.draft, constraints, reviewEvidence, true);
+    if (!projected.ok) {
+      logGenOutcome("projection_rejected", projected.errors[0], { defectCodes: projected.errors });
+      return { ok: false, reason: "generation_rejected" };
+    }
+    // The projection is checked by the SAME canonical gate the generator's attestation used to face.
+    if (constraints.length > 0) {
+      const verify = validateConstraintAssessments(llm.draft, constraints.map((c) => c.id), projected.assessmentsByChoiceId);
+      if (!verify.ok) {
+        logGenOutcome("projection_rejected", verify.errors[0], { defectCodes: verify.errors });
+        return { ok: false, reason: "generation_rejected" };
+      }
+    }
     logGenOutcome("generated_valid");
-    return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings } };
+    return { ok: true, value: { draft: llm.draft, source: "ai", warnings: llm.warnings, constraintEvidence: projected.assessmentsByChoiceId } };
   }
   return { ok: false, reason: "generation_rejected" };
 }

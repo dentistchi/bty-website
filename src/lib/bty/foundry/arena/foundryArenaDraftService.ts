@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import { validateArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
 import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import { availableSetKey, buildBoundaryScope, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, type Locale } from "./arenaScenarioGenerationService";
 
@@ -16,6 +17,12 @@ export const PRACTICE_SETUP_VERSION = 1;
 type StoredGuidedAnswers = GuidedAnswers & {
   practiceSetupVersion?: number;
   practiceBoundary?: PracticeBoundary;
+  /**
+   * R2.23C — the Host's ACTIVE-boundary selection for this situation. It rides inside the existing
+   * versioned `guided_answers` JSONB, so no migration is required and no persisted row is rewritten.
+   * Absent is legitimate: scoping is only required once four or more confirmed rules exist.
+   */
+  practiceBoundaryScope?: PracticeBoundaryScope;
 };
 
 /** True for a new authoritative draft (has the lifecycle discriminator). */
@@ -306,6 +313,8 @@ export async function regenerateArenaDraft(
     facts: source.value.facts,
     guided: current.guided_answers,
     boundary: canonicalBoundary,
+    // R2.23C — the Host's ACTIVE selection, read from the SERVER, never from a generation request.
+    boundaryScope: current.guided_answers.practiceBoundaryScope ?? null,
   });
   if (!generated.ok) return { ok: false, reason: generated.reason };
   const gen = generated.value;
@@ -360,6 +369,13 @@ export async function saveDraftBoundary(
 
   const changed = boundaryChanged(current.guided_answers.practiceBoundary, boundary);
   const nextGuided: StoredGuidedAnswers = { ...current.guided_answers, practiceBoundary: boundary };
+  // R2.23C — a selection made against a different rule set is not a decision about this one. When
+  // the available set moves, the scoping is invalidated rather than silently re-applied. The Host's
+  // previous selection is preserved for reference; only its `confirmed` flag drops.
+  const prevScope = current.guided_answers.practiceBoundaryScope;
+  if (prevScope && prevScope.availableKey !== availableSetKey(boundary.constraints)) {
+    nextGuided.practiceBoundaryScope = { ...prevScope, confirmed: false };
+  }
 
   const patch: Record<string, unknown> = {
     guided_answers: nextGuided,
@@ -373,6 +389,61 @@ export async function saveDraftBoundary(
     patch.generation_source = null;
   }
 
+  const { data, error } = await admin
+    .from("foundry_arena_scenario_drafts")
+    .update(patch)
+    .eq("id", draftId)
+    .eq("owner_user_id", ownerUserId)
+    .eq("revision", current.revision)
+    .select(DRAFT_COLS)
+    .single<ArenaDraftRow>();
+  if (error || !data) return { ok: false, reason: "stale_revision" };
+  return { ok: true, value: { row: data, invalidated: changed } };
+}
+
+/**
+ * Save the Host's ACTIVE-boundary selection (Slice 3.2I-R2.23C). Owner-scoped and
+ * stale-revision-guarded, exactly like the boundary itself.
+ *
+ * The system NEVER selects for the Host: an out-of-range, unknown or duplicated selection is
+ * rejected with its exact code rather than trimmed. Unselected rules are untouched and remain
+ * available for another Practice situation. A meaningful change invalidates the unapproved
+ * generated scenario for the same reason a boundary change does — it was made under a different
+ * set of active rules.
+ */
+export async function saveDraftBoundaryScope(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  selectedIds: unknown,
+  expectedRevision: number | null,
+): Promise<ServiceResult<{ row: ArenaDraftRow; invalidated: boolean }>> {
+  if (!Array.isArray(selectedIds) || selectedIds.some((x) => typeof x !== "string")) {
+    return { ok: false, reason: "unknown_active_boundary" };
+  }
+  const current = await getOwnerArenaDraft(admin, ownerUserId, draftId);
+  if (!current) return { ok: false, reason: "arena_draft_not_found" };
+  if (expectedRevision !== null && expectedRevision !== current.revision) return { ok: false, reason: "stale_revision" };
+
+  const boundary = current.guided_answers.practiceBoundary;
+  if (!boundary || !boundary.confirmed) return { ok: false, reason: "boundary_confirmation_required" };
+
+  const built = buildBoundaryScope(boundary.constraints, selectedIds as string[]);
+  if (!built.ok) return { ok: false, reason: built.errors[0] };
+
+  const prev = current.guided_answers.practiceBoundaryScope;
+  const changed = !prev || prev.availableKey !== built.value.availableKey || JSON.stringify([...prev.activeIds].sort()) !== JSON.stringify([...built.value.activeIds].sort());
+  const nextGuided: StoredGuidedAnswers = { ...current.guided_answers, practiceBoundaryScope: built.value };
+
+  const patch: Record<string, unknown> = {
+    guided_answers: nextGuided,
+    revision: current.revision + 1,
+    updated_at: new Date().toISOString(),
+  };
+  if (changed) {
+    patch.scenario_draft = null;
+    patch.generation_source = null;
+  }
   const { data, error } = await admin
     .from("foundry_arena_scenario_drafts")
     .update(patch)

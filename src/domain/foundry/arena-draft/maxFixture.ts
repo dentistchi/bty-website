@@ -41,6 +41,7 @@ import {
   GEN_VALUE_MAX,
 } from "./types";
 import { CONSTRAINTS_MAX } from "./boundary";
+import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
 import type { ProviderPracticeScenario } from "./providerDto";
 import type { ProviderBoundaryGrounding } from "./boundaryGrounding";
 import type { ProviderChoiceConstruction } from "./choiceConstruction";
@@ -89,7 +90,7 @@ const SIZES: Record<FixtureProfile, Sizes> = {
     title: GEN_TITLE_MAX, opening: GEN_OPENING_MAX, escalation: GEN_ESCALATION_MAX, prompt: GEN_ACTION_PROMPT_MAX, label: GEN_CHOICE_LABEL_MAX,
     value: GEN_VALUE_MAX, cost: GEN_COST_MAX, intent: GEN_INTENT_MAX, action: GEN_ACTION_TEXT_MAX,
     safety: GEN_SHORT_REASON_MAX, notDominated: GEN_SHORT_REASON_MAX, distinguishes: GEN_SHORT_REASON_MAX,
-    rationale: GEN_RATIONALE_MAX, boundaries: CONSTRAINTS_MAX,
+    rationale: GEN_RATIONALE_MAX, boundaries: MAX_ACTIVE_BOUNDARIES,
     gStatement: GEN_GROUNDING_STATEMENT_MAX, gPresence: GEN_GROUNDING_TEXT_MAX, gEffect: GEN_GROUNDING_TEXT_MAX,
     gProhibited: GEN_SHORT_REASON_MAX, gRemaining: GEN_DIMENSION_MAX, gRemainingCount: GEN_DIMENSIONS_MAX_ITEMS,
   },
@@ -136,12 +137,8 @@ const construction = (seed: string, boundaryIds: string[], hangul: boolean, z: S
   distinguishesFromSibling: filler(z.distinguishes, `${seed}s`, hangul),
 });
 
-const assessments = (boundaryIds: string[], seed: string, hangul: boolean, z: Sizes) =>
-  boundaryIds.map((id) => ({ constraintId: id, status: "satisfied" as const, rationale: filler(z.rationale, `${seed}${id}`, hangul) }));
-
 const choice = (seed: string, boundaryIds: string[], hangul: boolean, z: Sizes) => ({
   label: filler(z.label, `${seed}l`, hangul),
-  constraintAssessments: assessments(boundaryIds, seed, hangul, z),
   construction: construction(seed, boundaryIds, hangul, z),
 });
 
@@ -155,7 +152,7 @@ const actionDecision = (seed: string, boundaryIds: string[], hangul: boolean, z:
   choices: Array.from({ length: n }, (_, i) => actionChoice(`${seed}a${i}`, boundaryIds, hangul, z, i === 0)),
 });
 
-export const maxBoundaryIds = (n: number = CONSTRAINTS_MAX): string[] => Array.from({ length: n }, (_, i) => `c${i + 1}_boundary_rule_identifier`);
+export const maxBoundaryIds = (n: number = MAX_ACTIVE_BOUNDARIES): string[] => Array.from({ length: n }, (_, i) => `c${i + 1}_boundary_rule_identifier`);
 
 const grounding = (ids: string[], hangul: boolean, z: Sizes): ProviderBoundaryGrounding[] =>
   ids.map((id, i) => ({
@@ -199,7 +196,7 @@ export function buildMaxProviderScenario(hangul = false, profile: FixtureProfile
 
 /** The smallest structurally valid provider response, for the lower bound of the same measurement. */
 export function buildMinProviderScenario(): ProviderPracticeScenario {
-  const c = { label: "Stop the line now", constraintAssessments: [], construction: {
+  const c = { label: "Stop the line now", construction: {
     legitimateValue: "safety", acceptedCost: "the schedule slips", competentIntent: "a lead protects the line",
     concreteAction: "stops the line", boundaryCompliance: [], urgencySafetyBasis: "no urgent care is delayed",
     whyNotDominated: "gives up the delivery date", distinguishesFromSibling: "protects safety over speed",

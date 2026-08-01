@@ -53,11 +53,31 @@ import {
   GEN_VALUE_MAX,
 } from "@/domain/foundry/arena-draft/types";
 import { MODEL_OUTPUT_CAP, measureProviderBudget, measureReviewBudget } from "./tokenBudget";
+import { BOUNDARY_SCOPE_CODES, MAX_ACTIVE_BOUNDARIES } from "@/domain/foundry/arena-draft/boundaryScope";
 
 /**
  * R2.23A — the GENERATED cardinality contract, digested into the manifest. A change here changes
  * what a generated Practice IS, so no prior artifact may be attributed to the new contract.
  */
+/**
+ * R2.23C — the evidence-authority contract. Restoring generator self-attestation, changing the
+ * active-boundary maximum or moving retry authority back to the reviewer each change this digest,
+ * so no prior artifact can be attributed to the current contract.
+ */
+export const EVIDENCE_AUTHORITY = {
+  providerSelfAttestation: false,
+  boundaryGroundingRequired: true,
+  independentReviewRequired: true,
+  constraintEvidenceSource: "review_derived_projection",
+  projectionOnlyAfterAccept: true,
+  retryAuthority: "server_deterministic",
+  reviewerAuthorsRetryPrompt: false,
+  maxActiveBoundaries: MAX_ACTIVE_BOUNDARIES,
+  hostScopeRequiredAbove: MAX_ACTIVE_BOUNDARIES,
+  automaticBoundarySelection: false,
+  scopeCodes: BOUNDARY_SCOPE_CODES,
+} as const;
+
 export const GENERATED_CARDINALITY = {
   primaryChoices: GENERATED_PRIMARY_CHOICES,
   branches: GENERATED_PRIMARY_CHOICES,
@@ -92,7 +112,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.23a.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.23c.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -137,6 +157,7 @@ export type ContractManifest = {
   };
   model: string;
   cardinality: typeof GENERATED_CARDINALITY;
+  evidenceAuthority: typeof EVIDENCE_AUTHORITY;
   fieldBounds: typeof GENERATED_FIELD_BOUNDS;
   modelOutputCap: number;
   /** Measured acceptance: false means every valid generated Practice fits the configured budget. */
@@ -155,6 +176,7 @@ export function buildContractManifest(head: string, model: string): ContractMani
     head,
     model,
     cardinality: GENERATED_CARDINALITY,
+    evidenceAuthority: EVIDENCE_AUTHORITY,
     fieldBounds: GENERATED_FIELD_BOUNDS,
     modelOutputCap: MODEL_OUTPUT_CAP,
     schemaCanExceedBudget:
@@ -184,6 +206,8 @@ export function buildContractManifest(head: string, model: string): ContractMani
       sampling: digest({ generation: PRACTICE_SAMPLING.generation, review: PRACTICE_SAMPLING.review, retry: PRACTICE_SAMPLING.retry }),
       // R2.23A — cardinality, field bounds and the measured budget are all part of the contract.
       generatedCardinality: digest(GENERATED_CARDINALITY),
+      evidenceAuthority: digest(EVIDENCE_AUTHORITY),
+      boundaryScopeContract: digest({ max: MAX_ACTIVE_BOUNDARIES, codes: BOUNDARY_SCOPE_CODES }),
       generatedFieldBounds: digest(GENERATED_FIELD_BOUNDS),
       tokenBudget: digest({
         modelOutputCap: MODEL_OUTPUT_CAP,

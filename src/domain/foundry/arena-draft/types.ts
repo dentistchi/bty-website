@@ -239,8 +239,14 @@ export const GEN_GROUNDING_TEXT_MAX = 180;
 export const GEN_DIMENSION_MAX = 60;
 export const GEN_DIMENSIONS_MAX_ITEMS = 4;
 export const GEN_EXPLANATION_MAX = 300;
-/** A reviewer field is one clause of product judgment, never an essay. */
-export const GEN_REVIEW_TEXT_MAX = 140;
+/**
+ * R2.23C — a reviewer free-text field is one clause of SUPPORTING evidence, never an essay and
+ * never the repair instruction. The retry packet is built server-side from structured findings
+ * (see `correctionPacket.ts`), so 100 characters costs no actionability: it costs prose the retry
+ * never depended on. Machine authority — defect codes, boundary ids, coordinates, enums, violating
+ * references — is NOT bounded by this and never shortened.
+ */
+export const GEN_REVIEW_TEXT_MAX = 100;
 /** Cross-branch overlap pairs are index pairs like "0-1". */
 export const GEN_PAIR_MAX = 16;
 export const GEN_PAIRS_MAX_ITEMS = 6;

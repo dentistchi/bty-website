@@ -7,7 +7,6 @@ import {
 } from "./providerDto";
 import { parseArenaScenarioDraft } from "./validate";
 import { constructionFor } from "./providerDto.fixture";
-import { validateConstraintAssessments } from "./boundary";
 
 /**
  * PROVIDER DTO + deterministic canonicalization (Slice 3.2I-R5B1A.1-R2.16).
@@ -188,21 +187,13 @@ describe("deterministic canonicalization", () => {
     expect(draft.primary.choices[0].label).toBe("지금 라인을 멈추고 팀에 알린다");
   });
 
-  it("builds a constraint-assessment map keyed by ALL and ONLY real canonical choice ids", () => {
-    const d = dto();
-    const a = [{ constraintId: "c1", status: "satisfied" as const, rationale: "complies" }];
-    for (const c of d.primaryChoices) c.constraintAssessments = a;
-    for (const c of d.flatTradeoffChoices) c.constraintAssessments = a;
-    for (const c of d.flatActionDecision.choices) c.constraintAssessments = a;
-    for (const b of d.branches) {
-      for (const c of b.tradeoffChoices) c.constraintAssessments = a;
-      for (const c of b.actionDecision.choices) c.constraintAssessments = a;
-    }
-    const v = validateProviderScenario(d);
-    const { draft, assessmentsByChoiceId } = canonicalizeProviderScenario((v as { value: ProviderPracticeScenario }).value);
-    // The canonical validator is the authority on which ids must be covered.
-    expect(validateConstraintAssessments(draft, ["c1"], assessmentsByChoiceId).ok).toBe(true);
-    expect(Object.keys(assessmentsByChoiceId).every((k) => JSON.stringify(draft).includes(`"${k}"`))).toBe(true);
+  it("R2.23C — provider choices carry NO constraint attestation at all", () => {
+    const { draft, constructionsByChoiceId } = canonicalizeProviderScenario(valid());
+    // The generator no longer certifies its own compliance; the server materializes that evidence
+    // from an ACCEPTED review instead (see constraintProjection.test.ts).
+    expect(JSON.stringify(draft)).not.toContain("constraintAssessments");
+    expect(Object.keys(constructionsByChoiceId)).toHaveLength(14);
+    expect("assessmentsByChoiceId" in canonicalizeProviderScenario(valid())).toBe(false);
   });
 });
 

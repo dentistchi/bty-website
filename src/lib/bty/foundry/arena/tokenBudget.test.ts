@@ -50,11 +50,11 @@ describe("18/19. maximum fixtures", () => {
     expect(validateProviderScenario(max).ok).toBe(true);
   });
 
-  it("18b. every choice carries a full construction and a full assessment set", () => {
+  it("18b. every choice carries a full construction, and NO attestation", () => {
     const max = buildMaxProviderScenario(false, "realistic");
     for (const c of max.primaryChoices) {
       expect(Object.values(c.construction).every((v) => (Array.isArray(v) ? true : String(v).length > 0))).toBe(true);
-      expect(c.constraintAssessments.length).toBe(3);
+      expect("constraintAssessments" in c).toBe(false); // R2.23C
     }
     expect(max.boundaryGrounding).toHaveLength(3);
     expect(MAX_VISIBLE_CHOICES).toBe(14); // 2 primary + 2 flat tradeoff + 2 flat action + 2 branches x 4
@@ -102,14 +102,25 @@ describe("21/25. the configured budgets clear the measured requirement", () => {
     expect(PRACTICE_SAMPLING.review.maxTokens).toBeGreaterThanOrEqual(canaryKo * BUDGET_HEADROOM);
   });
 
-  it("23. THE SCHEMA CAN STILL EXCEED THE BUDGET — and that is recorded, not hidden", () => {
-    // At the schema's permitted MAXIMUM cardinality the requirement passes the configured model's
-    // own output cap, so no ceiling we can set would cover it. The mitigation is fail-closed
-    // truncation detection, which is asserted below and in the contract suite. This flag exists so
-    // the risk is measured and visible rather than assumed away.
-    expect(gen.schemaCanExceedBudget).toBe(true);
-    expect(rev.schemaCanExceedBudget).toBe(true);
-    expect(gen.schemaBoundKorean.tokens).toBeGreaterThan(PRACTICE_SAMPLING.generation.maxTokens);
+  it("R2.23C — 37. the schema can NO LONGER exceed the budget, on either side", () => {
+    // R2.23A left this true: the schema permitted a valid Practice the model could not emit.
+    // Removing the generator's self-attestation and capping ACTIVE boundaries at three closed it.
+    expect(gen.schemaCanExceedBudget).toBe(false);
+    expect(rev.schemaCanExceedBudget).toBe(false);
+    expect(gen.schemaExceedsModelCap).toBe(false);
+    expect(rev.schemaExceedsModelCap).toBe(false);
+  });
+
+  it("35/36. both KO maxima clear the configured budget with at least 25% headroom", () => {
+    expect(Math.ceil(gen.schemaBoundKorean.tokens * 1.25)).toBeLessThanOrEqual(PRACTICE_SAMPLING.generation.maxTokens);
+    expect(Math.ceil(rev.schemaBoundKorean.tokens * 1.25)).toBeLessThanOrEqual(PRACTICE_SAMPLING.review.maxTokens);
+    expect(gen.measuredHeadroom).toBeGreaterThanOrEqual(1.25);
+    expect(rev.measuredHeadroom).toBeGreaterThanOrEqual(1.25);
+  });
+
+  it("38. the configured budget stays under the model output cap", () => {
+    expect(PRACTICE_SAMPLING.generation.maxTokens).toBeLessThanOrEqual(gen.modelOutputCap);
+    expect(PRACTICE_SAMPLING.review.maxTokens).toBeLessThanOrEqual(rev.modelOutputCap);
   });
 
   it("23b. the measurement records the estimator, the fixture digests and the headroom it used", () => {

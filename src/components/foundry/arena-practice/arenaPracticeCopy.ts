@@ -17,6 +17,16 @@ export type ArenaPracticeCopy = {
   // Source summary
   summaryTitle: string;
   summaryLead: string;
+  // Slice 3.2I-R2.23C — ACTIVE-boundary scoping. Ready for the boundary editor (R5B2). The copy
+  // says what the Host does and what happens to the rest; it never mentions models or limits,
+  // because the reason is that a situation with too many rules at once stops teaching anything.
+  boundaryScopeTitle: string;
+  boundaryScopeHint: string;
+  boundaryScopeRemaining: string;
+  boundaryScopeRequired: string;
+  boundaryScopeTooMany: string;
+  boundaryScopeChanged: string;
+
   // Slice 3.2I-R5B1 — interim shell setup surface (boundary editor arrives in R5B2)
   setupTitle: string;
   setupLead: string;
@@ -223,6 +233,13 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     noModuleLead: "Create practice from a published training module.",
     genericError: "Something went wrong. Please retry.",
     sensitiveWarning: "Possible personal or sensitive details — please review before saving.",
+
+    boundaryScopeTitle: "Which boundaries does this situation rehearse?",
+    boundaryScopeHint: "Choose up to 3. Create another practice situation for the rest.",
+    boundaryScopeRemaining: "The boundaries you do not choose stay available.",
+    boundaryScopeRequired: "Choose up to 3 boundaries before generating this situation.",
+    boundaryScopeTooMany: "Choose no more than 3 for one situation.",
+    boundaryScopeChanged: "The boundaries changed. Choose again for this situation.",
   },
   ko: {
     eyebrow: "연습",
@@ -327,5 +344,12 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     noModuleLead: "게시된 교육 모듈에서 연습을 만들 수 있습니다.",
     genericError: "문제가 발생했습니다. 다시 시도해 주세요.",
     sensitiveWarning: "개인·민감 정보가 포함되었을 수 있습니다 — 저장 전에 확인하세요.",
+
+    boundaryScopeTitle: "이 상황에서 다룰 경계",
+    boundaryScopeHint: "최대 3개까지 선택하세요. 나머지는 별도의 연습 상황으로 만들 수 있습니다.",
+    boundaryScopeRemaining: "선택하지 않은 경계는 그대로 남아 있습니다.",
+    boundaryScopeRequired: "이 상황을 만들기 전에 경계를 최대 3개 선택하세요.",
+    boundaryScopeTooMany: "한 상황에는 3개까지만 선택할 수 있습니다.",
+    boundaryScopeChanged: "경계가 바뀌었습니다. 이 상황에서 다룰 경계를 다시 선택하세요.",
   },
 };

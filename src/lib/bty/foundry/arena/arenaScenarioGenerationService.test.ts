@@ -307,8 +307,10 @@ describe("generateArenaScenarioDraft — confirmed boundary authority (R4)", () 
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });
 
-  it("missing per-choice constraint assessment → generation_rejected", async () => {
-    mockGenThenReview(groundedDraft, undefined, undefined, GROUNDING, ["c1_verify"]); // no constraintAssessments at all
+  it("R2.23C — a missing boundary GROUNDING record is rejected (the attestation gate it replaced is gone)", async () => {
+    // The generator no longer certifies its own compliance, so there is no attestation to omit.
+    // Grounding is what must be present, and the reviewer is what proves compliance.
+    mockGenThenReview(groundedDraft, undefined, undefined, [], ["c1_verify"]);
     const r = await generateArenaScenarioDraft({ locale: "en", facts, guided, boundary: boundary("judgment_with_constraints", true) });
     expect(r).toMatchObject({ ok: false, reason: "generation_rejected" });
   });

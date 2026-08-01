@@ -38,7 +38,6 @@ import {
   type ArenaScenarioDraft,
   type ScenarioBranch,
 } from "./types";
-import type { ConstraintAssessment } from "./boundary";
 import { BOUNDARY_GROUNDING_JSON_SCHEMA, DECISION_STAGES, type DecisionStage, type ProviderBoundaryGrounding } from "./boundaryGrounding";
 import { CHOICE_CONSTRUCTION_JSON_SCHEMA, type ProviderChoiceConstruction } from "./choiceConstruction";
 
@@ -48,8 +47,13 @@ import { CHOICE_CONSTRUCTION_JSON_SCHEMA, type ProviderChoiceConstruction } from
 
 export type ProviderChoice = {
   label: string;
-  /** One entry per confirmed constraint. Empty array when the boundary has no constraints. */
-  constraintAssessments: ConstraintAssessment[];
+  /**
+   * R2.23C — the per-choice `constraintAssessments` array is GONE. Its `status` enum held one
+   * value, so a violation was unrepresentable: it was the generator certifying its own compliance,
+   * at a cost of visible-choices x boundaries per request. Boundary grounding proves the rule is
+   * operative and the independent reviewer proves every phase complies; the same-shaped evidence is
+   * materialized server-side from the ACCEPTED review (see `constraintProjection.ts`).
+   */
   /**
    * R2.22 — how this choice was CONSTRUCTED: the value it protects, the cost it accepts, why a
    * competent person could choose it. Provider-only: validated, reviewed, then discarded.
@@ -93,25 +97,11 @@ export const PROVIDER_SCHEMA_NAME = "bty_practice_scenario_v1";
 // bounded arrays, no dynamic property names, explicit booleans.
 // ---------------------------------------------------------------------------
 
-const assessmentSchema = {
-  type: "array",
-  items: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      constraintId: { type: "string", maxLength: 120 },
-      status: { type: "string", enum: ["satisfied"] },
-      rationale: { type: "string", maxLength: GEN_RATIONALE_MAX },
-    },
-    required: ["constraintId", "status", "rationale"],
-  },
-} as const;
-
 const choiceSchema = {
   type: "object",
   additionalProperties: false,
-  properties: { label: { type: "string", maxLength: GEN_CHOICE_LABEL_MAX }, constraintAssessments: assessmentSchema, construction: CHOICE_CONSTRUCTION_JSON_SCHEMA },
-  required: ["label", "constraintAssessments", "construction"],
+  properties: { label: { type: "string", maxLength: GEN_CHOICE_LABEL_MAX }, construction: CHOICE_CONSTRUCTION_JSON_SCHEMA },
+  required: ["label", "construction"],
 } as const;
 
 const actionChoiceSchema = {
@@ -120,10 +110,9 @@ const actionChoiceSchema = {
   properties: {
     label: { type: "string", maxLength: GEN_CHOICE_LABEL_MAX },
     isActionCommitment: { type: "boolean" },
-    constraintAssessments: assessmentSchema,
     construction: CHOICE_CONSTRUCTION_JSON_SCHEMA,
   },
-  required: ["label", "isActionCommitment", "constraintAssessments", "construction"],
+  required: ["label", "isActionCommitment", "construction"],
 } as const;
 
 const actionDecisionSchema = {
@@ -187,21 +176,6 @@ export type DtoValidation = { ok: true; value: ProviderPracticeScenario } | { ok
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isNonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
 
-function validateAssessments(v: unknown, errors: string[], where: string): ConstraintAssessment[] {
-  if (!Array.isArray(v)) {
-    errors.push(`dto_assessments_not_array:${where}`);
-    return [];
-  }
-  const out: ConstraintAssessment[] = [];
-  for (const a of v) {
-    if (!isObj(a) || !isNonEmpty(a.constraintId) || a.status !== "satisfied" || !isNonEmpty(a.rationale)) {
-      errors.push(`dto_assessment_malformed:${where}`);
-      continue;
-    }
-    out.push({ constraintId: a.constraintId, status: "satisfied", rationale: a.rationale });
-  }
-  return out;
-}
 
 /**
  * Structural shape of the construction record only (R2.22). Whether the stated value is genuine and
@@ -240,12 +214,11 @@ function validateChoices(v: unknown, exact: number, where: string, errors: strin
   return v.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}[${i}]`);
-      return { label: "", constraintAssessments: [], construction: parseConstruction(null, [], "") };
+      return { label: "", construction: parseConstruction(null, [], "") };
     }
     checkLen(c.label, GEN_CHOICE_LABEL_MAX, "dto_label_too_long", errors);
     return {
       label: c.label,
-      constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}[${i}]`),
       construction: parseConstruction(c.construction, errors, `${where}[${i}]`),
     };
   });
@@ -264,7 +237,7 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
   const choices: ProviderActionChoice[] = raw.map((c, i) => {
     if (!isObj(c) || !isNonEmpty(c.label)) {
       errors.push(`dto_choice_malformed:${where}.action[${i}]`);
-      return { label: "", isActionCommitment: false, constraintAssessments: [], construction: parseConstruction(null, [], "") };
+      return { label: "", isActionCommitment: false, construction: parseConstruction(null, [], "") };
     }
     // The exact invariant the canonical validator enforces — an explicit boolean, never inferred.
     if (typeof c.isActionCommitment !== "boolean") errors.push("action_choice_missing_commitment_flag");
@@ -272,7 +245,6 @@ function validateActionDecision(v: unknown, where: string, errors: string[]): Pr
     return {
       label: c.label,
       isActionCommitment: c.isActionCommitment === true,
-      constraintAssessments: validateAssessments(c.constraintAssessments, errors, `${where}.action[${i}]`),
       construction: parseConstruction(c.construction, errors, `${where}.action[${i}]`),
     };
   });
@@ -400,8 +372,6 @@ export const flatActionId = (i: number): string => `fa${i + 1}`;
 
 export type CanonicalizedScenario = {
   draft: ArenaScenarioDraft;
-  /** Keyed by ASSIGNED canonical choice id — exactly what validateConstraintAssessments expects. */
-  assessmentsByChoiceId: Record<string, ConstraintAssessment[]>;
   /**
    * Per-choice construction records keyed by ASSIGNED canonical choice id (R2.22). Carried outside
    * the draft for the same reason as the grounding: provider-only, never persisted, never rendered.
@@ -423,10 +393,8 @@ export type CanonicalizedScenario = {
  * an identity question resolved by merging.
  */
 export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): CanonicalizedScenario {
-  const assessmentsByChoiceId: Record<string, ConstraintAssessment[]> = {};
   const constructionsByChoiceId: Record<string, ProviderChoiceConstruction> = {};
   const put = (id: string, c: ProviderChoice) => {
-    assessmentsByChoiceId[id] = c.constraintAssessments;
     constructionsByChoiceId[id] = c.construction;
   };
 
@@ -473,5 +441,5 @@ export function canonicalizeProviderScenario(dto: ProviderPracticeScenario): Can
     ...(dto.branches.length ? { branches } : {}),
   };
 
-  return { draft, assessmentsByChoiceId, constructionsByChoiceId, boundaryGrounding: dto.boundaryGrounding };
+  return { draft, constructionsByChoiceId, boundaryGrounding: dto.boundaryGrounding };
 }

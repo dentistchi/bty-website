@@ -222,7 +222,12 @@ export type SemanticReview = {
   urgency: UrgencyReview;
   overallVerdict: "accept" | "reject";
   defectCodes: string[];
-  retryInstruction: string;
+  /**
+   * R2.23C — retained ONLY as a non-authoritative note. The retry packet is constructed server-side
+   * from structured findings; the reviewer no longer authors any part of the correction, and the
+   * strict schema no longer asks it to. Defaults to empty.
+   */
+  retryInstruction?: string;
 };
 
 export const SEMANTIC_REVIEW_SCHEMA_NAME = "bty_practice_semantic_review_v1";
@@ -354,13 +359,12 @@ export const SEMANTIC_REVIEW_JSON_SCHEMA = {
     },
     overallVerdict: { type: "string", enum: ["accept", "reject"] },
     defectCodes: strArray,
-    retryInstruction: { type: "string", maxLength: GEN_EXPLANATION_MAX },
   },
   required: [
     "noSafeJudgmentSpace", "noSafeReasonCode", "boundaryIdsConsidered", "remainingJudgmentDimensions",
     "violatedBoundaryIds", "explanation", "primaryChoices", "twoValuesInTension", "tensionValueA",
     "tensionValueB", "branches", "phaseChoices", "crossBranch", "boundaryCompliant",
-    "boundaryAssessments", "urgency", "overallVerdict", "defectCodes", "retryInstruction",
+    "boundaryAssessments", "urgency", "overallVerdict", "defectCodes",
   ],
 } as const;
 

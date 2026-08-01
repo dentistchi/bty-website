@@ -39,9 +39,11 @@ import {
   GEN_COST_MAX,
   GEN_INTENT_MAX,
   GEN_SHORT_REASON_MAX,
+  GEN_BOUNDARY_ID_MAX,
   GEN_VALUE_MAX,
   type ArenaScenarioDraft,
 } from "./types";
+import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
 
 // ---------------------------------------------------------------------------
 // Phases and choice enumeration
@@ -121,7 +123,7 @@ export const CHOICE_CONSTRUCTION_JSON_SCHEMA = {
     acceptedCost: { type: "string", maxLength: GEN_COST_MAX },
     competentIntent: { type: "string", maxLength: GEN_INTENT_MAX },
     concreteAction: { type: "string", maxLength: GEN_ACTION_TEXT_MAX },
-    boundaryCompliance: { type: "array", maxItems: 10, items: { type: "string", maxLength: 120 } },
+    boundaryCompliance: { type: "array", maxItems: MAX_ACTIVE_BOUNDARIES, items: { type: "string", maxLength: GEN_BOUNDARY_ID_MAX } },
     urgencySafetyBasis: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
     whyNotDominated: { type: "string", maxLength: GEN_SHORT_REASON_MAX },
     distinguishesFromSibling: { type: "string", maxLength: GEN_SHORT_REASON_MAX },

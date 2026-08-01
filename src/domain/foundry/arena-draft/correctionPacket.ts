@@ -126,11 +126,65 @@ const CORRECTIONS: Record<string, string> = {
   branch_semantic_collapse: "Two branches mean the same thing. Synonyms are not causal difference.",
   branch_repeats_primary: "This branch re-asks the question the primary choice already answered.",
 
-  // Level 7 — reviewer integrity, correctable by regenerating cleaner content.
+  // --- remaining Level 3 boundary/grounding codes (the grounding record IS generator-authored) ---
+  boundary_violation: "A choice crossed a confirmed non-negotiable rule. Every path must obey every active rule; put the difficulty in HOW to comply.",
+  constraint_violation: "Learner-facing text describes skipping, delaying past or bypassing a confirmed rule. Remove it; the rule holds on every path.",
+  unknown_boundary_reference: "A grounding record names a rule that was not confirmed for this situation. Reference only the active boundary ids you were given.",
+  missing_boundary_reference: "An active confirmed rule has no grounding record. Produce exactly one record for every active rule.",
+  grounding_missing: "The grounding records are absent. Produce one per active confirmed rule, each stating where the rule is operative and what it excludes.",
+  grounding_malformed: "A grounding record is malformed. Each needs the boundary id, the confirmed statement, where it is operative, what it forces, the stages it constrains, the excluded alternative and the remaining judgment.",
+  grounding_duplicate_boundary: "One rule is grounded twice. Produce exactly one record per active rule.",
+  grounding_statement_altered: "A grounding record restates the confirmed rule in weaker terms. Restate it faithfully; a non-negotiable rule may not be softened.",
+  grounding_missing_remaining_judgment: "A grounding record names no judgment surviving inside the rule. If nothing genuinely remains, this is not a practice situation — say so instead of generating one.",
+
+  // --- remaining Level 5/6 content codes -------------------------------------
+  duplicate_tradeoff: "Two options carry the same trade-off. Give each a genuinely different value and cost.",
+  moral_label_language: "Learner-facing text signals a right or wrong answer. Remove praise, blame and every hint of a preferred option.",
+  choice_no_concrete_action: "An option names no concrete action. State what the person actually does.",
+  placeholder_leak: "Learner-facing text contains scaffolding or placeholder wording. Write the real scene.",
+  branch_paraphrase: "A branch only rewords another. Give it its own causal state and its own next decision.",
+  branch_incoherent_escalation: "The shared escalation presupposes one particular primary choice. Raise the stakes in a way that is true whichever option was taken.",
+  branch_incoherent_reference: "A later phase refers to an artifact a path may never have produced. Refer back only in branch-neutral terms.",
+  generic_branch_reaction: "A branch consequence is generic. Name the concrete new fact or pressure this path created.",
+  generic_escalation: "The escalation is generic. Introduce a specific new stakeholder, deadline or fact.",
+  boilerplate_repetition: "The same phrasing repeats across the scenario. Vary it; each moment is its own.",
+
+  /**
+   * Level 7 — reviewer-contract integrity. These are NOT generator defects, so no template asks the
+   * model to repair a review it never saw. The only thing a regeneration can do is remove the
+   * ambiguity that made the review contradictory, which is what this says.
+   */
   review_contradictory: "The independent review of the previous attempt was internally inconsistent. Produce a scenario whose quality is unambiguous.",
 };
 
+/**
+ * Codes the generation path can no longer emit.
+ *
+ * R2.23C removed the provider's per-choice `constraintAssessments`, so every `assessment_*` code is
+ * now unreachable from generation. They stay registered because legacy content and the canonical
+ * validator still use them; they are listed here so an absent correction template is a recorded
+ * fact rather than an oversight.
+ */
+export const UNREACHABLE_FROM_GENERATION: readonly string[] = [
+  "assessment_missing",
+  "assessment_missing_for_choice",
+  "assessment_malformed",
+  "assessment_not_satisfied",
+  "assessment_unknown_constraint",
+  "assessment_constraint_uncovered",
+  "assessment_rationale_empty",
+];
+
+/**
+ * Reviewer-contract failures. A regeneration cannot repair a broken review, so these share one
+ * honest instruction rather than pretending a per-code repair exists.
+ */
+export const REVIEWER_INTEGRITY_PREFIX = "review_";
+
 const FALLBACK_CORRECTION = "Correct this defect while preserving the case facts, the confirmed boundaries and the scenario purpose.";
+/** One shared instruction for reviewer-contract failures — see REVIEWER_INTEGRITY_PREFIX. */
+const REVIEWER_INTEGRITY_CORRECTION =
+  "The independent review of the previous attempt could not be trusted. Produce a scenario whose quality is unambiguous at every phase, so the review has nothing to be inconsistent about.";
 
 export const MUST_REMAIN_UNCHANGED = [
   "the training facts",
@@ -168,7 +222,7 @@ export function buildCorrectionPacket(
       code: f.code,
       level: cls.level,
       coordinates: [],
-      requiredCorrection: CORRECTIONS[f.code] ?? FALLBACK_CORRECTION,
+      requiredCorrection: CORRECTIONS[f.code] ?? (f.code.startsWith(REVIEWER_INTEGRITY_PREFIX) ? REVIEWER_INTEGRITY_CORRECTION : FALLBACK_CORRECTION),
     };
     const coord: CorrectionCoordinate = {};
     if (f.phase !== undefined) coord.phase = f.phase;

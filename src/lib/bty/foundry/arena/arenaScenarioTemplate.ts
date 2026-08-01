@@ -29,6 +29,11 @@ export type ScenarioGenInput = {
    * this fixture module; the service reads it via the domain `PracticeBoundary` type.
    */
   boundary?: import("@/domain/foundry/arena-draft/boundary").PracticeBoundary;
+  /**
+   * Slice 3.2I-R2.23C — the Host's ACTIVE-boundary selection for THIS situation. Absent is
+   * legitimate: scoping is only required once four or more confirmed rules are available.
+   */
+  boundaryScope?: import("@/domain/foundry/arena-draft/boundaryScope").PracticeBoundaryScope | null;
 };
 
 // ---------------------------------------------------------------------------

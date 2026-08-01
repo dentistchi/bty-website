@@ -44,6 +44,7 @@ import {
   type ArenaScenarioDraft,
 } from "./types";
 import type { BoundaryConstraint } from "./boundary";
+import { MAX_ACTIVE_BOUNDARIES } from "./boundaryScope";
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -104,7 +105,7 @@ const strArray = { type: "array", items: { type: "string" } } as const;
 /** Strict schema fragment — composed into the provider scenario schema. */
 export const BOUNDARY_GROUNDING_JSON_SCHEMA = {
   type: "array",
-  maxItems: 10, // CONSTRAINTS_MAX — one grounding record per confirmed boundary, never more
+  maxItems: MAX_ACTIVE_BOUNDARIES, // R2.23C — one record per ACTIVE boundary; 4+ blocks before generation
   items: {
     type: "object",
     additionalProperties: false,
