@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { EVAL_CORPUS } from "./practice-generation.eval";
 import { buildContractManifest, caseDigest, manifestDigest } from "./contractManifest";
 import { manifestPayload, renderRunner } from "./stabilityRunnerScript";
@@ -197,9 +198,12 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
   });
 
   it("the human-review packet leaves every judgment field explicitly PENDING", () => {
+    // R2.23D-R2 — the packet is written by the tracked collator, not by shell-generated TypeScript.
+    const collate = readFileSync(join(process.cwd(), "scripts/practice-stability-collate.ts"), "utf8");
+    expect(collate).toContain("HUMAN REVIEW — every field below is PENDING");
+    expect(collate).toMatch(/would you put this in front of a learner: PENDING/);
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false);
-    expect(src).toContain("HUMAN REVIEW — every field below is PENDING");
-    expect(src).toMatch(/would you put this in front of a learner: PENDING/);
+    expect(src).toContain("scripts/practice-stability-collate.ts");
   });
 });
