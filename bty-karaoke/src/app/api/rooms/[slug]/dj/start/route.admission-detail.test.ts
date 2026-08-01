@@ -281,3 +281,108 @@ describe('R1 — N: status codes are unchanged', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// BUILD 21 — the fail-closed duration block now explains itself.
+//
+// Every assertion below reads the RUNTIME SERIALIZED body (`await res.text()` / `res.json()`),
+// never a TypeScript interface, because the contract that matters is the bytes an old iOS build
+// and the web console actually receive. Two frozen facts are re-pinned on purpose: status 503 and
+// `code: "duration_unavailable"`. `reason` is additive on top of them.
+// ---------------------------------------------------------------------------------------------
+
+const GENERIC_DURATION_COPY = '영상 길이를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.';
+
+describe('BUILD 21 — reason-specific duration-block copy', () => {
+  it('too_long tells the Host to pick a shorter version — never "try again"', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'too_long' };
+    const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(res.status).toBe(503);
+    const raw = await res.text();
+    const d = JSON.parse(raw);
+    expect(d.code).toBe('duration_unavailable');
+    expect(d.reason).toBe('too_long');
+    expect(d.error).toContain('너무 길어요');
+    expect(d.error).toContain('더 짧은 버전');
+    expect(d.error).toContain('대기열에 그대로');
+    // The whole point of BUILD 21: the false retry advice is gone from this branch.
+    expect(d.error).not.toContain('잠시 후 다시 시도');
+  });
+
+  it('video_unavailable tells the Host to pick a different video', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'video_unavailable' };
+    const d = JSON.parse(await (await POST(makeReq({ requestId: 'req-1' }), ctx)).text());
+    expect(d.reason).toBe('video_unavailable');
+    expect(d.error).toContain('다른 영상');
+    expect(d.error).not.toContain('잠시 후 다시 시도');
+  });
+
+  it('quota_exceeded names the daily limit and does NOT say "in a moment" (Gate G3)', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'quota_exceeded' };
+    const d = JSON.parse(await (await POST(makeReq({ requestId: 'req-1' }), ctx)).text());
+    expect(d.reason).toBe('quota_exceeded');
+    expect(d.error).toContain('일일');
+    expect(d.error).not.toContain('잠시 후');
+  });
+
+  it('not_configured points at the operator, not the song', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'not_configured' };
+    const d = JSON.parse(await (await POST(makeReq({ requestId: 'req-1' }), ctx)).text());
+    expect(d.reason).toBe('not_configured');
+    expect(d.error).toContain('관리자');
+  });
+
+  it('lookup_failed KEEPS the shipped sentence — the one cause where retry is true', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'lookup_failed' };
+    const d = JSON.parse(await (await POST(makeReq({ requestId: 'req-1' }), ctx)).text());
+    expect(d.reason).toBe('lookup_failed');
+    expect(d.error).toBe(GENERIC_DURATION_COPY);
+  });
+});
+
+describe('BUILD 21 — backward compatibility (no synchronized deploy required)', () => {
+  it('an UNCLASSIFIED block is byte-identical to the shipped response — no `reason` key at all', async () => {
+    state.ensure = { outcome: 'duration_unavailable' };
+    const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(res.status).toBe(503);
+    const raw = await res.text();
+    expect(JSON.parse(raw)).toEqual({ error: GENERIC_DURATION_COPY, code: 'duration_unavailable' });
+    expect(raw).not.toContain('reason'); // absent, not undefined
+  });
+
+  it('an UNKNOWN future reason still serializes a usable generic sentence', async () => {
+    state.ensure = { outcome: 'duration_unavailable', durationFailureReason: 'something_new' };
+    const d = JSON.parse(await (await POST(makeReq({ requestId: 'req-1' }), ctx)).text());
+    expect(d.code).toBe('duration_unavailable');
+    expect(d.error).toBe(GENERIC_DURATION_COPY); // never blank, never "[object Object]"
+    expect(d.reason).toBe('something_new');      // passed through for logs/newer clients
+  });
+
+  it('the frozen contract holds for EVERY reason: 503 + code, and no numbers are invented', async () => {
+    for (const reason of ['too_long', 'video_unavailable', 'quota_exceeded', 'lookup_failed', 'not_configured']) {
+      state.ensure = { outcome: 'duration_unavailable', durationFailureReason: reason };
+      const res = await POST(makeReq({ requestId: 'req-1' }), ctx);
+      expect(res.status).toBe(503);
+      const d = await res.json();
+      expect(d.code).toBe('duration_unavailable');
+      expect(typeof d.error).toBe('string');
+      expect(d.error.length).toBeGreaterThan(0);
+      // An unknown duration must never be presented as a measured one.
+      for (const numeric of ['durationSeconds', 'remainingSeconds', 'requiredChargeSeconds', 'leaseEndsAt']) {
+        expect(numeric in d).toBe(false);
+      }
+    }
+  });
+
+  it('other blocked outcomes are untouched by BUILD 21', async () => {
+    state.ensure = { outcome: 'pass_insufficient', durationSeconds: 242, remainingSeconds: 190 };
+    const pass = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(pass.status).toBe(402);
+    expect('reason' in (await pass.json())).toBe(false);
+
+    state.ensure = { outcome: 'upgrade_required', entitlement: ENT_ZERO };
+    const upgrade = await POST(makeReq({ requestId: 'req-1' }), ctx);
+    expect(upgrade.status).toBe(402);
+    expect('reason' in (await upgrade.json())).toBe(false);
+  });
+});

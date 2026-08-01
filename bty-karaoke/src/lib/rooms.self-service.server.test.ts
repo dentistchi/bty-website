@@ -24,7 +24,7 @@ function chain(rows: unknown) {
 }
 vi.mock('@/lib/supabase.server', () => ({ karaokeDb: () => ({ from: () => chain(activeRows) }) }));
 
-import { startOwnRequest, finishOwnRequest } from './rooms.server';
+import { startOwnRequest, finishOwnRequest, ensurePlaying } from './rooms.server';
 
 beforeEach(() => {
   beginSong.mockReset();
@@ -74,5 +74,51 @@ describe('finishOwnRequest — end_song(complete) outcome mapping', () => {
   it('throws if end_song surfaces an error', async () => {
     endSong.mockRejectedValueOnce(new Error('boom'));
     await expect(finishOwnRequest('room-1', 'req-1')).rejects.toThrow('boom');
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// BUILD 21 — ensurePlaying must PASS THROUGH the duration diagnosis.
+//
+// This layer sits between beginSong (which classifies) and /dj/start (which words the message),
+// and it is exactly where the diagnosis was almost lost: `admissionDetailOf` copies a fixed list
+// of numeric fields, so a new field is silently dropped unless it is threaded explicitly. These
+// tests fail if that thread is ever cut again.
+// ---------------------------------------------------------------------------------------------
+
+describe('BUILD 21 — ensurePlaying threads durationFailureReason', () => {
+  beforeEach(() => {
+    activeRows.length = 0;
+    activeRows.push({ id: 'req-1', status: 'waiting', ready_at: '2026-08-01T00:00:00.000Z' } as never);
+  });
+
+  it.each(['too_long', 'video_unavailable', 'quota_exceeded', 'lookup_failed', 'not_configured'])(
+    'carries reason %s up to the route layer',
+    async (reason) => {
+      beginSong.mockResolvedValueOnce({ outcome: 'duration_unavailable', durationFailureReason: reason });
+      const res = await ensurePlaying('room-1', 'req-1', 'evt-1');
+      expect(res.outcome).toBe('duration_unavailable');
+      expect(res.durationFailureReason).toBe(reason);
+    },
+  );
+
+  it('omits the key entirely when the resolver classified nothing (shipped shape preserved)', async () => {
+    beginSong.mockResolvedValueOnce({ outcome: 'duration_unavailable' });
+    const res = await ensurePlaying('room-1', 'req-1', 'evt-1');
+    expect(res.outcome).toBe('duration_unavailable');
+    expect('durationFailureReason' in res).toBe(false);
+  });
+
+  it('never attaches a reason to a NON-duration block', async () => {
+    beginSong.mockResolvedValueOnce({ outcome: 'pass_insufficient', durationSeconds: 242 });
+    const res = await ensurePlaying('room-1', 'req-1', 'evt-1');
+    expect(res.outcome).toBe('pass_insufficient');
+    expect('durationFailureReason' in res).toBe(false);
+  });
+
+  it('a blocked start still mutates nothing — exactly one begin attempt, no second call', async () => {
+    beginSong.mockResolvedValueOnce({ outcome: 'duration_unavailable', durationFailureReason: 'too_long' });
+    await ensurePlaying('room-1', 'req-1', 'evt-1');
+    expect(beginSong).toHaveBeenCalledTimes(1);
   });
 });

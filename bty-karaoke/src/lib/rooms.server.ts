@@ -3,6 +3,7 @@
 
 import { karaokeDb } from './supabase.server';
 import { beginSong, endSong, type BeginOutcome } from './metering.server';
+import type { DurationFailureReason } from './youtube-duration.server';
 // B2 enforcement: `upgrade_required` (FREE + enforcement on + no daily minutes left)
 // is a first-class lifecycle outcome — it must reach the caller/route as itself, never
 // collapse into a generic "invalid/not_ready". The `entitlement` snapshot travels with
@@ -882,6 +883,8 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
 interface PromoteFlip extends AdmissionDetail {
   outcome: StartOutcome;
   entitlement?: unknown;
+  // BUILD 21 — the resolver's duration diagnosis, threaded up unchanged (duration_unavailable only).
+  durationFailureReason?: DurationFailureReason;
 }
 
 /**
@@ -990,6 +993,8 @@ async function promoteRequestToPlaying(roomId: string, requestId: string): Promi
     outcome: beginToStartOutcome(r.outcome, { roomId, requestId }),
     entitlement: r.entitlement,
     ...admissionDetailOf(r),   // R1 — thread the transaction's own values up unchanged
+    // BUILD 21 — same rule for the duration diagnosis: passthrough only, never derived here.
+    ...(r.durationFailureReason ? { durationFailureReason: r.durationFailureReason } : {}),
   };
 }
 
@@ -1012,6 +1017,9 @@ export interface EnsurePlayingResult extends AdmissionDetail {
   playing?: KaraokeRequest;
   /** Present when outcome === 'upgrade_required' — the truthful usage snapshot. */
   entitlement?: unknown;
+  // BUILD 21 — present ONLY on 'duration_unavailable': why the duration could not be trusted.
+  // Pure passthrough from the resolver; this layer never classifies and never defaults it.
+  durationFailureReason?: DurationFailureReason;
 }
 
 /**
@@ -1065,7 +1073,14 @@ export async function ensurePlaying(
     // client can retry (duration) or explain the pass shortfall.
     // R1 §C/§E — pass_insufficient carries its boundary detail; duration_unavailable stays bare
     // (admissionDetailOf yields all-undefined there, so no fabricated zero can leak out).
-    return { outcome: flip.outcome, ...admissionDetailOf(flip) };
+    // BUILD 21 — carry the duration diagnosis when the resolver classified one. Spread
+    // conditionally so an unclassified failure keeps the key ABSENT rather than undefined,
+    // preserving the exact pre-BUILD-21 shape.
+    return {
+      outcome: flip.outcome,
+      ...admissionDetailOf(flip),
+      ...(flip.durationFailureReason ? { durationFailureReason: flip.durationFailureReason } : {}),
+    };
   }
   if (flip.outcome === 'already_playing') {
     const p = (await listActiveRequests(roomId, eventId)).find((r) => r.status === 'playing');

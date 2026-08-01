@@ -71,6 +71,40 @@ function saveQueueCache(slug: string, payload: QueuePayload) {
 const POLL_MS = 4000;
 const NEW_HOLD_MS = 4500;
 
+/**
+ * BUILD 21 — a fail-closed admission block, bound to the canonical request it refers to.
+ *
+ * `reason` is the server's classification when it sent one; the message is always the server's
+ * sentence, so the wording lives in exactly one place (the route) and this client never invents
+ * an explanation it cannot justify.
+ */
+export interface AdmissionBlock {
+  requestId: string;
+  reason?: string;
+  message: string;
+}
+
+/**
+ * Pure reconciliation: is this block still about something real?
+ *
+ * Identity is the canonical `requestId` and NOTHING else. Two queue rows may legitimately carry
+ * the same youtube_video_id, the same title, and the same artist — an 18B same-song repeat is a
+ * genuinely distinct request. Matching on song identity would keep a dead notice alive whenever a
+ * twin of the blocked song is still queued (and, symmetrically, attach one request's failure to
+ * another's row), so the comparison must never fall back to videoId/title/position.
+ *
+ * `queueRequestIds` must be CANONICAL server truth. The caller is responsible for not passing an
+ * empty list before the first successful load — "we haven't loaded yet" is not "it's gone".
+ */
+export function reconcileAdmissionBlock(
+  block: AdmissionBlock | null,
+  queueRequestIds: readonly string[],
+): AdmissionBlock | null {
+  if (!block) return null;
+  // Same object identity when retained, so a poll-driven reconcile never re-renders.
+  return queueRequestIds.includes(block.requestId) ? block : null;
+}
+
 interface QueuePayload {
   room: { display_name: string; status: 'open' | 'closed' };
   role: 'dj' | 'admin';
@@ -90,6 +124,16 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   const [reconnecting, setReconnecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BUILD 21 — the fail-closed ADMISSION block, kept apart from `error` on purpose.
+  //
+  // `error` is transient action feedback: every mutation handler clears it on its next attempt.
+  // An admission block is different — the song is still in the queue and STILL cannot start, so
+  // the explanation has to outlive polling and outlive the Host's next unrelated action.
+  //
+  // It is keyed by canonical requestId, never by videoId/title/position: a same-song repeat is a
+  // legitimately different request (18B), so blocking "this request" must never silently attach
+  // itself to its twin.
+  const [admissionBlock, setAdmissionBlock] = useState<AdmissionBlock | null>(null);
   // Set ONLY when the same-origin BTY Player tab could not be opened (popup blocked). The
   // Admin stays fully open and we surface an explicit "Open the Player" link instead — the
   // Admin tab is never navigated away by the handoff.
@@ -161,6 +205,15 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
     },
     [slug, authHeader, markArrivals],
   );
+
+  // BUILD 21 — reconcile the admission block against canonical queue truth after every load.
+  // Guarded on `data`: before the first successful load there is no canonical list, and
+  // "not loaded yet" must never be mistaken for "the request is gone". `reconcileAdmissionBlock`
+  // returns the SAME object when the block survives, so a poll causes no re-render.
+  useEffect(() => {
+    if (!data) return;
+    setAdmissionBlock((prev) => reconcileAdmissionBlock(prev, (data.requests ?? []).map((r) => r.id)));
+  }, [data]);
 
   // B2 — fetch the server-truth usage projection (FREE minutes remaining / warning /
   // block). Best-effort: a hiccup just leaves the last-known banner in place. The
@@ -471,15 +524,33 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
             error?: string;
             code?: string;
             usage?: UsageProjection | null;
+            /** BUILD 21 — the server's duration-block classification; absent on older payloads. */
+            reason?: string;
           };
           // B2: FREE daily limit blocked this first-song start. Nothing mutated — show
           // the upgrade state and refresh the banner from the server's usage snapshot.
           if (res.status === 402 || body.code === 'upgrade_required') {
             if (body.usage) setUsage(body.usage);
           }
+          // BUILD 21 — a fail-closed duration block is not transient action feedback: the song
+          // stays queued and still cannot start, and for `too_long` / `video_unavailable` it
+          // never will. Publish it to the request-keyed durable notice instead of `error`, so
+          // the next poll or unrelated action cannot erase the one sentence that tells the Host
+          // to pick a different song.
+          if (res.status === 503 && body.code === 'duration_unavailable') {
+            setAdmissionBlock({
+              requestId: nextId,
+              reason: body.reason,
+              message: body.error ?? '재생 상태를 변경하지 못했습니다.',
+            });
+            return;
+          }
           setError(body?.error ?? '재생 상태를 변경하지 못했습니다.');
           return;
         }
+        // Success for THIS request supersedes any block it previously carried. Another
+        // request's block is deliberately left alone — that song is still unplayable.
+        setAdmissionBlock((prev) => (prev?.requestId === nextId ? null : prev));
         await loadQueue(cred);
       }
       // Server transition succeeded and is canonical — EXACTLY ONE lifecycle op ran above.
@@ -767,6 +838,22 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
           hidden for PRO and while enforcement is disabled. Survives refresh/relaunch
           because it is reconstructed from /dj/usage, never from local countdown state. */}
       <UsageBanner usage={usage} />
+      {/* BUILD 21 — the fail-closed admission block. Rendered from its OWN request-keyed state
+          (never `error`, which every next action clears), so the explanation stays on screen
+          while the Host decides what to do. It disappears on 확인, on a successful start of the
+          SAME request, or when that request leaves the canonical queue — never on a poll. */}
+      {admissionBlock && (
+        <div className="banner error" role="alert" data-admission-block={admissionBlock.requestId}>
+          <span style={{ whiteSpace: 'pre-line' }}>{admissionBlock.message}</span>
+          <button
+            className="linkish"
+            style={{ marginLeft: 12 }}
+            onClick={() => setAdmissionBlock(null)}
+          >
+            확인
+          </button>
+        </div>
+      )}
       <DjBoard
         slug={slug}
         displayName={displayName}

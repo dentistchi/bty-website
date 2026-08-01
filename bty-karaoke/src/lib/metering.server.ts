@@ -8,7 +8,7 @@
 // RPCs record segments but never block a start and never surface a countdown.
 
 import { karaokeDb } from './supabase.server';
-import { resolveVideoDuration } from './youtube-duration.server';
+import { resolveVideoDuration, type DurationFailureReason } from './youtube-duration.server';
 
 /** karaoke_begin_song outcomes (superset; callers map to their own result types). */
 export type BeginOutcome =
@@ -66,6 +66,10 @@ export interface BeginResult {
   finalSongChargedSeconds?: number | null;
   /** The FREE remaining at the instant of admission (becomes 0 afterwards). */
   remainingBeforeSeconds?: number | null;
+  // BUILD 21 — why `duration_unavailable` happened. Additive and optional: it is present ONLY
+  // on that outcome, is never computed by the RPC, and changes no admission decision. Absent
+  // means "unclassified", which callers must render as the previously shipped generic copy.
+  durationFailureReason?: DurationFailureReason;
 }
 export interface EndResult {
   outcome: EndOutcome;
@@ -96,8 +100,13 @@ export async function beginSong(
   const account = await roomOwnerAccountId(roomId);
   if (account && (await leaseWriteEnabled(account))) {
     const videoId = await requestVideoId(roomId, requestId);
-    const dur = videoId ? await resolveVideoDuration(videoId) : null;
-    if (dur == null) return { outcome: 'duration_unavailable' }; // fail closed: no RPC, no mutation
+    // BUILD 21 — the resolution now says WHY. The fail-closed rule is unchanged: anything other
+    // than a trusted duration blocks the start before the RPC, so no lifecycle row, no segment,
+    // and no lease can be written. Only the diagnosis travels onward.
+    const dur = videoId
+      ? await resolveVideoDuration(videoId)
+      : ({ ok: false, reason: 'lookup_failed' } as const); // no canonical videoId to resolve
+    if (!dur.ok) return { outcome: 'duration_unavailable', durationFailureReason: dur.reason };
     return beginSongV2(roomId, requestId, mode);
   }
   const { data, error } = await karaokeDb().rpc('karaoke_begin_song', {

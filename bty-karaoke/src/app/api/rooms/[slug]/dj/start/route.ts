@@ -60,6 +60,36 @@ function admissionFields(r: {
   return out;
 }
 
+/**
+ * BUILD 21 — the ONE place a fail-closed duration block's wording is decided.
+ *
+ * The shipped sentence told every Host to "try again in a moment". For a 40-minute medley, a
+ * deleted video, or an exhausted daily quota that is simply false, and it leaves the Host
+ * tapping Start forever. Each reason therefore states what actually happened and what to do
+ * next; the song is never lost, so every branch says the queue is untouched.
+ *
+ * `lookup_failed` deliberately REUSES the shipped generic sentence — it is the one cause for
+ * which "try again in a moment" is true. An absent or unrecognized reason falls back to that
+ * same sentence, so an older/unclassified payload renders exactly as it does today.
+ */
+const DURATION_BLOCK_GENERIC = '영상 길이를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.';
+
+const DURATION_BLOCK_COPY: Record<string, string> = {
+  too_long:
+    '이 영상은 너무 길어요 (15분을 넘습니다). 노래는 대기열에 그대로 있습니다.\n더 짧은 버전을 선택해 주세요.',
+  video_unavailable:
+    '이 영상을 재생할 수 없어요 (삭제되었거나 비공개일 수 있어요). 노래는 대기열에 그대로 있습니다.\n다른 영상을 선택해 주세요.',
+  quota_exceeded:
+    'YouTube 일일 조회 한도를 초과해 영상 길이를 확인할 수 없어요. 노래는 대기열에 그대로 있습니다.\n한도가 복구된 뒤 다시 시도해 주세요.',
+  lookup_failed: DURATION_BLOCK_GENERIC,
+  not_configured:
+    '영상 길이 확인이 설정되지 않아 재생을 시작할 수 없어요. 노래는 대기열에 그대로 있습니다.\n관리자에게 문의해 주세요.',
+};
+
+function durationBlockCopy(reason: string | undefined): string {
+  return (reason && DURATION_BLOCK_COPY[reason]) || DURATION_BLOCK_GENERIC;
+}
+
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   const cred = roomCredentialFromRequest(req);
@@ -121,13 +151,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         },
         { status: 402, headers: NO_STORE },
       );
-    case 'duration_unavailable':
-      // BUILD 20M v2 (allowlist): the video's playback duration could not be resolved. FAIL
-      // CLOSED — nothing started, no lease, no handoff. Retryable (transient lookup blip).
+    case 'duration_unavailable': {
+      // BUILD 20M v2: the video's playback duration could not be resolved. FAIL CLOSED —
+      // nothing started, no lease, no handoff.
+      // BUILD 21: `code` and the 503 status are FROZEN (an older client keys on them and must
+      // keep working), while `reason` is additive and emitted only when the resolver actually
+      // classified one — so an unclassified block is byte-identical to the shipped response.
+      const reason = result.durationFailureReason;
       return NextResponse.json(
-        { error: '영상 길이를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.', code: 'duration_unavailable' },
+        {
+          error: durationBlockCopy(reason),
+          code: 'duration_unavailable',
+          ...(reason ? { reason } : {}),
+        },
         { status: 503, headers: NO_STORE },
       );
+    }
     case 'pass_insufficient':
       // BUILD 20M v2: the timed pass cannot cover the whole video (would play past expiry).
       // R1 §C — carry the boundary detail so the client can state it concretely. No account,
