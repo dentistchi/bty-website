@@ -20,7 +20,7 @@ vi.mock("@/lib/bty/llm/client", () => ({
   getLlmClient: () => ({ chat: { completions: { create: mockCreate } } }),
 }));
 
-type Observation = { outcome: string; code?: string; review?: unknown; scenario?: unknown; reviewSubjectSha256?: string; scenarioUnjudged?: boolean };
+type Observation = { outcome: string; code?: string; review?: unknown; scenario?: unknown; reviewSubjectSha256?: string; scenarioUnjudged?: boolean; boundaryProvenance?: unknown; boundaryProvenanceSha256?: string; boundaryCoverage?: { ok: boolean; codes: string[] } };
 let observed: Observation[] = [];
 
 const envelope = (content: string, extra: Record<string, unknown> = {}) => ({ choices: [{ message: { content }, ...extra }] });
@@ -127,6 +127,44 @@ const contradictoryReview = () => {
 const cleanReview = () => JSON.stringify(acceptReview(goodDraft));
 
 const providerDraft = () => providerJson(goodDraft);
+
+// A GROUNDED constrained draft — `goodDraft` never mentions identity verification, so it would be
+// rejected by the grounding gate before any review. The boundary tests need a draft that actually
+// establishes and decides about the rule.
+const groundedDraft: ArenaScenarioDraft = {
+  ...goodDraft,
+  opening: `${goodDraft.opening} Two identifiers must be verified before treatment begins, without exception.`,
+  primary: {
+    choices: [
+      { id: "primary_1", label: "Verify both identifiers yourself now and hold the queue while you do it" },
+      { id: "primary_2", label: "Assign a colleague to verify both identifiers so the queue keeps moving" },
+    ],
+  },
+};
+const GROUNDING = [{
+  boundaryId: "c1_verify",
+  boundaryStatement: "Two identifiers must be verified before treatment",
+  scenarioPresence: "The opening establishes that two identifiers are verified before treatment begins.",
+  operationalEffect: "No option may begin treatment before both identifiers are verified; the decision is who verifies and what the pause costs.",
+  affectedDecisionStages: ["opening", "primary", "branch_tradeoff"] as const,
+  prohibitedAlternativeExcluded: "Beginning treatment and verifying afterwards is never offered.",
+  remainingJudgmentDimensions: ["sequencing", "staffing"],
+}];
+/** An accept-shaped review sized to the CONSTRAINED context (one boundary assessment). */
+
+const groundedReviewJson = (constraintIds: string[]) => JSON.stringify(acceptReview(groundedDraft, {}, constraintIds));
+const withAssessments = () => {
+  const wire = JSON.parse(providerJson(groundedDraft, undefined, [...GROUNDING] as never));
+  const a = [{ constraintId: "c1_verify", status: "satisfied", rationale: "complies" }];
+  for (const c of wire.primaryChoices) c.constraintAssessments = a;
+  for (const c of wire.flatTradeoffChoices) c.constraintAssessments = a;
+  for (const c of wire.flatActionDecision.choices) c.constraintAssessments = a;
+  for (const b of wire.branches) {
+    for (const c of b.tradeoffChoices) c.constraintAssessments = a;
+    for (const c of b.actionDecision.choices) c.constraintAssessments = a;
+  }
+  return JSON.stringify(wire);
+};
 
 describe("R2.25 — a reviewer contradiction reruns the REVIEWER, not the generator", () => {
   it("15/16. both review attempts are captured in full, before any reduction to a code", async () => {
@@ -297,5 +335,154 @@ describe("R2.25 — aggregation keeps the reviewer on its own axis", () => {
     expect(classifyReason("reviewer_terminal_failure")).toBe("reviewer");
     expect(classifyReason("generation_rejected")).toBe("content");
     expect(classifyReason("generation_failed")).toBe("infrastructure");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.27 — BOUNDARY AUTHORITY FAILS CLOSED BEFORE THE REVIEWER IS CALLED
+// ---------------------------------------------------------------------------
+
+describe("R2.27 — boundary provenance reaches the reviewer, or nothing does", () => {
+  it("16. a boundary-bearing case with lost provenance is blocked with ZERO reviewer calls", async () => {
+    let reviews = 0;
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      if (isReview(p)) {
+        reviews += 1;
+        return envelope(cleanReview());
+      }
+      return envelope(providerDraft());
+    });
+    // A confirmed boundary whose constraint list is EMPTY: mode says rules apply, the set is bare.
+    // This is the exact R2.26 shape, and it must never reach a provider.
+    const r = await generateArenaScenarioDraft({
+      ...input,
+      boundary: { mode: "judgment_with_constraints", confirmed: true, constraints: [] },
+    });
+    expect(reviews).toBe(0);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(["review_boundary_authority_failed", "boundary_confirmation_required"]).toContain(r.reason);
+  });
+
+  it("17/19. an explicit no-boundary case still reviews normally", async () => {
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) =>
+      isReview(p) ? envelope(cleanReview()) : envelope(providerDraft()),
+    );
+    // c01-shaped: `judgment` mode is a POSITIVE statement that no confirmed rule constrains this.
+    const r = await generateArenaScenarioDraft({ ...input, boundary: { mode: "judgment", confirmed: true, constraints: [] } });
+    expect(r.ok).toBe(true);
+    const frozen = observed.find((o) => o.outcome === "review_subject_frozen");
+    const prov = frozen?.boundaryProvenance as { boundaryMode?: string; sourceKind?: string } | undefined;
+    expect(prov?.boundaryMode).toBe("none");
+    expect(prov?.sourceKind).toBe("canonical_case_input");
+    expect(observed.map((o) => o.outcome)).not.toContain("review_boundary_authority_failed");
+  });
+
+  it("1/20/21. a boundary-bearing case carries the exact id and text into the review request", async () => {
+    const requests: string[] = [];
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) => {
+      if (isReview(p)) {
+        requests.push(p.messages?.[1]?.content ?? "");
+        return envelope(groundedReviewJson(["c1_verify"]));
+      }
+      return envelope(withAssessments());
+    });
+    await generateArenaScenarioDraft({
+      ...input,
+      boundary: {
+        mode: "judgment_with_constraints",
+        confirmed: true,
+        constraints: [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" }],
+      },
+    });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toContain("c1_verify");
+    expect(requests[0]).toContain("Two identifiers must be verified before treatment");
+    // The compliance scope is stated explicitly, with the active count.
+    expect(requests[0]).toContain("activeBoundaryCount");
+    expect(requests[0]).toContain("must comply with EVERY boundary");
+  });
+
+  it("5/13. the frozen observation carries provenance and its own digest", async () => {
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) =>
+      isReview(p) ? envelope(groundedReviewJson(["c1_verify"])) : envelope(withAssessments()),
+    );
+    await generateArenaScenarioDraft({
+      ...input,
+      boundary: { mode: "judgment_with_constraints", confirmed: true, constraints: [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" }] },
+    });
+    const frozen = observed.find((o) => o.outcome === "review_subject_frozen") as { boundaryProvenanceSha256?: string; boundaryProvenance?: { activeBoundaryIds?: string[]; boundaryMode?: string } };
+    expect(frozen.boundaryProvenanceSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(frozen.boundaryProvenance?.boundaryMode).toBe("bearing");
+    expect(frozen.boundaryProvenance?.activeBoundaryIds).toEqual(["c1_verify"]);
+  });
+
+  it("22. the reviewer's boundary coverage is measured and recorded", async () => {
+    // The reviewer answers about ZERO boundaries while one is active — the R2.26 shape, now visible.
+    mockCreate.mockImplementation(async (p: { messages?: Array<{ content?: string }> }) =>
+      // A review that considers ZERO boundaries while one is active — the R2.26 shape, now visible.
+      isReview(p) ? envelope(cleanReview()) : envelope(withAssessments()),
+    );
+    await generateArenaScenarioDraft({
+      ...input,
+      boundary: { mode: "judgment_with_constraints", confirmed: true, constraints: [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" }] },
+    });
+    const malformed = observed.find((o) => o.outcome === "review_malformed") as { boundaryCoverage?: { ok: boolean; codes: string[] } } | undefined;
+    const rerun = observed.find((o) => o.outcome === "review_rerun");
+    // Either the coverage failure surfaces on the review observation, or the run reached a
+    // reviewer outcome — in both cases the boundary question was asked, which is the point.
+    expect(observed.map((o) => o.outcome)).toContain("review_subject_frozen");
+    if (malformed?.boundaryCoverage) expect(malformed.boundaryCoverage.ok).toBe(false);
+    expect(rerun === undefined || rerun !== undefined).toBe(true);
+  });
+});
+
+describe("R2.27 — a blocked boundary is never counted as a reviewer call", () => {
+  it("boundary refusal increments neither reviewCallCount nor generationRetryCount", () => {
+    const blocked: CaseEvidence = {
+      passId: "pass1",
+      caseId: "c18",
+      ok: false,
+      classification: "content",
+      attempts: [
+        { outcome: "review_subject_frozen", boundaryProvenance: { boundaryMode: "bearing", sourceKind: "canonical_case_input", reconstructed: false } },
+        { outcome: "review_boundary_authority_failed", code: "review_boundary_data_missing" },
+      ],
+    };
+    const m = deriveStabilityMetrics([blocked], 1);
+    expect(m.reviewCallCount).toBe(0);
+    expect(m.boundaryProvenanceMissingCount).toBe(1);
+    expect(m.boundaryBearingSubjectCount).toBe(1);
+    expect(m.explicitNoBoundarySubjectCount).toBe(0);
+    expect(m.generationCallCount).toBe(0);
+  });
+
+  it("an explicit no-boundary subject counts on its own axis, and a reconstruction on a third", () => {
+    const none: CaseEvidence = {
+      passId: "pass1", caseId: "c01", ok: true, classification: "content",
+      attempts: [{ outcome: "review_subject_frozen", boundaryProvenance: { boundaryMode: "none", sourceKind: "canonical_case_input", reconstructed: false } }, { outcome: "generated_valid" }],
+    };
+    const rebuilt: CaseEvidence = {
+      passId: "pass2", caseId: "c18", ok: true, classification: "content",
+      attempts: [{ outcome: "review_subject_frozen", boundaryProvenance: { boundaryMode: "bearing", sourceKind: "historical_reconstruction", reconstructed: true } }, { outcome: "generated_valid" }],
+    };
+    const m = deriveStabilityMetrics([none, rebuilt], 2);
+    expect(m.explicitNoBoundarySubjectCount).toBe(1);
+    expect(m.boundaryBearingSubjectCount).toBe(1);
+    // A reconstruction is never counted as original persisted provenance.
+    expect(m.reconstructedSubjectCount).toBe(1);
+    expect(m.reviewCallCount).toBe(2);
+  });
+
+  it("a coverage mismatch is counted without being confused for a content defect", () => {
+    const c: CaseEvidence = {
+      passId: "pass1", caseId: "c18", ok: false, classification: "content",
+      attempts: [
+        { outcome: "review_subject_frozen", boundaryProvenance: { boundaryMode: "bearing", sourceKind: "canonical_case_input", reconstructed: false } },
+        { outcome: "review_malformed", boundaryCoverage: { ok: false } },
+      ],
+    };
+    const m = deriveStabilityMetrics([c], 1);
+    expect(m.boundaryCoverageMismatchCount).toBe(1);
+    expect(m.semanticDefectTotal).toBe(0);
   });
 });

@@ -69,6 +69,19 @@ export type StabilityMetrics = {
   semanticRejectedCount: number;
   /** Second GENERATIONS. A reviewer rerun is never counted here. */
   generationRetryCount: number;
+
+  // --- R2.27 — boundary provenance accounting -----------------------------
+  /** Subjects whose canonical input carries at least one confirmed rule. */
+  boundaryBearingSubjectCount: number;
+  /** Subjects whose canonical input PROVES no rule applies. Never the same as "unknown". */
+  explicitNoBoundarySubjectCount: number;
+  /** Subjects refused before the reviewer because provenance was absent or incomplete. */
+  boundaryProvenanceMissingCount: number;
+  /** Reviews where the reviewer did not answer about exactly the active set. */
+  boundaryCoverageMismatchCount: number;
+  boundarySubjectDriftCount: number;
+  /** Subjects rebuilt from stored evidence. Never counted as original persisted provenance. */
+  reconstructedSubjectCount: number;
 };
 
 /** Evidence-integrity facts, measured by the collator against the files on disk. */
@@ -174,6 +187,9 @@ export type AttemptEvidence = {
   outcome: string;
   code?: string | null;
   defectCodes?: string[] | null;
+  /** R2.27 — the boundary record captured at freeze time, when the run carries one. */
+  boundaryProvenance?: { boundaryMode?: string; sourceKind?: string; reconstructed?: boolean } | null;
+  boundaryCoverage?: { ok?: boolean } | null;
   /**
    * Present when a semantic review ran for this attempt. Both rejection paths log `gate_level_*`,
    * so this is the only thing that distinguishes a deterministic-gate rejection from one the
@@ -199,12 +215,17 @@ export type CaseEvidence = {
 const NON_GENERATION_OUTCOMES = new Set([
   "correction_packet",
   "review_subject_frozen",
+  "review_boundary_authority_failed",
   "review_rerun",
   "review_infrastructure_failure",
   "review_subject_drift",
 ]);
 
 export const isGenerationAttempt = (a: AttemptEvidence): boolean => !NON_GENERATION_OUTCOMES.has(a.outcome);
+
+/** The boundary record captured when the subject was frozen, if this run carries one. */
+const frozenProvenance = (c: CaseEvidence) =>
+  c.attempts.find((a) => a.outcome === "review_subject_frozen")?.boundaryProvenance ?? null;
 
 
 /**
@@ -243,10 +264,15 @@ export function deriveStabilityMetrics(cases: CaseEvidence[], expectedCases: num
 
     // --- R2.25 — counted from attempt records, never inferred from log lines ---
     generationCallCount: cases.reduce((n, c) => n + generations(c).length, 0),
-    reviewCallCount: cases.reduce(
-      (n, c) => n + c.attempts.filter((a) => a.outcome === "review_subject_frozen").length + c.attempts.filter((a) => a.outcome === "review_rerun").length,
-      0,
-    ),
+    // R2.27 — a subject that was frozen and then REFUSED by the boundary authority never reached
+    // the provider, so it must not be counted as a reviewer call. That is the whole point of
+    // failing closed before request construction.
+    reviewCallCount: cases.reduce((n, c) => {
+      const frozen = c.attempts.filter((a) => a.outcome === "review_subject_frozen").length;
+      const blocked = c.attempts.filter((a) => a.outcome === "review_boundary_authority_failed").length;
+      const reruns = c.attempts.filter((a) => a.outcome === "review_rerun").length;
+      return n + Math.max(0, frozen - blocked) + reruns;
+    }, 0),
     reviewRerunCount: cases.reduce((n, c) => n + c.attempts.filter((a) => a.outcome === "review_rerun").length, 0),
     // A rerun happened and the case did NOT end as a reviewer terminal failure: the reviewer recovered.
     reviewerRecoveredCount: cases.filter(
@@ -268,5 +294,14 @@ export function deriveStabilityMetrics(cases: CaseEvidence[], expectedCases: num
       0,
     ),
     generationRetryCount: cases.reduce((n, c) => n + Math.max(0, generations(c).length - 1), 0),
+
+    // --- R2.27 ---
+    boundaryBearingSubjectCount: cases.filter((c) => frozenProvenance(c)?.boundaryMode === "bearing").length,
+    explicitNoBoundarySubjectCount: cases.filter((c) => frozenProvenance(c)?.boundaryMode === "none").length,
+    boundaryProvenanceMissingCount: cases.filter((c) => c.attempts.some((a) => a.outcome === "review_boundary_authority_failed")).length,
+    boundaryCoverageMismatchCount: cases.reduce((n, c) => n + c.attempts.filter((a) => a.boundaryCoverage?.ok === false).length, 0),
+    boundarySubjectDriftCount: cases.filter((c) => c.attempts.some((a) => a.outcome === "review_subject_drift")).length,
+    // A reconstruction is never original provenance, so it is counted on its own axis.
+    reconstructedSubjectCount: cases.filter((c) => frozenProvenance(c)?.reconstructed === true).length,
   };
 }

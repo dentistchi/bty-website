@@ -124,7 +124,9 @@
       ],
       "expectedRerunDecision": "rerun_review",
       "isSafetyCase": false,
-      "safetyNote": null
+      "safetyNote": null,
+      "boundaryMode": "none",
+      "boundaryProvenanceAvailable": true
     },
     {
       "sourceRunId": "20260801T024949Z",
@@ -244,7 +246,9 @@
       ],
       "expectedRerunDecision": "rerun_review",
       "isSafetyCase": false,
-      "safetyNote": null
+      "safetyNote": null,
+      "boundaryMode": "none",
+      "boundaryProvenanceAvailable": true
     },
     {
       "sourceRunId": "20260801T024949Z",
@@ -364,7 +368,9 @@
       ],
       "expectedRerunDecision": "rerun_review",
       "isSafetyCase": false,
-      "safetyNote": null
+      "safetyNote": null,
+      "boundaryMode": "none",
+      "boundaryProvenanceAvailable": true
     },
     {
       "sourceRunId": "20260801T024949Z",
@@ -484,7 +490,11 @@
       ],
       "expectedRerunDecision": "rerun_review",
       "isSafetyCase": true,
-      "safetyNote": "The reviewer voted ACCEPT on a scenario whose own branch text leaves the second patient unverified against the confirmed two-identifier boundary. The consistency gate was the only thing that stopped it. A rerun must never be implemented by trusting the reviewer's top-level verdict."
+      "safetyNote": "The reviewer voted ACCEPT on a scenario whose own branch text leaves the second patient unverified against the confirmed two-identifier boundary. The consistency gate was the only thing that stopped it. A rerun must never be implemented by trusting the reviewer's top-level verdict.",
+      "boundaryMode": "bearing",
+      "boundaryProvenanceAvailable": false,
+      "boundaryNote": "R2.27 — this subject IS boundary-bearing (c1_verify) but the R2.23D-R4 case artifact never persisted the rule, so this fixture carries no provenance. The replay authority now REFUSES it with boundary_data_missing instead of reviewing it against an empty set, which is exactly what produced the R2.26 uninterpretable accept. The corrected-boundary replay lives in scripts/practice-c18-boundary-replay.ts, which reconstructs the rule from two agreeing sources and labels it as reconstructed."
     }
-  ]
+  ],
+  "boundaryPolicy": "Each subject declares boundaryMode explicitly. `none` is a positive assertion from the canonical case input; `bearing` without persisted provenance is refused before any reviewer call. An empty array is never allowed to mean both."
 }

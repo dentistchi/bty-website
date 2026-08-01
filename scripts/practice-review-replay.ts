@@ -27,6 +27,7 @@ import {
 import { writeReplayArtifact } from "@/lib/bty/foundry/arena/replayArtifact";
 import { buildReviewSubjectContract } from "@/lib/bty/foundry/arena/reviewSubjectContract";
 import { canonicalJson, scenarioDigest, type ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
+import { noBoundaryProvenance, type BoundaryReviewProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { PRACTICE_SAMPLING } from "@/lib/bty/foundry/arena/arenaScenarioGenerationService";
 
 const MOCK_ENV = "BTY_REVIEW_REPLAY_MOCK";
@@ -52,6 +53,9 @@ type FixtureSubject = {
   liveScenarioSha256: string;
   redactedScenarioStructure: unknown;
   triggeringErrors: string[];
+  /** R2.27 — declared per subject. `bearing` without persisted rules is refused, never reviewed. */
+  boundaryMode?: "none" | "bearing";
+  boundaryProvenanceAvailable?: boolean;
 };
 
 /**
@@ -81,9 +85,17 @@ function buildSubjects(useMock: boolean, evidenceDir: string): ReplaySubject[] {
         throw new Error(`frozen scenario digest mismatch for ${f.sourcePassId}/${f.sourceCaseId}#${f.sourceAttemptIndex}`);
       }
     }
+    // R2.27 — a subject declared boundary-bearing whose rules were never persisted gets NO
+    // provenance, and the replay authority refuses it before any provider call.
+    const provenance: BoundaryReviewProvenance | null =
+      f.boundaryMode === "bearing" && f.boundaryProvenanceAvailable !== true
+        ? null
+        : noBoundaryProvenance(`fixture:${f.sourceCaseId}`, createHash("sha256").update(f.liveScenarioSha256).digest("hex"));
+
     const subject: ReviewSubject = {
       scenario,
       scenarioSha256: scenarioDigest(scenario),
+      boundaryProvenance: provenance,
       generationAttemptId: `${f.sourcePassId}/${f.sourceCaseId}#${f.sourceAttemptIndex}`,
       caseId: f.sourceCaseId,
       confirmedBoundaries: [],

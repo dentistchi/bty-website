@@ -23,6 +23,7 @@
 
 import { canRerunOverSubject, reviewSubjectSha256, scenarioDigest, type ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
 import { isContradiction } from "@/domain/foundry/arena-draft/reviewRerun";
+import { assertReviewBoundaryAuthority, boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 
 /** One historical reviewer-malformed attempt, frozen. */
 export type ReplaySubject = {
@@ -46,9 +47,17 @@ export const REPLAY_OUTCOMES = [
   "provider_failure",
   "schema_failure",
   "subject_digest_mismatch",
+  /** R2.27 — the subject is boundary-bearing but its rules were never persisted. No reviewer call. */
+  "boundary_data_missing",
+  /** R2.27 — the reviewer did not answer about exactly the active set. */
+  "boundary_coverage_mismatch",
+  "provenance_digest_mismatch",
 ] as const;
 
 export type ReplayOutcome = (typeof REPLAY_OUTCOMES)[number];
+
+/** Refusals that happen BEFORE any provider call, and so are never reviewer calls. */
+const NO_PROVIDER_CALL_OUTCOMES = new Set<ReplayOutcome>(["subject_digest_mismatch", "boundary_data_missing", "provenance_digest_mismatch"]);
 
 /** What a single review call can report back. Mirrors the service's review outcome kinds. */
 export type ReplayReviewResult =
@@ -134,6 +143,26 @@ export async function replayOne(deps: ReplayDeps, replayRunId: string, s: Replay
     productQualityAuthority: "human_only" as const,
   };
 
+  // R2.27 — BOUNDARY AUTHORITY FIRST. A boundary-bearing subject whose rules were never persisted
+  // is refused before any provider call. This is what the R2.25 c18 replay could not do: it passed
+  // an empty set, the reviewer answered boundaryIdsConsidered: [], and the accept looked like a
+  // verdict when the question had never been asked.
+  const prov = s.subject.boundaryProvenance;
+  const authority = assertReviewBoundaryAuthority(prov, prov ? boundaryProvenanceSha256(prov) : undefined);
+  if (!authority.ok) {
+    return {
+      ...base,
+      outcome: authority.codes.includes("review_boundary_provenance_mismatch") ? "provenance_digest_mismatch" : "boundary_data_missing",
+      reviewResponse: null,
+      overallVerdict: null,
+      derivedDefects: [],
+      consistency: "not_evaluated",
+      latencyMs: deps.now() - startedAt,
+      finishReason: null,
+      sanitizedError: authority.codes.join(","),
+    };
+  }
+
   // Recompute the subject from its own content. A fixture whose scenario was edited after its digest
   // was recorded must be refused, not reviewed.
   const recomputed: ReviewSubject = { ...s.subject, scenarioSha256: scenarioDigest(s.subject.scenario) };
@@ -188,7 +217,9 @@ export async function runReviewReplay(deps: ReplayDeps, replayRunId: string, sub
 
   for (const s of subjects) {
     const result = await replayOne(deps, replayRunId, s);
-    if (result.outcome !== "subject_digest_mismatch") reviewCallCount += 1;
+    // Only outcomes that actually reached the provider count as reviewer calls. A subject refused
+    // by the boundary or digest authority never left this process.
+    if (!NO_PROVIDER_CALL_OUTCOMES.has(result.outcome)) reviewCallCount += 1;
     outcomes[result.outcome] += 1;
     const written = deps.writeArtifact(
       {
@@ -216,6 +247,8 @@ export function replayTerminalLabel(s: ReplaySummary): string[] {
     `REVIEWER REPLAY COMPLETE · ${s.executed}/${s.expected} SUBJECTS`,
     `consistent_accept ${s.outcomes.consistent_accept} · consistent_reject ${s.outcomes.consistent_reject} · repeated_contradiction ${s.outcomes.repeated_contradiction}`,
     `provider_failure ${s.outcomes.provider_failure} · schema_failure ${s.outcomes.schema_failure} · subject_digest_mismatch ${s.outcomes.subject_digest_mismatch}`,
+    `boundary_data_missing ${s.outcomes.boundary_data_missing} · boundary_coverage_mismatch ${s.outcomes.boundary_coverage_mismatch} · provenance_digest_mismatch ${s.outcomes.provenance_digest_mismatch}`,
+    `REVIEWER CALLS: ${s.reviewCallCount}`,
     "REVIEWER RECOVERY MEASURED · PRODUCT QUALITY NOT MEASURED",
     `GENERATION CALLS: ${s.generationCallCount}`,
   ];

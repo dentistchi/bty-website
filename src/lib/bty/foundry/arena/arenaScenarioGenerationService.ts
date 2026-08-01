@@ -13,6 +13,15 @@ import {
 } from "@/domain/foundry/arena-draft/safety";
 import { validateConstraintAssessments, type ConstraintAssessment, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { MAX_ACTIVE_BOUNDARIES, resolveActiveBoundaries, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
+import {
+  assertReviewBoundaryAuthority,
+  boundaryProvenanceSha256,
+  buildBoundaryProvenance,
+  checkBoundaryCoverage,
+  noBoundaryProvenance,
+  sha256 as provenanceSha256,
+  type BoundaryReviewProvenance,
+} from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { type ReviewSubject, canRerunOverSubject, reviewSubjectSha256, scenarioDigest } from "@/domain/foundry/arena-draft/reviewSubject";
 import { buildReviewSubjectContract } from "./reviewSubjectContract";
 import {
@@ -100,7 +109,9 @@ export type GenerationFailureReason =
   | "active_boundary_set_changed"
   | "boundary_scope_not_confirmed"
   /** R2.25 — the reviewer failed twice over an identical frozen subject; content never judged. */
-  | "reviewer_terminal_failure";
+  | "reviewer_terminal_failure"
+  /** R2.27 — boundary provenance was missing, incomplete or drifted. No reviewer call was made. */
+  | "review_boundary_authority_failed";
 
 export type GenerationResult =
   | { ok: true; value: GeneratedDraft }
@@ -122,7 +133,8 @@ export type GenerationResult =
         | "missing_required_active_boundary"
         | "active_boundary_set_changed"
         | "boundary_scope_not_confirmed"
-        | "reviewer_terminal_failure";
+        | "reviewer_terminal_failure"
+        | "review_boundary_authority_failed";
     };
 
 /** Deterministic digest of the correction an attempt received. Evidence, not configuration. */
@@ -267,6 +279,13 @@ export type GenObservation = {
   reviewContractSha256?: string;
   /** True when a reviewer terminal failure meant the scenario content was never judged. */
   scenarioUnjudged?: boolean;
+  /** R2.27 — canonical boundary record and its digest, on every review-related observation. */
+  boundaryProvenanceSha256?: string;
+  boundaryProvenance?: unknown;
+  /** The exact boundary projection the reviewer request carried. */
+  reviewRequestBoundaries?: Array<{ id: string; statement: string }>;
+  /** Whether the reviewer answered about exactly the active set. */
+  boundaryCoverage?: { ok: boolean; codes: string[]; boundaryIdsConsidered: string[]; assessmentIds: string[] };
 };
 let genObserver: ((o: GenObservation) => void) | null = null;
 /**
@@ -598,6 +617,11 @@ type ReviewOutcome =
 export type ReviewEvidence = {
   reviewAttempt: number;
   reviewSubjectSha256: string;
+  /** R2.27 — the exact boundary projection this request carried, and how the reviewer covered it. */
+  reviewRequestBoundaries?: Array<{ id: string; statement: string }>;
+  boundaryIdsConsidered?: string[];
+  boundaryAssessmentIds?: string[];
+  boundaryCoverage?: { ok: boolean; codes: string[] };
   /** The parsed reviewer DTO, in full: per-choice, per-phase, per-branch, cross-branch, urgency, boundary. */
   parsed: unknown;
   overallVerdict: string | null;
@@ -692,8 +716,16 @@ async function reviewConstraintCompliance(
   const reviewAttempt = subject?.attempt ?? 1;
   try {
     const system = REVIEW_SYSTEM_PROMPT;
+    // R2.27 — the ACTIVE boundary projection, with its count made explicit so the reviewer cannot
+    // silently answer about a subset. The judgment instructions themselves are unchanged.
+    const activeBoundaries = constraints.map((c) => ({ id: c.id, statement: c.statement }));
     const payload = {
-      constraints: constraints.map((c) => ({ id: c.id, statement: c.statement })),
+      constraints: activeBoundaries,
+      activeBoundaryCount: activeBoundaries.length,
+      boundaryComplianceScope:
+        activeBoundaries.length === 0
+          ? "No confirmed boundary applies to this case."
+          : "Every primary, tradeoff and action choice — and every resulting world state — must comply with EVERY boundary listed in `constraints`. Return exactly one boundaryAssessment per listed id.",
       // R2.22 — the reviewer must judge every visible choice AT ITS COORDINATE, and must confirm or
       // dispute the provider's construction record rather than silently inheriting it.
       visibleChoices: enumerateChoices(draft).map((c) => ({
@@ -738,6 +770,7 @@ async function reviewConstraintCompliance(
     const evidence = (over: Partial<ReviewEvidence>): ReviewEvidence => ({
       reviewAttempt,
       reviewSubjectSha256: subjectSha,
+      reviewRequestBoundaries: activeBoundaries,
       parsed: null,
       overallVerdict: null,
       derivedDefects: [],
@@ -770,8 +803,21 @@ async function reviewConstraintCompliance(
     });
     // A contradictory or unsupported review is NOT a safety outcome — it is a broken review.
     // R2.25 splits the two responses it can deserve. Everything is captured BEFORE reduction.
+    // R2.27 — did the reviewer answer about EXACTLY the active set? Coverage only; whether its
+    // judgment is right is a separate question this slice deliberately does not touch.
+    const dto = (v.ok ? v.value : v.value) as { boundaryIdsConsidered?: string[]; boundaryAssessments?: Array<{ boundaryId?: string }> } | undefined;
+    const considered = dto?.boundaryIdsConsidered ?? [];
+    const assessmentIds = (dto?.boundaryAssessments ?? []).map((a) => String(a?.boundaryId ?? ""));
+    const coverage = checkBoundaryCoverage(activeBoundaries.map((b) => b.id), considered, assessmentIds);
+    const coverageEvidence = {
+      boundaryIdsConsidered: considered,
+      boundaryAssessmentIds: assessmentIds,
+      boundaryCoverage: coverage.ok ? { ok: true, codes: [] as string[] } : { ok: false, codes: coverage.codes as string[] },
+    };
+
     if (!v.ok) {
       const ev = evidence({
+        ...coverageEvidence,
         parsed: v.value ?? parsed,
         overallVerdict: (v.value?.overallVerdict as string | undefined) ?? null,
         derivedDefects: v.derivedDefects ?? [],
@@ -887,24 +933,54 @@ type DeclineReason =
   | "boundary_scope_not_confirmed"
   /** R2.25 — the reviewer failed twice over an identical frozen subject; content never judged. */
   | "reviewer_terminal_failure";
+/**
+ * R2.27 — the canonical input is the ONLY thing entitled to say "no boundaries apply".
+ *
+ * Every `generate` result now carries an explicit provenance record, so downstream code never has
+ * to interpret an empty array. `sourceSha256` digests the canonical input that authorised the
+ * answer, which is what makes the claim checkable later.
+ */
+function inputSourceDigest(input: ScenarioGenInput): string {
+  return provenanceSha256(JSON.stringify({ facts: input.facts, guided: input.guided, boundary: input.boundary ?? null, scope: input.boundaryScope ?? null }));
+}
+
 function resolveAuthority(
   input: ScenarioGenInput,
-): { kind: "decline"; reason: DeclineReason } | { kind: "generate"; constraints: PracticeBoundary["constraints"] } {
+): { kind: "decline"; reason: DeclineReason } | { kind: "generate"; constraints: PracticeBoundary["constraints"]; provenance: BoundaryReviewProvenance } {
   const boundary = input.boundary;
+  const src = inputSourceDigest(input);
+  const ref = boundary?.mode ? `boundary:${boundary.mode}` : "boundary:none";
   if (boundary && boundary.confirmed) {
     if (boundary.mode === "knowledge_check") return { kind: "decline", reason: "fixed_answer_knowledge" };
-    if (boundary.mode === "judgment") return { kind: "generate", constraints: [] };
+    // `judgment` mode is a POSITIVE statement that no confirmed rule constrains this practice.
+    if (boundary.mode === "judgment") return { kind: "generate", constraints: [], provenance: noBoundaryProvenance(ref, src) };
     // R2.23C — ACTIVE boundaries for THIS situation. With 4+ confirmed the Host must choose at most
     // three; the system never picks a default set, never merges and never silently drops a rule the
     // Manager confirmed. Every unselected rule stays available for another Practice situation.
     const scoped = resolveActiveBoundaries(boundary, input.boundaryScope);
     if (scoped.kind === "scope_required") return { kind: "decline", reason: scoped.code };
-    return { kind: "generate", constraints: scoped.constraints };
+    return {
+      kind: "generate",
+      constraints: scoped.constraints,
+      provenance: buildBoundaryProvenance({
+        // `judgment_with_constraints` DECLARES that confirmed rules apply. An empty constraint list
+        // under that mode is a contradiction, not a no-boundary case, and must fail closed.
+        declaredBearing: true,
+        // The AVAILABLE set is every confirmed rule, not just the active subset — dropping it is
+        // how "the Host narrowed this" became indistinguishable from "a rule went missing".
+        available: boundary.constraints,
+        activeIds: scoped.constraints.map((c) => c.id),
+        scopeConfirmed: input.boundaryScope?.confirmed ?? boundary.constraints.length <= MAX_ACTIVE_BOUNDARIES,
+        sourceKind: input.boundaryScope?.confirmed ? "host_confirmed_scope" : "canonical_case_input",
+        sourceReference: ref,
+        sourceSha256: src,
+      }),
+    };
   }
   // No confirmed boundary → free-text classifier only blocks/allows, never authors constraints.
   const eligibility = eligibilityOf(input.facts);
   if (eligibility.kind === "know_only") return { kind: "decline", reason: "fixed_answer_knowledge" };
-  if (eligibility.kind === "judgment_only") return { kind: "generate", constraints: [] };
+  if (eligibility.kind === "judgment_only") return { kind: "generate", constraints: [], provenance: noBoundaryProvenance(ref, src) };
   // mixed_with_non_negotiables or unresolved → a possible boundary exists but is NOT confirmed.
   return { kind: "decline", reason: "boundary_confirmation_required" };
 }
@@ -928,6 +1004,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
     return { ok: false, reason: "generation_unavailable" };
   }
   const constraints = authority.constraints;
+  const boundaryProvenance = authority.provenance;
 
   /** Defect-specific correction appended to the SECOND request. Empty on the first attempt. */
   let retryFeedback = "";
@@ -987,6 +1064,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         // No case id exists on the generation input, so the case is identified by a digest of the
         // source facts — the thing that actually determines which scenario this is.
         caseId: scenarioDigest(input.facts),
+        boundaryProvenance,
         confirmedBoundaries: constraints.map((c) => ({ id: c.id, statement: c.statement })),
         activeBoundaryIds: constraints.map((c) => c.id),
         language: input.locale,
@@ -998,12 +1076,36 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         reviewContractSha256: contract.sha256,
       };
       const subjectSha = reviewSubjectSha256(frozen);
+      const provenanceSha = boundaryProvenanceSha256(boundaryProvenance);
       logGenOutcome("review_subject_frozen", undefined, {
         reviewSubjectSha256: subjectSha,
         scenarioSha256: frozen.scenarioSha256,
         reviewContractSha256: contract.sha256,
+        boundaryProvenanceSha256: provenanceSha,
+        boundaryProvenance,
         ...captured({ scenario: llm.draft }),
       });
+
+      // ---------------------------------------------------------------------
+      // R2.27 — FAIL CLOSED BEFORE THE REVIEWER REQUEST IS BUILT.
+      //
+      // R2.26 measured a boundary-bearing c18 subject reaching the reviewer with an empty rule set:
+      // the reviewer answered `boundaryIdsConsidered: []`, every boundary derivation was inert, and
+      // the accept looked like a reviewer verdict when the question had never been asked. This gate
+      // runs before the request is constructed and before any provider call, so a boundary failure
+      // can never be spent as a review call or mistaken for a model failure.
+      // ---------------------------------------------------------------------
+      const authorityCheck = assertReviewBoundaryAuthority(boundaryProvenance, provenanceSha);
+      if (!authorityCheck.ok) {
+        logGenOutcome("review_boundary_authority_failed", authorityCheck.codes[0], {
+          reviewSubjectSha256: subjectSha,
+          boundaryProvenanceSha256: provenanceSha,
+          boundaryProvenance,
+          defectCodes: authorityCheck.codes,
+          ...captured({ scenario: llm.draft }),
+        });
+        return { ok: false, reason: "review_boundary_authority_failed" };
+      }
 
       let review: ReviewOutcome | null = null;
       let terminal: { reason: GenerationFailureReason } | null = null;
@@ -1035,6 +1137,11 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         if (review.kind === "contradiction") {
           logGenOutcome("review_malformed", review.errors[0], {
             reviewSubjectSha256: subjectSha,
+            boundaryProvenanceSha256: provenanceSha,
+            reviewRequestBoundaries: review.evidence.reviewRequestBoundaries,
+            boundaryCoverage: review.evidence.boundaryCoverage
+              ? { ...review.evidence.boundaryCoverage, boundaryIdsConsidered: review.evidence.boundaryIdsConsidered ?? [], assessmentIds: review.evidence.boundaryAssessmentIds ?? [] }
+              : undefined,
             ...captured({ scenario: llm.draft, review: reviewEvidences }),
           });
         }
@@ -1046,6 +1153,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           // disagreed with itself; the scenario has not been judged yet.
           logGenOutcome("review_rerun", review.kind === "contradiction" ? review.errors[0] : undefined, {
             reviewSubjectSha256: subjectSha,
+            boundaryProvenanceSha256: provenanceSha,
             ...captured({ scenario: llm.draft, review: reviewEvidences }),
           });
           continue;
@@ -1055,6 +1163,8 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           // UNJUDGED — this is never a generator content rejection.
           logGenOutcome(REVIEWER_TERMINAL_FAILURE, review.kind === "contradiction" ? review.errors[0] : undefined, {
             reviewSubjectSha256: subjectSha,
+            boundaryProvenanceSha256: provenanceSha,
+            boundaryProvenance,
             defectCodes: review.kind === "contradiction" ? review.errors : [],
             scenarioUnjudged: true,
             ...captured({ scenario: llm.draft, review: reviewEvidences }),

@@ -24,6 +24,11 @@
  */
 
 import { createHash } from "node:crypto";
+import {
+  boundaryProvenanceSha256,
+  detectBoundaryProvenanceDrift,
+  type BoundaryReviewProvenance,
+} from "./boundaryProvenance";
 
 /** Everything that can legitimately change a review verdict. Nothing else belongs here. */
 export type ReviewSubject = {
@@ -33,6 +38,14 @@ export type ReviewSubject = {
   scenarioSha256: string;
   generationAttemptId: string;
   caseId: string;
+  /**
+   * R2.27 — the CANONICAL boundary record, with its own source and digest.
+   *
+   * `null` is not "no boundaries": it is "unknown", and the review authority refuses it. The
+   * R2.25 replay passed empty arrays for a boundary-bearing case and nothing could tell that apart
+   * from the legitimate c01 no-boundary case.
+   */
+  boundaryProvenance: BoundaryReviewProvenance | null;
   /** Confirmed boundaries, id + statement, in the order the reviewer receives them. */
   confirmedBoundaries: Array<{ id: string; statement: string }>;
   /** The active scope. A boundary that is in scope for one review and not the other is drift. */
@@ -84,12 +97,38 @@ export function reviewSubjectSha256(s: ReviewSubject): string {
       generationModel: s.generationModel,
       generationSampling: s.generationSampling,
       reviewContractSha256: s.reviewContractSha256,
+      // R2.27 — folded in so a boundary swap moves the subject digest too. The provenance digest
+      // remains SEPARATELY auditable via `subjectDigests`, so an auditor never has to unpick this one.
+      boundaryProvenanceSha256: s.boundaryProvenance ? boundaryProvenanceSha256(s.boundaryProvenance) : null,
     }),
   );
 }
 
+/**
+ * The three digests an auditor needs, kept apart.
+ *
+ * R2.27 requires that "which scenario / which contract / which boundaries" each be answerable
+ * without unpicking a single opaque hash — so they are returned individually as well as folded into
+ * `reviewSubjectSha256`.
+ */
+export function subjectDigests(s: ReviewSubject): {
+  scenarioSha256: string;
+  reviewContractSha256: string;
+  boundaryProvenanceSha256: string | null;
+  reviewSubjectSha256: string;
+} {
+  return {
+    scenarioSha256: s.scenarioSha256,
+    reviewContractSha256: s.reviewContractSha256,
+    boundaryProvenanceSha256: s.boundaryProvenance ? boundaryProvenanceSha256(s.boundaryProvenance) : null,
+    reviewSubjectSha256: reviewSubjectSha256(s),
+  };
+}
+
 export type SubjectDriftCode =
   | "subject_digest_mismatch"
+  | "boundary_provenance_mutated"
+  | "boundary_provenance_absent"
   | "scenario_mutated"
   | "boundary_mutated"
   | "active_scope_mutated"
@@ -112,6 +151,14 @@ export function detectSubjectDrift(frozen: ReviewSubject, current: ReviewSubject
     drift.push("active_scope_mutated");
   }
   if (current.reviewContractSha256 !== frozen.reviewContractSha256) drift.push("review_contract_drift");
+  // R2.27 — the boundary record is part of the subject's identity. A rerun judged against a
+  // different rule set is a verdict about a different question.
+  if (!!frozen.boundaryProvenance !== !!current.boundaryProvenance) drift.push("boundary_provenance_absent");
+  else if (frozen.boundaryProvenance && current.boundaryProvenance) {
+    if (detectBoundaryProvenanceDrift(frozen.boundaryProvenance, current.boundaryProvenance).length > 0) {
+      drift.push("boundary_provenance_mutated");
+    }
+  }
   if (current.language !== frozen.language) drift.push("language_mutated");
   if (current.caseId !== frozen.caseId) drift.push("case_mutated");
   if (reviewSubjectSha256(current) !== reviewSubjectSha256(frozen)) drift.push("subject_digest_mismatch");

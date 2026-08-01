@@ -109,7 +109,17 @@ export const EXIT_CODES = { ok: 0, contentFailure: 0, infrastructure: 4, artifac
 // Results
 // ---------------------------------------------------------------------------
 
-export type AttemptRecord = { outcome: string; code?: string; finishReason?: string; defectCodes?: string[] };
+export type AttemptRecord = {
+  outcome: string;
+  code?: string;
+  finishReason?: string;
+  defectCodes?: string[];
+  /** R2.27 — boundary provenance travels with every review-related attempt record. */
+  boundaryProvenanceSha256?: string;
+  boundaryProvenance?: unknown;
+  reviewRequestBoundaries?: Array<{ id: string; statement: string }>;
+  boundaryCoverage?: { ok: boolean; codes: string[]; boundaryIdsConsidered: string[]; assessmentIds: string[] };
+};
 
 export type CaseResult = {
   mode: "mock" | "live";
@@ -127,6 +137,13 @@ export type CaseResult = {
   ok: boolean;
   reason: string | null;
   classification: OutcomeClass;
+  /**
+   * R2.27 — the terminal artifact states which boundaries were in play, so a future replay never
+   * has to guess. `null` means the run predates provenance, and is NOT "no boundaries".
+   */
+  boundaryMode: "none" | "bearing" | null;
+  boundaryProvenanceSha256: string | null;
+  boundaryProvenance: unknown | null;
   primaryCode: string | null;
   defectCodes: string[];
   draft: unknown | null;
@@ -231,8 +248,14 @@ export async function runLiveCase(deps: LiveDeps, config: LiveConfig, passId: st
   }
 
   const last = attempts[attempts.length - 1];
+  // Provenance is recorded once, from the frozen-subject observation, and carried to the terminal.
+  const frozenObs = attempts.find((a) => a.outcome === "review_subject_frozen");
+  const prov = (frozenObs?.boundaryProvenance ?? null) as { boundaryMode?: "none" | "bearing" } | null;
   const result: CaseResult = {
     mode: config.mode,
+    boundaryMode: prov?.boundaryMode ?? null,
+    boundaryProvenanceSha256: frozenObs?.boundaryProvenanceSha256 ?? null,
+    boundaryProvenance: prov,
     runId: config.runId,
     passId,
     caseId: evalCase.id,

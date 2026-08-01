@@ -10,6 +10,9 @@ import {
   isGeneratorContentRejection,
 } from "./reviewRerun";
 import {
+  buildBoundaryProvenance,
+} from "./boundaryProvenance";
+import {
   canRerunOverSubject,
   detectSubjectDrift,
   reviewSubjectSha256,
@@ -32,6 +35,14 @@ const subject = (over: Partial<ReviewSubject> = {}): ReviewSubject => {
     scenarioSha256: scenarioDigest(scenario),
     generationAttemptId: "gen1",
     caseId: "c01",
+    boundaryProvenance: buildBoundaryProvenance({
+      available: [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment", provenance: "manager_entered" }],
+      activeIds: ["c1_verify"],
+      scopeConfirmed: true,
+      sourceKind: "canonical_case_input",
+      sourceReference: "test",
+      sourceSha256: "a".repeat(64),
+    }),
     confirmedBoundaries: [{ id: "c1_verify", statement: "Two identifiers must be verified before treatment" }],
     activeBoundaryIds: ["c1_verify"],
     language: "ko",

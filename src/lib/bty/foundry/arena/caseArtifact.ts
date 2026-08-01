@@ -78,7 +78,39 @@ export class ArtifactWriteError extends Error {
  * The digest is recomputed by READING THE FILE BACK, so the returned value attests to what is on
  * disk rather than to what was in memory.
  */
+/**
+ * R2.27 — a boundary-bearing artifact without provenance is not evidence.
+ *
+ * R2.26 traced the c18 boundary loss to exactly this: the terminal artifact recorded the outcome
+ * and none of the rules it was judged against, so a later replay had nothing to read and silently
+ * substituted an empty set. Refusing the write is what makes that impossible to repeat.
+ */
+export function validateBoundaryEvidence(payload: string): { ok: true } | { ok: false; reason: string } {
+  let body: { boundaryMode?: unknown; boundaryProvenance?: unknown; boundaryProvenanceSha256?: unknown };
+  try {
+    body = JSON.parse(payload) as typeof body;
+  } catch {
+    return { ok: false, reason: "artifact payload is not JSON" };
+  }
+  // `null` marks a run that predates provenance. It is explicit, and it is NOT "no boundaries".
+  if (body.boundaryMode === null || body.boundaryMode === undefined) return { ok: true };
+  if (body.boundaryMode !== "none" && body.boundaryMode !== "bearing") {
+    return { ok: false, reason: `unknown boundaryMode ${String(body.boundaryMode)}` };
+  }
+  if (body.boundaryMode === "bearing") {
+    if (!body.boundaryProvenance) return { ok: false, reason: "boundary-bearing artifact carries no boundary provenance" };
+    if (typeof body.boundaryProvenanceSha256 !== "string" || !/^[0-9a-f]{64}$/.test(body.boundaryProvenanceSha256)) {
+      return { ok: false, reason: "boundary-bearing artifact carries no boundary provenance digest" };
+    }
+  }
+  return { ok: true };
+}
+
 export function writeCaseArtifact(dir: string, id: CaseArtifactIdentity, payload: string): CaseWriteResult {
+  const boundaryCheck = validateBoundaryEvidence(payload);
+  if (!boundaryCheck.ok) {
+    throw new ArtifactWriteError(`ARTIFACT REFUSED · ${boundaryCheck.reason} — incomplete evidence is never written silently`);
+  }
   mkdirSync(dir, { recursive: true });
   const name = caseArtifactPath(id);
   const finalPath = join(dir, name);

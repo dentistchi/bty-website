@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { replayOne, runReviewReplay, replayTerminalLabel, type ReplayDeps, type ReplayReviewResult, type ReplaySubject } from "./reviewReplay";
 import { listReplayArtifacts, replayArtifactPath, writeReplayArtifact, ReplayWriteError } from "./replayArtifact";
 import { scenarioDigest, type ReviewSubject } from "@/domain/foundry/arena-draft/reviewSubject";
+import { noBoundaryProvenance } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { buildReplayBinding, buildReplayChecks, renderReplayRunner } from "./reviewReplayRunnerScript";
 
 const FIXTURE = "src/lib/bty/foundry/arena/fixtures/r225-reviewer-contradiction-subjects.json";
@@ -25,6 +26,8 @@ const subject = (over: Partial<ReviewSubject> = {}): ReviewSubject => {
     scenarioSha256: scenarioDigest(scenario),
     generationAttemptId: "gen1",
     caseId: "c01",
+    // c01 is a LEGITIMATE no-boundary case — an explicit assertion, not a lost lookup.
+    boundaryProvenance: noBoundaryProvenance("test:c01", "b".repeat(64)),
     confirmedBoundaries: [],
     activeBoundaryIds: [],
     language: "ko",
@@ -155,6 +158,7 @@ describe("REPLAY — four subjects, four immutable artifacts, zero generation", 
     expect(summary.generationCallCount).toBe(0);
     expect(summary.reviewCallCount).toBe(4);
     expect(summary.outcomes).toMatchObject({ consistent_accept: 2, consistent_reject: 1, repeated_contradiction: 1 });
+    expect(summary.outcomes.boundary_data_missing).toBe(0); // these fixtures carry explicit provenance
 
     const files = listReplayArtifacts(dir, "R1", "mock");
     expect(files).toHaveLength(4);
@@ -238,7 +242,10 @@ describe("the exact replay program runs end to end on mocks", () => {
   it("a provider failure in the plan is surfaced as a nonzero exit, not smoothed over", () => {
     const r = runCli({ BTY_REVIEW_REPLAY_MOCK: "1" }, ["--replay-run-id", "MOCKFAIL", "--artifact-dir", dir, "--mock-plan", "provider_failure"]);
     expect(r.code).toBe(4);
-    expect(r.stdout).toContain("provider_failure 4");
+    // R2.27 — the c18 fixture subject is boundary-bearing with no persisted rules, so it is refused
+    // BEFORE the provider. Three subjects reach the mock transport and fail there.
+    expect(r.stdout).toContain("provider_failure 3");
+    expect(r.stdout).toContain("boundary_data_missing 1");
   });
 
   it("the replay path contains no generation entry point", () => {

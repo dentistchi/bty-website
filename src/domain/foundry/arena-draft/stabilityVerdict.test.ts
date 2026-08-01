@@ -34,6 +34,12 @@ const perfect = (): StabilityMetrics => ({
   deterministicRejectedCount: 0,
   semanticRejectedCount: 0,
   generationRetryCount: 0,
+  boundaryBearingSubjectCount: 0,
+  explicitNoBoundarySubjectCount: 0,
+  boundaryProvenanceMissingCount: 0,
+  boundaryCoverageMismatchCount: 0,
+  boundarySubjectDriftCount: 0,
+  reconstructedSubjectCount: 0,
 });
 
 /**
@@ -64,6 +70,14 @@ const R4_MEASURED = (): StabilityMetrics => ({
   deterministicRejectedCount: 4,
   semanticRejectedCount: 2,
   generationRetryCount: 5,
+  // The historical run predates boundary provenance: every subject reports `null`, which is
+  // explicitly NOT the same as an explicit no-boundary assertion.
+  boundaryBearingSubjectCount: 0,
+  explicitNoBoundarySubjectCount: 0,
+  boundaryProvenanceMissingCount: 0,
+  boundaryCoverageMismatchCount: 0,
+  boundarySubjectDriftCount: 0,
+  reconstructedSubjectCount: 0,
 });
 
 describe("VERDICT AUTHORITY — execution completeness is not stability", () => {
