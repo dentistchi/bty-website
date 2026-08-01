@@ -1,0 +1,274 @@
+// BUILD 23-GATE-R3 — seed an ISOLATED authority for the end-to-end G1 run.
+//
+// WHY THIS EXISTS. The client-side injection returns UPSTREAM of POST /dj/pass-turn, so it
+// synthesizes `completed:true` without the server completing anything. It therefore cannot prove
+// the four things G1 is actually about: canonical completion of the current song, the blocked
+// request staying waiting + Ready, a REAL server-produced `blockedRequestId`, and poll convergence.
+//
+// The mechanism here uses NO debug bypass anywhere. It seeds a REAL ACTIVE Timed Pass whose
+// remaining window is genuinely shorter than the next song, so `karaoke_begin_song_v2` returns
+// `pass_insufficient` through its ordinary production logic:
+//
+//     v_song_end = now + duration(next)   >   v_pass_expires   ->  'pass_insufficient'
+//
+// The `timed_pass_expiry_math_chk` constraint forces `expires_at = activated_at + duration`, so the
+// short window is produced by BACKDATING `activated_at` — a genuinely ACTIVE ONE_HOUR pass with
+// ~10 minutes left, not a bent row. Every constraint, index, status machine and RPC is the real one.
+//
+// SAFETY. This refuses to run against the production Supabase project, refuses a non-local host
+// unless GATE_B23_ALLOW_REMOTE=1 is set for a dedicated staging project, and touches nothing that
+// exists already: every row it writes carries the `gate-b23` marker and `npm run gate:b23:seed --
+// --clean` removes exactly those rows and nothing else.
+//
+// Usage:
+//   KARAOKE_SUPABASE_URL=http://127.0.0.1:54321 \
+//   KARAOKE_SUPABASE_SERVICE_ROLE_KEY=<local service role> \
+//   node scripts/gate-b23-seed.mjs [--clean]
+
+import { createHash, randomUUID } from 'node:crypto';
+
+// ── The production project this script must NEVER touch ────────────────────────────────────────
+const PRODUCTION_PROJECT_REF = 'zycwaqignioawtqynopj';
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '0.0.0.0']);
+
+const SLUG = 'gate-b23';
+const MARKER = 'gate-b23';
+const DJ_SECRET = 'gate-b23-dj-secret';           // raw credential; only its SHA-256 is stored
+const CURRENT_VIDEO = 'gateB23CURx';              // canonical ids are EXACTLY 11 chars
+const NEXT_VIDEO = 'gateB23NXTx';
+/**
+ * The NEXT song is 14:40 — admissible (<= 900s) but LONGER than the pass window below.
+ *
+ * Overridable so the harness can run its own NEGATIVE CONTROL: seed a duration SHORTER than the
+ * pass remaining (e.g. `GATE_B23_NEXT_DURATION_SECONDS=200`) and the very same setup must promote
+ * normally. A harness that can only ever produce one answer proves nothing about the other.
+ */
+const NEXT_DURATION_SECONDS = Number(process.env.GATE_B23_NEXT_DURATION_SECONDS ?? 880);
+/** A real ONE_HOUR pass, backdated so ~10 minutes remain. 600 < 880 -> pass_insufficient. */
+const PASS_DURATION_SECONDS = 3600;
+const PASS_REMAINING_SECONDS = 600;
+
+function assertIsolated(rawUrl) {
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error(`KARAOKE_SUPABASE_URL is not a URL: ${rawUrl}`);
+  }
+  if (url.host.includes(PRODUCTION_PROJECT_REF)) {
+    throw new Error(
+      `REFUSING: ${url.host} is the PRODUCTION karaoke project (${PRODUCTION_PROJECT_REF}). ` +
+        'This harness must never seed, mutate, or clean production data.',
+    );
+  }
+  const isLocal = LOCAL_HOSTS.has(url.hostname);
+  if (!isLocal && process.env.GATE_B23_ALLOW_REMOTE !== '1') {
+    throw new Error(
+      `REFUSING: ${url.hostname} is not a local host. Point this at a local Supabase, or set ` +
+        'GATE_B23_ALLOW_REMOTE=1 only for a DEDICATED staging project that holds no customer data.',
+    );
+  }
+  return url;
+}
+
+const RAW_URL = process.env.KARAOKE_SUPABASE_URL;
+const KEY = process.env.KARAOKE_SUPABASE_SERVICE_ROLE_KEY;
+if (!RAW_URL || !KEY) {
+  console.error('Missing KARAOKE_SUPABASE_URL / KARAOKE_SUPABASE_SERVICE_ROLE_KEY.');
+  process.exit(1);
+}
+let BASE;
+try {
+  BASE = assertIsolated(RAW_URL);
+} catch (e) {
+  // A clean one-line refusal with a non-zero exit — never a stack trace that could be mistaken
+  // for a crash the operator should work around.
+  console.error(String(e.message ?? e));
+  process.exit(1);
+}
+
+const headers = {
+  apikey: KEY,
+  authorization: `Bearer ${KEY}`,
+  'content-type': 'application/json',
+  prefer: 'return=representation',
+};
+
+async function rest(path, init = {}) {
+  const res = await fetch(`${BASE.origin}/rest/v1/${path}`, { ...init, headers });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${init.method ?? 'GET'} ${path} -> ${res.status} ${text}`);
+  return text ? JSON.parse(text) : null;
+}
+const insert = (table, row) => rest(table, { method: 'POST', body: JSON.stringify(row) });
+const patch = (table, q, row) => rest(`${table}?${q}`, { method: 'PATCH', body: JSON.stringify(row) });
+/** Takes a FULL `table?filter` path — every caller already supplies its own filter. */
+const del = (pathWithFilter) => rest(pathWithFilter, { method: 'DELETE' });
+
+const sha256Hex = (s) => createHash('sha256').update(s).digest('hex');
+const iso = (offsetSeconds) => new Date(Date.now() + offsetSeconds * 1000).toISOString();
+
+// ── CLEAN ──────────────────────────────────────────────────────────────────────────────────────
+async function clean() {
+  const rooms = await rest(`karaoke_rooms?slug=eq.${SLUG}&select=id`);
+  for (const r of rooms ?? []) {
+    // Ordered by FK dependency; karaoke_requests/events/sessions cascade from the room, but the
+    // usage segments and grants do not, so they go first and explicitly.
+    await del(`karaoke_event_usage_segments?room_id=eq.${r.id}`);
+    await del(`karaoke_rooms?id=eq.${r.id}`);
+  }
+  const accounts = await rest(`karaoke_accounts?provider_subject=eq.${MARKER}&select=id`);
+  for (const a of accounts ?? []) {
+    await del(`timed_access_pass_audit?account_id=eq.${a.id}`);
+    await del(`timed_access_pass_grants?account_id=eq.${a.id}`);
+    await del(`karaoke_host_plan_assignments?account_id=eq.${a.id}`);
+    await del(`karaoke_workspace_members?account_id=eq.${a.id}`);
+    await del(`karaoke_accounts?id=eq.${a.id}`);
+  }
+  await del(`karaoke_workspaces?name=eq.${MARKER}`);
+  await del(`karaoke_video_durations?video_id=in.(${CURRENT_VIDEO},${NEXT_VIDEO})`);
+  console.log(`cleaned: every row marked '${MARKER}' on ${BASE.host}`);
+}
+
+// ── SEED ───────────────────────────────────────────────────────────────────────────────────────
+async function seed() {
+  await clean(); // idempotent — re-seeding is always a fresh, known state
+
+  // Enforcement + the v2 lease path must be ON, exactly as production is, or begin_song_v2 is
+  // never reached and the pass gate cannot fire.
+  await patch('karaoke_usage_policy', 'policy_key=eq.default', {
+    enforcement_enabled: true,
+    lease_write_mode: 'on',
+  });
+
+  const [account] = await insert('karaoke_accounts', {
+    provider: 'apple',
+    provider_subject: MARKER,
+    display_name: 'GATE B23',
+  });
+  await insert('karaoke_host_plan_assignments', {
+    account_id: account.id,
+    plan_code: 'FREE', // must NOT be PRO — a PRO account never consumes a pass
+    source: 'MANUAL',
+    status: 'active',
+  });
+
+  const [workspace] = await insert('karaoke_workspaces', { name: MARKER, created_by: account.id });
+  await insert('karaoke_workspace_members', {
+    workspace_id: workspace.id,
+    account_id: account.id,
+    role: 'owner',       // karaoke_room_owner_account requires exactly ONE active owner
+    status: 'active',
+  });
+
+  const [room] = await insert('karaoke_rooms', {
+    slug: SLUG,
+    display_name: 'GATE B23 Room',
+    status: 'open',
+    dj_secret: sha256Hex(DJ_SECRET), // only the hash is ever stored
+  });
+  await insert('karaoke_room_ownership', { room_id: room.id, workspace_id: workspace.id });
+  await insert('karaoke_sessions', { room_id: room.id, status: 'active' });
+
+  const [event] = await insert('karaoke_events', {
+    room_id: room.id,
+    name: 'GATE B23',
+    public_code: `${MARKER}-code`,
+    guest_slug: `${MARKER}-guest`,
+    status: 'active',
+  });
+
+  // The stage: one song ALREADY playing (so the tap is a finish, not a start) and one waiting
+  // song that is READY — the request the server will select for promotion and then refuse.
+  const [current] = await insert('karaoke_requests', {
+    room_id: room.id,
+    event_id: event.id,
+    guest_name: 'Current',
+    youtube_video_id: CURRENT_VIDEO,
+    youtube_title: 'GATE B23 current',
+    position: 1,
+    status: 'playing',
+    started_at: iso(-60),
+  });
+  const [next] = await insert('karaoke_requests', {
+    room_id: room.id,
+    event_id: event.id,
+    guest_name: 'Next',
+    youtube_video_id: NEXT_VIDEO,
+    youtube_title: 'GATE B23 next',
+    position: 2,
+    status: 'waiting',
+    ready_at: iso(-30), // READY — this is what makes needs_ready a WRONG answer
+  });
+
+  // An OPEN usage segment for the song on stage, so the finish exercises REAL segment closure
+  // (karaoke_end_song_v2 sets ended_at + close_reason) rather than closing nothing. All lease
+  // columns stay null — the legacy branch of `usage_seg_lease_consistency` — because this song was
+  // placed on stage by the seed, not admitted through begin_song_v2. `metered` must equal
+  // `plan_snapshot = 'FREE'` (usage_seg_metered_matches_plan).
+  await insert('karaoke_event_usage_segments', {
+    account_id: account.id,
+    event_id: event.id,
+    room_id: room.id,
+    request_id: current.id,
+    plan_snapshot: 'FREE',
+    metered: true,
+    started_at: iso(-60),
+    timezone_snapshot: 'America/Los_Angeles',
+  });
+
+  // Pre-cache the next song's duration so the run needs no YouTube call and is fully
+  // deterministic. begin_song_v2 reads this table directly.
+  await insert('karaoke_video_durations', {
+    video_id: NEXT_VIDEO,
+    duration_seconds: NEXT_DURATION_SECONDS,
+    source: 'gate-b23-seed',
+  });
+
+  // A GENUINELY ACTIVE ONE_HOUR pass with ~10 minutes left. `expires_at` is exactly
+  // `activated_at + duration_seconds`, satisfying timed_pass_expiry_math_chk — the short window
+  // comes from backdating activation, never from bending the constraint.
+  const activatedAt = iso(-(PASS_DURATION_SECONDS - PASS_REMAINING_SECONDS));
+  const expiresAt = new Date(
+    new Date(activatedAt).getTime() + PASS_DURATION_SECONDS * 1000,
+  ).toISOString();
+  const [grant] = await insert('timed_access_pass_grants', {
+    account_id: account.id,
+    pass_type: 'ONE_HOUR',
+    duration_seconds: PASS_DURATION_SECONDS,
+    status: 'ACTIVE',
+    issued_by_manager: MARKER,
+    issue_reason: 'BUILD 23 G1 end-to-end gate',
+    issue_idempotency_key: `${MARKER}-${randomUUID()}`,
+    activated_at: activatedAt,
+    expires_at: expiresAt,
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        authority: BASE.host,
+        roomSlug: SLUG,
+        djCredential: DJ_SECRET,
+        eventId: event.id,
+        currentRequestId: current.id,
+        expectedBlockedRequestId: next.id,
+        passExpiresAt: expiresAt,
+        passRemainingSeconds: PASS_REMAINING_SECONDS,
+        nextSongDurationSeconds: NEXT_DURATION_SECONDS,
+        expectation:
+          `next song ${NEXT_DURATION_SECONDS}s > pass remaining ~${PASS_REMAINING_SECONDS}s ` +
+          '-> karaoke_begin_song_v2 returns pass_insufficient',
+        passGrantSeeded: Boolean(grant),
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+const mode = process.argv.includes('--clean') ? clean : seed;
+mode().catch((e) => {
+  console.error(String(e.message ?? e));
+  process.exit(1);
+});
