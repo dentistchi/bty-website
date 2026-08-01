@@ -145,7 +145,18 @@ export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "  A candidate list belongs to ONE surface. Never use an id from another surface's list, even if its text looks identical — identical text at a different place in the path means something different, and the id you need is already in your own list.",
   `  Use the exact value \`${NO_CANDIDATE}\` when a role needs no evidence. Never use an empty string.`,
   "  If no candidate in a list fits, that is itself a fact: it usually means the prerequisite is `not_established` and there is nothing to select.",
-  "  A candidate list may be EMPTY. That is normal and it is informative: when the governedActionCandidates list is empty, this surface performs nothing the rule governs. Answer governedActionStatus=absent and use the sentinel. Use `uncertain` only when the text is genuinely ambiguous — never to avoid an empty list.",
+  "",
+  "  WHEN TO SELECT AND WHEN TO USE THE SENTINEL. This is decided by the LIST, not by your status:",
+  "",
+  "    | governedActionCandidates | governedActionStatus | governedActionCandidateId |",
+  "    | empty     | absent  | none        |",
+  "    | empty     | present | NOT VALID   |",
+  "    | non-empty | absent  | pool member |",
+  "    | non-empty | present | pool member |",
+  "",
+  "  Use the sentinel ONLY when the governedActionCandidates list for that surface is empty. An empty list is normal and informative: it means nothing in this surface's own text expresses the action the rule governs.",
+  "  When the list is NOT empty you must select exactly one id from it — whether you answer `present` or `absent`. Selecting on an `absent` row is not a contradiction: the candidate records what the surface DOES, and by pairing it with `absent` you are saying that the action you selected is not the action the boundary governs.",
+  "  Use `uncertain` only when the text is genuinely ambiguous — never to avoid choosing from a list.",
   "",
   "EVERY VALID ANSWER IS ONE OF THESE STATES. Fill exactly the fields the state calls for:",
   ...renderTruthStateRules(),
@@ -428,6 +439,15 @@ export type NarrowBoundaryRequest = {
   }>;
   /** The sentinel that means "no evidence for this role". Never an empty string. */
   noCandidateSentinel: string;
+  /**
+   * R2.42 — set ONLY on a failed-subset repair, identifying the projection deterministically.
+   *
+   * R2.41 measured the alternative: the stage computed six repair surfaces and the reviewer rebuilt
+   * the full twelve-surface request, so the repair had never once been a repair. Worse, the merge
+   * would have refused the twelve-row answer it provoked. This field is how an artifact records that
+   * the narrower question was actually asked — it never replaces `boundaryReviewSubjectSha256`.
+   */
+  repairSubsetSha256: string | null;
   /** Count of unreachable duplicates excluded from the matrix. Never assessable. */
   excludedCompatibilitySurfaceCount: number;
   authority: {
@@ -444,6 +464,30 @@ export type NarrowBoundaryRequest = {
   };
 };
 
+/**
+ * Resolve a repair subset against the FROZEN reachable-surface set.
+ *
+ * Fails loudly rather than silently narrowing: an unknown ref means the caller is working from a
+ * different surface map, and a duplicate means the repair plan is malformed. Both would produce a
+ * request the merge authority could never accept.
+ */
+function projectSurfaces(subject: NarrowBoundarySubject, surfaceRefs?: readonly string[]): BoundarySurface[] {
+  if (!surfaceRefs) return subject.surfaces;
+  const known = new Set(subject.surfaces.map((s) => s.coordinate));
+  const seen = new Set<string>();
+  for (const ref of surfaceRefs) {
+    if (!known.has(ref)) throw new Error(`narrow boundary repair: unknown surfaceRef ${ref} for this frozen subject`);
+    if (seen.has(ref)) throw new Error(`narrow boundary repair: duplicate surfaceRef ${ref}`);
+    seen.add(ref);
+  }
+  // Canonical subject order, never the caller's order.
+  return subject.surfaces.filter((s) => seen.has(s.coordinate));
+}
+
+/** Identifies WHICH projection was asked for, bound to the subject it was projected from. */
+const repairSubsetSha256 = (subject: NarrowBoundarySubject, refs: string[]): string =>
+  d({ boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject), surfaceMapSha256: subject.surfaceMapSha256, refs });
+
 /** One surface's menu for one role. Ids and text only — provenance stays server-side. */
 const menu = (
   subject: NarrowBoundarySubject,
@@ -452,10 +496,17 @@ const menu = (
   role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure",
 ) => poolFor(subject.evidenceCandidates, boundaryId, surfaceRef, role).map((c) => ({ candidateId: c.candidateId, excerpt: c.excerpt }));
 
-/** Build the exact user payload. Deterministic: same subject in, byte-identical request out. */
-export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): NarrowBoundaryRequest {
+/**
+ * Build the exact user payload. Deterministic: same subject in, byte-identical request out.
+ *
+ * `surfaceRefs` projects the request onto a failed subset. It is a PROJECTION of the frozen subject,
+ * not a new subject: every authority digest is carried across unchanged, canonical subject order is
+ * preserved regardless of the order asked for, and the projection gets its own separate digest.
+ */
+export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject, surfaceRefs?: readonly string[]): NarrowBoundaryRequest {
+  const projected = projectSurfaces(subject, surfaceRefs);
   const count = subject.boundaries.length;
-  const surfaceCount = subject.surfaces.length;
+  const surfaceCount = projected.length;
   const frameOf = new Map(subject.semanticFrames.map((f) => [f.boundaryId, f]));
   return {
     opening: subject.opening,
@@ -475,7 +526,7 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
     decisionSurfaceCount: surfaceCount,
     requiredAssessmentCount: count * surfaceCount,
     boundaryComplianceScope: boundaryComplianceScopeText(count, surfaceCount),
-    surfaces: subject.surfaces.map((s) => ({
+    surfaces: projected.map((s) => ({
       surfaceRef: s.coordinate,
       kind: s.kind,
       phase: s.phase,
@@ -489,7 +540,7 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
     })),
     evidenceCandidates: subject.boundaries.map((b) => ({
       boundaryId: b.id,
-      surfaces: subject.surfaces.map((s) => ({
+      surfaces: projected.map((s) => ({
         surfaceRef: s.coordinate,
         governedActionCandidates: menu(subject, b.id, s.coordinate, "governed_action"),
         prerequisiteSatisfactionCandidates: menu(subject, b.id, s.coordinate, "prerequisite_satisfaction"),
@@ -497,6 +548,7 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject): Narr
       })),
     })),
     noCandidateSentinel: NO_CANDIDATE,
+    repairSubsetSha256: surfaceRefs ? repairSubsetSha256(subject, projected.map((s) => s.coordinate)) : null,
     excludedCompatibilitySurfaceCount: subject.compatibilitySurfaces.length,
     authority: {
       scenarioSha256: subject.scenarioSha256,

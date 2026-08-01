@@ -103,16 +103,23 @@ function readProviderErrorPayload(body: unknown): { type: string | null; code: s
 export async function reviewBoundarySurfaces(
   subject: NarrowBoundarySubject,
   attempt: number,
+  surfaceRefs?: readonly string[],
   deps?: { now?: () => number },
 ): Promise<NarrowBoundaryCallResult> {
   const now = deps?.now ?? (() => Date.now());
   const startedAt = now();
-  const request = buildNarrowBoundaryRequest(subject);
+  // R2.42 — a failed-subset repair asks ONLY about the surfaces that failed. R2.41 measured this
+  // parameter being declared by the stage and silently dropped here, so every "repair" was a full
+  // twelve-surface re-ask whose answer the merge authority would then have refused.
+  const request = buildNarrowBoundaryRequest(subject, surfaceRefs);
+  const scoped = surfaceRefs ? subject.surfaces.filter((s) => surfaceRefs.includes(s.coordinate)) : subject.surfaces;
   // R2.38 — the validator resolves the SAME candidate menu the model chose from, so an id becomes
   // evidence only through the server's own map. There is no path from model text to authority.
+  // On a repair it is narrowed to the requested surfaces, so coverage is judged against what was
+  // actually asked; the candidate map and every authority digest stay the frozen subject's.
   const ctx: NarrowReviewContext = {
     boundaries: subject.boundaries,
-    surfaces: subject.surfaces,
+    surfaces: scoped,
     frames: subject.semanticFrames,
     candidates: subject.evidenceCandidates,
   };

@@ -118,7 +118,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "settled",
     promptRule:
-      "governedActionStatus=absent, prerequisiteStatus=not_applicable, temporalRelation=not_applicable — this surface does something else (staffing, notification, documentation, reporting, escalation, sequencing, communication). Select the governed-action candidate that shows what it DOES. Both prerequisite candidates must be none. Leave reason empty.",
+      "governedActionStatus=absent, prerequisiteStatus=not_applicable, temporalRelation=not_applicable — this surface does something else (staffing, notification, documentation, reporting, escalation, sequencing, communication). Select the governed-action candidate that shows what it DOES, per the list table above — the sentinel applies only when that list is empty. Both prerequisite candidates must be none. Leave reason empty.",
   },
   {
     // (Part 3 E)

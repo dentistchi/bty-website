@@ -51,7 +51,7 @@ function arg(name: string, fallback?: string): string {
 }
 
 export type NarrowReplayDeps = {
-  review: (subject: NarrowBoundarySubject, attempt: number) => Promise<NarrowBoundaryCallResult>;
+  review: (subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]) => Promise<NarrowBoundaryCallResult>;
   writeArtifact: (payload: string, subjectSha: string) => { path: string; sha256: string; bytes: number };
   log?: (line: string) => void;
   /**
@@ -389,10 +389,10 @@ async function main(): Promise<void> {
 
   const summary = await runC18NarrowBoundaryReplay(
     {
-      review: async (s, a) => {
-        if (useMock) return mockNarrowReview(arg("mock-outcome", "pass"), s, a);
+      review: async (s, a, surfaceRefs) => {
+        if (useMock) return mockNarrowReview(arg("mock-outcome", "pass"), s, a, surfaceRefs ? [...surfaceRefs] : undefined);
         const { reviewBoundarySurfaces } = await import("@/lib/bty/foundry/arena/narrowBoundaryReviewer");
-        return reviewBoundarySurfaces(s, a);
+        return reviewBoundarySurfaces(s, a, surfaceRefs);
       },
       writeArtifact: (payload, subjectSha) =>
         writeReplayArtifact(

@@ -7,6 +7,9 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { buildNarrowBoundaryRequest } from "./narrowBoundaryContract";
+import { C18_BOUNDARY, C18_SCENARIO } from "@/domain/foundry/arena-draft/c18BoundaryFixture";
+import { R240_FAILED_SURFACE_REFS, R240_LIVE_ATTEMPT_1 } from "@/domain/foundry/arena-draft/r240LiveDtoFixture";
 import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import {
   accumulateBoundaryMetrics,
@@ -342,6 +345,46 @@ describe("correction-packet authority", () => {
       args(),
     );
     expect(malformed.findings).toEqual([]);
+  });
+});
+
+/**
+ * R2.42 — THE FAILED-SUBSET REPAIR, END TO END.
+ *
+ * R2.41 measured that this path had never once functioned: the stage computed six repair surfaces
+ * and the reviewer rebuilt a twelve-surface request, whose answer the merge authority would then
+ * have refused. This test drives the real stage over the captured R2.40 live response.
+ */
+describe("[R2.42] failed-subset repair asks only about the failed subset", () => {
+  it("requests 12 then exactly the 6 failed refs, and merges into one complete verdict", async () => {
+    const asked: Array<{ attempt: number; surfaces: number; required: number; refs?: readonly string[] }> = [];
+    const r = await runBoundaryReviewStage(
+      deps(async (subject, attempt, surfaceRefs) => {
+        const req = buildNarrowBoundaryRequest(subject, surfaceRefs);
+        asked.push({ attempt, surfaces: req.surfaces.length, required: req.requiredAssessmentCount, refs: surfaceRefs });
+        const scoped = surfaceRefs ? subject.surfaces.filter((x) => surfaceRefs.includes(x.coordinate)) : subject.surfaces;
+        const first = (ref: string) => poolFor(subject.evidenceCandidates, subject.boundaries[0]!.id, ref, "governed_action")[0]?.candidateId ?? NO_CANDIDATE;
+        // Attempt 1 replays the live response verbatim; the repair corrects only the failed rows the
+        // one way the contract permits — by selecting from the pool it was offered.
+        const rows =
+          attempt === 1
+            ? R240_LIVE_ATTEMPT_1
+            : R240_LIVE_ATTEMPT_1.filter((x) => surfaceRefs!.includes(x.surfaceRef)).map((x) => ({ ...x, governedActionCandidateId: first(x.surfaceRef) }));
+        return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, { ...ctxFor(subject), surfaces: scoped }) });
+      }),
+      args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
+    );
+    expect(asked).toHaveLength(2);
+    expect(asked[0]).toMatchObject({ attempt: 1, surfaces: 12, required: 12 });
+    expect(asked[1]!.surfaces).toBe(6);
+    expect(asked[1]!.required).toBe(6);
+    expect(asked[1]!.refs).toEqual([...R240_FAILED_SURFACE_REFS]);
+    // One complete verdict from the MERGED matrix — never from the partial one.
+    expect(r.outcome).toBe("boundary_review_reject");
+    expect(r.providerInvocations).toBe(2);
+    expect(r.failedSubsetRepairSurfaceCount).toBe(6);
+    expect(r.failedSubsetRepairInvocationCount).toBe(1);
+    expect(r.preservedValidAssessmentCount).toBe(6);
   });
 });
 
