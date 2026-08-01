@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { CANARY_CASE_IDS, buildChecks, manifestPayload, renderRunner } from "./stabilityRunnerScript";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { canonicalJson, digest } from "./contractManifest";
 import { PRACTICE_SAMPLING } from "./arenaScenarioGenerationService";
 
@@ -264,5 +266,94 @@ describe("the generated runner stays inside its scope", () => {
     expect(script).toContain("unset HISTFILE");
     expect(script).toMatch(/trap cleanup EXIT/);
     expect(script).not.toMatch(/echo .*\$LLM_API_KEY|> *\.env/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.23D-R2 — runtime safety and credential lifecycle
+// ---------------------------------------------------------------------------
+
+describe("PART 7 — no inline async TypeScript survives in the runner path", () => {
+  const script = runner();
+
+  it("6. NO `tsx -e` remains anywhere — every TypeScript entry point is a tracked file", () => {
+    expect(script).not.toMatch(/tsx -e/);
+    // `practice-generation.eval.ts` is the corpus file, not a generated eval program.
+    expect(script.replace(/practice-generation\.eval\.ts/g, "")).not.toMatch(/eval\.ts/);
+  });
+
+  it("1. the only `await` left is prose in a comment, never executable", () => {
+    for (const line of script.split("\n")) {
+      if (/\bawait\b/.test(line)) expect(line.trimStart().startsWith("#"), line).toBe(true);
+    }
+  });
+
+  it("the runner invokes the tracked provider preflight and the tracked collator", () => {
+    expect(script).toContain("npx --yes tsx scripts/practice-provider-preflight.ts");
+    expect(script).toContain("npx --yes tsx scripts/practice-stability-collate.ts");
+  });
+
+  it("8/17. a failing provider preflight stops the runner — its exit status is honoured", () => {
+    expect(script).toMatch(/if ! npx --yes tsx scripts\/practice-provider-preflight\.ts; then\n  die /);
+  });
+
+  it("9/18. the provider preflight precedes every generation execution", () => {
+    const preflight = script.lastIndexOf("scripts/practice-provider-preflight.ts");
+    const generation = script.indexOf("RUN_LIVE_EVAL=1");
+    expect(preflight).toBeGreaterThan(-1);
+    expect(generation).toBeGreaterThan(preflight);
+    // …and `die` exits before reaching it.
+    expect(script.indexOf("PROVIDER PREFLIGHT FAILED")).toBeLessThan(generation);
+  });
+});
+
+describe("PART 6 — credential lifecycle", () => {
+  const script = runner();
+
+  it("14. the credential is requested only AFTER every contract check", () => {
+    const prompt = script.indexOf("read -rs LLM_API_KEY");
+    expect(script.lastIndexOf("check '")).toBeLessThan(prompt);
+    expect(script.indexOf("MIN_HEADROOM")).toBeLessThan(prompt);
+  });
+
+  it("15. the cleanup trap is registered BEFORE the LIVE provider preflight can fail", () => {
+    const trap = script.indexOf("trap cleanup EXIT INT TERM");
+    expect(trap).toBeGreaterThan(-1);
+    // The FIRST preflight occurrence is the credential-free mock, which runs before any credential
+    // exists. What must be trapped is the LIVE invocation.
+    const livePreflight = script.lastIndexOf("scripts/practice-provider-preflight.ts");
+    expect(livePreflight).toBeGreaterThan(script.indexOf("read -rs LLM_API_KEY"));
+    expect(trap).toBeLessThan(livePreflight);
+    expect(script).toMatch(/cleanup\(\) \{ unset LLM_API_KEY OPENAI_API_KEY/);
+  });
+
+  it("the credential is exported to child processes only, never echoed or written", () => {
+    expect(script).toContain("export LLM_API_KEY");
+    expect(script).toContain("unset HISTFILE");
+    expect(script).not.toMatch(/echo .*LLM_API_KEY|printf [^\n]*\$LLM_API_KEY|> *\.env|tee .*key/);
+  });
+
+  it("16. no sentinel-shaped secret can reach a generated file — the runner writes only two", () => {
+    // The runner's own outputs are produced by the tracked collator from immutable artifacts, and
+    // neither ever reads the credential variable.
+    expect(script).toMatch(/OUT_JSON='live_practice_stability_result/);
+    expect(script).toMatch(/OUT_MD='live_practice_stability_review/);
+    const collate = readFileSync(join(process.cwd(), "scripts/practice-stability-collate.ts"), "utf8");
+    expect(collate).not.toMatch(/LLM_API_KEY|OPENAI_API_KEY|Authorization/);
+  });
+});
+
+describe("PART 9 — BOUNDARY 2, the mock runtime proof", () => {
+  const script = runner();
+
+  it("20. the credential-boundary mode also executes the REAL preflight program against a mock", () => {
+    expect(script).toContain("BTY_PREFLIGHT_MOCK=1 npx --yes tsx scripts/practice-provider-preflight.ts");
+    const mock = script.indexOf("BTY_PREFLIGHT_MOCK=1");
+    expect(mock).toBeLessThan(script.indexOf("read -rs LLM_API_KEY"));
+    expect(script).toContain("PREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED");
+  });
+
+  it("the mock env var is set ONLY in the boundary mode — never on the live path", () => {
+    expect(script.split("BTY_PREFLIGHT_MOCK").length - 1).toBe(1);
   });
 });

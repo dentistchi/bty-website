@@ -24,9 +24,10 @@ const PRIOR_RUNNERS = [
   "/tmp/r223a_live_practice_stability_canary.sh",
   "/tmp/r223c_live_practice_stability_canary.sh",
   "/tmp/r223d_live_practice_stability_canary.sh",
+  "/tmp/r223d_r1_live_practice_stability_canary.sh",
 ];
 const RUNNER_R223 = PRIOR_RUNNERS[0];
-const RUNNER = "/tmp/r223d_r1_live_practice_stability_canary.sh";
+const RUNNER = "/tmp/r223d_r2_live_practice_stability_canary.sh";
 const CANARY_CASES = ["c01-missed-commitment", "c09-transparency-verification", "c18-constrained-clinical"];
 const runnerSource = (): string | null => (existsSync(RUNNER) ? readFileSync(RUNNER, "utf8") : null);
 
@@ -100,9 +101,13 @@ describe("R2.23A — cardinality and budget are part of what the runner binds", 
     if (existsSync(PRIOR_RUNNERS[2])) {
       expect(readFileSync(PRIOR_RUNNERS[2], "utf8")).toContain("d8f8e60cba1ec23388f988fc74a9e484b2d703ec58b3d8db46cacdd65f66ffe2");
     }
-    // The DEFECTIVE R2.23D runner is preserved unchanged as evidence of the measured fault.
+    // Both DEFECTIVE runners are preserved unchanged as evidence of their measured faults:
+    // R2.23D concatenated an expected value four times; R2.23D-R1 embedded a top-level await.
     if (existsSync(PRIOR_RUNNERS[3])) {
       expect(readFileSync(PRIOR_RUNNERS[3], "utf8")).toMatch(/\}'temperature':/);
+    }
+    if (existsSync(PRIOR_RUNNERS[4])) {
+      expect(readFileSync(PRIOR_RUNNERS[4], "utf8")).toMatch(/^const r = await getLlmClient/m);
     }
   });
 });

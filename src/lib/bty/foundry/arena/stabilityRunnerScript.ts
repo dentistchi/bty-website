@@ -255,7 +255,15 @@ step 10 "scope: generation only"
 step 11 "preflight complete"
 
 if [ "$CHECK_ONLY" = '1' ]; then
-  printf '\\nPREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED\\n\\n'
+  printf '\\nPREFLIGHT CONTRACT PASS · CREDENTIAL NOT REQUESTED\\n'
+  # BOUNDARY 2 — prove the EXACT provider-preflight program this runner invokes compiles and runs
+  # end to end, against a mock transport, with no credential and no network. R2.23D-R1 shipped a
+  # program nobody had ever executed; that is what let a CommonJS transform error reach an operator
+  # who had already typed a key. The mock prints its own distinct marker and can never be mistaken
+  # for a live pass.
+  BTY_PREFLIGHT_MOCK=1 npx --yes tsx scripts/practice-provider-preflight.ts \\
+    || die 'PROVIDER PREFLIGHT MOCK FAILED — the runner would die after the credential prompt.'
+  printf '\\n'
   exit 0
 fi
 
@@ -273,21 +281,15 @@ unset HISTFILE
 cleanup() { unset LLM_API_KEY OPENAI_API_KEY || true; }
 trap cleanup EXIT INT TERM
 
-# ---- provider preflight: credential, model, strict schema -------------------
-printf '\\nPROVIDER PREFLIGHT\\n'
-PREFLIGHT="$(npx --yes tsx -e "
-import { getLlmClient } from '@/lib/bty/llm/client';
-import { PROVIDER_SCENARIO_JSON_SCHEMA, PROVIDER_SCHEMA_NAME } from '@/domain/foundry/arena-draft/providerDto';
-const r = await getLlmClient().chat.completions.create({
-  model: process.env.LLM_MODEL ?? 'gpt-4o-mini',
-  messages: [{ role: 'user', content: 'Reply with the minimal valid JSON for the schema.' }],
-  max_tokens: 64,
-  response_format: { type: 'json_schema', json_schema: { name: PROVIDER_SCHEMA_NAME, strict: true, schema: PROVIDER_SCENARIO_JSON_SCHEMA } },
-});
-console.log('OK ' + (r.model ?? 'unknown'));
-" 2>&1)" || die "PROVIDER PREFLIGHT FAILED
-$PREFLIGHT"
-printf '  %s\\n' "$PREFLIGHT"
+# ---- provider preflight: BOTH capability checks -----------------------------
+# A tracked entry point, not inline TypeScript. R2.23D-R1 embedded a top-level
+# await here; tsx compiles to CommonJS (package.json declares no "type"), which
+# cannot represent one, so the runner died AFTER the credential was entered and
+# BEFORE any request was sent. The program below is unit-tested and proven to run.
+printf '\nPROVIDER PREFLIGHT\n'
+if ! npx --yes tsx scripts/practice-provider-preflight.ts; then
+  die 'PROVIDER PREFLIGHT FAILED — no generation was attempted.'
+fi
 
 # =============================================================================
 # EXECUTION — 3 cases x 2 independent passes
@@ -307,70 +309,8 @@ done
 # COLLATE — immutable artifacts are the authority
 # =============================================================================
 printf '\\nCOLLATING\\n'
-npx --yes tsx -e "
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { ARTIFACT_DIR, lineageIndex } from '@/lib/bty/foundry/arena/evalArtifact';
-const dir = join(process.cwd(), ARTIFACT_DIR);
-const mine = lineageIndex(dir).filter((e) => e.runId === '\${RUN_ID}');
-if (mine.length !== \${PASSES}) throw new Error('expected \${PASSES} immutable artifacts for run \${RUN_ID}, found ' + mine.length);
-const passes = mine.map((e) => JSON.parse(readFileSync(join(dir, e.file), 'utf8')));
-const results = passes.flatMap((p) => p.results.map((r: any) => ({ ...r, passId: p.passId })));
-const generated = results.filter((r) => r.ok === true);
-const firstAttempt = generated.filter((r) => (r.attempts ?? []).filter((a: any) => String(a.outcome).startsWith('gate_level_')).length === 0);
-const summary = {
-  head: passes[0].head,
-  manifestSha256: passes[0].manifestSha256,
-  artifactSchemaVersion: passes[0].artifactSchemaVersion,
-  model: passes[0].model,
-  sampling: passes[0].sampling,
-  artifacts: mine.map((e) => e.file),
-  expected: \${EXPECTED_EXECUTIONS},
-  executed: results.length,
-  generated: generated.length,
-  firstAttemptValid: firstAttempt.length,
-  retryRecovered: generated.length - firstAttempt.length,
-  terminalFailures: results.filter((r) => r.ok === false).length,
-  defectFrequency: results.flatMap((r) => (r.attempts ?? []).flatMap((a: any) => a.defectCodes ?? [])).reduce((m: any, c: string) => ({ ...m, [c]: (m[c] ?? 0) + 1 }), {}),
-  latencyMs: results.map((r) => ({ id: r.id, passId: r.passId, ms: r.ms })),
-  results,
-};
-writeFileSync('\${OUT_JSON}', JSON.stringify(summary, null, 2));
-const lines = [
-  '# R2.23D-R1 Practice stability review', '',
-  'STRUCTURAL + SEMANTIC GATES: see result JSON', 'HUMAN PRODUCT REVIEW REQUIRED', '',
-  '- head: ' + summary.head,
-  '- contract manifest: ' + summary.manifestSha256,
-  '- artifact schema: ' + summary.artifactSchemaVersion,
-  '- model: ' + summary.model,
-  '- immutable artifacts: ' + summary.artifacts.join(', '),
-  '- expected / executed / generated: ' + summary.expected + ' / ' + summary.executed + ' / ' + summary.generated,
-  '- first-attempt valid: ' + summary.firstAttemptValid + '   retry-recovered: ' + summary.retryRecovered, '',
-];
-for (const r of results) {
-  lines.push('## ' + r.id + ' · ' + r.passId + ' · attempts ' + ((r.attempts ?? []).length + 1), '');
-  if (!r.ok) { lines.push('REJECTED: ' + r.reason, ''); continue; }
-  const d = r.draft;
-  lines.push('**' + d.title + '**', '', d.opening, '');
-  lines.push('Primary:'); for (const c of d.primary.choices) lines.push('- ' + c.label);
-  lines.push('', 'Tradeoff:'); for (const c of d.tradeoff.choices) lines.push('- ' + c.label);
-  lines.push('', 'Action:'); for (const c of d.actionDecision.choices) lines.push('- ' + c.label);
-  for (const [k, b] of Object.entries<any>(d.branches ?? {})) {
-    lines.push('', 'Branch ' + k + ' — ' + (b.resultingWorldState ?? '(no world state)'));
-    lines.push('  escalation: ' + b.escalationText);
-    for (const c of b.tradeoffChoices) lines.push('  - tradeoff: ' + c.label);
-    for (const c of b.actionDecision.choices) lines.push('  - action: ' + c.label);
-  }
-  lines.push('', 'HUMAN REVIEW — every field below is PENDING and must be completed by a person:');
-  lines.push('- [ ] every option defensible by a competent, well-intentioned person: PENDING');
-  lines.push('- [ ] no false or vague reassurance at any phase: PENDING');
-  lines.push('- [ ] confirmed boundary visibly and operationally grounded: PENDING');
-  lines.push('- [ ] each branch causally distinct from its siblings: PENDING');
-  lines.push('- [ ] would you put this in front of a learner: PENDING', '');
-}
-writeFileSync('\${OUT_MD}', lines.join('\\n'));
-console.log('wrote \${OUT_JSON} and \${OUT_MD}');
-"
+npx --yes tsx scripts/practice-stability-collate.ts \\
+  --run-id "$RUN_ID" --passes "$PASSES" --json "$OUT_JSON" --md "$OUT_MD"
 
 printf '\\n============================================================\\n'
 printf 'STRUCTURAL + SEMANTIC GATES PASS\\n'
