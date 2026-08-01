@@ -128,7 +128,11 @@ const oracleResponse = (): BoundaryTruthAssessment[] =>
         reason: "'caring for' may or may not mean treatment",
       };
     }
-    if (o.compliance === "complies") {
+    // R2.40 — a surface whose own text performs the PREREQUISITE has no governed-action candidate at
+    // all, so `complies` is not expressible there and `not_applicable` is the honest answer. That is
+    // exactly `primary[0]`: "Verify identifiers for both patients now" keeps the boundary, it does
+    // not perform treatment. Under R2.38 it was the measured live FALSE POSITIVE.
+    if (o.compliance === "complies" && actionId(s.coordinate) !== NO_CANDIDATE) {
       return {
         boundaryId: C18_BOUNDARY.id,
         surfaceRef: s.coordinate,

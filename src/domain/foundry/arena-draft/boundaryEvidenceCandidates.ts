@@ -45,6 +45,8 @@ import type { ContextSegment, SegmentKind } from "./boundaryContextSegments";
 import type { BoundarySurface } from "./boundarySurfaces";
 import type { BoundarySemanticFrame } from "./boundarySemanticFrame";
 import { clauseStems } from "./boundaryClauseTerms";
+// R2.40 — the boundary's OWN two clauses decide whether a span may occupy the governed-action role.
+import { assessCandidateRole, summarizeRoleDecisions, type RoleDecisionLog, type RoleDecisionMetrics } from "./boundaryCandidateRole";
 
 export const EVIDENCE_CANDIDATE_VERSION = "practice-boundary-evidence-candidates/1";
 
@@ -179,6 +181,12 @@ export type CandidateBuildResult = {
   aliasRemovedCount: number;
   /** Candidates that share an excerpt with another but differ in provenance — deliberately kept. */
   provenanceRetainedCount: number;
+  /**
+   * R2.40 — every governed-action role decision, kept as EVIDENCE. A refused span is not a semantic
+   * finding and never reaches a product user; it is how an auditor sees why a pool is empty.
+   */
+  roleDecisions: RoleDecisionLog[];
+  roleMetrics: RoleDecisionMetrics;
 };
 
 /**
@@ -195,6 +203,7 @@ export function buildEvidenceCandidates(
   const candidates: BoundaryEvidenceCandidate[] = [];
   let aliasRemovedCount = 0;
   const seen = new Set<string>();
+  const roleDecisions: RoleDecisionLog[] = [];
 
   surfaces.forEach((surface, surfaceIndex) => {
     const visible = segments.filter((s) => s.sourceSurfaceRef === "" || s.sourceSurfaceRef === surface.coordinate);
@@ -208,6 +217,18 @@ export function buildEvidenceCandidates(
         if (seg.segmentKind === "branch_escalation") continue;
         for (const span of extractSpans(seg.text)) {
           if (!isEligibleExcerpt(role, span.excerpt, frame, boundary.statement)) continue;
+          // R2.40 — a span that performs the PREREQUISITE is not evidence of the governed action.
+          // The decision is recorded either way, so an empty pool is explicable rather than opaque.
+          if (role === "governed_action") {
+            const decision = assessCandidateRole(boundary, frame, role, span.excerpt);
+            roleDecisions.push({
+              ...decision,
+              surfaceRef: surface.coordinate,
+              candidateId: `${surfaceIndex + 1}-${ROLE_CODE[role]}?`,
+              span: span.excerpt,
+            });
+            if (decision.refusalCode !== null) continue;
+          }
           const body = {
             boundaryId: boundary.id,
             assessedSurfaceRef: surface.coordinate,
@@ -242,7 +263,21 @@ export function buildEvidenceCandidates(
   for (const c of candidates) byExcerpt.set(c.excerpt, (byExcerpt.get(c.excerpt) ?? 0) + 1);
   const provenanceRetainedCount = candidates.filter((c) => (byExcerpt.get(c.excerpt) ?? 0) > 1).length;
 
-  return { candidates, aliasRemovedCount, provenanceRetainedCount };
+  // (Part 5 B) Satisfaction/failure polarity collisions are MEASURED and reported, never enforced
+  // here: R2.39 showed a first-cut polarity rule strips the safe branch of its only satisfaction
+  // evidence. That correction is separately queued.
+  let polarityCollisions = 0;
+  for (const surface of surfaces) {
+    const sat = new Set(candidates.filter((c) => c.assessedSurfaceRef === surface.coordinate && c.semanticRole === "prerequisite_satisfaction").map((c) => c.excerpt));
+    const fail = candidates.filter((c) => c.assessedSurfaceRef === surface.coordinate && c.semanticRole === "prerequisite_failure");
+    polarityCollisions += fail.filter((c) => sat.has(c.excerpt)).length;
+  }
+
+  // Assign each decision the id its candidate actually received, so the log is joinable.
+  const idByKey = new Map(candidates.filter((c) => c.semanticRole === "governed_action").map((c) => [`${c.assessedSurfaceRef}\u0000${c.excerpt}`, c.candidateId]));
+  const resolved = roleDecisions.map((d) => ({ ...d, candidateId: idByKey.get(`${d.surfaceRef}\u0000${d.span}`) ?? "(refused)" }));
+
+  return { candidates, aliasRemovedCount, provenanceRetainedCount, roleDecisions: resolved, roleMetrics: summarizeRoleDecisions(resolved, polarityCollisions) };
 }
 
 export const buildAllEvidenceCandidates = (
@@ -260,9 +295,29 @@ export const buildAllEvidenceCandidates = (
         candidates: [...acc.candidates, ...r.candidates],
         aliasRemovedCount: acc.aliasRemovedCount + r.aliasRemovedCount,
         provenanceRetainedCount: acc.provenanceRetainedCount + r.provenanceRetainedCount,
+        roleDecisions: [...acc.roleDecisions, ...r.roleDecisions],
+        roleMetrics: {
+          governedActionRoleCollisionCount: acc.roleMetrics.governedActionRoleCollisionCount + r.roleMetrics.governedActionRoleCollisionCount,
+          governedActionPrerequisiteOperationRefusedCount:
+            acc.roleMetrics.governedActionPrerequisiteOperationRefusedCount + r.roleMetrics.governedActionPrerequisiteOperationRefusedCount,
+          governedActionRoleUncertainCount: acc.roleMetrics.governedActionRoleUncertainCount + r.roleMetrics.governedActionRoleUncertainCount,
+          prerequisitePolarityCollisionObservedCount:
+            acc.roleMetrics.prerequisitePolarityCollisionObservedCount + r.roleMetrics.prerequisitePolarityCollisionObservedCount,
+        },
       };
     },
-    { candidates: [], aliasRemovedCount: 0, provenanceRetainedCount: 0 },
+    {
+      candidates: [],
+      aliasRemovedCount: 0,
+      provenanceRetainedCount: 0,
+      roleDecisions: [],
+      roleMetrics: {
+        governedActionRoleCollisionCount: 0,
+        governedActionPrerequisiteOperationRefusedCount: 0,
+        governedActionRoleUncertainCount: 0,
+        prerequisitePolarityCollisionObservedCount: 0,
+      },
+    },
   );
 
 // ---------------------------------------------------------------------------
@@ -348,6 +403,8 @@ export const candidateContractSha256 = (): string =>
         prerequisiteSpansMustConcernPrerequisiteClause: true,
         candidateIdsAreSurfaceScoped: true,
         provenanceDistinctCandidatesRetained: true,
+        // R2.40 — governed-action eligibility is boundary-relative, not unconditional.
+        governedActionRoleGate: "boundaryCandidateRole",
       }),
     )
     .digest("hex");

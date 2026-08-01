@@ -32,6 +32,7 @@ import {
   poolFor,
   type BoundaryEvidenceCandidate,
 } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { candidateRoleContractSha256, type RoleDecisionLog, type RoleDecisionMetrics } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import {
   TRUTH_STATE_TABLE_VERSION,
   renderTruthStateRules,
@@ -144,7 +145,7 @@ export const NARROW_BOUNDARY_SYSTEM_PROMPT: string = [
   "  A candidate list belongs to ONE surface. Never use an id from another surface's list, even if its text looks identical — identical text at a different place in the path means something different, and the id you need is already in your own list.",
   `  Use the exact value \`${NO_CANDIDATE}\` when a role needs no evidence. Never use an empty string.`,
   "  If no candidate in a list fits, that is itself a fact: it usually means the prerequisite is `not_established` and there is nothing to select.",
-  "  A candidate list may be empty. That is normal for an administrative surface.",
+  "  A candidate list may be EMPTY. That is normal and it is informative: when the governedActionCandidates list is empty, this surface performs nothing the rule governs. Answer governedActionStatus=absent and use the sentinel. Use `uncertain` only when the text is genuinely ambiguous — never to avoid an empty list.",
   "",
   "EVERY VALID ANSWER IS ONE OF THESE STATES. Fill exactly the fields the state calls for:",
   ...renderTruthStateRules(),
@@ -205,6 +206,9 @@ export function buildNarrowBoundaryContract(): { sha256: string; parts: Record<s
     evidenceCandidateContract: candidateContractSha256(),
     truthStateTableVersion: d(TRUTH_STATE_TABLE_VERSION),
     truthStateTable: truthStateTableSha256(),
+    // R2.40 — governed-action eligibility is boundary-relative. Changing how a role is decided
+    // changes which evidence the reviewer is offered, so it changes the QUESTION.
+    candidateRoleContract: candidateRoleContractSha256(),
   };
   return { sha256: d(parts), parts };
 }
@@ -255,6 +259,12 @@ export type NarrowBoundarySubject = {
   /** Measured collapse of the R2.37 duplicate exposure. Reported, never assumed. */
   candidateAliasRemovedCount: number;
   candidateProvenanceRetainedCount: number;
+  /**
+   * R2.40 — every governed-action role decision, kept as EVIDENCE. A refused span is why a pool is
+   * empty; it is never a semantic finding and never reaches a product user.
+   */
+  candidateRoleDecisions: RoleDecisionLog[];
+  candidateRoleMetrics: RoleDecisionMetrics;
   /** Fail-closed reasons discovered while building the subject — checked BEFORE a provider call. */
   subjectDefects: string[];
   boundaryReviewContractSha256: string;
@@ -335,6 +345,8 @@ export function buildNarrowBoundarySubject(args: {
     evidenceCandidateMapSha256: evidenceCandidateMapSha256(candidateBuild.candidates),
     candidateAliasRemovedCount: candidateBuild.aliasRemovedCount,
     candidateProvenanceRetainedCount: candidateBuild.provenanceRetainedCount,
+    candidateRoleDecisions: candidateBuild.roleDecisions,
+    candidateRoleMetrics: candidateBuild.roleMetrics,
     subjectDefects: [...contextCheck.codes, ...frameCheck.codes],
     boundaryReviewContractSha256: buildNarrowBoundaryContract().sha256,
     language: args.language,

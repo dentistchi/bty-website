@@ -6,7 +6,7 @@
  * the boundary reviewer is asked — including the surface map, which is the thing R2.28 proved was
  * missing. PREPARED in R2.29, deliberately not executed.
  *
- *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r238_c18_evidence_candidate_replay_canary.sh
+ *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --out /tmp/r240_c18_candidate_role_replay_canary.sh
  *   npx tsx scripts/practice-c18-narrow-boundary-replay-runner.ts --binding-json
  */
 import { writeFileSync, readFileSync } from "node:fs";
@@ -53,6 +53,7 @@ import {
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { candidateContractSha256, evidenceCandidateMapSha256 } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
+import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import { DERIVED_APPLICABILITY, DERIVED_COMPLIANCE, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
 import { promptFieldDriftCount } from "@/lib/bty/foundry/arena/boundaryReviewStage";
 import { buildC18Subject, SOURCE_ARTIFACT, SOURCE_ARTIFACT_SHA256, CASE_ID } from "./practice-c18-boundary-replay";
@@ -111,6 +112,7 @@ const runtime = [
   "src/domain/foundry/arena-draft/boundaryTruthStates.ts",
   "src/domain/foundry/arena-draft/boundaryTruthContractTypes.ts",
   "src/domain/foundry/arena-draft/promptFieldParity.ts",
+  "src/domain/foundry/arena-draft/boundaryCandidateRole.ts",
   "scripts/practice-c18-narrow-boundary-replay.ts",
   "scripts/practice-c18-boundary-replay.ts",
 ].map((f) => readFileSync(join(process.cwd(), f), "utf8")).join("\n");
@@ -186,6 +188,15 @@ const binding = {
     maxRepairInvocations: 1,
   }),
   promptSchemaFieldDriftCount: promptFieldDriftCount(),
+  // R2.40 — the role classifier and the pool-aware requirement rules.
+  candidateRoleContractSha256: candidateRoleContractSha256(),
+  governedActionRoleRefusedCount: narrowSubject.candidateRoleMetrics.governedActionPrerequisiteOperationRefusedCount,
+  governedActionRoleUncertainCount: narrowSubject.candidateRoleMetrics.governedActionRoleUncertainCount,
+  poolAwareRequirementContractSha256: d({
+    requiredOnlyWhenPoolNonEmpty: true,
+    presentStatusRequiresNonEmptyPool: true,
+    emptyPoolAcceptsSentinel: true,
+  }),
   activeBoundaryIds: provenance.activeBoundaryIds,
   boundaryText: provenance.confirmedBoundaries.map((b) => b.statement),
   artifactSchemaVersion: NARROW_REPLAY_ARTIFACT_VERSION,
@@ -230,6 +241,10 @@ const CHECKS: Array<[string, string]> = [
   ["evidence candidate map", "evidenceCandidateMapSha256"],
   ["evidence candidate count", "evidenceCandidateCount"],
   ["evidence candidate contract", "evidenceCandidateContractSha256"],
+  ["candidate role classifier", "candidateRoleContractSha256"],
+  ["governed-action role refusals", "governedActionRoleRefusedCount"],
+  ["governed-action role uncertain", "governedActionRoleUncertainCount"],
+  ["pool-aware requirement contract", "poolAwareRequirementContractSha256"],
   ["candidate aliases removed", "candidateAliasRemovedCount"],
   ["candidate provenance retained", "candidateProvenanceRetainedCount"],
   ["canonical truth-state table", "truthStateTableSha256"],
@@ -251,8 +266,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.38 EVIDENCE-CANDIDATE REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.38
+# BTY Practice — R2.40 CANDIDATE-ROLE REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.40
 #
 # ONE reconstructed c18 subject x exactly ONE narrow boundary-review call.
 # ZERO generation calls. ZERO broad semantic-review calls. ZERO database calls.
@@ -294,7 +309,30 @@ const script = `#!/usr/bin/env bash
 #          provider-side cause was unknowable and a retry would have produced a
 #          second silent artifact.
 #
-# WHAT R2.38 CHANGES
+# WHAT R2.40 CHANGES
+#   * A governed-action candidate must now express the boundary's GOVERNED
+#     ACTION, judged against the frame's own two clauses. R2.39 measured the
+#     alternative: eligibility returned true unconditionally, so the server
+#     offered "Verify identifiers for both patients now" -- the one primary
+#     choice that KEEPS the boundary -- as a governed action, and the
+#     correction packet told a Manager to rewrite it. That is a
+#     safety-inverting correction, and it is now structurally impossible.
+#   * A required candidate is required only where the server OFFERED one. An
+#     empty governed-action pool makes the sentinel the correct answer, so a
+#     surface that performs the prerequisite is answerable rather than
+#     malformed.
+#   * governedActionStatus=present with an empty pool has its own authority
+#     code: a surface cannot perform an action the server found no span for.
+#   * Role decisions are recorded as evidence, so an empty pool is explicable.
+#
+# WHAT R2.40 DOES NOT CHANGE
+#   Satisfaction/failure polarity is measured and reported, NOT enforced --
+#   a first-cut polarity rule strips the safe branch of its only satisfaction
+#   evidence. Generated-result ancestor attribution is not implemented.
+#   primary[1] historical live detection: MISSED 6/6. Post-R2.40: NOT YET
+#   REMEASURED. This runner exists to remeasure it once.
+#
+# WHAT R2.38 CHANGED
 #   * The reviewer authors SEMANTIC FACTS ONLY: governedActionStatus,
 #     prerequisiteStatus, temporalRelation, plus three candidate IDs and a
 #     reason. There is no applicability field, no compliance field, no
@@ -479,6 +517,7 @@ npx --yes vitest run \\
   src/domain/foundry/arena-draft/r230LiveDtoRegression.test.ts \\
   src/domain/foundry/arena-draft/r236TruthRegression.test.ts \\
   src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts \\
+  src/domain/foundry/arena-draft/boundaryCandidateRole.test.ts \\
   src/domain/foundry/arena-draft/narrowBoundaryReview.test.ts \\
   src/domain/foundry/arena-draft/boundaryReasonParity.test.ts --reporter=dot \\
   || wiring_failed 'the transport matrix or the captured regressions failed'

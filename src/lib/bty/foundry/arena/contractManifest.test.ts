@@ -163,7 +163,11 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // the reviewer's output and replaced evidence with server-issued candidate ids. An R2.36
     // artifact answered a materially different question and cannot be attributed to this contract.
     expect(manifestDigest(m)).not.toBe("3b4f9612a2a3ba0c55fd47198b5d8f1e1fe92fd48e1b91da51f3371a55092821"); // R2.36
-    expect(m.artifactSchemaVersion).toBe("r2.38.1");
+    // R2.40 bound governed-action candidates to the boundary's own clause roles. An R2.38 artifact
+    // was produced while the server still offered a prerequisite-performing span as a governed
+    // action — a materially different question, and the one that produced a safety-inverting packet.
+    expect(manifestDigest(m)).not.toBe("3b55f8749ae71ad83df928da79778a55a26ab25adb884edc9bc29aaace224c84"); // R2.38
+    expect(m.artifactSchemaVersion).toBe("r2.40.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

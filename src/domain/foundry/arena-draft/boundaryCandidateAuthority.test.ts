@@ -104,15 +104,18 @@ describe("[5-10] the server derives every decision axis", () => {
   });
 
   it("[6] a satisfied prerequisite derives complies", () => {
-    const rows = withRow("primary[0]", {
+    // R2.40 — asserted on a surface that HAS a governed-action candidate. `primary[0]` no longer
+    // does: its own text performs the prerequisite, so it cannot express `present` at all.
+    const ref = "branch[0].resulting_world_state";
+    const rows = withRow(ref, {
       governedActionStatus: "present",
       prerequisiteStatus: "satisfied",
       temporalRelation: "prerequisite_before_action",
-      prerequisiteSatisfactionCandidateId: first("primary[0]", "prerequisite_satisfaction"),
+      prerequisiteSatisfactionCandidateId: first(ref, "prerequisite_satisfaction"),
     });
     const v = validateNarrowBoundaryReview({ assessments: rows }, ctx);
     if (!v.ok) throw new Error(`unreachable: ${v.codes.join(",")}`);
-    expect(v.derived.find((d) => d.surfaceRef === "primary[0]")).toMatchObject({ applicability: "applies", compliance: "complies" });
+    expect(v.derived.find((d) => d.surfaceRef === ref)).toMatchObject({ applicability: "applies", compliance: "complies" });
   });
 
   it("[7] a grounded missing prerequisite derives violates", () => {

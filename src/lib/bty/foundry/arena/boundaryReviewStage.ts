@@ -115,6 +115,13 @@ export type BoundaryStageResult = {
   boundaryEvidenceCandidateCount: number;
   boundaryEvidenceCandidateAliasRemovedCount: number;
   boundaryEvidenceCandidateProvenanceRetainedCount: number;
+  // R2.40 — governed-action role authority.
+  governedActionRoleCollisionCount: number;
+  governedActionPrerequisiteOperationRefusedCount: number;
+  governedActionRoleUncertainCount: number;
+  prerequisitePolarityCollisionObservedCount: number;
+  /** Sanitized role decisions. Evidence for an auditor; never a semantic finding. */
+  candidateRoleDecisions: Array<{ surfaceRef: string; candidateId: string; roleEligibility: string; refusalCode: string | null; spanSha256: string }>;
   evidenceCandidateMapSha256: string | null;
   truthStateTableSha256: string | null;
   governedActionCandidateSelectedCount: number;
@@ -212,6 +219,11 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   boundaryEvidenceCandidateCount: 0,
   boundaryEvidenceCandidateAliasRemovedCount: 0,
   boundaryEvidenceCandidateProvenanceRetainedCount: 0,
+  governedActionRoleCollisionCount: 0,
+  governedActionPrerequisiteOperationRefusedCount: 0,
+  governedActionRoleUncertainCount: 0,
+  prerequisitePolarityCollisionObservedCount: 0,
+  candidateRoleDecisions: [],
   evidenceCandidateMapSha256: null,
   truthStateTableSha256: null,
   governedActionCandidateSelectedCount: 0,
@@ -430,6 +442,18 @@ export async function runBoundaryReviewStage(
       boundaryEvidenceCandidateCount: subject.evidenceCandidates.length,
       boundaryEvidenceCandidateAliasRemovedCount: subject.candidateAliasRemovedCount,
       boundaryEvidenceCandidateProvenanceRetainedCount: subject.candidateProvenanceRetainedCount,
+      governedActionRoleCollisionCount: subject.candidateRoleMetrics.governedActionRoleCollisionCount,
+      governedActionPrerequisiteOperationRefusedCount: subject.candidateRoleMetrics.governedActionPrerequisiteOperationRefusedCount,
+      governedActionRoleUncertainCount: subject.candidateRoleMetrics.governedActionRoleUncertainCount,
+      prerequisitePolarityCollisionObservedCount: subject.candidateRoleMetrics.prerequisitePolarityCollisionObservedCount,
+      // Sanitized: the surface, the id, the decision and a span digest — never the matching detail.
+      candidateRoleDecisions: subject.candidateRoleDecisions.map((r) => ({
+        surfaceRef: r.surfaceRef,
+        candidateId: r.candidateId,
+        roleEligibility: r.roleEligibility,
+        refusalCode: r.refusalCode,
+        spanSha256: r.candidateSpanSha256,
+      })),
       evidenceCandidateMapSha256: subject.evidenceCandidateMapSha256,
       truthStateTableSha256: truthStateTableSha256(),
       governedActionCandidateSelectedCount: truth.governedActionCandidateSelectedCount,

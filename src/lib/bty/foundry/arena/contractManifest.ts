@@ -99,6 +99,7 @@ import {
   SEGMENT_KINDS,
 } from "@/domain/foundry/arena-draft/boundaryContextSegments";
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
+import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import {
   BOUNDARY_REPORTABLE_OUTCOMES,
@@ -175,7 +176,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.38.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.40.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -368,6 +369,23 @@ export function buildContractManifest(head: string, model: string): ContractMani
         candidateIdsAreSurfaceScoped: true,
       }),
       boundaryCandidateExtractionContract: candidateContractSha256(),
+      // R2.40 — governed-action eligibility is decided against the boundary's OWN two clauses.
+      // R2.39 measured the alternative: an unconditional `true` offered the safe verification choice
+      // as a governed action and the correction packet told a Manager to delete it.
+      boundaryCandidateRoleAuthority: candidateRoleContractSha256(),
+      boundaryGovernedActionPoolConstruction: digest({
+        roleGate: "boundaryCandidateRole",
+        refusesPrerequisiteOperationOnly: true,
+        unrelatedSpansRemainEligible: true,
+        roleCollisionRecordedNotRefused: true,
+        polarityEnforced: false,
+      }),
+      boundaryPoolAwareCandidateRequirements: digest({
+        requiredOnlyWhenPoolNonEmpty: true,
+        presentStatusRequiresNonEmptyPool: true,
+        emptyPoolAcceptsSentinel: true,
+        codes: ["boundary_governed_action_candidate_unavailable", "boundary_candidate_role_uncertain"],
+      }),
       boundaryTruthStateTable: truthStateTableSha256(),
       boundaryTruthStateCoverage: digest({
         states: TRUTH_STATE_IDS,

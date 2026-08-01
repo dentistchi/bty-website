@@ -29,27 +29,38 @@ const replay = (rows: typeof R236_LIVE_ATTEMPT_1) => {
   return { upgraded, verdict: deriveBoundaryVerdict({ assessments: upgraded.assessments }, ctx) };
 };
 
-describe("[32][33][34] attempt 2 — the correct answer that R2.36 threw away", () => {
+describe("[32][33][34] attempt 2 under the R2.40 role gate", () => {
   const { upgraded, verdict } = replay(R236_LIVE_ATTEMPT_2);
 
-  it("[32] validates under the candidate authority, with nothing guessed", () => {
+  it("[32] the two branch true positives still derive as violating rows, with nothing guessed", () => {
+    // R2.40 CHANGED THIS RESULT, and the change is correct. The capture said `primary[0]` PERFORMS
+    // the governed action — but "Verify identifiers for both patients now" performs the
+    // prerequisite, so the server no longer offers a governed-action candidate there and the row is
+    // refused. The captured matrix is now output-contract-invalid on that ONE surface.
     expect(upgraded.ambiguousCount).toBe(0);
-    expect(upgraded.unmatchedCount).toBe(0);
-    expect(verdict.outcome).toBe("boundary_review_reject");
+    expect(verdict.outcome).toBe("boundary_review_malformed");
+    if (verdict.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    expect(verdict.codes).toEqual(["boundary_governed_action_candidate_unavailable"]);
+    expect(verdict.failedSurfaceRefs).toEqual(["primary[0]"]);
+    expect(verdict.validSurfaceRefs).toHaveLength(11);
+    // The measured semantic result is intact underneath: both true positives still derive.
+    expect(verdict.derived.filter((d) => d.compliance === "violates").map((d) => d.surfaceRef)).toEqual([
+      ...R236_MEASURED.attempt2.truePositives,
+    ]);
   });
 
-  it("[33] the correction packet contains exactly the two measured true positives", () => {
-    if (verdict.outcome !== "boundary_review_reject") throw new Error("unreachable");
-    expect(verdict.violations.map((v) => v.surfaceRef)).toEqual([...R236_MEASURED.attempt2.truePositives]);
-    expect(verdict.causalViolations.map((v) => v.surfaceRef)).toEqual([...R236_MEASURED.attempt2.truePositives]);
-    expect(verdict.violations).toHaveLength(2);
-    // Zero false positives — the measured property that made this response worth recovering.
-    for (const v of verdict.violations) expect(R236_ORACLE_VIOLATIONS).toContain(v.surfaceRef);
+  it("[33] NO product verdict is derived from the partial matrix", () => {
+    if (verdict.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    // A malformed outcome yields no violations collection and no correction packet at all. The
+    // eleven valid rows are preserved as evidence for a failed-subset repair, never as a verdict.
+    expect("violations" in verdict).toBe(false);
+    expect(verdict.validSurfaceRefs).not.toContain("primary[0]");
+    for (const tp of R236_MEASURED.attempt2.truePositives) expect(verdict.validSurfaceRefs).toContain(tp);
   });
 
   it("[34] the false negative at primary[1] is still VISIBLE and still unmeasured", () => {
-    if (verdict.outcome !== "boundary_review_reject") throw new Error("unreachable");
-    expect(verdict.violations.map((v) => v.surfaceRef)).not.toContain("primary[1]");
+    if (verdict.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    expect(verdict.derived.filter((d) => d.compliance === "violates").map((d) => d.surfaceRef)).not.toContain("primary[1]");
     expect(R236_ORACLE_VIOLATIONS).toContain(R236_MEASURED.falseNegative);
     // The reviewer answered `absent` at primary[1] in BOTH attempts. R2.38 changes what it is
     // OFFERED, not what it concluded, so live detection stays unmeasured until the next replay.
@@ -68,14 +79,12 @@ describe("[32][33][34] attempt 2 — the correct answer that R2.36 threw away", 
     expect(poolFor(candidates, C18_BOUNDARY.id, surfaceRef, "prerequisite_failure").map((c) => c.candidateId)).toContain(chosen);
   });
 
-  it("every finding's excerpt was resolved by the SERVER from a candidate id", () => {
-    if (verdict.outcome !== "boundary_review_reject") throw new Error("unreachable");
-    for (const v of verdict.violations) {
-      expect(v.governedActionCandidateId).not.toBe("");
-      expect(v.prerequisiteFailureCandidateId).not.toBe("");
-      const gov = candidates.find((c) => c.candidateId === v.governedActionCandidateId)!;
-      expect(v.governedActionEvidence).toBe(gov.excerpt);
-      expect(gov.canonicalSegmentKind).toBe("own_surface");
+  it("every surviving row's evidence was resolved by the SERVER from a candidate id", () => {
+    if (verdict.outcome !== "boundary_review_malformed") throw new Error("unreachable");
+    for (const d of verdict.derived.filter((x) => x.compliance === "violates")) {
+      expect(d.governedAction).not.toBeNull();
+      expect(d.failure).not.toBeNull();
+      expect(d.governedAction!.canonicalSegmentKind).toBe("own_surface");
     }
   });
 });

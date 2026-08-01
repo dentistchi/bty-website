@@ -48,6 +48,7 @@ import {
 import {
   CANDIDATE_ID_MAX,
   indexCandidates,
+  poolFor,
   resolveCandidate,
   type BoundaryEvidenceCandidate,
 } from "./boundaryEvidenceCandidates";
@@ -176,6 +177,10 @@ export const NARROW_GROUNDING_CODES = [
   "boundary_candidate_required_missing",
   "boundary_candidate_forbidden_present",
   "boundary_prerequisite_contradiction",
+  // R2.40 — pool-aware requirements. Separate authority from the codes above: these fire about the
+  // POOL the server offered, not about the id the model chose.
+  "boundary_governed_action_candidate_unavailable",
+  "boundary_candidate_role_uncertain",
 ] as const;
 
 export const NARROW_BOUNDARY_CODES = [...NARROW_COVERAGE_CODES, ...NARROW_GROUNDING_CODES] as const;
@@ -192,6 +197,10 @@ export const OUTPUT_CONTRACT_CODES = [
   "boundary_candidate_required_missing",
   "boundary_candidate_forbidden_present",
   "boundary_prerequisite_contradiction",
+  // R2.40 — pool-aware requirements. Separate authority from the codes above: these fire about the
+  // POOL the server offered, not about the id the model chose.
+  "boundary_governed_action_candidate_unavailable",
+  "boundary_candidate_role_uncertain",
 ] as const;
 
 export const COVERAGE_FAILURE_CODES = [...NARROW_COVERAGE_CODES] as readonly string[];
@@ -378,14 +387,25 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
       else if (GENERIC_REASON_PHRASES.includes(normalizeReason(t) as (typeof GENERIC_REASON_PHRASES)[number])) push("boundary_reason_generic");
     }
 
-    /** Resolve one selected id against the requirement the state places on that role. */
+    /**
+     * Resolve one selected id against the requirement the state places on that role — and against
+     * the POOL the server actually offered.
+     *
+     * R2.39 measured why the second half matters. Once the role gate refuses a
+     * prerequisite-performing span, `primary[0]` has no governed-action candidate at all. Under an
+     * unconditional `required` rule the only honest answer — "this surface does not perform the
+     * governed action, and there is nothing to point at" — was itself refused, turning a false
+     * positive into an output-contract failure. A required candidate is required only where one was
+     * offered.
+     */
     const take = (
       id: string,
       role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure",
       requirement: TruthStateRule["governedActionCandidate"],
     ): BoundaryEvidenceCandidate | null => {
+      const poolEmpty = poolFor(ctx.candidates, a.boundaryId, a.surfaceRef, role).length === 0;
       if (id === NO_CANDIDATE) {
-        if (requirement === "required") push("boundary_candidate_required_missing");
+        if (requirement === "required" && !poolEmpty) push("boundary_candidate_required_missing");
         return null;
       }
       if (requirement === "forbidden") {
@@ -400,6 +420,11 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
       return r.candidate;
     };
 
+    // (Part 6 A) A surface cannot PERFORM the governed action when the server found no span
+    // expressing it. This is a distinct authority from "the model forgot to choose".
+    if (a.governedActionStatus === "present" && poolFor(ctx.candidates, a.boundaryId, a.surfaceRef, "governed_action").length === 0) {
+      push("boundary_governed_action_candidate_unavailable");
+    }
     const governedAction = take(a.governedActionCandidateId, "governed_action", state.governedActionCandidate);
     const satisfaction = take(a.prerequisiteSatisfactionCandidateId, "prerequisite_satisfaction", state.satisfactionCandidate);
     const failure = take(a.prerequisiteFailureCandidateId, "prerequisite_failure", state.failureCandidate);
