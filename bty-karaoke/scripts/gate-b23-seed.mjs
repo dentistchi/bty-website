@@ -43,10 +43,21 @@ const NEXT_VIDEO = 'gateB23NXTx';
  * pass remaining (e.g. `GATE_B23_NEXT_DURATION_SECONDS=200`) and the very same setup must promote
  * normally. A harness that can only ever produce one answer proves nothing about the other.
  */
-const NEXT_DURATION_SECONDS = Number(process.env.GATE_B23_NEXT_DURATION_SECONDS ?? 880);
-/** A real ONE_HOUR pass, backdated so ~10 minutes remain. 600 < 880 -> pass_insufficient. */
+const NEXT_DURATION_SECONDS = Number(process.env.GATE_B23_NEXT_DURATION_SECONDS ?? 900);
+/**
+ * A real ONE_HOUR pass, backdated so ~14 minutes remain. 840 < 900 -> pass_insufficient.
+ *
+ * THIS WINDOW IS A DEADLINE. The pass must still be ACTIVE and still be SHORTER than the next song
+ * at the moment of the tap. Once it expires, `begin_song_v2` expires the grant, the account falls
+ * back to FREE, and a 900s song fits inside the 900s daily allowance — so the run would PROMOTE and
+ * silently prove the opposite of what the gate intends.
+ *
+ * ~14 minutes is the practical ceiling: the song must be <= 900s to be admissible at all, so the
+ * pass window can never exceed that. For a device run, RE-SEED immediately before tapping —
+ * `npm run gate:b23:seed` is idempotent and takes under a second.
+ */
 const PASS_DURATION_SECONDS = 3600;
-const PASS_REMAINING_SECONDS = 600;
+const PASS_REMAINING_SECONDS = Number(process.env.GATE_B23_PASS_REMAINING_SECONDS ?? 840);
 
 function assertIsolated(rawUrl) {
   let url;
@@ -267,7 +278,88 @@ async function seed() {
   );
 }
 
-const mode = process.argv.includes('--clean') ? clean : seed;
+// ── RE-ARM ─────────────────────────────────────────────────────────────────────────────────────
+//
+// The pass window is a DEADLINE (see PASS_REMAINING_SECONDS), but a full re-seed DELETES the room,
+// which cascades away `karaoke_dj_devices` and therefore invalidates a device that has already
+// paired. On a physical-device run that means re-pairing through the Manager flow every time the
+// window lapses — enough friction to make the gate not worth running.
+//
+// Re-arm resets ONLY the stage and the pass window, leaving the room, event and paired devices
+// intact. Pair once, then re-arm immediately before each tap.
+async function rearm() {
+  const [room] = (await rest(`karaoke_rooms?slug=eq.${SLUG}&select=id`)) ?? [];
+  if (!room) throw new Error(`No '${SLUG}' room on ${BASE.host} — run the seed first.`);
+  const [account] = (await rest(`karaoke_accounts?provider_subject=eq.${MARKER}&select=id`)) ?? [];
+  if (!account) throw new Error(`No '${MARKER}' account on ${BASE.host} — run the seed first.`);
+  const [event] = (await rest(`karaoke_events?room_id=eq.${room.id}&select=id&order=created_at.desc`)) ?? [];
+
+  const [current] = (await rest(
+    `karaoke_requests?room_id=eq.${room.id}&youtube_video_id=eq.${CURRENT_VIDEO}&select=id`,
+  )) ?? [];
+  const [next] = (await rest(
+    `karaoke_requests?room_id=eq.${room.id}&youtube_video_id=eq.${NEXT_VIDEO}&select=id`,
+  )) ?? [];
+  if (!current || !next) throw new Error('Seeded requests are missing — run the seed first.');
+
+  // Put the stage back: one song PLAYING, one waiting song READY.
+  await patch('karaoke_requests', `id=eq.${current.id}`, {
+    status: 'playing', started_at: iso(-60), completed_at: null, ready_at: null,
+  });
+  await patch('karaoke_requests', `id=eq.${next.id}`, {
+    status: 'waiting', started_at: null, completed_at: null, ready_at: iso(-30),
+  });
+
+  // One OPEN segment for the song on stage (unique per request_id, and one open per room/event).
+  await del(`karaoke_event_usage_segments?room_id=eq.${room.id}`);
+  await insert('karaoke_event_usage_segments', {
+    account_id: account.id,
+    event_id: event.id,
+    room_id: room.id,
+    request_id: current.id,
+    plan_snapshot: 'FREE',
+    metered: true,
+    started_at: iso(-60),
+    timezone_snapshot: 'America/Los_Angeles',
+  });
+
+  // Re-arm the REAL pass by moving activation forward; expires_at stays exactly
+  // activated_at + duration_seconds, so timed_pass_expiry_math_chk still holds.
+  const activatedAt = iso(-(PASS_DURATION_SECONDS - PASS_REMAINING_SECONDS));
+  const expiresAt = new Date(
+    new Date(activatedAt).getTime() + PASS_DURATION_SECONDS * 1000,
+  ).toISOString();
+  await patch('timed_access_pass_grants', `account_id=eq.${account.id}`, {
+    status: 'ACTIVE', activated_at: activatedAt, expires_at: expiresAt, expired_at: null,
+  });
+  await patch('karaoke_video_durations', `video_id=eq.${NEXT_VIDEO}`, {
+    duration_seconds: NEXT_DURATION_SECONDS,
+  });
+
+  console.log(
+    JSON.stringify(
+      {
+        rearmed: true,
+        authority: BASE.host,
+        roomSlug: SLUG,
+        currentRequestId: current.id,
+        expectedBlockedRequestId: next.id,
+        passExpiresAt: expiresAt,
+        passRemainingSeconds: PASS_REMAINING_SECONDS,
+        nextSongDurationSeconds: NEXT_DURATION_SECONDS,
+        note: 'room, event and PAIRED DEVICES preserved — no re-pairing needed',
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+const mode = process.argv.includes('--clean')
+  ? clean
+  : process.argv.includes('--rearm')
+    ? rearm
+    : seed;
 mode().catch((e) => {
   console.error(String(e.message ?? e));
   process.exit(1);

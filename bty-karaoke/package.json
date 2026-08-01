@@ -19,7 +19,8 @@
     "make:qr": "node scripts/make-qr.mjs",
     "admin:setup": "node scripts/admin-setup-qr.mjs",
     "gate:b23:seed": "node scripts/gate-b23-seed.mjs",
-    "gate:b23:clean": "node scripts/gate-b23-seed.mjs --clean"
+    "gate:b23:clean": "node scripts/gate-b23-seed.mjs --clean",
+    "gate:b23:rearm": "node scripts/gate-b23-seed.mjs --rearm"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.3.7",
