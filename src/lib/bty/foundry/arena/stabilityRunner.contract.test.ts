@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { EVAL_CORPUS } from "./practice-generation.eval";
 import { buildContractManifest, caseDigest, manifestDigest } from "./contractManifest";
@@ -214,5 +215,62 @@ describe(`runner file properties (${existsSync(RUNNER) ? "runner present — ass
     const src = runnerSource();
     if (!src) return expect(existsSync(RUNNER)).toBe(false);
     expect(src).toContain("scripts/practice-stability-collate.ts");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2.23D-R4 — the INSTALLED file, not just what the generator emits.
+//
+// R2.23D-R3 reached an operator because every assertion was about strings being
+// PRESENT in the script. `$EXPECT_MANIFEST` was present. It was never BOUND, and
+// `--credential-boundary-check` exited before the line that would have proved it.
+// ---------------------------------------------------------------------------
+
+/** Names the environment supplies; everything else the script must bind itself. */
+const ENV_SUPPLIED = new Set(["HISTFILE", "PATH", "HOME", "OPENAI_API_KEY", "BTY_PREFLIGHT_MOCK", "BTY_LIVE_EVAL_MOCK", "LLM_MODEL"]);
+
+/** Every expansion in a shell script that no declaration binds. Quoted heredocs are Python. */
+function unboundExpansions(shellSrc: string): string[] {
+  const src = shellSrc.replace(/<<'PY'[\s\S]*?\nPY\n/g, "");
+  const declared = new Set(["1", "2", "3", "*", "@", "?", "#", "0"]);
+  for (const m of src.matchAll(/^\s*(?:local\s+|export\s+)?([A-Za-z_][A-Za-z0-9_]*)=/gm)) declared.add(m[1]);
+  for (const m of src.matchAll(/^\s*local\s+(.+)$/gm)) {
+    for (const tok of m[1].split(/\s+/)) {
+      const name = tok.split("=")[0];
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) declared.add(name);
+    }
+  }
+  for (const m of src.matchAll(/\bread\s+-\w+\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  for (const m of src.matchAll(/\bexport\s+([A-Za-z_][A-Za-z0-9_]*)/g)) declared.add(m[1]);
+  const used = new Set([...src.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]));
+  return [...used].filter((n) => !declared.has(n) && !ENV_SUPPLIED.has(n)).sort();
+}
+
+describe("R2.23D-R4. the installed runner has no unbound expansion, under `set -u`", () => {
+  it("binds every variable the installed runner expands", () => {
+    const src = runnerSource();
+    if (!src) return expect(existsSync(RUNNER)).toBe(false);
+    expect(unboundExpansions(src)).toEqual([]);
+  });
+
+  it("parses as valid bash", () => {
+    const src = runnerSource();
+    if (!src) return expect(existsSync(RUNNER)).toBe(false);
+    // `bash -n` reads the file the operator will actually execute.
+    expect(() => execFileSync("bash", ["-n", RUNNER], { stdio: ["ignore", "pipe", "pipe"] })).not.toThrow();
+  });
+
+  it("runs under `set -u`, so an unbound expansion aborts rather than defaulting", () => {
+    const src = runnerSource();
+    if (!src) return expect(existsSync(RUNNER)).toBe(false);
+    expect(src).toMatch(/^set -Eeuo pipefail$/m);
+  });
+
+  it("finds the exact defect in the R2.23D-R3 runner, if that file is still present", () => {
+    // The regression proof against REALITY, not a synthetic mutation: the runner that failed in
+    // front of an operator is on disk, and this audit must name the variable that killed it.
+    const prior = "/tmp/r223d_r3_live_practice_stability_canary.sh";
+    if (!existsSync(prior)) return expect(existsSync(prior)).toBe(false);
+    expect(unboundExpansions(readFileSync(prior, "utf8"))).toContain("EXPECT_MANIFEST");
   });
 });
