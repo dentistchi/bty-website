@@ -118,7 +118,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "settled",
     promptRule:
-      "governedActionStatus=absent, prerequisiteStatus=not_applicable, temporalRelation=not_applicable — this surface does something else (staffing, notification, documentation, reporting, escalation, sequencing, communication). Select the governed-action candidate that shows what it DOES, per the list table above — the sentinel applies only when that list is empty. Both prerequisite candidates must be none. Leave reason empty.",
+      "governedActionStatus=absent, prerequisiteStatus=not_applicable, temporalRelation=not_applicable — this surface does something else (staffing, notification, documentation, reporting, escalation, sequencing, communication). Leave reason empty.",
   },
   {
     // (Part 3 E)
@@ -135,7 +135,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "inconclusive",
     promptRule:
-      "governedActionStatus=uncertain — the text does not settle whether this surface performs the governed action. Both prerequisite candidates must be none. State the EXACT ambiguity in reason.",
+      "governedActionStatus=uncertain — the text does not settle whether this surface performs the governed action. State the EXACT ambiguity in reason.",
   },
   {
     // (Part 3 B)
@@ -152,7 +152,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "settled",
     promptRule:
-      "governedActionStatus=present, prerequisiteStatus=satisfied, temporalRelation=prerequisite_before_action — the governed action happens with the prerequisite already met. Select the governed-action candidate AND the satisfaction candidate. The failure candidate must be none. Leave reason empty.",
+      "governedActionStatus=present, prerequisiteStatus=satisfied, temporalRelation=prerequisite_before_action — the governed action happens with the prerequisite already met. Leave reason empty.",
   },
   {
     // (Part 3 C)
@@ -169,7 +169,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "prerequisite_unmet",
     verdictEffect: "violation",
     promptRule:
-      "governedActionStatus=present, prerequisiteStatus=explicitly_missing, temporalRelation=action_before_prerequisite — the governed action happens while the text says the prerequisite is NOT met. Select the governed-action candidate AND the failure candidate. The satisfaction candidate must be none. Leave reason empty.",
+      "governedActionStatus=present, prerequisiteStatus=explicitly_missing, temporalRelation=action_before_prerequisite — the governed action happens while the text says the prerequisite is NOT met. Leave reason empty.",
   },
   {
     // (Part 3 C)
@@ -186,7 +186,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "explicit_contradiction",
     verdictEffect: "violation",
     promptRule:
-      "governedActionStatus=present, prerequisiteStatus=contradicted, temporalRelation=action_before_prerequisite — the text asserts something incompatible with the prerequisite holding. Select the governed-action candidate AND the failure candidate. Leave reason empty.",
+      "governedActionStatus=present, prerequisiteStatus=contradicted, temporalRelation=action_before_prerequisite — the text asserts something incompatible with the prerequisite holding. Leave reason empty.",
   },
   {
     // (Part 3 D) SILENCE IS NOT A VIOLATION. The rule R2.30 established and R2.38 keeps structural.
@@ -203,7 +203,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "inconclusive",
     promptRule:
-      "governedActionStatus=present, prerequisiteStatus=not_established — the governed action is here but NOTHING says whether the prerequisite was met. This is NOT a violation. Both prerequisite candidates must be none. Say in reason what is missing.",
+      "governedActionStatus=present, prerequisiteStatus=not_established — the governed action is here but NOTHING says whether the prerequisite was met. This is NOT a violation. Say in reason what is missing.",
   },
   {
     // (Part 3 D)
@@ -220,7 +220,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "inconclusive",
     promptRule:
-      "temporalRelation=simultaneous_or_unclear — the prerequisite's state is readable but the ORDER against the governed action is not. Select the candidate matching the prerequisite status you chose. Say in reason what makes the order unclear.",
+      "temporalRelation=simultaneous_or_unclear — the prerequisite's state is readable but the ORDER against the governed action is not. Say in reason what makes the order unclear.",
   },
   {
     // (Part 3 D)
@@ -237,7 +237,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "none",
     verdictEffect: "inconclusive",
     promptRule:
-      "prerequisiteStatus=uncertain — the governed action is here and the text about the prerequisite cannot be settled either way. Both prerequisite candidates must be none. Name the EXACT ambiguity in reason.",
+      "prerequisiteStatus=uncertain — the governed action is here and the text about the prerequisite cannot be settled either way. Name the EXACT ambiguity in reason.",
   },
   {
     // A prohibition boundary ("never X"). Its semantic frame carries no prerequisite, so performing
@@ -256,7 +256,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     mechanismFamily: "explicit_contradiction",
     verdictEffect: "violation",
     promptRule:
-      "governedActionStatus=present with a PROHIBITION rule (the rule forbids the action outright, it has no prerequisite) — set prerequisiteStatus=not_applicable and temporalRelation=not_applicable. Select the governed-action candidate only. Leave reason empty.",
+      "governedActionStatus=present with a PROHIBITION rule (the rule forbids the action outright, it has no prerequisite) — set prerequisiteStatus=not_applicable and temporalRelation=not_applicable. Leave reason empty.",
   },
 ];
 
@@ -306,7 +306,60 @@ export function deriveMechanism(state: TruthStateRule, surfaceKind: string, hasV
 }
 
 /** Prompt rules, generated. A hand-written duplicate of these sentences is a parity defect. */
-export const renderTruthStateRules = (): string[] => TRUTH_STATES.map((s) => `  ${s.id} — ${s.promptRule}`);
+/**
+ * R2.48 — ROLE-SPECIFIC EMPTY-POOL AUTHORITY.
+ *
+ * A state that REQUIRES prerequisite evidence cannot be answered on a surface where the server
+ * offered none. R2.44's polarity gate emptied five failure pools; until R2.48 the validator accepted
+ * the sentinel there, so `explicitly_missing` could derive a violation with no evidence behind it at
+ * all — reopening the class R2.44 closed, through a different door.
+ *
+ * The codes are per ROLE. A single generic code would hide which evidence was unavailable, which is
+ * the one thing an auditor reading a refusal needs to know.
+ */
+export const PREREQUISITE_UNAVAILABLE_CODES = [
+  "boundary_prerequisite_satisfaction_candidate_unavailable",
+  "boundary_prerequisite_failure_candidate_unavailable",
+] as const;
+export type PrerequisiteUnavailableCode = (typeof PREREQUISITE_UNAVAILABLE_CODES)[number];
+
+export const prerequisiteUnavailableCode = (role: "prerequisite_satisfaction" | "prerequisite_failure"): PrerequisiteUnavailableCode =>
+  role === "prerequisite_satisfaction" ? "boundary_prerequisite_satisfaction_candidate_unavailable" : "boundary_prerequisite_failure_candidate_unavailable";
+
+/**
+ * The prompt sentence for one state's THREE candidate requirements, GENERATED from the requirement
+ * fields themselves.
+ *
+ * R2.47 measured why this cannot stay hand-written: the `promptRule` strings carried their own copy
+ * of the requirements and had already drifted — `governed_action_prerequisite_contradicted` forbids
+ * a satisfaction candidate and never said so. Generating the clause makes prompt and validator one
+ * authority by construction.
+ */
+export function renderCandidateRequirements(s: TruthStateRule): string {
+  const out: string[] = [];
+  if (s.governedActionCandidate === "required") {
+    out.push("Select a governedActionCandidates member — the sentinel `none` only if that list is empty.");
+  } else if (s.governedActionCandidate === "optional") {
+    out.push("The governed-action candidate is optional here.");
+  }
+  const roles: Array<[CandidateRequirement, string, string]> = [
+    [s.satisfactionCandidate, "prerequisiteSatisfactionCandidateId", "prerequisiteSatisfactionCandidates"],
+    [s.failureCandidate, "prerequisiteFailureCandidateId", "prerequisiteFailureCandidates"],
+  ];
+  const forbidden = roles.filter(([r]) => r === "forbidden");
+  if (forbidden.length === 2) {
+    out.push("Both prerequisite candidate IDs must be `none` — even when those lists are non-empty.");
+  } else {
+    for (const [req, field, list] of roles) {
+      if (req === "forbidden") out.push(`${field} must be \`none\` — even when ${list} is non-empty.`);
+      else if (req === "required") out.push(`Cite one ${list} member; if that list is empty this state is UNSUPPORTED for this surface — do not select it.`);
+      else out.push(`${field} is optional; use \`none\` when ${list} is empty.`);
+    }
+  }
+  return out.join(" ");
+}
+
+export const renderTruthStateRules = (): string[] => TRUTH_STATES.map((s) => `  ${s.id} — ${s.promptRule} ${renderCandidateRequirements(s)}`);
 
 export const truthStatesRequiringReason = (): TruthStateId[] =>
   TRUTH_STATES.filter((s) => s.reasonAuthority === "model_required").map((s) => s.id);

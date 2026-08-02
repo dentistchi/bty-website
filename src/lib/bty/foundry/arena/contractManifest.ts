@@ -101,6 +101,7 @@ import {
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import { EVIDENCE_POLARITY, POLARITY_REFUSAL_CODES, evidencePolarityContractSha256 } from "@/domain/foundry/arena-draft/boundaryEvidencePolarity";
+import { PREREQUISITE_UNAVAILABLE_CODES, TRUTH_STATES, renderCandidateRequirements } from "@/domain/foundry/arena-draft/boundaryTruthStates";
 import {
   ATTRIBUTION_AUTHORITY,
   ATTRIBUTION_REFUSAL_CODES,
@@ -182,7 +183,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.46.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.48.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -397,6 +398,31 @@ export function buildContractManifest(head: string, model: string): ContractMani
       // consequence of the one choice that produced it. That assigns CORRECTION OWNERSHIP only:
       // primary[1] keeps `absent`, keeps candidate 2-a1, keeps `not_applicable`, and never borrows
       // its child's candidate id. R2.45 measured why no text rule can do this job.
+      // R2.48 — the two evidence axes stated once. The governed-action candidate is chosen by POOL
+      // CARDINALITY; the prerequisite candidates are chosen by the TRUTH STATE. R2.47 measured a live
+      // reviewer applying the first rule to the second role because the prompt generalized it, and a
+      // required-but-empty pool silently licensing an evidence-free violation.
+      prerequisiteCandidateAuthority: digest({
+        governedActionAxis: "pool_cardinality",
+        prerequisiteAxis: "truth_state",
+        forbiddenMeansNoneRegardlessOfPool: true,
+        requiredWithEmptyPoolIsUnsupported: true,
+        emptyPoolNeverLicensesEvidenceFreeFinding: true,
+        unavailableCodes: PREREQUISITE_UNAVAILABLE_CODES,
+        roleDistinguishingCodes: true,
+        governedActionEmptyPoolContractUnchanged: true,
+      }),
+      // The prompt's per-state clauses are GENERATED from these requirements, so prompt and
+      // validator cannot drift into two authorities again.
+      truthStateCandidateRequirements: digest(
+        TRUTH_STATES.map((t) => ({
+          id: t.id,
+          governedActionCandidate: t.governedActionCandidate,
+          satisfactionCandidate: t.satisfactionCandidate,
+          failureCandidate: t.failureCandidate,
+          renderedClause: renderCandidateRequirements(t),
+        })),
+      ),
       generatedResultAncestorAttribution: causalAttributionContractSha256(),
       generatedResultAttributionEdge: digest({
         authority: ATTRIBUTION_AUTHORITY,

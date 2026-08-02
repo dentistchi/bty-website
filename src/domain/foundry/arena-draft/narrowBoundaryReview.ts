@@ -55,6 +55,8 @@ import {
 import {
   classifyTruthState,
   deriveMechanism,
+  prerequisiteUnavailableCode,
+  PREREQUISITE_UNAVAILABLE_CODES,
   type DerivedApplicability,
   type DerivedCompliance,
   type TruthStateRule,
@@ -190,6 +192,10 @@ export const NARROW_GROUNDING_CODES = [
   // POOL the server offered, not about the id the model chose.
   "boundary_governed_action_candidate_unavailable",
   "boundary_candidate_role_uncertain",
+  // R2.48 — the prerequisite counterpart, per role. A state that REQUIRES evidence cannot be
+  // answered where the server offered none; accepting the sentinel there derives a finding with
+  // nothing behind it.
+  ...PREREQUISITE_UNAVAILABLE_CODES,
 ] as const;
 
 export const NARROW_BOUNDARY_CODES = [...NARROW_COVERAGE_CODES, ...NARROW_GROUNDING_CODES] as const;
@@ -209,6 +215,7 @@ export const OUTPUT_CONTRACT_CODES = [
   // R2.40 — pool-aware requirements. Separate authority from the codes above: these fire about the
   // POOL the server offered, not about the id the model chose.
   "boundary_governed_action_candidate_unavailable",
+  ...PREREQUISITE_UNAVAILABLE_CODES,
   "boundary_candidate_role_uncertain",
 ] as const;
 
@@ -244,6 +251,33 @@ export type NarrowReviewContext = {
 
 export type GroundingFinding = { boundaryId: string; surfaceRef: string; code: NarrowBoundaryCode };
 
+/**
+ * R2.48 — one row per refused evidence role, kept as EVIDENCE. A refusal is never a semantic
+ * finding; it is how an auditor sees WHICH role was unavailable, on which surface, under which
+ * state, and what the model tried to cite there.
+ */
+export type PrerequisiteUnavailableDecision = {
+  boundaryId: string;
+  surfaceRef: string;
+  role: "prerequisite_satisfaction" | "prerequisite_failure";
+  stateId: string;
+  poolCardinality: number;
+  selectedCandidateId: string;
+  code: (typeof PREREQUISITE_UNAVAILABLE_CODES)[number];
+};
+
+export type PrerequisiteUnavailableMetrics = {
+  prerequisiteCandidateUnavailableCount: number;
+  prerequisiteSatisfactionCandidateUnavailableCount: number;
+  prerequisiteFailureCandidateUnavailableCount: number;
+};
+
+export const summarizePrerequisiteUnavailable = (d: readonly PrerequisiteUnavailableDecision[]): PrerequisiteUnavailableMetrics => ({
+  prerequisiteCandidateUnavailableCount: d.length,
+  prerequisiteSatisfactionCandidateUnavailableCount: d.filter((x) => x.role === "prerequisite_satisfaction").length,
+  prerequisiteFailureCandidateUnavailableCount: d.filter((x) => x.role === "prerequisite_failure").length,
+});
+
 /** One fully server-derived row. Every conclusion here was computed, not read from the model. */
 export type DerivedAssessment = {
   boundaryId: string;
@@ -259,7 +293,7 @@ export type DerivedAssessment = {
 };
 
 export type NarrowValidationResult =
-  | { ok: true; value: NarrowBoundaryReview; derived: DerivedAssessment[] }
+  | { ok: true; value: NarrowBoundaryReview; derived: DerivedAssessment[]; prerequisiteUnavailable: PrerequisiteUnavailableDecision[] }
   | {
       ok: false;
       codes: NarrowBoundaryCode[];
@@ -269,6 +303,8 @@ export type NarrowValidationResult =
       validSurfaceRefs: string[];
       failedSurfaceRefs: string[];
       derived: DerivedAssessment[];
+      /** R2.48 — every refused evidence role, with its role, state and pool cardinality. */
+      prerequisiteUnavailable: PrerequisiteUnavailableDecision[];
     };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -283,6 +319,7 @@ const cid = (v: unknown): string => {
 export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewContext): NarrowValidationResult {
   const codes: NarrowBoundaryCode[] = [];
   const findings: GroundingFinding[] = [];
+  const unavailable: PrerequisiteUnavailableDecision[] = [];
   const fail = (extra: Partial<NarrowValidationResult & { ok: false }> = {}) => ({
     ok: false as const,
     codes: [...new Set(codes)],
@@ -291,6 +328,7 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
     validSurfaceRefs: [],
     failedSurfaceRefs: [],
     derived: [],
+    prerequisiteUnavailable: unavailable,
     ...extra,
   });
 
@@ -412,7 +450,39 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
       role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure",
       requirement: TruthStateRule["governedActionCandidate"],
     ): BoundaryEvidenceCandidate | null => {
-      const poolEmpty = poolFor(ctx.candidates, a.boundaryId, a.surfaceRef, role).length === 0;
+      const pool = poolFor(ctx.candidates, a.boundaryId, a.surfaceRef, role);
+      const poolEmpty = pool.length === 0;
+      /**
+       * R2.48 — FAIL CLOSED on required-but-unavailable, for the PREREQUISITE roles only.
+       *
+       * R2.47 measured the hole: R2.44's polarity gate emptied five failure pools, and this branch
+       * then accepted the sentinel, so `explicitly_missing` derived a violation whose evidence
+       * fields were the empty string. An empty pool is the server saying nothing on this surface
+       * points that way; it can never license the claim.
+       *
+       * The governed-action role is deliberately excluded. Its empty-pool contract is R2.42's —
+       * an empty list there IS the sentinel case — and `boundary_governed_action_candidate_unavailable`
+       * already refuses the one combination that matters.
+       */
+      if (requirement === "required" && poolEmpty && role !== "governed_action") {
+        push(prerequisiteUnavailableCode(role));
+        unavailable.push({
+          boundaryId: a.boundaryId,
+          surfaceRef: a.surfaceRef,
+          role,
+          stateId: state.id,
+          poolCardinality: 0,
+          selectedCandidateId: id,
+          code: prerequisiteUnavailableCode(role),
+        });
+        // Still diagnose the id, so an auditor sees BOTH that the role was unavailable and what the
+        // model tried to cite. R2.47's attempt 1 reached into the satisfaction list; that stays visible.
+        if (id !== NO_CANDIDATE) {
+          const r = resolveCandidate(index, id, { boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, role });
+          if (!r.ok) push(r.code);
+        }
+        return null;
+      }
       if (id === NO_CANDIDATE) {
         if (requirement === "required" && !poolEmpty) push("boundary_candidate_required_missing");
         return null;
@@ -461,7 +531,7 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
   }
 
   if (codes.length > 0) return fail({ value, validSurfaceRefs, failedSurfaceRefs, derived });
-  return { ok: true, value, derived };
+  return { ok: true, value, derived, prerequisiteUnavailable: unavailable };
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +604,9 @@ export type DerivedBoundaryVerdict =
       validSurfaceRefs: string[];
       failedSurfaceRefs: string[];
       derived: DerivedAssessment[];
+      /** R2.48 — refused evidence roles, with role, state and pool cardinality. */
+      prerequisiteUnavailable?: PrerequisiteUnavailableDecision[];
+      prerequisiteUnavailableMetrics?: PrerequisiteUnavailableMetrics;
     };
 
 export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): DerivedBoundaryVerdict {
@@ -543,6 +616,8 @@ export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): D
       outcome: "boundary_review_malformed",
       codes: v.codes,
       findings: v.findings,
+      prerequisiteUnavailable: v.prerequisiteUnavailable,
+      prerequisiteUnavailableMetrics: summarizePrerequisiteUnavailable(v.prerequisiteUnavailable),
       failureClass: classifyFailure(v.codes),
       validSurfaceRefs: v.validSurfaceRefs,
       failedSurfaceRefs: v.failedSurfaceRefs,

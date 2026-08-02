@@ -22,6 +22,7 @@ import {
   type CausalAttributionMetrics,
   type CausalGroup,
 } from "@/domain/foundry/arena-draft/generatedResultAttribution";
+import { summarizePrerequisiteUnavailable } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 import {
   BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
   MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
@@ -186,6 +187,8 @@ export type BoundaryStageDeps = {
  * boundary codes so a boundary rejection keeps its Level 3 precedence rather than inventing a
  * parallel severity ladder.
  */
+export const EMPTY_PREREQ_UNAVAILABLE = summarizePrerequisiteUnavailable([]);
+
 export const EMPTY_CAUSAL_METRICS: CausalAttributionMetrics = summarizeCausalAttribution([], [], []);
 
 /**
@@ -575,6 +578,9 @@ export async function runBoundaryReviewStage(
         // R2.32 — name the precise class so an output-contract failure is never read as a coverage
         // or grounding failure. They have different remedies.
         boundaryReviewOutcome: base.outputContractFailure ? "boundary_output_contract_failure" : "boundary_review_malformed",
+        // R2.48 — WHICH evidence role was unavailable, never collapsed into one summary code.
+        prerequisiteUnavailable: effective.outcome === "boundary_review_malformed" ? (effective.prerequisiteUnavailable ?? []) : [],
+        ...(effective.outcome === "boundary_review_malformed" ? (effective.prerequisiteUnavailableMetrics ?? EMPTY_PREREQ_UNAVAILABLE) : EMPTY_PREREQ_UNAVAILABLE),
         modelReasonRequiredCount: tally.required,
         modelReasonMissingCount: tally.missing,
         modelReasonUnexpectedCount: tally.unexpected,

@@ -113,10 +113,14 @@ describe("[R2.42][A] prompt instruction parity", () => {
   it("no generated state rule contradicts the decision table", () => {
     // The `non_governing` rule must not be readable as "use the sentinel".
     const nonGoverning = NARROW_BOUNDARY_SYSTEM_PROMPT.split("\n").find((l) => l.includes("non_governing —"))!;
-    expect(nonGoverning).toContain("Select the governed-action candidate");
+    // R2.48 — this clause is now GENERATED from the state's own requirement fields, so the wording
+    // moved. The invariant is unchanged: `non_governing` must tell the reviewer to SELECT, and the
+    // sentinel must stay scoped to an empty list.
+    expect(nonGoverning).toMatch(/Select a governedActionCandidates member/);
+    expect(nonGoverning).toMatch(/sentinel `none` only if that list is empty/);
     // Scoped to the same sentence: "Both PREREQUISITE candidates must be none" is correct and must
     // not be mistaken for a contradiction about the governed-action candidate.
-    expect(nonGoverning).not.toMatch(/governed-action candidate[^.]*must be none/);
+    expect(nonGoverning).not.toMatch(/governedActionCandidateId[^.]*must be `none`/);
     // …and no line anywhere may pair an absent status with a blanket sentinel instruction.
     for (const line of NARROW_BOUNDARY_SYSTEM_PROMPT.split("\n")) {
       if (/governedActionStatus=absent/.test(line) && /sentinel/i.test(line)) {
