@@ -60,6 +60,11 @@ describe("Layer 1 — Practice copy sources contain no user-facing Arena termino
     "src/components/foundry/arena-practice/ArenaScenarioPreview.tsx",
     "src/components/foundry/arena-practice/BoundaryScopePanel.tsx",
     "src/components/foundry/arena-practice/BoundaryEditor.tsx",
+    // R1 — the Host authoring entry, on both surfaces that offer it. The control-room copy was
+    // never in this list, which is how "Create Arena practice" / "아레나 연습 만들기" survived the
+    // R2.14 sweep on the very control this journey depends on.
+    "src/components/app-shell/PracticeAuthoringEntry.tsx",
+    "src/components/foundry/event-rooms/copy.ts",
   ];
 
   it.each(COPY_SOURCES)("%s exposes no Arena / 아레나 in user-facing copy", (rel) => {

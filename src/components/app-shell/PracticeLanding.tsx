@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
+import { PracticeAuthoringEntry } from "@/components/app-shell/PracticeAuthoringEntry";
 import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
+import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPracticeFlow";
 
 /**
  * Practice — landing surface (App Shell + Today Simplification V1, Phase 6).
@@ -138,6 +140,23 @@ export default function PracticeLanding({
   const [view, setView] = useState<"landing" | "arena" | "fieldActions">(
     initialView === "fieldActions" || initialFieldActionId ? "fieldActions" : "landing",
   );
+  /**
+   * R1 — the Training the Host is authoring for. Set only by the authoring entry; while it is set
+   * the existing flow owns the screen, exactly as it does when opened from Learn.
+   */
+  const [authoringEventId, setAuthoringEventId] = useState<string | null>(null);
+
+  if (view === "arena" && authoringEventId) {
+    return (
+      <div className="flex flex-col gap-4" data-testid="practice-authoring">
+        <ArenaPracticeFlow
+          eventId={authoringEventId}
+          locale={locale}
+          onBack={() => setAuthoringEventId(null)}
+        />
+      </div>
+    );
+  }
 
   if (view === "arena") {
     return (
@@ -150,6 +169,9 @@ export default function PracticeLanding({
         >
           ‹ {t.back}
         </button>
+        {/* Above the historical list, at the top of the shell's scroll region: a Host must never
+            have to scroll past their completed practices to find the way to author a new one. */}
+        <PracticeAuthoringEntry locale={locale} onOpen={setAuthoringEventId} />
         <ArenaRoom locale={locale} lockedTag={lockedTag} lockedBody={lockedBody} />
       </div>
     );
