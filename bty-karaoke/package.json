@@ -23,7 +23,8 @@
     "gate:b23:rearm": "node scripts/gate-b23-seed.mjs --rearm",
     "gate:b23:rearm:g2": "node scripts/gate-b23-seed.mjs --rearm --g2",
     "gate:b23:rearm:g3": "node scripts/gate-b23-seed.mjs --rearm --g3",
-    "gate:b23:g3:clear": "node scripts/gate-b23-seed.mjs --g3-clear"
+    "gate:b23:g3:clear": "node scripts/gate-b23-seed.mjs --g3-clear",
+    "gate:b23:rearm:g4": "node scripts/gate-b23-seed.mjs --rearm --g4"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.3.7",

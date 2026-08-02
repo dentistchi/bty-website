@@ -301,7 +301,7 @@ async function seed() {
 //
 // Re-arm resets ONLY the stage and the pass window, leaving the room, event and paired devices
 // intact. Pair once, then re-arm immediately before each tap.
-async function rearm(tooLong = false, lookupFault = false) {
+async function rearm(tooLong = false, lookupFault = false, quotaFault = false) {
   // G1 arms a 900s next song (admissible, refused by the PASS window); G2 arms an over-limit
   // duration (refused by the DURATION classifier, upstream of every entitlement check). They are
   // mutually exclusive because both are expressed as the same video's cached duration.
@@ -358,7 +358,7 @@ async function rearm(tooLong = false, lookupFault = false) {
   await patch('timed_access_pass_grants', `account_id=eq.${account.id}`, {
     status: 'ACTIVE', activated_at: activatedAt, expires_at: expiresAt, expired_at: null,
   });
-  if (lookupFault) {
+  if (lookupFault || quotaFault) {
     // GATE G3 — remove the cached duration so the resolver must go UPSTREAM. Combined with an
     // invalid YOUTUBE_API_KEY on the local Worker, `fetchDuration` takes its genuine transient
     // branch: a non-quota upstream error, ONE retry, then `lookup_failed`. Nothing about this is
@@ -384,19 +384,28 @@ async function rearm(tooLong = false, lookupFault = false) {
     JSON.stringify(
       {
         rearmed: true,
-        gate: lookupFault ? 'G3 (lookup_failed)' : tooLong ? 'G2 (too_long)' : 'G1 (pass_insufficient)',
+        gate: quotaFault ? 'G4 (quota_exceeded)'
+          : lookupFault ? 'G3 (lookup_failed)'
+          : tooLong ? 'G2 (too_long)' : 'G1 (pass_insufficient)',
         authority: BASE.host,
         roomSlug: SLUG,
         currentRequestId: current.id,
         expectedBlockedRequestId: next.id,
-        nextSongDurationSeconds: lookupFault ? null : nextDuration,
-        expectedReason: (tooLong || lookupFault) ? 'duration_unavailable' : 'pass_insufficient',
-        expectedDurationFailureReason: lookupFault ? 'lookup_failed' : tooLong ? 'too_long' : null,
-        clearFaultCommand: lookupFault ? 'npm run gate:b23:g3:clear' : null,
+        nextSongDurationSeconds: (lookupFault || quotaFault) ? null : nextDuration,
+        expectedReason: (tooLong || lookupFault || quotaFault) ? 'duration_unavailable' : 'pass_insufficient',
+        expectedDurationFailureReason:
+          quotaFault ? 'quota_exceeded' : lookupFault ? 'lookup_failed' : tooLong ? 'too_long' : null,
+        // G3/G4 share this DB state EXACTLY. What separates them is the upstream fault the local
+        // Worker process was started with, so the requirement is reported here rather than assumed.
+        requiresServerEnv:
+          quotaFault ? 'GATE_B23_UPSTREAM_FAULT=quota'
+          : lookupFault ? 'GATE_B23_UPSTREAM_FAULT=lookup (or an invalid YOUTUBE_API_KEY)'
+          : null,
+        clearFaultCommand: (lookupFault || quotaFault) ? 'npm run gate:b23:g3:clear' : null,
         // G2 is classified upstream of the RPC, so no pass window can expire under it.
-        passExpiresAt: (tooLong || lookupFault) ? null : expiresAt,
-        passRemainingSeconds: (tooLong || lookupFault) ? null : PASS_REMAINING_SECONDS,
-        deadline: (tooLong || lookupFault)
+        passExpiresAt: (tooLong || lookupFault || quotaFault) ? null : expiresAt,
+        passRemainingSeconds: (tooLong || lookupFault || quotaFault) ? null : PASS_REMAINING_SECONDS,
+        deadline: (tooLong || lookupFault || quotaFault)
           ? 'NONE — the duration classifier/resolver runs before any entitlement check'
           : `~${PASS_REMAINING_SECONDS}s — re-arm immediately before tapping`,
         note: 'room, event and PAIRED DEVICES preserved — no re-pairing needed',
@@ -435,7 +444,11 @@ const mode = process.argv.includes('--clean')
   : process.argv.includes('--g3-clear')
     ? clearLookupFault
   : process.argv.includes('--rearm')
-    ? () => rearm(process.argv.includes('--g2'), process.argv.includes('--g3'))
+    ? () => rearm(
+        process.argv.includes('--g2'),
+        process.argv.includes('--g3'),
+        process.argv.includes('--g4'),
+      )
     : seed;
 mode().catch((e) => {
   console.error(String(e.message ?? e));
