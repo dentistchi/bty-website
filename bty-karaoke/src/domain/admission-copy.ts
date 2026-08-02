@@ -56,6 +56,73 @@ export function durationBlockCopy(reason: string | undefined | null): string {
  */
 export const PASS_INSUFFICIENT_COPY = '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.';
 
+// ── BUILD 24-G1 — `upgrade_required` is TWO different facts, and it said only one ────────────
+//
+// FOUNDER-OBSERVED FAILURE. With 1:50 of FREE time left and a 4:41 next song, Host Web showed
+// BOTH of these on one screen:
+//
+//     "무료 이용 시간이 1:50 남았어요"          (the banner, correct)
+//     "오늘의 무료 이용 시간을 모두 사용했어요"   (the block, FALSE)
+//
+// The server was right to refuse — the shortfall was 2:51, far past the 90s Final Song Grace
+// bound — but the balance was NOT exhausted. Three call sites hard-coded "all time used" as the
+// wording for `upgrade_required`, when the RPC raises that outcome for the whole predicate
+// `v_charge > v_remaining`. "Exhausted" is only the special case where `v_remaining` is 0.
+//
+// The two facts need different sentences because the operator's next action differs: at zero the
+// only options are wait for the reset or upgrade; with time left, picking a shorter song works
+// right now. Telling a Host with 1:50 left that they have nothing left sends them to the wrong
+// remedy, and is simply untrue.
+//
+// PRESENTATION ONLY. This decides no admission — the server already refused. It selects wording
+// from values the authority published, and computes no eligibility of its own.
+
+/** A: the FREE allowance really is used up. Reachable only when remaining is 0. */
+export const UPGRADE_REQUIRED_EXHAUSTED =
+  '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.';
+
+/** B: time remains, but not enough for THIS song. The remedy is a shorter song, not an upgrade. */
+export const UPGRADE_REQUIRED_TOO_LONG =
+  '남은 무료 이용 시간보다 이 곡이 길어서 시작할 수 없어요.\n더 짧은 곡을 선택하거나, PRO로 업그레이드해 주세요.';
+
+/** mm:ss for a non-negative second count. Local so this module stays dependency-free. */
+function clock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Wording for a server `upgrade_required` refusal.
+ *
+ * `remainingSeconds` is the ONLY discriminator, and it comes from the authority — either the
+ * published admission detail or the usage projection returned with the refusal. When it is
+ * absent the exhausted sentence is used, which is the wording that shipped before BUILD 24 and
+ * is the safe fallback: it never claims the Host has time they do not have.
+ *
+ * The concrete second line is added only when the authority supplied BOTH numbers. It leads with
+ * the REQUIRED time (the union charge actually compared), not the raw song length, because an
+ * active lease can make them differ — quoting the song length as "needed" would overstate it.
+ */
+export function upgradeRequiredCopy(d: {
+  remainingSeconds?: number | null;
+  requiredChargeSeconds?: number | null;
+  durationSeconds?: number | null;
+} | null | undefined): string {
+  const remaining = typeof d?.remainingSeconds === 'number' ? d.remainingSeconds : null;
+  if (remaining === null || remaining <= 0) return UPGRADE_REQUIRED_EXHAUSTED;
+
+  const charge = typeof d?.requiredChargeSeconds === 'number' ? d.requiredChargeSeconds : null;
+  if (charge === null) return UPGRADE_REQUIRED_TOO_LONG;
+
+  const duration = typeof d?.durationSeconds === 'number' ? d.durationSeconds : null;
+  // The song length is named only when it genuinely differs from the required time.
+  const lengthNote = duration !== null && duration !== charge ? ` (곡 길이 ${clock(duration)})` : '';
+  return (
+    `${UPGRADE_REQUIRED_TOO_LONG}\n` +
+    `이번 재생에 필요한 시간은 ${clock(charge)}인데, 남은 무료 시간은 ${clock(remaining)}이에요.${lengthNote}`
+  );
+}
+
 /**
  * The authoritative admission values a decision transaction computed. Structural on purpose —
  * `rooms.server.ts` owns the canonical `AdmissionDetail` interface, and this module must not

@@ -157,3 +157,67 @@ describe('BUILD 24 — the remaining time is exact and always visible', () => {
     expect(screen.getByRole('alert').textContent).not.toMatch(/-\d/);
   });
 });
+
+// ── BUILD 24-G1 — FOUNDER-OBSERVED: the reset line was missing where it matters most ──────────
+//
+// It was attached only to `normal` and `zero_idle`. The two states a Host actually reads it in —
+// a live warning, and the moment a start is refused — never said when the allowance returns.
+describe('BUILD 24-G1 — the reset line is visible in every FREE + enforced state', () => {
+  const kinds: Array<[string, number, boolean]> = [
+    ['normal', 720, false],
+    ['five_min', 200, false],
+    ['two_min', 110, false], // the founder's exact state
+    ['zero_playing', 0, true],
+    ['zero_idle', 0, false],
+  ];
+
+  for (const [kind, remaining, playing] of kinds) {
+    it(`${kind} shows the reset line`, () => {
+      const { unmount } = render(<UsageBanner usage={projectUsage(ent(remaining, { playing }))} />);
+      const el = screen.getByRole(kind === 'zero_idle' ? 'alert' : 'status');
+      expect(el.getAttribute('data-banner-kind')).toBe(kind);
+      expect(el.textContent).toMatch(/초기화돼요/);
+      unmount();
+    });
+  }
+
+  it('the 04:00 boundary is FORMATTED from the server instant, never hard-coded', () => {
+    // nextResetAt is 11:00Z = 04:00 America/Los_Angeles. The component must print the account-tz
+    // rendering of the SERVER value; changing the server instant must change what is shown.
+    const at04 = { ...ent(720), nextResetAt: '2026-08-03T11:00:00.000Z' };
+    const { unmount } = render(<UsageBanner usage={projectUsage(at04)} />);
+    const shownAt04 = screen.getByRole('status').textContent!;
+    unmount();
+
+    const at09 = { ...ent(720), nextResetAt: '2026-08-03T16:00:00.000Z' }; // 09:00 local
+    render(<UsageBanner usage={projectUsage(at09)} />);
+    const shownAt09 = screen.getByRole('status').textContent!;
+
+    expect(shownAt04).not.toBe(shownAt09); // it tracks the server value
+    // ko-KR hour/minute formatting in the ACCOUNT timezone: 11:00Z -> "오전 4:00" under PDT.
+    expect(shownAt04).toMatch(/오전 4:00/);
+    expect(shownAt09).toMatch(/오전 9:00/);
+    // And the literal boundary is never baked into the component.
+    expect(shownAt09).not.toMatch(/4:00/);
+  });
+
+  it('omits the line entirely when the server sent no nextResetAt — never a guess', () => {
+    const noReset = { ...ent(720), nextResetAt: null };
+    render(<UsageBanner usage={projectUsage(noReset)} />);
+    expect(screen.getByRole('status').textContent).not.toMatch(/초기화/);
+  });
+
+  it('the warning states keep their own guidance AS WELL AS the reset line', () => {
+    render(<UsageBanner usage={projectUsage(ent(110))} />);
+    const el = screen.getByRole('status');
+    expect(el.textContent).toMatch(/끝까지 부를 수 있어요/); // shipped guidance retained
+    expect(el.textContent).toMatch(/초기화돼요/); // plus the restored reset line
+  });
+
+  it('active playing still suppresses the false red block', () => {
+    // The other half of the founder's evidence: mid-song at zero must NOT be the alert.
+    render(<UsageBanner usage={projectUsage(ent(0, { playing: true }))} />);
+    expect(screen.getByRole('status').getAttribute('data-banner-kind')).toBe('zero_playing');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

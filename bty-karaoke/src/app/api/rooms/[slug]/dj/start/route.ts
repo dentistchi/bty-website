@@ -16,6 +16,7 @@ import { projectEntitlement } from '@/domain/usage';
 import {
   durationBlockCopy,
   publishAdmissionFields as admissionFields,
+  upgradeRequiredCopy,
   PASS_INSUFFICIENT_COPY,
 } from '@/domain/admission-copy';
 
@@ -83,7 +84,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       // the canonical upgrade_required with the truthful usage snapshot.
       return NextResponse.json(
         {
-          error: '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.',
+          // BUILD 24-G1 — `upgrade_required` covers BOTH "no time left" and "time left, but this
+          // song is longer than it". The wording is now chosen from the authority's own
+          // remainingSeconds instead of assuming exhaustion. Presentation only.
+          error: upgradeRequiredCopy(result),
           code: 'upgrade_required',
           usage: projectEntitlement(result.entitlement),
           // R1 §D — requiredChargeSeconds is the value actually compared with the remaining

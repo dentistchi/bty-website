@@ -69,6 +69,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       promoted: result.promoted ? { id: result.promoted.id } : null,
       reason: result.reason,
       usage: result.reason === 'upgrade_required' ? projectEntitlement(result.entitlement) : null,
+      // BUILD 24-G1 — publish the SAME allowlisted admission detail on `upgrade_required` that
+      // the blocked reasons already publish. Without it the console could only say "all time
+      // used", which is false whenever the balance is non-zero and merely too short for this
+      // song. `publishAdmissionFields` omits every key the authority did not supply, so an
+      // older client sees exactly the payload it saw before.
+      ...(result.reason === 'upgrade_required' ? publishAdmissionFields(result) : {}),
       // Everything below is ADDITIVE and present only on the two new reasons. An older client
       // never sees these keys, and — because it does not recognise the new `reason` — falls
       // through its existing `reason !== 'promoted'` branch to exactly today's behaviour.

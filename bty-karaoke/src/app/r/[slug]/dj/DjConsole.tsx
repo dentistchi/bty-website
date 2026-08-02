@@ -18,6 +18,7 @@ import DjBoard from './DjBoard';
 import UsageBanner from './UsageBanner';
 import { adminAuthHeader, isCookieCred } from '@/domain/admin-auth';
 import type { UsageProjection } from '@/domain/usage';
+import { upgradeRequiredCopy } from '@/domain/admission-copy';
 import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 
 interface Props {
@@ -113,6 +114,12 @@ export interface PassTurnBody {
   message?: string;
   durationFailureReason?: string;
   promoted?: { id: string } | null;
+  // BUILD 24-G1 — the allowlisted admission detail, now published on `upgrade_required` too so
+  // the refusal can be described with the authority's own numbers instead of an assumption.
+  // All optional: an older server omits them and the copy degrades to its safe wording.
+  remainingSeconds?: number;
+  requiredChargeSeconds?: number;
+  durationSeconds?: number;
 }
 
 /**
@@ -571,7 +578,19 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
         if (decision.kind === 'upgrade_required') {
           closePlayerOnFailure();
           if (body.usage) setUsage(body.usage);
-          setError('오늘의 무료 이용 시간을 모두 사용했어요 — PRO로 업그레이드하면 다음 곡을 시작할 수 있어요.');
+          // BUILD 24-G1 — THIS is the screen that showed "1:50 남았어요" and "모두 사용했어요"
+          // at the same time. `upgrade_required` is raised for the whole predicate
+          // `charge > remaining`, so it covers both exhaustion AND "you have time, but not
+          // enough for this song". The wording now comes from the authority's own numbers.
+          // Prefer the published admission detail; fall back to the usage projection, which
+          // carries remainingSeconds on this path too.
+          setError(
+            upgradeRequiredCopy({
+              remainingSeconds: body.remainingSeconds ?? body.usage?.remainingSeconds,
+              requiredChargeSeconds: body.requiredChargeSeconds,
+              durationSeconds: body.durationSeconds,
+            }),
+          );
           return;
         }
         // BUILD 23 — the current song completed, but the NEXT one was refused fail-closed.

@@ -18,6 +18,7 @@ import { projectEntitlement } from '@/domain/usage';
 import {
   durationBlockCopy,
   publishAdmissionFields,
+  upgradeRequiredCopy,
   PASS_INSUFFICIENT_COPY,
 } from '@/domain/admission-copy';
 
@@ -95,7 +96,11 @@ export async function PATCH(
   if (result.outcome === 'upgrade_required') {
     return NextResponse.json(
       {
-        error: '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.',
+        // BUILD 24-G1 — chosen from the authority's remainingSeconds, not assumed exhaustion.
+        // This path has no published charge detail, so the copy degrades to the plain
+        // "this song is longer than your remaining time" sentence — still true, just not
+        // itemised. It never claims exhaustion while time remains.
+        error: upgradeRequiredCopy({ remainingSeconds: projectEntitlement(result.entitlement)?.remainingSeconds }),
         code: 'upgrade_required',
         usage: projectEntitlement(result.entitlement),
       },

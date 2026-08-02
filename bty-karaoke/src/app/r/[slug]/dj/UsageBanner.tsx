@@ -71,7 +71,6 @@ export default function UsageBanner({ usage }: { usage: UsageProjection | null }
   switch (usage.bannerKind) {
     case 'normal':
       title = `FREE · 오늘 남은 무료 시간 ${clock}`;
-      detail = resetLine;
       break;
     case 'five_min':
       title = `무료 이용 시간이 ${clock} 남았어요`;
@@ -91,13 +90,24 @@ export default function UsageBanner({ usage }: { usage: UsageProjection | null }
       break;
     case 'zero_idle':
       title = '오늘 무료 이용 시간을 모두 사용했어요';
-      detail = resetLine
-        ? `PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요. ${resetLine}.`
-        : 'PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.';
+      detail = 'PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.';
       break;
     default:
       return null;
   }
+
+  // BUILD 24-G1 — the reset line is shown in EVERY FREE + enforced state.
+  //
+  // FOUNDER-OBSERVED FAILURE: it was attached only to `normal` and `zero_idle`, so the two
+  // states a Host is most likely to be reading it in — a live warning, and the moment a start
+  // was refused — never told them when the allowance comes back. "When does this reset?" is
+  // exactly the question those states provoke, and the server has always had the answer.
+  //
+  // The instant is FORMATTED, never computed: `nextResetAt` is the server's own value and the
+  // 04:00 boundary is never hard-coded here. When the server omits it (older payload), the line
+  // is simply absent rather than guessed.
+  const resetDetail = resetLine ? `${resetLine}.` : null;
+  detail = [detail, resetDetail].filter(Boolean).join(' ') || null;
 
   return (
     <div
