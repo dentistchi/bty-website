@@ -20,9 +20,14 @@ const confirmed = (n: number, ids: string[]) => {
   return b.value;
 };
 
-describe("the eight structured states", () => {
+describe("the structured states", () => {
   it("names exactly the contract's states, three of which are ready", () => {
-    expect(READINESS_STATES).toHaveLength(8);
+    // R5B2 added two NON-ready states for new-authority drafts — `boundary_confirmation_required`
+    // and `boundary_unconfirmed`. The ready set is deliberately unchanged: nothing became ready
+    // that was not ready before, so this count moving is a widened vocabulary, not a loosened gate.
+    expect(READINESS_STATES).toHaveLength(10);
+    expect(READINESS_STATES).toContain("boundary_confirmation_required");
+    expect(READINESS_STATES).toContain("boundary_unconfirmed");
     expect(READINESS_STATES.filter(isReadyState)).toEqual([
       "ready_no_boundaries",
       "ready_all_available_boundaries_active",

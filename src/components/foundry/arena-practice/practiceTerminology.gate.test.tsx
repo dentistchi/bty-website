@@ -58,6 +58,8 @@ describe("Layer 1 — Practice copy sources contain no user-facing Arena termino
     "src/components/bty-arena/ArenaPracticeDiscovery.tsx",
     "src/components/bty-arena/practice/ArenaPracticePlayer.tsx",
     "src/components/foundry/arena-practice/ArenaScenarioPreview.tsx",
+    "src/components/foundry/arena-practice/BoundaryScopePanel.tsx",
+    "src/components/foundry/arena-practice/BoundaryEditor.tsx",
   ];
 
   it.each(COPY_SOURCES)("%s exposes no Arena / 아레나 in user-facing copy", (rel) => {
@@ -116,7 +118,14 @@ const SOURCE = {
   hardest_when_options: ["time_limited"],
   avoidance_seeds: ["time"],
 };
-const SHELL_DRAFT = { id: "shell-1", scenario_draft: null, generation_source: null, revision: 0 };
+/** A real shell carries the lifecycle discriminator, so the rendered surface includes R5B2's editor. */
+const SHELL_DRAFT = {
+  id: "shell-1",
+  scenario_draft: null,
+  generation_source: null,
+  revision: 0,
+  guided_answers: { practiceSetupVersion: 1 },
+};
 
 function jsonRes(body: unknown, ok = true, status = 200) {
   return { ok, status, json: async () => body } as unknown as Response;

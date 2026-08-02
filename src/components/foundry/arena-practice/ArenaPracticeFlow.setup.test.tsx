@@ -26,8 +26,18 @@ const SOURCE = {
   avoidance_seeds: ["time"],
 };
 
-/** A canonical SHELL draft: exists, but no scenario yet. */
-const SHELL_DRAFT = { id: "shell-1", scenario_draft: null, generation_source: null, revision: 0 };
+/**
+ * A canonical SHELL draft: exists, but no scenario yet. `createOrOpenArenaDraftShell` stamps
+ * `practiceSetupVersion` on every draft it creates, so a shell without it is not a shape the
+ * product can produce — carrying it here keeps this harness honest about what it is testing.
+ */
+const SHELL_DRAFT = {
+  id: "shell-1",
+  scenario_draft: null,
+  generation_source: null,
+  revision: 0,
+  guided_answers: { practiceSetupVersion: 1 },
+};
 
 function mockFetch(over: { draftsList?: unknown; oneDraft?: unknown } = {}) {
   return vi.fn(async (url: string) => {

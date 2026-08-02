@@ -13,8 +13,14 @@ import { ARENA_PRACTICE_COPY, AUDIENCE_LABELS, type ArenaPracticeCopy, type Loca
 import { ArenaScenarioPreview } from "./ArenaScenarioPreview";
 import { ArenaPracticePlayer } from "@/components/bty-arena/practice/ArenaPracticePlayer";
 import { BoundaryScopePanel } from "./BoundaryScopePanel";
+import { BoundaryEditor } from "./BoundaryEditor";
 import { resolvePracticeReadiness, type PracticeReadiness } from "@/domain/foundry/arena-draft/practiceReadiness";
-import type { PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
+import {
+  CONSTRAINTS_MAX,
+  CONSTRAINT_STATEMENT_MAX,
+  suggestConstraints,
+  type PracticeBoundary,
+} from "@/domain/foundry/arena-draft/boundary";
 import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 
 /**
@@ -48,6 +54,11 @@ type ClientDraft = {
   revision: number;
   /** R2.23D — the setup surface needs the confirmed boundary and the Host's active selection. */
   guided_answers?: {
+    /**
+     * R5B2 — the lifecycle discriminator. Its PRESENCE is what makes the server refuse generation
+     * without a confirmed boundary, so readiness cannot be honest without reading it.
+     */
+    practiceSetupVersion?: number;
     practiceBoundary?: PracticeBoundary;
     practiceBoundaryScope?: PracticeBoundaryScope;
   };
@@ -84,6 +95,12 @@ export function ArenaPracticeFlow({
   const [setupDraft, setSetupDraft] = useState<ClientDraft | null>(null);
   const [scopeSaving, setScopeSaving] = useState(false);
   const [scopeSaveError, setScopeSaveError] = useState(false);
+  // R5B2 — boundary confirmation lives on the same setup surface.
+  const [boundarySaving, setBoundarySaving] = useState(false);
+  const [boundarySaveError, setBoundarySaveError] = useState<string | null>(null);
+  const [boundaryConflict, setBoundaryConflict] = useState(false);
+  const [boundaryInvalidated, setBoundaryInvalidated] = useState(false);
+  const [setupGenError, setSetupGenError] = useState(false);
 
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -162,7 +179,8 @@ export function ArenaPracticeFlow({
               if (d.draft) {
                 // Shell-first (Slice 3.2I-R5A.2/R5B1): a canonical draft shell exists but no
                 // scenario is generated yet. Show the honest Practice-setup state — NOT the old
-                // generation-retry error. The boundary editor arrives in R5B2.
+                // generation-retry error. R5B2 gave that surface its boundary editor, so this is
+                // now a resumable setup rather than a place to stop.
                 setDraftId(d.draft.id);
                 setRevision(d.draft.revision);
                 setSetupDraft(d.draft);
@@ -229,6 +247,127 @@ export function ArenaPracticeFlow({
     },
     [draftId, revision, scopeSaving],
   );
+
+  /**
+   * R5B2 — resolve a boundary refusal into something the Host can act on. The route answers with a
+   * validation CODE; a code is a fact about the request, not an instruction to a person, so it
+   * never reaches the screen.
+   */
+  const boundaryErrorCopy = useCallback(
+    (reason: string | undefined): string => {
+      if (reason === "constraint_statement_empty") return t.boundaryErrorEmpty;
+      if (reason === "constraint_statement_too_long") return t.boundaryErrorTooLong(CONSTRAINT_STATEMENT_MAX);
+      if (reason === "constraint_duplicate_statement" || reason === "constraint_duplicate_id") return t.boundaryErrorDuplicate;
+      if (reason === "boundary_too_many_constraints") return t.boundaryErrorTooMany(CONSTRAINTS_MAX);
+      return t.boundarySaveError;
+    },
+    [t],
+  );
+
+  /**
+   * R5B2 — persist the Host-assembled boundary. The SERVER decides whether it is valid and what
+   * `confirmed` then means; the response replaces the local view, so the screen can never claim a
+   * confirmation the server did not grant.
+   *
+   * A stale revision is NOT an overwrite opportunity: the save is abandoned, the latest canonical
+   * revision is re-read so the next attempt can succeed, and the Host's rules stay on screen.
+   */
+  const saveBoundary = useCallback(
+    async (boundary: PracticeBoundary) => {
+      if (!draftId || boundarySaving) return;
+      setBoundarySaving(true);
+      setBoundarySaveError(null);
+      setBoundaryConflict(false);
+      setSetupGenError(false);
+      try {
+        const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/boundary`, {
+          method: "PUT",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ boundary, expectedRevision: revision }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          if (res.status === 409 || body?.error === "stale_revision") {
+            setBoundaryConflict(true);
+            // Re-read the canonical row so the retry carries the revision the server now holds.
+            const fresh = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}`, {
+              credentials: "include",
+              cache: "no-store",
+            }).catch(() => null);
+            if (fresh?.ok) {
+              const d = (await fresh.json().catch(() => ({}))) as { draft?: ClientDraft };
+              if (d.draft) {
+                setSetupDraft(d.draft);
+                setRevision(d.draft.revision);
+              }
+            }
+            return;
+          }
+          setBoundarySaveError(boundaryErrorCopy(body?.error));
+          return;
+        }
+        const data = (await res.json()) as { draft?: ClientDraft; invalidated?: boolean };
+        if (!data.draft) {
+          setBoundarySaveError(t.boundarySaveError);
+          return;
+        }
+        setSetupDraft(data.draft);
+        setRevision(data.draft.revision);
+        setBoundaryInvalidated(data.invalidated === true);
+      } catch {
+        setBoundarySaveError(t.boundarySaveError);
+      } finally {
+        setBoundarySaving(false);
+      }
+    },
+    [draftId, revision, boundarySaving, boundaryErrorCopy, t],
+  );
+
+  /**
+   * R5B2 — the forward action out of setup. It reuses the EXISTING regenerate path, which reads the
+   * stored guided answers and the server-side boundary; there is no second generation
+   * implementation and no client-supplied boundary.
+   */
+  const generateFromSetup = useCallback(async () => {
+    if (!draftId || submittingRef.current) return;
+    submittingRef.current = true;
+    setSetupGenError(false);
+    setPhase("generating");
+    try {
+      const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/regenerate`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: loc }),
+      });
+      const data = res.ok ? ((await res.json()) as { draft?: ClientDraft; warnings?: string[] }) : null;
+      if (!data?.draft?.scenario_draft) {
+        // Honest and recoverable: back to setup with the boundary intact, never a raw code.
+        setSetupGenError(true);
+        setPhase("setup");
+        return;
+      }
+      setEditable(data.draft.scenario_draft);
+      setGenSource(data.draft.generation_source);
+      setRevision(data.draft.revision);
+      setDirty(false);
+      setPublishState("idle");
+      setLivePracticeId(null);
+      setWarnings(data.warnings ?? []);
+      setBoundaryInvalidated(false);
+      setView("edit");
+      setSaveState("idle");
+      setPhase("editor");
+    } catch {
+      setSetupGenError(true);
+      setPhase("setup");
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [draftId, loc]);
 
   const q1Ready = q1 !== null && (q1 !== "other" || q1Custom.trim().length > 0);
   const q2Ready = q2.trim().length > 0;
@@ -452,10 +591,40 @@ export function ArenaPracticeFlow({
     // R2.23C made generation block once four or more boundaries are confirmed and gave the Host no
     // way out; this surface is that way out. Readiness comes from the domain resolver, so the
     // screen cannot disagree with the server about why generation is unavailable.
+    //
+    // R5B2 — the discriminator decides which generation rule the SERVER will apply, so readiness
+    // reads it too. Without it this screen reported "ready" for a draft the server refuses.
+    const boundary = setupDraft?.guided_answers?.practiceBoundary;
+    const newAuthority = typeof setupDraft?.guided_answers?.practiceSetupVersion === "number";
     const readiness: PracticeReadiness = resolvePracticeReadiness(
-      setupDraft?.guided_answers?.practiceBoundary,
+      boundary,
       setupDraft?.guided_answers?.practiceBoundaryScope,
+      { newAuthority },
     );
+    // Suggestions are derived from the SAME training facts the server maps into generation
+    // (`capability` = problem, `expected_behavior` = observable behaviour, `success_evidence`).
+    // They are candidates only; nothing is suggested into authority.
+    const suggestions = suggestConstraints({
+      problem: source.capability,
+      observableBehavior: source.expected_behavior,
+      successEvidence: source.success_evidence,
+      learningNeeds: source.learning_needs,
+    });
+    const statusLine =
+      readiness.state === "boundary_confirmation_required"
+        ? t.setupNeedsBoundary
+        : readiness.state === "boundary_unconfirmed"
+          ? t.setupNeedsConfirmation
+          : readiness.state === "active_boundary_set_changed"
+            ? t.boundaryScopeChangedNotice
+            : // With the editor present, the confirmed rules are already on screen; restating that
+              // they all apply is the whole content of the scope panel's 1-3 branch, so it moves
+              // here and the panel is not rendered twice over the same list.
+              newAuthority && readiness.state === "ready_all_available_boundaries_active"
+              ? t.boundaryScopeAllActive
+              : readiness.canGenerate
+                ? t.boundaryScopeReady
+                : t.setupPending;
     return shell(
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-2">
@@ -467,17 +636,50 @@ export function ArenaPracticeFlow({
           {source.expected_behavior ? <SummaryRow label={t.labelExpected} value={source.expected_behavior} /> : null}
         </dl>
 
-        <BoundaryScopePanel
-          readiness={readiness}
-          copy={t}
-          saving={scopeSaving}
-          saveError={scopeSaveError}
-          onConfirm={saveBoundaryScope}
-        />
+        {/* The boundary comes first: on a new-authority draft nothing else is reachable without it. */}
+        {newAuthority ? (
+          <BoundaryEditor
+            boundary={boundary}
+            suggestions={suggestions}
+            copy={t}
+            saving={boundarySaving}
+            saveError={boundarySaveError}
+            conflict={boundaryConflict}
+            onConfirm={saveBoundary}
+          />
+        ) : null}
+
+        {boundaryInvalidated ? (
+          <p role="status" className="rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2 text-xs leading-5 text-amber-100/90">
+            {t.boundaryInvalidatedNotice}
+          </p>
+        ) : null}
+
+        {/* The scope panel answers a DIFFERENT question — which of four or more rules govern THIS
+            situation. With the editor showing the confirmed set, rendering it below three rules
+            would only repeat that list back. Legacy drafts have no editor, so nothing changes for
+            them and the panel keeps its established behaviour. */}
+        {!newAuthority || readiness.selectionRequired ? (
+          <BoundaryScopePanel
+            readiness={readiness}
+            copy={t}
+            saving={scopeSaving}
+            saveError={scopeSaveError}
+            onConfirm={saveBoundaryScope}
+          />
+        ) : null}
 
         <p className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-xs leading-5 text-white/50">
-          {readiness.canGenerate ? t.boundaryScopeReady : t.setupPending}
+          {statusLine}
         </p>
+
+        {/* One forward action, and only once the server would actually accept it. */}
+        {readiness.canGenerate ? (
+          <div className="flex flex-col gap-2">
+            {setupGenError ? <p role="alert" className="text-sm text-red-300/90">{t.setupGenerateError}</p> : null}
+            <PrimaryButton onClick={generateFromSetup}>{t.setupGenerateCta}</PrimaryButton>
+          </div>
+        ) : null}
       </div>,
     );
   }

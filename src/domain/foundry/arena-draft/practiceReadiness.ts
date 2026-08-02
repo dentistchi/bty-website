@@ -24,6 +24,16 @@ import { MAX_ACTIVE_BOUNDARIES, resolveActiveBoundaries, validateBoundaryScope, 
 export const READINESS_STATES = [
   /** No confirmed boundary is attached. Generation may proceed. */
   "ready_no_boundaries",
+  /**
+   * NEW-AUTHORITY draft with no boundary at all (Slice 3.2I-R5B2). The server refuses generation
+   * with `boundary_confirmation_required`; the Host must set the boundary before anything else.
+   */
+  "boundary_confirmation_required",
+  /**
+   * NEW-AUTHORITY draft carrying a boundary the Host has not confirmed yet. The work is not lost —
+   * it simply has no authority until it is confirmed, and the server refuses generation until then.
+   */
+  "boundary_unconfirmed",
   /** 1-3 confirmed, so every one of them governs this situation. Generation may proceed. */
   "ready_all_available_boundaries_active",
   /** The Host confirmed a subset of a larger set. Generation may proceed. */
@@ -64,11 +74,31 @@ export type PracticeReadiness = {
  * The server's `resolveActiveBoundaries` remains the authority on what generation receives; this
  * adds the Host-facing distinctions that authority does not need — whether a selection is required,
  * whether one exists but is unconfirmed, and which of the fail-closed reasons applies.
+ *
+ * `newAuthority` is the draft's lifecycle discriminator (`guided_answers.practiceSetupVersion`).
+ * It matters because the server applies a DIFFERENT generation rule to each kind of draft:
+ *
+ *   NEW-AUTHORITY — `regenerateArenaDraft` refuses with `boundary_confirmation_required` unless a
+ *                   boundary exists AND is confirmed. Absence is not permission.
+ *   LEGACY        — no discriminator, so the boundary requirement never applies and generation
+ *                   falls through to the free-text eligibility contract, exactly as before.
+ *
+ * Reading only the boundary could not tell those apart, so this resolver reported `canGenerate:
+ * true` for a brand-new draft the server would reject — the screen said "ready" while nothing on
+ * it could produce a boundary. Passing the discriminator is what closes that gap.
+ *
+ * INVARIANT: `canGenerate` is true if and only if the server's generation path would accept the
+ * current setup (transport and provider availability excluded).
+ *
+ * The parameter is optional and defaults to the legacy reading, so every existing caller keeps its
+ * exact behaviour.
  */
 export function resolvePracticeReadiness(
   boundary: PracticeBoundary | null | undefined,
   scope?: PracticeBoundaryScope | null,
+  options?: { newAuthority?: boolean },
 ): PracticeReadiness {
+  const newAuthority = options?.newAuthority === true;
   const available = boundary?.confirmed ? boundary.constraints : [];
   const base = {
     available,
@@ -76,7 +106,21 @@ export function resolvePracticeReadiness(
     selectionRequired: available.length > MAX_ACTIVE_BOUNDARIES,
   };
 
+  // A new-authority draft without a CONFIRMED boundary is refused by the server. Say so, and say
+  // which of the two situations it is, so the surface can name the actual next action.
+  if (newAuthority && !boundary?.confirmed) {
+    return {
+      ...base,
+      state: boundary ? "boundary_unconfirmed" : "boundary_confirmation_required",
+      canGenerate: false,
+      active: [],
+      confirmed: false,
+    };
+  }
+
   if (available.length === 0) {
+    // Either a legacy draft, or a new-authority draft whose CONFIRMED boundary carries no rules —
+    // a legitimate, deliberate "nothing every option must obey". The server accepts both.
     return { ...base, state: "ready_no_boundaries", canGenerate: true, active: [], confirmed: false };
   }
 

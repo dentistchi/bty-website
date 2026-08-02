@@ -36,6 +36,44 @@ export type ArenaPracticeCopy = {
   boundaryScopeInactive: string;
   boundaryScopeReady: string;
 
+  // Slice 3.2I-R5B2 — the Host CONFIRMS the boundary here. Before this existed, a new draft
+  // could never obtain one, so generation was refused by the server with nothing on screen able
+  // to resolve it. The language stays in the Host's terms: rules every option must follow.
+  boundaryTitle: string;
+  boundaryLead: string;
+  boundarySuggestedTitle: string;
+  boundarySuggestedHint: string;
+  boundarySuggestionAdd: string;
+  boundarySuggestionAdded: string;
+  boundaryRulesTitle: string;
+  boundaryRulesEmpty: string;
+  boundaryOptionalHint: string;
+  boundaryNewPlaceholder: string;
+  boundaryAddCta: string;
+  boundaryEditCta: string;
+  boundaryRemoveCta: string;
+  boundaryEditSaveCta: string;
+  boundaryEditCancelCta: string;
+  boundaryCount: (n: number, max: number) => string;
+  boundaryConfirmCta: string;
+  boundaryConfirmedTitle: string;
+  boundaryChangeCta: string;
+  boundarySaving: string;
+  boundaryErrorEmpty: string;
+  boundaryErrorTooLong: (max: number) => string;
+  boundaryErrorDuplicate: string;
+  boundaryErrorTooMany: (max: number) => string;
+  boundarySaveError: string;
+  boundaryConflict: string;
+  boundaryInvalidatedNotice: string;
+
+  // Slice 3.2I-R5B2 — the forward action out of setup, and the honest readiness lines.
+  setupNeedsBoundary: string;
+  setupNeedsConfirmation: string;
+  setupGenerateCta: string;
+  setupGenerating: string;
+  setupGenerateError: string;
+
   // Slice 3.2I-R5B1 — interim shell setup surface (boundary editor arrives in R5B2)
   setupTitle: string;
   setupLead: string;
@@ -147,7 +185,10 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     summaryLead: "Turn this training into a realistic practice scenario. You'll answer two quick questions.",
     setupTitle: "Set up practice",
     setupLead: "Before BTY creates the situations, confirm what kind of decision learners need to practice.",
-    setupPending: "Boundary setup opens next — you'll confirm any rules every option must follow before the situations are created.",
+    // R5B2 — boundary setup is now ON this screen, so the interim "opens next" promise became
+    // untrue. The only decision that can still be outstanding here is which rules govern THIS
+    // situation, so the line says that instead.
+    setupPending: "Choose which rules this practice situation will rehearse, then confirm.",
     labelCapability: "What this builds",
     labelForWhom: "For whom",
     labelExpected: "Expected behavior",
@@ -258,6 +299,43 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     boundaryScopeSaveError: "That selection could not be saved. Please retry.",
     boundaryScopeInactive: "Not in this practice situation",
     boundaryScopeReady: "Ready to create this practice situation.",
+
+    boundaryTitle: "What must every option respect?",
+    boundaryLead:
+      "Write the rules a learner may never break here, however the situation goes. Every option BTY writes will stay inside them.",
+    boundarySuggestedTitle: "Found in this training",
+    boundarySuggestedHint: "Suggestions only. Add the ones that belong, and edit anything that is not quite right.",
+    boundarySuggestionAdd: "Add",
+    boundarySuggestionAdded: "Added",
+    boundaryRulesTitle: "Rules for this practice situation",
+    boundaryRulesEmpty: "No rules yet.",
+    boundaryOptionalHint:
+      "If nothing is off-limits here, you can confirm with no rules — the situation becomes a judgment call with no hard line.",
+    boundaryNewPlaceholder: "e.g. Never share a patient identifier before consent is confirmed.",
+    boundaryAddCta: "Add rule",
+    boundaryEditCta: "Edit",
+    boundaryRemoveCta: "Remove",
+    boundaryEditSaveCta: "Save rule",
+    boundaryEditCancelCta: "Cancel",
+    boundaryCount: (n, max) => `${n} of ${max} rules`,
+    boundaryConfirmCta: "Confirm boundary",
+    boundaryConfirmedTitle: "Boundary confirmed",
+    boundaryChangeCta: "Change boundary",
+    boundarySaving: "Saving…",
+    boundaryErrorEmpty: "A rule needs some words before it can be added.",
+    boundaryErrorTooLong: (max) => `A rule can be up to ${max} characters. Please shorten it.`,
+    boundaryErrorDuplicate: "That rule is already on the list.",
+    boundaryErrorTooMany: (max) => `You can set up to ${max} rules. Remove one to add another.`,
+    boundarySaveError: "That boundary could not be saved. Please retry.",
+    boundaryConflict:
+      "This practice changed somewhere else while you were editing. Your rules are still here — review them and confirm again.",
+    boundaryInvalidatedNotice: "The boundary changed, so the earlier draft situation was cleared. Create it again below.",
+
+    setupNeedsBoundary: "Set the boundary before BTY creates the situation.",
+    setupNeedsConfirmation: "Confirm the boundary to continue.",
+    setupGenerateCta: "Create the practice situation",
+    setupGenerating: "Creating…",
+    setupGenerateError: "The situation could not be created. Please retry.",
   },
   ko: {
     eyebrow: "연습",
@@ -267,7 +345,7 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     summaryLead: "이 교육을 현실적인 연습 시나리오로 바꿉니다. 두 가지 질문에만 답하면 됩니다.",
     setupTitle: "Practice 설정",
     setupLead: "BTY가 상황을 만들기 전에 학습자가 어떤 판단을 연습해야 하는지 확인합니다.",
-    setupPending: "다음 단계에서 기준을 설정합니다 — 상황을 만들기 전에 모든 선택이 지켜야 할 규칙이 있는지 확인하게 됩니다.",
+    setupPending: "이 연습 상황에서 다룰 규칙을 선택한 뒤 확인하세요.",
     labelCapability: "무엇을 기르나",
     labelForWhom: "대상",
     labelExpected: "기대 행동",
@@ -378,5 +456,42 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     boundaryScopeSaveError: "선택을 저장하지 못했습니다. 다시 시도해 주세요.",
     boundaryScopeInactive: "이 연습 상황에는 적용되지 않음",
     boundaryScopeReady: "이 연습 상황을 만들 준비가 되었습니다.",
+
+    boundaryTitle: "모든 선택이 지켜야 할 것은 무엇인가요?",
+    boundaryLead:
+      "상황이 어떻게 흘러가도 학습자가 절대 넘어서는 안 되는 규칙을 적어 주세요. BTY가 만드는 모든 선택지는 그 안에서 만들어집니다.",
+    boundarySuggestedTitle: "이 트레이닝에서 찾은 문장",
+    boundarySuggestedHint: "제안일 뿐입니다. 맞는 것만 추가하고, 어색한 부분은 수정하세요.",
+    boundarySuggestionAdd: "추가",
+    boundarySuggestionAdded: "추가됨",
+    boundaryRulesTitle: "이 연습 상황의 규칙",
+    boundaryRulesEmpty: "아직 규칙이 없습니다.",
+    boundaryOptionalHint:
+      "여기서 절대 안 되는 일이 없다면 규칙 없이 확인해도 됩니다 — 명확한 선이 없는 판단 상황이 됩니다.",
+    boundaryNewPlaceholder: "예: 동의를 확인하기 전에는 환자 신원을 절대 공유하지 않는다.",
+    boundaryAddCta: "규칙 추가",
+    boundaryEditCta: "수정",
+    boundaryRemoveCta: "삭제",
+    boundaryEditSaveCta: "규칙 저장",
+    boundaryEditCancelCta: "취소",
+    boundaryCount: (n, max) => `규칙 ${max}개 중 ${n}개`,
+    boundaryConfirmCta: "경계 확인",
+    boundaryConfirmedTitle: "경계가 확인되었습니다",
+    boundaryChangeCta: "경계 변경",
+    boundarySaving: "저장 중…",
+    boundaryErrorEmpty: "규칙을 추가하려면 내용을 입력하세요.",
+    boundaryErrorTooLong: (max) => `규칙은 최대 ${max}자까지 입력할 수 있습니다. 조금 줄여 주세요.`,
+    boundaryErrorDuplicate: "이미 목록에 있는 규칙입니다.",
+    boundaryErrorTooMany: (max) => `규칙은 최대 ${max}개까지 설정할 수 있습니다. 하나를 삭제한 뒤 추가하세요.`,
+    boundarySaveError: "경계를 저장하지 못했습니다. 다시 시도해 주세요.",
+    boundaryConflict:
+      "편집하는 동안 다른 곳에서 이 연습이 변경되었습니다. 작성한 규칙은 그대로 있습니다 — 확인 후 다시 저장하세요.",
+    boundaryInvalidatedNotice: "경계가 바뀌어 이전 초안 상황은 삭제되었습니다. 아래에서 다시 만들어 주세요.",
+
+    setupNeedsBoundary: "BTY가 상황을 만들기 전에 경계를 설정하세요.",
+    setupNeedsConfirmation: "계속하려면 경계를 확인하세요.",
+    setupGenerateCta: "연습 상황 만들기",
+    setupGenerating: "만드는 중…",
+    setupGenerateError: "상황을 만들지 못했습니다. 다시 시도해 주세요.",
   },
 };

@@ -207,11 +207,20 @@ describe("R2.23C — evidence authority is part of the contract", () => {
 
   it("R2.23D — the Host scope selector and readiness resolver are part of the contract", () => {
     expect(m.evidenceAuthority.hostScopeSelectorExists).toBe(true);
-    expect(m.evidenceAuthority.readinessStates).toHaveLength(8);
+    // R5B2 added the two states that let a NEW-AUTHORITY draft say why generation is refused.
+    // The manifest is supposed to move when the readiness vocabulary moves — that is the point of
+    // binding it — so this count changing IS the contract recording the change.
+    expect(m.evidenceAuthority.readinessStates).toHaveLength(10);
+    expect(m.evidenceAuthority.readinessStates).toContain("boundary_confirmation_required");
+    expect(m.evidenceAuthority.readinessStates).toContain("boundary_unconfirmed");
     expect(m.components.readinessResolver).toMatch(/^[0-9a-f]{64}$/);
     // Removing the selector, or changing which states exist, changes the contract.
     expect(digest({ ...m.evidenceAuthority, hostScopeSelectorExists: false })).not.toBe(m.components.evidenceAuthority);
     expect(digest(["ready_no_boundaries"])).not.toBe(m.components.readinessResolver);
+    // Dropping either new state would silently restore the state the Host could not resolve.
+    expect(digest(m.evidenceAuthority.readinessStates.filter((s) => s !== "boundary_confirmation_required"))).not.toBe(
+      m.components.readinessResolver,
+    );
   });
 
   it("the evidence contract records that the projection follows acceptance, and nothing is auto-selected", () => {
