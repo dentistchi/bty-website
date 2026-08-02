@@ -167,7 +167,11 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // was produced while the server still offered a prerequisite-performing span as a governed
     // action — a materially different question, and the one that produced a safety-inverting packet.
     expect(manifestDigest(m)).not.toBe("3b55f8749ae71ad83df928da79778a55a26ab25adb884edc9bc29aaace224c84"); // R2.38
-    expect(m.artifactSchemaVersion).toBe("r2.40.1");
+    // R2.44 bound prerequisite evidence polarity into candidate construction. An R2.42 artifact was
+    // produced while satisfaction text could still be offered as failure evidence — the defect that
+    // produced five false findings on a branch that kept the boundary.
+    expect(manifestDigest(m)).not.toBe("2911ce142576e55be8be1087d7184302e047a899a3278824acc1af79ef143b23"); // R2.42
+    expect(m.artifactSchemaVersion).toBe("r2.44.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {

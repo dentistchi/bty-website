@@ -100,6 +100,7 @@ import {
 } from "@/domain/foundry/arena-draft/boundaryContextSegments";
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
+import { EVIDENCE_POLARITY, POLARITY_REFUSAL_CODES, evidencePolarityContractSha256 } from "@/domain/foundry/arena-draft/boundaryEvidencePolarity";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import {
   BOUNDARY_REPORTABLE_OUTCOMES,
@@ -176,7 +177,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.40.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.44.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -373,6 +374,20 @@ export function buildContractManifest(head: string, model: string): ContractMani
       // R2.39 measured the alternative: an unconditional `true` offered the safe verification choice
       // as a governed action and the correction packet told a Manager to delete it.
       boundaryCandidateRoleAuthority: candidateRoleContractSha256(),
+      // R2.44 — candidate identity and locality are not enough. A prerequisite span must also point
+      // the right way. R2.43 measured one span serving as governed action, satisfaction AND failure
+      // at once, producing five false findings on a branch that kept the boundary.
+      boundaryEvidencePolarityAuthority: evidencePolarityContractSha256(),
+      boundaryPrerequisitePoolPolarity: digest({
+        polarities: EVIDENCE_POLARITY,
+        refusalCodes: POLARITY_REFUSAL_CODES,
+        satisfactionOnlyRefusedFromFailure: true,
+        failureOnlyRefusedFromSatisfaction: true,
+        mixedKeepsFailureLosesSatisfaction: true,
+        uncertainObservedNotEnforced: true,
+        appliesToInheritedParentState: true,
+        termsFrom: "semanticFrame.prerequisiteClause",
+      }),
       boundaryGovernedActionPoolConstruction: digest({
         roleGate: "boundaryCandidateRole",
         refusesPrerequisiteOperationOnly: true,

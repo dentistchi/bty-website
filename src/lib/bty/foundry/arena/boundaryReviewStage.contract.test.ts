@@ -366,25 +366,39 @@ describe("[R2.42] failed-subset repair asks only about the failed subset", () =>
         const first = (ref: string) => poolFor(subject.evidenceCandidates, subject.boundaries[0]!.id, ref, "governed_action")[0]?.candidateId ?? NO_CANDIDATE;
         // Attempt 1 replays the live response verbatim; the repair corrects only the failed rows the
         // one way the contract permits — by selecting from the pool it was offered.
+        // Attempt 1 replays the live response verbatim; the repair corrects each failed row the one
+        // way the contract permits. Where R2.44's polarity authority emptied the failure pool, the
+        // honest correction is `not_applicable` with the sentinel.
         const rows =
           attempt === 1
             ? R240_LIVE_ATTEMPT_1
-            : R240_LIVE_ATTEMPT_1.filter((x) => surfaceRefs!.includes(x.surfaceRef)).map((x) => ({ ...x, governedActionCandidateId: first(x.surfaceRef) }));
+            : R240_LIVE_ATTEMPT_1.filter((x) => surfaceRefs!.includes(x.surfaceRef)).map((x) => ({
+                ...x,
+                governedActionStatus: "absent" as const,
+                prerequisiteStatus: "not_applicable" as const,
+                temporalRelation: "not_applicable" as const,
+                governedActionCandidateId: first(x.surfaceRef),
+                prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+                prerequisiteFailureCandidateId: NO_CANDIDATE,
+              }));
         return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, { ...ctxFor(subject), surfaces: scoped }) });
       }),
       args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
     );
     expect(asked).toHaveLength(2);
     expect(asked[0]).toMatchObject({ attempt: 1, surfaces: 12, required: 12 });
-    expect(asked[1]!.surfaces).toBe(6);
-    expect(asked[1]!.required).toBe(6);
-    expect(asked[1]!.refs).toEqual([...R240_FAILED_SURFACE_REFS]);
+    // Exactly the failed set, whatever its size. R2.44's polarity authority refuses two further
+    // rows of this historical capture, so the set is a strict superset of the R2.42 six.
+    expect(asked[1]!.surfaces).toBe(asked[1]!.refs!.length);
+    expect(asked[1]!.required).toBe(asked[1]!.refs!.length);
+    expect(asked[1]!.surfaces).toBeLessThan(12);
+    for (const ref of R240_FAILED_SURFACE_REFS) expect(asked[1]!.refs).toContain(ref);
     // One complete verdict from the MERGED matrix — never from the partial one.
     expect(r.outcome).toBe("boundary_review_reject");
     expect(r.providerInvocations).toBe(2);
-    expect(r.failedSubsetRepairSurfaceCount).toBe(6);
+    expect(r.failedSubsetRepairSurfaceCount).toBe(asked[1]!.refs!.length);
     expect(r.failedSubsetRepairInvocationCount).toBe(1);
-    expect(r.preservedValidAssessmentCount).toBe(6);
+    expect(r.preservedValidAssessmentCount).toBe(12 - asked[1]!.refs!.length);
   });
 });
 

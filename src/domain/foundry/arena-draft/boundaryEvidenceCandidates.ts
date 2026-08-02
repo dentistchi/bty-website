@@ -47,6 +47,9 @@ import type { BoundarySemanticFrame } from "./boundarySemanticFrame";
 import { clauseStems } from "./boundaryClauseTerms";
 // R2.40 — the boundary's OWN two clauses decide whether a span may occupy the governed-action role.
 import { assessCandidateRole, summarizeRoleDecisions, type RoleDecisionLog, type RoleDecisionMetrics } from "./boundaryCandidateRole";
+// R2.44 — candidate identity and locality are not enough; a prerequisite span must also point the
+// right way. R2.43 measured one span serving as governed action, satisfaction AND failure at once.
+import { assessEvidencePolarity, polarityRefusal, summarizePolarity, type PolarityDecisionLog, type PolarityMetrics } from "./boundaryEvidencePolarity";
 
 export const EVIDENCE_CANDIDATE_VERSION = "practice-boundary-evidence-candidates/1";
 
@@ -187,6 +190,9 @@ export type CandidateBuildResult = {
    */
   roleDecisions: RoleDecisionLog[];
   roleMetrics: RoleDecisionMetrics;
+  /** R2.44 — every prerequisite polarity decision, kept as EVIDENCE alongside the role decisions. */
+  polarityDecisions: PolarityDecisionLog[];
+  polarityMetrics: PolarityMetrics;
 };
 
 /**
@@ -204,6 +210,7 @@ export function buildEvidenceCandidates(
   let aliasRemovedCount = 0;
   const seen = new Set<string>();
   const roleDecisions: RoleDecisionLog[] = [];
+  const polarityDecisions: PolarityDecisionLog[] = [];
 
   surfaces.forEach((surface, surfaceIndex) => {
     const visible = segments.filter((s) => s.sourceSurfaceRef === "" || s.sourceSurfaceRef === surface.coordinate);
@@ -228,6 +235,15 @@ export function buildEvidenceCandidates(
               span: span.excerpt,
             });
             if (decision.refusalCode !== null) continue;
+          }
+          // R2.44 — the polarity gate. Applied identically to own_surface and to inherited
+          // parent_generated_state spans, so a span refused at its source cannot re-enter a
+          // descendant's failure pool merely by being inherited.
+          if (role === "prerequisite_satisfaction" || role === "prerequisite_failure") {
+            const polarity = assessEvidencePolarity(frame.prerequisiteClause, span.excerpt);
+            const refusalCode = polarityRefusal(role, polarity.polarity);
+            polarityDecisions.push({ ...polarity, surfaceRef: surface.coordinate, role, span: span.excerpt, refusalCode });
+            if (refusalCode !== null) continue;
           }
           const body = {
             boundaryId: boundary.id,
@@ -266,6 +282,9 @@ export function buildEvidenceCandidates(
   // (Part 5 B) Satisfaction/failure polarity collisions are MEASURED and reported, never enforced
   // here: R2.39 showed a first-cut polarity rule strips the safe branch of its only satisfaction
   // evidence. That correction is separately queued.
+  // R2.44 — the RESIDUE after the polarity authority. Any span still reachable in both pools is
+  // `uncertain`: it mentions the prerequisite without pointing either way, and this slice observes
+  // that rather than forcing certainty on it.
   let polarityCollisions = 0;
   for (const surface of surfaces) {
     const sat = new Set(candidates.filter((c) => c.assessedSurfaceRef === surface.coordinate && c.semanticRole === "prerequisite_satisfaction").map((c) => c.excerpt));
@@ -277,7 +296,15 @@ export function buildEvidenceCandidates(
   const idByKey = new Map(candidates.filter((c) => c.semanticRole === "governed_action").map((c) => [`${c.assessedSurfaceRef}\u0000${c.excerpt}`, c.candidateId]));
   const resolved = roleDecisions.map((d) => ({ ...d, candidateId: idByKey.get(`${d.surfaceRef}\u0000${d.span}`) ?? "(refused)" }));
 
-  return { candidates, aliasRemovedCount, provenanceRetainedCount, roleDecisions: resolved, roleMetrics: summarizeRoleDecisions(resolved, polarityCollisions) };
+  return {
+    candidates,
+    aliasRemovedCount,
+    provenanceRetainedCount,
+    roleDecisions: resolved,
+    roleMetrics: summarizeRoleDecisions(resolved, polarityCollisions),
+    polarityDecisions,
+    polarityMetrics: summarizePolarity(polarityDecisions, polarityCollisions),
+  };
 }
 
 export const buildAllEvidenceCandidates = (
@@ -296,6 +323,19 @@ export const buildAllEvidenceCandidates = (
         aliasRemovedCount: acc.aliasRemovedCount + r.aliasRemovedCount,
         provenanceRetainedCount: acc.provenanceRetainedCount + r.provenanceRetainedCount,
         roleDecisions: [...acc.roleDecisions, ...r.roleDecisions],
+        polarityDecisions: [...acc.polarityDecisions, ...r.polarityDecisions],
+        polarityMetrics: {
+          prerequisiteSatisfactionOnlyCount: acc.polarityMetrics.prerequisiteSatisfactionOnlyCount + r.polarityMetrics.prerequisiteSatisfactionOnlyCount,
+          prerequisiteFailureOnlyCount: acc.polarityMetrics.prerequisiteFailureOnlyCount + r.polarityMetrics.prerequisiteFailureOnlyCount,
+          prerequisiteMixedCount: acc.polarityMetrics.prerequisiteMixedCount + r.polarityMetrics.prerequisiteMixedCount,
+          prerequisitePolarityUncertainCount: acc.polarityMetrics.prerequisitePolarityUncertainCount + r.polarityMetrics.prerequisitePolarityUncertainCount,
+          prerequisiteSatisfactionRefusedFromFailureCount:
+            acc.polarityMetrics.prerequisiteSatisfactionRefusedFromFailureCount + r.polarityMetrics.prerequisiteSatisfactionRefusedFromFailureCount,
+          prerequisiteFailureRefusedFromSatisfactionCount:
+            acc.polarityMetrics.prerequisiteFailureRefusedFromSatisfactionCount + r.polarityMetrics.prerequisiteFailureRefusedFromSatisfactionCount,
+          prerequisiteSameSpanCrossPoolObservedCount:
+            acc.polarityMetrics.prerequisiteSameSpanCrossPoolObservedCount + r.polarityMetrics.prerequisiteSameSpanCrossPoolObservedCount,
+        },
         roleMetrics: {
           governedActionRoleCollisionCount: acc.roleMetrics.governedActionRoleCollisionCount + r.roleMetrics.governedActionRoleCollisionCount,
           governedActionPrerequisiteOperationRefusedCount:
@@ -311,6 +351,16 @@ export const buildAllEvidenceCandidates = (
       aliasRemovedCount: 0,
       provenanceRetainedCount: 0,
       roleDecisions: [],
+      polarityDecisions: [],
+      polarityMetrics: {
+        prerequisiteSatisfactionOnlyCount: 0,
+        prerequisiteFailureOnlyCount: 0,
+        prerequisiteMixedCount: 0,
+        prerequisitePolarityUncertainCount: 0,
+        prerequisiteSatisfactionRefusedFromFailureCount: 0,
+        prerequisiteFailureRefusedFromSatisfactionCount: 0,
+        prerequisiteSameSpanCrossPoolObservedCount: 0,
+      },
       roleMetrics: {
         governedActionRoleCollisionCount: 0,
         governedActionPrerequisiteOperationRefusedCount: 0,
@@ -405,6 +455,7 @@ export const candidateContractSha256 = (): string =>
         provenanceDistinctCandidatesRetained: true,
         // R2.40 — governed-action eligibility is boundary-relative, not unconditional.
         governedActionRoleGate: "boundaryCandidateRole",
+        prerequisitePolarityGate: "boundaryEvidencePolarity",
       }),
     )
     .digest("hex");

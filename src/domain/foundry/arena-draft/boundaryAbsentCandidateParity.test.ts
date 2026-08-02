@@ -309,9 +309,14 @@ describe("[R2.42][F] the captured R2.40 attempt-1 response", () => {
     const d = deriveBoundaryVerdict({ assessments: R240_LIVE_ATTEMPT_1 }, ctx);
     expect(d.outcome).toBe("boundary_review_malformed");
     if (d.outcome !== "boundary_review_malformed") throw new Error("unreachable");
-    expect(d.codes).toEqual(["boundary_candidate_required_missing"]);
-    expect(d.failedSurfaceRefs).toEqual([...R240_FAILED_SURFACE_REFS]);
-    expect(d.validSurfaceRefs).toEqual([...R240_PRESERVED_SURFACE_REFS]);
+    // The absent-parity defect this file owns: every one of the six is still refused.
+    expect(d.codes).toContain("boundary_candidate_required_missing");
+    for (const ref of R240_FAILED_SURFACE_REFS) expect(d.failedSurfaceRefs).toContain(ref);
+    // R2.44 additionally refuses two rows that selected the satisfaction-as-failure span, so the
+    // failed set is a strict superset now. Named explicitly rather than folded into the count.
+    expect(d.codes).toContain("boundary_candidate_unknown");
+    expect(d.failedSurfaceRefs).toContain("branch[0].resulting_world_state");
+    expect(d.failedSurfaceRefs).toContain("branch[0].action[0]");
     // primary[0] — the empty-pool surface — passed then and passes now.
     expect(d.validSurfaceRefs).toContain(R240_MEASURED.emptyPoolSurface);
   });
@@ -323,18 +328,28 @@ describe("[R2.42][F] the captured R2.40 attempt-1 response", () => {
     expect(plan.repairable).toBe(true);
     if (!plan.repairable) throw new Error("unreachable");
     const repair = buildNarrowBoundaryRequest(subject, plan.failedSurfaceRefs);
-    expect(repair.requiredAssessmentCount).toBe(6);
-    expect(repair.surfaces).toHaveLength(6);
-    expect(repair.surfaces.map((s) => s.surfaceRef)).toEqual([...R240_FAILED_SURFACE_REFS]);
+    // The projection carries EXACTLY the failed set, whatever its size — the property this file
+    // owns. Under R2.44 that set is eight, not the twelve a full re-ask would send.
+    expect(repair.requiredAssessmentCount).toBe(plan.failedSurfaceRefs.length);
+    expect(repair.surfaces).toHaveLength(plan.failedSurfaceRefs.length);
+    expect(repair.surfaces.map((s) => s.surfaceRef)).toEqual(plan.failedSurfaceRefs);
+    expect(repair.surfaces.length).toBeLessThan(12);
+    for (const ref of R240_FAILED_SURFACE_REFS) expect(repair.surfaces.map((s) => s.surfaceRef)).toContain(ref);
   });
 
   it("a compliant six-row repair completes the output contract locally", () => {
     const d = deriveBoundaryVerdict({ assessments: R240_LIVE_ATTEMPT_1 }, ctx);
     if (d.outcome !== "boundary_review_malformed") throw new Error("unreachable");
-    // The same six rows, corrected the one way the contract permits: select from the pool.
-    const repaired = R240_LIVE_ATTEMPT_1.filter((r) => (R240_FAILED_SURFACE_REFS as readonly string[]).includes(r.surfaceRef)).map((r) => ({
+    // Each failed row corrected the one way the contract permits: select from the pools offered.
+    // Where R2.44 emptied the failure pool, the honest answer is `not_applicable` with the sentinel.
+    const repaired = R240_LIVE_ATTEMPT_1.filter((r) => d.failedSurfaceRefs.includes(r.surfaceRef)).map((r) => ({
       ...r,
+      governedActionStatus: "absent" as const,
+      prerequisiteStatus: "not_applicable" as const,
+      temporalRelation: "not_applicable" as const,
       governedActionCandidateId: first(r.surfaceRef, "governed_action"),
+      prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
+      prerequisiteFailureCandidateId: NO_CANDIDATE,
     }));
     const rv = validateNarrowBoundaryReview({ assessments: [...d.derived.map(toRow), ...repaired] }, ctx);
     expect(rv.ok).toBe(true);
@@ -364,14 +379,15 @@ function toRow(d: { surfaceRef: string; boundaryId: string; facts: { governedAct
 // G — POLARITY NON-EXPANSION
 // ---------------------------------------------------------------------------
 
-describe("[R2.42][G] satisfaction/failure polarity is observed, unchanged, not enforced", () => {
-  it("the measured collisions still exist and this slice did not touch them", () => {
+describe("[R2.42][G] polarity — deferred here, ENFORCED by R2.44", () => {
+  it("the collision this slice deliberately left is now refused by the successor authority", () => {
+    // R2.42 asserted 15 collisions and that the safe branch KEPT its satisfaction-text-as-failure
+    // candidate, because enforcing polarity was out of scope then. R2.44 is that scope. The
+    // assertion is inverted rather than deleted, so the transition stays visible in the record.
     const build = buildAllEvidenceCandidates([C18_BOUNDARY], frames, C18_REACHABLE_SURFACES, segments);
-    expect(build.roleMetrics.prerequisitePolarityCollisionObservedCount).toBe(15);
-    // The safe branch keeps the satisfaction-text-as-failure candidate R2.41 flagged. Removing it is
-    // a separately measured slice; silently changing it here would hide the defect.
-    expect(pool("branch[0].resulting_world_state", "prerequisite_failure").map((c) => c.excerpt)[0]).toContain(
-      "You have verified identifiers for both patients",
-    );
+    expect(build.polarityMetrics.prerequisiteSatisfactionRefusedFromFailureCount).toBe(5);
+    expect(pool("branch[0].resulting_world_state", "prerequisite_failure")).toHaveLength(0);
+    // The residue is the `uncertain` class, which R2.44 observes rather than forces.
+    expect(build.roleMetrics.prerequisitePolarityCollisionObservedCount).toBe(5);
   });
 });
