@@ -33,7 +33,7 @@ import {
   type FieldRepairTarget,
 } from "./boundaryFieldRepair";
 import { buildSemanticFrames } from "./boundarySemanticFrame";
-import { buildNarrowBoundarySubject } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
+import { buildFieldRepairRequest, buildNarrowBoundarySubject } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import { C18_BOUNDARY, C18_SURFACES, C18_SCENARIO, C18_SCENARIO_SHA256 } from "./c18BoundaryFixture";
 import { R248_ATTEMPT_1, R248_WHOLE_ROW_REPAIR } from "./r248LiveDtoFixture";
 import {
@@ -45,7 +45,7 @@ import {
   R252_SELECTED_STATE_ID,
   R252_SELECTED_STATE_REASON_AUTHORITY,
 } from "./r252LiveDtoFixture";
-import { capturedR252GroupOperations, modelReasonFor, selectPlanDerivedOperations } from "./groupAlternativeSelection.fixture";
+import { capturedR252GroupOperations, modelReasonFor, selectPlanDerivedOperations, selectPlanDerivedResponse } from "./groupAlternativeSelection.fixture";
 
 // ---------------------------------------------------------------------------
 // The frozen c18 world the captured run was measured against
@@ -84,8 +84,14 @@ const defectiveGroup = (p: FieldRepairPlan): FieldRepairTarget[] => p.targets.fi
  * `mergeAttempted` is read off the seam, not inferred from an empty row list, so "merge was never
  * called" is a measurement rather than a reading.
  */
-const run = (repairs: unknown, p: FieldRepairPlan = plan()) => {
-  const applied = applyFieldRepair({ repairs }, R248_ATTEMPT_1, p, CTX, DIGESTS);
+/** R2.59 — a group is answered by selection. `groupSelections` defaults to the correct one. */
+const selectionsFor = (p: FieldRepairPlan, stateId = "governed_action_prerequisite_satisfied", reason?: string) => {
+  const first = p.targets.find((t) => t.valueAuthority === "canonical_group_alternative")!;
+  const alt = first.alternatives.find((a) => a.stateId === stateId)!;
+  return [{ groupId: first.groupId, alternativeId: alt.alternativeId, reason: reason ?? (alt.reasonConstraint === "model_required" ? modelReasonFor(alt.stateId) : "") }];
+};
+const run = (repairs: unknown, p: FieldRepairPlan = plan(), groupSelections: unknown = selectionsFor(p)) => {
+  const applied = applyFieldRepair({ repairs, groupSelections }, R248_ATTEMPT_1, p, CTX, DIGESTS);
   return {
     plan: p,
     ...applied,
@@ -144,15 +150,21 @@ describe("[R2.54][4] CASE A — the captured attempt-1 rows", () => {
 // ---------------------------------------------------------------------------
 
 describe("[R2.54][4] CASE B — the captured 13-operation live patch", () => {
-  it("is refused as INCOMPLETE, with completeness codes and never a shape code", () => {
-    const r = run([...R252_CAPTURED_PATCH]);
+  /**
+   * R2.59 — the captured patch is refused for a DIFFERENT and earlier reason now.
+   *
+   * It answered the group as four scalar operations, which is the representation this slice removed.
+   * The artifact is untouched; what changed is that the shape it used is no longer sayable. Both the
+   * grouped-scalar attempt and the absent selection are named, so an auditor sees exactly which
+   * contract it predates.
+   */
+  it("is refused because its GROUPED-SCALAR representation no longer exists", () => {
+    const r = run([...R252_CAPTURED_PATCH], plan(), []);
     expect(R252_CAPTURED_PATCH).toHaveLength(13);
     expect(r.validation.ok).toBe(false);
-    expect(r.codes).toContain("field_repair_operation_missing");
-    expect(r.codes).toContain("field_repair_dependency_group_partial");
-    expect(r.codes).toContain("field_repair_operation_count_mismatch");
-    // An incomplete group is a completeness failure. Naming it a shape failure would report that the
-    // model chose an illegal tuple, which is not what it did.
+    expect(r.codes).toContain("field_repair_grouped_field_in_repairs");
+    expect(r.codes).toContain("field_repair_group_selection_missing");
+    // Still not a shape or reason verdict: it never reached the alternative at all.
     expect(r.codes).not.toContain("field_repair_group_shape_not_allowed");
     expect(r.codes).not.toContain("field_repair_group_reason_required_missing");
   });
@@ -167,7 +179,7 @@ describe("[R2.54][4] CASE B — the captured 13-operation live patch", () => {
   });
 
   it("never reaches the merge — the boundary R2.52 crossed", () => {
-    const r = run([...R252_CAPTURED_PATCH]);
+    const r = run([...R252_CAPTURED_PATCH], plan(), []);
     expect(R252_MEASURED.reachedMergeBoundary).toBe(true); // what the live run did
     expect(r.mergeAttempted).toBe(false); // what it does now
     expect(r.merge.ok).toBe(false);
@@ -181,12 +193,17 @@ describe("[R2.54][4] CASE B — the captured 13-operation live patch", () => {
 // ---------------------------------------------------------------------------
 
 describe("[R2.54][4] CASE C — the exact R2.53 failure selection, completed to 14 operations", () => {
+  /**
+   * R2.59 — the same SEMANTIC choice, in the only representation that now exists: the
+   * `not_established` alternative named by id, with the frozen empty reason the live model sent.
+   */
   const capturedRun = () => {
     const p = plan();
-    return run(selectPlanDerivedOperations(p.targets, capturedR252GroupOperations), p);
+    return run(selectPlanDerivedResponse(p.targets).repairs, p, selectionsFor(p, R252_SELECTED_STATE_ID, R252_FROZEN_REASON));
   };
 
   it("supplies the captured tuple verbatim, including the frozen empty reason", () => {
+    // The captured scalar tuple is retained verbatim as historical evidence.
     const ops = capturedR252GroupOperations(defectiveGroup(plan()));
     const byField = Object.fromEntries(ops.map((o) => [o.field, o.value]));
     expect(byField.prerequisiteStatus).toBe("not_established");
@@ -194,19 +211,20 @@ describe("[R2.54][4] CASE C — the exact R2.53 failure selection, completed to 
     expect(byField.prerequisiteSatisfactionCandidateId).toBe("none");
     expect(byField.prerequisiteFailureCandidateId).toBe("none");
     expect(byField.reason).toBe(R252_FROZEN_REASON);
-    expect(byField.reason).toBe("");
+    // R2.59 — and the selection that expresses the same state carries the same empty reason.
+    expect(selectionsFor(plan(), R252_SELECTED_STATE_ID, R252_FROZEN_REASON)[0]!.reason).toBe("");
   });
 
-  it("is refused with the precise reason code — complete, canonical, and still illegal", () => {
+  it("is refused with the precise reason code — selected, canonical, and still illegal", () => {
     const r = capturedRun();
     expect(r.validation.ok).toBe(false);
-    expect(r.codes).toContain("field_repair_group_reason_required_missing");
-    // NOT a completeness failure: all 14 operations are present and the group is whole.
+    expect(r.codes).toEqual(["field_repair_group_reason_required_missing"]);
+    // NOT a completeness failure: the group WAS answered, and the selection names a real alternative.
     expect(r.codes).not.toContain("field_repair_operation_missing");
-    expect(r.codes).not.toContain("field_repair_dependency_group_partial");
+    expect(r.codes).not.toContain("field_repair_group_selection_missing");
     expect(r.codes).not.toContain("field_repair_operation_count_mismatch");
-    // NOT a shape failure either: the tuple IS a canonical state. The reason authority is what broke.
     expect(r.codes).not.toContain("field_repair_group_shape_not_allowed");
+    expect(r.validation.counts.providerGroupSelectionCount).toBe(1);
   });
 
   it("is stopped at the REPAIR-GROUP boundary, not by the canonical row validator after merge", () => {
@@ -225,10 +243,16 @@ describe("[R2.54][4] CASE C — the exact R2.53 failure selection, completed to 
     const o = capturedRun().observability;
     expect(o.groups).toHaveLength(1);
     const g = o.groups[0]!;
-    expect(g.matched).toBe(false);
+    // R2.59 — the selection RESOLVED to a real alternative and was then refused on its reason
+    // authority, so the artifact names the alternative AND the refusal. That is more informative
+    // than the old "matched: false", which could not say which shape had been chosen.
+    expect(g.matchedAlternativeId).toBe("b0e54cfa5c730e41");
+    expect(g.matchedStateId).toBe(R252_SELECTED_STATE_ID);
     expect(g.refusalCode).toBe("field_repair_group_reason_required_missing");
     expect(g.reasonAuthority).toBe("model_required");
-    expect(g.selected.prerequisiteStatus).toBe("not_established");
+    // R2.59 — the artifact records the id the provider COPIED, even when the selection is refused.
+    expect(g.requestedAlternativeId).toBe("b0e54cfa5c730e41");
+    expect(g.expansionSource).toBeNull();
     expect(g.selected.reason).toBe("<empty>");
     expect(o.mergeAttempted).toBe(false);
   });
@@ -239,65 +263,58 @@ describe("[R2.54][4] CASE C — the exact R2.53 failure selection, completed to 
 // ---------------------------------------------------------------------------
 
 /**
- * TWO REAL ALTERNATIVES, HALF OF EACH.
+ * R2.59 — MIXING IS NO LONGER SAYABLE.
  *
- * `satisfied` and its required satisfaction candidate come from one alternative the plan offers; the
- * temporal relation comes from another. Every scalar is individually legal — in a DIFFERENT shape —
- * which is exactly what makes per-field membership insufficient. R2.53 measured this group's per-field
- * domains admitting 150 combinations; only a small canonical subset of them is a state.
+ * The old case built a tuple from halves of two offered alternatives. A provider cannot do that any
+ * more: it names ONE alternative and the server writes every value. The case is kept because the
+ * property it guarded still matters — a group answer that does not correspond to an offered
+ * alternative must be refused before merge — and the expressible form of that is naming an
+ * alternative this group was never offered.
  */
-const mixedOffAlternative = (p: FieldRepairPlan): Record<string, string> => {
-  const alts = defectiveGroup(p)[0]!.alternatives;
-  const satisfied = alts.find((a) => a.stateId === "governed_action_prerequisite_satisfied");
-  /**
-   * R2.56 — the donor of the foreign temporal relation was `prohibited_action_present`, which this
-   * prerequisite boundary no longer offers. The case is unchanged in kind: take a temporal relation
-   * from a DIFFERENT offered alternative that the `satisfied` shape does not admit.
-   */
-  const donor = alts.find((a) => a.stateId !== "governed_action_prerequisite_satisfied" && a.temporalDomain.some((t) => !satisfied?.temporalDomain.includes(t)));
-  if (!satisfied || !donor) throw new Error("case D needs two distinct offered alternatives to mix; the plan no longer offers them");
-  const foreignTemporal = donor.temporalDomain.find((t) => !satisfied.temporalDomain.includes(t))!;
-  return {
-    prerequisiteStatus: satisfied.prerequisiteStatus,
-    temporalRelation: foreignTemporal,
-    prerequisiteSatisfactionCandidateId: satisfied.satisfactionCandidateDomain.find((x) => x !== "none")!,
-    prerequisiteFailureCandidateId: "none",
-    reason: "",
-  };
+const foreignAlternativeId = (p: FieldRepairPlan): string => {
+  const first = defectiveGroup(p)[0]!;
+  const mine = new Set(first.alternatives.map((a) => a.alternativeId));
+  const other = p.targets.flatMap((t) => t.alternatives).find((a) => !mine.has(a.alternativeId));
+  // c18 has exactly one multi-field group, so no genuinely foreign id exists here; an id nobody
+  // issued is the honest stand-in, and it is refused by its own distinct code.
+  return other?.alternativeId ?? "f".repeat(16);
 };
 
-
-describe("[R2.54][4] CASE D — a complete but off-alternative group", () => {
-  const mixed = mixedOffAlternative;
-
-  it("every value is individually plausible, and the tuple is still refused as a SHAPE", () => {
+describe("[R2.54][4] CASE D — a group answer that is no offered alternative", () => {
+  it("mixing two alternatives is now STRUCTURALLY impossible, not merely refused", () => {
     const p = plan();
-    const r = run(withGroupSelection(p, mixed(p)), p);
+    const first = defectiveGroup(p)[0]!;
+    // There is no field in the RESPONSE where a second alternative's value could go, and the
+    // request publishes no scalar list for a grouped target to draw one from.
+    expect(first.valueAuthority).toBe("canonical_group_alternative");
+    expect(buildFieldRepairRequest(subject, p).scalarTargets.map((t) => t.field)).not.toContain("prerequisiteStatus");
+    const response = { repairs: selectPlanDerivedResponse(p.targets).repairs, groupSelections: selectionsFor(p) };
+    expect(JSON.stringify(response.groupSelections)).not.toContain("prerequisiteStatus");
+    expect(JSON.stringify(response.repairs)).not.toContain("prerequisiteStatus");
+  });
+
+  it("an alternative the group was never offered is refused", () => {
+    const p = plan();
+    const r = run(selectPlanDerivedResponse(p.targets).repairs, p, [{ groupId: defectiveGroup(p)[0]!.groupId, alternativeId: foreignAlternativeId(p), reason: "" }]);
     expect(r.validation.ok).toBe(false);
-    expect(r.codes).toContain("field_repair_group_shape_not_allowed");
-    // Not reported as a reason problem: the selection never reached an alternative to have one.
-    expect(r.codes).not.toContain("field_repair_group_reason_required_missing");
+    expect(r.codes).toContain("field_repair_group_selection_unknown_alternative");
     expect(r.codes).not.toContain("field_repair_operation_missing");
   });
 
   it("never reaches the merge", () => {
     const p = plan();
-    const r = run(withGroupSelection(p, mixed(p)), p);
+    const r = run(selectPlanDerivedResponse(p.targets).repairs, p, [{ groupId: defectiveGroup(p)[0]!.groupId, alternativeId: foreignAlternativeId(p), reason: "" }]);
     expect(r.mergeAttempted).toBe(false);
     expect(r.merge.rows).toEqual([]);
     expect(r.observability.groups[0]!.matchedAlternativeId).toBeNull();
-    expect(r.observability.groups[0]!.refusalCode).toBe("field_repair_group_shape_not_allowed");
+    expect(r.observability.groups[0]!.refusalCode).toBe("field_repair_group_selection_unknown_alternative");
   });
 });
-
-// ---------------------------------------------------------------------------
-// E — a valid SERVER-DERIVED alternative
-// ---------------------------------------------------------------------------
 
 describe("[R2.54][4] CASE E — a valid server-derived alternative", () => {
   const accepted = () => {
     const p = plan();
-    return run(selectPlanDerivedOperations(p.targets), p); // defaults to the satisfied state
+    return run(selectPlanDerivedResponse(p.targets).repairs, p); // defaults to the satisfied state
   };
 
   it("matches `governed_action_prerequisite_satisfied` and ACCEPTS the empty reason", () => {
@@ -316,6 +333,9 @@ describe("[R2.54][4] CASE E — a valid server-derived alternative", () => {
   it("crosses the merge and produces the complete twelve-surface matrix", () => {
     const r = accepted();
     expect(r.plan.requiredOperationCount).toBe(14);
+    // 9 provider scalars + 5 server-expanded = the canonical 14.
+    expect(r.validation.counts.providerScalarRepairCount).toBe(9);
+    expect(r.validation.counts.expandedCanonicalOperationCount).toBe(5);
     expect(r.validation.operations).toHaveLength(14);
     expect(r.mergeAttempted).toBe(true);
     expect(r.merge.ok).toBe(true);
@@ -335,28 +355,16 @@ describe("[R2.54][4] CASE E — a valid server-derived alternative", () => {
 describe("[R2.54][4] CASE F — a valid model-required alternative", () => {
   const accepted = () => {
     const p = plan();
-    return run(selectPlanDerivedOperations(p.targets, (g) => selectCanonicalNotEstablished(g)), p);
-  };
-  const selectCanonicalNotEstablished = (group: readonly FieldRepairTarget[]) => {
-    const alt = group[0]!.alternatives.find((a) => a.stateId === R252_SELECTED_STATE_ID);
-    if (!alt) throw new Error(`the plan no longer offers ${R252_SELECTED_STATE_ID}; this case cannot be run`);
-    const value: Record<string, string> = {
-      prerequisiteStatus: alt.prerequisiteStatus,
-      temporalRelation: alt.temporalDomain[0]!,
-      prerequisiteSatisfactionCandidateId: "none",
-      prerequisiteFailureCandidateId: "none",
-      reason: modelReasonFor(alt.stateId),
-    };
-    return group.map((t) => ({ surfaceRef: t.surfaceRef, field: t.field, value: value[t.field]! }));
+    return run(selectPlanDerivedResponse(p.targets).repairs, p, selectionsFor(p, R252_SELECTED_STATE_ID));
   };
 
   it("is the SAME state R2.53 was refused for — differing only in the reason it can now supply", () => {
-    const ops = selectCanonicalNotEstablished(defectiveGroup(plan()));
-    const byField = Object.fromEntries(ops.map((o) => [o.field, o.value]));
-    expect(byField.prerequisiteStatus).toBe(R252_CAPTURED_GROUP_SELECTION.prerequisiteStatus);
-    expect(byField.prerequisiteSatisfactionCandidateId).toBe("none");
-    expect(byField.prerequisiteFailureCandidateId).toBe("none");
-    expect(byField.reason.trim().length).toBeGreaterThan(0);
+    const p = plan();
+    const sel = selectionsFor(p, R252_SELECTED_STATE_ID)[0]!;
+    const alt = defectiveGroup(p)[0]!.alternatives.find((a) => a.alternativeId === sel.alternativeId)!;
+    expect(alt.prerequisiteStatus).toBe(R252_CAPTURED_GROUP_SELECTION.prerequisiteStatus);
+    expect(alt.reasonConstraint).toBe("model_required");
+    expect(sel.reason.trim().length).toBeGreaterThan(0);
   });
 
   it("matches `governed_action_prerequisite_not_established` and is accepted", () => {
@@ -413,20 +421,21 @@ describe("[R2.54][4] CASE G — the captured R2.48 whole-row repair DTO", () => 
 describe("[R2.54][4] no refused case reaches the merge", () => {
   it("every refusal in the matrix stops before the merge, and every acceptance crosses it", () => {
     const p = plan();
-    const cases: Array<[string, unknown]> = [
-      ["B captured 13-op patch", [...R252_CAPTURED_PATCH]],
-      ["C exact R2.53 selection", selectPlanDerivedOperations(p.targets, capturedR252GroupOperations)],
-      ["D off-alternative group", withGroupSelection(p, mixedOffAlternative(p))],
-      ["G whole-row DTO", [...R248_WHOLE_ROW_REPAIR]],
+    const good = selectPlanDerivedResponse(p.targets).repairs;
+    const cases: Array<[string, unknown, unknown]> = [
+      ["B captured 13-op patch", [...R252_CAPTURED_PATCH], []],
+      ["C exact R2.53 selection", good, selectionsFor(p, R252_SELECTED_STATE_ID, R252_FROZEN_REASON)],
+      ["D unoffered alternative", good, [{ groupId: defectiveGroup(p)[0]!.groupId, alternativeId: foreignAlternativeId(p), reason: "" }]],
+      ["G whole-row DTO", [...R248_WHOLE_ROW_REPAIR], []],
     ];
-    for (const [label, repairs] of cases) {
-      const r = run(repairs, p);
+    for (const [label, repairs, groupSelections] of cases) {
+      const r = run(repairs, p, groupSelections);
       expect(r.validation.ok, label).toBe(false);
       expect(r.mergeAttempted, label).toBe(false);
       expect(r.merge.rows, label).toEqual([]);
       expect(r.observability.mergeAttempted, label).toBe(false);
     }
-    const ok = run(selectPlanDerivedOperations(p.targets), p);
+    const ok = run(good, p);
     expect(ok.validation.ok).toBe(true);
     expect(ok.mergeAttempted).toBe(true);
   });

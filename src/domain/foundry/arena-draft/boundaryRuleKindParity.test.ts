@@ -26,7 +26,7 @@ import { buildNarrowBoundarySubject } from "@/lib/bty/foundry/arena/narrowBounda
 import { buildFieldRepairRequest } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
 import { C18_BOUNDARY, C18_SURFACES, C18_SCENARIO, C18_SCENARIO_SHA256 } from "./c18BoundaryFixture";
 import { R248_ATTEMPT_1 } from "./r248LiveDtoFixture";
-import { selectPlanDerivedOperations } from "./groupAlternativeSelection.fixture";
+import { selectPlanDerivedResponse } from "./groupAlternativeSelection.fixture";
 import {
   PROHIBITION_BOUNDARY,
   PROHIBITION_BREACH_FACTS,
@@ -293,24 +293,19 @@ describe("[R2.56][9] the R2.54 repair path refuses the prohibition shape on a pr
   const plan = (): FieldRepairPlan => planFieldRepair(R248_ATTEMPT_1, C18_CTX, C18_DIGESTS);
   const defectiveGroup = (p: FieldRepairPlan): FieldRepairTarget[] => p.targets.filter((t) => t.surfaceRef === RWS);
 
-  /** The complete, well-formed, entirely plausible selection R2.55 proved the path used to accept. */
-  const prohibitionSelection: Record<string, string> = {
-    ...PROHIBITION_BREACH_FACTS,
-    prerequisiteSatisfactionCandidateId: "none",
-    prerequisiteFailureCandidateId: "none",
-    reason: "",
-  };
-
+  /**
+   * R2.59 — the prohibition shape is now doubly unreachable on c18.
+   *
+   * R2.56 removed it from the offered alternatives; R2.59 removed the provider's ability to author
+   * the tuple at all. There is no alternativeId to name, so the selection can only be an id this
+   * group was never offered — refused by its own code, before merge, with nothing fabricated.
+   */
   const applied = () => {
     const p = plan();
-    const ops = selectPlanDerivedOperations(p.targets, (group) =>
-      group.map((t) => {
-        const value = prohibitionSelection[t.field];
-        if (value === undefined) throw new Error(`no value for grouped field ${t.field}`);
-        return { surfaceRef: t.surfaceRef, field: t.field, value };
-      }),
-    );
-    return { p, ops, result: applyFieldRepair({ repairs: ops }, R248_ATTEMPT_1, p, C18_CTX, C18_DIGESTS) };
+    const repairs = selectPlanDerivedResponse(p.targets).repairs;
+    const groupId = defectiveGroup(p)[0]!.groupId;
+    const response = { repairs, groupSelections: [{ groupId, alternativeId: "p".repeat(16), reason: "" }] };
+    return { p, response, result: applyFieldRepair(response, R248_ATTEMPT_1, p, C18_CTX, C18_DIGESTS) };
   };
 
   it("the plan no longer publishes the prohibition alternative to the model", () => {
@@ -322,15 +317,15 @@ describe("[R2.56][9] the R2.54 repair path refuses the prohibition shape on a pr
     expect(JSON.stringify(req)).not.toContain("prohibited_action_present");
   });
 
-  it("a COMPLETE selection of that shape is refused as an off-alternative shape", () => {
-    const { result, ops } = applied();
-    // Complete — this is not a coverage failure, which is what makes the shape code the right one.
-    expect(ops).toHaveLength(14);
+  it("the prohibition state has no alternativeId to name, so naming one is refused", () => {
+    const { p, result } = applied();
+    expect(defectiveGroup(p)[0]!.alternatives.map((a) => a.stateId)).not.toContain("prohibited_action_present");
     expect(result.validation.ok).toBe(false);
     const codes = result.validation.ok ? [] : result.validation.codes;
-    expect(codes).toContain("field_repair_group_shape_not_allowed");
+    expect(codes).toContain("field_repair_group_selection_unknown_alternative");
+    // Not a coverage failure: the group WAS answered, with an id that does not exist here.
+    expect(codes).not.toContain("field_repair_group_selection_missing");
     expect(codes).not.toContain("field_repair_operation_missing");
-    expect(codes).not.toContain("field_repair_operation_count_mismatch");
   });
 
   it("it never reaches the merge, and no violation is fabricated", () => {
@@ -341,7 +336,7 @@ describe("[R2.56][9] the R2.54 repair path refuses the prohibition shape on a pr
     const sel = result.validation.groupSelections[0]!;
     expect(sel.matchedStateId).toBeNull();
     expect(sel.matchedAlternativeId).toBeNull();
-    expect(sel.code).toBe("field_repair_group_shape_not_allowed");
+    expect(sel.code).toBe("field_repair_group_selection_unknown_alternative");
     // R2.55 measured this exact input merging into `boundary_review_reject` with
     // `prohibited_action_present:explicit_boundary_contradiction`. Neither is reachable now.
     expect(JSON.stringify(result.merge)).not.toContain("explicit_boundary_contradiction");
@@ -383,7 +378,7 @@ describe("[R2.56][9] the R2.54 repair path refuses the prohibition shape on a pr
   it("the group still accepts the alternatives it legitimately offers", () => {
     // Refusing everything would also satisfy the assertions above. It does not.
     const p = plan();
-    const ok = applyFieldRepair({ repairs: selectPlanDerivedOperations(p.targets) }, R248_ATTEMPT_1, p, C18_CTX, C18_DIGESTS);
+    const ok = applyFieldRepair(selectPlanDerivedResponse(p.targets), R248_ATTEMPT_1, p, C18_CTX, C18_DIGESTS);
     expect(ok.validation.ok).toBe(true);
     expect(ok.mergeAttempted).toBe(true);
     expect(ok.merge.ok).toBe(true);

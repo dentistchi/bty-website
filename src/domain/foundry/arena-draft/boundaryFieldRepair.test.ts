@@ -22,7 +22,7 @@ import {
   type FieldRepairPlan,
 } from "./boundaryFieldRepair";
 import { groupAlternativesSha256 } from "./boundaryGroupAlternatives";
-import { selectPlanDerivedOperations } from "./groupAlternativeSelection.fixture";
+import { selectPlanDerivedResponse } from "./groupAlternativeSelection.fixture";
 import { TRUTH_STATES } from "./boundaryTruthStates";
 import { deriveBoundaryVerdict, validateNarrowBoundaryReview, type BoundaryTruthAssessment } from "./narrowBoundaryReview";
 import { buildSemanticFrames } from "./boundarySemanticFrame";
@@ -78,7 +78,18 @@ const op = (surfaceRef: string, field: string, value: string) => ({ surfaceRef, 
  * answer is assembled from ONE canonical alternative the plan itself generated. `allowedValues[0]`
  * would now silently produce `undefined` for `reason` and an arbitrary tuple for the rest.
  */
-const correctOps = (p: FieldRepairPlan) => selectPlanDerivedOperations(p.targets);
+const correctOps = (p: FieldRepairPlan) => selectPlanDerivedResponse(p.targets).repairs;
+
+/**
+ * R2.59 — the whole RESPONSE the plan asks for: scalar repairs plus one selection per group.
+ *
+ * The grouped fields are deliberately absent from `repairs`. A test that wants to prove a grouped
+ * field cannot be answered as a scalar builds that case explicitly.
+ */
+const correctResponse = (p: FieldRepairPlan) => selectPlanDerivedResponse(p.targets);
+const groupIdOf = (p: FieldRepairPlan) => p.targets.find((t) => t.valueAuthority === "canonical_group_alternative")!.groupId;
+const altIdOf = (p: FieldRepairPlan, stateId: string) =>
+  p.targets.find((t) => t.valueAuthority === "canonical_group_alternative")!.alternatives.find((a) => a.stateId === stateId)!.alternativeId;
 
 /** The one multi-field group in the captured evidence, and the fields R2.54 requires of it. */
 const PREREQUISITE_GROUP_FIELDS = [
@@ -90,7 +101,10 @@ const PREREQUISITE_GROUP_FIELDS = [
 ];
 const groupOn = (p: FieldRepairPlan, surfaceRef: string) => p.targets.filter((t) => t.surfaceRef === surfaceRef);
 
-const validate = (ops: unknown, p: FieldRepairPlan = plan(), d = DIGESTS) => validateFieldRepairResponse({ repairs: ops }, p, CTX, d);
+/** Scalar-only helper: the group is answered correctly unless a case overrides it. */
+const validate = (ops: unknown, p: FieldRepairPlan = plan(), d = DIGESTS) =>
+  validateFieldRepairResponse({ repairs: ops, groupSelections: correctResponse(p).groupSelections }, p, CTX, d);
+const validateResponse = (r: unknown, p: FieldRepairPlan = plan(), d = DIGESTS) => validateFieldRepairResponse(r, p, CTX, d);
 const codesOf = (r: ReturnType<typeof validateFieldRepairResponse>) => (r.ok ? [] : r.codes);
 
 // ---------------------------------------------------------------------------
@@ -170,21 +184,28 @@ describe("[R2.50][9] the patch authority fails closed on everything it did not a
     // restored to make a repair succeed.
     const all = new Set((subject.evidenceCandidates as Array<{ candidateId: string }>).map((c) => c.candidateId));
     for (const removed of ["3-f1", "4-f1", "5-f1", "6-f1", "7-f1"]) expect(all.has(removed), removed).toBe(false);
+    // R2.59 — the removed ids are still absent from every pool, and a grouped candidate field can no
+    // longer be answered as a scalar at all, so the attempt is refused twice over.
     const p = plan();
-    const ops = correctOps(p).map((o) =>
-      o.surfaceRef === "branch[0].resulting_world_state" && o.field === "prerequisiteFailureCandidateId" ? op(o.surfaceRef, o.field, "3-f1") : o,
-    );
-    const r = validate(ops, p);
+    const r = validate([...correctOps(p), op("branch[0].resulting_world_state", "prerequisiteFailureCandidateId", "3-f1")], p);
     expect(r.ok).toBe(false);
+    expect(codesOf(r)).toContain("field_repair_grouped_field_in_repairs");
   });
 
-  it("9.12 a PARTIAL dependency group is refused", () => {
+  /**
+   * 9.12 — R2.59 makes a partial group UNSAYABLE rather than merely refused.
+   *
+   * The group is one answer now, so there is no way to supply four fifths of it. Omitting the
+   * selection is the closest expressible defect, and it is named as a response-completeness failure
+   * rather than as a scalar operation gap.
+   */
+  it("9.12 an UNANSWERED dependency group is refused", () => {
     const p = plan();
     const group = p.targets.filter((t) => t.surfaceRef === "branch[0].resulting_world_state");
     expect(group.length).toBeGreaterThan(1);
-    const dropped = group[0]!;
-    const r = validate(correctOps(p).filter((o) => !(o.surfaceRef === dropped.surfaceRef && o.field === dropped.field)), p);
-    expect(codesOf(r)).toContain("field_repair_dependency_group_partial");
+    const r = validateResponse({ repairs: correctResponse(p).repairs, groupSelections: [] }, p);
+    expect(codesOf(r)).toContain("field_repair_group_selection_missing");
+    expect(r.ok).toBe(false);
   });
 
   it("9.13 a STALE base-row digest is refused at merge", () => {
@@ -240,21 +261,25 @@ describe("[R2.50][9] the patch authority fails closed on everything it did not a
    * verdict standing in for a contract refusal. Under R2.54 the repair-group boundary refuses it, and
    * the merge is never attempted.
    */
-  it("9.20 a patch that passes its menu but is no canonical shape is refused BEFORE merge", () => {
+  /**
+   * 9.20 — R2.59 removes the whole class this case guarded.
+   *
+   * "Passes its menu but is no canonical shape" required the provider to author the tuple. It cannot
+   * any more: it names an alternative, and the server writes the values. The nearest expressible
+   * defect is naming an alternative that does not exist, and it must still stop before the merge.
+   */
+  it("9.20 an alternative the plan never offered is refused BEFORE merge", () => {
     const p = plan();
-    const ops = correctOps(p).map((o) =>
-      o.surfaceRef === "branch[0].resulting_world_state" && o.field === "prerequisiteSatisfactionCandidateId" ? op(o.surfaceRef, o.field, "none") : o,
-    );
-    const v = validate(ops, p);
+    const response = { repairs: correctResponse(p).repairs, groupSelections: [{ groupId: groupIdOf(p), alternativeId: "0".repeat(16), reason: "" }] };
+    const v = validateResponse(response, p);
     expect(v.ok).toBe(false);
-    expect(codesOf(v)).toContain("field_repair_group_shape_not_allowed");
+    expect(codesOf(v)).toContain("field_repair_group_selection_unknown_alternative");
 
-    const applied = applyFieldRepair({ repairs: ops }, R248_ATTEMPT_1, p, CTX, DIGESTS);
+    const applied = applyFieldRepair(response, R248_ATTEMPT_1, p, CTX, DIGESTS);
     expect(applied.mergeAttempted).toBe(false);
     expect(applied.merge.ok).toBe(false);
     expect(applied.merge.rows).toEqual([]);
-    // The refusal is the group's, reported as the group's — not a downstream row verdict.
-    expect(applied.merge.codes).toContain("field_repair_group_shape_not_allowed");
+    expect(applied.merge.codes).toContain("field_repair_group_selection_unknown_alternative");
     expect(applied.merge.codes).not.toContain("field_repair_merged_row_invalid");
   });
 
@@ -397,9 +422,14 @@ describe("[R2.50][3] the patch schema uses only strict-supported constructs", ()
     expect(FIELD_REPAIR_JSON_SCHEMA.additionalProperties).toBe(false);
   });
 
-  it("the response carries no assessment rows", () => {
+  it("the response carries no assessment rows, and exactly two answer arrays", () => {
     expect(JSON.stringify(FIELD_REPAIR_JSON_SCHEMA)).not.toContain("assessments");
-    expect(Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties)).toEqual(["repairs"]);
+    // R2.59 — one array per authority: scalars the provider authors, selections it copies.
+    expect(Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties)).toEqual(["repairs", "groupSelections"]);
+    expect([...FIELD_REPAIR_JSON_SCHEMA.required].sort()).toEqual(["groupSelections", "repairs"]);
+    // A grouped field cannot even be NAMED in a scalar repair.
+    expect(FIELD_REPAIR_JSON_SCHEMA.properties.repairs.items.properties.field.enum).not.toContain("prerequisiteStatus");
+    expect(FIELD_REPAIR_JSON_SCHEMA.properties.repairs.items.properties.field.enum).not.toContain("reason");
   });
 });
 
@@ -501,20 +531,24 @@ describe("[R2.50][8] the captured R2.48 evidence", () => {
         const t = p.targets.find((x) => x.surfaceRef === ref)!;
         return op(ref, "governedActionCandidateId", t.candidateMenu![0]!.candidateId);
       }),
-      op("branch[0].resulting_world_state", "prerequisiteStatus", "satisfied"),
-      op("branch[0].resulting_world_state", "temporalRelation", "prerequisite_before_action"),
-      op("branch[0].resulting_world_state", "prerequisiteSatisfactionCandidateId", "3-s3"),
-      op("branch[0].resulting_world_state", "prerequisiteFailureCandidateId", "none"),
-      // R2.54 — the fourteenth operation. `satisfied` is a SERVER-DERIVED alternative, so the one
-      // legal answer for `reason` is the canonical empty string; prose here would be refused.
-      op("branch[0].resulting_world_state", "reason", ""),
     ];
-    const v = validate(ops, p);
+    /**
+     * R2.59 — the group is SELECTED, not rebuilt. `satisfied` is a server-derived alternative, so
+     * the one legal `reason` is the canonical empty string; the four canonical values come from the
+     * server, which is why they no longer appear here.
+     */
+    const v = validateResponse(
+      { repairs: ops, groupSelections: [{ groupId: groupIdOf(p), alternativeId: altIdOf(p, "governed_action_prerequisite_satisfied"), reason: "" }] },
+      p,
+    );
     expect(codesOf(v)).toEqual([]);
-    // The accepted group names the alternative it matched — acceptance is by SHAPE, not by scalars.
     expect(v.groupSelections).toHaveLength(1);
     expect(v.groupSelections[0]!.matchedStateId).toBe("governed_action_prerequisite_satisfied");
     expect(v.groupSelections[0]!.reasonAuthority).toBe("server_derived");
+    // The five grouped operations were built by the SERVER, from the named alternative.
+    expect(v.counts.providerScalarRepairCount).toBe(9);
+    expect(v.counts.providerGroupSelectionCount).toBe(1);
+    expect(v.counts.expandedCanonicalOperationCount).toBe(5);
     const m = mergeFieldRepair(R248_ATTEMPT_1, v, p, CTX);
     expect(m.codes).toEqual([]);
     expect(m.ok).toBe(true);
@@ -587,13 +621,13 @@ describe("[R2.50][7] a valid field is frozen through an unrelated repair", () =>
     const p = planFieldRepair(withTruePositive, CTX, DIGESTS);
     const ops = [
       ...p.targets.filter((t) => t.field === "governedActionCandidateId").map((t) => op(t.surfaceRef, t.field, t.candidateMenu![0]!.candidateId)),
-      op("branch[0].resulting_world_state", "prerequisiteStatus", "satisfied"),
-      op("branch[0].resulting_world_state", "temporalRelation", "prerequisite_before_action"),
-      op("branch[0].resulting_world_state", "prerequisiteSatisfactionCandidateId", "3-s3"),
-      op("branch[0].resulting_world_state", "prerequisiteFailureCandidateId", "none"),
-      op("branch[0].resulting_world_state", "reason", ""),
     ];
-    const v = validateFieldRepairResponse({ repairs: ops }, p, CTX, DIGESTS);
+    const v = validateFieldRepairResponse(
+      { repairs: ops, groupSelections: [{ groupId: groupIdOf(p), alternativeId: altIdOf(p, "governed_action_prerequisite_satisfied"), reason: "" }] },
+      p,
+      CTX,
+      DIGESTS,
+    );
     expect(codesOf(v)).toEqual([]);
     const m = mergeFieldRepair(withTruePositive, v, p, CTX);
     if (!m.ok) throw new Error("unreachable");

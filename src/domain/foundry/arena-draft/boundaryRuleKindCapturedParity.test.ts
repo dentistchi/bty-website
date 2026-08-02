@@ -41,13 +41,22 @@ const key = (a: Facts) => `${a.governedActionStatus}/${a.prerequisiteStatus}/${a
  * regression as one that changed meaning.
  */
 const EXPECTED_LIVE_DISTRIBUTION: Record<string, { count: number; stateId: string | null }> = {
-  "absent/not_applicable/not_applicable": { count: 125, stateId: "non_governing" },
-  "present/explicitly_missing/action_before_prerequisite": { count: 45, stateId: "governed_action_prerequisite_missing" },
+  "absent/not_applicable/not_applicable": { count: 135, stateId: "non_governing" },
+  "present/explicitly_missing/action_before_prerequisite": { count: 47, stateId: "governed_action_prerequisite_missing" },
   "present/satisfied/prerequisite_before_action": { count: 9, stateId: "governed_action_prerequisite_satisfied" },
   "present/not_established/unrelated": { count: 1, stateId: "governed_action_prerequisite_not_established" },
   /** The patch-response evidence entries carry `repairs[]`, so their rows have no facts at all. */
   "undefined/undefined/undefined": { count: 52, stateId: null },
 };
+
+/**
+ * R2.55 measured 232 rows; the R2.57 controlled live replay then added its own attempt-1 response,
+ * which is byte-identical to `R248_ATTEMPT_1` — 10 administrative rows and 2 violating ones. The
+ * TOTAL moved because the evidence set grew, not because any row reclassified: every distinct triple
+ * and every state below is unchanged, and the R2.57 rows land in two buckets that already existed.
+ */
+const R255_MEASURED_ROWS = 232;
+const R257_ADDED_ROWS = 12;
 
 const ARTIFACT_DIR = join(process.cwd(), ".eval-artifacts");
 const replayFiles = (): string[] => {
@@ -119,7 +128,7 @@ describe("[R2.56][10] the retained live replays reclassify identically", () => {
   it("the measured distribution is unchanged, row for row", () => {
     if (replayFiles().length === 0) return expect(replayFiles()).toHaveLength(0); // stated skip, never a silent pass
     const { counts, states, rows } = sweep();
-    expect(rows).toBe(232);
+    expect(rows).toBe(R255_MEASURED_ROWS + R257_ADDED_ROWS);
     expect(Object.keys(counts).sort()).toEqual(Object.keys(EXPECTED_LIVE_DISTRIBUTION).sort());
     for (const [k, expected] of Object.entries(EXPECTED_LIVE_DISTRIBUTION)) {
       expect(counts[k], k).toBe(expected.count);

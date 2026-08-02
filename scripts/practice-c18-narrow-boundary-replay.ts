@@ -22,7 +22,7 @@ import { buildNarrowBoundaryRequest, narrowBoundarySubjectSha256, type NarrowBou
 import type { FieldRepairCallResult, NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import type { FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import { R248_ATTEMPT_1 } from "@/domain/foundry/arena-draft/r248LiveDtoFixture";
-import { capturedR252GroupOperations, selectPlanDerivedOperations } from "@/domain/foundry/arena-draft/groupAlternativeSelection.fixture";
+import { capturedR252GroupOperations, selectPlanDerivedOperations, selectPlanDerivedResponse } from "@/domain/foundry/arena-draft/groupAlternativeSelection.fixture";
 import { emptyTransportEvidence as emptyPatchTransport } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
@@ -539,7 +539,16 @@ export function mockFieldRepair(
   attempt: number,
   kind: "canonical" | "captured-r252" = "canonical",
 ): FieldRepairCallResult {
-  const repairs = selectPlanDerivedOperations(plan.targets, kind === "captured-r252" ? capturedR252GroupOperations : undefined);
+  /**
+   * R2.59 — `canonical` answers in the NEW shape: scalars plus one group selection per group.
+   * `captured-r252` deliberately answers in the OLD scalar shape, because that is what the R2.52
+   * live model actually sent; the point of that leg is that the representation is now refused.
+   */
+  const raw =
+    kind === "captured-r252"
+      ? { repairs: selectPlanDerivedOperations(plan.targets, capturedR252GroupOperations), groupSelections: [] }
+      : selectPlanDerivedResponse(plan.targets);
+  const repairs = raw.repairs;
   const transport = emptyPatchTransport(`mock#repair${attempt}`);
   transport.requestConstructed = true;
   transport.responseState = "response_received";
@@ -547,14 +556,14 @@ export function mockFieldRepair(
   transport.structuredOutputPresent = true;
   return {
     kind: "patch",
-    raw: { repairs },
+    raw,
     evidence: {
       boundaryReviewAttempt: attempt,
       boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
       repairPlanSha256: plan.planSha256,
       requiredOperationCount: plan.requiredOperationCount,
       request: null,
-      parsed: { repairs },
+      parsed: raw,
       finishReason: "stop",
       latencyMs: 0,
       sanitizedError: null,

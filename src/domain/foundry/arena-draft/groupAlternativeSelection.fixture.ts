@@ -31,6 +31,12 @@ import type { FieldRepairTarget } from "./boundaryFieldRepair";
 
 export type SelectedOperation = { surfaceRef: string; field: string; value: string };
 
+/** R2.59 — the provider response shape: scalars for standalone targets, selections for groups. */
+export type SelectedResponse = {
+  repairs: SelectedOperation[];
+  groupSelections: Array<{ groupId: string; alternativeId: string; reason: string }>;
+};
+
 /**
  * The alternative the canonical mock answers with, named by its STABLE SEMANTIC ID.
  *
@@ -102,11 +108,12 @@ export const modelReasonFor = (stateId: string): string =>
   `the surface text does not settle the ${stateId.replace(/_/g, " ")} condition before the governed action`.slice(0, 118);
 
 /**
- * The R2.52 LIVE selection, replayed against the R2.54 plan.
+ * The R2.52 LIVE selection, replayed against the plan.
  *
- * The four captured values verbatim plus the frozen empty `reason` the fourteenth target now asks
- * for: the exact tuple that reached merge in R2.52 and lost the run its verdict. Under R2.54 the
- * repair-group boundary must stop it BEFORE merge. Captured regression input, never constructed.
+ * The four captured values verbatim plus the frozen empty `reason`: the exact tuple that reached
+ * merge in R2.52 and lost the run its verdict. Retained as a SCALAR group answer because that is
+ * what the provider actually sent; under R2.59 that representation is itself refused, which is the
+ * point of keeping it. Captured regression input, never constructed.
  */
 export function capturedR252GroupOperations(targets: readonly FieldRepairTarget[]): SelectedOperation[] {
   const captured: Record<string, string> = { ...R252_CAPTURED_GROUP_SELECTION, reason: R252_FROZEN_REASON };
@@ -120,8 +127,62 @@ export function capturedR252GroupOperations(targets: readonly FieldRepairTarget[
 }
 
 /**
- * The whole patch, plan-derived: every group from a canonical alternative, every standalone target
- * from its own scalar domain, in the plan's own target order.
+ * R2.59 — the whole RESPONSE, plan-derived.
+ *
+ * Standalone targets become scalar `repairs`; every multi-field group becomes ONE
+ * `groupSelection` naming the alternative and carrying only the reason that alternative demands.
+ * The four canonical scalars are deliberately absent: the server expands them.
+ */
+export function selectPlanDerivedResponse(
+  targets: readonly FieldRepairTarget[],
+  preferredStateId: string = MOCK_PREFERRED_STATE_ID,
+): SelectedResponse {
+  const byGroup = new Map<string, FieldRepairTarget[]>();
+  for (const t of targets) byGroup.set(t.groupId, [...(byGroup.get(t.groupId) ?? []), t]);
+
+  const repairs: SelectedOperation[] = [];
+  const groupSelections: SelectedResponse["groupSelections"] = [];
+  for (const group of byGroup.values()) {
+    const first = group[0]!;
+    if (first.valueAuthority === "canonical_group_alternative") {
+      const alt = first.alternatives.find((a) => a.stateId === preferredStateId) ?? first.alternatives[0];
+      if (!alt) {
+        throw new Error(
+          `plan-derived selection failed for group ${first.groupId} on ${first.surfaceRef}: ` +
+            `the plan offered 0 canonical alternatives (wanted ${preferredStateId}). ` +
+            `This selector reads its answer from the plan and will not invent one.`,
+        );
+      }
+      groupSelections.push({
+        groupId: first.groupId,
+        alternativeId: alt.alternativeId,
+        // The ALTERNATIVE decides, not this module — see `selectCanonicalGroupOperations`.
+        reason: alt.reasonConstraint === "model_required" ? modelReasonFor(alt.stateId) : "",
+      });
+      continue;
+    }
+    for (const t of group) {
+      if (t.field.endsWith("CandidateId")) {
+        const menu = t.candidateMenu ?? [];
+        const hit = menu.find((c) => MOCK_SATISFACTION_EXCERPT.test(c.excerpt)) ?? menu[0];
+        repairs.push({ surfaceRef: t.surfaceRef, field: t.field, value: hit ? hit.candidateId : NO_CANDIDATE });
+        continue;
+      }
+      const value = t.allowedValues[0];
+      if (value === undefined) throw new Error(`plan-derived selection failed: standalone target ${t.surfaceRef}/${t.field} published no allowed values`);
+      repairs.push({ surfaceRef: t.surfaceRef, field: t.field, value });
+    }
+  }
+  const order = new Map(targets.map((t, i) => [`${t.surfaceRef} ${t.field}`, i]));
+  repairs.sort((a, b) => (order.get(`${a.surfaceRef} ${a.field}`) ?? 0) - (order.get(`${b.surfaceRef} ${b.field}`) ?? 0));
+  return { repairs, groupSelections };
+}
+
+/**
+ * The whole patch as SCALAR operations only — the pre-R2.59 representation.
+ *
+ * Retained because the historical regressions need to send exactly what the old contract accepted
+ * and prove it is now refused. Not the shape any live request asks for.
  */
 export function selectPlanDerivedOperations(
   targets: readonly FieldRepairTarget[],

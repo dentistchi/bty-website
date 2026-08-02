@@ -116,6 +116,7 @@ import {
   FIELD_REPAIR_OBSERVABILITY_VERSION,
   FIELD_REPAIR_VALUE_AUTHORITIES,
   FIELD_REPAIR_VALUE_MAX,
+  STANDALONE_REPAIRABLE_FIELDS,
   REPAIRABLE_BOUNDARY_FIELDS,
   IDENTITY_FIELDS,
   fieldRepairContractSha256,
@@ -528,6 +529,28 @@ export function buildContractManifest(head: string, model: string): ContractMani
         credentialRequestedOnlyAfterEveryProof: true,
         artifactObservabilityReachable: FIELD_REPAIR_OBSERVABILITY_VERSION,
         liveReplayNotAuthorizedByAGreenCanary: true,
+      }),
+      /**
+       * R2.59 — the GROUP-SELECTION response authority. R2.58 measured a live patch that named the
+       * right alternative and emptied the one field it had to author rather than copy, because the
+       * prompt said "choose one alternative" while the schema demanded five rebuilt scalars. A group
+       * is now selected by id and expanded by the server; `reason` is the only value the provider
+       * writes, and a grouped field in `repairs` is refused outright.
+       */
+      boundaryFieldRepairResponseAuthority: digest({
+        responseArrays: ["repairs", "groupSelections"],
+        groupSelectionShape: ["groupId", "alternativeId", "reason"],
+        standaloneRepairableFields: STANDALONE_REPAIRABLE_FIELDS,
+        dependencyGroupsAnsweredBySelectionOnly: true,
+        groupedScalarRepairRefused: true,
+        alternativeResolvedServerSideById: true,
+        serverExpandsSelectionIntoCanonicalOperations: true,
+        expansionSource: "canonical_alternative_expansion",
+        providerNeverAuthorsGroupedCandidateIds: true,
+        reasonIsTheOnlyProviderAuthoredGroupValue: true,
+        reasonHasNoSchemaMinLengthBecauseServerDerivedRequiresEmpty: true,
+        providerResponseCompletenessDistinctFromExpandedCompleteness: true,
+        targetDiagnosticProseRenamedToRefusalExplanation: true,
       }),
       boundaryFieldRepairApplySeam: digest({
         seam: "applyFieldRepair",

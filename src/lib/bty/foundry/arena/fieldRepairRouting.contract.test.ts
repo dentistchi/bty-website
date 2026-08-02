@@ -112,19 +112,23 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     expect(p.groups).toBe(10);
     const req = p.request as {
       authority: { repairPlanSha256: string; baseRowSha256: Array<{ surfaceRef: string; sha256: string }> };
-      targets: Array<{ field: string; valueAuthority: string; allowedValues: string[] | null; groupFields: string[] }>;
-      dependencyGroups: Array<{
-        groupId: string;
-        surfaceRef: string;
-        fields: string[];
-        alternativesSha256: string;
-        alternatives: Array<{ alternativeId: string; stateId: string; prerequisiteStatus: string; temporalRelation: string[]; reasonMode: string }>;
-      }>;
+      requiredScalarRepairCount: number;
+      requiredGroupSelectionCount: number;
+      scalarTargets: Array<{ field: string; refusalExplanation: string; allowedValues: string[] }>;
+      dependencyGroups: Array<{ groupId: string; alternatives: Array<{ alternativeId: string; stateId: string; reasonMode: string }> }>;
     };
     expect(req.authority.repairPlanSha256).toBe(p.planSha256);
     expect(req.authority.baseRowSha256.length).toBeGreaterThan(0);
     for (const b of req.authority.baseRowSha256) expect(b.sha256).toHaveLength(64);
-    expect(req.targets).toHaveLength(14);
+    /**
+     * R2.59 — the request now states the two answer counts separately. Fourteen canonical operations
+     * are still planned; the provider sends NINE scalars and ONE selection, and the server builds the
+     * remaining five.
+     */
+    expect(req.scalarTargets).toHaveLength(9);
+    expect(req.requiredScalarRepairCount).toBe(9);
+    expect(req.requiredGroupSelectionCount).toBe(1);
+    expect(req.dependencyGroups).toHaveLength(1);
   });
 
   it("R2.54 — the request offers COMPLETE canonical alternatives, not five independent scalar lists", async () => {
@@ -132,7 +136,7 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     const o = observed();
     await run(o);
     const req = o.repairCalls[0]!.request as {
-      targets: Array<{ field: string; valueAuthority: string; allowedValues: string[] | null; groupFields: string[] }>;
+      scalarTargets: Array<{ field: string; refusalExplanation: string; allowedValues: string[] }>;
       dependencyGroups: Array<{
         groupId: string;
         fields: string[];
@@ -163,21 +167,22 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     // Both reason modes are reachable, so the mode genuinely distinguishes shapes here.
     expect(new Set(g.alternatives.map((a) => a.reasonMode))).toEqual(new Set(["must_be_empty", "model_required"]));
 
-    // A GROUPED target publishes NO scalar list; a standalone one still does.
-    const grouped = req.targets.filter((t) => t.groupFields.length > 1);
-    const standalone = req.targets.filter((t) => t.groupFields.length === 1);
-    expect(grouped).toHaveLength(5);
-    expect(standalone).toHaveLength(9);
-    for (const t of grouped) {
-      expect(t.valueAuthority).toBe("canonical_group_alternative");
-      expect(t.allowedValues).toBeNull();
+    /**
+     * R2.59 — a grouped target is not published as a target at all. There is no entry a model could
+     * answer with a scalar, which is what makes the single-authority rule structural rather than
+     * enforced-after-the-fact.
+     */
+    expect(req.scalarTargets).toHaveLength(9);
+    for (const t of req.scalarTargets) {
+      expect(t.allowedValues.length).toBeGreaterThan(0);
+      expect(t.field).toBe("governedActionCandidateId");
+      // The diagnostic prose is renamed, so it can no longer be mistaken for the repairable reason.
+      expect(typeof t.refusalExplanation).toBe("string");
     }
-    for (const t of standalone) {
-      expect(t.valueAuthority).toBe("scalar_allowed_values");
-      expect(t.allowedValues!.length).toBeGreaterThan(0);
-    }
-    // `reason` never appears as a value list anywhere in the request.
-    expect(JSON.stringify(req)).not.toContain("<empty-or-model-authored");
+    // No scalar target IS a grouped field. (`frozenContext` still names the row's other values —
+    // that is read-only context, and never something the model may answer.)
+    expect(req.scalarTargets.map((t) => t.field)).toEqual(Array(9).fill("governedActionCandidateId"));
+    expect(req.scalarTargets.some((t) => Object.hasOwn(t as object, "reason"))).toBe(false);
   });
 
   it("5,7 — the second call uses the PATCH schema and its response is repairs[], never assessments[]", async () => {
@@ -185,12 +190,14 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     const o = observed();
     await run(o);
     expect(FIELD_REPAIR_SCHEMA_NAME).toBe("bty_practice_boundary_field_repair_v1");
-    expect(Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties)).toEqual(["repairs"]);
+    expect(Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties)).toEqual(["repairs", "groupSelections"]);
     expect(JSON.stringify(FIELD_REPAIR_JSON_SCHEMA)).not.toContain("assessments");
     const patch = mockFieldRepair as unknown as () => void;
     expect(typeof patch).toBe("function");
     // The request carries no assessment rows at all.
     expect(JSON.stringify(o.repairCalls[0]!.request)).not.toContain('"assessments"');
+    // R2.59 — and the response carries a selection array, not five re-authored scalars.
+    expect(Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties)).toContain("groupSelections");
   });
 
   it("8 — no SECOND full-row call occurs, and the first never carries a surface subset", async () => {
@@ -317,13 +324,29 @@ describe("[R2.54][6] artifact /6 records the group decision and the merge bounda
       mergeAccepted: boolean;
       mergedRowInvalidCount: number;
       suppliedOperationCount: number;
-      groups: Array<{ selected: Record<string, string>; matched: boolean; matchedStateId: string | null; reasonAuthority: string; refusalCode: string | null }>;
+      providerGroupSelectionCount: number;
+      groups: Array<{
+        selected: Record<string, string>;
+        matched: boolean;
+        matchedStateId: string | null;
+        requestedAlternativeId: string | null;
+        expansionSource: string | null;
+        reasonAuthority: string;
+        refusalCode: string | null;
+      }>;
     };
 
     // The patch WAS complete — this is not a coverage failure, and the artifact says which it is.
-    expect(obs.suppliedOperationCount).toBe(14);
+    /**
+     * R2.59 — the captured leg replays the R2.52 GROUPED-SCALAR representation, which this slice
+     * removed. It is now refused one step earlier, on the representation itself, and the artifact
+     * names both halves: the grouped fields that cannot be answered as scalars, and the selection
+     * that never arrived.
+     */
     expect(obs.accepted).toBe(false);
-    expect(obs.refusalCodes).toContain("field_repair_group_reason_required_missing");
+    expect(obs.refusalCodes).toContain("field_repair_grouped_field_in_repairs");
+    expect(obs.refusalCodes).toContain("field_repair_group_selection_missing");
+    expect(obs.providerGroupSelectionCount).toBe(0);
     // THE R2.52 QUESTION, now answerable: the merge boundary was NOT crossed.
     expect(obs.mergeAttempted).toBe(false);
     expect(obs.mergeAccepted).toBe(false);
@@ -333,11 +356,9 @@ describe("[R2.54][6] artifact /6 records the group decision and the merge bounda
     const g = obs.groups[0]!;
     expect(g.matched).toBe(false);
     expect(g.matchedStateId).toBeNull();
-    expect(g.refusalCode).toBe("field_repair_group_reason_required_missing");
-    expect(g.reasonAuthority).toBe("model_required");
-    expect(g.selected.prerequisiteStatus).toBe("not_established");
-    expect(g.selected.temporalRelation).toBe("not_applicable");
-    expect(g.selected.reason).toBe("<empty>");
+    expect(g.requestedAlternativeId).toBeNull();
+    expect(g.refusalCode).toBe("field_repair_group_selection_missing");
+    expect(g.expansionSource).toBeNull();
 
     // The run still routes as a patch and still fails closed; no fallback appeared.
     expect(a.repairMode).toBe("field_patch");

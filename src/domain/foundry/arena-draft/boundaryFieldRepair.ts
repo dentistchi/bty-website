@@ -105,6 +105,21 @@ export const FIELD_REPAIR_CODES = [
   "field_repair_frozen_field_mutated",
   "field_repair_merged_row_invalid",
   "field_repair_group_alternative_digest_mismatch",
+  /**
+   * R2.59 — the GROUP-SELECTION response authority. R2.58 measured a live patch that chose the
+   * right alternative and emptied the one field it had to author rather than copy: the prompt said
+   * "choose exactly one alternative" while the schema made the model rebuild five scalars by hand.
+   * A dependency group is now selected by id, never re-authored, and these name every way that can
+   * go wrong.
+   */
+  "field_repair_group_selection_missing",
+  "field_repair_group_selection_duplicate",
+  "field_repair_group_selection_unknown_group",
+  "field_repair_group_selection_unknown_alternative",
+  "field_repair_group_selection_foreign_alternative",
+  "field_repair_group_selection_not_selectable",
+  "field_repair_grouped_field_in_repairs",
+  "field_repair_group_expansion_failed",
   ...GROUP_SHAPE_CODES,
 ] as const;
 export type FieldRepairCode = (typeof FIELD_REPAIR_CODES)[number];
@@ -114,13 +129,49 @@ export type FieldRepairCode = (typeof FIELD_REPAIR_CODES)[number];
 // ---------------------------------------------------------------------------
 
 export type BoundaryFieldRepairOperation = { surfaceRef: string; field: string; value: string };
-export type BoundaryFieldRepairResponse = { repairs: BoundaryFieldRepairOperation[] };
+
+/**
+ * R2.59 — how the model answers ONE dependency group.
+ *
+ * Three fields, and only one of them is authored: `groupId` and `alternativeId` are COPIED from the
+ * request, and `reason` is written when — and only when — the selected alternative requires prose.
+ * The four canonical scalars are not here, because the model was never the authority on them.
+ */
+export type BoundaryFieldRepairGroupSelection = { groupId: string; alternativeId: string; reason: string };
+
+export type BoundaryFieldRepairResponse = {
+  repairs: BoundaryFieldRepairOperation[];
+  groupSelections: BoundaryFieldRepairGroupSelection[];
+};
+
+/**
+ * THE FIELDS THAT CAN EVER STAND ALONE.
+ *
+ * A single-field target arises only from the candidate-only codes, whose findings are attributed
+ * through `CANDIDATE_FIELD_OF` — so a standalone repair is always a candidate id. Every closure
+ * (prerequisite or governed-action) is multi-field by construction and is answered by selection.
+ * Asserted by test rather than assumed.
+ */
+export const STANDALONE_REPAIRABLE_FIELDS = [
+  "governedActionCandidateId",
+  "prerequisiteSatisfactionCandidateId",
+  "prerequisiteFailureCandidateId",
+] as const;
 
 /**
  * No `oneOf`, no `if/then`, no discriminated union — the provider adapter runs `strict: true` and
  * those constructs are exactly what a strict subset is least reliable about. Every property is
- * required and `additionalProperties` is closed. The VALUE domain is a plain string here; the exact
- * allowed set is enforced at runtime against the server-owned plan, which is the only authority.
+ * required and `additionalProperties` is closed.
+ *
+ * R2.59 — TWO ARRAYS, ONE AUTHORITY EACH. `repairs` carries standalone scalar targets; grouped
+ * fields are answered in `groupSelections` and appear in `repairs` never. The enum on
+ * `repairs.field` is the standalone set, so the provider's own schema refuses the shape R2.57
+ * returned. What the schema CANNOT know is which of those fields this particular plan grouped —
+ * that stays server-side, against the plan, which is the only authority that knows.
+ *
+ * `reason` deliberately carries no `minLength`: a `server_derived` alternative REQUIRES the empty
+ * string, so a global minimum would forbid the correct answer. Its authority is the resolved
+ * alternative, checked after selection.
  */
 export const FIELD_REPAIR_JSON_SCHEMA = {
   type: "object",
@@ -128,21 +179,36 @@ export const FIELD_REPAIR_JSON_SCHEMA = {
   properties: {
     repairs: {
       type: "array",
-      minItems: 1,
+      minItems: 0,
       maxItems: MAX_FIELD_REPAIR_OPERATIONS,
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
           surfaceRef: { type: "string", maxLength: 32 },
-          field: { type: "string", enum: [...REPAIRABLE_BOUNDARY_FIELDS] },
+          field: { type: "string", enum: [...STANDALONE_REPAIRABLE_FIELDS] },
           value: { type: "string", maxLength: FIELD_REPAIR_VALUE_MAX },
         },
         required: ["surfaceRef", "field", "value"],
       },
     },
+    groupSelections: {
+      type: "array",
+      minItems: 0,
+      maxItems: MAX_FIELD_REPAIR_OPERATIONS,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          groupId: { type: "string", maxLength: 32 },
+          alternativeId: { type: "string", maxLength: 32 },
+          reason: { type: "string", maxLength: NARROW_REASON_MAX },
+        },
+        required: ["groupId", "alternativeId", "reason"],
+      },
+    },
   },
-  required: ["repairs"],
+  required: ["repairs", "groupSelections"],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -460,7 +526,13 @@ export interface GroupSelectionRecord {
   groupFields: RepairableBoundaryField[];
   alternativesCount: number;
   alternativesSha256: string;
+  /**
+   * R2.59 — the values the group ended up with. These are now SERVER-EXPANDED from the selected
+   * alternative rather than provider-authored; only `reason` came from the model.
+   */
   selected: Record<string, string | undefined>;
+  /** R2.59 — the id the provider COPIED, before resolution. `null` when no selection arrived. */
+  requestedAlternativeId: string | null;
   matchedAlternativeId: string | null;
   matchedStateId: string | null;
   /** The authority the selection reached — `unknown` when it reached no single one. */
@@ -468,8 +540,79 @@ export interface GroupSelectionRecord {
   code: FieldRepairCode | null;
 }
 
+// ---------------------------------------------------------------------------
+// R2.59 — group selection: resolve, then expand. The server owns both halves.
+// ---------------------------------------------------------------------------
+
+/** One expanded operation, and the alternative it was derived from. Provenance, not decoration. */
+export interface ExpandedGroupOperation extends BoundaryFieldRepairOperation {
+  groupId: string;
+  alternativeId: string;
+  source: "canonical_alternative_expansion";
+}
+
+/**
+ * Turn ONE resolved alternative into the group's canonical field values.
+ *
+ * Every value except `reason` is read out of the alternative; `reason` is the provider's single
+ * authored contribution and is injected verbatim. A field the alternative cannot express is a
+ * server-side failure, not something to guess at — the caller refuses with
+ * `field_repair_group_expansion_failed` rather than filling a blank.
+ */
+export function expandGroupAlternative(
+  alt: CanonicalGroupAlternative,
+  fields: readonly RepairableBoundaryField[],
+  reason: string,
+): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const field of fields) {
+    switch (field) {
+      case "prerequisiteStatus":
+        out[field] = alt.prerequisiteStatus;
+        break;
+      case "temporalRelation": {
+        const t = alt.temporalDomain[0];
+        if (t === undefined) return null;
+        out[field] = t;
+        break;
+      }
+      case "prerequisiteSatisfactionCandidateId":
+        out[field] = alt.satisfactionCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.satisfactionCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE);
+        break;
+      case "prerequisiteFailureCandidateId":
+        out[field] = alt.failureCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.failureCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE);
+        break;
+      case "reason":
+        out[field] = reason;
+        break;
+      default:
+        // A grouped field the canonical alternative does not describe. Fail closed.
+        return null;
+    }
+  }
+  return out;
+}
+
+/**
+ * R2.59 — the three counts an auditor needs to tell provider authorship from server expansion.
+ *
+ * "10 dependency groups" never meant 10 provider answers: nine are singleton targets answered as
+ * scalars and one is the atomic five-field group answered by selection. These names make that
+ * unambiguous where `dependencyGroupCount` alone was read as a response unit.
+ */
+export interface FieldRepairResponseCounts {
+  /** Scalar operations the PROVIDER authored, for standalone targets only. */
+  providerScalarRepairCount: number;
+  /** Group selections the PROVIDER made. One per multi-field group, never more. */
+  providerGroupSelectionCount: number;
+  /** Canonical operations the SERVER built from the selected alternatives. */
+  expandedCanonicalOperationCount: number;
+  /** What the plan requires in total. `provider + expanded` must equal this. */
+  canonicalOperationPlanCount: number;
+}
+
 export type FieldRepairValidation =
-  | { ok: true; operations: BoundaryFieldRepairOperation[]; codes: []; groupSelections: GroupSelectionRecord[] }
+  | { ok: true; operations: BoundaryFieldRepairOperation[]; codes: []; groupSelections: GroupSelectionRecord[]; counts: FieldRepairResponseCounts; expanded: ExpandedGroupOperation[] }
   | {
       ok: false;
       codes: FieldRepairCode[];
@@ -478,6 +621,8 @@ export type FieldRepairValidation =
       missingCount: number;
       duplicateCount: number;
       groupSelections: GroupSelectionRecord[];
+      counts: FieldRepairResponseCounts;
+      expanded: ExpandedGroupOperation[];
     };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -510,10 +655,130 @@ export function validateFieldRepairResponse(
   if (rebuilt !== plan.planSha256) push("field_repair_plan_digest_mismatch");
   if (expected?.planSha256 !== undefined && expected.planSha256 !== plan.planSha256) push("field_repair_plan_digest_mismatch");
 
-  if (!isObj(raw) || !Array.isArray(raw.repairs)) {
+  if (!isObj(raw) || !Array.isArray(raw.repairs) || !Array.isArray(raw.groupSelections)) {
     push("field_repair_not_a_patch");
-    return { ok: false, codes, operations: [], untargetedCount, missingCount, duplicateCount, groupSelections: [] };
+    return {
+      ok: false, codes, operations: [], untargetedCount, missingCount, duplicateCount, groupSelections: [], expanded: [],
+      counts: { providerScalarRepairCount: 0, providerGroupSelectionCount: 0, expandedCanonicalOperationCount: 0, canonicalOperationPlanCount: plan.requiredOperationCount },
+    };
   }
+
+  /**
+   * R2.59 — RESOLVE THE GROUPS FIRST, then expand them into canonical operations.
+   *
+   * The completeness and value checks below are unchanged and still run over a 14-operation set.
+   * What changed is where five of those fourteen come from: the SERVER builds them from the
+   * alternative the provider named, so the model can no longer author a candidate id, a status or a
+   * temporal relation — only the id it copied and the prose it was asked for.
+   */
+  const selectableGroups = new Map<string, FieldRepairTarget[]>();
+  for (const t of plan.targets) {
+    if (t.valueAuthority !== "canonical_group_alternative") continue;
+    selectableGroups.set(t.groupId, [...(selectableGroups.get(t.groupId) ?? []), t]);
+  }
+  const groupedKeys = new Set<string>();
+  for (const [, group] of selectableGroups) for (const t of group) groupedKeys.add(`${t.surfaceRef}\u0000${t.field}`);
+
+  const groupSelections: GroupSelectionRecord[] = [];
+  const expanded: ExpandedGroupOperation[] = [];
+  const seenGroupIds = new Set<string>();
+
+  for (const rawSel of raw.groupSelections) {
+    if (!isObj(rawSel) || typeof rawSel.groupId !== "string" || typeof rawSel.alternativeId !== "string" || typeof rawSel.reason !== "string") {
+      push("field_repair_not_a_patch");
+      continue;
+    }
+    const { groupId, alternativeId, reason } = rawSel as { groupId: string; alternativeId: string; reason: string };
+    const record = (code: FieldRepairCode | null, group?: FieldRepairTarget[], selected: Record<string, string | undefined> = {}, matched?: CanonicalGroupAlternative) => {
+      const first = group?.[0];
+      groupSelections.push({
+        groupId,
+        surfaceRef: first?.surfaceRef ?? "",
+        groupFields: first ? [...first.groupFields] : [],
+        alternativesCount: first?.alternatives.length ?? 0,
+        alternativesSha256: first?.alternativesSha256 ?? "",
+        selected,
+        requestedAlternativeId: alternativeId,
+        matchedAlternativeId: matched?.alternativeId ?? null,
+        matchedStateId: matched?.stateId ?? null,
+        reasonAuthority: matched ? matched.reasonAuthority : first ? reasonAuthorityOf(first.alternatives) : "unknown",
+        code,
+      });
+      if (code) push(code);
+    };
+
+    if (seenGroupIds.has(groupId)) {
+      record("field_repair_group_selection_duplicate", selectableGroups.get(groupId));
+      continue;
+    }
+    seenGroupIds.add(groupId);
+
+    const group = selectableGroups.get(groupId);
+    if (!group) {
+      // Either an id this plan never issued, or a singleton target answered as if it were a group.
+      const singleton = plan.targets.some((t) => t.groupId === groupId);
+      record(singleton ? "field_repair_group_selection_not_selectable" : "field_repair_group_selection_unknown_group");
+      continue;
+    }
+    const first = group[0]!;
+    if (groupAlternativesSha256(first.alternatives) !== first.alternativesSha256) {
+      record("field_repair_group_alternative_digest_mismatch", group);
+      continue;
+    }
+    const alt = first.alternatives.find((a) => a.alternativeId === alternativeId);
+    if (!alt) {
+      // An id belonging to ANOTHER group is a different mistake from an id nobody ever issued, and
+      // an auditor reading the refusal needs to know which.
+      const foreign = plan.targets.some((t) => t.groupId !== groupId && t.alternatives.some((a) => a.alternativeId === alternativeId));
+      record(foreign ? "field_repair_group_selection_foreign_alternative" : "field_repair_group_selection_unknown_alternative", group);
+      continue;
+    }
+
+    // The EXISTING reason contract, unchanged, applied to the alternative the provider named.
+    const match = matchGroupAlternative([alt], {
+      prerequisiteStatus: alt.prerequisiteStatus,
+      temporalRelation: alt.temporalDomain[0] ?? "",
+      prerequisiteSatisfactionCandidateId: alt.satisfactionCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.satisfactionCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE),
+      prerequisiteFailureCandidateId: alt.failureCandidateRequirement === "forbidden" ? NO_CANDIDATE : (alt.failureCandidateDomain.find((x) => x !== NO_CANDIDATE) ?? NO_CANDIDATE),
+      reason: first.groupFields.includes("reason") ? reason : undefined,
+    });
+    if (!match.ok) {
+      record(match.code, group, { reason }, alt);
+      continue;
+    }
+
+    const values = expandGroupAlternative(alt, first.groupFields, reason);
+    if (!values) {
+      record("field_repair_group_expansion_failed", group, { reason }, alt);
+      continue;
+    }
+    for (const t of group) {
+      expanded.push({ surfaceRef: t.surfaceRef, field: t.field, value: values[t.field]!, groupId, alternativeId, source: "canonical_alternative_expansion" });
+    }
+    record(null, group, values, alt);
+  }
+
+  // A group the plan requires and the provider never selected is a COMPLETENESS failure of the
+  // response, distinct from a missing scalar operation.
+  for (const groupId of selectableGroups.keys()) {
+    if (seenGroupIds.has(groupId)) continue;
+    const group = selectableGroups.get(groupId)!;
+    push("field_repair_group_selection_missing");
+    groupSelections.push({
+      groupId,
+      surfaceRef: group[0]!.surfaceRef,
+      groupFields: [...group[0]!.groupFields],
+      alternativesCount: group[0]!.alternatives.length,
+      alternativesSha256: group[0]!.alternativesSha256,
+      selected: {},
+      requestedAlternativeId: null,
+      matchedAlternativeId: null,
+      matchedStateId: null,
+      reasonAuthority: reasonAuthorityOf(group[0]!.alternatives),
+      code: "field_repair_group_selection_missing",
+    });
+  }
+
   const rawOps = raw.repairs;
   const operations: BoundaryFieldRepairOperation[] = [];
   const seen = new Set<string>();
@@ -555,9 +820,18 @@ export function validateFieldRepairResponse(
       untargetedCount++;
       continue;
     }
-      // R2.54 — `reason` has no scalar domain. Its legality belongs to the
-      // matched alternative's `reasonAuthority`, checked in the group pass below.
-    if (target.field !== "reason" && !target.allowedValues.includes(op.value)) {
+    /**
+     * R2.59 — ONE AUTHORITY PER GROUP. A grouped field answered as a scalar operation is refused
+     * outright, even when its value happens to be right. Accepting both representations would put
+     * the provider back in charge of candidate ids and statuses through a second door, which is the
+     * shape defect R2.58 measured.
+     */
+    if (target.valueAuthority === "canonical_group_alternative") {
+      push("field_repair_grouped_field_in_repairs");
+      untargetedCount++;
+      continue;
+    }
+    if (!target.allowedValues.includes(op.value)) {
       // A candidate id gets the precise reason it is not allowed; a status gets the value code.
       if (target.field.endsWith("CandidateId")) {
         const all = ctx.candidates.filter((c) => c.candidateId === op.value);
@@ -569,88 +843,70 @@ export function validateFieldRepairResponse(
     }
   }
 
+  /**
+   * R2.59 — the SERVER's expansion joins the provider's scalars here, and only here.
+   *
+   * From this line down the accounting is unchanged: the completeness, atomicity and count checks
+   * still run over the full canonical operation set. What differs is provenance — five of the
+   * fourteen were derived from a named alternative, not authored.
+   */
+  const providerScalarRepairCount = operations.length;
+  for (const e of expanded) {
+    operations.push({ surfaceRef: e.surfaceRef, field: e.field, value: e.value });
+    seen.add(`${e.surfaceRef} ${e.field}`);
+  }
+
+  /**
+   * R2.59 — PROVIDER-RESPONSE completeness and EXPANDED-OPERATION completeness are different things,
+   * and conflating them misreports what happened.
+   *
+   * A group the provider answered and the server then refused (bad reason, unknown id, foreign id)
+   * has already been named by its own code. Its five operations are missing only as a CONSEQUENCE of
+   * that refusal, so reporting `operation_missing` and `operation_count_mismatch` on top would tell
+   * an auditor the model omitted work it actually did. Those groups are therefore excluded from the
+   * expanded accounting; the selection code stands alone.
+   */
+  const refusedGroupIds = new Set(groupSelections.filter((g) => g.code !== null).map((g) => g.groupId));
+  const accountable = plan.targets.filter((t) => !refusedGroupIds.has(t.groupId));
+
   // Every required operation, exactly once.
-  for (const t of plan.targets) {
+  for (const t of accountable) {
     if (!seen.has(`${t.surfaceRef} ${t.field}`)) {
       push("field_repair_operation_missing");
       missingCount++;
     }
   }
   // A dependency group is atomic: all of it, or none of it.
-  for (const groupId of new Set(plan.targets.map((t) => t.groupId))) {
-    const group = plan.targets.filter((t) => t.groupId === groupId);
+  for (const groupId of new Set(accountable.map((t) => t.groupId))) {
+    const group = accountable.filter((t) => t.groupId === groupId);
     const supplied = group.filter((t) => seen.has(`${t.surfaceRef} ${t.field}`)).length;
     if (supplied > 0 && supplied < group.length) push("field_repair_dependency_group_partial");
   }
-  if (operations.length !== plan.requiredOperationCount) push("field_repair_operation_count_mismatch");
+  // The count is only meaningful once every group either expanded or was excluded above.
+  if (refusedGroupIds.size === 0 && operations.length !== plan.requiredOperationCount) push("field_repair_operation_count_mismatch");
 
   /**
-   * R2.54 — GROUP SHAPE. The step that makes the authority bind.
+   * R2.54's shape pass lived here. It is GONE, not disabled.
    *
-   * Scalar membership never proved the tuple: R2.53 measured one c18 group whose
-   * per-field domains admit 150 combinations, only a small canonical subset of
-   * which forms a valid state. Worse, the live patch chose a VALID state and was
-   * still refused, because that state's `reasonAuthority` demanded prose the
-   * frozen empty reason could not supply.
+   * It matched a group by comparing five provider-authored scalars against the canonical
+   * alternatives — the only thing it could do while the provider authored them. R2.59 resolves the
+   * alternative by id BEFORE the operations exist, so by this line the group has already been
+   * accepted or refused and its values were written by the server. Keeping a second matcher over
+   * server-authored values would re-derive an answer the server already knows, and two mechanisms
+   * for one job is exactly how R2.55's dead tiebreak went unnoticed.
    *
-   * A multi-field group is now accepted only by matching ONE canonical
-   * alternative, complete, including its reason authority. Earlier codes win: an
-   * INCOMPLETE group is a completeness failure, not a shape failure, and naming
-   * it the latter would misreport what the model actually did.
+   * The matching SEMANTICS are unchanged: `matchGroupAlternative` and the reason contract are still
+   * the authority, invoked once per selection above.
    */
-  const groupSelections: GroupSelectionRecord[] = [];
-  if (codes.length === 0) {
-    const byGroup = new Map<string, FieldRepairTarget[]>();
-    for (const t of plan.targets) byGroup.set(t.groupId, [...(byGroup.get(t.groupId) ?? []), t]);
-    const valueOf = new Map(operations.map((o) => [`${o.surfaceRef} ${o.field}`, o.value]));
 
-    for (const [groupId, group] of byGroup) {
-      if (group.length < 2) continue; // a single-field group's scalar domain IS its shape
-      const first = group[0]!;
-      if (groupAlternativesSha256(first.alternatives) !== first.alternativesSha256) {
-        push("field_repair_group_alternative_digest_mismatch");
-        groupSelections.push({
-          groupId,
-          surfaceRef: first.surfaceRef,
-          groupFields: first.groupFields,
-          alternativesCount: first.alternatives.length,
-          alternativesSha256: first.alternativesSha256,
-          selected: {},
-          matchedAlternativeId: null,
-          matchedStateId: null,
-          reasonAuthority: "unknown",
-          code: "field_repair_group_alternative_digest_mismatch",
-        });
-        continue;
-      }
-      const pick = (field: string): string => valueOf.get(`${first.surfaceRef} ${field}`) ?? "";
-      const selected = {
-        prerequisiteStatus: pick("prerequisiteStatus"),
-        temporalRelation: pick("temporalRelation"),
-        prerequisiteSatisfactionCandidateId: pick("prerequisiteSatisfactionCandidateId"),
-        prerequisiteFailureCandidateId: pick("prerequisiteFailureCandidateId"),
-        reason: group.some((t) => t.field === "reason") ? pick("reason") : undefined,
-      };
-      const match = matchGroupAlternative(first.alternatives, selected);
-      groupSelections.push({
-        groupId,
-        surfaceRef: first.surfaceRef,
-        groupFields: first.groupFields,
-        alternativesCount: first.alternatives.length,
-        alternativesSha256: first.alternativesSha256,
-        selected,
-        matchedAlternativeId: match.ok ? match.alternativeId : null,
-        matchedStateId: match.ok ? match.stateId : null,
-        reasonAuthority: match.reasonAuthority,
-        code: match.ok ? null : match.code,
-      });
-      // Never normalized, never nudged to the nearest alternative.
-      if (!match.ok) push(match.code);
-    }
-  }
-
-  if (codes.length > 0) return { ok: false, codes, operations, untargetedCount, missingCount, duplicateCount, groupSelections };
-  return { ok: true, operations, codes: [], groupSelections };
+  const counts: FieldRepairResponseCounts = {
+    providerScalarRepairCount,
+    providerGroupSelectionCount: seenGroupIds.size,
+    expandedCanonicalOperationCount: expanded.length,
+    canonicalOperationPlanCount: plan.requiredOperationCount,
+  };
+  if (codes.length > 0) return { ok: false, codes, operations, untargetedCount, missingCount, duplicateCount, groupSelections, counts, expanded };
+  return { ok: true, operations, codes: [], groupSelections, counts, expanded };
 }
 
 // ---------------------------------------------------------------------------
@@ -807,16 +1063,29 @@ export interface FieldRepairGroupObservation {
   fields: string[];
   alternativesCount: number;
   alternativesSha256: string;
+  /** R2.59 — the id the PROVIDER copied. `null` when it never selected this group. */
+  requestedAlternativeId: string | null;
   /** Server-issued vocabulary verbatim; `reason` redacted to a shape. */
   selected: Record<string, string>;
   matched: boolean;
   matchedAlternativeId: string | null;
   matchedStateId: string | null;
   reasonAuthority: ReasonAuthorityMode;
+  /** R2.59 — where these values came from. `null` when the group was never expanded. */
+  expansionSource: "canonical_alternative_expansion" | null;
   refusalCode: string | null;
 }
 
-export const FIELD_REPAIR_OBSERVABILITY_VERSION = "practice-boundary-field-repair-observability/1";
+/**
+ * R2.59 — /2. The observability record GAINED fields, so its own version moves.
+ *
+ * `providerScalarRepairCount`, `providerGroupSelectionCount`, `expandedCanonicalOperationCount`,
+ * `canonicalOperationPlanCount`, and per-group `requestedAlternativeId` / `expansionSource` are new.
+ * The ARTIFACT's top-level key set is unchanged, so it stays `/6`; a reader that needs to know which
+ * observability shape it is holding reads this field, which is what it exists for. R2.57's retained
+ * `/1` record stays readable and is asserted so.
+ */
+export const FIELD_REPAIR_OBSERVABILITY_VERSION = "practice-boundary-field-repair-observability/2";
 
 export interface FieldRepairObservation {
   version: typeof FIELD_REPAIR_OBSERVABILITY_VERSION;
@@ -827,6 +1096,11 @@ export interface FieldRepairObservation {
   planSha256: string;
   /** What actually came back. */
   suppliedOperationCount: number;
+  /** R2.59 — provider authorship vs server expansion, kept apart on purpose. */
+  providerScalarRepairCount: number;
+  providerGroupSelectionCount: number;
+  expandedCanonicalOperationCount: number;
+  canonicalOperationPlanCount: number;
   groups: FieldRepairGroupObservation[];
   accepted: boolean;
   refusalCodes: string[];
@@ -869,10 +1143,12 @@ export function fieldRepairObservability(plan: FieldRepairPlan, application: Fie
       fields: [...first.groupFields],
       alternativesCount: first.alternatives.length,
       alternativesSha256: first.alternativesSha256,
+      requestedAlternativeId: rec?.requestedAlternativeId ?? null,
       selected,
       matched: rec?.matchedAlternativeId != null,
       matchedAlternativeId: rec?.matchedAlternativeId ?? null,
       matchedStateId: rec?.matchedStateId ?? null,
+      expansionSource: application.validation.expanded.some((e) => e.groupId === groupId) ? "canonical_alternative_expansion" : null,
       // No selection record means the patch was refused BEFORE the shape pass ran; the authority
       // that would have applied is still knowable from the offered alternatives.
       reasonAuthority: rec?.reasonAuthority ?? reasonAuthorityOf(first.alternatives),
@@ -887,6 +1163,10 @@ export function fieldRepairObservability(plan: FieldRepairPlan, application: Fie
     dependencyGroupCount: plan.dependencyGroupCount,
     planSha256: plan.planSha256,
     suppliedOperationCount: validation.operations.length,
+    providerScalarRepairCount: validation.counts.providerScalarRepairCount,
+    providerGroupSelectionCount: validation.counts.providerGroupSelectionCount,
+    expandedCanonicalOperationCount: validation.counts.expandedCanonicalOperationCount,
+    canonicalOperationPlanCount: validation.counts.canonicalOperationPlanCount,
     groups,
     accepted: validation.ok,
     refusalCodes: validation.ok ? [] : [...validation.codes],
@@ -928,6 +1208,15 @@ export const fieldRepairContractSha256 = (): string =>
     forbiddenCandidateNeverNormalized: true,
     mergedRowRevalidatedByCanonicalValidator: true,
     partialMatrixNeverProducesVerdict: true,
+    // R2.59 — a dependency group is SELECTED by id and EXPANDED by the server, never re-authored.
+    standaloneRepairableFields: STANDALONE_REPAIRABLE_FIELDS,
+    dependencyGroupsAnsweredBySelectionOnly: true,
+    groupedFieldInRepairsRefused: true,
+    providerNeverAuthorsGroupedCandidateIds: true,
+    alternativeResolvedServerSideById: true,
+    expansionSource: "canonical_alternative_expansion",
+    reasonIsTheOnlyProviderAuthoredGroupValue: true,
+    responseCountsSeparateProviderFromExpansion: true,
     // R2.54 — the group is the unit of acceptance, and the merge boundary is observable.
     valueAuthorities: FIELD_REPAIR_VALUE_AUTHORITIES,
     multiFieldGroupRequiresCanonicalAlternative: true,
