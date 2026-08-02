@@ -45,6 +45,20 @@ const NEXT_VIDEO = 'gateB23NXTx';
  */
 const NEXT_DURATION_SECONDS = Number(process.env.GATE_B23_NEXT_DURATION_SECONDS ?? 900);
 /**
+ * GATE G2 — a POSITIVELY KNOWN duration above the 900s playback bound.
+ *
+ * 8917s is a real production value: the medley `TapTFlOmE_I` measured during the BUILD 21
+ * production probe. It is stored in `karaoke_video_durations`, which BUILD 22's migration
+ * deliberately un-capped (`duration_seconds > 0`) precisely so an over-limit verdict could become
+ * durable — so this is the ordinary production representation of "this video is too long", not a
+ * special test value.
+ *
+ * WHY G2 HAS NO DEADLINE (unlike G1): `resolveVideoDuration` classifies the cached duration in
+ * `beginSong` BEFORE `karaoke_begin_song_v2` is ever called, so the refusal happens upstream of
+ * every entitlement/pass check. The pass state is irrelevant and nothing expires.
+ */
+const TOO_LONG_DURATION_SECONDS = Number(process.env.GATE_B23_TOO_LONG_SECONDS ?? 8917);
+/**
  * A real ONE_HOUR pass, backdated so ~14 minutes remain. 840 < 900 -> pass_insufficient.
  *
  * THIS WINDOW IS A DEADLINE. The pass must still be ACTIVE and still be SHORTER than the next song
@@ -287,7 +301,11 @@ async function seed() {
 //
 // Re-arm resets ONLY the stage and the pass window, leaving the room, event and paired devices
 // intact. Pair once, then re-arm immediately before each tap.
-async function rearm() {
+async function rearm(tooLong = false) {
+  // G1 arms a 900s next song (admissible, refused by the PASS window); G2 arms an over-limit
+  // duration (refused by the DURATION classifier, upstream of every entitlement check). They are
+  // mutually exclusive because both are expressed as the same video's cached duration.
+  const nextDuration = tooLong ? TOO_LONG_DURATION_SECONDS : NEXT_DURATION_SECONDS;
   const [room] = (await rest(`karaoke_rooms?slug=eq.${SLUG}&select=id`)) ?? [];
   if (!room) throw new Error(`No '${SLUG}' room on ${BASE.host} — run the seed first.`);
   const [account] = (await rest(`karaoke_accounts?provider_subject=eq.${MARKER}&select=id`)) ?? [];
@@ -332,21 +350,35 @@ async function rearm() {
   await patch('timed_access_pass_grants', `account_id=eq.${account.id}`, {
     status: 'ACTIVE', activated_at: activatedAt, expires_at: expiresAt, expired_at: null,
   });
-  await patch('karaoke_video_durations', `video_id=eq.${NEXT_VIDEO}`, {
-    duration_seconds: NEXT_DURATION_SECONDS,
+  // The cached duration IS the gate selector. PATCH-then-insert rather than PATCH alone, so a
+  // missing row (a cleaned DB, or a previous run that removed it) still lands the value.
+  const patched = await patch('karaoke_video_durations', `video_id=eq.${NEXT_VIDEO}`, {
+    duration_seconds: nextDuration,
   });
+  if (!Array.isArray(patched) || patched.length === 0) {
+    await insert('karaoke_video_durations', {
+      video_id: NEXT_VIDEO, duration_seconds: nextDuration, source: 'gate-b23-seed',
+    });
+  }
 
   console.log(
     JSON.stringify(
       {
         rearmed: true,
+        gate: tooLong ? 'G2 (too_long)' : 'G1 (pass_insufficient)',
         authority: BASE.host,
         roomSlug: SLUG,
         currentRequestId: current.id,
         expectedBlockedRequestId: next.id,
-        passExpiresAt: expiresAt,
-        passRemainingSeconds: PASS_REMAINING_SECONDS,
-        nextSongDurationSeconds: NEXT_DURATION_SECONDS,
+        nextSongDurationSeconds: nextDuration,
+        expectedReason: tooLong ? 'duration_unavailable' : 'pass_insufficient',
+        expectedDurationFailureReason: tooLong ? 'too_long' : null,
+        // G2 is classified upstream of the RPC, so no pass window can expire under it.
+        passExpiresAt: tooLong ? null : expiresAt,
+        passRemainingSeconds: tooLong ? null : PASS_REMAINING_SECONDS,
+        deadline: tooLong
+          ? 'NONE — the duration classifier runs before any entitlement check'
+          : `~${PASS_REMAINING_SECONDS}s — re-arm immediately before tapping`,
         note: 'room, event and PAIRED DEVICES preserved — no re-pairing needed',
       },
       null,
@@ -358,7 +390,7 @@ async function rearm() {
 const mode = process.argv.includes('--clean')
   ? clean
   : process.argv.includes('--rearm')
-    ? rearm
+    ? () => rearm(process.argv.includes('--g2'))
     : seed;
 mode().catch((e) => {
   console.error(String(e.message ?? e));
