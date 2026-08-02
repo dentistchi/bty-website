@@ -103,6 +103,16 @@ import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/bounda
 import { EVIDENCE_POLARITY, POLARITY_REFUSAL_CODES, evidencePolarityContractSha256 } from "@/domain/foundry/arena-draft/boundaryEvidencePolarity";
 import { PREREQUISITE_UNAVAILABLE_CODES, TRUTH_STATES, renderCandidateRequirements } from "@/domain/foundry/arena-draft/boundaryTruthStates";
 import {
+  FIELD_REPAIR_CODES,
+  FIELD_REPAIR_JSON_SCHEMA,
+  FIELD_REPAIR_SCHEMA_NAME,
+  REPAIRABLE_BOUNDARY_FIELDS,
+  IDENTITY_FIELDS,
+  fieldRepairContractSha256,
+  governedActionClosure,
+  prerequisiteClosure,
+} from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+import {
   ATTRIBUTION_AUTHORITY,
   ATTRIBUTION_REFUSAL_CODES,
   causalAttributionContractSha256,
@@ -183,7 +193,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.48.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.50.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -402,6 +412,31 @@ export function buildContractManifest(head: string, model: string): ContractMani
       // CARDINALITY; the prerequisite candidates are chosen by the TRUTH STATE. R2.47 measured a live
       // reviewer applying the first rule to the second role because the prompt generalized it, and a
       // required-but-empty pool silently licensing an evidence-free violation.
+      // R2.50 — the ONE permitted repair is a PATCH against a server-owned plan. R2.49 measured a
+      // whole-row re-ask re-opening a field the model had already answered correctly, and losing the
+      // run's verdict to the "improvement".
+      boundaryFieldRepairAuthority: fieldRepairContractSha256(),
+      boundaryFieldRepairSchema: digest(FIELD_REPAIR_JSON_SCHEMA),
+      boundaryFieldRepairPlanContract: digest({
+        schemaName: FIELD_REPAIR_SCHEMA_NAME,
+        codes: FIELD_REPAIR_CODES,
+        repairableFields: REPAIRABLE_BOUNDARY_FIELDS,
+        identityFieldsNeverRepairable: IDENTITY_FIELDS,
+        prerequisiteClosure: prerequisiteClosure(),
+        governedActionClosure: governedActionClosure(),
+        closureDerivedFromTruthStateTable: true,
+        baseIsParsedAttemptOneRow: true,
+        frozenFieldsAbsentFromExchange: true,
+        frozenSemanticFieldImmutableEvenAgainstHumanOracle: true,
+      }),
+      boundaryFieldRepairMergeAuthority: digest({
+        order: ["verify_base_row_digest", "apply_accepted_operations", "copy_untargeted_fields", "revalidate_with_canonical_validator"],
+        repairLayerNeverConstructsVerdict: true,
+        partialMatrixNeverProducesVerdict: true,
+        forbiddenCandidateNeverNormalized: true,
+        extraOperationsRefusedNotDiscarded: true,
+        fieldRepairFrozenMutationCount: 0,
+      }),
       prerequisiteCandidateAuthority: digest({
         governedActionAxis: "pool_cardinality",
         prerequisiteAxis: "truth_state",

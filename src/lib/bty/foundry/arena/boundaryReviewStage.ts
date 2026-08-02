@@ -22,7 +22,22 @@ import {
   type CausalAttributionMetrics,
   type CausalGroup,
 } from "@/domain/foundry/arena-draft/generatedResultAttribution";
-import { summarizePrerequisiteUnavailable } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+import {
+  summarizePrerequisiteUnavailable,
+  deriveBoundaryVerdict,
+  type BoundaryTruthAssessment,
+  type DerivedBoundaryVerdict,
+} from "@/domain/foundry/arena-draft/narrowBoundaryReview";
+// R2.50 — field-level patch repair. Attempt-1 rows are the immutable base.
+import {
+  mergeFieldRepair,
+  planFieldRepair,
+  summarizeFieldRepair,
+  validateFieldRepairResponse,
+  type FieldRepairMetrics,
+  type FieldRepairPlan,
+} from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+import type { FieldRepairCallResult } from "./narrowBoundaryReviewer";
 import {
   BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
   MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
@@ -107,6 +122,11 @@ export type BoundaryStageResult = {
   causalAttributions: CausalAttribution[];
   causalGroups: CausalGroup[];
   causalAttributionMetrics: CausalAttributionMetrics;
+  /** R2.50 — the field-level repair plan, its patch evidence and its counters. */
+  fieldRepairPlan: FieldRepairPlan | null;
+  fieldRepairEvidence: unknown;
+  fieldRepairMetrics: FieldRepairMetrics;
+  fieldRepairCodes: string[];
   /** The reachable surfaces actually reviewed, and the unreachable duplicates excluded. */
   reachableSurfaces: string[];
   excludedCompatibilitySurfaces: string[];
@@ -179,6 +199,11 @@ export type BoundaryStageDeps = {
    * assessments were refused. Rows the first response got right are never re-requested.
    */
   review: (subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]) => Promise<NarrowBoundaryCallResult>;
+  /**
+   * R2.50 — the ONE permitted repair is a PATCH call, not a second review. It returns field
+   * operations against a server-owned plan; a stage without this dep simply cannot repair.
+   */
+  repair?: (subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number) => Promise<FieldRepairCallResult>;
   log?: (outcome: string, code: string | undefined, extra: Record<string, unknown>) => void;
 };
 
@@ -187,6 +212,17 @@ export type BoundaryStageDeps = {
  * boundary codes so a boundary rejection keeps its Level 3 precedence rather than inventing a
  * parallel severity ladder.
  */
+export const EMPTY_FIELD_REPAIR_METRICS: FieldRepairMetrics = {
+  fieldRepairSurfaceCount: 0,
+  fieldRepairOperationCount: 0,
+  fieldRepairDependencyGroupCount: 0,
+  fieldRepairMissingOperationCount: 0,
+  fieldRepairDuplicateOperationCount: 0,
+  fieldRepairUntargetedOperationCount: 0,
+  fieldRepairFrozenMutationCount: 0,
+  fieldRepairMergedRowInvalidCount: 0,
+};
+
 export const EMPTY_PREREQ_UNAVAILABLE = summarizePrerequisiteUnavailable([]);
 
 export const EMPTY_CAUSAL_METRICS: CausalAttributionMetrics = summarizeCausalAttribution([], [], []);
@@ -285,6 +321,10 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   causalAttributions: [],
   causalGroups: [],
   causalAttributionMetrics: EMPTY_CAUSAL_METRICS,
+  fieldRepairPlan: null,
+  fieldRepairEvidence: null,
+  fieldRepairMetrics: EMPTY_FIELD_REPAIR_METRICS,
+  fieldRepairCodes: [],
   reachableSurfaces: [],
   excludedCompatibilitySurfaces: [],
   uncertainties: [],
@@ -432,6 +472,13 @@ export async function runBoundaryReviewStage(
   // may only supply the surfaces the server names, and merging refuses anything else.
   let repairSurfaceRefs: string[] | undefined;
   let preserved: DerivedAssessment[] = [];
+  // R2.50 — the field-level repair plan derived from the FIRST response. Attempt-1 rows are the
+  // immutable base; the patch may only fill the holes the plan names.
+  let fieldRepairPlan: FieldRepairPlan | null = null;
+  let baseRows: BoundaryTruthAssessment[] = [];
+  let fieldRepairEvidence: unknown = null;
+  let fieldRepairMetrics = EMPTY_FIELD_REPAIR_METRICS;
+  let fieldRepairCodes: string[] = [];
   let failedSubsetRepairSurfaceCount = 0;
   let failedSubsetRepairInvocationCount = 0;
 
@@ -456,8 +503,49 @@ export async function runBoundaryReviewStage(
       }
     }
 
-    providerInvocations += 1; // incremented for the invocation itself, before any outcome is known
-    const call = await deps.review(subject, attempt, repairSurfaceRefs);
+    // R2.50 — when a plan exists, this attempt is a PATCH, not a second review. The operations are
+    // validated against the server-owned plan and merged onto the IMMUTABLE attempt-1 rows; the
+    // ORIGINAL validator then judges the complete matrix. The result is shaped like a review call so
+    // the decision and finalization path below is the same one, unchanged.
+    let call: NarrowBoundaryCallResult;
+    if (fieldRepairPlan && deps.repair) {
+      providerInvocations += 1;
+      const plan = fieldRepairPlan;
+      const patch = await deps.repair(subject, plan, attempt);
+      fieldRepairEvidence = patch.evidence;
+      const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
+      const digests = { boundaryReviewSubjectSha256: subject.evidenceCandidateMapSha256, surfaceMapSha256: subject.surfaceMapSha256, lineageSha256: subject.lineageSha256 };
+      const v = validateFieldRepairResponse(patch.raw, plan, ctxAll, digests);
+      const merge = mergeFieldRepair(baseRows, v, plan, ctxAll);
+      fieldRepairMetrics = summarizeFieldRepair(plan, v, merge);
+      fieldRepairCodes = merge.ok ? [] : [...merge.codes];
+      const verdict: DerivedBoundaryVerdict = merge.ok
+        ? deriveBoundaryVerdict({ assessments: merge.rows }, ctxAll)
+        : { outcome: "boundary_review_malformed", codes: ["boundary_review_invalid_result"], findings: [], failureClass: "output_contract", validSurfaceRefs: [], failedSurfaceRefs: plan.targets.map((t) => t.surfaceRef), derived: [] };
+      call = {
+        kind: patch.kind === "transport_failed" ? "transport_failed" : "derived",
+        evidence: {
+          boundaryReviewAttempt: attempt,
+          boundaryReviewSubjectSha256: subjectSha,
+          surfaceMapSha256: mapSha,
+          activeBoundaryIds: subject.activeBoundaryIds,
+          requiredAssessmentCount: plan.requiredOperationCount,
+          parsed: merge.ok ? { assessments: merge.rows } : patch.evidence.parsed,
+          outcome: verdict.outcome,
+          verdict,
+          finishReason: patch.evidence.finishReason,
+          latencyMs: patch.evidence.latencyMs,
+          sanitizedError: patch.evidence.sanitizedError,
+          transport: patch.evidence.transport,
+          providerFailureCode: patch.evidence.providerFailureCode,
+        },
+      } as NarrowBoundaryCallResult;
+      // A patch never re-enters the subset-merge path below: the matrix is already complete.
+      repairSurfaceRefs = undefined;
+    } else {
+      providerInvocations += 1; // incremented for the invocation itself, before any outcome is known
+      call = await deps.review(subject, attempt, repairSurfaceRefs);
+    }
     evidences.push(call.evidence);
     if (call.evidence.transport?.responseState === "response_received") providerResponses += 1;
     if (call.kind === "transport_failed") transportFailures += 1;
@@ -503,6 +591,10 @@ export async function runBoundaryReviewStage(
       reruns,
       providerFailureCode: call.evidence.providerFailureCode ?? null,
       transportEvidence: evidences.map((e) => e.transport).filter(Boolean),
+      fieldRepairPlan,
+      fieldRepairEvidence,
+      fieldRepairMetrics,
+      fieldRepairCodes,
       invocationBudgetExhausted: providerInvocations >= MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
       explanations,
       explanationSha256: explanations.length ? explanationSha256(explanations) : null,
@@ -559,6 +651,23 @@ export async function runBoundaryReviewStage(
       repairSurfaceRefs = decision.surfaceRefs;
       preserved = effective.outcome === "boundary_review_malformed" ? effective.derived : [];
       failedSubsetRepairSurfaceCount = decision.surfaceRefs.length;
+      // R2.50 — derive the FIELD-level plan from this response. The parsed attempt-1 rows are the
+      // immutable base; the next call is a patch against this plan, not a second review. R2.49
+      // measured a whole-row re-ask re-opening fields the model had already answered correctly.
+      const parsedRows = (call.evidence.parsed as { assessments?: BoundaryTruthAssessment[] } | null)?.assessments;
+      if (deps.repair && Array.isArray(parsedRows) && parsedRows.length > 0) {
+        const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
+        const p = planFieldRepair(parsedRows, ctxAll, {
+          boundaryReviewSubjectSha256: subject.evidenceCandidateMapSha256,
+          surfaceMapSha256: subject.surfaceMapSha256,
+          lineageSha256: subject.lineageSha256,
+        });
+        if (p.repairable) {
+          fieldRepairPlan = p;
+          baseRows = parsedRows;
+          repairSurfaceRefs = undefined;
+        }
+      }
       failedSubsetRepairInvocationCount += 1;
       log("boundary_review_failed_subset_repair", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
         boundaryReviewSubjectSha256: subjectSha,

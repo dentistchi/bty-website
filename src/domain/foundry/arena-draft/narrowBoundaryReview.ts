@@ -76,6 +76,25 @@ export { normalizeForGrounding, clauseStems } from "./boundaryClauseTerms";
 export { GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS, NO_CANDIDATE } from "./boundaryTruthContractTypes";
 export type { GovernedActionStatus, PrerequisiteStatus, TemporalRelation } from "./boundaryTruthContractTypes";
 
+/** The six fields a repair may ever touch. `boundaryId` and `surfaceRef` are identity and are not here. */
+export const REPAIRABLE_BOUNDARY_FIELDS = [
+  "governedActionStatus",
+  "prerequisiteStatus",
+  "temporalRelation",
+  "governedActionCandidateId",
+  "prerequisiteSatisfactionCandidateId",
+  "prerequisiteFailureCandidateId",
+] as const;
+export type RepairableBoundaryField = (typeof REPAIRABLE_BOUNDARY_FIELDS)[number];
+
+export const IDENTITY_FIELDS = ["boundaryId", "surfaceRef"] as const;
+
+export const CANDIDATE_FIELD_OF: Record<"governed_action" | "prerequisite_satisfaction" | "prerequisite_failure", RepairableBoundaryField> = {
+  governed_action: "governedActionCandidateId",
+  prerequisite_satisfaction: "prerequisiteSatisfactionCandidateId",
+  prerequisite_failure: "prerequisiteFailureCandidateId",
+};
+
 export const NARROW_BOUNDARY_SCHEMA_NAME = "bty_practice_boundary_truth_review_v4";
 export const NARROW_BOUNDARY_CONTRACT_VERSION = "practice-narrow-boundary-review/4";
 
@@ -249,7 +268,14 @@ export type NarrowReviewContext = {
   candidates: BoundaryEvidenceCandidate[];
 };
 
-export type GroundingFinding = { boundaryId: string; surfaceRef: string; code: NarrowBoundaryCode };
+/**
+ * R2.50 — a finding now names the FIELD it is about, when one field owns it.
+ *
+ * R2.49 measured why: a whole-row repair re-opened a field the model had already answered correctly
+ * and the "improvement" cost the run its verdict. A field-level repair plan can only be derived if
+ * the validator says which field failed, so it does.
+ */
+export type GroundingFinding = { boundaryId: string; surfaceRef: string; code: NarrowBoundaryCode; field?: RepairableBoundaryField };
 
 /**
  * R2.48 — one row per refused evidence role, kept as EVIDENCE. A refusal is never a semantic
@@ -407,10 +433,10 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
 
   for (const a of assessments) {
     const rowCodes: NarrowBoundaryCode[] = [];
-    const push = (code: NarrowBoundaryCode) => {
+    const push = (code: NarrowBoundaryCode, field?: RepairableBoundaryField) => {
       rowCodes.push(code);
       codes.push(code);
-      findings.push({ boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, code });
+      findings.push({ boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, code, ...(field ? { field } : {}) });
     };
 
     const frame = frameById.get(a.boundaryId);
@@ -464,8 +490,9 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
        * an empty list there IS the sentinel case — and `boundary_governed_action_candidate_unavailable`
        * already refuses the one combination that matters.
        */
+      const field = CANDIDATE_FIELD_OF[role];
       if (requirement === "required" && poolEmpty && role !== "governed_action") {
-        push(prerequisiteUnavailableCode(role));
+        push(prerequisiteUnavailableCode(role), field);
         unavailable.push({
           boundaryId: a.boundaryId,
           surfaceRef: a.surfaceRef,
@@ -479,21 +506,21 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
         // model tried to cite. R2.47's attempt 1 reached into the satisfaction list; that stays visible.
         if (id !== NO_CANDIDATE) {
           const r = resolveCandidate(index, id, { boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, role });
-          if (!r.ok) push(r.code);
+          if (!r.ok) push(r.code, field);
         }
         return null;
       }
       if (id === NO_CANDIDATE) {
-        if (requirement === "required" && !poolEmpty) push("boundary_candidate_required_missing");
+        if (requirement === "required" && !poolEmpty) push("boundary_candidate_required_missing", field);
         return null;
       }
       if (requirement === "forbidden") {
-        push("boundary_candidate_forbidden_present");
+        push("boundary_candidate_forbidden_present", field);
         return null;
       }
       const r = resolveCandidate(index, id, { boundaryId: a.boundaryId, surfaceRef: a.surfaceRef, role });
       if (!r.ok) {
-        push(r.code);
+        push(r.code, field);
         return null;
       }
       return r.candidate;
@@ -502,14 +529,14 @@ export function validateNarrowBoundaryReview(raw: unknown, ctx: NarrowReviewCont
     // (Part 6 A) A surface cannot PERFORM the governed action when the server found no span
     // expressing it. This is a distinct authority from "the model forgot to choose".
     if (a.governedActionStatus === "present" && poolFor(ctx.candidates, a.boundaryId, a.surfaceRef, "governed_action").length === 0) {
-      push("boundary_governed_action_candidate_unavailable");
+      push("boundary_governed_action_candidate_unavailable", "governedActionStatus");
     }
     const governedAction = take(a.governedActionCandidateId, "governed_action", state.governedActionCandidate);
     const satisfaction = take(a.prerequisiteSatisfactionCandidateId, "prerequisite_satisfaction", state.satisfactionCandidate);
     const failure = take(a.prerequisiteFailureCandidateId, "prerequisite_failure", state.failureCandidate);
 
     // (Part 8) A row cannot claim the prerequisite was met AND that it failed.
-    if (satisfaction && failure) push("boundary_prerequisite_contradiction");
+    if (satisfaction && failure) push("boundary_prerequisite_contradiction", "prerequisiteStatus");
 
     if (rowCodes.length > 0) {
       failedSurfaceRefs.push(a.surfaceRef);

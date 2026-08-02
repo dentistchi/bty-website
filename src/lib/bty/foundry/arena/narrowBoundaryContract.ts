@@ -59,6 +59,7 @@ import {
   validateSemanticFrames,
   type BoundarySemanticFrame,
 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
+import type { FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import {
   SURFACE_MAP_VERSION,
@@ -568,6 +569,94 @@ export function buildNarrowBoundaryRequest(subject: NarrowBoundarySubject, surfa
       evidenceCandidateMapSha256: subject.evidenceCandidateMapSha256,
       truthStateTableSha256: truthStateTableSha256(),
       boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// R2.50 — the field-repair request
+// ---------------------------------------------------------------------------
+
+/**
+ * The patch system prompt.
+ *
+ * It deliberately does NOT restate the twelve-surface job. R2.49 measured a whole-row re-ask
+ * re-opening fields the first response had already answered correctly, so the second call is given
+ * one task: fill exactly the listed holes. The canonical semantic definitions the model may still
+ * need are carried per target, as the allowed value set for that field.
+ */
+export const FIELD_REPAIR_SYSTEM_PROMPT = [
+  "You are completing a PARTIAL boundary-review answer. Your previous answer was accepted except for the specific fields listed below.",
+  "",
+  "THIS IS A PATCH TASK, NOT A REVIEW TASK. You are not judging surfaces again. Every field that is not listed has already been accepted and is FROZEN.",
+  "",
+  "RULES.",
+  "  Return one operation for EVERY listed target, exactly once. Never fewer, never more, never a duplicate.",
+  "  Each operation is `{surfaceRef, field, value}`. Copy `surfaceRef` and `field` VERBATIM from the target.",
+  "  `value` must be one of that target's `allowedValues`. Nothing else is accepted.",
+  "  Do NOT return complete assessment rows. Do NOT return frozen fields. Do NOT add explanations, commentary or extra operations.",
+  "  Do NOT change `boundaryId` or `surfaceRef` — they are identity, not data.",
+  "",
+  "DEPENDENCY GROUPS. Targets sharing a `groupId` are ONE decision and must be answered together and consistently: the status you choose fixes which candidate roles are required and which must be `none`. Each target lists `groupFields` so you can see the whole group.",
+  "",
+  "FROZEN CONTEXT. Each target shows `frozenContext` — the values of that row's other fields, already accepted. Use them to stay consistent. Never resend them.",
+  "",
+  "Each target carries `authorityCode` and `reason`: the exact reason that one field was refused. Fix that, and only that.",
+  "",
+  "Return ONLY the JSON object required by the schema.",
+].join("\n");
+
+export type FieldRepairRequest = {
+  task: string;
+  requiredOperationCount: number;
+  targets: Array<{
+    surfaceRef: string;
+    field: string;
+    authorityCode: string;
+    reason: string;
+    allowedValues: string[];
+    candidates: Array<{ candidateId: string; excerpt: string }> | null;
+    groupId: string;
+    groupFields: string[];
+    frozenContext: Record<string, string>;
+  }>;
+  frozenSurfaceRefs: string[];
+  authority: {
+    boundaryReviewSubjectSha256: string;
+    surfaceMapSha256: string;
+    lineageSha256: string;
+    evidenceCandidateMapSha256: string;
+    truthStateTableSha256: string;
+    repairPlanSha256: string;
+    baseRowSha256: Array<{ surfaceRef: string; sha256: string }>;
+  };
+};
+
+/** Foreground ONLY the patch task. The frozen rows are named, never re-sent. */
+export function buildFieldRepairRequest(subject: NarrowBoundarySubject, plan: FieldRepairPlan): FieldRepairRequest {
+  return {
+    task: `Supply exactly ${plan.requiredOperationCount} field repair operations. Fields not listed are frozen and must not be returned.`,
+    requiredOperationCount: plan.requiredOperationCount,
+    targets: plan.targets.map((t) => ({
+      surfaceRef: t.surfaceRef,
+      field: t.field,
+      authorityCode: t.authorityCode,
+      reason: t.reason,
+      allowedValues: t.allowedValues,
+      candidates: t.candidateMenu,
+      groupId: t.groupId,
+      groupFields: t.groupFields,
+      frozenContext: t.frozenContext,
+    })),
+    frozenSurfaceRefs: plan.frozenSurfaceRefs,
+    authority: {
+      boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+      surfaceMapSha256: subject.surfaceMapSha256,
+      lineageSha256: subject.lineageSha256,
+      evidenceCandidateMapSha256: subject.evidenceCandidateMapSha256,
+      truthStateTableSha256: truthStateTableSha256(),
+      repairPlanSha256: plan.planSha256,
+      baseRowSha256: plan.baseRows,
     },
   };
 }

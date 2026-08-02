@@ -172,6 +172,13 @@ export async function runC18NarrowBoundaryReplay(
       causalAttributions: stage.causalAttributions,
       causalGroups: stage.causalGroups,
       causalAttributionMetrics: stage.causalAttributionMetrics,
+      // R2.50 — the field-repair plan, the patch and every counter an auditor needs.
+      fieldRepairPlan: stage.fieldRepairPlan,
+      repairPlanSha256: stage.fieldRepairPlan?.planSha256 ?? null,
+      baseRowSha256: stage.fieldRepairPlan?.baseRows ?? [],
+      fieldRepairEvidence: stage.fieldRepairEvidence,
+      fieldRepairMetrics: stage.fieldRepairMetrics,
+      fieldRepairCodes: stage.fieldRepairCodes,
       uncertainties: stage.uncertainties,
       findings: stage.findings,
       authorityCodes: stage.codes,

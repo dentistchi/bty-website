@@ -41,6 +41,8 @@ import {
   type ProviderFailureCode,
 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { LlmHttpError, getLlmClient, getLlmModel } from "@/lib/bty/llm/client";
+import { buildFieldRepairRequest, FIELD_REPAIR_SYSTEM_PROMPT } from "./narrowBoundaryContract";
+import { FIELD_REPAIR_JSON_SCHEMA, FIELD_REPAIR_SCHEMA_NAME, type FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import {
   NARROW_BOUNDARY_SAMPLING,
   NARROW_BOUNDARY_SYSTEM_PROMPT,
@@ -317,5 +319,132 @@ export async function reviewBoundarySurfaces(
   } finally {
     clearTimeout(timer);
     if (transport.timeoutState === "armed_not_fired" && controller.signal.aborted) transport.timeoutState = "fired_local";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// R2.50 — the field-repair call
+// ---------------------------------------------------------------------------
+
+export type FieldRepairCallResult =
+  | { kind: "patch"; raw: unknown; evidence: FieldRepairEvidence }
+  | { kind: "transport_failed"; raw: null; evidence: FieldRepairEvidence };
+
+export type FieldRepairEvidence = {
+  boundaryReviewAttempt: number;
+  boundaryReviewSubjectSha256: string;
+  repairPlanSha256: string;
+  requiredOperationCount: number;
+  request: unknown;
+  parsed: unknown;
+  finishReason: string | null;
+  latencyMs: number;
+  sanitizedError: string | null;
+  transport: BoundaryTransportEvidence;
+  providerFailureCode: string | null;
+};
+
+/**
+ * ONE patch call against a frozen plan.
+ *
+ * Same transport discipline as the review call: no automatic retry, complete evidence either way,
+ * and nothing about the credential or the raw provider envelope is retained.
+ */
+export async function reviewFieldRepair(
+  subject: NarrowBoundarySubject,
+  plan: FieldRepairPlan,
+  attempt: number,
+  deps?: { now?: () => number },
+): Promise<FieldRepairCallResult> {
+  const now = deps?.now ?? (() => Date.now());
+  const startedAt = now();
+  const request = buildFieldRepairRequest(subject, plan);
+  const subjectSha = narrowBoundarySubjectSha256(subject);
+  const transport = emptyTransportEvidence(`${subjectSha.slice(0, 12)}#repair${attempt}`);
+  transport.requestConstructed = true;
+
+  const evidence = (parsed: unknown, finishReason: string | null, sanitizedError: string | null, providerFailureCode: string | null): FieldRepairEvidence => ({
+    boundaryReviewAttempt: attempt,
+    boundaryReviewSubjectSha256: subjectSha,
+    repairPlanSha256: plan.planSha256,
+    requiredOperationCount: plan.requiredOperationCount,
+    request,
+    parsed,
+    finishReason,
+    latencyMs: now() - startedAt,
+    sanitizedError,
+    transport,
+    providerFailureCode,
+  });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), NARROW_BOUNDARY_SAMPLING.timeoutMs);
+  transport.timeoutState = "armed_not_fired";
+  transport.timeoutOwner = NARROW_TIMEOUT_OWNER;
+  const finish = () => {
+    clearTimeout(timer);
+    transport.providerInvocationEndedAt = now();
+    transport.latencyMs = transport.providerInvocationStartedAt === null ? null : transport.providerInvocationEndedAt - transport.providerInvocationStartedAt;
+  };
+
+  try {
+    transport.clientInvocationStarted = true;
+    transport.providerInvocationStarted = true;
+    transport.providerInvocationStartedAt = now();
+    const completion = await getLlmClient().chat.completions.create(
+      {
+        model: getLlmModel(),
+        messages: [
+          { role: "system", content: FIELD_REPAIR_SYSTEM_PROMPT },
+          { role: "user", content: canonicalJson(request) },
+        ],
+        temperature: NARROW_BOUNDARY_SAMPLING.temperature,
+        top_p: NARROW_BOUNDARY_SAMPLING.topP,
+        max_tokens: NARROW_BOUNDARY_SAMPLING.maxTokens,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: FIELD_REPAIR_SCHEMA_NAME, strict: true, schema: FIELD_REPAIR_JSON_SCHEMA },
+        },
+      },
+      { signal: controller.signal },
+    );
+    finish();
+    transport.responseState = "response_received";
+    transport.responseEnvelopePresent = true;
+    const rc = completion.choices?.[0];
+    const finishReason = rc?.finish_reason ?? null;
+    const raw = rc?.message?.content;
+    if (!raw) {
+      transport.structuredOutputPresent = false;
+      return { kind: "transport_failed", raw: null, evidence: evidence(null, finishReason, "provider returned a success envelope with no message content", "provider_failure_unknown") };
+    }
+    transport.structuredOutputPresent = true;
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(stripJsonFences(raw));
+    } catch {
+      return { kind: "patch", raw: null, evidence: evidence(null, finishReason, "repair response was not JSON", null) };
+    }
+    return { kind: "patch", raw: parsed, evidence: evidence(parsed, finishReason, null, null) };
+  } catch (error) {
+    finish();
+    transport.abortObserved = controller.signal.aborted;
+    transport.localErrorName = error instanceof Error ? error.name : null;
+    transport.sanitizedMessage = sanitizeMessage(error instanceof Error ? error.message : "");
+    const cls = classifyProviderFailure({
+      responseState: transport.responseState,
+      httpStatus: transport.httpStatus,
+      providerErrorType: transport.providerErrorType,
+      providerErrorCode: transport.providerErrorCode,
+      abortObserved: transport.abortObserved,
+      timeoutState: transport.timeoutState,
+      localErrorName: transport.localErrorName,
+      sanitizedMessage: transport.sanitizedMessage,
+      structuredOutputPresent: transport.structuredOutputPresent,
+      responseEnvelopePresent: transport.responseEnvelopePresent,
+    });
+    transport.retriability = cls.retriability;
+    transport.failureLayer = cls.failureLayer;
+    return { kind: "transport_failed", raw: null, evidence: evidence(null, null, transport.sanitizedMessage, cls.providerFailureCode) };
   }
 }
