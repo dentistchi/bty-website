@@ -17,7 +17,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BOUNDARY_REPLAY_RUNNER_PATH, buildContractManifest, canonicalJson } from "./contractManifest";
-import { FIELD_REPAIR_OBSERVABILITY_VERSION, FIELD_REPAIR_VALUE_MAX, prerequisiteClosure } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+import { FIELD_REPAIR_OBSERVABILITY_VERSION, FIELD_REPAIR_VALUE_MAX, STANDALONE_REPAIRABLE_FIELDS, prerequisiteClosure } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import { NARROW_REPLAY_ARTIFACT_VERSION } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { groupAlternativeContractSha256 } from "@/domain/foundry/arena-draft/boundaryGroupAlternatives";
 import { truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
@@ -100,6 +100,21 @@ describe("[R2.54] the preparation mode invokes the intended code", () => {
     expect(b.prohibitionFixtureRuleKind).toBe("prohibition");
     expect(b.c18AlternativeStateIds).not.toContain("prohibited_action_present");
     expect((b.c18AlternativeStateIds as string[]).length).toBe(6);
+    /**
+     * R2.59 — the group-selection response authority is bound. A canary that went back to
+     * describing a five-scalar group answer would be describing a build that no longer exists.
+     */
+    expect(b.fieldRepairResponseArrays).toEqual(["repairs", "groupSelections"]);
+    expect(b.standaloneRepairableFields).toEqual([...STANDALONE_REPAIRABLE_FIELDS]);
+    expect(b.fieldRepairObservabilityVersion).toBe(FIELD_REPAIR_OBSERVABILITY_VERSION);
+    // 9 provider scalars + 1 selection -> 5 server-expanded = the canonical 14.
+    expect(b.providerScalarRepairCount).toBe(9);
+    expect(b.providerGroupSelectionCount).toBe(1);
+    expect(b.expandedCanonicalOperationCount).toBe(5);
+    expect((b.providerScalarRepairCount as number) + (b.expandedCanonicalOperationCount as number)).toBe(14);
+    // The R2.57 evidence this slice answers, bound so it cannot be re-authored.
+    expect(b.r257LiveArtifactSha256).toBe("790e7c28976f1f8d6201dfda185d64ceb190a33c400b0649be0c582e490ca09b");
+    expect(b.r257SelectedAlternativeId).toBe("b0e54cfa5c730e41");
   });
 
   it("`--out` writes an executable canary that is valid shell", () => {
@@ -156,6 +171,7 @@ describe("[R2.54] artifact /6 is reachable through the bound preparation path", 
       "src/domain/foundry/arena-draft/boundaryFieldRepair.test.ts",
       "src/domain/foundry/arena-draft/r252FieldRepairRegression.test.ts",
       // R2.56 — the retired characterization is replaced by the decided contract.
+      "src/domain/foundry/arena-draft/r257GroupSelectionRegression.test.ts",
       "src/domain/foundry/arena-draft/boundaryRuleKindScope.test.ts",
       "src/domain/foundry/arena-draft/boundaryRuleKindParity.test.ts",
       "src/domain/foundry/arena-draft/boundaryRuleKindCapturedParity.test.ts",
@@ -178,6 +194,20 @@ describe("[R2.54] artifact /6 is reachable through the bound preparation path", 
     expect(s).toContain("satisfied preserved");
     // The canonical leg pins the new alternative count, not merely "more than zero".
     expect(s).toContain("'b[\"fieldRepairObservability\"][\"groups\"][0][\"alternativesCount\"]' '6'");
+  });
+
+  it("R2.59 — the canary proves the group-selection authority and the corrected banner", () => {
+    const s = canary();
+    expect(s).toContain("PROVIDER scalar repairs");
+    expect(s).toContain("SERVER expanded operations");
+    expect(s).toContain("expansion is server-owned");
+    expect(s).toContain("grouped scalar refused");
+    expect(s).toContain("selection carries no scalars");
+    expect(s).toContain("field_repair_grouped_field_in_repairs");
+    // The stale "Exactly ONE provider invocation" banner is corrected, and says what is true.
+    expect(s).not.toContain("Exactly ONE provider invocation");
+    expect(s).toContain("ONE replay session. At most TWO provider invocations");
+    expect(s).toContain("The patch is NOT a retry");
   });
 });
 

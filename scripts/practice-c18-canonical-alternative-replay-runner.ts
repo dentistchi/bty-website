@@ -94,6 +94,7 @@ import {
   FIELD_REPAIR_OBSERVABILITY_VERSION,
   FIELD_REPAIR_VALUE_AUTHORITIES,
   FIELD_REPAIR_VALUE_MAX,
+  STANDALONE_REPAIRABLE_FIELDS,
   REPAIRABLE_BOUNDARY_FIELDS,
   IDENTITY_FIELDS,
   fieldRepairContractSha256,
@@ -446,6 +447,29 @@ const binding = {
   prohibitionFixtureRuleKind: buildSemanticFrame(PROHIBITION_BOUNDARY).ruleKind,
   prohibitionFixtureFacts: PROHIBITION_BREACH_FACTS,
   classifyTruthStateModifiedByThisSlice: true,
+  /**
+   * R2.59 — the GROUP-SELECTION response authority. R2.58 measured a live patch one field away from
+   * a functional pass: it named the right alternative and emptied the only value it had to author.
+   * A group is now selected by id and expanded by the server.
+   */
+  fieldRepairResponseArrays: Object.keys(FIELD_REPAIR_JSON_SCHEMA.properties),
+  standaloneRepairableFields: STANDALONE_REPAIRABLE_FIELDS,
+  groupSelectionShapeSha256: d({
+    groupSelection: ["groupId", "alternativeId", "reason"],
+    groupedScalarRepairRefused: true,
+    alternativeResolvedServerSideById: true,
+    serverExpandsSelectionIntoCanonicalOperations: true,
+    expansionSource: "canonical_alternative_expansion",
+    reasonIsTheOnlyProviderAuthoredGroupValue: true,
+  }),
+  /** The R2.57 live evidence this slice answers, bound so it cannot be quietly re-authored. */
+  r257LiveArtifactSha256: "790e7c28976f1f8d6201dfda185d64ceb190a33c400b0649be0c582e490ca09b",
+  r257SelectedAlternativeId: "b0e54cfa5c730e41",
+  r257ReasonWasExplicitEmptyString: true,
+  /** 9 provider scalars + 1 selection -> 5 server-expanded = the canonical 14. */
+  providerScalarRepairCount: 9,
+  providerGroupSelectionCount: 1,
+  expandedCanonicalOperationCount: 5,
   // R2.48 — the two evidence axes, stated once and bound here.
   prerequisiteCandidateAuthoritySha256: d({
     governedActionAxis: "pool_cardinality",
@@ -563,6 +587,15 @@ const CHECKS: Array<[string, string]> = [
   ["c18 alternative state ids", "c18AlternativeStateIds"],
   ["c18 alternatives digest", "c18AlternativesSha256"],
   ["prohibition fixture rule kind", "prohibitionFixtureRuleKind"],
+  ["field repair response arrays", "fieldRepairResponseArrays"],
+  ["standalone repairable fields", "standaloneRepairableFields"],
+  ["group selection shape", "groupSelectionShapeSha256"],
+  ["R2.57 live artifact", "r257LiveArtifactSha256"],
+  ["R2.57 selected alternative", "r257SelectedAlternativeId"],
+  ["R2.57 empty reason was explicit", "r257ReasonWasExplicitEmptyString"],
+  ["provider scalar repairs", "providerScalarRepairCount"],
+  ["provider group selections", "providerGroupSelectionCount"],
+  ["expanded canonical operations", "expandedCanonicalOperationCount"],
   ["prerequisite candidate authority", "prerequisiteCandidateAuthoritySha256"],
   ["prerequisite unavailable codes", "prerequisiteUnavailableCodes"],
   ["truth-state candidate requirements", "truthStateCandidateRequirementsSha256"],
@@ -642,11 +675,12 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.56 CLASSIFIER / CANONICAL-ALTERNATIVE REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.56
+# BTY Practice — R2.59 GROUP-SELECTION REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.59
 #
-# ONE reconstructed c18 subject x at most TWO provider calls:
-# one full-row review + at most ONE field-level PATCH repair.
+# ONE replay session x at most TWO provider invocations:
+# one full-row review + at most ONE field-repair PATCH. The patch is the
+# canonical repair phase, not a retry.
 # ZERO generation calls. ZERO broad review. ZERO database. ZERO deployment.
 # ZERO automatic transport retries.
 #
@@ -838,7 +872,10 @@ route_check 'patch repair calls'               'b["fieldRepairCallCount"]'      
 route_check 'legacy whole-row repair calls'    'b["legacyWholeRowRepairCallCount"]'                '0'
 route_check 'repair plan present'              'b["repairPlanSha256"] is not None'                 'true'
 route_check 'base row digests present'         'len(b["baseRowSha256"])>0'                         'true'
-route_check 'patch response is repairs[]'      'list(b["boundaryReviewEvidence"][1]["parsed"].keys())' '["repairs"]'
+route_check 'patch response arrays'            'list(b["boundaryReviewEvidence"][1]["parsed"].keys())' '["repairs", "groupSelections"]'
+route_check 'provider sent 9 scalar repairs'   'len(b["boundaryReviewEvidence"][1]["parsed"]["repairs"])' '9'
+route_check 'provider sent 1 group selection'  'len(b["boundaryReviewEvidence"][1]["parsed"]["groupSelections"])' '1'
+route_check 'selection carries no scalars'     'sorted(b["boundaryReviewEvidence"][1]["parsed"]["groupSelections"][0].keys())' '["alternativeId", "groupId", "reason"]'
 route_check 'no assessments in patch response' '"assessments" in b["boundaryReviewEvidence"][1]["parsed"]' 'false'
 route_check 'frozen mutations'                 'b["fieldRepairMetrics"]["fieldRepairFrozenMutationCount"]' '0'
 route_check 'merged rows invalid'              'b["fieldRepairMetrics"]["fieldRepairMergedRowInvalidCount"]' '0'
@@ -849,9 +886,14 @@ route_check 'written artifact version'         'b["artifactVersion"]'           
 
 # --- artifact /6: the group decision, and the merge boundary -----------------
 route_check 'observability present'            'b["fieldRepairObservability"] is not None'         'true'
-route_check 'observability version'            'b["fieldRepairObservability"]["version"]'          '"${FIELD_REPAIR_OBSERVABILITY_VERSION}"'
 route_check 'observed plan count'              'b["fieldRepairObservability"]["operationPlanCount"]' '14'
 route_check 'observed supplied count'          'b["fieldRepairObservability"]["suppliedOperationCount"]' '14'
+route_check 'PROVIDER scalar repairs'          'b["fieldRepairObservability"]["providerScalarRepairCount"]' '9'
+route_check 'PROVIDER group selections'        'b["fieldRepairObservability"]["providerGroupSelectionCount"]' '1'
+route_check 'SERVER expanded operations'       'b["fieldRepairObservability"]["expandedCanonicalOperationCount"]' '5'
+route_check 'expansion is server-owned'        'b["fieldRepairObservability"]["groups"][0]["expansionSource"]' '"canonical_alternative_expansion"'
+route_check 'provider named the alternative'   'b["fieldRepairObservability"]["groups"][0]["requestedAlternativeId"] is not None' 'true'
+route_check 'observability version'            'b["fieldRepairObservability"]["version"]' '"${FIELD_REPAIR_OBSERVABILITY_VERSION}"'
 route_check 'observed dependency groups'       'b["fieldRepairObservability"]["dependencyGroupCount"]' '10'
 route_check 'observed multi-field groups'      'len(b["fieldRepairObservability"]["groups"])'      '1'
 route_check 'group field count'                'len(b["fieldRepairObservability"]["groups"][0]["fields"])' '5'
@@ -902,17 +944,17 @@ print(json.dumps(eval(sys.argv[2],{"b":b}),sort_keys=True))
 }
 
 captured_check 'still routes to the patch'     'b["repairMode"]'                                   '"field_patch"'
-captured_check 'patch was COMPLETE'            'b["fieldRepairObservability"]["suppliedOperationCount"]' '14'
 captured_check 'refused'                       'b["fieldRepairObservability"]["accepted"]'         'false'
-captured_check 'refusal code'                  '"field_repair_group_reason_required_missing" in b["fieldRepairObservability"]["refusalCodes"]' 'true'
-captured_check 'no completeness code'          '"field_repair_operation_missing" in b["fieldRepairObservability"]["refusalCodes"]' 'false'
+captured_check 'grouped scalar refused'       '"field_repair_grouped_field_in_repairs" in b["fieldRepairObservability"]["refusalCodes"]' 'true'
+captured_check 'selection was absent'          '"field_repair_group_selection_missing" in b["fieldRepairObservability"]["refusalCodes"]' 'true'
+captured_check 'no group selection made'       'b["fieldRepairObservability"]["providerGroupSelectionCount"]' '0'
 captured_check 'MERGE BOUNDARY NOT CROSSED'    'b["fieldRepairObservability"]["mergeAttempted"]'   'false'
 captured_check 'no merged-row refusal'         '"field_repair_merged_row_invalid" in b["fieldRepairCodes"]' 'false'
 captured_check 'group did not match'           'b["fieldRepairObservability"]["groups"][0]["matched"]' 'false'
-captured_check 'group refusal named'           'b["fieldRepairObservability"]["groups"][0]["refusalCode"]' '"field_repair_group_reason_required_missing"'
-captured_check 'reason authority reported'     'b["fieldRepairObservability"]["groups"][0]["reasonAuthority"]' '"model_required"'
-captured_check 'selected status recorded'      'b["fieldRepairObservability"]["groups"][0]["selected"]["prerequisiteStatus"]' '"not_established"'
-captured_check 'reason reported as SHAPE'      'b["fieldRepairObservability"]["groups"][0]["selected"]["reason"]' '"<empty>"'
+captured_check 'group refusal named'           'b["fieldRepairObservability"]["groups"][0]["refusalCode"]' '"field_repair_group_selection_missing"'
+captured_check 'no alternative was named'      'b["fieldRepairObservability"]["groups"][0]["requestedAlternativeId"] is None' 'true'
+captured_check 'nothing was expanded'          'b["fieldRepairObservability"]["groups"][0]["expansionSource"] is None' 'true'
+captured_check 'reason authority still known'  'b["fieldRepairObservability"]["groups"][0]["reasonAuthority"]' '"unknown"'
 
 captured_cleanup
 printf '\nCAPTURED R2.52 REFUSAL PROOF PASS - STOPPED BEFORE MERGE - REASON NAMED\n'
@@ -974,6 +1016,18 @@ fi
 # be a POSIX BRE implementation. R2.54's own canary must not fail on its matcher.
 grep -qF 'if (field === "reason") return [];' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
   || wiring_failed 'reason has regained a scalar value list'
+# R2.59 — one authority per group, proven from source.
+grep -qF 'field_repair_grouped_field_in_repairs' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
+  || wiring_failed 'a grouped field can be answered as a scalar repair again'
+grep -qF 'export const STANDALONE_REPAIRABLE_FIELDS' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
+  || wiring_failed 'the standalone field enum is gone, so the schema no longer refuses grouped scalars'
+grep -qF 'expandGroupAlternative' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
+  || wiring_failed 'the server-owned expansion seam is gone'
+grep -qF 'refusalExplanation' src/lib/bty/foundry/arena/narrowBoundaryContract.ts \
+  || wiring_failed 'the target diagnostic prose is named reason again, re-creating the R2.58 overload'
+if grep -qF 'Fix that, and only that.' src/lib/bty/foundry/arena/narrowBoundaryContract.ts; then
+  wiring_failed 'the contradictory grouped-target instruction is back in the prompt'
+fi
 grep -q 'matchGroupAlternative' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
   || wiring_failed 'the group matcher has no live importer'
 grep -q 'dependencyGroups' src/lib/bty/foundry/arena/narrowBoundaryContract.ts \
@@ -1016,6 +1070,7 @@ npx --yes vitest run \\
   src/domain/foundry/arena-draft/boundaryGroupAlternatives.test.ts \\
   src/domain/foundry/arena-draft/boundaryFieldRepair.test.ts \\
   src/domain/foundry/arena-draft/r252FieldRepairRegression.test.ts \\
+  src/domain/foundry/arena-draft/r257GroupSelectionRegression.test.ts \\
   src/domain/foundry/arena-draft/boundaryRuleKindScope.test.ts \\
   src/domain/foundry/arena-draft/boundaryRuleKindParity.test.ts \\
   src/domain/foundry/arena-draft/boundaryRuleKindCapturedParity.test.ts \\
@@ -1038,7 +1093,9 @@ printf 'Reachable decision surfaces: %s (including both resulting world states)\
 printf 'Excluded compatibility projections: %s\\n' "$EXPECTED_EXCLUDED"
 printf 'Applicability is judged BEFORE compliance; silence is never a violation.\\n'
 printf 'NO scenario will be generated. NO scenario will be rewritten. NO broad review will run.\\n'
-printf 'Exactly ONE provider invocation. NO automatic retry on failure.\\n'
+printf 'ONE replay session. At most TWO provider invocations: one full-row review,\\n'
+printf 'then at most one field-repair patch. The patch is NOT a retry - it is the\\n'
+printf 'canonical repair phase. NO automatic retry. NO third invocation is possible.\\n'
 printf 'Provider invocation cap: %s · semantic response cap: %s\\n' '${MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT}' '${MAX_BOUNDARY_SEMANTIC_RESPONSES_PER_FROZEN_SUBJECT}'
 printf 'Provider API key (input hidden, never written to disk or history): '
 read -rs LLM_API_KEY
