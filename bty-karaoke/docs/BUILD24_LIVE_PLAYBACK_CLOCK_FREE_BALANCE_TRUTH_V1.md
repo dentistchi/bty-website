@@ -1,9 +1,16 @@
 # BUILD 24 — LIVE PLAYBACK CLOCK & FREE BALANCE TRUTH V1
 
-**Status: IMPLEMENTED — DEVICE GATE PENDING · NOT DEPLOYED**
+**Status: IMPLEMENTED · DEVICE GATE PENDING · NOT DEPLOYED**
 
-Deterministic authority work is complete and green. Gates G1–G9 are device/browser gates that
-have not been run, and nothing has been deployed or pushed. This document does not claim PASS.
+Deterministic authority work is complete and green, and the commits are pushed.
+
+- **G1–G8 remain NOT RUN** — they are device/browser gates. (An earlier revision of this line said
+  "G1–G9", which was wrong: G9 is automated and passed.)
+- **G9 and G10 are automated PASS.**
+- **The production migration is BLOCKED** — remote migration authority is unavailable (§7).
+- Nothing is deployed; native build 78 is not distributed.
+
+This document does not claim PASS.
 
 ---
 
@@ -172,11 +179,42 @@ is invariant to the definition. Rows are now summed by `started_at ∈ [v_ws, v_
 for every row under a stable definition, correct across this one. `charged_window_start` is still
 written as the audit record of the window in force at authorization.
 
-**Known one-time seam (accepted, bounded, not hidden).** The Final Song Grace ledger keys
-once-per-window on `unique(account_id, charged_window_start)`. Rows written under the midnight
-anchor will not collide with the restored 04:00 anchor, so on the changeover day an account that
-already used grace can receive one more. Bound: **one grace, ≤ 90 seconds, once, per account.**
-No refund, no double-charge, no unauthorized start.
+**Known one-time entitlement seam — knowingly accepted for rollout.**
+
+On the changeover day, shifting the Final Song Grace ledger from the midnight-based window key to
+the canonical 04:00 America/Los_Angeles window key may make **one additional Final Song Grace
+admission available to an account that already consumed grace under the prior key.**
+
+The exposure is bounded to one admission whose duration shortfall is no more than 90 seconds. It
+is a one-time transition seam and cannot recur after the account is fully operating under the
+restored 04:00 window key.
+
+**No historical grace-ledger rows or `charged_window_start` values are rewritten.**
+
+What this seam is, and what it is not:
+
+- It **is knowingly accepted** for rollout. It is not an oversight and is not being worked around.
+- It is **not evidence that normal authorization was bypassed.** Every start still passes the full
+  `karaoke_begin_song_v2` gate — duration must be trusted, the union charge must be computed, and
+  the once-per-window `NOT EXISTS` check must pass under the account advisory lock, with
+  `unique(account_id, charged_window_start)` as the durable backstop.
+- It is caused **solely by the one-time identity change of the entitlement window.** The
+  once-per-window rule is keyed on the window; changing what "the window" means changes which
+  ledger row a new attempt collides with. The rule itself is unchanged.
+- It **must not be described as zero exposure.** One extra ≤ 90-second grace admission per
+  affected account is a real, if small, entitlement grant, and this document does not claim
+  otherwise.
+
+Deliberately not mitigated: rewriting historical grace ledgers to eliminate the seam would destroy
+an accurate record of what was granted under the prior window in order to hide a bounded, one-time
+effect. The audit trail is worth more than the ≤ 90 seconds.
+
+> **Known documentation inconsistency (open).** The header comment of
+> `20260807120000_karaoke_free_window_truth_v1.sql` still carries the earlier, incorrect phrasing
+> *"No refund, no double-charge, no unauthorized start."* That file is out of scope for this
+> documentation-only change and was deliberately left untouched, as was the already-pushed commit
+> message of `ad88cef9`, which repeats it. **This section supersedes both.** The SQL comment should
+> be corrected in the next change that legitimately touches the migration.
 
 **Rollback.** Re-run the function bodies from `20260803120000` (entitlement) and `20260805120000`
 (begin_v2); drop the two new read-only functions. No data is altered by this migration.
@@ -268,18 +306,58 @@ browser; G9 and G10 are fully deterministic and were run.
 
 ## 7. Deployment
 
-**Nothing has been deployed or pushed.**
+**Commits are pushed. Nothing is deployed.** The production migration is **BLOCKED**.
 
 ```text
-Worker (live)        d49c3835-49d2-4051-a68e-28c7876b8767 @ 100%   (BUILD 23, unchanged)
-/api/karaoke-build   c58a2c60e945                                   (BUILD 23, unchanged)
-Migration            20260807120000 — written and proven locally, NOT applied to production
-Native               build 78 — compiled Debug + Release, NOT shipped
+Worker (live)        d49c3835-49d2-4051-a68e-28c7876b8767 @ 100%   (BUILD 23, UNCHANGED)
+/api/karaoke-build   c58a2c60e945                                   (BUILD 23, UNCHANGED)
+Migration            20260807120000 — pushed, NOT APPLIED to production
+Native               build 78 — pushed, NOT distributed
 ```
 
-The migration changes **entitlement semantics** (the 04:00 restoration) and must be applied
-deliberately. `supabase migration list --linked` returns 403 for this account, so the remote
-migration state could not be verified from here — that needs a credential with platform access.
+### BLOCKED — REMOTE MIGRATION AUTHORITY UNAVAILABLE
+
+The migration changes **entitlement semantics** (the 04:00 restoration) and must not be applied
+against an unverified ledger. Root cause of the 403: the authenticated Supabase CLI identity
+**cannot see the karaoke project at all.**
+
+```text
+CLI-accessible project refs   gdqqivlzhgtqdqmvndkf   (bty-release-manager)
+Karaoke project ref           zycwaqignioawtqynopj
+Accessible?                   NO
+
+supabase migration list --linked      403  LegacyDbConfigLoginRoleStatusError
+supabase db push --linked --dry-run   403  LegacyDbConfigLoginRoleStatusError
+```
+
+Both the inspection path and the apply path fail identically, so even a verified ledger could not
+be acted on from here.
+
+**What read-only probing did establish** (authenticated `service_role`, `stable` functions and
+`limit=0` reads only — nothing mutated, no account touched):
+
+| Question | Answer |
+|---|---|
+| Production project identity | `zycwaqignioawtqynopj` — URL, JWT claim, and `project-ref` agree |
+| Parent migrations `20260726`–`20260806` | **all present** |
+| BUILD 24 objects (`karaoke_active_lease_ends_at`, `karaoke_room_playback_authority`) | **absent** (`PGRST202`) → migration **not applied** |
+| Live entitlement contract | returns the exact `20260803120000` field set — `activePlaybackCount`, `nextResetAt`, `warnLevel` all **missing**, independently confirming **D1**, **D2**, and **D3** in production |
+
+**What remains unverifiable**, because `supabase_migrations` is not an exposed PostgREST schema
+(`PGRST106`) and no database credential is available locally:
+
+- the current remote migration head as recorded in the ledger;
+- whether local and remote migration ordering agree;
+- whether any migration is recorded-but-not-applied or applied-but-not-recorded.
+
+A schema probe cannot see a partially-applied migration, which is exactly the condition that makes
+`db push` behave unpredictably. Rollout stays blocked until one of these is true:
+
+1. `supabase login` as the account/org owning `zycwaqignioawtqynopj` (or that account is added to
+   the org), so that **both** `supabase migration list --linked` and
+   `supabase db push --linked --dry-run` are executable;
+2. a database password is provided so the ledger can be read and the migration applied via `psql`;
+3. the output of `supabase migration list --linked` is supplied from a machine with access.
 
 ---
 
@@ -291,9 +369,14 @@ migration state could not be verified from here — that needs a credential with
 - **iOS deep sleep.** `uptimeNanoseconds` can stop advancing while the device is suspended, so
   the clock can under-read until the foreground poll re-anchors (≤ 2.5–4s). The projection is
   clamped so it can never move backwards; asserted in `B24-F`.
-- **The grace-ledger changeover seam** in §4 — one extra grace, ≤ 90s, once, per account, on the
-  day the migration lands.
-- **Remote migration state unverified** (403), per §7.
+- **The grace-ledger changeover seam** in §4 — on the changeover day, one additional Final Song
+  Grace admission may become available to an account that already consumed grace under the prior
+  window key. Bounded to one admission with a shortfall of ≤ 90 seconds, one-time, and unable to
+  recur once the account is fully on the restored 04:00 key. **This is a real, accepted exposure
+  and is not zero.** No historical grace-ledger rows or `charged_window_start` values are
+  rewritten.
+- **Remote migration state unverified** — the ledger is unreachable, so remote head, ordering
+  agreement, and partial-application detection are all unknown. See §7.
 
 ---
 

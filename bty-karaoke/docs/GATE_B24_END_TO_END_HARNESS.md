@@ -99,10 +99,22 @@ the projection — no suite sleeps.
 
 ---
 
-## 5. Device gates — NOT RUN
+## 5. Device gates — G1–G8 NOT RUN
 
-These need a real device or browser and a live deployment. **None has been performed.** The
+These need a real device or browser **and a live deployment**. **None has been performed.** The
 deterministic column is what a command actually proved; it is not a substitute.
+
+G1–G8 are additionally blocked upstream: the production migration has not been applied, because
+remote migration authority is unavailable (the authenticated Supabase CLI identity cannot access
+project `zycwaqignioawtqynopj`). Running these gates against production before the migration
+lands would exercise the **old** contract and prove nothing about BUILD 24. See §7 of
+[`BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md`](BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md).
+
+**G8 note — the changeover seam is expected, not a failure.** On the changeover day an account
+that already consumed Final Song Grace under the midnight window key may be granted **one**
+additional grace admission (shortfall ≤ 90 seconds) under the restored 04:00 key. If G8 case C
+observes this, record it as the **documented one-time transition seam**, not as a G8 FAIL. Every
+other case C refusal must still come from server authority.
 
 | Gate | Manual procedure | Deterministic half |
 |---|---|---|
