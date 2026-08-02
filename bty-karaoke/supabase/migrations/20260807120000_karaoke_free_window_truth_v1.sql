@@ -38,7 +38,20 @@
 -- once-per-window on `unique(account_id, charged_window_start)`. Rows written under the
 -- midnight anchor will not collide with the restored 04:00 anchor, so on the changeover day
 -- an account that already used grace can receive one more. Bound: one grace, <= 90 seconds,
--- once, per account. No refund, no double-charge, no unauthorized start.
+-- once, per account.
+--
+-- No refund or double-charge occurs. During the one-time transition from the midnight-based
+-- window key to the canonical 04:00 America/Los_Angeles window key, an account that already
+-- consumed Final Song Grace under the prior key may regain eligibility for one additional
+-- grace admission whose shortfall is no more than 90 seconds.
+--
+-- This is NOT a bypass of authorization: every start still passes the whole begin_v2 gate --
+-- trusted duration, union charge, the once-per-window NOT EXISTS under the account advisory
+-- lock, and the unique index as the durable backstop. The seam exists solely because the
+-- once-per-window rule is KEYED on the window, and this migration changes what "the window"
+-- means exactly once. The rule itself is unchanged, and no historical grace-ledger row or
+-- charged_window_start value is rewritten. See
+-- docs/BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md section 4.
 --
 -- Forward-only: 20260803120000 / 20260804120000 / 20260805120000 are NOT edited. No schema
 -- change, no backfill, no data migration. Rollback = re-run the two function bodies from
