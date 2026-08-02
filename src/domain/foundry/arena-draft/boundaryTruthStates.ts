@@ -29,6 +29,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { RULE_KINDS, type RuleKind } from "./boundarySemanticFrame";
 import type { GovernedActionStatus, PrerequisiteStatus, TemporalRelation } from "./boundaryTruthContractTypes";
 
 export const TRUTH_STATE_TABLE_VERSION = "practice-boundary-truth-states/1";
@@ -67,8 +68,57 @@ export type VerdictEffect = (typeof VERDICT_EFFECTS)[number];
 export const CANDIDATE_REQUIREMENTS = ["required", "forbidden", "optional"] as const;
 export type CandidateRequirement = (typeof CANDIDATE_REQUIREMENTS)[number];
 
+/**
+ * R2.56 — THE RULE KINDS A STATE MAY BE SELECTED UNDER.
+ *
+ * WHAT R2.55 MEASURED
+ *
+ * `prohibited_action_present` was scoped to prohibition rules in TWO source comments and in NO row
+ * data. The classifier filtered on the three fact fields alone, so the row applied to every rule
+ * kind, and `present / not_applicable / not_applicable` under the c18 PREREQUISITE boundary — a rule
+ * that forbids nothing — derived `applies` + `violates` + `explicit_boundary_contradiction`. The
+ * whole path accepted it: validator, generator, and the R2.54 repair merge, into a
+ * `boundary_review_reject` carrying a fabricated violation.
+ *
+ * The guard that was supposed to prevent this existed. `classifyTruthState` took a `ruleKind`
+ * argument and disambiguated on it AFTER a single-match early return — and across the complete
+ * measured space of 90 fact combinations, NO combination ever matched more than one row, in any
+ * commit of this table's history. The tiebreak was unreachable from the moment it was written.
+ *
+ * Scope is therefore DATA, and it is a FILTER DIMENSION rather than a tiebreak. A row that means
+ * something only under one kind of rule says so in a field the classifier reads.
+ */
+export type BoundaryRuleKind = RuleKind;
+
+/**
+ * Every rule kind a boundary can actually be judged under, and the scope of the two states that
+ * hold whatever the rule forbids or requires.
+ *
+ * `uncertain` is deliberately absent: a frame that could not be decomposed already fails closed
+ * before classification (`boundary_semantic_frame_uncertain`), and a state offered for a rule
+ * nobody parsed is a shape that cannot be legally completed — the R2.53 trap.
+ *
+ * Only two states carry this scope, and both ask about the GOVERNED ACTION rather than about the
+ * rule's structure: "this surface does something else entirely" and "the text does not settle
+ * whether this surface performs the governed action" are answerable under a prohibition exactly as
+ * under a prerequisite. Every other state names a prerequisite or a prohibition, and is scoped to
+ * the one that owns it.
+ */
+export const GOVERNING_RULE_KINDS: readonly BoundaryRuleKind[] = RULE_KINDS.filter((k) => k !== "uncertain");
+
+/** The six states that only mean something when a PREREQUISITE gates a governed action. */
+export const PREREQUISITE_RULE_KINDS: readonly BoundaryRuleKind[] = ["prerequisite_before_action"];
+
+/** The one state that only means something when the rule forbids the action outright. */
+export const PROHIBITION_RULE_KINDS: readonly BoundaryRuleKind[] = ["prohibition"];
+
 export type TruthStateRule = {
   id: TruthStateId;
+  /**
+   * R2.56 — the rule kinds this state may be selected under. A FILTER DIMENSION, never a comment.
+   * Every row declares it explicitly; there is no wildcard and no implicit "all".
+   */
+  appliesToRuleKinds: readonly BoundaryRuleKind[];
   governedActionStatus: GovernedActionStatus;
   /** The prerequisite values this state accepts. */
   prerequisiteStatus: readonly PrerequisiteStatus[];
@@ -106,6 +156,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     // (Part 3 A / F) The administrative, staffing, reporting and notification surfaces. The single
     // largest measured class — 12 of 24 live rows — and the one the removed axis made unsayable.
     id: "non_governing",
+    appliesToRuleKinds: GOVERNING_RULE_KINDS,
     governedActionStatus: "absent",
     prerequisiteStatus: ["not_applicable"],
     temporalRelation: ["unrelated", "not_applicable"],
@@ -123,6 +174,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 E)
     id: "governed_action_uncertain",
+    appliesToRuleKinds: GOVERNING_RULE_KINDS,
     governedActionStatus: "uncertain",
     prerequisiteStatus: ["uncertain", "not_applicable", "not_established"],
     temporalRelation: ALL_TEMPORAL,
@@ -140,6 +192,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 B)
     id: "governed_action_prerequisite_satisfied",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["satisfied"],
     temporalRelation: ["prerequisite_before_action"],
@@ -157,6 +210,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 C)
     id: "governed_action_prerequisite_missing",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["explicitly_missing"],
     temporalRelation: ["action_before_prerequisite"],
@@ -174,6 +228,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 C)
     id: "governed_action_prerequisite_contradicted",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["contradicted"],
     temporalRelation: ["action_before_prerequisite"],
@@ -191,6 +246,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 D) SILENCE IS NOT A VIOLATION. The rule R2.30 established and R2.38 keeps structural.
     id: "governed_action_prerequisite_not_established",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["not_established"],
     temporalRelation: ALL_TEMPORAL,
@@ -208,6 +264,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 D)
     id: "temporal_relation_uncertain",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["satisfied", "explicitly_missing", "contradicted"],
     temporalRelation: ["simultaneous_or_unclear"],
@@ -225,6 +282,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
   {
     // (Part 3 D)
     id: "prerequisite_truth_uncertain",
+    appliesToRuleKinds: PREREQUISITE_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["uncertain"],
     temporalRelation: ALL_TEMPORAL,
@@ -244,6 +302,7 @@ export const TRUTH_STATES: readonly TruthStateRule[] = [
     // the action IS the breach. Without this row a prohibition would be structurally unjudgeable —
     // a regression against R2.36, which accepted such frames.
     id: "prohibited_action_present",
+    appliesToRuleKinds: PROHIBITION_RULE_KINDS,
     governedActionStatus: "present",
     prerequisiteStatus: ["not_applicable"],
     temporalRelation: ["unrelated", "not_applicable"],
@@ -267,24 +326,82 @@ export type TruthFacts = {
 };
 
 /**
- * The single classification seam. `null` means the combination is outside the table — the server
- * refuses it rather than inventing a meaning.
+ * The single classification seam. `null` means the combination is outside the table FOR THIS RULE —
+ * the server refuses it rather than inventing a meaning.
  *
- * `ruleKind` disambiguates the one genuine overlap: `present + not_applicable + not_applicable` is a
- * prohibition breach under a prohibition rule and meaningless under a prerequisite rule.
+ * FOUR FILTER DIMENSIONS, not three (R2.56). `ruleKind` sits alongside the three facts because a
+ * state can be canonical under one kind of rule and meaningless under another. R2.55 measured the
+ * cost of leaving it out: `present / not_applicable / not_applicable` resolved to
+ * `prohibited_action_present` under the c18 PREREQUISITE boundary and derived an
+ * `explicit_boundary_contradiction` against a rule that forbids nothing.
+ *
+ * THE PREVIOUS GUARD WAS UNREACHABLE. It disambiguated on `ruleKind` only when two rows matched, and
+ * no fact combination has ever matched two rows — 0 of 90, in every commit of this table. It is
+ * deleted rather than kept beside the real filter: two mechanisms for one job is how the first one
+ * went unnoticed.
+ *
+ * An UNKNOWN rule kind matches no row and returns `null`. Failing closed on a rule nobody parsed is
+ * the same policy `validateSemanticFrames` already applies one layer up.
  */
 export function classifyTruthState(facts: TruthFacts, ruleKind: string): TruthStateRule | null {
   const matches = TRUTH_STATES.filter(
     (s) =>
+      (s.appliesToRuleKinds as readonly string[]).includes(ruleKind) &&
       s.governedActionStatus === facts.governedActionStatus &&
       s.prerequisiteStatus.includes(facts.prerequisiteStatus) &&
       s.temporalRelation.includes(facts.temporalRelation),
   );
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0]!;
-  const prohibition = matches.find((s) => s.id === "prohibited_action_present");
-  if (prohibition) return ruleKind === "prohibition" ? prohibition : (matches.find((s) => s !== prohibition) ?? null);
-  return matches[0]!;
+  /**
+   * Ambiguity is a TABLE defect, not an input the classifier may resolve. Picking `matches[0]` here
+   * is exactly the silent-ordering behaviour that let the old tiebreak look like it was working;
+   * `truthStateAmbiguities()` asserts this set is empty, and a caller reaching this line has a
+   * canonical table that no longer defines a function.
+   */
+  throw new Error(
+    `canonical truth-state table is ambiguous for ruleKind=${ruleKind} ` +
+      `${facts.governedActionStatus}/${facts.prerequisiteStatus}/${facts.temporalRelation}: ` +
+      `${matches.map((s) => s.id).join(", ")}`,
+  );
+}
+
+/**
+ * Every (ruleKind × facts) cell the table resolves ambiguously. MUST be empty.
+ *
+ * Exposed rather than kept inside a test so the invariant travels with the table it constrains, and
+ * so the manifest and the canary can bind the count.
+ */
+export function truthStateAmbiguities(
+  ruleKinds: readonly string[],
+  governed: readonly string[],
+  prerequisite: readonly string[],
+  temporal: readonly string[],
+): Array<{ ruleKind: string; facts: TruthFacts; stateIds: TruthStateId[] }> {
+  const out: Array<{ ruleKind: string; facts: TruthFacts; stateIds: TruthStateId[] }> = [];
+  for (const ruleKind of ruleKinds) {
+    for (const g of governed) {
+      for (const p of prerequisite) {
+        for (const t of temporal) {
+          const matches = TRUTH_STATES.filter(
+            (s) =>
+              (s.appliesToRuleKinds as readonly string[]).includes(ruleKind) &&
+              s.governedActionStatus === g &&
+              (s.prerequisiteStatus as readonly string[]).includes(p) &&
+              (s.temporalRelation as readonly string[]).includes(t),
+          );
+          if (matches.length > 1) {
+            out.push({
+              ruleKind,
+              facts: { governedActionStatus: g, prerequisiteStatus: p, temporalRelation: t } as TruthFacts,
+              stateIds: matches.map((s) => s.id),
+            });
+          }
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /** Derived — never authored. Exposed separately so callers cannot accidentally read a model field. */
@@ -364,26 +481,45 @@ export const renderTruthStateRules = (): string[] => TRUTH_STATES.map((s) => `  
 export const truthStatesRequiringReason = (): TruthStateId[] =>
   TRUTH_STATES.filter((s) => s.reasonAuthority === "model_required").map((s) => s.id);
 
-/** The digest that binds prompt, validator, derivation and artifact to ONE table. */
+/**
+ * The digest that binds prompt, validator, derivation and artifact to ONE table.
+ *
+ * R2.56 — `appliesToRuleKinds` is a member of every row, so it is inside this digest by
+ * construction. The scope cannot move without the digest moving, which is what makes the canary
+ * refuse a stale binding rather than replay against a table it was not written for.
+ */
 export const truthStateTableSha256 = (): string =>
   createHash("sha256").update(JSON.stringify({ version: TRUTH_STATE_TABLE_VERSION, states: TRUTH_STATES })).digest("hex");
 
 /**
- * How many of the schema's permitted fact combinations the table actually accepts.
+ * How many of the schema's permitted combinations the table actually accepts.
  * Reported in the manifest so a silent widening of the accepted space is visible.
+ *
+ * R2.56 — the space is now (ruleKind × facts). The previous signature measured coverage under a
+ * HARD-CODED `"prerequisite_before_action"`, which reported one rule kind's coverage as if it were
+ * the whole table's — and would have reported no change at all when the prohibition row was scoped.
+ * `perRuleKind` makes a widening visible where it happens.
  */
 export function truthStateCoverage(
   governed: readonly string[],
   prerequisite: readonly string[],
   temporal: readonly string[],
-): { permitted: number; accepted: number } {
+  ruleKinds: readonly string[] = GOVERNING_RULE_KINDS,
+): { permitted: number; accepted: number; perRuleKind: Record<string, number> } {
+  const facts = governed.length * prerequisite.length * temporal.length;
+  const perRuleKind: Record<string, number> = {};
   let accepted = 0;
-  for (const g of governed) {
-    for (const p of prerequisite) {
-      for (const t of temporal) {
-        if (classifyTruthState({ governedActionStatus: g, prerequisiteStatus: p, temporalRelation: t } as TruthFacts, "prerequisite_before_action")) accepted++;
+  for (const ruleKind of ruleKinds) {
+    let n = 0;
+    for (const g of governed) {
+      for (const p of prerequisite) {
+        for (const t of temporal) {
+          if (classifyTruthState({ governedActionStatus: g, prerequisiteStatus: p, temporalRelation: t } as TruthFacts, ruleKind)) n++;
+        }
       }
     }
+    perRuleKind[ruleKind] = n;
+    accepted += n;
   }
-  return { permitted: governed.length * prerequisite.length * temporal.length, accepted };
+  return { permitted: facts * ruleKinds.length, accepted, perRuleKind };
 }

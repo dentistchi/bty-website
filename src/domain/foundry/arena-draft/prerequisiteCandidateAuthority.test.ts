@@ -44,6 +44,29 @@ import {
 // ---------------------------------------------------------------------------
 
 const BOUNDARY = { id: "b1", statement: "Two identifiers must be verified before treatment" };
+
+/**
+ * R2.56 — this matrix runs EVERY canonical state, and a state is now scoped to the rule kinds it
+ * means something under. Driving all of them through one prerequisite frame stopped being valid:
+ * `prohibited_action_present` under a prerequisite rule is `boundary_assessment_state_invalid`, which
+ * is the whole point of the slice. Each state is therefore given a boundary whose statement the REAL
+ * parser classifies as a rule kind that state applies to.
+ */
+const BOUNDARY_FOR_RULE_KIND: Record<string, string> = {
+  prerequisite_before_action: "Two identifiers must be verified before treatment",
+  prohibition: "Never disclose patient credentials",
+  state_requirement: "Staffing levels must remain adequate",
+};
+const boundaryForState = (s: TruthStateRule) => {
+  const ruleKind = s.appliesToRuleKinds[0]!;
+  const statement = BOUNDARY_FOR_RULE_KIND[ruleKind];
+  if (!statement) throw new Error(`no boundary statement is registered for rule kind ${ruleKind}`);
+  const boundary = { id: "b1", statement };
+  // The parser must actually AGREE; a hand-mapped statement that parses differently would silently
+  // test the wrong rule kind.
+  expect(buildSemanticFrames([boundary])[0]!.ruleKind, statement).toBe(ruleKind);
+  return boundary;
+};
 const SURFACE: BoundarySurface = {
   coordinate: "primary[0]",
   kind: "choice",
@@ -84,13 +107,24 @@ const candidate = (role: (typeof ROLES)[number], n: number): BoundaryEvidenceCan
     sha256: `${role}${n}`,
   }) as BoundaryEvidenceCandidate;
 
-/** Build a context whose three pools have exactly the requested cardinalities. */
-const ctxFor = (sizes: { governed_action: number; prerequisite_satisfaction: number; prerequisite_failure: number }) => ({
-  boundaries: [BOUNDARY],
-  surfaces: [SURFACE],
-  frames: buildSemanticFrames([BOUNDARY]),
-  candidates: ROLES.flatMap((r) => Array.from({ length: sizes[r] }, (_, i) => candidate(r, i + 1))),
-});
+/**
+ * Build a context whose three pools have exactly the requested cardinalities.
+ *
+ * `state` selects the FRAME's rule kind (R2.56). Omitting it keeps the original prerequisite
+ * boundary, which is what every caller outside the generated state matrix wants.
+ */
+const ctxFor = (
+  sizes: { governed_action: number; prerequisite_satisfaction: number; prerequisite_failure: number },
+  state?: TruthStateRule,
+) => {
+  const boundary = state ? boundaryForState(state) : BOUNDARY;
+  return {
+    boundaries: [boundary],
+    surfaces: [SURFACE],
+    frames: buildSemanticFrames([boundary]),
+    candidates: ROLES.flatMap((r) => Array.from({ length: sizes[r] }, (_, i) => candidate(r, i + 1))),
+  };
+};
 
 /** The canonical facts for a state — first permitted value of each axis. */
 const factsFor = (s: TruthStateRule) => ({
@@ -149,21 +183,21 @@ describe("[R2.48][5] prerequisite candidate authority — every state x both rol
 
       if (req === "required") {
         it(`${label} — non-empty + valid member → VALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 1, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 1, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
         it(`${label} — non-empty + none → required_missing`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 1, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 1, state), state) as never);
           expect(codesOf(v)).toContain("boundary_candidate_required_missing");
         });
         it(`${label} — EMPTY + none → ${unavailable}`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state), state) as never);
           expect(codesOf(v)).toContain(unavailable);
           expect(codesOf(v)).not.toContain("boundary_candidate_required_missing");
           expect(v.ok).toBe(false);
         });
         it(`${label} — EMPTY + arbitrary id → ${unavailable} AND the id diagnostic`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "9-z9" })] }, ctxFor(sizesWith(role, 0, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "9-z9" })] }, ctxFor(sizesWith(role, 0, state), state) as never);
           expect(codesOf(v)).toContain(unavailable);
           expect(codesOf(v)).toContain("boundary_candidate_unknown");
         });
@@ -171,34 +205,34 @@ describe("[R2.48][5] prerequisite candidate authority — every state x both rol
 
       if (req === "forbidden") {
         it(`${label} — non-empty + none → VALID (the pool is irrelevant)`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 2, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 2, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
         it(`${label} — non-empty + member → forbidden_present (UNCHANGED by R2.48)`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 2, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 2, state), state) as never);
           expect(codesOf(v)).toContain("boundary_candidate_forbidden_present");
         });
         it(`${label} — EMPTY + none → VALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
       }
 
       if (req === "optional") {
         it(`${label} — non-empty + none → VALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 1, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 1, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
         it(`${label} — non-empty + member → VALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 1, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 1, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
         it(`${label} — EMPTY + none → VALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: "none" })] }, ctxFor(sizesWith(role, 0, state), state) as never);
           expect(codesOf(v)).toEqual([]);
         });
         it(`${label} — EMPTY + candidate → INVALID`, () => {
-          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 0, state)) as never);
+          const v = validateNarrowBoundaryReview({ assessments: [row(state, { ...otherIds(role, state), [key]: member })] }, ctxFor(sizesWith(role, 0, state), state) as never);
           expect(v.ok).toBe(false);
         });
       }

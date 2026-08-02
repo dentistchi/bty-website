@@ -249,12 +249,17 @@ describe("[R2.54][4] CASE C — the exact R2.53 failure selection, completed to 
 const mixedOffAlternative = (p: FieldRepairPlan): Record<string, string> => {
   const alts = defectiveGroup(p)[0]!.alternatives;
   const satisfied = alts.find((a) => a.stateId === "governed_action_prerequisite_satisfied");
-  const prohibited = alts.find((a) => a.stateId === "prohibited_action_present");
-  if (!satisfied || !prohibited) throw new Error("case D needs two distinct offered alternatives to mix; the plan no longer offers them");
-  expect(satisfied.temporalDomain).not.toContain(prohibited.temporalDomain[0]!);
+  /**
+   * R2.56 — the donor of the foreign temporal relation was `prohibited_action_present`, which this
+   * prerequisite boundary no longer offers. The case is unchanged in kind: take a temporal relation
+   * from a DIFFERENT offered alternative that the `satisfied` shape does not admit.
+   */
+  const donor = alts.find((a) => a.stateId !== "governed_action_prerequisite_satisfied" && a.temporalDomain.some((t) => !satisfied?.temporalDomain.includes(t)));
+  if (!satisfied || !donor) throw new Error("case D needs two distinct offered alternatives to mix; the plan no longer offers them");
+  const foreignTemporal = donor.temporalDomain.find((t) => !satisfied.temporalDomain.includes(t))!;
   return {
     prerequisiteStatus: satisfied.prerequisiteStatus,
-    temporalRelation: prohibited.temporalDomain[0]!,
+    temporalRelation: foreignTemporal,
     prerequisiteSatisfactionCandidateId: satisfied.satisfactionCandidateDomain.find((x) => x !== "none")!,
     prerequisiteFailureCandidateId: "none",
     reason: "",

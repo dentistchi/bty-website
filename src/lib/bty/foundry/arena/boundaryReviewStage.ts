@@ -70,6 +70,7 @@ import {
   type BoundarySurface,
 } from "@/domain/foundry/arena-draft/boundarySurfaces";
 import { classifyTruthState, truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import type { BoundarySemanticFrame } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContractTypes";
 import {
   checkPromptFieldParity,
@@ -621,7 +622,7 @@ export async function runBoundaryReviewStage(
     if (call.kind === "transport_failed") transportFailures += 1;
     else semanticAttempts += 1; // ONLY a response that reached schema/semantic validation
 
-    const tally = tallyModelReason(call.evidence.parsed);
+    const tally = tallyModelReason(call.evidence.parsed, subject.semanticFrames);
     const verdict = call.evidence.verdict;
     const truth = tallyTruthFields(call.evidence.parsed);
     const ctx: NarrowReviewContext = {
@@ -963,7 +964,7 @@ export function tallyTruthFields(parsed: unknown): {
  * and moves its authority: the state table now says which states require the model's own words, so
  * this counter reads the same table the prompt and the validator do.
  */
-export function tallyModelReason(parsed: unknown): { required: number; missing: number; unexpected: number } {
+export function tallyModelReason(parsed: unknown, frames: readonly BoundarySemanticFrame[] = []): { required: number; missing: number; unexpected: number } {
   const rows =
     parsed && typeof parsed === "object" && Array.isArray((parsed as { assessments?: unknown[] }).assessments)
       ? ((parsed as { assessments: unknown[] }).assessments as Array<Record<string, unknown>>)
@@ -972,13 +973,20 @@ export function tallyModelReason(parsed: unknown): { required: number; missing: 
   let missing = 0;
   let unexpected = 0;
   for (const r of rows) {
+    /**
+     * R2.56 — the row's OWN rule kind. This carried a hard-coded `"prerequisite_before_action"`,
+     * which was harmless only while `ruleKind` was inert; under a prohibition frame it would have
+     * classified every row to `null` and reported zero required reasons for a rule whose states do
+     * require them. `"uncertain"` is the fail-closed default for a row naming an unknown boundary.
+     */
+    const ruleKind = frames.find((f) => f.boundaryId === r.boundaryId)?.ruleKind ?? "uncertain";
     const state = classifyTruthState(
       {
         governedActionStatus: r.governedActionStatus as never,
         prerequisiteStatus: r.prerequisiteStatus as never,
         temporalRelation: r.temporalRelation as never,
       },
-      "prerequisite_before_action",
+      ruleKind,
     );
     if (!state) continue;
     const prose = typeof r.reason === "string" && r.reason.trim().length > 0;

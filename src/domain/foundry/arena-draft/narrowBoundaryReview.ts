@@ -665,6 +665,14 @@ export function deriveBoundaryVerdict(raw: unknown, ctx: NarrowReviewContext): D
 /** Shared by the ordinary path and the failed-subset merge, so both derive identically. */
 export function verdictFromDerived(derived: DerivedAssessment[], ctx: NarrowReviewContext): DerivedBoundaryVerdict {
   const statements = new Map(ctx.boundaries.map((b) => [b.id, b.statement]));
+  /**
+   * R2.56 — ONE rule kind per boundary, read from the frame the row was CLASSIFIED under.
+   *
+   * `"uncertain"` is the fail-closed default and is unreachable in practice: a row whose frame is
+   * missing or undecomposable never reaches `derived` — `validateNarrowBoundaryReview` refuses it
+   * with `boundary_semantic_frame_uncertain` first.
+   */
+  const ruleKindOf = (boundaryId: string): string => ctx.frames.find((f) => f.boundaryId === boundaryId)?.ruleKind ?? "uncertain";
   const surfaceByRef = new Map(ctx.surfaces.map((s) => [s.coordinate, s]));
   const order = new Map(ctx.surfaces.map((s, i) => [s.coordinate, i]));
   const assessedPairs = derived.length;
@@ -695,11 +703,21 @@ export function verdictFromDerived(derived: DerivedAssessment[], ctx: NarrowRevi
         const surface = surfaceByRef.get(d.surfaceRef);
         const lineage = surface?.lineage ?? [];
         const ancestors = lineage.map((anc) => byRef.get(d.boundaryId + " " + anc)).filter(Boolean);
-        const state = classifyTruthState(d.facts, "prerequisite_before_action");
+        /**
+         * R2.56 — the SAME rule kind the row was classified under.
+         *
+         * These two calls carried a hard-coded `"prerequisite_before_action"`. While `ruleKind` was
+         * inert that was invisible; once it became a filter dimension it would have meant a row
+         * classified under one rule and given its verdict under another — and for a prohibition
+         * boundary it would have re-classified every violating row to `null`, silently degrading
+         * every mechanism to the prerequisite default.
+         */
+        const ruleKind = ruleKindOf(d.boundaryId);
+        const state = classifyTruthState(d.facts, ruleKind);
         const mechanism = state ? deriveMechanism(state, surface?.kind ?? "", ancestors.length > 0) : "governed_action_without_prerequisite";
         const newlyAuthorizes = surface?.independentlySelectable === true;
         const sameMechanism = ancestors.some((anc) => {
-          const s2 = anc ? classifyTruthState(anc.facts, "prerequisite_before_action") : null;
+          const s2 = anc ? classifyTruthState(anc.facts, ruleKindOf(anc.boundaryId)) : null;
           return s2 ? deriveMechanism(s2, surfaceByRef.get(anc!.surfaceRef)?.kind ?? "", false) === mechanism : false;
         });
         return {

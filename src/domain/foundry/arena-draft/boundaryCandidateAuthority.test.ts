@@ -30,7 +30,7 @@ import {
   type BoundaryTruthAssessment,
   type NarrowReviewContext,
 } from "./narrowBoundaryReview";
-import { TRUTH_STATE_IDS, classifyTruthState, deriveMechanism, truthStateCoverage, truthStateTableSha256 } from "./boundaryTruthStates";
+import { GOVERNING_RULE_KINDS, TRUTH_STATE_IDS, classifyTruthState, deriveMechanism, truthStateCoverage, truthStateTableSha256 } from "./boundaryTruthStates";
 import { GOVERNED_ACTION_STATUSES, NO_CANDIDATE, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS } from "./boundaryTruthContractTypes";
 import { checkPromptFieldParity, instructiveRemovedFieldMentions } from "./promptFieldParity";
 import { NARROW_BOUNDARY_SYSTEM_PROMPT, PROMPT_EXPLANATORY_VOCABULARY } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
@@ -468,9 +468,20 @@ describe("[R1] restored reason and candidate-role enforcement", () => {
 
 describe("[42-45] structural and hygiene properties", () => {
   it("[42] the truth table accepts a small fraction of the schema's combinations", () => {
+    /**
+     * R2.56 — coverage is measured over (ruleKind x facts), not facts alone. The old signature
+     * reported ONE rule kind's coverage as if it were the whole table's, so scoping a row to a
+     * single rule kind would have shown no change at all in the manifest.
+     */
     const c = truthStateCoverage(GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS);
-    expect(c.permitted).toBe(90);
+    const facts = GOVERNED_ACTION_STATUSES.length * PREREQUISITE_STATUSES.length * TEMPORAL_RELATIONS.length;
+    expect(facts).toBe(90);
+    expect(c.permitted).toBe(facts * GOVERNING_RULE_KINDS.length);
     expect(c.accepted).toBeLessThan(c.permitted / 2);
+    // Every governing rule kind is reported separately, and each admits only a small subset.
+    expect(Object.keys(c.perRuleKind).sort()).toEqual([...GOVERNING_RULE_KINDS].sort());
+    for (const [ruleKind, n] of Object.entries(c.perRuleKind)) expect(n, ruleKind).toBeLessThan(facts / 2);
+    expect(Object.values(c.perRuleKind).reduce((a, b) => a + b, 0)).toBe(c.accepted);
     expect(classifyTruthState({ governedActionStatus: "absent", prerequisiteStatus: "satisfied", temporalRelation: "action_before_prerequisite" }, "prerequisite_before_action")).toBeNull();
   });
 

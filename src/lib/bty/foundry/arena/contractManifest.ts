@@ -101,7 +101,14 @@ import {
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import { EVIDENCE_POLARITY, POLARITY_REFUSAL_CODES, evidencePolarityContractSha256 } from "@/domain/foundry/arena-draft/boundaryEvidencePolarity";
-import { PREREQUISITE_UNAVAILABLE_CODES, TRUTH_STATES, renderCandidateRequirements } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import {
+  GOVERNING_RULE_KINDS,
+  PREREQUISITE_UNAVAILABLE_CODES,
+  TRUTH_STATES,
+  renderCandidateRequirements,
+  truthStateAmbiguities,
+} from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { RULE_KINDS } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import {
   FIELD_REPAIR_CODES,
   FIELD_REPAIR_JSON_SCHEMA,
@@ -466,6 +473,25 @@ export function buildContractManifest(head: string, model: string): ContractMani
        * every per-field list, crossed the merge, and was refused by the canonical row validator with
        * `boundary_reason_required_missing` — a semantic verdict standing in for a contract refusal.
        */
+      /**
+       * R2.56 — RULE-KIND SCOPE. R2.55 measured `prohibited_action_present` resolving under a
+       * PREREQUISITE boundary and deriving an `explicit_boundary_contradiction` against a rule that
+       * forbids nothing, because the row's scope lived in comments and the `ruleKind` tiebreak was
+       * unreachable in every commit of the table's history. Scope is now row data and a filter
+       * dimension; `appliesToRuleKinds` therefore also moves `truthStateTableSha256` by construction.
+       */
+      boundaryRuleKindScope: digest({
+        ruleKinds: RULE_KINDS,
+        governingRuleKinds: GOVERNING_RULE_KINDS,
+        scopeIsRowData: true,
+        scopeIsAFilterDimension: true,
+        deadTiebreakRemoved: true,
+        ambiguityThrowsRatherThanPickingFirstMatch: true,
+        unknownRuleKindMatchesNothing: true,
+        perState: TRUTH_STATES.map((s) => ({ id: s.id, appliesToRuleKinds: s.appliesToRuleKinds })),
+      }),
+      /** MUST digest an EMPTY set. A non-empty one means the table no longer defines a function. */
+      boundaryTruthStateAmbiguities: digest(truthStateAmbiguities(RULE_KINDS, GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS)),
       boundaryGroupAlternativeAuthority: groupAlternativeContractSha256(),
       boundaryGroupAlternativeContract: digest({
         version: GROUP_ALTERNATIVES_VERSION,
