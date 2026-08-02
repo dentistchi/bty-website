@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ArenaRoom } from "@/components/app-shell/ArenaRoom";
 import { PracticeAuthoringEntry } from "@/components/app-shell/PracticeAuthoringEntry";
+import { showsAuthoringEntry, type PracticeSurface } from "@/components/app-shell/practiceSurface";
 import FieldActionsFocus from "@/components/app-shell/FieldActionsFocus";
 import { ArenaPracticeFlow } from "@/components/foundry/arena-practice/ArenaPracticeFlow";
 
@@ -145,6 +146,14 @@ export default function PracticeLanding({
    * the existing flow owns the screen, exactly as it does when opened from Learn.
    */
   const [authoringEventId, setAuthoringEventId] = useState<string | null>(null);
+  /**
+   * R2 — which surface ArenaRoom is actually showing. The authoring entry was previously a blind
+   * sibling, so "Practice again" opened the learner runtime with a Host control still above it.
+   * Starting from the index keeps the control steady through the list reload that follows every
+   * return from a practice, instead of blinking it out and back in.
+   */
+  const [practiceSurface, setPracticeSurface] = useState<PracticeSurface>("index_loading");
+  const onSurfaceChange = useCallback((s: PracticeSurface) => setPracticeSurface(s), []);
 
   if (view === "arena" && authoringEventId) {
     return (
@@ -170,9 +179,17 @@ export default function PracticeLanding({
           ‹ {t.back}
         </button>
         {/* Above the historical list, at the top of the shell's scroll region: a Host must never
-            have to scroll past their completed practices to find the way to author a new one. */}
-        <PracticeAuthoringEntry locale={locale} onOpen={setAuthoringEventId} />
-        <ArenaRoom locale={locale} lockedTag={lockedTag} lockedBody={lockedBody} />
+            have to scroll past their completed practices to find the way to author a new one — and
+            never see it once the learner runtime has taken the screen. */}
+        {showsAuthoringEntry(practiceSurface) ? (
+          <PracticeAuthoringEntry locale={locale} onOpen={setAuthoringEventId} />
+        ) : null}
+        <ArenaRoom
+          locale={locale}
+          lockedTag={lockedTag}
+          lockedBody={lockedBody}
+          onSurfaceChange={onSurfaceChange}
+        />
       </div>
     );
   }

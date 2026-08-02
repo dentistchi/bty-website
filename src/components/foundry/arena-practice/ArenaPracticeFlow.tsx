@@ -22,6 +22,17 @@ import {
   type PracticeBoundary,
 } from "@/domain/foundry/arena-draft/boundary";
 import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
+import { resolveEditorActions } from "./editorActions";
+
+/**
+ * R2 — one shared button scale for the editor's action region. Every control is a full-width,
+ * comfortable tap target at the same height, so no two actions can be confused for one another on
+ * a 390pt screen, and none of them can shrink another by sharing a row.
+ */
+const ACTION_BASE = "min-h-[3rem] rounded-xl px-5 py-3 text-[0.95rem] font-semibold";
+const PRIMARY_ACTION = `${ACTION_BASE} bg-[#C9A66B] text-[#0B1F3A] disabled:opacity-60`;
+const SECONDARY_ACTION = `${ACTION_BASE} border border-[#C9A66B]/50 text-[#C9A66B] disabled:opacity-45`;
+const TERTIARY_ACTION = "min-h-[2.75rem] px-2 py-2 text-xs text-white/45 hover:text-white/75 disabled:opacity-40";
 
 /**
  * Foundry Guided Arena Builder — the in-app, iPhone-first guided flow.
@@ -827,6 +838,9 @@ export function ArenaPracticeFlow({
 
   if (phase === "editor" && editable) {
     const hasSensitive = warnings.length > 0;
+    // ONE authority for which actions are true at once (R2). Publish is no longer offered for a
+    // revision that is already live, and only one action carries primary weight.
+    const actions = resolveEditorActions({ dirty, saveState, publishState, livePracticeId, view, busy });
     return shell(
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
@@ -851,8 +865,8 @@ export function ArenaPracticeFlow({
 
         {/* Already published at this revision → the host sees it is live. No route
             navigation: learners start it from the Practice tab (shell-owned). */}
-        {livePracticeId && !dirty ? (
-          <div className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
+        {actions.liveAtThisRevision ? (
+          <div data-testid="editor-live-banner" className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-3">
             <span className="text-sm text-[#C9A66B]">✓ {t.liveBanner}</span>
             <span className="ml-1 text-sm text-[#C9A66B]/80">{t.openArenaTabHint}</span>
           </div>
@@ -874,61 +888,111 @@ export function ArenaPracticeFlow({
           />
         )}
 
-        <div className="sticky bottom-2 mt-2 flex flex-col gap-2">
-          <div className="flex items-center gap-3">
+        {/*
+          R2 — ONE action region, in normal document flow.
+
+          It was a bare `sticky bottom-2` stack with no background: five controls and up to four
+          conditional lines floated over the scenario, which stayed visible through the gaps between
+          them, and nothing reserved its height so the last fields could never be scrolled clear.
+          Sticky with a backdrop would still have to reserve that space on a 390pt screen; flow
+          cannot overlap anything by construction, so it is what the Host gets.
+
+          One primary action per state, decided by `resolveEditorActions`; replacement actions stay
+          visually secondary because they destroy work; at most one explanation line, so the region
+          cannot grow by stacking hints.
+        */}
+        <div
+          data-testid="editor-actions"
+          className="mt-2 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
+          {actions.showSave ? (
             <button
               type="button"
+              data-testid="editor-action-save"
               onClick={save}
-              disabled={saveState === "saving"}
-              className="flex-1 rounded-xl bg-[#C9A66B] px-6 py-3.5 text-base font-semibold text-[#0B1F3A] disabled:opacity-60"
+              disabled={actions.saveDisabled}
+              className={
+                (actions.primary === "save" ? PRIMARY_ACTION : SECONDARY_ACTION) + " w-full"
+              }
             >
               {saveState === "saving" ? t.saving : saveState === "saved" ? t.saved : t.save}
             </button>
+          ) : null}
+
+          {actions.showPublish ? (
             <button
               type="button"
-              onClick={regenerate}
-              disabled={busy}
-              className="shrink-0 rounded-xl border border-white/15 px-4 py-3.5 text-sm text-white/70 hover:text-white/90 disabled:opacity-50"
+              data-testid="editor-action-publish"
+              onClick={publish}
+              disabled={actions.publishDisabled}
+              className={
+                (actions.primary === "publish" ? PRIMARY_ACTION : SECONDARY_ACTION) + " w-full"
+              }
             >
-              {busy ? t.regenerating : t.regenerate}
+              {publishState === "publishing" ? t.publishing : t.publishToArena}
             </button>
-          </div>
-          {saveState === "error" ? <p className="text-sm text-red-300/90">{t.saveError}</p> : null}
+          ) : null}
 
-          {/* Try it as a learner — prominent (not a subtle header link). Always shown; if a
-              save is required first it is disabled with an honest explanation, never
-              silently hidden. Tests the exact current SAVED revision. */}
-          <button
-            type="button"
-            onClick={() => setTesting(true)}
-            disabled={dirty}
-            className="rounded-xl border border-[#C9A66B]/50 px-6 py-3 text-sm font-semibold text-[#C9A66B] disabled:opacity-45"
-          >
-            {t.testInArena}
-          </button>
-          {dirty ? <p className="text-center text-xs text-white/40">{t.saveBeforeTesting}</p> : null}
+          {actions.showTest ? (
+            <button
+              type="button"
+              data-testid="editor-action-test"
+              onClick={() => setTesting(true)}
+              disabled={actions.testDisabled}
+              className={(actions.primary === "test" ? PRIMARY_ACTION : SECONDARY_ACTION) + " w-full"}
+            >
+              {t.testInArena}
+            </button>
+          ) : null}
 
-          {/* Publish practice — the exact SAVED revision. Disabled while there are
-              unsaved edits so the host never publishes bytes they didn't see. */}
-          <button
-            type="button"
-            onClick={publish}
-            disabled={dirty || publishState === "publishing" || publishState === "published"}
-            className="rounded-xl border border-[#C9A66B]/50 bg-[#C9A66B]/[0.08] px-6 py-3 text-sm font-semibold text-[#C9A66B] disabled:opacity-45"
-          >
-            {publishState === "publishing"
-              ? t.publishing
-              : publishState === "published"
-                ? t.published
-                : t.publishToArena}
-          </button>
-          {dirty ? <p className="text-center text-xs text-white/40">{t.saveBeforePublish}</p> : null}
-          {publishState === "stale" ? <p className="text-center text-xs text-amber-300/90">{t.publishStale}</p> : null}
-          {publishState === "error" ? <p className="text-center text-xs text-red-300/90">{t.publishError}</p> : null}
+          {/* Exactly one line, so a long label or a second condition can never grow the region. */}
+          {actions.hint ? (
+            <p
+              data-testid="editor-action-hint"
+              role={actions.hint === "save_error" || actions.hint === "publish_error" ? "alert" : "status"}
+              className={
+                "text-center text-xs leading-5 " +
+                (actions.hint === "save_error" || actions.hint === "publish_error"
+                  ? "text-red-300/90"
+                  : actions.hint === "publish_stale"
+                    ? "text-amber-300/90"
+                    : "text-white/45")
+              }
+            >
+              {actions.hint === "save_error"
+                ? t.saveError
+                : actions.hint === "publish_error"
+                  ? t.publishError
+                  : actions.hint === "publish_stale"
+                    ? t.publishStale
+                    : actions.hint === "save_before_publish"
+                      ? t.saveBeforePublish
+                      : t.saveBeforeTesting}
+            </p>
+          ) : null}
 
-          <button type="button" onClick={startNew} className="self-center pt-1 text-xs text-white/40 hover:text-white/70">
-            {t.startOver}
-          </button>
+          {/* Replacement actions: they throw away the current draft, so they never sit at primary
+              weight and never sit beside the action that saves it. */}
+          {actions.showRegenerate || actions.showStartOver ? (
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-white/8 pt-3">
+              {actions.showRegenerate ? (
+                <button
+                  type="button"
+                  data-testid="editor-action-regenerate"
+                  onClick={regenerate}
+                  disabled={busy}
+                  className={TERTIARY_ACTION}
+                >
+                  {busy ? t.regenerating : t.regenerate}
+                </button>
+              ) : null}
+              {actions.showStartOver ? (
+                <button type="button" data-testid="editor-action-start-over" onClick={startNew} className={TERTIARY_ACTION}>
+                  {t.startOver}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>,
     );

@@ -157,7 +157,6 @@ export type ArenaPracticeCopy = {
   // 3.0B.1 — prominent success + honest test gating
   publishedTitle: string;
   openArenaTabHint: string;
-  returnToTraining: string;
   backToEditor: string;
   liveBanner: string;
   saveBeforeTesting: string;
@@ -271,7 +270,6 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     saveBeforePublish: "Save your edits before publishing.",
     publishedTitle: "Practice published",
     openArenaTabHint: "Learners start it from the Practice tab.",
-    returnToTraining: "Return to training",
     backToEditor: "Back to editor",
     liveBanner: "This practice is published.",
     saveBeforeTesting: "Save this draft before testing",
@@ -428,7 +426,6 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     saveBeforePublish: "게시하기 전에 편집 내용을 저장하세요.",
     publishedTitle: "연습이 게시되었습니다",
     openArenaTabHint: "학습자는 연습 탭에서 시작합니다.",
-    returnToTraining: "교육으로 돌아가기",
     backToEditor: "편집기로 돌아가기",
     liveBanner: "이 연습은 게시된 상태입니다.",
     saveBeforeTesting: "테스트하기 전에 이 초안을 저장하세요",

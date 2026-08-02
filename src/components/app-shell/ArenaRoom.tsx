@@ -9,6 +9,7 @@ import {
   type AvailablePractice,
   type PlayablePractice,
 } from "./arenaRoomActions";
+import type { PracticeSurface } from "./practiceSurface";
 
 /**
  * Native in-shell Arena Practice room (Slice 3.0C-1).
@@ -68,11 +69,18 @@ export function ArenaRoom({
   locale,
   lockedTag,
   lockedBody,
+  onSurfaceChange,
 }: {
   locale: string;
   /** Calm "being prepared" copy reused for the genuinely-empty state (never blank/jarring). */
   lockedTag: string;
   lockedBody: string;
+  /**
+   * R2 — report WHICH surface is showing. This room owns its view state internally, so a parent
+   * that renders anything alongside it (the Host authoring entry) has no other way to know whether
+   * the learner runtime has taken over. It still never navigates and never reads role.
+   */
+  onSurfaceChange?: (surface: PracticeSurface) => void;
 }) {
   const loc = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -81,6 +89,25 @@ export function ArenaRoom({
   const [practices, setPractices] = useState<AvailablePractice[]>([]);
   const [view, setView] = useState<ArenaRoomView>({ kind: "list" });
   const [completeStatus, setCompleteStatus] = useState<CompleteStatus>("none");
+
+  const surface: PracticeSurface =
+    view.kind === "starting"
+      ? "runtime_starting"
+      : view.kind === "playing"
+        ? "runtime_playing"
+        : listStatus === "loading"
+          ? "index_loading"
+          : listStatus === "error"
+            ? "index_error"
+            : practices.length === 0
+              ? "index_empty"
+              : "index_list";
+
+  // Reported from an effect, not during render: a parent must never be asked to update state while
+  // this component is rendering, and the value must survive a cold prop update.
+  useEffect(() => {
+    onSurfaceChange?.(surface);
+  }, [surface, onSurfaceChange]);
 
   // ---- practice list (bounded fetch; visible loading/list/empty/error) ----
   const loadList = useCallback(async () => {
