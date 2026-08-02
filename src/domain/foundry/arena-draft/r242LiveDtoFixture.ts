@@ -199,3 +199,36 @@ export const R242_MEASURED = {
   primaryOneLiveDetection: "MISSED 7/7",
   primaryOneOwner: "generated-result ancestor attribution — OUT OF SCOPE for R2.44",
 } as const;
+
+/**
+ * THE CANONICAL POST-POLARITY MATRIX (R2.44 Part 5B), promoted to a shared fixture by R2.46.
+ *
+ * Every R2.42 row rebuilt from AUTHORITATIVE candidates only. Where the polarity authority emptied
+ * the failure pool, `explicitly_missing` is no longer expressible and the honest answer is the
+ * non-governing shape. Nothing else about the reviewer's judgement is altered — in particular the
+ * three applicability false positives are carried across exactly as the model produced them, so a
+ * later slice cannot silently hide them.
+ *
+ * `failurePool` and `firstCandidate` are supplied by the caller so this stays a pure fixture.
+ */
+export function buildR242PostPolarityMatrix(
+  failurePool: (surfaceRef: string) => Array<{ candidateId: string }>,
+  firstCandidate: (surfaceRef: string, role: "governed_action" | "prerequisite_satisfaction" | "prerequisite_failure") => string,
+): BoundaryTruthAssessment[] {
+  return R242_LIVE_MERGED_MATRIX.map((r) => {
+    if (r.prerequisiteStatus !== "explicitly_missing") return r;
+    const failure = failurePool(r.surfaceRef);
+    if (failure.length === 0) {
+      return {
+        ...r,
+        governedActionStatus: "absent" as const,
+        prerequisiteStatus: "not_applicable" as const,
+        temporalRelation: "not_applicable" as const,
+        governedActionCandidateId: firstCandidate(r.surfaceRef, "governed_action"),
+        prerequisiteSatisfactionCandidateId: "none",
+        prerequisiteFailureCandidateId: "none",
+      };
+    }
+    return { ...r, prerequisiteFailureCandidateId: failure[0]!.candidateId };
+  });
+}

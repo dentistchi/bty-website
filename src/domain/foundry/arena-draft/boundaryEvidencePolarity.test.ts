@@ -25,6 +25,7 @@ import {
   R242_BOUNDARY_REVIEW_SUBJECT_SHA256,
   R242_LIVE_MERGED_MATRIX,
   R242_MEASURED,
+  buildR242PostPolarityMatrix,
   R242_POLARITY_FALSE_POSITIVES,
   R242_TRUE_POSITIVES,
 } from "./r242LiveDtoFixture";
@@ -218,22 +219,7 @@ describe("[R2.44][5B] the canonical post-polarity matrix", () => {
    * three applicability false positives are carried across exactly as the model produced them.
    */
   const postPolarity = (): BoundaryTruthAssessment[] =>
-    R242_LIVE_MERGED_MATRIX.map((r) => {
-      const failure = pool(r.surfaceRef, "prerequisite_failure");
-      if (r.prerequisiteStatus !== "explicitly_missing") return r;
-      if (failure.length === 0) {
-        return {
-          ...r,
-          governedActionStatus: "absent" as const,
-          prerequisiteStatus: "not_applicable" as const,
-          temporalRelation: "not_applicable" as const,
-          governedActionCandidateId: first(r.surfaceRef, "governed_action"),
-          prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
-          prerequisiteFailureCandidateId: NO_CANDIDATE,
-        };
-      }
-      return { ...r, prerequisiteFailureCandidateId: failure[0]!.candidateId };
-    });
+    buildR242PostPolarityMatrix((ref) => pool(ref, "prerequisite_failure"), first);
 
   it("every POLARITY false positive is gone", () => {
     const d = deriveBoundaryVerdict({ assessments: postPolarity() }, ctx);

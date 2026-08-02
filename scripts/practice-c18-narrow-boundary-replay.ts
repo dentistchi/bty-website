@@ -71,6 +71,8 @@ export type NarrowReplaySummary = {
   reachableSurfaces: string[];
   excludedCompatibilitySurfaces: string[];
   causalViolations: string[];
+  causalAttributions: string[];
+  correctionOwners: string[];
   authorityCodes: string[];
   outputContractFailure: boolean;
   providerFailureCode: string | null;
@@ -165,6 +167,11 @@ export async function runC18NarrowBoundaryReplay(
       violations: stage.violations,
       causalViolations: stage.causalViolations,
       downstreamViolations: stage.downstreamViolations,
+      // R2.46 — who OWNS each correction, and the schema edge that proves it. Every field here is
+      // server-derived; none of it came from the model.
+      causalAttributions: stage.causalAttributions,
+      causalGroups: stage.causalGroups,
+      causalAttributionMetrics: stage.causalAttributionMetrics,
       uncertainties: stage.uncertainties,
       findings: stage.findings,
       authorityCodes: stage.codes,
@@ -209,6 +216,8 @@ export async function runC18NarrowBoundaryReplay(
     reachableSurfaces: stage.reachableSurfaces,
     excludedCompatibilitySurfaces: stage.excludedCompatibilitySurfaces,
     causalViolations: stage.causalViolations.map((v) => v.surfaceRef),
+    causalAttributions: stage.causalAttributions.map((a) => `${a.ancestorSurfaceRef}<-${a.manifestationSurfaceRef}`),
+    correctionOwners: stage.causalGroups.map((g) => [g.correctionOwnerSurfaceRef, ...g.manifestationSurfaceRefs].join("+")),
     authorityCodes: stage.codes,
     outputContractFailure: stage.outputContractFailure,
     providerFailureCode: stage.providerFailureCode,

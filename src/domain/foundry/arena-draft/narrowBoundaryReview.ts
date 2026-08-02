@@ -60,6 +60,15 @@ import {
   type TruthStateRule,
 } from "./boundaryTruthStates";
 import type { BoundarySemanticFrame } from "./boundarySemanticFrame";
+// R2.46 — a violation proved on a generated world state is, by the generation schema, a consequence
+// of the one choice that produced it. That fact assigns CORRECTION OWNERSHIP and nothing else.
+import {
+  buildCausalGroups,
+  deriveCausalAttributions,
+  type CausalAttribution,
+  type CausalAttributionMetrics,
+  type CausalGroup,
+} from "./generatedResultAttribution";
 
 export { normalizeForGrounding, clauseStems } from "./boundaryClauseTerms";
 export { GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS, NO_CANDIDATE } from "./boundaryTruthContractTypes";
@@ -507,6 +516,10 @@ export type DerivedBoundaryVerdict =
       violations: BoundaryViolation[];
       causalViolations: BoundaryViolation[];
       downstreamViolations: BoundaryViolation[];
+      /** R2.46 — server-derived causal ownership. Additive: it never edits a row above. */
+      causalAttributions: CausalAttribution[];
+      causalGroups: CausalGroup[];
+      causalAttributionMetrics: CausalAttributionMetrics;
       assessedPairs: number;
       explanations: ServerExplanation[];
       derived: DerivedAssessment[];
@@ -605,11 +618,23 @@ export function verdictFromDerived(derived: DerivedAssessment[], ctx: NarrowRevi
       })
       .sort((a, b) => (order.get(a.surfaceRef) ?? 0) - (order.get(b.surfaceRef) ?? 0));
 
+    const causalViolations = violations.filter((x) => !x.downstreamOfPriorViolation);
+    // R2.46 — attribution READS the derived rows and returns new objects. Every row above, and every
+    // candidate id on it, is already final at this point.
+    const attribution = deriveCausalAttributions(
+      causalViolations,
+      ctx.surfaces,
+      ctx.boundaries.map((b) => b.id),
+    );
+    const causalGroups = buildCausalGroups(causalViolations, attribution.attributions);
     return {
       outcome: "boundary_review_reject",
       violations,
-      causalViolations: violations.filter((x) => !x.downstreamOfPriorViolation),
+      causalViolations,
       downstreamViolations: violations.filter((x) => x.downstreamOfPriorViolation),
+      causalAttributions: attribution.attributions,
+      causalGroups,
+      causalAttributionMetrics: attribution.metrics,
       assessedPairs,
       explanations,
       derived,

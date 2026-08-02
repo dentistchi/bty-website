@@ -15,6 +15,13 @@
  */
 
 import type { Finding } from "@/domain/foundry/arena-draft/gatePrecedence";
+// R2.46 — causal correction ownership. Additive: the derived rows are already final.
+import {
+  summarizeCausalAttribution,
+  type CausalAttribution,
+  type CausalAttributionMetrics,
+  type CausalGroup,
+} from "@/domain/foundry/arena-draft/generatedResultAttribution";
 import {
   BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
   MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
@@ -95,6 +102,10 @@ export type BoundaryStageResult = {
   causalViolations: BoundaryViolation[];
   /** Descendants that repeat an ancestor's violation. Evidence only, never an instruction. */
   downstreamViolations: BoundaryViolation[];
+  /** R2.46 — who owns each correction, derived from the generation schema's own lineage edges. */
+  causalAttributions: CausalAttribution[];
+  causalGroups: CausalGroup[];
+  causalAttributionMetrics: CausalAttributionMetrics;
   /** The reachable surfaces actually reviewed, and the unreachable duplicates excluded. */
   reachableSurfaces: string[];
   excludedCompatibilitySurfaces: string[];
@@ -175,6 +186,27 @@ export type BoundaryStageDeps = {
  * boundary codes so a boundary rejection keeps its Level 3 precedence rather than inventing a
  * parallel severity ladder.
  */
+export const EMPTY_CAUSAL_METRICS: CausalAttributionMetrics = summarizeCausalAttribution([], [], []);
+
+/**
+ * The finding detail for one coordinate of one causal group.
+ *
+ * Every excerpt here was RESOLVED by the server from a candidate id the reviewer selected (R2.38),
+ * so nothing in this string is model-authored prose. When the item is owned by an ancestor the
+ * detail says so explicitly, and still cites the manifestation's own candidate ids — the evidence
+ * never migrates to the parent, only the instruction does.
+ */
+function causalDetail(g: CausalGroup, v: BoundaryViolation, coordinateRef: string): string {
+  const evidence =
+    `[${v.stateId} -> ${v.violationMechanism}] ` +
+    `action(${v.governedActionCandidateId}@${v.governedActionSegmentRef}): ${v.governedActionEvidence} || ` +
+    `prerequisite ${v.prerequisiteStatus} (${v.prerequisiteFailureCandidateId}@${v.prerequisiteSegmentRef}/${v.prerequisiteSegmentKind}, ${v.temporalRelation}): ` +
+    v.prerequisiteFailureEvidence;
+  if (!g.attributed) return `${coordinateRef} ${evidence}`;
+  const role = coordinateRef === g.correctionOwnerSurfaceRef ? "correction owner" : "manifestation";
+  return `${coordinateRef} (${role}; owner ${g.correctionOwnerSurfaceRef}, proved at ${g.manifestationSurfaceRefs.join(",")}) ${evidence}`;
+}
+
 export function surfaceDefectCode(surface: BoundarySurface | undefined): string {
   switch (surface?.phase) {
     case "branch_resulting_world_state":
@@ -186,6 +218,48 @@ export function surfaceDefectCode(surface: BoundarySurface | undefined): string 
       return "choice_bypasses_boundary";
   }
 }
+
+/**
+ * CORRECTION OWNERSHIP PROJECTION (R2.46).
+ *
+ * A violation proved on a generated world state is owned by the one choice that produced it, because
+ * the generation schema defines that state as that choice's result. The generated state stays the
+ * EVIDENCE and stops being a separate instruction: an author told to rewrite a resulting world state
+ * without touching the choice that generates it will regenerate the same state.
+ *
+ * One item at two coordinates, not two items. `buildCorrectionPacket` already collapses findings
+ * that share a code into a single item listing every affected place, so the projection emits one
+ * finding per coordinate and lets the packet do the collapsing — the existing idiom, not a new one.
+ */
+export function projectCausalFindings(
+  groups: readonly CausalGroup[],
+  causal: readonly BoundaryViolation[],
+  surfaceByRef: Map<string, BoundarySurface>,
+): Finding[] {
+  const bySurface = new Map(causal.map((v) => [v.boundaryId + " " + v.surfaceRef, v]));
+  const coordinatesOf = (g: CausalGroup): string[] =>
+    g.attributed ? [g.correctionOwnerSurfaceRef, ...g.manifestationSurfaceRefs] : [g.correctionOwnerSurfaceRef];
+  return groups.flatMap((g) => {
+    // The code names the OWNER's defect: a primary choice that leads past the rule is a
+    // `choice_bypasses_boundary`, not a `branch_drops_boundary`.
+    const code = surfaceDefectCode(surfaceByRef.get(g.correctionOwnerSurfaceRef));
+    const source = bySurface.get(g.boundaryId + " " + (g.attributed ? g.manifestationSurfaceRefs[0]! : g.correctionOwnerSurfaceRef));
+    if (!source) return [];
+    return coordinatesOf(g).map((ref) => {
+      const s = surfaceByRef.get(ref);
+      return {
+        code,
+        gate: "narrow_boundary_review",
+        boundaryId: source.boundaryId,
+        phase: s?.phase,
+        branchIndex: s?.branchIndex,
+        choiceIndex: s && s.index >= 0 ? s.index : undefined,
+        detail: causalDetail(g, source, ref),
+      };
+    });
+  });
+}
+
 
 const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult => ({
   outcome,
@@ -205,6 +279,9 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   violations: [],
   causalViolations: [],
   downstreamViolations: [],
+  causalAttributions: [],
+  causalGroups: [],
+  causalAttributionMetrics: EMPTY_CAUSAL_METRICS,
   reachableSurfaces: [],
   excludedCompatibilitySurfaces: [],
   uncertainties: [],
@@ -519,34 +596,16 @@ export async function runBoundaryReviewStage(
       // become correction findings. A descendant that repeats its ancestor's mechanism and governed
       // action is kept as evidence, never as a separate instruction: the R2.29 live run produced
       // nine defects where four describe the whole problem.
-      const findings: Finding[] = causal.map((v: BoundaryViolation) => {
-        const s = surfaceByRef.get(v.surfaceRef);
-        return {
-          code: surfaceDefectCode(s),
-          gate: "narrow_boundary_review",
-          boundaryId: v.boundaryId,
-          phase: s?.phase,
-          branchIndex: s?.branchIndex,
-          choiceIndex: s && s.index >= 0 ? s.index : undefined,
-          // R2.36 — the packet states WHAT was proved and FROM WHERE. A Manager reading a finding
-          // can now see that the prerequisite excerpt came from the surface's own text or from its
-          // parent state, and which prerequisite status was asserted, rather than two bare strings.
-          // R2.38 — every excerpt here was RESOLVED by the server from a candidate id the reviewer
-          // selected. A Manager reading a finding sees the state, the ids, and the canonical
-          // provenance of both spans; nothing in this string came from model-authored prose.
-          detail:
-            `${v.surfaceRef} [${v.stateId} -> ${v.violationMechanism}] ` +
-            `action(${v.governedActionCandidateId}@${v.governedActionSegmentRef}): ${v.governedActionEvidence} || ` +
-            `prerequisite ${v.prerequisiteStatus} (${v.prerequisiteFailureCandidateId}@${v.prerequisiteSegmentRef}/${v.prerequisiteSegmentKind}, ${v.temporalRelation}): ` +
-            v.prerequisiteFailureEvidence,
-        };
-      });
+      const groups = rejected?.causalGroups ?? [];
+      const findings = projectCausalFindings(groups, causal, surfaceByRef);
       log("boundary_review_reject", findings[0]?.code, {
         boundaryReviewSubjectSha256: subjectSha,
         defectCodes: [...new Set(findings.map((f) => f.code))],
         violations,
         causalViolations: causal.map((v) => v.surfaceRef),
         downstreamViolations: downstream.map((v) => v.surfaceRef),
+        causalAttributions: (rejected?.causalAttributions ?? []).map((a) => `${a.ancestorSurfaceRef}<-${a.manifestationSurfaceRef}`),
+        causalCorrectionGroups: groups.map((g) => [g.correctionOwnerSurfaceRef, ...g.manifestationSurfaceRefs].join("+")),
       });
       return {
         ...empty("boundary_review_reject"),
@@ -555,6 +614,9 @@ export async function runBoundaryReviewStage(
         violations,
         causalViolations: causal,
         downstreamViolations: downstream,
+        causalAttributions: rejected?.causalAttributions ?? [],
+        causalGroups: groups,
+        causalAttributionMetrics: rejected?.causalAttributionMetrics ?? EMPTY_CAUSAL_METRICS,
         findings,
         reruns,
       };

@@ -101,6 +101,11 @@ import {
 import { semanticFrameContractSha256 } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import { candidateRoleContractSha256 } from "@/domain/foundry/arena-draft/boundaryCandidateRole";
 import { EVIDENCE_POLARITY, POLARITY_REFUSAL_CODES, evidencePolarityContractSha256 } from "@/domain/foundry/arena-draft/boundaryEvidencePolarity";
+import {
+  ATTRIBUTION_AUTHORITY,
+  ATTRIBUTION_REFUSAL_CODES,
+  causalAttributionContractSha256,
+} from "@/domain/foundry/arena-draft/generatedResultAttribution";
 import { explanationAuthoritySha256 } from "@/domain/foundry/arena-draft/boundaryExplanation";
 import {
   BOUNDARY_REPORTABLE_OUTCOMES,
@@ -177,7 +182,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.44.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.46.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -387,6 +392,45 @@ export function buildContractManifest(head: string, model: string): ContractMani
         uncertainObservedNotEnforced: true,
         appliesToInheritedParentState: true,
         termsFrom: "semanticFrame.prerequisiteClause",
+      }),
+      // R2.46 — a violation proved on a generated world state is, by the generation schema, the
+      // consequence of the one choice that produced it. That assigns CORRECTION OWNERSHIP only:
+      // primary[1] keeps `absent`, keeps candidate 2-a1, keeps `not_applicable`, and never borrows
+      // its child's candidate id. R2.45 measured why no text rule can do this job.
+      generatedResultAncestorAttribution: causalAttributionContractSha256(),
+      generatedResultAttributionEdge: digest({
+        authority: ATTRIBUTION_AUTHORITY,
+        refusalCodes: ATTRIBUTION_REFUSAL_CODES,
+        edgeFrom: "generationSchema.branches[primaryChoiceId].resultingWorldState",
+        requiresSingleDirectParent: true,
+        requiresLearnerDecisionParent: true,
+        requiresIndependentlySelectableParent: true,
+        requiresParentInFrozenSurfaceMap: true,
+        requiresCandidateValidChildViolation: true,
+        requiresBranchIndexMatchesPrimaryIndex: true,
+        twoHopDescendantRefused: true,
+        textOverlapConsulted: false,
+        modelAuthoredAttributionField: false,
+      }),
+      boundaryDirectRowImmutability: digest({
+        ancestorDirectAssessmentMutationCount: 0,
+        ancestorGovernedActionStatusPreserved: true,
+        ancestorGovernedActionCandidateIdPreserved: true,
+        ancestorApplicabilityPreserved: true,
+        childCandidateIdsPreserved: true,
+        childViolationMechanismPreserved: true,
+        candidatePoolsUnchanged: true,
+        crossSurfaceCandidateCitationStillRefused: "boundary_candidate_wrong_surface",
+      }),
+      boundaryCausalCorrectionOwnership: digest({
+        groupedBy: "explicit_causal_group_identity",
+        dedupBasisIsMechanismEquality: false,
+        ownerIsAncestorWhenAttributed: true,
+        manifestationRetainsDirectFinding: true,
+        manifestationEmitsNoSeparateInstruction: true,
+        independentlySelectableReopeningRemainsOwnOwner: true,
+        packetItemsPerCausalGroup: 1,
+        ownerAndManifestationShareOneItemAtTwoCoordinates: true,
       }),
       boundaryGovernedActionPoolConstruction: digest({
         roleGate: "boundaryCandidateRole",

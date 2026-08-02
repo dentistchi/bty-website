@@ -325,11 +325,24 @@ describe("correction-packet authority", () => {
       deps(async (s, a) => call(s, a, responseFor(s, asViolation(s, "branch[1].resulting_world_state", "resulting_state_missing_prerequisite")))),
       args(),
     );
-    expect(r.findings).toHaveLength(1);
-    expect(r.findings[0]).toMatchObject({ code: "branch_drops_boundary", gate: "narrow_boundary_review", boundaryId: "c1_verify", branchIndex: 1 });
-    expect(r.findings[0]!.detail).toContain("branch[1].resulting_world_state");
-    expect(r.findings[0]!.detail).toContain("resulting_state_missing_prerequisite");
-    expect(r.findings[0]!.detail).toContain("remains unverified");
+    // R2.46 — a violation proved on a GENERATED state is owned by the choice that produced it. One
+    // correction, stated at two coordinates: the primary choice that must change, and the generated
+    // state where the breach was proved. The code names the OWNER's defect.
+    expect(r.findings).toHaveLength(2);
+    for (const f of r.findings) expect(f).toMatchObject({ code: "choice_bypasses_boundary", gate: "narrow_boundary_review", boundaryId: "c1_verify" });
+    expect(new Set(r.findings.map((f) => f.code)).size).toBe(1);
+    expect(r.causalAttributions).toHaveLength(1);
+    expect(r.causalAttributions[0]).toMatchObject({ ancestorSurfaceRef: "primary[1]", manifestationSurfaceRef: "branch[1].resulting_world_state" });
+    // The manifestation's own evidence is still what the correction cites.
+    const manifestation = r.findings.find((f) => f.detail?.startsWith("branch[1].resulting_world_state"))!;
+    expect(manifestation.detail).toContain("resulting_state_missing_prerequisite");
+    expect(manifestation.detail).toContain("remains unverified");
+    expect(manifestation).toMatchObject({ branchIndex: 1 });
+    // And the owner coordinate names primary[1] without borrowing the child's candidate id.
+    const owner = r.findings.find((f) => f.detail?.startsWith("primary[1]"))!;
+    expect(owner.detail).toContain("correction owner");
+    // Direct rows untouched.
+    expect(r.causalAttributionMetrics.ancestorDirectAssessmentMutationCount).toBe(0);
   });
 
   it("an inconclusive or malformed result produces NO correction findings — no blind rewrite", async () => {

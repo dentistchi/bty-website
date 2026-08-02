@@ -411,7 +411,17 @@ describe(`[18-23] precision replay mock proof (${present() ? "evidence present �
     expect(summary.outcome).toBe("boundary_review_reject");
     const body = JSON.parse(readFileSync(join(dir, files[0]!), "utf8"));
     expect(body.causalViolations.length).toBeLessThanOrEqual(body.violations.length);
-    expect(body.findings.length).toBe(body.causalViolations.length);
+    // R2.46 — one correction per CAUSAL GROUP, not per violating surface. A generated state folded
+    // into its parent's group contributes a coordinate, never a second instruction, so the finding
+    // count is the coordinate count and the distinct codes never exceed the group count.
+    expect(body.causalGroups.length).toBeLessThanOrEqual(body.causalViolations.length);
+    const coordinates = body.causalGroups.reduce(
+      (n: number, g: { attributed: boolean; manifestationSurfaceRefs: string[] }) => n + 1 + (g.attributed ? g.manifestationSurfaceRefs.length : 0),
+      0,
+    );
+    expect(body.findings.length).toBe(coordinates);
+    expect(new Set(body.findings.map((f: { code: string }) => f.code)).size).toBeLessThanOrEqual(body.causalGroups.length);
+    expect(body.causalAttributionMetrics.ancestorDirectAssessmentMutationCount).toBe(0);
     // R2.38 — the detail carries the derived STATE and the derived mechanism, plus the candidate ids.
     for (const f of body.findings) expect(f.detail).toMatch(/\[[a-z_]+ -> [a-z_]+\]/);
   });

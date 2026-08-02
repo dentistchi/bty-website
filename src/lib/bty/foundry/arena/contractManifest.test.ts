@@ -171,7 +171,7 @@ describe("R2.23A — cardinality, bounds and budget are part of the contract", (
     // produced while satisfaction text could still be offered as failure evidence — the defect that
     // produced five false findings on a branch that kept the boundary.
     expect(manifestDigest(m)).not.toBe("2911ce142576e55be8be1087d7184302e047a899a3278824acc1af79ef143b23"); // R2.42
-    expect(m.artifactSchemaVersion).toBe("r2.44.1");
+    expect(m.artifactSchemaVersion).toBe("r2.46.1");
   });
 
   it("the measured budget acceptance is carried in the manifest, not asserted away", () => {
