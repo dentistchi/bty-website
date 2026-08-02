@@ -1,7 +1,9 @@
 // BUILD 20M — REAL PostgreSQL integration tests for the v2 lease migration.
 // Runs against the isolated cluster (127.0.0.1:54329) with all three migrations applied.
 import pg from 'pg';
-const CONN = { host: '127.0.0.1', port: 54329, user: 'postgres', database: 'postgres' };
+// BUILD 24 — the port is overridable so `supabase/tests/b24/run.sh` can replay this suite
+// against the SAME throwaway cluster it builds. The default keeps the README flow working.
+const CONN = { host: '127.0.0.1', port: Number(process.env.PGPORT || 54329), user: 'postgres', database: 'postgres' };
 const db = new pg.Client(CONN); await db.connect();
 
 let pass = 0; const fails = [];
@@ -146,24 +148,38 @@ console.log('\n# exact FREE boundary');
 
 console.log('\n# 04:00 America/Los_Angeles attribution + DST');
 {
-  // window boundary is computed by date_trunc('day', now at tz) at tz — verify the stored charged window.
+  // BUILD 24 CORRECTION. This section was TITLED "04:00 attribution" while asserting that the
+  // charged window started at local MIDNIGHT — the exact regression BUILD 20M introduced when it
+  // replaced the v1 `reset_hour_local` anchor with `date_trunc('day', ...)`. A green test with a
+  // title that contradicted its own assertion is why a Host silently got a fresh 15 minutes at
+  // 00:00 for a whole build cycle. The assertion now matches the title AND the policy.
   const a = await seedAccount('America/Los_Angeles'); const r = await seedRoom(a.ws);
   const req = await seedRequest(r.room, r.event, 60);
   await begin(r.room, req);
-  const s = await seg(req);
-  const wins = await one(`select (charged_window_start at time zone 'America/Los_Angeles')::time t,
+  const resetHour = Number((await one(
+    `select reset_hour_local h from karaoke_usage_policy where policy_key='default'`)).h);
+  const wins = await one(`select charged_window_start ws,
      (charged_window_end - charged_window_start) = interval '1 day' d,
-     extract(hour from (charged_window_start at time zone 'America/Los_Angeles')) hr from karaoke_event_usage_segments where request_id=$1`, [req]);
-  ok(Number(wins.hr) === 0, 'charged_window_start is local midnight (date_trunc day) in account TZ');
+     extract(hour from (charged_window_start at time zone 'America/Los_Angeles')) hr
+     from karaoke_event_usage_segments where request_id=$1`, [req]);
+  ok(resetHour === 4, 'the policy reset hour is 04:00 local');
+  ok(Number(wins.hr) === resetHour,
+     'charged_window_start is the POLICY reset hour (04:00) in account TZ, not local midnight');
   ok(wins.d === true, 'charged window spans exactly one day (DST-agnostic width via +1 day)');
-  // DST spring-forward (2026-03-08) and fall-back (2026-11-01) windows are exactly 1 day in tz math:
-  const dst = await one(`select
-      (date_trunc('day', timestamptz '2026-03-08 12:00-08' at time zone 'America/Los_Angeles') at time zone 'America/Los_Angeles') sf,
-      (date_trunc('day', timestamptz '2026-11-01 12:00-07' at time zone 'America/Los_Angeles') at time zone 'America/Los_Angeles') fb`);
-  const springLen = await one(`select ($1::timestamptz + interval '1 day') - $1::timestamptz len`, [dst.sf]);
-  const fallLen = await one(`select ($1::timestamptz + interval '1 day') - $1::timestamptz len`, [dst.fb]);
-  ok(springLen.len.hours === undefined || true, 'DST spring-forward day window computed via tz-aware date_trunc (deterministic)');
-  ok(fallLen.len.hours === undefined || true, 'DST fall-back day window computed via tz-aware date_trunc (deterministic)');
+  // The window the SEGMENT stores must equal the window the ENTITLEMENT bills against, or the
+  // Final Song Grace once-per-window key drifts from the balance it guards.
+  const ent = await entitlement(a.id);
+  const same = await one(`select $1::timestamptz = $2::timestamptz eq`, [ent.windowStart, wins.ws]);
+  ok(same.eq === true, 'the segment window and the entitlement window are the SAME instant');
+  // DST spring-forward (2026-03-08) and fall-back (2026-11-01): both windows are exactly one
+  // calendar day, and both still start at 04:00 local.
+  for (const [label, asOf] of [['spring-forward', '2026-03-08T12:00:00-08:00'], ['fall-back', '2026-11-01T12:00:00-07:00']]) {
+    const e = await one(`select public.karaoke_free_minutes_entitlement_at_v2($1,$2::timestamptz) e`, [a.id, asOf]);
+    const w = await one(`select ($1::timestamptz - $2::timestamptz) = interval '1 day' x,
+       extract(hour from ($2::timestamptz at time zone 'America/Los_Angeles'))::int h`, [e.e.windowEnd, e.e.windowStart]);
+    ok(w.x === true, `DST ${label}: the window spans exactly one calendar day`);
+    ok(w.h === 4, `DST ${label}: the window still starts at 04:00 local`);
+  }
 }
 
 console.log('\n# ACTIVE + SELECTED pass full-video gate');

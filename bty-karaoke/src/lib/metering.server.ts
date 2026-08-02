@@ -9,6 +9,7 @@
 
 import { karaokeDb } from './supabase.server';
 import { resolveVideoDuration, type DurationFailureReason } from './youtube-duration.server';
+import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 
 /** karaoke_begin_song outcomes (superset; callers map to their own result types). */
 export type BeginOutcome =
@@ -265,6 +266,55 @@ export async function readRoomEntitlement(roomId: string): Promise<Record<string
   const accountId = await roomOwnerAccountId(roomId);
   if (!accountId) return null;
   return readEntitlement(accountId);
+}
+
+/**
+ * BUILD 24 — the server-authoritative anchor a client's live playback clock projects from.
+ *
+ * The whole point is that these five values come from ONE server instant. Assembling them from
+ * separate reads would let `serverNow` drift away from `startedAt`, which is precisely the kind
+ * of seam that turns a "live" clock into a plausible-looking lie. Read-only: it starts nothing,
+ * charges nothing, and opens no segment.
+ *
+ * `durationSeconds: null` means the duration was never trusted — clients MUST render an honest
+ * unknown-duration state, never a countdown from 0.
+ *
+ * The shape itself lives in `domain/playback-clock`, because both the projection that consumes
+ * it and the guest-safe narrowing of it are pure and unit-tested there.
+ */
+export type PlaybackAuthority = PlaybackAuthorityWire;
+
+/**
+ * Read the playback authority for a room. Never throws into the queue read: a hiccup degrades
+ * to "no anchor" (the client then shows no clock) rather than failing the whole poll, because a
+ * missing clock is recoverable on the next tick and a failed queue read is not.
+ */
+export async function readPlaybackAuthority(roomId: string): Promise<PlaybackAuthority> {
+  const fallback: PlaybackAuthority = {
+    serverNow: new Date().toISOString(),
+    requestId: null,
+    startedAt: null,
+    durationSeconds: null,
+    leaseEndsAt: null,
+  };
+  try {
+    const { data, error } = await karaokeDb().rpc('karaoke_room_playback_authority', {
+      p_room_id: roomId,
+      p_as_of: fallback.serverNow,
+    });
+    if (error) return fallback;
+    const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+    if (!row) return fallback;
+    return {
+      serverNow: iso(row.serverNow) ?? fallback.serverNow,
+      requestId: iso(row.requestId) ?? null,
+      startedAt: iso(row.startedAt) ?? null,
+      durationSeconds: num(row.durationSeconds) ?? null,
+      leaseEndsAt: iso(row.leaseEndsAt) ?? null,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 /** One-time browser timezone capture (atomic; eligible only while source='default' + zero usage). */

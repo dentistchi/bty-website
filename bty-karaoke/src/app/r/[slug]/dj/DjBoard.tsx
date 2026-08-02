@@ -39,6 +39,9 @@ import DjActionSheet from './DjActionSheet';
 import DjAdminMenu from './DjAdminMenu';
 import DjEventStatusSheet from './DjEventStatusSheet';
 import DjAddSongSheet from './DjAddSongSheet';
+import NowSingingClock from './NowSingingClock';
+import { usePlaybackClock } from './usePlaybackClock';
+import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 
 /** Small "likely has words on the TV" badge for a request's video. */
 function VideoKindBadge({ title, channel }: { title: string; channel: string | null }) {
@@ -183,6 +186,8 @@ interface QueuePayload {
   stats: { requests: number; guests: number };
   requests: KaraokeRequest[];
   eventStatus: DjEventStatus | null;
+  /** BUILD 24 — server-stamped anchor for the live song clock (absent on an older server). */
+  playback?: PlaybackAuthorityWire | null;
 }
 
 interface Props {
@@ -272,6 +277,10 @@ export default function DjBoard({
 
   const requests = data?.requests ?? [];
   const { current, queue } = selectStage(requests);
+  // BUILD 24 — the live song clock. `current` is the SERVER's canonical on-stage request, so the
+  // clock stops the instant the server stops reporting one (finish, skip, auto-advance refusal,
+  // event end) with no per-transition special-casing.
+  const playbackClock = usePlaybackClock(data?.playback, Boolean(current));
   // Stable open-sheet callback so memoized rows never re-render just because a
   // new closure was created on a poll.
   const openSheet = useCallback((r: KaraokeRequest) => setSheetFor(r), []);
@@ -721,7 +730,12 @@ export default function DjBoard({
             <div className="stage-hero ready" key={firstReady.id}>
               <div className="eyebrow">READY TO PLAY</div>
               {/* Operator context: who is on stage right now (informational only). */}
-              {current && <div className="muted now-context">🎙 지금 무대 · {current.guest_name}</div>}
+              {current && (
+                <div className="muted now-context">
+                  🎙 지금 무대 · {current.guest_name}
+                  <NowSingingClock song={playbackClock.song} lease={playbackClock.lease} />
+                </div>
+              )}
               {firstReady.youtube_thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img className="stage-thumb" src={firstReady.youtube_thumbnail_url} alt="" style={{ marginTop: 12 }} />
@@ -762,7 +776,12 @@ export default function DjBoard({
             // guest presses "준비됐어요", at which point the button appears.
             <div className="stage-hero ready">
               <div className="eyebrow">READY TO PLAY</div>
-              {current && <div className="muted now-context">🎙 지금 무대 · {current.guest_name}</div>}
+              {current && (
+                <div className="muted now-context">
+                  🎙 지금 무대 · {current.guest_name}
+                  <NowSingingClock song={playbackClock.song} lease={playbackClock.lease} />
+                </div>
+              )}
               <div className="stage-title" style={{ marginTop: 10 }}>
                 다음 준비된 참가자를 기다리는 중
               </div>

@@ -17,6 +17,8 @@ import {
   classifyDurationAdmission,
   MAX_REQUESTABLE_DURATION_SECONDS,
 } from '@/domain/duration-admission';
+import { readPlaybackAuthority } from '@/lib/metering.server';
+import { toGuestPlaybackAuthority } from '@/domain/playback-clock';
 import { requestAcceptance } from '@/lib/sessions.server';
 import { resolveEventAccess, getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
@@ -35,10 +37,18 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
   // guest read never creates an event — this is a pure lookup. Null only for a
   // legacy room that never had an Event.
   const event = live ?? (await getLatestEndedEvent(room.id));
-  const requests = await listActiveRequests(room.id, live?.id ?? null);
+  const [requests, authority] = await Promise.all([
+    listActiveRequests(room.id, live?.id ?? null),
+    // BUILD 24 §G4 — the Guest anchors its song clock on the SAME server instant the Host does,
+    // so the two cannot invent different remaining times for the same canonical request.
+    readPlaybackAuthority(room.id),
+  ]);
   return NextResponse.json(
     {
       room,
+      // Guest-safe narrowing: `leaseEndsAt` is account METERING state and never reaches a public
+      // reader. The Guest projects time only; it never meters and never mutates a balance.
+      playback: toGuestPlaybackAuthority(authority),
       // BUILD 20M-SERVER-R3.1A — explicit Guest-safe projection. The raw row carries
       // idempotency_key / session_id / room_id and must NEVER reach a public reader
       // (harvesting the key turned the 18B replay into an ownership oracle).

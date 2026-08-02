@@ -5,7 +5,9 @@
 // full song so external playback stays authorized and the union protects the next start, while
 // only the remaining balance is billed. Every test below pins that divergence explicitly.
 import pg from 'pg';
-const CONN = { host: '127.0.0.1', port: 54333, user: 'postgres', database: 'postgres' };
+// BUILD 24 — the port is overridable so `supabase/tests/b24/run.sh` can replay this suite
+// against the SAME throwaway cluster it builds. The default keeps the README flow working.
+const CONN = { host: '127.0.0.1', port: Number(process.env.PGPORT || 54333), user: 'postgres', database: 'postgres' };
 const db = new pg.Client(CONN); await db.connect();
 
 let pass = 0; const fails = [];

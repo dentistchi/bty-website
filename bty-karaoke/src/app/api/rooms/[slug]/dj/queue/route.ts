@@ -14,6 +14,7 @@ import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, listActiveRequests, activeRequestStats } from '@/lib/rooms.server';
 import { getActiveSession } from '@/lib/sessions.server';
 import { getEventStatusForRoom, getCanonicalEvent } from '@/lib/events.server';
+import { readPlaybackAuthority } from '@/lib/metering.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,11 +31,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
   // event's rows (V7.1) — never the room's whole history. Null for legacy rooms.
   const event = await getCanonicalEvent(auth.room.id);
 
-  const [requests, stats, session, eventStatus] = await Promise.all([
+  const [requests, stats, session, eventStatus, playback] = await Promise.all([
     listActiveRequests(auth.room.id, event?.id ?? null),
     activeRequestStats(auth.room.id, event?.id ?? null),
     getActiveSession(auth.room.id),
     getEventStatusForRoom(auth.room.id), // null for legacy non-event rooms; else event-scoped
+    // BUILD 24 — the server-stamped anchor the live song clock projects from. Read-only and
+    // fail-soft (a hiccup yields a null anchor → no clock), so it can never break a queue poll.
+    readPlaybackAuthority(auth.room.id),
   ]);
 
   return NextResponse.json({
@@ -46,5 +50,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     eventStatus,
     // Canonical event identity — same id the Display/Guest/Admin resolve.
     event: event ? { id: event.id, name: event.name, status: event.status } : null,
+    // BUILD 24 — additive. Every client anchors its live clock on THIS one server instant, so
+    // Host Web, mobile browser, native Host and native Guest cannot invent different times.
+    playback,
   });
 }

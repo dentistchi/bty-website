@@ -18,6 +18,7 @@ import DjBoard from './DjBoard';
 import UsageBanner from './UsageBanner';
 import { adminAuthHeader, isCookieCred } from '@/domain/admin-auth';
 import type { UsageProjection } from '@/domain/usage';
+import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 
 interface Props {
   slug: string;
@@ -179,6 +180,11 @@ interface QueuePayload {
   requests: KaraokeRequest[];
   /** Event context (null for legacy non-event rooms) — powers the status sheet. */
   eventStatus: DjEventStatus | null;
+  /**
+   * BUILD 24 — the server-stamped anchor the live song clock projects from. Optional so a
+   * console served by an older Worker simply shows no clock instead of inventing one.
+   */
+  playback?: PlaybackAuthorityWire | null;
 }
 
 export default function DjConsole({ slug, displayName, dev = false, sessionCred = null, onSessionInvalid }: Props) {

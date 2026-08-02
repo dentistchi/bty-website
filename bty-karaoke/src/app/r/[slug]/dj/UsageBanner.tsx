@@ -56,22 +56,36 @@ export default function UsageBanner({ usage }: { usage: UsageProjection | null }
   };
   const p = palette[usage.bannerKind] ?? palette.normal;
 
+  // BUILD 24 §6.5 — the exact remaining MM:SS is shown in EVERY FREE+enforced state, matching
+  // the native banner (UsageProjection.swift), which has always done so. The web previously
+  // printed the number only in `normal`, so the two Hosts described the same server state
+  // differently the moment a warning appeared.
+  //
+  // BUILD 24 §8 — MM:SS, never whole minutes. The reported "13분 for ages" was minute-rounding
+  // on the native compact header: a real change of up to 59 seconds is invisible at that
+  // granularity, which reads as frozen even when the underlying value is perfectly correct.
+  const clock = fmtRemaining(remaining);
+
   let title: string;
   let detail: string | null = null;
   switch (usage.bannerKind) {
     case 'normal':
-      title = `FREE · 오늘 남은 무료 시간 ${fmtRemaining(remaining)}`;
+      title = `FREE · 오늘 남은 무료 시간 ${clock}`;
       detail = resetLine;
       break;
     case 'five_min':
-      title = '무료 이용 시간이 5분 남았어요';
+      title = `무료 이용 시간이 ${clock} 남았어요`;
       detail = '재생 중인 곡은 끝까지 부를 수 있어요.';
       break;
     case 'two_min':
-      title = '무료 이용 시간이 2분 남았어요';
+      title = `무료 이용 시간이 ${clock} 남았어요`;
       detail = '시간이 끝나기 전에 시작한 곡은 끝까지 부를 수 있어요.';
       break;
     case 'zero_playing':
+      // Reachable again only because BUILD 24 restored `activePlaybackCount` to the v2
+      // entitlement. While it was missing this state was DEAD, and a Host who exhausted FREE
+      // mid-song — including every Final Song Grace admission — was shown the red block below
+      // instead, i.e. told the song they were listening to could not play.
       title = '오늘 무료 이용 시간을 모두 사용했어요';
       detail = '이 곡은 끝까지 부를 수 있지만, 다음 곡은 시작할 수 없어요.';
       break;
