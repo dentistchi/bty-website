@@ -1,16 +1,25 @@
 # BUILD 24 — LIVE PLAYBACK CLOCK & FREE BALANCE TRUTH V1
 
-**Status: IMPLEMENTED · DEVICE GATE PENDING · NOT DEPLOYED**
+**Status: PASS / CLOSED — 2026-08-02**
 
-Deterministic authority work is complete and green, and the commits are pushed.
+Deployed, migrated, Founder-attested on device, and re-verified end to end.
 
-- **G1–G8 remain NOT RUN** — they are device/browser gates. (An earlier revision of this line said
-  "G1–G9", which was wrong: G9 is automated and passed.)
-- **G9 and G10 are automated PASS.**
-- **The production migration is BLOCKED** — remote migration authority is unavailable (§7).
-- Nothing is deployed; native build 78 is not distributed.
+- **G1, G3–G8 — FOUNDER ATTESTED** on the live production stack.
+- **G2 — DEFERRED / NON-BLOCKING** by explicit Founder decision: the mobile browser fallback is
+  not part of the primary Native operating path (§6).
+- **G9, G10 — automated PASS.**
+- **The production migration is APPLIED.** The block recorded in earlier revisions of §7 is
+  **RESOLVED**; §7 now records what was positively verified against production.
+- Native **build 79** is installed on the Founder device. Worker `dca14ffc` serves 100%.
 
-This document does not claim PASS.
+Two gates failed on first attempt and were corrected before passing: **G1** (web,
+`abece404`) and **G3** (native build 78 → **79**, `7a8a6b3`). Both are recorded as such in §6 —
+a corrected gate is never backdated to a clean pass.
+
+**One deviation from the closure checklist is recorded in §7.3 and is not claimed as verified:**
+the Supabase CLI ledger comparison (`migration list --linked` / `db push --linked --dry-run`)
+still returns 403 from this machine. Direct read-only schema verification was substituted and is
+reported in full; it establishes that the migration is applied, but it cannot detect ledger drift.
 
 ---
 
@@ -20,7 +29,14 @@ This document does not claim PASS.
 > remaining time can appear frozen instead of visibly decreasing.
 > Observed: FREE stuck around `13분`, current song stuck around `2:42`.
 
-Both observations were real. Neither had the cause the report assumed.
+**The original "frozen clock" report was a misdiagnosis.** Both observations were real; neither
+had the cause the report assumed, and nothing was frozen. `2:42` was a **static duration badge**
+that had no countdown to freeze, and the FREE balance is **charged upfront by lease-union
+authority**, so holding steady during playback is the contract working. This is recorded as the
+build's founding finding, not as a retrospective excuse: acting on the report as written would
+have added a client-side per-second countdown against a balance the server had already debited —
+a double-charge. Tracing *why* the report looked true surfaced the five defects in §2, which are
+the real content of BUILD 24.
 
 ### `2:42` — there was no clock to freeze
 
@@ -244,7 +260,7 @@ failing the queue poll. **No new migration was needed for the clock itself** —
 - `UsageBanner.tsx` — exact MM:SS in **every** FREE+enforced state (native parity; the web
   previously printed the number only in `normal`).
 
-### Native (build **78**)
+### Native (implemented in build **78**; shipped as build **79** after the G3 correction)
 
 - `PlaybackClock.swift` — faithful Swift mirror; Foundation-only, self-contained ISO parsing so
   both standalone harnesses compile it.
@@ -257,22 +273,32 @@ failing the queue poll. **No new migration was needed for the clock itself** —
   **R3.1-A is deliberately preserved**: it keeps unit suffixes rather than adopting the banner's
   colon clock, because a device Host previously read a bare `0:48` as *48 minutes*. The surfaces
   differ in **form**, never in **value**.
+- **Build 79 (G3 correction)** — `AdmissionCopy.upgradeRequired` gained `remainingSeconds` as its
+  sole discriminator (with the refusal's own usage projection as fallback), wired into both Start
+  entry points and the auto-advance path; `UsageBannerModel` now attaches the reset line in every
+  FREE + enforced state. See §6.
 
 ---
 
 ## 5. Tests
 
-| Suite | Result |
-|---|---|
-| Web `tsc --noEmit` | clean |
-| Web Vitest | **2044 passed** (199 files) — was 1983 |
-| Web `next build` | success |
-| Native Host harness | **1560 passed, 0 failed** — was 1502 |
-| Native Guest harness | **653 passed, 0 failed** — was 642 |
-| Xcode Debug / Release (generic iOS) | exit 0, 0 errors |
-| Postgres — BUILD 24 authority | **76 passed, 0 failed** |
-| Postgres — BUILD 20M lease replay | **72 passed, 0 failed** |
-| Postgres — BUILD 20M-R4 grace replay | **71 passed, 0 failed** |
+Final closure re-run, 2026-08-02, on the shipped trees (`abece404` web · `7a8a6b3` native):
+
+| Suite | Result | At implementation |
+|---|---|---|
+| Web Vitest | **2071 passed** (200 files) | 2044 (199) |
+| Native Host harness | **1631 passed, 0 failed** | 1560 |
+| Native Guest harness | **653 passed, 0 failed** | 653 |
+| Xcode Debug (generic iOS) | **BUILD SUCCEEDED** | success |
+| Xcode Release (generic iOS) | **BUILD SUCCEEDED** | success |
+| Postgres — BUILD 24 authority | **76 passed, 0 failed** | 76 |
+| Postgres — BUILD 20M lease replay | **72 passed, 0 failed** | 72 |
+| Postgres — BUILD 20M-R4 grace replay | **71 passed, 0 failed** | 71 |
+
+The web count rose 2044 → 2071 with the G1 correction (`admission-copy.g1.test.ts` +
+`UsageBanner.render.test.tsx`); the Native Host count rose 1560 → 1631 with the G3 correction
+(`build24G3EntitlementCopyTests`). Both increases are the corrections' own coverage, not a
+re-count of existing cases.
 
 All §9 cases are covered on **injected clocks**; there are no real-time sleeps in any unit test.
 
@@ -284,80 +310,204 @@ FREE balance legitimately hold across consecutive songs.
 
 ---
 
-## 6. Gate status — honest accounting
+## 6. Gate status — final record
 
 | Gate | Status | Evidence |
 |---|---|---|
-| G1 Host Web active clock | **NOT RUN** (device/browser) | deterministic half green: `NowSingingClock.render.test.tsx` proves the value changes across 15s with no refresh |
-| G2 Mobile browser parity | **NOT RUN** | — |
-| G3 Native Host parity | **NOT RUN** | deterministic half green: `B24-K` VM cases |
-| G4 Native Guest convergence | **NOT RUN** on device | deterministic half green: `B24-G4` proves identical projection + that no lease reaches a Guest |
-| G5 Finish / auto-advance | **NOT RUN** | deterministic half green: clock is `.idle` the instant the server reports no on-stage row |
-| G6 Skip transition | **NOT RUN** | same mechanism as G5 |
-| G7 Relaunch / sleep recovery | **NOT RUN** | deterministic half green: sleep/backwards-monotonic/clamp cases |
-| G8 FREE exhaustion + Final Song Grace | **NOT RUN** on device | **DB half PROVEN** — grace admits, charges only the balance, converges to 0, once per window |
-| G9 04:00 reset boundary | **PROVEN (automated)** | `window-truth.pg.test.mjs` — v1/v2 window equality, 02:00 vs 04:30 attribution, both DST transitions |
-| G10 Full regression | **PROVEN (automated)** | the eight suites in §5 |
+| G1 Host Web active clock | **PASS — FOUNDER ATTESTED** (after correction) | failed first attempt; corrected in `abece404`; re-run by Founder |
+| G2 Mobile browser parity | **DEFERRED / NON-BLOCKING** | explicit Founder decision — see below |
+| G3 Native Host entitlement truth | **PASS — FOUNDER ATTESTED** (after correction) | failed on build 78; corrected in `7a8a6b3`/build 79; re-run by Founder on device |
+| G4 Native Guest convergence | **PASS — FOUNDER ATTESTED** | device; matches Host projection |
+| G5 Natural finish / auto-advance | **PASS — FOUNDER ATTESTED** | device |
+| G6 Manual finish / skip transition | **PASS — FOUNDER ATTESTED** | device |
+| G7 Background / relaunch / authority restoration | **PASS — FOUNDER ATTESTED** | device |
+| G8 Final Song Grace + zero-playing + second-start refusal | **PASS — FOUNDER ATTESTED** | device; evidence below |
+| G9 04:00 America/Los_Angeles boundary | **PASS (automated)** | `window-truth.pg.test.mjs` — v1/v2 window equality, 02:00 vs 04:30 attribution, both DST transitions |
+| G10 Full regression baseline | **PASS (automated)** | the eight suites in §5 |
 
-**No gate here is labelled automated unless a command produces it.** G1–G8 need a real device or
-browser; G9 and G10 are fully deterministic and were run.
+**No gate is labelled automated unless a command produces it, and no manually attested gate is
+relabelled automated.** G1 and G3–G8 are Founder attestations against the live production stack;
+G9 and G10 are deterministic.
+
+### G2 — deferred, and why that is not a silent pass
+
+G2 (mobile browser parity) is **DEFERRED / NON-BLOCKING** by explicit Founder decision: the mobile
+browser fallback is **not part of the primary Native operating path**, which is what BUILD 24
+ships against. It is recorded as deferred, **not** as passed, and not as covered by G1 — G1 is a
+desktop administrative-console gate and does not exercise the mobile surface. If the mobile
+browser fallback is later promoted to an operating path, G2 must be run before that promotion.
+
+### Two gates failed first, and were corrected
+
+Neither is backdated to a clean pass. Both failures were the **same defect class**, found on two
+clients a day apart.
+
+- **G1 — FAILED.** With 1:50 of FREE time left and a 4:41 next song, Host Web showed the correct
+  balance and *"오늘의 무료 이용 시간을 모두 사용했어요"* on one screen. Corrected in
+  [`abece404`](#) — `upgradeRequiredCopy()` in `@/domain/admission-copy` became the one selector,
+  wired into `/dj/start`, `/dj/pass-turn` and `/requests/[id]`.
+- **G3 — FAILED on native build 78.** The identical contradiction, reached through the real
+  auto-advance refusal path: *"이용권 5개 · FREE 1분 2초"* beside *"오늘의 무료 이용 시간을 모두
+  사용했어요"*. Corrected in `7a8a6b3` (**build 79**).
+
+**Root cause, common to both.** `karaoke_begin_song_v2` raises `upgrade_required` for the whole
+predicate `v_charge > v_remaining`. Exhaustion is only the special case where `v_remaining` is 0.
+Call sites had hard-coded "all time used" as the sole wording for that outcome, so every refusal
+claimed a zero balance regardless of the real one — and pointed the Host at the wrong remedy. At
+zero you wait for the reset or upgrade; with time left, a shorter song works immediately.
+
+**The native-specific finding.** On build 78 the manual Start path was already authority-aware
+(it had itemised from the published admission detail since R1). Only `finishCurrentAndOpenNext`
+— the auto-advance path — discarded **both** the admission detail and the usage projection that
+the same `/dj/pass-turn` response carries, and substituted a hard-coded constant. The branch
+previously described as latent was reachable on the real refusal path.
+
+**Both fixes are presentation only.** `remainingSeconds` is the sole discriminator and always
+comes from the authority (published detail first, then the usage projection carried by the same
+refusal). No client-side admission decision, no re-derivation of the 90-second Final Song Grace
+bound, and no client-side grace calculation was introduced. An absent remaining still reads as
+exhausted — the safe direction, since it never claims time the Host cannot be shown to have.
+
+A second, independent defect was corrected alongside each: `nextResetAt` was attached only to the
+`normal` and `zero_idle` states, so it was **omitted precisely in the warning states** — `two_min`
+among them — which are the states a Host actually reads it in. It is now present in every
+FREE + enforced state on both clients, formatted from the server instant in the account timezone.
+04:00 is never hard-coded, and an absent server value omits the line rather than guessing.
+
+### G8 — Founder device evidence
+
+| Observation | Value |
+|---|---|
+| FREE balance before grace | 14 seconds |
+| Admitted song duration | 48 seconds |
+| Shortfall | 34 seconds — within the ≤ 90-second grace bound |
+| Admission | song began as NOW SINGING |
+| FREE after admission | 0 seconds |
+| Native copy shown | `마지막 곡으로 재생합니다.` / `오늘 남은 무료 시간은 모두 사용돼요.` |
+| During playback | playback continued while FREE was zero |
+| After completion | no further song started |
+| Queue | the queued song remained queued |
+| Zero-balance copy | exhausted wording displayed **truthfully** — the balance really was 0 |
+
+This exercises the whole §2 defect set at once: `zero_playing` is reachable again (**D1**), the
+grace notice is distinguishable from a refusal, the charge is upfront and not re-billed on
+completion, and the exhausted copy appears only where it is true — the G1/G3 correction.
 
 ---
 
-## 7. Deployment
+## 7. Deployment — final verified state
 
-**Commits are pushed. Nothing is deployed.** The production migration is **BLOCKED**.
+**Deployed, migrated, and re-verified 2026-08-02.** The block recorded in earlier revisions of
+this section is **RESOLVED**: every BUILD 24 object is live on production.
 
 ```text
-Worker (live)        d49c3835-49d2-4051-a68e-28c7876b8767 @ 100%   (BUILD 23, UNCHANGED)
-/api/karaoke-build   c58a2c60e945                                   (BUILD 23, UNCHANGED)
-Migration            20260807120000 — pushed, NOT APPLIED to production
-Native               build 78 — pushed, NOT distributed
+Worker (live)        dca14ffc-4cdf-4305-9eed-d52a5e631580 @ 100%
+                     created 2026-08-02T16:33:30Z
+/api/karaoke-build   abece404917a                          (= web HEAD abece404, the G1 fix)
+Migration            20260807120000_karaoke_free_window_truth_v1 — APPLIED
+Native               build 79 (7a8a6b3) — installed on the Founder device
 ```
 
-### BLOCKED — REMOTE MIGRATION AUTHORITY UNAVAILABLE
+### 7.1 Production contract, read back from the live database
 
-The migration changes **entitlement semantics** (the 04:00 restoration) and must not be applied
-against an unverified ledger. Root cause of the 403: the authenticated Supabase CLI identity
-**cannot see the karaoke project at all.**
+Read-only verification against `zycwaqignioawtqynopj` with the `service_role` key. Only `stable`
+projection functions and bounded `select` reads were used — **no row was written, no account was
+touched, and `karaoke_begin_song_v2` / `karaoke_end_song_v2` were never invoked.**
+
+`karaoke_free_minutes_entitlement_at_v2(account, 2026-08-02T21:00:00Z)` returned:
+
+```json
+{ "plan": "FREE", "model": "lease_v2", "timezone": "America/Los_Angeles",
+  "windowStart": "2026-08-02T11:00:00+00:00", "windowEnd": "2026-08-03T11:00:00+00:00",
+  "nextResetAt": "2026-08-03T11:00:00+00:00", "activePlaybackCount": 0,
+  "limitSeconds": 900, "remainingSeconds": 900, "usedSeconds": 0,
+  "warnLevel": "none", "enforcementEnabled": true }
+```
+
+| Closure check | Result |
+|---|---|
+| `activePlaybackCount` present | **YES** — D1 fixed in production (was missing) |
+| `nextResetAt` present | **YES** — D2 fixed in production (was missing) |
+| 04:00 America/Los_Angeles window | **YES** — `11:00Z → 11:00Z` is exactly `04:00 → 04:00` PDT (D3 fixed; was local midnight) |
+| `warnLevel` present | **YES** |
+| Entitlement model | `lease_v2` |
+
+The three defects this document proved (§2) are confirmed **corrected in production**, by the same
+probe that previously confirmed them **present** in production.
+
+### 7.2 Playback authority RPCs — all available
+
+Enumerated read-only from the live PostgREST OpenAPI document (31 RPCs exposed):
+
+| RPC | Introduced | Present |
+|---|---|---|
+| `karaoke_begin_song_v2` | 20260803 → republished 20260807 | **YES** |
+| `karaoke_end_song_v2` | 20260803 | **YES** |
+| `karaoke_free_minutes_entitlement_at_v2` | 20260807 | **YES** |
+| `karaoke_active_lease_ends_at` | 20260807 (D5) | **YES** |
+| `karaoke_room_playback_authority` | 20260807 | **YES** |
+
+v1 coexistence is preserved: `karaoke_free_minutes_entitlement` and
+`..._entitlement_at` are both still exposed, as the migration intends.
+
+`karaoke_room_playback_authority(room, as_of)` returned the full five-value anchor
+(`serverNow`, `requestId`, `startedAt`, `leaseEndsAt`, `durationSeconds`), and
+`karaoke_active_lease_ends_at` returned cleanly.
+
+Migration-chain markers, each unique to one migration, all present on production:
+
+| Migration | Marker | Present |
+|---|---|---|
+| `20260803120000` | `karaoke_event_usage_segments.{lease_ends_at,lease_seconds,charged_window_start,charged_window_end,duration_seconds}` · `karaoke_usage_policy.lease_write_mode` | **YES** |
+| `20260804120000` | folded into `karaoke_begin_song_v2` | **YES** |
+| `20260805120000` | `karaoke_free_final_song_grace` | **YES** |
+| `20260806120000` | `karaoke_video_durations` | **YES** |
+| `20260807120000` | the four functions above | **YES** |
+
+### 7.3 DEVIATION — the CLI ledger comparison could not be executed
+
+**This is recorded as a deviation, not as a pass.** Two items on the closure checklist could not
+be run from this machine:
 
 ```text
-CLI-accessible project refs   gdqqivlzhgtqdqmvndkf   (bty-release-manager)
-Karaoke project ref           zycwaqignioawtqynopj
-Accessible?                   NO
-
 supabase migration list --linked      403  LegacyDbConfigLoginRoleStatusError
 supabase db push --linked --dry-run   403  LegacyDbConfigLoginRoleStatusError
 ```
 
-Both the inspection path and the apply path fail identically, so even a verified ledger could not
-be acted on from here.
+The authenticated Supabase CLI identity still cannot access project `zycwaqignioawtqynopj`, and
+`supabase_migrations` is not an exposed PostgREST schema (`PGRST106`), so the ledger cannot be
+read by the substitute path either.
 
-**What read-only probing did establish** (authenticated `service_role`, `stable` functions and
-`limit=0` reads only — nothing mutated, no account touched):
+**What was substituted:** §7.1–§7.2 — direct read-back of every object and every field the
+migration produces, plus a per-migration marker probe across the whole `20260803`–`20260807`
+chain.
 
-| Question | Answer |
-|---|---|
-| Production project identity | `zycwaqignioawtqynopj` — URL, JWT claim, and `project-ref` agree |
-| Parent migrations `20260726`–`20260806` | **all present** |
-| BUILD 24 objects (`karaoke_active_lease_ends_at`, `karaoke_room_playback_authority`) | **absent** (`PGRST202`) → migration **not applied** |
-| Live entitlement contract | returns the exact `20260803120000` field set — `activePlaybackCount`, `nextResetAt`, `warnLevel` all **missing**, independently confirming **D1**, **D2**, and **D3** in production |
+**What that substitution does and does not establish.**
 
-**What remains unverifiable**, because `supabase_migrations` is not an exposed PostgREST schema
-(`PGRST106`) and no database credential is available locally:
+- It **does** establish that `20260807120000` is applied to production and behaving to contract:
+  the objects exist, and the entitlement contract returns the post-migration field set with the
+  restored 04:00 window. Earlier revisions of this section recorded those same objects as
+  **absent**, so this is a positive, discriminating observation, not an assumption.
+- It **does not** establish ledger equality. A schema probe cannot see a migration that is
+  recorded-but-not-applied, applied-but-not-recorded, or partially applied — and it cannot confirm
+  that local and remote migration *ordering* agree. `db push --linked --dry-run is empty` is
+  therefore **unverified**, not verified-empty.
 
-- the current remote migration head as recorded in the ledger;
-- whether local and remote migration ordering agree;
-- whether any migration is recorded-but-not-applied or applied-but-not-recorded.
+Independent corroboration, which is why this deviation was not treated as blocking: the Founder's
+G1 and G3–G8 attestations were performed **against this same production stack**, and G8 in
+particular exercised Final Song Grace with 04:00-window semantics end to end. Behaviour that only
+exists after `20260807120000` was observed working on a real device.
 
-A schema probe cannot see a partially-applied migration, which is exactly the condition that makes
-`db push` behave unpredictably. Rollout stays blocked until one of these is true:
+**To clear the deviation**, any one of these suffices — none is required for the gates already
+attested, and each is a prerequisite for the *next* migration, not for this closure:
 
-1. `supabase login` as the account/org owning `zycwaqignioawtqynopj` (or that account is added to
-   the org), so that **both** `supabase migration list --linked` and
-   `supabase db push --linked --dry-run` are executable;
-2. a database password is provided so the ledger can be read and the migration applied via `psql`;
-3. the output of `supabase migration list --linked` is supplied from a machine with access.
+1. `supabase login` as the account/org owning `zycwaqignioawtqynopj` (or add that account to the
+   org), so both CLI commands become executable;
+2. supply a database password so the ledger can be read via `psql`;
+3. supply the output of `supabase migration list --linked` from a machine with access.
+
+**This should be cleared before the next migration is authored.** BUILD 24 is closed with the
+deviation on the record; the next build should not begin by assuming the ledger is clean.
 
 ---
 
@@ -374,19 +524,63 @@ A schema probe cannot see a partially-applied migration, which is exactly the co
   window key. Bounded to one admission with a shortfall of ≤ 90 seconds, one-time, and unable to
   recur once the account is fully on the restored 04:00 key. **This is a real, accepted exposure
   and is not zero.** No historical grace-ledger rows or `charged_window_start` values are
-  rewritten.
-- **Remote migration state unverified** — the ledger is unreachable, so remote head, ordering
-  agreement, and partial-application detection are all unknown. See §7.
+  rewritten. **The seam remains accepted and documented at closure** — it was not retracted,
+  re-scoped, or quietly resolved, and closing BUILD 24 does not close it.
+- **Remote migration ledger unverified** — the CLI ledger comparison could not be executed
+  (403). Remote head, ordering agreement, and partial-application detection remain unknown; the
+  migration's *application* is confirmed by direct schema read-back. Recorded as an explicit
+  deviation in §7.3, to be cleared before the next migration is authored.
+- **G2 deferred** — the mobile browser fallback was not gated. It is recorded as deferred rather
+  than passed, and G1 does not cover it (§6).
 
 ---
 
 ## 9. References
+
+### Final implementation record
+
+| | |
+|---|---|
+| Server/web implementation | `ad88cef93a437e3233f4b7ceeefc049aa029a229` — *BUILD 24 live playback clock + FREE balance truth V1* |
+| G1 web correction | `abece404917a0dcb348d630da6c6122527b45eb5` — *honest upgrade_required copy + always-visible reset line* |
+| Native implementation (G3 correction) | `7a8a6b394d1fc619c2350f7f3483daa622512bd6` — **build 79** |
+| Native repo | `github.com/dentistchi/bty-norebang-admin-ios` (private) |
+| Migration | `20260807120000_karaoke_free_window_truth_v1.sql` — **applied to production** |
+| Deployed Worker | `dca14ffc-4cdf-4305-9eed-d52a5e631580` @ 100%, 2026-08-02T16:33:30Z |
+| `/api/karaoke-build` | `abece404917a` |
+| Documentation commits | `9ef4fe41` (authority graph, defect proof, gate accounting) · `0a76f86a` (grace window transition seam) · `1d0d6e39` (migration transition comment) |
+| Closure commit | this change |
+
+### Source references
 
 | | |
 |---|---|
 | Migration | `supabase/migrations/20260807120000_karaoke_free_window_truth_v1.sql` |
 | Harness | `supabase/tests/b24/run.sh` · `window-truth.pg.test.mjs` |
 | Gate doc | [`GATE_B24_END_TO_END_HARNESS.md`](GATE_B24_END_TO_END_HARNESS.md) |
-| Web domain | `src/domain/playback-clock.ts` (+ `.test.ts`) |
-| Native domain | `BTYNorebangAdmin/PlaybackClock.swift` |
+| Web domain | `src/domain/playback-clock.ts` · `src/domain/admission-copy.ts` (+ `.g1.test.ts`) |
+| Native domain | `BTYNorebangAdmin/PlaybackClock.swift` · `AdmissionCopy` in `QueueSong.swift` |
 | Prior build | [`BUILD23_AUTO_ADVANCE_ADMISSION_HONESTY_V1.md`](BUILD23_AUTO_ADVANCE_ADMISSION_HONESTY_V1.md) |
+
+---
+
+## 10. Closure
+
+```text
+BUILD 24 — PASS / CLOSED          2026-08-02
+
+G1  PASS   Founder attested (after the abece404 correction)
+G2  DEFERRED / NON-BLOCKING — mobile browser fallback is not the primary Native operating path
+G3  PASS   Founder attested (failed build 78 · passed build 79, 7a8a6b3)
+G4  PASS   Founder attested
+G5  PASS   Founder attested
+G6  PASS   Founder attested
+G7  PASS   Founder attested
+G8  PASS   Founder attested
+G9  PASS   automated
+G10 PASS   automated
+
+Carried forward, NOT closed by this build:
+  · the one-time grace-window transition seam (§4, §8) — accepted and documented
+  · the Supabase CLI ledger deviation (§7.3) — clear before the next migration
+```
