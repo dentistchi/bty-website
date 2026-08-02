@@ -301,7 +301,7 @@ async function seed() {
 //
 // Re-arm resets ONLY the stage and the pass window, leaving the room, event and paired devices
 // intact. Pair once, then re-arm immediately before each tap.
-async function rearm(tooLong = false) {
+async function rearm(tooLong = false, lookupFault = false) {
   // G1 arms a 900s next song (admissible, refused by the PASS window); G2 arms an over-limit
   // duration (refused by the DURATION classifier, upstream of every entitlement check). They are
   // mutually exclusive because both are expressed as the same video's cached duration.
@@ -321,11 +321,19 @@ async function rearm(tooLong = false) {
   if (!current || !next) throw new Error('Seeded requests are missing — run the seed first.');
 
   // Put the stage back: one song PLAYING, one waiting song READY.
-  await patch('karaoke_requests', `id=eq.${current.id}`, {
-    status: 'playing', started_at: iso(-60), completed_at: null, ready_at: null,
-  });
+  //
+  // ORDER MATTERS. `karaoke_requests_one_playing_idx` allows at most one `playing` row per room, so
+  // the stage must be VACATED before it is claimed. A previous run can legitimately have left the
+  // NEXT row playing (e.g. the G3 recovery step, where a deliberate Start succeeds), and setting
+  // `current` to playing first then 23505s. Clear both to waiting, then claim.
   await patch('karaoke_requests', `id=eq.${next.id}`, {
     status: 'waiting', started_at: null, completed_at: null, ready_at: iso(-30),
+  });
+  await patch('karaoke_requests', `id=eq.${current.id}`, {
+    status: 'waiting', started_at: null, completed_at: null, ready_at: null,
+  });
+  await patch('karaoke_requests', `id=eq.${current.id}`, {
+    status: 'playing', started_at: iso(-60), completed_at: null, ready_at: null,
   });
 
   // One OPEN segment for the song on stage (unique per request_id, and one open per room/event).
@@ -350,34 +358,46 @@ async function rearm(tooLong = false) {
   await patch('timed_access_pass_grants', `account_id=eq.${account.id}`, {
     status: 'ACTIVE', activated_at: activatedAt, expires_at: expiresAt, expired_at: null,
   });
-  // The cached duration IS the gate selector. PATCH-then-insert rather than PATCH alone, so a
-  // missing row (a cleaned DB, or a previous run that removed it) still lands the value.
-  const patched = await patch('karaoke_video_durations', `video_id=eq.${NEXT_VIDEO}`, {
-    duration_seconds: nextDuration,
-  });
-  if (!Array.isArray(patched) || patched.length === 0) {
-    await insert('karaoke_video_durations', {
-      video_id: NEXT_VIDEO, duration_seconds: nextDuration, source: 'gate-b23-seed',
+  if (lookupFault) {
+    // GATE G3 — remove the cached duration so the resolver must go UPSTREAM. Combined with an
+    // invalid YOUTUBE_API_KEY on the local Worker, `fetchDuration` takes its genuine transient
+    // branch: a non-quota upstream error, ONE retry, then `lookup_failed`. Nothing about this is
+    // simulated in the app — it is the real network path, failing for a real reason.
+    //
+    // Clearing the fault is just putting the row back (`--g3-clear`), which is exactly what makes
+    // the deliberate later Start succeed with ZERO upstream calls.
+    await del(`karaoke_video_durations?video_id=eq.${NEXT_VIDEO}`);
+  } else {
+    // The cached duration IS the gate selector. PATCH-then-insert rather than PATCH alone, so a
+    // missing row (a cleaned DB, or a previous run that removed it) still lands the value.
+    const patched = await patch('karaoke_video_durations', `video_id=eq.${NEXT_VIDEO}`, {
+      duration_seconds: nextDuration,
     });
+    if (!Array.isArray(patched) || patched.length === 0) {
+      await insert('karaoke_video_durations', {
+        video_id: NEXT_VIDEO, duration_seconds: nextDuration, source: 'gate-b23-seed',
+      });
+    }
   }
 
   console.log(
     JSON.stringify(
       {
         rearmed: true,
-        gate: tooLong ? 'G2 (too_long)' : 'G1 (pass_insufficient)',
+        gate: lookupFault ? 'G3 (lookup_failed)' : tooLong ? 'G2 (too_long)' : 'G1 (pass_insufficient)',
         authority: BASE.host,
         roomSlug: SLUG,
         currentRequestId: current.id,
         expectedBlockedRequestId: next.id,
-        nextSongDurationSeconds: nextDuration,
-        expectedReason: tooLong ? 'duration_unavailable' : 'pass_insufficient',
-        expectedDurationFailureReason: tooLong ? 'too_long' : null,
+        nextSongDurationSeconds: lookupFault ? null : nextDuration,
+        expectedReason: (tooLong || lookupFault) ? 'duration_unavailable' : 'pass_insufficient',
+        expectedDurationFailureReason: lookupFault ? 'lookup_failed' : tooLong ? 'too_long' : null,
+        clearFaultCommand: lookupFault ? 'npm run gate:b23:g3:clear' : null,
         // G2 is classified upstream of the RPC, so no pass window can expire under it.
-        passExpiresAt: tooLong ? null : expiresAt,
-        passRemainingSeconds: tooLong ? null : PASS_REMAINING_SECONDS,
-        deadline: tooLong
-          ? 'NONE — the duration classifier runs before any entitlement check'
+        passExpiresAt: (tooLong || lookupFault) ? null : expiresAt,
+        passRemainingSeconds: (tooLong || lookupFault) ? null : PASS_REMAINING_SECONDS,
+        deadline: (tooLong || lookupFault)
+          ? 'NONE — the duration classifier/resolver runs before any entitlement check'
           : `~${PASS_REMAINING_SECONDS}s — re-arm immediately before tapping`,
         note: 'room, event and PAIRED DEVICES preserved — no re-pairing needed',
       },
@@ -387,10 +407,35 @@ async function rearm(tooLong = false) {
   );
 }
 
+/**
+ * GATE G3 — clear the transient fault. Restores ONLY the cached duration, leaving the stage exactly
+ * where the server left it (current completed, next still waiting + Ready). That is what lets the
+ * operator prove the second half of G3: after the failure is gone, a DELIBERATE Host Start
+ * succeeds — and it succeeds from cache, with zero upstream calls.
+ */
+async function clearLookupFault() {
+  const [room] = (await rest(`karaoke_rooms?slug=eq.${SLUG}&select=id`)) ?? [];
+  if (!room) throw new Error(`No '${SLUG}' room on ${BASE.host} — run the seed first.`);
+  await del(`karaoke_video_durations?video_id=eq.${NEXT_VIDEO}`);
+  const seconds = Number(process.env.GATE_B23_RECOVER_SECONDS ?? 200);
+  await insert('karaoke_video_durations', {
+    video_id: NEXT_VIDEO, duration_seconds: seconds, source: 'gate-b23-seed',
+  });
+  console.log(JSON.stringify({
+    lookupFaultCleared: true,
+    authority: BASE.host,
+    cachedDurationSeconds: seconds,
+    stage: 'UNCHANGED — current stays completed, next stays waiting + Ready',
+    note: 'a deliberate Host Start on the next song should now succeed from cache (no upstream call)',
+  }, null, 2));
+}
+
 const mode = process.argv.includes('--clean')
   ? clean
+  : process.argv.includes('--g3-clear')
+    ? clearLookupFault
   : process.argv.includes('--rearm')
-    ? () => rearm(process.argv.includes('--g2'))
+    ? () => rearm(process.argv.includes('--g2'), process.argv.includes('--g3'))
     : seed;
 mode().catch((e) => {
   console.error(String(e.message ?? e));
