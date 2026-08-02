@@ -30,11 +30,12 @@ import {
 } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
 // R2.50 — field-level patch repair. Attempt-1 rows are the immutable base.
 import {
-  mergeFieldRepair,
+  applyFieldRepair,
+  fieldRepairObservability,
   planFieldRepair,
   summarizeFieldRepair,
-  validateFieldRepairResponse,
   type FieldRepairMetrics,
+  type FieldRepairObservation,
   type FieldRepairPlan,
 } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import type { FieldRepairCallResult } from "./narrowBoundaryReviewer";
@@ -126,6 +127,11 @@ export type BoundaryStageResult = {
   fieldRepairEvidence: unknown;
   fieldRepairMetrics: FieldRepairMetrics;
   fieldRepairCodes: string[];
+  /**
+   * R2.54 — the redacted record of WHAT the group decided and whether the merge boundary was
+   * crossed. `null` when no patch was validated at all, which is itself the honest answer.
+   */
+  fieldRepairObservability: FieldRepairObservation | null;
   /** R2.52 — WHICH repair path actually ran. Zero metrics never imply "repair ran and found none". */
   repairMode: RepairMode;
   fullRowReviewCallCount: number;
@@ -333,6 +339,7 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   fieldRepairEvidence: null,
   fieldRepairMetrics: EMPTY_FIELD_REPAIR_METRICS,
   fieldRepairCodes: [],
+  fieldRepairObservability: null,
   repairMode: "none",
   fullRowReviewCallCount: 0,
   fieldRepairCallCount: 0,
@@ -491,6 +498,7 @@ export async function runBoundaryReviewStage(
   let fieldRepairEvidence: unknown = null;
   let fieldRepairMetrics = EMPTY_FIELD_REPAIR_METRICS;
   let fieldRepairCodes: string[] = [];
+  let fieldRepairObservation: FieldRepairObservation | null = null;
   let repairMode: RepairMode = "none";
   let fullRowReviewCallCount = 0;
   let fieldRepairCallCount = 0;
@@ -554,6 +562,7 @@ export async function runBoundaryReviewStage(
           fieldRepairEvidence: null,
           fieldRepairMetrics,
           fieldRepairCodes,
+          fieldRepairObservability: fieldRepairObservation,
         };
       }
       repairMode = "field_patch";
@@ -563,10 +572,15 @@ export async function runBoundaryReviewStage(
       fieldRepairEvidence = patch.evidence;
       const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
       const digests = { boundaryReviewSubjectSha256: subject.evidenceCandidateMapSha256, surfaceMapSha256: subject.surfaceMapSha256, lineageSha256: subject.lineageSha256 };
-      const v = validateFieldRepairResponse(patch.raw, plan, ctxAll, digests);
-      const merge = mergeFieldRepair(baseRows, v, plan, ctxAll);
+      // R2.54 — ONE seam: validate, and merge only if the patch was accepted. A refused patch does
+      // not reach the merge, and `mergeAttempted` records that rather than leaving it to be inferred
+      // from an empty row list.
+      const application = applyFieldRepair(patch.raw, baseRows, plan, ctxAll, digests);
+      const v = application.validation;
+      const merge = application.merge;
       fieldRepairMetrics = summarizeFieldRepair(plan, v, merge);
       fieldRepairCodes = merge.ok ? [] : [...merge.codes];
+      fieldRepairObservation = fieldRepairObservability(plan, application);
       // Malformed patch output FAILS CLOSED. There is no path back to the full-row schema.
       const verdict: DerivedBoundaryVerdict = merge.ok
         ? deriveBoundaryVerdict({ assessments: merge.rows }, ctxAll)
@@ -576,6 +590,7 @@ export async function runBoundaryReviewStage(
         repairPlanSha256: plan.planSha256,
         fieldRepairMetrics,
         fieldRepairCodes,
+        fieldRepairObservability: fieldRepairObservation,
       });
       call = {
         kind: patch.kind === "transport_failed" ? "transport_failed" : "derived",
@@ -644,6 +659,7 @@ export async function runBoundaryReviewStage(
       fieldRepairEvidence,
       fieldRepairMetrics,
       fieldRepairCodes,
+      fieldRepairObservability: fieldRepairObservation,
       repairMode,
       fullRowReviewCallCount,
       fieldRepairCallCount,
@@ -1145,6 +1161,11 @@ export const BOUNDARY_STAGE_ROUTING_CONTRACT = {
   secondCallResponseKey: "repairs",
   secondCallParser: "validateFieldRepairResponse",
   secondCallMerge: "mergeFieldRepair",
+  // R2.54 — the merge is reached through ONE seam that refuses first. A patch the validator refused
+  // never crosses it, and the artifact records which side of the boundary the run ended on.
+  secondCallApplySeam: "applyFieldRepair",
+  refusedPatchNeverReachesMerge: true,
+  mergeAttemptRecordedInArtifact: true,
   repairModes: REPAIR_MODES,
   plannedEvent: "boundary_review_field_repair_planned",
   appliedEvent: "boundary_review_field_repair_applied",

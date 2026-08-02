@@ -45,10 +45,17 @@ type Observed = {
   reviewCalls: Array<{ attempt: number; surfaceRefs?: readonly string[] }>;
   repairCalls: Array<{ attempt: number; planSha256: string; operations: number; surfaces: number; groups: number; request: unknown }>;
   events: string[];
+  /** R2.54 — the artifact the run WOULD write, captured so /6 can be read back without a file. */
+  artifacts: Array<Record<string, unknown>>;
 };
 
-/** The entrypoint's REAL deps shape, instrumented. Nothing here bypasses the stage. */
-const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}) =>
+/**
+ * The entrypoint's REAL deps shape, instrumented. Nothing here bypasses the stage.
+ *
+ * `patchKind` selects which deterministic patch the mock returns: the canonical plan-derived answer,
+ * or the EXACT selection the R2.52 live model sent. Both travel the same code.
+ */
+const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}, patchKind: "canonical" | "captured-r252" = "canonical") =>
   runC18NarrowBoundaryReplay(
     {
       review: async (s, a, surfaceRefs) => {
@@ -64,9 +71,12 @@ const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}) =>
           groups: plan.dependencyGroupCount,
           request: buildFieldRepairRequest(s, plan),
         });
-        return mockFieldRepair(s, plan, a);
+        return mockFieldRepair(s, plan, a, patchKind);
       },
-      writeArtifact: () => ({ path: join(dir, "a.json"), sha256: "x".repeat(64), bytes: 0 }),
+      writeArtifact: (payload: string) => {
+        o.artifacts.push(JSON.parse(payload) as Record<string, unknown>);
+        return { path: join(dir, "a.json"), sha256: "x".repeat(64), bytes: payload.length };
+      },
       log: (line: string) => o.events.push(line),
       ...over,
     } as NarrowReplayDeps,
@@ -76,7 +86,7 @@ const run = async (o: Observed, over: Partial<NarrowReplayDeps> = {}) =>
     "mock",
   );
 
-const observed = (): Observed => ({ reviewCalls: [], repairCalls: [], events: [] });
+const observed = (): Observed => ({ reviewCalls: [], repairCalls: [], events: [], artifacts: [] });
 
 describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", () => {
   it("1,2 — the initial call is the full-row schema and its response is incomplete", async () => {
@@ -96,14 +106,78 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     expect(o.repairCalls).toHaveLength(1);
     const p = o.repairCalls[0]!;
     expect(p.planSha256).toHaveLength(64);
-    expect(p.operations).toBe(13);
+    // R2.54 — 9 standalone repairs + one FIVE-field prerequisite group.
+    expect(p.operations).toBe(14);
     expect(p.surfaces).toBe(10);
     expect(p.groups).toBe(10);
-    const req = p.request as { authority: { repairPlanSha256: string; baseRowSha256: Array<{ surfaceRef: string; sha256: string }> }; targets: unknown[] };
+    const req = p.request as {
+      authority: { repairPlanSha256: string; baseRowSha256: Array<{ surfaceRef: string; sha256: string }> };
+      targets: Array<{ field: string; valueAuthority: string; allowedValues: string[] | null; groupFields: string[] }>;
+      dependencyGroups: Array<{
+        groupId: string;
+        surfaceRef: string;
+        fields: string[];
+        alternativesSha256: string;
+        alternatives: Array<{ alternativeId: string; stateId: string; prerequisiteStatus: string; temporalRelation: string[]; reasonMode: string }>;
+      }>;
+    };
     expect(req.authority.repairPlanSha256).toBe(p.planSha256);
     expect(req.authority.baseRowSha256.length).toBeGreaterThan(0);
     for (const b of req.authority.baseRowSha256) expect(b.sha256).toHaveLength(64);
-    expect(req.targets).toHaveLength(13);
+    expect(req.targets).toHaveLength(14);
+  });
+
+  it("R2.54 — the request offers COMPLETE canonical alternatives, not five independent scalar lists", async () => {
+    if (!present()) return expect(present()).toBe(false);
+    const o = observed();
+    await run(o);
+    const req = o.repairCalls[0]!.request as {
+      targets: Array<{ field: string; valueAuthority: string; allowedValues: string[] | null; groupFields: string[] }>;
+      dependencyGroups: Array<{
+        groupId: string;
+        fields: string[];
+        alternativesSha256: string;
+        alternatives: Array<{ alternativeId: string; stateId: string; prerequisiteStatus: string; temporalRelation: string[]; reasonMode: string }>;
+      }>;
+    };
+
+    expect(req.dependencyGroups).toHaveLength(1);
+    const g = req.dependencyGroups[0]!;
+    expect(g.fields.slice().sort()).toEqual([
+      "prerequisiteFailureCandidateId",
+      "prerequisiteSatisfactionCandidateId",
+      "prerequisiteStatus",
+      "reason",
+      "temporalRelation",
+    ]);
+    expect(g.alternativesSha256).toHaveLength(64);
+    expect(g.alternatives.length).toBeGreaterThan(0);
+    // Complete SHAPES: every alternative fixes a status, carries its own temporal domain and names
+    // its reason mode. A per-field list could express none of that.
+    for (const a of g.alternatives) {
+      expect(a.alternativeId.length).toBeGreaterThan(0);
+      expect(a.stateId.length).toBeGreaterThan(0);
+      expect(a.temporalRelation.length).toBeGreaterThan(0);
+      expect(["must_be_empty", "model_required"]).toContain(a.reasonMode);
+    }
+    // Both reason modes are reachable, so the mode genuinely distinguishes shapes here.
+    expect(new Set(g.alternatives.map((a) => a.reasonMode))).toEqual(new Set(["must_be_empty", "model_required"]));
+
+    // A GROUPED target publishes NO scalar list; a standalone one still does.
+    const grouped = req.targets.filter((t) => t.groupFields.length > 1);
+    const standalone = req.targets.filter((t) => t.groupFields.length === 1);
+    expect(grouped).toHaveLength(5);
+    expect(standalone).toHaveLength(9);
+    for (const t of grouped) {
+      expect(t.valueAuthority).toBe("canonical_group_alternative");
+      expect(t.allowedValues).toBeNull();
+    }
+    for (const t of standalone) {
+      expect(t.valueAuthority).toBe("scalar_allowed_values");
+      expect(t.allowedValues!.length).toBeGreaterThan(0);
+    }
+    // `reason` never appears as a value list anywhere in the request.
+    expect(JSON.stringify(req)).not.toContain("<empty-or-model-authored");
   });
 
   it("5,7 — the second call uses the PATCH schema and its response is repairs[], never assessments[]", async () => {
@@ -133,7 +207,7 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
     const o = observed();
     const summary = await run(o);
     expect(summary.repairMode).toBe("field_patch");
-    expect(summary.fieldRepairOperationCount).toBe(13);
+    expect(summary.fieldRepairOperationCount).toBe(14);
     expect(summary.outcome).toBe("boundary_review_reject");
     expect(summary.causalAttributions).toEqual(["primary[1]<-branch[1].resulting_world_state"]);
   });
@@ -159,9 +233,136 @@ describe("[R2.52][6] an incomplete first response reaches ONLY the patch path", 
   });
 });
 
+/**
+ * R2.54 Part 6 — artifact /6.
+ *
+ * These run through the SAME entrypoint and dependency construction as everything above, and read
+ * the artifact the run would write. R2.52's live artifact could prove only that something downstream
+ * refused the patch; it could not say what the group had chosen, which alternative it failed against,
+ * or whether the merge boundary had been crossed.
+ */
+describe("[R2.54][6] artifact /6 records the group decision and the merge boundary", () => {
+  it("a VALID run records the matched alternative and a crossed merge boundary", async () => {
+    if (!present()) return expect(present()).toBe(false);
+    const o = observed();
+    await run(o);
+    expect(o.artifacts).toHaveLength(1);
+    const a = o.artifacts[0]! as { artifactVersion: string; fieldRepairObservability: Record<string, unknown> };
+    expect(a.artifactVersion).toBe("practice-narrow-boundary-replay/6");
+
+    const obs = a.fieldRepairObservability as {
+      operationPlanCount: number;
+      dependencyGroupCount: number;
+      planSha256: string;
+      suppliedOperationCount: number;
+      accepted: boolean;
+      refusalCodes: string[];
+      mergeAttempted: boolean;
+      mergeAccepted: boolean;
+      mergedRowInvalidCount: number;
+      redaction: Record<string, boolean>;
+      groups: Array<{
+        groupId: string;
+        surfaceRef: string;
+        fields: string[];
+        alternativesCount: number;
+        alternativesSha256: string;
+        selected: Record<string, string>;
+        matched: boolean;
+        matchedAlternativeId: string | null;
+        matchedStateId: string | null;
+        reasonAuthority: string;
+        refusalCode: string | null;
+      }>;
+    };
+
+    expect(obs.operationPlanCount).toBe(14);
+    expect(obs.dependencyGroupCount).toBe(10);
+    expect(obs.planSha256).toHaveLength(64);
+    expect(obs.suppliedOperationCount).toBe(14);
+    expect(obs.accepted).toBe(true);
+    expect(obs.refusalCodes).toEqual([]);
+    expect(obs.mergeAttempted).toBe(true);
+    expect(obs.mergeAccepted).toBe(true);
+    expect(obs.mergedRowInvalidCount).toBe(0);
+
+    expect(obs.groups).toHaveLength(1);
+    const g = obs.groups[0]!;
+    expect(g.surfaceRef).toBe("branch[0].resulting_world_state");
+    expect(g.fields).toHaveLength(5);
+    expect(g.alternativesCount).toBeGreaterThan(0);
+    expect(g.alternativesSha256).toHaveLength(64);
+    expect(g.matched).toBe(true);
+    expect(g.matchedAlternativeId).not.toBeNull();
+    expect(g.matchedStateId).toBe("governed_action_prerequisite_satisfied");
+    expect(g.reasonAuthority).toBe("server_derived");
+    expect(g.refusalCode).toBeNull();
+    expect(g.selected.prerequisiteStatus).toBe("satisfied");
+    // Redaction is declared and honoured: a server-derived reason reports as a shape, not as "".
+    expect(g.selected.reason).toBe("<empty>");
+    expect(obs.redaction.modelReasonProseWithheld).toBe(true);
+    expect(obs.redaction.reasonReportedAsShapeOnly).toBe(true);
+  });
+
+  it("an INVALID row is diagnosable from the artifact alone — the R2.52 selection, replayed", async () => {
+    if (!present()) return expect(present()).toBe(false);
+    const o = observed();
+    const summary = await run(o, {}, "captured-r252");
+
+    const a = o.artifacts[0]! as { fieldRepairObservability: Record<string, unknown>; fieldRepairCodes: string[]; repairMode: string };
+    const obs = a.fieldRepairObservability as {
+      accepted: boolean;
+      refusalCodes: string[];
+      mergeAttempted: boolean;
+      mergeAccepted: boolean;
+      mergedRowInvalidCount: number;
+      suppliedOperationCount: number;
+      groups: Array<{ selected: Record<string, string>; matched: boolean; matchedStateId: string | null; reasonAuthority: string; refusalCode: string | null }>;
+    };
+
+    // The patch WAS complete — this is not a coverage failure, and the artifact says which it is.
+    expect(obs.suppliedOperationCount).toBe(14);
+    expect(obs.accepted).toBe(false);
+    expect(obs.refusalCodes).toContain("field_repair_group_reason_required_missing");
+    // THE R2.52 QUESTION, now answerable: the merge boundary was NOT crossed.
+    expect(obs.mergeAttempted).toBe(false);
+    expect(obs.mergeAccepted).toBe(false);
+    expect(obs.mergedRowInvalidCount).toBe(0);
+    expect(a.fieldRepairCodes).not.toContain("field_repair_merged_row_invalid");
+
+    const g = obs.groups[0]!;
+    expect(g.matched).toBe(false);
+    expect(g.matchedStateId).toBeNull();
+    expect(g.refusalCode).toBe("field_repair_group_reason_required_missing");
+    expect(g.reasonAuthority).toBe("model_required");
+    expect(g.selected.prerequisiteStatus).toBe("not_established");
+    expect(g.selected.temporalRelation).toBe("not_applicable");
+    expect(g.selected.reason).toBe("<empty>");
+
+    // The run still routes as a patch and still fails closed; no fallback appeared.
+    expect(a.repairMode).toBe("field_patch");
+    expect(summary.repairMode).toBe("field_patch");
+    expect(summary.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(o.reviewCalls).toHaveLength(1);
+    expect(o.repairCalls).toHaveLength(1);
+  });
+
+  it("model reason PROSE never reaches the artifact", async () => {
+    if (!present()) return expect(present()).toBe(false);
+    const o = observed();
+    await run(o);
+    const obs = (o.artifacts[0]! as { fieldRepairObservability: unknown }).fieldRepairObservability;
+    // The shape token carries a length and a digest prefix, never the words.
+    for (const g of (obs as { groups: Array<{ selected: Record<string, string> }> }).groups) {
+      if (g.selected.reason === "<empty>") continue;
+      expect(g.selected.reason).toMatch(/^<model-prose:\d+:[0-9a-f]{12}>$/);
+    }
+  });
+});
+
 describe("[R2.52][7] the artifact proves which route ran", () => {
   it("the WRITTEN version is bumped and historical /4 stays readable", () => {
-    expect(NARROW_REPLAY_ARTIFACT_VERSION).toBe("practice-narrow-boundary-replay/5");
+    expect(NARROW_REPLAY_ARTIFACT_VERSION).toBe("practice-narrow-boundary-replay/6");
     // The retained R2.50 live artifact is /4 and must still parse.
     const legacy = readdirSync(SOURCE).find((f) => f.includes("boundaryreplay.live.20260802T053740Z"));
     if (!legacy) return expect(true).toBe(true);

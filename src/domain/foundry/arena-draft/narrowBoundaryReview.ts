@@ -84,6 +84,14 @@ export const REPAIRABLE_BOUNDARY_FIELDS = [
   "governedActionCandidateId",
   "prerequisiteSatisfactionCandidateId",
   "prerequisiteFailureCandidateId",
+  /**
+   * R2.54 — `reason` is repairable because a prerequisite-state change can move
+   * `reasonAuthority` from `server_derived` to `model_required`. R2.53 measured
+   * the consequence of its absence: a canonically VALID tuple whose frozen empty
+   * reason was illegal in the state it selected. It is never editable on its own
+   * — only as part of a group whose status change moved the authority.
+   */
+  "reason",
 ] as const;
 export type RepairableBoundaryField = (typeof REPAIRABLE_BOUNDARY_FIELDS)[number];
 

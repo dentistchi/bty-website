@@ -10,8 +10,10 @@ import { describe, it, expect } from "vitest";
 import {
   FIELD_REPAIR_CODES,
   FIELD_REPAIR_JSON_SCHEMA,
+  FIELD_REPAIR_VALUE_AUTHORITIES,
   REPAIRABLE_BOUNDARY_FIELDS,
   IDENTITY_FIELDS,
+  applyFieldRepair,
   planFieldRepair,
   validateFieldRepairResponse,
   mergeFieldRepair,
@@ -19,6 +21,9 @@ import {
   summarizeFieldRepair,
   type FieldRepairPlan,
 } from "./boundaryFieldRepair";
+import { groupAlternativesSha256 } from "./boundaryGroupAlternatives";
+import { selectPlanDerivedOperations } from "./groupAlternativeSelection.fixture";
+import { TRUTH_STATES } from "./boundaryTruthStates";
 import { deriveBoundaryVerdict, validateNarrowBoundaryReview, type BoundaryTruthAssessment } from "./narrowBoundaryReview";
 import { buildSemanticFrames } from "./boundarySemanticFrame";
 import { buildNarrowBoundarySubject } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
@@ -66,9 +71,24 @@ const plan = (): FieldRepairPlan => planFieldRepair(R248_ATTEMPT_1, CTX, DIGESTS
 
 const op = (surfaceRef: string, field: string, value: string) => ({ surfaceRef, field, value });
 
-/** The exact operation set the plan asks for, answered correctly. */
-const correctOps = (p: FieldRepairPlan) =>
-  p.targets.map((t) => op(t.surfaceRef, t.field, t.field.endsWith("CandidateId") ? (t.candidateMenu?.[0]?.candidateId ?? "none") : t.allowedValues[0]!));
+/**
+ * The exact operation set the plan asks for, answered correctly.
+ *
+ * R2.54 — PLAN-DERIVED. A grouped target has no scalar list to read a value from any more, so the
+ * answer is assembled from ONE canonical alternative the plan itself generated. `allowedValues[0]`
+ * would now silently produce `undefined` for `reason` and an arbitrary tuple for the rest.
+ */
+const correctOps = (p: FieldRepairPlan) => selectPlanDerivedOperations(p.targets);
+
+/** The one multi-field group in the captured evidence, and the fields R2.54 requires of it. */
+const PREREQUISITE_GROUP_FIELDS = [
+  "prerequisiteFailureCandidateId",
+  "prerequisiteSatisfactionCandidateId",
+  "prerequisiteStatus",
+  "reason",
+  "temporalRelation",
+];
+const groupOn = (p: FieldRepairPlan, surfaceRef: string) => p.targets.filter((t) => t.surfaceRef === surfaceRef);
 
 const validate = (ops: unknown, p: FieldRepairPlan = plan(), d = DIGESTS) => validateFieldRepairResponse({ repairs: ops }, p, CTX, d);
 const codesOf = (r: ReturnType<typeof validateFieldRepairResponse>) => (r.ok ? [] : r.codes);
@@ -211,21 +231,31 @@ describe("[R2.50][9] the patch authority fails closed on everything it did not a
     expect(codesOf(r)).toContain("field_repair_field_untargeted");
   });
 
-  it("9.20 a patch that passes its menu but leaves the MERGED row invalid is refused", () => {
+  /**
+   * 9.20 — the same input R2.50 wrote this case for, refused EARLIER and by NAME.
+   *
+   * `satisfied` while citing no satisfaction candidate is not a canonical shape: the satisfied state
+   * REQUIRES satisfaction evidence, so no alternative offers `none` there. Under R2.50 the group
+   * passed its per-field menus and the CANONICAL ROW VALIDATOR caught it after the merge — a semantic
+   * verdict standing in for a contract refusal. Under R2.54 the repair-group boundary refuses it, and
+   * the merge is never attempted.
+   */
+  it("9.20 a patch that passes its menu but is no canonical shape is refused BEFORE merge", () => {
     const p = plan();
-    // Answer branch[0].resulting_world_state's group with a self-consistent-looking but wrong state:
-    // `satisfied` while citing no satisfaction candidate.
     const ops = correctOps(p).map((o) =>
       o.surfaceRef === "branch[0].resulting_world_state" && o.field === "prerequisiteSatisfactionCandidateId" ? op(o.surfaceRef, o.field, "none") : o,
     );
     const v = validate(ops, p);
-    const m = mergeFieldRepair(R248_ATTEMPT_1, v, p, CTX);
-    if (m.ok) {
-      const d = deriveBoundaryVerdict({ assessments: m.rows }, CTX);
-      expect(d.outcome).toBe("boundary_review_malformed");
-    } else {
-      expect(m.codes).toContain("field_repair_merged_row_invalid");
-    }
+    expect(v.ok).toBe(false);
+    expect(codesOf(v)).toContain("field_repair_group_shape_not_allowed");
+
+    const applied = applyFieldRepair({ repairs: ops }, R248_ATTEMPT_1, p, CTX, DIGESTS);
+    expect(applied.mergeAttempted).toBe(false);
+    expect(applied.merge.ok).toBe(false);
+    expect(applied.merge.rows).toEqual([]);
+    // The refusal is the group's, reported as the group's — not a downstream row verdict.
+    expect(applied.merge.codes).toContain("field_repair_group_shape_not_allowed");
+    expect(applied.merge.codes).not.toContain("field_repair_merged_row_invalid");
   });
 
   it("every emitted code is registered — no ad-hoc strings", () => {
@@ -258,29 +288,90 @@ describe("[R2.50][2] the repair dependency graph", () => {
     }
   });
 
-  it("C — an unsupported prerequisite state pulls in every field whose requirement moves with it", () => {
+  /**
+   * B — THE DEPENDENCY GROUP IS ALL AND ONLY THE GOVERNED PREREQUISITE REPAIR FIELDS.
+   *
+   * Asserted as a set equality in both directions, so a field silently gained OR silently dropped
+   * fails. `reason` is a member because a prerequisite-status change moves its AUTHORITY, which is
+   * the fact R2.53 measured the absence of: a canonically valid tuple refused solely because the
+   * frozen empty reason was illegal in the state the tuple selected.
+   */
+  it("B — the prerequisite group is exactly the five governed prerequisite repair fields", () => {
     const p = plan();
-    const g = p.targets.filter((t) => t.surfaceRef === R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
-    const fields = g.map((t) => t.field).sort();
-    // Measured from the table, not hard-coded: changing prerequisiteStatus changes which temporal
-    // relations are legal and which candidate roles are required/forbidden.
-    expect(fields).toEqual(["prerequisiteFailureCandidateId", "prerequisiteSatisfactionCandidateId", "prerequisiteStatus", "temporalRelation"]);
-    expect(new Set(g.map((t) => t.groupId)).size).toBe(1);
-    expect(g.every((t) => t.groupFields.length === 4)).toBe(true);
+    const g = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
+    expect(g.map((t) => t.field).sort()).toEqual(PREREQUISITE_GROUP_FIELDS);
+    // The same set, seen from the group's own declaration rather than from the target list.
+    for (const t of g) expect([...t.groupFields].sort()).toEqual(PREREQUISITE_GROUP_FIELDS);
+    // `reason`'s membership is DERIVED: two states sharing a governed-action status disagree about
+    // reasonAuthority, which is why the closure has to move it.
+    const present = TRUTH_STATES.filter((s) => s.governedActionStatus === "present");
+    expect(new Set(present.map((s) => s.reasonAuthority)).size).toBeGreaterThan(1);
   });
 
-  it("the governed-action status is NOT pulled into a prerequisite group", () => {
+  /** F — THE GOVERNED-ACTION AXIS STAYS FROZEN OUTSIDE THE PREREQUISITE GROUP. */
+  it("F — the governed-action fields are never pulled into a prerequisite group", () => {
     const p = plan();
-    const g = p.targets.filter((t) => t.surfaceRef === R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
+    const g = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
     expect(g.map((t) => t.field)).not.toContain("governedActionStatus");
     expect(g.map((t) => t.field)).not.toContain("governedActionCandidateId");
+    // Frozen means CARRIED AS CONTEXT, not merely absent: every member still shows the row's own
+    // governed-action values so the model can stay consistent without resending them.
+    for (const t of g) {
+      expect(Object.keys(t.frozenContext)).toContain("governedActionStatus");
+      expect(Object.keys(t.frozenContext)).toContain("governedActionCandidateId");
+      expect(t.frozenContext.governedActionStatus).toBe("present");
+    }
+    // And no alternative offered to the group may move that axis.
+    for (const alt of g[0]!.alternatives) {
+      expect(TRUTH_STATES.find((s) => s.id === alt.stateId)?.governedActionStatus, alt.alternativeId).toBe("present");
+    }
   });
 
-  it("every target carries its authority code, reason, allowed values and frozen context", () => {
+  /** E — REASON AUTHORITY COMES FROM THE ALTERNATIVES, NOT FROM A SCALAR LIST. */
+  it("E — `reason` publishes no scalar domain; its authority rides on the alternatives", () => {
+    const p = plan();
+    const reason = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]).find((t) => t.field === "reason")!;
+    expect(reason.allowedValues).toEqual([]);
+    expect(reason.valueAuthority).toBe("canonical_group_alternative");
+    // Every alternative names an authority, and both authorities are actually offered here — so a
+    // scalar list could not have expressed the rule even if one existed.
+    const modes = new Set(reason.alternatives.map((a) => a.reasonConstraint));
+    expect(modes.has("must_be_empty")).toBe(true);
+    expect(modes.has("model_required")).toBe(true);
+  });
+
+  /** G — THE GROUP IS ONE ATOMIC UNIT: one id, one authority, one alternatives set. */
+  it("G — the whole group is one atomic repair unit", () => {
+    const p = plan();
+    const g = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
+    expect(new Set(g.map((t) => t.groupId)).size).toBe(1);
+    expect(new Set(g.map((t) => t.valueAuthority))).toEqual(new Set(["canonical_group_alternative"]));
+    expect(new Set(g.map((t) => t.alternativesSha256)).size).toBe(1);
+    expect(new Set(g.map((t) => t.authorityCode)).size).toBe(1);
+    // Same alternatives object content on every member — one shape, published once.
+    for (const t of g) expect(groupAlternativesSha256(t.alternatives)).toBe(g[0]!.alternativesSha256);
+  });
+
+  it("a standalone target keeps its scalar domain — the two authorities are distinct and both used", () => {
+    const p = plan();
+    const standalone = p.targets.filter((t) => t.groupFields.length === 1);
+    expect(standalone.length).toBeGreaterThan(0);
+    for (const t of standalone) {
+      expect(t.valueAuthority).toBe("scalar_allowed_values");
+      expect(t.allowedValues.length).toBeGreaterThan(0);
+      expect(t.alternatives).toEqual([]);
+    }
+    expect(new Set(p.targets.map((t) => t.valueAuthority))).toEqual(new Set(FIELD_REPAIR_VALUE_AUTHORITIES));
+  });
+
+  it("every target carries its authority code, reason, value authority and frozen context", () => {
     for (const t of plan().targets) {
       expect(t.authorityCode.length).toBeGreaterThan(0);
       expect(t.reason.length).toBeGreaterThan(0);
-      expect(t.allowedValues.length).toBeGreaterThan(0);
+      expect(FIELD_REPAIR_VALUE_AUTHORITIES).toContain(t.valueAuthority);
+      // A target has a value authority; it does NOT necessarily have a value LIST.
+      if (t.valueAuthority === "scalar_allowed_values") expect(t.allowedValues.length).toBeGreaterThan(0);
+      else expect(t.alternatives.length).toBeGreaterThan(0);
       expect(Object.keys(t.frozenContext).length).toBeGreaterThan(0);
       if (t.field.endsWith("CandidateId")) expect(t.candidateMenu).not.toBeNull();
     }
@@ -344,12 +435,63 @@ describe("[R2.50][8] the captured R2.48 evidence", () => {
       [...R248_ATTEMPT_1_REQUIRED_MISSING, ...R248_ATTEMPT_1_PREREQUISITE_GROUP].sort(),
     );
     expect(p.frozenSurfaceRefs.sort()).toEqual([...R248_ATTEMPT_1_VALID].sort());
-    // 9 candidate-only + one 4-field prerequisite group = 13, which is what R2.49 measured
-    // independently on the intended corrected matrix.
-    expect(p.requiredOperationCount).toBe(13);
-    expect(p.targets).toHaveLength(13);
+
+    /**
+     * A — THE OPERATION COUNT IS EXACTLY 14, AND IT IS A SUM, NOT A LITERAL.
+     *
+     * 9 candidate-only repairs + one FIVE-field prerequisite group. The count is asserted against
+     * its own decomposition so that a change in either part cannot be absorbed by the other: R2.49
+     * measured 13 changed fields on the intended corrected matrix, and R2.54 adds exactly one — the
+     * `reason` whose authority moves with the prerequisite status.
+     */
+    const standalone = p.targets.filter((t) => t.groupFields.length === 1);
+    const grouped = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
+    expect(standalone).toHaveLength(9);
+    expect(grouped).toHaveLength(5);
+    expect(p.requiredOperationCount).toBe(standalone.length + grouped.length);
+    expect(p.requiredOperationCount).toBe(14);
+    expect(p.targets).toHaveLength(14);
+    // The captured R2.49 measurement is NOT rewritten to match. It measured 13; the fourteenth
+    // operation is what R2.54 adds, and the difference is exactly the reason target.
     expect(R248_MEASURED.r249IntendedChangedFields).toBe(13);
+    expect(p.requiredOperationCount - R248_MEASURED.r249IntendedChangedFields).toBe(1);
+    expect(grouped.map((t) => t.field)).toContain("reason");
     expect(p.dependencyGroupCount).toBe(10);
+  });
+
+  /**
+   * C + D — THE GROUP CARRIES REAL ALTERNATIVES, AND THE DIGEST IS OVER THOSE ALTERNATIVES.
+   *
+   * D is asserted against the repository's own hashing contract — `groupAlternativesSha256` recomputed
+   * from the published set — rather than against a snapshotted string. A snapshot would still match if
+   * the generator and the digest drifted together, which is precisely the shape of the R2.48 defect.
+   */
+  it("C,D — the group publishes non-empty canonical alternatives under a digest that binds them", () => {
+    const p = plan();
+    const g = groupOn(p, R248_ATTEMPT_1_PREREQUISITE_GROUP[0]);
+    const first = g[0]!;
+
+    expect(first.alternatives.length).toBeGreaterThan(0);
+    expect(first.alternativesSha256).toHaveLength(64);
+    expect(first.alternativesSha256).toBe(groupAlternativesSha256(first.alternatives));
+    // The digest is a function OF the alternatives: perturb the set and it must move.
+    expect(groupAlternativesSha256(first.alternatives.slice(1))).not.toBe(first.alternativesSha256);
+    // Every alternative is complete — a shape, not a fragment.
+    for (const a of first.alternatives) {
+      expect(a.alternativeId.length).toBeGreaterThan(0);
+      expect(TRUTH_STATES.map((s) => s.id)).toContain(a.stateId);
+      expect(a.prerequisiteStatus.length).toBeGreaterThan(0);
+      expect(a.temporalDomain.length).toBeGreaterThan(0);
+      expect(a.satisfactionCandidateDomain.length).toBeGreaterThan(0);
+      expect(a.failureCandidateDomain.length).toBeGreaterThan(0);
+    }
+    // And the alternatives are bound into the PLAN digest, so shapes cannot move under a plan the
+    // model was already asked against.
+    const drifted: FieldRepairPlan = {
+      ...p,
+      targets: p.targets.map((t) => (t.groupId === first.groupId ? { ...t, alternativesSha256: "0".repeat(64) } : t)),
+    };
+    expect(codesOf(validateFieldRepairResponse({ repairs: correctOps(p) }, drifted, CTX, DIGESTS))).toContain("field_repair_plan_digest_mismatch");
   });
 
   it("C — the deterministic patch response produces a COMPLETE twelve-surface matrix", () => {
@@ -363,9 +505,16 @@ describe("[R2.50][8] the captured R2.48 evidence", () => {
       op("branch[0].resulting_world_state", "temporalRelation", "prerequisite_before_action"),
       op("branch[0].resulting_world_state", "prerequisiteSatisfactionCandidateId", "3-s3"),
       op("branch[0].resulting_world_state", "prerequisiteFailureCandidateId", "none"),
+      // R2.54 — the fourteenth operation. `satisfied` is a SERVER-DERIVED alternative, so the one
+      // legal answer for `reason` is the canonical empty string; prose here would be refused.
+      op("branch[0].resulting_world_state", "reason", ""),
     ];
     const v = validate(ops, p);
     expect(codesOf(v)).toEqual([]);
+    // The accepted group names the alternative it matched — acceptance is by SHAPE, not by scalars.
+    expect(v.groupSelections).toHaveLength(1);
+    expect(v.groupSelections[0]!.matchedStateId).toBe("governed_action_prerequisite_satisfied");
+    expect(v.groupSelections[0]!.reasonAuthority).toBe("server_derived");
     const m = mergeFieldRepair(R248_ATTEMPT_1, v, p, CTX);
     expect(m.codes).toEqual([]);
     expect(m.ok).toBe(true);
@@ -442,6 +591,7 @@ describe("[R2.50][7] a valid field is frozen through an unrelated repair", () =>
       op("branch[0].resulting_world_state", "temporalRelation", "prerequisite_before_action"),
       op("branch[0].resulting_world_state", "prerequisiteSatisfactionCandidateId", "3-s3"),
       op("branch[0].resulting_world_state", "prerequisiteFailureCandidateId", "none"),
+      op("branch[0].resulting_world_state", "reason", ""),
     ];
     const v = validateFieldRepairResponse({ repairs: ops }, p, CTX, DIGESTS);
     expect(codesOf(v)).toEqual([]);
@@ -473,7 +623,8 @@ describe("[R2.50][10] the counters an auditor reads", () => {
     const m = mergeFieldRepair(R248_ATTEMPT_1, v, p, CTX);
     const s = summarizeFieldRepair(p, v, m);
     expect(s.fieldRepairSurfaceCount).toBe(10);
-    expect(s.fieldRepairOperationCount).toBe(13);
+    // 9 standalone + one five-field prerequisite group across 10 dependency groups.
+    expect(s.fieldRepairOperationCount).toBe(14);
     expect(s.fieldRepairDependencyGroupCount).toBe(10);
     expect(s.fieldRepairMissingOperationCount).toBe(0);
     expect(s.fieldRepairDuplicateOperationCount).toBe(0);

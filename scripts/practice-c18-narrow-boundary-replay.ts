@@ -22,6 +22,7 @@ import { buildNarrowBoundaryRequest, narrowBoundarySubjectSha256, type NarrowBou
 import type { FieldRepairCallResult, NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
 import type { FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import { R248_ATTEMPT_1 } from "@/domain/foundry/arena-draft/r248LiveDtoFixture";
+import { capturedR252GroupOperations, selectPlanDerivedOperations } from "@/domain/foundry/arena-draft/groupAlternativeSelection.fixture";
 import { emptyTransportEvidence as emptyPatchTransport } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
@@ -190,6 +191,11 @@ export async function runC18NarrowBoundaryReplay(
       fieldRepairEvidence: stage.fieldRepairEvidence,
       fieldRepairMetrics: stage.fieldRepairMetrics,
       fieldRepairCodes: stage.fieldRepairCodes,
+      // R2.54 (artifact /6) — WHAT the dependency group chose, WHICH canonical alternative it
+      // matched or which code refused it, and whether the MERGE BOUNDARY was crossed. R2.52's live
+      // artifact could prove only that something downstream said no. Model reason prose is withheld;
+      // the field is reported as a shape.
+      fieldRepairObservability: stage.fieldRepairObservability,
       // R2.52 — WHICH repair route ran. R2.51 measured all-zero counters being read as "no repair
       // needed" when the truth was "the field-repair path never executed".
       repairMode: stage.repairMode,
@@ -312,7 +318,10 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
     // R2.52 — the FORCED-INCOMPLETE leg. A complete first-pass mock can never exercise repair
     // routing, which is exactly how R2.51's defect survived every preflight. This reproduces the
     // retained R2.48 attempt 1: 12 rows, 2 valid, 10 failed.
-    case "incomplete-field-repair": {
+    // R2.54 — `-captured-r252` shares this first response exactly and differs only in the PATCH the
+    // mock returns, so the two legs isolate the repair answer as the single variable.
+    case "incomplete-field-repair":
+    case "incomplete-field-repair-captured-r252": {
       parsed = { assessments: R248_ATTEMPT_1.filter((r) => surfaces.some((x) => x.coordinate === r.surfaceRef)) };
       break;
     }
@@ -439,7 +448,9 @@ async function main(): Promise<void> {
       // R2.52 — the ONE permitted repair, wired for both routes. Live goes to the patch reviewer;
       // the mock answers the same plan deterministically. Neither can reach the full-row schema.
       repair: async (s, plan, a) => {
-        if (useMock) return mockFieldRepair(s, plan, a);
+        // R2.54 — the mock patch KIND is read from the same `--mock-outcome` flag, so one leg
+        // cannot silently answer a different question than the review it was paired with.
+        if (useMock) return mockFieldRepair(s, plan, a, arg("mock-outcome", "pass").endsWith("captured-r252") ? "captured-r252" : "canonical");
         const { reviewFieldRepair } = await import("@/lib/bty/foundry/arena/narrowBoundaryReviewer");
         return reviewFieldRepair(s, plan, a);
       },
@@ -504,32 +515,31 @@ if (invokedDirectly) {
 }
 
 /**
- * The deterministic mock PATCH responder (R2.52).
+ * R2.54 — the plan-derived stand-in for the model.
  *
- * It answers exactly the plan it is given — one operation per target, values from that target's own
- * `allowedValues`, preferring the menu member the live corrected matrix used. It cannot emit
- * `assessments`, so a mock run proves the patch route rather than assuming it.
+ * The old `PREFERRED` map is gone. Selection is read out of the alternatives the PLAN generated, by
+ * a selector that holds no requirement knowledge of its own; see
+ * `@/domain/foundry/arena-draft/groupAlternativeSelection.fixture`.
  */
-export function mockFieldRepair(subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number): FieldRepairCallResult {
-  const PREFERRED: Record<string, string> = {
-    prerequisiteStatus: "satisfied",
-    temporalRelation: "prerequisite_before_action",
-    prerequisiteFailureCandidateId: NO_CANDIDATE,
-  };
-  const repairs = plan.targets.map((t) => {
-    if (t.field === "prerequisiteSatisfactionCandidateId") {
-      const menu = t.candidateMenu ?? [];
-      const hit = menu.find((c) => /verified identifiers for both/i.test(c.excerpt)) ?? menu[0];
-      return { surfaceRef: t.surfaceRef, field: t.field, value: hit ? hit.candidateId : NO_CANDIDATE };
-    }
-    if (t.field.endsWith("CandidateId")) {
-      const preferred = PREFERRED[t.field];
-      if (preferred !== undefined && t.allowedValues.includes(preferred)) return { surfaceRef: t.surfaceRef, field: t.field, value: preferred };
-      return { surfaceRef: t.surfaceRef, field: t.field, value: t.candidateMenu?.[0]?.candidateId ?? NO_CANDIDATE };
-    }
-    const preferred = PREFERRED[t.field];
-    return { surfaceRef: t.surfaceRef, field: t.field, value: preferred !== undefined && t.allowedValues.includes(preferred) ? preferred : t.allowedValues[0]! };
-  });
+export { MOCK_PREFERRED_STATE_ID, selectCanonicalGroupOperations, capturedR252GroupOperations } from "@/domain/foundry/arena-draft/groupAlternativeSelection.fixture";
+
+/**
+ * The deterministic mock PATCH responder (R2.52, plan-derived since R2.54).
+ *
+ * `kind`:
+ *   `canonical`     — answer every group from a canonical alternative the plan generated.
+ *   `captured-r252` — replay the EXACT selection the R2.52 live model sent, including the frozen
+ *                     empty reason. It must be refused at the repair-group boundary, before merge.
+ *
+ * It cannot emit `assessments`, so a mock run proves the patch route rather than assuming it.
+ */
+export function mockFieldRepair(
+  subject: NarrowBoundarySubject,
+  plan: FieldRepairPlan,
+  attempt: number,
+  kind: "canonical" | "captured-r252" = "canonical",
+): FieldRepairCallResult {
+  const repairs = selectPlanDerivedOperations(plan.targets, kind === "captured-r252" ? capturedR252GroupOperations : undefined);
   const transport = emptyPatchTransport(`mock#repair${attempt}`);
   transport.requestConstructed = true;
   transport.responseState = "response_received";

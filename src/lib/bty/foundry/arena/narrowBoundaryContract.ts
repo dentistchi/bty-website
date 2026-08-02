@@ -593,11 +593,22 @@ export const FIELD_REPAIR_SYSTEM_PROMPT = [
   "RULES.",
   "  Return one operation for EVERY listed target, exactly once. Never fewer, never more, never a duplicate.",
   "  Each operation is `{surfaceRef, field, value}`. Copy `surfaceRef` and `field` VERBATIM from the target.",
-  "  `value` must be one of that target's `allowedValues`. Nothing else is accepted.",
   "  Do NOT return complete assessment rows. Do NOT return frozen fields. Do NOT add explanations, commentary or extra operations.",
   "  Do NOT change `boundaryId` or `surfaceRef` — they are identity, not data.",
   "",
-  "DEPENDENCY GROUPS. Targets sharing a `groupId` are ONE decision and must be answered together and consistently: the status you choose fixes which candidate roles are required and which must be `none`. Each target lists `groupFields` so you can see the whole group.",
+  "WHERE A VALUE COMES FROM. Every target names its `valueAuthority`, and there are exactly two.",
+  "  `scalar_allowed_values` — the target stands alone. Its `value` must be one of that target's `allowedValues`. Nothing else is accepted.",
+  "  `canonical_group_alternative` — the target belongs to a DEPENDENCY GROUP. It has no list of its own, and per-field plausibility decides nothing.",
+  "",
+  "DEPENDENCY GROUPS. A group is ONE decision, not several. `dependencyGroups` lists the COMPLETE legal shapes — the canonical ALTERNATIVES — for each group.",
+  "  CHOOSE EXACTLY ONE ALTERNATIVE and answer EVERY field of that group from it. Do not combine parts of two alternatives; a mixture is refused even when each part is legal somewhere.",
+  "  Within the chosen alternative: `prerequisiteStatus` is fixed; `temporalRelation` must come from its `temporalRelation` list; each candidate field must come from its own list (`none` is the sentinel and appears in that list only where it is legal).",
+  "  Alternatives already exclude every state this surface cannot support — a state needing evidence the surface has none of is simply not offered. Do not reach for one.",
+  "",
+  "THE `reason` FIELD. When `reason` is a member of a group, the chosen alternative — not a value list — decides it.",
+  "  `reasonMode: must_be_empty` (server-derived): send `reason` with the value \"\" (empty string). The server composes the explanation. Prose here is REFUSED.",
+  "  `reasonMode: model_required`: send a specific sentence naming exactly what the text leaves unsettled. Generic phrases and near-empty strings are REFUSED.",
+  "  Answering with a `model_required` alternative while leaving `reason` empty is the single most common way this task fails.",
   "",
   "FROZEN CONTEXT. Each target shows `frozenContext` — the values of that row's other fields, already accepted. Use them to stay consistent. Never resend them.",
   "",
@@ -605,6 +616,33 @@ export const FIELD_REPAIR_SYSTEM_PROMPT = [
   "",
   "Return ONLY the JSON object required by the schema.",
 ].join("\n");
+
+/**
+ * One complete legal shape for one dependency group, as the model sees it.
+ *
+ * Flat and fully enumerated on purpose. R2.53 measured a group published as five independent scalar
+ * lists whose product admitted 150 combinations, only a small canonical subset of which formed a
+ * valid state — and the one the model picked was refused for a reason no list mentioned.
+ */
+export type FieldRepairGroupAlternativeView = {
+  alternativeId: string;
+  stateId: string;
+  prerequisiteStatus: string;
+  temporalRelation: string[];
+  prerequisiteSatisfactionCandidateId: string[];
+  prerequisiteFailureCandidateId: string[];
+  /** `must_be_empty` | `model_required` — the reason authority, carried BY the alternative. */
+  reasonMode: string;
+};
+
+export type FieldRepairDependencyGroupView = {
+  groupId: string;
+  surfaceRef: string;
+  /** Answer all of these, from ONE alternative. */
+  fields: string[];
+  alternativesSha256: string;
+  alternatives: FieldRepairGroupAlternativeView[];
+};
 
 export type FieldRepairRequest = {
   task: string;
@@ -614,12 +652,17 @@ export type FieldRepairRequest = {
     field: string;
     authorityCode: string;
     reason: string;
-    allowedValues: string[];
+    /** R2.54 — `scalar_allowed_values` or `canonical_group_alternative`. */
+    valueAuthority: string;
+    /** Present ONLY under `scalar_allowed_values`; a grouped target has no list of its own. */
+    allowedValues: string[] | null;
     candidates: Array<{ candidateId: string; excerpt: string }> | null;
     groupId: string;
     groupFields: string[];
     frozenContext: Record<string, string>;
   }>;
+  /** R2.54 — the complete legal shapes, per group. Empty when every target stands alone. */
+  dependencyGroups: FieldRepairDependencyGroupView[];
   frozenSurfaceRefs: string[];
   authority: {
     boundaryReviewSubjectSha256: string;
@@ -632,8 +675,34 @@ export type FieldRepairRequest = {
   };
 };
 
-/** Foreground ONLY the patch task. The frozen rows are named, never re-sent. */
+/**
+ * Foreground ONLY the patch task. The frozen rows are named, never re-sent.
+ *
+ * R2.54 — a grouped target publishes NO `allowedValues`. Sending one would re-open the door this
+ * slice closed: the model would read five independent lists, pick a plausible value from each, and
+ * the tuple it assembled would be nobody's canonical state. The group's shapes live in
+ * `dependencyGroups`, once per group rather than repeated on every member.
+ */
 export function buildFieldRepairRequest(subject: NarrowBoundarySubject, plan: FieldRepairPlan): FieldRepairRequest {
+  const groups = new Map<string, FieldRepairDependencyGroupView>();
+  for (const t of plan.targets) {
+    if (t.valueAuthority !== "canonical_group_alternative" || groups.has(t.groupId)) continue;
+    groups.set(t.groupId, {
+      groupId: t.groupId,
+      surfaceRef: t.surfaceRef,
+      fields: [...t.groupFields],
+      alternativesSha256: t.alternativesSha256,
+      alternatives: t.alternatives.map((a) => ({
+        alternativeId: a.alternativeId,
+        stateId: a.stateId,
+        prerequisiteStatus: a.prerequisiteStatus,
+        temporalRelation: [...a.temporalDomain],
+        prerequisiteSatisfactionCandidateId: [...a.satisfactionCandidateDomain],
+        prerequisiteFailureCandidateId: [...a.failureCandidateDomain],
+        reasonMode: a.reasonConstraint,
+      })),
+    });
+  }
   return {
     task: `Supply exactly ${plan.requiredOperationCount} field repair operations. Fields not listed are frozen and must not be returned.`,
     requiredOperationCount: plan.requiredOperationCount,
@@ -642,12 +711,16 @@ export function buildFieldRepairRequest(subject: NarrowBoundarySubject, plan: Fi
       field: t.field,
       authorityCode: t.authorityCode,
       reason: t.reason,
-      allowedValues: t.allowedValues,
+      valueAuthority: t.valueAuthority,
+      allowedValues: t.valueAuthority === "scalar_allowed_values" ? t.allowedValues : null,
+      // The EXCERPTS stay. An alternative names candidate ids; only the excerpt says what an id
+      // points at, and a model choosing evidence it cannot read is guessing.
       candidates: t.candidateMenu,
       groupId: t.groupId,
       groupFields: t.groupFields,
       frozenContext: t.frozenContext,
     })),
+    dependencyGroups: [...groups.values()],
     frozenSurfaceRefs: plan.frozenSurfaceRefs,
     authority: {
       boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),

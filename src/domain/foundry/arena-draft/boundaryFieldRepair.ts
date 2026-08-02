@@ -40,6 +40,7 @@ import {
   CANDIDATE_FIELD_OF,
   GOVERNED_ACTION_STATUSES,
   IDENTITY_FIELDS,
+  NARROW_REASON_MAX,
   NO_CANDIDATE,
   PREREQUISITE_STATUSES,
   REPAIRABLE_BOUNDARY_FIELDS,
@@ -52,11 +53,32 @@ import {
 } from "./narrowBoundaryReview";
 import { TRUTH_STATES, type TruthStateRule } from "./boundaryTruthStates";
 import { poolFor } from "./boundaryEvidenceCandidates";
+// R2.54 — a multi-field group is accepted only by matching a canonical shape.
+import {
+  deriveGroupAlternatives,
+  groupAlternativesSha256,
+  matchGroupAlternative,
+  reasonAuthorityOf,
+  GROUP_ALTERNATIVES_VERSION,
+  GROUP_SHAPE_CODES,
+  type CanonicalGroupAlternative,
+  type ReasonAuthorityMode,
+} from "./boundaryGroupAlternatives";
 
 export const FIELD_REPAIR_VERSION = "practice-boundary-field-repair/1";
 export const FIELD_REPAIR_SCHEMA_NAME = "bty_practice_boundary_field_repair_v1";
 export const MAX_FIELD_REPAIR_OPERATIONS = 96;
-export const FIELD_REPAIR_VALUE_MAX = 32;
+/**
+ * R2.54 — the operation VALUE cap is the full-row `reason` cap, not a status-sized one.
+ *
+ * `reason` became repairable in this slice, and a `model_required` alternative demands prose the
+ * existing contract measures in characters (>= `MODEL_REASON_MIN_CHARS`, refusing generic phrases).
+ * At the old 32-character cap the provider schema would have made the only legal answer to a
+ * model-required alternative structurally unsendable — offering a shape that cannot be completed,
+ * which is the exact R2.53 trap in a different place. The cap is therefore the ONE reason cap the
+ * full-row schema already publishes; a status or candidate id is far shorter and is unaffected.
+ */
+export const FIELD_REPAIR_VALUE_MAX = NARROW_REASON_MAX;
 
 export { REPAIRABLE_BOUNDARY_FIELDS, IDENTITY_FIELDS };
 
@@ -82,6 +104,8 @@ export const FIELD_REPAIR_CODES = [
   "field_repair_surface_map_digest_mismatch",
   "field_repair_frozen_field_mutated",
   "field_repair_merged_row_invalid",
+  "field_repair_group_alternative_digest_mismatch",
+  ...GROUP_SHAPE_CODES,
 ] as const;
 export type FieldRepairCode = (typeof FIELD_REPAIR_CODES)[number];
 
@@ -150,6 +174,11 @@ export function prerequisiteClosure(): RepairableBoundaryField[] {
         if (JSON.stringify(a.temporalRelation) !== JSON.stringify(b.temporalRelation)) fields.add("temporalRelation");
         if (a.satisfactionCandidate !== b.satisfactionCandidate) fields.add("prerequisiteSatisfactionCandidateId");
         if (a.failureCandidate !== b.failureCandidate) fields.add("prerequisiteFailureCandidateId");
+        // R2.54 — the authority governing `reason` also moves with the
+        // prerequisite axis. R2.53 measured a canonically valid tuple refused
+        // solely because the frozen empty reason was illegal in the state it
+        // selected, and no plan could have asked for prose it never targeted.
+        if (a.reasonAuthority !== b.reasonAuthority) fields.add("reason");
       }
   }
   return [...fields];
@@ -184,6 +213,17 @@ const GOVERNED_ACTION_GROUP_CODES = new Set<string>(["boundary_governed_action_c
 // The plan
 // ---------------------------------------------------------------------------
 
+/**
+ * R2.54 — WHERE a target's legal values come from.
+ *
+ * A single-field group's scalar domain IS its shape, so `allowedValues` is the authority. A
+ * multi-field group has no per-field authority at all: R2.53 measured its per-field domains admitting
+ * 150 combinations, only a small canonical subset of which forms a valid state. Naming the authority
+ * on the target keeps a reader — and the request builder — from treating the two as interchangeable.
+ */
+export const FIELD_REPAIR_VALUE_AUTHORITIES = ["scalar_allowed_values", "canonical_group_alternative"] as const;
+export type FieldRepairValueAuthority = (typeof FIELD_REPAIR_VALUE_AUTHORITIES)[number];
+
 export type FieldRepairTarget = {
   boundaryId: string;
   surfaceRef: string;
@@ -193,8 +233,14 @@ export type FieldRepairTarget = {
   authorityCode: string;
   /** Deterministic server prose. Never model text. */
   reason: string;
+  /** Meaningful ONLY under `scalar_allowed_values`. Empty for `reason`, which has no scalar domain. */
   allowedValues: string[];
   candidateMenu: Array<{ candidateId: string; excerpt: string }> | null;
+  /** R2.54 — which of the two authorities decides this target's value. */
+  valueAuthority: FieldRepairValueAuthority;
+  /** R2.54 — the complete legal shapes for this group. Empty for single-field groups. */
+  alternatives: CanonicalGroupAlternative[];
+  alternativesSha256: string;
   /** The fields that stay put, with their frozen values — context, never a thing to resend. */
   frozenContext: Record<string, string>;
 };
@@ -216,6 +262,28 @@ export type FieldRepairPlan = {
 const digest = (v: unknown): string => createHash("sha256").update(typeof v === "string" ? v : JSON.stringify(v)).digest("hex");
 export const baseRowSha256 = (row: BoundaryTruthAssessment): string => digest(canonicalRow(row));
 
+/**
+ * The plan digest, computed in ONE place.
+ *
+ * R2.54 binds `alternativesSha256` into it. Without that the canonical shapes could move — a state
+ * gained, a pool emptied, a reason authority flipped — while the plan the model was asked against
+ * still digested identically, which is exactly the class of silent drift R2.51 measured on the
+ * routing wiring. It is written once so the builder and the re-check cannot diverge.
+ */
+const planSha256 = (
+  digests: { boundaryReviewSubjectSha256: string; surfaceMapSha256: string; lineageSha256: string },
+  rows: Array<{ surfaceRef: string; sha256: string }>,
+  targets: ReadonlyArray<Pick<FieldRepairTarget, "surfaceRef" | "field" | "groupId" | "allowedValues" | "valueAuthority" | "alternativesSha256">>,
+): string =>
+  digest([
+    FIELD_REPAIR_VERSION,
+    digests.boundaryReviewSubjectSha256,
+    digests.surfaceMapSha256,
+    digests.lineageSha256,
+    rows,
+    targets.map((t) => [t.surfaceRef, t.field, t.groupId, t.allowedValues, t.valueAuthority, t.alternativesSha256]),
+  ]);
+
 const canonicalRow = (r: BoundaryTruthAssessment) =>
   JSON.stringify([
     r.boundaryId,
@@ -236,6 +304,14 @@ const menuFor = (ctx: NarrowReviewContext, boundaryId: string, surfaceRef: strin
 };
 
 const allowedFor = (field: RepairableBoundaryField, menu: Array<{ candidateId: string }> | null): string[] => {
+  /**
+   * R2.54 — `reason` has NO scalar domain, and an empty list says so honestly.
+   *
+   * A placeholder token here would be worse than nothing: the request builder would publish it, the
+   * model would read it as a legal value, and a scalar list would once again be the thing deciding
+   * whether prose was required. The matched alternative's `reasonAuthority` is the only authority.
+   */
+  if (field === "reason") return [];
   if (field === "governedActionStatus") return [...GOVERNED_ACTION_STATUSES];
   if (field === "prerequisiteStatus") return [...PREREQUISITE_STATUSES];
   if (field === "temporalRelation") return [...TEMPORAL_RELATIONS];
@@ -315,6 +391,27 @@ export function planFieldRepair(
     }
 
     const groupId = digest([surfaceRef, owner, fields]).slice(0, 16);
+    /**
+     * R2.54 — for a MULTI-FIELD group the legal shapes are canonical
+     * alternatives, not a Cartesian product of per-field lists. R2.53 measured
+     * that product at 150 combinations for one c18 group, only a small subset of
+     * which formed a valid state. A single-field group needs none: its scalar
+     * domain IS its shape.
+     */
+    const frame = ctx.frames.find((f) => f.boundaryId === row.boundaryId);
+    const alternatives =
+      fields.length > 1
+        ? deriveGroupAlternatives({
+            boundaryId: row.boundaryId,
+            surfaceRef,
+            governedActionStatus: row.governedActionStatus,
+            groupFields: fields,
+            ruleKind: frame?.ruleKind ?? "uncertain",
+            candidates: ctx.candidates,
+          })
+        : [];
+    const alternativesSha256 = groupAlternativesSha256(alternatives);
+    const valueAuthority: FieldRepairValueAuthority = fields.length > 1 ? "canonical_group_alternative" : "scalar_allowed_values";
     for (const field of fields) {
       const menu = menuFor(ctx, row.boundaryId, surfaceRef, field);
       targets.push({
@@ -327,6 +424,9 @@ export function planFieldRepair(
         reason: REASONS[owner] ?? owner,
         allowedValues: allowedFor(field, menu),
         candidateMenu: menu,
+        valueAuthority,
+        alternatives,
+        alternativesSha256,
         frozenContext: Object.fromEntries(
           REPAIRABLE_BOUNDARY_FIELDS.filter((f) => !fields.includes(f)).map((f) => [f, String((row as unknown as Record<string, unknown>)[f] ?? "")]),
         ),
@@ -345,14 +445,7 @@ export function planFieldRepair(
     digests: { ...digests },
     planSha256: "",
   };
-  plan.planSha256 = digest([
-    FIELD_REPAIR_VERSION,
-    digests.boundaryReviewSubjectSha256,
-    digests.surfaceMapSha256,
-    digests.lineageSha256,
-    rows,
-    targets.map((t) => [t.surfaceRef, t.field, t.groupId, t.allowedValues]),
-  ]);
+  plan.planSha256 = planSha256(digests, rows, targets);
   return plan;
 }
 
@@ -360,9 +453,32 @@ export function planFieldRepair(
 // Patch validation
 // ---------------------------------------------------------------------------
 
+/** R2.54 — what one multi-field group actually selected, and what it matched. */
+export interface GroupSelectionRecord {
+  groupId: string;
+  surfaceRef: string;
+  groupFields: RepairableBoundaryField[];
+  alternativesCount: number;
+  alternativesSha256: string;
+  selected: Record<string, string | undefined>;
+  matchedAlternativeId: string | null;
+  matchedStateId: string | null;
+  /** The authority the selection reached — `unknown` when it reached no single one. */
+  reasonAuthority: ReasonAuthorityMode;
+  code: FieldRepairCode | null;
+}
+
 export type FieldRepairValidation =
-  | { ok: true; operations: BoundaryFieldRepairOperation[]; codes: [] }
-  | { ok: false; codes: FieldRepairCode[]; operations: BoundaryFieldRepairOperation[]; untargetedCount: number; missingCount: number; duplicateCount: number };
+  | { ok: true; operations: BoundaryFieldRepairOperation[]; codes: []; groupSelections: GroupSelectionRecord[] }
+  | {
+      ok: false;
+      codes: FieldRepairCode[];
+      operations: BoundaryFieldRepairOperation[];
+      untargetedCount: number;
+      missingCount: number;
+      duplicateCount: number;
+      groupSelections: GroupSelectionRecord[];
+    };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -390,20 +506,13 @@ export function validateFieldRepairResponse(
   if (digests.boundaryReviewSubjectSha256 !== plan.digests.boundaryReviewSubjectSha256) push("field_repair_subject_digest_mismatch");
   if (digests.surfaceMapSha256 !== plan.digests.surfaceMapSha256) push("field_repair_surface_map_digest_mismatch");
   if (digests.lineageSha256 !== plan.digests.lineageSha256) push("field_repair_lineage_digest_mismatch");
-  const rebuilt = digest([
-    FIELD_REPAIR_VERSION,
-    plan.digests.boundaryReviewSubjectSha256,
-    plan.digests.surfaceMapSha256,
-    plan.digests.lineageSha256,
-    plan.baseRows,
-    plan.targets.map((t) => [t.surfaceRef, t.field, t.groupId, t.allowedValues]),
-  ]);
+  const rebuilt = planSha256(plan.digests, plan.baseRows, plan.targets);
   if (rebuilt !== plan.planSha256) push("field_repair_plan_digest_mismatch");
   if (expected?.planSha256 !== undefined && expected.planSha256 !== plan.planSha256) push("field_repair_plan_digest_mismatch");
 
   if (!isObj(raw) || !Array.isArray(raw.repairs)) {
     push("field_repair_not_a_patch");
-    return { ok: false, codes, operations: [], untargetedCount, missingCount, duplicateCount };
+    return { ok: false, codes, operations: [], untargetedCount, missingCount, duplicateCount, groupSelections: [] };
   }
   const rawOps = raw.repairs;
   const operations: BoundaryFieldRepairOperation[] = [];
@@ -446,7 +555,9 @@ export function validateFieldRepairResponse(
       untargetedCount++;
       continue;
     }
-    if (!target.allowedValues.includes(op.value)) {
+      // R2.54 — `reason` has no scalar domain. Its legality belongs to the
+      // matched alternative's `reasonAuthority`, checked in the group pass below.
+    if (target.field !== "reason" && !target.allowedValues.includes(op.value)) {
       // A candidate id gets the precise reason it is not allowed; a status gets the value code.
       if (target.field.endsWith("CandidateId")) {
         const all = ctx.candidates.filter((c) => c.candidateId === op.value);
@@ -473,8 +584,73 @@ export function validateFieldRepairResponse(
   }
   if (operations.length !== plan.requiredOperationCount) push("field_repair_operation_count_mismatch");
 
-  if (codes.length > 0) return { ok: false, codes, operations, untargetedCount, missingCount, duplicateCount };
-  return { ok: true, operations, codes: [] };
+  /**
+   * R2.54 — GROUP SHAPE. The step that makes the authority bind.
+   *
+   * Scalar membership never proved the tuple: R2.53 measured one c18 group whose
+   * per-field domains admit 150 combinations, only a small canonical subset of
+   * which forms a valid state. Worse, the live patch chose a VALID state and was
+   * still refused, because that state's `reasonAuthority` demanded prose the
+   * frozen empty reason could not supply.
+   *
+   * A multi-field group is now accepted only by matching ONE canonical
+   * alternative, complete, including its reason authority. Earlier codes win: an
+   * INCOMPLETE group is a completeness failure, not a shape failure, and naming
+   * it the latter would misreport what the model actually did.
+   */
+  const groupSelections: GroupSelectionRecord[] = [];
+  if (codes.length === 0) {
+    const byGroup = new Map<string, FieldRepairTarget[]>();
+    for (const t of plan.targets) byGroup.set(t.groupId, [...(byGroup.get(t.groupId) ?? []), t]);
+    const valueOf = new Map(operations.map((o) => [`${o.surfaceRef} ${o.field}`, o.value]));
+
+    for (const [groupId, group] of byGroup) {
+      if (group.length < 2) continue; // a single-field group's scalar domain IS its shape
+      const first = group[0]!;
+      if (groupAlternativesSha256(first.alternatives) !== first.alternativesSha256) {
+        push("field_repair_group_alternative_digest_mismatch");
+        groupSelections.push({
+          groupId,
+          surfaceRef: first.surfaceRef,
+          groupFields: first.groupFields,
+          alternativesCount: first.alternatives.length,
+          alternativesSha256: first.alternativesSha256,
+          selected: {},
+          matchedAlternativeId: null,
+          matchedStateId: null,
+          reasonAuthority: "unknown",
+          code: "field_repair_group_alternative_digest_mismatch",
+        });
+        continue;
+      }
+      const pick = (field: string): string => valueOf.get(`${first.surfaceRef} ${field}`) ?? "";
+      const selected = {
+        prerequisiteStatus: pick("prerequisiteStatus"),
+        temporalRelation: pick("temporalRelation"),
+        prerequisiteSatisfactionCandidateId: pick("prerequisiteSatisfactionCandidateId"),
+        prerequisiteFailureCandidateId: pick("prerequisiteFailureCandidateId"),
+        reason: group.some((t) => t.field === "reason") ? pick("reason") : undefined,
+      };
+      const match = matchGroupAlternative(first.alternatives, selected);
+      groupSelections.push({
+        groupId,
+        surfaceRef: first.surfaceRef,
+        groupFields: first.groupFields,
+        alternativesCount: first.alternatives.length,
+        alternativesSha256: first.alternativesSha256,
+        selected,
+        matchedAlternativeId: match.ok ? match.alternativeId : null,
+        matchedStateId: match.ok ? match.stateId : null,
+        reasonAuthority: match.reasonAuthority,
+        code: match.ok ? null : match.code,
+      });
+      // Never normalized, never nudged to the nearest alternative.
+      if (!match.ok) push(match.code);
+    }
+  }
+
+  if (codes.length > 0) return { ok: false, codes, operations, untargetedCount, missingCount, duplicateCount, groupSelections };
+  return { ok: true, operations, codes: [], groupSelections };
 }
 
 // ---------------------------------------------------------------------------
@@ -505,6 +681,17 @@ export type FieldRepairMerge =
  * The repair layer never constructs a verdict — it hands a complete matrix back to the one validator
  * that already exists, or it fails.
  */
+const metricsFor = (plan: FieldRepairPlan, validation: FieldRepairValidation): FieldRepairMetrics => ({
+  fieldRepairSurfaceCount: new Set(plan.targets.map((t) => t.surfaceRef)).size,
+  fieldRepairOperationCount: plan.requiredOperationCount,
+  fieldRepairDependencyGroupCount: plan.dependencyGroupCount,
+  fieldRepairMissingOperationCount: validation.ok ? 0 : validation.missingCount,
+  fieldRepairDuplicateOperationCount: validation.ok ? 0 : validation.duplicateCount,
+  fieldRepairUntargetedOperationCount: validation.ok ? 0 : validation.untargetedCount,
+  fieldRepairFrozenMutationCount: 0,
+  fieldRepairMergedRowInvalidCount: 0,
+});
+
 export function mergeFieldRepair(
   baseRows: readonly BoundaryTruthAssessment[],
   validation: FieldRepairValidation,
@@ -512,16 +699,7 @@ export function mergeFieldRepair(
   ctx: NarrowReviewContext,
 ): FieldRepairMerge {
   const codes: FieldRepairCode[] = [];
-  const metrics: FieldRepairMetrics = {
-    fieldRepairSurfaceCount: new Set(plan.targets.map((t) => t.surfaceRef)).size,
-    fieldRepairOperationCount: plan.requiredOperationCount,
-    fieldRepairDependencyGroupCount: plan.dependencyGroupCount,
-    fieldRepairMissingOperationCount: validation.ok ? 0 : validation.missingCount,
-    fieldRepairDuplicateOperationCount: validation.ok ? 0 : validation.duplicateCount,
-    fieldRepairUntargetedOperationCount: validation.ok ? 0 : validation.untargetedCount,
-    fieldRepairFrozenMutationCount: 0,
-    fieldRepairMergedRowInvalidCount: 0,
-  };
+  const metrics = metricsFor(plan, validation);
   const fail = (): FieldRepairMerge => ({ ok: false, codes, rows: [], metrics, mergedRowSha256: [] });
 
   if (!validation.ok) {
@@ -573,6 +751,153 @@ export function mergeFieldRepair(
   return { ok: true, rows, codes: [], metrics, mergedRowSha256: rows.map((r) => ({ surfaceRef: r.surfaceRef, sha256: baseRowSha256(r) })) };
 }
 
+// ---------------------------------------------------------------------------
+// R2.54 — the one live seam, and what it lets an artifact prove
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate, then merge ONLY if the patch was accepted.
+ *
+ * This is the whole point of the slice expressed as one function. R2.53 measured a patch that passed
+ * every scalar check, crossed the merge boundary, and was refused by the CANONICAL ROW VALIDATOR with
+ * `boundary_reason_required_missing` — a semantic verdict standing in for a contract refusal the
+ * repair layer should have made first. `mergeAttempted` makes the boundary observable rather than
+ * inferable: a refused patch does not reach the merge, and the artifact says so in as many words.
+ *
+ * `mergeFieldRepair` keeps its own defensive guard for direct callers; it is not the seam the stage
+ * uses, so the guard can never be the thing that "kept merge from running".
+ */
+export interface FieldRepairApplication {
+  validation: FieldRepairValidation;
+  /** FALSE for every refused patch. The merge boundary is crossed by accepted patches only. */
+  mergeAttempted: boolean;
+  merge: FieldRepairMerge;
+}
+
+export function applyFieldRepair(
+  raw: unknown,
+  baseRows: readonly BoundaryTruthAssessment[],
+  plan: FieldRepairPlan,
+  ctx: NarrowReviewContext,
+  digests: { boundaryReviewSubjectSha256: string; surfaceMapSha256: string; lineageSha256: string },
+  expected?: { planSha256?: string },
+): FieldRepairApplication {
+  const validation = validateFieldRepairResponse(raw, plan, ctx, digests, expected);
+  if (!validation.ok) {
+    return {
+      validation,
+      mergeAttempted: false,
+      merge: { ok: false, codes: [...validation.codes], rows: [], metrics: metricsFor(plan, validation), mergedRowSha256: [] },
+    };
+  }
+  return { validation, mergeAttempted: true, merge: mergeFieldRepair(baseRows, validation, plan, ctx) };
+}
+
+/**
+ * What one dependency group did, in a form safe to write to an artifact.
+ *
+ * Statuses, temporal relations and candidate ids are SERVER-ISSUED vocabulary — printing them back
+ * discloses nothing the server did not author. `reason` is the exception: it is the one field whose
+ * value can be model prose about a scenario, so it is reported as a SHAPE (empty / prose of length n,
+ * digested) and never as text.
+ */
+export interface FieldRepairGroupObservation {
+  groupId: string;
+  surfaceRef: string;
+  fields: string[];
+  alternativesCount: number;
+  alternativesSha256: string;
+  /** Server-issued vocabulary verbatim; `reason` redacted to a shape. */
+  selected: Record<string, string>;
+  matched: boolean;
+  matchedAlternativeId: string | null;
+  matchedStateId: string | null;
+  reasonAuthority: ReasonAuthorityMode;
+  refusalCode: string | null;
+}
+
+export const FIELD_REPAIR_OBSERVABILITY_VERSION = "practice-boundary-field-repair-observability/1";
+
+export interface FieldRepairObservation {
+  version: typeof FIELD_REPAIR_OBSERVABILITY_VERSION;
+  alternativesContractVersion: typeof GROUP_ALTERNATIVES_VERSION;
+  /** The plan the model was asked against. */
+  operationPlanCount: number;
+  dependencyGroupCount: number;
+  planSha256: string;
+  /** What actually came back. */
+  suppliedOperationCount: number;
+  groups: FieldRepairGroupObservation[];
+  accepted: boolean;
+  refusalCodes: string[];
+  /** THE boundary. False for every refused patch. */
+  mergeAttempted: boolean;
+  mergeAccepted: boolean;
+  mergeCodes: string[];
+  mergedRowInvalidCount: number;
+  redaction: {
+    modelReasonProseWithheld: true;
+    reasonReportedAsShapeOnly: true;
+    serverIssuedVocabularyRetained: true;
+  };
+}
+
+/** Prose never leaves; its shape does. A digest prefix distinguishes two answers without quoting either. */
+const reasonShape = (value: string | undefined): string => {
+  if (value === undefined) return "<not-in-group>";
+  if (value.trim().length === 0) return "<empty>";
+  return `<model-prose:${value.length}:${digest(value).slice(0, 12)}>`;
+};
+
+export function fieldRepairObservability(plan: FieldRepairPlan, application: FieldRepairApplication): FieldRepairObservation {
+  const { validation, merge, mergeAttempted } = application;
+  const recorded = new Map(validation.groupSelections.map((g) => [g.groupId, g]));
+  const groups: FieldRepairGroupObservation[] = [];
+
+  for (const groupId of new Set(plan.targets.map((t) => t.groupId))) {
+    const targets = plan.targets.filter((t) => t.groupId === groupId);
+    const first = targets[0]!;
+    if (first.valueAuthority !== "canonical_group_alternative") continue; // a scalar target has no shape to observe
+    const rec = recorded.get(groupId);
+    const selected: Record<string, string> = {};
+    for (const [field, value] of Object.entries(rec?.selected ?? {})) {
+      selected[field] = field === "reason" ? reasonShape(value) : (value ?? "<absent>");
+    }
+    groups.push({
+      groupId,
+      surfaceRef: first.surfaceRef,
+      fields: [...first.groupFields],
+      alternativesCount: first.alternatives.length,
+      alternativesSha256: first.alternativesSha256,
+      selected,
+      matched: rec?.matchedAlternativeId != null,
+      matchedAlternativeId: rec?.matchedAlternativeId ?? null,
+      matchedStateId: rec?.matchedStateId ?? null,
+      // No selection record means the patch was refused BEFORE the shape pass ran; the authority
+      // that would have applied is still knowable from the offered alternatives.
+      reasonAuthority: rec?.reasonAuthority ?? reasonAuthorityOf(first.alternatives),
+      refusalCode: rec?.code ?? null,
+    });
+  }
+
+  return {
+    version: FIELD_REPAIR_OBSERVABILITY_VERSION,
+    alternativesContractVersion: GROUP_ALTERNATIVES_VERSION,
+    operationPlanCount: plan.requiredOperationCount,
+    dependencyGroupCount: plan.dependencyGroupCount,
+    planSha256: plan.planSha256,
+    suppliedOperationCount: validation.operations.length,
+    groups,
+    accepted: validation.ok,
+    refusalCodes: validation.ok ? [] : [...validation.codes],
+    mergeAttempted,
+    mergeAccepted: merge.ok,
+    mergeCodes: merge.ok ? [] : [...merge.codes],
+    mergedRowInvalidCount: merge.metrics.fieldRepairMergedRowInvalidCount,
+    redaction: { modelReasonProseWithheld: true, reasonReportedAsShapeOnly: true, serverIssuedVocabularyRetained: true },
+  };
+}
+
 export const summarizeFieldRepair = (plan: FieldRepairPlan, validation: FieldRepairValidation, merge: FieldRepairMerge): FieldRepairMetrics => ({
   ...merge.metrics,
   fieldRepairSurfaceCount: new Set(plan.targets.map((t) => t.surfaceRef)).size,
@@ -603,4 +928,17 @@ export const fieldRepairContractSha256 = (): string =>
     forbiddenCandidateNeverNormalized: true,
     mergedRowRevalidatedByCanonicalValidator: true,
     partialMatrixNeverProducesVerdict: true,
+    // R2.54 — the group is the unit of acceptance, and the merge boundary is observable.
+    valueAuthorities: FIELD_REPAIR_VALUE_AUTHORITIES,
+    multiFieldGroupRequiresCanonicalAlternative: true,
+    scalarMembershipInsufficientForMultiFieldGroups: true,
+    reasonIsRepairableOnlyInsideItsGroup: true,
+    reasonHasNoScalarAllowedValues: true,
+    reasonAuthorityComesFromMatchedAlternative: true,
+    incompleteGroupIsCompletenessNotShape: true,
+    alternativesBoundIntoPlanDigest: true,
+    operationValueMaxIsTheReasonCap: FIELD_REPAIR_VALUE_MAX,
+    refusedPatchNeverReachesMerge: true,
+    observabilityVersion: FIELD_REPAIR_OBSERVABILITY_VERSION,
+    observabilityWithholdsModelReasonProse: true,
   });

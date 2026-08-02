@@ -20,7 +20,24 @@
  * emitting `/1` while the runner bound `/3`: two constants, no relationship, and an artifact that
  * could not be attributed to the contract that produced it.
  */
-export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/5";
+export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/6";
+
+/**
+ * R2.54 — /6 adds `fieldRepairObservability`: the dependency group's identity and field set, how
+ * many canonical alternatives it was offered and their digest, what it selected, which alternative
+ * matched (or which code refused it), the reason authority in force, and — the question R2.53 could
+ * not answer from an artifact — whether the MERGE BOUNDARY was crossed at all.
+ *
+ * The R2.52 live artifact recorded `fieldRepairCodes: ["field_repair_merged_row_invalid"]` and
+ * `mergedRows: null`, from which a reader could tell that something downstream refused the patch but
+ * not what the patch had chosen or why the choice was illegal. Every earlier version stays readable;
+ * the field is additive.
+ */
+export const NARROW_REPLAY_ARTIFACT_VERSIONS = [
+  "practice-narrow-boundary-replay/4",
+  "practice-narrow-boundary-replay/5",
+  "practice-narrow-boundary-replay/6",
+] as const;
 
 /** Outcomes the narrow boundary STAGE can return. */
 export const BOUNDARY_STAGE_OUTCOMES = [

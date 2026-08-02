@@ -106,13 +106,25 @@ import {
   FIELD_REPAIR_CODES,
   FIELD_REPAIR_JSON_SCHEMA,
   FIELD_REPAIR_SCHEMA_NAME,
+  FIELD_REPAIR_OBSERVABILITY_VERSION,
+  FIELD_REPAIR_VALUE_AUTHORITIES,
+  FIELD_REPAIR_VALUE_MAX,
   REPAIRABLE_BOUNDARY_FIELDS,
   IDENTITY_FIELDS,
   fieldRepairContractSha256,
   governedActionClosure,
   prerequisiteClosure,
 } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+// R2.54 — the canonical dependency-group shape authority.
+import {
+  GROUP_ALTERNATIVES_VERSION,
+  GROUP_SHAPE_CODES,
+  REASON_AUTHORITY_MODES,
+  REASON_CONSTRAINTS,
+  groupAlternativeContractSha256,
+} from "@/domain/foundry/arena-draft/boundaryGroupAlternatives";
 import { BOUNDARY_STAGE_ROUTING_CONTRACT, REPAIR_MODES } from "./boundaryReviewStage";
+
 import {
   ATTRIBUTION_AUTHORITY,
   ATTRIBUTION_REFUSAL_CODES,
@@ -439,6 +451,41 @@ export function buildContractManifest(head: string, model: string): ContractMani
         zeroMetricsNeverImplyRepairRan: true,
         artifactRecordsRepairMode: true,
         artifactRecordsCallCounts: ["fullRowReviewCallCount", "fieldRepairCallCount", "legacyWholeRowRepairCallCount"],
+      }),
+      /**
+       * R2.54 — a multi-field dependency group is accepted only by matching ONE complete canonical
+       * alternative, and the merge boundary is observable. R2.53 measured a patch that satisfied
+       * every per-field list, crossed the merge, and was refused by the canonical row validator with
+       * `boundary_reason_required_missing` — a semantic verdict standing in for a contract refusal.
+       */
+      boundaryGroupAlternativeAuthority: groupAlternativeContractSha256(),
+      boundaryGroupAlternativeContract: digest({
+        version: GROUP_ALTERNATIVES_VERSION,
+        shapeCodes: GROUP_SHAPE_CODES,
+        reasonConstraints: REASON_CONSTRAINTS,
+        reasonAuthorityModes: REASON_AUTHORITY_MODES,
+        valueAuthorities: FIELD_REPAIR_VALUE_AUTHORITIES,
+        multiFieldGroupRequiresCanonicalAlternative: true,
+        scalarMembershipInsufficientForMultiFieldGroups: true,
+        reasonIsAGroupMemberNotAScalarDomain: true,
+        reasonAuthorityComesFromMatchedAlternative: true,
+        governedActionFieldsStayOutsideThePrerequisiteGroup: true,
+        incompleteGroupIsCompletenessNotShape: true,
+        alternativesBoundIntoPlanDigest: true,
+        alternativesDerivedFromTruthStateTable: true,
+        alternativesRoundTripThroughClassifier: true,
+        serverMayValidateNeverChoose: true,
+        operationValueMaxIsTheReasonCap: FIELD_REPAIR_VALUE_MAX,
+      }),
+      boundaryFieldRepairApplySeam: digest({
+        seam: "applyFieldRepair",
+        order: ["validate", "refuse_or_merge"],
+        refusedPatchNeverReachesMerge: true,
+        mergeAttemptRecorded: true,
+        observabilityVersion: FIELD_REPAIR_OBSERVABILITY_VERSION,
+        observabilityWithholdsModelReasonProse: true,
+        observabilityReportsReasonAsShapeOnly: true,
+        artifactVersion: NARROW_REPLAY_ARTIFACT_VERSION,
       }),
       boundaryFieldRepairAuthority: fieldRepairContractSha256(),
       boundaryFieldRepairSchema: digest(FIELD_REPAIR_JSON_SCHEMA),
