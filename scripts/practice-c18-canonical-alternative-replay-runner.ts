@@ -7,7 +7,7 @@
  * dependency-group shape authority, the apply seam that refuses before it merges, and the artifact /6
  * observability an auditor reads a refusal out of. PREPARED in R2.54, deliberately NOT EXECUTED.
  *
- *   npx tsx scripts/practice-c18-canonical-alternative-replay-runner.ts --out /tmp/r254_c18_canonical_alternative_replay_canary.sh
+ *   npx tsx scripts/practice-c18-canonical-alternative-replay-runner.ts --out /tmp/r256_c18_classifier_replay_canary.sh
  *   npx tsx scripts/practice-c18-canonical-alternative-replay-runner.ts --binding-json
  *
  * WHY R2.52's CANARY IS NOT ENOUGH
@@ -75,7 +75,18 @@ import {
   ATTRIBUTION_REFUSAL_CODES,
   causalAttributionContractSha256,
 } from "@/domain/foundry/arena-draft/generatedResultAttribution";
-import { PREREQUISITE_UNAVAILABLE_CODES, TRUTH_STATES, renderCandidateRequirements } from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import {
+  GOVERNING_RULE_KINDS,
+  PREREQUISITE_UNAVAILABLE_CODES,
+  TRUTH_STATES,
+  classifyTruthState,
+  renderCandidateRequirements,
+  truthStateAmbiguities,
+  truthStateCoverage,
+} from "@/domain/foundry/arena-draft/boundaryTruthStates";
+import { RULE_KINDS, buildSemanticFrame } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
+import { deriveGroupAlternatives, groupAlternativesSha256 } from "@/domain/foundry/arena-draft/boundaryGroupAlternatives";
+import { PROHIBITION_BOUNDARY, PROHIBITION_BREACH_FACTS } from "@/domain/foundry/arena-draft/prohibitionBoundaryFixture";
 import {
   FIELD_REPAIR_CODES,
   FIELD_REPAIR_JSON_SCHEMA,
@@ -393,8 +404,48 @@ const binding = {
    * prerequisite boundary. R2.54 neither introduced nor resolved that; the characterization test
    * records the current behaviour and a live replay stays blocked on the separate forensic.
    */
-  classifierForensicDeferred: true,
-  classifyTruthStateModifiedByThisSlice: false,
+  /**
+   * R2.56 — the classifier forensic is CLOSED. `prohibited_action_present` is scoped to prohibition
+   * rules in row data, rule kind is a filter dimension, and the dead tiebreak is gone. These
+   * bindings move if any of that is undone.
+   */
+  classifierForensicDeferred: false,
+  ruleKindIsAFilterDimension: true,
+  deadRuleKindTiebreakRemoved: true,
+  ruleKinds: RULE_KINDS,
+  governingRuleKinds: GOVERNING_RULE_KINDS,
+  truthStateRuleKindScopeSha256: d(TRUTH_STATES.map((s2) => ({ id: s2.id, appliesToRuleKinds: s2.appliesToRuleKinds }))),
+  /** MUST be zero — the table defines a function over (ruleKind x facts). */
+  truthStateAmbiguityCount: truthStateAmbiguities(RULE_KINDS, GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS).length,
+  truthStateCoverageSha256: d(truthStateCoverage(GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS)),
+  /** The c18 prerequisite frame must NOT reach the prohibition state. */
+  c18ClassifiesProhibitionTriple: null as string | null,
+  c18AlternativeStateIds: (() => {
+    const alts = deriveGroupAlternatives({
+      boundaryId: BOUNDARY_ID,
+      surfaceRef: "branch[0].resulting_world_state",
+      governedActionStatus: "present",
+      groupFields: ["prerequisiteStatus", "temporalRelation", "prerequisiteSatisfactionCandidateId", "prerequisiteFailureCandidateId", "reason"],
+      ruleKind: buildSemanticFrame({ id: BOUNDARY_ID, statement: BOUNDARY_TEXT }).ruleKind,
+      candidates: narrowSubject.evidenceCandidates,
+    });
+    return alts.map((a) => a.stateId);
+  })(),
+  c18AlternativesSha256: (() => {
+    const alts = deriveGroupAlternatives({
+      boundaryId: BOUNDARY_ID,
+      surfaceRef: "branch[0].resulting_world_state",
+      governedActionStatus: "present",
+      groupFields: ["prerequisiteStatus", "temporalRelation", "prerequisiteSatisfactionCandidateId", "prerequisiteFailureCandidateId", "reason"],
+      ruleKind: buildSemanticFrame({ id: BOUNDARY_ID, statement: BOUNDARY_TEXT }).ruleKind,
+      candidates: narrowSubject.evidenceCandidates,
+    });
+    return groupAlternativesSha256(alts);
+  })(),
+  /** And the genuine prohibition frame must still reach it. */
+  prohibitionFixtureRuleKind: buildSemanticFrame(PROHIBITION_BOUNDARY).ruleKind,
+  prohibitionFixtureFacts: PROHIBITION_BREACH_FACTS,
+  classifyTruthStateModifiedByThisSlice: true,
   // R2.48 — the two evidence axes, stated once and bound here.
   prerequisiteCandidateAuthoritySha256: d({
     governedActionAxis: "pool_cardinality",
@@ -500,7 +551,18 @@ const CHECKS: Array<[string, string]> = [
   ["captured R2.52 merged-row refusal", "capturedR252MergedRowRefusalCode"],
   ["captured R2.52 selected state", "capturedR252SelectedStateId"],
   ["classifier forensic deferred", "classifierForensicDeferred"],
-  ["classifier unmodified by this slice", "classifyTruthStateModifiedByThisSlice"],
+  ["classifier changed by R2.56", "classifyTruthStateModifiedByThisSlice"],
+  ["rule kind is a filter dimension", "ruleKindIsAFilterDimension"],
+  ["dead tiebreak removed", "deadRuleKindTiebreakRemoved"],
+  ["rule kinds", "ruleKinds"],
+  ["governing rule kinds", "governingRuleKinds"],
+  ["truth-state rule-kind scope", "truthStateRuleKindScopeSha256"],
+  ["truth-state ambiguity count", "truthStateAmbiguityCount"],
+  ["truth-state coverage", "truthStateCoverageSha256"],
+  ["c18 classifies the prohibition triple", "c18ClassifiesProhibitionTriple"],
+  ["c18 alternative state ids", "c18AlternativeStateIds"],
+  ["c18 alternatives digest", "c18AlternativesSha256"],
+  ["prohibition fixture rule kind", "prohibitionFixtureRuleKind"],
   ["prerequisite candidate authority", "prerequisiteCandidateAuthoritySha256"],
   ["prerequisite unavailable codes", "prerequisiteUnavailableCodes"],
   ["truth-state candidate requirements", "truthStateCandidateRequirementsSha256"],
@@ -580,8 +642,8 @@ const checkLines = CHECKS.map(([label, path]) =>
 
 const script = `#!/usr/bin/env bash
 # =============================================================================
-# BTY Practice — R2.54 CANONICAL-ALTERNATIVE REPLAY CANARY
-# Slice 3.2I-PRACTICE-R5B1A.1-R2.54
+# BTY Practice — R2.56 CLASSIFIER / CANONICAL-ALTERNATIVE REPLAY CANARY
+# Slice 3.2I-PRACTICE-R5B1A.1-R2.56
 #
 # ONE reconstructed c18 subject x at most TWO provider calls:
 # one full-row review + at most ONE field-level PATCH repair.
@@ -626,12 +688,15 @@ const script = `#!/usr/bin/env bash
 #   The three APPLICABILITY false positives remain unaddressed by any rule. A
 #   green run here is NOT a product-quality pass.
 #
-#   CLASSIFIER FORENSIC DEFERRED. classifyTruthState can resolve
-#   prohibited_action_present at a PREREQUISITE boundary, because exactly one
-#   table row accepts (present, not_applicable, not_applicable) and the ruleKind
-#   tiebreak never fires. R2.54 neither introduced nor resolved that; a
-#   characterization test records it verbatim. A GREEN RUN HERE DOES NOT
-#   AUTHORIZE A LIVE REPLAY — that remains blocked on the separate forensic.
+#   CLASSIFIER FORENSIC CLOSED (R2.56). prohibited_action_present is scoped to
+#   prohibition rules in ROW DATA, rule kind is a filter dimension, and the dead
+#   tiebreak is gone. The c18 prerequisite frame now refuses that triple as
+#   boundary_assessment_state_invalid and fabricates no violation; a genuine
+#   prohibition frame still reaches the state. Both are asserted below.
+#
+#   A GREEN RUN HERE IS STILL NOT A LIVE-REPLAY AUTHORIZATION. It measures the
+#   local path without a credential; authorizing one controlled live replay
+#   remains a Founder decision this script does not make.
 #
 # =============================================================================
 set -Eeuo pipefail
@@ -790,7 +855,8 @@ route_check 'observed supplied count'          'b["fieldRepairObservability"]["s
 route_check 'observed dependency groups'       'b["fieldRepairObservability"]["dependencyGroupCount"]' '10'
 route_check 'observed multi-field groups'      'len(b["fieldRepairObservability"]["groups"])'      '1'
 route_check 'group field count'                'len(b["fieldRepairObservability"]["groups"][0]["fields"])' '5'
-route_check 'group has alternatives'           'b["fieldRepairObservability"]["groups"][0]["alternativesCount"]>0' 'true'
+route_check 'group has alternatives'           'b["fieldRepairObservability"]["groups"][0]["alternativesCount"]' '6'
+route_check 'prohibition state absent'         '"prohibited_action_present" in str(b)' 'false'
 route_check 'alternatives digest length'       'len(b["fieldRepairObservability"]["groups"][0]["alternativesSha256"])' '64'
 route_check 'group matched'                    'b["fieldRepairObservability"]["groups"][0]["matched"]' 'true'
 route_check 'matched alternative named'        'b["fieldRepairObservability"]["groups"][0]["matchedAlternativeId"] is not None' 'true'
@@ -851,6 +917,51 @@ captured_check 'reason reported as SHAPE'      'b["fieldRepairObservability"]["g
 captured_cleanup
 printf '\nCAPTURED R2.52 REFUSAL PROOF PASS - STOPPED BEFORE MERGE - REASON NAMED\n'
 
+# ---------------------------------------------------------------------------
+# R2.56 LEG 3 — RULE-KIND SCOPE
+#
+# Run in-process against the tracked table, so this measures the same code the
+# replay legs above just exercised. Two halves, and both must hold: the state
+# must STOP being reachable where it never belonged, and it must KEEP working
+# where it does.
+# ---------------------------------------------------------------------------
+printf '\nRULE-KIND SCOPE PROOF (no credential, no network)\n'
+RULEKIND_JSON="$(npx --yes tsx scripts/practice-c18-canonical-alternative-replay-runner.ts --rulekind-json)" \
+  || wiring_failed 'the rule-kind scope probe failed to run'
+
+rulekind_check() {
+  got="$(printf '%s' "$RULEKIND_JSON" | python3 -c '
+import json,sys
+print(json.dumps(json.load(sys.stdin)[sys.argv[1]],sort_keys=True))
+' "$2")"
+  [ "$got" = "$3" ] || wiring_failed "$1: expected $3, got $got"
+  printf '  [rulekind] %-43s %s\n' "$1" "$got"
+}
+
+rulekind_check 'c18 frame is a prerequisite rule'  'c18RuleKind'         '"prerequisite_before_action"'
+rulekind_check 'fixture frame is a prohibition'    'prohibitionRuleKind' '"prohibition"'
+rulekind_check 'c18 REFUSES the prohibition triple' 'c18Triple'          'null'
+rulekind_check 'prohibition still reaches it'      'prohibitionTriple'   '"prohibited_action_present"'
+rulekind_check 'table defines a function'          'ambiguities'         '0'
+rulekind_check 'not_established preserved'         'notEstablished'      '"governed_action_prerequisite_not_established"'
+rulekind_check 'satisfied preserved'               'satisfied'           '"governed_action_prerequisite_satisfied"'
+
+printf '\nRULE-KIND SCOPE PROOF PASS - SCOPED, NOT BLUNT\n'
+
+# --- STATIC: no layer re-introduces a hard-coded rule kind -------------------
+if grep -qF 'classifyTruthState(d.facts, "prerequisite_before_action")' src/domain/foundry/arena-draft/narrowBoundaryReview.ts; then
+  wiring_failed 'verdict derivation classifies under a hard-coded rule kind again'
+fi
+if grep -qF '"prerequisite_before_action",' src/lib/bty/foundry/arena/boundaryReviewStage.ts; then
+  wiring_failed 'the model-reason tally classifies under a hard-coded rule kind again'
+fi
+grep -qF 'appliesToRuleKinds' src/domain/foundry/arena-draft/boundaryTruthStates.ts \
+  || wiring_failed 'the canonical rows no longer declare a rule-kind scope'
+if grep -qF 'ruleKind === "prohibition" ? prohibition' src/domain/foundry/arena-draft/boundaryTruthStates.ts; then
+  wiring_failed 'the dead post-match rule-kind tiebreak is back'
+fi
+printf 'STATIC RULE-KIND PROOF PASS - scope is row data - no hard-coded kind in a semantic decision\n'
+
 # --- STATIC: the group is the unit of acceptance ----------------------------
 grep -q 'export function applyFieldRepair' src/domain/foundry/arena-draft/boundaryFieldRepair.ts \
   || wiring_failed 'the refusing apply seam does not exist'
@@ -905,7 +1016,11 @@ npx --yes vitest run \\
   src/domain/foundry/arena-draft/boundaryGroupAlternatives.test.ts \\
   src/domain/foundry/arena-draft/boundaryFieldRepair.test.ts \\
   src/domain/foundry/arena-draft/r252FieldRepairRegression.test.ts \\
-  src/domain/foundry/arena-draft/boundaryProhibitedActionCharacterization.test.ts \\
+  src/domain/foundry/arena-draft/boundaryRuleKindScope.test.ts \\
+  src/domain/foundry/arena-draft/boundaryRuleKindParity.test.ts \\
+  src/domain/foundry/arena-draft/boundaryRuleKindCapturedParity.test.ts \\
+  src/domain/foundry/arena-draft/prerequisiteCandidateAuthority.test.ts \\
+  src/domain/foundry/arena-draft/boundaryCandidateAuthority.test.ts \\
   src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts \\
   src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts --reporter=dot \\
   || wiring_failed 'the transport matrix, the captured regressions or the R2.54 acceptance suites failed'
@@ -953,7 +1068,29 @@ printf 'does when the confirmed rule and every decision surface are put in front
 printf 'it. It is not a product-quality verdict.\\n\\n'
 `;
 
-if (process.argv.includes("--binding-json")) {
+/**
+ * R2.56 — the rule-kind scope, measured in-process against the tracked table.
+ *
+ * A mode on the BOUND runner rather than an inline `tsx -e` in the generated shell: the canary must
+ * exercise the same module graph its bindings were computed from, and an eval string is a second
+ * program that only looks like the first one.
+ */
+if (process.argv.includes("--rulekind-json")) {
+  const c18RuleKind = buildSemanticFrame({ id: BOUNDARY_ID, statement: BOUNDARY_TEXT }).ruleKind;
+  const prohibitionRuleKind = buildSemanticFrame(PROHIBITION_BOUNDARY).ruleKind;
+  const at = (facts: Record<string, string>, ruleKind: string) => classifyTruthState(facts as never, ruleKind)?.id ?? null;
+  process.stdout.write(
+    `${JSON.stringify({
+      c18RuleKind,
+      prohibitionRuleKind,
+      c18Triple: at(PROHIBITION_BREACH_FACTS as unknown as Record<string, string>, c18RuleKind),
+      prohibitionTriple: at(PROHIBITION_BREACH_FACTS as unknown as Record<string, string>, prohibitionRuleKind),
+      ambiguities: truthStateAmbiguities(RULE_KINDS, GOVERNED_ACTION_STATUSES, PREREQUISITE_STATUSES, TEMPORAL_RELATIONS).length,
+      notEstablished: at({ governedActionStatus: "present", prerequisiteStatus: "not_established", temporalRelation: "not_applicable" }, c18RuleKind),
+      satisfied: at({ governedActionStatus: "present", prerequisiteStatus: "satisfied", temporalRelation: "prerequisite_before_action" }, c18RuleKind),
+    })}\n`,
+  );
+} else if (process.argv.includes("--binding-json")) {
   process.stdout.write(`${JSON.stringify(binding)}\n`);
 } else {
   const out = arg("out");

@@ -20,6 +20,7 @@ import { BOUNDARY_REPLAY_RUNNER_PATH, buildContractManifest, canonicalJson } fro
 import { FIELD_REPAIR_OBSERVABILITY_VERSION, FIELD_REPAIR_VALUE_MAX, prerequisiteClosure } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import { NARROW_REPLAY_ARTIFACT_VERSION } from "@/domain/foundry/arena-draft/boundaryOutcomes";
 import { groupAlternativeContractSha256 } from "@/domain/foundry/arena-draft/boundaryGroupAlternatives";
+import { truthStateTableSha256 } from "@/domain/foundry/arena-draft/boundaryTruthStates";
 import { R252_LIVE_ARTIFACT_SHA256 } from "@/domain/foundry/arena-draft/r252LiveDtoFixture";
 
 const REPO = process.cwd();
@@ -83,9 +84,22 @@ describe("[R2.54] the preparation mode invokes the intended code", () => {
     expect(b.prerequisiteClosureIncludesReason).toBe(true);
     expect(b.reasonIsRepairable).toBe(true);
     expect(b.capturedR252ArtifactSha256).toBe(R252_LIVE_ARTIFACT_SHA256);
-    // The deferral is bound too, so a green canary cannot quietly stop saying it.
-    expect(b.classifierForensicDeferred).toBe(true);
-    expect(b.classifyTruthStateModifiedByThisSlice).toBe(false);
+    /**
+     * R2.56 — the forensic is CLOSED, and the closure is bound. A canary that quietly went back to
+     * saying "deferred" would be describing a build that no longer exists.
+     */
+    expect(b.classifierForensicDeferred).toBe(false);
+    expect(b.classifyTruthStateModifiedByThisSlice).toBe(true);
+    expect(b.ruleKindIsAFilterDimension).toBe(true);
+    expect(b.deadRuleKindTiebreakRemoved).toBe(true);
+    expect(b.truthStateTableSha256).toBe(truthStateTableSha256());
+    // The table must define a function over (ruleKind x facts).
+    expect(b.truthStateAmbiguityCount).toBe(0);
+    // c18 refuses the prohibition-only triple; the genuine prohibition frame still reaches it.
+    expect(b.c18ClassifiesProhibitionTriple).toBeNull();
+    expect(b.prohibitionFixtureRuleKind).toBe("prohibition");
+    expect(b.c18AlternativeStateIds).not.toContain("prohibited_action_present");
+    expect((b.c18AlternativeStateIds as string[]).length).toBe(6);
   });
 
   it("`--out` writes an executable canary that is valid shell", () => {
@@ -135,18 +149,35 @@ describe("[R2.54] artifact /6 is reachable through the bound preparation path", 
     expect(s).toContain("'b[\"fieldRepairMetrics\"][\"fieldRepairDependencyGroupCount\"]' '10'");
   });
 
-  it("the canary re-runs the R2.54 acceptance suites, including this test", () => {
+  it("the canary re-runs the acceptance suites, including this test", () => {
     const s = canary();
     for (const suite of [
       "src/domain/foundry/arena-draft/boundaryGroupAlternatives.test.ts",
       "src/domain/foundry/arena-draft/boundaryFieldRepair.test.ts",
       "src/domain/foundry/arena-draft/r252FieldRepairRegression.test.ts",
-      "src/domain/foundry/arena-draft/boundaryProhibitedActionCharacterization.test.ts",
+      // R2.56 — the retired characterization is replaced by the decided contract.
+      "src/domain/foundry/arena-draft/boundaryRuleKindScope.test.ts",
+      "src/domain/foundry/arena-draft/boundaryRuleKindParity.test.ts",
+      "src/domain/foundry/arena-draft/boundaryRuleKindCapturedParity.test.ts",
       "src/lib/bty/foundry/arena/fieldRepairRouting.contract.test.ts",
       "src/lib/bty/foundry/arena/canonicalAlternativeRunnerBinding.contract.test.ts",
     ]) {
       expect(s, suite).toContain(suite);
     }
+    expect(s).not.toContain("boundaryProhibitedActionCharacterization");
+  });
+
+  it("R2.56 — the canary proves the rule-kind scope in BOTH directions", () => {
+    const s = canary();
+    expect(s).toContain("--rulekind-json");
+    expect(s).toContain("c18 REFUSES the prohibition triple");
+    expect(s).toContain("prohibition still reaches it");
+    expect(s).toContain("table defines a function");
+    // And that the fix did not quietly delete the states it was not about.
+    expect(s).toContain("not_established preserved");
+    expect(s).toContain("satisfied preserved");
+    // The canonical leg pins the new alternative count, not merely "more than zero".
+    expect(s).toContain("'b[\"fieldRepairObservability\"][\"groups\"][0][\"alternativesCount\"]' '6'");
   });
 });
 
