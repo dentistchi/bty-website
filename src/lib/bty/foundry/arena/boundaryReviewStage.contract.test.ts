@@ -6,6 +6,7 @@
  * prove the order and the precedence without a provider: every narrow call is injected.
  */
 import { describe, expect, it, vi } from "vitest";
+import { mockFieldRepair } from "../../../../../scripts/practice-c18-narrow-boundary-replay";
 import { poolFor } from "@/domain/foundry/arena-draft/boundaryEvidenceCandidates";
 import { buildNarrowBoundaryRequest } from "./narrowBoundaryContract";
 import { C18_BOUNDARY, C18_SCENARIO } from "@/domain/foundry/arena-draft/c18BoundaryFixture";
@@ -191,7 +192,15 @@ const transportCall = (
   };
 };
 
-const deps = (review: BoundaryStageDeps["review"]): BoundaryStageDeps => ({ review });
+/**
+ * R2.52 — every stage test now supplies a repair dependency EXPLICITLY. The default stub THROWS: a
+ * test that unexpectedly reaches repair fails loudly instead of silently taking a legacy path, which
+ * is exactly how R2.51's live routing defect stayed invisible to ~35 green stage tests.
+ */
+const throwingRepair: BoundaryStageDeps["repair"] = async () => {
+  throw new Error("field repair invoked unexpectedly");
+};
+const deps = (review: BoundaryStageDeps["review"], repair: BoundaryStageDeps["repair"] = throwingRepair): BoundaryStageDeps => ({ review, repair });
 
 describe("[25][26] pipeline order", () => {
   it("runs the narrow boundary review FIRST for a boundary-bearing scenario", async () => {
@@ -368,50 +377,70 @@ describe("correction-packet authority", () => {
  * and the reviewer rebuilt a twelve-surface request, whose answer the merge authority would then
  * have refused. This test drives the real stage over the captured R2.40 live response.
  */
-describe("[R2.42] failed-subset repair asks only about the failed subset", () => {
-  it("requests 12 then exactly the 6 failed refs, and merges into one complete verdict", async () => {
+describe("[R2.52] a failed subset routes to the PATCH authority, never a second full-row call", () => {
+  it("asks 12 full rows once, then exactly the plan's field operations", async () => {
     const asked: Array<{ attempt: number; surfaces: number; required: number; refs?: readonly string[] }> = [];
+    const patches: Array<{ attempt: number; operations: number; planSha256: string }> = [];
     const r = await runBoundaryReviewStage(
-      deps(async (subject, attempt, surfaceRefs) => {
-        const req = buildNarrowBoundaryRequest(subject, surfaceRefs);
-        asked.push({ attempt, surfaces: req.surfaces.length, required: req.requiredAssessmentCount, refs: surfaceRefs });
-        const scoped = surfaceRefs ? subject.surfaces.filter((x) => surfaceRefs.includes(x.coordinate)) : subject.surfaces;
-        const first = (ref: string) => poolFor(subject.evidenceCandidates, subject.boundaries[0]!.id, ref, "governed_action")[0]?.candidateId ?? NO_CANDIDATE;
-        // Attempt 1 replays the live response verbatim; the repair corrects only the failed rows the
-        // one way the contract permits — by selecting from the pool it was offered.
-        // Attempt 1 replays the live response verbatim; the repair corrects each failed row the one
-        // way the contract permits. Where R2.44's polarity authority emptied the failure pool, the
-        // honest correction is `not_applicable` with the sentinel.
-        const rows =
-          attempt === 1
-            ? R240_LIVE_ATTEMPT_1
-            : R240_LIVE_ATTEMPT_1.filter((x) => surfaceRefs!.includes(x.surfaceRef)).map((x) => ({
-                ...x,
-                governedActionStatus: "absent" as const,
-                prerequisiteStatus: "not_applicable" as const,
-                temporalRelation: "not_applicable" as const,
-                governedActionCandidateId: first(x.surfaceRef),
-                prerequisiteSatisfactionCandidateId: NO_CANDIDATE,
-                prerequisiteFailureCandidateId: NO_CANDIDATE,
-              }));
-        return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, { ...ctxFor(subject), surfaces: scoped }) });
-      }),
+      deps(
+        async (subject, attempt, surfaceRefs) => {
+          const req = buildNarrowBoundaryRequest(subject, surfaceRefs);
+          asked.push({ attempt, surfaces: req.surfaces.length, required: req.requiredAssessmentCount, refs: surfaceRefs });
+          const rows = R240_LIVE_ATTEMPT_1;
+          return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, ctxFor(subject)) });
+        },
+        async (subject, plan, attempt) => {
+          patches.push({ attempt, operations: plan.requiredOperationCount, planSha256: plan.planSha256 });
+          return mockFieldRepair(subject, plan, attempt);
+        },
+      ),
       args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
     );
-    expect(asked).toHaveLength(2);
+    // R2.51 measured the opposite: a SECOND full-row call carrying surfaceRefs. That is now
+    // unreachable — the full-row reviewer is invoked exactly once, and never with a subset.
+    expect(asked).toHaveLength(1);
     expect(asked[0]).toMatchObject({ attempt: 1, surfaces: 12, required: 12 });
-    // Exactly the failed set, whatever its size. R2.44's polarity authority refuses two further
-    // rows of this historical capture, so the set is a strict superset of the R2.42 six.
-    expect(asked[1]!.surfaces).toBe(asked[1]!.refs!.length);
-    expect(asked[1]!.required).toBe(asked[1]!.refs!.length);
-    expect(asked[1]!.surfaces).toBeLessThan(12);
-    for (const ref of R240_FAILED_SURFACE_REFS) expect(asked[1]!.refs).toContain(ref);
-    // One complete verdict from the MERGED matrix — never from the partial one.
-    expect(r.outcome).toBe("boundary_review_reject");
+    expect(asked[0]!.refs).toBeUndefined();
+    expect(r.fullRowReviewCallCount).toBe(1);
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0]!.attempt).toBe(2);
+    expect(patches[0]!.operations).toBeGreaterThan(0);
+    expect(patches[0]!.planSha256).toHaveLength(64);
+    expect(r.fieldRepairCallCount).toBe(1);
+    expect(r.legacyWholeRowRepairCallCount).toBe(0);
+    expect(r.repairMode).toBe("field_patch");
     expect(r.providerInvocations).toBe(2);
-    expect(r.failedSubsetRepairSurfaceCount).toBe(asked[1]!.refs!.length);
-    expect(r.failedSubsetRepairInvocationCount).toBe(1);
-    expect(r.preservedValidAssessmentCount).toBe(12 - asked[1]!.refs!.length);
+    expect(r.fieldRepairPlan).not.toBeNull();
+    expect(r.fieldRepairMetrics.fieldRepairFrozenMutationCount).toBe(0);
+    for (const ref of R240_FAILED_SURFACE_REFS) expect(r.fieldRepairPlan!.targets.map((t) => t.surfaceRef)).toContain(ref);
+  });
+
+  it("a missing repair authority FAILS CLOSED — it never falls back to the full-row reviewer", async () => {
+    const asked: number[] = [];
+    const r = await runBoundaryReviewStage(
+      // Constructed directly, so the helper's default stub cannot fill the hole: this is exactly
+      // the shape R2.51 found in the live entrypoint.
+      {
+        review: (async (subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]) => {
+          asked.push(attempt);
+          expect(surfaceRefs).toBeUndefined();
+          const rows = R240_LIVE_ATTEMPT_1;
+          return call(subject, attempt, { parsed: { assessments: rows }, verdict: deriveBoundaryVerdict({ assessments: rows }, ctxFor(subject)) });
+        }) as BoundaryStageDeps["review"],
+      } as unknown as BoundaryStageDeps,
+      args({ draft: C18_SCENARIO, boundaries: [C18_BOUNDARY] }),
+    );
+    expect(asked).toEqual([1]);
+    expect(r.outcome).toBe("boundary_reviewer_terminal_failure");
+    expect(r.repairMode).toBe("unavailable");
+    expect(r.fieldRepairCodes).toContain("field_repair_dependency_unavailable");
+    expect(r.outputContractFailure).toBe(true);
+    expect(r.fieldRepairCallCount).toBe(0);
+    expect(r.legacyWholeRowRepairCallCount).toBe(0);
+    expect(r.violations).toEqual([]);
+    expect(r.causalAttributions).toEqual([]);
+    expect(r.findings).toEqual([]);
   });
 });
 

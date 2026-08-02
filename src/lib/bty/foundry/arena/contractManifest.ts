@@ -112,6 +112,7 @@ import {
   governedActionClosure,
   prerequisiteClosure,
 } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+import { BOUNDARY_STAGE_ROUTING_CONTRACT, REPAIR_MODES } from "./boundaryReviewStage";
 import {
   ATTRIBUTION_AUTHORITY,
   ATTRIBUTION_REFUSAL_CODES,
@@ -193,7 +194,7 @@ export const GENERATED_FIELD_BOUNDS = {
 } as const;
 
 /** Bumped whenever the artifact payload shape changes, so old evidence is never misread as new. */
-export const ARTIFACT_SCHEMA_VERSION = "r2.50.1";
+export const ARTIFACT_SCHEMA_VERSION = "r2.52.1";
 export const CANONICAL_ADAPTER_VERSION = "provider-dto-positional-v1";
 export const CANONICAL_VALIDATOR_VERSION = "arena-scenario-draft-v1";
 
@@ -415,6 +416,30 @@ export function buildContractManifest(head: string, model: string): ContractMani
       // R2.50 — the ONE permitted repair is a PATCH against a server-owned plan. R2.49 measured a
       // whole-row re-ask re-opening a field the model had already answered correctly, and losing the
       // run's verdict to the "improvement".
+      // R2.52 — EXECUTABLE-PATH bindings. Content digests proved nothing about reachability: R2.51
+      // measured every R2.50 binding matching while the legacy whole-row repair actually ran.
+      boundaryStageRoutingContract: digest(BOUNDARY_STAGE_ROUTING_CONTRACT),
+      boundaryReplayEntrypointWiring: digest({
+        depsDeclareRepair: true,
+        entrypointSuppliesRepair: true,
+        liveRepairImplementation: "reviewFieldRepair",
+        mockRepairImplementation: "mockFieldRepair",
+        forcedIncompleteMockOutcome: "incomplete-field-repair",
+        completeFirstPassMockIsInsufficient: true,
+      }),
+      boundaryProductionCallerWiring: digest({
+        generationServiceSuppliesRepair: true,
+        generationServicePassesSurfaceRefs: true,
+        testStubsThrowIfInvoked: true,
+        defaultRepairImplementationThatCallsFullRowReviewer: false,
+      }),
+      boundaryWrittenReplayArtifactVersion: digest(NARROW_REPLAY_ARTIFACT_VERSION),
+      boundaryRepairModeContract: digest({
+        modes: REPAIR_MODES,
+        zeroMetricsNeverImplyRepairRan: true,
+        artifactRecordsRepairMode: true,
+        artifactRecordsCallCounts: ["fullRowReviewCallCount", "fieldRepairCallCount", "legacyWholeRowRepairCallCount"],
+      }),
       boundaryFieldRepairAuthority: fieldRepairContractSha256(),
       boundaryFieldRepairSchema: digest(FIELD_REPAIR_JSON_SCHEMA),
       boundaryFieldRepairPlanContract: digest({

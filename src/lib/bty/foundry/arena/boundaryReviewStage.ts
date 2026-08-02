@@ -38,6 +38,7 @@ import {
   type FieldRepairPlan,
 } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import type { FieldRepairCallResult } from "./narrowBoundaryReviewer";
+import { FIELD_REPAIR_SCHEMA_NAME } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import {
   BOUNDARY_STAGE_OUTCOMES as STAGE_OUTCOMES,
   MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
@@ -53,8 +54,6 @@ import {
   NARROW_BOUNDARY_JSON_SCHEMA,
   REMOVED_MODEL_AUTHORED_FIELDS,
   decideAfterBoundaryReview,
-  mergeSubsetRepair,
-  verdictFromDerived,
   type BoundaryUncertainty,
   type BoundaryViolation,
   type DerivedAssessment,
@@ -127,6 +126,11 @@ export type BoundaryStageResult = {
   fieldRepairEvidence: unknown;
   fieldRepairMetrics: FieldRepairMetrics;
   fieldRepairCodes: string[];
+  /** R2.52 — WHICH repair path actually ran. Zero metrics never imply "repair ran and found none". */
+  repairMode: RepairMode;
+  fullRowReviewCallCount: number;
+  fieldRepairCallCount: number;
+  legacyWholeRowRepairCallCount: number;
   /** The reachable surfaces actually reviewed, and the unreachable duplicates excluded. */
   reachableSurfaces: string[];
   excludedCompatibilitySurfaces: string[];
@@ -203,7 +207,7 @@ export type BoundaryStageDeps = {
    * R2.50 — the ONE permitted repair is a PATCH call, not a second review. It returns field
    * operations against a server-owned plan; a stage without this dep simply cannot repair.
    */
-  repair?: (subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number) => Promise<FieldRepairCallResult>;
+  repair: (subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number) => Promise<FieldRepairCallResult>;
   log?: (outcome: string, code: string | undefined, extra: Record<string, unknown>) => void;
 };
 
@@ -212,6 +216,10 @@ export type BoundaryStageDeps = {
  * boundary codes so a boundary rejection keeps its Level 3 precedence rather than inventing a
  * parallel severity ladder.
  */
+/** R2.52 — the repair route an artifact reader can trust. */
+export const REPAIR_MODES = ["none", "field_patch", "unavailable"] as const;
+export type RepairMode = (typeof REPAIR_MODES)[number];
+
 export const EMPTY_FIELD_REPAIR_METRICS: FieldRepairMetrics = {
   fieldRepairSurfaceCount: 0,
   fieldRepairOperationCount: 0,
@@ -325,6 +333,11 @@ const empty = (outcome: StageOutcome, codes: string[] = []): BoundaryStageResult
   fieldRepairEvidence: null,
   fieldRepairMetrics: EMPTY_FIELD_REPAIR_METRICS,
   fieldRepairCodes: [],
+  repairMode: "none",
+  fullRowReviewCallCount: 0,
+  fieldRepairCallCount: 0,
+  // Structurally 0 — R2.52 deleted the branch that could increment it.
+  legacyWholeRowRepairCallCount: 0,
   reachableSurfaces: [],
   excludedCompatibilitySurfaces: [],
   uncertainties: [],
@@ -470,7 +483,6 @@ export async function runBoundaryReviewStage(
   let transportFailures = 0;
   // R2.38 — a failed-subset repair carries these forward. `preserved` rows are IMMUTABLE: the repair
   // may only supply the surfaces the server names, and merging refuses anything else.
-  let repairSurfaceRefs: string[] | undefined;
   let preserved: DerivedAssessment[] = [];
   // R2.50 — the field-level repair plan derived from the FIRST response. Attempt-1 rows are the
   // immutable base; the patch may only fill the holes the plan names.
@@ -479,6 +491,9 @@ export async function runBoundaryReviewStage(
   let fieldRepairEvidence: unknown = null;
   let fieldRepairMetrics = EMPTY_FIELD_REPAIR_METRICS;
   let fieldRepairCodes: string[] = [];
+  let repairMode: RepairMode = "none";
+  let fullRowReviewCallCount = 0;
+  let fieldRepairCallCount = 0;
   let failedSubsetRepairSurfaceCount = 0;
   let failedSubsetRepairInvocationCount = 0;
 
@@ -508,9 +523,42 @@ export async function runBoundaryReviewStage(
     // ORIGINAL validator then judges the complete matrix. The result is shaped like a review call so
     // the decision and finalization path below is the same one, unchanged.
     let call: NarrowBoundaryCallResult;
-    if (fieldRepairPlan && deps.repair) {
-      providerInvocations += 1;
+    if (fieldRepairPlan) {
       const plan = fieldRepairPlan;
+      /**
+       * R2.52 — FAIL CLOSED. The dependency is required by the type, and this guard is the
+       * defense-in-depth behind it: R2.51 measured an OPTIONAL `repair` silently selecting the
+       * legacy whole-row re-ask in the live path while every test and manifest binding passed. A
+       * missing repair authority now ends the run; it never falls back to the full-row reviewer.
+       */
+      if (typeof deps.repair !== "function") {
+        fieldRepairCodes = ["field_repair_dependency_unavailable"];
+        log("boundary_review_field_repair_failed", "field_repair_dependency_unavailable", { boundaryReviewSubjectSha256: subjectSha, repairPlanSha256: plan.planSha256 });
+        return {
+          ...empty("boundary_reviewer_terminal_failure", ["boundary_output_contract_failure"]),
+          evidences,
+          subject,
+          boundaryReviewSubjectSha256: subjectSha,
+          surfaceMapSha256: mapSha,
+          reachableSurfaces: reachable.map((x) => x.coordinate),
+          excludedCompatibilitySurfaces: excluded.map((x) => x.coordinate),
+          providerInvocations,
+          providerResponses,
+          semanticAttempts,
+          transportFailures,
+          calls: providerInvocations,
+          reruns,
+          outputContractFailure: true,
+          repairMode: "unavailable",
+          fieldRepairPlan: plan,
+          fieldRepairEvidence: null,
+          fieldRepairMetrics,
+          fieldRepairCodes,
+        };
+      }
+      repairMode = "field_patch";
+      providerInvocations += 1;
+      fieldRepairCallCount += 1;
       const patch = await deps.repair(subject, plan, attempt);
       fieldRepairEvidence = patch.evidence;
       const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
@@ -519,9 +567,16 @@ export async function runBoundaryReviewStage(
       const merge = mergeFieldRepair(baseRows, v, plan, ctxAll);
       fieldRepairMetrics = summarizeFieldRepair(plan, v, merge);
       fieldRepairCodes = merge.ok ? [] : [...merge.codes];
+      // Malformed patch output FAILS CLOSED. There is no path back to the full-row schema.
       const verdict: DerivedBoundaryVerdict = merge.ok
         ? deriveBoundaryVerdict({ assessments: merge.rows }, ctxAll)
         : { outcome: "boundary_review_malformed", codes: ["boundary_review_invalid_result"], findings: [], failureClass: "output_contract", validSurfaceRefs: [], failedSurfaceRefs: plan.targets.map((t) => t.surfaceRef), derived: [] };
+      log(merge.ok ? "boundary_review_field_repair_applied" : "boundary_review_field_repair_failed", merge.ok ? undefined : merge.codes[0], {
+        boundaryReviewSubjectSha256: subjectSha,
+        repairPlanSha256: plan.planSha256,
+        fieldRepairMetrics,
+        fieldRepairCodes,
+      });
       call = {
         kind: patch.kind === "transport_failed" ? "transport_failed" : "derived",
         evidence: {
@@ -530,7 +585,8 @@ export async function runBoundaryReviewStage(
           surfaceMapSha256: mapSha,
           activeBoundaryIds: subject.activeBoundaryIds,
           requiredAssessmentCount: plan.requiredOperationCount,
-          parsed: merge.ok ? { assessments: merge.rows } : patch.evidence.parsed,
+          parsed: patch.evidence.parsed,
+          mergedRows: merge.ok ? merge.rows : null,
           outcome: verdict.outcome,
           verdict,
           finishReason: patch.evidence.finishReason,
@@ -539,12 +595,11 @@ export async function runBoundaryReviewStage(
           transport: patch.evidence.transport,
           providerFailureCode: patch.evidence.providerFailureCode,
         },
-      } as NarrowBoundaryCallResult;
-      // A patch never re-enters the subset-merge path below: the matrix is already complete.
-      repairSurfaceRefs = undefined;
+      } as unknown as NarrowBoundaryCallResult;
     } else {
       providerInvocations += 1; // incremented for the invocation itself, before any outcome is known
-      call = await deps.review(subject, attempt, repairSurfaceRefs);
+      fullRowReviewCallCount += 1;
+      call = await deps.review(subject, attempt);
     }
     evidences.push(call.evidence);
     if (call.evidence.transport?.responseState === "response_received") providerResponses += 1;
@@ -561,16 +616,10 @@ export async function runBoundaryReviewStage(
       candidates: subject.evidenceCandidates,
     };
 
-    // A repair response covers only the failed surfaces. Merge it onto the preserved rows and
-    // derive ONE verdict from the complete matrix — never from a partial one.
-    let effective = verdict;
-    if (repairSurfaceRefs && verdict.outcome !== "boundary_review_malformed") {
-      const merge = mergeSubsetRepair(preserved, verdict.derived, repairSurfaceRefs);
-      effective = merge.ok
-        ? verdictFromDerived(merge.derived, ctx)
-        : { outcome: "boundary_review_malformed", codes: [], findings: [], failureClass: "coverage", validSurfaceRefs: [], failedSurfaceRefs: repairSurfaceRefs, derived: [] };
-      if (!merge.ok) log("boundary_review_authority_failure", merge.code, { detail: merge.detail });
-    }
+    // R2.52 — there is no second full-row response to merge. A patch attempt already produced a
+    // COMPLETE matrix through the field-level merge above, and a first attempt is complete by
+    // definition. `mergeSubsetRepair` is no longer reachable from the active stage.
+    const effective = verdict;
     const explanations = "explanations" in effective ? effective.explanations : [];
     const decision = decideAfterBoundaryReview(
       attempt,
@@ -595,6 +644,10 @@ export async function runBoundaryReviewStage(
       fieldRepairEvidence,
       fieldRepairMetrics,
       fieldRepairCodes,
+      repairMode,
+      fullRowReviewCallCount,
+      fieldRepairCallCount,
+      legacyWholeRowRepairCallCount: 0,
       invocationBudgetExhausted: providerInvocations >= MAX_BOUNDARY_PROVIDER_INVOCATIONS_PER_FROZEN_SUBJECT,
       explanations,
       explanationSha256: explanations.length ? explanationSha256(explanations) : null,
@@ -648,14 +701,12 @@ export async function runBoundaryReviewStage(
       // Only the refused surfaces are re-requested. Everything the first response got right is kept
       // exactly as derived and is never sent back to the provider.
       reruns++;
-      repairSurfaceRefs = decision.surfaceRefs;
-      preserved = effective.outcome === "boundary_review_malformed" ? effective.derived : [];
       failedSubsetRepairSurfaceCount = decision.surfaceRefs.length;
       // R2.50 — derive the FIELD-level plan from this response. The parsed attempt-1 rows are the
       // immutable base; the next call is a patch against this plan, not a second review. R2.49
       // measured a whole-row re-ask re-opening fields the model had already answered correctly.
       const parsedRows = (call.evidence.parsed as { assessments?: BoundaryTruthAssessment[] } | null)?.assessments;
-      if (deps.repair && Array.isArray(parsedRows) && parsedRows.length > 0) {
+      if (Array.isArray(parsedRows) && parsedRows.length > 0) {
         const ctxAll: NarrowReviewContext = { boundaries: subject.boundaries, surfaces: subject.surfaces, frames: subject.semanticFrames, candidates: subject.evidenceCandidates };
         const p = planFieldRepair(parsedRows, ctxAll, {
           boundaryReviewSubjectSha256: subject.evidenceCandidateMapSha256,
@@ -665,15 +716,28 @@ export async function runBoundaryReviewStage(
         if (p.repairable) {
           fieldRepairPlan = p;
           baseRows = parsedRows;
-          repairSurfaceRefs = undefined;
+          log("boundary_review_field_repair_planned", undefined, {
+            boundaryReviewSubjectSha256: subjectSha,
+            repairPlanSha256: p.planSha256,
+            surfaceCount: new Set(p.targets.map((t) => t.surfaceRef)).size,
+            operationCount: p.requiredOperationCount,
+            dependencyGroupCount: p.dependencyGroupCount,
+            targetedFields: [...new Set(p.targets.map((t) => t.field))],
+            frozenSurfaceCount: p.frozenSurfaceRefs.length,
+          });
         }
       }
       failedSubsetRepairInvocationCount += 1;
-      log("boundary_review_failed_subset_repair", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
+      // R2.52 — the surface-level decision still names WHICH surfaces failed, but the repair it
+      // authorizes is now a field PATCH. `boundary_review_failed_subset_repair` is gone: R2.51
+      // measured that event printed while a whole-row re-ask actually ran, so the event name must
+      // not survive the path it described.
+      log("boundary_review_repair_authorized", effective.outcome === "boundary_review_malformed" ? effective.codes[0] : undefined, {
         boundaryReviewSubjectSha256: subjectSha,
         because: decision.because,
-        repairSurfaceRefs: decision.surfaceRefs,
+        failedSurfaceRefs: decision.surfaceRefs,
         preservedSurfaceCount: preserved.length,
+        repairMode: fieldRepairPlan ? "field_patch" : "unavailable",
         boundaryReviewOutcome: "boundary_output_contract_failure",
       });
       continue;
@@ -1058,3 +1122,32 @@ export const boundaryMetricsPass = (m: BoundaryReviewMetrics): boolean =>
   m.boundaryEvidenceUngroundedCount === 0 &&
   m.boundaryOutputContractFailureCount === 0 &&
   m.boundaryTransportFailureCount === 0;
+
+/**
+ * R2.52 — the EXECUTABLE-PATH contract.
+ *
+ * R2.51 measured every R2.50 manifest binding matching while the live second call was still the
+ * legacy whole-row re-ask. Content digests cannot see that; a dead module satisfies them exactly as
+ * well as a live one. These are statements about REACHABILITY, and each one moves if the wiring is
+ * undone: remove `repair` from the deps type or from a caller and the type stops compiling; restore
+ * the fallback and `activeStageHasWholeRowFallback` must be flipped to stay honest.
+ */
+export const BOUNDARY_STAGE_ROUTING_CONTRACT = {
+  repairDependencyRequired: true,
+  missingRepairFailsClosed: "field_repair_dependency_unavailable",
+  activeStageHasWholeRowFallback: false,
+  activeStageCallsMergeSubsetRepair: false,
+  activeStageEmitsFailedSubsetRepairEvent: false,
+  fullRowReviewCallsPerSubject: 1,
+  fieldRepairCallsPerSubject: 1,
+  legacyWholeRowRepairCallsPerSubject: 0,
+  secondCallSchemaName: FIELD_REPAIR_SCHEMA_NAME,
+  secondCallResponseKey: "repairs",
+  secondCallParser: "validateFieldRepairResponse",
+  secondCallMerge: "mergeFieldRepair",
+  repairModes: REPAIR_MODES,
+  plannedEvent: "boundary_review_field_repair_planned",
+  appliedEvent: "boundary_review_field_repair_applied",
+  failedEvent: "boundary_review_field_repair_failed",
+  malformedPatchFallsBackToFullRow: false,
+} as const;

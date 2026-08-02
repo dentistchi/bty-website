@@ -20,7 +20,7 @@
  * emitting `/1` while the runner bound `/3`: two constants, no relationship, and an artifact that
  * could not be attributed to the contract that produced it.
  */
-export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/4";
+export const NARROW_REPLAY_ARTIFACT_VERSION = "practice-narrow-boundary-replay/5";
 
 /** Outcomes the narrow boundary STAGE can return. */
 export const BOUNDARY_STAGE_OUTCOMES = [

@@ -19,7 +19,10 @@ import { join } from "node:path";
 import { writeReplayArtifact, BOUNDARY_REPLAY_ARTIFACT_KIND } from "@/lib/bty/foundry/arena/replayArtifact";
 import { runBoundaryReviewStage, type BoundaryStageResult } from "@/lib/bty/foundry/arena/boundaryReviewStage";
 import { buildNarrowBoundaryRequest, narrowBoundarySubjectSha256, type NarrowBoundarySubject } from "@/lib/bty/foundry/arena/narrowBoundaryContract";
-import type { NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
+import type { FieldRepairCallResult, NarrowBoundaryCallResult } from "@/lib/bty/foundry/arena/narrowBoundaryReviewer";
+import type { FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
+import { R248_ATTEMPT_1 } from "@/domain/foundry/arena-draft/r248LiveDtoFixture";
+import { emptyTransportEvidence as emptyPatchTransport } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { boundaryProvenanceSha256 } from "@/domain/foundry/arena-draft/boundaryProvenance";
 import { canonicalJson, subjectDigests } from "@/domain/foundry/arena-draft/reviewSubject";
 import { deriveBoundaryVerdict, type BoundaryTruthAssessment } from "@/domain/foundry/arena-draft/narrowBoundaryReview";
@@ -52,6 +55,12 @@ function arg(name: string, fallback?: string): string {
 
 export type NarrowReplayDeps = {
   review: (subject: NarrowBoundarySubject, attempt: number, surfaceRefs?: string[]) => Promise<NarrowBoundaryCallResult>;
+  /**
+   * R2.52 — REQUIRED. R2.51 measured this member missing from the type, so the live path could not
+   * have supplied a patch reviewer even if it had wanted to, and the stage silently fell back to a
+   * whole-row re-ask.
+   */
+  repair: (subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number) => Promise<FieldRepairCallResult>;
   writeArtifact: (payload: string, subjectSha: string) => { path: string; sha256: string; bytes: number };
   log?: (line: string) => void;
   /**
@@ -72,6 +81,8 @@ export type NarrowReplaySummary = {
   excludedCompatibilitySurfaces: string[];
   causalViolations: string[];
   causalAttributions: string[];
+  repairMode: string;
+  fieldRepairOperationCount: number;
   correctionOwners: string[];
   authorityCodes: string[];
   outputContractFailure: boolean;
@@ -117,7 +128,7 @@ export async function runC18NarrowBoundaryReplay(
     : (subject.scenario as ArenaScenarioDraft);
 
   const stage = await runBoundaryReviewStage(
-    { review: deps.review, log: (outcome, code, extra) => log(`${outcome}${code ? ` code=${code}` : ""} ${canonicalJson(extra)}`) },
+    { review: deps.review, repair: deps.repair, log: (outcome, code, extra) => log(`${outcome}${code ? ` code=${code}` : ""} ${canonicalJson(extra)}`) },
     {
       draft,
       // The reconstructed subject carries no generator construction records, and none are invented.
@@ -179,6 +190,12 @@ export async function runC18NarrowBoundaryReplay(
       fieldRepairEvidence: stage.fieldRepairEvidence,
       fieldRepairMetrics: stage.fieldRepairMetrics,
       fieldRepairCodes: stage.fieldRepairCodes,
+      // R2.52 — WHICH repair route ran. R2.51 measured all-zero counters being read as "no repair
+      // needed" when the truth was "the field-repair path never executed".
+      repairMode: stage.repairMode,
+      fullRowReviewCallCount: stage.fullRowReviewCallCount,
+      fieldRepairCallCount: stage.fieldRepairCallCount,
+      legacyWholeRowRepairCallCount: stage.legacyWholeRowRepairCallCount,
       uncertainties: stage.uncertainties,
       findings: stage.findings,
       authorityCodes: stage.codes,
@@ -222,6 +239,8 @@ export async function runC18NarrowBoundaryReplay(
     boundaryReviewSubjectSha256: stage.boundaryReviewSubjectSha256,
     reachableSurfaces: stage.reachableSurfaces,
     excludedCompatibilitySurfaces: stage.excludedCompatibilitySurfaces,
+    repairMode: stage.repairMode,
+    fieldRepairOperationCount: stage.fieldRepairMetrics.fieldRepairOperationCount,
     causalViolations: stage.causalViolations.map((v) => v.surfaceRef),
     causalAttributions: stage.causalAttributions.map((a) => `${a.ancestorSurfaceRef}<-${a.manifestationSurfaceRef}`),
     correctionOwners: stage.causalGroups.map((g) => [g.correctionOwnerSurfaceRef, ...g.manifestationSurfaceRefs].join("+")),
@@ -290,6 +309,13 @@ export function mockNarrowReview(kind: string, subject: NarrowBoundarySubject, a
 
   let parsed: unknown;
   switch (kind) {
+    // R2.52 — the FORCED-INCOMPLETE leg. A complete first-pass mock can never exercise repair
+    // routing, which is exactly how R2.51's defect survived every preflight. This reproduces the
+    // retained R2.48 attempt 1: 12 rows, 2 valid, 10 failed.
+    case "incomplete-field-repair": {
+      parsed = { assessments: R248_ATTEMPT_1.filter((r) => surfaces.some((x) => x.coordinate === r.surfaceRef)) };
+      break;
+    }
     case "reject": {
       let rows = settled();
       for (const ref of ["branch[1].resulting_world_state", "branch[1].action[1]"]) {
@@ -410,6 +436,13 @@ async function main(): Promise<void> {
         const { reviewBoundarySurfaces } = await import("@/lib/bty/foundry/arena/narrowBoundaryReviewer");
         return reviewBoundarySurfaces(s, a, surfaceRefs);
       },
+      // R2.52 — the ONE permitted repair, wired for both routes. Live goes to the patch reviewer;
+      // the mock answers the same plan deterministically. Neither can reach the full-row schema.
+      repair: async (s, plan, a) => {
+        if (useMock) return mockFieldRepair(s, plan, a);
+        const { reviewFieldRepair } = await import("@/lib/bty/foundry/arena/narrowBoundaryReviewer");
+        return reviewFieldRepair(s, plan, a);
+      },
       writeArtifact: (payload, subjectSha) =>
         writeReplayArtifact(
           dir,
@@ -468,4 +501,55 @@ if (invokedDirectly) {
     process.stderr.write(`C18 NARROW BOUNDARY REPLAY FAILED · ${error instanceof Error ? error.message : "unknown"}\n`);
     process.exitCode = 1;
   });
+}
+
+/**
+ * The deterministic mock PATCH responder (R2.52).
+ *
+ * It answers exactly the plan it is given — one operation per target, values from that target's own
+ * `allowedValues`, preferring the menu member the live corrected matrix used. It cannot emit
+ * `assessments`, so a mock run proves the patch route rather than assuming it.
+ */
+export function mockFieldRepair(subject: NarrowBoundarySubject, plan: FieldRepairPlan, attempt: number): FieldRepairCallResult {
+  const PREFERRED: Record<string, string> = {
+    prerequisiteStatus: "satisfied",
+    temporalRelation: "prerequisite_before_action",
+    prerequisiteFailureCandidateId: NO_CANDIDATE,
+  };
+  const repairs = plan.targets.map((t) => {
+    if (t.field === "prerequisiteSatisfactionCandidateId") {
+      const menu = t.candidateMenu ?? [];
+      const hit = menu.find((c) => /verified identifiers for both/i.test(c.excerpt)) ?? menu[0];
+      return { surfaceRef: t.surfaceRef, field: t.field, value: hit ? hit.candidateId : NO_CANDIDATE };
+    }
+    if (t.field.endsWith("CandidateId")) {
+      const preferred = PREFERRED[t.field];
+      if (preferred !== undefined && t.allowedValues.includes(preferred)) return { surfaceRef: t.surfaceRef, field: t.field, value: preferred };
+      return { surfaceRef: t.surfaceRef, field: t.field, value: t.candidateMenu?.[0]?.candidateId ?? NO_CANDIDATE };
+    }
+    const preferred = PREFERRED[t.field];
+    return { surfaceRef: t.surfaceRef, field: t.field, value: preferred !== undefined && t.allowedValues.includes(preferred) ? preferred : t.allowedValues[0]! };
+  });
+  const transport = emptyPatchTransport(`mock#repair${attempt}`);
+  transport.requestConstructed = true;
+  transport.responseState = "response_received";
+  transport.responseEnvelopePresent = true;
+  transport.structuredOutputPresent = true;
+  return {
+    kind: "patch",
+    raw: { repairs },
+    evidence: {
+      boundaryReviewAttempt: attempt,
+      boundaryReviewSubjectSha256: narrowBoundarySubjectSha256(subject),
+      repairPlanSha256: plan.planSha256,
+      requiredOperationCount: plan.requiredOperationCount,
+      request: null,
+      parsed: { repairs },
+      finishReason: "stop",
+      latencyMs: 0,
+      sanitizedError: null,
+      transport,
+      providerFailureCode: null,
+    },
+  };
 }

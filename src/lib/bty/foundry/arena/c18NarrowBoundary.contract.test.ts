@@ -50,7 +50,7 @@ import { NO_CANDIDATE } from "@/domain/foundry/arena-draft/boundaryTruthContract
 import { buildSemanticFrames } from "@/domain/foundry/arena-draft/boundarySemanticFrame";
 import type { ArenaScenarioDraft } from "@/domain/foundry/arena-draft/types";
 import { SOURCE_ARTIFACT, buildC18Subject } from "../../../../../scripts/practice-c18-boundary-replay";
-import { mockNarrowReview, runC18NarrowBoundaryReplay } from "../../../../../scripts/practice-c18-narrow-boundary-replay";
+import { mockFieldRepair, mockNarrowReview, runC18NarrowBoundaryReplay } from "../../../../../scripts/practice-c18-narrow-boundary-replay";
 
 const EVIDENCE_DIR = join(process.cwd(), ".eval-artifacts");
 const present = () => existsSync(join(EVIDENCE_DIR, SOURCE_ARTIFACT));
@@ -372,11 +372,16 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const runReplay = async (mockKind: string) => {
   const calls: number[] = [];
+  const repairCalls: number[] = [];
   const summary = await runC18NarrowBoundaryReplay(
     {
       review: async (s, a) => {
         calls.push(a);
         return mockNarrowReview(mockKind, s, a);
+      },
+      repair: async (s, plan, a) => {
+        repairCalls.push(a);
+        return mockFieldRepair(s, plan, a);
       },
       writeArtifact: (payload, subjectSha) =>
         writeReplayArtifact(
@@ -474,6 +479,10 @@ describe(`[18-23] precision replay mock proof (${present() ? "evidence present â
         review: async (s, a) => {
           calls.push(a);
           return mockNarrowReview("pass", s, a);
+        },
+        // R2.52 â€” this path must never repair; the stub proves it by throwing.
+        repair: async () => {
+          throw new Error("field repair invoked unexpectedly");
         },
         writeArtifact: (payload, subjectSha) =>
           writeReplayArtifact(

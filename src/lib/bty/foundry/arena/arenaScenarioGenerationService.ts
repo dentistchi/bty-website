@@ -36,7 +36,7 @@ import {
   runBoundaryReviewStage,
   type BoundaryReviewMetrics,
 } from "./boundaryReviewStage";
-import { reviewBoundarySurfaces } from "./narrowBoundaryReviewer";
+import { reviewBoundarySurfaces, reviewFieldRepair } from "./narrowBoundaryReviewer";
 import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRequestProjection";
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
@@ -1133,7 +1133,13 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
       // accept.
       // ---------------------------------------------------------------------
       const boundaryStage = await runBoundaryReviewStage(
-        { review: (s, a) => reviewBoundarySurfaces(s, a), log: (outcome, code, extra) => logGenOutcome(outcome, code, extra) },
+        {
+          // R2.52 — `surfaceRefs` is no longer dropped, and the ONE permitted repair is the field
+          // PATCH reviewer. R2.51 measured this caller supplying neither.
+          review: (s, a, surfaceRefs) => reviewBoundarySurfaces(s, a, surfaceRefs),
+          repair: (s, plan, a) => reviewFieldRepair(s, plan, a),
+          log: (outcome, code, extra) => logGenOutcome(outcome, code, extra),
+        },
         {
           draft: llm.draft,
           constructions: llm.constructions,
