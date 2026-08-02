@@ -23,6 +23,7 @@ import {
 } from "@/domain/foundry/arena-draft/boundary";
 import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveEditorActions } from "./editorActions";
+import { AutoTextarea } from "./AutoTextarea";
 
 /**
  * R2 — one shared button scale for the editor's action region. Every control is a full-width,
@@ -740,9 +741,9 @@ export function ArenaPracticeFlow({
             <OptionCard key={opt} selected={q1 === opt} label={t.hardestWhen[opt]} onSelect={() => setQ1(opt)} />
           ))}
           {q1 === "other" ? (
-            <textarea
+            <AutoTextarea
               value={q1Custom}
-              onChange={(e) => setQ1Custom(e.target.value)}
+              onChange={setQ1Custom}
               placeholder={t.otherPlaceholder}
               rows={2}
               className="mt-1 w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
@@ -772,9 +773,9 @@ export function ArenaPracticeFlow({
               </button>
             ))}
           </div>
-          <textarea
+          <AutoTextarea
             value={q2}
-            onChange={(e) => setQ2(e.target.value)}
+            onChange={setQ2}
             placeholder={t.q2Placeholder}
             rows={3}
             className="mt-1 w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
@@ -1100,10 +1101,10 @@ function Field({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs uppercase tracking-[0.12em] text-white/40">{label}</span>
-      <textarea
+      <AutoTextarea
         value={value}
         rows={rows}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         className="w-full rounded-xl border border-white/12 bg-black/30 px-4 py-3 text-[0.95rem] leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
       />
     </label>
@@ -1151,10 +1152,10 @@ function Editor({
           </button>
         ) : null}
       </div>
-      <textarea
+      <AutoTextarea
         value={c.label}
         rows={2}
-        onChange={(e) => onChoiceLabel(group, i, e.target.value)}
+        onChange={(v) => onChoiceLabel(group, i, v)}
         className="w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[0.9rem] leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
       />
     </div>

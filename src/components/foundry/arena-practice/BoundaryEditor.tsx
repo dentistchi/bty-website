@@ -10,6 +10,7 @@ import {
   type PracticeBoundary,
 } from "@/domain/foundry/arena-draft/boundary";
 import type { ArenaPracticeCopy } from "./arenaPracticeCopy";
+import { AutoTextarea } from "./AutoTextarea";
 
 /**
  * Host BOUNDARY CONFIRMATION surface (Slice 3.2I-R5B2).
@@ -244,11 +245,11 @@ export function BoundaryEditor({
             {rules.map((r) =>
               editKey === r.key ? (
                 <li key={r.key} className="flex flex-col gap-2 rounded-lg border border-white/15 bg-black/25 px-3 py-3">
-                  <textarea
+                  <AutoTextarea
                     aria-label={copy.boundaryEditCta}
                     value={editText}
                     rows={2}
-                    onChange={(e) => setEditText(e.target.value)}
+                    onChange={setEditText}
                     className="w-full rounded-lg border border-white/12 bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none focus:border-[#C9A66B]/50"
                   />
                   <div className="flex gap-2">
@@ -311,12 +312,12 @@ export function BoundaryEditor({
           </ul>
         )}
 
-        <textarea
+        <AutoTextarea
           aria-label={copy.boundaryAddCta}
           value={newText}
           rows={2}
           placeholder={copy.boundaryNewPlaceholder}
-          onChange={(e) => setNewText(e.target.value)}
+          onChange={setNewText}
           className="w-full rounded-xl border border-white/12 bg-black/30 px-3 py-2 text-sm leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50"
         />
         <button
