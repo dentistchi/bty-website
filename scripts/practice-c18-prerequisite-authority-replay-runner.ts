@@ -410,7 +410,7 @@ const script = `#!/usr/bin/env bash
 #
 #   2. RE-TAKE the applicability measurement on a run that actually reaches a
 #      verdict. R2.47 observed 9 non-clause-matching governed-action candidates,
-#      0 marked present, 8 cited with `absent` — one run, no verdict. Record the
+#      0 marked present, 8 cited with 'absent' — one run, no verdict. Record the
 #      number again. Do not act on it here.
 #
 # WHAT R2.48 DOES NOT CHANGE
