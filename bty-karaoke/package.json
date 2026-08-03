@@ -24,7 +24,9 @@
     "gate:b23:rearm:g2": "node scripts/gate-b23-seed.mjs --rearm --g2",
     "gate:b23:rearm:g3": "node scripts/gate-b23-seed.mjs --rearm --g3",
     "gate:b23:g3:clear": "node scripts/gate-b23-seed.mjs --g3-clear",
-    "gate:b23:rearm:g4": "node scripts/gate-b23-seed.mjs --rearm --g4"
+    "gate:b23:rearm:g4": "node scripts/gate-b23-seed.mjs --rearm --g4",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.3.7",
@@ -40,6 +42,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.20.1",
+    "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

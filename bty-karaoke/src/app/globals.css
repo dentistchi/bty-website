@@ -4074,3 +4074,129 @@ main[data-theme='warm_stage'] {
   word-break: break-all;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* ── Host web surface (BUILD 26B) ──────────────────────────────
+ *
+ * These classes were referenced by every Host browser surface — entry, connect,
+ * plan, first-room, room settings, logo controls — but their rules were never
+ * shipped. The visible consequence was measured, not assumed: the primary Google
+ * sign-in action rendered as a bare default hyperlink, `display:inline`, 125x18,
+ * link-blue and underlined, on desktop and mobile alike.
+ *
+ * WHY ANCHORS BROKE AND BUTTONS DID NOT. The global `button` rule above already
+ * gives every <button> the gold gradient and a 46px min-height, so
+ * `<button class="host-btn">` looked right by accident. `<a class="host-btn">`
+ * inherits none of it. `.host-btn` therefore restates the SAME geometry the
+ * global button rule uses (46px / 13px 18px / radius 14px), so a <button> is
+ * geometrically unchanged while an <a> finally becomes the control it claims to
+ * be. This is a missing-style fix, not a restyle.
+ */
+.host-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px; /* ≥ the 44px touch contract; matches the global button */
+  padding: 13px 18px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none; /* kills the default underline on anchor buttons */
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.host-btn:active {
+  transform: translateY(1px) scale(0.995);
+}
+
+/* Primary — the same gold the rest of the product uses for its main action, so a
+ * <button> keeps its exact current appearance and an <a> now matches it. */
+.host-btn-primary {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
+  color: #0a0f1c;
+}
+
+/* Ghost — a SECONDARY action. Before this rule a ghost <button> rendered with the
+ * primary gold gradient, so 로그아웃 and 플랜 were indistinguishable from the main
+ * call to action. Matches the established .sheet-btn.ghost language. */
+.host-btn-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.host-btn:disabled,
+.host-btn[aria-busy='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The Host page container. Width, centring and safe-area padding already come
+ * from the base `main` rule; this only guarantees that a long room or account
+ * name can never push the layout sideways. */
+.host-shell {
+  overflow-wrap: break-word;
+}
+
+/* Stacked form: the gap owns the vertical rhythm, so the label/help margins are
+ * neutralised rather than added to it. */
+.host-form {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+.host-form label,
+.host-form .muted {
+  margin: 0;
+}
+
+/* A status/notice line (`?notice=…`, save results). Previously indistinguishable
+ * from body copy. */
+.host-notice {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 196, 81, 0.06);
+  color: var(--text);
+  font-size: 0.94rem;
+}
+
+/* A calm "not available yet" panel — never an alarm. */
+.host-unavailable {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+/* ── BUILD 26B — DJ console touch targets (D-4 / D-5) ──────────
+ * Measured under-44px controls. Padding and min sizes only: no control changes
+ * position, colour, or behaviour, and the surrounding layout is untouched. */
+.sb-event {
+  min-height: 44px; /* was min-height: 0 → 37px tall */
+}
+.admin-trigger {
+  min-height: 44px; /* was 34px */
+}
+.q-handle {
+  width: 44px; /* was 40px; height was already 44px */
+}
+.q-overflow {
+  width: 44px; /* was 40px */
+  height: 44px; /* was 40px */
+  min-height: 44px;
+}
+/* Scoped to the DJ console ONLY. `.linkish` is shared with 26 call sites across
+ * the Guest, Admin and Manager surfaces — including the BUILD 25 request dock —
+ * so it must never be widened globally. */
+.dj-console .linkish {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}

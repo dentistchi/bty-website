@@ -21,3 +21,9 @@ qr-*.svg
 
 # Supabase CLI local cache
 supabase/.temp/
+
+# Playwright (BUILD 26B) — never commit browsers, reports, traces or artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
