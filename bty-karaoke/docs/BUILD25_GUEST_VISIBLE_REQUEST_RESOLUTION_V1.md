@@ -1,26 +1,31 @@
 # BUILD 25 — GUEST-VISIBLE REQUEST RESOLUTION V1
 
-**Status: IMPLEMENTED · MIGRATION VERIFIED AND READY TO APPLY · NOT DEPLOYED — 2026-08-02**
+**Status: DEPLOYED · FOUNDER DEVICE GATES PENDING — 2026-08-03**
 
-All three code halves are written, tested, committed, and pushed. Native build **80** is built in
-both configurations and **installed on the Founder device**. Production still runs **BUILD 24**.
+The migration is **APPLIED**, the Web/server half is **DEPLOYED**, and production now runs
+**BUILD 25**. Native build **80** is installed on the Founder device.
 
-**This build is NOT deployed.** The migration has not yet been applied, and the deployment is
-deliberately sequenced behind it — not merely pending.
+```text
+Migration   20260808120000_karaoke_request_resolution_v1   APPLIED · parity 37/37
+Worker      ac50e28e-0f22-457e-b9a1-68b509ff1f56 @ 100%    (superseded dca14ffc)
+Build       /api/karaoke-build → 6bfdbfe87543              (= deployed commit 6bfdbfe8)
+Native      build 80 (804c837) — installed, gates pending
+```
 
-- The production migration `20260808120000_karaoke_request_resolution_v1` is **UNAPPLIED**,
-  confirmed by direct read-only probe (§7.1) and by the CLI ledger (§7.2), not assumed.
-- **Deploying the web half before the migration would break two currently-working production
-  flows** — Guest self-cancel and Host remove/skip (§7.3). This is proven from the diff, not
-  estimated. That is why the order is fixed: migration first, deployment second.
+**No Founder device gate has been executed, and PASS / CLOSED is not claimed.** G1–G8 are defined
+in §8 and are the only remaining evidence.
 
-**The BUILD 24 §7.3 / §10 carry-forward — *"clear before the next migration"* — is now CLEARED
-(§7.2).** It was never an access-privilege problem. The CLI ledger reads correctly, and
-local↔remote parity is verified clean: 37 migrations, 36 synced, exactly one local-only
-(this build's), zero remote-only.
+Live API and security smoke passed against production (§7.4), including the property that
+motivates the whole design: the **public** sibling endpoint reports *that* a request is terminal
+and never *why*.
 
-**No Founder device gate has been executed.** G1–G8 cannot produce honest evidence until the
-server half is live; the app is installed and ready, and the gate sequence is defined in §8.
+**The BUILD 24 §7.3 / §10 carry-forward — *"clear before the next migration"* — is CLEARED
+(§7.2).** It was never an access-privilege problem: the 403 came from invoking bare `supabase`,
+which falls back to a stored login that cannot see this project. Ledger parity is now verified
+clean in both directions.
+
+**No Founder device gate has been executed.** The app is installed, the server half is live, and
+the gates are armed — the sequence is defined in §8 and G1 is issued first.
 
 ---
 
@@ -99,7 +104,7 @@ not go the Guest's way, and it is not an alarm.
 
 ### Migration — `20260808120000_karaoke_request_resolution_v1.sql`
 
-Additive, forward-only, single `begin; … commit;`. **Applied status: NOT APPLIED (§7.1).**
+Additive, forward-only, single `begin; … commit;`. **Applied status: APPLIED 2026-08-03 (§7.1).**
 
 | Object | Nature |
 |---|---|
@@ -245,30 +250,66 @@ byte-identical afterwards (verified by SHA-256).
 
 ---
 
-## 7. Deployment — not yet performed
+## 7. Deployment — DONE
 
 ```text
-Production (unchanged)   BUILD 24
-/api/karaoke-build       abece404917a          (= BUILD 24 G1 fix, abece404)
-Migration                20260808120000        NOT APPLIED — verified ready, dry run clean
-Worker                   unchanged — no BUILD 25 deployment was attempted
-Native                   build 80 (804c837) — INSTALLED on the Founder device
+Migration        20260808120000_karaoke_request_resolution_v1   APPLIED 2026-08-03
+Ledger parity    37 local · 37 remote · 0 local-only · 0 remote-only
+Worker (live)    ac50e28e-0f22-457e-b9a1-68b509ff1f56 @ 100%    2026-08-03T04:51:04Z
+                 (superseded dca14ffc, BUILD 24)
+/api/karaoke-build  6bfdbfe87543          = deployed commit 6bfdbfe8
+Deployed source  build inputs BYTE-IDENTICAL to 4be711ee (zero diff); the two commits
+                 between are documentation-only
+Native           build 80 (804c837) — INSTALLED on the Founder device
+Production       now BUILD 25
 ```
 
-### 7.1 The migration is unapplied — measured, not assumed
+### 7.1 The migration — before and after, both measured
 
-Read-only probe against `zycwaqignioawtqynopj` with the `service_role` key. No row was written.
+Read-only probes against `zycwaqignioawtqynopj` with the `service_role` key. **No row was written
+at any point, and no production fixture was created.**
+
+**Before the apply** — the columns did not exist:
 
 ```text
-GET /rest/v1/karaoke_requests?select=id,resolution_code,resolved_at&limit=1
+GET …/karaoke_requests?select=id,resolution_code,resolved_at&limit=1
   → 400  {"code":"42703","message":"column karaoke_requests.resolution_code does not exist"}
-
-GET /rest/v1/karaoke_requests?select=id,status&limit=1        (control)
-  → 200
+GET …/karaoke_requests?select=id,status&limit=1                          (control) → 200
 ```
 
-The control proves the probe path is sound, so the `42703` is a real absence and not an
+The control proves the probe path is sound, so the `42703` was a real absence, not an
 authentication artefact.
+
+**The apply** — `supabase db push --linked`, bare CLI:
+
+```text
+Do you want to push these migrations to the remote database?
+ • 20260808120000_karaoke_request_resolution_v1.sql
+Applying migration 20260808120000_karaoke_request_resolution_v1.sql...
+NOTICE (00000): constraint "karaoke_requests_resolution_valid" of relation
+                "karaoke_requests" does not exist, skipping
+Finished supabase db push.
+```
+
+The NOTICE is expected and benign: it is the migration's own idempotent
+`drop constraint if exists` running before the `add constraint`, on a constraint that had never
+existed. Exactly one migration was applied.
+
+**After the apply** — verified read-only:
+
+| Check | Result |
+|---|---|
+| `resolution_code` / `resolved_at` selectable | **200** — `{"resolution_code":null,"resolved_at":null}` (was `42703`) |
+| Rows carrying a resolution | **0** (`content-range: */0`) — **nothing was backfilled**, as designed |
+| Total rows | **362** — exactly the population the migration documented; unchanged |
+| `karaoke_end_song_v2` exposed | **PRESENT** (republished) |
+| `end_karaoke_event` exposed | **PRESENT** (republished) |
+| `karaoke_begin_song_v2` exposed | **PRESENT** (untouched by this build) |
+
+The migration is a single `begin; … commit;`, so the constraint and the partial index committed
+with the columns; the columns being present is proof the whole transaction landed.
+
+**Ledger parity after the apply: 37 local, 37 remote, zero local-only, zero remote-only.**
 
 ### 7.2 The BUILD 24 403 — root cause found, and CLEARED
 
@@ -345,47 +386,81 @@ Finished supabase db push.
 is included. No repair, force, squash, manual history edit, or bypass was used; none is
 authorised.
 
-### 7.3 Why deployment is sequenced behind the migration
+### 7.3 Why the migration had to land first
 
-Deploying `4be711ee` before the migration would **break two flows that work in production today**.
-Both write the new columns unconditionally in the same statement as the status flip:
+Deploying `4be711ee` before the migration would have **broken two flows that were working in
+production**. Both write the new columns in the same statement as the status flip:
 
 | Path | Call site | Result without the columns |
 |---|---|---|
 | **Guest self-cancel** | `cancelOwnRequest` — `.update({status:'removed', resolution_code:'guest_cancelled', resolved_at:…})` | `42703` → the cancel fails |
 | **Host remove / skip of a waiting song** | `setRequestStatus` — `HOST_RESOLUTION[action]` spread into the same `.update` | `42703` → the Host action fails |
 
-This is read from the committed diff, not estimated. **Deploy-before-migrate is therefore a
-production-breaking sequence, and the order is not negotiable:** migration first, deployment
-second.
+Read from the committed diff, not estimated. The order was therefore not negotiable, and it was
+followed: **migration first, deployment second.** Recorded here because the same ordering
+constraint applies to any rollback — reverting the migration while this Worker is live would
+re-break both flows.
 
-### 7.4 What was NOT done, and is not claimed
+### 7.4 Live API and security smoke — executed against production
 
-| Step | Status |
+Minimal, controlled probes. **Every capability used was deliberately forged, so no real capability
+value appears anywhere in this record, and no production row was created or modified.**
+
+| # | Property | Probe | Result |
+|---|---|---|---|
+| S1 | The endpoint is live | `POST …/requests/resolved`, forged capability | **200** `{"resolved":[]}` (was 404 pre-deploy) |
+| S2 | A non-owner / invalid capability discloses nothing | two forged claims | **200** `{"resolved":[]}` — **no 403**, so "not yours" is indistinguishable from "does not exist" |
+| S3 | Validation does not echo the schema | `requestId:"not-a-uuid"` | **400** `{"error":"Validation failed"}` — no Zod issue list |
+| S4 | Unknown room gives no probing signal | unknown slug | **404** `{"error":"Room not found"}` |
+| S5 | A capability cannot travel in a URL | `GET …/requests/resolved?token=…` | **405** — the route is POST-only; the query form is structurally unacceptable |
+| S6 | Never cached | response headers | `cache-control: no-store, max-age=0` |
+
+**The public sibling endpoint stays reason-free**, verified against a genuinely terminal request in
+its own room:
+
+```text
+GET /api/rooms/bty-home/requests/4b5d6a33-…  → 200
+{"status":{"requestId":"4b5d6a33-…","position":0,"aheadCount":0,"isUpNext":false,
+           "isNowPlaying":false,"readyAt":null,"state":"removed"}}
+```
+
+No `resolution_code`, `resolutionCode`, `resolved_at`, `resolvedAt`, and none of the four reason
+codes. The endpoint reports *that* the request is terminal and never *why* — which is the whole
+point of putting the reason behind a capability.
+
+**The served client bundle** (`/_next/static/chunks/8482-47252247749d2126.js`, reached from the
+live `/r/{slug}` document) carries all five approved sentences and the endpoint path:
+
+| In the served bundle | |
 |---|---|
-| Migration dry run | **EXECUTED — clean** (§7.2.2): exactly `20260808120000` |
-| Migration ledger parity | **EXECUTED — clean** (§7.2.1): 36 synced, 1 local-only, 0 remote-only |
-| Migration apply | **NOT EXECUTED** — awaiting explicit Founder authorisation |
-| Migration parity re-check after apply | **NOT EXECUTED** — follows the apply |
-| Production deployment | **NOT EXECUTED** — sequenced behind the migration (§7.3) |
-| Deployment ID / version | **NONE** — no deployment exists to identify |
-| Live API smoke of `POST …/requests/resolved` | **NOT EXECUTABLE** — the route is not deployed; production would return 404 for reasons unrelated to the contract |
-| Live security smoke (non-owner refusal, expired capability) | **NOT EXECUTABLE** — same reason; asserting it against an undeployed route would prove nothing |
-| Founder device gates G1–G8 | **NOT EXECUTED** — see §8 |
+| `신청 결과` · all five reason sentences | **PRESENT** |
+| `requests/resolved` · `method:"POST"` | **PRESENT** |
+| `requests/resolved?` (query form) | **ABSENT** — the capability cannot reach a URL |
+| `service_role` / any service-role JWT / `KARAOKE_SUPABASE_SERVICE*` | **ABSENT** |
 
-No deployment ID, deployed-commit identity, or live-smoke result is recorded anywhere in this
-document, because none was observed.
+### 7.5 Which live-functional items were exercised, and which defer to the device gates
+
+| # | Item | Status |
+|---|---|---|
+| 6 | Cross-Guest retrieval refused | **VERIFIED LIVE** — S1/S2 |
+| 10 | Capability bounded / forgeries rejected | **PARTIALLY VERIFIED LIVE** — forged and malformed capabilities are rejected (S1–S3); the 12-hour expiry and Event/session scope are automated-verified, not separately exercised live |
+| 1, 2, 3, 4, 5, 7, 8, 9 | resolution of an owned request · requestId keying · same-video independence · no duplication on repeated fetch · stale-active exclusion · Event isolation · failure preservation · cancellation retrievable | **DEFERRED TO G1–G8** |
+
+Items 1–5 and 7–9 require real requests to be created, removed, skipped, and closed. Doing that
+server-side would mean manufacturing production rows and then deleting them. **The device gates
+create the same data through the product's own flows, which is legitimate use rather than
+fabrication** — so they are the honest place to exercise these, and they are not duplicated here.
 
 ---
 
-## 8. Founder device gates — defined, not executed
+## 8. Founder device gates — ARMED, awaiting evidence
 
 Native build **80** (`804c837`) is installed on the Founder's iPhone 17 Pro Max
-(`80C931D3-265B-5B37-B608-F3EB200C66AA`). The app is ready.
+(`80C931D3-265B-5B37-B608-F3EB200C66AA`), and the server half is now live — so every gate below
+can finally produce real evidence. **None has been executed.**
 
-**No gate can produce honest evidence yet.** Every gate below depends on the server recording a
-resolution reason, which requires the migration **and** the deployment. Running G1 today would show
-an empty 신청 결과 section and prove only that the server half is absent.
+Gates are issued **one at a time**, G1 first. A gate that fails is recorded as failed and
+corrected; a corrected gate is never backdated to a clean pass (the BUILD 24 §6 precedent).
 
 | Gate | What it proves |
 |---|---|
@@ -415,9 +490,12 @@ non-executable** — not as a pass.
 ## 9. Working-tree and artefact integrity
 
 ```text
-Web    /Users/hanbit/Dev/btytrainingcenter      HEAD = origin/main = 4be711ee
+Web    /Users/hanbit/Dev/btytrainingcenter      HEAD = origin/main (docs commits on 4be711ee)
        build inputs (src, public, supabase, package*.json, next/open-next/wrangler config)
-       are clean and exactly at 4be711ee
+       are clean and BYTE-IDENTICAL to 4be711ee — verified by `git diff 4be711ee HEAD`
+       over those paths returning empty. The deployed artefact is the 4be711ee source;
+       only the build STAMP names HEAD, because next.config.mjs derives it from
+       `git rev-parse --short=12 HEAD`.
 
 Native /Users/hanbit/Dev/bty-norebang-admin-ios HEAD = origin/main = 804c837
        only pre-existing change:  BTYNorebangAdmin.xcscheme  (modified, unstaged, untouched)
@@ -439,22 +517,22 @@ Neither is a build input.
 ## 10. Status
 
 ```text
-BUILD 25 — IMPLEMENTED · MIGRATION READY TO APPLY · NOT DEPLOYED   2026-08-02
+BUILD 25 — DEPLOYED · FOUNDER DEVICE GATES PENDING                2026-08-03
 
 Code            COMPLETE   7bc6ccd5 · 4be711ee · a6b2681 · 804c837 (build 80)
 Tests           GREEN      web 2137/204 · tsc clean · Host 1652 · Guest 771
 Builds          GREEN      Debug + Release · CFBundleVersion 80 / 80
+Migration       APPLIED    20260808120000 · parity 37/37 · 0 rows backfilled · 362 unchanged
+Deployment      LIVE       Worker ac50e28e @ 100% · /api/karaoke-build = 6bfdbfe87543
+Live smoke      PASS       S1–S6 · public endpoint reason-free · bundle carries all 5 sentences
 Device          READY      build 80 installed on the Founder device
-Ledger parity   CLEAN      37 total · 36 synced · 1 local-only · 0 remote-only (§7.2.1)
-Dry run         CLEAN      exactly 20260808120000_karaoke_request_resolution_v1 (§7.2.2)
-Migration       PENDING    verified ready — awaiting explicit Founder authorisation to apply
-Deployment      PENDING    sequenced behind the migration; deploy-first breaks live
-                           cancel + remove/skip (§7.3)
-Gates G1–G8     NOT RUN    cannot produce honest evidence until the server half is live
+Gates G1–G8     PENDING    Founder evidence — the only thing still outstanding
 
 CLEARED by this build: the BUILD 24 §7.3 / §10 carry-forward ("clear before the next
-  migration"). The 403 was an invocation fault, not an access-privilege fault — use
-  `supabase-karaoke`, never bare `supabase` (§7.2). Ledger parity is now verified.
+  migration"). The 403 was an invocation fault, not an access-privilege fault — bare
+  `supabase` fell back to a login that cannot see this project (§7.2). Parity verified.
+
+NOT CLAIMED: PASS / CLOSED, for the build or for any individual gate.
 ```
 
 **PASS / CLOSED is not claimed and must not be claimed** — not for the build, and not for any
@@ -466,15 +544,19 @@ individual gate.
 
 | Item | Value |
 |---|---|
-| Web HEAD (= `origin/main`) | `4be711ee1a3cbfd763c2b2524631b7b2bd090ebf` |
+| Source baseline (build inputs) | `4be711ee1a3cbfd763c2b2524631b7b2bd090ebf` |
 | Server / migration / owner-only API | `7bc6ccd5` |
 | Guest Web 신청 결과 | `4be711ee` |
 | Native domain layer (build 79) | `a6b2681` |
 | Native visible surface (build 80) | `804c837520ff8bb0a64536729c089d2c9fcf29c5` |
+| **Deployed commit identity** | **`6bfdbfe8`** — build inputs byte-identical to `4be711ee`; the intervening commits are documentation-only |
 | Migration file | `bty-karaoke/supabase/migrations/20260808120000_karaoke_request_resolution_v1.sql` |
 | Migration SHA-256 | `896728f74cd26224b402b2143029da301778a976da9c68954e846cbd98961a84` |
-| Production project ref | `zycwaqignioawtqynopj` |
-| Live build endpoint | `https://norebang.btydaily.com/api/karaoke-build` → `abece404917a` (BUILD 24) |
+| Migration applied | **2026-08-03** · ledger parity 37/37 |
+| Production project ref | `zycwaqignioawtqynopj` (org `mzbvnugouzrkinmqwiaf`) |
+| **Live Worker** | **`ac50e28e-0f22-457e-b9a1-68b509ff1f56` @ 100%**, 2026-08-03T04:51:04Z (superseded `dca14ffc`) |
+| Live build endpoint | `https://norebang.btydaily.com/api/karaoke-build` → **`6bfdbfe87543`** |
+| Native device | iPhone 17 Pro Max `80C931D3-265B-5B37-B608-F3EB200C66AA`, build 80 installed |
 
 Related: [BUILD 24](./BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md) §7.3 · §10 —
 the deviation this build CLEARED (§7.2).
