@@ -21,6 +21,7 @@ import { availableSetKey, buildBoundaryScope, type PracticeBoundaryScope } from 
 import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, PRACTICE_SAMPLING, type Locale } from "./arenaScenarioGenerationService";
 import { createGenerationAccounting, isProviderCallTelemetryError } from "./generationAccounting";
+import { currentSourceIdentity } from "./sourceIdentity";
 
 /**
  * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
@@ -332,6 +333,20 @@ export async function regenerateArenaDraft(
   }
 
   /**
+   * FAIL BEFORE SPEND — IDENTITY (Slice 3.2I-R5B2-R5C-3V2).
+   *
+   * An attempt that cannot name the build that ran it is only half observable: R5B could read what
+   * happened but not what was running. The previous value was a static release label that had been
+   * wrong since April and had no way of noticing.
+   *
+   * Resolved BEFORE the parent row exists, so an unidentifiable build spends nothing: no parent, no
+   * child call, no provider, and the draft is left exactly as the Host left it. It reuses the
+   * existing observability-unavailable contract rather than introducing a taxonomy value.
+   */
+  const identity = currentSourceIdentity();
+  if (!identity) return { ok: false, reason: "generation_observability_unavailable" };
+
+  /**
    * FAIL BEFORE SPEND (Slice 3.2I-R5B2-R5A).
    *
    * 3.2K-R4 traced a real failure that waited ~79 s and could not be diagnosed, because the only
@@ -346,7 +361,10 @@ export async function regenerateArenaDraft(
     sourceEventId: current.source_event_id ?? null,
     ownerUserId,
     correlationId: crypto.randomUUID(),
-    deployVersion: process.env.BTY_DEPLOY_VERSION ?? null,
+    // The exact 40-character commit. `deploy_version` is unbounded `text` both in the migration and
+    // in the live catalog, so no schema change is involved. Historical rows keep their old release
+    // labels as evidence of the former contract; they are never rewritten.
+    deployVersion: identity.sourceCommitSha,
     providerTimeoutMs: PRACTICE_SAMPLING.generation.timeoutMs,
     model: getLlmModel(),
     structuredOutputMode: "json_schema_strict",

@@ -164,6 +164,16 @@ function makeAdmin(opts: { attemptInsertFails?: boolean; attemptUpdateFails?: bo
 
 const run = (a: SupabaseClient) => regenerateArenaDraft(a, "owner-1", "draft-1", "en");
 
+/**
+ * R5C-3V2 — every generation submission now requires an immutable source identity BEFORE the
+ * parent attempt is created. These tests exercise that path, so they must declare the build they
+ * run as; there is no global default, because a hidden default would make the gate untestable.
+ */
+const TEST_SOURCE_SHA = "cf7e3720f739c952c86324a668b6ffd98f5ea6b1";
+beforeEach(() => {
+  process.env.BTY_SOURCE_COMMIT_SHA = TEST_SOURCE_SHA;
+});
+
 beforeEach(() => mockGenerate.mockReset());
 
 describe("[R5A] the provider cannot be reached without a durable attempt row", () => {
