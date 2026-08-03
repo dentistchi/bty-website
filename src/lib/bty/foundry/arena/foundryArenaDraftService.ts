@@ -22,6 +22,11 @@ import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, PRACTICE_SAMPLING, type Locale } from "./arenaScenarioGenerationService";
 import { createGenerationAccounting, isProviderCallTelemetryError } from "./generationAccounting";
 import { currentSourceIdentity } from "./sourceIdentity";
+import {
+  GENERATION_INPUT_BASELINE_REVISION,
+  isValidGenerationInputRevision,
+  nextGenerationInputRevision,
+} from "@/domain/foundry/arena-draft/generationInputRevision";
 
 /**
  * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
@@ -59,7 +64,7 @@ function isNewAuthorityDraft(guided: StoredGuidedAnswers): boolean {
  */
 
 const DRAFT_COLS =
-  "id, owner_user_id, source_event_id, source_module_version, source_draft_id, status, guided_answers, scenario_draft, generation_source, revision, created_at, updated_at";
+  "id, owner_user_id, source_event_id, source_module_version, source_draft_id, status, guided_answers, scenario_draft, generation_source, revision, generation_input_revision, created_at, updated_at";
 
 export type ArenaDraftRow = {
   id: string;
@@ -71,7 +76,10 @@ export type ArenaDraftRow = {
   guided_answers: StoredGuidedAnswers;
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
+  /** Optimistic-concurrency row token. Bumps on EVERY write, including non-input writes. */
   revision: number;
+  /** Semantic version of the canonical generation input. Bumps only on a MEANINGFUL input change. */
+  generation_input_revision: number;
   created_at: string;
   updated_at: string;
 };
@@ -128,6 +136,9 @@ export async function createArenaDraft(
       scenario_draft: null, // no scenario until a boundary is confirmed and generation runs
       generation_source: null,
       revision: 0,
+      // Supplied EXPLICITLY: the application never depends on a database default to establish
+      // what epoch a new draft starts in.
+      generation_input_revision: GENERATION_INPUT_BASELINE_REVISION,
     })
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
@@ -347,6 +358,19 @@ export async function regenerateArenaDraft(
   if (!identity) return { ok: false, reason: "generation_observability_unavailable" };
 
   /**
+   * FAIL BEFORE SPEND — INPUT EPOCH (Slice 3.2I-R5B2-R5C-4A1).
+   *
+   * An attempt that cannot say WHICH input it ran against cannot be governed later. Substituting
+   * `draft_revision` here would silently reintroduce the exact bypass R5C-4A measured, so a
+   * missing or malformed epoch stops the submission instead — before any provider is reachable and
+   * before a child row exists. Existing observability contract; no new taxonomy value.
+   */
+  const generationInputRevision = current.generation_input_revision;
+  if (!isValidGenerationInputRevision(generationInputRevision)) {
+    return { ok: false, reason: "generation_observability_unavailable" };
+  }
+
+  /**
    * FAIL BEFORE SPEND (Slice 3.2I-R5B2-R5A).
    *
    * 3.2K-R4 traced a real failure that waited ~79 s and could not be diagnosed, because the only
@@ -365,6 +389,7 @@ export async function regenerateArenaDraft(
     // in the live catalog, so no schema change is involved. Historical rows keep their old release
     // labels as evidence of the former contract; they are never rewritten.
     deployVersion: identity.sourceCommitSha,
+    generationInputRevision,
     providerTimeoutMs: PRACTICE_SAMPLING.generation.timeoutMs,
     model: getLlmModel(),
     structuredOutputMode: "json_schema_strict",
@@ -515,7 +540,11 @@ export async function saveDraftBoundary(
 
   const patch: Record<string, unknown> = {
     guided_answers: nextGuided,
+    // The concurrency token still bumps on EVERY write — its contract is unchanged.
     revision: current.revision + 1,
+    // R5C-4A1 — the semantic input epoch moves only when the input actually moved. Driven by the
+    // SAME `changed` flag that decides scenario invalidation, so the two can never disagree.
+    generation_input_revision: nextGenerationInputRevision(current.generation_input_revision, changed),
     updated_at: new Date().toISOString(),
   };
   // A meaningful change invalidates the unapproved generated scenario — it must never be
@@ -574,6 +603,9 @@ export async function saveDraftBoundaryScope(
   const patch: Record<string, unknown> = {
     guided_answers: nextGuided,
     revision: current.revision + 1,
+    // R5C-4A1 — an identical re-selection is not a new input epoch. `changed` already compares
+    // SORTED active ids and the available-set fingerprint, so ordering alone cannot move it.
+    generation_input_revision: nextGenerationInputRevision(current.generation_input_revision, changed),
     updated_at: new Date().toISOString(),
   };
   if (changed) {
@@ -605,6 +637,8 @@ export type ClientArenaDraft = {
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
   revision: number;
+  /** R5C-4A1 — server-derived; the client never asserts it. Read-only for R5C-4A2/4B. */
+  generation_input_revision: number;
   created_at: string;
   updated_at: string;
 };
@@ -619,6 +653,7 @@ export function toClientArenaDraft(row: ArenaDraftRow): ClientArenaDraft {
     scenario_draft: row.scenario_draft,
     generation_source: row.generation_source,
     revision: row.revision,
+    generation_input_revision: row.generation_input_revision,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

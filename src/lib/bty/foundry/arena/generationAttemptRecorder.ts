@@ -31,6 +31,12 @@ export type StartAttemptInput = {
   ownerUserId: string;
   correlationId: string;
   deployVersion: string | null;
+  /**
+   * R5C-4A1 — the canonical generation-input epoch this attempt was started against. Recorded
+   * ALONGSIDE `draftRevision`, not instead of it: the two answer different questions, and the
+   * later governance slice needs the semantic one. NULL only for attempts predating the contract.
+   */
+  generationInputRevision: number | null;
   providerTimeoutMs: number;
   model: string;
   structuredOutputMode: "json_schema_strict" | "none";
@@ -79,6 +85,7 @@ export async function startGenerationAttempt(
       .insert({
         draft_id: input.draftId,
         draft_revision: input.draftRevision,
+        generation_input_revision: input.generationInputRevision,
         source_event_id: input.sourceEventId,
         owner_user_id: input.ownerUserId,
         correlation_id: input.correlationId,

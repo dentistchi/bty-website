@@ -82,6 +82,9 @@ function makeAdmin(opts: { attemptInsertFails?: boolean; attemptUpdateFails?: bo
       scenario_draft: null,
       generation_source: null,
       revision: 1,
+      // R5C-4A1 — the semantic input epoch. A draft without one cannot be governed later, so
+      // the service refuses it before any provider spend; fixtures must declare it.
+      generation_input_revision: 1,
       created_at: "2026-08-03T00:00:00Z",
       updated_at: "2026-08-03T00:00:00Z",
     },

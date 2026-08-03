@@ -92,6 +92,9 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
         scenario_draft: row.scenario_draft ?? null,
         generation_source: row.generation_source ?? null,
         revision: row.revision ?? 0,
+        // R5C-4A1 — every stored draft carries a semantic input epoch; the service refuses a
+        // generation whose epoch cannot be resolved, so the seed supplies the baseline.
+        generation_input_revision: row.generation_input_revision ?? 1,
         created_at: now,
         updated_at: now,
       };
@@ -431,6 +434,8 @@ function seedDraft(over: Row = {}) {
   const draftRow: Row = {
     id: "d1", owner_user_id: OWNER, source_event_id: "evt-owned", source_module_version: 3, source_draft_id: "draft-77",
     status: "draft", guided_answers: { ...guided }, scenario_draft: AI_DRAFT, generation_source: "ai", revision: 2,
+    // R5C-4A1 — distinct from `revision`: the semantic input epoch, which regeneration requires.
+    generation_input_revision: 1,
     created_at: "t", updated_at: "t", ...over,
   };
   const admin = makeFakeAdmin({
@@ -567,7 +572,7 @@ describe("createOrOpenArenaDraftShell — idempotent create-or-open (R5B1A)", ()
   it("reopens an existing GENERATED draft rather than duplicating", async () => {
     const { admin, tables } = seedOwnedEventWithModule();
     // Pre-seed a generated draft for the event.
-    tables.foundry_arena_scenario_drafts.push({ id: "gen-1", owner_user_id: OWNER, source_event_id: "evt-owned", source_module_version: 3, source_draft_id: "draft-77", status: "draft", guided_answers: { ...guided, practiceSetupVersion: 1 }, scenario_draft: AI_DRAFT, generation_source: "ai", revision: 4, created_at: "t", updated_at: "t2" });
+    tables.foundry_arena_scenario_drafts.push({ id: "gen-1", owner_user_id: OWNER, source_event_id: "evt-owned", source_module_version: 3, source_draft_id: "draft-77", status: "draft", guided_answers: { ...guided, practiceSetupVersion: 1 }, scenario_draft: AI_DRAFT, generation_source: "ai", revision: 4, generation_input_revision: 1, created_at: "t", updated_at: "t2" });
     const r = await createOrOpenArenaDraftShell(admin, OWNER, { sourceEventId: "evt-owned", guidedAnswers: guided, locale: "en" });
     expect(r.ok).toBe(true);
     if (r.ok) {
