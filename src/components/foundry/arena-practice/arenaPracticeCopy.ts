@@ -74,6 +74,22 @@ export type ArenaPracticeCopy = {
   setupGenerating: string;
   setupGenerateError: string;
 
+  // Slice 3.2I-R5B2-R5A — one honest state per measured outcome. R4 measured the cost of a single
+  // generic line: three different provider failures read identically, and the screen invited a
+  // retry whose usefulness was unknown.
+  genFailTimeout: string;
+  genFailTransport: string;
+  genFailUnusable: string;
+  genFailQuality: string;
+  genFailPersistence: string;
+  genFailNotStarted: string;
+  genFailInternal: string;
+  genFailClientTimeout: string;
+  genSupportRef: (ref: string) => string;
+  genRetryCta: string;
+  generatingDeadline: (seconds: number) => string;
+  generatingElapsed: (seconds: number) => string;
+
   // Slice 3.2I-R5B1 — interim shell setup surface (boundary editor arrives in R5B2)
   setupTitle: string;
   setupLead: string;
@@ -334,6 +350,22 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     setupGenerateCta: "Create the practice situation",
     setupGenerating: "Creating…",
     setupGenerateError: "The situation could not be created. Please retry.",
+
+    genFailTimeout:
+      "Creating this situation took longer than we allow, so it was stopped. Your setup and boundary are saved.",
+    genFailTransport: "We couldn't reach the service that writes situations. Your setup and boundary are saved.",
+    genFailUnusable: "Nothing usable came back, so no situation was created. Your setup and boundary are saved.",
+    genFailQuality:
+      "What came back didn't meet the standard for a practice situation, so it wasn't kept. Your setup and boundary are saved.",
+    genFailPersistence: "The situation was created but couldn't be saved. Your setup and boundary are saved.",
+    genFailNotStarted: "Creation didn't start, so nothing was attempted. Your setup and boundary are saved.",
+    genFailInternal: "Something went wrong on our side and the situation wasn't created. Your setup and boundary are saved.",
+    genFailClientTimeout:
+      "We stopped waiting for an answer. It may still have finished — reopen this practice before starting another.",
+    genSupportRef: (ref) => `Reference ${ref}`,
+    genRetryCta: "Create it again",
+    generatingDeadline: (seconds) => `This can take up to about ${seconds} seconds.`,
+    generatingElapsed: (seconds) => `${seconds}s elapsed`,
   },
   ko: {
     eyebrow: "연습",
@@ -490,5 +522,18 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     setupGenerateCta: "연습 상황 만들기",
     setupGenerating: "만드는 중…",
     setupGenerateError: "상황을 만들지 못했습니다. 다시 시도해 주세요.",
+
+    genFailTimeout: "상황을 만드는 데 허용된 시간을 넘겨 중단했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailTransport: "상황을 만드는 서비스에 연결하지 못했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailUnusable: "쓸 수 있는 결과가 오지 않아 상황을 만들지 못했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailQuality: "돌아온 결과가 연습 상황의 기준에 미치지 못해 사용하지 않았습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailPersistence: "상황은 만들어졌지만 저장하지 못했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailNotStarted: "생성이 시작되지 않아 아무것도 시도하지 않았습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailInternal: "저희 쪽 문제로 상황을 만들지 못했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailClientTimeout: "응답 대기를 중단했습니다. 이미 완료되었을 수 있으니 새로 만들기 전에 이 연습을 다시 열어 확인하세요.",
+    genSupportRef: (ref) => `참조 번호 ${ref}`,
+    genRetryCta: "다시 만들기",
+    generatingDeadline: (seconds) => `최대 약 ${seconds}초 정도 걸릴 수 있습니다.`,
+    generatingElapsed: (seconds) => `${seconds}초 경과`,
   },
 };

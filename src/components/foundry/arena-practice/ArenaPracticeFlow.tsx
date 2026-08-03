@@ -36,6 +36,14 @@ const SECONDARY_ACTION = `${ACTION_BASE} border border-[#C9A66B]/50 text-[#C9A66
 const TERTIARY_ACTION = "min-h-[2.75rem] px-2 py-2 text-xs text-white/45 hover:text-white/75 disabled:opacity-40";
 
 /**
+ * R5A — the server's own provider deadline, mirrored so the screen can be honest about the wait,
+ * plus a small network margin. The client must NEVER give up before the server does: aborting
+ * early would report a provider timeout that never happened.
+ */
+const GEN_DEADLINE_MS = 120_000;
+const GEN_NETWORK_MARGIN_MS = 15_000;
+
+/**
  * Foundry Guided Arena Builder — the in-app, iPhone-first guided flow.
  *
  * Source summary → Q1 → Q2 → generate → editor/preview. One dominant question per
@@ -112,7 +120,13 @@ export function ArenaPracticeFlow({
   const [boundarySaveError, setBoundarySaveError] = useState<string | null>(null);
   const [boundaryConflict, setBoundaryConflict] = useState(false);
   const [boundaryInvalidated, setBoundaryInvalidated] = useState(false);
-  const [setupGenError, setSetupGenError] = useState(false);
+  /**
+   * R5A — the measured outcome, not a boolean. R4 showed one generic line hiding three different
+   * provider failures and inviting a retry whose usefulness was unknown.
+   */
+  const [setupGenFail, setSetupGenFail] = useState<{ code: string; retriable: string; supportRef?: string } | null>(null);
+  /** Elapsed seconds while a generation is in flight — honest waiting, never fake progress. */
+  const [genElapsed, setGenElapsed] = useState(0);
 
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -290,7 +304,7 @@ export function ArenaPracticeFlow({
       setBoundarySaving(true);
       setBoundarySaveError(null);
       setBoundaryConflict(false);
-      setSetupGenError(false);
+      setSetupGenFail(null);
       try {
         const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/boundary`, {
           method: "PUT",
@@ -345,8 +359,16 @@ export function ArenaPracticeFlow({
   const generateFromSetup = useCallback(async () => {
     if (!draftId || submittingRef.current) return;
     submittingRef.current = true;
-    setSetupGenError(false);
+    setSetupGenFail(null);
+    setGenElapsed(0);
     setPhase("generating");
+    // RESPONSE-LOSS GUARD. The client must never give up BEFORE the server's own provider
+    // deadline, or it would report a timeout the server never had. The margin covers the request
+    // and response legs only, and this outcome is named separately: the answer may still exist.
+    const controller = new AbortController();
+    const lossTimer = setTimeout(() => controller.abort(), GEN_DEADLINE_MS + GEN_NETWORK_MARGIN_MS);
+    const started = Date.now();
+    const tick = setInterval(() => setGenElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
     try {
       const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/regenerate`, {
         method: "POST",
@@ -354,11 +376,23 @@ export function ArenaPracticeFlow({
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: loc }),
+        signal: controller.signal,
       });
-      const data = res.ok ? ((await res.json()) as { draft?: ClientDraft; warnings?: string[] }) : null;
+      const body = (await res.json().catch(() => ({}))) as {
+        draft?: ClientDraft;
+        warnings?: string[];
+        code?: string;
+        retriable?: string;
+        supportRef?: string;
+      };
+      const data = res.ok ? body : null;
       if (!data?.draft?.scenario_draft) {
         // Honest and recoverable: back to setup with the boundary intact, never a raw code.
-        setSetupGenError(true);
+        setSetupGenFail({
+          code: body.code ?? "internal_failure",
+          retriable: body.retriable ?? "unknown",
+          supportRef: body.supportRef,
+        });
         setPhase("setup");
         return;
       }
@@ -373,10 +407,15 @@ export function ArenaPracticeFlow({
       setView("edit");
       setSaveState("idle");
       setPhase("editor");
-    } catch {
-      setSetupGenError(true);
+    } catch (e) {
+      // An abort here is OUR deadline, not the provider's. Saying otherwise would claim knowledge
+      // of an upstream event the client never observed.
+      const aborted = e instanceof Error && e.name === "AbortError";
+      setSetupGenFail({ code: aborted ? "client_response_timeout" : "provider_transport_error", retriable: aborted ? "unknown" : "true" });
       setPhase("setup");
     } finally {
+      clearTimeout(lossTimer);
+      clearInterval(tick);
       submittingRef.current = false;
     }
   }, [draftId, loc]);
@@ -688,8 +727,19 @@ export function ArenaPracticeFlow({
         {/* One forward action, and only once the server would actually accept it. */}
         {readiness.canGenerate ? (
           <div className="flex flex-col gap-2">
-            {setupGenError ? <p role="alert" className="text-sm text-red-300/90">{t.setupGenerateError}</p> : null}
-            <PrimaryButton onClick={generateFromSetup}>{t.setupGenerateCta}</PrimaryButton>
+            {setupGenFail ? (
+              <div className="flex flex-col gap-1" data-testid="setup-gen-failure">
+                <p role="alert" className="text-sm leading-6 text-red-300/90">
+                  {genFailureCopy(setupGenFail.code, t)}
+                </p>
+                {setupGenFail.supportRef ? (
+                  <p className="text-xs text-white/40">{t.genSupportRef(setupGenFail.supportRef)}</p>
+                ) : null}
+              </div>
+            ) : null}
+            <PrimaryButton onClick={generateFromSetup}>
+              {setupGenFail?.retriable === "true" ? t.genRetryCta : t.setupGenerateCta}
+            </PrimaryButton>
           </div>
         ) : null}
       </div>,
@@ -795,6 +845,14 @@ export function ArenaPracticeFlow({
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-[#C9A66B]" />
         <p className="text-base text-white/85">{t.generatingTitle}</p>
         <p className="max-w-[20rem] text-sm leading-6 text-white/50">{t.generatingLead}</p>
+        {/* Honest waiting: the real deadline and the real elapsed time. No percentage is shown,
+            because nothing here knows how far along the provider is. */}
+        <p className="max-w-[20rem] text-xs leading-5 text-white/40" data-testid="generating-deadline">
+          {t.generatingDeadline(Math.round(GEN_DEADLINE_MS / 1000))}
+        </p>
+        <p className="text-xs tabular-nums text-white/35" aria-live="polite" data-testid="generating-elapsed">
+          {t.generatingElapsed(genElapsed)}
+        </p>
       </div>,
     );
   }
@@ -1003,6 +1061,37 @@ export function ArenaPracticeFlow({
 }
 
 // --------------------------------------------------------------- sub-views ----
+
+/**
+ * R5A — one honest line per measured outcome. `client_response_timeout` is deliberately NOT worded
+ * as a provider timeout: the browser stopped waiting, and the answer may still exist.
+ */
+export function genFailureCopy(code: string, t: ArenaPracticeCopy): string {
+  switch (code) {
+    case "provider_timeout":
+      return t.genFailTimeout;
+    case "provider_transport_error":
+    case "provider_http_error":
+      return t.genFailTransport;
+    case "provider_empty_output":
+    case "provider_malformed_output":
+    case "provider_schema_invalid":
+      return t.genFailUnusable;
+    case "scenario_quality_rejected":
+    case "boundary_review_rejected":
+      return t.genFailQuality;
+    case "scenario_persistence_failed":
+      return t.genFailPersistence;
+    case "generation_observability_unavailable":
+      return t.genFailNotStarted;
+    case "client_response_timeout":
+      return t.genFailClientTimeout;
+    case "internal_failure":
+      return t.genFailInternal;
+    default:
+      return t.setupGenerateError;
+  }
+}
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (

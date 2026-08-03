@@ -301,7 +301,9 @@ describe("[R5B2] the forward action reuses the existing generation path", () => 
     render(<ArenaPracticeFlow eventId="evt-1" locale="en" onBack={() => {}} />);
     await atSetup();
     fireEvent.click(screen.getByRole("button", { name: t.setupGenerateCta }));
-    await waitFor(() => expect(screen.getByText(t.setupGenerateError)).toBeTruthy());
+    // R5A — a response carrying no product code is treated as an unnamed internal failure and
+    // gets the honest line for that, rather than the old single generic retry sentence.
+    await waitFor(() => expect(screen.getByText(t.genFailInternal)).toBeTruthy());
     expect(screen.getByText(t.setupTitle)).toBeTruthy();
     expect(screen.getByText("A rule.")).toBeTruthy(); // the confirmed boundary is still there
     expect(document.body.textContent).not.toMatch(/boundary_confirmation_required/);

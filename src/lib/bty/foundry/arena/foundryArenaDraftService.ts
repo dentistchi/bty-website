@@ -1,10 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
+import {
+  finalizeGenerationAttempt,
+  startGenerationAttempt,
+  type FinalizeAttemptInput,
+} from "./generationAttemptRecorder";
+import {
+  categorizeHttpStatus,
+  categorizeThrown,
+  classifyGenerationOutcome,
+  refineRejectedOutcome,
+  supportReference,
+  type GenerationOutcome,
+} from "@/domain/foundry/arena-draft/generationOutcome";
+import { getLlmModel } from "@/lib/bty/llm/client";
 import { validateArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
 import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { availableSetKey, buildBoundaryScope, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveArenaSource } from "./arenaScenarioSource";
-import { generateArenaScenarioDraft, type Locale } from "./arenaScenarioGenerationService";
+import { generateArenaScenarioDraft, PRACTICE_SAMPLING, type Locale } from "./arenaScenarioGenerationService";
 
 /**
  * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
@@ -59,7 +73,14 @@ export type ArenaDraftRow = {
   updated_at: string;
 };
 
-export type ServiceResult<T> = { ok: true; value: T } | { ok: false; reason: string };
+/**
+ * R5A — a failure may now carry the durable attempt's taxonomy code and a privacy-safe support
+ * reference. Both are optional, so every existing caller and test that reads only `reason` is
+ * unchanged, and no unrestricted identifier ever reaches a client.
+ */
+export type ServiceResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; reason: string; outcome?: GenerationOutcome; attemptRef?: string };
 
 // ---------------------------------------------------------------------------
 // Create — resolve source, generate, validate, insert (source version bound here)
@@ -308,20 +329,81 @@ export async function regenerateArenaDraft(
     return { ok: false, reason: "boundary_confirmation_required" };
   }
 
-  const generated = await generateArenaScenarioDraft({
+  /**
+   * FAIL BEFORE SPEND (Slice 3.2I-R5B2-R5A).
+   *
+   * 3.2K-R4 traced a real failure that waited ~79 s and could not be diagnosed, because the only
+   * record was a console line on a Worker with no log retention. The rule that follows is that a
+   * generation may not begin unless its outcome can be written down first. If the attempt row
+   * cannot be created, the provider is NOT called — an unobservable generation is worse than no
+   * generation, and silently falling back to console evidence is exactly what produced the outage.
+   */
+  const attempt = await startGenerationAttempt(admin, {
+    draftId,
+    draftRevision: generatedUnderRevision,
+    sourceEventId: current.source_event_id ?? null,
+    ownerUserId,
+    correlationId: crypto.randomUUID(),
+    deployVersion: process.env.BTY_DEPLOY_VERSION ?? null,
+    providerTimeoutMs: PRACTICE_SAMPLING.generation.timeoutMs,
+    model: getLlmModel(),
+    structuredOutputMode: "json_schema_strict",
+    maxTokens: PRACTICE_SAMPLING.generation.maxTokens,
+    boundaryMode: canonicalBoundary?.mode ?? null,
+    boundaryConstraintCount: canonicalBoundary?.constraints?.length ?? 0,
+    attemptNumber: 1,
     locale,
-    facts: source.value.facts,
-    guided: current.guided_answers,
-    boundary: canonicalBoundary,
-    // R2.23C — the Host's ACTIVE selection, read from the SERVER, never from a generation request.
-    boundaryScope: current.guided_answers.practiceBoundaryScope ?? null,
   });
-  if (!generated.ok) return { ok: false, reason: generated.reason };
+  if (!attempt.ok) return { ok: false, reason: "generation_observability_unavailable" };
+
+  const startedAt = Date.now();
+  /** Terminal for every path below, so no branch can leave the row `started` forever. */
+  const finalize = (outcome: GenerationOutcome, extra: Partial<FinalizeAttemptInput> = {}) =>
+    finalizeGenerationAttempt(admin, attempt.attemptId, { outcome, durationMs: Date.now() - startedAt, ...extra });
+
+  let generated: Awaited<ReturnType<typeof generateArenaScenarioDraft>>;
+  try {
+    generated = await generateArenaScenarioDraft({
+      locale,
+      facts: source.value.facts,
+      guided: current.guided_answers,
+      boundary: canonicalBoundary,
+      // R2.23C — the Host's ACTIVE selection, read from the SERVER, never from a generation request.
+      boundaryScope: current.guided_answers.practiceBoundaryScope ?? null,
+    });
+  } catch (e) {
+    // An unexpected throw is still an outcome. Leaving the row open would recreate the exact
+    // ambiguity this slice removes.
+    await finalize("internal_failure", { providerErrorCategory: categorizeThrown(e, false) });
+    return { ok: false, reason: "generation_failed", attemptRef: supportReference(attempt.attemptId) };
+  }
+
+  if (!generated.ok) {
+    const base = classifyGenerationOutcome(generated.reason, generated.fault);
+    // A rejection splits further: unparseable output is a provider fault, not a quality judgment.
+    const outcome = base === "scenario_quality_rejected" ? refineRejectedOutcome(generated.rejectionCodes ?? []) : base;
+    await finalize(outcome, {
+      providerHttpStatus: generated.fault?.kind === "http" ? generated.fault.status : null,
+      providerErrorCategory:
+        generated.fault?.kind === "http"
+          ? categorizeHttpStatus(generated.fault.status)
+          : generated.fault?.kind === "transport"
+            ? generated.fault.category
+            : generated.fault?.kind === "timeout"
+              ? "aborted"
+              : null,
+    });
+    return { ok: false, reason: generated.reason, outcome, attemptRef: supportReference(attempt.attemptId) };
+  }
+
   const gen = generated.value;
   // Copy the boundary onto the scenario so it rides into the published snapshot (audit).
   const scenario: ArenaScenarioDraft = canonicalBoundary ? { ...gen.draft, practiceBoundary: canonicalBoundary } : gen.draft;
   const check = validateArenaScenarioDraft(scenario);
-  if (!check.ok) return { ok: false, reason: check.errors[0] ?? "generation_invalid" };
+  if (!check.ok) {
+    await finalize("provider_schema_invalid");
+    return { ok: false, reason: check.errors[0] ?? "generation_invalid", outcome: "provider_schema_invalid", attemptRef: supportReference(attempt.attemptId) };
+  }
 
   // RACE PROTECTION: only save if the canonical revision is still the one we generated under
   // (the Manager may have edited the boundary in another tab while we generated/reviewed).
@@ -339,7 +421,14 @@ export async function regenerateArenaDraft(
     .select(DRAFT_COLS)
     .single<ArenaDraftRow>();
 
-  if (error || !data) return { ok: false, reason: "stale_revision" }; // boundary changed mid-generation
+  if (error || !data) {
+    // The scenario existed and the write did not land — a different event from any provider fault.
+    await finalize("scenario_persistence_failed");
+    return { ok: false, reason: "stale_revision", outcome: "scenario_persistence_failed", attemptRef: supportReference(attempt.attemptId) };
+  }
+  // Success finalizes AFTER persistence, so `scenario_persisted` can never be a claim about a
+  // write that had not happened yet.
+  await finalize("success", { scenarioPersisted: true });
   return { ok: true, value: { row: data, warnings: [...gen.warnings, ...check.warnings] } };
 }
 

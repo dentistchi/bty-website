@@ -14,6 +14,11 @@ import {
 import { validateConstraintAssessments, type ConstraintAssessment, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
 import { MAX_ACTIVE_BOUNDARIES, resolveActiveBoundaries, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import {
+  categorizeHttpStatus,
+  categorizeThrown,
+  type ProviderFault,
+} from "@/domain/foundry/arena-draft/generationOutcome";
+import {
   assertReviewBoundaryAuthority,
   boundaryProvenanceSha256,
   buildBoundaryProvenance,
@@ -131,6 +136,13 @@ export type GenerationResult =
   | { ok: true; value: GeneratedDraft }
   | {
       ok: false;
+      /**
+       * R5A — the provider observation behind a `generation_failed`, carried to whoever owns the
+       * durable attempt row. Absent for every reason that is already unambiguous.
+       */
+      fault?: ProviderFault;
+      /** R5A — finding codes, so a rejection can be split into malformed vs quality-refused. */
+      rejectionCodes?: string[];
       reason:
         | "generation_unavailable" // no live model configured
         | "generation_failed" // transport/exception/timeout — no usable content returned
@@ -469,6 +481,12 @@ type LlmOutcome =
       reason: "generation_failed" | "generation_rejected" | "no_safe_judgment_space" | "structured_output_unavailable";
       /** R2.23 — the ranked, aggregated finding set. Absent for Level 1/2 short-circuits. */
       rejection?: RejectionOutcome;
+      /**
+       * R5A — what the provider boundary actually observed. `generation_failed` was the one
+       * reason that could mean four different things; this is the field that separates them, and
+       * it is the only provider detail that leaves this function.
+       */
+      fault?: ProviderFault;
     };
 
 /**
@@ -517,7 +535,9 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     const raw = choice?.message?.content;
     if (!raw) {
       logGenOutcome("provider_failed", "empty_output");
-      return { ok: false, reason: "generation_failed" };
+      // R5A — a 2xx with nothing usable in it is NOT the same event as an abort or a transport
+      // rejection. Naming it here is what stops the three collapsing into one attempt outcome.
+      return { ok: false, reason: "generation_failed", fault: { kind: "empty" } };
     }
     let parsed: unknown;
     try {
@@ -598,7 +618,7 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
   } catch (e) {
     if (controller.signal.aborted) {
       logGenOutcome("provider_timeout");
-      return { ok: false, reason: "generation_failed" };
+      return { ok: false, reason: "generation_failed", fault: { kind: "timeout" } };
     }
     // A provider that cannot honour the strict schema must FAIL CLOSED. Downgrading to
     // unconstrained JSON here would silently restore the exact contract this slice removed.
@@ -606,8 +626,17 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       logGenOutcome("provider_rejected", "structured_output_unavailable");
       return { ok: false, reason: "structured_output_unavailable" };
     }
-    logGenOutcome("provider_error");
-    return { ok: false, reason: "generation_failed" };
+    // An HTTP response existed: keep its STATUS, never its body — an upstream error body can
+    // quote the prompt back, which is the one thing telemetry must never hold.
+    // Read the status STRUCTURALLY rather than by class. The transport error crosses a module
+    // boundary, and an `instanceof` here would also force every existing test that mocks the llm
+    // client to re-export the class — coupling telemetry to how the client happens to be built.
+    const rawStatus = (e as { status?: unknown } | null)?.status;
+    const status = typeof rawStatus === "number" && rawStatus >= 100 && rawStatus <= 599 ? rawStatus : null;
+    const fault: ProviderFault =
+      status !== null ? { kind: "http", status } : { kind: "transport", category: categorizeThrown(e, false) };
+    logGenOutcome("provider_error", status !== null ? categorizeHttpStatus(status) : undefined);
+    return { ok: false, reason: "generation_failed", fault };
   } finally {
     clearTimeout(timer);
   }
@@ -1034,7 +1063,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         llm.reason === "no_safe_judgment_space" ||
         llm.reason === "structured_output_unavailable"
       ) {
-        return { ok: false, reason: llm.reason };
+        return { ok: false, reason: llm.reason, fault: llm.fault, rejectionCodes: llm.rejection?.findings?.map((f) => f.code) };
       }
       if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
       // R2.21 — a deterministic grounding failure carries actionable, boundary-specific correction
