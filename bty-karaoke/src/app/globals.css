@@ -1845,6 +1845,54 @@ main.dj-console {
   color: var(--muted);
   font-size: 0.9rem;
 }
+/* BUILD 25 — 신청 결과. QUIET by design: this explains something that did not go the Guest's
+   way, so it is calm and muted, never an error treatment. Visually distinct from the active
+   rows (which carry controls) and from 오늘 부른 노래 (a song actually sung). No interactive
+   element appears inside a resolved row. Sizes are rem-based so Dynamic Type / browser zoom
+   scale the whole card rather than clipping it. */
+.dock-resolved {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.dock-resolved-title {
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.92rem;
+  padding: 10px 6px 4px;
+}
+.dock-resolved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 2px 8px;
+  margin: 0;
+  list-style: none;
+}
+.resolved-row {
+  padding: 10px 12px;
+  border-radius: 12px;
+  /* Dimmer than both the active card and the history row — resolved is over, not urgent. */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.resolved-row-song {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.78);
+}
+.resolved-row-artist {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.resolved-row-reason {
+  font-size: 0.86rem;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .dock-history {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 6px;

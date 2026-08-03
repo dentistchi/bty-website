@@ -13,6 +13,13 @@ import {
   type MyRequest,
   type OwnedRow,
 } from '@/domain/guest-requests';
+import {
+  mergeResolutions,
+  resolutionAccessibilityLabel,
+  resolutionCopy,
+  resolutionsSurviveEvent,
+  type ResolvedRequestView,
+} from '@/domain/request-resolution';
 import { songDisplay } from '@/domain/song-title';
 import { resolvePerfStage } from '@/domain/self-service';
 import type { OwnStatusRow } from '@/domain/recently-sung';
@@ -69,6 +76,8 @@ export default function MyRequestsDock({
   // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
   const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
   const [statuses, setStatuses] = useState<Record<string, GuestQueueStatus>>({});
+  /** BUILD 25 — the owner-verified resolutions, newest first. Keyed by requestId throughout. */
+  const [resolutions, setResolutions] = useState<ResolvedRequestView[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -147,8 +156,40 @@ export default function MyRequestsDock({
     }
   }, [slug, eventId]);
 
+  // BUILD 25 — the owner-only resolution fetch.
+  //
+  // POST, with the capability for each id in the BODY: a capability in a URL leaks into access
+  // logs and history. Only ids this device holds a capability for are asked about, and the server
+  // re-verifies every one before reading — the client's claim of ownership is never trusted.
+  const fetchResolutions = useCallback(async (): Promise<void> => {
+    const items = requests
+      .filter((r) => r.cancelToken)
+      .map((r) => ({ requestId: r.requestId, token: r.cancelToken as string }));
+    if (items.length === 0) return;
+    try {
+      const res = await fetch(`/api/rooms/${encodeURIComponent(slug)}/requests/resolved`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) return; // transient — a blip must never erase an explanation already shown
+      const data = (await res.json()) as { resolved: ResolvedRequestView[]; eventId: string | null };
+      setResolutions((prev) => {
+        // Event isolation: a genuinely different Event starts clean, so last night's results
+        // cannot appear under tonight's room. An absent/unknown id is NOT treated as a change.
+        const carried = resolutionsSurviveEvent(prev[0]?.eventId ?? null, data.eventId) ? prev : [];
+        return mergeResolutions<{ requestId: string }>([], carried, data.resolved ?? []).resolved;
+      });
+    } catch {
+      // Network blip — keep what is on screen.
+    }
+  }, [slug, requests]);
+
   const refreshAll = useCallback(async () => {
-    const [fresh, stage] = await Promise.all([poll(), pollStage()]);
+    // BUILD 25 — the resolution read rides the SAME 4s poll as the status read, so a resolved
+    // request cannot sit unexplained for a whole extra interval.
+    const [fresh, stage] = await Promise.all([poll(), pollStage(), fetchResolutions()]);
     if (!onRecordRecentlySung) return;
     const merged = { ...statusesRef.current, ...fresh };
     const own: OwnStatusRow[] = requests.map((r) => {
@@ -166,7 +207,7 @@ export default function MyRequestsDock({
       };
     });
     onRecordRecentlySung({ own, eventActive: stage.eventActive, pollOk: stage.ok });
-  }, [poll, pollStage, requests, onRecordRecentlySung]);
+  }, [poll, pollStage, fetchResolutions, requests, onRecordRecentlySung]);
 
   useEffect(() => {
     void refreshAll();
@@ -198,17 +239,27 @@ export default function MyRequestsDock({
     prevCount.current = requests.length;
   }, [requests.length]);
 
-  // Drop ONLY cancelled/gone requests (removed / not_found). Completed songs are
-  // KEPT — they move to the "오늘 부른 노래" history section, not pruned away.
+  // BUILD 25 — THE SECOND HALF OF THE DISAPPEARANCE, REMOVED.
+  //
+  // This effect used to schedule `onRemoved(requestId)` 6 seconds after a request went
+  // removed/not_found, which DELETES it from the persisted my-requests list. Combined with
+  // `groupOwned` dropping the row from every collection, that is how a Host removal became a
+  // song that silently vanished: shown briefly with no reason, then erased from storage so a
+  // refresh could not recover it either.
+  //
+  // A resolved request is now KEPT, exactly like completed history is kept — it moves to the
+  // "신청 결과" section below. Persistence is already Event-scoped by `myRequestsKey(slug,
+  // eventId)`, so retaining it survives refresh without leaking into a different Event.
+  //
+  // `terminalSeen` is still tracked: it marks which requests have reached a terminal state so
+  // the resolution fetch below knows which ids are worth asking about.
   useEffect(() => {
     for (const r of requests) {
       const s = statuses[r.requestId];
-      if (s && shouldDropOwned(s.state) && !terminalSeen.current.has(r.requestId)) {
-        terminalSeen.current.add(r.requestId);
-        window.setTimeout(() => onRemoved(r.requestId), 6000);
-      }
+      if (s && shouldDropOwned(s.state)) terminalSeen.current.add(r.requestId);
     }
-  }, [statuses, requests, onRemoved]);
+  }, [statuses, requests]);
+
 
   async function doCancel(r: MyRequest) {
     // Compat guard: an older stored entry without a capability can't be cancelled
@@ -348,8 +399,25 @@ export default function MyRequestsDock({
     return { requestId: r.requestId, state: s?.state ?? 'waiting', readyAt: s?.readyAt ?? null, videoId: r.videoId ?? null };
   });
   const { activeIds, completedIds } = groupOwned(ownedRows);
-  const activeRequests = activeIds.map((id) => byId.get(id)!).filter(Boolean);
-  const completedRequests = completedIds.map((id) => byId.get(id)!).filter(Boolean);
+  // BUILD 25 — the server's resolution list IS the resolved collection; `groupOwned`'s
+  // `resolvedIds` is the local view of the same fact and is used only to keep a resolved request
+  // out of the active list below. Both key on requestId, never videoId, so a same-video
+  // re-request stays a genuinely different row.
+  const resolvedIdSet = new Set(resolutions.map((r) => r.requestId));
+  const activeRequests = activeIds
+    // MUTUAL EXCLUSION + STALE-POLL PROTECTION in one line: a poll that was in flight when the
+    // Host acted still calls this request active. The resolution wins, so it can never flicker
+    // back into the queue.
+    .filter((id) => !resolvedIdSet.has(id))
+    .map((id) => byId.get(id)!)
+    .filter(Boolean);
+  const completedRequests = completedIds
+    .filter((id) => !resolvedIdSet.has(id))
+    .map((id) => byId.get(id)!)
+    .filter(Boolean);
+  // Only resolutions for requests this device still holds locally, so a stale server row cannot
+  // render for a request the Guest no longer has a capability for.
+  const resolvedViews = resolutions.filter((v) => byId.has(v.requestId));
   // Ready active rows, earliest first — for honest "N번째 / 첫 곡 / 앞에 준비된 N곡" copy.
   const readyOrderIds = activeRequests
     .filter((r) => statuses[r.requestId]?.readyAt != null && (statuses[r.requestId]?.state === 'waiting' || statuses[r.requestId]?.state === 'up_next'))
@@ -670,6 +738,42 @@ export default function MyRequestsDock({
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* BUILD 25 — 신청 결과. The quiet, durable explanation for a request that left the
+                queue without completing. Rendered ONLY from server rows this device proved it
+                owns, so another Guest's outcome can never appear here.
+
+                Deliberately CONTROL-FREE: no Cancel, no Ready, no queue position, no Host action,
+                no 다시 신청. The request is over; the only job of this card is to say what
+                happened. Distinct from both the active list (which has controls) and 오늘 부른
+                노래 (which is a completed song the Guest actually sang). */}
+            {resolvedViews.length > 0 && (
+              <div className="dock-resolved">
+                <div className="dock-resolved-title">신청 결과</div>
+                <ul className="dock-resolved-list" aria-label="신청 결과">
+                  {resolvedViews.map((v) => {
+                    const song = songDisplay(v.title ?? '', v.channelTitle ?? '');
+                    const shown = song.title || v.title || '신청곡';
+                    return (
+                      <li
+                        className="resolved-row"
+                        key={v.requestId}
+                        // One label per card: which song, then what happened to it.
+                        aria-label={resolutionAccessibilityLabel(shown, v.resolutionCode)}
+                      >
+                        <div className="resolved-row-song">{shown}</div>
+                        {song.artist && <div className="resolved-row-artist">{song.artist}</div>}
+                        {/* aria-hidden: the <li> label already reads this sentence, so exposing
+                            it again would make VoiceOver announce the reason twice. */}
+                        <div className="resolved-row-reason" aria-hidden="true">
+                          {resolutionCopy(v.resolutionCode)}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             )}
           </div>
