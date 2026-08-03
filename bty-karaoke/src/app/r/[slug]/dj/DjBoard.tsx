@@ -697,9 +697,15 @@ export default function DjBoard({
             📺 Connect iPad Display
           </button>
         )}
-        {/* Open the read-only Display on THIS device (same tab context). */}
+        {/* Open the read-only Display on THIS device (same tab context).
+            BUILD 26B D-6a — `btn` is REQUIRED on an anchor. `.ghost` only supplies
+            colour, via `.btn.ghost`; the chrome (padding, radius, min-height) comes
+            from the `.btn, button` rule, which an <a> does not otherwise match. With
+            `ghost` alone this shipped as bare default-link-blue text with no
+            background, border, radius or padding, sitting between two gold buttons —
+            the same anchor-versus-button defect class as the Google CTA (D-1). */}
         <a
-          className="ghost"
+          className="btn ghost"
           href={`/r/${encodeURIComponent(slug)}/display`}
           target="_blank"
           rel="noreferrer"
