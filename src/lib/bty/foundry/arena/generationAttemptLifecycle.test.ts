@@ -356,3 +356,73 @@ describe("[R5A] no content can enter telemetry", () => {
     expect(r.ok).toBe(true);
   });
 });
+
+describe("[R5C-1] the exact stage and reason reach the durable row", () => {
+  it("a boundary CONTENT rejection is recorded as boundary_review, not scenario_quality", async () => {
+    // The measured crux: this returns plain `generation_rejected`, identical to a quality refusal.
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "generation_rejected",
+      rejectionGate: "narrow_boundary_review",
+      rejectionPrimaryCode: "boundary_reopened_after_prior_compliance",
+      rejectionCodes: ["boundary_reopened_after_prior_compliance", "resulting_state_missing_prerequisite"],
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].attribution_version).toBe(1);
+    expect(attempts[0].terminal_stage).toBe("boundary_review");
+    expect(attempts[0].terminal_reason_code).toBe("boundary_content_rejected");
+    expect(attempts[0].refusal_gate).toBe("narrow_boundary_review");
+    expect(attempts[0].primary_finding_code).toBe("boundary_reopened_after_prior_compliance");
+    expect(attempts[0].finding_count).toBe(2);
+  });
+
+  it("a SEMANTIC reviewer terminal failure is recorded as semantic_review", async () => {
+    mockGenerate.mockResolvedValue({ ok: false, reason: "reviewer_terminal_failure" });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].terminal_stage).toBe("semantic_review");
+    expect(attempts[0].terminal_reason_code).toBe("semantic_reviewer_terminal_failure");
+    expect(attempts[0].terminal_stage).not.toBe("boundary_review");
+  });
+
+  it("a quality-gate refusal stays scenario_quality", async () => {
+    mockGenerate.mockResolvedValue({ ok: false, reason: "generation_rejected", rejectionGate: "canonical_validator", rejectionCodes: ["moral_asymmetry"] });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].terminal_stage).toBe("scenario_quality");
+    expect(attempts[0].terminal_reason_code).toBe("scenario_quality_rejected");
+  });
+
+  it("persistence failure is attributed to persistence", async () => {
+    mockGenerate.mockResolvedValue({ ok: true, value: { draft: VALID, warnings: [], source: "ai" } });
+    const { admin, attempts } = makeAdmin({ draftUpdateFails: true });
+    await run(admin);
+    expect(attempts[0].terminal_stage).toBe("persistence");
+    expect(attempts[0].terminal_reason_code).toBe("scenario_persistence_failed");
+  });
+
+  it("no attribution field can carry prose", async () => {
+    mockGenerate.mockResolvedValue({
+      ok: false,
+      reason: "generation_rejected",
+      rejectionGate: "canonical_validator",
+      rejectionPrimaryCode: "The scenario had no real tradeoff at all.",
+      rejectionCodes: ["A teammate quietly flags a safety gap to you.", "moral_asymmetry"],
+    });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    const s = JSON.stringify(attempts[0]);
+    expect(s).not.toMatch(/teammate|safety gap|real tradeoff/);
+    expect(attempts[0].finding_codes).toEqual(["moral_asymmetry"]);
+    expect(attempts[0].primary_finding_code).toBe("moral_asymmetry");
+  });
+
+  it("a SUCCESS carries no refusal attribution", async () => {
+    mockGenerate.mockResolvedValue({ ok: true, value: { draft: VALID, warnings: [], source: "ai" } });
+    const { admin, attempts } = makeAdmin();
+    await run(admin);
+    expect(attempts[0].outcome).toBe("success");
+    expect(attempts[0].refusal_gate ?? null).toBeNull();
+  });
+});

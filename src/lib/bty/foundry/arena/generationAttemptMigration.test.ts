@@ -161,3 +161,72 @@ describe("[R5A] the schema cannot hold content", () => {
     expect(SQL).toMatch(/scenario_persisted = false or outcome = 'success'/);
   });
 });
+
+describe("[R5C-1] the attribution migration is additive and prose-free", () => {
+  const ATTR = readFileSync(
+    join(process.cwd(), "supabase/migrations/20260805010000_foundry_practice_generation_refusal_attribution_v1.sql"),
+    "utf8",
+  );
+
+  it("ALTERs the existing table and creates no new or child table", () => {
+    expect(ATTR).toContain("alter table public.foundry_practice_generation_attempts");
+    expect(ATTR).not.toMatch(/create table/i);
+    expect(ATTR).not.toMatch(/_calls\b/);
+  });
+
+  it("rewrites no existing row — the two historical attempts keep NULL detail", () => {
+    expect(ATTR).not.toMatch(/\bupdate\s+public\./i);
+    expect(ATTR).not.toMatch(/\binsert\s+into\b/i);
+    expect(ATTR).not.toMatch(/\bdelete\s+from\b/i);
+    expect(ATTR).not.toMatch(/create\s+(or replace\s+)?trigger/i);
+    // Historical rows are exempt from the completeness rule by attribution_version being NULL.
+    expect(ATTR).toMatch(/attribution_version is null\s*\n?\s*or lifecycle_state <> 'completed'/);
+  });
+
+  it("keeps semantic review and boundary review as SEPARATE stages", () => {
+    const stages = ATTR.slice(ATTR.indexOf("terminal_stage in ("), ATTR.indexOf("terminal_reason_code is null"));
+    expect(stages).toContain("'semantic_review'");
+    expect(stages).toContain("'boundary_review'");
+    expect(stages).not.toMatch(/'review'|'any_review'|'reviewer'/);
+  });
+
+  it("names boundary CONTENT rejection distinctly from every non-content boundary failure", () => {
+    for (const c of [
+      "boundary_content_rejected",
+      "boundary_review_authority_failure",
+      "boundary_review_inconclusive",
+      "boundary_reviewer_terminal_failure",
+      "semantic_reviewer_terminal_failure",
+      "internal_unclassified_failure",
+    ]) {
+      expect(ATTR).toContain(`'${c}'`);
+    }
+    // The old umbrella must not be storable.
+    expect(ATTR).not.toContain("'boundary_review_rejected'");
+  });
+
+  it("adds no column able to carry prose, and bounds the finding codes", () => {
+    const added = [...ATTR.matchAll(/add column if not exists ([a-z_]+)\s+([a-z\[\]]+)/g)].map((m) => [m[1], m[2]]);
+    expect(added.length).toBe(7);
+    for (const [name] of added) {
+      expect(["attribution_version", "terminal_stage", "terminal_reason_code", "refusal_gate", "primary_finding_code", "finding_codes", "finding_count"]).toContain(name);
+    }
+    // Identifier pattern is what makes prose unstorable rather than merely discouraged.
+    expect(ATTR).toMatch(/primary_finding_code ~ '\^\[a-z\]\[a-z0-9_\]\{2,63\}\$'/);
+    expect(ATTR).toMatch(/array_length\(finding_codes, 1\) <= 8/);
+  });
+
+  it("leaves the RLS posture unchanged and re-asserts the client revoke", () => {
+    expect(ATTR).toContain("revoke all on public.foundry_practice_generation_attempts from anon, public, authenticated");
+    expect(ATTR).not.toMatch(/create policy/i);
+    expect(ATTR).not.toMatch(/disable row level security/i);
+    expect(ATTR).not.toMatch(/grant\s+(select|insert|update|delete|all)[\s\S]{0,80}to\s+(anon|authenticated|public)/i);
+  });
+
+  it("documents a rollback without executing it", () => {
+    expect(ATTR).toMatch(/ROLLBACK \(reviewed, NOT executed\)/);
+    for (const line of ATTR.split("\n")) {
+      if (/drop (column|constraint|index)/i.test(line)) expect(line.trim().startsWith("--")).toBe(true);
+    }
+  });
+});

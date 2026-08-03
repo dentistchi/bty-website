@@ -3,6 +3,7 @@ import type {
   GenerationOutcome,
   ProviderErrorCategory,
 } from "@/domain/foundry/arena-draft/generationOutcome";
+import type { Attribution } from "@/domain/foundry/arena-draft/generationAttribution";
 
 /**
  * DURABLE PRACTICE GENERATION ATTEMPT LIFECYCLE (Slice 3.2I-R5B2-R5A).
@@ -52,6 +53,12 @@ export type FinalizeAttemptInput = {
   promptTokens?: number | null;
   completionTokens?: number | null;
   scenarioPersisted?: boolean;
+  /**
+   * R5C-1 — exact stage/reason attribution. Optional at the type level so the R5A contract still
+   * compiles, but the service supplies it on every terminal branch: without it a refusal is only
+   * as specific as its broad outcome, which is what R5B could not diagnose.
+   */
+  attribution?: Attribution | null;
 };
 
 export type StartAttemptResult = { ok: true; attemptId: string } | { ok: false };
@@ -131,6 +138,15 @@ export async function finalizeGenerationAttempt(
         prompt_tokens: input.promptTokens ?? null,
         completion_tokens: input.completionTokens ?? null,
         scenario_persisted: input.scenarioPersisted === true,
+        // Attribution is written as a unit or not at all — a half-attributed row would be a new
+        // kind of ambiguity rather than a fix for the old one.
+        attribution_version: input.attribution?.attributionVersion ?? null,
+        terminal_stage: input.attribution?.terminalStage ?? null,
+        terminal_reason_code: input.attribution?.terminalReasonCode ?? null,
+        refusal_gate: input.attribution?.refusalGate ?? null,
+        primary_finding_code: input.attribution?.primaryFindingCode ?? null,
+        finding_codes: input.attribution?.findingCodes ?? null,
+        finding_count: input.attribution ? input.attribution.findingCount : null,
       })
       .eq("id", attemptId)
       .eq("lifecycle_state", "started")

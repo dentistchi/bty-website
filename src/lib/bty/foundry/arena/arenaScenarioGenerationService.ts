@@ -143,6 +143,14 @@ export type GenerationResult =
       fault?: ProviderFault;
       /** R5A — finding codes, so a rejection can be split into malformed vs quality-refused. */
       rejectionCodes?: string[];
+      /**
+       * R5C-1 — the GATE that refused. A boundary CONTENT rejection exhausts its retry and returns
+       * plain `generation_rejected`, identically to a quality-gate refusal, so the reason alone can
+       * never separate them. This is the evidence that can, and it was previously discarded.
+       */
+      rejectionGate?: string;
+      /** The evaluator's own headline code, preserving its ranking. */
+      rejectionPrimaryCode?: string;
       reason:
         | "generation_unavailable" // no live model configured
         | "generation_failed" // transport/exception/timeout — no usable content returned
@@ -1215,7 +1223,8 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           ...captured({ scenario: llm.draft, retryFeedback: fb }),
           ...(genCaptureContent ? { correctionPacket: packet, violations: boundaryStage.violations } : {}),
         });
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        // R5C-1 — name the gate; without it this is indistinguishable from a quality refusal.
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
         retryFeedback = fb;
         continue;
       }
@@ -1352,7 +1361,8 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
             ...(genCaptureContent ? { correctionPacket: packet } : {}),
           },
         );
-        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected" };
+        // R5C-1 — the SEMANTIC reviewer refused content. Its gate keeps it out of the boundary bucket.
+        if (attempt >= MAX_GENERATION_ATTEMPTS) return { ok: false, reason: "generation_rejected", rejectionGate: resolved.primaryGate, rejectionPrimaryCode: resolved.primaryCode, rejectionCodes: resolved.defectCodes };
         retryFeedback = fb;
         continue;
       }

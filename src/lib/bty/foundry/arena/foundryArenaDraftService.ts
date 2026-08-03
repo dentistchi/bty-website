@@ -13,6 +13,7 @@ import {
   supportReference,
   type GenerationOutcome,
 } from "@/domain/foundry/arena-draft/generationOutcome";
+import { resolveAttribution } from "@/domain/foundry/arena-draft/generationAttribution";
 import { getLlmModel } from "@/lib/bty/llm/client";
 import { validateArenaScenarioDraft } from "@/domain/foundry/arena-draft/validate";
 import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/domain/foundry/arena-draft/boundary";
@@ -374,7 +375,10 @@ export async function regenerateArenaDraft(
   } catch (e) {
     // An unexpected throw is still an outcome. Leaving the row open would recreate the exact
     // ambiguity this slice removes.
-    await finalize("internal_failure", { providerErrorCategory: categorizeThrown(e, false) });
+    await finalize("internal_failure", {
+      providerErrorCategory: categorizeThrown(e, false),
+      attribution: resolveAttribution({ reason: "internal_unclassified_failure" }),
+    });
     return { ok: false, reason: "generation_failed", attemptRef: supportReference(attempt.attemptId) };
   }
 
@@ -383,6 +387,14 @@ export async function regenerateArenaDraft(
     // A rejection splits further: unparseable output is a provider fault, not a quality judgment.
     const outcome = base === "scenario_quality_rejected" ? refineRejectedOutcome(generated.rejectionCodes ?? []) : base;
     await finalize(outcome, {
+      // R5C-1 — the EXACT stage and reason, plus the gate that refused. `generation_rejected`
+      // alone cannot distinguish a boundary content rejection from a quality refusal.
+      attribution: resolveAttribution({
+        reason: outcome === "provider_malformed_output" ? "provider_malformed_output" : generated.reason,
+        gate: generated.rejectionGate,
+        primaryFindingCode: generated.rejectionPrimaryCode,
+        findingCodes: generated.rejectionCodes,
+      }),
       providerHttpStatus: generated.fault?.kind === "http" ? generated.fault.status : null,
       providerErrorCategory:
         generated.fault?.kind === "http"
@@ -401,7 +413,7 @@ export async function regenerateArenaDraft(
   const scenario: ArenaScenarioDraft = canonicalBoundary ? { ...gen.draft, practiceBoundary: canonicalBoundary } : gen.draft;
   const check = validateArenaScenarioDraft(scenario);
   if (!check.ok) {
-    await finalize("provider_schema_invalid");
+    await finalize("provider_schema_invalid", { attribution: resolveAttribution({ reason: "structured_output_unavailable" }) });
     return { ok: false, reason: check.errors[0] ?? "generation_invalid", outcome: "provider_schema_invalid", attemptRef: supportReference(attempt.attemptId) };
   }
 
@@ -423,7 +435,7 @@ export async function regenerateArenaDraft(
 
   if (error || !data) {
     // The scenario existed and the write did not land — a different event from any provider fault.
-    await finalize("scenario_persistence_failed");
+    await finalize("scenario_persistence_failed", { attribution: resolveAttribution({ reason: "scenario_persistence_failed" }) });
     return { ok: false, reason: "stale_revision", outcome: "scenario_persistence_failed", attemptRef: supportReference(attempt.attemptId) };
   }
   // Success finalizes AFTER persistence, so `scenario_persisted` can never be a claim about a
