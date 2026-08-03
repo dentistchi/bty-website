@@ -124,19 +124,34 @@ begin
       check (primary_finding_code is null or primary_finding_code ~ '^[a-z][a-z0-9_]{2,63}$');
   end if;
 
+  -- R5C-1R1 — the original form used `finding_codes <@ (select ... from unnest(...))`, which
+  -- PostgreSQL rejects outright: `cannot use subquery in check constraint` (SQLSTATE 0A000). The
+  -- whole migration failed at this statement and never reached the remote ledger.
+  --
+  -- The replacement is scalar and immutable, and each clause earns its place (all verified against
+  -- PostgreSQL 17.10):
+  --   array_ndims = 1        a 2-D array otherwise slips past `cardinality`, which FLATTENS it
+  --   cardinality <= 8       the documented bound
+  --   array_position(_,null) `array_to_string` silently DROPS null elements, so the regex alone
+  --                          would never see one; this is what detects it
+  --   anchored regex         every element is an identifier, joined by a character no identifier
+  --                          may contain
+  --   separator count        an element containing a comma would otherwise masquerade as two valid
+  --                          codes and pass the regex. Requiring exactly cardinality-1 separators
+  --                          closes that.
   if not exists (select 1 from pg_constraint where conname = 'foundry_practice_gen_attempt_finding_codes_chk') then
     alter table public.foundry_practice_generation_attempts
       add constraint foundry_practice_gen_attempt_finding_codes_chk
       check (
         finding_codes is null
+        or cardinality(finding_codes) = 0
         or (
-          array_length(finding_codes, 1) is null
-          or (
-            array_length(finding_codes, 1) <= 8
-            and finding_codes <@ (
-              select array_agg(c) from unnest(finding_codes) c where c ~ '^[a-z][a-z0-9_]{2,63}$'
-            )
-          )
+          array_ndims(finding_codes) = 1
+          and cardinality(finding_codes) <= 8
+          and array_position(finding_codes, null) is null
+          and array_to_string(finding_codes, ',') ~ '^[a-z][a-z0-9_]{2,63}(,[a-z][a-z0-9_]{2,63})*$'
+          and length(array_to_string(finding_codes, ',')) - length(replace(array_to_string(finding_codes, ','), ',', ''))
+              = cardinality(finding_codes) - 1
         )
       );
   end if;
@@ -149,7 +164,7 @@ begin
         or (
           finding_count >= 0
           and finding_count <= 8
-          and (finding_codes is null or finding_count = coalesce(array_length(finding_codes, 1), 0))
+          and (finding_codes is null or finding_count = cardinality(finding_codes))
         )
       );
   end if;
@@ -166,15 +181,33 @@ begin
       );
   end if;
 
-  -- Impossible pairings: a stage may not claim another stage's reason.
+  -- R5C-1R1 — the original expression enforced ONLY the persistence biconditional and then let
+  -- everything else through via a blanket `or internal_unclassified_failure`. It would happily have
+  -- stored a semantic reason under `boundary_review`, which is the exact mis-attribution this whole
+  -- slice exists to make impossible. The matrix is now stated explicitly, one row per stage.
   if not exists (select 1 from pg_constraint where conname = 'foundry_practice_gen_attempt_stage_reason_chk') then
     alter table public.foundry_practice_generation_attempts
       add constraint foundry_practice_gen_attempt_stage_reason_chk
       check (
         terminal_stage is null
         or terminal_reason_code is null
-        or (terminal_stage = 'persistence') = (terminal_reason_code = 'scenario_persistence_failed')
-        or terminal_reason_code = 'internal_unclassified_failure'
+        or (terminal_stage = 'observability_gate' and terminal_reason_code = 'generation_observability_unavailable')
+        or (terminal_stage = 'generation_eligibility' and terminal_reason_code = 'generation_not_eligible')
+        or (terminal_stage = 'generation_provider' and terminal_reason_code in (
+              'provider_timeout', 'provider_transport_error', 'provider_http_error', 'provider_empty_output'))
+        or (terminal_stage = 'generation_parse' and terminal_reason_code = 'provider_malformed_output')
+        or (terminal_stage = 'generation_schema' and terminal_reason_code = 'provider_schema_invalid')
+        or (terminal_stage = 'scenario_quality' and terminal_reason_code = 'scenario_quality_rejected')
+        or (terminal_stage = 'semantic_review' and terminal_reason_code in (
+              'semantic_content_rejected', 'semantic_review_authority_failure', 'semantic_review_inconclusive',
+              'semantic_reviewer_terminal_failure', 'semantic_reviewer_transport_failure', 'semantic_reviewer_schema_failure'))
+        or (terminal_stage = 'boundary_review' and terminal_reason_code in (
+              'boundary_content_rejected', 'boundary_review_authority_failure', 'boundary_review_inconclusive',
+              'boundary_reviewer_terminal_failure', 'boundary_reviewer_transport_failure', 'boundary_reviewer_schema_failure'))
+        or (terminal_stage = 'persistence' and terminal_reason_code = 'scenario_persistence_failed')
+        -- `internal_unclassified_failure` pairs ONLY with `internal`. The resolver never emits it
+        -- with any other stage, so a blanket exception would only hide a future defect.
+        or (terminal_stage = 'internal' and terminal_reason_code = 'internal_unclassified_failure')
       );
   end if;
 end

@@ -213,7 +213,11 @@ describe("[R5C-1] the attribution migration is additive and prose-free", () => {
     }
     // Identifier pattern is what makes prose unstorable rather than merely discouraged.
     expect(ATTR).toMatch(/primary_finding_code ~ '\^\[a-z\]\[a-z0-9_\]\{2,63\}\$'/);
-    expect(ATTR).toMatch(/array_length\(finding_codes, 1\) <= 8/);
+    // R5C-1R1 — the bound moved from `array_length` to `cardinality` when the subquery form was
+    // replaced. Real execution proof lives in the sibling execution suite; this only pins the shape.
+    expect(ATTR).toMatch(/cardinality\(finding_codes\) <= 8/);
+    expect(ATTR).toMatch(/array_ndims\(finding_codes\) = 1/);
+    expect(ATTR).toMatch(/array_position\(finding_codes, null\) is null/);
   });
 
   it("leaves the RLS posture unchanged and re-asserts the client revoke", () => {
@@ -227,6 +231,34 @@ describe("[R5C-1] the attribution migration is additive and prose-free", () => {
     expect(ATTR).toMatch(/ROLLBACK \(reviewed, NOT executed\)/);
     for (const line of ATTR.split("\n")) {
       if (/drop (column|constraint|index)/i.test(line)) expect(line.trim().startsWith("--")).toBe(true);
+    }
+  });
+});
+
+describe("[R5C-1R1] no CHECK constraint may contain a subquery", () => {
+  const FILES = [
+    "supabase/migrations/20260805000000_foundry_practice_generation_attempts_v1.sql",
+    "supabase/migrations/20260805010000_foundry_practice_generation_refusal_attribution_v1.sql",
+  ];
+
+  it.each(FILES)("%s has no SELECT inside a CHECK", (rel) => {
+    const src = readFileSync(join(process.cwd(), rel), "utf8");
+    // Strip comments, then the only legitimate SELECTs left are the pg_constraint catalog guards.
+    const code = src.replace(/--[^\n]*/g, "");
+    for (const m of code.matchAll(/check\s*\(/gi)) {
+      // Walk to the matching close paren and assert no SELECT inside it.
+      let depth = 0;
+      let i = m.index! + m[0].length - 1;
+      const start = i;
+      for (; i < code.length; i++) {
+        if (code[i] === "(") depth++;
+        else if (code[i] === ")") {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      const body = code.slice(start, i + 1);
+      expect(body.toLowerCase(), "a CHECK body must not contain a subquery").not.toMatch(/\bselect\b/);
     }
   });
 });
