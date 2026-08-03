@@ -147,6 +147,26 @@ export const OwnerActionSchema = z.object({
 });
 export type OwnerActionInput = z.infer<typeof OwnerActionSchema>;
 
+// BUILD 25 — owner-only retrieval of the Guest's OWN resolved requests.
+//
+// A BODY, not a query string: capability tokens must not travel in URLs, where they land in
+// access logs, referrers, and browser history. Batched because both Guest clients poll a handful
+// of their own requests at once; bounded at RESOLVED_MAX so the endpoint cannot be turned into a
+// bulk reader. Note what is NOT accepted: no owner id, no guest name, no session id, and no event
+// id — the server derives Event scope canonically, so a caller cannot name another Event's rows.
+export const ResolvedRequestsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        requestId: z.string().trim().uuid(),
+        token: z.string().trim().min(1).max(512),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+export type ResolvedRequestsInput = z.infer<typeof ResolvedRequestsSchema>;
+
 // Admin PIN enrollment. `pin` is only bounded here; the real policy (NFC, no
 // whitespace, ≥6 digits / ≥8 passphrase) is enforced server-side by normalizePin.
 // Do NOT .trim() the pin — whitespace handling is the normalizer's job.

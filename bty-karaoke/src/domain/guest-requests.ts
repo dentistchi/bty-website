@@ -116,22 +116,38 @@ export interface OwnedGroups {
   activeIds: string[];
   /** Completed history — done (the "오늘 부른 노래" list). */
   completedIds: string[];
+  /**
+   * BUILD 25 — resolved requests: cancelled by the Guest, removed or stopped by the Host, or
+   * closed by the Event ("신청 결과"). Previously these were DROPPED here, which is precisely how
+   * a Guest's song could vanish with no explanation. They are now a first-class collection.
+   */
+  resolvedIds: string[];
 }
 
 /**
- * Split owned rows into the current-request list and completed history. A row that
- * is `removed` / `not_found` (cancelled or gone) belongs to NEITHER — it drops out
- * of every guest collection. Order is preserved from the input.
+ * Split owned rows into the current-request list, completed history, and resolved results.
+ *
+ * BUILD 25 — THE DROP THAT CAUSED THE DEFECT. This function used to `continue` past every
+ * `removed` / `not_found` row with the comment "belongs to NEITHER". The server had been
+ * publishing that terminal state all along; discarding it here is what made a Host removal look
+ * like the song had simply disappeared. The three collections are MUTUALLY EXCLUSIVE — a request
+ * id appears in exactly one — and order is preserved from the input.
+ *
+ * `not_found` is grouped with `removed` deliberately: from the Guest's side "the server no longer
+ * has this row" and "the row is terminal" are the same experience, and both deserve an
+ * explanation rather than silence. The reason itself comes from the owner-only projection; a row
+ * with no reason renders the honest `unknown_resolution` sentence.
  */
 export function groupOwned(rows: readonly OwnedRow[]): OwnedGroups {
   const activeIds: string[] = [];
   const completedIds: string[] = [];
+  const resolvedIds: string[] = [];
   for (const r of rows) {
     if (r.state === 'done') completedIds.push(r.requestId);
-    else if (r.state === 'removed' || r.state === 'not_found') continue; // dropped
+    else if (r.state === 'removed' || r.state === 'not_found') resolvedIds.push(r.requestId);
     else activeIds.push(r.requestId); // waiting / up_next / now_playing
   }
-  return { activeIds, completedIds };
+  return { activeIds, completedIds, resolvedIds };
 }
 
 export interface OwnedCounts {

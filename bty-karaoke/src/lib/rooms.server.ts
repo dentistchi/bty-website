@@ -25,6 +25,7 @@ import {
   type RequestStatus,
 } from '@/domain/queue';
 import { classifyVideo } from '@/domain/video-kind';
+import type { ResolutionCode } from '@/domain/request-resolution';
 import { resolveStageDecision } from '@/domain/play-flow';
 import { type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
@@ -419,9 +420,16 @@ export async function cancelOwnRequest(
   requestId: string,
 ): Promise<GuestCancelOutcome> {
   const db = karaokeDb();
+  // BUILD 25 — status and reason are written in the SAME guarded statement, so they can never
+  // diverge, and the `status='waiting'` guard is the precedence rule: a row another writer already
+  // resolved matches zero rows here, so this can never overwrite a truthful earlier reason.
   const { data, error } = await db
     .from('karaoke_requests')
-    .update({ status: 'removed' })
+    .update({
+      status: 'removed',
+      resolution_code: 'guest_cancelled' satisfies ResolutionCode,
+      resolved_at: new Date().toISOString(),
+    })
     .eq('id', requestId)
     .eq('room_id', roomId)
     .eq('status', 'waiting')
@@ -590,6 +598,22 @@ const NEXT_STATUS: Record<DjAction, RequestStatus> = {
   remove: 'removed',
 };
 
+/**
+ * BUILD 25 — the Host disposition recorded by the APP-LEVEL branch of `setRequestStatus`, which
+ * only ever runs for a still-`waiting` row.
+ *
+ * `play` and `complete` are present for exhaustiveness but unreachable here: both are handled
+ * earlier by the metering RPCs and return before this map is read. Neither may ever carry a
+ * reason — `play` is not terminal, and `complete` is normal completion, which the database CHECK
+ * refuses to pair with an abnormal resolution.
+ */
+const HOST_RESOLUTION: Record<DjAction, ResolutionCode | null> = {
+  play: null,
+  complete: null,
+  skip: 'host_skipped',
+  remove: 'host_removed',
+};
+
 export type DjTransition =
   | { outcome: 'ok'; request: KaraokeRequest; from: RequestStatus }
   | { outcome: 'not_found' }
@@ -656,9 +680,21 @@ export async function setRequestStatus(
 
   // Non-metering queue ops stay app-level, HARD-GUARDED to a waiting source so they can
   // never touch a playing song: skip-of-waiting (→skipped) and remove (→removed).
+  //
+  // BUILD 25 — the Host's own action is the reason, and the SERVER knows which action it is
+  // running; the actor is never inferred from the client after the write, and no client can
+  // submit a code. Same statement as the status flip, same waiting-guard precedence rule as
+  // `cancelOwnRequest`.
+  const resolution = HOST_RESOLUTION[action];
   const { data, error } = await db
     .from('karaoke_requests')
-    .update({ status: NEXT_STATUS[action] })
+    .update({
+      status: NEXT_STATUS[action],
+      // Only ever non-null for skip/remove — the two actions that can reach this branch. The
+      // null-guarded spread means a hypothetical future action without a code writes no reason
+      // rather than an invented one, and the DB CHECK still enforces the pair-nullability rule.
+      ...(resolution ? { resolution_code: resolution, resolved_at: new Date().toISOString() } : {}),
+    })
     .eq('id', requestId)
     .eq('room_id', roomId)
     .eq('status', 'waiting')

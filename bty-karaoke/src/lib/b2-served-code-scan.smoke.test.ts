@@ -32,17 +32,28 @@ describe('B2 served-code scan — no unmetered lifecycle path', () => {
 
   it('the one app-level status update is waiting-guarded (never playing/completed)', () => {
     // setRequestStatus non-metering branch updates NEXT_STATUS[action] but ONLY .eq status waiting.
-    const idx = rooms.indexOf('.update({ status: NEXT_STATUS[action] })');
+    // BUILD 25 anchor update: the same single app-level update now also writes the resolution
+    // reason in the SAME statement, so the literal gained a spread. The property under test is
+    // unchanged — there is still exactly ONE app-level status write and it is waiting-guarded.
+    const idx = rooms.indexOf('status: NEXT_STATUS[action],');
     expect(idx).toBeGreaterThan(-1);
-    const around = rooms.slice(idx, idx + 220);
+    // Bound the window to the END OF THIS QUERY CHAIN rather than a character count. BUILD 25
+    // added the resolution write plus its comment between the status line and the guard, which a
+    // fixed 220-char window could no longer span. Slicing to `.single()` is STRICTER than any
+    // char count: it proves the guard is in the SAME statement, which is the actual property —
+    // a larger magic number would have passed even if the guard had drifted into a later query.
+    const end = rooms.indexOf('.single()', idx);
+    expect(end).toBeGreaterThan(idx);
+    const around = rooms.slice(idx, end);
     expect(around).toContain(".eq('status', 'waiting')");
   });
 
   it('play/complete/playing-skip are intercepted by the RPC branch before the app-level update', () => {
     // The metering branches (beginSong/endSong) appear BEFORE the app-level NEXT_STATUS update.
     const begin = rooms.indexOf("beginSong(roomId, requestId, 'promote')");
-    const appUpdate = rooms.indexOf('.update({ status: NEXT_STATUS[action] })');
+    const appUpdate = rooms.indexOf('status: NEXT_STATUS[action],'); // BUILD 25: same anchor change
     expect(begin).toBeGreaterThan(-1);
+    expect(appUpdate).toBeGreaterThan(-1);
     expect(begin).toBeLessThan(appUpdate);
   });
 
