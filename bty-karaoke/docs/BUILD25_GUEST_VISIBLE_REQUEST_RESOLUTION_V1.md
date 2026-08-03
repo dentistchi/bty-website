@@ -1,28 +1,35 @@
 # BUILD 25 — GUEST-VISIBLE REQUEST RESOLUTION V1
 
-**Status: DEPLOYED · FOUNDER DEVICE GATES PENDING — 2026-08-03**
+**Status: PASS / CLOSED — 2026-08-03**
 
-The migration is **APPLIED**, the Web/server half is **DEPLOYED**, and production now runs
-**BUILD 25**. Native build **80** is installed on the Founder device.
+Migrated, deployed, and Founder-attested on the physical device. **G1–G8 all PASS.**
 
 ```text
-Migration   20260808120000_karaoke_request_resolution_v1   APPLIED · parity 37/37
+Migration   20260808120000_karaoke_request_resolution_v1   APPLIED · parity 37/37, no drift
 Worker      ac50e28e-0f22-457e-b9a1-68b509ff1f56 @ 100%    (superseded dca14ffc)
-Build       /api/karaoke-build → 6bfdbfe87543              (= deployed commit 6bfdbfe8)
-Native      build 80 (804c837) — installed, gates pending
+Build       /api/karaoke-build → 6bfdbfe87543
+Native      build 82 (56bb830) — installed on the Founder device
+Tests       Host 1700 · Guest 779 · web 2137 · Debug + Release SUCCEEDED
 ```
 
-**No Founder device gate has been executed, and PASS / CLOSED is not claimed.** G1–G8 are defined
-in §8 and are the only remaining evidence.
+**Two product corrections were required after the first device runs, and both are recorded as
+corrections rather than backdated into a clean pass** (§8.1, the BUILD 24 §6 precedent):
 
-Live API and security smoke passed against production (§7.4), including the property that
-motivates the whole design: the **public** sibling endpoint reports *that* a request is terminal
-and never *why*.
+1. **G1 failed on discoverability, not on function.** The whole pipeline worked and the section
+   rendered — at the bottom of the Guest screen, below the entire queue. The Founder never reached
+   it. Moved to the top, directly under the room name (`c0f48c0`, build 81).
+2. **G3 failed because the Native Host had no way to say "I stopped this song."** Its only
+   end-of-playback control means *complete*, which by contract carries no reason. An explicit
+   **이 곡 건너뛰기** was added, routed to the already-deployed manual-stop path, with normal
+   completion semantics untouched (`56bb830`, build 82).
+
+**One gate is recorded as physically non-executable and is NOT claimed as passed:** the
+`unknown_resolution` fallback (§8.2).
 
 **The BUILD 24 §7.3 / §10 carry-forward — *"clear before the next migration"* — is CLEARED
 (§7.2).** It was never an access-privilege problem: the 403 came from invoking bare `supabase`,
-which falls back to a stored login that cannot see this project. Ledger parity is now verified
-clean in both directions.
+which falls back to a stored login that cannot see this project. Ledger parity is verified clean
+in both directions.
 
 **No Founder device gate has been executed.** The app is installed, the server half is live, and
 the gates are armed — the sequence is defined in §8 and G1 is issued first.
@@ -139,6 +146,8 @@ would be readable by anyone holding a request id. It stays reason-free, asserted
 | Guest Web 신청 결과 section | `4be711ee` | `MyRequestsDock.tsx`, `globals.css`; the 6-second erasure removed |
 | Native domain layer (build 79) | `a6b2681` | `GuestResolutionCode`, decode types, merge + Event predicate, copy table |
 | **Native visible surface (build 80)** | **`804c837`** | `GuestResolvedRetrieval`, durable store, `APIClient.fetchResolvedRequests`, VM wiring, the 신청 결과 section, capability retention at cancel |
+| Native G1 discoverability correction (build 81) | `c0f48c0` | 신청 결과 moved to the top of the Guest screen (§8.1) |
+| Native G3 explicit Host skip intent (build 82) | `56bb830` | 이 곡 건너뛰기 → `PATCH {action:"skip"}` → `host_skipped` (§8.1) |
 
 ---
 
@@ -220,20 +229,32 @@ failed would be a new way to produce it.
 
 ---
 
-## 6. Tests — all green at the deployment candidate
+## 6. Tests — final, at build 82
 
-| Suite | Result | Baseline |
+| Suite | Result | Movement across BUILD 25 |
 |---|---|---|
-| Web / server (`vitest`) | **2137 passed** · 204 files | unchanged from `4be711ee` |
+| Web / server (`vitest`) | **2137 passed** · 204 files | 2071 → 2137 (+66) |
 | `tsc --noEmit` | **clean** | — |
-| Native Host (`Tests/run.sh`) | **1652 passed / 0 failed** | 1631 → 1652 (+21) |
-| Native Guest (`Tests/run-guest.sh`) | **771 passed / 0 failed** | 702 → 771 (+69) |
+| Native Host (`Tests/run.sh`) | **1700 passed / 0 failed** | 1631 → 1652 (build 80) → **1700** (build 82, +48 for the G3 skip intent) |
+| Native Guest (`Tests/run-guest.sh`) | **779 passed / 0 failed** | 702 → 771 (build 80) → **779** (build 81, +8 for the placement contract) |
 | Xcode **Debug** (`generic/platform=iOS`) | **BUILD SUCCEEDED** | — |
 | Xcode **Release** (`generic/platform=iOS`) | **BUILD SUCCEEDED** | — |
-| Debug `CFBundleVersion` | **80** | read from the built `Info.plist` |
-| Release `CFBundleVersion` | **80** | read from the built `Info.plist` |
+| Debug `CFBundleVersion` | **82** | read from the built `Info.plist` |
+| Release `CFBundleVersion` | **82** | read from the built `Info.plist` |
 
-No test was removed in any suite.
+No test was removed in any suite, in any of the three native builds.
+
+### Every contract was mutation-tested
+
+A test that cannot go red is decoration. Twelve mutants were introduced across the three native
+builds and **all twelve were killed**; the source was restored byte-identical (SHA-256 verified)
+after each run.
+
+| Build | Mutants | Included |
+|---|---|---|
+| 80 | 5 | re-added the capability delete at cancel · removed the resolved fetch · dropped the stale guard · added a Cancel button to the card · published on failure |
+| 81 | 3 | moved the section back to the bottom (**the actual G1 defect**) · moved it inside the participation branch (would silently break `event_ended`) · duplicated instead of moved |
+| 82 | 4 | skip rewired to the completion action (**recreates G3 exactly**) · silent complete-fallback on failure · targeted `videoId` instead of `requestId` · removed the double-tap guard |
 
 ### Testing a surface no harness can compile
 
@@ -260,9 +281,12 @@ Worker (live)    ac50e28e-0f22-457e-b9a1-68b509ff1f56 @ 100%    2026-08-03T04:51
 /api/karaoke-build  6bfdbfe87543          = deployed commit 6bfdbfe8
 Deployed source  build inputs BYTE-IDENTICAL to 4be711ee (zero diff); the two commits
                  between are documentation-only
-Native           build 80 (804c837) — INSTALLED on the Founder device
+Native           build 82 (56bb830) — INSTALLED on the Founder device (via 80, 81)
 Production       now BUILD 25
 ```
+
+The Worker was deployed ONCE, at build 80's candidate, and never redeployed: the two later
+native builds (81, 82) are client-only and required no server, RPC, migration, or Worker change.
 
 ### 7.1 The migration — before and after, both measured
 
@@ -444,36 +468,71 @@ live `/r/{slug}` document) carries all five approved sentences and the endpoint 
 |---|---|---|
 | 6 | Cross-Guest retrieval refused | **VERIFIED LIVE** — S1/S2 |
 | 10 | Capability bounded / forgeries rejected | **PARTIALLY VERIFIED LIVE** — forged and malformed capabilities are rejected (S1–S3); the 12-hour expiry and Event/session scope are automated-verified, not separately exercised live |
-| 1, 2, 3, 4, 5, 7, 8, 9 | resolution of an owned request · requestId keying · same-video independence · no duplication on repeated fetch · stale-active exclusion · Event isolation · failure preservation · cancellation retrievable | **DEFERRED TO G1–G8** |
+| 1, 2, 3, 4, 5, 7, 8, 9 | resolution of an owned request · requestId keying · same-video independence · no duplication on repeated fetch · stale-active exclusion · Event isolation · failure preservation · cancellation retrievable | **EXERCISED AND PASSED on the device** — G1–G8 (§8) |
 
-Items 1–5 and 7–9 require real requests to be created, removed, skipped, and closed. Doing that
-server-side would mean manufacturing production rows and then deleting them. **The device gates
-create the same data through the product's own flows, which is legitimate use rather than
-fabrication** — so they are the honest place to exercise these, and they are not duplicated here.
+Items 1–5 and 7–9 required real requests to be created, removed, skipped, and closed. Doing that
+server-side would have meant manufacturing production rows and then deleting them. **The device
+gates create the same data through the product's own flows, which is legitimate use rather than
+fabrication**, so they were exercised there and are not duplicated here. All eight passed.
 
 ---
 
-## 8. Founder device gates — ARMED, awaiting evidence
+## 8. Founder device gates — G1–G8 ALL PASS
 
-Native build **80** (`804c837`) is installed on the Founder's iPhone 17 Pro Max
-(`80C931D3-265B-5B37-B608-F3EB200C66AA`), and the server half is now live — so every gate below
-can finally produce real evidence. **None has been executed.**
+Founder-attested on the physical iPhone 17 Pro Max (`80C931D3-265B-5B37-B608-F3EB200C66AA`),
+final build **82** (`56bb830`), against live production.
 
-Gates are issued **one at a time**, G1 first. A gate that fails is recorded as failed and
-corrected; a corrected gate is never backdated to a clean pass (the BUILD 24 §6 precedent).
+| Gate | Proves | Result |
+|---|---|---|
+| **G1 — HOST REMOVED** | `Host가 이 곡을 대기열에서 제거했어요.`; no controls; survives poll + relaunch | **PASS** (after the §8.1 placement correction) |
+| **G2 — GUEST CANCELLED** | `신청을 취소했어요.`; **capability retention is what makes this retrievable** | **PASS** |
+| **G3 — HOST SKIPPED** | `Host가 이 곡의 재생을 종료했어요.`; does not return to the active list | **PASS** (after the §8.1 skip-intent correction) |
+| **G4 — EVENT ENDED** | `노래방이 종료되어 이 신청곡의 진행이 끝났어요.`; no stale active row | **PASS** |
+| **G5 — POLL AND DUPLICATION** | Each result appears exactly once; a late stale poll cannot resurrect it | **PASS** |
+| **G6 — SAME VIDEO, DIFFERENT requestIds** | One resolves, the other stays independently active | **PASS** |
+| **G7 — EVENT AND GUEST ISOLATION** | Another Guest cannot see it; a new Event does not inherit it; exiting Guest mode clears the scoped data | **PASS** |
+| **G8 — FAILURE PRESERVATION** | A controlled fetch failure leaves history visible; recovery neither duplicates nor erases | **PASS** |
 
-| Gate | What it proves |
-|---|---|
-| **G1 — HOST REMOVED** | Host removes a queued request → `Host가 이 곡을 대기열에서 제거했어요.`; no controls; survives poll + relaunch |
-| **G2 — GUEST CANCELLED** | Guest cancels their own → `신청을 취소했어요.`; **capability retention is what makes this retrievable** |
-| **G3 — HOST SKIPPED** | Host ends playback → `Host가 이 곡의 재생을 종료했어요.`; does not return to the active list |
-| **G4 — EVENT ENDED** | Host ends the Event → `노래방이 종료되어 이 신청곡의 진행이 끝났어요.`; no stale active row |
-| **G5 — POLL AND DUPLICATION** | Each result appears exactly once across repeated polls; a late stale poll cannot resurrect it |
-| **G6 — SAME VIDEO, DIFFERENT requestIds** | One resolves, the other stays independently active; video identity must not collapse them |
-| **G7 — EVENT AND GUEST ISOLATION** | Another Guest cannot see it; a new Event does not inherit it; exiting Guest mode clears the scoped data |
-| **G8 — FAILURE PRESERVATION** | A controlled fetch failure leaves established history visible; recovery neither duplicates nor erases |
+### 8.1 Two gates failed first, and were corrected — recorded, not backdated
 
-### UNKNOWN RESOLUTION FALLBACK — automated-contract verified, physically non-executable
+Both failures were real, and **neither was a defect in the resolution pipeline.** That is the
+useful part of the record: in both cases every layer worked and the Guest still learned nothing,
+which is the failure mode this build exists to eliminate.
+
+**G1 — the explanation was rendered where nobody would find it.**
+Forensics on the failed run proved the server wrote `host_removed` + `resolved_at`, the owner-only
+endpoint returned the row for a valid capability, and the client fetched, published and
+**persisted** it — the device's own `bty.guestresolved.v1` snapshot still held the card, a key the
+store writes only for a non-empty list. Reproducing that exact device state in a simulator rendered
+「신청 결과 2」 correctly. The section was simply below the entire queue, far under the fold.
+**An explanation nobody scrolls to is still silence**, so placement is part of the contract: it
+moved to the top of the Guest screen, directly under the room name and above the Now Singing hero,
+while staying outside the participation branch so an ENDED 노래방 still explains itself
+(`c0f48c0`, build 81). The gate script had also misdirected the Founder ("scroll past 내 노래" when
+the section was above it); that instruction was corrected on reissue.
+
+**G3 — the Native Host had no way to say "I stopped this song."**
+Forensics on the failed request found `status=completed`, `resolution_code=NULL` — and that was
+**correct**. The Host's only end-of-playback control posts `/dj/pass-turn`, which maps to
+`endSong(…,'complete')`, and BUILD 25 deliberately writes no reason for a completion. The song
+therefore surfaced under 방금 부른 노래 — playback history, which does not satisfy the resolution
+contract. This build's own forensics had assumed a *"Host stop of a playing row"* writer that did
+not exist in the native product.
+
+The canonical manual-stop path was already built and already deployed
+(`PATCH {action:"skip"}` → `endSong(…,'skip')` → `host_skipped`; the web DJ console has always
+used it). **What was missing was the intent, not a write.** Build 82 adds a distinct, secondary,
+confirmed **이 곡 건너뛰기**, and the confirmation states plainly that the 신청자 will be told.
+No server, RPC, migration, or Worker change was required.
+
+**The completion boundary was preserved in both directions, and is pinned by test.** Mapping
+`pass-turn` to `host_skipped` would tell every Guest whose song merely ended that the Host cut it
+off; falling back to complete when a skip fails would erase the reason the Host meant to record.
+Both are lies. So 완료 keeps its exact path and never emits skip, skip never touches the completion
+seam, and a **failed skip leaves the song on stage** with an honest error rather than degrading to
+complete.
+
+### 8.2 UNKNOWN RESOLUTION FALLBACK — automated-contract verified, physically non-executable
 
 `이 곡은 더 이상 대기열에 없어요.` is pinned by automated test on both clients, including
 forward-compatibility (an unrecognised future code degrades to `unknown_resolution` rather than
@@ -497,16 +556,16 @@ Web    /Users/hanbit/Dev/btytrainingcenter      HEAD = origin/main (docs commits
        only the build STAMP names HEAD, because next.config.mjs derives it from
        `git rev-parse --short=12 HEAD`.
 
-Native /Users/hanbit/Dev/bty-norebang-admin-ios HEAD = origin/main = 804c837
+Native /Users/hanbit/Dev/bty-norebang-admin-ios HEAD = origin/main = 56bb830
        only pre-existing change:  BTYNorebangAdmin.xcscheme  (modified, unstaged, untouched)
        SHA-256 32b3247e521d95769aba3d0a407c449f38c82f3cee1fa7e1a5aff898f947aa1e
-       — identical before preflight, after both Xcode builds, and after device install
-       CURRENT_PROJECT_VERSION = 80 in Debug and Release
+       — recomputed and identical at every checkpoint across builds 80, 81 and 82:
+         before preflight, after each Xcode build, and after each device install
+       CURRENT_PROJECT_VERSION = 82 in Debug and Release
 ```
 
-No reset, stash, discard, rebase, clean, or force-push was used in either repository. No
-`git add -A` / `git add .`. No native source change was made in this session — none was needed,
-because no regression was found.
+No reset, stash, discard, rebase, clean, or force-push was used in either repository, at any
+point in BUILD 25. No `git add -A` / `git add .` — every commit staged explicit paths.
 
 Two pre-existing, unrelated items sit in the web working tree and were **not** touched:
 `bty-karaoke/docs/BUILD17_TIMED_ACCESS_PASS.md` (modified) and `bty-karaoke/brand/` (untracked).
@@ -517,26 +576,37 @@ Neither is a build input.
 ## 10. Status
 
 ```text
-BUILD 25 — DEPLOYED · FOUNDER DEVICE GATES PENDING                2026-08-03
+BUILD 25 — PASS / CLOSED                                          2026-08-03
 
-Code            COMPLETE   7bc6ccd5 · 4be711ee · a6b2681 · 804c837 (build 80)
-Tests           GREEN      web 2137/204 · tsc clean · Host 1652 · Guest 771
-Builds          GREEN      Debug + Release · CFBundleVersion 80 / 80
-Migration       APPLIED    20260808120000 · parity 37/37 · 0 rows backfilled · 362 unchanged
-Deployment      LIVE       Worker ac50e28e @ 100% · /api/karaoke-build = 6bfdbfe87543
-Live smoke      PASS       S1–S6 · public endpoint reason-free · bundle carries all 5 sentences
-Device          READY      build 80 installed on the Founder device
-Gates G1–G8     PENDING    Founder evidence — the only thing still outstanding
+G1  PASS   Founder attested (after the c0f48c0 placement correction, build 81)
+G2  PASS   Founder attested
+G3  PASS   Founder attested (after the 56bb830 skip-intent correction, build 82)
+G4  PASS   Founder attested
+G5  PASS   Founder attested
+G6  PASS   Founder attested
+G7  PASS   Founder attested
+G8  PASS   Founder attested
+unknown_resolution — automated-contract verified, PHYSICALLY NON-EXECUTABLE (§8.2).
+  Recorded honestly; NOT claimed as a passed gate.
+
+Code            7bc6ccd5 · 4be711ee (web) · a6b2681 · 804c837 · c0f48c0 · 56bb830 (native)
+Docs            5f395136 · 42a25b56 · this closure commit
+Tests           web 2137/204 · tsc clean · Host 1700 · Guest 779 · 12/12 mutants killed
+Builds          Debug + Release SUCCEEDED · CFBundleVersion 82 / 82
+Migration       20260808120000 APPLIED · parity 37 local / 37 remote · no drift
+Deployment      Worker ac50e28e-0f22-457e-b9a1-68b509ff1f56 @ 100%
+                /api/karaoke-build = 6bfdbfe87543
+Live smoke      S1–S6 PASS · public endpoint reason-free · bundle carries all 5 sentences
+Device          build 82 installed on the Founder's iPhone 17 Pro Max
+xcscheme        32b3247e…f947aa1e — preserved unchanged throughout
 
 CLEARED by this build: the BUILD 24 §7.3 / §10 carry-forward ("clear before the next
   migration"). The 403 was an invocation fault, not an access-privilege fault — bare
   `supabase` fell back to a login that cannot see this project (§7.2). Parity verified.
 
-NOT CLAIMED: PASS / CLOSED, for the build or for any individual gate.
+Carried forward, NOT closed by this build:
+  · the one-time grace-window transition seam (BUILD 24 §4/§8) — still open there
 ```
-
-**PASS / CLOSED is not claimed and must not be claimed** — not for the build, and not for any
-individual gate.
 
 ---
 
@@ -547,8 +617,11 @@ individual gate.
 | Source baseline (build inputs) | `4be711ee1a3cbfd763c2b2524631b7b2bd090ebf` |
 | Server / migration / owner-only API | `7bc6ccd5` |
 | Guest Web 신청 결과 | `4be711ee` |
+| Web documentation candidates | `5f395136` · `42a25b56` |
 | Native domain layer (build 79) | `a6b2681` |
 | Native visible surface (build 80) | `804c837520ff8bb0a64536729c089d2c9fcf29c5` |
+| Native G1 discoverability correction (build 81) | `c0f48c0b387c45711559ed64abbda52923e8099c` |
+| **Native explicit Host skip intent (build 82, final)** | **`56bb830e5a38cf575b498f5f02550d5bc6915a5a`** |
 | **Deployed commit identity** | **`6bfdbfe8`** — build inputs byte-identical to `4be711ee`; the intervening commits are documentation-only |
 | Migration file | `bty-karaoke/supabase/migrations/20260808120000_karaoke_request_resolution_v1.sql` |
 | Migration SHA-256 | `896728f74cd26224b402b2143029da301778a976da9c68954e846cbd98961a84` |
@@ -556,7 +629,8 @@ individual gate.
 | Production project ref | `zycwaqignioawtqynopj` (org `mzbvnugouzrkinmqwiaf`) |
 | **Live Worker** | **`ac50e28e-0f22-457e-b9a1-68b509ff1f56` @ 100%**, 2026-08-03T04:51:04Z (superseded `dca14ffc`) |
 | Live build endpoint | `https://norebang.btydaily.com/api/karaoke-build` → **`6bfdbfe87543`** |
-| Native device | iPhone 17 Pro Max `80C931D3-265B-5B37-B608-F3EB200C66AA`, build 80 installed |
+| Native device | iPhone 17 Pro Max `80C931D3-265B-5B37-B608-F3EB200C66AA`, **build 82** installed |
+| Native `.xcscheme` (preserved) | `32b3247e521d95769aba3d0a407c449f38c82f3cee1fa7e1a5aff898f947aa1e` |
 
 Related: [BUILD 24](./BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md) §7.3 · §10 —
 the deviation this build CLEARED (§7.2).
