@@ -104,6 +104,46 @@ export type ArenaPracticeCopy = {
   startOver: string;
 
   // Q1
+  /** R5C-4B-R1 — Host-facing governance and Review setup. No reason codes, no identifiers. */
+  governance: {
+    confirmTitle: string;
+    confirmBody: string;
+    revisionRequiredTitle: string;
+    revisionRequiredBody: string;
+    inProgressTitle: string;
+    inProgressBody: string;
+    unavailableTitle: string;
+    unavailableBody: string;
+    reviewSetupCta: string;
+    tryOnceMoreCta: string;
+    readyTitle: string;
+  };
+  retryConfirm: {
+    title: string;
+    unchangedLine: string;
+    oneAttemptLine: string;
+    mayStillFailLine: string;
+    reviewSetupCta: string;
+    confirmCta: string;
+    cancelCta: string;
+  };
+  reviewSetup: {
+    heading: string;
+    situationHeading: string;
+    situationHelp: string;
+    boundaryHeading: string;
+    boundaryHelp: string;
+    q1Label: string;
+    q2Label: string;
+    pressurePlaceholder: string;
+    saveCta: string;
+    cancelCta: string;
+    savingLabel: string;
+    unsavedLabel: string;
+    noGenerationNote: string;
+    savedNote: string;
+    localeErrorNote: string;
+  };
   q1Title: string;
   q1Help: string;
   hardestWhen: Record<HardestWhenOption, string>;
@@ -213,6 +253,47 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     resumeCta: "Open saved draft",
     startOver: "Start a new one",
 
+    governance: {
+      readyTitle: "Ready",
+      confirmTitle: "This setup produced one situation you could not use",
+      confirmBody:
+        "Reviewing the setup is the surest way to get a better situation. You can also try this same setup once more.",
+      revisionRequiredTitle: "This setup produced two situations you could not use",
+      revisionRequiredBody:
+        "Change something about the situation setup or the practice boundary, then create a new situation.",
+      inProgressTitle: "A practice situation is already being created",
+      inProgressBody: "Wait for it to finish. Leaving this screen will not stop it.",
+      unavailableTitle: "We could not check this practice yet",
+      unavailableBody: "Reopen this practice in a moment.",
+      reviewSetupCta: "Review setup",
+      tryOnceMoreCta: "Try once more",
+    },
+    retryConfirm: {
+      title: "Try this same setup once more?",
+      unchangedLine: "The setup has not changed since the last attempt.",
+      oneAttemptLine: "This creates one more practice situation.",
+      mayStillFailLine: "The result may still be one you cannot use.",
+      reviewSetupCta: "Review setup instead",
+      confirmCta: "Try once more",
+      cancelCta: "Cancel",
+    },
+    reviewSetup: {
+      heading: "Review setup",
+      situationHeading: "The situation",
+      situationHelp: "This shapes what kind of leadership moment gets created.",
+      boundaryHeading: "The boundary",
+      boundaryHelp: "This shapes what the created situation is allowed to contain.",
+      q1Label: "When is this hardest to do?",
+      q2Label: "What pressure makes people avoid it?",
+      pressurePlaceholder: "What makes people hold back?",
+      saveCta: "Save",
+      cancelCta: "Cancel",
+      savingLabel: "Saving\u2026",
+      unsavedLabel: "Unsaved changes",
+      noGenerationNote: "Saving does not create a situation.",
+      savedNote: "Your setup was updated. Create the situation when you are ready.",
+      localeErrorNote: "That language is not supported here.",
+    },
     q1Title: "When is this hardest to do?",
     q1Help: "Pick the moment where the behavior tends to break down.",
     hardestWhen: {
@@ -385,6 +466,45 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     resumeCta: "저장된 초안 열기",
     startOver: "새로 시작하기",
 
+    governance: {
+      readyTitle: "준비됨",
+      confirmTitle: "이 설정으로 만든 상황 1개를 쓸 수 없었습니다",
+      confirmBody: "설정을 다시 살펴보는 것이 가장 확실합니다. 같은 설정으로 한 번 더 시도할 수도 있습니다.",
+      revisionRequiredTitle: "이 설정으로 만든 상황 2개를 쓸 수 없었습니다",
+      revisionRequiredBody: "상황 설정이나 연습 경계를 바꾼 뒤 새 상황을 만들어 주세요.",
+      inProgressTitle: "이미 연습 상황을 만드는 중입니다",
+      inProgressBody: "끝날 때까지 기다려 주세요. 화면을 벗어나도 중단되지 않습니다.",
+      unavailableTitle: "아직 확인하지 못했습니다",
+      unavailableBody: "잠시 후 이 연습을 다시 열어 주세요.",
+      reviewSetupCta: "설정 검토",
+      tryOnceMoreCta: "한 번 더 시도",
+    },
+    retryConfirm: {
+      title: "같은 설정으로 한 번 더 시도할까요?",
+      unchangedLine: "지난 시도 이후 설정이 바뀌지 않았습니다.",
+      oneAttemptLine: "연습 상황을 하나 더 만듭니다.",
+      mayStillFailLine: "결과를 또 쓰지 못할 수도 있습니다.",
+      reviewSetupCta: "설정을 먼저 검토",
+      confirmCta: "한 번 더 시도",
+      cancelCta: "취소",
+    },
+    reviewSetup: {
+      heading: "설정 검토",
+      situationHeading: "상황",
+      situationHelp: "어떤 리더십 순간을 만들지 결정합니다.",
+      boundaryHeading: "경계",
+      boundaryHelp: "만들어진 상황에 무엇이 담길 수 있는지 결정합니다.",
+      q1Label: "이 행동이 언제 가장 하기 어렵나요?",
+      q2Label: "무엇 때문에 사람들이 피하게 되나요?",
+      pressurePlaceholder: "무엇이 사람들을 망설이게 하나요?",
+      saveCta: "저장",
+      cancelCta: "취소",
+      savingLabel: "저장 중\u2026",
+      unsavedLabel: "저장하지 않은 변경",
+      noGenerationNote: "저장해도 상황이 만들어지지 않습니다.",
+      savedNote: "설정을 업데이트했습니다. 준비되면 상황을 만들어 주세요.",
+      localeErrorNote: "여기서 지원하지 않는 언어입니다.",
+    },
     q1Title: "이 행동이 언제 가장 하기 어렵나요?",
     q1Help: "행동이 무너지기 쉬운 순간을 골라 주세요.",
     hardestWhen: {

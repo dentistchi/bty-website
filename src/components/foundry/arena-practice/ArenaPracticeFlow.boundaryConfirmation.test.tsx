@@ -45,6 +45,17 @@ const SHELL = {
   guided_answers: { practiceSetupVersion: 1 },
 };
 /** A pre-R5A.2 draft: no discriminator, so the boundary requirement never applied to it. */
+/** Zero refusals under the current input: the state a never-generated shell is in. */
+const READY_GOVERNANCE = {
+  generationInputRevision: 1,
+  generationLocale: "en" as const,
+  refusalCount: 0,
+  state: "ready" as const,
+  canStartGeneration: true,
+  requiresExplicitConfirmation: false,
+  reviewSetupRecommended: false,
+};
+
 const LEGACY_SHELL = { id: "legacy-1", scenario_draft: null, generation_source: null, revision: 4 };
 
 const confirmed = (statements: string[], revision: number, scope?: unknown) => ({
@@ -88,10 +99,14 @@ function mockFetch(over: { oneDraft?: unknown[]; boundary?: () => Response; rege
     calls.push({ url: u, method, body: init?.body ? JSON.parse(String(init.body)) : {} });
     if (u.includes("/arena-source/")) return jsonRes({ source: SOURCE });
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: drafts[0] ? (drafts[0] as { id: string }).id : "shell-1" }] });
-    if (u.endsWith("/boundary")) return over.boundary ? over.boundary() : jsonRes({ draft: confirmed(["x"], 1), invalidated: false });
+    if (u.endsWith("/boundary"))
+      return over.boundary ? over.boundary() : jsonRes({ draft: confirmed(["x"], 1), invalidated: false, governance: READY_GOVERNANCE });
     if (u.endsWith("/regenerate")) return over.regenerate ? over.regenerate() : jsonRes({ draft: { ...SHELL, revision: 2, scenario_draft: SCENARIO }, warnings: [] });
     if (u.endsWith("/publish")) return jsonRes({ practice: null });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes({ draft: drafts.length > 1 ? drafts.shift() : drafts[0] });
+    if (u.match(/\/arena-drafts\/[^/?]+$/))
+      // R5C-4B-R1 — the GET now carries the server's governance, and the Create action fails closed
+      // without it. A fresh shell has no refusals, so these fixtures are `ready`.
+      return jsonRes({ draft: drafts.length > 1 ? drafts.shift() : drafts[0], governance: READY_GOVERNANCE });
     return jsonRes({});
   });
 }

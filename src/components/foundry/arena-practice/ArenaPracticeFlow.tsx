@@ -24,6 +24,10 @@ import {
 import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveEditorActions } from "./editorActions";
 import { AutoTextarea } from "./AutoTextarea";
+import { PracticeGovernancePanel } from "./PracticeGovernancePanel";
+import { RetryConfirmation } from "./RetryConfirmation";
+import { ReviewSetupPanel, type GuidedAnswersValue } from "./ReviewSetupPanel";
+import { resolveGovernanceView, type Governance } from "./practiceGovernance";
 
 /**
  * R2 — one shared button scale for the editor's action region. Every control is a full-width,
@@ -83,6 +87,9 @@ type ClientDraft = {
     practiceSetupVersion?: number;
     practiceBoundary?: PracticeBoundary;
     practiceBoundaryScope?: PracticeBoundaryScope;
+    /** R5C-4B — the two editable setup answers, now readable so Review setup can show them. */
+    hardestWhen?: { choice: HardestWhenOption; customText?: string };
+    avoidancePressure?: { text: string };
   };
 };
 
@@ -115,6 +122,14 @@ export function ArenaPracticeFlow({
    * it when the thing it was given for has moved.
    */
   const confirmSameInputRetryRef = useRef(false);
+  /** R5C-4B-R1 — the server's last governance answer. Never derived, never remembered past a refresh. */
+  const [governance, setGovernance] = useState<Governance | null>(null);
+  const [retryConfirmOpen, setRetryConfirmOpen] = useState(false);
+  const [reviewSetupOpen, setReviewSetupOpen] = useState(false);
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [setupSaveError, setSetupSaveError] = useState<string | null>(null);
+  const [setupSavedNote, setSetupSavedNote] = useState(false);
+  const tryOnceMoreRef = useRef<HTMLButtonElement | null>(null);
   const [editable, setEditable] = useState<ArenaScenarioDraft | null>(null);
   const [genSource, setGenSource] = useState<"ai" | "template" | "edited" | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -205,13 +220,14 @@ export function ArenaPracticeFlow({
             });
             if (cancelled) return;
             if (one.ok) {
-              const d = (await one.json()) as { draft?: ClientDraft };
+              const d = (await one.json()) as { draft?: ClientDraft; governance?: Governance };
               if (d.draft?.scenario_draft) {
                 setDraftId(d.draft.id);
                 setEditable(d.draft.scenario_draft);
                 setGenSource(d.draft.generation_source);
                 setRevision(d.draft.revision);
                 setGenerationInputRevision(d.draft.generation_input_revision ?? null);
+                if (d.governance) setGovernance(d.governance);
                 setDirty(false);
                 void refreshLiveStatus(d.draft.id); // already published at this revision?
                 setPhase("editor");
@@ -225,6 +241,7 @@ export function ArenaPracticeFlow({
                 setDraftId(d.draft.id);
                 setRevision(d.draft.revision);
                 setGenerationInputRevision(d.draft.generation_input_revision ?? null);
+                if (d.governance) setGovernance(d.governance);
                 setSetupDraft(d.draft);
                 setPhase("setup");
                 return;
@@ -274,7 +291,7 @@ export function ArenaPracticeFlow({
           setScopeSaveError(true);
           return;
         }
-        const data = (await res.json()) as { draft?: ClientDraft };
+        const data = (await res.json()) as { draft?: ClientDraft; governance?: Governance };
         if (!data.draft) {
           setScopeSaveError(true);
           return;
@@ -282,6 +299,7 @@ export function ArenaPracticeFlow({
         setSetupDraft(data.draft);
         setRevision(data.draft.revision);
         setGenerationInputRevision(data.draft.generation_input_revision ?? null);
+        if (data.governance) setGovernance(data.governance);
       } catch {
         setScopeSaveError(true);
       } finally {
@@ -340,11 +358,12 @@ export function ArenaPracticeFlow({
               cache: "no-store",
             }).catch(() => null);
             if (fresh?.ok) {
-              const d = (await fresh.json().catch(() => ({}))) as { draft?: ClientDraft };
+              const d = (await fresh.json().catch(() => ({}))) as { draft?: ClientDraft; governance?: Governance };
               if (d.draft) {
                 setSetupDraft(d.draft);
                 setRevision(d.draft.revision);
                 setGenerationInputRevision(d.draft.generation_input_revision ?? null);
+                if (d.governance) setGovernance(d.governance);
               }
             }
             return;
@@ -352,7 +371,7 @@ export function ArenaPracticeFlow({
           setBoundarySaveError(boundaryErrorCopy(body?.error));
           return;
         }
-        const data = (await res.json()) as { draft?: ClientDraft; invalidated?: boolean };
+        const data = (await res.json()) as { draft?: ClientDraft; invalidated?: boolean; governance?: Governance };
         if (!data.draft) {
           setBoundarySaveError(t.boundarySaveError);
           return;
@@ -360,6 +379,7 @@ export function ArenaPracticeFlow({
         setSetupDraft(data.draft);
         setRevision(data.draft.revision);
         setGenerationInputRevision(data.draft.generation_input_revision ?? null);
+        if (data.governance) setGovernance(data.governance);
         setBoundaryInvalidated(data.invalidated === true);
       } catch {
         setBoundarySaveError(t.boundarySaveError);
@@ -449,6 +469,73 @@ export function ArenaPracticeFlow({
     }
   }, [draftId, loc, generationInputRevision]);
 
+  /**
+   * R5C-4B-R1 — the ONLY path that carries the acknowledgement. Opening the confirmation sends
+   * nothing; this runs only from its explicit final action, or from an ordinary ready submission
+   * with the acknowledgement false.
+   */
+  const submitGeneration = useCallback(
+    (acknowledged: boolean) => {
+      confirmSameInputRetryRef.current = acknowledged;
+      setRetryConfirmOpen(false);
+      void generateFromSetup();
+    },
+    [generateFromSetup],
+  );
+
+  /** Save the two guided answers through the deployed PUT. It never starts a generation. */
+  const saveGuidedAnswers = useCallback(
+    async (next: GuidedAnswersValue) => {
+      if (!draftId || setupSaving) return;
+      setSetupSaving(true);
+      setSetupSaveError(null);
+      try {
+        const res = await fetch(`/api/bty/foundry/arena-drafts/${encodeURIComponent(draftId)}/setup`, {
+          method: "PUT",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guided: next,
+            locale: loc,
+            expectedRevision: revision,
+            expectedGenerationInputRevision: generationInputRevision,
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          draft?: ClientDraft;
+          governance?: Governance;
+          changed?: boolean;
+          code?: string;
+        };
+        if (!res.ok || !data.draft) {
+          // A stale response must refresh, never silently apply local edits over a newer server value.
+          setSetupSaveError(data.code === "generation_locale_invalid" ? t.reviewSetup.localeErrorNote : t.genericError);
+          if (data.code === "stale_revision" || data.code === "generation_input_revision_stale") {
+            confirmSameInputRetryRef.current = false;
+            setRetryConfirmOpen(false);
+          }
+          return;
+        }
+        // The SERVER's draft and governance become the only committed client state.
+        setSetupDraft(data.draft);
+        setRevision(data.draft.revision);
+        setGenerationInputRevision(data.draft.generation_input_revision ?? null);
+        if (data.governance) setGovernance(data.governance);
+        // A new input epoch invalidates any acknowledgement given for the previous one.
+        confirmSameInputRetryRef.current = false;
+        setRetryConfirmOpen(false);
+        setSetupSavedNote(Boolean(data.changed));
+        setReviewSetupOpen(false);
+      } catch {
+        setSetupSaveError(t.genericError);
+      } finally {
+        setSetupSaving(false);
+      }
+    },
+    [draftId, loc, revision, generationInputRevision, setupSaving, t],
+  );
+
   const q1Ready = q1 !== null && (q1 !== "other" || q1Custom.trim().length > 0);
   const q2Ready = q2.trim().length > 0;
 
@@ -477,7 +564,7 @@ export function ArenaPracticeFlow({
         setPhase("q2"); // keep the host's answers, allow retry
         return;
       }
-      const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[] };
+      const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[]; governance?: Governance };
       if (!data.draft) {
         setGenError(true);
         setPhase("q2");
@@ -490,6 +577,7 @@ export function ArenaPracticeFlow({
         setDraftId(data.draft.id);
         setRevision(data.draft.revision);
         setGenerationInputRevision(data.draft.generation_input_revision ?? null);
+        if (data.governance) setGovernance(data.governance);
         setSetupDraft(data.draft);
         setPhase("setup");
         return;
@@ -529,7 +617,7 @@ export function ArenaPracticeFlow({
         setSaveState("error");
         return;
       }
-      const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[] };
+      const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[]; governance?: Governance };
       setWarnings(data.warnings ?? []);
       setGenSource("edited");
       if (typeof data.draft?.revision === "number") setRevision(data.draft.revision);
@@ -583,7 +671,7 @@ export function ArenaPracticeFlow({
         body: JSON.stringify({ locale: loc }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[] };
+        const data = (await res.json()) as { draft?: ClientDraft; warnings?: string[]; governance?: Governance };
         if (data.draft?.scenario_draft) {
           setEditable(data.draft.scenario_draft);
           setGenSource(data.draft.generation_source);
@@ -757,7 +845,7 @@ export function ArenaPracticeFlow({
 
         {/* One forward action, and only once the server would actually accept it. */}
         {readiness.canGenerate ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {setupGenFail ? (
               <div className="flex flex-col gap-1" data-testid="setup-gen-failure">
                 <p role="alert" className="text-sm leading-6 text-red-300/90">
@@ -768,11 +856,67 @@ export function ArenaPracticeFlow({
                 ) : null}
               </div>
             ) : null}
-            <PrimaryButton onClick={generateFromSetup}>
-              {setupGenFail?.retriable === "true" ? t.genRetryCta : t.setupGenerateCta}
-            </PrimaryButton>
+
+            {/* R5C-4B-R1 — the server's answer, rendered. Nothing here is derived locally. */}
+            <PracticeGovernancePanel
+              governance={governance}
+              copy={t.governance}
+              tryOnceMoreRef={tryOnceMoreRef}
+              onReviewSetup={() => {
+                setSetupSavedNote(false);
+                setRetryConfirmOpen(false);
+                setReviewSetupOpen(true);
+              }}
+              // Opens the confirmation ONLY. The POST happens in its explicit final action.
+              onTryOnceMore={() => setRetryConfirmOpen(true)}
+            />
+
+            {setupSavedNote ? (
+              <p role="status" data-testid="setup-saved-note" className="text-[0.85rem] leading-6 text-white/60">
+                {t.reviewSetup.savedNote}
+              </p>
+            ) : null}
+
+            {/* Create exists only while the SERVER says it may. */}
+            {resolveGovernanceView(governance).createEnabled ? (
+              <PrimaryButton onClick={() => submitGeneration(false)}>
+                {setupGenFail?.retriable === "true" ? t.genRetryCta : t.setupGenerateCta}
+              </PrimaryButton>
+            ) : null}
           </div>
         ) : null}
+
+        {reviewSetupOpen && setupDraft?.guided_answers?.hardestWhen ? (
+          <ReviewSetupPanel
+            copy={{ ...t.reviewSetup, otherPlaceholder: t.otherPlaceholder, hardestWhen: t.hardestWhen }}
+            current={{
+              hardestWhen: setupDraft.guided_answers.hardestWhen,
+              avoidancePressure: setupDraft.guided_answers.avoidancePressure ?? { text: "" },
+            }}
+            sourceOptions={source.hardest_when_options}
+            saving={setupSaving}
+            errorText={setupSaveError}
+            onSave={saveGuidedAnswers}
+            onCancel={() => {
+              setSetupSaveError(null);
+              setReviewSetupOpen(false);
+            }}
+          />
+        ) : null}
+
+        <RetryConfirmation
+          // Bound to the CURRENT epoch and locale: a governance refresh away from
+          // confirm_second_attempt closes it, so an old acknowledgement cannot survive.
+          open={retryConfirmOpen && resolveGovernanceView(governance).showsRetryAction}
+          copy={t.retryConfirm}
+          submitting={setupSaving}
+          onReviewSetup={() => {
+            setRetryConfirmOpen(false);
+            setReviewSetupOpen(true);
+          }}
+          onConfirm={() => submitGeneration(true)}
+          onCancel={() => setRetryConfirmOpen(false)}
+        />
       </div>,
     );
   }

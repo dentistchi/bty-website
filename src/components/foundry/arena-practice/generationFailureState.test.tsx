@@ -55,7 +55,21 @@ function mockFetch(regen: () => Response) {
     if (u.includes("/arena-drafts?")) return jsonRes({ drafts: [{ id: "draft-1" }] });
     if (u.endsWith("/regenerate")) return regen();
     if (u.endsWith("/publish")) return jsonRes({ practice: null });
-    if (u.match(/\/arena-drafts\/[^/?]+$/)) return jsonRes({ draft: READY_DRAFT });
+    // R5C-4B-R1 — Create fails closed without the server's governance, so this fixture supplies the
+    // `ready` state a draft with no prior refusals actually has.
+    if (u.match(/\/arena-drafts\/[^/?]+$/))
+      return jsonRes({
+        draft: READY_DRAFT,
+        governance: {
+          generationInputRevision: 1,
+          generationLocale: "en",
+          refusalCount: 0,
+          state: "ready",
+          canStartGeneration: true,
+          requiresExplicitConfirmation: false,
+          reviewSetupRecommended: false,
+        },
+      });
     throw new Error(`unmocked fetch: ${u}`);
   });
 }
