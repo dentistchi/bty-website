@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
 import {
   getOwnerArenaDraft,
+  readGenerationGovernance,
   saveArenaDraftEdits,
   toClientArenaDraft,
 } from "@/lib/bty/foundry/arena/foundryArenaDraftService";
@@ -34,7 +35,28 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const draft = await getOwnerArenaDraft(admin, user.id, id);
   if (!draft) return managerJson(base, req, { error: "not_found" }, 404);
-  return managerJson(base, req, { draft: toClientArenaDraft(draft) });
+
+  /**
+   * R5C-4B — governance travels with the READ.
+   *
+   * Before this, `revision_required` was reachable only as a 409 on the generate POST, so a Host
+   * had to attempt a generation to be told they must not start one. The locale is normalized here
+   * exactly as the generate route normalizes it; an unsupported value is refused rather than
+   * silently becoming English.
+   */
+  const rawLocale = req.nextUrl.searchParams.get("locale");
+  if (rawLocale !== null && rawLocale !== "" && rawLocale !== "en" && rawLocale !== "ko") {
+    return managerJson(base, req, { error: "generation_locale_invalid", code: "generation_locale_invalid" }, 400);
+  }
+  const locale = rawLocale === "ko" ? "ko" : "en";
+  const governance = await readGenerationGovernance(admin, user.id, id, locale);
+
+  return managerJson(base, req, {
+    draft: toClientArenaDraft(draft),
+    // Absent rather than guessed when the read fails: a fabricated `ready` would invite exactly the
+    // spending this arc exists to prevent.
+    ...(governance ? { governance } : {}),
+  });
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

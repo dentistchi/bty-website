@@ -27,6 +27,7 @@ import {
   isValidGenerationInputRevision,
   nextGenerationInputRevision,
 } from "@/domain/foundry/arena-draft/generationInputRevision";
+import { guidedAnswersChanged, validateGuidedAnswers } from "@/domain/foundry/arena-draft/guidedSetupAnswers";
 
 /**
  * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
@@ -625,6 +626,107 @@ export async function saveDraftBoundary(
     .single<ArenaDraftRow>();
   if (error || !data) return { ok: false, reason: "stale_revision" };
   return { ok: true, value: { row: data, invalidated: changed } };
+}
+
+/**
+ * READ the server's governance for one draft and locale (Slice 3.2I-R5B2-R5C-4B).
+ *
+ * The GET path previously returned only the draft, so `revision_required` was reachable ONLY as a
+ * 409 on the generate POST — a Host had to attempt a generation to be told they must not. This is
+ * the read seam that lets the screen say it up front. It writes nothing.
+ */
+export async function readGenerationGovernance(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  locale: Locale,
+): Promise<GenerationGovernance | null> {
+  try {
+    const { data, error } = await admin.rpc("get_foundry_practice_generation_governance_v1", {
+      p_draft_id: draftId,
+      p_owner_user_id: ownerUserId,
+      p_locale: locale,
+    });
+    const row = (Array.isArray(data) ? data[0] : data) as
+      | {
+          generation_input_revision: number;
+          generation_locale: "en" | "ko";
+          refusal_count: number;
+          state: GenerationGovernance["state"];
+          can_start_generation: boolean;
+          requires_explicit_confirmation: boolean;
+          review_setup_recommended: boolean;
+        }
+      | undefined;
+    if (error || !row) return null;
+    return {
+      generationInputRevision: row.generation_input_revision,
+      generationLocale: row.generation_locale,
+      refusalCount: row.refusal_count,
+      state: row.state,
+      canStartGeneration: row.can_start_generation,
+      requiresExplicitConfirmation: row.requires_explicit_confirmation,
+      reviewSetupRecommended: row.review_setup_recommended,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save the two editable GUIDED SETUP ANSWERS (Slice 3.2I-R5B2-R5C-4B).
+ *
+ * Guarded by BOTH revisions. The optimistic token protects against another tab's write; the
+ * semantic epoch protects against a Host saving under governance they last read two edits ago.
+ *
+ * A SEMANTIC NO-OP writes nothing at all — not even the optimistic bump — because a save that
+ * changes nothing the model can see must not look like a new input epoch, and must not be usable
+ * to reset retry governance.
+ */
+export async function saveDraftGuidedAnswers(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  guidedInput: unknown,
+  expectedRevision: number | null,
+  expectedGenerationInputRevision: number | null,
+): Promise<ServiceResult<{ row: ArenaDraftRow; changed: boolean }> & { errors?: string[] }> {
+  const check = validateGuidedAnswers(guidedInput);
+  if (!check.ok) return { ok: false, reason: "guided_answers_invalid", errors: check.errors };
+
+  const current = await getOwnerArenaDraft(admin, ownerUserId, draftId);
+  if (!current) return { ok: false, reason: "arena_draft_not_found" };
+  if (expectedRevision !== null && expectedRevision !== current.revision) return { ok: false, reason: "stale_revision" };
+  if (
+    expectedGenerationInputRevision !== null &&
+    expectedGenerationInputRevision !== current.generation_input_revision
+  ) {
+    // The Host's screen is describing an input epoch that no longer exists.
+    return { ok: false, reason: "generation_input_revision_stale" };
+  }
+
+  const changed = guidedAnswersChanged(current.guided_answers, check.value);
+  if (!changed) return { ok: true, value: { row: current, changed: false } };
+
+  const nextGuided: StoredGuidedAnswers = { ...current.guided_answers, ...check.value };
+  const { data, error } = await admin
+    .from("foundry_arena_scenario_drafts")
+    .update({
+      guided_answers: nextGuided,
+      revision: current.revision + 1,
+      generation_input_revision: nextGenerationInputRevision(current.generation_input_revision, true),
+      // A scenario generated from different answers is not this draft's scenario any more.
+      scenario_draft: null,
+      generation_source: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", draftId)
+    .eq("owner_user_id", ownerUserId)
+    .eq("revision", current.revision)
+    .select(DRAFT_COLS)
+    .single<ArenaDraftRow>();
+  if (error || !data) return { ok: false, reason: "stale_revision" };
+  return { ok: true, value: { row: data, changed: true } };
 }
 
 /**

@@ -72,6 +72,8 @@ type ClientDraft = {
   scenario_draft: ArenaScenarioDraft | null;
   generation_source: "ai" | "template" | "edited" | null;
   revision: number;
+  /** R5C-4A1 — the SEMANTIC input epoch, distinct from `revision`. Sent back on every submission. */
+  generation_input_revision?: number;
   /** R2.23D — the setup surface needs the confirmed boundary and the Host's active selection. */
   guided_answers?: {
     /**
@@ -107,6 +109,12 @@ export function ArenaPracticeFlow({
   const [q2, setQ2] = useState("");
 
   const [draftId, setDraftId] = useState<string | null>(null);
+  /**
+   * R5C-4B — the Host's explicit same-input acknowledgement, held in a ref so it is read at submit
+   * time and never persisted. It does not survive reload, and the epoch/locale check below discards
+   * it when the thing it was given for has moved.
+   */
+  const confirmSameInputRetryRef = useRef(false);
   const [editable, setEditable] = useState<ArenaScenarioDraft | null>(null);
   const [genSource, setGenSource] = useState<"ai" | "template" | "edited" | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -135,6 +143,12 @@ export function ArenaPracticeFlow({
 
   // 3.0B — publish + test-in-arena
   const [revision, setRevision] = useState<number>(0);
+  /**
+   * R5C-4A1/4B — the SEMANTIC input epoch, tracked separately from `revision` because they answer
+   * different questions and move on different writes. Sent with every submission so a confirmation
+   * given for one input can never authorize another.
+   */
+  const [generationInputRevision, setGenerationInputRevision] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [testing, setTesting] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "publishing" | "published" | "stale" | "error">("idle");
@@ -197,6 +211,7 @@ export function ArenaPracticeFlow({
                 setEditable(d.draft.scenario_draft);
                 setGenSource(d.draft.generation_source);
                 setRevision(d.draft.revision);
+                setGenerationInputRevision(d.draft.generation_input_revision ?? null);
                 setDirty(false);
                 void refreshLiveStatus(d.draft.id); // already published at this revision?
                 setPhase("editor");
@@ -209,6 +224,7 @@ export function ArenaPracticeFlow({
                 // now a resumable setup rather than a place to stop.
                 setDraftId(d.draft.id);
                 setRevision(d.draft.revision);
+                setGenerationInputRevision(d.draft.generation_input_revision ?? null);
                 setSetupDraft(d.draft);
                 setPhase("setup");
                 return;
@@ -265,6 +281,7 @@ export function ArenaPracticeFlow({
         }
         setSetupDraft(data.draft);
         setRevision(data.draft.revision);
+        setGenerationInputRevision(data.draft.generation_input_revision ?? null);
       } catch {
         setScopeSaveError(true);
       } finally {
@@ -327,6 +344,7 @@ export function ArenaPracticeFlow({
               if (d.draft) {
                 setSetupDraft(d.draft);
                 setRevision(d.draft.revision);
+                setGenerationInputRevision(d.draft.generation_input_revision ?? null);
               }
             }
             return;
@@ -341,6 +359,7 @@ export function ArenaPracticeFlow({
         }
         setSetupDraft(data.draft);
         setRevision(data.draft.revision);
+        setGenerationInputRevision(data.draft.generation_input_revision ?? null);
         setBoundaryInvalidated(data.invalidated === true);
       } catch {
         setBoundarySaveError(t.boundarySaveError);
@@ -375,7 +394,16 @@ export function ArenaPracticeFlow({
         credentials: "include",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: loc }),
+        /**
+         * R5C-4B — the governed POST contract. The epoch is sent so a confirmation made for one
+         * input can never authorize another, and the acknowledgement is the ONLY governance value
+         * the client supplies: no refusal count, no state, no local admission decision.
+         */
+        body: JSON.stringify({
+          locale: loc,
+          expectedGenerationInputRevision: generationInputRevision,
+          confirmSameInputRetry: confirmSameInputRetryRef.current === true,
+        }),
         signal: controller.signal,
       });
       const body = (await res.json().catch(() => ({}))) as {
@@ -399,6 +427,7 @@ export function ArenaPracticeFlow({
       setEditable(data.draft.scenario_draft);
       setGenSource(data.draft.generation_source);
       setRevision(data.draft.revision);
+      setGenerationInputRevision(data.draft.generation_input_revision ?? null);
       setDirty(false);
       setPublishState("idle");
       setLivePracticeId(null);
@@ -418,7 +447,7 @@ export function ArenaPracticeFlow({
       clearInterval(tick);
       submittingRef.current = false;
     }
-  }, [draftId, loc]);
+  }, [draftId, loc, generationInputRevision]);
 
   const q1Ready = q1 !== null && (q1 !== "other" || q1Custom.trim().length > 0);
   const q2Ready = q2.trim().length > 0;
@@ -460,6 +489,7 @@ export function ArenaPracticeFlow({
         // editor (R5B2) replaces the Q1/Q2 step; generation happens after the boundary is set.
         setDraftId(data.draft.id);
         setRevision(data.draft.revision);
+        setGenerationInputRevision(data.draft.generation_input_revision ?? null);
         setSetupDraft(data.draft);
         setPhase("setup");
         return;
@@ -468,6 +498,7 @@ export function ArenaPracticeFlow({
       setEditable(data.draft.scenario_draft);
       setGenSource(data.draft.generation_source);
       setRevision(data.draft.revision);
+      setGenerationInputRevision(data.draft.generation_input_revision ?? null);
       setDirty(false);
       setPublishState("idle");
       setLivePracticeId(null);
