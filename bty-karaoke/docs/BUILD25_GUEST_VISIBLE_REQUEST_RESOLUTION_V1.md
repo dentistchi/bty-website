@@ -1,24 +1,23 @@
 # BUILD 25 — GUEST-VISIBLE REQUEST RESOLUTION V1
 
-**Status: IMPLEMENTED · MIGRATION APPLY BLOCKED · NOT DEPLOYED — 2026-08-02**
+**Status: IMPLEMENTED · MIGRATION VERIFIED AND READY TO APPLY · NOT DEPLOYED — 2026-08-02**
 
 All three code halves are written, tested, committed, and pushed. Native build **80** is built in
 both configurations and **installed on the Founder device**. Production still runs **BUILD 24**.
 
-**This build is NOT deployed, and the deployment is deliberately withheld — not merely pending.**
+**This build is NOT deployed.** The migration has not yet been applied, and the deployment is
+deliberately sequenced behind it — not merely pending.
 
 - The production migration `20260808120000_karaoke_request_resolution_v1` is **UNAPPLIED**,
-  confirmed by direct read-only probe (§7.1), not assumed.
-- The Supabase CLI cannot apply it, cannot dry-run it, and cannot even *read* the migration
-  ledger for this project. Root cause is identified in §7.2 — it is an **access-privilege fact,
-  not a transient error**.
+  confirmed by direct read-only probe (§7.1) and by the CLI ledger (§7.2), not assumed.
 - **Deploying the web half before the migration would break two currently-working production
   flows** — Guest self-cancel and Host remove/skip (§7.3). This is proven from the diff, not
-  estimated. That is why deployment was stopped rather than attempted.
+  estimated. That is why the order is fixed: migration first, deployment second.
 
-This is the deviation BUILD 24 §7.3 recorded and §10 carried forward with the instruction
-*"clear before the next migration."* It was not cleared, and it has now blocked exactly where it
-was predicted to.
+**The BUILD 24 §7.3 / §10 carry-forward — *"clear before the next migration"* — is now CLEARED
+(§7.2).** It was never an access-privilege problem. The CLI ledger reads correctly, and
+local↔remote parity is verified clean: 37 migrations, 36 synced, exactly one local-only
+(this build's), zero remote-only.
 
 **No Founder device gate has been executed.** G1–G8 cannot produce honest evidence until the
 server half is live; the app is installed and ready, and the gate sequence is defined in §8.
@@ -246,12 +245,12 @@ byte-identical afterwards (verified by SHA-256).
 
 ---
 
-## 7. Deployment — BLOCKED
+## 7. Deployment — not yet performed
 
 ```text
 Production (unchanged)   BUILD 24
 /api/karaoke-build       abece404917a          (= BUILD 24 G1 fix, abece404)
-Migration                20260808120000        NOT APPLIED
+Migration                20260808120000        NOT APPLIED — verified ready, dry run clean
 Worker                   unchanged — no BUILD 25 deployment was attempted
 Native                   build 80 (804c837) — INSTALLED on the Founder device
 ```
@@ -271,36 +270,82 @@ GET /rest/v1/karaoke_requests?select=id,status&limit=1        (control)
 The control proves the probe path is sound, so the `42703` is a real absence and not an
 authentication artefact.
 
-### 7.2 Root cause — the CLI identity cannot reach this project
+### 7.2 The BUILD 24 403 — root cause found, and CLEARED
+
+**This section corrects an earlier revision of this document, which attributed the 403 to the CLI
+identity lacking access to the project. That diagnosis was WRONG, and the correction matters:
+acting on it would have meant changing organisation membership to fix something that was never
+about membership.**
 
 ```text
 supabase migration list --linked        403  "Your account does not have the necessary
 supabase db push --linked --dry-run     403   privileges to access this endpoint."
 ```
 
-BUILD 24 recorded this as an unexplained 403. **It is now explained.** `supabase projects list`
-returns exactly one project for the authenticated identity:
+The 403 comes from invoking **bare `supabase`**, which falls back to the CLI's stored login — an
+identity that can see only `bty-release-manager` / `gdqqivlzhgtqdqmvndkf`.
 
-```text
-ORG ID                | REFERENCE ID         | NAME
-bpnzomwltvvhtjuwzeiw  | gdqqivlzhgtqdqmvndkf | bty-release-manager
+The correct credential was on the machine the whole time. `~/.zshrc` defines a wrapper:
+
+```zsh
+supabase-karaoke() {
+  local token
+  token="$(security find-generic-password -a "$USER" -s "bty-norebang-supabase-pat" -w)" || { … }
+  SUPABASE_ACCESS_TOKEN="…$token" supabase "$@"
+  …
+}
 ```
 
-`zycwaqignioawtqynopj` — the BTY Norebang production project — **is not in the list and is not
-marked LINKED.** The CLI is authenticated as an identity with no access to it. This is a standing
-access-privilege fact, not a transient platform error, and no retry will change it.
+It reads a **dedicated btyNorebang PAT from the macOS Keychain** (item
+`bty-norebang-supabase-pat`) and injects it for one invocation only. `SUPABASE_ACCESS_TOKEN` is
+deliberately **not** exported into the ambient environment — so nothing is overriding the stored
+login; the opposite is true. Without the wrapper the *right* token is never presented at all.
 
-The CLI's fallback path (`SUPABASE_DB_PASSWORD`, or `--db-url`) is also unavailable: no database
-password and no access token exist on this machine or in the repository. The only credential
-present is the `service_role` key, which reaches **PostgREST**, and PostgREST cannot execute DDL.
+Invoked through `supabase-karaoke`:
 
-**Consequence, stated plainly:** local↔remote migration parity **cannot be established from this
-machine**, in either direction. §7.1 proves this one migration is unapplied; it does **not** prove
-the rest of the ledger is consistent. That remains unverified.
+```text
+LINKED | ORG ID               | REFERENCE ID         | NAME
+  ●    | mzbvnugouzrkinmqwiaf | zycwaqignioawtqynopj | btyNorebang
+       | mzbvnugouzrkinmqwiaf | jztqpfnfdsefcavcmigf | bty-oauth-spike
+       | mzbvnugouzrkinmqwiaf | mveycersmqfiuddslnrj | dentistchi's Project
+```
 
-No repair, force, squash, manual history edit, or bypass was used. None is authorised.
+`zycwaqignioawtqynopj` is visible and marked **LINKED**, matching `supabase/.temp/project-ref`.
 
-### 7.3 Why deployment was stopped, and not merely deferred
+**No re-authentication, no browser login, and no membership change was required or performed.**
+
+**OPERATING RULE — use `supabase-karaoke`, never bare `supabase`, in this repository.** A bare
+invocation does not fail in a way that names its cause: it returns a 403 that reads like a
+permissions problem and invites exactly the wrong fix.
+
+### 7.2.1 Ledger parity — verified clean
+
+| Measure | Result |
+|---|---|
+| Total migrations | **37** |
+| Local == Remote | **36** |
+| Local-only | **1** — `20260808120000`, this build's, correctly unapplied |
+| Remote-only | **0** |
+
+No drift in either direction. **The BUILD 24 §7.3 deviation — recorded there as "cannot detect
+ledger drift" and carried forward by §10 as "clear before the next migration" — is hereby
+CLEARED**, by measurement rather than assumption.
+
+### 7.2.2 Dry run
+
+```text
+DRY RUN: migrations will *not* be pushed to the database.
+Connecting to remote database...
+Would push these migrations:
+ • 20260808120000_karaoke_request_resolution_v1.sql
+Finished supabase db push.
+```
+
+**Exactly one migration, and it is the intended one.** No unrelated and no destructive migration
+is included. No repair, force, squash, manual history edit, or bypass was used; none is
+authorised.
+
+### 7.3 Why deployment is sequenced behind the migration
 
 Deploying `4be711ee` before the migration would **break two flows that work in production today**.
 Both write the new columns unconditionally in the same statement as the status flip:
@@ -318,10 +363,11 @@ second.
 
 | Step | Status |
 |---|---|
-| Migration dry run | **NOT EXECUTED** — 403 (§7.2) |
-| Migration apply | **NOT EXECUTED** — blocked |
-| Migration parity re-check | **NOT EXECUTED** — blocked |
-| Production deployment | **NOT EXECUTED** — deliberately withheld (§7.3) |
+| Migration dry run | **EXECUTED — clean** (§7.2.2): exactly `20260808120000` |
+| Migration ledger parity | **EXECUTED — clean** (§7.2.1): 36 synced, 1 local-only, 0 remote-only |
+| Migration apply | **NOT EXECUTED** — awaiting explicit Founder authorisation |
+| Migration parity re-check after apply | **NOT EXECUTED** — follows the apply |
+| Production deployment | **NOT EXECUTED** — sequenced behind the migration (§7.3) |
 | Deployment ID / version | **NONE** — no deployment exists to identify |
 | Live API smoke of `POST …/requests/resolved` | **NOT EXECUTABLE** — the route is not deployed; production would return 404 for reasons unrelated to the contract |
 | Live security smoke (non-owner refusal, expired capability) | **NOT EXECUTABLE** — same reason; asserting it against an undeployed route would prove nothing |
@@ -393,19 +439,22 @@ Neither is a build input.
 ## 10. Status
 
 ```text
-BUILD 25 — IMPLEMENTED · MIGRATION APPLY BLOCKED · NOT DEPLOYED    2026-08-02
+BUILD 25 — IMPLEMENTED · MIGRATION READY TO APPLY · NOT DEPLOYED   2026-08-02
 
 Code            COMPLETE   7bc6ccd5 · 4be711ee · a6b2681 · 804c837 (build 80)
 Tests           GREEN      web 2137/204 · tsc clean · Host 1652 · Guest 771
 Builds          GREEN      Debug + Release · CFBundleVersion 80 / 80
 Device          READY      build 80 installed on the Founder device
-Migration       BLOCKED    CLI identity has no access to zycwaqignioawtqynopj (§7.2)
-Deployment      WITHHELD   deploy-before-migrate breaks live cancel + remove/skip (§7.3)
+Ledger parity   CLEAN      37 total · 36 synced · 1 local-only · 0 remote-only (§7.2.1)
+Dry run         CLEAN      exactly 20260808120000_karaoke_request_resolution_v1 (§7.2.2)
+Migration       PENDING    verified ready — awaiting explicit Founder authorisation to apply
+Deployment      PENDING    sequenced behind the migration; deploy-first breaks live
+                           cancel + remove/skip (§7.3)
 Gates G1–G8     NOT RUN    cannot produce honest evidence until the server half is live
 
-BLOCKING ITEM — carried from BUILD 24 §7.3 / §10 ("clear before the next migration"):
-  the Supabase CLI cannot reach the production project. It requires a Founder credential
-  action; it cannot be resolved from this machine, and no bypass is authorised.
+CLEARED by this build: the BUILD 24 §7.3 / §10 carry-forward ("clear before the next
+  migration"). The 403 was an invocation fault, not an access-privilege fault — use
+  `supabase-karaoke`, never bare `supabase` (§7.2). Ledger parity is now verified.
 ```
 
 **PASS / CLOSED is not claimed and must not be claimed** — not for the build, and not for any
@@ -428,4 +477,4 @@ individual gate.
 | Live build endpoint | `https://norebang.btydaily.com/api/karaoke-build` → `abece404917a` (BUILD 24) |
 
 Related: [BUILD 24](./BUILD24_LIVE_PLAYBACK_CLOCK_FREE_BALANCE_TRUTH_V1.md) §7.3 · §10 —
-the deviation this build was blocked by.
+the deviation this build CLEARED (§7.2).
