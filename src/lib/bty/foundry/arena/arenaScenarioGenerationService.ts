@@ -42,6 +42,15 @@ import {
   type BoundaryReviewMetrics,
 } from "./boundaryReviewStage";
 import { reviewBoundarySurfaces, reviewFieldRepair } from "./narrowBoundaryReviewer";
+import type { CallOutcome } from "@/domain/foundry/arena-draft/generationCallSequence";
+import {
+  classifyThrownCall,
+  isProviderCallTelemetryError,
+  readCallUsage,
+  withProviderCall,
+  type GenerationAccounting,
+  type ProviderCallScope,
+} from "./generationAccounting";
 import { buildBroadReviewRequest, serializeBroadReviewRequest } from "./reviewRequestProjection";
 import { projectConstraintAssessments } from "@/domain/foundry/arena-draft/constraintProjection";
 import { validateBoundaryGrounding } from "@/domain/foundry/arena-draft/boundaryGrounding";
@@ -504,11 +513,49 @@ type LlmOutcome =
  * structured rules; when present, the provider's per-choice `constraintAssessments` are
  * validated deterministically (then discarded — never persisted, never learner-facing).
  */
-async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBoundary["constraints"], retryFeedback = ""): Promise<LlmOutcome> {
+async function generateWithLlm(
+  input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
+  retryFeedback = "",
+  /** R5C-2B — the submission's ONE accounting context. Absent for runner-only callers. */
+  accounting?: GenerationAccounting | null,
+): Promise<LlmOutcome> {
+  // Built BEFORE the child row exists. A missing credential is not a provider call, and recording
+  // one would corrupt the invocation count this whole table exists to make trustworthy.
+  let client: ReturnType<typeof getLlmClient>;
+  try {
+    client = getLlmClient();
+  } catch (e) {
+    logGenOutcome("provider_error");
+    return { ok: false, reason: "generation_failed", fault: { kind: "transport", category: categorizeThrown(e, false) } };
+  }
+  return withProviderCall(
+    accounting,
+    {
+      kind: "generation",
+      model: getLlmModel(),
+      providerTimeoutMs: LLM_GEN_TIMEOUT_MS,
+      maxTokens: LLM_GEN_MAX_TOKENS,
+      temperature: LLM_GEN_TEMPERATURE,
+      topP: LLM_GEN_TOP_P,
+      structuredOutputMode: "json_schema_strict",
+      locale: input.locale,
+    },
+    async (call) => generateWithLlmCall(client, call, input, constraints, retryFeedback),
+  );
+}
+
+/** The instrumented body: exactly one provider call, with every exit naming that call's outcome. */
+async function generateWithLlmCall(
+  client: ReturnType<typeof getLlmClient>,
+  call: ProviderCallScope,
+  input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
+  retryFeedback: string,
+): Promise<LlmOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_GEN_TIMEOUT_MS);
   try {
-    const client = getLlmClient();
     const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
@@ -529,19 +576,34 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
       { signal: controller.signal },
     );
     const choice = completion.choices[0];
+    // ---- RESPONSE IDENTITY (R5C-2B Part 11) --------------------------------
+    // Captured HERE: after extraction, before `stripJsonFences`, before `JSON.parse`, before any
+    // normalization. The digest is of what the provider actually sent — not of what survived
+    // parsing — so two calls are comparable even when only one of them parsed.
+    const rawContent = choice?.message?.content ?? null;
+    const finishReason = choice?.finish_reason ?? null;
+    const usage = readCallUsage(completion);
+    /** Name this CALL's outcome. Never a judgment about the content a later gate may refuse. */
+    const settle = (outcome: CallOutcome, withContent = true) =>
+      call.settle({ outcome, modelContent: withContent ? rawContent : null, finishReason, ...usage });
+
     // A provider refusal is an explicit safe refusal, never scenario content.
     if (choice?.message?.refusal) {
+      // The envelope arrived, but carried no generated content to digest.
+      await settle("empty_output", false);
       logGenOutcome("provider_refused", "provider_refusal", { finishReason: choice?.finish_reason });
       return { ok: false, reason: "generation_rejected", rejection: singleFinding("provider_refusal", "provider_envelope") };
     }
     // A truncated body is not malformed authoring — it is an output-budget failure. Parsing it
     // would report a misleading `malformed_shape`, so it is detected and named explicitly.
     if (choice?.finish_reason === "length") {
+      await settle("malformed_output");
       logGenOutcome("provider_rejected", "truncated_output", { finishReason: choice?.finish_reason, rawLength: choice?.message?.content?.length });
       return { ok: false, reason: "generation_rejected", rejection: singleFinding("truncated_output", "provider_envelope") };
     }
-    const raw = choice?.message?.content;
+    const raw = rawContent;
     if (!raw) {
+      await settle("empty_output", false);
       logGenOutcome("provider_failed", "empty_output");
       // R5A — a 2xx with nothing usable in it is NOT the same event as an abort or a transport
       // rejection. Naming it here is what stops the three collapsing into one attempt outcome.
@@ -551,10 +613,14 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
+      await settle("malformed_output");
       logGenOutcome("provider_rejected", "malformed_shape", { finishReason: choice?.finish_reason, rawLength: raw.length, rawSample: raw.slice(-200) });
       return { ok: false, reason: "generation_rejected", rejection: singleFinding("malformed_shape", "provider_envelope") };
     }
     if (parsed && typeof parsed === "object" && (parsed as { noSafeJudgmentSpace?: unknown }).noSafeJudgmentSpace === true) {
+      // The provider delivered the structured output it was asked for. That the answer is "no safe
+      // judgment space" is a product decision about the case, not a failed call.
+      await settle("success");
       logGenOutcome("no_safe_judgment_space");
       return { ok: false, reason: "no_safe_judgment_space" };
     }
@@ -563,9 +629,16 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     // provider result can never reach canonicalization or persistence.
     const dto = validateProviderScenario(parsed);
     if (!dto.ok) {
+      await settle("schema_invalid");
       logGenOutcome("provider_rejected", dto.errors[0], { finishReason: choice?.finish_reason, rawLength: raw.length });
       return { ok: false, reason: "generation_rejected", rejection: resolveRejection(dto.errors.map((code) => ({ code, gate: "provider_dto" })))! };
     }
+    // ---- THE CALL SUCCEEDED (R5C-2B Part 6) --------------------------------
+    // The provider returned extractable content and the structured output this site required.
+    // Everything below is SERVER work — canonicalization, deterministic quality gates, boundary
+    // grounding. If any of it refuses the scenario, that refusal belongs to the parent attempt's
+    // attribution; this call still delivered what it was asked for and stays `success`.
+    await settle("success");
     const canonical = canonicalizeProviderScenario(dto.value);
     // Re-validate the COMPLETED canonical object — canonicalization is never trusted blindly.
     const result = parseArenaScenarioDraft(canonical.draft);
@@ -624,6 +697,15 @@ async function generateWithLlm(input: ScenarioGenInput, constraints: PracticeBou
     const qualityWarnings = validateBranchedScenario(result.value).warnings;
     return { ok: true, draft: result.value, warnings: [...result.warnings, ...qualityWarnings], constructions: canonical.constructionsByChoiceId };
   } catch (e) {
+    // A telemetry failure is NOT a provider failure. It must never be classified as one, and it
+    // must not be swallowed into a product result — the submission cannot be accounted for.
+    if (isProviderCallTelemetryError(e)) throw e;
+    const cls = classifyThrownCall(e, controller.signal.aborted);
+    await call.settle({
+      outcome: cls.outcome,
+      providerHttpStatus: cls.providerHttpStatus,
+      providerErrorCategory: cls.providerErrorCategory,
+    });
     if (controller.signal.aborted) {
       logGenOutcome("provider_timeout");
       return { ok: false, reason: "generation_failed", fault: { kind: "timeout" } };
@@ -780,6 +862,41 @@ async function reviewConstraintCompliance(
   constructions: Record<string, unknown> = {},
   /** R2.25 — the frozen subject both attempts share, and which attempt this is. */
   subject?: { sha256: string; attempt: number },
+  /** R5C-2B — the submission's ONE accounting context. Absent for runner-only callers. */
+  accounting?: GenerationAccounting | null,
+): Promise<ReviewOutcome> {
+  let client: ReturnType<typeof getLlmClient>;
+  try {
+    client = getLlmClient();
+  } catch {
+    // No credential means no call was made; no child row may claim otherwise.
+    return { kind: "transport_failed" };
+  }
+  return withProviderCall(
+    accounting,
+    {
+      kind: "semantic_review",
+      model: getLlmModel(),
+      providerTimeoutMs: LLM_REVIEW_TIMEOUT_MS,
+      maxTokens: LLM_REVIEW_MAX_TOKENS,
+      temperature: LLM_REVIEW_TEMPERATURE,
+      topP: LLM_REVIEW_TOP_P,
+      structuredOutputMode: "json_schema_strict",
+      locale: input.locale,
+    },
+    async (call) => reviewConstraintComplianceCall(client, call, input, constraints, draft, constructions, subject),
+  );
+}
+
+/** The instrumented body: exactly one semantic-review provider call. */
+async function reviewConstraintComplianceCall(
+  client: ReturnType<typeof getLlmClient>,
+  call: ProviderCallScope,
+  input: ScenarioGenInput,
+  constraints: PracticeBoundary["constraints"],
+  draft: ArenaScenarioDraft,
+  constructions: Record<string, unknown>,
+  subject?: { sha256: string; attempt: number },
 ): Promise<ReviewOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_REVIEW_TIMEOUT_MS);
@@ -793,7 +910,7 @@ async function reviewConstraintCompliance(
     // R2.29 Part 15 — built by the SHARED projection, so the replay path cannot drift from it again.
     const activeBoundaries = constraints.map((c) => ({ id: c.id, statement: c.statement }));
     const payload = buildBroadReviewRequest(draft, activeBoundaries, constructions);
-    const completion = await getLlmClient().chat.completions.create(
+    const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
         messages: [
@@ -828,15 +945,26 @@ async function reviewConstraintCompliance(
       errors: [],
       ...over,
     });
+    // Response identity captured after extraction, before fence-stripping and parsing.
+    const rawContent = rc?.message?.content ?? null;
+    const usage = readCallUsage(completion);
+    const settle = (outcome: CallOutcome, withContent = true) =>
+      call.settle({ outcome, modelContent: withContent ? rawContent : null, finishReason, ...usage });
+
     if (finishReason === "length") {
+      await settle("malformed_output");
       return { kind: "malformed", errors: ["review_truncated"], evidence: evidence({ errors: ["review_truncated"] }) };
     }
-    const raw = rc?.message?.content;
-    if (!raw) return { kind: "transport_failed" };
+    const raw = rawContent;
+    if (!raw) {
+      await settle("empty_output", false);
+      return { kind: "transport_failed" };
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
+      await settle("malformed_output");
       return { kind: "malformed", errors: ["review_not_json"], evidence: evidence({ errors: ["review_not_json"] }) };
     }
     const branchCount = Object.keys(draft.branches ?? {}).length;
@@ -848,6 +976,12 @@ async function reviewConstraintCompliance(
       // so a review that skipped the tradeoff or action phase can no longer accept.
       choices: enumerateChoices(draft),
     });
+    // ---- THE CALL'S OUTCOME (R5C-2B Part 10) -------------------------------
+    // `validateSemanticReview` IS this site's required-output check. Passing it means the provider
+    // delivered the structured verdict it was asked for — so `reject`, `no_safe` and an
+    // inconclusive verdict are all `success`, and only the parent names the refusal. Failing it
+    // means the structured output was not the one required, which is a call-level failure.
+    await settle(v.ok ? "success" : "schema_invalid");
     // A contradictory or unsupported review is NOT a safety outcome — it is a broken review.
     // R2.25 splits the two responses it can deserve. Everything is captured BEFORE reduction.
     // R2.27 — did the reviewer answer about EXACTLY the active set? Coverage only; whether its
@@ -945,7 +1079,15 @@ async function reviewConstraintCompliance(
       };
     }
     return { kind: "ok", boundaryEvidence: v.value.boundaryAssessments };
-  } catch {
+  } catch (e) {
+    // A telemetry failure is not a transport failure and must not be reported as one.
+    if (isProviderCallTelemetryError(e)) throw e;
+    const cls = classifyThrownCall(e, controller.signal.aborted);
+    await call.settle({
+      outcome: cls.outcome,
+      providerHttpStatus: cls.providerHttpStatus,
+      providerErrorCategory: cls.providerErrorCategory,
+    });
     return { kind: "transport_failed" };
   } finally {
     clearTimeout(timer);
@@ -1040,7 +1182,16 @@ function resolveAuthority(
  * and proven by an independent semantic review. Bounded to `MAX_GENERATION_ATTEMPTS`
  * generation + review cycles. Never returns a generic deterministic scenario.
  */
-export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promise<GenerationResult> {
+export async function generateArenaScenarioDraft(
+  input: ScenarioGenInput,
+  /**
+   * R5C-2B — the submission's ONE provider-call accounting context, created by the caller AFTER the
+   * parent attempt row is durable. All four call sites below share it, so a single global sequence
+   * describes the real execution order across generation, boundary review, repair and semantic
+   * review. Runner-only callers pass nothing and create no child rows.
+   */
+  accounting?: GenerationAccounting | null,
+): Promise<GenerationResult> {
   const authority = resolveAuthority(input);
   if (authority.kind === "decline") {
     logGenOutcome("declined", authority.reason);
@@ -1061,7 +1212,7 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
   let boundaryMetrics: BoundaryReviewMetrics = emptyBoundaryMetrics();
 
   for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
-    const llm = await generateWithLlm(input, constraints, retryFeedback);
+    const llm = await generateWithLlm(input, constraints, retryFeedback, accounting);
     if (!llm.ok) {
       // Transport / no-safe-space are terminal; a correctable rejection may regenerate once.
       // A capability gap is terminal — retrying the same unsupported schema cannot succeed, and
@@ -1173,8 +1324,11 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
         {
           // R2.52 — `surfaceRefs` is no longer dropped, and the ONE permitted repair is the field
           // PATCH reviewer. R2.51 measured this caller supplying neither.
-          review: (s, a, surfaceRefs) => reviewBoundarySurfaces(s, a, surfaceRefs),
-          repair: (s, plan, a) => reviewFieldRepair(s, plan, a),
+          // R5C-2B — the SAME accounting context reaches both boundary call sites through these
+          // closures, so `boundary_review` and `boundary_repair` count independently while sharing
+          // the submission's one global sequence. The stage itself is untouched.
+          review: (s, a, surfaceRefs) => reviewBoundarySurfaces(s, a, surfaceRefs, undefined, accounting),
+          repair: (s, plan, a) => reviewFieldRepair(s, plan, a, undefined, accounting),
           log: (outcome, code, extra) => logGenOutcome(outcome, code, extra),
         },
         {
@@ -1251,10 +1405,14 @@ export async function generateArenaScenarioDraft(input: ScenarioGenInput): Promi
           }
         }
 
-        review = await reviewConstraintCompliance(input, constraints, llm.draft, llm.constructions, {
-          sha256: subjectSha,
-          attempt: rAttempt,
-        });
+        review = await reviewConstraintCompliance(
+          input,
+          constraints,
+          llm.draft,
+          llm.constructions,
+          { sha256: subjectSha, attempt: rAttempt },
+          accounting,
+        );
         if (review.kind === "contradiction" || (review.kind === "malformed" && review.evidence)) {
           reviewEvidences.push(review.evidence as ReviewEvidence);
         }

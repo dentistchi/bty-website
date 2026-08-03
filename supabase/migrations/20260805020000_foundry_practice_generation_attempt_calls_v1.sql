@@ -53,10 +53,13 @@ create table if not exists public.foundry_practice_generation_attempt_calls (
     'boundary_repair',
     'semantic_review'
   )),
-  -- 1..N across every provider call in the submission, in real execution order.
-  global_sequence integer not null check (global_sequence between 1 and 64),
-  -- 1..N independently within each kind.
-  kind_sequence integer not null check (kind_sequence between 1 and 64),
+  -- 1..14 across every provider call in the submission, in real execution order.
+  -- The ceiling is the MEASURED architecture (2 generation + 4 + 4 + 4), not a round number. A
+  -- looser bound would let a loop-limit regression write a fifteenth row and be read later as
+  -- evidence that fifteen calls were architecturally possible.
+  global_sequence integer not null check (global_sequence between 1 and 14),
+  -- 1..N independently within each kind, bounded by that kind's own measured loop limit.
+  kind_sequence integer not null,
 
   -- ---- lifecycle ----------------------------------------------------------
   lifecycle_state text not null default 'prepared'
@@ -130,7 +133,21 @@ create table if not exists public.foundry_practice_generation_attempt_calls (
     response_sha256 is null or outcome in ('success', 'malformed_output', 'schema_invalid')
   ),
 
+  -- Each kind's own measured loop limit, stated as an EXPLICIT matrix rather than one shared
+  -- bound. `generation` retries at most once (2 calls); each reviewer runs at most four times.
+  -- Writing 2 and 4 separately means a change to either loop limit fails here instead of being
+  -- absorbed by a bound wide enough to hide it.
+  constraint foundry_practice_gen_call_kind_seq_chk check (
+    (call_kind = 'generation' and kind_sequence between 1 and 2)
+    or (call_kind = 'boundary_review' and kind_sequence between 1 and 4)
+    or (call_kind = 'boundary_repair' and kind_sequence between 1 and 4)
+    or (call_kind = 'semantic_review' and kind_sequence between 1 and 4)
+  ),
+
   -- Corruption of the request-owned sequence is rejected by the database.
+  -- Together with `global_sequence between 1 and 14`, this uniqueness is also the ROW-COUNT
+  -- ceiling: fourteen distinct values exist, so one parent can never own a fifteenth call. No
+  -- counting trigger is needed, and none is defined.
   constraint foundry_practice_gen_call_global_seq_uniq unique (attempt_id, global_sequence),
   constraint foundry_practice_gen_call_kind_seq_uniq unique (attempt_id, call_kind, kind_sequence)
 );

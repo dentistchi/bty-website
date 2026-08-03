@@ -20,6 +20,7 @@ import { boundaryChanged, validateBoundary, type PracticeBoundary } from "@/doma
 import { availableSetKey, buildBoundaryScope, type PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, PRACTICE_SAMPLING, type Locale } from "./arenaScenarioGenerationService";
+import { createGenerationAccounting, isProviderCallTelemetryError } from "./generationAccounting";
 
 /**
  * Slice 3.2I-R5A.2 — lifecycle discriminator. A NEW authoritative Practice draft carries
@@ -357,6 +358,13 @@ export async function regenerateArenaDraft(
   });
   if (!attempt.ok) return { ok: false, reason: "generation_observability_unavailable" };
 
+  /**
+   * R5C-2B — ONE accounting context per submission, created only now that the parent is durable.
+   * It owns the single sequence allocator and recorder that all four provider call sites share, so
+   * `provider_invoked_at` under this attempt is the authoritative count of calls actually made.
+   */
+  const accounting = createGenerationAccounting(admin, attempt.attemptId);
+
   const startedAt = Date.now();
   /** Terminal for every path below, so no branch can leave the row `started` forever. */
   const finalize = (outcome: GenerationOutcome, extra: Partial<FinalizeAttemptInput> = {}) =>
@@ -364,19 +372,28 @@ export async function regenerateArenaDraft(
 
   let generated: Awaited<ReturnType<typeof generateArenaScenarioDraft>>;
   try {
-    generated = await generateArenaScenarioDraft({
-      locale,
-      facts: source.value.facts,
-      guided: current.guided_answers,
-      boundary: canonicalBoundary,
-      // R2.23C — the Host's ACTIVE selection, read from the SERVER, never from a generation request.
-      boundaryScope: current.guided_answers.practiceBoundaryScope ?? null,
-    });
+    generated = await generateArenaScenarioDraft(
+      {
+        locale,
+        facts: source.value.facts,
+        guided: current.guided_answers,
+        boundary: canonicalBoundary,
+        // R2.23C — the Host's ACTIVE selection, read from the SERVER, never from a generation request.
+        boundaryScope: current.guided_answers.practiceBoundaryScope ?? null,
+      },
+      accounting,
+    );
   } catch (e) {
     // An unexpected throw is still an outcome. Leaving the row open would recreate the exact
     // ambiguity this slice removes.
+    //
+    // R5C-2B — a `ProviderCallTelemetryError` arrives here too, and deliberately takes the SAME
+    // path. The submission could not be accounted for, so it stops before quality evaluation,
+    // before any reviewer, before persistence and without a second provider call. It is NOT
+    // reported as a provider failure: the category stays `unknown` and the attribution is the
+    // existing internal one, because no new parent taxonomy code belongs to this slice.
     await finalize("internal_failure", {
-      providerErrorCategory: categorizeThrown(e, false),
+      providerErrorCategory: isProviderCallTelemetryError(e) ? "unknown" : categorizeThrown(e, false),
       attribution: resolveAttribution({ reason: "internal_unclassified_failure" }),
     });
     return { ok: false, reason: "generation_failed", attemptRef: supportReference(attempt.attemptId) };

@@ -41,6 +41,17 @@ import {
   type ProviderFailureCode,
 } from "@/domain/foundry/arena-draft/boundaryTransportEvidence";
 import { LlmHttpError, getLlmClient, getLlmModel } from "@/lib/bty/llm/client";
+import type { CallOutcome } from "@/domain/foundry/arena-draft/generationCallSequence";
+import {
+  INERT_CALL_SCOPE,
+  classifyThrownCall,
+  isProviderCallTelemetryError,
+  readCallUsage,
+  tryGetLlmClient,
+  withProviderCall,
+  type GenerationAccounting,
+  type ProviderCallScope,
+} from "./generationAccounting";
 import { buildFieldRepairRequest, FIELD_REPAIR_SYSTEM_PROMPT } from "./narrowBoundaryContract";
 import { FIELD_REPAIR_JSON_SCHEMA, FIELD_REPAIR_SCHEMA_NAME, type FieldRepairPlan } from "@/domain/foundry/arena-draft/boundaryFieldRepair";
 import {
@@ -103,6 +114,37 @@ function readProviderErrorPayload(body: unknown): { type: string | null; code: s
  * NOT a semantic attempt and must not be counted as one.
  */
 export async function reviewBoundarySurfaces(
+  subject: NarrowBoundarySubject,
+  attempt: number,
+  surfaceRefs?: readonly string[],
+  deps?: { now?: () => number },
+  /** R5C-2B — the submission's ONE accounting context. Absent for runner-only callers. */
+  accounting?: GenerationAccounting | null,
+): Promise<NarrowBoundaryCallResult> {
+  // The client is built BEFORE any child row exists. A missing credential is not a provider call,
+  // and an invoked row claiming otherwise would corrupt the invocation count.
+  const client = tryGetLlmClient();
+  if (!client) return reviewBoundarySurfacesCall(null, INERT_CALL_SCOPE, subject, attempt, surfaceRefs, deps);
+  return withProviderCall(
+    accounting,
+    {
+      kind: "boundary_review",
+      model: getLlmModel(),
+      providerTimeoutMs: NARROW_BOUNDARY_SAMPLING.timeoutMs,
+      maxTokens: NARROW_BOUNDARY_SAMPLING.maxTokens,
+      temperature: NARROW_BOUNDARY_SAMPLING.temperature,
+      topP: NARROW_BOUNDARY_SAMPLING.topP,
+      structuredOutputMode: "json_schema_strict",
+      locale: null,
+    },
+    async (call) => reviewBoundarySurfacesCall(client, call, subject, attempt, surfaceRefs, deps),
+  );
+}
+
+/** The instrumented body: exactly one boundary-review provider call. */
+async function reviewBoundarySurfacesCall(
+  client: ReturnType<typeof getLlmClient> | null,
+  call: ProviderCallScope,
   subject: NarrowBoundarySubject,
   attempt: number,
   surfaceRefs?: readonly string[],
@@ -209,6 +251,14 @@ export async function reviewBoundarySurfaces(
     };
   };
 
+  // No credential means no request can be made. Returned BEFORE the timeout is armed, so nothing
+  // is left running and no provider invocation is implied.
+  if (!client) {
+    transport.sanitizedMessage = "llm client unavailable";
+    transport.responseState = "no_response";
+    return transportFailure();
+  }
+
   // ---- ONE timeout owner, armed immediately before the call -----------------
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), NARROW_BOUNDARY_SAMPLING.timeoutMs);
@@ -220,7 +270,7 @@ export async function reviewBoundarySurfaces(
     transport.providerInvocationStarted = true;
     transport.providerInvocationStartedAt = now();
 
-    const completion = await getLlmClient().chat.completions.create(
+    const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
         messages: [
@@ -245,18 +295,26 @@ export async function reviewBoundarySurfaces(
 
     const rc = completion.choices?.[0];
     const finishReason = rc?.finish_reason ?? null;
+    // Response identity captured after extraction, before fence-stripping and parsing.
+    const rawContent = rc?.message?.content ?? null;
+    const usage = readCallUsage(completion);
+    const settle = (outcome: CallOutcome, withContent = true) =>
+      call.settle({ outcome, modelContent: withContent ? rawContent : null, finishReason, ...usage });
+
     if (finishReason === "length") {
       transport.structuredOutputPresent = true;
+      await settle("malformed_output");
       return malformed("boundary_review_truncated", null, finishReason);
     }
 
-    const raw = rc?.message?.content;
+    const raw = rawContent;
     if (!raw) {
       // A success envelope with no content: the response WAS received, so this is a provider
       // response-parse failure, not a network failure.
       transport.structuredOutputPresent = false;
       transport.sanitizedMessage = "provider returned a success envelope with no message content";
       transport.localErrorName = null;
+      await settle("empty_output", false);
       return transportFailure();
     }
     transport.structuredOutputPresent = true;
@@ -265,9 +323,15 @@ export async function reviewBoundarySurfaces(
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
+      await settle("malformed_output");
       return malformed("boundary_review_not_json", null, finishReason);
     }
 
+    // ---- THE CALL SUCCEEDED (R5C-2B Part 8) --------------------------------
+    // The reviewer answered in the structured shape it was asked for. Coverage, grounding and the
+    // verdict below are SERVER derivations over that answer — a boundary reject, an authority
+    // failure or an inconclusive result is the parent's attribution, never a failed call.
+    await settle("success");
     // Coverage, grounding and the verdict itself — all server-side, all from the per-surface answers.
     const verdict = deriveBoundaryVerdict(parsed, ctx);
     return {
@@ -286,6 +350,8 @@ export async function reviewBoundarySurfaces(
       },
     };
   } catch (error) {
+    // A telemetry failure is not a transport failure and must not be classified as one.
+    if (isProviderCallTelemetryError(error)) throw error;
     // R2.34 — THE ERROR IS BOUND. This is the line whose absence made R2.32 unclassifiable.
     finish();
     const name = (error as { name?: unknown } | null)?.name;
@@ -315,6 +381,12 @@ export async function reviewBoundarySurfaces(
       // The adapter genuinely cannot tell. `unknown` is a value, not an empty string.
       transport.responseState = "unknown";
     }
+    const cls = classifyThrownCall(error, transport.abortObserved);
+    await call.settle({
+      outcome: cls.outcome,
+      providerHttpStatus: cls.providerHttpStatus,
+      providerErrorCategory: cls.providerErrorCategory,
+    });
     return transportFailure();
   } finally {
     clearTimeout(timer);
@@ -355,6 +427,37 @@ export async function reviewFieldRepair(
   plan: FieldRepairPlan,
   attempt: number,
   deps?: { now?: () => number },
+  /** R5C-2B — the submission's ONE accounting context. Absent for runner-only callers. */
+  accounting?: GenerationAccounting | null,
+): Promise<FieldRepairCallResult> {
+  const client = tryGetLlmClient();
+  if (!client) return reviewFieldRepairCall(null, INERT_CALL_SCOPE, subject, plan, attempt, deps);
+  return withProviderCall(
+    accounting,
+    {
+      // DELIBERATELY its own kind. Repair is a separate measured call site answering a different
+      // forensic question; folding it into `boundary_review` would make both counts unreadable.
+      kind: "boundary_repair",
+      model: getLlmModel(),
+      providerTimeoutMs: NARROW_BOUNDARY_SAMPLING.timeoutMs,
+      maxTokens: NARROW_BOUNDARY_SAMPLING.maxTokens,
+      temperature: NARROW_BOUNDARY_SAMPLING.temperature,
+      topP: NARROW_BOUNDARY_SAMPLING.topP,
+      structuredOutputMode: "json_schema_strict",
+      locale: null,
+    },
+    async (call) => reviewFieldRepairCall(client, call, subject, plan, attempt, deps),
+  );
+}
+
+/** The instrumented body: exactly one field-repair provider call. */
+async function reviewFieldRepairCall(
+  client: ReturnType<typeof getLlmClient> | null,
+  call: ProviderCallScope,
+  subject: NarrowBoundarySubject,
+  plan: FieldRepairPlan,
+  attempt: number,
+  deps?: { now?: () => number },
 ): Promise<FieldRepairCallResult> {
   const now = deps?.now ?? (() => Date.now());
   const startedAt = now();
@@ -377,6 +480,12 @@ export async function reviewFieldRepair(
     providerFailureCode,
   });
 
+  if (!client) {
+    transport.sanitizedMessage = "llm client unavailable";
+    transport.responseState = "no_response";
+    return { kind: "transport_failed", raw: null, evidence: evidence(null, null, transport.sanitizedMessage, "provider_failure_unknown") };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), NARROW_BOUNDARY_SAMPLING.timeoutMs);
   transport.timeoutState = "armed_not_fired";
@@ -391,7 +500,7 @@ export async function reviewFieldRepair(
     transport.clientInvocationStarted = true;
     transport.providerInvocationStarted = true;
     transport.providerInvocationStartedAt = now();
-    const completion = await getLlmClient().chat.completions.create(
+    const completion = await client.chat.completions.create(
       {
         model: getLlmModel(),
         messages: [
@@ -413,9 +522,16 @@ export async function reviewFieldRepair(
     transport.responseEnvelopePresent = true;
     const rc = completion.choices?.[0];
     const finishReason = rc?.finish_reason ?? null;
-    const raw = rc?.message?.content;
+    // Response identity captured after extraction, before fence-stripping and parsing.
+    const rawContent = rc?.message?.content ?? null;
+    const usage = readCallUsage(completion);
+    const settle = (outcome: CallOutcome, withContent = true) =>
+      call.settle({ outcome, modelContent: withContent ? rawContent : null, finishReason, ...usage });
+
+    const raw = rawContent;
     if (!raw) {
       transport.structuredOutputPresent = false;
+      await settle("empty_output", false);
       return { kind: "transport_failed", raw: null, evidence: evidence(null, finishReason, "provider returned a success envelope with no message content", "provider_failure_unknown") };
     }
     transport.structuredOutputPresent = true;
@@ -423,10 +539,15 @@ export async function reviewFieldRepair(
     try {
       parsed = JSON.parse(stripJsonFences(raw));
     } catch {
+      await settle("malformed_output");
       return { kind: "patch", raw: null, evidence: evidence(null, finishReason, "repair response was not JSON", null) };
     }
+    // The repair call delivered its structured patch. Whether a later gate accepts that patch is a
+    // product decision recorded on the parent; this call stays `success` either way.
+    await settle("success");
     return { kind: "patch", raw: parsed, evidence: evidence(parsed, finishReason, null, null) };
   } catch (error) {
+    if (isProviderCallTelemetryError(error)) throw error;
     finish();
     transport.abortObserved = controller.signal.aborted;
     transport.localErrorName = error instanceof Error ? error.name : null;
@@ -445,6 +566,12 @@ export async function reviewFieldRepair(
     });
     transport.retriability = cls.retriability;
     transport.failureLayer = cls.failureLayer;
+    const callCls = classifyThrownCall(error, transport.abortObserved);
+    await call.settle({
+      outcome: callCls.outcome,
+      providerHttpStatus: callCls.providerHttpStatus,
+      providerErrorCategory: callCls.providerErrorCategory,
+    });
     return { kind: "transport_failed", raw: null, evidence: evidence(null, null, transport.sanitizedMessage, cls.providerFailureCode) };
   }
 }
