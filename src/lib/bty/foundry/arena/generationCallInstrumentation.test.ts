@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withGovernedRpc } from "./governedAdmission.fixture";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import {
   providerJson,
@@ -196,7 +197,7 @@ function makeAdmin(opts: Failures = {}) {
     return api;
   }
 
-  return { admin: { from } as unknown as SupabaseClient, calls, attempts, drafts, journal };
+  return { admin: withGovernedRpc({ from }, drafts, attempts) as unknown as SupabaseClient, calls, attempts, drafts, journal };
 }
 
 /** The submission's accounting context, over a fresh double. */

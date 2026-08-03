@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withGovernedRpc } from "./governedAdmission.fixture";
 
 /**
  * WHICH WRITES MOVE THE INPUT EPOCH (Slice 3.2I-R5B2-R5C-4A1).
@@ -141,7 +142,7 @@ function makeAdmin(draftOver: Row = {}) {
     }
     return api;
   }
-  return { admin: { from } as unknown as SupabaseClient, drafts, attempts, calls };
+  return { admin: withGovernedRpc({ from }, drafts, attempts) as unknown as SupabaseClient, drafts, attempts, calls };
 }
 
 /** Both numbers, always read together. */

@@ -73,3 +73,31 @@ export function isSameInputEpochAttempt(
   }
   return attemptGenerationInputRevision === draftGenerationInputRevision;
 }
+
+/**
+ * THE TYPESCRIPT MIRROR of the SQL classifier `foundry_practice_generation_refusal_counts_v1`.
+ *
+ * The database is the source of truth — both the read-only governance function and the atomic
+ * admission function call the SQL version, and no application code re-derives the decision. This
+ * exists ONLY so unit-test doubles can model admission without a database, and a contract test
+ * asserts it matches the migration text exactly. If the two ever diverge, that test fails rather
+ * than the two lists quietly drifting apart.
+ */
+export const SETUP_SENSITIVE_REASON_CODES = [
+  "scenario_quality_rejected",
+  "semantic_content_rejected",
+  "boundary_content_rejected",
+  "semantic_review_inconclusive",
+  "boundary_review_inconclusive",
+] as const;
+
+/** Legacy rows carry no attribution, so only their broad outcome can be read. */
+export const SETUP_SENSITIVE_LEGACY_OUTCOMES = ["scenario_quality_rejected", "boundary_review_rejected"] as const;
+
+export function refusalCountsForGovernance(
+  outcome: string | null | undefined,
+  terminalReasonCode: string | null | undefined,
+): boolean {
+  if (terminalReasonCode) return (SETUP_SENSITIVE_REASON_CODES as readonly string[]).includes(terminalReasonCode);
+  return (SETUP_SENSITIVE_LEGACY_OUTCOMES as readonly string[]).includes(outcome ?? "");
+}

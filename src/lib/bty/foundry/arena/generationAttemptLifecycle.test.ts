@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withGovernedRpc } from "./governedAdmission.fixture";
 
 /**
  * DURABLE ATTEMPT LIFECYCLE (Slice 3.2I-R5B2-R5A).
@@ -162,7 +163,13 @@ function makeAdmin(opts: { attemptInsertFails?: boolean; attemptUpdateFails?: bo
     return api;
   }
 
-  return { admin: { from } as unknown as SupabaseClient, attempts, drafts };
+  return {
+    // R5C-4A2 — the attempt is now inserted BY the governed admission function, so the
+    // fail-before-spend injection belongs on that call rather than on a bare table insert.
+    admin: withGovernedRpc({ from }, drafts, attempts, { admissionFails: () => opts.attemptInsertFails === true }) as unknown as SupabaseClient,
+    attempts,
+    drafts,
+  };
 }
 
 const run = (a: SupabaseClient) => regenerateArenaDraft(a, "owner-1", "draft-1", "en");

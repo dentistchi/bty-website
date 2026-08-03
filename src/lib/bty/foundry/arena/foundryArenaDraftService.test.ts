@@ -1,6 +1,7 @@
 import { providerJson, acceptReview, isReviewRequest } from "@/domain/foundry/arena-draft/providerDto.fixture";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withGovernedRpc } from "./governedAdmission.fixture";
 
 // Slice 3.2I-R2: generation is LIVE-model only. Mock the provider to return a concrete,
 // branch-aware, incident-specific draft so createArenaDraft/regenerate succeed (source "ai").
@@ -218,7 +219,11 @@ function makeFakeAdmin(seed: { events?: Row[]; modules?: Row[]; drafts?: Row[] }
     return b;
   }
 
-  return { admin: { from } as unknown as SupabaseClient, tables };
+  tables.foundry_practice_generation_attempts = tables.foundry_practice_generation_attempts ?? [];
+  return {
+    admin: withGovernedRpc({ from }, tables.foundry_arena_scenario_drafts, tables.foundry_practice_generation_attempts) as unknown as SupabaseClient,
+    tables,
+  };
 }
 
 const OWNER = "owner-1";

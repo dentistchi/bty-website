@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { withGovernedRpc } from "./governedAdmission.fixture";
 
 /**
  * IDENTITY IS FAIL-BEFORE-SPEND (Slice 3.2I-R5B2-R5C-3V2).
@@ -114,7 +115,7 @@ function makeAdmin() {
     }
     return api;
   }
-  return { admin: { from } as unknown as SupabaseClient, calls, attempts, drafts };
+  return { admin: withGovernedRpc({ from }, drafts, attempts) as unknown as SupabaseClient, calls, attempts, drafts };
 }
 
 let saved: string | undefined;

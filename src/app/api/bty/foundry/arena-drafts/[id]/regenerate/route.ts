@@ -40,6 +40,17 @@ function statusForReason(reason: string, outcome?: GenerationProductCode): numbe
     return 422; // our own gates refused this content
   }
   if (reason === "stale_revision") return 409;
+  // R5C-4A2 — the server declining to spend again on input it has already refused. A conflict with
+  // the current state of the resource, not a malformed request.
+  if (
+    reason === "generation_retry_confirmation_required" ||
+    reason === "generation_revision_required" ||
+    reason === "generation_already_in_progress" ||
+    reason === "generation_input_revision_stale"
+  ) {
+    return 409;
+  }
+  if (reason === "generation_locale_invalid") return 400;
   // Setup/eligibility reasons: the request genuinely is not in a state that can generate.
   return 400;
 }
@@ -51,9 +62,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { id } = await ctx.params;
   const body = await req.json().catch(() => ({}));
-  const locale = body?.locale === "ko" ? "ko" : "en";
+  /**
+   * R5C-4A2 — locale is part of the SAME-INPUT identity, so it is normalized ONCE here and the
+   * canonical value is what governance and the attempt row both record. An absent locale keeps the
+   * measured server default; an unsupported one is refused rather than silently becoming English,
+   * because a Host who asked for Korean must not be given English under a Korean-shaped request.
+   */
+  const rawLocale = body?.locale;
+  const localeSupplied = rawLocale !== undefined && rawLocale !== null && rawLocale !== "";
+  if (localeSupplied && rawLocale !== "en" && rawLocale !== "ko") {
+    return managerJson(base, req, { error: "generation_locale_invalid", code: "generation_locale_invalid" }, 400);
+  }
+  const locale = rawLocale === "ko" ? "ko" : "en";
 
-  const result = await regenerateArenaDraft(admin, user.id, id, locale);
+  const result = await regenerateArenaDraft(admin, user.id, id, locale, {
+    // Never trusted as authority: the server compares it to the locked draft and refuses a
+    // mismatch. A confirmation made for epoch 1 cannot authorize epoch 2.
+    expectedGenerationInputRevision:
+      typeof body?.expectedGenerationInputRevision === "number" ? body.expectedGenerationInputRevision : null,
+    // A refusal COUNT from the client is never trusted; only this acknowledgement is read.
+    confirmSameInputRetry: body?.confirmSameInputRetry === true,
+  });
   if (!result.ok) {
     const code = (result.outcome ?? result.reason) as GenerationProductCode;
     return managerJson(
@@ -65,6 +94,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         retriable: retriabilityOf(code),
         // Present only when an attempt row exists to look up. Derived — never the row id.
         ...(result.attemptRef ? { supportRef: result.attemptRef } : {}),
+        // R5C-4A2 — bounded governance metadata only. No attempt id, no provider data, no prose.
+        ...(result.governance ? { governance: result.governance } : {}),
         // What the Host was waiting against, so the screen can be honest about the wait.
         deadlineMs: PRACTICE_SAMPLING.generation.timeoutMs,
       },

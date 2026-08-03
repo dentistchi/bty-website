@@ -183,3 +183,101 @@ export async function digestResponse(raw: string): Promise<{ bytes: number; sha2
     return null;
   }
 }
+
+/**
+ * GOVERNED ATOMIC ADMISSION (Slice 3.2I-R5B2-R5C-4A2).
+ *
+ * `startGenerationAttempt` above inserts unconditionally. It is retained for callers that are not
+ * product submissions, but the regenerate path must NOT use it: a service-side `read governance`
+ * then `insert attempt` lets two concurrent confirmed requests both admit. The database function
+ * makes the decision and the insertion one indivisible step under a single draft-row lock.
+ */
+export type GovernanceState =
+  | "ready"
+  | "confirm_second_attempt"
+  | "revision_required"
+  | "in_progress"
+  | "input_revision_stale"
+  | "admitted";
+
+export type GovernedAdmission =
+  | { ok: true; attemptId: string; generationInputRevision: number; generationLocale: "en" | "ko"; refusalCount: number }
+  | {
+      ok: false;
+      state: Exclude<GovernanceState, "admitted">;
+      generationInputRevision: number;
+      generationLocale: "en" | "ko";
+      refusalCount: number;
+      requiresExplicitConfirmation: boolean;
+      reviewSetupRecommended: boolean;
+    }
+  /** The call itself failed — indistinguishable from the fail-before-spend contract. */
+  | { ok: false; state: "unavailable" };
+
+export type GovernedAdmissionInput = StartAttemptInput & {
+  expectedGenerationInputRevision: number;
+  confirmSameInputRetry: boolean;
+};
+
+export async function startGovernedGenerationAttempt(
+  admin: SupabaseClient,
+  input: GovernedAdmissionInput,
+): Promise<GovernedAdmission> {
+  try {
+    const { data, error } = await admin.rpc("start_foundry_practice_generation_attempt_governed_v1", {
+      p_draft_id: input.draftId,
+      p_owner_user_id: input.ownerUserId,
+      p_expected_generation_input_revision: input.expectedGenerationInputRevision,
+      p_locale: input.locale,
+      p_confirm_same_input_retry: input.confirmSameInputRetry,
+      p_source_event_id: input.sourceEventId,
+      p_correlation_id: input.correlationId,
+      p_deploy_version: input.deployVersion,
+      p_provider_timeout_ms: input.providerTimeoutMs,
+      p_model: input.model,
+      p_structured_output_mode: input.structuredOutputMode,
+      p_max_tokens: input.maxTokens,
+      p_boundary_mode: input.boundaryMode,
+      p_boundary_constraint_count: input.boundaryConstraintCount,
+      p_attempt_number: input.attemptNumber,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row) {
+      // A database fault is not something the Host can act on, and an unrestricted error string is
+      // exactly what must not travel. The code alone is a breadcrumb.
+      console.error(`[practiceGenAdmission] failed code=${(error as { code?: string } | null)?.code ?? "unknown"}`);
+      return { ok: false, state: "unavailable" };
+    }
+    const r = row as {
+      admitted: boolean;
+      attempt_id: string | null;
+      generation_input_revision: number;
+      generation_locale: "en" | "ko";
+      refusal_count: number;
+      state: GovernanceState;
+      requires_explicit_confirmation: boolean;
+      review_setup_recommended: boolean;
+    };
+    if (r.admitted && r.attempt_id) {
+      return {
+        ok: true,
+        attemptId: r.attempt_id,
+        generationInputRevision: r.generation_input_revision,
+        generationLocale: r.generation_locale,
+        refusalCount: r.refusal_count,
+      };
+    }
+    return {
+      ok: false,
+      state: r.state as Exclude<GovernanceState, "admitted">,
+      generationInputRevision: r.generation_input_revision,
+      generationLocale: r.generation_locale,
+      refusalCount: r.refusal_count,
+      requiresExplicitConfirmation: r.requires_explicit_confirmation,
+      reviewSetupRecommended: r.review_setup_recommended,
+    };
+  } catch (e) {
+    console.error(`[practiceGenAdmission] threw name=${e instanceof Error ? e.name : "unknown"}`);
+    return { ok: false, state: "unavailable" };
+  }
+}

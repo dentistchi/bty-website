@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArenaScenarioDraft, GuidedAnswers } from "@/domain/foundry/arena-draft/types";
 import {
   finalizeGenerationAttempt,
-  startGenerationAttempt,
   type FinalizeAttemptInput,
 } from "./generationAttemptRecorder";
 import {
@@ -22,6 +21,7 @@ import { resolveArenaSource } from "./arenaScenarioSource";
 import { generateArenaScenarioDraft, PRACTICE_SAMPLING, type Locale } from "./arenaScenarioGenerationService";
 import { createGenerationAccounting, isProviderCallTelemetryError } from "./generationAccounting";
 import { currentSourceIdentity } from "./sourceIdentity";
+import { startGovernedGenerationAttempt } from "./generationAttemptRecorder";
 import {
   GENERATION_INPUT_BASELINE_REVISION,
   isValidGenerationInputRevision,
@@ -89,9 +89,24 @@ export type ArenaDraftRow = {
  * reference. Both are optional, so every existing caller and test that reads only `reason` is
  * unchanged, and no unrestricted identifier ever reaches a client.
  */
+/**
+ * R5C-4A2 — a governance refusal. BOUNDED by construction: a capped count, a closed state, and two
+ * booleans. No attempt id, no provider metadata, no prose.
+ */
+export type GenerationGovernance = {
+  generationInputRevision: number;
+  generationLocale: "en" | "ko";
+  /** Capped at 2: `2` means "two or more". An unbounded internal count never leaves the server. */
+  refusalCount: number;
+  state: "ready" | "confirm_second_attempt" | "revision_required" | "in_progress" | "input_revision_stale";
+  canStartGeneration: boolean;
+  requiresExplicitConfirmation: boolean;
+  reviewSetupRecommended: boolean;
+};
+
 export type ServiceResult<T> =
   | { ok: true; value: T }
-  | { ok: false; reason: string; outcome?: GenerationOutcome; attemptRef?: string };
+  | { ok: false; reason: string; outcome?: GenerationOutcome; attemptRef?: string; governance?: GenerationGovernance };
 
 // ---------------------------------------------------------------------------
 // Create — resolve source, generate, validate, insert (source version bound here)
@@ -319,11 +334,22 @@ export async function saveArenaDraftEdits(
  * `scenario_draft`, bumps `revision`. Fails honestly if the source has since been
  * retired.
  */
+export type RegenerateOptions = {
+  /**
+   * R5C-4A2 — the epoch the Host believes they are submitting against. A confirmation made for one
+   * input epoch may never authorize a different one, so the server compares it under the row lock.
+   */
+  expectedGenerationInputRevision?: number | null;
+  /** Explicit same-input acknowledgement. Meaningful ONLY at `confirm_second_attempt`. */
+  confirmSameInputRetry?: boolean;
+};
+
 export async function regenerateArenaDraft(
   admin: SupabaseClient,
   ownerUserId: string,
   draftId: string,
   locale: Locale,
+  options: RegenerateOptions = {},
 ): Promise<ServiceResult<{ row: ArenaDraftRow; warnings: string[] }>> {
   const current = await getOwnerArenaDraft(admin, ownerUserId, draftId);
   if (!current) return { ok: false, reason: "arena_draft_not_found" };
@@ -379,7 +405,17 @@ export async function regenerateArenaDraft(
    * cannot be created, the provider is NOT called — an unobservable generation is worse than no
    * generation, and silently falling back to console evidence is exactly what produced the outage.
    */
-  const attempt = await startGenerationAttempt(admin, {
+  /**
+   * GOVERNED ATOMIC ADMISSION (Slice 3.2I-R5B2-R5C-4A2).
+   *
+   * The same unchanged setup was once submitted twice, five seconds apart, both spending provider
+   * calls for nothing. The decision to admit and the insertion of the attempt happen together
+   * inside one database function under a single draft-row lock, because a read-then-insert here
+   * would let two concurrent confirmed requests both pass the same refusal count.
+   */
+  const admission = await startGovernedGenerationAttempt(admin, {
+    expectedGenerationInputRevision: options.expectedGenerationInputRevision ?? generationInputRevision,
+    confirmSameInputRetry: options.confirmSameInputRetry === true,
     draftId,
     draftRevision: generatedUnderRevision,
     sourceEventId: current.source_event_id ?? null,
@@ -399,7 +435,32 @@ export async function regenerateArenaDraft(
     attemptNumber: 1,
     locale,
   });
-  if (!attempt.ok) return { ok: false, reason: "generation_observability_unavailable" };
+  if (!admission.ok) {
+    if (admission.state === "unavailable") return { ok: false, reason: "generation_observability_unavailable" };
+    // A governance refusal is not a failure — it is the server declining to spend again on input
+    // it has already refused. It carries only bounded metadata; never an attempt id.
+    return {
+      ok: false,
+      reason:
+        admission.state === "confirm_second_attempt"
+          ? "generation_retry_confirmation_required"
+          : admission.state === "revision_required"
+            ? "generation_revision_required"
+            : admission.state === "in_progress"
+              ? "generation_already_in_progress"
+              : "generation_input_revision_stale",
+      governance: {
+        generationInputRevision: admission.generationInputRevision,
+        generationLocale: admission.generationLocale,
+        refusalCount: admission.refusalCount,
+        state: admission.state,
+        canStartGeneration: false,
+        requiresExplicitConfirmation: admission.requiresExplicitConfirmation,
+        reviewSetupRecommended: admission.reviewSetupRecommended,
+      },
+    };
+  }
+  const attempt = { ok: true as const, attemptId: admission.attemptId };
 
   /**
    * R5C-2B — ONE accounting context per submission, created only now that the parent is durable.
