@@ -17,6 +17,16 @@
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
+/**
+ * How long a navigation will wait for an in-flight save before proceeding anyway.
+ * Generous enough that an ordinary save is awaited, short enough that a wedged
+ * request cannot make the Builder feel broken.
+ */
+export const FLUSH_TIMEOUT_MS = 4000;
+
+/** Deadline for one save REQUEST. Beyond this the fetch aborts and becomes a normal failure. */
+export const SAVE_REQUEST_TIMEOUT_MS = 15000;
+
 /** Persist one snapshot. Resolve true on success, false on failure (no throw). */
 export type SaveFn<S> = (snapshot: S) => Promise<boolean>;
 
@@ -33,6 +43,8 @@ export type SerializedSaver<S> = {
 export function createSerializedSaver<S>(
   save: SaveFn<S>,
   onState: (state: SaveState) => void,
+  /** Longest a caller will WAIT for a flush. 0 disables the bound (tests only). */
+  flushTimeoutMs = FLUSH_TIMEOUT_MS,
 ): SerializedSaver<S> {
   let inFlight = false;
   let queued: S | null = null;
@@ -56,7 +68,14 @@ export function createSerializedSaver<S>(
     while (true) {
       last = current;
       ok = await save(current);
-      if (!ok) break;
+      if (!ok) {
+        // R2E — a failed save must not strand the queue. Without this, `hasQueued`
+        // stayed true after a failure and the next drain could replay a stale snapshot
+        // it was never asked to save.
+        queued = null;
+        hasQueued = false;
+        break;
+      }
       if (hasQueued) {
         current = queued as S;
         hasQueued = false;
@@ -80,11 +99,34 @@ export function createSerializedSaver<S>(
     void loop(snapshot);
   }
 
+  /**
+   * R2E — BOUNDED. The Founder's device proved the unbounded form could hang forever:
+   * a `fetch` that never settles leaves `inFlight` true, so every later `flush` pushed a
+   * waiter that `schedule()` then declined to start a loop for — and `settle()` was never
+   * reached. Every caller awaiting it (Back, Next and every Review Edit) silently did
+   * nothing, with no error and no feedback, for the rest of the session.
+   *
+   * A save is worth waiting for; it is not worth being trapped by. After `flushTimeoutMs`
+   * the promise resolves `false` and the caller proceeds. The snapshot stays queued and
+   * retryable, so nothing is lost — only the WAIT is abandoned, never the save.
+   */
   function flush(snapshot: S): Promise<boolean> {
-    const p = new Promise<boolean>((res) => waiters.push(res));
+    const p = new Promise<boolean>((res) => {
+      const waiter = (ok: boolean) => {
+        if (timer !== null) clearTimeout(timer);
+        res(ok);
+      };
+      waiters.push(waiter);
+      const timer =
+        flushTimeoutMs > 0
+          ? setTimeout(() => {
+              // Drop only THIS waiter; a slow save still settles the others normally.
+              waiters = waiters.filter((w) => w !== waiter);
+              res(false);
+            }, flushTimeoutMs)
+          : null;
+    });
     schedule(snapshot);
-    // If nothing is running (e.g. a synchronous no-op path), the promise still
-    // settles because schedule() started a loop that will call settle().
     return p;
   }
 
