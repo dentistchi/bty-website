@@ -139,6 +139,20 @@ describe("[R5C-6A] the SQL system-block vocabulary matches the product's", () =>
     expect(EXECUTABLE).toContain("p_submission_intent_id");
   });
 
+  /**
+   * The trailing DEFAULT is what actually broke production. With `default null`, the
+   * 16-argument function also answers to a 15-argument call: while the legacy overload
+   * still existed a 15-key PostgREST request matched both and returned PGRST203, and once
+   * the legacy overload is dropped a caller could omit the submission intent entirely.
+   * Behaviour is proven over the real transport in
+   * generationAdmissionTransport.execution.test.ts; this is the cheap static guard that
+   * stops the default drifting back in.
+   */
+  it("the submission intent is REQUIRED at the signature — no trailing default", () => {
+    expect(EXECUTABLE).not.toMatch(/p_submission_intent_id\s+uuid\s+default/i);
+    expect(EXECUTABLE).toMatch(/p_submission_intent_id\s+uuid\s*\n?\s*\)/);
+  });
+
   it("idempotency is enforced by the DATABASE, not only by the function body", () => {
     expect(SQL).toContain("foundry_practice_gen_attempt_intent_uniq");
     expect(SQL).toContain("where submission_intent_id is not null");

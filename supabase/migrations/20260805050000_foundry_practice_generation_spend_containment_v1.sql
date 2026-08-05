@@ -235,7 +235,27 @@ create or replace function public.start_foundry_practice_generation_attempt_gove
   p_boundary_mode text,
   p_boundary_constraint_count integer,
   p_attempt_number integer,
-  p_submission_intent_id uuid default null
+  -- NO DEFAULT — deliberately, and the reason was measured in production.
+  --
+  -- This parameter originally read `uuid default null`. A trailing default makes the
+  -- 16-argument function ALSO answer to a 15-argument call. While the legacy
+  -- 15-argument overload still existed, a 15-key PostgREST request matched BOTH and
+  -- PostgREST refused to choose: PGRST203, "could not choose the best candidate
+  -- function". Live practice-generation admission broke for the previously deployed
+  -- Worker even though both functions were present and healthy.
+  --
+  -- What did NOT catch it, and why:
+  --   * pg_proc presence checks — both functions existed, so the catalog looked correct;
+  --   * direct SQL execution (psql, `select * from fn(...)`) — PostgreSQL resolves
+  --     positional calls unambiguously, so the ambiguity never appeared;
+  --   * neither exercises PostgREST, which dispatches on the JSON argument-NAME set and
+  --     treats a defaulted trailing parameter as a callable omission.
+  -- The application transport must be tested, not the catalog.
+  --
+  -- Without the default, the two overloads are unambiguous by arity: a 15-key request
+  -- matches only the legacy function, a 16-key request only this one. A caller can no
+  -- longer omit the submission intent and reach admission.
+  p_submission_intent_id uuid
 ) returns table (
   admitted boolean,
   attempt_id uuid,
