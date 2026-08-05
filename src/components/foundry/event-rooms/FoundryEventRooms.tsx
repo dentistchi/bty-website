@@ -309,7 +309,10 @@ export default function FoundryEventRooms({
   }
 
   if (view.kind === "builder") {
-    return <ModuleBuilderShell draftId={view.draftId} locale={loc} onExit={onBuilderExit} />;
+    // `key` forces a full remount when the Host switches drafts. Without it React reuses
+    // the instance, and the previous draft's answers — and therefore its visible identity —
+    // would render for the moment before the new draft finishes restoring.
+    return <ModuleBuilderShell key={view.draftId} draftId={view.draftId} locale={loc} onExit={onBuilderExit} />;
   }
 
   if (view.kind === "history") {

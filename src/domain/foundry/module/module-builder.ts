@@ -163,6 +163,30 @@ export function draftTitleFrom(answers: BuilderAnswers | undefined): string | nu
   return first.length > 60 ? `${first.slice(0, 60).trimEnd()}…` : first;
 }
 
+/**
+ * The Host-authored statement that identifies WHICH training draft is open.
+ *
+ * Slice 3.2L-R1.2. Two drafts can both restore at Step 8 and present an identical
+ * Review, and the global Learn header ("What do you want to get better at?") names the
+ * tab, not the draft. That is how the first controlled Founder window ran against the
+ * wrong training. The Host's own "what needs to change" statement is the only thing on
+ * the screen that distinguishes one draft from another, so it becomes the visible
+ * identity.
+ *
+ * Deliberately NOT `draftTitleFrom`: that truncates at 60 characters for a card, and two
+ * long statements sharing a prefix would render identically — reintroducing the exact
+ * confusion this exists to remove. The full first line is returned; the UI wraps it.
+ *
+ * Returns null when the Host has not written anything yet, so the caller shows a neutral
+ * fallback rather than inventing a title.
+ */
+export function draftIdentityStatement(answers: BuilderAnswers | undefined): string | null {
+  const problem = answers?.problem;
+  if (typeof problem !== "string") return null;
+  const first = problem.split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0);
+  return first && first.length > 0 ? first : null;
+}
+
 // ---------------------------------------------------------------------------
 // Deterministic Arena practice recommendation (builder-level)
 // ---------------------------------------------------------------------------

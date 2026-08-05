@@ -10,6 +10,7 @@ import {
   normalizeLearningNeeds,
   shouldProposeSharedQuestion,
   stepBlocker,
+  draftIdentityStatement,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
   FOLLOW_UP_DAY_OPTIONS,
@@ -556,6 +557,13 @@ export function ModuleBuilderShell({
         <SaveStatus state={saveState} t={t} onRetry={retry} />
       </div>
 
+      {/* WHICH TRAINING IS OPEN (Slice 3.2L-R1.2). Rendered ABOVE every body state — a
+          step, Review, a pending generation, a proposal, a refusal, the screen returned to
+          after Discard — so the Host can never lose track of which draft they are acting
+          on. It reads the LOADED draft's own answers; nothing here is inferred from list
+          order, recency or a cached value. */}
+      <DraftIdentity answers={answers} t={t} />
+
       {isRevision && !publishedResult ? (
         <div
           data-testid="module-builder-revision-banner"
@@ -663,6 +671,47 @@ export function ModuleBuilderShell({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The Host-authored statement naming the open draft.
+ *
+ * The first controlled Founder window ran against the wrong training because two drafts
+ * both restored at Step 8 under an identical global Learn header, and the only
+ * distinguishing text sat inside a collapsed disclosure. This puts it on screen.
+ *
+ * Deliberately framed as "Training focus", NOT as a title: it is the Host's own
+ * description of what needs to change, not an approved program name and not the
+ * learner-facing "Why this matters". Its own heading level and muted treatment keep it
+ * distinct from the Learn header above it and from any AI-authored title below.
+ */
+function DraftIdentity({ answers, t }: { answers: BuilderAnswers; t: ModuleBuilderCopy }) {
+  const statement = draftIdentityStatement(answers);
+  return (
+    <section
+      aria-labelledby="draft-identity-label"
+      data-testid="draft-identity"
+      className="flex flex-col gap-0.5 border-l-2 border-[#C9A66B]/40 pl-3"
+    >
+      <span id="draft-identity-label" className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-white/40">
+        {t.identityLabel}
+      </span>
+      {/* Deliberately NOT a heading. The Builder's invariant is exactly one primary
+          question (h2) per step, and this is orientation, not the step's question — an
+          h2 here would compete with it. The labelled region carries the semantics
+          instead: screen readers announce "Training focus" and its content, ahead of the
+          Review actions.
+
+          break-words + no truncation: a long statement wraps rather than being cut to a
+          prefix that could read identically to another draft's. */}
+      <p
+        data-testid={statement ? "draft-identity-statement" : "draft-identity-fallback"}
+        className={`break-words text-[0.95rem] font-medium leading-6 ${statement ? "text-white/85" : "text-white/45"}`}
+      >
+        {statement ?? t.identityFallback}
+      </p>
+    </section>
   );
 }
 

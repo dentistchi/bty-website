@@ -130,6 +130,9 @@ export type ModuleBuilderCopy = {
   moreActions: string;
   deleteConfirm: string;
   deleted: string;
+  // draft identity (Slice 3.2L-R1.2) — which training is open, visible on every step
+  identityLabel: string;
+  identityFallback: string;
   // shell chrome
   stepOf: (n: number, total: number) => string;
   back: string;
@@ -344,6 +347,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     moreActions: "More",
     deleteConfirm: "Delete this draft? This can’t be undone.",
     deleted: "Draft deleted",
+    identityLabel: "Training focus",
+    identityFallback: "Untitled training draft",
     stepOf: (n, total) => `Step ${n} of ${total}`,
     back: "Back",
     next: "Next",
@@ -626,6 +631,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     moreActions: "더보기",
     deleteConfirm: "이 초안을 삭제할까요? 되돌릴 수 없습니다.",
     deleted: "초안이 삭제되었습니다",
+    identityLabel: "훈련 초점",
+    identityFallback: "제목 없는 훈련 초안",
     stepOf: (n, total) => `${total}단계 중 ${n}단계`,
     back: "뒤로",
     next: "다음",
