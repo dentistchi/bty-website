@@ -17,6 +17,8 @@ const SQL = readFileSync(
   join(process.cwd(), "supabase/migrations/20260805050000_foundry_practice_generation_spend_containment_v1.sql"),
   "utf8",
 );
+/** The migration with comment lines stripped — what the database will actually run. */
+const EXECUTABLE = SQL.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
 
 describe("[R5C-6A] a terminal reviewer failure is an EXECUTION failure, not a refusal", () => {
   it("the semantic reviewer's reason no longer maps to the boundary umbrella", () => {
@@ -110,17 +112,31 @@ describe("[R5C-6A] the SQL system-block vocabulary matches the product's", () =>
   });
 
   it("the migration mutates no historical row", () => {
-    const executable = SQL.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
-    expect(executable).not.toMatch(/\bupdate\s+public\./i);
-    expect(executable).not.toMatch(/\bdelete\s+from\s+public\./i);
-    // The contradiction constraint must be NOT VALID, or the two live rows would block the migration.
-    expect(SQL).toContain("not valid");
+    expect(EXECUTABLE).not.toMatch(/\bupdate\s+public\./i);
+    expect(EXECUTABLE).not.toMatch(/\bdelete\s+from\s+public\./i);
   });
 
   it("admission cannot be reached without a submission intent", () => {
     expect(SQL).toContain("missing_submission_intent");
-    // The old 15-argument signature is dropped, so no caller can slip past the requirement.
-    expect(SQL).toMatch(/drop function if exists public\.start_foundry_practice_generation_attempt_governed_v1\(/);
+  });
+
+  /**
+   * EXPAND/CONTRACT (Part 0B). This file holds the EXPAND half. The two statements that
+   * break the PREVIOUSLY deployed 15-argument Worker — dropping the old overload, and the
+   * NOT VALID contradiction constraint — deliberately live in the CONTRACT migration, which
+   * runs only after a 16-argument caller is live. Asserting their ABSENCE here is what stops
+   * them silently drifting back into the migration that has to run first.
+   *
+   * Note the assertions read EXECUTABLE, not SQL: the migration's rollback block mentions
+   * both statements in comments, and matching raw text would pass on a comment alone.
+   */
+  it("the expand half breaks no previously deployed caller", () => {
+    expect(EXECUTABLE).not.toMatch(/drop function if exists public\.start_foundry_practice_generation_attempt_governed_v1\(/);
+    expect(EXECUTABLE).not.toContain("foundry_practice_gen_attempt_review_exec_chk");
+    expect(EXECUTABLE).not.toContain("not valid");
+    // …while still CREATING the 16-argument overload the next deployment needs.
+    expect(EXECUTABLE).toMatch(/create or replace function public\.start_foundry_practice_generation_attempt_governed_v1\(/);
+    expect(EXECUTABLE).toContain("p_submission_intent_id");
   });
 
   it("idempotency is enforced by the DATABASE, not only by the function body", () => {

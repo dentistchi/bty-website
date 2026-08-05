@@ -66,7 +66,14 @@ create unique index if not exists foundry_practice_gen_attempt_intent_uniq
 --    failure can no longer be written as `boundary_review_rejected`.
 --
 --    The two live rows that carry that contradiction are NOT updated. They are the
---    evidence, and the constraint is written so their existing shape still validates.
+--    evidence, and the vocabulary is widened, never narrowed.
+--
+--    EXPAND/CONTRACT (Part 0B): the accompanying CHECK that FORCES a reviewer-terminal
+--    reason code to carry `review_execution_failed` is NOT here. The previously deployed
+--    Worker emits `boundary_reviewer_terminal_failure` with no `review_execution_failed`
+--    in its vocabulary, so that constraint would reject its writes during the window
+--    between this migration and the new deployment. It moves to the CONTRACT migration,
+--    which runs only after a 16-argument caller is live.
 -- ---------------------------------------------------------------------------
 alter table public.foundry_practice_generation_attempts
   drop constraint if exists foundry_practice_generation_attempts_outcome_check;
@@ -87,26 +94,6 @@ alter table public.foundry_practice_generation_attempts
     'scenario_persistence_failed',
     'internal_failure'
   ));
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint
-    where conrelid = 'public.foundry_practice_generation_attempts'::regclass
-      and conname = 'foundry_practice_gen_attempt_review_exec_chk'
-  ) then
-    alter table public.foundry_practice_generation_attempts
-      add constraint foundry_practice_gen_attempt_review_exec_chk
-      -- NOT VALID: the two live rows recorded under the old mapping stay exactly as they
-      -- are, while every future write is checked. Validating would require mutating
-      -- historical evidence, which no slice in this arc is permitted to do.
-      check (
-        terminal_reason_code is null
-        or terminal_reason_code not in ('reviewer_terminal_failure', 'semantic_reviewer_terminal_failure', 'boundary_reviewer_terminal_failure')
-        or outcome = 'review_execution_failed'
-      ) not valid;
-  end if;
-end $$;
 
 -- ---------------------------------------------------------------------------
 -- 3. THE SYSTEM-BLOCK TEST. One helper, called by both governance functions.
@@ -391,18 +378,30 @@ grant execute on function public.start_foundry_practice_generation_attempt_gover
   uuid, uuid, integer, text, boolean, uuid, uuid, text, integer, text, text, integer, text, integer, integer, uuid
 ) to service_role;
 
--- The 15-argument signature is superseded by the 16-argument one; dropping it prevents a
--- caller reaching admission WITHOUT a submission intent.
-drop function if exists public.start_foundry_practice_generation_attempt_governed_v1(
-  uuid, uuid, integer, text, boolean, uuid, uuid, text, integer, text, text, integer, text, integer, integer
-);
+-- ---------------------------------------------------------------------------
+-- THE 15-ARGUMENT SIGNATURE IS DELIBERATELY LEFT IN PLACE.
+--
+-- This is the EXPAND half of an expand/deploy/contract rollout (Part 0B). At the moment
+-- this migration runs, the Worker serving traffic is still the 15-argument caller. Dropping
+-- the old overload here would make live practice-generation admission fail with PGRST202
+-- for the whole window between this migration and the next deployment.
+--
+-- The drop lives in the CONTRACT migration
+-- (20260806000000_foundry_practice_generation_contract_v1.sql), which is authored and
+-- applied ONLY after a 16-argument caller is live at 100%.
+--
+-- Both overloads coexist during the transition. They are distinguishable by arity, and
+-- both carry the same service-role-only grant posture.
+-- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- ROLLBACK (reviewed, NOT executed):
 --   drop index if exists public.foundry_practice_gen_attempt_intent_uniq;
 --   drop index if exists public.foundry_practice_gen_attempt_sysblock_idx;
 --   alter table public.foundry_practice_generation_attempts
---     drop constraint if exists foundry_practice_gen_attempt_review_exec_chk,
 --     drop column if exists submission_intent_id;
 --   drop function if exists public.foundry_practice_generation_is_system_block_v1(text, text);
+--   drop function if exists public.start_foundry_practice_generation_attempt_governed_v1(
+--     uuid, uuid, integer, text, boolean, uuid, uuid, text, integer, text, text, integer, text, integer, integer, uuid
+--   );
 -- ---------------------------------------------------------------------------

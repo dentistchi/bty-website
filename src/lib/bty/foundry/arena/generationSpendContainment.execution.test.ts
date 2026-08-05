@@ -153,9 +153,27 @@ describe.runIf(Boolean(PG_BIN))("[R5C-6A] the chain applies over the LIVE shape"
     expect(q(`select count(*) from ${C};`)).toBe("0");
   });
 
-  it("the 15-argument admission signature is GONE — nothing may admit without an intent", () => {
-    expect(q(`select count(*) from pg_proc where proname='start_foundry_practice_generation_attempt_governed_v1';`)).toBe("1");
+  /**
+   * EXPAND/CONTRACT (Part 0B). At this point in the rollout the Worker still in service is the
+   * 15-argument caller, so BOTH overloads must exist. Dropping the old one here would fail every
+   * live admission with PGRST202 until the next deployment. The drop is proven in the CONTRACT
+   * execution gate instead.
+   */
+  it("BOTH admission signatures exist during the expand window", () => {
+    expect(q(`select count(*) from pg_proc where proname='start_foundry_practice_generation_attempt_governed_v1';`)).toBe("2");
+    expect(q(`select count(*) from pg_proc where proname='start_foundry_practice_generation_attempt_governed_v1' and pronargs=15;`)).toBe("1");
     expect(q(`select count(*) from pg_proc where proname='start_foundry_practice_generation_attempt_governed_v1' and pronargs=16;`)).toBe("1");
+  });
+
+  it("both overloads keep the service-role-only posture", () => {
+    for (const args of ["uuid, uuid, integer, text, boolean, uuid, uuid, text, integer, text, text, integer, text, integer, integer",
+                        "uuid, uuid, integer, text, boolean, uuid, uuid, text, integer, text, text, integer, text, integer, integer, uuid"]) {
+      const sig = `start_foundry_practice_generation_attempt_governed_v1(${args})`;
+      for (const r of ["anon", "authenticated", "public"]) {
+        expect(q(`select has_function_privilege('${r}','${sig}','EXECUTE');`)).toBe("f");
+      }
+      expect(q(`select has_function_privilege('service_role','${sig}','EXECUTE');`)).toBe("t");
+    }
   });
 
   it("client roles cannot execute the system-block helper", () => {
@@ -165,15 +183,21 @@ describe.runIf(Boolean(PG_BIN))("[R5C-6A] the chain applies over the LIVE shape"
     expect(q(`select has_function_privilege('service_role','foundry_practice_generation_is_system_block_v1(text, text)','EXECUTE');`)).toBe("t");
   });
 
-  it("FUTURE rows cannot repeat the contradiction", () => {
+  /**
+   * The contradiction PROHIBITION belongs to the contract step. What the expand step must prove
+   * is the opposite: the previously deployed Worker — which emits the old mapping and has no
+   * `review_execution_failed` in its vocabulary — can still write. That is the whole reason the
+   * NOT VALID constraint was moved out of this migration.
+   */
+  it("the previously deployed Worker's write is still accepted (no outage)", () => {
     const d = newDraft();
-    const bad = `insert into ${A} (id, draft_id, draft_revision, owner_user_id, correlation_id, provider_timeout_ms, model,
+    const legacy = `insert into ${A} (id, draft_id, draft_revision, owner_user_id, correlation_id, provider_timeout_ms, model,
       structured_output_mode, max_tokens, locale, lifecycle_state, finished_at, outcome, terminal_reason_code)
       values (gen_random_uuid(),'${d}',2,'${OWNER}',gen_random_uuid(),120000,'m','none',1,'en','completed',now(),
               'boundary_review_rejected','semantic_reviewer_terminal_failure');`;
-    expect(ok(bad), "a semantic terminal failure must not carry a boundary umbrella").toBe(false);
-    const good = bad.replace("'boundary_review_rejected'", "'review_execution_failed'");
-    expect(ok(good)).toBe(true);
+    expect(ok(legacy), "the old mapping must remain writable until the new Worker is live").toBe(true);
+    // …and the new vocabulary is already accepted, so the next deployment needs no further DDL.
+    expect(ok(legacy.replace("'boundary_review_rejected'", "'review_execution_failed'"))).toBe(true);
   });
 });
 
