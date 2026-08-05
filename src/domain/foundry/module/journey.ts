@@ -27,10 +27,17 @@ export type JourneyElementKind =
   | "action_decision"
   | "field_application"
   | "evidence"
-  | "completion_check";
+  | "completion_check"
+  /** Slice 3.2L — what happens after the training, and when. */
+  | "follow_up";
 
-/** B3A grounds every element in a Host statement only (source docs / standards = B3B). */
-export type GroundingSourceType = "host_statement";
+/**
+ * B3A grounded every element in a Host statement only. Slice 3.2L adds authored programs,
+ * so an element may now also come from the model, from a Host rewrite of model output, or
+ * from a deterministic derivation. The learner preview attributes content honestly on this
+ * basis — AI output is never labelled "From your: …". See `program-authorship.ts`.
+ */
+export type GroundingSourceType = "host_statement" | "ai_proposed" | "host_edited" | "deterministic_derived";
 export type ConfirmationStatus = "grounded" | "needs_confirmation";
 
 export type JourneyGrounding = {
@@ -66,6 +73,7 @@ export const JOURNEY_KIND_ORDER: readonly JourneyElementKind[] = [
   "field_application",
   "evidence",
   "completion_check",
+  "follow_up",
 ];
 
 /** Elements that must be grounded before the Journey can be approved/published. */

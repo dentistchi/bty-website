@@ -8,6 +8,7 @@ import {
   type RealityGroundedJourneyV1,
   type JourneyElementKind,
 } from "@/domain/foundry/module/journey";
+import { attributionKind } from "@/domain/foundry/module/program-authorship";
 
 /**
  * Host Learner Preview + Approval gate (Slice 3.2C-B3A).
@@ -30,6 +31,7 @@ const KIND_LABEL: Record<JourneyElementKind, string> = {
   field_application: "Apply it",
   evidence: "What success looks like",
   completion_check: "Before you finish",
+  follow_up: "What happens next",
 };
 
 const FIELD_LABEL: Record<string, string> = {
@@ -39,6 +41,35 @@ const FIELD_LABEL: Record<string, string> = {
   sharedQuestion: "Shared question",
   completionPrompt: "Completion question",
 };
+
+/**
+ * Honest authorship attribution. Saying "From your: …" over a sentence BTY authored is
+ * the specific dishonesty Slice 3.2L closes, so the label is driven by the element's
+ * recorded provenance, never assumed.
+ */
+function ProvenanceLabel({
+  kind,
+  attribution,
+  field,
+}: {
+  kind: JourneyElementKind;
+  attribution: ReturnType<typeof attributionKind>;
+  field: string | undefined;
+}) {
+  const text =
+    attribution === "bty_authored"
+      ? "Drafted by BTY"
+      : attribution === "host_edited"
+        ? "Your edit"
+        : attribution === "derived"
+          ? "From your setup"
+          : `From your: ${field ? (FIELD_LABEL[field] ?? field) : "input"}`;
+  return (
+    <span className="text-[0.66rem] text-white/35" data-testid={`journey-grounded-${kind}`} data-provenance={attribution ?? "unknown"}>
+      {text}
+    </span>
+  );
+}
 
 export function JourneyPreview({
   answers,
@@ -151,9 +182,7 @@ export function JourneyPreview({
                   Needs confirmation
                 </span>
               ) : (
-                <span className="text-[0.66rem] text-white/35" data-testid={`journey-grounded-${el.kind}`}>
-                  From your: {field ? (FIELD_LABEL[field] ?? field) : "input"}
-                </span>
+                <ProvenanceLabel kind={el.kind} attribution={attributionKind(el)} field={field} />
               )}
             </div>
             <textarea

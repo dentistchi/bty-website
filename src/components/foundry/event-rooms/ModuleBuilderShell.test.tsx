@@ -1,7 +1,26 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+
+/**
+ * Wait for the Review surface, then make the raw Builder details visible.
+ *
+ * Slice 3.2L made the PROGRAM primary and collapsed the field-by-field details behind
+ * "All training details" — Review is a training now, not a form. The panel auto-opens
+ * when something is missing (a blocker must never hide), so these tests must expand it
+ * explicitly when the draft is complete.
+ */
+async function showAllDetails() {
+  const toggle = await screen.findByTestId("all-training-details-toggle");
+  if (toggle.getAttribute("aria-expanded") !== "true") {
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+  }
+  return screen.findByText("Review what you’ve built.");
+}
+
 
 type Asset = { id: string; filename: string; file_kind: string; mime_type: string; byte_size: number; page_count: number | null; page_count_verified: boolean; width: number | null; height: number | null; uploaded_at: string; preview_supported: boolean; participant_delivery_ready: boolean };
 type Draft = {
@@ -211,7 +230,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review header + a summary value
     expect(await screen.findByText("TRAINING DRAFT")).toBeTruthy();
-    expect(screen.getByText("Review what you’ve built.")).toBeTruthy();
+    expect(await showAllDetails()).toBeTruthy();
     expect(screen.getByText("reads the dosage back at handoff")).toBeTruthy();
     // The canonical publish action is now offered on review (2.3A), alongside Edit + Save and leave.
     expect(screen.getByText("Approve & create session")).toBeTruthy();
@@ -295,7 +314,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review lead sits right under the header — no min-h spacer block precedes it.
-    expect(await screen.findByText("Review what you’ve built.")).toBeTruthy();
+    expect(await showAllDetails()).toBeTruthy();
     // The canonical missing summary names the exact sections (no generic 'highlighted' copy).
     const summaries = screen.getAllByTestId("review-missing-summary");
     expect(summaries.length).toBeGreaterThan(0);
@@ -374,7 +393,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
       assets: [mkAsset({ id: "a1", filename: "Care.pdf", file_kind: "pdf", participant_delivery_ready: true })],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
     expect(screen.getByText(/Care\.pdf · Attached · Ready for participant delivery/)).toBeTruthy();
     // Material is satisfied → its row is not highlighted as missing.
     expect(screen.getByTestId("review-row-material").getAttribute("data-missing")).toBeNull();
@@ -387,7 +406,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
       assets: [],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
     const materialRow = screen.getByTestId("review-row-material");
     expect(materialRow.getAttribute("data-missing")).toBe("true");
     expect(materialRow.textContent).toContain("Required");
@@ -568,7 +587,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   it("REPRODUCTION: a draft missing only follow-up disables Approve, names the exact section, and highlights ONLY that row", async () => {
     mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
 
     // Approve disabled.
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(true);
@@ -587,7 +606,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   it("Edit from the missing summary navigates to the correct Builder step, and completing it enables Approve on return", async () => {
     mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
 
     // Tap the named missing item → jump to the follow-up step (7).
     fireEvent.click(screen.getAllByTestId("review-missing-item-followUp")[0]);
@@ -596,7 +615,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
 
     // Return to Review.
     fireEvent.click(screen.getByText("Next"));
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
     // Highlight is gone and Approve is enabled immediately (no reload).
     expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
     expect(screen.queryByTestId("review-missing-summary")).toBeNull();
@@ -606,7 +625,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   it("a fully complete draft shows no summary, no highlighted row, and an enabled Approve", async () => {
     mockDraftServer({ current_step: 8, answers: { ...nearCompleteNoFollow, followUpDays: 7 } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
     expect(screen.queryByTestId("review-missing-summary")).toBeNull();
     expect(document.querySelectorAll('[data-missing="true"]').length).toBe(0);
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
@@ -624,7 +643,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
     };
     mockDraftServer({ current_step: 8, answers: copilotApplied });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
-    await screen.findByText("Review what you’ve built.");
+    await showAllDetails();
     // Behavior + evidence are NOT flagged (Copilot values count); only audience is.
     expect(screen.getByTestId("review-row-behavior").getAttribute("data-missing")).toBeNull();
     expect(screen.getByTestId("review-row-evidence").getAttribute("data-missing")).toBeNull();

@@ -21,7 +21,9 @@ import {
 } from "@/domain/foundry/module/module-builder";
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import { JourneyPreview } from "./JourneyPreview";
-import { mapAnswersToJourney } from "@/domain/foundry/module/journey";
+import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import { ProgramAuthorship, KIND_LABEL, type ProgramGenerateOutcome } from "./ProgramAuthorship";
+import { missingProgramKinds, programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -391,6 +393,55 @@ export function ModuleBuilderShell({
     [patchAnswers],
   );
 
+  // Guided Program Authorship (Slice 3.2L). ONE call authors the whole participant-facing
+  // program. Generation flushes autosave first so the server authors from what the Host is
+  // actually looking at, and NEVER mutates the draft — the proposal reaches the database
+  // only through applyProgram below, and only if the Host applies it.
+  const generateProgram = useCallback(async (): Promise<ProgramGenerateOutcome> => {
+    cancelDebounce();
+    await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
+    const ctx = programContext(answersRef.current);
+    if (!ctx) return { ok: false, code: "context_incomplete" };
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/program-draft`, {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locale,
+          // One explicit Host instruction buys one generation; the server's unique index
+          // refuses a re-delivered request rather than spending twice.
+          submission_intent_id: crypto.randomUUID(),
+          context_fingerprint: programContextFingerprint(ctx),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        program?: unknown; evidence_ceiling?: string; attempt_id?: string | null; error?: string; refusal?: string | null;
+      };
+      if (res.ok && data.program) {
+        return {
+          ok: true,
+          proposal: data.program as ProgramGenerateOutcome extends { ok: true; proposal: infer P } ? P : never,
+          evidenceCeiling: data.evidence_ceiling ?? "",
+          attemptId: data.attempt_id ?? null,
+        };
+      }
+      return { ok: false, code: data.error ?? "invalid_output", refusal: data.refusal ?? null };
+    } catch {
+      return { ok: false, code: "provider_error" };
+    }
+  }, [saver, cancelDebounce, draftId, locale]);
+
+  // Apply is ATOMIC from the Host's point of view: the whole approved journey is written in
+  // ONE patch, so a failed save can never leave a half-applied program.
+  const applyProgram = useCallback(
+    (next: RealityGroundedJourneyV1) => {
+      patchAnswers({ realityGroundedJourneyV1: next }, true);
+    },
+    [patchAnswers],
+  );
+
   // Adaptive Clarification (Slice 2.4C). A clarification answer is persisted through the
   // canonical save path into a NAMESPACED `answers.clarification` key — it never overwrites
   // a canonical Builder field and never publishes (excluded from the snapshot whitelist).
@@ -425,6 +476,18 @@ export function ModuleBuilderShell({
   if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
   const isReview = step === BUILDER_STEP_MAX;
+  // The EXACT blockers, named. R2F measured the old surface claiming "resolve every
+  // Needs confirmation element" while the only real blocker was an unconfirmed title.
+  const journey = answers.realityGroundedJourneyV1;
+  const journeyBlockers: string[] = journey
+    ? [
+        ...(journey.displayTitleStatus !== "grounded" ? ["Confirm the program title"] : []),
+        ...journey.elements
+          .filter((e) => e.confirmationStatus === "needs_confirmation")
+          .map((e) => `${KIND_LABEL[e.kind]} still needs your confirmation`),
+        ...missingProgramKinds(answers, journey).map((k) => `${KIND_LABEL[k]} is missing from the program`),
+      ]
+    : [];
   // Journey-enabled once the Host has opted into the learner preview (Slice 3.2C-B3A).
   const journeyEnabled = answers.realityGroundedJourneyV1 !== undefined;
   // The SINGLE readiness source the Review screen consults — the exact gate that the
@@ -510,6 +573,17 @@ export function ModuleBuilderShell({
               when the Host opts into the learner preview; then the preview + approval
               gate replace the raw-title/raw-completion publish. Legacy drafts (no
               Journey) keep the existing review → publish exactly. */}
+          {/* PROGRAM FIRST (Slice 3.2L). The Founder sees the training their team will
+              experience, in the order they will experience it. The raw Builder answers
+              remain reachable, but as a secondary detail section — Review is no longer a
+              list of the fields the Host just filled in. */}
+          <ProgramAuthorship
+            answers={answers}
+            journey={answers.realityGroundedJourneyV1}
+            ready={programContext(answers) !== null}
+            onGenerate={generateProgram}
+            onApply={applyProgram}
+          />
           {journeyEnabled ? (
             <JourneyPreview answers={answers} onPatch={patchAnswers} onApprovableChange={setJourneyApprovable} />
           ) : (
@@ -522,7 +596,7 @@ export function ModuleBuilderShell({
               {t.journeyStart} →
             </button>
           )}
-          <ReviewBody answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
+          <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           <ParticipationModeChooser
             mode={participationMode}
             audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
@@ -531,23 +605,15 @@ export function ModuleBuilderShell({
             onChange={setParticipationMode}
             t={t}
           />
-          {journeyEnabled && !journeyApprovable ? (
-            <div
-              data-testid="journey-publish-blocked"
-              className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100/85"
-            >
-              {t.journeyApprovalBlocked}
-            </div>
-          ) : (
-            <PublishAction
-              missing={reviewMissing}
-              publishing={publishing}
-              error={publishErr}
-              onEdit={jumpTo}
-              onPublish={doPublish}
-              t={t}
-            />
-          )}
+          <PublishAction
+            missing={reviewMissing}
+            publishing={publishing}
+            error={publishErr}
+            onEdit={jumpTo}
+            onPublish={doPublish}
+            journeyBlockers={journeyEnabled && !journeyApprovable ? journeyBlockers : []}
+            t={t}
+          />
         </>
       ) : (
         <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode)}</div>
@@ -1089,6 +1155,7 @@ function PublishAction({
   error,
   onEdit,
   onPublish,
+  journeyBlockers,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1096,13 +1163,29 @@ function PublishAction({
   error: string | null;
   onEdit: (step: number) => void;
   onPublish: () => void;
+  /** Exact, named reasons the program cannot be created yet. */
+  journeyBlockers: string[];
   t: ModuleBuilderCopy;
 }) {
-  const notReady = missing.length > 0;
+  // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
+  // visible disabled button that names its blocker is a state the Host can act on.
+  const notReady = missing.length > 0 || journeyBlockers.length > 0;
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
       <MissingSummary missing={missing} onEdit={onEdit} t={t} />
+      {journeyBlockers.length > 0 ? (
+        <div className="flex flex-col gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3" data-testid="journey-publish-blocked">
+          <p className="text-sm font-medium text-amber-200/90">
+            {journeyBlockers.length === 1 ? "One thing before you can create this" : `${journeyBlockers.length} things before you can create this`}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {journeyBlockers.map((b, i) => (
+              <li key={i} className="text-sm text-amber-100/85" data-testid="journey-blocker-item">• {b}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {error === "zero_recipients" ? (
         <p className="text-xs leading-5 text-amber-300/85" data-testid="publish-zero-recipients">
           {t.pmZeroRecipients}
@@ -1122,6 +1205,53 @@ function PublishAction({
         {publishing ? t.publishing : t.publishCta}
       </button>
     </div>
+  );
+}
+
+/**
+ * The raw Builder answers, SECONDARY (Slice 3.2L).
+ *
+ * R2F measured Review as ten label:value rows — the Host's own inputs read back to them.
+ * The program is now primary; these details stay one tap away because every Edit
+ * destination must keep working, but they are collapsed by default so Review reads as a
+ * training, not a form. Anything still MISSING forces the section open — a blocker must
+ * never be hidden behind a collapsed panel.
+ */
+function AllTrainingDetails({
+  answers,
+  assets,
+  missing,
+  onEdit,
+  t,
+}: {
+  answers: BuilderAnswers;
+  assets: ClientAsset[];
+  missing: ReviewMissingSection[];
+  onEdit: (step: number) => void;
+  t: ModuleBuilderCopy;
+}) {
+  const [open, setOpen] = useState(missing.length > 0);
+  return (
+    <section className="flex flex-col gap-3" data-testid="all-training-details">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        data-testid="all-training-details-toggle"
+        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left"
+      >
+        <span className="flex flex-col">
+          <span className="text-sm font-medium text-white/75">All training details</span>
+          <span className="text-xs text-white/45">
+            {missing.length > 0
+              ? `${missing.length} still needs attention`
+              : "Everything you entered, and where to change it"}
+          </span>
+        </span>
+        <span aria-hidden className="text-sm text-[#C9A66B]">{open ? "Hide" : "Show"}</span>
+      </button>
+      {open ? <ReviewBody answers={answers} assets={assets} missing={missing} onEdit={onEdit} t={t} /> : null}
+    </section>
   );
 }
 
