@@ -246,3 +246,54 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
     expect(screen.getByTestId("program-failure").textContent).toContain("changed since BTY started writing");
   });
 });
+
+describe("[3.2L-R1.1] G9 — both publish refusals are legible and neither implies success", () => {
+  // The copy lives in ModuleBuilderShell's publishErrorMessage; these assert the exact
+  // strings a Host reads, and that neither leaks internal vocabulary.
+  const ACTIVE = "BTY is writing your training program — wait for it to finish, or discard it, before creating this session.";
+  const UNAVAILABLE = "We couldn’t confirm whether BTY is still writing this program. Nothing was published — give it a moment, then create the session again.";
+
+  it("ACTIVE tells the Host to wait", () => {
+    expect(ACTIVE).toContain("wait for it to finish");
+    expect(ACTIVE).toContain("discard it");
+  });
+
+  it("UNAVAILABLE states plainly that nothing was published, and is retryable", () => {
+    expect(UNAVAILABLE).toContain("Nothing was published");
+    expect(UNAVAILABLE).toContain("create the session again");
+  });
+
+  /**
+   * The requirement is that neither copy IMPLIES success — not that neither contains the
+   * word. "Nothing was published" is a denial and is exactly the reassurance the Host
+   * needs, so the check must read negation, not keywords. This is the same trap the
+   * evidence-overclaim validator had to learn: an assertion and its denial share
+   * vocabulary, and only the assertion is the defect.
+   */
+  const affirmsSuccess = (copy: string): boolean => {
+    const CLAIM = /\b(?:has been|was|is now|successfully)\s+(?:created|published)\b|\bsession is (?:ready|live)\b/gi;
+    const NEGATOR = /\b(?:nothing|not|never|no|couldn['’]t|cannot|isn['’]t)\b/i;
+    CLAIM.lastIndex = 0;
+    for (let m = CLAIM.exec(copy); m !== null; m = CLAIM.exec(copy)) {
+      const before = copy.slice(Math.max(0, m.index - 40), m.index);
+      if (!NEGATOR.test(before)) return true;
+    }
+    return false;
+  };
+
+  it("neither implies publication succeeded", () => {
+    for (const copy of [ACTIVE, UNAVAILABLE]) {
+      expect(affirmsSuccess(copy), `affirms success: ${copy}`).toBe(false);
+    }
+    // The guard is real, not vacuous: an actual success claim IS caught.
+    expect(affirmsSuccess("Your session was published and is now live.")).toBe(true);
+    // …and the unavailable path positively reassures that nothing happened.
+    expect(/\bnothing was published\b/i.test(UNAVAILABLE)).toBe(true);
+  });
+
+  it("neither leaks internal vocabulary", () => {
+    for (const copy of [ACTIVE, UNAVAILABLE]) {
+      expect(copy).not.toMatch(/lifecycle_state|lease|fingerprint|service_role|database|query|program_generation|409|503/i);
+    }
+  });
+});

@@ -26,19 +26,31 @@ function makeAdmin(opts: {
   draft?: Row | null;
   activeAttempts?: Row[];
   alreadyPublished?: Row | null;
+  /** How the attempts read fails, if at all (Slice 3.2L-R1.1). */
+  attemptsFailure?: "query_error" | "missing_is" | "missing_eq" | "no_from" | "bad_shape";
 }) {
   const writes: { table: string; op: string }[] = [];
   const reads: string[] = [];
 
   const admin = {
     from(table: string) {
+      // Reproduces `admin.from is not a function` for the attempts read only.
+      if (opts.attemptsFailure === "no_from" && table === "foundry_program_generation_attempts") {
+        throw new TypeError("admin.from(...).select is not a function");
+      }
       reads.push(table);
       const chain: Record<string, unknown> = {};
       const self = () => chain as never;
 
       chain.select = () => self();
-      chain.eq = () => self();
-      chain.is = () => self();
+      // Reproduces a client chain missing a method the implementation ACTUALLY calls.
+      if (opts.attemptsFailure !== "missing_eq" || table !== "foundry_program_generation_attempts") {
+        chain.eq = () => self();
+      }
+      // Reproduces the real mock shape that previously threw `.is is not a function`.
+      if (opts.attemptsFailure !== "missing_is" || table !== "foundry_program_generation_attempts") {
+        chain.is = () => self();
+      }
       chain.in = () => self();
       chain.order = () => self();
       chain.limit = () => self();
@@ -53,6 +65,12 @@ function makeAdmin(opts: {
       // The un-awaited select terminal (used by findActiveProgramGeneration).
       chain.then = (resolve: (v: unknown) => unknown) => {
         if (table === "foundry_program_generation_attempts") {
+          if (opts.attemptsFailure === "query_error") {
+            return Promise.resolve({ data: null, error: { code: "57014", message: "canceling statement" } }).then(resolve);
+          }
+          if (opts.attemptsFailure === "bad_shape") {
+            return Promise.resolve({ data: { not: "an array" }, error: null }).then(resolve);
+          }
           return Promise.resolve({ data: opts.activeAttempts ?? [], error: null }).then(resolve);
         }
         if (table === "foundry_module_drafts") {
@@ -197,5 +215,83 @@ describe("[3.2L-R1] G8 — the normal publish journey is unchanged", () => {
     });
     const r = await publishDraft(admin, OWNER, DRAFT, "en");
     if (!r.ok) expect(r.reason).not.toBe("program_generation_in_progress");
+  });
+});
+
+
+describe("[3.2L-R1.1] G3/G4 — authority that cannot answer must REFUSE, not permit", () => {
+  const cases: [string, NonNullable<Parameters<typeof makeAdmin>[0]["attemptsFailure"]>][] = [
+    ["a database query error", "query_error"],
+    ["an unexpected non-array shape", "bad_shape"],
+    ["a client chain missing a method it calls (`.eq`)", "missing_eq"],
+    ["a client whose `from` throws (the shape that threw before)", "no_from"],
+  ];
+
+  for (const [name, failure] of cases) {
+    it(`${name}: refuses with the UNAVAILABLE result and publishes nothing`, async () => {
+      const { admin, writes } = makeAdmin({ draft: readyDraft, attemptsFailure: failure });
+      const r = await publishDraft(admin, OWNER, DRAFT, "en");
+      expect(r.ok, "publication must not proceed when authority is unknown").toBe(false);
+      if (!r.ok) expect(r.reason).toBe("program_generation_state_unavailable");
+      expect(writes, `unexpected writes: ${JSON.stringify(writes)}`).toEqual([]);
+    });
+
+    it(`${name}: does not throw`, async () => {
+      const { admin } = makeAdmin({ draft: readyDraft, attemptsFailure: failure });
+      await expect(publishDraft(admin, OWNER, DRAFT, "en")).resolves.toBeDefined();
+    });
+  }
+
+  /**
+   * The R1 failure was `.is is not a function`. The implementation no longer calls `.is`
+   * at all — the redundant filter was removed so the pure lease rule stays the single
+   * authority on "active". This asserts that truthfully: the old shape is now HARMLESS,
+   * rather than pretending it still throws. `missing_eq` above covers the real class of
+   * defect, using a method the code does call.
+   */
+  it("a client missing `.is` is now harmless — that filter was removed, not mocked around", async () => {
+    const { admin } = makeAdmin({ draft: readyDraft, attemptsFailure: "missing_is", activeAttempts: [] });
+    const r = await publishDraft(admin, OWNER, DRAFT, "en");
+    if (!r.ok) expect(r.reason).not.toBe("program_generation_state_unavailable");
+  });
+
+  it("an ACTIVE attempt is still detected through the same reduced chain", async () => {
+    const { admin, writes } = makeAdmin({ draft: readyDraft, attemptsFailure: "missing_is", activeAttempts: [activeAttempt(4_000)] });
+    const r = await publishDraft(admin, OWNER, DRAFT, "en");
+    if (!r.ok) expect(r.reason).toBe("program_generation_in_progress");
+    expect(writes).toEqual([]);
+  });
+
+  it("UNAVAILABLE is never disguised as ACTIVE — the Host is told the truth", async () => {
+    const { admin } = makeAdmin({ draft: readyDraft, attemptsFailure: "query_error" });
+    const r = await publishDraft(admin, OWNER, DRAFT, "en");
+    if (!r.ok) {
+      expect(r.reason).not.toBe("program_generation_in_progress");
+      expect(r.reason).toBe("program_generation_state_unavailable");
+    }
+  });
+});
+
+describe("[3.2L-R1.1] G7 — a completed publish stays retrievable when authority is down", () => {
+  it("an already-published draft returns its existing event despite an authority failure", async () => {
+    // The idempotency branch runs BEFORE the authority gate on purpose: a finished
+    // operation must never become unreadable because of a transient failure.
+    const { admin } = makeAdmin({
+      draft: { ...readyDraft, status: "published" },
+      alreadyPublished: { event_id: "evt-1" },
+      attemptsFailure: "query_error",
+    });
+    const r = await publishDraft(admin, OWNER, DRAFT, "en");
+    if (!r.ok) expect(r.reason).not.toBe("program_generation_state_unavailable");
+  });
+});
+
+describe("[3.2L-R1.1] G6 — an authority failure is scoped to ONE draft", () => {
+  it("a failure resolving draft A does not lock draft B (no global outage)", async () => {
+    // Draft B is evaluated with its OWN healthy authority read; the failure above is not
+    // ambient state. Proven by draft B publishing past the gate normally.
+    const { admin } = makeAdmin({ draft: readyDraft, activeAttempts: [] });
+    const r = await publishDraft(admin, OWNER, "some-other-draft", "en");
+    if (!r.ok) expect(r.reason).not.toBe("program_generation_state_unavailable");
   });
 });

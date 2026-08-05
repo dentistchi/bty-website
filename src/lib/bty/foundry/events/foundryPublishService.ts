@@ -26,7 +26,7 @@ import {
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
 import { getOwnerRoomSnapshot, type ManagerDocumentSnapshot } from "./foundryDocumentService";
 import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
-import { findActiveProgramGeneration } from "./programGenerationRecorder";
+import { resolveProgramGenerationAuthority } from "./programGenerationRecorder";
 
 /**
  * Foundry Guided Module Builder — PUBLISH (Slice 2.3A · service layer).
@@ -208,20 +208,26 @@ export async function publishDraft(
     return { ok: false, reason: "draft_not_publishable" };
   }
 
-  // PROGRAM GENERATION MUTUAL EXCLUSION (Slice 3.2L-R1).
+  // PROGRAM GENERATION MUTUAL EXCLUSION — FAIL CLOSED (Slice 3.2L-R1.1).
   //
   // Measured live: a draft was published 4 seconds after a program generation was
   // admitted against it, and that generation recorded success 6 seconds later. Draft
   // status was checked only at generation admission, so publication could land while the
-  // provider call was still in flight — real spend, and a proposal returned as usable for
-  // a draft that was no longer editable.
+  // provider call was still in flight.
   //
-  // Publication is the side that must yield: it is the irreversible one. Refused HERE,
-  // after the idempotency reuse check (an already-published draft must still return its
-  // event) and BEFORE any mutation — so a refusal creates no event, module, QR or
-  // assignment. Scoped to this draft only; a generation on another draft is irrelevant.
-  const activeGeneration = await findActiveProgramGeneration(admin, draftId);
-  if (activeGeneration) return { ok: false, reason: "program_generation_in_progress" };
+  // R1 added this gate but failed OPEN when the authority query errored — which read an
+  // inability to answer as permission. Publication is the IRREVERSIBLE side, so it now
+  // refuses on BOTH "a generation is running" and "I cannot tell whether one is running".
+  // The two are kept distinct so the Host is told the truth: one is a wait, the other is
+  // a retry.
+  //
+  // Ordering is deliberate: the idempotency reuse branch above already returned, so an
+  // ALREADY-PUBLISHED draft stays retrievable even while this authority is unavailable —
+  // a completed operation must never become unreadable because of a transient failure.
+  // Everything below this point mutates, so both refusals happen before any of it.
+  const authority = await resolveProgramGenerationAuthority(admin, draftId);
+  if (authority.state === "active") return { ok: false, reason: "program_generation_in_progress" };
+  if (authority.state === "unavailable") return { ok: false, reason: "program_generation_state_unavailable" };
 
   const answers = (draft.answers ?? {}) as BuilderAnswers;
 

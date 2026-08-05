@@ -182,38 +182,70 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
 }
 
 /**
- * The generation attempt currently holding `draftId`, or null.
+ * Whether a program generation currently holds `draftId` — a THREE-state answer.
  *
- * This is the authority publication consults (Slice 3.2L-R1). It is scoped to ONE draft
- * and reads only unfinished rows, so it can never become a global lock, and the pure
- * lease rule decides whether an unfinished row still counts — an attempt lost to a crash
- * stops blocking on its own, without a reaper and without rewriting the row.
+ * Slice 3.2L-R1 returned `LeaseAttempt | null` and collapsed "no active attempt" with
+ * "could not tell", failing open on a query error. That was wrong: publication is the
+ * IRREVERSIBLE side, so an authority that cannot answer must not be read as permission.
+ * The two cases are now distinguishable, and the caller refuses on both `active` and
+ * `unavailable` (Slice 3.2L-R1.1).
  *
- * Fails OPEN on a query error: an observability outage must not make the product
- * unpublishable. The consequence is stated honestly rather than hidden — if this read
- * fails, the race it guards against is momentarily possible again.
+ * Scoped to ONE draft: a failure or an active attempt on draft A says nothing about
+ * draft B, so this can never become a global lock or a global outage.
+ */
+export type ProgramGenerationAuthority =
+  | { state: "clear" }
+  | { state: "active"; attempt: LeaseAttempt }
+  /** `reason` is for server logs only — never surfaced to a Host. */
+  | { state: "unavailable"; reason: "query_error" | "unexpected_shape" | "client_unavailable" };
+
+export async function resolveProgramGenerationAuthority(
+  admin: SupabaseClient,
+  draftId: string,
+  now: Date = new Date(),
+): Promise<ProgramGenerationAuthority> {
+  try {
+    // A client that cannot be queried at all is UNAVAILABLE, never clear.
+    if (!admin || typeof (admin as { from?: unknown }).from !== "function") {
+      return { state: "unavailable", reason: "client_unavailable" };
+    }
+    const res = await admin
+      .from(ATTEMPTS)
+      .select("id,draft_id,lifecycle_state,started_at,finished_at")
+      .eq("draft_id", draftId)
+      .eq("lifecycle_state", "started");
+
+    if (!res || typeof res !== "object") return { state: "unavailable", reason: "unexpected_shape" };
+    const { data, error } = res as { data?: unknown; error?: unknown };
+    if (error) return { state: "unavailable", reason: "query_error" };
+    if (!Array.isArray(data)) return { state: "unavailable", reason: "unexpected_shape" };
+
+    // `finished_at` is deliberately NOT filtered in SQL. `classifyAttempt` already treats a
+    // set `finished_at` as terminal, so the pure rule stays the single authority on what
+    // "active" means — one place to read, one place to change.
+    const attempt = blockingAttempt(data as LeaseAttempt[], draftId, now);
+    return attempt ? { state: "active", attempt } : { state: "clear" };
+  } catch {
+    // A malformed or partially-mocked client throws on some chain method. That is an
+    // inability to establish state, not permission to publish.
+    return { state: "unavailable", reason: "unexpected_shape" };
+  }
+}
+
+/**
+ * Convenience read for INFORMATIONAL surfaces only (the Builder's pending indicator).
+ *
+ * Deliberately collapses `unavailable` to "not active": the UI hint is a convenience, and
+ * the server refuses authoritatively at publish. It must NEVER be used to decide whether
+ * publication may proceed — use `resolveProgramGenerationAuthority` for that.
  */
 export async function findActiveProgramGeneration(
   admin: SupabaseClient,
   draftId: string,
   now: Date = new Date(),
 ): Promise<LeaseAttempt | null> {
-  try {
-    const { data, error } = await admin
-      .from(ATTEMPTS)
-      .select("id,draft_id,lifecycle_state,started_at,finished_at")
-      .eq("draft_id", draftId)
-      .eq("lifecycle_state", "started");
-    if (error || !Array.isArray(data)) return null;
-    // `finished_at` is deliberately NOT filtered in SQL. `classifyAttempt` already treats a
-    // set `finished_at` as terminal, so the pure rule stays the single authority on what
-    // "active" means — one place to read, one place to change.
-    return blockingAttempt(data as LeaseAttempt[], draftId, now);
-  } catch {
-    // An unavailable or unexpected client shape must not break publication. Fail open,
-    // with the consequence stated in the docblock above.
-    return null;
-  }
+  const authority = await resolveProgramGenerationAuthority(admin, draftId, now);
+  return authority.state === "active" ? authority.attempt : null;
 }
 
 /** SHA-256 of the raw response, so two runs can be compared without storing either. */

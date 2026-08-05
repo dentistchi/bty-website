@@ -105,6 +105,13 @@ function makeFakeAdmin(tables: Tables) {
             const i = rows.indexOf(r);
             if (i >= 0) rows.splice(i, 1);
           }
+        } else {
+          // An AWAITED select resolves to the matched ROWS — that is what PostgREST does.
+          // This previously resolved to `data: null`, which no real client ever returns;
+          // it went unnoticed only because nothing awaited a bare select. The program
+          // generation authority read (Slice 3.2L-R1.1) does, and it fails CLOSED on a
+          // shape it cannot read, so the fixture has to model the client honestly.
+          return Promise.resolve({ data: (this._matches as () => Row[])().map((r) => ({ ...r })), error: null }).then(onF);
         }
         return Promise.resolve({ data: null, error: null }).then(onF);
       },

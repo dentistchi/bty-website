@@ -1151,6 +1151,13 @@ function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
       return t.publishErrNotHost;
     case "assignment_write_failed":
       return t.publishErrAssignment;
+    // Slice 3.2L-R1.1 — the two program-generation refusals are DIFFERENT actions for the
+    // Host: one is a wait, the other is a retry. Collapsing them into the generic publish
+    // error would tell them neither.
+    case "program_generation_in_progress":
+      return "BTY is writing your training program — wait for it to finish, or discard it, before creating this session.";
+    case "program_generation_state_unavailable":
+      return "We couldn’t confirm whether BTY is still writing this program. Nothing was published — give it a moment, then create the session again.";
     default:
       return t.publishError;
   }
