@@ -6,6 +6,7 @@ import {
   deleteDraft,
 } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
+import { findActiveProgramGeneration } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch } from "@/domain/foundry/module/module-builder";
 
@@ -42,7 +43,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const draft = await getOwnerDraft(admin, user.id, id);
   if (!draft) return managerJson(base, req, { error: "not_found" }, 404);
   const assets = (await listDraftAssets(admin, user.id, id)) ?? [];
-  return managerJson(base, req, { draft: { ...toClientDraft(draft), assets } });
+  // Slice 3.2L-R1: a reload must reconcile SERVER state, not trust a stale browser
+  // pending flag. If a generation is still running — including one started in another
+  // tab — the Builder learns it here and keeps publication disabled.
+  const active = await findActiveProgramGeneration(admin, id);
+  return managerJson(base, req, {
+    draft: { ...toClientDraft(draft), assets },
+    program_generation_active: active !== null,
+  });
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

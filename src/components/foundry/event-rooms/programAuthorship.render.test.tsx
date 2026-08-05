@@ -185,3 +185,64 @@ describe("[3.2L] failure leaves the draft untouched and recoverable", () => {
     expect(screen.getByTestId("program-failure").textContent).toContain("discarded it rather than show it to you");
   });
 });
+
+describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", () => {
+  it("raises pending while the draft is being written, and lowers it on success", async () => {
+    const pending: boolean[] = [];
+    const onGenerate = vi.fn(async () => ok);
+    render(
+      <ProgramAuthorship
+        answers={ANSWERS}
+        journey={undefined}
+        ready
+        onGenerate={onGenerate}
+        onApply={vi.fn()}
+        onPendingChange={(p) => pending.push(p)}
+      />,
+    );
+    await generate();
+    expect(pending, "must raise then lower").toEqual([true, false]);
+  });
+
+  it("lowers pending on EVERY failure path — a failed draft must not wedge publication", async () => {
+    for (const outcome of [
+      { ok: false as const, code: "timeout" },
+      { ok: false as const, code: "provider_error" },
+      { ok: false as const, code: "invalid_output", refusal: "invented_specifics" },
+      { ok: false as const, code: "stale_context" },
+      { ok: false as const, code: "duplicate_intent" },
+    ]) {
+      cleanup();
+      const pending: boolean[] = [];
+      render(
+        <ProgramAuthorship
+          answers={ANSWERS}
+          journey={undefined}
+          ready
+          onGenerate={vi.fn(async () => outcome)}
+          onApply={vi.fn()}
+          onPendingChange={(p) => pending.push(p)}
+        />,
+      );
+      await generate();
+      expect(pending.at(-1), `${outcome.code} left publication wedged`).toBe(false);
+    }
+  });
+
+  it("a stale generation names the ACTUAL reason, not a generic error", async () => {
+    // The precise refusal is more useful than the generic one: the Host published this
+    // training mid-draft, and telling them exactly that is what makes it recoverable.
+    setup({ ok: false, code: "stale_context", refusal: "status_no_longer_draft" });
+    await generate();
+    const text = screen.getByTestId("program-failure").textContent ?? "";
+    expect(text).toContain("created as a session while BTY was writing");
+    expect(text).toContain("Nothing was changed");
+  });
+
+  it("an inputs-changed stale draft explains that instead", async () => {
+    cleanup();
+    setup({ ok: false, code: "stale_context", refusal: "inputs_changed" });
+    await generate();
+    expect(screen.getByTestId("program-failure").textContent).toContain("changed since BTY started writing");
+  });
+});

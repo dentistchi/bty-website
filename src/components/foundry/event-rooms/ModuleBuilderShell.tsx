@@ -87,6 +87,10 @@ export function ModuleBuilderShell({
   // Journey approval gate (Slice 3.2C-B3A): publish is blocked until the learner
   // preview Journey is fully grounded (title confirmed + no needs_confirmation).
   const [journeyApprovable, setJourneyApprovable] = useState(false);
+  // Slice 3.2L-R1: a program draft is being written for this training right now.
+  // Publication must not proceed underneath it. Seeded from the SERVER on restore so a
+  // reload — or a generation started in another tab — is reconciled rather than assumed.
+  const [generationPending, setGenerationPending] = useState(false);
   // Participation mode (Slice 3.1B-3C). Default OPEN_LINK — a Host must explicitly opt into
   // assigned overlay, and legacy/absent always stays open link.
   const [participationMode, setParticipationMode] = useState<"open_link" | "assigned_overlay">("open_link");
@@ -143,7 +147,7 @@ export function ModuleBuilderShell({
         if (!alive) return;
         if (res.status === 404) return setRestore("gone");
         if (!res.ok) return setRestore("unavailable");
-        const data = (await res.json()) as { draft?: ClientDraft };
+        const data = (await res.json()) as { draft?: ClientDraft; program_generation_active?: boolean };
         const draft = data.draft;
         if (!draft || draft.status !== "draft") return setRestore("gone");
         const a = draft.answers ?? {};
@@ -153,6 +157,7 @@ export function ModuleBuilderShell({
         setStep(draft.current_step);
         setAssets(draft.assets ?? []);
         setIsRevision((draft.module_version ?? 1) > 1 || draft.parent_module_id != null);
+        setGenerationPending(data.program_generation_active === true);
         setRestore("loaded");
       } catch {
         if (alive) setRestore("unavailable");
@@ -583,6 +588,7 @@ export function ModuleBuilderShell({
             ready={programContext(answers) !== null}
             onGenerate={generateProgram}
             onApply={applyProgram}
+            onPendingChange={setGenerationPending}
           />
           {journeyEnabled ? (
             <JourneyPreview answers={answers} onPatch={patchAnswers} onApprovableChange={setJourneyApprovable} />
@@ -612,6 +618,7 @@ export function ModuleBuilderShell({
             onEdit={jumpTo}
             onPublish={doPublish}
             journeyBlockers={journeyEnabled && !journeyApprovable ? journeyBlockers : []}
+            generationPending={generationPending}
             t={t}
           />
         </>
@@ -1156,6 +1163,7 @@ function PublishAction({
   onEdit,
   onPublish,
   journeyBlockers,
+  generationPending,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1165,15 +1173,25 @@ function PublishAction({
   onPublish: () => void;
   /** Exact, named reasons the program cannot be created yet. */
   journeyBlockers: string[];
+  /** A program draft is being written for this training right now. */
+  generationPending: boolean;
   t: ModuleBuilderCopy;
 }) {
   // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
   // visible disabled button that names its blocker is a state the Host can act on.
-  const notReady = missing.length > 0 || journeyBlockers.length > 0;
+  const notReady = missing.length > 0 || journeyBlockers.length > 0 || generationPending;
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
       <MissingSummary missing={missing} onEdit={onEdit} t={t} />
+      {generationPending ? (
+        <div className="rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3" data-testid="publish-blocked-generation">
+          <p className="text-sm font-medium text-amber-200/90">BTY is writing your training program</p>
+          <p className="mt-0.5 text-sm text-amber-100/80">
+            Wait for it to finish, or discard it, before creating this session.
+          </p>
+        </div>
+      ) : null}
       {journeyBlockers.length > 0 ? (
         <div className="flex flex-col gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3" data-testid="journey-publish-blocked">
           <p className="text-sm font-medium text-amber-200/90">

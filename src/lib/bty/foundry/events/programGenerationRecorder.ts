@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { blockingAttempt, type LeaseAttempt } from "@/domain/foundry/module/program-generation-lease";
 
 /**
  * Durable observability for whole-program authorship (Slice 3.2L).
@@ -178,6 +179,41 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
       response_sha256: input.responseSha256 ?? null,
     })
     .eq("id", input.callId);
+}
+
+/**
+ * The generation attempt currently holding `draftId`, or null.
+ *
+ * This is the authority publication consults (Slice 3.2L-R1). It is scoped to ONE draft
+ * and reads only unfinished rows, so it can never become a global lock, and the pure
+ * lease rule decides whether an unfinished row still counts — an attempt lost to a crash
+ * stops blocking on its own, without a reaper and without rewriting the row.
+ *
+ * Fails OPEN on a query error: an observability outage must not make the product
+ * unpublishable. The consequence is stated honestly rather than hidden — if this read
+ * fails, the race it guards against is momentarily possible again.
+ */
+export async function findActiveProgramGeneration(
+  admin: SupabaseClient,
+  draftId: string,
+  now: Date = new Date(),
+): Promise<LeaseAttempt | null> {
+  try {
+    const { data, error } = await admin
+      .from(ATTEMPTS)
+      .select("id,draft_id,lifecycle_state,started_at,finished_at")
+      .eq("draft_id", draftId)
+      .eq("lifecycle_state", "started");
+    if (error || !Array.isArray(data)) return null;
+    // `finished_at` is deliberately NOT filtered in SQL. `classifyAttempt` already treats a
+    // set `finished_at` as terminal, so the pure rule stays the single authority on what
+    // "active" means — one place to read, one place to change.
+    return blockingAttempt(data as LeaseAttempt[], draftId, now);
+  } catch {
+    // An unavailable or unexpected client shape must not break publication. Fail open,
+    // with the consequence stated in the docblock above.
+    return null;
+  }
 }
 
 /** SHA-256 of the raw response, so two runs can be compared without storing either. */

@@ -46,6 +46,11 @@ const FAILURE_COPY: Record<string, string> = {
   invalid_output: "BTY drafted something that didn’t meet our honesty rules, so we discarded it rather than show it to you. Your draft is untouched.",
   duplicate_intent: "That request was already sent. Refresh to see the result rather than drafting twice.",
   context_mismatch: "Your training changed since this draft was written. Generate it again so it matches.",
+  // The draft was published, deleted or edited while BTY was writing. The proposal is
+  // real but no longer applies to this training.
+  stale_context: "This training changed while BTY was writing, so the draft no longer matches it. Nothing was changed — start it again when you're ready.",
+  status_no_longer_draft: "This training was created as a session while BTY was writing, so the draft can no longer be added to it. Nothing was changed.",
+  inputs_changed: "Your training changed since BTY started writing. Nothing was changed — start the draft again so it matches.",
   context_incomplete: "Add the problem, audience, behaviour and evidence first — BTY drafts from those.",
   source_identity_unavailable: "This build can’t identify itself, so drafting is disabled. Nothing was changed.",
 };
@@ -56,6 +61,7 @@ export function ProgramAuthorship({
   ready,
   onGenerate,
   onApply,
+  onPendingChange,
 }: {
   answers: BuilderAnswers;
   journey: RealityGroundedJourneyV1 | undefined;
@@ -63,6 +69,11 @@ export function ProgramAuthorship({
   onGenerate: () => Promise<ProgramGenerateOutcome>;
   /** Persist the whole approved journey in ONE save. */
   onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => void;
+  /**
+   * Raised while a program draft is in flight. The Builder uses it to disable
+   * publication — a generation and a publication must never overlap on one draft.
+   */
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [phase, setPhase] = useState<"idle" | "working" | "review" | "failed" | "applied">("idle");
   const [proposal, setProposal] = useState<ProgramProposal | null>(null);
@@ -79,7 +90,11 @@ export function ProgramAuthorship({
   const generate = useCallback(async () => {
     setPhase("working");
     setFailure("");
+    onPendingChange?.(true);
     const r = await onGenerate();
+    // The lease is released the moment the attempt reaches a terminal state, whichever
+    // way it went — a failed generation must never leave publication wedged.
+    onPendingChange?.(false);
     if (!r.ok) {
       setFailure(FAILURE_COPY[r.refusal ?? ""] ?? FAILURE_COPY[r.code] ?? FAILURE_COPY.invalid_output);
       setPhase("failed");

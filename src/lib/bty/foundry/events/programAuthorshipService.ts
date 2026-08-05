@@ -9,6 +9,7 @@ import {
   type ProgramValidated,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
 import {
   startProgramAttempt,
   finalizeProgramAttempt,
@@ -45,7 +46,9 @@ export type ProgramGenerateErrorCode =
   | "timeout"
   | "provider_error"
   | "invalid_output"
-  | "duplicate_intent";
+  | "duplicate_intent"
+  /** The draft changed while the provider was working — the proposal is unusable. */
+  | "stale_context";
 
 export type ProgramGenerateResult =
   | { ok: true; value: ProgramValidated; attemptId: string | null; contextFingerprint: string }
@@ -188,6 +191,7 @@ const ATTEMPT_OUTCOME: Record<ProgramGenerateErrorCode, ProgramAttemptOutcome> =
   provider_error: "provider_transport_error",
   invalid_output: "validation_refused",
   duplicate_intent: "internal_failure",
+  stale_context: "stale_context",
 };
 
 /**
@@ -205,6 +209,11 @@ export async function generateProgram(
     locale: "en" | "ko";
     deployVersion: string;
     correlationId: string;
+    /**
+     * Re-read the draft's authorship state AFTER the provider returns. Supplied by the
+     * caller so this service still owns no database reads of its own beyond the ledger.
+     */
+    reloadDraftState: () => Promise<DraftAuthorshipState | null>;
   },
 ): Promise<ProgramGenerateResult> {
   const fingerprint = programContextFingerprint(args.ctx);
@@ -323,6 +332,27 @@ export async function generateProgram(
     }
 
     if (validated.ok) {
+      // POST-PROVIDER REVALIDATION (Slice 3.2L-R1). The draft is reloaded and compared
+      // against the state generation was ADMITTED on. Measured live: a draft was
+      // published mid-flight and the generation still recorded success. A proposal for a
+      // draft that has been published, deleted, or edited underneath is not a success —
+      // it is unusable, and saying otherwise would be the dishonesty this repair exists
+      // to remove. Recorded as `stale_context`, an outcome the vocabulary already had.
+      const admitted: DraftAuthorshipState = {
+        draftId: args.draftId,
+        ownerUserId: args.ownerUserId,
+        status: "draft",
+        fingerprint,
+      };
+      const stale = staleReason(admitted, await args.reloadDraftState());
+      if (stale) {
+        if (attemptId) {
+          await finalizeProgramAttempt(admin, { attemptId, outcome: "stale_context", durationMs: Date.now() - t0 });
+        }
+        logOutcome("stale_after_provider", stale);
+        return { ok: false, code: "stale_context", refusal: stale };
+      }
+
       if (attemptId) {
         await finalizeProgramAttempt(admin, {
           attemptId,

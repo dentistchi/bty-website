@@ -20,6 +20,9 @@ export const runtime = "nodejs";
 function statusForReason(reason: string): number {
   if (reason === "draft_not_found") return 404;
   if (reason === "draft_not_mutable" || reason === "publish_conflict" || reason === "draft_not_publishable") return 409;
+  // A program draft is being written for this training right now — a recoverable
+  // conflict the Host resolves by waiting or discarding, never a server error.
+  if (reason === "program_generation_in_progress") return 409;
   // Assigned-overlay outcomes (Slice 3.1B-3C): a resolvable-but-empty audience is a
   // deliberate block the Host must resolve (change audience or pick Open link), not a
   // server error and not a silent Everyone fallback.

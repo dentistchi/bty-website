@@ -26,6 +26,7 @@ import {
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
 import { getOwnerRoomSnapshot, type ManagerDocumentSnapshot } from "./foundryDocumentService";
 import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
+import { findActiveProgramGeneration } from "./programGenerationRecorder";
 
 /**
  * Foundry Guided Module Builder — PUBLISH (Slice 2.3A · service layer).
@@ -206,6 +207,21 @@ export async function publishDraft(
   if (draft.status !== "draft" && draft.status !== "approved") {
     return { ok: false, reason: "draft_not_publishable" };
   }
+
+  // PROGRAM GENERATION MUTUAL EXCLUSION (Slice 3.2L-R1).
+  //
+  // Measured live: a draft was published 4 seconds after a program generation was
+  // admitted against it, and that generation recorded success 6 seconds later. Draft
+  // status was checked only at generation admission, so publication could land while the
+  // provider call was still in flight — real spend, and a proposal returned as usable for
+  // a draft that was no longer editable.
+  //
+  // Publication is the side that must yield: it is the irreversible one. Refused HERE,
+  // after the idempotency reuse check (an already-published draft must still return its
+  // event) and BEFORE any mutation — so a refusal creates no event, module, QR or
+  // assignment. Scoped to this draft only; a generation on another draft is irrelevant.
+  const activeGeneration = await findActiveProgramGeneration(admin, draftId);
+  if (activeGeneration) return { ok: false, reason: "program_generation_in_progress" };
 
   const answers = (draft.answers ?? {}) as BuilderAnswers;
 

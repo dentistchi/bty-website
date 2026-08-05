@@ -77,10 +77,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     locale,
     deployVersion: identity.sourceCommitSha,
     correlationId: crypto.randomUUID(),
+    // Re-read AFTER the provider returns. The draft may have been published, deleted or
+    // edited while the call was in flight — measured live during the first controlled
+    // window — and a proposal for a draft that moved is not a success.
+    reloadDraftState: async () => {
+      const fresh = await getOwnerDraft(admin, user.id, id);
+      if (!fresh) return null;
+      const freshCtx = programContext((fresh.answers ?? {}) as BuilderAnswers);
+      return {
+        draftId: fresh.id,
+        ownerUserId: user.id,
+        status: fresh.status,
+        fingerprint: freshCtx ? programContextFingerprint(freshCtx) : "",
+      };
+    },
   });
 
   if (!result.ok) {
-    const status = result.code === "duplicate_intent" ? 409 : result.code === "provider_unavailable" ? 503 : 502;
+    const status =
+      result.code === "duplicate_intent" || result.code === "stale_context"
+        ? 409
+        : result.code === "provider_unavailable"
+          ? 503
+          : 502;
     return managerJson(base, req, { error: result.code, refusal: result.refusal ?? null }, status);
   }
 
