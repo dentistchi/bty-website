@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "./copy";
 import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, suggestSharedQuestion, type ModuleBuilderCopy } from "./moduleBuilderCopy";
-import { createSerializedSaver, type SaveState } from "./moduleAutosave";
+import { createSerializedSaver, SAVE_REQUEST_TIMEOUT_MS, type SaveState } from "./moduleAutosave";
 import {
   observableBehaviorWarning,
   recommendArenaForNeeds,
@@ -113,6 +113,10 @@ export function ModuleBuilderShell({
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ answers: snap.answers, current_step: snap.currentStep }),
+          // R2E — a request with no deadline is what wedged the saver on a real device:
+          // it never settled, so `inFlight` never cleared and every later flush hung.
+          // Aborting turns that into an ordinary retryable failure.
+          signal: AbortSignal.timeout(SAVE_REQUEST_TIMEOUT_MS),
         });
         if (res.status === 404) {
           goneRef.current = true;
