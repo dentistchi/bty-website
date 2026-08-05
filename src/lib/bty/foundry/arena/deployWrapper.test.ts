@@ -14,6 +14,15 @@ import {
   checkPreconditions,
   isFullSha,
   readPackageName,
+  CONTAINMENT_TOKENS,
+  ISOLATED_HOTFIX_APPLICATION_PATHS,
+  ISOLATED_HOTFIX_APPLICATION_SHA,
+  ISOLATED_HOTFIX_BASE_SHA,
+  ISOLATED_HOTFIX_BRANCH,
+  ISOLATED_HOTFIX_FLAG,
+  ISOLATED_HOTFIX_TOOLING_PATHS,
+  checkIsolatedHotfix,
+  resolveMode,
 } from "../../../../../scripts/deploy-bty-arena-staging-with-source.mjs";
 
 /**
@@ -187,10 +196,16 @@ describe("[R5C-3V2] the wrapper is safe to run with real credentials in the envi
   });
 
   it("forwards no caller-supplied deploy arguments", () => {
-    // `process.argv` is read ONLY to decide whether the module was invoked directly.
-    const argvUses = code.match(/process\.argv/g) ?? [];
-    expect(argvUses.length).toBeLessThanOrEqual(2);
-    expect(code).not.toMatch(/process\.argv\.slice\(2\)/);
+    // R2E-R2 widened this from "argv is never read" to the property that actually mattered all
+    // along: argv MAY select a mode, but no argv-derived value may reach a command. The mode is
+    // decided by comparing against a literal flag, and `resolveMode` returns a fixed string rather
+    // than anything the caller wrote.
+    for (const call of code.match(/execFileSync\([\s\S]*?\)\s*;/g) ?? []) {
+      expect(call, "no argv value may reach a subprocess").not.toMatch(/argv/);
+    }
+    expect(code).toMatch(/includes\(ISOLATED_HOTFIX_FLAG\)/);
+    // The deploy argument array is still built only from the SHA.
+    expect(code).toMatch(/"deploy",\s*\.\.\.buildVarArgs\(SOURCE_SHA\)/);
   });
 
   it("attempts no rollback and no redeploy of its own", () => {
@@ -208,5 +223,237 @@ describe("[R5C-3V2] the wrapper is safe to run with real credentials in the envi
 
   it("exits non-zero on every refusal", () => {
     expect(code).toMatch(/process\.exit\(1\)/);
+  });
+});
+
+/**
+ * THE BOUNDED ONE-HOTFIX AUTHORITY (Slice 3.2K-BUILDER-REDESIGN-R2E-R2).
+ *
+ * The live Worker carries containment source that calls a governed-admission function the live
+ * database does not have. Replacing it means deploying a branch that is deliberately NOT inner-main,
+ * which the R5C-3V2 guard refuses — correctly.
+ *
+ * These tests exist to prove the escape hatch is a KEYHOLE and not a door: one branch, one commit,
+ * one base, three application paths, and no way in without the explicit flag. The most important
+ * assertions here are the ones that prove the ORDINARY path did not change.
+ */
+
+const isolatedClean = {
+  branch: ISOLATED_HOTFIX_BRANCH,
+  workerName: TARGET_WORKER,
+  environment: TARGET_ENVIRONMENT,
+  packageName: REQUIRED_PACKAGE_NAME,
+  stagedCount: 0,
+  unstagedCount: 0,
+  headSha: SHA,
+  applicationIsAncestorOfHead: true,
+  applicationParentSha: ISOLATED_HOTFIX_BASE_SHA,
+  applicationDiffPaths: [...ISOLATED_HOTFIX_APPLICATION_PATHS],
+  toolingDiffPaths: ["scripts/deploy-bty-arena-staging-with-source.mjs"],
+  containmentHits: [],
+};
+
+describe("[R2E-R2] the default inner-main guard is unchanged", () => {
+  it("still admits inner-main with no flag", () => {
+    expect(resolveMode([])).toBe("normal");
+    expect(checkPreconditions(clean)).toEqual({ ok: true });
+  });
+
+  it("still refuses the hotfix branch on ordinary invocation", () => {
+    // The exact command an operator would type by habit must still be refused.
+    expect(resolveMode([])).toBe("normal");
+    expect(checkPreconditions({ ...clean, branch: ISOLATED_HOTFIX_BRANCH })).toEqual({
+      ok: false,
+      reason: REFUSALS.branch,
+    });
+  });
+
+  it("still refuses any other branch, flag or no flag", () => {
+    for (const branch of ["main", "feature/x", "builder-r2e-isolated-staging-2", ""]) {
+      expect(checkPreconditions({ ...clean, branch })).toEqual({ ok: false, reason: REFUSALS.branch });
+    }
+  });
+});
+
+describe("[R2E-R2] the bounded path requires the explicit flag", () => {
+  it("is unreachable without the flag", () => {
+    expect(resolveMode([])).toBe("normal");
+    expect(resolveMode(["--isolated"])).toBe("normal");
+    expect(resolveMode(["--isolated-builder-r2e-hotfix-2"])).toBe("normal");
+  });
+
+  it("is selected only by the exact flag", () => {
+    expect(resolveMode([ISOLATED_HOTFIX_FLAG])).toBe("isolated-builder-r2e-hotfix");
+    expect(ISOLATED_HOTFIX_FLAG).toBe("--isolated-builder-r2e-hotfix");
+  });
+});
+
+describe("[R2E-R2] the authority is exact-branch and exact-SHA bounded", () => {
+  it("admits the measured hotfix", () => {
+    expect(checkIsolatedHotfix(isolatedClean)).toEqual({ ok: true });
+  });
+
+  it("refuses another branch even WITH the flag", () => {
+    for (const branch of ["main", "inner-main", "builder-r2e-isolated-staging-x", "builder-anything"]) {
+      expect(checkIsolatedHotfix({ ...isolatedClean, branch })).toEqual({
+        ok: false,
+        reason: REFUSALS.isolatedBranch,
+      });
+    }
+  });
+
+  it("refuses the exact branch at the wrong SHA", () => {
+    // The named commit is not in this history at all.
+    expect(checkIsolatedHotfix({ ...isolatedClean, applicationIsAncestorOfHead: false })).toEqual({
+      ok: false,
+      reason: REFUSALS.isolatedLineage,
+    });
+  });
+
+  it("refuses a hotfix built on any base but the known-safe one", () => {
+    expect(checkIsolatedHotfix({ ...isolatedClean, applicationParentSha: OTHER_SHA })).toEqual({
+      ok: false,
+      reason: REFUSALS.isolatedBase,
+    });
+    // Specifically: rebuilt on the containment commit.
+    expect(checkIsolatedHotfix({ ...isolatedClean, applicationParentSha: "7657a97f5bbdc275ae4c6e252383d74863d15913" })).toEqual({
+      ok: false,
+      reason: REFUSALS.isolatedBase,
+    });
+  });
+
+  it("names one branch, one commit and one base as literals, never as patterns", () => {
+    // Comments stripped first: the wrapper's own header says "no allowlist, no wildcard" in order
+    // to document the constraint, and an unscoped search would match that sentence rather than code.
+    const src = readFileSync(join(process.cwd(), "scripts", "deploy-bty-arena-staging-with-source.mjs"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*(\/\/|\*).*$/gm, "");
+    expect(ISOLATED_HOTFIX_BRANCH).toBe("builder-r2e-isolated-staging");
+    expect(ISOLATED_HOTFIX_APPLICATION_SHA).toBe("b8edd3142cb2d34b77dc0d5e39585a27f6fcbffe");
+    expect(ISOLATED_HOTFIX_BASE_SHA).toBe("fd0c7fc6d2ec0cb7775c496788db8c7e97f9e3d3");
+    // No wildcard, no allowlist, no environment override.
+    expect(src).not.toMatch(/builder-\*|startsWith\("builder|ALLOWED_BRANCHES|allowlist/i);
+    expect(src).not.toMatch(/process\.env\.[A-Z_]*(BRANCH|HOTFIX|ALLOW|SHA)/);
+    // The branch is compared for EQUALITY against the literal — never matched as a pattern.
+    expect(src).toMatch(/branch !== ISOLATED_HOTFIX_BRANCH/);
+  });
+});
+
+describe("[R2E-R2] the deployed application source must equal the measured hotfix", () => {
+  it("refuses an extra application file", () => {
+    expect(
+      checkIsolatedHotfix({
+        ...isolatedClean,
+        applicationDiffPaths: [...ISOLATED_HOTFIX_APPLICATION_PATHS, "src/lib/bty/foundry/arena/extra.ts"],
+      }),
+    ).toEqual({ ok: false, reason: REFUSALS.isolatedApplicationDiff });
+  });
+
+  it("refuses a MISSING application file, not only an extra one", () => {
+    expect(
+      checkIsolatedHotfix({ ...isolatedClean, applicationDiffPaths: ISOLATED_HOTFIX_APPLICATION_PATHS.slice(0, 2) }),
+    ).toEqual({ ok: false, reason: REFUSALS.isolatedApplicationDiff });
+  });
+
+  it("refuses an application edit made after the hotfix commit", () => {
+    expect(
+      checkIsolatedHotfix({
+        ...isolatedClean,
+        toolingDiffPaths: ["scripts/deploy-bty-arena-staging-with-source.mjs", "src/components/foundry/x.tsx"],
+      }),
+    ).toEqual({ ok: false, reason: REFUSALS.isolatedToolingDiff });
+  });
+
+  it("permits only the wrapper and its own test to change afterwards", () => {
+    expect(checkIsolatedHotfix({ ...isolatedClean, toolingDiffPaths: [...ISOLATED_HOTFIX_TOOLING_PATHS] })).toEqual({
+      ok: true,
+    });
+    expect(ISOLATED_HOTFIX_TOOLING_PATHS).toHaveLength(2);
+  });
+});
+
+describe("[R2E-R2] migrations and containment source are refused", () => {
+  it("refuses a migration change in the application diff", () => {
+    expect(
+      checkIsolatedHotfix({
+        ...isolatedClean,
+        applicationDiffPaths: [
+          ...ISOLATED_HOTFIX_APPLICATION_PATHS,
+          "supabase/migrations/20260805050000_foundry_practice_generation_spend_containment_v1.sql",
+        ],
+      }),
+      // Caught as a diff mismatch first; either refusal is correct, neither may be an admission.
+    ).not.toEqual({ ok: true });
+  });
+
+  it("refuses a migration change made after the hotfix commit", () => {
+    expect(
+      checkIsolatedHotfix({
+        ...isolatedClean,
+        toolingDiffPaths: ["supabase/migrations/20260805050000_x.sql"],
+      }),
+    ).toEqual({ ok: false, reason: REFUSALS.isolatedToolingDiff });
+  });
+
+  it("refuses containment vocabulary found in the application diff", () => {
+    for (const token of CONTAINMENT_TOKENS) {
+      expect(checkIsolatedHotfix({ ...isolatedClean, containmentHits: [token] })).toEqual({
+        ok: false,
+        reason: REFUSALS.isolatedContainment,
+      });
+    }
+  });
+
+  it("names the containment vocabulary that must never ship with this hotfix", () => {
+    expect(CONTAINMENT_TOKENS).toContain("p_submission_intent_id");
+    expect(CONTAINMENT_TOKENS).toContain("system_blocked");
+    expect(CONTAINMENT_TOKENS).toContain("duplicate_existing_intent");
+  });
+});
+
+describe("[R2E-R2] every ordinary safety property still applies to the bounded path", () => {
+  it("refuses a dirty tree", () => {
+    expect(checkIsolatedHotfix({ ...isolatedClean, stagedCount: 1 })).toEqual({ ok: false, reason: REFUSALS.staged });
+    expect(checkIsolatedHotfix({ ...isolatedClean, unstagedCount: 2 })).toEqual({
+      ok: false,
+      reason: REFUSALS.unstaged,
+    });
+  });
+
+  it("refuses a non-staging target and a foreign repository", () => {
+    expect(checkIsolatedHotfix({ ...isolatedClean, workerName: "bty-arena" })).toEqual({
+      ok: false,
+      reason: REFUSALS.worker,
+    });
+    expect(checkIsolatedHotfix({ ...isolatedClean, packageName: "btytrainingcenter" })).toEqual({
+      ok: false,
+      reason: REFUSALS.repository,
+    });
+  });
+
+  it("refuses source movement during the build through the SAME post-build check", () => {
+    expect(
+      checkPostBuild({ expectedSha: SHA, headSha: OTHER_SHA, stagedCount: 0, unstagedCount: 0, artifactExists: true }),
+    ).toEqual({ ok: false, reason: REFUSALS.headMoved });
+    expect(
+      checkPostBuild({ expectedSha: SHA, headSha: SHA, stagedCount: 1, unstagedCount: 0, artifactExists: true }),
+    ).toEqual({ ok: false, reason: REFUSALS.treeDirtied });
+  });
+
+  it("still injects the REAL head sha, never the application sha", () => {
+    // Part 3: the deployment repository identity is the tooling commit. Reporting the application
+    // commit as the deployed SHA would be a falsification, so the wrapper must not special-case it.
+    const src = readFileSync(
+      join(process.cwd(), "scripts", "deploy-bty-arena-staging-with-source.mjs"),
+      "utf8",
+    );
+    expect(src).toMatch(/const SOURCE_SHA = before\.headSha;/);
+    expect(src).not.toMatch(/SOURCE_SHA\s*=\s*ISOLATED_HOTFIX_APPLICATION_SHA/);
+    expect(buildVarArgs(SHA)).toEqual([
+      "--var",
+      `BTY_SOURCE_COMMIT_SHA:${SHA}`,
+      "--var",
+      `BTY_DEPLOY_VERSION:${SHA}`,
+    ]);
   });
 });

@@ -38,6 +38,44 @@ export const REQUIRED_PACKAGE_NAME = "bty-website";
 export const BUILD_ARTIFACT = ".open-next/worker.js";
 export const SHA_PATTERN = /^[0-9a-f]{40}$/;
 
+// ---- bounded one-hotfix authority (Slice 3.2K-BUILDER-REDESIGN-R2E-R2) ----
+//
+// The live Worker carries containment source that calls a 16-argument governed-admission function
+// the live database does not have. Replacing it requires deploying a branch that is deliberately
+// NOT inner-main — which the guard above correctly refuses.
+//
+// This is NOT a general release feature and must never become one. It names ONE branch and ONE
+// commit as literal constants: no allowlist, no wildcard, no environment variable, no argv value.
+// When this hotfix is folded back into inner-main, this block is deleted, not extended.
+export const ISOLATED_HOTFIX_FLAG = "--isolated-builder-r2e-hotfix";
+export const ISOLATED_HOTFIX_BRANCH = "builder-r2e-isolated-staging";
+export const ISOLATED_HOTFIX_APPLICATION_SHA = "b8edd3142cb2d34b77dc0d5e39585a27f6fcbffe";
+export const ISOLATED_HOTFIX_BASE_SHA = "fd0c7fc6d2ec0cb7775c496788db8c7e97f9e3d3";
+
+/** Exactly the R2E repair. A fourth application path is a refusal, not a warning. */
+export const ISOLATED_HOTFIX_APPLICATION_PATHS = [
+  "src/components/foundry/event-rooms/ModuleBuilderShell.tsx",
+  "src/components/foundry/event-rooms/moduleAutosave.ts",
+  "src/components/foundry/event-rooms/reviewEditNavigation.test.tsx",
+];
+
+/** The only paths that may change AFTER the application commit. Neither reaches the Worker bundle. */
+export const ISOLATED_HOTFIX_TOOLING_PATHS = [
+  "scripts/deploy-bty-arena-staging-with-source.mjs",
+  "src/lib/bty/foundry/arena/deployWrapper.test.ts",
+];
+
+/** Vocabulary that only exists in the containment commit. Any hit means the isolation leaked. */
+export const CONTAINMENT_TOKENS = [
+  "submissionIntentId",
+  "submission_intent_id",
+  "p_submission_intent_id",
+  "system_blocked",
+  "duplicate_existing_intent",
+  "review_execution_failed",
+  "foundry_practice_generation_is_system_block_v1",
+];
+
 // ==========================================================================
 // PURE GUARDS — exported so the refusal rules are testable without deploying
 // ==========================================================================
@@ -55,6 +93,13 @@ export const REFUSALS = {
   treeDirtied: "refused: tracked tree changed during the build",
   artifact: "refused: build produced no worker artifact",
   liveMismatch: "refused: live version does not equal the deployed source commit",
+  isolatedBranch: "refused: isolated hotfix mode requires the exact hotfix branch",
+  isolatedLineage: "refused: the isolated application commit is not an ancestor of HEAD",
+  isolatedBase: "refused: the isolated application commit does not sit on the required base",
+  isolatedApplicationDiff: "refused: the application diff is not exactly the measured hotfix",
+  isolatedToolingDiff: "refused: something other than deployment tooling changed after the hotfix",
+  isolatedMigration: "refused: a migration path changed in the isolated hotfix",
+  isolatedContainment: "refused: containment source is present in the isolated hotfix",
 };
 
 export const isFullSha = (v) => typeof v === "string" && SHA_PATTERN.test(v);
@@ -75,6 +120,63 @@ export function checkPreconditions(state) {
   if (stagedCount > 0) return { ok: false, reason: REFUSALS.staged };
   if (unstagedCount > 0) return { ok: false, reason: REFUSALS.unstaged };
   if (!isFullSha(headSha)) return { ok: false, reason: REFUSALS.sha };
+  return { ok: true };
+}
+
+/** The flag is the ONLY way to reach the bounded path. Its absence means ordinary behaviour. */
+export function resolveMode(argv) {
+  return (argv ?? []).includes(ISOLATED_HOTFIX_FLAG) ? "isolated-builder-r2e-hotfix" : "normal";
+}
+
+const sameSet = (a, b) => {
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+};
+
+/**
+ * May THIS ONE hotfix deploy from a branch that is not inner-main?
+ *
+ * Nine independent conditions, all literal. The shared preconditions are NOT re-implemented here —
+ * they are delegated with the branch substituted, so the isolated path stays at least as strict as
+ * the ordinary one and any future tightening of that guard applies to both.
+ */
+export function checkIsolatedHotfix(state) {
+  const {
+    branch,
+    applicationIsAncestorOfHead,
+    applicationParentSha,
+    applicationDiffPaths,
+    toolingDiffPaths,
+    containmentHits,
+  } = state;
+
+  if (branch !== ISOLATED_HOTFIX_BRANCH) return { ok: false, reason: REFUSALS.isolatedBranch };
+
+  const shared = checkPreconditions({ ...state, branch: REQUIRED_BRANCH });
+  if (!shared.ok) return shared;
+
+  // Condition 2 — the measured application commit is genuinely in this history, not merely named.
+  if (applicationIsAncestorOfHead !== true) return { ok: false, reason: REFUSALS.isolatedLineage };
+  // Condition 3 — and it sits directly on the last known-safe base, so containment cannot precede it.
+  if (applicationParentSha !== ISOLATED_HOTFIX_BASE_SHA) return { ok: false, reason: REFUSALS.isolatedBase };
+  // Condition 4 — exactly the three measured paths: not a subset, not a superset.
+  if (!sameSet(applicationDiffPaths ?? [], ISOLATED_HOTFIX_APPLICATION_PATHS)) {
+    return { ok: false, reason: REFUSALS.isolatedApplicationDiff };
+  }
+  // Condition 5 — after the hotfix, only deployment tooling. An application edit here is refused.
+  if ((toolingDiffPaths ?? []).some((p) => !ISOLATED_HOTFIX_TOOLING_PATHS.includes(p))) {
+    return { ok: false, reason: REFUSALS.isolatedToolingDiff };
+  }
+  // Condition 6 — stated separately from 4 and 5 because a migration is the one thing that would
+  // make a deployed Worker and a live database disagree, which is the defect being repaired.
+  const everyPath = [...(applicationDiffPaths ?? []), ...(toolingDiffPaths ?? [])];
+  if (everyPath.some((p) => p.startsWith("supabase/migrations/"))) {
+    return { ok: false, reason: REFUSALS.isolatedMigration };
+  }
+  // Condition 7 — content, not just paths. A containment token anywhere in the diff is a refusal.
+  if ((containmentHits ?? []).length > 0) return { ok: false, reason: REFUSALS.isolatedContainment };
+
   return { ok: true };
 }
 
@@ -131,6 +233,51 @@ function observe() {
   };
 }
 
+/**
+ * The extra facts the bounded path needs. Read only when the flag is present, so the ordinary
+ * deployment does not gain a single new git invocation.
+ */
+function observeIsolated() {
+  const tryGit = (args) => {
+    try {
+      return git(args);
+    } catch {
+      return null;
+    }
+  };
+  const names = (a, b) => {
+    const out = tryGit(["diff", "--name-only", a, b]);
+    return out === null ? null : out === "" ? [] : out.split("\n");
+  };
+  let ancestor = false;
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", ISOLATED_HOTFIX_APPLICATION_SHA, "HEAD"], { cwd: ROOT });
+    ancestor = true;
+  } catch {
+    ancestor = false;
+  }
+  // Search the DIFF, not the tree: this asks what this hotfix introduced, not what already existed.
+  //
+  // Scoped to the APPLICATION diff, with the tooling paths excluded — this very file names the
+  // containment tokens in order to search for them, and an unscoped scan would refuse itself.
+  const diffText =
+    tryGit([
+      "diff",
+      ISOLATED_HOTFIX_BASE_SHA,
+      "HEAD",
+      "--",
+      ".",
+      ...ISOLATED_HOTFIX_TOOLING_PATHS.map((p) => `:(exclude)${p}`),
+    ]) ?? "";
+  return {
+    applicationIsAncestorOfHead: ancestor,
+    applicationParentSha: tryGit(["rev-parse", `${ISOLATED_HOTFIX_APPLICATION_SHA}^`]),
+    applicationDiffPaths: names(ISOLATED_HOTFIX_BASE_SHA, ISOLATED_HOTFIX_APPLICATION_SHA) ?? [],
+    toolingDiffPaths: names(ISOLATED_HOTFIX_APPLICATION_SHA, "HEAD") ?? [],
+    containmentHits: CONTAINMENT_TOKENS.filter((t) => diffText.includes(t)),
+  };
+}
+
 function die(message) {
   console.error(`\n✗ ${message}`);
   console.error("  No deployment was made. Nothing was rolled back and nothing was retried.");
@@ -142,18 +289,28 @@ async function main() {
   // through a subprocess: a subprocess writes a bare name, and parsing that as JSON throws.
   const packageName = readPackageName();
 
+  const mode = resolveMode(process.argv.slice(2));
   const before = observe();
-  const pre = checkPreconditions({
+  const shared = {
     ...before,
     workerName: TARGET_WORKER,
     environment: TARGET_ENVIRONMENT,
     packageName,
-  });
+  };
+
+  const pre =
+    mode === "normal" ? checkPreconditions(shared) : checkIsolatedHotfix({ ...shared, ...observeIsolated() });
   if (!pre.ok) die(pre.reason);
 
   const SOURCE_SHA = before.headSha;
   console.log(`source commit    ${SOURCE_SHA}`);
   console.log(`target worker    ${TARGET_WORKER} (${TARGET_ENVIRONMENT})`);
+  if (mode !== "normal") {
+    // Stated at every deploy so the two identities are never conflated in a report.
+    console.log(`mode             ${ISOLATED_HOTFIX_FLAG}`);
+    console.log(`application      ${ISOLATED_HOTFIX_APPLICATION_SHA}`);
+    console.log(`base             ${ISOLATED_HOTFIX_BASE_SHA}`);
+  }
 
   // ---- build, with identity in the environment ----------------------------
   console.log("\n· building …");
