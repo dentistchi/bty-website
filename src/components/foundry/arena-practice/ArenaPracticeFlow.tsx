@@ -122,6 +122,17 @@ export function ArenaPracticeFlow({
    * it when the thing it was given for has moved.
    */
   const confirmSameInputRetryRef = useRef(false);
+  /**
+   * R5C-6A — ONE explicit Host instruction, one durable id.
+   *
+   * Created at the final action, not at render and not when the confirmation opens. It is REUSED
+   * while the same instruction is unresolved, so a transport re-delivery cannot buy a second
+   * generation, and cleared once the server answers definitively — the live run produced two
+   * submissions where one was authorized, and nothing could tell them apart afterwards.
+   */
+  const submissionIntentRef = useRef<string | null>(null);
+  /** Set when OUR deadline fired, so an unanswered instruction keeps its identity. */
+  const abortedRef = useRef(false);
   /** R5C-4B-R1 — the server's last governance answer. Never derived, never remembered past a refresh. */
   const [governance, setGovernance] = useState<Governance | null>(null);
   const [retryConfirmOpen, setRetryConfirmOpen] = useState(false);
@@ -406,6 +417,7 @@ export function ArenaPracticeFlow({
     // and response legs only, and this outcome is named separately: the answer may still exist.
     const controller = new AbortController();
     const lossTimer = setTimeout(() => controller.abort(), GEN_DEADLINE_MS + GEN_NETWORK_MARGIN_MS);
+    abortedRef.current = false;
     const started = Date.now();
     const tick = setInterval(() => setGenElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
     try {
@@ -423,6 +435,7 @@ export function ArenaPracticeFlow({
           locale: loc,
           expectedGenerationInputRevision: generationInputRevision,
           confirmSameInputRetry: confirmSameInputRetryRef.current === true,
+          submissionIntentId: submissionIntentRef.current,
         }),
         signal: controller.signal,
       });
@@ -460,12 +473,17 @@ export function ArenaPracticeFlow({
       // An abort here is OUR deadline, not the provider's. Saying otherwise would claim knowledge
       // of an upstream event the client never observed.
       const aborted = e instanceof Error && e.name === "AbortError";
+      abortedRef.current = aborted;
       setSetupGenFail({ code: aborted ? "client_response_timeout" : "provider_transport_error", retriable: aborted ? "unknown" : "true" });
       setPhase("setup");
     } finally {
       clearTimeout(lossTimer);
       clearInterval(tick);
       submittingRef.current = false;
+      // The instruction is spent once the server has answered. An ABORT is deliberately NOT a
+      // definitive answer: the server may still be working, so the id is retained and a
+      // re-delivery of the same instruction de-duplicates instead of buying a second run.
+      if (!abortedRef.current) submissionIntentRef.current = null;
     }
   }, [draftId, loc, generationInputRevision]);
 
@@ -476,7 +494,11 @@ export function ArenaPracticeFlow({
    */
   const submitGeneration = useCallback(
     (acknowledged: boolean) => {
+      // A submission already in flight owns the instruction; a second press is not a new one.
+      if (submittingRef.current) return;
       confirmSameInputRetryRef.current = acknowledged;
+      // ONE id per explicit action. Minted here so opening the confirmation creates nothing.
+      submissionIntentRef.current = crypto.randomUUID();
       setRetryConfirmOpen(false);
       void generateFromSetup();
     },
@@ -1252,6 +1274,10 @@ export function genFailureCopy(code: string, t: ArenaPracticeCopy): string {
     case "provider_malformed_output":
     case "provider_schema_invalid":
       return t.genFailUnusable;
+    case "review_execution_failed":
+      // R5C-6A — deliberately NOT the refusal line: nothing was judged, so telling the Host their
+      // situation "didn't meet the standard" would blame them for a check that never ran.
+      return t.genFailReviewExecution;
     case "scenario_quality_rejected":
     case "boundary_review_rejected":
       return t.genFailQuality;

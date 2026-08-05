@@ -10,7 +10,7 @@
  * PURE: a function of the server's last response. Same input, same screen.
  */
 
-export const GOVERNANCE_STATES = ["ready", "confirm_second_attempt", "revision_required", "in_progress"] as const;
+export const GOVERNANCE_STATES = ["ready", "confirm_second_attempt", "revision_required", "in_progress", "system_blocked"] as const;
 export type GovernanceState = (typeof GOVERNANCE_STATES)[number];
 
 export type Governance = {
@@ -18,7 +18,7 @@ export type Governance = {
   generationLocale: "en" | "ko";
   /** Bounded by the server to 0, 1 or 2, where 2 means "two or more". */
   refusalCount: number;
-  state: GovernanceState | "input_revision_stale";
+  state: GovernanceState | "input_revision_stale" | "duplicate_existing_intent";
   canStartGeneration: boolean;
   requiresExplicitConfirmation: boolean;
   reviewSetupRecommended: boolean;
@@ -91,6 +91,20 @@ export function resolveGovernanceView(governance: Governance | null | undefined)
     case "revision_required":
       // No same-input retry control exists here at all — not disabled, absent.
       return { ...BLOCKED, state: "revision_required", refusalCount: count };
+    case "system_blocked":
+      // R5C-6A — the review SYSTEM failed, not the Host. So: no Create, no retry, and Review setup
+      // is NOT offered as the cure — sending them to rewrite answers that were never the problem
+      // would be a lie that also wastes their time.
+      return {
+        state: "system_blocked",
+        primary: "none",
+        secondary: "none",
+        createEnabled: false,
+        showsRetryAction: false,
+        showsRefusalNotice: true,
+        refusalCount: count,
+        acknowledgementRequired: false,
+      };
     case "in_progress":
       return {
         state: "in_progress",
@@ -127,6 +141,8 @@ export const GOVERNANCE_CODES = [
   "generation_already_in_progress",
   "generation_input_revision_stale",
   "generation_locale_invalid",
+  "generation_system_blocked",
+  "generation_duplicate_submission",
 ] as const;
 export type GovernanceCode = (typeof GOVERNANCE_CODES)[number];
 
@@ -152,5 +168,10 @@ export function reactionToCode(code: GovernanceCode): {
     case "generation_locale_invalid":
       // Never silently switch to English — that is the coercion R5C-4A2 removed.
       return { refreshDraft: false, clearPendingConfirmation: true, automaticRetry: false };
+    case "generation_system_blocked":
+      return { refreshDraft: true, clearPendingConfirmation: true, automaticRetry: false };
+    case "generation_duplicate_submission":
+      // The instruction already ran. Re-sending it would be the exact double spend this prevents.
+      return { refreshDraft: true, clearPendingConfirmation: true, automaticRetry: false };
   }
 }

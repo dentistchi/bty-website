@@ -21,8 +21,8 @@ import {
 } from "./generationOutcome";
 
 describe("[R5A] the collapsed code is gone and every mechanism is nameable", () => {
-  it("names all eleven terminal outcomes, and generation_failed is not among them", () => {
-    expect(GENERATION_OUTCOMES).toHaveLength(11);
+  it("names all twelve terminal outcomes, and generation_failed is not among them", () => {
+    expect(GENERATION_OUTCOMES).toHaveLength(12);
     expect(GENERATION_OUTCOMES as readonly string[]).not.toContain("generation_failed");
   });
 

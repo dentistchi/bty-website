@@ -80,6 +80,7 @@ export type ArenaPracticeCopy = {
   genFailTimeout: string;
   genFailTransport: string;
   genFailUnusable: string;
+  genFailReviewExecution: string;
   genFailQuality: string;
   genFailPersistence: string;
   genFailNotStarted: string;
@@ -114,6 +115,8 @@ export type ArenaPracticeCopy = {
     inProgressBody: string;
     unavailableTitle: string;
     unavailableBody: string;
+    systemBlockedTitle: string;
+    systemBlockedBody: string;
     reviewSetupCta: string;
     tryOnceMoreCta: string;
     readyTitle: string;
@@ -265,6 +268,9 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
       inProgressBody: "Wait for it to finish. Leaving this screen will not stop it.",
       unavailableTitle: "We could not check this practice yet",
       unavailableBody: "Reopen this practice in a moment.",
+      systemBlockedTitle: "BTY could not check the situation it created",
+      systemBlockedBody:
+        "Creating another situation is paused while we fix this. Nothing is wrong with your setup, and your work is saved.",
       reviewSetupCta: "Review setup",
       tryOnceMoreCta: "Try once more",
     },
@@ -436,6 +442,7 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
       "Creating this situation took longer than we allow, so it was stopped. Your setup and boundary are saved.",
     genFailTransport: "We couldn't reach the service that writes situations. Your setup and boundary are saved.",
     genFailUnusable: "Nothing usable came back, so no situation was created. Your setup and boundary are saved.",
+    genFailReviewExecution: "BTY could not check the situation it created, so it was not kept. Your setup and boundary are saved.",
     genFailQuality:
       "What came back didn't meet the standard for a practice situation, so it wasn't kept. Your setup and boundary are saved.",
     genFailPersistence: "The situation was created but couldn't be saved. Your setup and boundary are saved.",
@@ -476,6 +483,8 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
       inProgressBody: "끝날 때까지 기다려 주세요. 화면을 벗어나도 중단되지 않습니다.",
       unavailableTitle: "아직 확인하지 못했습니다",
       unavailableBody: "잠시 후 이 연습을 다시 열어 주세요.",
+      systemBlockedTitle: "BTY가 만든 상황을 검증하지 못했습니다",
+      systemBlockedBody: "문제를 고치는 동안 새 상황 만들기를 잠시 멈춥니다. 설정에는 문제가 없고, 작업은 저장되어 있습니다.",
       reviewSetupCta: "설정 검토",
       tryOnceMoreCta: "한 번 더 시도",
     },
@@ -646,6 +655,7 @@ export const ARENA_PRACTICE_COPY: Record<Locale, ArenaPracticeCopy> = {
     genFailTimeout: "상황을 만드는 데 허용된 시간을 넘겨 중단했습니다. 설정과 경계는 저장되어 있습니다.",
     genFailTransport: "상황을 만드는 서비스에 연결하지 못했습니다. 설정과 경계는 저장되어 있습니다.",
     genFailUnusable: "쓸 수 있는 결과가 오지 않아 상황을 만들지 못했습니다. 설정과 경계는 저장되어 있습니다.",
+    genFailReviewExecution: "BTY가 만든 상황을 검증하지 못해 저장하지 않았습니다. 설정과 경계는 저장되어 있습니다.",
     genFailQuality: "돌아온 결과가 연습 상황의 기준에 미치지 못해 사용하지 않았습니다. 설정과 경계는 저장되어 있습니다.",
     genFailPersistence: "상황은 만들어졌지만 저장하지 못했습니다. 설정과 경계는 저장되어 있습니다.",
     genFailNotStarted: "생성이 시작되지 않아 아무것도 시도하지 않았습니다. 설정과 경계는 저장되어 있습니다.",

@@ -23,6 +23,8 @@ export type GovernancePanelCopy = {
   inProgressBody: string;
   unavailableTitle: string;
   unavailableBody: string;
+  systemBlockedTitle: string;
+  systemBlockedBody: string;
   reviewSetupCta: string;
   tryOnceMoreCta: string;
 };
@@ -52,9 +54,11 @@ export function PracticeGovernancePanel({
       ? { title: copy.confirmTitle, body: copy.confirmBody }
       : view.state === "revision_required"
         ? { title: copy.revisionRequiredTitle, body: copy.revisionRequiredBody }
-        : view.state === "in_progress"
-          ? { title: copy.inProgressTitle, body: copy.inProgressBody }
-          : { title: copy.unavailableTitle, body: copy.unavailableBody };
+        : view.state === "system_blocked"
+          ? { title: copy.systemBlockedTitle, body: copy.systemBlockedBody }
+          : view.state === "in_progress"
+            ? { title: copy.inProgressTitle, body: copy.inProgressBody }
+            : { title: copy.unavailableTitle, body: copy.unavailableBody };
 
   const blocked = !governance || view.primary === "none";
 

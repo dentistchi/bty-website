@@ -29,6 +29,13 @@ export const GENERATION_OUTCOMES = [
   "scenario_quality_rejected",
   /** The boundary reviewer refused the generated scenario. */
   "boundary_review_rejected",
+  /**
+   * R5C-6A — the review SYSTEM could not evaluate the scenario at all: a reviewer exhausted its
+   * budget without ever returning a usable verdict. Distinct from a refusal, which is a judgment
+   * ABOUT the content. Conflating them is what let a semantic reviewer failure be recorded under a
+   * boundary umbrella, and what made a broken evaluator look like an ordinary content rejection.
+   */
+  "review_execution_failed",
   /** A valid scenario was produced and the database write failed. */
   "scenario_persistence_failed",
   /** An unexpected exception the taxonomy does not otherwise name. */
@@ -83,6 +90,16 @@ const RETRIABILITY: Record<GenerationProductCode, Retriability> = {
   // The scenario existed and the write failed — worth another attempt.
   scenario_persistence_failed: "true",
   internal_failure: "unknown",
+  /**
+   * R5C-6A — UNKNOWN, and measured rather than assumed.
+   *
+   * The first reading suggested this failure was deterministic (four of four semantic-review calls
+   * schema-invalid). A wider read disproved that: across every attempt to date the semantic
+   * reviewer succeeded ONCE in SEVEN calls. So a retry is not hopeless and `false` would be a
+   * false promise — but at roughly one in seven it is also not something to invite, which is what
+   * the system block, not this field, exists to prevent.
+   */
+  review_execution_failed: "unknown",
 };
 
 export const retriabilityOf = (code: GenerationProductCode): Retriability => RETRIABILITY[code] ?? "unknown";
@@ -178,8 +195,23 @@ export function classifyGenerationOutcome(reason: string, fault?: ProviderFault 
   if (reason === "structured_output_unavailable") return "provider_schema_invalid";
   if (reason === "scenario_persistence_failed") return "scenario_persistence_failed";
 
-  // Every boundary-reviewer terminal state is a review refusal from the product's point of view.
-  if (reason.startsWith("boundary_review") || reason.startsWith("review_boundary") || reason === "reviewer_terminal_failure") {
+  /**
+   * R5C-6A — TERMINAL REVIEWER FAILURE IS NOT A REFUSAL.
+   *
+   * `reviewer_terminal_failure` is the SEMANTIC reviewer's reason — the attribution table maps it
+   * to `stage: "semantic_review"` — yet it was returned here under the BOUNDARY umbrella. The live
+   * controlled run recorded exactly that contradiction: `terminal_stage: semantic_review` beside
+   * `outcome: boundary_review_rejected`. Both reviewers' terminal failures now share one honest
+   * umbrella that says the evaluation never happened.
+   *
+   * Matched EXACTLY, never by prefix: a prefix rule is what produced the defect, and R5C-1 already
+   * removed the same pattern from attribution.
+   */
+  if (reason === "reviewer_terminal_failure" || reason === "boundary_reviewer_terminal_failure") {
+    return "review_execution_failed";
+  }
+  // A boundary reviewer that REFUSED the content — a judgment, not an execution failure.
+  if (reason.startsWith("boundary_review") || reason.startsWith("review_boundary")) {
     return "boundary_review_rejected";
   }
 

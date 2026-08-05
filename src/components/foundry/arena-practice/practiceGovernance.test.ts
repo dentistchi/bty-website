@@ -108,8 +108,8 @@ describe("[R5C-4B] a confirmation is bound to one epoch and one locale", () => {
 });
 
 describe("[R5C-4B] stable server codes are handled, never treated as generic failures", () => {
-  it("recognises exactly the five codes", () => {
-    expect(GOVERNANCE_CODES).toHaveLength(5);
+  it("recognises exactly the seven codes", () => {
+    expect(GOVERNANCE_CODES).toHaveLength(7);
     for (const c of GOVERNANCE_CODES) expect(isGovernanceCode(c)).toBe(true);
     for (const c of ["provider_timeout", "internal_failure", "", null, 7]) expect(isGovernanceCode(c)).toBe(false);
   });

@@ -99,7 +99,14 @@ export type GenerationGovernance = {
   generationLocale: "en" | "ko";
   /** Capped at 2: `2` means "two or more". An unbounded internal count never leaves the server. */
   refusalCount: number;
-  state: "ready" | "confirm_second_attempt" | "revision_required" | "in_progress" | "input_revision_stale";
+  state:
+    | "ready"
+    | "confirm_second_attempt"
+    | "revision_required"
+    | "in_progress"
+    | "system_blocked"
+    | "duplicate_existing_intent"
+    | "input_revision_stale";
   canStartGeneration: boolean;
   requiresExplicitConfirmation: boolean;
   reviewSetupRecommended: boolean;
@@ -343,6 +350,12 @@ export type RegenerateOptions = {
   expectedGenerationInputRevision?: number | null;
   /** Explicit same-input acknowledgement. Meaningful ONLY at `confirm_second_attempt`. */
   confirmSameInputRetry?: boolean;
+  /**
+   * R5C-6A — one explicit Host instruction. Required: the admission function refuses without it,
+   * because a submission that cannot be identified cannot be de-duplicated, and the live run
+   * proved two submissions can occur where one was authorized.
+   */
+  submissionIntentId?: string | null;
 };
 
 export async function regenerateArenaDraft(
@@ -417,6 +430,7 @@ export async function regenerateArenaDraft(
   const admission = await startGovernedGenerationAttempt(admin, {
     expectedGenerationInputRevision: options.expectedGenerationInputRevision ?? generationInputRevision,
     confirmSameInputRetry: options.confirmSameInputRetry === true,
+    submissionIntentId: options.submissionIntentId ?? "",
     draftId,
     draftRevision: generatedUnderRevision,
     sourceEventId: current.source_event_id ?? null,
@@ -449,7 +463,11 @@ export async function regenerateArenaDraft(
             ? "generation_revision_required"
             : admission.state === "in_progress"
               ? "generation_already_in_progress"
-              : "generation_input_revision_stale",
+              : admission.state === "system_blocked"
+                ? "generation_system_blocked"
+                : admission.state === "duplicate_existing_intent"
+                  ? "generation_duplicate_submission"
+                  : "generation_input_revision_stale",
       governance: {
         generationInputRevision: admission.generationInputRevision,
         generationLocale: admission.generationLocale,

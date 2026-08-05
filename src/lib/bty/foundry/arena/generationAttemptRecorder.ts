@@ -197,6 +197,10 @@ export type GovernanceState =
   | "confirm_second_attempt"
   | "revision_required"
   | "in_progress"
+  /** R5C-6A — the review SYSTEM could not evaluate. Not a setup refusal. */
+  | "system_blocked"
+  /** R5C-6A — this exact instruction was already carried out. Never a new spend. */
+  | "duplicate_existing_intent"
   | "input_revision_stale"
   | "admitted";
 
@@ -217,6 +221,8 @@ export type GovernedAdmission =
 export type GovernedAdmissionInput = StartAttemptInput & {
   expectedGenerationInputRevision: number;
   confirmSameInputRetry: boolean;
+  /** R5C-6A — one explicit Host instruction. Re-delivering it can never buy a second run. */
+  submissionIntentId: string;
 };
 
 export async function startGovernedGenerationAttempt(
@@ -240,6 +246,7 @@ export async function startGovernedGenerationAttempt(
       p_boundary_mode: input.boundaryMode,
       p_boundary_constraint_count: input.boundaryConstraintCount,
       p_attempt_number: input.attemptNumber,
+      p_submission_intent_id: input.submissionIntentId,
     });
     const row = Array.isArray(data) ? data[0] : data;
     if (error || !row) {

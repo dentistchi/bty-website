@@ -51,6 +51,12 @@ function statusForReason(reason: string, outcome?: GenerationProductCode): numbe
     return 409;
   }
   if (reason === "generation_locale_invalid") return 400;
+  // R5C-6A — the review system could not evaluate. Not the Host's request, and not a provider
+  // fault: 503 says the service cannot do this right now, which is exactly true.
+  if (reason === "generation_system_blocked") return 503;
+  // A re-delivery of an instruction already carried out. Not an error and NOT a new generation.
+  if (reason === "generation_duplicate_submission") return 409;
+  if (reason === "generation_submission_intent_invalid") return 400;
   // Setup/eligibility reasons: the request genuinely is not in a state that can generate.
   return 400;
 }
@@ -75,7 +81,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
   const locale = rawLocale === "ko" ? "ko" : "en";
 
+  /**
+   * R5C-6A — one explicit Host instruction, one durable identity. Required and validated here:
+   * the live run produced two submissions where one was authorized, and without this the two were
+   * indistinguishable from one instruction delivered twice.
+   */
+  const intent = body?.submissionIntentId;
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (typeof intent !== "string" || !UUID.test(intent)) {
+    return managerJson(
+      base,
+      req,
+      { error: "generation_submission_intent_invalid", code: "generation_submission_intent_invalid" },
+      400,
+    );
+  }
+
   const result = await regenerateArenaDraft(admin, user.id, id, locale, {
+    submissionIntentId: intent,
     // Never trusted as authority: the server compares it to the locked draft and refuses a
     // mismatch. A confirmation made for epoch 1 cannot authorize epoch 2.
     expectedGenerationInputRevision:
