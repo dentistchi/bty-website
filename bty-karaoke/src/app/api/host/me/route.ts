@@ -11,7 +11,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
-import { authorizeHost, listHostRooms, publicAccount } from '@/lib/host-auth.server';
+import {
+  authorizeHost,
+  listAccountIdentities,
+  listHostRooms,
+  publicAccount,
+} from '@/lib/host-auth.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,9 +29,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
   }
 
-  const rooms = await listHostRooms(account.id);
+  const [rooms, identities] = await Promise.all([
+    listHostRooms(account.id),
+    listAccountIdentities(account.id),
+  ]);
+
+  // BUILD 26E — the minimum an account-management screen, and a future PRE-PURCHASE
+  // confirmation, needs in order to show WHICH canonical account is being acted on.
+  //
+  // `linkedProviders` is provider NAMES only — never a provider subject and never a
+  // provider email, because neither is an ownership key and both are personal data the
+  // client has no use for. `serverNow` is the freshness marker: a purchase surface must
+  // be able to prove this read is current rather than a cached profile, which is the
+  // exact failure mode that would credit a purchase to a stale canonical account.
   return NextResponse.json(
-    { ok: true, account: publicAccount(account), rooms },
+    {
+      ok: true,
+      account: publicAccount(account),
+      rooms,
+      linkedProviders: identities.map((i) => i.provider).sort(),
+      accountDeleted: account.deleted_at != null,
+      ownedRoomCount: rooms.length,
+      serverNow: new Date().toISOString(),
+    },
     { headers: NO_STORE },
   );
 }

@@ -8,6 +8,7 @@ import { CreateRequestSchema } from '@/lib/validation';
 import {
   addRequest,
   getPublicRoomBySlug,
+  isRetiredRoom,
   hasExistingRequestForKey,
   listActiveRequests,
   toGuestPublicRequest,
@@ -67,6 +68,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // BUILD 18B: every failure carries a STABLE machine-readable `code` so the guest client
   // classifies retryable vs non-retryable without parsing human/HTTP strings.
   if (!room) return NextResponse.json({ error: 'Room not found', code: 'ROOM_NOT_FOUND' }, { status: 404 });
+  // BUILD 26E / F-1: a room frozen by account deletion is TERMINAL, not merely closed.
+  // Answered before the generic closed branch and with its own code, because a guest
+  // holding an old QR code deserves "this room is gone for good" rather than a
+  // ROOM_CLOSED that reads as "try again later". Never retryable.
+  if (isRetiredRoom(room)) {
+    return NextResponse.json(
+      { error: 'This room is no longer available', code: 'ROOM_RETIRED' },
+      { status: 410 },
+    );
+  }
   if (room.status !== 'open') {
     return NextResponse.json({ error: 'This room is closed', code: 'ROOM_CLOSED' }, { status: 409 });
   }

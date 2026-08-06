@@ -38,7 +38,8 @@ export interface PublicRoom {
   id: string;
   slug: string;
   display_name: string;
-  status: 'open' | 'closed';
+  /** BUILD 26E adds the terminal 'retired' state (F-1): frozen by account deletion. */
+  status: 'open' | 'closed' | 'retired';
   /** Room Settings V1 — optional guest-facing welcome message (null = none). */
   guest_welcome_message: string | null;
   /** Room Branding V1 — opaque key of the normalized logo in the private bucket (null = none). */
@@ -150,6 +151,16 @@ export async function updateRoomSettings(
     displayName: data.display_name as string,
     guestWelcomeMessage: (data.guest_welcome_message as string | null) ?? null,
   };
+}
+
+/**
+ * BUILD 26E / F-1 — THE retired predicate. A room frozen by account deletion is
+ * terminal: it is never reopened, never transferred, and never operable again. Its rows
+ * and slug are retained so an old QR code or invitation resolves to an explicit
+ * ROOM_RETIRED answer instead of silently reaching a future room.
+ */
+export function isRetiredRoom(room: Pick<PublicRoom, 'status'> | null | undefined): boolean {
+  return room?.status === 'retired';
 }
 
 /** Room lookup for guests — never selects dj_secret. */
@@ -271,6 +282,11 @@ async function deviceStillAuthorized(roomId: string, accountId: string | null): 
 export async function authorizeDj(slug: string, bearer: string): Promise<RoomAuth | null> {
   const row = await roomSecretRow(slug);
   if (!row) return null;
+  // BUILD 26E / F-1: a retired room has ZERO usable administrative authority. Placed
+  // here (and in authorizeAdmin) rather than in each route, because these two functions
+  // are the chokepoint every credential-protected room route already funnels through —
+  // so Start, Complete, Skip, queue mutation, pairing and administration all inherit it.
+  if (isRetiredRoom(row)) return null;
   const { dj_secret, ...pub } = row;
   if (await credentialMatches(dj_secret, bearer)) {
     return { room: pub, role: 'admin', deviceId: null };
@@ -292,6 +308,7 @@ export async function authorizeDj(slug: string, bearer: string): Promise<RoomAut
 export async function authorizeAdmin(slug: string, bearer: string): Promise<RoomAuth | null> {
   const row = await roomSecretRow(slug);
   if (!row) return null;
+  if (isRetiredRoom(row)) return null; // BUILD 26E / F-1 — see authorizeDj
   const { dj_secret, ...pub } = row;
   if (await credentialMatches(dj_secret, bearer)) {
     return { room: pub, role: 'admin', deviceId: null };

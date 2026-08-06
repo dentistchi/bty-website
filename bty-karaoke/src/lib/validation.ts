@@ -256,3 +256,18 @@ export const SelectTimedPassSchema = z.object({
   passGrantId: z.string().uuid(),
   idempotencyKey: z.string().trim().min(1).max(128).optional(),
 });
+
+// BUILD 26E — permanent account deletion. The account is ALWAYS derived server-side from
+// the session; there is deliberately NO accountId field, so a body-supplied one has
+// nowhere to land even if a client sends it. `confirmation` must equal the exact
+// destructive phrase, and `reauthenticatedAt` is the client's assertion of when the user
+// last proved identity to a provider — bounded server-side, never trusted on its own.
+export const DeleteAccountSchema = z.object({
+  confirmation: z.string().trim().min(1).max(64),
+  reauthenticatedAt: z.string().trim().min(1).max(64),
+  csrf: z.string().trim().min(1).max(256).optional(),
+  // BUILD 26E Apple revision: the NATIVE Sign in with Apple authorization code from the
+  // deletion re-auth. Required for an Apple-linked account (the server checks, not the
+  // client). Single-use, exchanged server-side only, never logged, never echoed back.
+  appleAuthorizationCode: z.string().trim().min(1).max(2048).optional(),
+});

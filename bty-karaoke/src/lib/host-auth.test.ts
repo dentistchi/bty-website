@@ -82,10 +82,13 @@ vi.mock('@/lib/supabase.server', () => ({
       let upd: Row | null = null;
       let del = false;
       let inFilter: { col: string; vals: unknown[] } | null = null;
+      // BUILD 26E: listHostRooms excludes retired rooms with .neq('status','retired').
+      const neqs: Array<[string, unknown]> = [];
 
       const matched = () => {
         let rows = tableFor(table).filter((r) => eqs.every(([c, v]) => r[c] === v));
         if (inFilter) rows = rows.filter((r) => inFilter!.vals.includes(r[inFilter!.col]));
+        if (neqs.length) rows = rows.filter((r) => neqs.every(([c, v]) => r[c] !== v));
         return rows;
       };
 
@@ -115,6 +118,7 @@ vi.mock('@/lib/supabase.server', () => ({
         delete: () => { del = true; return b; },
         eq: (c: string, v: unknown) => { eqs.push([c, v]); return b; },
         in: (c: string, vals: unknown[]) => { inFilter = { col: c, vals }; return b; },
+        neq: (c: string, v: unknown) => { neqs.push([c, v]); return b; },
         order: () => b,
         limit: () => b,
         maybeSingle: async () => {

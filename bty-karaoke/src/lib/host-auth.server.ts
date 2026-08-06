@@ -25,9 +25,11 @@ export interface HostAccount {
   email: string | null;
   display_name: string | null;
   created_at: string;
+  /** BUILD 26E tombstone marker. Non-null means the account is permanently deleted. */
+  deleted_at: string | null;
 }
 
-const ACCOUNT_COLS = 'id, provider, provider_subject, email, display_name, created_at';
+const ACCOUNT_COLS = 'id, provider, provider_subject, email, display_name, created_at, deleted_at';
 
 /** The privacy-appropriate projection the app may show. Never the provider subject. */
 export function publicAccount(a: HostAccount) {
@@ -58,6 +60,10 @@ async function accountForIdentity(
     .maybeSingle();
   if (acct.error) throw acct.error;
   if (!acct.data) return null;
+  // BUILD 26E: a tombstone can never be resolved back into a usable account. Deletion
+  // removes the identity rows, so reaching here at all would mean a stale row survived —
+  // treat it as no account rather than silently resurrecting a deleted canonical account.
+  if ((acct.data as HostAccount).deleted_at) return null;
 
   void db
     .from('karaoke_account_identities')
@@ -137,6 +143,14 @@ export async function resolveAccountForIdentity(args: {
   // and returning accounts (the early return above) never re-provision, so repeated
   // logins add nothing.
   await ensureDefaultFreePlan(account.id);
+
+  // BUILD 26E / F-5: this is the ONLY place a brand-new canonical account is created, so
+  // it is the only place a delete-and-recreate can be detected. If this identity's
+  // one-way fingerprint matches a tombstone, the CURRENT FREE window's consumed seconds
+  // and burnt grace are carried forward. Nothing else is restored, and the tombstone is
+  // never relinked — deleting an account must not hand out a second daily allowance.
+  const { applyFreeWindowCarryover } = await import('./account-deletion.server');
+  await applyFreeWindowCarryover(account.id, provider, subject);
   return account;
 }
 
@@ -260,6 +274,12 @@ export async function authorizeHost(rawToken: string | null): Promise<HostAccoun
     .maybeSingle();
   if (acct.error) throw acct.error;
   if (!acct.data) return null;
+  // BUILD 26E: THE deleted-account authentication guard. Deletion revokes every session,
+  // so a live token for a tombstone should not exist — but authorization is re-resolved
+  // from these tables on every call precisely so possession of a credential is never
+  // sufficient. A deleted account authenticates as nobody, indistinguishably from an
+  // unknown or revoked token.
+  if ((acct.data as HostAccount).deleted_at) return null;
 
   void db
     .from('karaoke_host_sessions')
@@ -348,10 +368,14 @@ export async function listHostRooms(accountId: string): Promise<HostRoomCard[]> 
   const roomIds = (owned.data ?? []).map((o) => o.room_id as string);
   if (roomIds.length === 0) return [];
 
+  // BUILD 26E / F-1: a RETIRED room is terminal. It is excluded from every Host listing
+  // so a frozen room can never be presented as operable, while its rows are retained for
+  // audit and its slug stays permanently reserved.
   const rooms = await db
     .from('karaoke_rooms')
     .select('id, slug, display_name, status')
-    .in('id', roomIds);
+    .in('id', roomIds)
+    .neq('status', 'retired');
   if (rooms.error) throw rooms.error;
 
   // Live events for these rooms (draft|active is the canonical "live" set).
