@@ -17,11 +17,14 @@ export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 
 /**
  * Live schema support for the two behaviour-contract columns (migration 20260810000000).
- * FALSE until the Founder executes it — writing a column that does not exist would fail the
- * whole insert and lose the diagnosis, which is strictly worse than recording nothing. While
- * false the update payload stays byte-identical to today's, so this is safe to deploy first.
+ *
+ * TRUE since the Founder executed that migration (Slice 3.2L-R7): both columns exist and are
+ * nullable, all nine historical rows hold NULL, and the pre-existing-column digest was
+ * unchanged by the DDL. It was false through the preceding commit because writing a column
+ * that does not exist would fail the whole insert and lose the diagnosis — strictly worse
+ * than recording nothing.
  */
-export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = false;
+export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 
 /**
  * Durable observability for whole-program authorship (Slice 3.2L).

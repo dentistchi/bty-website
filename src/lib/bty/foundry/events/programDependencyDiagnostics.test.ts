@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateProgramProposal, PROGRAM_REJECT_CODES } from "@/domain/foundry/module/program-authorship";
-import { DEPENDENCY_DIAGNOSTICS_ENABLED } from "./programGenerationRecorder";
+import { DEPENDENCY_DIAGNOSTICS_ENABLED, BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED } from "./programGenerationRecorder";
 import { deriveOperationalConstruct, CONSTRUCT_NOUNS, nounStem } from "@/domain/foundry/module/program-coherence";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
@@ -154,6 +154,12 @@ describe("[3.2L-R6.1] G12 — every other outcome leaves the dependency fields n
     // verification passed. Before that it was false, because writing a missing column
     // would fail the whole insert and lose the diagnosis.
     expect(DEPENDENCY_DIAGNOSTICS_ENABLED).toBe(true);
+  });
+
+  it("behaviour-contract diagnostics are enabled too, and independently", () => {
+    // Both gates are now open; they were flipped in separate deploys, each only after its
+    // own migration was executed and verified.
+    expect(BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED).toBe(true);
   });
 
   it("dependency_inversion is still a known refusal code with copy", () => {
