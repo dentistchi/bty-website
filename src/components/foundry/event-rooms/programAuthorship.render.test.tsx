@@ -44,6 +44,7 @@ const PROPOSAL: ProgramProposal = {
   observableAction: "states each open item aloud to the person taking over",
   completionSignal: "the person taking over repeats them back and confirms",
   },
+  scenarioContract: null,
 };
 
 const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeiling: "Reading shows exposure only.", attemptId: "att-1" };
@@ -289,7 +290,44 @@ describe("[3.2L] failure leaves the draft untouched and recoverable", () => {
     setup({ ok: false, code: "invalid_output", refusal: "duplicate_content" });
     await generate();
     expect(screen.queryByTestId("program-review")).toBeNull();
-    expect(screen.getByTestId("program-failure").textContent).toContain("discarded it rather than show it to you");
+    // R5: the Host is told what BTY could not produce. The generic "didn't meet our
+    // honesty rules" sentence this used to assert accused the model of dishonesty for
+    // what is a repetition fault — the exact misattribution the R4 window exposed.
+    const text = screen.getByTestId("program-failure").textContent ?? "";
+    expect(text).toContain("repeated the same sentence in more than one section");
+    expect(text).not.toMatch(/honesty|dishonest|discarded it rather than show it to you/i);
+  });
+});
+
+describe("[3.2L-R5] G12 — no terminal refusal starts a provider call", () => {
+  /**
+   * THE R4 DEFECT. `scenario_unrelated` was not on the no-immediate-retry list, so the
+   * refusal screen offered "Draft it again" for a failure the Host could neither see nor
+   * correct. With the inputs, prompt and temperature unchanged, that is paying for a
+   * re-roll presented as a remedy.
+   */
+  for (const refusal of ["scenario_unrelated", "dependency_inversion", "non_observable_standard", "duplicate_content", "field_type", "material_fabrication"]) {
+    it(`${refusal}: offers no button that generates, and calls onGenerate exactly once`, async () => {
+      const { onGenerate } = setup({ ok: false, code: "invalid_output", refusal });
+      await generate();
+      expect(onGenerate).toHaveBeenCalledTimes(1);
+      // There is no generate control on the refusal screen at all.
+      expect(screen.queryByTestId("program-generate")).toBeNull();
+      expect(screen.getByTestId("program-no-retry-note")).toBeTruthy();
+      // Nothing on screen invites another draft as a one-tap remedy.
+      expect(screen.getByTestId("program-no-retry-note").textContent).toContain("new AI generation");
+      expect(onGenerate).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it("provider and timeout outcomes are treated the same way", async () => {
+    for (const code of ["timeout", "provider_error", "provider_unavailable"]) {
+      const { onGenerate } = setup({ ok: false, code });
+      await generate();
+      expect(screen.queryAllByTestId("program-generate")).toHaveLength(0);
+      expect(onGenerate).toHaveBeenCalledTimes(1);
+      cleanup();
+    }
   });
 });
 

@@ -14,6 +14,7 @@ import { isMetaStandardText } from "@/domain/foundry/module/program-coherence";
 import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
+import { resolveRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -39,81 +40,15 @@ export const KIND_LABEL: Record<JourneyElementKind, string> = {
 };
 
 /**
- * Refusals where an immediate one-tap retry is inappropriate.
- *
- * After two bounded calls failed on shape, a third would spend again with no new
- * information, and the Host has nothing to change. After a grounding refusal they DO have
- * something to change — attach the real material — so an immediate redraft is equally
- * wrong. Both route back through the Training Program Target confirmation, which makes it
- * explicit that another draft starts a new AI generation.
+ * Every Host-facing refusal sentence now lives in `programRefusalCopy`, keyed by the code
+ * union itself, so a new refusal code without copy fails to compile. The tables that used
+ * to live here covered the structural codes and two grounding codes and let ten semantic
+ * codes fall through to a sentence about honesty — which is what the Founder was shown for
+ * a relevance fault in the R4 window.
  */
-const NO_IMMEDIATE_RETRY = new Set([
-  "field_type", "field_missing", "missing_field", "not_object", "missing_program",
-  "empty_field", "too_long", "unknown_kind", "duplicate_kind", "missing_required_kind",
-  "unrequested_kind", "invalid_assumptions", "invalid_warnings",
-  "material_fabrication", "invented_specifics",
-  // A meaning fault is never repaired by an immediate redraft — the Host would spend a
-  // second generation to be told the same thing.
-  "non_observable_standard", "dependency_inversion",
-]);
-
 export type ProgramGenerateOutcome =
   | { ok: true; proposal: ProgramProposal; evidenceCeiling: string; attemptId: string | null }
   | { ok: false; code: string; refusal?: string | null };
-
-/**
- * One string for every structural fault. The Host cannot act differently on
- * `elements[0].content was an object` versus `display_title was missing` — both mean the
- * same thing to them: the draft came back malformed and nothing changed. The precise path
- * belongs in the durable diagnostics, not on screen.
- */
-const STRUCTURAL_FAILURE_COPY =
-  "BTY couldn’t format the program correctly, so nothing was changed. Come back to your review to start a new draft.";
-
-const FAILURE_COPY: Record<string, string> = {
-  provider_unavailable: "Program drafting isn’t available right now. You can keep writing this training yourself — nothing was changed.",
-  timeout: "Drafting took too long and was stopped. Your draft is untouched — start it again when you’re ready.",
-  provider_error: "We couldn’t reach the drafting service. Your draft is untouched — start it again in a moment.",
-  invalid_output: "BTY drafted something that didn’t meet our honesty rules, so we discarded it rather than show it to you. Your draft is untouched.",
-  // STRUCTURAL failures (Slice 3.2L-R3). The fourth controlled window showed the Host
-  // "didn't meet our honesty rules" for what was actually a malformed response. Nothing
-  // dishonest was written — the shape was wrong. Saying otherwise misattributes the cause
-  // and tells the Host to look for a problem that does not exist.
-  field_type: STRUCTURAL_FAILURE_COPY,
-  field_missing: STRUCTURAL_FAILURE_COPY,
-  missing_field: STRUCTURAL_FAILURE_COPY,
-  not_object: STRUCTURAL_FAILURE_COPY,
-  missing_program: STRUCTURAL_FAILURE_COPY,
-  empty_field: STRUCTURAL_FAILURE_COPY,
-  too_long: STRUCTURAL_FAILURE_COPY,
-  unknown_kind: STRUCTURAL_FAILURE_COPY,
-  duplicate_kind: STRUCTURAL_FAILURE_COPY,
-  missing_required_kind: "BTY couldn’t build a complete program for this training, so nothing was changed. Come back to your review to start a new draft.",
-  unrequested_kind: STRUCTURAL_FAILURE_COPY,
-  invalid_assumptions: STRUCTURAL_FAILURE_COPY,
-  invalid_warnings: STRUCTURAL_FAILURE_COPY,
-  // Slice 3.2L-R2 — the live miss: a program that told participants to use a template
-  // nobody had provided. Naming the actual problem tells the Host what to do next.
-  material_fabrication:
-    "BTY drafted a program that relied on a template or tool you haven’t provided. Nothing was added. Attach the real material, or draft it again without assuming one exists.",
-  invented_specifics:
-    "BTY drafted a program that referred to a policy or form you haven’t provided. Nothing was added — draft it again, or add the real material first.",
-  // Slice 3.2L-R4 — the fifth window's two product defects. Both name what was actually
-  // wrong with the training, without exposing validator vocabulary.
-  non_observable_standard:
-    "BTY drafted a standard that said a standard would be created, but not what anyone actually does. Nothing was added — draft it again.",
-  dependency_inversion:
-    "BTY drafted a program that asked people to use something it hadn’t explained yet. Nothing was added — draft it again.",
-  duplicate_intent: "That request was already sent. Refresh to see the result rather than drafting twice.",
-  context_mismatch: "Your training changed since this draft was written. Generate it again so it matches.",
-  // The draft was published, deleted or edited while BTY was writing. The proposal is
-  // real but no longer applies to this training.
-  stale_context: "This training changed while BTY was writing, so the draft no longer matches it. Nothing was changed — start it again when you're ready.",
-  status_no_longer_draft: "This training was created as a session while BTY was writing, so the draft can no longer be added to it. Nothing was changed.",
-  inputs_changed: "Your training changed since BTY started writing. Nothing was changed — start the draft again so it matches.",
-  context_incomplete: "Add the problem, audience, behaviour and evidence first — BTY drafts from those.",
-  source_identity_unavailable: "This build can’t identify itself, so drafting is disabled. Nothing was changed.",
-};
 
 export function ProgramAuthorship({
   draftId,
@@ -151,7 +86,7 @@ export function ProgramAuthorship({
   const [proposal, setProposal] = useState<ProgramProposal | null>(null);
   const [ceiling, setCeiling] = useState("");
   const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [failure, setFailure] = useState<string>("");
+  const [failure, setFailure] = useState<RefusalCopy | null>(null);
   /** The stable refusal code behind `failure`, used only to choose the recovery action. */
   const [failureCode, setFailureCode] = useState<string>("");
   const [decisions, setDecisions] = useState<Record<string, SectionDecision>>({});
@@ -165,7 +100,7 @@ export function ProgramAuthorship({
   // nothing. Zero parents, zero provider calls, zero draft writes.
   const openConfirmation = useCallback(() => {
     setTarget({ draftId, focus: draftIdentityStatement(answers) });
-    setFailure("");
+    setFailure(null);
     setFailureCode("");
     setPhase("confirm");
   }, [draftId, answers]);
@@ -181,14 +116,16 @@ export function ProgramAuthorship({
     if (submittingRef.current) return;
     submittingRef.current = true;
     setPhase("working");
-    setFailure("");
+    setFailure(null);
     onPendingChange?.(true);
     const r = await onGenerate();
     // The lease is released the moment the attempt reaches a terminal state, whichever
     // way it went — a failed generation must never leave publication wedged.
     onPendingChange?.(false);
     if (!r.ok) {
-      setFailure(FAILURE_COPY[r.refusal ?? ""] ?? FAILURE_COPY[r.code] ?? FAILURE_COPY.invalid_output);
+      // Exhaustively typed: a code with no copy is a compile error, not a fallback to
+      // "didn't meet our honesty rules".
+      setFailure(resolveRefusalCopy(r.code, r.refusal));
       setFailureCode(r.refusal ?? r.code);
       setPhase("failed");
       return;
@@ -265,15 +202,24 @@ export function ProgramAuthorship({
           </p>
         ) : null}
         {failure ? (
-          <p className="text-sm leading-6 text-amber-200/90" data-testid="program-failure">{failure}</p>
+          <div className="flex flex-col gap-1" data-testid="program-failure">
+            <p className="text-sm leading-6 text-amber-200/90">{failure.headline}</p>
+            {failure.explanation ? (
+              <p className="text-sm leading-6 text-white/55">{failure.explanation}</p>
+            ) : null}
+          </div>
         ) : null}
-        {/* After a refusal the Host cannot fix by pressing again, there is no one-tap
-            paid retry. Drafting again is still possible — it simply goes back through the
-            Training Program Target confirmation, which states that another draft starts a
-            new AI generation. */}
-        {failure && NO_IMMEDIATE_RETRY.has(failureCode) ? (
+        {/*
+          RETRY AUTHORITY (Slice 3.2L-R5). No terminal failure offers a button that starts a
+          generation. Drafting again is still possible and always goes back through the
+          Training Program Target confirmation, which states that another draft starts a new
+          AI generation. The R4 window offered "Draft it again" for a semantic refusal the
+          Host could neither see nor correct — with the inputs unchanged, that is paying for
+          a re-roll, presented as a remedy.
+        */}
+        {failure ? (
           <p className="text-xs leading-5 text-white/45" data-testid="program-no-retry-note">
-            Come back to this review to start a new draft. Each draft starts a new AI generation.
+            {RECOVERY_NOTE[failure.recovery]}
           </p>
         ) : (
           <button
@@ -284,7 +230,7 @@ export function ProgramAuthorship({
             data-testid="program-generate"
             className="self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
           >
-            {failure ? "Draft it again" : "Draft my training program"}
+            Draft my training program
           </button>
         )}
         {!ready ? (
