@@ -418,6 +418,14 @@ export async function generateProgram(
         // THIS call's own diagnosis, written before the loop moves on — so a repair call
         // can never overwrite what call 1 proved. A structural fault carries its exact
         // path; a semantic one records only that it was a meaning fault and where.
+        // R6.1 — closed-vocabulary dependency facts, null for every other outcome.
+        dependency: validated.ok || !validated.dependency
+          ? null
+          : {
+              branch: validated.dependency.branch,
+              constructKind: validated.dependency.construct,
+              counterpartKind: validated.dependency.counterpartKind,
+            },
         diagnosis: validated.ok
           ? null
           : validated.diagnosis

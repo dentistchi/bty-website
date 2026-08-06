@@ -1,3 +1,4 @@
+-- Copy-friendly (LF, no trailing spaces). Select all to copy.
 -- ============================================================================
 -- Foundry — precise dependency diagnostics on the program CALL row (Slice 3.2L-R6)
 --
@@ -16,6 +17,15 @@
 -- Overloading `offending_path`, `expected_type`, `actual_type` or `provider_error_category`
 -- to carry these was rejected: each has a precise existing meaning, and a diagnostic column
 -- that means two things is how the R3 window became undiagnosable in the first place.
+--
+-- NULL, never a sentinel. "No construct applies" is expressed by NULL rather than by a
+-- magic string, so a query for "which refusals involved a standard" cannot accidentally
+-- count the ones that involved nothing.
+--
+-- VOCABULARY NOTE: the list below is the domain's STEMMED nouns, so `criterion` (not
+-- `criteria`) and the four rhythm nouns are included. The value the validator actually
+-- produces is `nounStem(noun)`; a CHECK that omitted one would reject a legitimate
+-- diagnosis at write time, which is the opposite of the point.
 --
 -- WHAT IS STORED. Fixed controlled vocabularies only. `construct_kind` is a head noun from
 -- the closed CONSTRUCT_NOUNS list, which is diagnostic metadata, not model output. A raw
@@ -42,8 +52,7 @@ alter table public.foundry_program_generation_attempt_calls
     check (dependency_construct_kind is null or dependency_construct_kind in (
       'standard', 'process', 'workflow', 'guideline', 'framework',
       'criterion', 'agreement', 'norm', 'rubric',
-      'convention', 'routine', 'ritual', 'cadence', 'practice',
-      'none'
+      'convention', 'routine', 'ritual', 'cadence', 'practice'
     ));
 
 -- One Journey element kind, or NULL when the branch has no counterpart.

@@ -7,19 +7,21 @@ import { JOURNEY_KIND_ORDER } from "@/domain/foundry/module/journey";
 /**
  * Slice 3.2L-R6 — STATIC proof for the dependency-diagnostics migration.
  *
- * The migration is HELD, not applied: it lives in `migrations-hold/`, which `db push` does
- * not scan. It also has NOT been shadow-tested on PostgreSQL 17, because no database
- * credential exists in this environment — that step belongs to the Founder SQL gate, and is
- * not claimed here.
+ * The migration is SHADOW-PROVEN on PostgreSQL 17.6.1.075 (Slice 3.2L-R6.1) against a
+ * seeded 7-parent / 8-child replica built by replaying the real 20260807 and 20260808
+ * migrations — applied, re-applied, rolled back and re-applied, with the pre-existing-column
+ * digest byte-identical throughout. An earlier note here claimed a shadow proof was
+ * impossible without the live database password; that was wrong, and the correction matters:
+ * an ISOLATED LOCAL container needs only a local credential and never touches the live project.
  *
- * What IS proved statically: the file is additive-only, touches one table, writes no rows,
+ * These static assertions remain as the cheap, always-on guard. What they prove: the file is additive-only, touches one table, writes no rows,
  * grants nothing, and its controlled vocabularies match the domain's own closed lists — so
  * a value the validator can produce cannot be rejected by a CHECK, and a column cannot hold
  * generated prose.
  */
 
 const SQL = readFileSync(
-  join(process.cwd(), "supabase", "migrations-hold", "20260809000000_foundry_program_dependency_diagnostics_v1.sql"),
+  join(process.cwd(), "supabase", "migrations", "20260809000000_foundry_program_dependency_diagnostics_v1.sql"),
   "utf8",
 );
 
@@ -67,7 +69,8 @@ describe("[3.2L-R6] dependency diagnostics migration is additive and prose-free"
     for (const noun of CONSTRUCT_NOUNS) {
       expect(allowed.has(nounStem(noun)), `stem "${nounStem(noun)}" must be storable`).toBe(true);
     }
-    expect(allowed.has("none")).toBe(true);
+    // NULL, never a sentinel: "no construct applies" must not be a storable string.
+    expect(allowed.has("none")).toBe(false);
   });
 
   it("the counterpart vocabulary is exactly the Journey kinds", () => {

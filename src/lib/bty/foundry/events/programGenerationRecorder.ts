@@ -1,4 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { JourneyElementKind } from "@/domain/foundry/module/journey";
+import type { DependencyBranch } from "@/domain/foundry/module/program-coherence";
+
+/**
+ * Live schema support for the three dependency columns (migration 20260809000000).
+ * Flipped to `true` in the deploy that FOLLOWS the Founder SQL execution — writing a column
+ * that does not exist would fail the whole insert and lose the diagnosis entirely, which is
+ * strictly worse than recording nothing.
+ */
+export const DEPENDENCY_DIAGNOSTICS_ENABLED = false;
 import { blockingAttempt, type LeaseAttempt } from "@/domain/foundry/module/program-generation-lease";
 
 /**
@@ -87,6 +97,15 @@ export type FinalizeProgramCallInput = {
    *
    * A path, an expected type and a received type describe SHAPE only — never the value.
    */
+  /**
+   * Dependency facts for THIS call, when the refusal was a dependency inversion. A closed
+   * vocabulary only: the construct's generated LABEL is prose and is never passed here.
+   */
+  dependency?: {
+    branch: DependencyBranch;
+    constructKind: string | null;
+    counterpartKind: JourneyElementKind | null;
+  } | null;
   diagnosis?: {
     stage: "structural" | "semantic";
     path: string;
@@ -197,6 +216,23 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
       expected_type: input.diagnosis?.expected ?? null,
       actual_type: input.diagnosis?.actual ?? null,
       structural_retryable: input.diagnosis?.retryable ?? null,
+      /**
+       * PRECISE DEPENDENCY DIAGNOSTICS (Slice 3.2L-R6.1). Written ONLY for a dependency
+       * refusal; every other outcome — structural, other semantic, success, provider,
+       * timeout — leaves all three NULL, which is the honest value.
+       *
+       * GATED on `DEPENDENCY_DIAGNOSTICS_ENABLED` because the columns do not exist live
+       * until migration 20260809000000 is executed. Spreading nothing keeps the insert
+       * payload byte-identical to today's, so this code is safe to deploy BEFORE the SQL
+       * gate and needs no second deploy to start working after it.
+       */
+      ...(DEPENDENCY_DIAGNOSTICS_ENABLED
+        ? {
+            dependency_branch: input.dependency?.branch ?? null,
+            dependency_construct_kind: input.dependency?.constructKind ?? null,
+            dependency_counterpart_kind: input.dependency?.counterpartKind ?? null,
+          }
+        : {}),
     })
     .eq("id", input.callId);
 }
