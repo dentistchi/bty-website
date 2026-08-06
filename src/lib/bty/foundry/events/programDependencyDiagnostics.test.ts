@@ -149,10 +149,11 @@ describe("[3.2L-R6.1] G12 — every other outcome leaves the dependency fields n
     }
   });
 
-  it("the recorder write is gated until the live columns exist", () => {
-    // Writing a column that does not exist would fail the whole insert and lose the
-    // diagnosis — strictly worse than recording nothing. Flipped after the SQL gate.
-    expect(DEPENDENCY_DIAGNOSTICS_ENABLED).toBe(false);
+  it("the recorder writes the diagnostics now that the live columns exist", () => {
+    // Enabled after the Founder executed migration 20260809000000 and the post-SQL
+    // verification passed. Before that it was false, because writing a missing column
+    // would fail the whole insert and lose the diagnosis.
+    expect(DEPENDENCY_DIAGNOSTICS_ENABLED).toBe(true);
   });
 
   it("dependency_inversion is still a known refusal code with copy", () => {

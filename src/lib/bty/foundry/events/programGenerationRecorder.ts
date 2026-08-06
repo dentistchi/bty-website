@@ -2,14 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { JourneyElementKind } from "@/domain/foundry/module/journey";
 import type { DependencyBranch } from "@/domain/foundry/module/program-coherence";
 
+import { blockingAttempt, type LeaseAttempt } from "@/domain/foundry/module/program-generation-lease";
+
 /**
  * Live schema support for the three dependency columns (migration 20260809000000).
- * Flipped to `true` in the deploy that FOLLOWS the Founder SQL execution — writing a column
- * that does not exist would fail the whole insert and lose the diagnosis entirely, which is
- * strictly worse than recording nothing.
+ *
+ * TRUE since the Founder executed that migration (Slice 3.2L-R6.1): the columns exist, all
+ * eight historical rows hold NULL, and the pre-existing-column digest was unchanged by the
+ * DDL. It was false through the preceding deploy because writing a column that does not
+ * exist would fail the whole insert and lose the diagnosis entirely — strictly worse than
+ * recording nothing.
  */
-export const DEPENDENCY_DIAGNOSTICS_ENABLED = false;
-import { blockingAttempt, type LeaseAttempt } from "@/domain/foundry/module/program-generation-lease";
+export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 
 /**
  * Durable observability for whole-program authorship (Slice 3.2L).
@@ -221,10 +225,9 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
        * refusal; every other outcome — structural, other semantic, success, provider,
        * timeout — leaves all three NULL, which is the honest value.
        *
-       * GATED on `DEPENDENCY_DIAGNOSTICS_ENABLED` because the columns do not exist live
-       * until migration 20260809000000 is executed. Spreading nothing keeps the insert
-       * payload byte-identical to today's, so this code is safe to deploy BEFORE the SQL
-       * gate and needs no second deploy to start working after it.
+       * Gated on `DEPENDENCY_DIAGNOSTICS_ENABLED`, which is now true: the live columns
+       * exist. While it was false the update payload stayed byte-identical to the
+       * pre-migration one, which is what made the preceding deploy safe.
        */
       ...(DEPENDENCY_DIAGNOSTICS_ENABLED
         ? {
