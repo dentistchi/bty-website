@@ -209,36 +209,50 @@ export function ProgramAuthorship({
     return (
       <>
         {entrySurface}
-        <Modal open onClose={cancelConfirmation} ariaLabel="Training program target" panelDataTestId="program-target-confirm">
+        <Modal
+          open
+          onClose={cancelConfirmation}
+          ariaLabel="Training program target"
+          panelDataTestId="program-target-confirm"
+          /* The shared Modal panel is `bg-foundry-white` (#FFFFFF). The Builder is a dark
+             surface, so this content is written in white — which rendered WHITE ON WHITE on
+             the physical iPhone: the Founder saw a blank panel with only the gold button,
+             whose own colours made it the single visible element. `cn` is tailwind-merge, so
+             overriding the panel here wins cleanly and changes no other Modal consumer.
+             Also bounded in height with internal scroll, so a long focus can never push the
+             actions off-screen. */
+          className="max-h-[85dvh] overflow-y-auto overscroll-contain border-white/12 bg-[#0B1F3A] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+        >
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5 border-l-2 border-[#C9A66B]/50 pl-3">
-              <span className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-white/45">
+              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[#C9A66B]/90">
                 Training program target
               </span>
-              {/* Bound at open time to THIS draft's loaded payload. Wraps fully so a long
-                  focus keeps its distinguishing tail. */}
+              {/* The dominant content: what BTY is about to spend a generation on. Bound at
+                  open time to THIS draft's loaded payload, wrapping fully so a long focus
+                  keeps its distinguishing tail. */}
               <p
                 data-testid={target.focus ? "program-target-focus" : "program-target-fallback"}
                 data-target-draft-id={target.draftId}
-                className={`break-words text-base font-medium leading-7 ${target.focus ? "text-white/90" : "text-white/45"}`}
+                className={`break-words text-lg font-semibold leading-7 ${target.focus ? "text-white" : "text-white/50"}`}
               >
                 {target.focus ?? "Untitled training draft"}
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-white/65">
+            <p className="text-sm leading-6 text-white/70">
               BTY will draft a program for this training focus. Nothing will be added or published until you review
               and apply it.
             </p>
 
-            <div className="flex flex-col gap-2 pt-1 sm:flex-row-reverse sm:justify-start">
+            <div className="flex flex-col gap-2.5 pt-1">
               <button
                 type="button"
                 ref={confirmButtonRef}
                 onClick={() => void generate()}
                 disabled={submittingRef.current}
                 data-testid="program-target-confirm-action"
-                className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-3 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
+                className="min-h-[44px] w-full rounded-xl bg-[#C9A66B] px-5 py-3 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
               >
                 Draft program for this training
               </button>
@@ -247,7 +261,7 @@ export function ProgramAuthorship({
                 onClick={cancelConfirmation}
                 disabled={submittingRef.current}
                 data-testid="program-target-cancel"
-                className="min-h-[44px] rounded-xl border border-white/15 px-5 py-3 text-sm text-white/70 disabled:opacity-40"
+                className="min-h-[44px] w-full rounded-xl border border-white/25 px-5 py-3 text-sm font-medium text-white/80 disabled:opacity-40"
               >
                 Go back
               </button>
