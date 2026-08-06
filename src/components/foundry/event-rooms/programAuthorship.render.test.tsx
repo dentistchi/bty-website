@@ -45,6 +45,10 @@ const PROPOSAL: ProgramProposal = {
   completionSignal: "the person taking over repeats them back and confirms",
   },
   scenarioContract: null,
+  applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+  completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
+  followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
+  operationalConstruct: { label: "shared handoff standard", noun: "standard", authorityMode: "proposed" },
 };
 
 const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeiling: "Reading shows exposure only.", attemptId: "att-1" };

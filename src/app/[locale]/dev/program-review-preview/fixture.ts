@@ -2,7 +2,7 @@ import type { ProgramProposal } from "@/domain/foundry/module/program-authorship
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
- * A STATIC program_authorship_v3 proposal for the physical readability gate (Slice 3.2L-R5).
+ * A STATIC program_authorship_v4 proposal for the physical readability gate (Slice 3.2L-R5/R6).
  *
  * WHY A FIXTURE. The R4 window returned a terminal refusal and displayed no proposal, so
  * the AutoTextarea repair shipped in R4 has never been seen on the Founder's phone. Proving
@@ -46,7 +46,7 @@ export const PREVIEW_PROPOSAL: ProgramProposal = {
     { kind: "why_it_matters", content: WHY_IT_MATTERS, rationale: "Reframes the manager's complaint as what is at stake for the people doing the work." },
     {
       kind: "observable_standard",
-      // Derived from the behaviour contract below — this is what v3 renders.
+      // Derived from the behaviour contract below — this is what v4 renders.
       content:
         "At the end of every shift, before leaving the floor, the outgoing team member states each unfinished task, its deadline and what could go wrong with it out loud to the person taking over. It is complete when the person taking over repeats the list back and confirms they have it.",
       rationale: "Names who acts, when, what is visible, and how completion is confirmed.",
@@ -85,6 +85,15 @@ export const PREVIEW_PROPOSAL: ProgramProposal = {
     pressureOrConstraint: "two colleagues already waiting to ask them something else and a shift that has run twenty minutes late",
     contextDetail: "the last few minutes of a busy evening handover",
   },
+  applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+  completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
+  followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
+  /**
+   * NONE. This preview's Host intent — "Hand over unfinished work out loud" — proposes a
+   * behaviour, not a construct, so the derived sections refer to the behaviour directly.
+   * A program is not required to invent a standard to be coherent.
+   */
+  operationalConstruct: null,
 };
 
 export const PREVIEW_EVIDENCE_CEILING =

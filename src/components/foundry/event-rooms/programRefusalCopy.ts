@@ -1,5 +1,6 @@
 import type { ProgramRejectCode } from "@/domain/foundry/module/program-authorship";
 import type { ProgramGenerateErrorCode } from "@/lib/bty/foundry/events/programAuthorshipService";
+import type { DependencyBranch } from "@/domain/foundry/module/program-coherence";
 
 /**
  * Host-facing copy for EVERY reachable program refusal (Slice 3.2L-R5).
@@ -99,8 +100,14 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "",
     recovery: "start_a_new_draft",
   },
+  /**
+   * BRANCH-IMPRECISE UNTIL R6. The R5 window showed "asked people to use a standard before
+   * defining it" for a refusal raised on WHY THIS MATTERS — a narrative section that asks
+   * the participant to do nothing. Semantic-role scoping means narrative can no longer
+   * raise this at all, and the remaining branches now have their own words.
+   */
   dependency_inversion: {
-    headline: `BTY’s draft asked people to use a standard before defining it. ${NOTHING_CHANGED}`,
+    headline: `BTY’s draft asked people to use part of the training before defining it. ${NOTHING_CHANGED}`,
     explanation: "",
     recovery: "start_a_new_draft",
   },
@@ -154,6 +161,17 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "",
     recovery: "start_a_new_draft",
   },
+};
+
+/**
+ * Branch-specific wording for a dependency refusal. `dependency_inversion` remains the
+ * stable stored code; these choose the sentence the Host reads. Product terminology only —
+ * never "graph", "branch" or "construct".
+ */
+export const DEPENDENCY_BRANCH_COPY: Record<DependencyBranch, string> = {
+  used_before_defined: `BTY’s draft asked people to use part of the training before defining it. ${NOTHING_CHANGED}`,
+  defined_after_use: `BTY’s draft defined an important part of the training only after asking people to use it. ${NOTHING_CHANGED}`,
+  authority_mismatch: `BTY’s draft described different behaviours across the program. ${NOTHING_CHANGED}`,
 };
 
 /** EXHAUSTIVE over the service's terminal error codes. */
