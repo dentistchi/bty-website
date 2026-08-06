@@ -40,6 +40,7 @@ import {
   SCENARIO_FIELD_LIMIT,
   deriveOperationalConstruct,
   isConfirmer,
+  isRenderableAction,
   isInstructionalKind,
   isResponseMode,
   isReviewFocus,
@@ -1349,6 +1350,8 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
 export type ReviewBlockReason =
   | "standard_incomplete"
   | "standard_not_observable"
+  /** The action cannot be rendered into a sentence people could follow. */
+  | "action_unusable"
   | "scenario_incomplete"
   | "application_incomplete"
   | "completion_invalid"
@@ -1374,6 +1377,12 @@ export function validateEditedReview(
   verifiedArtifacts: readonly string[] = [],
 ): ReviewValidation {
   const corpus = groundingCorpus(answers, verifiedArtifacts);
+
+  // Checked before the contract rules so the Host gets the specific guidance, not a
+  // generic "not observable" for what is really an unrenderable phrase.
+  if (!isRenderableAction(c.behavior.observableAction)) {
+    return { ok: false, reason: "action_unusable", kind: "observable_standard" };
+  }
 
   const behavior = validateBehaviorContract({
     actor: c.behavior.actor,

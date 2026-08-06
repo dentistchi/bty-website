@@ -17,6 +17,9 @@ import {
   nounStem,
   VERIFICATION_TARGETS,
   RESPONSE_MODES,
+  REVIEW_FOCUSES,
+  momentCore,
+  isRenderableAction,
   definiteConstructs,
   ungroundedExistingEntity,
   ARTIFACT_NOUNS,
@@ -618,10 +621,12 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
 
   it("G6: a decision commits to the DEFINED behaviour, not to creating a construct", () => {
     const d = renderDecisionSentence(GOOD, APP);
-    expect(d.startsWith("I will ")).toBe(true);
-    // First person, so the agreement -s is dropped: "I will state", never "I will states".
+    // R6.2: the moment leads, in FIRST-PERSON possessive, and the action follows the modal
+    // in base form — "I will states" and "…at your next shift change" are both impossible.
     expect(d).toContain("I will state each unfinished task");
     expect(d).not.toContain("I will states");
+    expect(d).toContain("At my next shift change");
+    expect(d).not.toContain("your");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
   });
@@ -629,7 +634,9 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("G7: an application names the moment, the inherited actor and the confirmation", () => {
     const a = renderApplicationSentence(GOOD, APP, null);
     expect(a).toContain(GOOD.actor);
-    expect(a).toContain("at your next shift change".replace(/^a/, "A"));
+    // Actor-neutral possessive here, because the sentence names a third-party actor.
+    expect(a).toContain("At the next shift change");
+    expect(a).toContain("must state each unfinished task");
     expect(a).toContain("repeats it back");
   });
 
@@ -647,7 +654,8 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("G9: a follow-up uses the canonical window and introduces no new action", () => {
     const f = renderFollowUpSentence(GOOD, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7);
     expect(f).toContain("In 7 days");
-    expect(f).toContain("states each unfinished task");
+    // Tense-safe: past question, base-form action, never "said when you states".
+    expect(f).toContain("what you actually said when you were expected to state each unfinished task");
     expect(f).toContain("your own account");
   });
 
@@ -669,5 +677,138 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("an application moment must be a moment", () => {
     expect(validateApplicationContract({ application_moment: "soon", evidence_or_confirmation: "someone notices" }).ok).toBe(false);
     expect(validateApplicationContract({ application_moment: "at your next shift change", evidence_or_confirmation: "the person taking over repeats it back" }).ok).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Grammar authority (Slice 3.2L-R6.2) — the physical iPhone defects
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R6.2] no rendered sentence guesses the actor's number", () => {
+  const APP2 = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" };
+  const forActor = (actor: string, action = "states each unfinished task aloud") => ({ ...GOOD, actor, observableAction: action });
+
+  /** Every derived sentence, for one actor. */
+  const allSections = (actor: string, action?: string) => {
+    const b = forActor(actor, action);
+    return [
+      renderStandardSentence(b),
+      renderScenarioSentence(b, GOOD_SCENARIO),
+      renderDecisionSentence(b, APP2),
+      renderApplicationSentence(b, APP2, null),
+      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
+    ];
+  };
+
+  it("G1: a PLURAL actor never produces 'doctors faces' or 'doctors states'", () => {
+    // The exact strings the Founder read on the physical iPhone.
+    const sections = allSections("Doctors");
+    for (const s of sections) {
+      expect(s.toLowerCase()).not.toContain("doctors faces");
+      expect(s.toLowerCase()).not.toContain("doctors states");
+    }
+    expect(sections[0]).toContain("doctors must state each unfinished task");
+    expect(sections[1]).toContain("doctors must state each unfinished task");
+    expect(sections[3]).toContain("doctors must state each unfinished task");
+  });
+
+  it("G2: a SINGULAR actor reads naturally from the same authority", () => {
+    const sections = allSections("the outgoing team member");
+    expect(sections[0]).toContain("the outgoing team member must state");
+    for (const s of sections) expect(s).not.toMatch(/member states|member faces/);
+  });
+
+  it("G3: a GROUP actor produces no number-guessing defect either", () => {
+    const sections = allSections("everyone on the closing team");
+    expect(sections[0]).toContain("everyone on the closing team must state");
+    for (const s of sections) expect(s).not.toMatch(/team states|team faces/);
+  });
+
+  it("the modal is what removes the bet — no renderer inflects for the actor", () => {
+    for (const actor of ["Doctors", "the outgoing team member", "everyone on the closing team", "I"]) {
+      for (const s of allSections(actor)) {
+        expect(s, `${actor}: ${s}`).not.toMatch(/\b(faces|states)\b/);
+      }
+    }
+  });
+});
+
+describe("[3.2L-R6.2] perspective never collides", () => {
+  const APP2 = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" };
+
+  it("G4: a first-person decision never carries a second-person possessive", () => {
+    const d = renderDecisionSentence(GOOD, APP2);
+    expect(d).toContain("At my next shift change");
+    expect(d).toContain("I will state");
+    // The exact live collision: "I will … starting at your next shift change."
+    expect(d).not.toMatch(/\byour\b/);
+  });
+
+  it("G5: the SAME semantic moment renders actor-neutral in the instruction", () => {
+    const a = renderApplicationSentence(GOOD, APP2, null);
+    expect(a).toContain("At the next shift change");
+    expect(a).not.toMatch(/\bmy\b/);
+  });
+
+  it("G13: moments that carry their own preposition are left alone", () => {
+    for (const [moment, expected] of [
+      ["during the Monday huddle", "During the Monday huddle"],
+      ["before closing the case", "Before closing the case"],
+      ["when the next escalation arrives", "When the next escalation arrives"],
+      ["next shift change", "At my next shift change"],
+    ] as const) {
+      const d = renderDecisionSentence(GOOD, { ...APP2, applicationMoment: moment });
+      expect(d.startsWith(expected), `${moment} → ${d}`).toBe(true);
+    }
+  });
+
+  it("the possessive strip is anchored — it never rewrites inside the Host's prose", () => {
+    const m = "before your team closes your last case";
+    // Only a LEADING "at/in/on + possessive" is removed; this has neither.
+    expect(momentCore(m)).toBe(m);
+    expect(renderDecisionSentence(GOOD, { ...APP2, applicationMoment: m })).toContain("your team closes your last case");
+  });
+});
+
+describe("[3.2L-R6.2] follow-up tense and Host phrasing", () => {
+  it("G6: no retrospective/present collision", () => {
+    for (const focus of REVIEW_FOCUSES) {
+      const f = renderFollowUpSentence(GOOD, { reviewFocus: focus, confirmer: "self_report" }, 7);
+      expect(f).not.toMatch(/said when you say|did when you do|said when you states/);
+    }
+  });
+
+  it("G7: a colloquial Host phrase keeps its meaning and its sentence stays grammatical", () => {
+    const blunt = { ...GOOD, observableAction: "Say it blunt" };
+    const standard = renderStandardSentence(blunt);
+    const followUp = renderFollowUpSentence(blunt, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7);
+    // Meaning preserved — not rewritten into BTY's preferred style.
+    expect(standard).toContain("say it blunt");
+    expect(followUp).toContain("were expected to say it blunt");
+    // …and the surrounding grammar is valid.
+    expect(standard).toContain("must say it blunt");
+    expect(followUp).not.toMatch(/said when you say it blunt/);
+  });
+
+  it("the evidence ceiling survives every combination", () => {
+    for (const focus of REVIEW_FOCUSES) {
+      const f = renderFollowUpSentence(GOOD, { reviewFocus: focus, confirmer: "self_report" }, 7);
+      expect(f).toContain("your own account of it, not an observation");
+      expect(f).not.toMatch(/proves|verified|sustained|permanently/i);
+    }
+  });
+
+  it("G8: a long action stays renderable and within the element ceiling", () => {
+    const long = `states ${"each unfinished task, its deadline and what could go wrong with it, ".repeat(6)}out loud`;
+    const b = { ...GOOD, observableAction: long };
+    expect(isRenderableAction(long)).toBe(true);
+    expect(renderStandardSentence(b)).toContain("must state each unfinished task");
+    expect(renderStandardSentence(b).length).toBeLessThanOrEqual(700);
+  });
+
+  it("an action with no verb-shaped head is refused rather than rendered broken", () => {
+    for (const bad of ["", "  ", "!!!", "12345"]) expect(isRenderableAction(bad)).toBe(false);
+    for (const ok of ["Say it blunt", "state each open item aloud", "hand over"]) expect(isRenderableAction(ok)).toBe(true);
   });
 });

@@ -332,6 +332,75 @@ const stripTrailingStop = (s: string): string => s.replace(/[.。]+\s*$/, "");
 const lowerFirst = (s: string): string => (s.length > 0 ? s[0].toLowerCase() + s.slice(1) : s);
 const upperFirst = (s: string): string => (s.length > 0 ? s[0].toUpperCase() + s.slice(1) : s);
 
+
+// ---------------------------------------------------------------------------
+// Grammar authority (Slice 3.2L-R6.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE PHYSICAL DEFECT. On a real iPhone the Founder set the actor to "Doctors" and read:
+ *
+ *   IN CONTEXT   "doctors faces two colleagues…"
+ *   APPLY IT     "doctors states each unfinished task…"
+ *   YOUR DECISION "I will … starting at your next shift change."
+ *   WHAT HAPPENS NEXT "what you actually said when you say it blunt."
+ *
+ * Every one is BTY's sentence composition, not the Host's meaning. The renderers pasted a
+ * free-text actor label directly in front of a THIRD-PERSON-INFLECTED action, so they were
+ * silently betting on the actor's grammatical number — a bet no free-text field can settle.
+ *
+ * THE FIX is to stop betting. The action is normalised to a BASE form and always follows a
+ * modal ("must"), which is invariant across person and number: "the outgoing nurse must
+ * state", "doctors must state", "everyone on the closing team must state". No renderer
+ * chooses between faces/face or states/state ever again.
+ */
+
+/** The action as it appears after a modal. Only the head verb is de-inflected. */
+export function baseActionPhrase(action: string): string {
+  const t = stripTrailingStop(action.trim());
+  if (t.length === 0) return t;
+  const [head, ...rest] = t.split(/\s+/);
+  return [baseForm(head), ...rest].join(" ");
+}
+
+/**
+ * Can this value function as an action phrase after a modal? Deliberately permissive: a
+ * colloquial Host phrase like "Say it blunt" is fine and must NOT be editorialised. What is
+ * refused is a value with no verb-shaped head at all — punctuation, a bare number — which
+ * would emit "doctors must ..." with nothing after it.
+ */
+export function isRenderableAction(action: string): boolean {
+  const phrase = stripTrailingStop(action.trim());
+  if (phrase.length < 2) return false;
+  const head = phrase.split(/\s+/)[0] ?? "";
+  return /^[\p{L}][\p{L}'-]*$/u.test(head);
+}
+
+/** A moment that already begins with its own time preposition needs nothing added. */
+const LEADING_TIME_WORD =
+  /^(?:at|in|on|during|before|after|when|whenever|while|as|by|once|every|each|throughout|upon|next\s+time)\b/i;
+
+/**
+ * Strip ONLY a leading preposition + possessive, so a stored moment carries no participant
+ * perspective of its own. Deliberately anchored: a global your → my replacement would
+ * rewrite the inside of the Host's own prose, which is not ours to touch.
+ */
+export function momentCore(moment: string): string {
+  return stripTrailingStop(moment.trim()).replace(/^(?:at|in|on)\s+(?:your|my|our|their|his|her)\s+/i, "");
+}
+
+/**
+ * The same semantic moment, rendered for the perspective that section speaks in.
+ * "next shift change" becomes "At my next shift change" in a first-person commitment and
+ * "At the next shift change" in an instruction — never "I will … at your next shift change".
+ */
+export function momentClause(moment: string, possessive: "my" | "the"): string {
+  const core = momentCore(moment);
+  if (core.length === 0) return "";
+  if (LEADING_TIME_WORD.test(core)) return upperFirst(core);
+  return `At ${possessive} ${lowerFirst(core)}`;
+}
+
 /**
  * THE participant-facing sentence, DERIVED from the contract rather than authored beside
  * it. One source of truth: there is no way for the displayed standard to say something the
@@ -347,7 +416,7 @@ export function renderStandardSentence(c: BehaviorContract): string {
   const actor = stripTrailingStop(c.actor.trim());
   const action = stripTrailingStop(c.observableAction.trim());
   const signal = stripTrailingStop(c.completionSignal.trim());
-  return `${upperFirst(trigger)}, ${lowerFirst(actor)} ${lowerFirst(action)}. It is complete when ${lowerFirst(signal)}.`;
+  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${baseActionPhrase(action)}. It is complete when ${lowerFirst(signal)}.`;
 }
 
 /**
@@ -505,9 +574,11 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
   const signal = stripTrailingStop(b.completionSignal.trim());
   const pressure = stripTrailingStop(s.pressureOrConstraint.trim());
   const context = stripTrailingStop(s.contextDetail.trim());
+  // A colon carries the pressure, so no verb has to agree with the actor OR the pressure.
+  void trigger;
   return (
-    `${upperFirst(trigger)}, ${lowerFirst(actor)} faces ${lowerFirst(pressure)}. ` +
-    `In ${lowerFirst(context)}, they still ${lowerFirst(action)}. ` +
+    `In ${lowerFirst(context)}: ${lowerFirst(pressure)}. ` +
+    `Even then, ${lowerFirst(actor)} must ${baseActionPhrase(action)}. ` +
     `It is complete when ${lowerFirst(signal)}.`
   );
 }
@@ -879,9 +950,7 @@ export function baseForm(verb: string): string {
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
   const action = stripTrailingStop(b.observableAction.trim());
   const moment = stripTrailingStop(a.applicationMoment.trim());
-  const [head, ...rest] = action.split(/\s+/);
-  const firstPerson = [baseForm(head), ...rest].join(" ");
-  return `I will ${firstPerson}, starting ${lowerFirst(moment)}.`;
+  return `${momentClause(moment, "my")}, I will ${baseActionPhrase(action)}.`;
 }
 
 export function renderApplicationSentence(
@@ -894,11 +963,11 @@ export function renderApplicationSentence(
   const moment = stripTrailingStop(a.applicationMoment.trim());
   const evidence = stripTrailingStop(a.evidenceOrConfirmation.trim());
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
-  return `${upperFirst(moment)}, ${lowerFirst(actor)} ${lowerFirst(action)}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
+  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${baseActionPhrase(action)}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
 }
 
 export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string {
-  const action = lowerFirst(stripTrailingStop(b.observableAction.trim()));
+  const action = baseActionPhrase(b.observableAction);
   const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
   const target: Record<VerificationTarget, string> = {
     the_behaviour: `you ${action}`,
@@ -914,11 +983,16 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
 }
 
 export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
-  const action = lowerFirst(stripTrailingStop(b.observableAction.trim()));
+  const action = baseActionPhrase(b.observableAction);
   const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
+  /**
+   * TENSE-SAFE. "what you actually said when you say it blunt" mixed a retrospective
+   * question with a present-tense action. "when you were expected to …" keeps the whole
+   * sentence in the past and works with any base action, colloquial ones included.
+   */
   const focus: Record<ReviewFocus, string> = {
-    what_you_said: `what you actually said when you ${action}`,
-    what_happened_next: `what happened after you ${action}`,
+    what_you_said: `what you actually said when you were expected to ${action}`,
+    what_happened_next: `what happened after you were expected to ${action}`,
     the_confirmation: `whether ${signal}`,
   };
   /** Never claims more than the workflow can show — the evidence ceiling in one clause. */

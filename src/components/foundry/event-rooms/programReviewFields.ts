@@ -36,8 +36,19 @@ export type DetailField = {
   options?: { value: string; label: string }[];
 };
 
-/** Everything the behaviour contract feeds. Changing one of these re-renders all of them. */
-const BEHAVIOUR_DEPENDENTS: JourneyElementKind[] = [
+/**
+ * PROVENANCE SCOPE (Slice 3.2L-R6.2) — per FIELD, not per contract.
+ *
+ * Marking all six sections whenever any behaviour value changed was over-marking: YOUR
+ * DECISION speaks in the first person and never renders the actor, so changing "Who does
+ * this?" leaves its sentence untouched and it should keep saying "Drafted by BTY".
+ *
+ * `completionSignal` is the deliberate exception: it is marked on `completion_check` and
+ * `follow_up` even though those only render it under one enum setting each
+ * (`the_confirmation_step` / `the_confirmation`). Their SEMANTIC AUTHORITY changed either
+ * way, and a badge that flickers with an unrelated dropdown would be the more confusing lie.
+ */
+const ACTION_DEPENDENTS: JourneyElementKind[] = [
   "observable_standard",
   "scenario",
   "action_decision",
@@ -45,13 +56,21 @@ const BEHAVIOUR_DEPENDENTS: JourneyElementKind[] = [
   "completion_check",
   "follow_up",
 ];
+const ACTOR_DEPENDENTS: JourneyElementKind[] = ["observable_standard", "scenario", "field_application"];
+const SIGNAL_DEPENDENTS: JourneyElementKind[] = ["observable_standard", "scenario", "completion_check", "follow_up"];
+const TRIGGER_DEPENDENTS: JourneyElementKind[] = ["observable_standard"];
 
 const APPLICATION_DEPENDENTS: JourneyElementKind[] = ["action_decision", "field_application"];
 
-const behaviourField = (id: string, label: string, key: keyof ProgramContracts["behavior"]): DetailField => ({
+const behaviourField = (
+  id: string,
+  label: string,
+  key: keyof ProgramContracts["behavior"],
+  affects: JourneyElementKind[],
+): DetailField => ({
   id,
   label,
-  affects: BEHAVIOUR_DEPENDENTS,
+  affects,
   get: (c) => c.behavior[key],
   set: (c, v) => ({ ...c, behavior: { ...c.behavior, [key]: v } }),
 });
@@ -91,10 +110,10 @@ const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
 
 export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> = {
   observable_standard: [
-    behaviourField("actor", "Who does this?", "actor"),
-    behaviourField("trigger", "When is it required?", "trigger"),
-    behaviourField("action", "What would someone see or hear them do?", "observableAction"),
-    behaviourField("completion", "What confirms it’s finished?", "completionSignal"),
+    behaviourField("actor", "Who does this?", "actor", ACTOR_DEPENDENTS),
+    behaviourField("trigger", "When is it required?", "trigger", TRIGGER_DEPENDENTS),
+    behaviourField("action", "What would someone see or hear them do?", "observableAction", ACTION_DEPENDENTS),
+    behaviourField("completion", "What confirms it’s finished?", "completionSignal", SIGNAL_DEPENDENTS),
   ],
   scenario: [
     {
@@ -166,6 +185,7 @@ export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
   standard_not_observable: "The standard doesn’t yet describe something a person could be seen doing, at a particular moment, with a clear finish.",
   scenario_incomplete: "The practice situation needs a real difficulty and a real place — not “it’s hard” or “at work”.",
   application_incomplete: "Say when this first happens for real, and what would show it happened.",
+  action_unusable: "That action can’t be turned into a sentence people can follow. Try a short phrase like “state each open item aloud”.",
   completion_invalid: "Choose what the closing question checks and how people answer it.",
   follow_up_invalid: "Choose what gets reviewed later and who confirms it.",
   narrative_unsafe: "One of the sections you wrote claims something the training can’t show, or relies on material you haven’t provided.",

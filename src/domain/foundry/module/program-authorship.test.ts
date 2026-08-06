@@ -251,7 +251,7 @@ describe("[3.2L] the validator fails closed", () => {
     expect(r.ok, r.ok ? "" : r.code).toBe(true);
     if (r.ok) {
       const decision = r.value.proposal.elements.find((e) => e.kind === "action_decision")!;
-      expect(decision.content.startsWith("I will ")).toBe(true);
+      expect(decision.content).toContain("I will ");
       expect(decision.content).not.toContain("Think about");
     }
   });
@@ -288,7 +288,7 @@ describe("[3.2L] the validator fails closed", () => {
     if (r.ok) {
       const apply = r.value.proposal.elements.find((e) => e.kind === "field_application")!;
       expect(apply.content).toContain("the outgoing person");
-      expect(apply.content).toContain("At your next shift change");
+      expect(apply.content).toContain("At the next shift change");
       expect(apply.content).not.toContain("Handoffs. Standards.");
     }
   });

@@ -231,7 +231,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     await openDetails("observable_standard");
     await setField("action", "reads the open items aloud from the board");
     // Both sections re-render from the same value; there is no control that could set them apart.
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("reads the open items aloud");
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("read the open items aloud");
     expect(screen.queryByTestId("program-edit-observable_standard")).toBeNull();
     expect(screen.queryByTestId("program-edit-action_decision")).toBeNull();
   });
