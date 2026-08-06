@@ -90,6 +90,12 @@ function isPublicPath(pathname: string) {
     if (pathname === `/${locale}/dev/scenario-preview`) return true;
     /** P0 Orb Sensory Test — dev-only, frontend-only, auth-free preview. */
     if (pathname === `/${locale}/dev/orb`) return true;
+    /**
+     * Program review readability gate (Slice 3.2L-R5) — a static fixture rendered by the
+     * real review component. Auth-free because it reads nothing: no draft, no API, no
+     * provider. The page itself 404s outside development/staging.
+     */
+    if (pathname === `/${locale}/dev/program-review-preview`) return true;
     if (pathname === `/${locale}/bty/login`) return true;
     if (pathname === `/${locale}/bty/forgot-password`) return true;
     /** OAuth return + password reset: session is created client-side on these pages. Must not require auth. */

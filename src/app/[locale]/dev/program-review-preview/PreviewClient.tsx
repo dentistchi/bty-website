@@ -1,0 +1,57 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { ProgramAuthorship, type ProgramGenerateOutcome } from "@/components/foundry/event-rooms/ProgramAuthorship";
+import { PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_PROPOSAL } from "./fixture";
+
+/**
+ * Physical readability preview (Slice 3.2L-R5) — the REAL review component, a STATIC
+ * proposal, and no network of any kind.
+ *
+ * `onGenerate` resolves a local fixture: no fetch, no provider, no attempt row, no call
+ * row. `onApply` records that it was pressed and does nothing else — no draft is written,
+ * and the canonical draft is never referenced anywhere on this page.
+ */
+export function PreviewClient() {
+  const [applied, setApplied] = useState(false);
+
+  /** Deliberately async so the component's real working → review transition is exercised. */
+  const onGenerate = useCallback(async (): Promise<ProgramGenerateOutcome> => {
+    return { ok: true, proposal: PREVIEW_PROPOSAL, evidenceCeiling: PREVIEW_EVIDENCE_CEILING, attemptId: null };
+  }, []);
+
+  const onApply = useCallback(() => {
+    setApplied(true);
+  }, []);
+
+  return (
+    <main className="min-h-dvh bg-[#0B1F3A] px-5 py-6 text-white" data-testid="program-review-preview">
+      <div className="mx-auto flex max-w-xl flex-col gap-4">
+        <div className="rounded-xl border border-amber-400/40 bg-amber-400/[0.08] px-4 py-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.1em] text-amber-200" data-testid="preview-banner">
+            Test preview — not a real training draft
+          </p>
+          <p className="mt-1 text-sm leading-6 text-amber-100/80">
+            Nothing here is saved, drafted by AI, or connected to any of your trainings. This page exists to
+            check that every line of a drafted program is readable on a phone.
+          </p>
+        </div>
+
+        <ProgramAuthorship
+          draftId="preview-fixture"
+          answers={PREVIEW_ANSWERS}
+          journey={undefined}
+          ready
+          onGenerate={onGenerate}
+          onApply={onApply}
+        />
+
+        {applied ? (
+          <p className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm leading-6 text-white/70" data-testid="preview-apply-noop">
+            Preview mode — nothing was added. In a real training this would add the program to your draft.
+          </p>
+        ) : null}
+      </div>
+    </main>
+  );
+}
