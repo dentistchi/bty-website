@@ -16,6 +16,14 @@ import { blockingAttempt, type LeaseAttempt } from "@/domain/foundry/module/prog
 export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 
 /**
+ * Live schema support for the two behaviour-contract columns (migration 20260810000000).
+ * FALSE until the Founder executes it — writing a column that does not exist would fail the
+ * whole insert and lose the diagnosis, which is strictly worse than recording nothing. While
+ * false the update payload stays byte-identical to today's, so this is safe to deploy first.
+ */
+export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = false;
+
+/**
  * Durable observability for whole-program authorship (Slice 3.2L).
  *
  * One parent per Host instruction, one child per provider call. Recording NEVER blocks or
@@ -110,6 +118,11 @@ export type FinalizeProgramCallInput = {
     constructKind: string | null;
     counterpartKind: JourneyElementKind | null;
   } | null;
+  /**
+   * Which of the four behaviour-contract roles failed, and why, when the refusal was
+   * `non_observable_standard`. Closed vocabulary only — the rejected phrase is never passed.
+   */
+  behaviorContract?: { field: string; reason: string } | null;
   diagnosis?: {
     stage: "structural" | "semantic";
     path: string;
@@ -229,6 +242,12 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
        * exist. While it was false the update payload stayed byte-identical to the
        * pre-migration one, which is what made the preceding deploy safe.
        */
+      ...(BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED
+        ? {
+            behavior_contract_field: input.behaviorContract?.field ?? null,
+            behavior_contract_reason: input.behaviorContract?.reason ?? null,
+          }
+        : {}),
       ...(DEPENDENCY_DIAGNOSTICS_ENABLED
         ? {
             dependency_branch: input.dependency?.branch ?? null,
