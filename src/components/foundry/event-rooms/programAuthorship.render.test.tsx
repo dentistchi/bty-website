@@ -182,7 +182,13 @@ describe("[3.2L] failure leaves the draft untouched and recoverable", () => {
       const text = screen.getByTestId("program-failure").textContent ?? "";
       expect(text).toContain(expected);
       expect(onApply).not.toHaveBeenCalled();
-      expect(screen.getByTestId("program-generate").textContent).toContain("Draft it again");
+      // Slice 3.2L-R3: refusals the Host cannot fix by pressing again no longer offer a
+      // one-tap paid retry — they route back through the target confirmation instead.
+      const immediateRetry = screen.queryByTestId("program-generate");
+      const note = screen.queryByTestId("program-no-retry-note");
+      expect(Boolean(immediateRetry) !== Boolean(note), "exactly one recovery affordance").toBe(true);
+      if (note) expect(note.textContent).toContain("Each draft starts a new AI generation");
+      else expect(immediateRetry!.textContent).toContain("Draft it again");
     });
   }
 

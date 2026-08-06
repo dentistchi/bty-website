@@ -36,15 +36,57 @@ export const KIND_LABEL: Record<JourneyElementKind, string> = {
   follow_up: "What happens next",
 };
 
+/**
+ * Refusals where an immediate one-tap retry is inappropriate.
+ *
+ * After two bounded calls failed on shape, a third would spend again with no new
+ * information, and the Host has nothing to change. After a grounding refusal they DO have
+ * something to change — attach the real material — so an immediate redraft is equally
+ * wrong. Both route back through the Training Program Target confirmation, which makes it
+ * explicit that another draft starts a new AI generation.
+ */
+const NO_IMMEDIATE_RETRY = new Set([
+  "field_type", "field_missing", "missing_field", "not_object", "missing_program",
+  "empty_field", "too_long", "unknown_kind", "duplicate_kind", "missing_required_kind",
+  "unrequested_kind", "invalid_assumptions", "invalid_warnings",
+  "material_fabrication", "invented_specifics",
+]);
+
 export type ProgramGenerateOutcome =
   | { ok: true; proposal: ProgramProposal; evidenceCeiling: string; attemptId: string | null }
   | { ok: false; code: string; refusal?: string | null };
+
+/**
+ * One string for every structural fault. The Host cannot act differently on
+ * `elements[0].content was an object` versus `display_title was missing` — both mean the
+ * same thing to them: the draft came back malformed and nothing changed. The precise path
+ * belongs in the durable diagnostics, not on screen.
+ */
+const STRUCTURAL_FAILURE_COPY =
+  "BTY couldn’t format the program correctly, so nothing was changed. Come back to your review to start a new draft.";
 
 const FAILURE_COPY: Record<string, string> = {
   provider_unavailable: "Program drafting isn’t available right now. You can keep writing this training yourself — nothing was changed.",
   timeout: "Drafting took too long and was stopped. Your draft is untouched — start it again when you’re ready.",
   provider_error: "We couldn’t reach the drafting service. Your draft is untouched — start it again in a moment.",
   invalid_output: "BTY drafted something that didn’t meet our honesty rules, so we discarded it rather than show it to you. Your draft is untouched.",
+  // STRUCTURAL failures (Slice 3.2L-R3). The fourth controlled window showed the Host
+  // "didn't meet our honesty rules" for what was actually a malformed response. Nothing
+  // dishonest was written — the shape was wrong. Saying otherwise misattributes the cause
+  // and tells the Host to look for a problem that does not exist.
+  field_type: STRUCTURAL_FAILURE_COPY,
+  field_missing: STRUCTURAL_FAILURE_COPY,
+  missing_field: STRUCTURAL_FAILURE_COPY,
+  not_object: STRUCTURAL_FAILURE_COPY,
+  missing_program: STRUCTURAL_FAILURE_COPY,
+  empty_field: STRUCTURAL_FAILURE_COPY,
+  too_long: STRUCTURAL_FAILURE_COPY,
+  unknown_kind: STRUCTURAL_FAILURE_COPY,
+  duplicate_kind: STRUCTURAL_FAILURE_COPY,
+  missing_required_kind: "BTY couldn’t build a complete program for this training, so nothing was changed. Come back to your review to start a new draft.",
+  unrequested_kind: STRUCTURAL_FAILURE_COPY,
+  invalid_assumptions: STRUCTURAL_FAILURE_COPY,
+  invalid_warnings: STRUCTURAL_FAILURE_COPY,
   // Slice 3.2L-R2 — the live miss: a program that told participants to use a template
   // nobody had provided. Naming the actual problem tells the Host what to do next.
   material_fabrication:
@@ -99,6 +141,8 @@ export function ProgramAuthorship({
   const [ceiling, setCeiling] = useState("");
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string>("");
+  /** The stable refusal code behind `failure`, used only to choose the recovery action. */
+  const [failureCode, setFailureCode] = useState<string>("");
   const [decisions, setDecisions] = useState<Record<string, SectionDecision>>({});
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [titleDecision, setTitleDecision] = useState<SectionDecision>("use");
@@ -111,6 +155,7 @@ export function ProgramAuthorship({
   const openConfirmation = useCallback(() => {
     setTarget({ draftId, focus: draftIdentityStatement(answers) });
     setFailure("");
+    setFailureCode("");
     setPhase("confirm");
   }, [draftId, answers]);
 
@@ -133,6 +178,7 @@ export function ProgramAuthorship({
     onPendingChange?.(false);
     if (!r.ok) {
       setFailure(FAILURE_COPY[r.refusal ?? ""] ?? FAILURE_COPY[r.code] ?? FAILURE_COPY.invalid_output);
+      setFailureCode(r.refusal ?? r.code);
       setPhase("failed");
       return;
     }
@@ -192,16 +238,26 @@ export function ProgramAuthorship({
         {failure ? (
           <p className="text-sm leading-6 text-amber-200/90" data-testid="program-failure">{failure}</p>
         ) : null}
-        <button
-          type="button"
-          ref={generateButtonRef}
-          onClick={openConfirmation}
-          disabled={!ready}
-          data-testid="program-generate"
-          className="self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
-        >
-          {failure ? "Draft it again" : "Draft my training program"}
-        </button>
+        {/* After a refusal the Host cannot fix by pressing again, there is no one-tap
+            paid retry. Drafting again is still possible — it simply goes back through the
+            Training Program Target confirmation, which states that another draft starts a
+            new AI generation. */}
+        {failure && NO_IMMEDIATE_RETRY.has(failureCode) ? (
+          <p className="text-xs leading-5 text-white/45" data-testid="program-no-retry-note">
+            Come back to this review to start a new draft. Each draft starts a new AI generation.
+          </p>
+        ) : (
+          <button
+            type="button"
+            ref={generateButtonRef}
+            onClick={openConfirmation}
+            disabled={!ready}
+            data-testid="program-generate"
+            className="self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
+          >
+            {failure ? "Draft it again" : "Draft my training program"}
+          </button>
+        )}
         {!ready ? (
           <p className="text-xs text-white/40">Add the problem, who it’s for, the behaviour and the evidence first.</p>
         ) : null}

@@ -4,9 +4,14 @@ import {
   validateProgramProposal,
   requiredProgramKinds,
   programContextFingerprint,
+  repairInstruction,
+  isStructuralCode,
   PROGRAM_AUTHORSHIP_VERSION,
+  PROGRAM_JSON_SCHEMA,
+  PROGRAM_SCHEMA_NAME,
   type ProgramContext,
   type ProgramValidated,
+  type StructuralDiagnosis,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
@@ -39,7 +44,24 @@ import {
 const LLM_TIMEOUT_MS = 45_000;
 const MAX_ATTEMPTS = 2; // one bounded retry, for present-but-invalid output only
 const MAX_TOKENS = 2600;
-const STRUCTURED_MODE = "json_object" as const;
+/**
+ * What the OBSERVABILITY ledger records. The existing CHECK vocabulary already has a
+ * value for strict schema, so this needs no migration — the transport sends
+ * `response_format.type = "json_schema"`, which is the provider's spelling of the same
+ * thing.
+ */
+const STRUCTURED_MODE = "json_schema_strict" as const;
+
+/**
+ * Does this transport error mean the endpoint/model cannot honour a strict JSON Schema?
+ * Matching is deliberately narrow — an unrelated 400 must stay a provider error, never be
+ * mistaken for a capability gap. Same rule the practice arc uses.
+ */
+function isStructuredOutputUnsupported(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (!/\b(400|404|422)\b/.test(msg)) return false;
+  return /response_format|json_schema|structured output|schema/i.test(msg);
+}
 
 export type ProgramGenerateErrorCode =
   | "provider_unavailable"
@@ -158,7 +180,14 @@ async function invoke(messages: LlmChatMessage[]): Promise<CallOutcome> {
         temperature: 0.7,
         top_p: 0.9,
         max_tokens: MAX_TOKENS,
-        response_format: { type: STRUCTURED_MODE },
+        // STRICT structured output (Slice 3.2L-R3). The fourth controlled window burned
+        // both calls on a non-string element field that `json_object` could never have
+        // prevented. The shape is now enforced by the transport; a provider that rejects
+        // the schema fails CLOSED rather than silently downgrading to free-form JSON.
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: PROGRAM_SCHEMA_NAME, strict: true, schema: PROGRAM_JSON_SCHEMA },
+        },
       },
       { signal: controller.signal },
     );
@@ -177,6 +206,10 @@ async function invoke(messages: LlmChatMessage[]): Promise<CallOutcome> {
     }
   } catch (e) {
     if (controller.signal.aborted) return { ok: false, code: "timeout", errorCategory: "aborted" };
+    if (isStructuredOutputUnsupported(e)) {
+      // Never downgrade to unconstrained JSON to obtain an answer.
+      return { ok: false, code: "provider_error", errorCategory: "bad_request" };
+    }
     const status = (e as { status?: number })?.status ?? null;
     return {
       ok: false,
@@ -246,7 +279,7 @@ export async function generateProgram(
   const attemptId = started.ok ? started.attemptId : null;
   const t0 = Date.now();
 
-  const finish = async (code: ProgramGenerateErrorCode, refusal?: string, refusalKind?: string) => {
+  const finish = async (code: ProgramGenerateErrorCode, refusal?: string, refusalKind?: string, callSeq: number | null = null) => {
     if (attemptId) {
       await finalizeProgramAttempt(admin, {
         attemptId,
@@ -254,6 +287,13 @@ export async function generateProgram(
         durationMs: Date.now() - t0,
         refusalCode: refusal ?? null,
         refusalKind: refusalKind ?? null,
+        // The next live failure must be readable without storing a single word the model
+        // wrote. A semantic refusal records its stage too, with no path.
+        diagnosis: lastDiagnosis
+          ? { ...lastDiagnosis, callSequence: callSeq }
+          : refusal
+            ? { stage: "semantic", path: refusalKind ? `elements.${refusalKind}` : "program", expected: "a grounded, honest value", actual: "string", retryable: false, callSequence: callSeq }
+            : null,
       });
     }
     logOutcome("failed", refusal ?? code);
@@ -276,6 +316,12 @@ export async function generateProgram(
   let lastCode: ProgramGenerateErrorCode = "invalid_output";
   let lastRefusal: string | undefined;
   let lastRefusalKind: string | undefined;
+  /** The exact shape fault the repair call must fix. Never carries model prose. */
+  let lastDiagnosis: StructuralDiagnosis | undefined;
+  /** A meaning fault is not repairable by asking again — only a shape fault is. */
+  let repairable = false;
+  /** Which provider call carried the fault — 1 or 2. */
+  let lastFailedCall: number | null = null;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages: LlmChatMessage[] =
@@ -285,7 +331,12 @@ export async function generateProgram(
             ...base,
             {
               role: "user" as const,
-              content: `The previous response was rejected (${lastRefusal ?? "invalid"}). Return ONLY the JSON object. Every required element must be present, each must say something different, invent no specifics the host did not state, claim no material exists, and make no claim about behavior having changed.`,
+              // TARGETED. The fourth controlled window handed the model only a code name
+              // ("field_type"), so it could not know which field was wrong and produced the
+              // same fault twice. This names the exact path and the type actually received.
+              content: lastDiagnosis
+                ? `Your previous response had one formatting problem: ${repairInstruction(lastDiagnosis)} Return the SAME program with only that corrected. Return ONLY the JSON object.`
+                : `The previous response could not be read. Return ONLY the JSON object, exactly in the required shape.`,
             },
           ];
 
@@ -379,8 +430,15 @@ export async function generateProgram(
     lastCode = "invalid_output";
     lastRefusal = validated.code;
     lastRefusalKind = validated.kind;
+    lastDiagnosis = validated.diagnosis;
+    lastFailedCall = i + 1;
+    repairable = isStructuralCode(validated.code);
     logOutcome("rejected", validated.code);
+    // A SEMANTIC refusal — a fabricated template, an overclaim — is not repaired by
+    // asking again. Retrying spends a second call to be told the same thing, so the loop
+    // stops here and the Host gets an honest answer sooner.
+    if (!repairable) break;
   }
 
-  return finish(lastCode, lastRefusal, lastRefusalKind);
+  return finish(lastCode, lastRefusal, lastRefusalKind, lastFailedCall);
 }

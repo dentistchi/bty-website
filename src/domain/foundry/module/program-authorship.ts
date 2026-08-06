@@ -253,7 +253,7 @@ export type ProgramRejectCode =
 
 export type ProgramValidation =
   | { ok: true; value: ProgramValidated }
-  | { ok: false; code: ProgramRejectCode; kind?: JourneyElementKind };
+  | { ok: false; code: ProgramRejectCode; kind?: JourneyElementKind; diagnosis?: StructuralDiagnosis };
 
 // ---------------------------------------------------------------------------
 // Bounds
@@ -533,10 +533,137 @@ function overlapRatio(a: string, b: string): number {
 }
 
 // ---------------------------------------------------------------------------
+// Provider-facing strict JSON Schema (Slice 3.2L-R3)
+// ---------------------------------------------------------------------------
+
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v1";
+
+/**
+ * The shape the provider must return, enforced by the transport rather than hoped for in
+ * prose. The practice arc already proved this pattern (Slice 3.2I-R2.16): a provider that
+ * cannot honour the schema fails CLOSED, never silently downgraded to unconstrained JSON.
+ *
+ * `strict: true` requires every property to appear in `required` and
+ * `additionalProperties: false` everywhere — so `rationale`, which is advisory, is typed
+ * as nullable rather than omitted. The domain treats null exactly as absent.
+ *
+ * Element ORDER and WHICH kinds are required stay in the domain: they depend on the Host's
+ * learning design, and a JSON Schema cannot express "scenario is required only when this
+ * draft asks for practice".
+ */
+export const PROGRAM_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["program"],
+  properties: {
+    program: {
+      type: "object",
+      additionalProperties: false,
+      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language"],
+      properties: {
+        display_title: { type: "string" },
+        evidence_language: { type: "string" },
+        assumptions: { type: "array", items: { type: "string" } },
+        warnings: { type: "array", items: { type: "string" } },
+        elements: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["kind", "content", "rationale"],
+            properties: {
+              kind: { type: "string", enum: [...JOURNEY_KIND_ORDER] },
+              content: { type: "string" },
+              // Advisory: the model may return null, and the domain reads null as absent.
+              rationale: { type: ["string", "null"] },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Structural diagnosis (Slice 3.2L-R3)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE LIVE FAILURE. The fourth controlled window burned BOTH provider calls on the same
+ * structural fault and never reached a single safety rule:
+ *
+ *   outcome validation_refused · refusal_code field_type · refusal_kind why_it_matters
+ *   call 1 schema_invalid · call 2 schema_invalid
+ *
+ * `field_type` says only "some value was not a string". TWO paths inside one element can
+ * emit it — `content` and `rationale` — and `refusal_kind` carries a Journey kind, so it
+ * cannot name which. Title, assumptions, warnings and the evidence ceiling reject with no
+ * kind at all. The retry was handed the CODE and nothing else, so the model could not
+ * know which field to fix, and the second call failed identically.
+ *
+ * A diagnosis names the exact path and the type actually received, so the repair call can
+ * be targeted and the next live failure is readable without ever storing model prose.
+ */
+export type JsonType = "missing" | "null" | "string" | "object" | "array" | "number" | "boolean";
+
+export type StructuralDiagnosis = {
+  /** Which gate refused: a shape fault, or a meaning fault. */
+  stage: "structural" | "semantic";
+  /** Exact location, e.g. `elements[0].content`. Never contains model prose. */
+  path: string;
+  expected: string;
+  actual: JsonType;
+  /** Whether one targeted repair call could plausibly fix it. */
+  retryable: boolean;
+};
+
+export function jsonTypeOf(v: unknown): JsonType {
+  if (v === undefined) return "missing";
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v as JsonType;
+}
+
+/**
+ * A shape fault is repairable; a meaning fault is not. Asking the model again to "be
+ * honest" after it fabricated a template just spends a second call — the semantic
+ * refusals deliberately do NOT retry.
+ */
+const STRUCTURAL_CODES: readonly ProgramRejectCode[] = [
+  "not_object", "missing_program", "missing_field", "field_type", "empty_field", "too_long",
+  "unknown_kind", "duplicate_kind", "missing_required_kind", "unrequested_kind",
+  "invalid_assumptions", "invalid_warnings",
+];
+
+export function isStructuralCode(code: ProgramRejectCode): boolean {
+  return STRUCTURAL_CODES.includes(code);
+}
+
+/** One human-readable repair instruction — shape only, never the model's own words. */
+export function repairInstruction(d: StructuralDiagnosis): string {
+  if (d.actual === "missing") return `${d.path} is required but was missing. It must be ${d.expected}.`;
+  return `${d.path} must be ${d.expected}, but was ${d.actual}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Validator — fail-closed, whole-proposal rejection
 // ---------------------------------------------------------------------------
 
 const REJECT = (code: ProgramRejectCode, kind?: JourneyElementKind): ProgramValidation => ({ ok: false, code, kind });
+
+/** Refuse with an exact path + received type, so the repair call can be targeted. */
+const REJECT_AT = (
+  code: ProgramRejectCode,
+  path: string,
+  expected: string,
+  actual: JsonType,
+  kind?: JourneyElementKind,
+): ProgramValidation => ({
+  ok: false,
+  code,
+  kind,
+  diagnosis: { stage: "structural", path, expected, actual, retryable: isStructuralCode(code) },
+});
 
 /**
  * Validate one raw parsed provider program against the Host's actual context.
@@ -552,18 +679,22 @@ export function validateProgramProposal(
   /** Identities of materials the application has VERIFIED (e.g. uploaded file titles). */
   verifiedArtifacts: readonly string[] = [],
 ): ProgramValidation {
-  if (!isPlainObject(raw)) return REJECT("not_object");
+  if (!isPlainObject(raw)) return REJECT_AT("not_object", "$", "object", jsonTypeOf(raw));
   const p = raw.program;
-  if (!isPlainObject(p)) return REJECT("missing_program");
-  for (const k of ["display_title", "elements", "evidence_language"]) if (!(k in p)) return REJECT("missing_field");
+  if (!isPlainObject(p)) return REJECT_AT("missing_program", "program", "object", jsonTypeOf(p));
+  for (const k of ["display_title", "elements", "evidence_language"]) {
+    if (!(k in p)) return REJECT_AT("missing_field", `program.${k}`, k === "elements" ? "array" : "string", "missing");
+  }
 
   const title = cleanString(p.display_title, LIMITS.title, 4);
-  if (!title.ok) return REJECT(title.code);
+  if (!title.ok) return REJECT_AT(title.code, "program.display_title", "string", jsonTypeOf(p.display_title));
 
   const evidenceLanguage = cleanString(p.evidence_language, LIMITS.evidenceLanguage, 10);
-  if (!evidenceLanguage.ok) return REJECT(evidenceLanguage.code);
+  if (!evidenceLanguage.ok) return REJECT_AT(evidenceLanguage.code, "program.evidence_language", "string", jsonTypeOf(p.evidence_language));
 
-  if (!Array.isArray(p.elements) || p.elements.length === 0) return REJECT("field_type");
+  if (!Array.isArray(p.elements) || p.elements.length === 0) {
+    return REJECT_AT("field_type", "program.elements", "non-empty array", jsonTypeOf(p.elements));
+  }
 
   const ctx = programContext(answers);
   const required = requiredProgramKinds(answers);
@@ -594,26 +725,50 @@ export function validateProgramProposal(
   const seen = new Set<JourneyElementKind>();
   const elements: ProposedElement[] = [];
 
-  for (const rawEl of p.elements) {
-    if (!isPlainObject(rawEl)) return REJECT("field_type");
+  for (let i = 0; i < p.elements.length; i++) {
+    const rawEl = p.elements[i];
+    const at = (f: string) => `elements[${i}].${f}`;
+    if (!isPlainObject(rawEl)) return REJECT_AT("field_type", `elements[${i}]`, "object", jsonTypeOf(rawEl));
     const kind = rawEl.kind as JourneyElementKind;
-    if (!JOURNEY_KIND_ORDER.includes(kind)) return REJECT("unknown_kind");
+    if (!JOURNEY_KIND_ORDER.includes(kind)) return REJECT_AT("unknown_kind", at("kind"), "a known program section", jsonTypeOf(rawEl.kind));
     if (seen.has(kind)) return REJECT("duplicate_kind", kind);
     if (!allowed.has(kind)) return REJECT("unrequested_kind", kind);
     seen.add(kind);
 
+    // PROGRAM-REQUIRED: this is the participant-facing sentence itself.
     const content = cleanString(rawEl.content, LIMITS.content, MIN_CONTENT);
-    if (!content.ok) return REJECT(content.code, kind);
-    const rationale = cleanString(rawEl.rationale, LIMITS.rationale, 5);
-    if (!rationale.ok) return REJECT(rationale.code, kind);
+    if (!content.ok) return REJECT_AT(content.code, at("content"), `a string of at least ${MIN_CONTENT} characters`, jsonTypeOf(rawEl.content), kind);
+
+    /**
+     * REVIEW-ADVISORY, decided from measured usage — not to reduce refusals. `rationale`
+     * is rendered once in the Host's review panel and NOWHERE else: zero references in
+     * `applyProgramProposal`, zero in the Journey contract, zero in the publish snapshot.
+     * A learner never sees it. Losing an otherwise-valid seven-section program because one
+     * advisory line came back null is a bad trade, so absence is accepted deterministically
+     * — and nothing is fabricated in its place.
+     *
+     * Present-but-wrong-type is still a structural fault: a rationale that is an object is
+     * a shape error the model can repair, not an intentional omission.
+     */
+    let rationaleText = "";
+    if (rawEl.rationale !== undefined && rawEl.rationale !== null) {
+      const r = cleanString(rawEl.rationale, LIMITS.rationale, 1);
+      if (!r.ok) return REJECT_AT(r.code, at("rationale"), "a string, or omitted", jsonTypeOf(rawEl.rationale), kind);
+      rationaleText = r.value;
+    }
+    const rationale = { ok: true as const, value: rationaleText };
 
     const c = content.value;
 
     // --- honesty (participant-facing content AND its Host-facing rationale) ---
     const contentUnsafe = unsafe(c);
     if (contentUnsafe) return REJECT(contentUnsafe, kind);
-    const rationaleUnsafe = unsafe(rationale.value);
-    if (rationaleUnsafe) return REJECT(rationaleUnsafe, kind);
+    // Safety still applies to a rationale whenever one is PRESENT — advisory does not
+    // mean unchecked; it only means absence is tolerated.
+    if (rationale.value.length > 0) {
+      const rationaleUnsafe = unsafe(rationale.value);
+      if (rationaleUnsafe) return REJECT(rationaleUnsafe, kind);
+    }
 
     // --- per-kind meaning ------------------------------------------------
     if (kind === "why_it_matters" && ctx) {
@@ -662,9 +817,9 @@ export function validateProgramProposal(
   if (ceilingUnsafe) return REJECT(ceilingUnsafe);
 
   const assumptions = cleanList(p.assumptions, LIMITS.assumption, "invalid_assumptions");
-  if (!assumptions.ok) return REJECT(assumptions.code);
+  if (!assumptions.ok) return REJECT_AT(assumptions.code, "program.assumptions", "an array of strings, or omitted", jsonTypeOf(p.assumptions));
   const warnings = cleanList(p.warnings, LIMITS.warning, "invalid_warnings");
-  if (!warnings.ok) return REJECT(warnings.code);
+  if (!warnings.ok) return REJECT_AT(warnings.code, "program.warnings", "an array of strings, or omitted", jsonTypeOf(p.warnings));
 
   // An ungrounded dependency stated as an ASSUMPTION is exactly how the live miss
   // justified itself. A model-authored assumption can never ground an artifact — only the

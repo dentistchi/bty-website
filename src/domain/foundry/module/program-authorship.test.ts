@@ -8,6 +8,10 @@ import {
   validateProgramProposal,
   groundingCorpus,
   ungroundedArtifact,
+  isStructuralCode,
+  repairInstruction,
+  jsonTypeOf,
+  PROGRAM_JSON_SCHEMA,
   applyProgramProposal,
   provenanceAfterHostEdit,
   readProvenance,
@@ -544,5 +548,116 @@ describe("[3.2L-R2] an artifact may not be claimed to exist unless the Host grou
     expect(ungroundedArtifact("I will use the handoff record template.", groundingCorpus(CANONICAL))).toBe("template");
     expect(ungroundedArtifact("There is access to the necessary tools.", groundingCorpus(CANONICAL))).toBe("tool");
     expect(ungroundedArtifact("Create a shared handoff record.", groundingCorpus(CANONICAL))).toBeNull();
+  });
+});
+
+describe("[3.2L-R3] structural faults are diagnosed exactly, not just named", () => {
+  const withEl = (mutate: (els: Record<string, unknown>[]) => void) => {
+    const p = goodProposal();
+    mutate(p.program.elements as unknown as Record<string, unknown>[]);
+    return p;
+  };
+
+  it("G1 — the exact live class: why_it_matters.content is an object", () => {
+    const r = validateProgramProposal(withEl((els) => { els[0].content = { text: "why" }; }), CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("field_type");
+      expect(r.kind).toBe("why_it_matters");
+      expect(r.diagnosis).toBeDefined();
+      expect(r.diagnosis!.path).toBe("elements[0].content");
+      expect(r.diagnosis!.actual).toBe("object");
+      expect(r.diagnosis!.expected).toContain("string");
+      expect(r.diagnosis!.retryable, "a shape fault is repairable").toBe(true);
+      expect(r.diagnosis!.stage).toBe("structural");
+    }
+  });
+
+  it("G2 — missing content is diagnosed as missing, not merely wrong-typed", () => {
+    const r = validateProgramProposal(withEl((els) => { delete els[0].content; }), CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.diagnosis).toMatchObject({ path: "elements[0].content", actual: "missing", retryable: true });
+  });
+
+  it("G3 — null content is handled deterministically", () => {
+    const r = validateProgramProposal(withEl((els) => { els[0].content = null; }), CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.diagnosis).toMatchObject({ path: "elements[0].content", actual: "null" });
+  });
+
+  it("distinguishes content from rationale — the ambiguity that made the live failure unreadable", () => {
+    const bad = validateProgramProposal(withEl((els) => { els[2].rationale = ["a", "b"]; }), CANONICAL);
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.diagnosis).toMatchObject({ path: "elements[2].rationale", actual: "array" });
+  });
+
+  it("names non-element paths the old refusal_kind could not carry at all", () => {
+    const cases: [string, (p: ReturnType<typeof goodProposal>) => void, string][] = [
+      ["program.display_title", (p) => { (p.program as Record<string, unknown>).display_title = 7; }, "number"],
+      ["program.evidence_language", (p) => { (p.program as Record<string, unknown>).evidence_language = null; }, "null"],
+      ["program.assumptions", (p) => { (p.program as Record<string, unknown>).assumptions = "not a list"; }, "string"],
+      ["program.warnings", (p) => { (p.program as Record<string, unknown>).warnings = 3; }, "number"],
+    ];
+    for (const [path, mutate, actual] of cases) {
+      const p = goodProposal();
+      mutate(p);
+      const r = validateProgramProposal(p, CANONICAL);
+      expect(r.ok, `expected refusal at ${path}`).toBe(false);
+      if (!r.ok) expect(r.diagnosis).toMatchObject({ path, actual });
+    }
+  });
+
+  it("G4 — rationale is REVIEW-ADVISORY: absent or null is accepted, nothing fabricated", () => {
+    const omitted = validateProgramProposal(withEl((els) => { delete els[0].rationale; }), CANONICAL);
+    expect(omitted.ok, omitted.ok ? "" : `${omitted.code}`).toBe(true);
+    if (omitted.ok) expect(omitted.value.proposal.elements[0].rationale).toBe("");
+
+    const nulled = validateProgramProposal(withEl((els) => { els[0].rationale = null; }), CANONICAL);
+    expect(nulled.ok).toBe(true);
+    if (nulled.ok) expect(nulled.value.proposal.elements[0].rationale, "no invented fallback prose").toBe("");
+  });
+
+  it("G8 — an advisory rationale is still safety-checked WHEN PRESENT", () => {
+    const r = validateProgramProposal(
+      withEl((els) => { els[0].rationale = "Grounded in the handoff record template the team already uses."; }),
+      CANONICAL,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("material_fabrication");
+  });
+
+  it("a semantic refusal is NOT marked repairable — asking again is spend, not repair", () => {
+    const r = validateProgramProposal(
+      withEl((els) => { els[4].content = "I will use the handoff record template at each handoff."; }),
+      CANONICAL,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("material_fabrication");
+      expect(isStructuralCode(r.code), "grounding is a meaning fault").toBe(false);
+    }
+  });
+
+  it("produces a repair instruction that names shape only, never model prose", () => {
+    const r = validateProgramProposal(withEl((els) => { els[0].content = { secret: "the model's actual words" }; }), CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok && r.diagnosis) {
+      const instruction = repairInstruction(r.diagnosis);
+      expect(instruction).toContain("elements[0].content");
+      expect(instruction).toContain("object");
+      expect(instruction).not.toContain("the model's actual words");
+      expect(instruction).not.toContain("secret");
+    }
+  });
+
+  it("G10 — the provider schema pins every field the live failure got wrong", () => {
+    const el = PROGRAM_JSON_SCHEMA.properties.program.properties.elements.items;
+    expect(el.required).toEqual(["kind", "content", "rationale"]);
+    expect(el.properties.content).toEqual({ type: "string" });
+    // Advisory, so nullable rather than omitted — strict mode requires every key present.
+    expect(el.properties.rationale).toEqual({ type: ["string", "null"] });
+    expect(el.additionalProperties).toBe(false);
+    expect(el.properties.kind.enum).toContain("why_it_matters");
+    expect(PROGRAM_JSON_SCHEMA.properties.program.required).toContain("display_title");
   });
 });

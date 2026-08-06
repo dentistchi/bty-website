@@ -55,6 +55,18 @@ export type FinalizeProgramAttemptInput = {
   refusalKind?: string | null;
   elementCount?: number | null;
   requiredKindCount?: number | null;
+  /**
+   * Shape-only diagnosis of a refused field (Slice 3.2L-R3). A path, an expected type and
+   * a received type — never the value itself, so no generated prose is ever stored.
+   */
+  diagnosis?: {
+    stage: "structural" | "semantic";
+    path: string;
+    expected: string;
+    actual: string;
+    retryable: boolean;
+    callSequence: number | null;
+  } | null;
 };
 
 export type StartProgramCallInput = {
@@ -128,6 +140,12 @@ export async function finalizeProgramAttempt(admin: SupabaseClient, input: Final
       refusal_kind: input.outcome === "validation_refused" ? (input.refusalKind ?? null) : null,
       element_count: input.elementCount ?? null,
       required_kind_count: input.requiredKindCount ?? null,
+      validation_stage: input.diagnosis?.stage ?? null,
+      offending_path: input.diagnosis?.path ?? null,
+      expected_type: input.diagnosis?.expected ?? null,
+      actual_type: input.diagnosis?.actual ?? null,
+      structural_retryable: input.diagnosis?.retryable ?? null,
+      failed_call_sequence: input.diagnosis?.callSequence ?? null,
     })
     .eq("id", input.attemptId);
 }
