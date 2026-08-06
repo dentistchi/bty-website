@@ -3,6 +3,7 @@ import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGat
 import { getOwnerDraft } from "@/lib/bty/foundry/events/foundryModuleService";
 import { generateProgram, evidenceCeilingFor } from "@/lib/bty/foundry/events/programAuthorshipService";
 import { currentSourceIdentity } from "@/lib/bty/foundry/arena/sourceIdentity";
+import { resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import {
   programContext,
   programContextFingerprint,
@@ -60,6 +61,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const fingerprint = programContextFingerprint(programCtx);
   if (typeof body.context_fingerprint === "string" && body.context_fingerprint !== fingerprint) {
     return managerJson(base, req, { error: "context_mismatch", context_fingerprint: fingerprint }, 409);
+  }
+
+  // No SECOND generation while one is already running on this draft (Slice 3.2L-R1.3).
+  // The unique submission-intent index is the final authority, but refusing here means a
+  // duplicate gesture never reaches the provider at all — the spend is what matters.
+  // Fails CLOSED: if authority cannot be established, no provider call is made.
+  const authority = await resolveProgramGenerationAuthority(admin, id);
+  if (authority.state === "active") {
+    return managerJson(base, req, { error: "program_generation_in_progress" }, 409);
+  }
+  if (authority.state === "unavailable") {
+    return managerJson(base, req, { error: "program_generation_state_unavailable" }, 503);
   }
 
   // The deploy identity is read from the environment and nowhere else — a client that

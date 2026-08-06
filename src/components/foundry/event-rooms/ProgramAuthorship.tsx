@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { JourneyElementKind, RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
   applyProgramProposal,
@@ -10,7 +10,8 @@ import {
   type SectionChoice,
   type SectionDecision,
 } from "@/domain/foundry/module/program-authorship";
-import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { Modal } from "@/components/ui/Modal";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -56,6 +57,7 @@ const FAILURE_COPY: Record<string, string> = {
 };
 
 export function ProgramAuthorship({
+  draftId,
   answers,
   journey,
   ready,
@@ -63,6 +65,8 @@ export function ProgramAuthorship({
   onApply,
   onPendingChange,
 }: {
+  /** The exact loaded draft this surface is bound to. */
+  draftId: string;
   answers: BuilderAnswers;
   journey: RealityGroundedJourneyV1 | undefined;
   ready: boolean;
@@ -75,7 +79,16 @@ export function ProgramAuthorship({
    */
   onPendingChange?: (pending: boolean) => void;
 }) {
-  const [phase, setPhase] = useState<"idle" | "working" | "review" | "failed" | "applied">("idle");
+  // `confirm` sits between the button and the provider. Two controlled windows were
+  // spent generating against the wrong training, so the PAID action gets its own target
+  // boundary rather than relying on orientation alone (Slice 3.2L-R1.3).
+  const [phase, setPhase] = useState<"idle" | "confirm" | "working" | "review" | "failed" | "applied">("idle");
+  /** The target captured when the confirmation OPENED — never re-derived while it is open. */
+  const [target, setTarget] = useState<{ draftId: string; focus: string | null } | null>(null);
+  const generateButtonRef = useRef<HTMLButtonElement | null>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  /** One gesture, one submission intent — rapid taps cannot open a second generation. */
+  const submittingRef = useRef(false);
   const [proposal, setProposal] = useState<ProgramProposal | null>(null);
   const [ceiling, setCeiling] = useState("");
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -87,7 +100,24 @@ export function ProgramAuthorship({
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
 
+  // Opening the confirmation binds the target to THIS draft's loaded payload and calls
+  // nothing. Zero parents, zero provider calls, zero draft writes.
+  const openConfirmation = useCallback(() => {
+    setTarget({ draftId, focus: draftIdentityStatement(answers) });
+    setFailure("");
+    setPhase("confirm");
+  }, [draftId, answers]);
+
+  const cancelConfirmation = useCallback(() => {
+    setTarget(null);
+    setPhase("idle");
+    // Focus returns to the control that opened it.
+    requestAnimationFrame(() => generateButtonRef.current?.focus());
+  }, []);
+
   const generate = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setPhase("working");
     setFailure("");
     onPendingChange?.(true);
@@ -112,6 +142,17 @@ export function ProgramAuthorship({
     setPhase("review");
   }, [onGenerate]);
 
+  // Released only once the attempt reached a terminal state, so a completed or failed
+  // generation can be started again — but never twice from one gesture.
+  useEffect(() => {
+    if (phase === "review" || phase === "failed" || phase === "applied") submittingRef.current = false;
+  }, [phase]);
+
+  // The confirmation takes focus when it opens.
+  useEffect(() => {
+    if (phase === "confirm") requestAnimationFrame(() => confirmButtonRef.current?.focus());
+  }, [phase]);
+
   const apply = useCallback(() => {
     if (!proposal) return;
     const choices: SectionChoice[] = proposal.elements.map((e) => ({
@@ -127,8 +168,7 @@ export function ProgramAuthorship({
   }, [proposal, decisions, edits, journey, titleDecision, titleEdit, attemptId, onApply]);
 
   // ---- entry -------------------------------------------------------------
-  if (phase === "idle" || phase === "failed") {
-    return (
+  const entrySurface = (
       <section className="flex flex-col gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-4" data-testid="program-authorship-entry">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-[#C9A66B]">Let BTY draft this training for you</h3>
@@ -148,7 +188,8 @@ export function ProgramAuthorship({
         ) : null}
         <button
           type="button"
-          onClick={() => void generate()}
+          ref={generateButtonRef}
+          onClick={openConfirmation}
           disabled={!ready}
           data-testid="program-generate"
           className="self-start rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-50"
@@ -159,6 +200,61 @@ export function ProgramAuthorship({
           <p className="text-xs text-white/40">Add the problem, who it’s for, the behaviour and the evidence first.</p>
         ) : null}
       </section>
+  );
+
+  if (phase === "idle" || phase === "failed") return entrySurface;
+
+  // ---- target confirmation ------------------------------------------------
+  if (phase === "confirm" && target) {
+    return (
+      <>
+        {entrySurface}
+        <Modal open onClose={cancelConfirmation} ariaLabel="Training program target" panelDataTestId="program-target-confirm">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5 border-l-2 border-[#C9A66B]/50 pl-3">
+              <span className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-white/45">
+                Training program target
+              </span>
+              {/* Bound at open time to THIS draft's loaded payload. Wraps fully so a long
+                  focus keeps its distinguishing tail. */}
+              <p
+                data-testid={target.focus ? "program-target-focus" : "program-target-fallback"}
+                data-target-draft-id={target.draftId}
+                className={`break-words text-base font-medium leading-7 ${target.focus ? "text-white/90" : "text-white/45"}`}
+              >
+                {target.focus ?? "Untitled training draft"}
+              </p>
+            </div>
+
+            <p className="text-sm leading-6 text-white/65">
+              BTY will draft a program for this training focus. Nothing will be added or published until you review
+              and apply it.
+            </p>
+
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row-reverse sm:justify-start">
+              <button
+                type="button"
+                ref={confirmButtonRef}
+                onClick={() => void generate()}
+                disabled={submittingRef.current}
+                data-testid="program-target-confirm-action"
+                className="min-h-[44px] rounded-xl bg-[#C9A66B] px-5 py-3 text-sm font-semibold text-[#0B1F3A] disabled:opacity-60"
+              >
+                Draft program for this training
+              </button>
+              <button
+                type="button"
+                onClick={cancelConfirmation}
+                disabled={submittingRef.current}
+                data-testid="program-target-cancel"
+                className="min-h-[44px] rounded-xl border border-white/15 px-5 py-3 text-sm text-white/70 disabled:opacity-40"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </Modal>
+      </>
     );
   }
 

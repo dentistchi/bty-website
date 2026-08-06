@@ -45,14 +45,22 @@ const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeili
 function setup(outcome: ProgramGenerateOutcome, onApply = vi.fn()) {
   const onGenerate = vi.fn(async () => outcome);
   render(
-    <ProgramAuthorship answers={ANSWERS} journey={undefined} ready onGenerate={onGenerate} onApply={onApply} />,
+    <ProgramAuthorship draftId="d-1" answers={ANSWERS} journey={undefined} ready onGenerate={onGenerate} onApply={onApply} />,
   );
   return { onGenerate, onApply };
 }
 
+/**
+ * Press the entry button AND confirm the target. Slice 3.2L-R1.3 put a target
+ * confirmation between the button and the provider, so a test that only clicks the
+ * entry button would no longer generate anything.
+ */
 async function generate() {
   await act(async () => {
     fireEvent.click(screen.getByTestId("program-generate"));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByTestId("program-target-confirm-action"));
   });
 }
 
@@ -66,7 +74,7 @@ describe("[3.2L] the authorship entry point", () => {
 
   it("is disabled until the Host has described enough to author from", () => {
     const onGenerate = vi.fn(async () => ok);
-    render(<ProgramAuthorship answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} />);
+    render(<ProgramAuthorship draftId="d-1" answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} />);
     expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -192,6 +200,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
     const onGenerate = vi.fn(async () => ok);
     render(
       <ProgramAuthorship
+        draftId="d-1"
         answers={ANSWERS}
         journey={undefined}
         ready
@@ -216,6 +225,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
       const pending: boolean[] = [];
       render(
         <ProgramAuthorship
+          draftId="d-1"
           answers={ANSWERS}
           journey={undefined}
           ready

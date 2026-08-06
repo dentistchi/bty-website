@@ -142,8 +142,12 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       }),
     );
     await open(CANONICAL_ID);
+    // Slice 3.2L-R1.3 put a target confirmation between the button and the provider.
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-generate"));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-target-confirm-action"));
     });
     expect(screen.getByTestId("program-working")).toBeTruthy();
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
@@ -172,8 +176,12 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       }),
     );
     await open(CANONICAL_ID);
+    // Slice 3.2L-R1.3 put a target confirmation between the button and the provider.
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-generate"));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-target-confirm-action"));
     });
     expect(screen.getByTestId("program-failure")).toBeTruthy();
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);

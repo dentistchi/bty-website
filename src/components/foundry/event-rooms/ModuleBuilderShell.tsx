@@ -591,6 +591,7 @@ export function ModuleBuilderShell({
               remain reachable, but as a secondary detail section — Review is no longer a
               list of the fields the Host just filled in. */}
           <ProgramAuthorship
+            draftId={draftId}
             answers={answers}
             journey={answers.realityGroundedJourneyV1}
             ready={programContext(answers) !== null}
