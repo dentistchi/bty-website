@@ -34,28 +34,48 @@ import {
   type LearningNeed,
 } from "./module-builder";
 import {
+  APPLICATION_FIELD_LIMIT,
   ARTIFACT_NOUNS,
   CONTRACT_FIELD_LIMIT,
   SCENARIO_FIELD_LIMIT,
+  deriveOperationalConstruct,
+  isConfirmer,
+  isInstructionalKind,
+  isResponseMode,
+  isReviewFocus,
+  isVerificationTarget,
+  renderApplicationSentence,
+  renderCompletionQuestion,
+  renderDecisionSentence,
+  renderFollowUpSentence,
+  validateApplicationContract,
   renderScenarioSentence,
   renderStandardSentence,
   ungroundedExistingEntity,
   validateBehaviorContract,
   validateProgramDependencies,
   validateScenarioContract,
+  type ApplicationContract,
   type BehaviorContract,
+  type CompletionContract,
+  type FollowUpContract,
+  type OperationalConstruct,
   type ProgramSection,
   type ScenarioContract,
 } from "./program-coherence";
 
 /**
- * MATERIALLY DIFFERENT CONTRACT AGAIN (Slice 3.2L-R5), so v3 rather than a relabelled v2.
+ * MATERIALLY DIFFERENT CONTRACT AGAIN (Slice 3.2L-R6), so v4.
  *
- * v2 derived THE STANDARD from a `behavior_contract`. v3 additionally derives IN CONTEXT
- * from a `scenario_contract` bound to that same behavior, which replaces the lexical
- * `scenario_unrelated` overlap rule that produced a live false negative.
+ * v2 derived THE STANDARD from a `behavior_contract`; v3 derived IN CONTEXT from a
+ * `scenario_contract` bound to the same behavior. v4 finishes the job: YOUR DECISION,
+ * APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are derived too, from an
+ * `application_contract`, an enumerated `completion_contract` and an enumerated
+ * `follow_up_contract` — so all six INSTRUCTIONAL sections are views of ONE behavioral
+ * authority instead of six independently authored strings whose order is checked
+ * afterwards. WHY THIS MATTERS stays narrative prose and instructs nobody.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v3";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v4";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -254,6 +274,14 @@ export type ProgramProposal = {
    * behavior contract: Apply reads display content, and no path persists a proposal.
    */
   scenarioContract: ScenarioContract | null;
+  /** Present when the design requires APPLY IT / YOUR DECISION. Proposal-only. */
+  applicationContract: ApplicationContract | null;
+  /** Enumerated: BEFORE YOU FINISH is rendered from a fixed matrix, never authored. */
+  completionContract: CompletionContract | null;
+  /** Enumerated, with the window taken from canonical context rather than the model. */
+  followUpContract: FollowUpContract | null;
+  /** The one construct this program is about, system-derived from Host intent. */
+  operationalConstruct: OperationalConstruct | null;
 };
 
 export type ProgramValidated = { proposal: ProgramProposal; version: string };
@@ -545,7 +573,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v3";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v4";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -568,7 +596,7 @@ export const PROGRAM_JSON_SCHEMA = {
     program: {
       type: "object",
       additionalProperties: false,
-      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract", "scenario_contract"],
+      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract", "scenario_contract", "application_contract", "completion_contract", "follow_up_contract"],
       properties: {
         display_title: { type: "string" },
         evidence_language: { type: "string" },
@@ -611,6 +639,47 @@ export const PROGRAM_JSON_SCHEMA = {
           properties: {
             pressure_or_constraint: { type: "string" },
             context_detail: { type: "string" },
+          },
+        },
+        /**
+         * APPLY IT and YOUR DECISION. Actor and observable action are INHERITED from the
+         * behavior contract and deliberately NOT re-authored here — three independently
+         * written versions of the same action is exactly how the live programs drifted.
+         */
+        application_contract: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          required: ["application_moment", "evidence_or_confirmation"],
+          properties: {
+            application_moment: { type: "string" },
+            evidence_or_confirmation: { type: "string" },
+          },
+        },
+        /**
+         * BEFORE YOU FINISH — ENUMS ONLY. A closing question that could ask what the
+         * standard should contain is not refused here; it is unrepresentable, because the
+         * model chooses only WHICH established thing to verify and HOW it is answered.
+         */
+        completion_contract: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          required: ["verification_target", "response_mode"],
+          properties: {
+            verification_target: { type: "string", enum: ["the_behaviour", "the_application_plan", "the_confirmation_step"] },
+            response_mode: { type: "string", enum: ["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"] },
+          },
+        },
+        /**
+         * WHAT HAPPENS NEXT — ENUMS ONLY, and the window comes from canonical context, not
+         * from the model, so a follow-up cannot invent a schedule, a construct or an action.
+         */
+        follow_up_contract: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          required: ["review_focus", "confirmer"],
+          properties: {
+            review_focus: { type: "string", enum: ["what_you_said", "what_happened_next", "the_confirmation"] },
+            confirmer: { type: "string", enum: ["self_report", "the_other_person", "the_host"] },
           },
         },
         elements: {
@@ -832,6 +901,74 @@ export function validateProgramProposal(
   }
 
   /**
+   * THE CANONICAL CONSTRUCT — system-derived from the Host's own answers, never asserted by
+   * the model. `authorityMode` is a claim about the world, and a model has no standing to
+   * make one: "Create a shared handoff standard" authorises BTY to PROPOSE the standard and
+   * says nothing about it existing, being approved, or having fields.
+   */
+  const operationalConstruct: OperationalConstruct | null = deriveOperationalConstruct(
+    {
+      observableBehavior: answers?.observableBehavior,
+      successEvidence: answers?.successEvidence,
+      capabilityCandidate: answers?.capabilityCandidate,
+      problem: answers?.problem,
+    },
+    verifiedArtifacts,
+  );
+
+  /** APPLY IT / YOUR DECISION authority — required exactly when those sections are. */
+  const applicationRequired = required.includes("field_application") || required.includes("action_decision");
+  const rawApplication = (p as Record<string, unknown>).application_contract;
+  let applicationContract: ApplicationContract | null = null;
+  if (applicationRequired) {
+    if (rawApplication === undefined || rawApplication === null) {
+      return REJECT_AT("missing_field", "program.application_contract", "an object with application_moment and evidence_or_confirmation", jsonTypeOf(rawApplication), "field_application");
+    }
+    if (!isPlainObject(rawApplication)) {
+      return REJECT_AT("field_type", "program.application_contract", "an object", jsonTypeOf(rawApplication), "field_application");
+    }
+    for (const key of ["application_moment", "evidence_or_confirmation"] as const) {
+      const v = (rawApplication as Record<string, unknown>)[key];
+      if (typeof v !== "string") {
+        return REJECT_AT("field_type", `program.application_contract.${key}`, `a non-empty string of at most ${APPLICATION_FIELD_LIMIT} characters`, jsonTypeOf(v), "field_application");
+      }
+      const bad = unsafe(v);
+      if (bad) return REJECT(bad, "field_application");
+    }
+    const ac = validateApplicationContract(rawApplication);
+    if (!ac.ok) return REJECT("application_without_actor", "field_application");
+    applicationContract = ac.value;
+  }
+
+  /** BEFORE YOU FINISH authority — enumerated, so it cannot define anything. */
+  let completionContract: CompletionContract | null = null;
+  if (required.includes("completion_check")) {
+    const raw2 = (p as Record<string, unknown>).completion_contract;
+    if (!isPlainObject(raw2)) {
+      return REJECT_AT(raw2 === undefined || raw2 === null ? "missing_field" : "field_type", "program.completion_contract", "an object with verification_target and response_mode", jsonTypeOf(raw2), "completion_check");
+    }
+    const vt = (raw2 as Record<string, unknown>).verification_target;
+    const rm = (raw2 as Record<string, unknown>).response_mode;
+    if (!isVerificationTarget(vt)) return REJECT_AT("field_type", "program.completion_contract.verification_target", "one of the allowed verification targets", jsonTypeOf(vt), "completion_check");
+    if (!isResponseMode(rm)) return REJECT_AT("field_type", "program.completion_contract.response_mode", "one of the allowed response modes", jsonTypeOf(rm), "completion_check");
+    completionContract = { verificationTarget: vt, responseMode: rm };
+  }
+
+  /** WHAT HAPPENS NEXT authority — enumerated; the window comes from context. */
+  let followUpContract: FollowUpContract | null = null;
+  if (required.includes("follow_up")) {
+    const raw3 = (p as Record<string, unknown>).follow_up_contract;
+    if (!isPlainObject(raw3)) {
+      return REJECT_AT(raw3 === undefined || raw3 === null ? "missing_field" : "field_type", "program.follow_up_contract", "an object with review_focus and confirmer", jsonTypeOf(raw3), "follow_up");
+    }
+    const rf = (raw3 as Record<string, unknown>).review_focus;
+    const cf = (raw3 as Record<string, unknown>).confirmer;
+    if (!isReviewFocus(rf)) return REJECT_AT("field_type", "program.follow_up_contract.review_focus", "one of the allowed review focuses", jsonTypeOf(rf), "follow_up");
+    if (!isConfirmer(cf)) return REJECT_AT("field_type", "program.follow_up_contract.confirmer", "one of the allowed confirmers", jsonTypeOf(cf), "follow_up");
+    followUpContract = { reviewFocus: rf, confirmer: cf };
+  }
+
+  /**
    * DERIVED-LENGTH BACKSTOP. Each contract field is individually bounded, but a rendered
    * sentence concatenates several of them, so the element ceiling is an invariant of the
    * arithmetic rather than of any one check. Asserting it here makes it explicit and
@@ -846,6 +983,17 @@ export function validateProgramProposal(
       return REJECT_AT("too_long", path, `fields short enough to render within ${LIMITS.content} characters`, "string");
     }
   }
+
+  /** The derived participant-facing text for an instructional kind, or null for narrative. */
+  const deriveContent = (kind: JourneyElementKind): string | null => {
+    if (kind === "observable_standard") return renderStandardSentence(contract);
+    if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract);
+    if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract);
+    if (kind === "field_application" && applicationContract) return renderApplicationSentence(contract, applicationContract, operationalConstruct);
+    if (kind === "completion_check" && completionContract) return renderCompletionQuestion(contract, completionContract);
+    if (kind === "follow_up" && followUpContract) return renderFollowUpSentence(contract, followUpContract, ctx?.followUpDays ?? 0);
+    return null;
+  };
 
   const seen = new Set<JourneyElementKind>();
   const elements: ProposedElement[] = [];
@@ -890,12 +1038,13 @@ export function validateProgramProposal(
      * string checks above — but it cannot become the displayed standard, so the displayed
      * standard can never say something the structured contract does not.
      */
-    const c =
-      kind === "observable_standard"
-        ? renderStandardSentence(contract)
-        : kind === "scenario" && scenarioContract
-          ? renderScenarioSentence(contract, scenarioContract)
-          : content.value;
+    /**
+     * ONE BEHAVIOURAL AUTHORITY, SIX VIEWS. Every INSTRUCTIONAL section is rendered from
+     * the contracts; the model's own sentence for those kinds is still schema-required and
+     * still safety-checked, but it cannot become the displayed text. WHY THIS MATTERS and
+     * the other narrative kinds keep the model's prose.
+     */
+    const c = deriveContent(kind) ?? content.value;
 
     // --- honesty (participant-facing content AND its Host-facing rationale) ---
     /**
@@ -968,6 +1117,7 @@ export function validateProgramProposal(
   const dependency = validateProgramDependencies(
     elements.map((e): ProgramSection => ({ kind: e.kind, content: e.content })),
     contract,
+    operationalConstruct,
   );
   if (dependency) return REJECT("dependency_inversion", dependency.kind);
 
@@ -1003,6 +1153,10 @@ export function validateProgramProposal(
         evidenceLanguage: evidenceLanguage.value,
         behaviorContract: contract,
         scenarioContract,
+        applicationContract,
+        completionContract,
+        followUpContract,
+        operationalConstruct,
       },
     },
   };

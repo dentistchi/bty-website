@@ -518,11 +518,16 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
 
 export type ProgramSection = { kind: JourneyElementKind; content: string };
 
+/** The three ways a program can be internally out of order. Fixed vocabulary, no prose. */
+export type DependencyBranch = "used_before_defined" | "defined_after_use" | "authority_mismatch";
+
 export type DependencyDefect = {
   kind: JourneyElementKind;
-  /** The construct head noun the section depended on. Never model prose. */
+  /** The construct head noun the section depended on. A closed-vocabulary noun, never prose. */
   construct: string;
-  reason: "used_before_defined" | "defined_after_use";
+  branch: DependencyBranch;
+  /** For `defined_after_use`, the earlier section that already required it. */
+  counterpartKind: JourneyElementKind | null;
 };
 
 const orderOf = (k: JourneyElementKind): number => JOURNEY_KIND_ORDER.indexOf(k);
@@ -555,8 +560,18 @@ const DEFINITION_SEEKING = new RegExp(
 export function validateProgramDependencies(
   sections: readonly ProgramSection[],
   standardContract: BehaviorContract | null,
+  /** The one construct this program is about, when it has one (Slice 3.2L-R6). */
+  construct: OperationalConstruct | null = null,
 ): DependencyDefect | null {
-  const ordered = [...sections].sort((a, b) => orderOf(a.kind) - orderOf(b.kind));
+  /**
+   * SEMANTIC ROLE SCOPING (Slice 3.2L-R6). Only INSTRUCTIONAL sections can create or
+   * consume a dependency. The R5 window was refused because WHY THIS MATTERS — narrative,
+   * instructing nobody — referred to the construct the Host had themselves named. A
+   * narrative mention is context; it cannot define authority, and it cannot violate one.
+   */
+  const ordered = [...sections]
+    .filter((s) => isInstructionalKind(s.kind))
+    .sort((a, b) => orderOf(a.kind) - orderOf(b.kind));
   const standard = ordered.find((s) => s.kind === "observable_standard");
 
   /**
@@ -572,6 +587,13 @@ export function validateProgramDependencies(
       ? CONSTRUCT_NOUNS.map(nounStem).filter((stem) => mentionsConstruct(definedText, stem))
       : [],
   );
+  /**
+   * The canonical construct is defined the moment the behaviour contract is valid, whether
+   * or not the contract's own wording happens to repeat its noun. That gap is exactly what
+   * produced the R5 refusal: the behaviour was fully specified, the construct was named by
+   * the Host, and nothing connected the two.
+   */
+  if (construct && standardContract) defined.add(construct.noun);
 
   /** Constructs an earlier section already told the participant to use. */
   const usedBy = new Map<string, JourneyElementKind>();
@@ -582,7 +604,7 @@ export function validateProgramDependencies(
     for (const stem of definiteConstructs(s.content)) {
       if (!defined.has(stem)) {
         // Used, but no section ever said what the behavior is.
-        return { kind: s.kind, construct: stem, reason: "used_before_defined" };
+        return { kind: s.kind, construct: stem, branch: "used_before_defined", counterpartKind: null };
       }
       if (!usedBy.has(stem)) usedBy.set(stem, s.kind);
     }
@@ -595,11 +617,291 @@ export function validateProgramDependencies(
         if (!mentionsConstruct(s.content, stem)) continue;
         const earlier = usedBy.get(stem);
         if (earlier !== undefined && orderOf(earlier) < orderOf(s.kind)) {
-          return { kind: s.kind, construct: stem, reason: "defined_after_use" };
+          return { kind: s.kind, construct: stem, branch: "defined_after_use", counterpartKind: earlier };
         }
       }
     }
   }
 
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Canonical operational construct identity (Slice 3.2L-R6)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE LIVE ARCHITECTURAL DEFECT. The R5 window produced a valid behaviour contract and a
+ * valid scenario contract, and was then refused `dependency_inversion` on WHY THIS MATTERS
+ * — a narrative section that instructs nobody.
+ *
+ * The cause was not the rule's scope alone. The program had NO canonical identity for the
+ * thing it was proposing. The behaviour contract described an action ("states each open
+ * item aloud …") without naming a construct, so `defined` was empty; the narrative,
+ * following the Host's own framing, said "the shared handoff standard"; and the graph
+ * correctly concluded that a construct had been referenced which nothing defined.
+ *
+ * Both halves are repaired here. The construct now has ONE system-derived identity, and
+ * the sections that instruct are DERIVED from one authority rather than validated after
+ * the fact.
+ */
+
+export type ConstructAuthorityMode =
+  /** BTY is introducing a new way of working. Claims nothing about the world. */
+  | "proposed"
+  /** The Host's own words established that it already exists. */
+  | "host_grounded_existing"
+  /** The application verified an uploaded or first-party resource identity. */
+  | "verified_resource";
+
+export type OperationalConstruct = {
+  /** One normalized display label, e.g. `shared handoff standard`. */
+  label: string;
+  /** Head noun from the closed construct vocabulary — safe as diagnostic metadata. */
+  noun: string;
+  authorityMode: ConstructAuthorityMode;
+};
+
+const CONSTRUCT_PHRASE = new RegExp(`\\b((?:[\\w'-]+\\s+){0,3}(${CONSTRUCT_ALT}))\\b`, "i");
+
+/** Determiners and existence adjectives are not part of the construct's identity. */
+const LABEL_NOISE = /^(?:a|an|the|our|your|its|their|this|that|these|those|new|existing|available|current|established|approved|official|supplied|provided)\s+/i;
+
+function normalizeLabel(raw: string): string {
+  let s = raw.replace(/\s+/g, " ").trim().toLowerCase();
+  // Strip leading noise repeatedly: "the new shared handoff standard" → "shared handoff standard".
+  for (let prev = ""; prev !== s; ) {
+    prev = s;
+    s = s.replace(LABEL_NOISE, "");
+  }
+  return s;
+}
+
+const EXISTENCE_ADJECTIVE = /\b(?:existing|available|current|established|approved|official|supplied|provided|in\s+place)\b/i;
+
+/**
+ * The construct this program is about, or null when it is about a behaviour alone.
+ *
+ * SYSTEM-DERIVED, never model-asserted. The model cannot mark an ungrounded construct as
+ * existing because the model does not supply this at all — it is read from the Host's own
+ * answers and from artifacts the application actually verified. That is the whole point:
+ * "authority_mode" is a claim about the world, and a model has no standing to make one.
+ *
+ * For the canonical draft's `observableBehavior` — "Create a shared handoff standard." —
+ * this yields `{ label: "shared handoff standard", noun: "standard", mode: "proposed" }`:
+ * BTY may propose it, and may not say it exists, is approved, has fields, or is available.
+ */
+export function deriveOperationalConstruct(
+  fields: {
+    observableBehavior?: string | null;
+    successEvidence?: string | null;
+    capabilityCandidate?: string | null;
+    problem?: string | null;
+  },
+  verifiedArtifacts: readonly string[] = [],
+): OperationalConstruct | null {
+  // Ordered by authority: the behaviour the Host asked for outranks the problem statement.
+  const sources = [fields.observableBehavior, fields.capabilityCandidate, fields.successEvidence, fields.problem];
+  for (const source of sources) {
+    if (typeof source !== "string" || source.trim().length === 0) continue;
+    const m = CONSTRUCT_PHRASE.exec(source);
+    if (!m) continue;
+    const label = normalizeLabel(m[1]);
+    if (label.length === 0) continue;
+    const noun = nounStem(m[2]);
+
+    // A verified upload naming this kind of thing is the strongest authority available.
+    const verified = verifiedArtifacts.some((a) => a.toLowerCase().includes(noun));
+    if (verified) return { label, noun, authorityMode: "verified_resource" };
+
+    // The Host framed it as something to create → a proposal, and only a proposal.
+    const before = source.slice(0, m.index + m[0].length);
+    if (CREATION_FRAME.test(before) && !EXISTENCE_ADJECTIVE.test(m[0])) {
+      return { label, noun, authorityMode: "proposed" };
+    }
+    // The Host referred to it as a thing that exists. They are authoritative about their
+    // own organisation; BTY is not.
+    return { label, noun, authorityMode: "host_grounded_existing" };
+  }
+  return null;
+}
+
+/** True once the construct's behaviour has actually been stated, not merely named. */
+export function constructIsBehaviorallyDefined(construct: OperationalConstruct | null, behavior: BehaviorContract | null): boolean {
+  return construct !== null && behavior !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Semantic roles — which sections instruct, and which merely narrate
+// ---------------------------------------------------------------------------
+
+/**
+ * NARRATIVE sections explain; they ask the participant to do nothing. A narrative mention
+ * of a construct is context, not an operational dependency — which is exactly what the R5
+ * refusal got wrong. They stay model-written prose and keep every safety and honesty check.
+ */
+export const NARRATIVE_KINDS: readonly JourneyElementKind[] = ["why_it_matters", "evidence", "reflection"];
+
+/**
+ * INSTRUCTIONAL sections tell someone to do something. All of them derive from the shared
+ * behavioural authority, so an invalid order is difficult to represent rather than merely
+ * detected afterwards. `follow_up` is deliberately INCLUDED: "what happens next" directs
+ * observation, evidence gathering or confirmation, so it bears dependencies too.
+ */
+export const INSTRUCTIONAL_KINDS: readonly JourneyElementKind[] = [
+  "observable_standard",
+  "scenario",
+  "action_decision",
+  "field_application",
+  "completion_check",
+  "follow_up",
+];
+
+export function isNarrativeKind(k: JourneyElementKind): boolean {
+  return NARRATIVE_KINDS.includes(k);
+}
+
+export function isInstructionalKind(k: JourneyElementKind): boolean {
+  return INSTRUCTIONAL_KINDS.includes(k);
+}
+
+// ---------------------------------------------------------------------------
+// Downstream instructional contracts (Slice 3.2L-R6)
+// ---------------------------------------------------------------------------
+
+/**
+ * What APPLY IT and YOUR DECISION need that the behaviour contract cannot supply. The
+ * actor and the observable action are INHERITED — re-authoring them is precisely how three
+ * independent strings drifted apart in the live windows.
+ */
+export type ApplicationContract = {
+  applicationMoment: string;
+  evidenceOrConfirmation: string;
+};
+
+export const APPLICATION_FIELD_LIMIT = 140;
+const APPLICATION_FIELD_MIN = 8;
+
+export type ApplicationDefect = { field: keyof ApplicationContract; reason: "missing" | "too_long" | "generic" | "no_moment" };
+
+/**
+ * ENUMERATED on purpose. BEFORE YOU FINISH may only verify something already established,
+ * so it is rendered from a fixed matrix rather than written. The live R3 defect — a closing
+ * question asking what the standard should contain — becomes unrepresentable, not refused.
+ */
+export const VERIFICATION_TARGETS = ["the_behaviour", "the_application_plan", "the_confirmation_step"] as const;
+export const RESPONSE_MODES = ["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"] as const;
+export type VerificationTarget = (typeof VERIFICATION_TARGETS)[number];
+export type ResponseMode = (typeof RESPONSE_MODES)[number];
+export type CompletionContract = { verificationTarget: VerificationTarget; responseMode: ResponseMode };
+
+/** Also enumerated: a follow-up may not introduce a new construct or a new action. */
+export const REVIEW_FOCUSES = ["what_you_said", "what_happened_next", "the_confirmation"] as const;
+export const CONFIRMERS = ["self_report", "the_other_person", "the_host"] as const;
+export type ReviewFocus = (typeof REVIEW_FOCUSES)[number];
+export type Confirmer = (typeof CONFIRMERS)[number];
+export type FollowUpContract = { reviewFocus: ReviewFocus; confirmer: Confirmer };
+
+const GENERIC_MOMENT = [
+  /^\s*(?:soon|later|regularly|often|sometimes|as\s+needed|when\s+possible|in\s+future|going\s+forward)\.?\s*$/i,
+  /^\s*(?:at|in)\s+(?:work|the\s+workplace|the\s+office)\.?\s*$/i,
+];
+
+export function validateApplicationContract(
+  raw: unknown,
+): { ok: true; value: ApplicationContract } | { ok: false; defect: ApplicationDefect } {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { ok: false, defect: { field: "applicationMoment", reason: "missing" } };
+  }
+  const r = raw as Record<string, unknown>;
+  const value: ApplicationContract = {
+    applicationMoment: trimField(r.application_moment ?? r.applicationMoment),
+    evidenceOrConfirmation: trimField(r.evidence_or_confirmation ?? r.evidenceOrConfirmation),
+  };
+  for (const f of ["applicationMoment", "evidenceOrConfirmation"] as const) {
+    if (value[f].length < APPLICATION_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
+    if (value[f].length > APPLICATION_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
+  }
+  if (GENERIC_MOMENT.some((re) => re.test(value.applicationMoment))) {
+    return { ok: false, defect: { field: "applicationMoment", reason: "generic" } };
+  }
+  // "Next Tuesday's handover" and "at the end of your next shift" both qualify; "soon" does not.
+  if (!MOMENT_MARKER.test(value.applicationMoment) && !/\b(?:next|first|following|tomorrow|today)\b/i.test(value.applicationMoment)) {
+    return { ok: false, defect: { field: "applicationMoment", reason: "no_moment" } };
+  }
+  return { ok: true, value };
+}
+
+export function isVerificationTarget(v: unknown): v is VerificationTarget {
+  return typeof v === "string" && (VERIFICATION_TARGETS as readonly string[]).includes(v);
+}
+export function isResponseMode(v: unknown): v is ResponseMode {
+  return typeof v === "string" && (RESPONSE_MODES as readonly string[]).includes(v);
+}
+export function isReviewFocus(v: unknown): v is ReviewFocus {
+  return typeof v === "string" && (REVIEW_FOCUSES as readonly string[]).includes(v);
+}
+export function isConfirmer(v: unknown): v is Confirmer {
+  return typeof v === "string" && (CONFIRMERS as readonly string[]).includes(v);
+}
+
+// ---------------------------------------------------------------------------
+// Derived instructional renderers — one behavioural authority, six views
+// ---------------------------------------------------------------------------
+
+/** How the construct is named in participant text, once it exists. */
+function constructPhrase(construct: OperationalConstruct | null): string {
+  return construct ? `the ${construct.label}` : "";
+}
+
+export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
+  const action = stripTrailingStop(b.observableAction.trim());
+  const moment = stripTrailingStop(a.applicationMoment.trim());
+  return `I will ${lowerFirst(action)}, starting ${lowerFirst(moment)}.`;
+}
+
+export function renderApplicationSentence(
+  b: BehaviorContract,
+  a: ApplicationContract,
+  construct: OperationalConstruct | null,
+): string {
+  const actor = stripTrailingStop(b.actor.trim());
+  const action = stripTrailingStop(b.observableAction.trim());
+  const moment = stripTrailingStop(a.applicationMoment.trim());
+  const evidence = stripTrailingStop(a.evidenceOrConfirmation.trim());
+  const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
+  return `${upperFirst(moment)}, ${lowerFirst(actor)} ${lowerFirst(action)}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
+}
+
+export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string {
+  const action = lowerFirst(stripTrailingStop(b.observableAction.trim()));
+  const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
+  const target: Record<VerificationTarget, string> = {
+    the_behaviour: `you ${action}`,
+    the_application_plan: `you put this into practice`,
+    the_confirmation_step: `${signal}`,
+  };
+  const mode: Record<ResponseMode, (t: string) => string> = {
+    name_the_moment: (t) => `When is the next time ${t}?`,
+    state_what_you_will_say: (t) => `What exactly will you say when ${t}?`,
+    name_what_could_stop_you: (t) => `What could stop you when ${t}?`,
+  };
+  return mode[c.responseMode](target[c.verificationTarget]);
+}
+
+export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
+  const action = lowerFirst(stripTrailingStop(b.observableAction.trim()));
+  const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
+  const focus: Record<ReviewFocus, string> = {
+    what_you_said: `what you actually said when you ${action}`,
+    what_happened_next: `what happened after you ${action}`,
+    the_confirmation: `whether ${signal}`,
+  };
+  /** Never claims more than the workflow can show — the evidence ceiling in one clause. */
+  const by: Record<Confirmer, string> = {
+    self_report: "That is your own account of it, not an observation.",
+    the_other_person: "The person on the other side of it will be asked the same question.",
+    the_host: "Your host will read it with you.",
+  };
+  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`;
 }

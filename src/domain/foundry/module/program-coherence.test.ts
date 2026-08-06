@@ -6,6 +6,17 @@ import {
   validateProgramDependencies,
   validateScenarioContract,
   renderScenarioSentence,
+  deriveOperationalConstruct,
+  isNarrativeKind,
+  isInstructionalKind,
+  renderDecisionSentence,
+  renderApplicationSentence,
+  renderCompletionQuestion,
+  renderFollowUpSentence,
+  validateApplicationContract,
+  nounStem,
+  VERIFICATION_TARGETS,
+  RESPONSE_MODES,
   definiteConstructs,
   ungroundedExistingEntity,
   ARTIFACT_NOUNS,
@@ -247,6 +258,7 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
         S("field_application", LIVE_APPLY),
       ],
       DEFINING,
+      null,
     );
     expect(d).toBeNull();
   });
@@ -259,9 +271,10 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
         S("field_application", LIVE_APPLY),
       ],
       GOOD,
+      null,
     );
     expect(d).not.toBeNull();
-    expect(d).toMatchObject({ kind: "field_application", construct: "standard", reason: "used_before_defined" });
+    expect(d).toMatchObject({ kind: "field_application", construct: "standard", branch: "used_before_defined" });
   });
 
   it("G5: the Host naming the topic does NOT count as defining it", () => {
@@ -271,8 +284,9 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
     const d = validateProgramDependencies(
       [S("observable_standard", renderStandardSentence(GOOD)), S("action_decision", "I will apply the shared handoff standard on Monday.")],
       GOOD,
+      null,
     );
-    expect(d).toMatchObject({ reason: "used_before_defined" });
+    expect(d).toMatchObject({ branch: "used_before_defined" });
   });
 
   it("G6: the EXACT live inversion is refused as a whole program", () => {
@@ -284,9 +298,10 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
         S("completion_check", LIVE_COMPLETION_CHECK),
       ],
       DEFINING,
+      null,
     );
     expect(d).not.toBeNull();
-    expect(d).toMatchObject({ kind: "completion_check", construct: "standard", reason: "defined_after_use" });
+    expect(d).toMatchObject({ kind: "completion_check", construct: "standard", branch: "defined_after_use" });
   });
 
   it("G7: a completion check that verifies something already established is fine", () => {
@@ -313,6 +328,7 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
     const d = validateProgramDependencies(
       [S("observable_standard", renderStandardSentence(DEFINING)), S("completion_check", LIVE_COMPLETION_CHECK)],
       DEFINING,
+      null,
     );
     expect(d).toBeNull();
   });
@@ -321,13 +337,14 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
     const d = validateProgramDependencies(
       [S("observable_standard", renderStandardSentence(GOOD)), S("scenario", "The shift ends and the agreed escalation process is already in dispute.")],
       GOOD,
+      null,
     );
-    expect(d).toMatchObject({ kind: "scenario", reason: "used_before_defined" });
+    expect(d).toMatchObject({ kind: "scenario", branch: "used_before_defined" });
   });
 
   it("with no validated contract, nothing is defined", () => {
-    const d = validateProgramDependencies([S("field_application", LIVE_APPLY)], null);
-    expect(d).toMatchObject({ reason: "used_before_defined" });
+    const d = validateProgramDependencies([S("field_application", LIVE_APPLY)], null, null);
+    expect(d).toMatchObject({ branch: "used_before_defined" });
   });
 
   it("evaluates order, not array position", () => {
@@ -340,8 +357,9 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
         S("observable_standard", renderStandardSentence(DEFINING)),
       ],
       DEFINING,
+      null,
     );
-    expect(d).toMatchObject({ kind: "completion_check", reason: "defined_after_use" });
+    expect(d).toMatchObject({ kind: "completion_check", branch: "defined_after_use" });
   });
 });
 
@@ -449,6 +467,7 @@ describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", ()
         S("field_application", LIVE_APPLY),
       ],
       DEFINING,
+      null,
     );
     expect(d).toBeNull();
   });
@@ -462,8 +481,9 @@ describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", ()
         S("completion_check", LIVE_COMPLETION_CHECK),
       ],
       DEFINING,
+      null,
     );
-    expect(d).toMatchObject({ kind: "completion_check", reason: "defined_after_use" });
+    expect(d).toMatchObject({ kind: "completion_check", branch: "defined_after_use" });
   });
 
   it("a scenario contract that smuggles in an undefined construct is caught", () => {
@@ -473,7 +493,179 @@ describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", ()
         S("scenario", renderScenarioSentence(GOOD, { ...GOOD_SCENARIO, contextDetail: "the middle of the agreed escalation process" })),
       ],
       GOOD,
+      null,
     );
-    expect(d).toMatchObject({ kind: "scenario", reason: "used_before_defined" });
+    expect(d).toMatchObject({ kind: "scenario", branch: "used_before_defined" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canonical construct identity + semantic roles (Slice 3.2L-R6)
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R6] the construct has ONE system-derived identity", () => {
+  it("G4: the canonical Host input yields a PROPOSED construct", () => {
+    const c = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." });
+    expect(c).toEqual({ label: "shared handoff standard", noun: "standard", authorityMode: "proposed" });
+  });
+
+  it("determiners and existence adjectives are not part of the identity", () => {
+    for (const src of ["Create a shared handoff standard.", "Create the new shared handoff standard."]) {
+      expect(deriveOperationalConstruct({ observableBehavior: src })?.label).toBe("shared handoff standard");
+    }
+  });
+
+  it("a Host who says it already exists is believed — they are authoritative, BTY is not", () => {
+    const c = deriveOperationalConstruct({ observableBehavior: "Follow the existing escalation process." });
+    expect(c).toMatchObject({ noun: "process", authorityMode: "host_grounded_existing" });
+  });
+
+  it("a verified upload outranks both", () => {
+    const c = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." }, ["Handoff Standard v2.pdf"]);
+    expect(c?.authorityMode).toBe("verified_resource");
+  });
+
+  it("G4: a behaviour-only program legitimately has NO construct", () => {
+    expect(deriveOperationalConstruct({ observableBehavior: "Hand over unfinished work out loud." })).toBeNull();
+    expect(deriveOperationalConstruct({ problem: "Our handoffs are inconsistent." })).toBeNull();
+  });
+
+  it("the model cannot assert authority — nothing here reads model output", () => {
+    // deriveOperationalConstruct's only inputs are Host answers and verified artifacts.
+    const fromHost = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." });
+    expect(fromHost?.authorityMode).toBe("proposed");
+    // There is no argument through which a proposal could be marked as existing.
+    expect(Object.keys(fromHost ?? {})).toEqual(["label", "noun", "authorityMode"]);
+  });
+});
+
+describe("[3.2L-R6] semantic roles decide who can bear a dependency", () => {
+  it("narrative and instructional kinds are disjoint and complete for the canonical design", () => {
+    for (const k of ["why_it_matters", "evidence", "reflection"] as const) {
+      expect(isNarrativeKind(k)).toBe(true);
+      expect(isInstructionalKind(k)).toBe(false);
+    }
+    for (const k of ["observable_standard", "scenario", "action_decision", "field_application", "completion_check", "follow_up"] as const) {
+      expect(isInstructionalKind(k)).toBe(true);
+      expect(isNarrativeKind(k)).toBe(false);
+    }
+  });
+
+  it("G1: the EXACT R5 false positive is gone — narrative may name the construct", () => {
+    const construct = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." })!;
+    const d = validateProgramDependencies(
+      [
+        // The exact shape that was refused live: narrative naming the Host's own construct.
+        S("why_it_matters", "When a handoff misses a step the next person starts blind, which is why the shared handoff standard matters."),
+        S("observable_standard", renderStandardSentence(GOOD)),
+      ],
+      GOOD,
+      construct,
+    );
+    expect(d).toBeNull();
+  });
+
+  it("G2: a narrative mention does NOT satisfy an instructional dependency", () => {
+    const d = validateProgramDependencies(
+      [
+        S("why_it_matters", "This is why the escalation process matters to everyone here."),
+        S("observable_standard", renderStandardSentence(GOOD)),
+        S("field_application", "At your next shift you follow the escalation process."),
+      ],
+      GOOD,
+      null,
+    );
+    expect(d).toMatchObject({ kind: "field_application", construct: "process", branch: "used_before_defined" });
+  });
+
+  it("G3: the canonical construct is defined once the behaviour contract is valid", () => {
+    const construct = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." })!;
+    // GOOD's wording never repeats the word "standard" — the R5 gap.
+    expect(renderStandardSentence(GOOD).toLowerCase()).not.toContain("standard");
+    const d = validateProgramDependencies(
+      [S("observable_standard", renderStandardSentence(GOOD)), S("field_application", "You follow the shared handoff standard at the next handover.")],
+      GOOD,
+      construct,
+    );
+    expect(d).toBeNull();
+  });
+
+  it("with no behaviour contract the construct is named but not defined", () => {
+    const construct = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." })!;
+    const d = validateProgramDependencies([S("field_application", "You follow the shared handoff standard.")], null, construct);
+    expect(d).toMatchObject({ branch: "used_before_defined" });
+  });
+
+  it("a defect carries branch and counterpart, not prose", () => {
+    const construct = deriveOperationalConstruct({ observableBehavior: "Create a shared handoff standard." })!;
+    const d = validateProgramDependencies(
+      [
+        S("observable_standard", renderStandardSentence(GOOD)),
+        S("field_application", LIVE_APPLY),
+        S("completion_check", LIVE_COMPLETION_CHECK),
+      ],
+      GOOD,
+      construct,
+    );
+    expect(d).toMatchObject({ kind: "completion_check", construct: "standard", branch: "defined_after_use", counterpartKind: "field_application" });
+    // The construct is a closed-vocabulary noun, never a generated phrase.
+    expect(CONSTRUCT_NOUNS.map(nounStem)).toContain(d!.construct);
+  });
+});
+
+describe("[3.2L-R6] derived instructional renderers share one authority", () => {
+  const APP = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" };
+
+  it("G6: a decision commits to the DEFINED behaviour, not to creating a construct", () => {
+    const d = renderDecisionSentence(GOOD, APP);
+    expect(d.startsWith("I will ")).toBe(true);
+    expect(d).toContain("states each unfinished task");
+    // The exact old live sentence is not expressible: creation is not a rendered option.
+    expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
+  });
+
+  it("G7: an application names the moment, the inherited actor and the confirmation", () => {
+    const a = renderApplicationSentence(GOOD, APP, null);
+    expect(a).toContain(GOOD.actor);
+    expect(a).toContain("at your next shift change".replace(/^a/, "A"));
+    expect(a).toContain("repeats it back");
+  });
+
+  it("G8: a completion check verifies; it cannot ask what the construct contains", () => {
+    for (const target of VERIFICATION_TARGETS) {
+      for (const mode of RESPONSE_MODES) {
+        const q = renderCompletionQuestion(GOOD, { verificationTarget: target, responseMode: mode });
+        expect(q).toMatch(/\?$/);
+        expect(q).not.toMatch(/what (specific )?(elements|fields|steps)/i);
+        expect(q).not.toMatch(/will you include/i);
+      }
+    }
+  });
+
+  it("G9: a follow-up uses the canonical window and introduces no new action", () => {
+    const f = renderFollowUpSentence(GOOD, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7);
+    expect(f).toContain("In 7 days");
+    expect(f).toContain("states each unfinished task");
+    expect(f).toContain("your own account");
+  });
+
+  it("G10: changing ONE contract field changes every dependent section", () => {
+    const other: BehaviorContract = { ...GOOD, observableAction: "writes the unfinished items on the shared board" };
+    for (const render of [
+      (b: BehaviorContract) => renderStandardSentence(b),
+      (b: BehaviorContract) => renderScenarioSentence(b, GOOD_SCENARIO),
+      (b: BehaviorContract) => renderDecisionSentence(b, APP),
+      (b: BehaviorContract) => renderApplicationSentence(b, APP, null),
+      (b: BehaviorContract) => renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      (b: BehaviorContract) => renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
+    ]) {
+      expect(render(other)).not.toBe(render(GOOD));
+      expect(render(other)).toContain("shared board");
+    }
+  });
+
+  it("an application moment must be a moment", () => {
+    expect(validateApplicationContract({ application_moment: "soon", evidence_or_confirmation: "someone notices" }).ok).toBe(false);
+    expect(validateApplicationContract({ application_moment: "at your next shift change", evidence_or_confirmation: "the person taking over repeats it back" }).ok).toBe(true);
   });
 });

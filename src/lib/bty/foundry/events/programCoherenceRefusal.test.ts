@@ -73,6 +73,12 @@ const validProgram = () => ({
     behavior_contract: DEFINING_CONTRACT,
     // know + decide, no practice and no Arena → this design requires no scenario.
     scenario_contract: null,
+    application_contract: {
+      application_moment: "at your next shift change, before you leave the floor",
+      evidence_or_confirmation: "the person taking over repeats the open items back to you",
+    },
+    completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
+    follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
   },
 });
 
@@ -162,9 +168,14 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     expect(attempts[0]).toMatchObject({ outcome: "validation_refused", refusal_code: "non_observable_standard" });
   });
 
-  it("G6 live — the dependency inversion is refused without a repair call", async () => {
+  /**
+   * R6 makes the R3 live inversion UNREPRESENTABLE rather than refused. APPLY IT and
+   * BEFORE YOU FINISH are derived from the contracts, so the model writing those exact
+   * sentences changes nothing the Host sees — there is no longer a way to express "use the
+   * standard, then ask what it should contain".
+   */
+  it("G6 live — the inversion can no longer be expressed at all", async () => {
     const p = validProgram();
-    // LIVE: apply uses the standard, then the closing question asks what it should contain.
     p.program.elements[3] = el(
       "field_application",
       "During the next project handoff meeting, I will actively use the shared handoff standard to ensure all necessary information is communicated clearly.",
@@ -175,15 +186,18 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     );
     chatCreate.mockResolvedValueOnce(respond(p));
 
-    const { admin, calls, attempts } = makeAdmin();
+    const { admin, calls } = makeAdmin();
     const r = await run(admin);
 
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.refusal).toBe("dependency_inversion");
+    expect(r.ok, r.ok ? "" : `refused: ${r.refusal}`).toBe(true);
     expect(chatCreate).toHaveBeenCalledTimes(1);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject({ validation_stage: "semantic", structural_retryable: false });
-    expect(attempts[0]).toMatchObject({ refusal_code: "dependency_inversion", refusal_kind: "completion_check" });
+    if (r.ok) {
+      const check = r.value.proposal.elements.find((e) => e.kind === "completion_check")!;
+      // The defining question is gone: the closing question is rendered from an enum.
+      expect(check.content).not.toMatch(/what specific elements/i);
+      expect(check.content).not.toMatch(/will you include/i);
+    }
   });
 
   it("a MISSING contract is structural, so it DOES get one repair call", async () => {
@@ -246,6 +260,19 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect(scenario.type).toEqual(["object", "null"]);
     expect(scenario.additionalProperties).toBe(false);
     expect([...scenario.required]).toEqual(["pressure_or_constraint", "context_detail"]);
+    // R6: the three downstream instructional authorities, all nullable for designs that
+    // do not require those sections.
+    for (const key of ["application_contract", "completion_contract", "follow_up_contract"] as const) {
+      expect(program.required).toContain(key);
+      const c = program.properties[key];
+      expect(c.type).toEqual(["object", "null"]);
+      expect(c.additionalProperties).toBe(false);
+    }
+    // Completion and follow-up are ENUMS, which is what makes an invalid closing question
+    // unrepresentable rather than merely refused.
+    const comp = program.properties.completion_contract.properties;
+    expect([...comp.verification_target.enum]).toEqual(["the_behaviour", "the_application_plan", "the_confirmation_step"]);
+    expect([...comp.response_mode.enum]).toEqual(["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
     expect([...contract.required]).toEqual(["actor", "trigger", "observable_action", "completion_signal"]);
@@ -253,8 +280,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
       expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
     }
     // The version names the materially different contract rather than relabelling v1.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v3");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v3");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v4");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v4");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

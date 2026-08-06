@@ -93,6 +93,12 @@ function goodProposal(over: Record<string, unknown> = {}) {
         pressure_or_constraint: "two people are already waiting to ask you questions and the shift ran late",
         context_detail: "the last ten minutes of a busy evening shift",
       },
+      application_contract: {
+        application_moment: "at your next shift change, before you leave the floor",
+        evidence_or_confirmation: "the person taking over repeats the open items back to you",
+      },
+      completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
+      follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
       ...over,
     },
   };
@@ -232,12 +238,59 @@ describe("[3.2L] the validator fails closed", () => {
     }
   });
 
-  it("refuses an action decision that is only reflection", () => {
-    reject((p) => { p.program.elements[3].content = "Think about what you might do differently at handoff sometime."; }, "decision_is_only_reflection");
+  /**
+   * R6 MOVES these guarantees. `action_decision`, `field_application` and
+   * `completion_check` are now DERIVED from the contracts, so mutating the model's own
+   * sentence for those kinds cannot make the displayed program wrong — it is discarded.
+   * Each rule is re-asserted where it now lives.
+   */
+  it("a derived decision always commits, whatever the model wrote", () => {
+    const p = goodProposal();
+    p.program.elements[3].content = "Think about how handoffs could be better on your team.";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok, r.ok ? "" : r.code).toBe(true);
+    if (r.ok) {
+      const decision = r.value.proposal.elements.find((e) => e.kind === "action_decision")!;
+      expect(decision.content.startsWith("I will ")).toBe(true);
+      expect(decision.content).not.toContain("Think about");
+    }
   });
 
-  it("refuses a field application with no actor or situation", () => {
-    reject((p) => { p.program.elements[4].content = "Handoffs. Standards. Records. Items. Steps."; }, "application_without_actor");
+  it("refuses an application moment that names no moment", () => {
+    reject((p) => {
+      p.program.application_contract = { application_moment: "soon", evidence_or_confirmation: "someone notices the difference" };
+    }, "application_without_actor");
+  });
+
+  it("a derived completion check can never be generic — the enum has no generic option", () => {
+    const p = goodProposal();
+    p.program.elements[6].content = "What did you learn?";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok, r.ok ? "" : r.code).toBe(true);
+    if (r.ok) {
+      const check = r.value.proposal.elements.find((e) => e.kind === "completion_check")!;
+      expect(check.content).not.toBe("What did you learn?");
+      expect(check.content).toMatch(/\?$/);
+    }
+  });
+
+  it("refuses an unknown completion enum value", () => {
+    reject((p) => {
+      p.program.completion_contract = { verification_target: "whatever_the_model_likes", response_mode: "name_the_moment" };
+    }, "field_type");
+  });
+
+  it("a derived application always names the actor and the moment", () => {
+    const p = goodProposal();
+    p.program.elements[4].content = "Handoffs. Standards. Records. Items. Steps.";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok, r.ok ? "" : r.code).toBe(true);
+    if (r.ok) {
+      const apply = r.value.proposal.elements.find((e) => e.kind === "field_application")!;
+      expect(apply.content).toContain("the outgoing person");
+      expect(apply.content).toContain("At your next shift change");
+      expect(apply.content).not.toContain("Handoffs. Standards.");
+    }
   });
 
   /**
@@ -265,9 +318,15 @@ describe("[3.2L] the validator fails closed", () => {
     }, "scenario_without_pressure");
   });
 
-  it("refuses a generic completion question", () => {
+  it("a generic completion question cannot be expressed at all", () => {
+    // The old rule matched these strings after the fact. v4 renders the question from an
+    // enum, so none of them can reach the Host regardless of what the model writes.
     for (const generic of ["What is one thing you will apply this week?", "How did you feel about the material?", "What did you learn?"]) {
-      reject((p) => { p.program.elements[6].content = generic; }, "generic_completion");
+      const p = goodProposal();
+      p.program.elements[6].content = generic;
+      const r = validateProgramProposal(p, CANONICAL);
+      expect(r.ok, r.ok ? "" : r.code).toBe(true);
+      if (r.ok) expect(r.value.proposal.elements.find((e) => e.kind === "completion_check")!.content).not.toBe(generic);
     }
   });
 
@@ -280,7 +339,8 @@ describe("[3.2L] the validator fails closed", () => {
   });
 
   it("refuses two sections that say the same thing", () => {
-    reject((p) => { p.program.elements[4].content = p.program.elements[3].content; }, "duplicate_content");
+    // Still reachable through the NARRATIVE kinds, which remain model-written.
+    reject((p) => { p.program.elements[0].content = p.program.elements[5].content; }, "duplicate_content");
   });
 
   /**
@@ -304,8 +364,11 @@ describe("[3.2L] the validator fails closed", () => {
         warnings: [],
         evidence_language: "This shows people were exposed to the standard. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
-        // know-only design: no scenario is required, so no scenario contract.
+        // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
+        application_contract: null,
+        completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
+        follow_up_contract: null,
       },
     };
     const r = validateProgramProposal(p, infoOnly);
@@ -331,8 +394,11 @@ describe("[3.2L] the validator fails closed", () => {
         warnings: [],
         evidence_language: "This shows exposure only. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
-        // know-only design: no scenario is required, so no scenario contract.
+        // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
+        application_contract: null,
+        completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
+        follow_up_contract: null,
       },
     };
     expect(validateProgramProposal(p, infoOnly).ok).toBe(true);
@@ -358,13 +424,13 @@ describe("[3.2L] the validator fails closed", () => {
 
   it("names the offending element so a refusal is diagnosable", () => {
     const p = goodProposal();
-    // A per-kind meaning rule that still reads the model's own displayed content.
-    p.program.elements[3].content = "Think about how handoffs could be better on your team.";
+    // A per-kind meaning rule over a NARRATIVE kind, which still reads model content.
+    p.program.elements[0].content = "Our handoffs are inconsistent and keep being inconsistent.";
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.code).toBe("decision_is_only_reflection");
-      expect(r.kind).toBe("action_decision");
+      expect(r.code).toBe("complaint_replay");
+      expect(r.kind).toBe("why_it_matters");
     }
   });
 });
@@ -417,6 +483,10 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
     completionSignal: "the person taking over repeats them back and confirms",
     },
     scenarioContract: null,
+    applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+    completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
+    followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
+    operationalConstruct: { label: "shared handoff standard", noun: "standard", authorityMode: "proposed" },
   };
   const current: RealityGroundedJourneyV1 = {
     version: 1,
