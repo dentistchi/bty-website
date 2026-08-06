@@ -20,6 +20,7 @@ import {
   REVIEW_FOCUSES,
   momentCore,
   isRenderableAction,
+  baseActionPhrase,
   definiteConstructs,
   ungroundedExistingEntity,
   ARTIFACT_NOUNS,
@@ -810,5 +811,114 @@ describe("[3.2L-R6.2] follow-up tense and Host phrasing", () => {
   it("an action with no verb-shaped head is refused rather than rendered broken", () => {
     for (const bad of ["", "  ", "!!!", "12345"]) expect(isRenderableAction(bad)).toBe(false);
     for (const ok of ["Say it blunt", "state each open item aloud", "hand over"]) expect(isRenderableAction(ok)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canonical action-phrase casing (Slice 3.2L-R6.3)
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical context", () => {
+  const APP3 = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "they repeat it back" };
+  const withAction = (action: string) => ({ ...GOOD, actor: "Doctors", observableAction: action });
+
+  /** Every context that inserts the action after must / will / to / when. */
+  const contexts = (action: string) => {
+    const b = withAction(action);
+    return {
+      standard: renderStandardSentence(b),
+      scenario: renderScenarioSentence(b, GOOD_SCENARIO),
+      decision: renderDecisionSentence(b, APP3),
+      application: renderApplicationSentence(b, APP3, null),
+      completion: renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      followUp: renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
+    };
+  };
+
+  it("G1: the exact physical failure — no capitalised action after 'expected to'", () => {
+    const c = contexts("Say it blunt");
+    expect(c.followUp).toContain("expected to say it blunt");
+    expect(c.followUp).not.toContain("expected to Say it blunt");
+  });
+
+  it("G2: every action-bearing section uses the SAME canonical phrase", () => {
+    const canonical = baseActionPhrase("Say it blunt");
+    expect(canonical).toBe("say it blunt");
+    const c = contexts("Say it blunt");
+    for (const [name, sentence] of Object.entries(c)) {
+      expect(sentence, name).toContain(canonical);
+      // The raw Host casing must never survive into participant text.
+      expect(sentence, name).not.toContain("Say it blunt");
+    }
+    expect(c.standard).toContain("must say it blunt");
+    expect(c.decision).toContain("I will say it blunt");
+    expect(c.application).toContain("must say it blunt");
+    expect(c.completion).toContain("you say it blunt");
+  });
+
+  it("G3: an acronym is preserved wherever it sits in the phrase", () => {
+    // After the head verb…
+    const after = contexts("Use SBAR for the handoff");
+    for (const [name, s] of Object.entries(after)) {
+      expect(s, name).toContain("use SBAR for the handoff");
+      // Checked on the ORIGINAL string: lowercasing it first would make this vacuous.
+      expect(s, name).not.toContain("use sbar");
+    }
+    // …and AS the head verb, where a naive lowercase would have destroyed it.
+    const asHead = contexts("SBAR the handoff");
+    expect(baseActionPhrase("SBAR the handoff")).toBe("SBAR the handoff");
+    for (const [name, s] of Object.entries(asHead)) expect(s, name).toContain("SBAR the handoff");
+  });
+
+  it("G3: an acronym is never de-inflected into nonsense", () => {
+    // "SOS" ends in -s; a blind agreement-strip would emit "SO".
+    expect(baseActionPhrase("SOS the duty lead")).toBe("SOS the duty lead");
+    expect(baseActionPhrase("Send an SOS")).toBe("send an SOS");
+  });
+
+  it("G4: a proper name keeps its capitals", () => {
+    const c = contexts("Call Dr. Lee");
+    for (const [name, s] of Object.entries(c)) {
+      expect(s, name).toContain("call Dr. Lee");
+      expect(s, name).not.toContain("dr. lee");
+    }
+  });
+
+  it("only the head verb is ever touched — the rest of the phrase is the Host's", () => {
+    for (const [raw, expected] of [
+      ["states each item aloud", "state each item aloud"],
+      ["Say it blunt", "say it blunt"],
+      ["Use SBAR for the handoff", "use SBAR for the handoff"],
+      ["Call Dr. Lee", "call Dr. Lee"],
+      ["hand over to the McKinsey team", "hand over to the McKinsey team"],
+    ] as const) {
+      expect(baseActionPhrase(raw), raw).toBe(expected);
+    }
+  });
+
+  it("G5: the plural-actor repair still holds with a colloquial action", () => {
+    for (const s of Object.values(contexts("Say it blunt"))) {
+      expect(s.toLowerCase()).not.toMatch(/doctors (faces|states|does)\b/);
+    }
+  });
+
+  it("G6: perspective stays separated", () => {
+    const c = contexts("Say it blunt");
+    expect(c.decision).toBe("At my next shift change, I will say it blunt.");
+    expect(c.application.startsWith("At the next shift change, doctors must say it blunt.")).toBe(true);
+    expect(c.decision).not.toMatch(/\byour\b/);
+    expect(c.application).not.toMatch(/\bmy\b/);
+  });
+
+  it("G7: the follow-up tense repair still holds", () => {
+    for (const focus of REVIEW_FOCUSES) {
+      const b = withAction("Say it blunt");
+      const f = renderFollowUpSentence(b, { reviewFocus: focus, confirmer: "self_report" }, 7);
+      expect(f).not.toMatch(/said when you say|did when you do/);
+    }
+  });
+
+  it("an unrenderable action is still refused rather than rendered", () => {
+    for (const bad of ["", "!!!", "123"]) expect(isRenderableAction(bad)).toBe(false);
   });
 });

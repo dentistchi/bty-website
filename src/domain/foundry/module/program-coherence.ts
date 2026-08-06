@@ -414,9 +414,9 @@ export function momentClause(moment: string, possessive: "my" | "the"): string {
 export function renderStandardSentence(c: BehaviorContract): string {
   const trigger = stripTrailingStop(c.trigger.trim());
   const actor = stripTrailingStop(c.actor.trim());
-  const action = stripTrailingStop(c.observableAction.trim());
+  const action = baseActionPhrase(c.observableAction);
   const signal = stripTrailingStop(c.completionSignal.trim());
-  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${baseActionPhrase(action)}. It is complete when ${lowerFirst(signal)}.`;
+  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. It is complete when ${lowerFirst(signal)}.`;
 }
 
 /**
@@ -570,7 +570,7 @@ export function validateScenarioContract(
 export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
   const trigger = stripTrailingStop(b.trigger.trim());
   const actor = stripTrailingStop(b.actor.trim());
-  const action = stripTrailingStop(b.observableAction.trim());
+  const action = baseActionPhrase(b.observableAction);
   const signal = stripTrailingStop(b.completionSignal.trim());
   const pressure = stripTrailingStop(s.pressureOrConstraint.trim());
   const context = stripTrailingStop(s.contextDetail.trim());
@@ -578,7 +578,7 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
   void trigger;
   return (
     `In ${lowerFirst(context)}: ${lowerFirst(pressure)}. ` +
-    `Even then, ${lowerFirst(actor)} must ${baseActionPhrase(action)}. ` +
+    `Even then, ${lowerFirst(actor)} must ${action}. ` +
     `It is complete when ${lowerFirst(signal)}.`
   );
 }
@@ -938,7 +938,18 @@ const IRREGULAR_BASE: Record<string, string> = {
   has: "have", does: "do", goes: "go", says: "say", is: "be", asks: "ask",
 };
 
+/**
+ * An all-caps token is far more likely a protocol or acronym the Host means literally —
+ * SBAR, SOS, ISBAR — than an inflected English verb. Lowercasing it destroys the Host's
+ * meaning ("must sbar the handoff"), and de-inflecting it is worse ("SOS" → "SO"), so it is
+ * preserved verbatim. The trade-off is accepted deliberately: an all-caps INFLECTED verb
+ * ("STATES") renders as "must STATES", which is awkward but faithful, and faithful is the
+ * side to err on with someone else's words.
+ */
+const isShoutedToken = (w: string): boolean => w.length >= 2 && w === w.toUpperCase() && /\p{Lu}/u.test(w);
+
 export function baseForm(verb: string): string {
+  if (isShoutedToken(verb)) return verb;
   const lower = verb.toLowerCase();
   if (IRREGULAR_BASE[lower]) return IRREGULAR_BASE[lower];
   if (/[^aeiou]ies$/.test(lower)) return `${lower.slice(0, -3)}y`;
@@ -948,9 +959,9 @@ export function baseForm(verb: string): string {
 }
 
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
-  const action = stripTrailingStop(b.observableAction.trim());
+  const action = baseActionPhrase(b.observableAction);
   const moment = stripTrailingStop(a.applicationMoment.trim());
-  return `${momentClause(moment, "my")}, I will ${baseActionPhrase(action)}.`;
+  return `${momentClause(moment, "my")}, I will ${action}.`;
 }
 
 export function renderApplicationSentence(
@@ -959,11 +970,11 @@ export function renderApplicationSentence(
   construct: OperationalConstruct | null,
 ): string {
   const actor = stripTrailingStop(b.actor.trim());
-  const action = stripTrailingStop(b.observableAction.trim());
+  const action = baseActionPhrase(b.observableAction);
   const moment = stripTrailingStop(a.applicationMoment.trim());
   const evidence = stripTrailingStop(a.evidenceOrConfirmation.trim());
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
-  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${baseActionPhrase(action)}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
+  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
 }
 
 export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string {
