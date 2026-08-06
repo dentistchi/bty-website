@@ -14,6 +14,7 @@ import {
   type StructuralDiagnosis,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { CONTRACT_FIELD_STORAGE, deriveOperationalConstruct, type OperationalConstruct } from "@/domain/foundry/module/program-coherence";
 import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
 import {
   startProgramAttempt,
@@ -117,7 +118,7 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- DO NOT INFER THE CONTENTS OF LINKED MATERIAL. A link proves a video or file exists; it tells you nothing about what is inside it. Never describe a template, checklist, form or instruction as being 'in the video' or 'provided'.",
     "- Never state or assume that a template, form, checklist, guide, policy, tool, system or dashboard EXISTS, or that anyone has access to one, unless the context above names it explicitly. Do not assume it in an assumption either — an assumption is not evidence.",
     "- A desired OUTPUT is not an existing RESOURCE. 'Handoff record' as success evidence means the record is what the host wants produced; it does NOT mean a handoff record template exists.",
-    "- When a new artifact would help, describe CREATING it as a future action: 'agree on the required fields and create a shared handoff record'. Never 'use the handoff record template'.",
+    "- When a new artifact would help, refer to CREATING it as a future action — 'agree on the required fields and create a shared handoff record' — never 'use the handoff record template'. This applies to NARRATIVE sections only, never to behavior_contract.",
     "- Never evaluate a person's worth, loyalty, character, attitude or competence. Describe actions and situations only.",
     "- Never use internal system vocabulary: evidence ladder, capability candidate, learning need, module, journey element, builder step. Participants must never see it.",
     `- EVIDENCE HONESTY. ${evidenceCeiling} Never claim behavior changed, was verified, was mastered, is permanent, or that trust was restored.`,
@@ -127,10 +128,18 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     // ---- Slice 3.2L-R4 — defence in depth for the behavioral contract and the program's
     // internal order. The deterministic validator is the authority; this is here so the
     // model has a chance to get it right on the first call rather than being refused.
+    "WHAT YOU ARE AUTHORISED TO DESIGN:",
+    "- DESIGNING A FUTURE BEHAVIOR IS NOT INVENTING A FACT. Proposing what a person should do from now on is exactly your job. The 'invent nothing' rules above are about the world as it is TODAY — existing templates, approvals, access, tools, results — not about what you propose people start doing.",
+    "- So you MAY choose a concrete visible action even when the host did not spell one out. Ground it in their problem and context; it does not have to be quoted from them.",
+    "- ALLOWED (designing future behavior): 'states each unfinished item aloud'; 'identifies who owns the next action'; 'confirms the agreed next step'; 'repeats back what will happen next'.",
+    "- FORBIDDEN (claiming today's reality): 'the team already follows this standard'; 'the approved standard requires these steps'; 'use the existing template fields'; 'record it in the tool everyone already has'; 'the manager observes and scores it'; 'this has already improved handoffs'.",
+    "- Those are illustrations of the boundary, not a menu. Choose the behavior THIS host's problem actually needs.",
+    "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
     "- Return behavior_contract with all four: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing), completion_signal (what confirms it is finished).",
     "- 'A shared handoff standard is created and utilized by team members' is NOT acceptable: it describes the standard's life cycle, not a person's action. Write what someone is seen doing instead.",
+    "- Write observable_action in BASE form, as it would follow 'must': 'state each unfinished item and identify its next owner', not 'states … and identifies …'.",
     "- completion_signal must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
     "",
     "THE PRACTICE SITUATION — scenario_contract:",
@@ -148,7 +157,8 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- The follow-up window is already set by the host. Do not invent a different one.",
     "",
     "PROPOSING A NEW WAY OF WORKING:",
-    "- You MAY propose a new standard, process, checklist or agreement. Describe CREATING it.",
+    "- You MAY propose a new standard, process, checklist or agreement. WHY THIS MATTERS may say the team is establishing one.",
+    "- But the proposed thing is NEVER the trained behavior. behavior_contract describes a PERSON doing something visible, not the construct being created, adopted, supported or used.",
     "- Do NOT present it as something that already exists.",
     "- DEFINE the behavior in THE STANDARD before any later section asks the participant to use it. A participant cannot follow a standard no section has described.",
     "- BEFORE YOU FINISH verifies understanding, a decision, or an application plan. It must NOT be where the standard's contents are finally decided — never ask what elements, fields or steps the standard should contain when an earlier section already told the participant to use it.",
@@ -172,18 +182,38 @@ export function evidenceCeilingFor(ctx: ProgramContext): string {
   return parts.join(" ");
 }
 
-function userPrompt(ctx: ProgramContext): string {
+function userPrompt(ctx: ProgramContext, construct: OperationalConstruct | null): string {
   const lines = [
     `The recurring problem: ${ctx.problemStatement}`,
     `Who needs to change: ${ctx.audienceType}${ctx.audienceDetail ? ` — ${ctx.audienceDetail}` : ""}`,
     ctx.capabilityCandidate ? `The ability being built: ${ctx.capabilityCandidate}` : null,
-    `The behavior expected afterwards: ${ctx.observableBehavior}`,
+    /**
+     * NOT "the behavior expected afterwards" (Slice 3.2L-R7). The canonical draft's answer
+     * here is "Create a shared handoff standard" — a DESIGN INTENT, not a behaviour. Handing
+     * it to the model under a behaviour label, and then refusing a standard that is about
+     * creating a standard, is the contradiction that refused parent 604d09e5.
+     */
+    `The change the host wants: ${ctx.observableBehavior}`,
     `What the host would look for in real work: ${ctx.successEvidence}`,
     `What the training must include: ${ctx.learningNeeds.join(", ") || "information"}`,
     ctx.arenaRecommended ? "The team will also rehearse this under pressure." : null,
     ctx.followUpDays > 0 ? `The host will check back after ${ctx.followUpDays} days.` : "There is no scheduled follow-up.",
     ctx.sharedQuestion ? `The host already asks participants: ${ctx.sharedQuestion}` : null,
     ctx.materialIntent ? `Participants will learn from: ${ctx.materialIntent}` : null,
+    /**
+     * The construct's identity and its AUTHORITY MODE, system-derived from the Host's own
+     * words. Until R7 this existed only in server code, so the model had no way to know it
+     * was allowed to design the behaviour that gives the construct meaning.
+     */
+    construct
+      ? `The way of working being proposed: ${construct.label} — ${
+          construct.authorityMode === "proposed"
+            ? "PROPOSED. It does not exist yet. You are designing what it will mean in practice."
+            : construct.authorityMode === "host_grounded_existing"
+              ? "the host says this already exists. Do not invent its contents."
+              : "verified from material the host supplied. Do not invent contents beyond it."
+        }`
+      : null,
   ].filter(Boolean) as string[];
   return lines.join("\n");
 }
@@ -336,9 +366,23 @@ export async function generateProgram(
     return { ok: false, code: "provider_unavailable" };
   }
 
+  /**
+   * The same system-derived construct the validator uses, so the model is told what it is
+   * allowed to design instead of having to guess from prohibitions.
+   */
+  const promptConstruct = deriveOperationalConstruct(
+    {
+      observableBehavior: args.answers.observableBehavior,
+      successEvidence: args.answers.successEvidence,
+      capabilityCandidate: args.answers.capabilityCandidate,
+      problem: args.answers.problem,
+    },
+    args.verifiedArtifacts ?? [],
+  );
+
   const base: LlmChatMessage[] = [
     { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx)) },
-    { role: "user", content: userPrompt(args.ctx) },
+    { role: "user", content: userPrompt(args.ctx, promptConstruct) },
   ];
 
   let lastCode: ProgramGenerateErrorCode = "invalid_output";
@@ -418,6 +462,13 @@ export async function generateProgram(
         // THIS call's own diagnosis, written before the loop moves on — so a repair call
         // can never overwrite what call 1 proved. A structural fault carries its exact
         // path; a semantic one records only that it was a meaning fault and where.
+        // R7 — which behaviour-contract role failed, null for every other outcome.
+        behaviorContract: validated.ok || !validated.contract
+          ? null
+          : {
+              field: CONTRACT_FIELD_STORAGE[validated.contract.field],
+              reason: validated.contract.reason,
+            },
         // R6.1 — closed-vocabulary dependency facts, null for every other outcome.
         dependency: validated.ok || !validated.dependency
           ? null

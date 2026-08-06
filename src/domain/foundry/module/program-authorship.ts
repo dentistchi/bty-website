@@ -61,6 +61,7 @@ import {
   type CompletionContract,
   type FollowUpContract,
   type OperationalConstruct,
+  type ContractDefect,
   type DependencyDefect,
   type ProgramSection,
   type ScenarioContract,
@@ -76,8 +77,16 @@ import {
  * `follow_up_contract` — so all six INSTRUCTIONAL sections are views of ONE behavioral
  * authority instead of six independently authored strings whose order is checked
  * afterwards. WHY THIS MATTERS stays narrative prose and instructs nobody.
+ *
+ * v5 (Slice 3.2L-R7) keeps that JSON shape byte-for-byte and changes WHAT THE MODEL IS
+ * AUTHORISED TO DESIGN. The v4 prompt handed over the Host's "Create a shared handoff
+ * standard" labelled as "the behavior expected afterwards", told the model to describe
+ * creating the construct, and then refused a standard about creating a construct — with no
+ * statement anywhere that designing a future behaviour is permitted at all. The version is
+ * bumped even though the schema did not move, because reconciliation has to be able to tell
+ * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v4";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v5";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -359,6 +368,8 @@ export type ProgramValidation =
       diagnosis?: StructuralDiagnosis;
       /** Present only for `dependency_inversion` — closed vocabulary, never prose. */
       dependency?: DependencyDefect;
+      /** Present only for `non_observable_standard` — closed vocabulary, never prose. */
+      contract?: ContractDefect;
     };
 
 // ---------------------------------------------------------------------------
@@ -876,7 +887,11 @@ export function validateProgramProposal(
   }
   const contractResult = validateBehaviorContract(rawContract);
   // A well-formed contract that states no behavior. Not retryable: the shape was right.
-  if (!contractResult.ok) return REJECT("non_observable_standard", "observable_standard");
+  if (!contractResult.ok) {
+    // The defect travels with the refusal so the ledger records WHICH of the four roles
+    // failed and why — the gap that made the R6 window undiagnosable.
+    return { ...REJECT("non_observable_standard", "observable_standard"), contract: contractResult.defect } as ProgramValidation;
+  }
   const contract: BehaviorContract = contractResult.value;
 
   /**

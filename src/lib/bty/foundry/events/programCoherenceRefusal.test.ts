@@ -280,7 +280,10 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
       expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
     }
     // The version names the materially different contract rather than relabelling v1.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v4");
+    // R7 bumps the AUTHORSHIP version without moving the JSON shape: the schema name still
+    // describes the wire contract, the proposal version describes what the model was
+    // authorised to design. Reconciliation needs to tell those two apart.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v5");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v4");
   });
 

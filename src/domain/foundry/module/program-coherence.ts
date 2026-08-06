@@ -229,6 +229,21 @@ export type ContractField = keyof BehaviorContract;
 
 export const CONTRACT_FIELDS: readonly ContractField[] = ["actor", "trigger", "observableAction", "completionSignal"];
 
+/**
+ * The stored spelling of a contract role. The domain speaks camelCase and the provider
+ * contract speaks snake_case; the ledger follows the provider, because that is the name a
+ * reader will be holding when they look a refusal up.
+ */
+export const CONTRACT_FIELD_STORAGE: Record<ContractField, string> = {
+  actor: "actor",
+  trigger: "trigger",
+  observableAction: "observable_action",
+  completionSignal: "completion_signal",
+};
+
+/** Every reason `validateBehaviorContract` can return. Closed vocabulary, never prose. */
+export const CONTRACT_DEFECT_REASONS = ["missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation"] as const;
+
 /** Which field failed, so a refusal is diagnosable without echoing model prose. */
 export type ContractDefect = { field: ContractField; reason: "missing" | "too_long" | "meta_only" | "not_a_role" | "no_moment" | "no_confirmation" };
 
@@ -355,12 +370,44 @@ const upperFirst = (s: string): string => (s.length > 0 ? s[0].toUpperCase() + s
  * chooses between faces/face or states/state ever again.
  */
 
-/** The action as it appears after a modal. Only the head verb is de-inflected. */
+/**
+ * Function words that end in -s and would be corrupted by an agreement strip. Short tokens
+ * are excluded by length; these are the ones long enough to slip through.
+ */
+const S_FINAL_FUNCTION_WORDS = new Set(["hers", "ours", "yours", "theirs", "this", "thus", "plus", "less", "unless"]);
+
+/**
+ * The action as it appears after a modal.
+ *
+ * The HEAD verb is de-inflected, and — only when the head actually WAS inflected — so is a
+ * verb immediately following a coordinating conjunction. A compound action is common
+ * ("states each unfinished item and identifies its next owner") and rendering it as
+ * "must state … and identifies …" is the same knowingly-malformed output R6.4 removed for
+ * shouted verbs.
+ *
+ * The second reduction is deliberately timid: it only fires when the phrase was already
+ * third-person, only on the token directly after the conjunction, only when that token is
+ * at least four characters, and never on an -s function word. So "and its deadline" and
+ * "and their owner" are untouched, which is what matters — corrupting the Host's nouns
+ * would be worse than the awkwardness being fixed.
+ */
 export function baseActionPhrase(action: string): string {
   const t = stripTrailingStop(action.trim());
   if (t.length === 0) return t;
-  const [head, ...rest] = t.split(/\s+/);
-  return [baseForm(head), ...rest].join(" ");
+  const words = t.split(/\s+/);
+  const head = baseForm(words[0]);
+  const headWasInflected = head !== words[0].toLowerCase() || head !== words[0];
+  const out = [head, ...words.slice(1)];
+  if (headWasInflected) {
+    for (let i = 1; i < out.length - 1; i++) {
+      if (!/^(?:and|or|then)$/i.test(out[i])) continue;
+      const next = out[i + 1];
+      if (next.length < 4 || S_FINAL_FUNCTION_WORDS.has(next.toLowerCase()) || !/s$/i.test(next)) continue;
+      const reduced = baseForm(next);
+      if (reduced !== next.toLowerCase()) out[i + 1] = reduced;
+    }
+  }
+  return out.join(" ");
 }
 
 /**
