@@ -244,6 +244,55 @@ describe("[3.2L-R3] each provider call keeps its own diagnosis", () => {
     expect(persisted).toContain("object");
   });
 
+  it("G4(transport) — a provider HTTP failure stays transport-only and is never called structural", async () => {
+    // A 500 from the provider says nothing about the SHAPE of the program — no program was
+    // returned at all. Recording it as a structural fault would invent a diagnosis, and would
+    // pollute the very index built to answer "which shape faults keep recurring".
+    const boom = Object.assign(new Error("upstream exploded"), { status: 500 });
+    chatCreate.mockRejectedValueOnce(boom);
+
+    const { admin, calls, attempts } = makeAdmin();
+    const r = await run(admin);
+
+    expect(r.ok).toBe(false);
+    expect(calls, "a transport failure is not retried into a second call").toHaveLength(1);
+    expect(calls[0]).toMatchObject({
+      call_sequence: 1,
+      outcome: "http_error",
+      provider_http_status: 500,
+      provider_error_category: "server_error",
+    });
+    for (const key of ["validation_stage", "offending_path", "expected_type", "actual_type", "structural_retryable"]) {
+      expect(calls[0][key] ?? null, `${key} must stay NULL on a transport failure`).toBeNull();
+    }
+    expect(attempts[0]).toMatchObject({ outcome: "provider_transport_error" });
+    expect(attempts[0].refusal_code ?? null, "a transport error is not a refusal").toBeNull();
+  });
+
+  it("G4(transport) — a provider timeout is likewise transport-only", async () => {
+    // The service aborts on its own timer; an abort surfaces as code "timeout".
+    chatCreate.mockImplementationOnce((_body: unknown, opts: { signal?: AbortSignal }) => {
+      return new Promise((_resolve, reject) => {
+        const signal = opts?.signal;
+        const fail = () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        if (signal?.aborted) fail();
+        else signal?.addEventListener("abort", fail);
+        // Never resolves otherwise — the service's own abort is what ends this call.
+      });
+    });
+
+    const { admin, calls, attempts } = makeAdmin();
+    const r = await run(admin);
+
+    expect(r.ok).toBe(false);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ outcome: "timeout", provider_error_category: "aborted" });
+    for (const key of ["validation_stage", "offending_path", "actual_type"]) {
+      expect(calls[0][key] ?? null, `${key} must stay NULL on a timeout`).toBeNull();
+    }
+    expect(attempts[0]).toMatchObject({ outcome: "provider_timeout" });
+  }, 120_000);
+
   it("never writes structural diagnostics to the parent attempt", async () => {
     const broken = validProgram();
     (broken.program.elements[0] as { content: unknown }).content = 7;
