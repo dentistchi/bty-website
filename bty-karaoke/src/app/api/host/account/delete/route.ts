@@ -25,24 +25,18 @@ import { verifyHostCsrf } from '@/lib/host-csrf.server';
 import { DeleteAccountSchema } from '@/lib/validation';
 import { deleteAccount, type DeletionSource } from '@/lib/account-deletion.server';
 import { makeLimiter, isLockedOut, recordFailure } from '@/lib/rate-limit.server';
+// A Route module may export ONLY its recognised fields, so these constants live in
+// `domain` and are imported here. See src/domain/account-deletion.ts.
+import {
+  DELETE_CONFIRMATION,
+  RECENT_AUTH_MAX_AGE_MS,
+  REAUTH_FUTURE_SKEW_MS,
+} from '@/domain/account-deletion';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' } as const;
-
-/**
- * The exact phrase the client must send. Not a checkbox: an explicit typed/asserted
- * constant makes an accidental or replayed request structurally unable to delete.
- */
-export const DELETE_CONFIRMATION = 'DELETE_MY_ACCOUNT';
-
-/**
- * How recently the caller must have authenticated. Host sessions live 90 days by design
- * (a Host should not be logged out mid-party), which is exactly why a long-lived token
- * alone must not authorize an irreversible action.
- */
-export const RECENT_AUTH_MAX_AGE_MS = 10 * 60 * 1000;
 
 function clientIp(req: NextRequest): string {
   return (
@@ -103,7 +97,7 @@ export async function POST(req: NextRequest) {
   // re-authentication requirement made checkable — so it is enforced in addition to,
   // never instead of, the session check above.
   const reauthAt = Date.parse(parsed.data.reauthenticatedAt);
-  if (!Number.isFinite(reauthAt) || Date.now() - reauthAt > RECENT_AUTH_MAX_AGE_MS || reauthAt > Date.now() + 60_000) {
+  if (!Number.isFinite(reauthAt) || Date.now() - reauthAt > RECENT_AUTH_MAX_AGE_MS || reauthAt > Date.now() + REAUTH_FUTURE_SKEW_MS) {
     if (limiter) await recordFailure(limiter);
     return NextResponse.json({ error: 'reauth_required' }, { status: 401, headers: NO_STORE });
   }

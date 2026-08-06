@@ -39,7 +39,8 @@ vi.mock('@/lib/account-deletion.server', () => ({
   deleteAccount: (...a: unknown[]) => deleteAccount(...a),
 }));
 
-import { POST, DELETE_CONFIRMATION, RECENT_AUTH_MAX_AGE_MS } from './route';
+import { POST } from './route';
+import { DELETE_CONFIRMATION, RECENT_AUTH_MAX_AGE_MS } from '@/domain/account-deletion';
 
 function req(body: unknown, opts: { auth?: string | null; cookie?: string } = {}) {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
