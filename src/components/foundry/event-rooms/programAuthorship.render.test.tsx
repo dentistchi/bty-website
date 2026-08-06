@@ -166,90 +166,149 @@ describe("[3.2L] apply is explicit and atomic", () => {
   });
 
   /**
-   * G13 — EDITED-CONTENT AUTHORITY (Slice 3.2L-R4).
+   * STRUCTURED REVIEW AUTHORITY (Slice 3.2L-R6.1) — replaces R4's raw-edit tests.
    *
-   * THE STANDARD the Host reads is rendered from a validated `behaviorContract`. The moment
-   * they rewrite it, that contract describes the PRE-EDIT text. The mechanism chosen is
-   * INVALIDATE-ON-EDIT plus deterministic re-check of the edited words: there is no
-   * persistence path for the contract and Apply reads display content only, so no stale
-   * metadata can travel — and an edited standard that stopped describing a behavior is
-   * refused rather than applied on the strength of BTY's original.
+   * R4 let the Host retype THE STANDARD and blocked Apply if the rewrite stopped describing
+   * a behaviour. R6 then derived five more sections from the same contracts but still shipped
+   * six free textareas, so one section could be edited to contradict the others. The Host now
+   * adjusts the CONTRACT and every dependent sentence re-renders — the contradiction is
+   * unrepresentable rather than detected.
    */
-  it("G13: rewriting the standard into meta language blocks Apply and says why", async () => {
+  const openDetails = async (kind: string) => {
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(`program-details-toggle-${kind}`));
+    });
+  };
+  const setField = async (id: string, value: string) => {
+    await act(async () => {
+      fireEvent.change(screen.getByTestId(`program-field-${id}`), { target: { value } });
+    });
+  };
+
+  it("G1: derived sections are read-only text, not free textareas", async () => {
+    setup(ok);
+    await generate();
+    for (const kind of ["observable_standard", "action_decision"]) {
+      expect(screen.getByTestId(`program-derived-${kind}`)).toBeTruthy();
+      expect(screen.queryByTestId(`program-edit-${kind}`)).toBeNull();
+    }
+    // WHY THIS MATTERS is narrative and stays directly editable.
+    expect(screen.getByTestId("program-edit-why_it_matters")).toBeTruthy();
+  });
+
+  it("G1: changing who acts updates EVERY dependent section at once", async () => {
+    setup(ok);
+    await generate();
+    const before = {
+      standard: screen.getByTestId("program-derived-observable_standard").textContent ?? "",
+      decision: screen.getByTestId("program-derived-action_decision").textContent ?? "",
+    };
+    await openDetails("observable_standard");
+    await setField("actor", "the duty pharmacist");
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("the duty pharmacist");
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(before.standard);
+    // YOUR DECISION is first person, so it carries the ACTION rather than the actor —
+    // changing the action is what must move it.
+    await setField("action", "reads the open items aloud from the board");
+    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toBe(before.decision);
+    // …and the verb agrees: "I will read", never "I will reads".
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("I will read the open items");
+  });
+
+  it("G2: changing the application moment updates the decision and apply sections", async () => {
+    setup(ok);
+    await generate();
+    const before = screen.getByTestId("program-derived-action_decision").textContent ?? "";
+    await openDetails("action_decision");
+    await setField("moment", "at tomorrow’s morning handover");
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("tomorrow’s morning handover");
+    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toBe(before);
+  });
+
+  it("G3: no independent drift — apply and the standard always share one behaviour", async () => {
+    setup(ok);
+    await generate();
+    await openDetails("observable_standard");
+    await setField("action", "reads the open items aloud from the board");
+    // Both sections re-render from the same value; there is no control that could set them apart.
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("reads the open items aloud");
+    expect(screen.queryByTestId("program-edit-observable_standard")).toBeNull();
+    expect(screen.queryByTestId("program-edit-action_decision")).toBeNull();
+  });
+
+  it("G7: an incomplete adjustment blocks Apply with plain guidance", async () => {
     const { onApply } = setup(ok);
     await generate();
-    await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
-        target: { value: "A shared handoff standard is created and utilized by team members during all relevant transitions of work." },
-      });
-    });
-    expect(screen.getByTestId("program-standard-not-observable")).toBeTruthy();
+    await openDetails("observable_standard");
+    await setField("actor", "");
+    const block = screen.getByTestId("program-review-block");
+    expect(block.textContent).toContain("all four details");
+    expect(block.textContent).not.toMatch(/contract|validator|behavior_contract/i);
     expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-apply"));
     });
-    expect(onApply, "stale metadata must never reach Apply").not.toHaveBeenCalled();
+    expect(onApply).not.toHaveBeenCalled();
   });
 
-  it("G13: a rewrite that still describes a behavior applies normally", async () => {
-    const { onApply } = setup(ok);
+  it("G7: a standard adjusted into meta language blocks Apply", async () => {
+    setup(ok);
     await generate();
-    await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
-        target: { value: "At every shift end, the outgoing nurse states each open item aloud and the incoming nurse confirms each one." },
-      });
-    });
-    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-apply"));
-    });
-    expect(onApply).toHaveBeenCalled();
+    await openDetails("observable_standard");
+    await setField("action", "a shared handoff standard is created and utilized");
+    expect(screen.getByTestId("program-review-block").textContent).toContain("could be seen doing");
+    expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("G13: authorship follows the edit — BTY does not claim the Host's words", async () => {
+  it("G8: provenance says Adjusted by you — never Your rewrite for BTY-rendered text", async () => {
     setup(ok);
     await generate();
     const section = screen.getByTestId("program-section-observable_standard");
     expect(section.textContent).toContain("Drafted by BTY");
-    await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
-        target: { value: "At every shift end, the outgoing nurse states each open item aloud and the incoming nurse confirms each one." },
-      });
-    });
-    expect(section.textContent).toContain("Your rewrite");
+    await openDetails("observable_standard");
+    await setField("actor", "the duty pharmacist");
+    expect(section.textContent).toContain("Adjusted by you");
+    expect(section.textContent).not.toContain("Your rewrite");
     expect(section.textContent).not.toContain("Drafted by BTY");
   });
 
-  /** G15 — reset/discard must clear the edit AND its consequences. */
-  it("G15: discarding after a blocked edit returns a clean entry point", async () => {
-    const { onApply } = setup(ok);
+  it("G5: Reset restores every contract value and every rendered sentence", async () => {
+    setup(ok);
+    await generate();
+    const original = screen.getByTestId("program-derived-observable_standard").textContent ?? "";
+    await openDetails("observable_standard");
+    await setField("actor", "the duty pharmacist");
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(original);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-reset"));
+    });
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).toBe(original);
+    expect(screen.getByTestId("program-section-observable_standard").textContent).toContain("Drafted by BTY");
+    expect(screen.queryByTestId("program-review-block")).toBeNull();
+  });
+
+  it("G4: narrative stays editable and keeps its safety checks", async () => {
+    setup(ok);
     await generate();
     await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
-        target: { value: "A shared process is created and adopted by the team." },
+      fireEvent.change(screen.getByTestId("program-edit-why_it_matters"), {
+        target: { value: "Completing this guarantees the behaviour is now permanent." },
       });
     });
-    expect(screen.getByTestId("program-standard-not-observable")).toBeTruthy();
+    expect(screen.getByTestId("program-review-block").textContent).toContain("can’t show");
+    expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("G6: Discard after adjustments writes nothing and returns to the entry point", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await openDetails("observable_standard");
+    await setField("actor", "the duty pharmacist");
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-discard"));
     });
     expect(onApply).not.toHaveBeenCalled();
     expect(screen.getByTestId("program-authorship-entry")).toBeTruthy();
-    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
-  });
-
-  it("G15: regenerating after a discard starts from BTY's proposal, not the abandoned edit", async () => {
-    setup(ok);
-    await generate();
-    await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), { target: { value: "A shared process is created." } });
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("program-discard"));
-    });
-    await generate();
-    expect((screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement).value).toBe("AI standard");
-    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
   });
 
   it("discarding applies nothing and returns to the entry point", async () => {

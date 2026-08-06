@@ -5,8 +5,13 @@ import type { JourneyElementKind, RealityGroundedJourneyV1 } from "@/domain/foun
 import {
   applyProgramProposal,
   attributionKind,
+  contractsFromProposal,
+  deriveInstructionalContent,
   missingProgramKinds,
+  validateEditedReview,
+  type ProgramContracts,
   type ProgramProposal,
+  type ReviewBlockReason,
   type SectionChoice,
   type SectionDecision,
 } from "@/domain/foundry/module/program-authorship";
@@ -15,6 +20,7 @@ import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/mo
 import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
+import { DETAIL_FIELDS, REVIEW_BLOCK_COPY } from "./programReviewFields";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -91,6 +97,13 @@ export function ProgramAuthorship({
   const [failureCode, setFailureCode] = useState<string>("");
   const [decisions, setDecisions] = useState<Record<string, SectionDecision>>({});
   const [edits, setEdits] = useState<Record<string, string>>({});
+  /** The shared authority every instructional sentence is rendered from. */
+  const [contracts, setContracts] = useState<ProgramContracts | null>(null);
+  /** The contracts BTY proposed, so Reset can restore them exactly. */
+  const [baseContracts, setBaseContracts] = useState<ProgramContracts | null>(null);
+  /** Which sections the Host has adjusted, for honest provenance labelling. */
+  const [adjusted, setAdjusted] = useState<Record<string, boolean>>({});
+  const [openDetails, setOpenDetails] = useState<string | null>(null);
   const [titleDecision, setTitleDecision] = useState<SectionDecision>("use");
   const [titleEdit, setTitleEdit] = useState("");
 
@@ -137,6 +150,11 @@ export function ProgramAuthorship({
     // one is still an explicit, changeable choice.
     setDecisions(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
     setEdits(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, e.content])));
+    const c = contractsFromProposal(r.proposal, answers.followUpDays ?? 0);
+    setContracts(c);
+    setBaseContracts(c);
+    setAdjusted({});
+    setOpenDetails(null);
     setTitleDecision("use");
     setTitleEdit(r.proposal.displayTitle);
     setPhase("review");
@@ -166,24 +184,57 @@ export function ProgramAuthorship({
    * `ProgramProposal`. What remains is the honest half — an edited standard that no longer
    * describes a behavior must not be applied silently just because BTY's original did.
    */
-  const standardEdited = decisions.observable_standard === "edit";
-  const editedStandard = edits.observable_standard ?? "";
-  const standardNoLongerObservable =
-    standardEdited && editedStandard.trim().length > 0 && isMetaStandardText(editedStandard);
+  /**
+   * STRUCTURED REVIEW AUTHORITY (Slice 3.2L-R6.1).
+   *
+   * R6 derived six instructional sections from shared contracts but still offered six free
+   * textareas, so a Host could edit APPLY IT to describe a different behaviour than THE
+   * STANDARD and apply both. Nothing was persisted, so this was never a stale-database
+   * defect — it was a product one.
+   *
+   * The Host now adjusts the CONTRACT, and every dependent sentence re-renders. A program
+   * cannot disagree with itself, because there is only ever one behavioural authority to
+   * disagree with. Narrative sections stay direct free-text edits: they instruct nobody.
+   */
+  const derivedContent = useCallback(
+    (kind: JourneyElementKind): string | null => (contracts ? deriveInstructionalContent(kind, contracts) : null),
+    [contracts],
+  );
+
+  /** The text that will actually be applied for one section. */
+  const sectionText = useCallback(
+    (kind: JourneyElementKind, fallback: string): string => derivedContent(kind) ?? edits[kind] ?? fallback,
+    [derivedContent, edits],
+  );
+
+  /** Guard: a proposal from before v4 carries no contracts, so nothing is derived. */
+  const hasContracts = contracts !== null;
+
+  const reviewBlock = useMemo(() => {
+    if (!contracts || !proposal) return null;
+    const r = validateEditedReview(contracts, proposal.elements.map((e) => e.kind), edits, answers);
+    return r.ok ? null : r;
+  }, [contracts, proposal, edits, answers]);
 
   const apply = useCallback(() => {
-    if (!proposal || standardNoLongerObservable) return;
-    const choices: SectionChoice[] = proposal.elements.map((e) => ({
-      kind: e.kind,
-      decision: decisions[e.kind] ?? "use",
-      editedContent: edits[e.kind],
-    }));
+    if (!proposal || reviewBlock) return;
+    const choices: SectionChoice[] = proposal.elements.map((e) => {
+      // Provenance follows what the HOST actually touched. A derived section they never
+      // adjusted is still BTY's work, even though Apply re-reads its rendered text.
+      const touched = adjusted[e.kind] === true || decisions[e.kind] === "edit";
+      return {
+        kind: e.kind,
+        decision: touched ? "edit" : "use",
+        // Apply always takes the CURRENTLY RENDERED sentence, never a stale one.
+        editedContent: sectionText(e.kind, e.content),
+      };
+    });
     onApply(
       applyProgramProposal(journey, proposal, choices, { titleDecision, editedTitle: titleEdit }),
       attemptId,
     );
     setPhase("applied");
-  }, [proposal, decisions, edits, journey, titleDecision, titleEdit, attemptId, onApply, standardNoLongerObservable]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, sectionText, adjusted, decisions]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -351,58 +402,97 @@ export function ProgramAuthorship({
       </div>
 
       {p.elements.map((e) => {
-        const decision = decisions[e.kind] ?? "use";
+        const derived = derivedContent(e.kind);
+        const isDerived = derived !== null;
+        const wasAdjusted = adjusted[e.kind] === true;
+        const open = openDetails === e.kind;
         return (
           <div key={e.kind} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[e.kind]}</span>
               {/*
-                Authorship follows the edit. Once the Host rewrites a section it is their
-                sentence, and BTY's contract no longer describes it — saying "Drafted by
-                BTY" over the Host's own words is the drift this badge exists to prevent.
+                "Adjusted by you", not "Your rewrite": for a derived section the sentence is
+                still deterministically rendered by BTY — from values the Host changed. Calling
+                that the Host's rewrite would be as inaccurate as calling it BTY's own draft.
               */}
               <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
-                {decision === "edit" ? "Your rewrite" : "Drafted by BTY"}
+                {wasAdjusted || (!isDerived && decisions[e.kind] === "edit") ? "Adjusted by you" : "Drafted by BTY"}
               </span>
             </div>
-            {/*
-              CONTENT-SIZED, not three fixed rows (Slice 3.2L-R4). The physical recording
-              showed the last line of WHY THIS MATTERS, IN CONTEXT and WHAT HAPPENS NEXT cut
-              off by the field's lower border: `rows={3}` is a fixed height, content is
-              allowed 700 characters, and iOS draws no scrollbar to say so. A Founder cannot
-              exercise review authority over text they cannot read. `rows` survives as the
-              MINIMUM height.
-            */}
-            <AutoTextarea
-              value={edits[e.kind] ?? e.content}
-              onChange={(next) => {
-                setEdits((s) => ({ ...s, [e.kind]: next }));
-                setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
-              }}
-              rows={3}
-              data-testid={`program-edit-${e.kind}`}
-              className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
-            />
-            <div className="flex items-center gap-2">
-              {(["use", "keep", "edit"] as SectionDecision[]).map((d) => {
-                const label = d === "use" ? "Use this" : d === "keep" ? "Keep mine" : "My rewrite";
-                const active = decision === d;
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDecisions((s) => ({ ...s, [e.kind]: d }))}
-                    data-testid={`program-decision-${e.kind}-${d}`}
-                    aria-pressed={active}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      active ? "bg-[#C9A66B] text-[#0B1F3A]" : "border border-white/15 text-white/60 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+
+            {isDerived ? (
+              <>
+                {/*
+                  READ-ONLY derived text plus structured controls (pattern A). Six free
+                  textareas let one section drift from another; adjusting the shared values
+                  cannot, because every dependent sentence re-renders from them.
+                */}
+                <p className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85" data-testid={`program-derived-${e.kind}`}>
+                  {derived}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOpenDetails(open ? null : e.kind)}
+                  aria-expanded={open}
+                  data-testid={`program-details-toggle-${e.kind}`}
+                  className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/60 hover:bg-white/[0.06]"
+                >
+                  {open ? "Done" : "Edit details"}
+                </button>
+                {open ? (
+                  <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3" data-testid={`program-details-${e.kind}`}>
+                    {DETAIL_FIELDS[e.kind]?.map((f) => (
+                      <label key={f.id} className="flex flex-col gap-1">
+                        <span className="text-xs text-white/45">{f.label}</span>
+                        {f.options ? (
+                          <select
+                            value={f.get(contracts!) ?? ""}
+                            onChange={(ev) => {
+                              setContracts((c) => (c ? f.set(c, ev.target.value) : c));
+                              setAdjusted((a) => ({ ...a, ...Object.fromEntries(f.affects.map((k) => [k, true])) }));
+                            }}
+                            data-testid={`program-field-${f.id}`}
+                            className="rounded-lg border border-white/15 bg-[#0B1F3A] px-3 py-2 text-sm text-white/85"
+                          >
+                            {f.options.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <AutoTextarea
+                            value={f.get(contracts!) ?? ""}
+                            onChange={(next) => {
+                              setContracts((c) => (c ? f.set(c, next) : c));
+                              setAdjusted((a) => ({ ...a, ...Object.fromEntries(f.affects.map((k) => [k, true])) }));
+                            }}
+                            rows={2}
+                            data-testid={`program-field-${f.id}`}
+                            className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+                          />
+                        )}
+                      </label>
+                    ))}
+                    {e.kind === "follow_up" ? (
+                      <p className="text-xs leading-5 text-white/40">
+                        The {contracts?.followUpDays ?? 0}-day window comes from your training setup and isn’t changed here.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              /* NARRATIVE — the Host owns these words directly; they instruct nobody. */
+              <AutoTextarea
+                value={edits[e.kind] ?? e.content}
+                onChange={(next) => {
+                  setEdits((s) => ({ ...s, [e.kind]: next }));
+                  setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
+                }}
+                rows={3}
+                data-testid={`program-edit-${e.kind}`}
+                className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+              />
+            )}
             <p className="text-xs leading-5 text-white/40">{e.rationale}</p>
           </div>
         );
@@ -423,11 +513,9 @@ export function ProgramAuthorship({
         <ListBlock title="Worth noting" items={p.warnings} testid="program-warnings" tone="amber" />
       ) : null}
 
-      {standardNoLongerObservable ? (
-        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] px-4 py-3 text-sm leading-6 text-amber-100/85" data-testid="program-standard-not-observable">
-          Your rewrite of “The standard” says a standard will be created or used, but not what
-          someone actually does. Say who does what, when, and how they know it’s done — then you
-          can add this program.
+      {reviewBlock ? (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] px-4 py-3 text-sm leading-6 text-amber-100/85" data-testid="program-review-block">
+          {REVIEW_BLOCK_COPY[reviewBlock.reason]}
         </p>
       ) : null}
 
@@ -435,11 +523,27 @@ export function ProgramAuthorship({
         <button
           type="button"
           onClick={apply}
-          disabled={standardNoLongerObservable}
+          disabled={reviewBlock !== null}
           data-testid="program-apply"
           className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-40"
         >
           Add this program to my training
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setContracts(baseContracts);
+            setEdits(Object.fromEntries(p.elements.map((el) => [el.kind, el.content])));
+            setDecisions(Object.fromEntries(p.elements.map((el) => [el.kind, "use" as SectionDecision])));
+            setTitleEdit(p.displayTitle);
+            setTitleDecision("use");
+            setAdjusted({});
+            setOpenDetails(null);
+          }}
+          data-testid="program-reset"
+          className="text-sm text-white/55"
+        >
+          Reset to BTY’s draft
         </button>
         <button type="button" onClick={() => setPhase("idle")} data-testid="program-discard" className="text-sm text-white/55">
           Discard

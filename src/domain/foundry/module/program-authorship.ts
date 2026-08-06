@@ -60,6 +60,7 @@ import {
   type CompletionContract,
   type FollowUpContract,
   type OperationalConstruct,
+  type DependencyDefect,
   type ProgramSection,
   type ScenarioContract,
 } from "./program-coherence";
@@ -350,7 +351,14 @@ export const PROGRAM_REJECT_CODES: readonly ProgramRejectCode[] = [
 
 export type ProgramValidation =
   | { ok: true; value: ProgramValidated }
-  | { ok: false; code: ProgramRejectCode; kind?: JourneyElementKind; diagnosis?: StructuralDiagnosis };
+  | {
+      ok: false;
+      code: ProgramRejectCode;
+      kind?: JourneyElementKind;
+      diagnosis?: StructuralDiagnosis;
+      /** Present only for `dependency_inversion` — closed vocabulary, never prose. */
+      dependency?: DependencyDefect;
+    };
 
 // ---------------------------------------------------------------------------
 // Bounds
@@ -1119,7 +1127,11 @@ export function validateProgramProposal(
     contract,
     operationalConstruct,
   );
-  if (dependency) return REJECT("dependency_inversion", dependency.kind);
+  if (dependency) {
+    // The branch, the construct noun and the counterpart travel with the refusal so the
+    // ledger can record what the R5 window could only let us infer.
+    return { ...REJECT("dependency_inversion", dependency.kind), dependency } as ProgramValidation;
+  }
 
   const ceilingUnsafe = unsafe(evidenceLanguage.value);
   if (ceilingUnsafe) return REJECT(ceilingUnsafe);
@@ -1276,4 +1288,153 @@ export function attributionKind(el: { grounding?: { sourceType?: unknown }[] } |
   if (p === "host_edited") return "host_edited";
   if (p === "ai_proposed") return "bty_authored";
   return "derived";
+}
+
+// ---------------------------------------------------------------------------
+// Structured review authority (Slice 3.2L-R6.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE OPEN DEFECT R6 LEFT. R6 derived six instructional sections from shared contracts, but
+ * the review surface still handed the Host six free textareas. Nothing is persisted, so
+ * this was never a stale-database problem — it was a product one: a Host could edit APPLY IT
+ * so it described a different behaviour than THE STANDARD, and apply both.
+ *
+ * The fix is not to lock the Host out. It is to let them adjust the CONTRACT and re-render
+ * every dependent sentence, so the program cannot disagree with itself by construction.
+ * The initial Guided Builder stays conversational; this exists only inside review.
+ */
+export type ProgramContracts = {
+  behavior: BehaviorContract;
+  scenario: ScenarioContract | null;
+  application: ApplicationContract | null;
+  completion: CompletionContract | null;
+  followUp: FollowUpContract | null;
+  construct: OperationalConstruct | null;
+  followUpDays: number;
+};
+
+/** The contracts a proposal was generated with, as the starting point for review. */
+export function contractsFromProposal(proposal: ProgramProposal, followUpDays: number): ProgramContracts | null {
+  // A proposal without a behaviour contract cannot derive anything. Only reachable from a
+  // pre-v4 shape; returning null keeps the review surface honest rather than crashing.
+  if (!proposal.behaviorContract) return null;
+  return {
+    behavior: proposal.behaviorContract,
+    scenario: proposal.scenarioContract,
+    application: proposal.applicationContract,
+    completion: proposal.completionContract,
+    followUp: proposal.followUpContract,
+    construct: proposal.operationalConstruct,
+    followUpDays,
+  };
+}
+
+/**
+ * The participant-facing sentence for one INSTRUCTIONAL kind, or null for a narrative kind
+ * whose text the Host owns directly. One function, used by the validator, the review
+ * surface and the tests — so what the Host sees and what Apply writes cannot diverge.
+ */
+export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramContracts): string | null {
+  if (kind === "observable_standard") return renderStandardSentence(c.behavior);
+  if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario);
+  if (kind === "action_decision" && c.application) return renderDecisionSentence(c.behavior, c.application);
+  if (kind === "field_application" && c.application) return renderApplicationSentence(c.behavior, c.application, c.construct);
+  if (kind === "completion_check" && c.completion) return renderCompletionQuestion(c.behavior, c.completion);
+  if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays);
+  return null;
+}
+
+/** Why an edited review state cannot be applied. The UI owns the wording. */
+export type ReviewBlockReason =
+  | "standard_incomplete"
+  | "standard_not_observable"
+  | "scenario_incomplete"
+  | "application_incomplete"
+  | "completion_invalid"
+  | "follow_up_invalid"
+  | "narrative_unsafe"
+  | "derived_too_long";
+
+export type ReviewValidation =
+  | { ok: true }
+  | { ok: false; reason: ReviewBlockReason; kind: JourneyElementKind };
+
+/**
+ * Validate the CURRENT edited review state as one program, deterministically and with no
+ * provider call. This runs on the Host's own adjustments, so it checks the same properties
+ * the generated contracts had to satisfy — a Host may write a worse standard than BTY did,
+ * but not one the product would have refused from the model.
+ */
+export function validateEditedReview(
+  c: ProgramContracts,
+  required: readonly JourneyElementKind[],
+  narrative: Readonly<Record<string, string>>,
+  answers: BuilderAnswers | undefined,
+  verifiedArtifacts: readonly string[] = [],
+): ReviewValidation {
+  const corpus = groundingCorpus(answers, verifiedArtifacts);
+
+  const behavior = validateBehaviorContract({
+    actor: c.behavior.actor,
+    trigger: c.behavior.trigger,
+    observable_action: c.behavior.observableAction,
+    completion_signal: c.behavior.completionSignal,
+  });
+  if (!behavior.ok) {
+    const reason: ReviewBlockReason = behavior.defect.reason === "missing" || behavior.defect.reason === "too_long"
+      ? "standard_incomplete"
+      : "standard_not_observable";
+    return { ok: false, reason, kind: "observable_standard" };
+  }
+
+  if (required.includes("scenario")) {
+    if (!c.scenario) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };
+    const sc = validateScenarioContract(
+      { pressure_or_constraint: c.scenario.pressureOrConstraint, context_detail: c.scenario.contextDetail },
+      c.behavior,
+    );
+    if (!sc.ok) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };
+  }
+
+  if (required.includes("field_application") || required.includes("action_decision")) {
+    if (!c.application) return { ok: false, reason: "application_incomplete", kind: "field_application" };
+    const ac = validateApplicationContract({
+      application_moment: c.application.applicationMoment,
+      evidence_or_confirmation: c.application.evidenceOrConfirmation,
+    });
+    if (!ac.ok) return { ok: false, reason: "application_incomplete", kind: "field_application" };
+  }
+
+  if (required.includes("completion_check") && !c.completion) {
+    return { ok: false, reason: "completion_invalid", kind: "completion_check" };
+  }
+  if (required.includes("follow_up") && !c.followUp) {
+    return { ok: false, reason: "follow_up_invalid", kind: "follow_up" };
+  }
+
+  // Host-editable free text carries the same honesty rules the model's did.
+  for (const kind of required) {
+    const text = (narrative[kind] ?? "").trim();
+    if (text.length === 0 || deriveInstructionalContent(kind, c) !== null) continue;
+    if (assertsOverclaim(text) || PERSON_EVALUATION.some((re) => re.test(text)) || INTERNAL_JARGON.some((re) => re.test(text))) {
+      return { ok: false, reason: "narrative_unsafe", kind };
+    }
+    if (ungroundedArtifact(text, corpus) !== null || INVENTED_SPECIFICS.some((re) => re.test(text))) {
+      return { ok: false, reason: "narrative_unsafe", kind };
+    }
+    if (kind === "why_it_matters" && programContext(answers) && overlapRatio(text, programContext(answers)!.problemStatement) >= 0.8) {
+      return { ok: false, reason: "narrative_unsafe", kind };
+    }
+  }
+
+  // Every rendered sentence must still fit the element ceiling.
+  for (const kind of required) {
+    const derived = deriveInstructionalContent(kind, c);
+    if (derived !== null && derived.length > LIMITS.content) {
+      return { ok: false, reason: "derived_too_long", kind };
+    }
+  }
+
+  return { ok: true };
 }

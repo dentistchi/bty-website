@@ -79,42 +79,69 @@ test.describe("Program review preview — non-paid readability gate", () => {
     expect(seen).toEqual([]);
   });
 
-  test("G15: no section's last line is clipped at an iPhone width", async ({ page }) => {
+  test("G10: derived sections render as free-flowing text — clipping is structurally impossible", async ({ page }) => {
     await openReview(page);
-
-    const measured = await page.evaluate(() =>
-      Array.from(document.querySelectorAll<HTMLTextAreaElement>('[data-testid^="program-edit-"]')).map((t) => ({
-        id: t.dataset.testid ?? "",
-        overflow: t.scrollHeight - t.clientHeight,
-        chars: t.value.length,
-        overflowY: getComputedStyle(t).overflowY,
-        readOnly: t.readOnly,
+    // R6.1 replaced six free textareas with read-only derived text plus structured controls.
+    // A paragraph cannot clip the way a fixed-height textarea did.
+    const derived = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[data-testid^="program-derived-"]')).map((el) => ({
+        id: (el as HTMLElement).dataset.testid ?? "",
+        tag: el.tagName,
+        chars: (el.textContent ?? "").length,
+        overflow: el.scrollHeight - el.clientHeight,
       })),
     );
-
-    expect(measured.length).toBeGreaterThanOrEqual(7);
-    // At least one section is genuinely long — otherwise this proves nothing.
-    expect(Math.max(...measured.map((m) => m.chars))).toBeGreaterThan(400);
-    for (const m of measured) {
-      expect(m.overflow, `${m.id} is clipped by ${m.overflow}px`).toBeLessThanOrEqual(1);
-      expect(m.overflowY, m.id).not.toBe("hidden");
-      expect(m.readOnly, m.id).toBe(false);
+    expect(derived.length).toBeGreaterThanOrEqual(5);
+    for (const d of derived) {
+      expect(d.tag, d.id).toBe("P");
+      expect(d.overflow, `${d.id} overflows by ${d.overflow}px`).toBeLessThanOrEqual(1);
+      expect(d.chars, d.id).toBeGreaterThan(20);
     }
   });
 
-  test("G15: a field grows when the Host types and shrinks again on reset", async ({ page }) => {
+  test("G10: the narrative field still grows and shrinks with its content", async ({ page }) => {
     await openReview(page);
-    const field = page.getByTestId("program-edit-completion_check");
-
-    const before = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
-    await field.fill("A much longer answer. ".repeat(30));
-    const after = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
-    expect(after).toBeGreaterThan(before);
-    await expect(field).toHaveJSProperty("scrollHeight", await field.evaluate((el) => (el as HTMLTextAreaElement).scrollHeight));
+    const field = page.getByTestId("program-edit-why_it_matters");
+    const long = await field.evaluate((el) => {
+      const t = el as HTMLTextAreaElement;
+      return { h: t.clientHeight, overflow: t.scrollHeight - t.clientHeight, chars: t.value.length };
+    });
+    // The preview fixture's narrative sits near the 700-character ceiling on purpose.
+    expect(long.chars).toBeGreaterThan(400);
+    expect(long.overflow).toBeLessThanOrEqual(1);
 
     await field.fill("Short again.");
-    const shrunk = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
-    expect(shrunk).toBeLessThan(after);
+    const short = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
+    expect(short).toBeLessThan(long.h);
+  });
+
+  test("G9: structured controls propagate to every dependent section, with zero network", async ({ page }) => {
+    const seen: string[] = [];
+    page.on("request", (r) => {
+      if (FORBIDDEN.test(r.url())) seen.push(r.url());
+    });
+    await openReview(page);
+
+    const standard = page.getByTestId("program-derived-observable_standard");
+    const apply = page.getByTestId("program-derived-field_application");
+    const beforeStandard = await standard.textContent();
+    const beforeApply = await apply.textContent();
+
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+    await page.getByTestId("program-field-actor").fill("the duty pharmacist");
+
+    await expect(standard).toContainText("the duty pharmacist");
+    await expect(apply).toContainText("the duty pharmacist");
+    expect(await standard.textContent()).not.toBe(beforeStandard);
+    expect(await apply.textContent()).not.toBe(beforeApply);
+    await expect(page.getByTestId("program-section-observable_standard")).toContainText("Adjusted by you");
+
+    // Reset restores BTY's draft exactly.
+    await page.getByTestId("program-reset").click();
+    expect(await standard.textContent()).toBe(beforeStandard);
+    await expect(page.getByTestId("program-section-observable_standard")).toContainText("Drafted by BTY");
+
+    expect(seen, `preview must not call a backend: ${seen.join(", ")}`).toEqual([]);
   });
 
   test("G15: the page — not the field — is the scrolling surface", async ({ page }) => {

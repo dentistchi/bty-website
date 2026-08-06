@@ -854,10 +854,34 @@ function constructPhrase(construct: OperationalConstruct | null): string {
   return construct ? `the ${construct.label}` : "";
 }
 
+/**
+ * The observable action is written in the third person ("states each open item aloud"),
+ * because THE STANDARD describes an actor doing it. YOUR DECISION is first person, so the
+ * verb has to lose its agreement -s or the sentence reads "I will states each open item".
+ *
+ * Deliberately a small, conservative rule set over the verb forms a behaviour contract
+ * realistically uses. An action already in base form has no trailing -s and passes through
+ * untouched, so the common case where the model writes "state each item" is safe.
+ */
+const IRREGULAR_BASE: Record<string, string> = {
+  has: "have", does: "do", goes: "go", says: "say", is: "be", asks: "ask",
+};
+
+export function baseForm(verb: string): string {
+  const lower = verb.toLowerCase();
+  if (IRREGULAR_BASE[lower]) return IRREGULAR_BASE[lower];
+  if (/[^aeiou]ies$/.test(lower)) return `${lower.slice(0, -3)}y`;
+  if (/(ch|sh|ss|x|z|o)es$/.test(lower)) return lower.slice(0, -2);
+  if (/[^s]s$/.test(lower)) return lower.slice(0, -1);
+  return lower;
+}
+
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
   const action = stripTrailingStop(b.observableAction.trim());
   const moment = stripTrailingStop(a.applicationMoment.trim());
-  return `I will ${lowerFirst(action)}, starting ${lowerFirst(moment)}.`;
+  const [head, ...rest] = action.split(/\s+/);
+  const firstPerson = [baseForm(head), ...rest].join(" ");
+  return `I will ${firstPerson}, starting ${lowerFirst(moment)}.`;
 }
 
 export function renderApplicationSentence(

@@ -619,7 +619,9 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("G6: a decision commits to the DEFINED behaviour, not to creating a construct", () => {
     const d = renderDecisionSentence(GOOD, APP);
     expect(d.startsWith("I will ")).toBe(true);
-    expect(d).toContain("states each unfinished task");
+    // First person, so the agreement -s is dropped: "I will state", never "I will states".
+    expect(d).toContain("I will state each unfinished task");
+    expect(d).not.toContain("I will states");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
   });
