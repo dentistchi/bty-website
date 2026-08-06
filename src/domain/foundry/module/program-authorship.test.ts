@@ -49,6 +49,14 @@ const CANONICAL: BuilderAnswers = {
 
 const el = (kind: string, content: string, rationale = "because it fits") => ({ kind, content, rationale });
 
+/** A behavioral contract that satisfies all four R4 role checks. */
+const CONTRACT = {
+  actor: "the outgoing person",
+  trigger: "At the end of every shift, before leaving the floor",
+  observable_action: "states each open item aloud to the person taking over",
+  completion_signal: "the person taking over repeats the open items back and confirms they have them",
+};
+
 /** A proposal that satisfies every rule for CANONICAL. */
 function goodProposal(over: Record<string, unknown> = {}) {
   return {
@@ -56,6 +64,8 @@ function goodProposal(over: Record<string, unknown> = {}) {
       display_title: "Handing over without gaps",
       elements: [
         el("why_it_matters", "When a handoff misses a step, the next person starts without knowing what changed, and the risk lands on them."),
+        // The model still sends a sentence for this kind, but the validated contract is
+        // what the Host sees — R4 renders THE STANDARD from `behavior_contract`.
         el("observable_standard", "The outgoing person states each open item aloud and the incoming person repeats it back before signing off."),
         el("scenario", "You are finishing a long shift and the handoff standard is waiting, but two people are already asking you questions."),
         el("action_decision", "I will decide which open items I always state aloud at handoff, even when the shift ran late."),
@@ -67,6 +77,16 @@ function goodProposal(over: Record<string, unknown> = {}) {
       assumptions: ["Handoffs happen at a predictable shift change."],
       warnings: ["If the handoff step is missing from the workflow, training alone will not add it."],
       evidence_language: "Completing this shows people were exposed to the standard and decided something. It does not show behaviour changed.",
+      // R4: the behavioral contract THE STANDARD is rendered from. It NAMES the shared
+      // handoff standard while defining it, which is what makes later sections free to
+      // refer to it.
+      behavior_contract: {
+        actor: "the outgoing person",
+        trigger: "At the end of every shift, before leaving the floor",
+        observable_action:
+          "follows the shared handoff standard by stating each open item aloud to the person taking over",
+        completion_signal: "the person taking over repeats the open items back and confirms they have them",
+      },
       ...over,
     },
   };
@@ -256,6 +276,7 @@ describe("[3.2L] the validator fails closed", () => {
         assumptions: [],
         warnings: [],
         evidence_language: "This shows people were exposed to the standard. It does not show behaviour changed.",
+        behavior_contract: CONTRACT,
       },
     };
     const r = validateProgramProposal(p, infoOnly);
@@ -280,6 +301,7 @@ describe("[3.2L] the validator fails closed", () => {
         assumptions: [],
         warnings: [],
         evidence_language: "This shows exposure only. It does not show behaviour changed.",
+        behavior_contract: CONTRACT,
       },
     };
     expect(validateProgramProposal(p, infoOnly).ok).toBe(true);
@@ -353,6 +375,12 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
     assumptions: [],
     warnings: [],
     evidenceLanguage: "honest",
+    behaviorContract: {
+    actor: "the outgoing person",
+    trigger: "At the end of every shift",
+    observableAction: "states each open item aloud to the person taking over",
+    completionSignal: "the person taking over repeats them back and confirms",
+    },
   };
   const current: RealityGroundedJourneyV1 = {
     version: 1,

@@ -52,6 +52,13 @@ const validProgram = () => ({
     assumptions: [],
     warnings: [],
     evidence_language: "This shows exposure only. It does not show behaviour changed.",
+    // R4: THE STANDARD is rendered from this contract, so every valid program carries one.
+    behavior_contract: {
+      actor: "the outgoing person",
+      trigger: "At the end of every shift, before signing off",
+      observable_action: "states each open item aloud to the person taking over",
+      completion_signal: "the person taking over repeats the open items back and confirms them",
+    },
   },
 });
 

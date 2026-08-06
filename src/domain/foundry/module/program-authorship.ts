@@ -33,8 +33,23 @@ import {
   type BuilderAnswers,
   type LearningNeed,
 } from "./module-builder";
+import {
+  ARTIFACT_NOUNS,
+  CONTRACT_FIELD_LIMIT,
+  renderStandardSentence,
+  ungroundedExistingEntity,
+  validateBehaviorContract,
+  validateProgramDependencies,
+  type BehaviorContract,
+  type ProgramSection,
+} from "./program-coherence";
 
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v1";
+/**
+ * MATERIALLY DIFFERENT CONTRACT (Slice 3.2L-R4), so a new version rather than a relabelled
+ * v1: the provider must now return a structured `behavior_contract`, and the participant-
+ * facing standard is DERIVED from it instead of authored beside it.
+ */
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v2";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -219,6 +234,15 @@ export type ProgramProposal = {
   warnings: string[];
   /** Honest ceiling on what the configured workflow can establish. */
   evidenceLanguage: string;
+  /**
+   * The validated behavioral contract THE STANDARD was rendered from (Slice 3.2L-R4).
+   *
+   * PROPOSAL-ONLY. `applyProgramProposal` reads participant-facing content and nothing
+   * else, and no persistence path stores a `ProgramProposal` — the durable ledger records
+   * counts and digests, never the program body. So this never reaches a database, and a
+   * Host edit cannot leave stale metadata behind in one: there is nowhere for it to go.
+   */
+  behaviorContract: BehaviorContract;
 };
 
 export type ProgramValidated = { proposal: ProgramProposal; version: string };
@@ -243,7 +267,18 @@ export type ProgramRejectCode =
   | "application_without_actor"
   | "scenario_unrelated"
   | "generic_completion"
+  /**
+   * The behavioral contract is incomplete or non-observable (Slice 3.2L-R4). The code name
+   * is kept; its MEANING is corrected. It previously fired only when the standard had
+   * fewer than four words — a bar the live meta-standard cleared sixteen words wide.
+   */
   | "non_observable_standard"
+  /**
+   * A section depends on an operational construct the program never defined, or a closing
+   * question supplies the defining content of a construct an earlier section already told
+   * the participant to use (Slice 3.2L-R4).
+   */
+  | "dependency_inversion"
   | "section_contradiction"
   | "duplicate_content"
   | "internal_jargon"
@@ -275,7 +310,7 @@ const MIN_CONTENT = 15;
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line no-control-regex
-const CONTROL_CHARS = /[ --]/;
+const CONTROL_CHARS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const UNSAFE = [/<[^>]+>/, /```|~~~/, /data:\s*[\w.+-]+\/[\w.+-]+/i, /<\s*script|javascript:|onerror\s*=|onload\s*=/i];
 function hasUnsafeMarkup(raw: string): boolean {
   return CONTROL_CHARS.test(raw) || UNSAFE.some((re) => re.test(raw));
@@ -346,57 +381,12 @@ const MATERIAL_EXISTS = [
  * made when the Host's own supplied context names that kind of artifact. An INDEFINITE
  * or creation-framed reference proposes a future artifact and is always fine.
  */
-export const ARTIFACT_NOUNS = [
-  "template", "templates", "checklist", "checklists", "form", "forms", "guide", "guides",
-  "manual", "manuals", "policy", "policies", "procedure", "procedures", "sop", "sops",
-  "document", "documents", "file", "files", "pdf", "pdfs", "spreadsheet", "spreadsheets",
-  "dashboard", "dashboards", "tool", "tools", "system", "systems", "tracker", "trackers",
-  "portal", "portals", "playbook", "playbooks", "handbook", "handbooks", "protocol", "protocols",
-  "worksheet", "worksheets", "questionnaire", "questionnaires", "software", "platform", "platforms",
-  "database", "databases", "app", "apps", "wiki", "wikis", "logbook", "logbooks",
-  "record", "records", "log", "logs", "register", "registers", "sheet", "sheets",
-] as const;
-
-/** Singularise just enough to compare an artifact head against the Host's own words. */
-function artifactStem(noun: string): string {
-  const n = noun.toLowerCase();
-  if (n.endsWith("ies")) return `${n.slice(0, -3)}y`;
-  if (n.endsWith("es") && /(ch|sh|s|x|z)es$/.test(n)) return n.slice(0, -2);
-  if (n.endsWith("s") && !n.endsWith("ss")) return n.slice(0, -1);
-  return n;
-}
-
-const NOUN_ALT = ARTIFACT_NOUNS.join("|");
-
 /**
- * GREEDY modifiers on purpose. "the handoff record template" contains TWO artifact nouns;
- * a lazy match stops at "record", finds it grounded (the Host wrote "Handoff record") and
- * never examines "template" — which is the ungrounded one. Measured: that made the live
- * miss pass. Greedy matching reaches the HEAD noun, which is the artifact being claimed.
- *
- * A definite/possessive reference presupposes the artifact already exists:
- *   "the handoff record template", "our checklist", "your workflow tool".
- * An INDEFINITE reference ("a shared handoff record") proposes one, and never matches.
+ * The noun inventories, the greedy head-noun matcher and the creation/conditional framing
+ * now live in `program-coherence`, which owns ONE entity lifecycle for artifacts AND
+ * operational constructs. Re-exported here so the module's public surface is unchanged.
  */
-const DEFINITE_ARTIFACT = new RegExp(
-  `\\b(?:the|our|your|its|their|this|that|these|those|existing|available|current|ready-made|pre-made)\\s+((?:[\\w'-]+\\s+){0,3}(${NOUN_ALT}))\\b`,
-  "gi",
-);
-
-/** "access to the necessary tools and templates" — an availability claim. */
-const ACCESS_ARTIFACT = new RegExp(
-  `\\baccess\\s+to\\s+(?:the\\s+|any\\s+)?(?:necessary\\s+|required\\s+|appropriate\\s+|relevant\\s+)?((?:[\\w'-]+\\s+){0,3}(${NOUN_ALT}))\\b`,
-  "gi",
-);
-
-/** Framing that PROPOSES an artifact rather than presupposing one. */
-const CREATION_FRAME =
-  /\b(?:create|creating|build|building|design|designing|develop|developing|establish|establishing|agree\s+on|agreeing\s+on|define|defining|decide\s+on|draft|drafting|set\s+up|setting\s+up|write|writing|make|making|introduce|introducing|adopt|adopting|choose|choosing|identify|identifying)\b/i;
-
-/** Conditional framing — "if your team has one" — is not an existence claim. */
-const CONDITIONAL_FRAME = /\bif\s+(?:you|your team|one|it|they|there)\b|\bif\s+\w+\s+(?:has|have|exists?)\b|\bwhere available\b|\bif any\b/i;
-
-const LOOKBACK = 70;
+export { ARTIFACT_NOUNS, CONSTRUCT_NOUNS } from "./program-coherence";
 
 /**
  * The only text that can ground an artifact: what the HOST supplied, plus the identities
@@ -426,22 +416,7 @@ export function groundingCorpus(answers: BuilderAnswers | undefined, verifiedArt
  * generated prose back into logs.
  */
 export function ungroundedArtifact(text: string, corpus: string): string | null {
-  for (const re of [DEFINITE_ARTIFACT, ACCESS_ARTIFACT]) {
-    re.lastIndex = 0;
-    for (let m = re.exec(text); m !== null; m = re.exec(text)) {
-      const head = artifactStem(m[2]);
-      // Grounded: the Host named this kind of artifact themselves.
-      if (corpus.includes(head)) continue;
-      // Proposed, not presupposed.
-      const window = text.slice(Math.max(0, m.index - LOOKBACK), m.index);
-      if (CREATION_FRAME.test(window)) continue;
-      // Conditional anywhere in the surrounding sentence.
-      const sentence = text.slice(Math.max(0, m.index - LOOKBACK), Math.min(text.length, m.index + m[0].length + LOOKBACK));
-      if (CONDITIONAL_FRAME.test(sentence)) continue;
-      return head;
-    }
-  }
-  return null;
+  return ungroundedExistingEntity(text, corpus);
 }
 
 /** Invented concrete specifics the Host never supplied. */
@@ -536,7 +511,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v1";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v2";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -559,12 +534,32 @@ export const PROGRAM_JSON_SCHEMA = {
     program: {
       type: "object",
       additionalProperties: false,
-      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language"],
+      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract"],
       properties: {
         display_title: { type: "string" },
         evidence_language: { type: "string" },
         assumptions: { type: "array", items: { type: "string" } },
         warnings: { type: "array", items: { type: "string" } },
+        /**
+         * The behavioral contract THE STANDARD is rendered from (Slice 3.2L-R4).
+         *
+         * PROGRAM-LEVEL, not per-element, and deliberately so. A program has exactly one
+         * `observable_standard`, so there is no ambiguity about which element it belongs
+         * to — and hanging a nullable object off every element instead would make the
+         * elements array non-uniform for the sake of one kind, which strict mode handles
+         * badly and reviewers read worse.
+         */
+        behavior_contract: {
+          type: "object",
+          additionalProperties: false,
+          required: ["actor", "trigger", "observable_action", "completion_signal"],
+          properties: {
+            actor: { type: "string" },
+            trigger: { type: "string" },
+            observable_action: { type: "string" },
+            completion_signal: { type: "string" },
+          },
+        },
         elements: {
           type: "array",
           items: {
@@ -722,6 +717,37 @@ export function validateProgramProposal(
   };
   const allowed = new Set<JourneyElementKind>([...required, "evidence", "reflection"]);
 
+  /**
+   * THE BEHAVIORAL CONTRACT (Slice 3.2L-R4), validated BEFORE any element, because
+   * `observable_standard`'s participant-facing sentence is rendered from it.
+   *
+   * A missing or wrong-typed contract is a SHAPE fault and repairable — the model can be
+   * told exactly which field was wrong. A contract that is present and well-typed but
+   * describes no observable behavior is a MEANING fault, and asking again does not fix
+   * meaning, so it refuses without a repair call.
+   */
+  const rawContract = (p as Record<string, unknown>).behavior_contract;
+  if (rawContract === undefined || rawContract === null) {
+    return REJECT_AT("missing_field", "program.behavior_contract", "an object with actor, trigger, observable_action and completion_signal", jsonTypeOf(rawContract), "observable_standard");
+  }
+  if (!isPlainObject(rawContract)) {
+    return REJECT_AT("field_type", "program.behavior_contract", "an object", jsonTypeOf(rawContract), "observable_standard");
+  }
+  for (const key of ["actor", "trigger", "observable_action", "completion_signal"] as const) {
+    const v = (rawContract as Record<string, unknown>)[key];
+    if (typeof v !== "string") {
+      return REJECT_AT("field_type", `program.behavior_contract.${key}`, `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
+    }
+    // The contract is rendered into participant-facing text, so it carries the SAME
+    // honesty rules as any other content — a fabricated template cannot enter through it.
+    const bad = unsafe(v);
+    if (bad) return REJECT(bad, "observable_standard");
+  }
+  const contractResult = validateBehaviorContract(rawContract);
+  // A well-formed contract that states no behavior. Not retryable: the shape was right.
+  if (!contractResult.ok) return REJECT("non_observable_standard", "observable_standard");
+  const contract: BehaviorContract = contractResult.value;
+
   const seen = new Set<JourneyElementKind>();
   const elements: ProposedElement[] = [];
 
@@ -758,10 +784,24 @@ export function validateProgramProposal(
     }
     const rationale = { ok: true as const, value: rationaleText };
 
-    const c = content.value;
+    /**
+     * ONE SOURCE OF TRUTH. THE STANDARD the Host reads is RENDERED from the validated
+     * contract; the model's own sentence for that kind is discarded. It is still required
+     * by the schema (the elements array stays uniform), and it still has to pass the
+     * string checks above — but it cannot become the displayed standard, so the displayed
+     * standard can never say something the structured contract does not.
+     */
+    const c = kind === "observable_standard" ? renderStandardSentence(contract) : content.value;
 
     // --- honesty (participant-facing content AND its Host-facing rationale) ---
-    const contentUnsafe = unsafe(c);
+    /**
+     * Checked on the DISPLAYED content and, when they differ, on the model's discarded
+     * original too. THE STANDARD's sentence is replaced by the rendered contract, and
+     * dropping the honesty check with it would mean a model that fabricated a template
+     * there was quietly ignored rather than refused. Nothing dishonest could reach the
+     * Host either way — but fail-closed means refusing the proposal, not editing around it.
+     */
+    const contentUnsafe = unsafe(c) ?? (c === content.value ? null : unsafe(content.value));
     if (contentUnsafe) return REJECT(contentUnsafe, kind);
     // Safety still applies to a rationale whenever one is PRESENT — advisory does not
     // mean unchecked; it only means absence is tolerated.
@@ -775,10 +815,9 @@ export function validateProgramProposal(
       // The manager's complaint replayed at the team is the R2F defect this closes.
       if (overlapRatio(c, ctx.problemStatement) >= 0.8) return REJECT("complaint_replay", kind);
     }
-    if (kind === "observable_standard") {
-      const wordCount = c.split(/\s+/).filter(Boolean).length;
-      if (wordCount < 4) return REJECT("non_observable_standard", kind);
-    }
+    // `observable_standard` needs no per-kind text gate: its content IS the validated
+    // contract, rendered. The word-count check this replaces measured nothing about
+    // observability — the live meta-standard cleared it by twelve words.
     if (kind === "action_decision") {
       if (ONLY_REFLECTION.test(c) || !DECISION_COMMITMENT.test(c)) return REJECT("decision_is_only_reflection", kind);
     }
@@ -813,6 +852,18 @@ export function validateProgramProposal(
     return REJECT("section_contradiction", "action_decision");
   }
 
+  /**
+   * ORDERED DEPENDENCY GRAPH (Slice 3.2L-R4). The two rules above are lexical and treat
+   * the program as seven independent strings; the live defect was a relationship BETWEEN
+   * sections — use the standard at the next handoff, then ask at the end what the standard
+   * should contain. Nothing that reads one section at a time can see that.
+   */
+  const dependency = validateProgramDependencies(
+    elements.map((e): ProgramSection => ({ kind: e.kind, content: e.content })),
+    contract,
+  );
+  if (dependency) return REJECT("dependency_inversion", dependency.kind);
+
   const ceilingUnsafe = unsafe(evidenceLanguage.value);
   if (ceilingUnsafe) return REJECT(ceilingUnsafe);
 
@@ -843,6 +894,7 @@ export function validateProgramProposal(
         assumptions: assumptions.value,
         warnings: warnings.value,
         evidenceLanguage: evidenceLanguage.value,
+        behaviorContract: contract,
       },
     },
   };

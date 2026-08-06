@@ -88,7 +88,8 @@ function stripJsonFences(text: string): string {
 const KIND_BRIEF: Record<string, string> = {
   why_it_matters:
     "why this change matters, written FOR the participants. NEVER restate the manager's complaint back at them — reframe it as what is at stake for the people doing the work and for whoever depends on them.",
-  observable_standard: "the concrete standard, phrased so another person could see or hear whether it happened.",
+  observable_standard:
+    "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the behavior_contract you also return.",
   scenario:
     "one short realistic situation from THIS team's work where the behavior is hard to hold. Ground it only in what the host described — invent no policy number, no named person, no incident, no date.",
   reflection: "one question that makes the participant examine their own current practice honestly.",
@@ -123,11 +124,26 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- Each element must say something DIFFERENT. Do not restate one section in another.",
     "- The action decision must share the vocabulary of the standard — they are about the same behavior.",
     "",
+    // ---- Slice 3.2L-R4 — defence in depth for the behavioral contract and the program's
+    // internal order. The deterministic validator is the authority; this is here so the
+    // model has a chance to get it right on the first call rather than being refused.
+    "THE STANDARD — behavior_contract:",
+    "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
+    "- Return behavior_contract with all four: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing), completion_signal (what confirms it is finished).",
+    "- 'A shared handoff standard is created and utilized by team members' is NOT acceptable: it describes the standard's life cycle, not a person's action. Write what someone is seen doing instead.",
+    "- completion_signal must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
+    "",
+    "PROPOSING A NEW WAY OF WORKING:",
+    "- You MAY propose a new standard, process, checklist or agreement. Describe CREATING it.",
+    "- Do NOT present it as something that already exists.",
+    "- DEFINE the behavior in THE STANDARD before any later section asks the participant to use it. A participant cannot follow a standard no section has described.",
+    "- BEFORE YOU FINISH verifies understanding, a decision, or an application plan. It must NOT be where the standard's contents are finally decided — never ask what elements, fields or steps the standard should contain when an earlier section already told the participant to use it.",
+    "",
     "Also give a short learner-facing program title, the assumptions the program depends on, warnings when training alone will not fix the problem (a workflow, staffing, access or policy change may be needed), and one sentence of evidence_language stating plainly what completing this program can and cannot show.",
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"evidence_language":string}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"evidence_language":string,"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion_signal":string}}}',
   ].join("\n");
 }
 
