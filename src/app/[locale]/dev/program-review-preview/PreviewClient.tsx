@@ -12,7 +12,7 @@ import { PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_PROPOSAL } from "./f
  * row. `onApply` records that it was pressed and does nothing else — no draft is written,
  * and the canonical draft is never referenced anywhere on this page.
  */
-export function PreviewClient() {
+export function PreviewClient({ buildSha }: { buildSha: string }) {
   const [applied, setApplied] = useState(false);
 
   /** Deliberately async so the component's real working → review transition is exercised. */
@@ -30,6 +30,14 @@ export function PreviewClient() {
         <div className="rounded-xl border border-amber-400/40 bg-amber-400/[0.08] px-4 py-3">
           <p className="text-sm font-semibold uppercase tracking-[0.1em] text-amber-200" data-testid="preview-banner">
             Test preview — not a real training draft
+          </p>
+          {/*
+            Which source rendered this page. Visible before the proposal opens, so a physical
+            recording carries its own build identity and a stale bundle cannot be mistaken for
+            a code defect again.
+          */}
+          <p className="mt-0.5 font-mono text-xs text-amber-200/70" data-testid="preview-build">
+            Build {buildSha}
           </p>
           <p className="mt-1 text-sm leading-6 text-amber-100/80">
             Nothing here is saved, drafted by AI, or connected to any of your trainings. This page exists to

@@ -939,18 +939,44 @@ const IRREGULAR_BASE: Record<string, string> = {
 };
 
 /**
- * An all-caps token is far more likely a protocol or acronym the Host means literally —
- * SBAR, SOS, ISBAR — than an inflected English verb. Lowercasing it destroys the Host's
- * meaning ("must sbar the handoff"), and de-inflecting it is worse ("SOS" → "SO"), so it is
- * preserved verbatim. The trade-off is accepted deliberately: an all-caps INFLECTED verb
- * ("STATES") renders as "must STATES", which is awkward but faithful, and faithful is the
- * side to err on with someone else's words.
+ * Acronyms that END IN S and would therefore look inflected to the rules below. Without
+ * this, "SOS the duty lead" de-inflects to "SO" — the one case where a shouted token really
+ * is ambiguous and no rule can tell. Kept deliberately short: it only needs the tokens whose
+ * final S is part of the abbreviation.
  */
+const S_FINAL_ACRONYMS = new Set([
+  "sos", "pals", "acls", "bls", "ems", "gps", "sms", "cms", "lms", "hris", "ehs", "obs", "ops",
+]);
+
 const isShoutedToken = (w: string): boolean => w.length >= 2 && w === w.toUpperCase() && /\p{Lu}/u.test(w);
 
+/**
+ * INFLECTION PRECEDENCE (Slice 3.2L-R6.4).
+ *
+ * R6.3 preserved every all-caps head to protect "SBAR the handoff" from becoming "must sbar
+ * the handoff". That was right about acronyms and wrong about verbs: it knowingly emitted
+ * "doctors must STATES each item aloud", and a product should not ship prose it knows is
+ * malformed. Changing STATES to state alters nothing the Host meant.
+ *
+ * So the rules run CASE-INSENSITIVELY FIRST, and the result decides:
+ *
+ *   the de-inflection CHANGED the token   → it was inflected  → use the base form
+ *   the de-inflection was a NO-OP         → nothing to fix    → preserve the shout
+ *
+ * "STATES"/"SAYS"/"USES"/"CALLS"/"DELEGATES" all change, so all normalise. "SBAR" does not
+ * change, so it survives. Only "SOS"-shaped tokens defeat that test, and they are listed
+ * above — a small closed set rather than a guess about every capitalised word.
+ */
 export function baseForm(verb: string): string {
-  if (isShoutedToken(verb)) return verb;
   const lower = verb.toLowerCase();
+  if (isShoutedToken(verb) && S_FINAL_ACRONYMS.has(lower)) return verb;
+  const reduced = reduceInflection(lower);
+  if (isShoutedToken(verb) && reduced === lower) return verb;
+  return reduced;
+}
+
+/** The deterministic de-inflection rules, on an already-lower-cased token. */
+function reduceInflection(lower: string): string {
   if (IRREGULAR_BASE[lower]) return IRREGULAR_BASE[lower];
   if (/[^aeiou]ies$/.test(lower)) return `${lower.slice(0, -3)}y`;
   if (/(ch|sh|ss|x|z|o)es$/.test(lower)) return lower.slice(0, -2);

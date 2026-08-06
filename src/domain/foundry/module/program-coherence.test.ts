@@ -922,3 +922,75 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
     for (const bad of ["", "!!!", "123"]) expect(isRenderableAction(bad)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Inflection precedence (Slice 3.2L-R6.4)
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R6.4] a shouted verb is normalised; a shouted acronym is not", () => {
+  const APP4 = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "they repeat it back" };
+  const sections = (action: string) => {
+    const b = { ...GOOD, actor: "Doctors", observableAction: action };
+    return [
+      renderStandardSentence(b),
+      renderScenarioSentence(b, GOOD_SCENARIO),
+      renderDecisionSentence(b, APP4),
+      renderApplicationSentence(b, APP4, null),
+      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
+    ];
+  };
+
+  it("G1: ALL-CAPS INFLECTED verbs normalise to their base form", () => {
+    for (const [raw, expected] of [
+      ["STATES each item aloud", "state each item aloud"],
+      ["SAYS it blunt", "say it blunt"],
+      ["USES SBAR", "use SBAR"],
+      ["CALLS Dr. Lee", "call Dr. Lee"],
+      // Outside any curated list — the rule decides, not a lookup table.
+      ["DELEGATES to the duty lead", "delegate to the duty lead"],
+    ] as const) {
+      expect(baseActionPhrase(raw), raw).toBe(expected);
+    }
+  });
+
+  it("G2: true acronyms survive as the head token", () => {
+    expect(baseActionPhrase("SBAR the handoff")).toBe("SBAR the handoff");
+    expect(baseActionPhrase("SOS the duty lead")).toBe("SOS the duty lead");
+  });
+
+  it("the rule, not a verb list, is what separates them", () => {
+    // "SBAR" is preserved because de-inflection is a NO-OP; "STATES" normalises because it
+    // is not. Only S-final acronyms need naming, because they alone defeat that test.
+    expect(baseActionPhrase("SBAR the handoff").startsWith("SBAR")).toBe(true);
+    expect(baseActionPhrase("STATES each item aloud").startsWith("state")).toBe(true);
+  });
+
+  it("G3/G4: embedded acronyms and proper names are untouched either way", () => {
+    expect(baseActionPhrase("Use SBAR for the handoff")).toBe("use SBAR for the handoff");
+    expect(baseActionPhrase("USES SBAR for the handoff")).toBe("use SBAR for the handoff");
+    expect(baseActionPhrase("Call Dr. Lee")).toBe("call Dr. Lee");
+    expect(baseActionPhrase("CALLS Dr. Lee")).toBe("call Dr. Lee");
+  });
+
+  it("G5: the exact physical case still holds", () => {
+    const f = sections("Say it blunt")[5];
+    expect(f).toContain("expected to say it blunt");
+    expect(f).not.toContain("expected to Say it blunt");
+  });
+
+  it("G6: known-malformed output is now impossible", () => {
+    const malformed = [/must STATES/, /will STATES/, /expected to STATES/, /must SAYS/, /expected to USES/, /must CALLS/];
+    for (const action of ["STATES each item aloud", "SAYS it blunt", "USES SBAR", "CALLS Dr. Lee"]) {
+      for (const s of sections(action)) {
+        for (const bad of malformed) expect(s, `${action}: ${s}`).not.toMatch(bad);
+      }
+    }
+  });
+
+  it("lower-case behaviour is unchanged", () => {
+    expect(baseActionPhrase("states each item aloud")).toBe("state each item aloud");
+    expect(baseActionPhrase("say it blunt")).toBe("say it blunt");
+    expect(baseActionPhrase("hand over to the McKinsey team")).toBe("hand over to the McKinsey team");
+  });
+});

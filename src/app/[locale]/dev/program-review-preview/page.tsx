@@ -30,7 +30,31 @@ function previewAllowed(): boolean {
   return process.env.NODE_ENV !== "production" || env === "staging";
 }
 
+/**
+ * CLIENT BUILD IDENTITY (Slice 3.2L-R6.4).
+ *
+ * A physical recording has to prove WHICH source rendered it. The R6.2 gate reported a
+ * defect that did not exist in the deployed commit, and the most likely explanation — a
+ * stale client bundle — was unfalsifiable from the recording alone.
+ *
+ * This reads the SAME environment chain `/api/version` reads, in a server component on a
+ * `force-dynamic` route. So the banner and `/api/version` cannot disagree: they are the
+ * same value read on the same request. No new env var, nothing `NEXT_PUBLIC_`, no client
+ * fetch, and no guess — if the Worker cannot identify itself the banner says so rather than
+ * inventing a plausible SHA.
+ */
+function clientBuildSha(): string {
+  return (
+    process.env.BTY_SOURCE_COMMIT_SHA?.trim() ||
+    process.env.BTY_DEPLOY_VERSION?.trim() ||
+    process.env.DEPLOY_VERSION?.trim() ||
+    process.env.CF_PAGES_COMMIT_SHA?.trim() ||
+    ""
+  );
+}
+
 export default function ProgramReviewPreviewPage() {
   if (!previewAllowed()) notFound();
-  return <PreviewClient />;
+  const sha = clientBuildSha();
+  return <PreviewClient buildSha={sha ? sha.slice(0, 8) : "unidentified"} />;
 }

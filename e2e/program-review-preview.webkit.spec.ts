@@ -51,6 +51,22 @@ test.describe("Program review preview — non-paid readability gate", () => {
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/i);
   });
 
+  test("G8: the banner carries the build identity, and it matches /api/version", async ({ page, request }) => {
+    // Visible BEFORE the proposal is opened, so a physical recording proves which source
+    // rendered it — the ambiguity that made the R6.2 report unfalsifiable.
+    const shown = ((await page.getByTestId("preview-build").textContent()) ?? "").replace("Build ", "").trim();
+    expect(shown).toMatch(/^[0-9a-f]{8}$|^unidentified$/);
+
+    const res = await request.get("/api/version", { headers: { "Cache-Control": "no-cache" } });
+    const live = ((await res.json()) as { version: string }).version;
+    if (shown === "unidentified") {
+      // Only legitimate when the server itself cannot identify the build (local dev).
+      expect(live.startsWith("0.1.0") || !/^[0-9a-f]{40}$/.test(live)).toBe(true);
+    } else {
+      expect(live.slice(0, 8)).toBe(shown);
+    }
+  });
+
   test("G13: opening the proposal issues no provider, generation or apply request", async ({ page }) => {
     const seen: string[] = [];
     page.on("request", (r) => {
