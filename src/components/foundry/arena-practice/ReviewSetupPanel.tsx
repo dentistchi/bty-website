@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AutoTextarea } from "./AutoTextarea";
+import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { guidedAnswersReady, resolveHardestWhenOptions, showsCustomText } from "./guidedQuestionOptions";
 import { guidedAnswersChanged } from "@/domain/foundry/arena-draft/guidedSetupAnswers";
 import type { HardestWhenOption } from "@/domain/foundry/arena-draft/types";

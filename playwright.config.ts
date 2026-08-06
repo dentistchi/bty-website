@@ -52,6 +52,16 @@ export default defineConfig({
       ? [{ name: "setup-comeback", testMatch: /auth-comeback\.setup\.ts$/ }]
       : []),
     { name: "public", testMatch: "**/*.public.spec.ts" },
+    /**
+     * WebKit at an iPhone viewport — the engine the Capacitor shell actually runs. Layout
+     * questions cannot be settled in jsdom (no layout) and the earlier practice geometry
+     * spec had to accept Blink because `browserName` is a PROJECT option, not a per-file
+     * one. This project exists so a clipped-text defect can be proven in the real engine.
+     *
+     * Geometry only: no server and no auth. Deliberately NOT selected by `test:e2e:ci`,
+     * which runs `--project=chromium` and installs chromium alone.
+     */
+    { name: "webkit-mobile", testMatch: "**/*.webkit.spec.ts", use: { ...devices["iPhone 13"] } },
     /** BTY leadership loop — Arena → Growth → My Page (uses storageState when setup exists). */
     {
       name: "bty-loop",

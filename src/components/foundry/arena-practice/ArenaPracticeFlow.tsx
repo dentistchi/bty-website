@@ -23,7 +23,7 @@ import {
 } from "@/domain/foundry/arena-draft/boundary";
 import type { PracticeBoundaryScope } from "@/domain/foundry/arena-draft/boundaryScope";
 import { resolveEditorActions } from "./editorActions";
-import { AutoTextarea } from "./AutoTextarea";
+import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { PracticeGovernancePanel } from "./PracticeGovernancePanel";
 import { RetryConfirmation } from "./RetryConfirmation";
 import { ReviewSetupPanel, type GuidedAnswersValue } from "./ReviewSetupPanel";

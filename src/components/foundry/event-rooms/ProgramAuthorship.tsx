@@ -10,8 +10,10 @@ import {
   type SectionChoice,
   type SectionDecision,
 } from "@/domain/foundry/module/program-authorship";
+import { isMetaStandardText } from "@/domain/foundry/module/program-coherence";
 import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { Modal } from "@/components/ui/Modal";
+import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -50,6 +52,9 @@ const NO_IMMEDIATE_RETRY = new Set([
   "empty_field", "too_long", "unknown_kind", "duplicate_kind", "missing_required_kind",
   "unrequested_kind", "invalid_assumptions", "invalid_warnings",
   "material_fabrication", "invented_specifics",
+  // A meaning fault is never repaired by an immediate redraft — the Host would spend a
+  // second generation to be told the same thing.
+  "non_observable_standard", "dependency_inversion",
 ]);
 
 export type ProgramGenerateOutcome =
@@ -93,6 +98,12 @@ const FAILURE_COPY: Record<string, string> = {
     "BTY drafted a program that relied on a template or tool you haven’t provided. Nothing was added. Attach the real material, or draft it again without assuming one exists.",
   invented_specifics:
     "BTY drafted a program that referred to a policy or form you haven’t provided. Nothing was added — draft it again, or add the real material first.",
+  // Slice 3.2L-R4 — the fifth window's two product defects. Both name what was actually
+  // wrong with the training, without exposing validator vocabulary.
+  non_observable_standard:
+    "BTY drafted a standard that said a standard would be created, but not what anyone actually does. Nothing was added — draft it again.",
+  dependency_inversion:
+    "BTY drafted a program that asked people to use something it hadn’t explained yet. Nothing was added — draft it again.",
   duplicate_intent: "That request was already sent. Refresh to see the result rather than drafting twice.",
   context_mismatch: "Your training changed since this draft was written. Generate it again so it matches.",
   // The draft was published, deleted or edited while BTY was writing. The proposal is
@@ -205,8 +216,26 @@ export function ProgramAuthorship({
     if (phase === "confirm") requestAnimationFrame(() => confirmButtonRef.current?.focus());
   }, [phase]);
 
+  /**
+   * EDITED-CONTENT AUTHORITY (Slice 3.2L-R4).
+   *
+   * THE STANDARD the Host reads is rendered from the validated `behaviorContract`. The
+   * moment they rewrite it, that contract describes the PRE-EDIT text — so it is treated
+   * as invalidated rather than carried along, and the edited words are re-checked on their
+   * own terms.
+   *
+   * There is no stale-metadata Apply path to close: `applyProgramProposal` reads
+   * participant-facing content and nothing else, and no persistence path stores a
+   * `ProgramProposal`. What remains is the honest half — an edited standard that no longer
+   * describes a behavior must not be applied silently just because BTY's original did.
+   */
+  const standardEdited = decisions.observable_standard === "edit";
+  const editedStandard = edits.observable_standard ?? "";
+  const standardNoLongerObservable =
+    standardEdited && editedStandard.trim().length > 0 && isMetaStandardText(editedStandard);
+
   const apply = useCallback(() => {
-    if (!proposal) return;
+    if (!proposal || standardNoLongerObservable) return;
     const choices: SectionChoice[] = proposal.elements.map((e) => ({
       kind: e.kind,
       decision: decisions[e.kind] ?? "use",
@@ -217,7 +246,7 @@ export function ProgramAuthorship({
       attemptId,
     );
     setPhase("applied");
-  }, [proposal, decisions, edits, journey, titleDecision, titleEdit, attemptId, onApply]);
+  }, [proposal, decisions, edits, journey, titleDecision, titleEdit, attemptId, onApply, standardNoLongerObservable]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -381,19 +410,32 @@ export function ProgramAuthorship({
           <div key={e.kind} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[e.kind]}</span>
+              {/*
+                Authorship follows the edit. Once the Host rewrites a section it is their
+                sentence, and BTY's contract no longer describes it — saying "Drafted by
+                BTY" over the Host's own words is the drift this badge exists to prevent.
+              */}
               <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
-                Drafted by BTY
+                {decision === "edit" ? "Your rewrite" : "Drafted by BTY"}
               </span>
             </div>
-            <textarea
+            {/*
+              CONTENT-SIZED, not three fixed rows (Slice 3.2L-R4). The physical recording
+              showed the last line of WHY THIS MATTERS, IN CONTEXT and WHAT HAPPENS NEXT cut
+              off by the field's lower border: `rows={3}` is a fixed height, content is
+              allowed 700 characters, and iOS draws no scrollbar to say so. A Founder cannot
+              exercise review authority over text they cannot read. `rows` survives as the
+              MINIMUM height.
+            */}
+            <AutoTextarea
               value={edits[e.kind] ?? e.content}
-              onChange={(ev) => {
-                setEdits((s) => ({ ...s, [e.kind]: ev.target.value }));
+              onChange={(next) => {
+                setEdits((s) => ({ ...s, [e.kind]: next }));
                 setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
               }}
               rows={3}
               data-testid={`program-edit-${e.kind}`}
-              className="resize-none rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+              className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
             />
             <div className="flex items-center gap-2">
               {(["use", "keep", "edit"] as SectionDecision[]).map((d) => {
@@ -435,12 +477,21 @@ export function ProgramAuthorship({
         <ListBlock title="Worth noting" items={p.warnings} testid="program-warnings" tone="amber" />
       ) : null}
 
+      {standardNoLongerObservable ? (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] px-4 py-3 text-sm leading-6 text-amber-100/85" data-testid="program-standard-not-observable">
+          Your rewrite of “The standard” says a standard will be created or used, but not what
+          someone actually does. Say who does what, when, and how they know it’s done — then you
+          can add this program.
+        </p>
+      ) : null}
+
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
           onClick={apply}
+          disabled={standardNoLongerObservable}
           data-testid="program-apply"
-          className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A]"
+          className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-40"
         >
           Add this program to my training
         </button>

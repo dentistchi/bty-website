@@ -38,6 +38,12 @@ const PROPOSAL: ProgramProposal = {
   assumptions: ["Handoffs happen at shift change."],
   warnings: ["A missing workflow step will not be fixed by training."],
   evidenceLanguage: "Shows exposure and a decision. It does not show behaviour changed.",
+  behaviorContract: {
+  actor: "the outgoing person",
+  trigger: "At the end of every shift",
+  observableAction: "states each open item aloud to the person taking over",
+  completionSignal: "the person taking over repeats them back and confirms",
+  },
 };
 
 const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeiling: "Reading shows exposure only.", attemptId: "att-1" };
@@ -152,6 +158,93 @@ describe("[3.2L] apply is explicit and atomic", () => {
     const why = journey.elements.find((e: { kind: string }) => e.kind === "why_it_matters");
     expect(why.content).toBe("My own framing");
     expect(readProvenance(why)).toBe("host_edited");
+  });
+
+  /**
+   * G13 — EDITED-CONTENT AUTHORITY (Slice 3.2L-R4).
+   *
+   * THE STANDARD the Host reads is rendered from a validated `behaviorContract`. The moment
+   * they rewrite it, that contract describes the PRE-EDIT text. The mechanism chosen is
+   * INVALIDATE-ON-EDIT plus deterministic re-check of the edited words: there is no
+   * persistence path for the contract and Apply reads display content only, so no stale
+   * metadata can travel — and an edited standard that stopped describing a behavior is
+   * refused rather than applied on the strength of BTY's original.
+   */
+  it("G13: rewriting the standard into meta language blocks Apply and says why", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
+        target: { value: "A shared handoff standard is created and utilized by team members during all relevant transitions of work." },
+      });
+    });
+    expect(screen.getByTestId("program-standard-not-observable")).toBeTruthy();
+    expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply, "stale metadata must never reach Apply").not.toHaveBeenCalled();
+  });
+
+  it("G13: a rewrite that still describes a behavior applies normally", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
+        target: { value: "At every shift end, the outgoing nurse states each open item aloud and the incoming nurse confirms each one." },
+      });
+    });
+    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply).toHaveBeenCalled();
+  });
+
+  it("G13: authorship follows the edit — BTY does not claim the Host's words", async () => {
+    setup(ok);
+    await generate();
+    const section = screen.getByTestId("program-section-observable_standard");
+    expect(section.textContent).toContain("Drafted by BTY");
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
+        target: { value: "At every shift end, the outgoing nurse states each open item aloud and the incoming nurse confirms each one." },
+      });
+    });
+    expect(section.textContent).toContain("Your rewrite");
+    expect(section.textContent).not.toContain("Drafted by BTY");
+  });
+
+  /** G15 — reset/discard must clear the edit AND its consequences. */
+  it("G15: discarding after a blocked edit returns a clean entry point", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), {
+        target: { value: "A shared process is created and adopted by the team." },
+      });
+    });
+    expect(screen.getByTestId("program-standard-not-observable")).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-discard"));
+    });
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByTestId("program-authorship-entry")).toBeTruthy();
+    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
+  });
+
+  it("G15: regenerating after a discard starts from BTY's proposal, not the abandoned edit", async () => {
+    setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.change(screen.getByTestId("program-edit-observable_standard"), { target: { value: "A shared process is created." } });
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-discard"));
+    });
+    await generate();
+    expect((screen.getByTestId("program-edit-observable_standard") as HTMLTextAreaElement).value).toBe("AI standard");
+    expect(screen.queryByTestId("program-standard-not-observable")).toBeNull();
   });
 
   it("discarding applies nothing and returns to the entry point", async () => {

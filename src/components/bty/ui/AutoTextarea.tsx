@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type TextareaHTMLAttributes } from "react";
 
 /**
- * Content-sized textarea for the Practice authoring surfaces (Slice 3.2I-R5B2-R3).
+ * Content-sized textarea. Built for the Practice authoring surfaces (Slice 3.2I-R5B2-R3);
+ * promoted to shared UI in Slice 3.2L-R4 when the program review surface reintroduced the
+ * exact same defect with its own raw `<textarea rows={3}>`. Living under `arena-practice/`
+ * was part of why: a Foundry event-room component had no obvious reason to look there.
  *
  * Founder device evidence: on iPhone the scenario title's second line, and the last lines of the
  * opening situation and the escalation, were cut off by the field's lower border.

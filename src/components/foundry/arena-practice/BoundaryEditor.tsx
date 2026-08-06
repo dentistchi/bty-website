@@ -10,7 +10,7 @@ import {
   type PracticeBoundary,
 } from "@/domain/foundry/arena-draft/boundary";
 import type { ArenaPracticeCopy } from "./arenaPracticeCopy";
-import { AutoTextarea } from "./AutoTextarea";
+import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 
 /**
  * Host BOUNDARY CONFIRMATION surface (Slice 3.2I-R5B2).
