@@ -279,7 +279,12 @@ export async function generateProgram(
   const attemptId = started.ok ? started.attemptId : null;
   const t0 = Date.now();
 
-  const finish = async (code: ProgramGenerateErrorCode, refusal?: string, refusalKind?: string, callSeq: number | null = null) => {
+  /**
+   * The parent records how the attempt ENDED. Every structural fact lives on the child
+   * call that produced it — an attempt makes up to two calls that can fail differently,
+   * so a single parent column could only ever hold one of them.
+   */
+  const finish = async (code: ProgramGenerateErrorCode, refusal?: string, refusalKind?: string) => {
     if (attemptId) {
       await finalizeProgramAttempt(admin, {
         attemptId,
@@ -287,13 +292,6 @@ export async function generateProgram(
         durationMs: Date.now() - t0,
         refusalCode: refusal ?? null,
         refusalKind: refusalKind ?? null,
-        // The next live failure must be readable without storing a single word the model
-        // wrote. A semantic refusal records its stage too, with no path.
-        diagnosis: lastDiagnosis
-          ? { ...lastDiagnosis, callSequence: callSeq }
-          : refusal
-            ? { stage: "semantic", path: refusalKind ? `elements.${refusalKind}` : "program", expected: "a grounded, honest value", actual: "string", retryable: false, callSequence: callSeq }
-            : null,
       });
     }
     logOutcome("failed", refusal ?? code);
@@ -320,8 +318,6 @@ export async function generateProgram(
   let lastDiagnosis: StructuralDiagnosis | undefined;
   /** A meaning fault is not repairable by asking again — only a shape fault is. */
   let repairable = false;
-  /** Which provider call carried the fault — 1 or 2. */
-  let lastFailedCall: number | null = null;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages: LlmChatMessage[] =
@@ -389,6 +385,20 @@ export async function generateProgram(
         totalTokens: r.usage?.total ?? null,
         responseBytes: digest?.bytes ?? null,
         responseSha256: digest?.sha256 ?? null,
+        // THIS call's own diagnosis, written before the loop moves on — so a repair call
+        // can never overwrite what call 1 proved. A structural fault carries its exact
+        // path; a semantic one records only that it was a meaning fault and where.
+        diagnosis: validated.ok
+          ? null
+          : validated.diagnosis
+            ? { ...validated.diagnosis }
+            : {
+                stage: "semantic",
+                path: validated.kind ? `elements.${validated.kind}` : "program",
+                expected: "a grounded, honest value",
+                actual: "string",
+                retryable: false,
+              },
       });
     }
 
@@ -431,7 +441,6 @@ export async function generateProgram(
     lastRefusal = validated.code;
     lastRefusalKind = validated.kind;
     lastDiagnosis = validated.diagnosis;
-    lastFailedCall = i + 1;
     repairable = isStructuralCode(validated.code);
     logOutcome("rejected", validated.code);
     // A SEMANTIC refusal — a fabricated template, an overclaim — is not repaired by
@@ -440,5 +449,5 @@ export async function generateProgram(
     if (!repairable) break;
   }
 
-  return finish(lastCode, lastRefusal, lastRefusalKind, lastFailedCall);
+  return finish(lastCode, lastRefusal, lastRefusalKind);
 }

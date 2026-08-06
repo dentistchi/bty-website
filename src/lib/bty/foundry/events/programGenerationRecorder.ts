@@ -55,18 +55,6 @@ export type FinalizeProgramAttemptInput = {
   refusalKind?: string | null;
   elementCount?: number | null;
   requiredKindCount?: number | null;
-  /**
-   * Shape-only diagnosis of a refused field (Slice 3.2L-R3). A path, an expected type and
-   * a received type — never the value itself, so no generated prose is ever stored.
-   */
-  diagnosis?: {
-    stage: "structural" | "semantic";
-    path: string;
-    expected: string;
-    actual: string;
-    retryable: boolean;
-    callSequence: number | null;
-  } | null;
 };
 
 export type StartProgramCallInput = {
@@ -91,6 +79,21 @@ export type FinalizeProgramCallInput = {
   totalTokens?: number | null;
   responseBytes?: number | null;
   responseSha256?: string | null;
+  /**
+   * Shape-only diagnosis for THIS call (Slice 3.2L-R3). A structural fault belongs to one
+   * provider call: an attempt makes up to two, and they can fail differently. Recording it
+   * here means call 2's result can never overwrite call 1's evidence. `call_sequence` on
+   * this row already identifies which call it was.
+   *
+   * A path, an expected type and a received type describe SHAPE only — never the value.
+   */
+  diagnosis?: {
+    stage: "structural" | "semantic";
+    path: string;
+    expected: string;
+    actual: string;
+    retryable: boolean;
+  } | null;
 };
 
 const ATTEMPTS = "foundry_program_generation_attempts";
@@ -140,12 +143,6 @@ export async function finalizeProgramAttempt(admin: SupabaseClient, input: Final
       refusal_kind: input.outcome === "validation_refused" ? (input.refusalKind ?? null) : null,
       element_count: input.elementCount ?? null,
       required_kind_count: input.requiredKindCount ?? null,
-      validation_stage: input.diagnosis?.stage ?? null,
-      offending_path: input.diagnosis?.path ?? null,
-      expected_type: input.diagnosis?.expected ?? null,
-      actual_type: input.diagnosis?.actual ?? null,
-      structural_retryable: input.diagnosis?.retryable ?? null,
-      failed_call_sequence: input.diagnosis?.callSequence ?? null,
     })
     .eq("id", input.attemptId);
 }
@@ -195,6 +192,11 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
       total_tokens: input.totalTokens ?? null,
       response_bytes: input.responseBytes ?? null,
       response_sha256: input.responseSha256 ?? null,
+      validation_stage: input.diagnosis?.stage ?? null,
+      offending_path: input.diagnosis?.path ?? null,
+      expected_type: input.diagnosis?.expected ?? null,
+      actual_type: input.diagnosis?.actual ?? null,
+      structural_retryable: input.diagnosis?.retryable ?? null,
     })
     .eq("id", input.callId);
 }
