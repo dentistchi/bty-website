@@ -6,6 +6,8 @@ import {
   programContextFingerprint,
   programContextsCompatible,
   validateProgramProposal,
+  groundingCorpus,
+  ungroundedArtifact,
   applyProgramProposal,
   provenanceAfterHostEdit,
   readProvenance,
@@ -406,5 +408,141 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
   it("an empty edit falls back rather than writing blank content", () => {
     const j = applyProgramProposal(current, proposal, [{ kind: "why_it_matters", decision: "edit", editedContent: "   " }], { titleDecision: "keep" });
     expect(j.elements[0].content).toBe("Host why");
+  });
+});
+
+describe("[3.2L-R2] an artifact may not be claimed to exist unless the Host grounded it", () => {
+  /**
+   * THE THIRD CONTROLLED WINDOW, reproduced exactly. Generated against the canonical
+   * draft — YouTube URL, successEvidence "Handoff record", observableBehavior "Create a
+   * shared handoff standard." — the model produced an Apply section directing the
+   * participant to use "the handoff record template", justified by an assumption that
+   * tools and templates were accessible. Neither is established anywhere.
+   */
+  const withApply = (apply: string, assumptions: string[] = []) => {
+    const p = goodProposal();
+    p.program.elements = p.program.elements.map((e) => (e.kind === "field_application" ? { ...e, content: apply } : e));
+    p.program.assumptions = assumptions;
+    return p;
+  };
+
+  it("G1 — the exact live miss: 'the handoff record template' is refused", () => {
+    const r = validateProgramProposal(
+      withApply("In our next project, I will use the handoff record template to document and share information with my colleagues at the end of each task."),
+      CANONICAL,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).toBe("material_fabrication");
+      expect(r.kind).toBe("field_application");
+    }
+  });
+
+  it("G2 — the exact live assumption is refused, even though it is advisory", () => {
+    const r = validateProgramProposal(
+      withApply(
+        "At your next shift change, you state the open items before leaving the floor.",
+        ["There is access to the necessary tools and templates for creating handoff records."],
+      ),
+      CANONICAL,
+    );
+    expect(r.ok, "an advisory field must not bypass a safety rule").toBe(false);
+    if (!r.ok) expect(r.code).toBe("material_fabrication");
+  });
+
+  it("G3 — an Apply that depends on an artifact only an assumption supports is ONE refusal", () => {
+    const r = validateProgramProposal(
+      withApply("I will use the template at each handoff.", ["The team has access to the template."]),
+      CANONICAL,
+    );
+    expect(r.ok).toBe(false);
+    // Whole-proposal: the remaining sections are never returned as usable.
+    if (!r.ok) expect(r.code).toBe("material_fabrication");
+  });
+
+  it("an assumption can NEVER ground an artifact — that circularity is the defect", () => {
+    // Even a proposal whose assumption explicitly asserts the artifact exists is refused,
+    // because only the HOST's context grounds anything.
+    const r = validateProgramProposal(
+      withApply("Use the checklist before signing off.", ["A checklist already exists for this."]),
+      CANONICAL,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("G4 — honest future creation is accepted", () => {
+    const r = validateProgramProposal(
+      withApply("Before your next shift change, agree on the required fields and create a shared handoff record together."),
+      CANONICAL,
+    );
+    expect(r.ok, r.ok ? "" : `${r.code} ${r.kind ?? ""}`).toBe(true);
+  });
+
+  it("G5 — a conditional reference is not an existence claim", () => {
+    const r = validateProgramProposal(
+      withApply("Use your team's existing template if one exists; otherwise agree on the required fields at your next handoff."),
+      CANONICAL,
+    );
+    expect(r.ok, r.ok ? "" : `${r.code} ${r.kind ?? ""}`).toBe(true);
+  });
+
+  it("G6 — a Host-named artifact grounds a definite reference to it", () => {
+    const grounded: BuilderAnswers = { ...CANONICAL, problem: "Our handoffs are inconsistent. We already use the ABC handoff template." };
+    const r = validateProgramProposal(
+      withApply("At your next shift change, complete the ABC handoff template before leaving the floor."),
+      grounded,
+    );
+    expect(r.ok, r.ok ? "" : `${r.code} ${r.kind ?? ""}`).toBe(true);
+    // …and the SAME sentence is refused for the canonical draft, which never named it.
+    expect(validateProgramProposal(withApply("At your next shift change, complete the ABC handoff template before leaving the floor."), CANONICAL).ok).toBe(false);
+  });
+
+  it("G7 — a URL grounds nothing about the material's contents", () => {
+    // The canonical draft HAS a YouTube URL. It still cannot ground a template.
+    expect(CANONICAL.materialText).toContain("youtu.be");
+    expect(groundingCorpus(CANONICAL)).not.toContain("youtu.be");
+    const r = validateProgramProposal(withApply("Follow the checklist shown in the video at each handoff."), CANONICAL);
+    expect(r.ok).toBe(false);
+  });
+
+  it("G8 — a VERIFIED uploaded file grounds its own existence", () => {
+    const apply = "At your next shift change, complete the template before leaving the floor.";
+    expect(validateProgramProposal(withApply(apply), CANONICAL).ok, "ungrounded without the file").toBe(false);
+    expect(
+      validateProgramProposal(withApply(apply), CANONICAL, ["Handoff Record Template.pdf"]).ok,
+      "grounded by the verified upload",
+    ).toBe(true);
+  });
+
+  it("G9 — ordinary outputs and actions are NOT rejected", () => {
+    const accepted = [
+      "At your next shift change, you state the open items and note them on the handoff record.",
+      "You and your team follow the shared standard you agreed at the start of the shift.",
+      "You pass on the required information before leaving the floor.",
+      "Create a shared handoff record with the fields your team agreed.",
+    ];
+    for (const apply of accepted) {
+      const r = validateProgramProposal(withApply(apply), CANONICAL);
+      expect(r.ok, `false positive on: "${apply}" (${r.ok ? "" : r.code})`).toBe(true);
+    }
+  });
+
+  it("covers the whole artifact class, not just the two live phrasings", () => {
+    for (const apply of [
+      "Log it in your workflow tool at the end of each task.",
+      "Update the dashboard after every handoff.",
+      "Follow the SOP when you hand over.",
+      "Complete the form before you leave.",
+      "Record it in the existing system at shift change.",
+    ]) {
+      const r = validateProgramProposal(withApply(apply), CANONICAL);
+      expect(r.ok, `should refuse: "${apply}"`).toBe(false);
+    }
+  });
+
+  it("the offending artifact is identified without echoing generated prose", () => {
+    expect(ungroundedArtifact("I will use the handoff record template.", groundingCorpus(CANONICAL))).toBe("template");
+    expect(ungroundedArtifact("There is access to the necessary tools.", groundingCorpus(CANONICAL))).toBe("tool");
+    expect(ungroundedArtifact("Create a shared handoff record.", groundingCorpus(CANONICAL))).toBeNull();
   });
 });

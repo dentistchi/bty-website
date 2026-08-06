@@ -45,6 +45,12 @@ const FAILURE_COPY: Record<string, string> = {
   timeout: "Drafting took too long and was stopped. Your draft is untouched — start it again when you’re ready.",
   provider_error: "We couldn’t reach the drafting service. Your draft is untouched — start it again in a moment.",
   invalid_output: "BTY drafted something that didn’t meet our honesty rules, so we discarded it rather than show it to you. Your draft is untouched.",
+  // Slice 3.2L-R2 — the live miss: a program that told participants to use a template
+  // nobody had provided. Naming the actual problem tells the Host what to do next.
+  material_fabrication:
+    "BTY drafted a program that relied on a template or tool you haven’t provided. Nothing was added. Attach the real material, or draft it again without assuming one exists.",
+  invented_specifics:
+    "BTY drafted a program that referred to a policy or form you haven’t provided. Nothing was added — draft it again, or add the real material first.",
   duplicate_intent: "That request was already sent. Refresh to see the result rather than drafting twice.",
   context_mismatch: "Your training changed since this draft was written. Generate it again so it matches.",
   // The draft was published, deleted or edited while BTY was writing. The proposal is

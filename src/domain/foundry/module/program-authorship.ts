@@ -313,14 +313,138 @@ function assertsOverclaim(text: string): boolean {
   return false;
 }
 
-/** Claims a concrete asset or policy already exists. */
+/** Claims a concrete asset or policy already exists — the blunt, obvious phrasings. */
 const MATERIAL_EXISTS = [
   /\bis attached\b/i,
   /\bhas been (attached|uploaded|added|created|approved)\b/i,
   /\balready (exists|attached|uploaded)\b/i,
-  /\b(the|our|this|your) (?:(?:attached|uploaded|official|approved|existing|current)\s+){1,3}(file|document|policy|checklist|video|pdf|guide|manual|sop|procedure)\b/i,
 ];
 
+// ---------------------------------------------------------------------------
+// Artifact-existence grounding (Slice 3.2L-R2)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE LIVE MISS. The third controlled window generated, against the canonical draft:
+ *
+ *   APPLY IT     "I will use the handoff record template …"
+ *   THIS ASSUMES "There is access to the necessary tools and templates …"
+ *
+ * The draft establishes a YouTube URL, `successEvidence: "Handoff record"` and
+ * `observableBehavior: "Create a shared handoff standard."` — it establishes that a
+ * handoff record is the DESIRED OUTPUT. It establishes nothing about a template, a tool,
+ * or anyone's access to either. The program directed a participant to use an artifact
+ * whose existence was never established, and an advisory "this assumes" does not make an
+ * unsupported operational dependency safe.
+ *
+ * The old rule missed both because it required an adjective from a closed set between the
+ * determiner and the noun ("the ATTACHED policy"), and its noun list contained neither
+ * "template" nor "tool". Patching those two phrases would fix two sentences; this repairs
+ * the semantic class.
+ *
+ * THE RULE: a DEFINITE reference to an artifact presupposes it exists, and may only be
+ * made when the Host's own supplied context names that kind of artifact. An INDEFINITE
+ * or creation-framed reference proposes a future artifact and is always fine.
+ */
+export const ARTIFACT_NOUNS = [
+  "template", "templates", "checklist", "checklists", "form", "forms", "guide", "guides",
+  "manual", "manuals", "policy", "policies", "procedure", "procedures", "sop", "sops",
+  "document", "documents", "file", "files", "pdf", "pdfs", "spreadsheet", "spreadsheets",
+  "dashboard", "dashboards", "tool", "tools", "system", "systems", "tracker", "trackers",
+  "portal", "portals", "playbook", "playbooks", "handbook", "handbooks", "protocol", "protocols",
+  "worksheet", "worksheets", "questionnaire", "questionnaires", "software", "platform", "platforms",
+  "database", "databases", "app", "apps", "wiki", "wikis", "logbook", "logbooks",
+  "record", "records", "log", "logs", "register", "registers", "sheet", "sheets",
+] as const;
+
+/** Singularise just enough to compare an artifact head against the Host's own words. */
+function artifactStem(noun: string): string {
+  const n = noun.toLowerCase();
+  if (n.endsWith("ies")) return `${n.slice(0, -3)}y`;
+  if (n.endsWith("es") && /(ch|sh|s|x|z)es$/.test(n)) return n.slice(0, -2);
+  if (n.endsWith("s") && !n.endsWith("ss")) return n.slice(0, -1);
+  return n;
+}
+
+const NOUN_ALT = ARTIFACT_NOUNS.join("|");
+
+/**
+ * GREEDY modifiers on purpose. "the handoff record template" contains TWO artifact nouns;
+ * a lazy match stops at "record", finds it grounded (the Host wrote "Handoff record") and
+ * never examines "template" — which is the ungrounded one. Measured: that made the live
+ * miss pass. Greedy matching reaches the HEAD noun, which is the artifact being claimed.
+ *
+ * A definite/possessive reference presupposes the artifact already exists:
+ *   "the handoff record template", "our checklist", "your workflow tool".
+ * An INDEFINITE reference ("a shared handoff record") proposes one, and never matches.
+ */
+const DEFINITE_ARTIFACT = new RegExp(
+  `\\b(?:the|our|your|its|their|this|that|these|those|existing|available|current|ready-made|pre-made)\\s+((?:[\\w'-]+\\s+){0,3}(${NOUN_ALT}))\\b`,
+  "gi",
+);
+
+/** "access to the necessary tools and templates" — an availability claim. */
+const ACCESS_ARTIFACT = new RegExp(
+  `\\baccess\\s+to\\s+(?:the\\s+|any\\s+)?(?:necessary\\s+|required\\s+|appropriate\\s+|relevant\\s+)?((?:[\\w'-]+\\s+){0,3}(${NOUN_ALT}))\\b`,
+  "gi",
+);
+
+/** Framing that PROPOSES an artifact rather than presupposing one. */
+const CREATION_FRAME =
+  /\b(?:create|creating|build|building|design|designing|develop|developing|establish|establishing|agree\s+on|agreeing\s+on|define|defining|decide\s+on|draft|drafting|set\s+up|setting\s+up|write|writing|make|making|introduce|introducing|adopt|adopting|choose|choosing|identify|identifying)\b/i;
+
+/** Conditional framing — "if your team has one" — is not an existence claim. */
+const CONDITIONAL_FRAME = /\bif\s+(?:you|your team|one|it|they|there)\b|\bif\s+\w+\s+(?:has|have|exists?)\b|\bwhere available\b|\bif any\b/i;
+
+const LOOKBACK = 70;
+
+/**
+ * The only text that can ground an artifact: what the HOST supplied, plus the identities
+ * of materials the application has actually verified (e.g. an uploaded file's title).
+ *
+ * A URL is deliberately excluded. A link proves a material exists; it says nothing about
+ * that material's CONTENTS, and the application never retrieved them. A YouTube URL can
+ * therefore never ground "the template".
+ *
+ * A model-authored assumption can never ground anything either — that is precisely the
+ * circularity the live miss exploited.
+ */
+export function groundingCorpus(answers: BuilderAnswers | undefined, verifiedArtifacts: readonly string[] = []): string {
+  const a = answers ?? {};
+  const parts = [
+    a.problem, a.observableBehavior, a.successEvidence, a.capabilityCandidate,
+    a.audienceDetail, a.sharedQuestion, a.completionPrompt,
+    ...verifiedArtifacts,
+  ];
+  return parts.filter((v): v is string => typeof v === "string").join(" \n ").toLowerCase();
+}
+
+/**
+ * The first artifact this text claims exists without grounding, or null.
+ *
+ * Returns the offending head noun so a refusal can be diagnosed without echoing the
+ * generated prose back into logs.
+ */
+export function ungroundedArtifact(text: string, corpus: string): string | null {
+  for (const re of [DEFINITE_ARTIFACT, ACCESS_ARTIFACT]) {
+    re.lastIndex = 0;
+    for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+      const head = artifactStem(m[2]);
+      // Grounded: the Host named this kind of artifact themselves.
+      if (corpus.includes(head)) continue;
+      // Proposed, not presupposed.
+      const window = text.slice(Math.max(0, m.index - LOOKBACK), m.index);
+      if (CREATION_FRAME.test(window)) continue;
+      // Conditional anywhere in the surrounding sentence.
+      const sentence = text.slice(Math.max(0, m.index - LOOKBACK), Math.min(text.length, m.index + m[0].length + LOOKBACK));
+      if (CONDITIONAL_FRAME.test(sentence)) continue;
+      return head;
+    }
+  }
+  return null;
+}
+
+/** Invented concrete specifics the Host never supplied. */
 /** Invented concrete specifics the Host never supplied. */
 const INVENTED_SPECIFICS = [
   /\bsection \d+(\.\d+)*\b/i,
@@ -422,7 +546,12 @@ const REJECT = (code: ProgramRejectCode, kind?: JourneyElementKind): ProgramVali
  * because a Host reviewing eight sections cannot be expected to notice that the third
  * one silently fabricated a policy number.
  */
-export function validateProgramProposal(raw: unknown, answers: BuilderAnswers | undefined): ProgramValidation {
+export function validateProgramProposal(
+  raw: unknown,
+  answers: BuilderAnswers | undefined,
+  /** Identities of materials the application has VERIFIED (e.g. uploaded file titles). */
+  verifiedArtifacts: readonly string[] = [],
+): ProgramValidation {
   if (!isPlainObject(raw)) return REJECT("not_object");
   const p = raw.program;
   if (!isPlainObject(p)) return REJECT("missing_program");
@@ -438,6 +567,28 @@ export function validateProgramProposal(raw: unknown, answers: BuilderAnswers | 
 
   const ctx = programContext(answers);
   const required = requiredProgramKinds(answers);
+  const corpus = groundingCorpus(answers, verifiedArtifacts);
+
+  /**
+   * Every safety rule, applied to EVERY generated string.
+   *
+   * The live miss slipped through an advisory field: `assumptions`, `warnings` and each
+   * section's `rationale` previously received only markup and length checks, so
+   * "There is access to the necessary tools and templates" was never examined. An
+   * advisory field cannot bypass a safety rule merely because it is not written into the
+   * draft — the Host still reads it, and it still justifies the program.
+   */
+  const unsafe = (text: string): ProgramRejectCode | null => {
+    if (assertsOverclaim(text)) return "evidence_overclaim";
+    if (MATERIAL_EXISTS.some((re) => re.test(text))) return "material_fabrication";
+    // Invented specifics first: "section 4.2 of the policy" is BOTH, and the more precise
+    // diagnosis is the more useful one to record and to show.
+    if (INVENTED_SPECIFICS.some((re) => re.test(text))) return "invented_specifics";
+    if (ungroundedArtifact(text, corpus) !== null) return "material_fabrication";
+    if (PERSON_EVALUATION.some((re) => re.test(text))) return "person_evaluation";
+    if (INTERNAL_JARGON.some((re) => re.test(text))) return "internal_jargon";
+    return null;
+  };
   const allowed = new Set<JourneyElementKind>([...required, "evidence", "reflection"]);
 
   const seen = new Set<JourneyElementKind>();
@@ -458,12 +609,11 @@ export function validateProgramProposal(raw: unknown, answers: BuilderAnswers | 
 
     const c = content.value;
 
-    // --- honesty ---------------------------------------------------------
-    if (assertsOverclaim(c)) return REJECT("evidence_overclaim", kind);
-    if (MATERIAL_EXISTS.some((re) => re.test(c))) return REJECT("material_fabrication", kind);
-    if (INVENTED_SPECIFICS.some((re) => re.test(c))) return REJECT("invented_specifics", kind);
-    if (PERSON_EVALUATION.some((re) => re.test(c))) return REJECT("person_evaluation", kind);
-    if (INTERNAL_JARGON.some((re) => re.test(c))) return REJECT("internal_jargon", kind);
+    // --- honesty (participant-facing content AND its Host-facing rationale) ---
+    const contentUnsafe = unsafe(c);
+    if (contentUnsafe) return REJECT(contentUnsafe, kind);
+    const rationaleUnsafe = unsafe(rationale.value);
+    if (rationaleUnsafe) return REJECT(rationaleUnsafe, kind);
 
     // --- per-kind meaning ------------------------------------------------
     if (kind === "why_it_matters" && ctx) {
@@ -508,12 +658,22 @@ export function validateProgramProposal(raw: unknown, answers: BuilderAnswers | 
     return REJECT("section_contradiction", "action_decision");
   }
 
-  if (assertsOverclaim(evidenceLanguage.value)) return REJECT("evidence_overclaim");
+  const ceilingUnsafe = unsafe(evidenceLanguage.value);
+  if (ceilingUnsafe) return REJECT(ceilingUnsafe);
 
   const assumptions = cleanList(p.assumptions, LIMITS.assumption, "invalid_assumptions");
   if (!assumptions.ok) return REJECT(assumptions.code);
   const warnings = cleanList(p.warnings, LIMITS.warning, "invalid_warnings");
   if (!warnings.ok) return REJECT(warnings.code);
+
+  // An ungrounded dependency stated as an ASSUMPTION is exactly how the live miss
+  // justified itself. A model-authored assumption can never ground an artifact — only the
+  // Host's own context can — so the same battery decides these too, and a failure rejects
+  // the WHOLE proposal rather than dropping one advisory line.
+  for (const text of [...assumptions.value, ...warnings.value, title.value]) {
+    const bad = unsafe(text);
+    if (bad) return REJECT(bad);
+  }
 
   // Canonical order, never the model's order.
   elements.sort((a, b) => JOURNEY_KIND_ORDER.indexOf(a.kind) - JOURNEY_KIND_ORDER.indexOf(b.kind));

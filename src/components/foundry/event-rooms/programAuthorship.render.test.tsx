@@ -170,7 +170,7 @@ describe("[3.2L] failure leaves the draft untouched and recoverable", () => {
     ["provider unavailable", { ok: false, code: "provider_unavailable" }, "isn’t available right now"],
     ["timeout", { ok: false, code: "timeout" }, "took too long"],
     ["provider error", { ok: false, code: "provider_error" }, "couldn’t reach"],
-    ["validation refusal", { ok: false, code: "invalid_output", refusal: "invented_specifics" }, "honesty rules"],
+    ["validation refusal", { ok: false, code: "invalid_output", refusal: "invented_specifics" }, "policy or form you haven’t provided"],
     ["stale context", { ok: false, code: "context_mismatch" }, "changed since"],
     ["duplicate instruction", { ok: false, code: "duplicate_intent" }, "already sent"],
   ];
@@ -187,7 +187,7 @@ describe("[3.2L] failure leaves the draft untouched and recoverable", () => {
   }
 
   it("a refused draft is never shown to the Host", async () => {
-    setup({ ok: false, code: "invalid_output", refusal: "material_fabrication" });
+    setup({ ok: false, code: "invalid_output", refusal: "duplicate_content" });
     await generate();
     expect(screen.queryByTestId("program-review")).toBeNull();
     expect(screen.getByTestId("program-failure").textContent).toContain("discarded it rather than show it to you");
@@ -305,5 +305,29 @@ describe("[3.2L-R1.1] G9 — both publish refusals are legible and neither impli
     for (const copy of [ACTIVE, UNAVAILABLE]) {
       expect(copy).not.toMatch(/lifecycle_state|lease|fingerprint|service_role|database|query|program_generation|409|503/i);
     }
+  });
+});
+
+describe("[3.2L-R2] a grounding refusal tells the Host what to do next", () => {
+  it("names the missing material and states nothing was added", async () => {
+    setup({ ok: false, code: "invalid_output", refusal: "material_fabrication" });
+    await generate();
+    const text = screen.getByTestId("program-failure").textContent ?? "";
+    expect(text).toContain("relied on a template or tool you haven’t provided");
+    expect(text).toContain("Nothing was added");
+    expect(text).toContain("Attach the real material");
+  });
+
+  it("exposes no internal vocabulary", async () => {
+    setup({ ok: false, code: "invalid_output", refusal: "material_fabrication" });
+    await generate();
+    const text = screen.getByTestId("program-failure").textContent ?? "";
+    expect(text).not.toMatch(/regex|validator|schema|grounding|refusal_kind|material_fabrication|corpus|artifact/i);
+  });
+
+  it("no partial program is shown when a section is refused", async () => {
+    setup({ ok: false, code: "invalid_output", refusal: "material_fabrication" });
+    await generate();
+    expect(screen.queryByTestId("program-review")).toBeNull();
   });
 });

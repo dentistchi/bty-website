@@ -91,6 +91,10 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "HARD RULES:",
     "- Invent NO facts. No policy numbers, no form codes, no dates, no named people, no incidents, no metrics, no regulations the host did not state.",
     "- Never claim any material, file, checklist, video or document already exists or is attached. The host supplies the material.",
+    "- DO NOT INFER THE CONTENTS OF LINKED MATERIAL. A link proves a video or file exists; it tells you nothing about what is inside it. Never describe a template, checklist, form or instruction as being 'in the video' or 'provided'.",
+    "- Never state or assume that a template, form, checklist, guide, policy, tool, system or dashboard EXISTS, or that anyone has access to one, unless the context above names it explicitly. Do not assume it in an assumption either — an assumption is not evidence.",
+    "- A desired OUTPUT is not an existing RESOURCE. 'Handoff record' as success evidence means the record is what the host wants produced; it does NOT mean a handoff record template exists.",
+    "- When a new artifact would help, describe CREATING it as a future action: 'agree on the required fields and create a shared handoff record'. Never 'use the handoff record template'.",
     "- Never evaluate a person's worth, loyalty, character, attitude or competence. Describe actions and situations only.",
     "- Never use internal system vocabulary: evidence ladder, capability candidate, learning need, module, journey element, builder step. Participants must never see it.",
     `- EVIDENCE HONESTY. ${evidenceCeiling} Never claim behavior changed, was verified, was mastered, is permanent, or that trust was restored.`,
@@ -210,6 +214,12 @@ export async function generateProgram(
     deployVersion: string;
     correlationId: string;
     /**
+     * Titles of materials the application has VERIFIED — currently uploaded file names.
+     * These may ground an artifact's EXISTENCE. A URL never appears here: a link proves a
+     * material exists, not what is inside it, and nothing retrieves those contents.
+     */
+    verifiedArtifacts?: readonly string[];
+    /**
      * Re-read the draft's authorship state AFTER the provider returns. Supplied by the
      * caller so this service still owns no database reads of its own beyond the ledger.
      */
@@ -316,7 +326,7 @@ export async function generateProgram(
       continue;
     }
 
-    const validated = validateProgramProposal(r.parsed, args.answers);
+    const validated = validateProgramProposal(r.parsed, args.answers, args.verifiedArtifacts ?? []);
     if (callId) {
       await finalizeProgramCall(admin, {
         callId,

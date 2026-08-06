@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireManager, managerJson } from "@/lib/bty/foundry/events/managerGate";
 import { getOwnerDraft } from "@/lib/bty/foundry/events/foundryModuleService";
+import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
 import { generateProgram, evidenceCeilingFor } from "@/lib/bty/foundry/events/programAuthorshipService";
 import { currentSourceIdentity } from "@/lib/bty/foundry/arena/sourceIdentity";
 import { resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
@@ -81,6 +82,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const identity = currentSourceIdentity();
   if (!identity) return managerJson(base, req, { error: "source_identity_unavailable" }, 503);
 
+  // Only VERIFIED material identities may ground an artifact's existence. Uploaded file
+  // titles qualify — the application stored them. The YouTube URL deliberately does not:
+  // a link proves the material exists, never what is inside it (Slice 3.2L-R2).
+  const assets = (await listDraftAssets(admin, user.id, id)) ?? [];
+  const verifiedArtifacts = assets
+    .map((a) => (a as { filename?: unknown }).filename)
+    .filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+
   const result = await generateProgram(admin, {
     draftId: id,
     ownerUserId: user.id,
@@ -90,6 +99,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     locale,
     deployVersion: identity.sourceCommitSha,
     correlationId: crypto.randomUUID(),
+    verifiedArtifacts,
     // Re-read AFTER the provider returns. The draft may have been published, deleted or
     // edited while the call was in flight — measured live during the first controlled
     // window — and a proposal for a draft that moved is not a success.
