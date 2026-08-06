@@ -36,20 +36,26 @@ import {
 import {
   ARTIFACT_NOUNS,
   CONTRACT_FIELD_LIMIT,
+  SCENARIO_FIELD_LIMIT,
+  renderScenarioSentence,
   renderStandardSentence,
   ungroundedExistingEntity,
   validateBehaviorContract,
   validateProgramDependencies,
+  validateScenarioContract,
   type BehaviorContract,
   type ProgramSection,
+  type ScenarioContract,
 } from "./program-coherence";
 
 /**
- * MATERIALLY DIFFERENT CONTRACT (Slice 3.2L-R4), so a new version rather than a relabelled
- * v1: the provider must now return a structured `behavior_contract`, and the participant-
- * facing standard is DERIVED from it instead of authored beside it.
+ * MATERIALLY DIFFERENT CONTRACT AGAIN (Slice 3.2L-R5), so v3 rather than a relabelled v2.
+ *
+ * v2 derived THE STANDARD from a `behavior_contract`. v3 additionally derives IN CONTEXT
+ * from a `scenario_contract` bound to that same behavior, which replaces the lexical
+ * `scenario_unrelated` overlap rule that produced a live false negative.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v2";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v3";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -243,6 +249,11 @@ export type ProgramProposal = {
    * Host edit cannot leave stale metadata behind in one: there is nowhere for it to go.
    */
   behaviorContract: BehaviorContract;
+  /**
+   * Present only when the Host's design requires a scenario. Proposal-only, like the
+   * behavior contract: Apply reads display content, and no path persists a proposal.
+   */
+  scenarioContract: ScenarioContract | null;
 };
 
 export type ProgramValidated = { proposal: ProgramProposal; version: string };
@@ -265,7 +276,15 @@ export type ProgramRejectCode =
   | "evidence_overclaim"
   | "decision_is_only_reflection"
   | "application_without_actor"
+  /**
+   * RETIRED as of program_authorship_v3 (Slice 3.2L-R5) and no longer emitted: relevance
+   * is now guaranteed by deriving IN CONTEXT from the behavior contract, not measured by
+   * lexical overlap. Kept in the union because live attempt rows still carry it and the
+   * Host-facing copy must remain able to explain one.
+   */
   | "scenario_unrelated"
+  /** The proposed situation carried no pressure, or none that was actually a difficulty. */
+  | "scenario_without_pressure"
   | "generic_completion"
   /**
    * The behavioral contract is incomplete or non-observable (Slice 3.2L-R4). The code name
@@ -285,6 +304,21 @@ export type ProgramRejectCode =
   | "person_evaluation"
   | "invalid_assumptions"
   | "invalid_warnings";
+
+/**
+ * The same codes as a runtime value, so a Host-facing copy map can be checked for exact
+ * coverage rather than merely for the absence of a compile error. Kept beside the union so
+ * the two cannot drift.
+ */
+export const PROGRAM_REJECT_CODES: readonly ProgramRejectCode[] = [
+  "not_object", "missing_program", "missing_field", "field_type", "empty_field", "too_long",
+  "unsafe_markup", "unknown_kind", "duplicate_kind", "missing_required_kind", "unrequested_kind",
+  "complaint_replay", "material_fabrication", "invented_specifics", "evidence_overclaim",
+  "decision_is_only_reflection", "application_without_actor", "scenario_unrelated",
+  "scenario_without_pressure", "generic_completion", "non_observable_standard",
+  "dependency_inversion", "section_contradiction", "duplicate_content", "internal_jargon",
+  "person_evaluation", "invalid_assumptions", "invalid_warnings",
+];
 
 export type ProgramValidation =
   | { ok: true; value: ProgramValidated }
@@ -511,7 +545,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v2";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v3";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -534,7 +568,7 @@ export const PROGRAM_JSON_SCHEMA = {
     program: {
       type: "object",
       additionalProperties: false,
-      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract"],
+      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract", "scenario_contract"],
       properties: {
         display_title: { type: "string" },
         evidence_language: { type: "string" },
@@ -558,6 +592,25 @@ export const PROGRAM_JSON_SCHEMA = {
             trigger: { type: "string" },
             observable_action: { type: "string" },
             completion_signal: { type: "string" },
+          },
+        },
+        /**
+         * What the behavior contract cannot supply: what makes the moment hard, and where
+         * it happens. IN CONTEXT is rendered from BOTH contracts, so the scenario is
+         * relevant by construction rather than by sharing a word with the Host's problem.
+         *
+         * NULLABLE, because a `know`-only design requires no scenario. Strict mode needs
+         * every property in `required`, so absence is expressed as null — the same pattern
+         * `rationale` already uses. The DOMAIN decides when null is acceptable; a JSON
+         * Schema cannot express "required only when this draft asks for practice".
+         */
+        scenario_contract: {
+          type: ["object", "null"],
+          additionalProperties: false,
+          required: ["pressure_or_constraint", "context_detail"],
+          properties: {
+            pressure_or_constraint: { type: "string" },
+            context_detail: { type: "string" },
           },
         },
         elements: {
@@ -748,6 +801,52 @@ export function validateProgramProposal(
   if (!contractResult.ok) return REJECT("non_observable_standard", "observable_standard");
   const contract: BehaviorContract = contractResult.value;
 
+  /**
+   * THE SCENARIO CONTRACT (Slice 3.2L-R5). Required exactly when the Host's design asks
+   * for a scenario, and ignored otherwise — a `know`-only program rehearses nothing, and
+   * demanding a pressure for a scenario that will not exist would be fabrication.
+   */
+  const scenarioRequired = required.includes("scenario");
+  const rawScenario = (p as Record<string, unknown>).scenario_contract;
+  let scenarioContract: ScenarioContract | null = null;
+  if (scenarioRequired) {
+    if (rawScenario === undefined || rawScenario === null) {
+      return REJECT_AT("missing_field", "program.scenario_contract", "an object with pressure_or_constraint and context_detail", jsonTypeOf(rawScenario), "scenario");
+    }
+    if (!isPlainObject(rawScenario)) {
+      return REJECT_AT("field_type", "program.scenario_contract", "an object", jsonTypeOf(rawScenario), "scenario");
+    }
+    for (const key of ["pressure_or_constraint", "context_detail"] as const) {
+      const v = (rawScenario as Record<string, unknown>)[key];
+      if (typeof v !== "string") {
+        return REJECT_AT("field_type", `program.scenario_contract.${key}`, `a non-empty string of at most ${SCENARIO_FIELD_LIMIT} characters`, jsonTypeOf(v), "scenario");
+      }
+      // Rendered into participant-facing text, so it carries the same honesty rules.
+      const bad = unsafe(v);
+      if (bad) return REJECT(bad, "scenario");
+    }
+    const sc = validateScenarioContract(rawScenario, contract);
+    // A situation with no difficulty in it teaches nothing. Meaning fault, not shape.
+    if (!sc.ok) return REJECT("scenario_without_pressure", "scenario");
+    scenarioContract = sc.value;
+  }
+
+  /**
+   * DERIVED-LENGTH BACKSTOP. Each contract field is individually bounded, but a rendered
+   * sentence concatenates several of them, so the element ceiling is an invariant of the
+   * arithmetic rather than of any one check. Asserting it here makes it explicit and
+   * refuses honestly instead of shipping an over-long section — and never truncates, which
+   * would silently drop the completion signal off the end.
+   */
+  for (const [path, text] of [
+    ["program.behavior_contract", renderStandardSentence(contract)],
+    ...(scenarioContract ? [["program.scenario_contract", renderScenarioSentence(contract, scenarioContract)] as const] : []),
+  ] as const) {
+    if (text.length > LIMITS.content) {
+      return REJECT_AT("too_long", path, `fields short enough to render within ${LIMITS.content} characters`, "string");
+    }
+  }
+
   const seen = new Set<JourneyElementKind>();
   const elements: ProposedElement[] = [];
 
@@ -791,7 +890,12 @@ export function validateProgramProposal(
      * string checks above — but it cannot become the displayed standard, so the displayed
      * standard can never say something the structured contract does not.
      */
-    const c = kind === "observable_standard" ? renderStandardSentence(contract) : content.value;
+    const c =
+      kind === "observable_standard"
+        ? renderStandardSentence(contract)
+        : kind === "scenario" && scenarioContract
+          ? renderScenarioSentence(contract, scenarioContract)
+          : content.value;
 
     // --- honesty (participant-facing content AND its Host-facing rationale) ---
     /**
@@ -824,11 +928,14 @@ export function validateProgramProposal(
     if (kind === "field_application") {
       if (!APPLICATION_ACTOR.test(c)) return REJECT("application_without_actor", kind);
     }
-    if (kind === "scenario" && ctx) {
-      // A scenario about something else teaches nothing about this behavior.
-      const related = Math.max(overlapRatio(c, ctx.observableBehavior), overlapRatio(c, ctx.problemStatement));
-      if (related < 0.12) return REJECT("scenario_unrelated", kind);
-    }
+    /**
+     * The lexical `scenario_unrelated` gate is GONE (Slice 3.2L-R5). It asked whether the
+     * scenario shared one >3-character token with a two-to-four word reference, with no
+     * stemming — so `handover` failed where `handoff` passed, and an unrelated sentence
+     * containing "standard" would have passed. It produced a live false negative on a
+     * valid program. Relevance is now structural: IN CONTEXT is rendered FROM the behavior
+     * contract, so it cannot be about a different behavior.
+     */
     if (kind === "completion_check") {
       if (!WH_WORD.test(c) || GENERIC_COMPLETION.some((re) => re.test(c))) return REJECT("generic_completion", kind);
     }
@@ -895,6 +1002,7 @@ export function validateProgramProposal(
         warnings: warnings.value,
         evidenceLanguage: evidenceLanguage.value,
         behaviorContract: contract,
+        scenarioContract,
       },
     },
   };

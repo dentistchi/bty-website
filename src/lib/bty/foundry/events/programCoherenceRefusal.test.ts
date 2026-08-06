@@ -71,6 +71,8 @@ const validProgram = () => ({
     warnings: [],
     evidence_language: "This shows exposure and a decision. It does not show behaviour changed.",
     behavior_contract: DEFINING_CONTRACT,
+    // know + decide, no practice and no Arena → this design requires no scenario.
+    scenario_contract: null,
   },
 });
 
@@ -237,6 +239,13 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect(PROGRAM_JSON_SCHEMA.additionalProperties).toBe(false);
     expect(program.additionalProperties).toBe(false);
     expect(program.required).toContain("behavior_contract");
+    expect(program.required).toContain("scenario_contract");
+    // Nullable, because a know-only design needs no scenario. Strict mode requires every
+    // property in `required`, so absence is expressed as null — the `rationale` pattern.
+    const scenario = program.properties.scenario_contract;
+    expect(scenario.type).toEqual(["object", "null"]);
+    expect(scenario.additionalProperties).toBe(false);
+    expect([...scenario.required]).toEqual(["pressure_or_constraint", "context_detail"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
     expect([...contract.required]).toEqual(["actor", "trigger", "observable_action", "completion_signal"]);
@@ -244,8 +253,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
       expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
     }
     // The version names the materially different contract rather than relabelling v1.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v2");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v2");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v3");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v3");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

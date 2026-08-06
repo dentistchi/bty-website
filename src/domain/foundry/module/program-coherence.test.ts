@@ -4,12 +4,15 @@ import {
   renderStandardSentence,
   isMetaStandardText,
   validateProgramDependencies,
+  validateScenarioContract,
+  renderScenarioSentence,
   definiteConstructs,
   ungroundedExistingEntity,
   ARTIFACT_NOUNS,
   CONSTRUCT_NOUNS,
   type BehaviorContract,
   type ProgramSection,
+  type ScenarioContract,
 } from "./program-coherence";
 
 /**
@@ -339,5 +342,138 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
       DEFINING,
     );
     expect(d).toMatchObject({ kind: "completion_check", reason: "defined_after_use" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Behavior-grounded scenario contract (Slice 3.2L-R5)
+// ---------------------------------------------------------------------------
+
+const GOOD_SCENARIO: ScenarioContract = {
+  pressureOrConstraint: "two people are already waiting to ask you something else and the shift ran late",
+  contextDetail: "the last ten minutes of a busy evening shift",
+};
+
+const rawScenario = (c: Partial<Record<string, unknown>> = {}) => ({
+  pressure_or_constraint: GOOD_SCENARIO.pressureOrConstraint,
+  context_detail: GOOD_SCENARIO.contextDetail,
+  ...c,
+});
+
+describe("[3.2L-R5] G1 — the exact live false negative cannot recur", () => {
+  it("a scenario written as a handover is relevant without saying handoff or standard", () => {
+    const derived = renderScenarioSentence(GOOD, GOOD_SCENARIO);
+    // The R4 gate demanded one shared >3-character token with the Host's own words.
+    // These are the six tokens it had to choose from for the canonical draft.
+    for (const token of ["handoff", "handoffs", "standard", "create", "shared", "inconsistent"]) {
+      expect(derived.toLowerCase()).not.toContain(token);
+    }
+    // And yet it is unambiguously about the trained behaviour, because it was BUILT from it.
+    expect(derived).toContain(GOOD.actor);
+    expect(derived).toContain("out loud to the person taking over");
+    expect(derived).toContain("confirms they have it");
+  });
+
+  it("relevance is structural, so an unrelated word choice cannot make it irrelevant", () => {
+    const r = validateScenarioContract(rawScenario(), GOOD);
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("[3.2L-R5] G2/G3 — the situation must contain a real difficulty", () => {
+  it("G3: a pressure that merely restates the required action is refused", () => {
+    const r = validateScenarioContract(
+      rawScenario({ pressure_or_constraint: "states each unfinished task out loud to the person taking over" }),
+      GOOD,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.defect).toEqual({ field: "pressureOrConstraint", reason: "restates_action" });
+  });
+
+  it("G3: a generic difficulty is refused", () => {
+    for (const generic of ["it is difficult", "There is pressure.", "time pressure", "a busy day"]) {
+      const r = validateScenarioContract(rawScenario({ pressure_or_constraint: generic }), GOOD);
+      expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
+    }
+  });
+
+  it("G2: a context that names no actual moment or place is refused", () => {
+    for (const generic of ["at work", "in the workplace", "the team", "day-to-day work"]) {
+      const r = validateScenarioContract(rawScenario({ context_detail: generic }), GOOD);
+      expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
+      if (!r.ok) expect(r.defect.field).toBe("contextDetail");
+    }
+  });
+
+  it("a pressure with no constraint in it at all is refused", () => {
+    const r = validateScenarioContract(
+      rawScenario({ pressure_or_constraint: "the room is painted a pleasant shade of blue" }),
+      GOOD,
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.defect.reason).toBe("no_pressure");
+  });
+
+  it("empty and over-long fields are bounded", () => {
+    expect(validateScenarioContract(rawScenario({ pressure_or_constraint: "" }), GOOD).ok).toBe(false);
+    expect(validateScenarioContract(rawScenario({ context_detail: "x".repeat(400) }), GOOD).ok).toBe(false);
+  });
+});
+
+describe("[3.2L-R5] G4 — the displayed scenario cannot drift from its grounding", () => {
+  it("every rendered clause comes from one of the two contracts", () => {
+    const derived = renderScenarioSentence(GOOD, GOOD_SCENARIO);
+    expect(derived).toContain(GOOD_SCENARIO.pressureOrConstraint);
+    expect(derived).toContain(GOOD_SCENARIO.contextDetail);
+    expect(derived).toContain(GOOD.completionSignal);
+    expect(derived.length).toBeLessThanOrEqual(700);
+  });
+
+  it("changing the behaviour contract changes the scenario", () => {
+    const other: BehaviorContract = { ...GOOD, actor: "the incoming supervisor" };
+    expect(renderScenarioSentence(other, GOOD_SCENARIO)).toContain("the incoming supervisor");
+    expect(renderScenarioSentence(other, GOOD_SCENARIO)).not.toBe(renderScenarioSentence(GOOD, GOOD_SCENARIO));
+  });
+
+  it("the derived scenario is not itself a meta standard", () => {
+    expect(isMetaStandardText(renderScenarioSentence(GOOD, GOOD_SCENARIO))).toBe(false);
+  });
+});
+
+describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", () => {
+  it("a scenario built from a defining contract uses a defined construct", () => {
+    const d = validateProgramDependencies(
+      [
+        S("observable_standard", renderStandardSentence(DEFINING)),
+        S("scenario", renderScenarioSentence(DEFINING, GOOD_SCENARIO)),
+        S("field_application", LIVE_APPLY),
+      ],
+      DEFINING,
+    );
+    expect(d).toBeNull();
+  });
+
+  it("a completion check still cannot retroactively define it", () => {
+    const d = validateProgramDependencies(
+      [
+        S("observable_standard", renderStandardSentence(DEFINING)),
+        S("scenario", renderScenarioSentence(DEFINING, GOOD_SCENARIO)),
+        S("field_application", LIVE_APPLY),
+        S("completion_check", LIVE_COMPLETION_CHECK),
+      ],
+      DEFINING,
+    );
+    expect(d).toMatchObject({ kind: "completion_check", reason: "defined_after_use" });
+  });
+
+  it("a scenario contract that smuggles in an undefined construct is caught", () => {
+    const d = validateProgramDependencies(
+      [
+        S("observable_standard", renderStandardSentence(GOOD)),
+        S("scenario", renderScenarioSentence(GOOD, { ...GOOD_SCENARIO, contextDetail: "the middle of the agreed escalation process" })),
+      ],
+      GOOD,
+    );
+    expect(d).toMatchObject({ kind: "scenario", reason: "used_before_defined" });
   });
 });

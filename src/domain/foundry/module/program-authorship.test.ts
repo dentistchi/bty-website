@@ -87,6 +87,12 @@ function goodProposal(over: Record<string, unknown> = {}) {
           "follows the shared handoff standard by stating each open item aloud to the person taking over",
         completion_signal: "the person taking over repeats the open items back and confirms they have them",
       },
+      // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
+      // difficulty and the setting; relevance comes from the derivation.
+      scenario_contract: {
+        pressure_or_constraint: "two people are already waiting to ask you questions and the shift ran late",
+        context_detail: "the last ten minutes of a busy evening shift",
+      },
       ...over,
     },
   };
@@ -234,8 +240,29 @@ describe("[3.2L] the validator fails closed", () => {
     reject((p) => { p.program.elements[4].content = "Handoffs. Standards. Records. Items. Steps."; }, "application_without_actor");
   });
 
-  it("refuses a scenario unrelated to the behaviour", () => {
-    reject((p) => { p.program.elements[2].content = "A courier misplaces a parcel while cycling across town in heavy rain."; }, "scenario_unrelated");
+  /**
+   * R5 REPLACES the lexical relevance rule this test used to assert. Scenario relevance is
+   * no longer measured against the model's own scenario prose — that prose is not shown.
+   * IN CONTEXT is rendered FROM the behavior contract, so an unrelated sentence in the
+   * elements array cannot make the displayed scenario unrelated. What CAN still be wrong is
+   * the pressure, and that is what is now refused.
+   */
+  it("model-authored scenario prose no longer decides relevance — it is not displayed", () => {
+    const p = goodProposal();
+    p.program.elements[2].content = "A courier misplaces a parcel while cycling across town in heavy rain.";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok, r.ok ? "" : `${r.code}`).toBe(true);
+    if (r.ok) {
+      const scenario = r.value.proposal.elements.find((e) => e.kind === "scenario")!;
+      expect(scenario.content).not.toContain("courier");
+      expect(scenario.content).toContain("the shift ran late");
+    }
+  });
+
+  it("refuses a scenario whose pressure is not a difficulty", () => {
+    reject((p) => {
+      p.program.scenario_contract = { pressure_or_constraint: "it is difficult", context_detail: "the last ten minutes of a busy evening shift" };
+    }, "scenario_without_pressure");
   });
 
   it("refuses a generic completion question", () => {
@@ -277,6 +304,8 @@ describe("[3.2L] the validator fails closed", () => {
         warnings: [],
         evidence_language: "This shows people were exposed to the standard. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
+        // know-only design: no scenario is required, so no scenario contract.
+        scenario_contract: null,
       },
     };
     const r = validateProgramProposal(p, infoOnly);
@@ -302,6 +331,8 @@ describe("[3.2L] the validator fails closed", () => {
         warnings: [],
         evidence_language: "This shows exposure only. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
+        // know-only design: no scenario is required, so no scenario contract.
+        scenario_contract: null,
       },
     };
     expect(validateProgramProposal(p, infoOnly).ok).toBe(true);
@@ -327,10 +358,14 @@ describe("[3.2L] the validator fails closed", () => {
 
   it("names the offending element so a refusal is diagnosable", () => {
     const p = goodProposal();
-    p.program.elements[2].content = "A courier misplaces a parcel while cycling across town in heavy rain.";
+    // A per-kind meaning rule that still reads the model's own displayed content.
+    p.program.elements[3].content = "Think about how handoffs could be better on your team.";
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.kind).toBe("scenario");
+    if (!r.ok) {
+      expect(r.code).toBe("decision_is_only_reflection");
+      expect(r.kind).toBe("action_decision");
+    }
   });
 });
 
@@ -381,6 +416,7 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
     observableAction: "states each open item aloud to the person taking over",
     completionSignal: "the person taking over repeats them back and confirms",
     },
+    scenarioContract: null,
   };
   const current: RealityGroundedJourneyV1 = {
     version: 1,

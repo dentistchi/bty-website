@@ -91,7 +91,7 @@ const KIND_BRIEF: Record<string, string> = {
   observable_standard:
     "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the behavior_contract you also return.",
   scenario:
-    "one short realistic situation from THIS team's work where the behavior is hard to hold. Ground it only in what the host described — invent no policy number, no named person, no incident, no date.",
+    "one short realistic situation where the behavior is hard to hold. It must match the scenario_contract you also return. Invent no policy number, no named person, no incident, no date.",
   reflection: "one question that makes the participant examine their own current practice honestly.",
   action_decision:
     "one specific commitment the participant makes. It must COMMIT to an action ('I will …'), not merely invite thought.",
@@ -133,6 +133,12 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- 'A shared handoff standard is created and utilized by team members' is NOT acceptable: it describes the standard's life cycle, not a person's action. Write what someone is seen doing instead.",
     "- completion_signal must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
     "",
+    "THE PRACTICE SITUATION — scenario_contract:",
+    "- Return scenario_contract with pressure_or_constraint (what competes with doing it properly at that moment) and context_detail (where and when it happens).",
+    "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger, action or completion signal for it.",
+    "- pressure_or_constraint must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
+    "- context_detail must name an actual moment or place, not 'at work'.",
+    "",
     "PROPOSING A NEW WAY OF WORKING:",
     "- You MAY propose a new standard, process, checklist or agreement. Describe CREATING it.",
     "- Do NOT present it as something that already exists.",
@@ -143,7 +149,7 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"evidence_language":string,"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion_signal":string}}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"evidence_language":string,"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion_signal":string},"scenario_contract":{"pressure_or_constraint":string,"context_detail":string}|null}}',
   ].join("\n");
 }
 

@@ -371,6 +371,148 @@ export function isMetaStandardText(text: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Behavior-grounded scenario contract (Slice 3.2L-R5)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE LIVE FALSE NEGATIVE. The R4 window produced a valid behavior contract and was then
+ * refused `scenario_unrelated` — a rule that asked only whether the scenario shared a word
+ * with the Host's problem statement:
+ *
+ *   max(overlap(scenario, "Create a shared handoff standard."),
+ *       overlap(scenario, "Our handoffs are inconsistent.")) >= 0.12
+ *
+ * `overlapRatio` keeps tokens longer than three characters and divides by the SMALLER set,
+ * so against references of four and two tokens the threshold collapsed to "share at least
+ * one word". There is no stemmer, so `handoff` and `handoffs` are different tokens. A
+ * scenario written as a handover, about the person taking over, shares nothing — and a
+ * scenario about the office coffee machine that happens to say "standard" would have
+ * passed. That is vocabulary coincidence, not relevance.
+ *
+ * THE REPAIR is not a bigger word list. A scenario is relevant because it exercises the
+ * behavior the program already defined, so it is DERIVED from the behavior contract. The
+ * model supplies only what the contract cannot: what makes the moment hard, and where it
+ * happens.
+ */
+export type ScenarioContract = {
+  pressureOrConstraint: string;
+  contextDetail: string;
+};
+
+export const SCENARIO_FIELD_LIMIT = 120;
+const SCENARIO_FIELD_MIN = 8;
+
+export type ScenarioField = keyof ScenarioContract;
+
+export type ScenarioDefect = {
+  field: ScenarioField;
+  reason: "missing" | "too_long" | "generic" | "restates_action" | "no_pressure";
+};
+
+/**
+ * Something that competes with doing it properly. This is a FLOOR on the pressure field's
+ * own content — it is deliberately NOT the relevance authority, which is now structural.
+ * A scenario cannot become relevant by matching this list, and cannot become irrelevant by
+ * missing it: relevance comes from the derivation.
+ */
+const CONSTRAINT_MARKER =
+  /\b(?:no\s+time|not\s+enough\s+time|short\s+of\s+time|running\s+late|late|rush\w*|hurry|busy|queue|waiting|already|interrupt\w*|pressure|push\w*\s+back|pushback|resist\w*|disagree\w*|argu\w*|refus\w*|tired|exhaust\w*|end\s+of\s+(?:the\s+)?(?:shift|day)|understaffed|short-staffed|missing|unavailable|absent|urgent|deadline|competing|conflict\w*|distract\w*|noisy|noise|nobody|no\s+one|someone\s+else|another\s+(?:person|task|request)|only\s+\w+\s+minutes|still\s+\w+ing|has\s+not\s+arrived|hasn't\s+arrived|left\s+(?:early|for\s+the\s+day)|awkward|uncomfortable|senior|manager\s+is|being\s+watched|first\s+time|unclear|unsure)\b|바쁘|늦|압박|서둘/i;
+
+/** Placeholders that describe difficulty without naming any. */
+const GENERIC_PRESSURE = [
+  /^\s*(?:it\s+is\s+)?(?:difficult|hard|challenging|tricky|complicated|stressful)\.?\s*$/i,
+  /^\s*there\s+is\s+(?:some\s+)?pressure\.?\s*$/i,
+  /^\s*(?:time\s+)?pressure\.?\s*$/i,
+  /^\s*(?:a\s+)?(?:busy|difficult|challenging)\s+(?:day|time|situation|environment)\.?\s*$/i,
+];
+
+/** Context that names no actual place, moment or people. */
+const GENERIC_CONTEXT = [
+  /^\s*(?:at|in)\s+(?:work|the\s+workplace|the\s+office|general|practice)\.?\s*$/i,
+  /^\s*(?:the\s+)?(?:workplace|office|team|organisation|organization|company)\.?\s*$/i,
+  /^\s*(?:day-to-day|everyday|normal|regular)\s+(?:work|operations|business)\.?\s*$/i,
+];
+
+/** Token containment: does `inner` say essentially what `outer` already said? */
+function saysTheSameThing(a: string, b: string): boolean {
+  const words = (s: string) =>
+    new Set(
+      s
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .split(/\s+/)
+        .filter((w) => w.length > 3),
+    );
+  const wa = words(a);
+  const wb = words(b);
+  if (wa.size === 0) return false;
+  let shared = 0;
+  for (const w of wa) if (wb.has(w)) shared++;
+  // Nearly every content word of the pressure already appears in the action.
+  return shared / wa.size >= 0.8;
+}
+
+/**
+ * Validate the two fields the model must supply for a scenario. Relevance is NOT decided
+ * here — it is guaranteed by construction, because the displayed scenario is rendered from
+ * the behavior contract. What is decided here is whether the moment is actually hard, and
+ * actually somewhere.
+ */
+export function validateScenarioContract(
+  raw: unknown,
+  behavior: BehaviorContract,
+): { ok: true; value: ScenarioContract } | { ok: false; defect: ScenarioDefect } {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { ok: false, defect: { field: "pressureOrConstraint", reason: "missing" } };
+  }
+  const r = raw as Record<string, unknown>;
+  const value: ScenarioContract = {
+    pressureOrConstraint: trimField(r.pressure_or_constraint ?? r.pressureOrConstraint),
+    contextDetail: trimField(r.context_detail ?? r.contextDetail),
+  };
+
+  for (const f of ["pressureOrConstraint", "contextDetail"] as const) {
+    if (value[f].length < SCENARIO_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
+    if (value[f].length > SCENARIO_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
+  }
+
+  if (GENERIC_PRESSURE.some((re) => re.test(value.pressureOrConstraint))) {
+    return { ok: false, defect: { field: "pressureOrConstraint", reason: "generic" } };
+  }
+  if (GENERIC_CONTEXT.some((re) => re.test(value.contextDetail))) {
+    return { ok: false, defect: { field: "contextDetail", reason: "generic" } };
+  }
+  // A pressure that restates the required action describes no obstacle to it.
+  if (saysTheSameThing(value.pressureOrConstraint, behavior.observableAction)) {
+    return { ok: false, defect: { field: "pressureOrConstraint", reason: "restates_action" } };
+  }
+  if (!CONSTRAINT_MARKER.test(value.pressureOrConstraint)) {
+    return { ok: false, defect: { field: "pressureOrConstraint", reason: "no_pressure" } };
+  }
+
+  return { ok: true, value };
+}
+
+/**
+ * THE participant-facing scenario, DERIVED — so it cannot describe a different behavior
+ * than the one the program defined. Same actor, same trigger, same required action, same
+ * completion signal; the model contributes only the difficulty and the setting.
+ */
+export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
+  const trigger = stripTrailingStop(b.trigger.trim());
+  const actor = stripTrailingStop(b.actor.trim());
+  const action = stripTrailingStop(b.observableAction.trim());
+  const signal = stripTrailingStop(b.completionSignal.trim());
+  const pressure = stripTrailingStop(s.pressureOrConstraint.trim());
+  const context = stripTrailingStop(s.contextDetail.trim());
+  return (
+    `${upperFirst(trigger)}, ${lowerFirst(actor)} faces ${lowerFirst(pressure)}. ` +
+    `In ${lowerFirst(context)}, they still ${lowerFirst(action)}. ` +
+    `It is complete when ${lowerFirst(signal)}.`
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Whole-program dependency graph
 // ---------------------------------------------------------------------------
 
