@@ -58,12 +58,7 @@ import {
  * hands off to its control room. Persistence engine is regression-protected.
  */
 
-type Snapshot = {
-  answers: BuilderAnswers;
-  currentStep: number;
-  /** Present ONLY on the save that applies a program — records adoption (Slice 3.2L-R11). */
-  appliedProgramAttemptId?: string;
-};
+type Snapshot = { answers: BuilderAnswers; currentStep: number };
 type Restore = "loading" | "loaded" | "unavailable" | "gone";
 
 export function ModuleBuilderShell({
@@ -124,11 +119,7 @@ export function ModuleBuilderShell({
           credentials: "include",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            answers: snap.answers,
-            current_step: snap.currentStep,
-            ...(snap.appliedProgramAttemptId ? { applied_program_attempt_id: snap.appliedProgramAttemptId } : {}),
-          }),
+          body: JSON.stringify({ answers: snap.answers, current_step: snap.currentStep }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
           // it never settled, so `inFlight` never cleared and every later flush hung.
           // Aborting turns that into an ordinary retryable failure.
@@ -190,12 +181,12 @@ export function ModuleBuilderShell({
   }, []);
 
   const patchAnswers = useCallback(
-    (partial: BuilderAnswers, immediate: boolean, appliedProgramAttemptId?: string) => {
+    (partial: BuilderAnswers, immediate: boolean) => {
       setBlocker(null);
       const merged = { ...answersRef.current, ...partial };
       answersRef.current = merged;
       setAnswers(merged);
-      const snapshot: Snapshot = { answers: merged, currentStep: stepRef.current, appliedProgramAttemptId };
+      const snapshot: Snapshot = { answers: merged, currentStep: stepRef.current };
       cancelDebounce();
       if (immediate) saver.schedule(snapshot);
       else debounceRef.current = setTimeout(() => saver.schedule(snapshot), 600);
@@ -462,9 +453,15 @@ export function ModuleBuilderShell({
 
   const applyProgram = useCallback(
     (next: RealityGroundedJourneyV1, attemptId: string | null) => {
-      // ONE request writes the journey and records adoption, so Apply stays atomic and the
-      // ledger stops reading as if no proposal was ever kept (Slice 3.2L-R11).
-      patchAnswers({ realityGroundedJourneyV1: next }, true, attemptId ?? undefined);
+      /*
+        ONE row update carries the adopted journey AND the record of which proposal was
+        adopted, so the server derives the receipt from durable state rather than from a
+        field that vanishes with the request (Slice 3.2L-R11.1).
+      */
+      patchAnswers(
+        { realityGroundedJourneyV1: next, ...(attemptId ? { programAdoptionV1: { attemptId } } : {}) },
+        true,
+      );
     },
     [patchAnswers],
   );

@@ -113,6 +113,19 @@ export type BuilderAnswers = ModuleDraftAnswers & {
    */
   realityGroundedJourneyV1?: RealityGroundedJourneyV1;
   /**
+   * WHICH generated proposal this draft adopted (Slice 3.2L-R11.1).
+   *
+   * The adoption RECEIPT lives on the generation attempt (`applied_at`), in a different
+   * table, written by a second statement with no transaction around it. Without this the
+   * draft could carry an adopted program while the ledger said nothing was ever adopted,
+   * and no one could tell WHICH attempt to stamp afterwards — the journey records no
+   * attempt id. This is the durable fact that makes the receipt recoverable exactly.
+   *
+   * Deliberately NOT in the publish snapshot whitelist: it is an audit link, never
+   * participant content.
+   */
+  programAdoptionV1?: { attemptId: string };
+  /**
    * Adaptive Clarification (Slice 2.4C) — the resumable pre-draft Q&A state. Assistive
    * scratch, NOT a canonical published field: it is deliberately excluded from
    * `SNAPSHOT_ANSWER_KEYS`, never overwrites a canonical Builder field, and survives
@@ -262,6 +275,9 @@ function checkText(raw: unknown, max: number, tooLong: string, notString: string
  * persisted). Returns the sanitized subset to shallow-merge into the draft, or a
  * list of stable field error codes.
  */
+/** Exactly a UUID — the attempt id is a database key, never free text. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
   const errors: string[] = [];
   const out: { answers?: BuilderAnswers; currentStep?: number } = {};
@@ -395,6 +411,17 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       // verbatim so the Host-approved Journey survives the draft round-trip and is
       // frozen into the module snapshot at publish. Content grounding/approval is
       // enforced in the domain + service, not re-derived here.
+      /*
+        Accepted through the SAME whitelist every other answer passes. A malformed or
+        oversized value is dropped rather than stored, so a bad client can never make the
+        server stamp something arbitrary.
+      */
+      if (a.programAdoptionV1 !== undefined) {
+        const v = a.programAdoptionV1 as { attemptId?: unknown } | null;
+        const id = isPlainObject(v) ? v.attemptId : undefined;
+        if (typeof id === "string" && UUID_RE.test(id)) clean.programAdoptionV1 = { attemptId: id };
+        else errors.push("program_adoption_invalid");
+      }
       if (a.realityGroundedJourneyV1 !== undefined) {
         if (validateJourney(a.realityGroundedJourneyV1).length === 0) {
           clean.realityGroundedJourneyV1 = a.realityGroundedJourneyV1 as BuilderAnswers["realityGroundedJourneyV1"];

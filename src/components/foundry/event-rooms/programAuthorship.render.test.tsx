@@ -593,6 +593,18 @@ describe("[3.2L-R11] the Apply boundary", () => {
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 
+  it("G8: the dev fixture's Apply carries no attempt id, so no live attempt can be stamped", async () => {
+    const onApply = vi.fn();
+    const fixtureOutcome = { ...ok, attemptId: null };
+    setup(fixtureOutcome as typeof ok, onApply);
+    await generate();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply).toHaveBeenCalledTimes(1);
+    expect(onApply.mock.calls[0][1]).toBeNull();
+  });
+
   it("Apply hands the attempt id through, so adoption can be recorded", async () => {
     const { onApply } = setup(ok);
     await generate();

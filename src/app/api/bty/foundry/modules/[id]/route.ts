@@ -71,21 +71,27 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));
 
   /**
-   * ADOPTION, RECORDED (Slice 3.2L-R11).
+   * ADOPTION RECEIPT, DERIVED FROM DURABLE STATE (Slice 3.2L-R11.1).
    *
-   * `markProgramAttemptApplied` and the `applied_at` column have existed since the ledger
-   * was built — "Authorship ≠ adoption" — and nothing ever called it. So every proposal
-   * BTY has ever written reads as never adopted, and a future reconciliation cannot tell a
-   * program the Host kept from one they walked away from.
+   * R11 stamped `applied_at` from a transient request field and swallowed any failure. The
+   * draft write and the attempt write are two separate statements with no transaction
+   * around them, so that could acknowledge an Apply while the ledger still said the
+   * proposal was never adopted — and nothing could say WHICH attempt to stamp afterwards,
+   * because the journey records no attempt id.
    *
-   * It rides the SAME request that writes the journey, so Apply stays one atomic gesture,
-   * and it is owner-scoped and idempotent. A failure here must never fail the Apply the
-   * Host already saw succeed: the draft write is what they asked for, and losing the
-   * adoption timestamp is not worth losing their program.
+   * The receipt now follows the draft's own durable `programAdoptionV1` marker, written in
+   * the SAME row update as the journey. So the two facts are recoverable from one another:
+   * if the stamp fails, the marker survives and the very next save completes it. First
+   * receipt wins, so re-offering it never moves the timestamp.
+   *
+   * This is exact, owner-scoped and retry-safe. It is NOT a transaction, and it is not
+   * described as one: the honest guarantee is that adoption is never lost, not that both
+   * writes land together.
    */
-  const appliedAttemptId = typeof body?.applied_program_attempt_id === "string" ? body.applied_program_attempt_id : null;
-  if (appliedAttemptId) {
-    await markProgramAttemptApplied(admin, appliedAttemptId, user.id).catch(() => undefined);
+  const adoptedAttemptId = (result.value.answers as { programAdoptionV1?: { attemptId?: unknown } } | null)
+    ?.programAdoptionV1?.attemptId;
+  if (typeof adoptedAttemptId === "string" && adoptedAttemptId.length > 0) {
+    await markProgramAttemptApplied(admin, adoptedAttemptId, user.id).catch(() => false);
   }
 
   return managerJson(base, req, { draft: toClientDraft(result.value) });

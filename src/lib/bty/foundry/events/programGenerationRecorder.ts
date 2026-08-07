@@ -186,13 +186,24 @@ export async function finalizeProgramAttempt(admin: SupabaseClient, input: Final
     .eq("id", input.attemptId);
 }
 
-/** Record that the Host actually applied the proposal. Authorship ≠ adoption. */
-export async function markProgramAttemptApplied(admin: SupabaseClient, attemptId: string, ownerUserId: string): Promise<void> {
-  await admin
+/**
+ * Record that the Host actually applied the proposal. Authorship ≠ adoption.
+ *
+ * `applied_at is null` makes the FIRST receipt win (Slice 3.2L-R11.1). The draft carries a
+ * durable adoption marker, so every later save re-offers the same stamp; without this guard
+ * the column would drift into "time of the last save" instead of the moment of adoption.
+ * Returns whether the attempt now carries a receipt, so a caller can retry rather than guess.
+ */
+export async function markProgramAttemptApplied(admin: SupabaseClient, attemptId: string, ownerUserId: string): Promise<boolean> {
+  const { error } = await admin
     .from(ATTEMPTS)
     .update({ applied_at: new Date().toISOString() })
     .eq("id", attemptId)
-    .eq("owner_user_id", ownerUserId);
+    .eq("owner_user_id", ownerUserId)
+    .is("applied_at", null);
+  if (error) return false;
+  const { data } = await admin.from(ATTEMPTS).select("applied_at").eq("id", attemptId).eq("owner_user_id", ownerUserId).maybeSingle<{ applied_at: string | null }>();
+  return data?.applied_at != null;
 }
 
 export async function startProgramCall(admin: SupabaseClient, input: StartProgramCallInput): Promise<string | null> {
