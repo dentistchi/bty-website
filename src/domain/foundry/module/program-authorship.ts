@@ -86,7 +86,7 @@ import {
  * bumped even though the schema did not move, because reconciliation has to be able to tell
  * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v6";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v7";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -407,6 +407,22 @@ function hasUnsafeMarkup(raw: string): boolean {
  * Host never established. Training can address the operational problem they described; it
  * cannot promise the outcome.
  */
+/**
+ * Where an outcome promise starts in a piece of narrative, or -1.
+ *
+ * Exported so the one place that has to HANDLE an authentic overclaim rather than merely
+ * refuse it — the physical-preview fixture, which replays a real proposal that shipped one —
+ * cuts at the same phrase list the validator refuses on, instead of hard-coding a substring
+ * that would silently stop matching if the list moved (Slice 3.2L-R8.1).
+ */
+export function outcomeClaimIndex(text: string): number {
+  for (const p of OUTCOME_CLAIM_PHRASES) {
+    const m = new RegExp(p, "i").exec(text);
+    if (m) return m.index;
+  }
+  return -1;
+}
+
 const OUTCOME_CLAIM_PHRASES = [
   "ultimately (?:affects?|improves?|leads? to|results? in|drives?)",
   "(?:improves?|increases?|boosts?|drives?|ensures?) (?:project success|team collaboration|productivity|morale|safety|quality|outcomes|performance|efficiency|retention)",
@@ -611,7 +627,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v6";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v7";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -683,13 +699,19 @@ export const PROGRAM_JSON_SCHEMA = {
          * `rationale` already uses. The DOMAIN decides when null is acceptable; a JSON
          * Schema cannot express "required only when this draft asks for practice".
          */
+        /**
+         * TRIGGER-ANCHORED (Slice 3.2L-R8.1). `context_detail` is GONE: the scenario no
+         * longer owns a moment, only the difficulty of holding the behaviour at the one
+         * moment the behaviour contract already named. `pressure_detail` is nullable
+         * because most situations need a single condition, not two.
+         */
         scenario_contract: {
           type: ["object", "null"],
           additionalProperties: false,
-          required: ["pressure_or_constraint", "context_detail"],
+          required: ["pressure_condition", "pressure_detail"],
           properties: {
-            pressure_or_constraint: { type: "string" },
-            context_detail: { type: "string" },
+            pressure_condition: { type: "string" },
+            pressure_detail: { type: ["string", "null"] },
           },
         },
         /**
@@ -958,13 +980,18 @@ export function validateProgramProposal(
   let scenarioContract: ScenarioContract | null = null;
   if (scenarioRequired) {
     if (rawScenario === undefined || rawScenario === null) {
-      return REJECT_AT("missing_field", "program.scenario_contract", "an object with pressure_or_constraint and context_detail", jsonTypeOf(rawScenario), "scenario");
+      return REJECT_AT("missing_field", "program.scenario_contract", "an object with pressure_condition and pressure_detail", jsonTypeOf(rawScenario), "scenario");
     }
     if (!isPlainObject(rawScenario)) {
       return REJECT_AT("field_type", "program.scenario_contract", "an object", jsonTypeOf(rawScenario), "scenario");
     }
-    for (const key of ["pressure_or_constraint", "context_detail"] as const) {
+    for (const key of ["pressure_condition", "pressure_detail"] as const) {
       const v = (rawScenario as Record<string, unknown>)[key];
+      // `pressure_detail` is genuinely optional; only its type is enforced here.
+      if (v === null || v === undefined) {
+        if (key === "pressure_detail") continue;
+        return REJECT_AT("missing_field", `program.scenario_contract.${key}`, `a non-empty string of at most ${SCENARIO_FIELD_LIMIT} characters`, jsonTypeOf(v), "scenario");
+      }
       if (typeof v !== "string") {
         return REJECT_AT("field_type", `program.scenario_contract.${key}`, `a non-empty string of at most ${SCENARIO_FIELD_LIMIT} characters`, jsonTypeOf(v), "scenario");
       }
@@ -1492,7 +1519,7 @@ export function validateEditedReview(
   if (required.includes("scenario")) {
     if (!c.scenario) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };
     const sc = validateScenarioContract(
-      { pressure_or_constraint: c.scenario.pressureOrConstraint, context_detail: c.scenario.contextDetail },
+      { pressure_condition: c.scenario.pressureCondition, pressure_detail: c.scenario.pressureDetail },
       c.behavior,
     );
     if (!sc.ok) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };

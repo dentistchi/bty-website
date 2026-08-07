@@ -63,8 +63,8 @@ const middleGround = () => ({
       completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     },
     scenario_contract: {
-      pressure_or_constraint: "two people are already waiting and the shift ran late",
-      context_detail: "the last ten minutes of a busy evening shift",
+      pressure_condition: "two people are already waiting and the shift ran late",
+      pressure_detail: null,
     },
     application_contract: {
       application_moment: "at your next shift change",
@@ -254,7 +254,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     const arg = chatCreate.mock.calls[0][0] as { response_format: { type: string; json_schema: { strict: boolean; name: string } } };
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
-    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v6");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v6");
+    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v7");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v7");
   });
 });

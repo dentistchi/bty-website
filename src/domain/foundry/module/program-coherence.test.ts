@@ -381,14 +381,18 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
 // Behavior-grounded scenario contract (Slice 3.2L-R5)
 // ---------------------------------------------------------------------------
 
+/**
+ * v7 shape (Slice 3.2L-R8.1): pressure only. The scenario has no moment of its own — the
+ * one moment in a program is the behaviour trigger.
+ */
 const GOOD_SCENARIO: ScenarioContract = {
-  pressureOrConstraint: "two people are already waiting to ask you something else and the shift ran late",
-  contextDetail: "the last ten minutes of a busy evening shift",
+  pressureCondition: "two people are already waiting to ask you something else and the shift ran late",
+  pressureDetail: "",
 };
 
 const rawScenario = (c: Partial<Record<string, unknown>> = {}) => ({
-  pressure_or_constraint: GOOD_SCENARIO.pressureOrConstraint,
-  context_detail: GOOD_SCENARIO.contextDetail,
+  pressure_condition: GOOD_SCENARIO.pressureCondition,
+  pressure_detail: GOOD_SCENARIO.pressureDetail,
   ...c,
 });
 
@@ -415,31 +419,31 @@ describe("[3.2L-R5] G1 — the exact live false negative cannot recur", () => {
 describe("[3.2L-R5] G2/G3 — the situation must contain a real difficulty", () => {
   it("G3: a pressure that merely restates the required action is refused", () => {
     const r = validateScenarioContract(
-      rawScenario({ pressure_or_constraint: "states each unfinished task out loud to the person taking over" }),
+      rawScenario({ pressure_condition: "states each unfinished task out loud to the person taking over" }),
       GOOD,
     );
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "pressureOrConstraint", reason: "restates_action" });
+    if (!r.ok) expect(r.defect).toEqual({ field: "pressureCondition", reason: "restates_action" });
   });
 
   it("G3: a generic difficulty is refused", () => {
     for (const generic of ["it is difficult", "There is pressure.", "time pressure", "a busy day"]) {
-      const r = validateScenarioContract(rawScenario({ pressure_or_constraint: generic }), GOOD);
+      const r = validateScenarioContract(rawScenario({ pressure_condition: generic }), GOOD);
       expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
     }
   });
 
-  it("G2: a context that names no actual moment or place is refused", () => {
+  it("G2: a pressure that names nothing actual is refused", () => {
     for (const generic of ["at work", "in the workplace", "the team", "day-to-day work"]) {
-      const r = validateScenarioContract(rawScenario({ context_detail: generic }), GOOD);
+      const r = validateScenarioContract(rawScenario({ pressure_condition: generic }), GOOD);
       expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
-      if (!r.ok) expect(r.defect.field).toBe("contextDetail");
+      if (!r.ok) expect(r.defect.field).toBe("pressureCondition");
     }
   });
 
   it("a pressure with no constraint in it at all is refused", () => {
     const r = validateScenarioContract(
-      rawScenario({ pressure_or_constraint: "the room is painted a pleasant shade of blue" }),
+      rawScenario({ pressure_condition: "the room is painted a pleasant shade of blue" }),
       GOOD,
     );
     expect(r.ok).toBe(false);
@@ -447,16 +451,17 @@ describe("[3.2L-R5] G2/G3 — the situation must contain a real difficulty", () 
   });
 
   it("empty and over-long fields are bounded", () => {
-    expect(validateScenarioContract(rawScenario({ pressure_or_constraint: "" }), GOOD).ok).toBe(false);
-    expect(validateScenarioContract(rawScenario({ context_detail: "x".repeat(400) }), GOOD).ok).toBe(false);
+    expect(validateScenarioContract(rawScenario({ pressure_condition: "" }), GOOD).ok).toBe(false);
+    expect(validateScenarioContract(rawScenario({ pressure_condition: "x".repeat(400) }), GOOD).ok).toBe(false);
   });
 });
 
 describe("[3.2L-R5] G4 — the displayed scenario cannot drift from its grounding", () => {
   it("every rendered clause comes from one of the two contracts", () => {
     const derived = renderScenarioSentence(GOOD, GOOD_SCENARIO);
-    expect(derived).toContain(GOOD_SCENARIO.pressureOrConstraint);
-    expect(derived).toContain(GOOD_SCENARIO.contextDetail);
+    expect(derived).toContain(GOOD_SCENARIO.pressureCondition);
+    // The MOMENT is the trigger's, never the scenario's (Slice 3.2L-R8.1).
+    expect(derived.toLowerCase()).toContain(GOOD.trigger.toLowerCase().replace(/^at\s+/, ""));
     expect(derived).toContain(GOOD.completion.confirmationAction);
     expect(derived.length).toBeLessThanOrEqual(700);
   });
@@ -504,7 +509,7 @@ describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", ()
     const d = validateProgramDependencies(
       [
         S("observable_standard", renderStandardSentence(GOOD)),
-        S("scenario", renderScenarioSentence(GOOD, { ...GOOD_SCENARIO, contextDetail: "the middle of the agreed escalation process" })),
+        S("scenario", renderScenarioSentence(GOOD, { ...GOOD_SCENARIO, pressureCondition: "the agreed escalation process is already running late" })),
       ],
       GOOD,
       null,
@@ -1068,9 +1073,11 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
       ["while the ward is at capacity", "While the ward is at capacity"],
       ["before the case closes", "Before the case closes"],
       ["after the last patient leaves", "After the last patient leaves"],
-      ["the last ten minutes of a busy shift", "In the last ten minutes"],
+      ["the last ten minutes of a busy shift", "At the last ten minutes"],
     ] as const) {
-      const s = renderScenarioSentence({ ...GOOD }, { ...GOOD_SCENARIO, contextDetail: context });
+      // The leading moment is now the TRIGGER's, so the no-doubled-preposition property is
+      // asserted where the moment actually lives (Slice 3.2L-R8.1).
+      const s = renderScenarioSentence({ ...GOOD, trigger: context }, GOOD_SCENARIO);
       expect(s.startsWith(expected), `${context} → ${s}`).toBe(true);
       for (const doubled of ["In during", "At at", "When when", "In while", "In before", "In after"]) {
         expect(s, context).not.toContain(doubled);
@@ -1080,10 +1087,11 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
 
   it("G7: IN CONTEXT always anchors to the canonical trigger", () => {
     const s = renderScenarioSentence(GOOD, GOOD_SCENARIO);
-    // v5 discarded the trigger entirely, which let the scenario move the trained action to
-    // a different moment — exactly what the live proposal did.
-    // Mid-sentence, so lower-cased — but present, which v5's discarded trigger was not.
-    expect(s).toContain("Even then, at the end of every shift");
+    // v5 discarded the trigger entirely and R8 re-attached it with an "Even then" bridge
+    // after the scenario's OWN moment. v7 opens on the trigger, so there is no bridge and
+    // no second moment to bridge to (Slice 3.2L-R8.1).
+    expect(s.startsWith("At the end of every shift")).toBe(true);
+    expect(s).not.toContain("Even then");
   });
 
   it("G8: the first application moment must be an instance of the trigger", () => {

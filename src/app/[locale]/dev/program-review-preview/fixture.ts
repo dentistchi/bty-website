@@ -1,112 +1,194 @@
-import type { ProgramProposal } from "@/domain/foundry/module/program-authorship";
+import {
+  deriveEvidenceCeiling,
+  deriveInstructionalContent,
+  outcomeClaimIndex,
+  type ProgramContracts,
+  type ProgramProposal,
+} from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import type { JourneyElementKind } from "@/domain/foundry/module/journey";
 
 /**
- * A STATIC program_authorship_v4 proposal for the physical readability gate (Slice 3.2L-R5/R6).
+ * THE PHYSICAL PREVIEW FIXTURE — one authentic proposal, replayed (Slice 3.2L-R8.1).
  *
- * WHY A FIXTURE. The R4 window returned a terminal refusal and displayed no proposal, so
- * the AutoTextarea repair shipped in R4 has never been seen on the Founder's phone. Proving
- * it with another paid generation would spend a provider call to answer a layout question,
- * and would still not be reproducible.
+ * WHY THIS FILE WAS REBUILT. The R8 preview carried the live v5 behaviour, scenario and
+ * application values inside an INVENTED shift-handover narrative left over from R5: the
+ * title said "Handing over what isn't finished", WHY THIS MATTERS was about a shift ending,
+ * and the assumptions were about predictable shift changes — while THE STANDARD spoke about
+ * projects and tasks. So the gate could not prove the repaired rendering of the live
+ * proposal; it proved the repaired rendering of a chimera, and it read like one.
  *
- * Everything here is INVENTED FOR THE PREVIEW. It is deliberately about a different team
- * and a different behaviour than the canonical draft, so nothing on this page can be
- * mistaken for the Founder's real training, and the canonical draft is never referenced.
+ * Everything visible now derives from ONE object, `V5_LIVE`, below. Nothing else on this
+ * page supplies a proposal value.
  *
- * Several sections sit at 500–700 characters — the domain ceiling — because the defect
- * being tested only appears once content exceeds three rendered rows.
+ * WHAT `V5_LIVE` CAN AND CANNOT CONTAIN — worth stating exactly, because it bounds the
+ * gate. BTY deliberately stores NO raw model prose (Slice 3.2L-R7 privacy rule): the ledger
+ * row for this generation holds token counts, a byte count and a SHA-256 of the response,
+ * and nothing else. The authentic v5 sentences therefore survive ONLY where the Founder's
+ * physical recording showed them. So:
+ *
+ *   - the title, the behaviour contract, the scenario values, the application moment and
+ *     the two WHY THIS MATTERS fragments are recorded values, reproduced verbatim;
+ *   - the full WHY THIS MATTERS prose is an EXCERPT, marked as one, because the middle of
+ *     it was never stored anywhere and inventing it would be the exact defect this
+ *     revision exists to remove;
+ *   - the assumptions and warnings are EMPTY, because that proposal's own assumptions and
+ *     warnings were not recorded either — and carrying the old shift-change assumptions
+ *     forward is precisely what made the last preview incoherent.
  */
 
-/** Long enough to wrap well past three rows at an iPhone width. */
-const WHY_IT_MATTERS =
-  "When a shift ends and something is still unfinished, the person coming on has to reconstruct it from whatever is left behind: a half-written note, a screen someone forgot to close, or nothing at all. They lose the first part of their shift working out what already happened, and the person who could have explained it in twenty seconds has gone home. The cost does not land on whoever left it — it lands on the next person, and then on whoever is waiting on the work. Saying the unfinished part out loud is not extra process. It is the difference between the next person starting and the next person guessing.";
+/** Short, safe, shown on the page so a recording carries its own fixture identity. */
+export const FIXTURE_IDENTITY = "R7 V5 live result c9718bd3";
 
-const SCENARIO =
-  "At the end of every shift, before leaving the floor, the outgoing team member faces two colleagues already waiting to ask them something else and a shift that has run twenty minutes late. In the last few minutes of a busy evening handover, they still state each unfinished task, its deadline and what could go wrong with it out loud to the person taking over. It is complete when the person taking over repeats the list back and confirms they have it.";
+/**
+ * The authentic values, verbatim from the recorded v5 result. IMMUTABLE INPUT: every
+ * displayed proposal value below is derived from this object and from nothing else.
+ */
+export const V5_LIVE = {
+  displayTitle: "Improving Handoff Consistency",
+  /**
+   * The recorded fragments, joined with a visible elision. Both ends are authentic; the
+   * ellipsis marks what was never stored rather than filling it in.
+   */
+  whyItMattersRecorded:
+    "Establishing a consistent handoff standard … ultimately affects project success and team collaboration.",
+  behavior: {
+    actor: "each team member",
+    trigger: "At the end of each project or task",
+    observableAction: "state each unfinished item and identify its next owner",
+    completion: {
+      confirmedBy: "the next owner",
+      confirmationAction: "confirm they understand what they are taking on",
+    },
+  },
+  /**
+   * The v5 scenario as it was returned — two fields, and the second one names its own
+   * occasion. `contextDetail` no longer exists in the v7 contract, which is the whole
+   * repair; it is kept here as recorded EVIDENCE, and `previewProposal()` proves it is
+   * refused rather than rendered.
+   */
+  scenarioV5: {
+    pressureOrConstraint: "a tight deadline is approaching and team members are waiting for information",
+    contextDetail: "during a team meeting just before a project deadline",
+  },
+  applicationMoment: "at the next project handoff",
+  completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
+  followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
+  /** Not recorded, and not invented. See the file header. */
+  assumptions: [] as string[],
+  warnings: [] as string[],
+} as const;
 
-const FOLLOW_UP =
-  "In seven days you will be asked one question: what did you actually say at your last handover, and what happened next. That is your own account of it, not something anyone observed, and it is recorded that way. It cannot show that handovers improved across the team, and it is not a performance measure. What it can do is give you a second, quieter moment to notice whether the thing you decided to do survived contact with a real shift — and if it did not, what got in the way.";
+/**
+ * HONEST OVERCLAIM HANDLING (G2). The recorded narrative ends in an outcome promise that
+ * the R8 validator now refuses — "ultimately affects project success and team
+ * collaboration". The preview neither displays it nor pretends v5 never said it: the
+ * sentence is cut at the phrase the validator itself matches on, and what is removed is
+ * stated on the page.
+ */
+export function withoutOutcomeClaim(text: string): string {
+  const i = outcomeClaimIndex(text);
+  if (i < 0) return text;
+  const head = text.slice(0, i).replace(/[\s,;:—–-]+$/u, "");
+  // The elision marker is terminal punctuation of its own — appending a stop after it
+  // would read "handoff standard ….", and would also hide that something is missing.
+  return /[.…?!]$/u.test(head) ? head : `${head}.`;
+}
 
+export const WHY_IT_MATTERS_SHOWN = withoutOutcomeClaim(V5_LIVE.whyItMattersRecorded);
+
+/**
+ * The training shape that produces this program's seven sections. These are PREVIEW
+ * answers, not the Founder's draft: no draft id, no Host prose and nothing private reaches
+ * this page. They are deliberately about the same operating problem as the fixture, so the
+ * program reads as one training rather than two (Part 6).
+ */
 export const PREVIEW_ANSWERS: BuilderAnswers = {
-  problem: "Unfinished work disappears at shift change.",
+  problem: "Unfinished work is handed on without saying what is left or who has it.",
   audienceType: "everyone",
-  observableBehavior: "Hand over unfinished work out loud.",
-  successEvidence: "Handover note",
+  observableBehavior: "Name what is unfinished and who owns it next.",
+  successEvidence: "Handoff note",
   learningNeeds: ["know", "decide", "practice"],
   materialIntent: "youtube",
   materialText: "https://example.invalid/preview",
-  completionPrompt: "What will you say aloud at your next handover?",
+  completionPrompt: "What will you say at your next handoff that you did not say before?",
   arenaRecommended: true,
   followUpDays: 7,
 };
 
-export const PREVIEW_PROPOSAL: ProgramProposal = {
-  displayTitle: "Handing over what isn’t finished",
-  elements: [
-    { kind: "why_it_matters", content: WHY_IT_MATTERS, rationale: "Reframes the manager's complaint as what is at stake for the people doing the work." },
-    {
-      kind: "observable_standard",
-      // Derived from the behaviour contract below — this is what v4 renders.
-      content:
-        "At the end of every shift, before leaving the floor, the outgoing team member states each unfinished task, its deadline and what could go wrong with it out loud to the person taking over. It is complete when the person taking over repeats the list back and confirms they have it.",
-      rationale: "Names who acts, when, what is visible, and how completion is confirmed.",
-    },
-    { kind: "scenario", content: SCENARIO, rationale: "The same behaviour under the pressure that usually defeats it." },
-    {
-      kind: "action_decision",
-      content: "I will state every unfinished task out loud at handover, even when the shift has run late and someone is waiting for me.",
-      rationale: "Commits to an action rather than inviting reflection.",
-    },
-    {
-      kind: "field_application",
-      content:
-        "At your next shift change, before you leave the floor, you state the unfinished tasks to the person taking over and wait for them to repeat the list back. If the person taking over has not arrived yet, you leave the same list where they will see it first and tell someone who will still be there.",
-      rationale: "Names the actor, the moment and the fallback.",
-    },
-    { kind: "completion_check", content: "What will you say aloud at your next handover that you did not say before?", rationale: "Verifies a concrete application plan." },
-    { kind: "follow_up", content: FOLLOW_UP, rationale: "States plainly what a self-report can and cannot show." },
-  ],
-  assumptions: [
-    "Handovers happen at a predictable shift change.",
-    "The person taking over is present, or can be reached, at the end of the shift.",
-  ],
-  warnings: [
-    "If shifts are scheduled with no overlap at all, training alone will not create a moment to hand over in.",
-  ],
-  // Derived in production by `deriveEvidenceCeiling`; fixed here for the fixture.
-  // Derived by `deriveEvidenceCeiling` in production; fixed here to the same wording.
-  evidenceLanguage:
-    "Reading or watching the material can show only that people were exposed to it. A written answer shows reflection, not competence. An action decision records a decision, never a completed action. Practice is rehearsal, never field mastery. A scheduled self-report is what someone says they did, not observed behavior. Nothing here can show that behaviour changed, that it was adopted, or that it lasted.",
-  /**
-   * The EXACT values the live v5 window returned (parent c9718bd3), re-expressed in the v6
-   * shape. The preview exists to show, on a physical phone, that the four defects that
-   * proposal shipped with are gone: a subject-less completion clause, two different
-   * completion definitions, "In during …", and a scenario that moved the trained action to
-   * another moment.
-   */
-  behaviorContract: {
-    actor: "each team member",
-    trigger: "At the end of each project or task",
-    observableAction: "state each unfinished item and identify its next owner",
-    completion: { confirmedBy: "the next owner", confirmationAction: "confirm they understand what they are taking on" },
+/**
+ * The v7 contracts, derived from `V5_LIVE`.
+ *
+ * THE SCENARIO NORMALIZATION IS THE POINT. v5's `contextDetail` names an occasion, so v7
+ * has nowhere to put it — the contract carries the pressure CONDITION only, and the moment
+ * comes from the behaviour trigger. That is why the stitched "During a team meeting …. Even
+ * then, at the end of each project or task …" cannot be produced from these values.
+ */
+export const PREVIEW_CONTRACTS: ProgramContracts = {
+  behavior: {
+    actor: V5_LIVE.behavior.actor,
+    trigger: V5_LIVE.behavior.trigger,
+    observableAction: V5_LIVE.behavior.observableAction,
+    completion: { ...V5_LIVE.behavior.completion },
   },
-  scenarioContract: {
-    pressureOrConstraint: "a tight deadline is approaching and team members are waiting for information",
-    // Carries its own preposition — v5 rendered "In during a team meeting…".
-    contextDetail: "during a team meeting just before a project deadline",
-  },
-  // Application moment only: v5's separate evidence field is what produced two different
-  // answers to "how will we know it happened". And this moment is an INSTANCE of the trigger.
-  applicationContract: { applicationMoment: "at the end of the next project" },
-  completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
-  followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
-  /**
-   * NONE. This preview's Host intent — "Hand over unfinished work out loud" — proposes a
-   * behaviour, not a construct, so the derived sections refer to the behaviour directly.
-   * A program is not required to invent a standard to be coherent.
-   */
-  operationalConstruct: null,
+  scenario: { pressureCondition: V5_LIVE.scenarioV5.pressureOrConstraint, pressureDetail: "" },
+  application: { applicationMoment: V5_LIVE.applicationMoment },
+  completion: { ...V5_LIVE.completionContract },
+  followUp: { ...V5_LIVE.followUpContract },
+  construct: null,
+  followUpDays: PREVIEW_ANSWERS.followUpDays ?? 0,
 };
 
-export const PREVIEW_EVIDENCE_CEILING =
-  "Reading or watching the material can show only that people were exposed to it. An action decision records a decision, never a completed action. Practice is rehearsal, never field mastery. Nothing here can show sustained change.";
+const RATIONALE: Partial<Record<JourneyElementKind, string>> = {
+  why_it_matters: "The problem the host described, with the outcome promise removed.",
+  observable_standard: "Who acts, when, what is visible, and who confirms it.",
+  scenario: "The same required moment, under the pressure that usually defeats it.",
+  action_decision: "Commits to an action rather than inviting reflection.",
+  field_application: "The first real instance of the required moment.",
+  completion_check: "Verifies a concrete application plan.",
+  follow_up: "States plainly what a self-report can and cannot show.",
+};
+
+const ORDER: JourneyElementKind[] = [
+  "why_it_matters",
+  "observable_standard",
+  "scenario",
+  "action_decision",
+  "field_application",
+  "completion_check",
+  "follow_up",
+];
+
+/**
+ * The proposal the preview renders. Every instructional section is produced by the SAME
+ * `deriveInstructionalContent` the review surface and Apply use — so this fixture cannot
+ * show sentences the product would not produce from these contracts.
+ */
+export function previewProposal(): ProgramProposal {
+  return {
+    displayTitle: V5_LIVE.displayTitle,
+    elements: ORDER.map((kind) => ({
+      kind,
+      content: deriveInstructionalContent(kind, PREVIEW_CONTRACTS) ?? WHY_IT_MATTERS_SHOWN,
+      rationale: RATIONALE[kind] ?? "",
+    })),
+    assumptions: [...V5_LIVE.assumptions],
+    warnings: [...V5_LIVE.warnings],
+    evidenceLanguage: deriveEvidenceCeiling(PREVIEW_ANSWERS),
+    behaviorContract: PREVIEW_CONTRACTS.behavior,
+    scenarioContract: PREVIEW_CONTRACTS.scenario,
+    applicationContract: PREVIEW_CONTRACTS.application,
+    completionContract: PREVIEW_CONTRACTS.completion,
+    followUpContract: PREVIEW_CONTRACTS.followUp,
+    operationalConstruct: null,
+  };
+}
+
+export const PREVIEW_PROPOSAL: ProgramProposal = previewProposal();
+
+/**
+ * The API also returns a ceiling. It is the SAME `deriveEvidenceCeiling(answers)` the
+ * proposal carries — kept here only so the preview exercises the real prop, and rendered
+ * once (Part 4).
+ */
+export const PREVIEW_EVIDENCE_CEILING = deriveEvidenceCeiling(PREVIEW_ANSWERS);

@@ -92,7 +92,7 @@ const KIND_BRIEF: Record<string, string> = {
   observable_standard:
     "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the behavior_contract you also return.",
   scenario:
-    "one short realistic situation where the behavior is hard to hold. It must match the scenario_contract you also return. Invent no policy number, no named person, no incident, no date.",
+    "one short realistic situation where the behavior is hard to hold AT THE MOMENT THE TRIGGER NAMES. It must match the scenario_contract you also return, and must not move the action to another occasion. Invent no policy number, no named person, no incident, no date.",
   reflection: "one question that makes the participant examine their own current practice honestly.",
   action_decision:
     "one specific commitment the participant makes. It must COMMIT to an action ('I will …'), not merely invite thought.",
@@ -145,10 +145,11 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- There is ONE definition of completion. Do not invent a second, different way of knowing it happened for the application step.",
     "",
     "THE PRACTICE SITUATION — scenario_contract:",
-    "- Return scenario_contract with pressure_or_constraint (what competes with doing it properly at that moment) and context_detail (where and when it happens).",
+    "- Return scenario_contract with pressure_condition (what competes with doing it properly) and pressure_detail (a second circumstance, or null when one is enough).",
     "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger, action or completion signal for it.",
-    "- pressure_or_constraint must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
-    "- context_detail must name an actual moment or place, not 'at work'.",
+    "- THE SITUATION HAPPENS AT THE TRIGGER. There is ONE moment in the program and behavior_contract.trigger already named it. Do NOT give the situation an occasion of its own.",
+    "- So pressure_condition must NOT contain a phrase like 'during a team meeting', 'at the next handover', 'before the deadline' or 'at the end of each project'. Write the difficulty only: 'a tight deadline is approaching and teammates are waiting for information'.",
+    "- pressure_condition must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
     "",
     "THE REST OF THE PROGRAM — application_contract, completion_contract, follow_up_contract:",
     "- YOUR DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are BUILT from these. Do not write them as free sentences and expect them to be used.",
@@ -171,7 +172,7 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_or_constraint":string,"context_detail":string}|null,"application_contract":{"application_moment":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"application_contract":{"application_moment":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
   ].join("\n");
 }
 

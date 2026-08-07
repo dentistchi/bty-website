@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { ProgramAuthorship, type ProgramGenerateOutcome } from "@/components/foundry/event-rooms/ProgramAuthorship";
-import { PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_PROPOSAL } from "./fixture";
+import { FIXTURE_IDENTITY, PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_PROPOSAL } from "./fixture";
 
 /**
  * Physical readability preview (Slice 3.2L-R5) — the REAL review component, a STATIC
@@ -39,9 +39,23 @@ export function PreviewClient({ buildSha }: { buildSha: string }) {
           <p className="mt-0.5 font-mono text-xs text-amber-200/70" data-testid="preview-build">
             Build {buildSha}
           </p>
+          {/*
+            WHICH proposal this is (Slice 3.2L-R8.1). The last recording could not tell that
+            the page was mixing a live result with an older invented narrative, because the
+            page never said what it was replaying. Now it does.
+          */}
+          <p className="mt-0.5 font-mono text-xs text-amber-200/70" data-testid="preview-fixture">
+            Fixture: {FIXTURE_IDENTITY}
+          </p>
           <p className="mt-1 text-sm leading-6 text-amber-100/80">
             Nothing here is saved, drafted by AI, or connected to any of your trainings. This page exists to
             check that every line of a drafted program is readable on a phone.
+          </p>
+          <p className="mt-1 text-xs leading-5 text-amber-100/60" data-testid="preview-fixture-note">
+            Replays one real result. Its assumptions and warnings, and the middle of “Why this matters”, were
+            never stored, so they are left out rather than invented. One outcome promise it originally ended
+            with — “ultimately affects project success and team collaboration” — is removed here, because a
+            training can’t claim that.
           </p>
         </div>
 

@@ -76,8 +76,8 @@ describe("[3.2L-R6.1] G11 — a dependency refusal carries branch, construct and
   it("used_before_defined names the section and the construct, with no counterpart", () => {
     const p = program({
       scenario_contract: {
-        pressure_or_constraint: "two people are already waiting and the shift ran late",
-        context_detail: "the middle of the agreed escalation process",
+        pressure_condition: "two people are already waiting and the agreed escalation process has stalled",
+        pressure_detail: null,
       },
     });
     p.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));
@@ -98,8 +98,8 @@ describe("[3.2L-R6.1] G11 — a dependency refusal carries branch, construct and
     const p = program();
     const p2 = program({
       scenario_contract: {
-        pressure_or_constraint: "two people are already waiting and the shift ran late",
-        context_detail: "the middle of the agreed escalation process",
+        pressure_condition: "two people are already waiting and the agreed escalation process has stalled",
+        pressure_detail: null,
       },
     });
     p2.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));
@@ -116,8 +116,8 @@ describe("[3.2L-R6.1] G11 — a dependency refusal carries branch, construct and
     expect(deriveOperationalConstruct({ observableBehavior: ANSWERS.observableBehavior })?.noun).toBe("standard");
     const p = program({
       scenario_contract: {
-        pressure_or_constraint: "two people are already waiting and the shift ran late",
-        context_detail: "the last ten minutes before the shared handoff standard applies",
+        pressure_condition: "two people are already waiting and the shared handoff standard is being skipped",
+        pressure_detail: null,
       },
     });
     p.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));

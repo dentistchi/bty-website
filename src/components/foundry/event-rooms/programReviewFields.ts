@@ -30,48 +30,28 @@ export type DetailField = {
   label: string;
   get: (c: ProgramContracts) => string;
   set: (c: ProgramContracts, v: string) => ProgramContracts;
-  /** Sections whose visible sentence changes when this value changes. */
-  affects: JourneyElementKind[];
   /** Present for enumerated authorities, which are chosen rather than written. */
   options?: { value: string; label: string }[];
 };
 
 /**
- * PROVENANCE SCOPE (Slice 3.2L-R6.2) — per FIELD, not per contract.
+ * NO `affects` LIST ANY MORE (Slice 3.2L-R8.1).
  *
- * Marking all six sections whenever any behaviour value changed was over-marking: YOUR
- * DECISION speaks in the first person and never renders the actor, so changing "Who does
- * this?" leaves its sentence untouched and it should keep saying "Drafted by BTY".
- *
- * `completionSignal` is the deliberate exception: it is marked on `completion_check` and
- * `follow_up` even though those only render it under one enum setting each
- * (`the_confirmation_step` / `the_confirmation`). Their SEMANTIC AUTHORITY changed either
- * way, and a badge that flickers with an unrelated dropdown would be the more confusing lie.
+ * Each control used to declare which sections it was believed to change, and the review
+ * surface badged those sections. On the physical gate the list was wrong in both
+ * directions — it missed APPLY IT when the confirmer changed, and marked two sections whose
+ * sentences never moved. Provenance is now computed by comparing rendered output, so a
+ * control declares only what it edits, and nothing about consequences it cannot see.
  */
-const ACTION_DEPENDENTS: JourneyElementKind[] = [
-  "observable_standard",
-  "scenario",
-  "action_decision",
-  "field_application",
-  "completion_check",
-  "follow_up",
-];
-const ACTOR_DEPENDENTS: JourneyElementKind[] = ["observable_standard", "scenario", "field_application"];
-const SIGNAL_DEPENDENTS: JourneyElementKind[] = ["observable_standard", "scenario", "completion_check", "follow_up"];
-const TRIGGER_DEPENDENTS: JourneyElementKind[] = ["observable_standard"];
-
-const APPLICATION_DEPENDENTS: JourneyElementKind[] = ["action_decision", "field_application"];
 
 /** Only the three string roles are edited this way; completion has its own two controls. */
 const behaviourField = (
   id: string,
   label: string,
   key: "actor" | "trigger" | "observableAction",
-  affects: JourneyElementKind[],
 ): DetailField => ({
   id,
   label,
-  affects,
   get: (c) => c.behavior[key],
   set: (c, v) => ({ ...c, behavior: { ...c.behavior, [key]: v } }),
 });
@@ -79,7 +59,6 @@ const behaviourField = (
 const applicationField = (id: string, label: string, key: "applicationMoment"): DetailField => ({
   id,
   label,
-  affects: APPLICATION_DEPENDENTS,
   get: (c) => c.application?.[key] ?? "",
   set: (c, v) =>
     c.application ? { ...c, application: { ...c.application, [key]: v } } : c,
@@ -111,20 +90,18 @@ const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
 
 export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> = {
   observable_standard: [
-    behaviourField("actor", "Who does this?", "actor", ACTOR_DEPENDENTS),
-    behaviourField("trigger", "When is it required?", "trigger", TRIGGER_DEPENDENTS),
-    behaviourField("action", "What would someone see or hear them do?", "observableAction", ACTION_DEPENDENTS),
+    behaviourField("actor", "Who does this?", "actor"),
+    behaviourField("trigger", "When is it required?", "trigger"),
+    behaviourField("action", "What would someone see or hear them do?", "observableAction"),
     {
       id: "confirmed-by",
       label: "Who confirms it’s done?",
-      affects: SIGNAL_DEPENDENTS,
       get: (c) => c.behavior.completion.confirmedBy,
       set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmedBy: v } } }),
     },
     {
       id: "completion",
       label: "What would you see them do?",
-      affects: SIGNAL_DEPENDENTS,
       get: (c) => c.behavior.completion.confirmationAction,
       set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmationAction: v } } }),
     },
@@ -133,16 +110,20 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     {
       id: "pressure",
       label: "What makes this moment hard?",
-      affects: ["scenario"],
-      get: (c) => c.scenario?.pressureOrConstraint ?? "",
-      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureOrConstraint: v } } : c),
+      get: (c) => c.scenario?.pressureCondition ?? "",
+      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureCondition: v } } : c),
     },
+    /*
+      NOT "where and when does it happen?" any more. That control is what let a Host give
+      the practice situation an occasion of its own, and the program then required the
+      behaviour at two different moments. When it happens is THE STANDARD's "When is it
+      required?", and there is only one of those.
+    */
     {
-      id: "context",
-      label: "Where and when does it happen?",
-      affects: ["scenario"],
-      get: (c) => c.scenario?.contextDetail ?? "",
-      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, contextDetail: v } } : c),
+      id: "pressure-detail",
+      label: "Anything else making it hard? (optional)",
+      get: (c) => c.scenario?.pressureDetail ?? "",
+      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureDetail: v } } : c),
     },
   ],
   action_decision: [
@@ -155,7 +136,6 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     {
       id: "verifies",
       label: "What is this question checking?",
-      affects: ["completion_check"],
       options: VERIFICATION_TARGETS.map((v) => ({ value: v, label: VERIFICATION_LABEL[v] })),
       get: (c) => c.completion?.verificationTarget ?? "",
       set: (c, v) => (c.completion && isVerificationTarget(v) ? { ...c, completion: { ...c.completion, verificationTarget: v } } : c),
@@ -163,7 +143,6 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     {
       id: "responds",
       label: "How do they answer?",
-      affects: ["completion_check"],
       options: RESPONSE_MODES.map((v) => ({ value: v, label: RESPONSE_LABEL[v] })),
       get: (c) => c.completion?.responseMode ?? "",
       set: (c, v) => (c.completion && isResponseMode(v) ? { ...c, completion: { ...c.completion, responseMode: v } } : c),
@@ -173,7 +152,6 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     {
       id: "focus",
       label: "What gets reviewed later?",
-      affects: ["follow_up"],
       options: REVIEW_FOCUSES.map((v) => ({ value: v, label: FOCUS_LABEL[v] })),
       get: (c) => c.followUp?.reviewFocus ?? "",
       set: (c, v) => (c.followUp && isReviewFocus(v) ? { ...c, followUp: { ...c.followUp, reviewFocus: v } } : c),
@@ -181,7 +159,6 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     {
       id: "confirmer",
       label: "Who confirms it?",
-      affects: ["follow_up"],
       options: CONFIRMERS.map((v) => ({ value: v, label: CONFIRMER_LABEL[v] })),
       get: (c) => c.followUp?.confirmer ?? "",
       set: (c, v) => (c.followUp && isConfirmer(v) ? { ...c, followUp: { ...c.followUp, confirmer: v } } : c),
@@ -196,7 +173,7 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
 export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
   standard_incomplete: "The standard needs all four details filled in: who does it, when, what they do, and what confirms it.",
   standard_not_observable: "The standard doesn’t yet describe something a person could be seen doing, at a particular moment, with a clear finish.",
-  scenario_incomplete: "The practice situation needs a real difficulty and a real place — not “it’s hard” or “at work”.",
+  scenario_incomplete: "The practice situation needs a real difficulty — not “it’s hard”, and not another moment. When it happens comes from “When is it required?” above.",
   application_incomplete: "Say when this first happens for real, and what would show it happened.",
   action_unusable: "That action can’t be turned into a sentence people can follow. Try a short phrase like “state each open item aloud”.",
   completion_incomplete: "Say who confirms it’s done, and what you would see them do.",

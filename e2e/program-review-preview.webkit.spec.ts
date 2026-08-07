@@ -118,17 +118,21 @@ test.describe("Program review preview — non-paid readability gate", () => {
   test("G10: the narrative field still grows and shrinks with its content", async ({ page }) => {
     await openReview(page);
     const field = page.getByTestId("program-edit-why_it_matters");
+    /*
+      The faithful fixture's narrative is SHORT — the middle of the live one was never
+      stored, so it is an excerpt rather than invented prose (Slice 3.2L-R8.1). The clipping
+      property still has to hold at the ceiling, so the ceiling-length text is typed in here
+      instead of being baked into a fixture that would then misrepresent the live result.
+    */
+    const short = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
+    await field.fill("W".padEnd(690, "o") + ".");
     const long = await field.evaluate((el) => {
       const t = el as HTMLTextAreaElement;
       return { h: t.clientHeight, overflow: t.scrollHeight - t.clientHeight, chars: t.value.length };
     });
-    // The preview fixture's narrative sits near the 700-character ceiling on purpose.
     expect(long.chars).toBeGreaterThan(400);
     expect(long.overflow).toBeLessThanOrEqual(1);
-
-    await field.fill("Short again.");
-    const short = await field.evaluate((el) => (el as HTMLTextAreaElement).clientHeight);
-    expect(short).toBeLessThan(long.h);
+    expect(long.h).toBeGreaterThan(short);
   });
 
   test("G9: structured controls propagate to every dependent section, with zero network", async ({ page }) => {
@@ -165,7 +169,8 @@ test.describe("Program review preview — non-paid readability gate", () => {
     const expected: [string, string[]][] = [
       // R8 splits completion into a named confirmer and the act you would see.
       ["observable_standard", ["actor", "trigger", "action", "confirmed-by", "completion"]],
-      ["scenario", ["pressure", "context"]],
+      // R8.1 removes the scenario's own "where and when": one moment, the trigger's.
+      ["scenario", ["pressure", "pressure-detail"]],
       ["action_decision", ["moment"]],
       // R8 removes the competing evidence field: one completion authority, one control.
       ["field_application", ["moment-apply"]],
@@ -267,16 +272,95 @@ test.describe("Program review preview — non-paid readability gate", () => {
     expect(apply).toContain("You will know it happened when you see the next owner confirm");
 
     // 3. No doubled preposition — v5 rendered "In during a team meeting…".
-    expect(scenario.startsWith("During a team meeting")).toBe(true);
     expect(scenario).not.toContain("In during");
 
-    // 4. The scenario exercises the action AT THE TRIGGER, which v5 discarded entirely.
-    expect(scenario).toContain("Even then, at the end of each project or task");
+    // 4. ONE MOMENT (Slice 3.2L-R8.1). R8 re-attached the trigger but kept the scenario's
+    //    own occasion in front of it, so the program still required the behaviour at two
+    //    different events. The sentence now OPENS on the trigger and there is no bridge.
+    expect(scenario.startsWith("At the end of each project or task, even when")).toBe(true);
+    expect(scenario).not.toContain("Even then");
+    expect(scenario).not.toContain("team meeting");
 
     // And the ceiling no longer contradicts itself.
     const ceiling = (await page.getByTestId("program-evidence-ceiling").textContent()) ?? "";
     expect(ceiling).toContain("reflection, not competence");
     expect(ceiling).not.toMatch(/equipped to|ready to implement/i);
+  });
+
+  test("R8.1 G1/G2: the page says which result it replays, and shows the live title", async ({ page }) => {
+    await expect(page.getByTestId("preview-fixture")).toHaveText(/R7 V5 live result c9718bd3/);
+    await expect(page.getByTestId("preview-fixture-note")).toContainText(/never stored/i);
+    await openReview(page);
+    await expect(page.getByTestId("program-title-input")).toHaveValue("Improving Handoff Consistency");
+
+    // No sentence from the retired shift-handover fixture survives anywhere on the page.
+    const body = (await page.locator("body").textContent()) ?? "";
+    for (const stale of ["Handing over what", "When a shift ends", "predictable shift change", "the person taking over"]) {
+      expect(body, stale).not.toContain(stale);
+    }
+    // The outcome promise is not part of the PROGRAM. It is quoted once, deliberately, in
+    // the banner note that says it was removed — so the check is scoped to the review.
+    const review = (await page.getByTestId("program-review").textContent()) ?? "";
+    expect(review).not.toContain("ultimately affects project success");
+    expect(review).toContain("Establishing a consistent handoff standard");
+    expect(review).not.toContain("….");
+  });
+
+  test("R8.1 G8/G9: exactly one evidence-ceiling paragraph", async ({ page }) => {
+    await openReview(page);
+    const block = page.getByTestId("program-evidence-ceiling");
+    await expect(block).toBeVisible();
+    // The R8 page printed a short generic ceiling and then a long one under it.
+    expect(await block.locator("p").count()).toBe(1);
+    const t = (await block.textContent()) ?? "";
+    expect(t.match(/Nothing here can show/g) ?? []).toHaveLength(1);
+    expect(t.match(/exposed to it/g) ?? []).toHaveLength(1);
+    for (const claim of ["equipped to", "ready to implement", "now competent", "was observed"]) {
+      expect(t, claim).not.toContain(claim);
+    }
+  });
+
+  test("R8.1 G10/G11: provenance describes the sentence, not the field that moved", async ({ page }) => {
+    await openReview(page);
+    const apply = page.getByTestId("program-derived-field_application");
+    await expect(apply).toContainText("you see the next owner confirm they understand what they are taking on");
+
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+    await page.getByTestId("program-field-confirmed-by").fill("the incoming team member");
+    await page.getByTestId("program-field-completion").fill("repeat back who owns the next action");
+
+    // THE EXACT LIVE BADGE DEFECT: APPLY IT visibly changed and stayed "Drafted by BTY".
+    await expect(apply).toContainText("you see the incoming team member repeat back who owns the next action");
+    await expect(page.getByTestId("program-section-field_application")).toContainText("Adjusted by you");
+    await expect(page.getByTestId("program-section-observable_standard")).toContainText("Adjusted by you");
+    await expect(page.getByTestId("program-section-scenario")).toContainText("Adjusted by you");
+
+    // …and the inverse: these two did NOT change, and claimed they had.
+    await expect(page.getByTestId("program-section-completion_check")).toContainText("Drafted by BTY");
+    await expect(page.getByTestId("program-section-follow_up")).toContainText("Drafted by BTY");
+
+    // G12 — Reset restores values, sentences and badges together.
+    await page.getByTestId("program-reset").click();
+    await expect(apply).toContainText("you see the next owner confirm they understand what they are taking on");
+    for (const kind of ["observable_standard", "scenario", "field_application", "completion_check", "follow_up"]) {
+      await expect(page.getByTestId(`program-section-${kind}`)).toContainText("Drafted by BTY");
+    }
+  });
+
+  test("R8.1 G4: the scenario control cannot give the program a second moment", async ({ page }) => {
+    await openReview(page);
+    await page.getByTestId("program-details-toggle-scenario").click();
+    // The Host is asked what makes it hard, never when it happens.
+    const labels = (await page.getByTestId("program-details-scenario").textContent()) ?? "";
+    expect(labels).toContain("What makes this moment hard?");
+    expect(labels).not.toMatch(/[Ww]here and when/);
+
+    await page.getByTestId("program-field-pressure").fill("during the next team meeting nobody is listening");
+    // The sentence still opens on the one canonical trigger…
+    await expect(page.getByTestId("program-derived-scenario")).toContainText("At the end of each project or task, even when");
+    // …and Apply is blocked rather than shipping a program with two moments in it.
+    await expect(page.getByTestId("program-review-block")).toContainText(/not another moment/i);
+    await expect(page.getByTestId("program-apply")).toBeDisabled();
   });
 
   test("G15: the page — not the field — is the scrolling surface", async ({ page }) => {
@@ -296,10 +380,14 @@ test.describe("Program review preview — non-paid readability gate", () => {
     expect(innerScrollNeeded).toEqual([]);
   });
 
-  test("advisory blocks stay free-flowing, not boxed into fields", async ({ page }) => {
+  test("R8.1 G3: no assumption or warning is shown, because none was recorded", async ({ page }) => {
     await openReview(page);
-    const assumptions = page.getByTestId("program-assumptions");
-    await expect(assumptions).toBeVisible();
-    expect(await assumptions.locator("textarea").count()).toBe(0);
+    /*
+      The R8 page carried the retired fixture's shift-change assumptions next to a
+      project/task standard. This proposal's own assumptions were never stored, so the
+      faithful fixture shows none rather than borrowing them.
+    */
+    await expect(page.getByTestId("program-assumptions")).toHaveCount(0);
+    await expect(page.getByTestId("program-warnings")).toHaveCount(0);
   });
 });

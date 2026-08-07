@@ -486,6 +486,8 @@ export function renderCompletionClause(c: CompletionAuthority): string {
 }
 
 /** A moment that already begins with its own time preposition needs nothing added. */
+const LEADING_DETERMINER = /^(?:the|a|an|my|your|our|their|his|her|its|each|every|this|that)\b/i;
+
 const LEADING_TIME_WORD =
   /^(?:at|in|on|during|before|after|when|whenever|while|as|by|once|every|each|throughout|upon|next\s+time)\b/i;
 
@@ -507,6 +509,12 @@ export function momentClause(moment: string, possessive: "my" | "the"): string {
   const core = momentCore(moment);
   if (core.length === 0) return "";
   if (LEADING_TIME_WORD.test(core)) return upperFirst(core);
+  /*
+    A trigger that already begins with a determiner gets the preposition only — v6 produced
+    "At the the last ten minutes …" for one, which never surfaced while the scenario's own
+    context supplied the leading moment (Slice 3.2L-R8.1).
+  */
+  if (LEADING_DETERMINER.test(core)) return `At ${lowerFirst(core)}`;
   return `At ${possessive} ${lowerFirst(core)}`;
 }
 
@@ -571,9 +579,27 @@ export function isMetaStandardText(text: string): boolean {
  * model supplies only what the contract cannot: what makes the moment hard, and where it
  * happens.
  */
+/**
+ * TRIGGER-ANCHORED SCENARIO (Slice 3.2L-R8.1).
+ *
+ * v6 gave the scenario its own `contextDetail` — "where and when it happens" — and rendered
+ * it as the leading clause. The live v5 proposal used that to open at "during a team meeting
+ * just before a project deadline" while the behaviour was required "at the end of each
+ * project or task", and R8 joined them with "Even then, …". Grammatical, and still two
+ * different events: the participant never rehearses the trained action at the moment the
+ * standard requires it.
+ *
+ * A lexical overlap check between the two moments would not fix this — two related-sounding
+ * occasions share words and are still different occasions. So the SECOND MOMENT IS REMOVED
+ * FROM THE CONTRACT. There is exactly one moment in a program — the behaviour trigger — and
+ * the scenario may only say what makes holding the behaviour hard AT that moment. It cannot
+ * relocate the action, because it has nowhere to relocate it to.
+ */
 export type ScenarioContract = {
-  pressureOrConstraint: string;
-  contextDetail: string;
+  /** What competes with doing it properly at the canonical trigger. Never its own occasion. */
+  pressureCondition: string;
+  /** Optional second circumstance, same rule. Empty when the condition is enough. */
+  pressureDetail: string;
 };
 
 export const SCENARIO_FIELD_LIMIT = 120;
@@ -583,8 +609,35 @@ export type ScenarioField = keyof ScenarioContract;
 
 export type ScenarioDefect = {
   field: ScenarioField;
-  reason: "missing" | "too_long" | "generic" | "restates_action" | "no_pressure";
+  reason: "missing" | "too_long" | "generic" | "restates_action" | "no_pressure" | "independent_moment";
 };
+
+/** Occasions — the kind of noun that names an event someone could be told to attend. */
+const OCCASION_NOUN =
+  "meetings?|handovers?|handoffs?|hand-offs?|shifts?|standups?|stand-ups?|huddles?|briefings?|debriefs?|reviews?|retros?|retrospectives?|calls?|sessions?|appointments?|rounds?|visits?|interviews?|classes|lessons?|sprints?|cycles?|projects?|tasks?|deadlines?|changeovers?|check-ins?|one-on-ones?|days?|weeks?|mornings?|afternoons?|evenings?|nights?";
+
+/**
+ * A phrase that names its OWN occasion: a temporal preposition governing an occasion noun.
+ *
+ * This is a structural test, not a word list about relevance. "a tight deadline is
+ * approaching and team members are waiting for information" names a pressure and no
+ * occasion, and passes. "during a team meeting just before a project deadline" and "at the
+ * end of each project or task" both name occasions, and are refused — including when the
+ * occasion is the SAME one as the trigger, because the scenario has no business restating
+ * the moment it is already anchored to.
+ */
+const MOMENT_ANCHOR = new RegExp(
+  `\\b(?:at|in|on|during|before|after|when|whenever|while|once|upon|throughout)\\b` +
+    // Up to four intervening words, so "at the end of each project" and "during a team
+    // meeting" are both reached without the list having to enumerate every modifier.
+    `(?:\\s+[\\p{L}\\p{N}'’-]+){0,4}\\s+(?:${OCCASION_NOUN})\\b`,
+  "iu",
+);
+
+/** Exported so the review surface and the tests share one authority on second moments. */
+export function namesIndependentMoment(text: string): boolean {
+  return MOMENT_ANCHOR.test(text);
+}
 
 /**
  * Something that competes with doing it properly. This is a FLOOR on the pressure field's
@@ -630,41 +683,56 @@ function saysTheSameThing(a: string, b: string): boolean {
 }
 
 /**
- * Validate the two fields the model must supply for a scenario. Relevance is NOT decided
- * here — it is guaranteed by construction, because the displayed scenario is rendered from
- * the behavior contract. What is decided here is whether the moment is actually hard, and
- * actually somewhere.
+ * Validate what the model may supply for a scenario. Relevance is NOT decided here — it is
+ * guaranteed by construction, because the displayed scenario is rendered from the behavior
+ * contract. What is decided here is whether the difficulty is real, and whether the
+ * scenario has tried to give itself a moment of its own.
  */
 export function validateScenarioContract(
   raw: unknown,
   behavior: BehaviorContract,
 ): { ok: true; value: ScenarioContract } | { ok: false; defect: ScenarioDefect } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { ok: false, defect: { field: "pressureOrConstraint", reason: "missing" } };
+    return { ok: false, defect: { field: "pressureCondition", reason: "missing" } };
   }
   const r = raw as Record<string, unknown>;
   const value: ScenarioContract = {
-    pressureOrConstraint: trimField(r.pressure_or_constraint ?? r.pressureOrConstraint),
-    contextDetail: trimField(r.context_detail ?? r.contextDetail),
+    pressureCondition: trimField(r.pressure_condition ?? r.pressureCondition),
+    pressureDetail: trimField(r.pressure_detail ?? r.pressureDetail),
   };
 
-  for (const f of ["pressureOrConstraint", "contextDetail"] as const) {
-    if (value[f].length < SCENARIO_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
+  if (value.pressureCondition.length < SCENARIO_FIELD_MIN) {
+    return { ok: false, defect: { field: "pressureCondition", reason: "missing" } };
+  }
+  for (const f of ["pressureCondition", "pressureDetail"] as const) {
     if (value[f].length > SCENARIO_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
   }
-
-  if (GENERIC_PRESSURE.some((re) => re.test(value.pressureOrConstraint))) {
-    return { ok: false, defect: { field: "pressureOrConstraint", reason: "generic" } };
+  // The detail is optional — but a supplied one that says nothing is a defect, not a blank.
+  if (value.pressureDetail.length > 0 && value.pressureDetail.length < SCENARIO_FIELD_MIN) {
+    return { ok: false, defect: { field: "pressureDetail", reason: "missing" } };
   }
-  if (GENERIC_CONTEXT.some((re) => re.test(value.contextDetail))) {
-    return { ok: false, defect: { field: "contextDetail", reason: "generic" } };
+
+  if (GENERIC_PRESSURE.some((re) => re.test(value.pressureCondition))) {
+    return { ok: false, defect: { field: "pressureCondition", reason: "generic" } };
+  }
+  if (GENERIC_CONTEXT.some((re) => re.test(value.pressureCondition))) {
+    return { ok: false, defect: { field: "pressureCondition", reason: "generic" } };
+  }
+  /**
+   * THE SECOND-MOMENT REFUSAL. Neither field may name an occasion of its own — that is the
+   * whole reason the live scenario and the live trigger were different events.
+   */
+  for (const f of ["pressureCondition", "pressureDetail"] as const) {
+    if (value[f].length > 0 && namesIndependentMoment(value[f])) {
+      return { ok: false, defect: { field: f, reason: "independent_moment" } };
+    }
   }
   // A pressure that restates the required action describes no obstacle to it.
-  if (saysTheSameThing(value.pressureOrConstraint, behavior.observableAction)) {
-    return { ok: false, defect: { field: "pressureOrConstraint", reason: "restates_action" } };
+  if (saysTheSameThing(value.pressureCondition, behavior.observableAction)) {
+    return { ok: false, defect: { field: "pressureCondition", reason: "restates_action" } };
   }
-  if (!CONSTRAINT_MARKER.test(value.pressureOrConstraint)) {
-    return { ok: false, defect: { field: "pressureOrConstraint", reason: "no_pressure" } };
+  if (!CONSTRAINT_MARKER.test(value.pressureCondition)) {
+    return { ok: false, defect: { field: "pressureCondition", reason: "no_pressure" } };
   }
 
   return { ok: true, value };
@@ -676,19 +744,21 @@ export function validateScenarioContract(
  * completion signal; the model contributes only the difficulty and the setting.
  */
 export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
-  const trigger = stripTrailingStop(b.trigger.trim());
   const actor = stripTrailingStop(b.actor.trim());
   const action = baseActionPhrase(b.observableAction);
-  const pressure = stripTrailingStop(s.pressureOrConstraint.trim());
+  const condition = lowerFirst(stripTrailingStop(s.pressureCondition.trim()));
+  const extra = s.pressureDetail.trim().length > 0
+    ? ` and ${lowerFirst(stripTrailingStop(s.pressureDetail.trim()))}`
+    : "";
   /**
-   * The context is NOT given a fixed "In" prefix any more. v5 rendered "In during a team
-   * meeting…" because the model's fragment carried its own preposition. And the trigger is
-   * no longer discarded: without it the scenario silently moved the trained action to a
-   * different moment, which is exactly what the live proposal did.
+   * ONE MOMENT, SUBORDINATE PRESSURE. The sentence OPENS on the canonical trigger and the
+   * pressure arrives inside it as a concessive clause. There is no leading context moment
+   * and no "Even then" bridge, because there is no second event to bridge to — v6's
+   * `contextDetail` is gone from the contract entirely.
    */
   return (
-    `${contextClause(s.contextDetail)}: ${lowerFirst(pressure)}. ` +
-    `Even then, ${lowerFirst(momentClause(b.trigger, "the"))}, ${lowerFirst(actor)} must ${action}. ` +
+    `${momentClause(b.trigger, "the")}, even when ${condition}${extra}, ` +
+    `${lowerFirst(actor)} must ${action}. ` +
     `It is complete when ${renderCompletionClause(b.completion)}.`
   );
 }

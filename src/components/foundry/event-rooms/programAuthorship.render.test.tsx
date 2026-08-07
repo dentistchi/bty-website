@@ -103,10 +103,20 @@ describe("[3.2L] authorship is legible", () => {
   it("shows what the program can and cannot establish", async () => {
     setup(ok);
     await generate();
-    const ceiling = screen.getByTestId("program-evidence-ceiling").textContent ?? "";
-    expect(ceiling).toContain("Reading shows exposure only.");
+    const block = screen.getByTestId("program-evidence-ceiling");
+    const ceiling = block.textContent ?? "";
+    /*
+      ONE PARAGRAPH (Slice 3.2L-R8.1). This block used to print the API's `evidence_ceiling`
+      AND the proposal's `evidenceLanguage` one under the other — two overlapping ceilings
+      on the Founder's phone. They were never two authorities: both are
+      `deriveEvidenceCeiling(answers)`. The validated one travels with the program, so it is
+      the one shown.
+    */
+    expect(block.querySelectorAll("p")).toHaveLength(1);
+    expect(ceiling).not.toContain("Reading shows exposure only.");
     // R8: the ceiling is DERIVED, so its wording comes from the domain, not the model —
     // which is what stops a program claiming competence beside a line denying it.
+    expect(ceiling).toContain("Reading or watching the material can show only that people were exposed to it");
     expect(ceiling).toContain("Nothing here can show that behaviour changed, that it was adopted, or that it lasted");
     expect(ceiling).not.toMatch(/equipped to|ready to|competent/i);
   });

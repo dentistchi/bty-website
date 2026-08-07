@@ -90,8 +90,8 @@ function goodProposal(over: Record<string, unknown> = {}) {
       // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
       // difficulty and the setting; relevance comes from the derivation.
       scenario_contract: {
-        pressure_or_constraint: "two people are already waiting to ask you questions and the shift ran late",
-        context_detail: "the last ten minutes of a busy evening shift",
+        pressure_condition: "two people are already waiting to ask you questions and the shift ran late",
+        pressure_detail: null,
       },
       application_contract: {
         application_moment: "at your next shift change, before you leave the floor",
@@ -313,7 +313,7 @@ describe("[3.2L] the validator fails closed", () => {
 
   it("refuses a scenario whose pressure is not a difficulty", () => {
     reject((p) => {
-      p.program.scenario_contract = { pressure_or_constraint: "it is difficult", context_detail: "the last ten minutes of a busy evening shift" };
+      p.program.scenario_contract = { pressure_condition: "it is difficult", pressure_detail: null };
     }, "scenario_without_pressure");
   });
 

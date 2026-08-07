@@ -101,8 +101,15 @@ export function ProgramAuthorship({
   const [contracts, setContracts] = useState<ProgramContracts | null>(null);
   /** The contracts BTY proposed, so Reset can restore them exactly. */
   const [baseContracts, setBaseContracts] = useState<ProgramContracts | null>(null);
-  /** Which sections the Host has adjusted, for honest provenance labelling. */
-  const [adjusted, setAdjusted] = useState<Record<string, boolean>>({});
+  /**
+   * NO `adjusted` STATE ANY MORE (Slice 3.2L-R8.1). Provenance used to be a manual map from
+   * each control to the sections it was BELIEVED to affect, and it was wrong in both
+   * directions on the physical gate: editing the confirmer visibly changed APPLY IT and
+   * left it saying "Drafted by BTY", while BEFORE YOU FINISH and WHAT HAPPENS NEXT claimed
+   * "Adjusted by you" with byte-identical sentences. A hand-maintained dependency list can
+   * only ever approximate what the renderer does — so provenance is now COMPUTED from the
+   * rendered output itself, below.
+   */
   const [openDetails, setOpenDetails] = useState<string | null>(null);
   const [titleDecision, setTitleDecision] = useState<SectionDecision>("use");
   const [titleEdit, setTitleEdit] = useState("");
@@ -153,7 +160,6 @@ export function ProgramAuthorship({
     const c = contractsFromProposal(r.proposal, answers.followUpDays ?? 0);
     setContracts(c);
     setBaseContracts(c);
-    setAdjusted({});
     setOpenDetails(null);
     setTitleDecision("use");
     setTitleEdit(r.proposal.displayTitle);
@@ -201,6 +207,29 @@ export function ProgramAuthorship({
     [contracts],
   );
 
+  /**
+   * VISIBLE-OUTPUT PROVENANCE (Slice 3.2L-R8.1).
+   *
+   * A section is "Adjusted by you" when the sentence ON SCREEN differs from the sentence
+   * BTY rendered — nothing else. Both sides go through the SAME `deriveInstructionalContent`,
+   * one over the current contracts and one over the contracts the proposal arrived with, so
+   * the badge cannot disagree with the text next to it however the renderer changes.
+   *
+   * That also settles the honest edge case the old list got backwards: changing a contract
+   * value whose section does not render it leaves the sentence byte-identical, and a
+   * byte-identical sentence is still BTY's draft.
+   */
+  const sectionAdjusted = useCallback(
+    (kind: JourneyElementKind): boolean => {
+      if (!contracts || !baseContracts) return false;
+      const now = deriveInstructionalContent(kind, contracts);
+      // Narrative sections carry no derivation; their provenance is the edit decision.
+      if (now === null) return false;
+      return now !== deriveInstructionalContent(kind, baseContracts);
+    },
+    [contracts, baseContracts],
+  );
+
   /** The text that will actually be applied for one section. */
   const sectionText = useCallback(
     (kind: JourneyElementKind, fallback: string): string => derivedContent(kind) ?? edits[kind] ?? fallback,
@@ -221,7 +250,7 @@ export function ProgramAuthorship({
     const choices: SectionChoice[] = proposal.elements.map((e) => {
       // Provenance follows what the HOST actually touched. A derived section they never
       // adjusted is still BTY's work, even though Apply re-reads its rendered text.
-      const touched = adjusted[e.kind] === true || decisions[e.kind] === "edit";
+      const touched = sectionAdjusted(e.kind) || decisions[e.kind] === "edit";
       return {
         kind: e.kind,
         decision: touched ? "edit" : "use",
@@ -234,7 +263,7 @@ export function ProgramAuthorship({
       attemptId,
     );
     setPhase("applied");
-  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, sectionText, adjusted, decisions]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, sectionText, sectionAdjusted, decisions]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -404,7 +433,7 @@ export function ProgramAuthorship({
       {p.elements.map((e) => {
         const derived = derivedContent(e.kind);
         const isDerived = derived !== null;
-        const wasAdjusted = adjusted[e.kind] === true;
+        const wasAdjusted = sectionAdjusted(e.kind);
         const open = openDetails === e.kind;
         return (
           <div key={e.kind} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
@@ -449,7 +478,6 @@ export function ProgramAuthorship({
                             value={f.get(contracts!) ?? ""}
                             onChange={(ev) => {
                               setContracts((c) => (c ? f.set(c, ev.target.value) : c));
-                              setAdjusted((a) => ({ ...a, ...Object.fromEntries(f.affects.map((k) => [k, true])) }));
                             }}
                             data-testid={`program-field-${f.id}`}
                             className="rounded-lg border border-white/15 bg-[#0B1F3A] px-3 py-2 text-sm text-white/85"
@@ -463,7 +491,6 @@ export function ProgramAuthorship({
                             value={f.get(contracts!) ?? ""}
                             onChange={(next) => {
                               setContracts((c) => (c ? f.set(c, next) : c));
-                              setAdjusted((a) => ({ ...a, ...Object.fromEntries(f.affects.map((k) => [k, true])) }));
                             }}
                             rows={2}
                             data-testid={`program-field-${f.id}`}
@@ -498,11 +525,21 @@ export function ProgramAuthorship({
         );
       })}
 
-      {ceiling ? (
+      {/*
+        ONE EVIDENCE CEILING (Slice 3.2L-R8.1). This block used to print BOTH the API's
+        `evidence_ceiling` and the proposal's `evidenceLanguage` — two paragraphs, one after
+        the other, saying overlapping things. They were never two authorities: both are
+        `deriveEvidenceCeiling(answers)`, computed at different moments in the request. The
+        proposal's copy is the one that was validated with the program, so it is the one
+        shown; the API value survives only as a fallback for a pre-v6 proposal that carries
+        no ceiling of its own.
+      */}
+      {p.evidenceLanguage || ceiling ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="program-evidence-ceiling">
           <span className="text-xs uppercase tracking-[0.12em] text-white/40">What this can and cannot show</span>
-          <p className="mt-1 text-sm leading-6 text-white/70">{ceiling}</p>
-          <p className="mt-1 text-sm leading-6 text-white/55">{p.evidenceLanguage}</p>
+          <p className="mt-1 text-sm leading-6 text-white/70" data-testid="program-evidence-text">
+            {p.evidenceLanguage || ceiling}
+          </p>
         </div>
       ) : null}
 
@@ -537,7 +574,6 @@ export function ProgramAuthorship({
             setDecisions(Object.fromEntries(p.elements.map((el) => [el.kind, "use" as SectionDecision])));
             setTitleEdit(p.displayTitle);
             setTitleDecision("use");
-            setAdjusted({});
             setOpenDetails(null);
           }}
           data-testid="program-reset"
