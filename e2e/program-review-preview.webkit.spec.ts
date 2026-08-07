@@ -598,6 +598,27 @@ test.describe("Program review preview — non-paid readability gate", () => {
     }
   });
 
+  test("R11: Add is one gesture, writes nothing here, and never approves", async ({ page }) => {
+    const seen: string[] = [];
+    page.on("request", (r) => { if (FORBIDDEN.test(r.url())) seen.push(`${r.method()} ${r.url()}`); });
+    await openReview(page);
+
+    // Apply is available exactly once, and pressing it retires the control.
+    const add = page.getByTestId("program-apply");
+    await expect(add).toBeEnabled();
+    await expect(add).toHaveText(/Add this program to my training/i);
+    await add.click();
+    await expect(page.getByTestId("preview-apply-noop")).toContainText(/nothing was added/i);
+    expect(await page.getByTestId("program-apply").count()).toBe(0);
+
+    // Nothing on this surface can approve, publish or create a session.
+    const body = (await page.locator("body").textContent()) ?? "";
+    for (const f of ["Approve & create session", "Approve and create", "Publish", "Save and leave"]) {
+      expect(body, f).not.toContain(f);
+    }
+    expect(seen, `preview must not call a backend: ${seen.join(", ")}`).toEqual([]);
+  });
+
   test("R9 G11/G12: no generic adoption assumption, and no empty container", async ({ page }) => {
     await openReview(page);
     /*

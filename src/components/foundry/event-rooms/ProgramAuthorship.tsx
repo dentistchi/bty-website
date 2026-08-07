@@ -54,7 +54,14 @@ export const KIND_LABEL: Record<JourneyElementKind, string> = {
  * a relevance fault in the R4 window.
  */
 export type ProgramGenerateOutcome =
-  | { ok: true; proposal: ProgramProposal; evidenceCeiling: string; attemptId: string | null }
+  | {
+      ok: true;
+      proposal: ProgramProposal;
+      evidenceCeiling: string;
+      attemptId: string | null;
+      /** The Host-input authority this proposal was written from (Slice 3.2L-R11). */
+      contextFingerprint: string;
+    }
   | { ok: false; code: string; refusal?: string | null };
 
 export function ProgramAuthorship({
@@ -64,6 +71,7 @@ export function ProgramAuthorship({
   ready,
   onGenerate,
   onApply,
+  currentContextFingerprint,
   onPendingChange,
 }: {
   /** The exact loaded draft this surface is bound to. */
@@ -74,6 +82,12 @@ export function ProgramAuthorship({
   onGenerate: () => Promise<ProgramGenerateOutcome>;
   /** Persist the whole approved journey in ONE save. */
   onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => void;
+  /**
+   * The Host-input authority as it is RIGHT NOW. Compared against the fingerprint the
+   * proposal was written from, so a proposal cannot silently overwrite answers the Host
+   * changed after generating it (Slice 3.2L-R11).
+   */
+  currentContextFingerprint: string;
   /**
    * Raised while a program draft is in flight. The Builder uses it to disable
    * publication — a generation and a publication must never overlap on one draft.
@@ -93,6 +107,8 @@ export function ProgramAuthorship({
   const [proposal, setProposal] = useState<ProgramProposal | null>(null);
   const [ceiling, setCeiling] = useState("");
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  /** The Host inputs this proposal was written from. Empty until one exists. */
+  const [proposalFingerprint, setProposalFingerprint] = useState("");
   const [failure, setFailure] = useState<RefusalCopy | null>(null);
   /** The stable refusal code behind `failure`, used only to choose the recovery action. */
   const [failureCode, setFailureCode] = useState<string>("");
@@ -154,6 +170,7 @@ export function ProgramAuthorship({
     setProposal(r.proposal);
     setCeiling(r.evidenceCeiling);
     setAttemptId(r.attemptId);
+    setProposalFingerprint(r.contextFingerprint);
     // Default every section to the proposal — the Host asked BTY to draft it — but each
     // one is still an explicit, changeable choice.
     setDecisions(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
@@ -246,8 +263,25 @@ export function ProgramAuthorship({
     return r.ok ? null : r;
   }, [contracts, proposal, edits, answers]);
 
+  /**
+   * STALE-AUTHORITY GATE (Slice 3.2L-R11).
+   *
+   * The server refuses a proposal whose draft moved WHILE the provider was working. It
+   * cannot see what happens afterwards: the Host can change the problem, the behaviour or
+   * the evidence in the Builder and then come back and press Add, and the journey written
+   * from the older answers would silently become the program.
+   *
+   * Compared by CONTEXT FINGERPRINT, not by `updated_at` — navigating between steps
+   * legitimately moves the timestamp and changes no authority, which is exactly what the
+   * Founder did after the live window.
+   */
+  const proposalIsStale =
+    proposalFingerprint.length > 0 &&
+    currentContextFingerprint.length > 0 &&
+    proposalFingerprint !== currentContextFingerprint;
+
   const apply = useCallback(() => {
-    if (!proposal || reviewBlock) return;
+    if (!proposal || reviewBlock || proposalIsStale) return;
     const choices: SectionChoice[] = proposal.elements.map((e) => {
       // Provenance follows what the HOST actually touched. A derived section they never
       // adjusted is still BTY's work, even though Apply re-reads its rendered text.
@@ -264,7 +298,7 @@ export function ProgramAuthorship({
       attemptId,
     );
     setPhase("applied");
-  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, sectionText, sectionAdjusted, decisions]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -607,12 +641,18 @@ export function ProgramAuthorship({
           {REVIEW_BLOCK_COPY[reviewBlock.reason]}
         </p>
       ) : null}
+      {proposalIsStale ? (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.05] px-4 py-3 text-sm leading-6 text-amber-100/85" data-testid="program-stale-block">
+          Your training answers changed after BTY wrote this. Nothing was added — draft the program again so it
+          matches what your training says now.
+        </p>
+      ) : null}
 
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
           onClick={apply}
-          disabled={reviewBlock !== null}
+          disabled={reviewBlock !== null || proposalIsStale}
           data-testid="program-apply"
           className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-40"
         >

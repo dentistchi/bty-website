@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import type { Locale } from "./copy";
 import { MODULE_BUILDER_COPY, arenaFollowLabel, suggestCompletionPrompt, suggestSharedQuestion, type ModuleBuilderCopy } from "./moduleBuilderCopy";
 import { createSerializedSaver, SAVE_REQUEST_TIMEOUT_MS, type SaveState } from "./moduleAutosave";
@@ -58,7 +58,12 @@ import {
  * hands off to its control room. Persistence engine is regression-protected.
  */
 
-type Snapshot = { answers: BuilderAnswers; currentStep: number };
+type Snapshot = {
+  answers: BuilderAnswers;
+  currentStep: number;
+  /** Present ONLY on the save that applies a program — records adoption (Slice 3.2L-R11). */
+  appliedProgramAttemptId?: string;
+};
 type Restore = "loading" | "loaded" | "unavailable" | "gone";
 
 export function ModuleBuilderShell({
@@ -119,7 +124,11 @@ export function ModuleBuilderShell({
           credentials: "include",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers: snap.answers, current_step: snap.currentStep }),
+          body: JSON.stringify({
+            answers: snap.answers,
+            current_step: snap.currentStep,
+            ...(snap.appliedProgramAttemptId ? { applied_program_attempt_id: snap.appliedProgramAttemptId } : {}),
+          }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
           // it never settled, so `inFlight` never cleared and every later flush hung.
           // Aborting turns that into an ordinary retryable failure.
@@ -181,12 +190,12 @@ export function ModuleBuilderShell({
   }, []);
 
   const patchAnswers = useCallback(
-    (partial: BuilderAnswers, immediate: boolean) => {
+    (partial: BuilderAnswers, immediate: boolean, appliedProgramAttemptId?: string) => {
       setBlocker(null);
       const merged = { ...answersRef.current, ...partial };
       answersRef.current = merged;
       setAnswers(merged);
-      const snapshot: Snapshot = { answers: merged, currentStep: stepRef.current };
+      const snapshot: Snapshot = { answers: merged, currentStep: stepRef.current, appliedProgramAttemptId };
       cancelDebounce();
       if (immediate) saver.schedule(snapshot);
       else debounceRef.current = setTimeout(() => saver.schedule(snapshot), 600);
@@ -423,7 +432,7 @@ export function ModuleBuilderShell({
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
-        program?: unknown; evidence_ceiling?: string; attempt_id?: string | null; error?: string; refusal?: string | null;
+        program?: unknown; evidence_ceiling?: string; attempt_id?: string | null; context_fingerprint?: string; error?: string; refusal?: string | null;
       };
       if (res.ok && data.program) {
         return {
@@ -431,6 +440,7 @@ export function ModuleBuilderShell({
           proposal: data.program as ProgramGenerateOutcome extends { ok: true; proposal: infer P } ? P : never,
           evidenceCeiling: data.evidence_ceiling ?? "",
           attemptId: data.attempt_id ?? null,
+          contextFingerprint: data.context_fingerprint ?? "",
         };
       }
       return { ok: false, code: data.error ?? "invalid_output", refusal: data.refusal ?? null };
@@ -441,9 +451,20 @@ export function ModuleBuilderShell({
 
   // Apply is ATOMIC from the Host's point of view: the whole approved journey is written in
   // ONE patch, so a failed save can never leave a half-applied program.
+  /**
+   * The Host-input authority as it stands right now. Recomputed on every answers change,
+   * so the review surface can tell a proposal written from older answers (Slice 3.2L-R11).
+   */
+  const programFingerprint = useMemo(() => {
+    const ctx = programContext(answers);
+    return ctx ? programContextFingerprint(ctx) : "";
+  }, [answers]);
+
   const applyProgram = useCallback(
-    (next: RealityGroundedJourneyV1) => {
-      patchAnswers({ realityGroundedJourneyV1: next }, true);
+    (next: RealityGroundedJourneyV1, attemptId: string | null) => {
+      // ONE request writes the journey and records adoption, so Apply stays atomic and the
+      // ledger stops reading as if no proposal was ever kept (Slice 3.2L-R11).
+      patchAnswers({ realityGroundedJourneyV1: next }, true, attemptId ?? undefined);
     },
     [patchAnswers],
   );
@@ -596,6 +617,7 @@ export function ModuleBuilderShell({
             journey={answers.realityGroundedJourneyV1}
             ready={programContext(answers) !== null}
             onGenerate={generateProgram}
+            currentContextFingerprint={programFingerprint}
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
           />

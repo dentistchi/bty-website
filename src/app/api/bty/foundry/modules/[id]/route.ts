@@ -6,7 +6,7 @@ import {
   deleteDraft,
 } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
-import { findActiveProgramGeneration } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { findActiveProgramGeneration, markProgramAttemptApplied } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch } from "@/domain/foundry/module/module-builder";
 
@@ -69,6 +69,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     currentStep: validated.value.currentStep,
   });
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));
+
+  /**
+   * ADOPTION, RECORDED (Slice 3.2L-R11).
+   *
+   * `markProgramAttemptApplied` and the `applied_at` column have existed since the ledger
+   * was built — "Authorship ≠ adoption" — and nothing ever called it. So every proposal
+   * BTY has ever written reads as never adopted, and a future reconciliation cannot tell a
+   * program the Host kept from one they walked away from.
+   *
+   * It rides the SAME request that writes the journey, so Apply stays one atomic gesture,
+   * and it is owner-scoped and idempotent. A failure here must never fail the Apply the
+   * Host already saw succeed: the draft write is what they asked for, and losing the
+   * adoption timestamp is not worth losing their program.
+   */
+  const appliedAttemptId = typeof body?.applied_program_attempt_id === "string" ? body.applied_program_attempt_id : null;
+  if (appliedAttemptId) {
+    await markProgramAttemptApplied(admin, appliedAttemptId, user.id).catch(() => undefined);
+  }
 
   return managerJson(base, req, { draft: toClientDraft(result.value) });
 }

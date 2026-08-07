@@ -5,8 +5,11 @@ import {
   PREVIEW_CONTRACTS,
   PREVIEW_EVIDENCE_CEILING,
   PREVIEW_PROPOSAL,
+  PREVIEW_FINGERPRINT,
   V7_LIVE,
 } from "./fixture";
+import { JOURNEY_KIND_ORDER, validateJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import {
   deriveEvidenceCeiling,
   deriveInstructionalContent,
@@ -14,7 +17,12 @@ import {
   retainGroundedAssumptions,
   validateEditedReview,
   applicationMomentFor,
+  applyProgramProposal,
+  attributionKind,
   derivesFrom,
+  programContext,
+  programContextFingerprint,
+  readProvenance,
   PROGRAM_REJECT_CODES,
   PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME,
@@ -758,5 +766,122 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
     expect(outcomeClaimIndex(q)).toBe(-1);
     // The ceiling is unchanged and still says a written answer is not competence.
     expect(PREVIEW_EVIDENCE_CEILING).toContain("A written answer shows reflection, not competence.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R11 — AI proposal → human Apply → canonical draft journey
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
+  /** The EXACT live seed on canonical draft 093b0361, copied verbatim. */
+  const SEED: RealityGroundedJourneyV1 = {
+    version: 1,
+    displayTitle: "Our handoffs are inconsistent.",
+    displayTitleStatus: "grounded",
+    elements: [
+      { id: "el_why_it_matters", kind: "why_it_matters", content: "Our handoffs are inconsistent.", grounding: [{ sourceType: "host_statement", field: "problem" }], confirmationStatus: "grounded" },
+      { id: "el_observable_standard", kind: "observable_standard", content: "Create a shared handoff standard.", grounding: [{ sourceType: "host_statement", field: "observableBehavior" }], confirmationStatus: "grounded" },
+      { id: "el_evidence", kind: "evidence", content: "Handoff record", grounding: [{ sourceType: "host_statement", field: "successEvidence" }], confirmationStatus: "grounded" },
+      { id: "el_completion_check", kind: "completion_check", content: "What specific elements will you include in your handoff record to align with the shared handoff standard?", grounding: [{ sourceType: "host_statement", field: "completionPrompt" }], confirmationStatus: "grounded" },
+    ],
+  };
+  const useAll = PREVIEW_PROPOSAL.elements.map((e) => ({ kind: e.kind, decision: "use" as const, editedContent: e.content }));
+  const applied = () => applyProgramProposal(SEED, PREVIEW_PROPOSAL, useAll, { titleDecision: "use" });
+
+  it("G6/G12: the merge is deterministic, ordered and duplicate-free", () => {
+    const out = applied();
+    expect(validateJourney(out)).toEqual([]);
+    const kinds = out.elements.map((e) => e.kind);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    expect(kinds).toEqual([...kinds].sort((a, b) => JOURNEY_KIND_ORDER.indexOf(a) - JOURNEY_KIND_ORDER.indexOf(b)));
+    expect(out.elements.every((e) => e.id === `el_${e.kind}`)).toBe(true);
+  });
+
+  it("G7: grounded evidence the proposal does not own survives BYTE-IDENTICALLY", () => {
+    const before = SEED.elements.find((e) => e.kind === "evidence")!;
+    const after = applied().elements.find((e) => e.kind === "evidence")!;
+    expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+  });
+
+  it("a proposal missing any kind never deletes grounded content", () => {
+    for (const drop of ["completion_check", "why_it_matters", "observable_standard"] as const) {
+      const partial = { ...PREVIEW_PROPOSAL, elements: PREVIEW_PROPOSAL.elements.filter((e) => e.kind !== drop) };
+      const out = applyProgramProposal(SEED, partial, useAll.filter((c) => c.kind !== drop), { titleDecision: "use" });
+      const kept = out.elements.find((e) => e.kind === drop)!;
+      const seeded = SEED.elements.find((e) => e.kind === drop)!;
+      expect(JSON.stringify(kept), drop).toBe(JSON.stringify(seeded));
+    }
+  });
+
+  it("G9/G11: adoption is not authorship", () => {
+    const out = applied();
+    for (const kind of ["why_it_matters", "observable_standard", "scenario", "field_application"] as const) {
+      expect(readProvenance(out.elements.find((e) => e.kind === kind)), kind).toBe("ai_proposed");
+      expect(attributionKind(out.elements.find((e) => e.kind === kind)), kind).toBe("bty_authored");
+    }
+    // The preserved Host seed keeps its own authority.
+    expect(readProvenance(out.elements.find((e) => e.kind === "evidence"))).toBe("host_statement");
+    expect(attributionKind(out.elements.find((e) => e.kind === "evidence"))).toBe("from_host");
+  });
+
+  it("G10: a Host edit before Apply becomes host_edited, and a Host seed stays host_statement", () => {
+    const edited = useAll.map((c) => (c.kind === "scenario" ? { ...c, decision: "edit" as const, editedContent: "My own words." } : c));
+    const out = applyProgramProposal(SEED, PREVIEW_PROPOSAL, edited, { titleDecision: "use" });
+    expect(readProvenance(out.elements.find((e) => e.kind === "scenario"))).toBe("host_edited");
+    // Editing a section the HOST originally wrote leaves it theirs, not "host_edited AI".
+    const editedSeed = useAll.map((c) => (c.kind === "why_it_matters" ? { ...c, decision: "edit" as const, editedContent: "Reworded." } : c));
+    const out2 = applyProgramProposal(SEED, PREVIEW_PROPOSAL, editedSeed, { titleDecision: "use" });
+    expect(readProvenance(out2.elements.find((e) => e.kind === "why_it_matters"))).toBe("host_statement");
+  });
+
+  it("G8: Apply upgrades no evidence level", () => {
+    const out = applied();
+    // `confirmationStatus` says the Host confirmed the section for the journey; it is not
+    // an evidence level, and the ceiling itself is never written by Apply.
+    expect(out.elements.every((e) => e.confirmationStatus === "grounded")).toBe(true);
+    expect(JSON.stringify(out)).not.toContain("observed");
+    expect(JSON.stringify(out)).not.toContain("sustained");
+    expect(PREVIEW_EVIDENCE_CEILING).toContain("not observed behavior");
+  });
+
+  it("G13: applying the same proposal twice is idempotent", () => {
+    const once = applied();
+    const twice = applyProgramProposal(once, PREVIEW_PROPOSAL, useAll, { titleDecision: "use" });
+    expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
+  });
+
+  it("G16/G17/G18/G19: the applied journey keeps the V9 authorities", () => {
+    const out = applied();
+    const text = (k: string) => out.elements.find((e) => e.kind === k)!.content;
+    expect(text("observable_standard")).toContain("At each handoff point");
+    expect(text("action_decision")).toContain("At my next handoff point");
+    expect(text("field_application")).toContain("At the next handoff point");
+    expect(text("completion_check")).toContain("At your next handoff point");
+    const clause = "you see the receiving team member repeat back who owns the next step";
+    for (const k of ["observable_standard", "scenario", "field_application"]) expect(text(k), k).toContain(clause);
+    expect(text("follow_up")).toContain("will be asked a different question");
+    expect(text("why_it_matters")).toContain("Our handoffs are inconsistent");
+  });
+
+  it("G14/G15: the fingerprint moves on a semantic change and not on navigation", () => {
+    const base = programContextFingerprint(programContext(PREVIEW_ANSWERS)!);
+    expect(base).toBe(PREVIEW_FINGERPRINT);
+    // Navigation carries no answers change, so the authority is identical.
+    expect(programContextFingerprint(programContext({ ...PREVIEW_ANSWERS })!)).toBe(base);
+    // A provider-authoritative answer change moves it.
+    const changes: BuilderAnswers[] = [
+      { ...PREVIEW_ANSWERS, problem: "Our handovers drop things." },
+      { ...PREVIEW_ANSWERS, observableBehavior: "Write a handoff note." },
+      { ...PREVIEW_ANSWERS, followUpDays: 30 },
+    ];
+    for (const changed of changes) {
+      expect(programContextFingerprint(programContext(changed)!)).not.toBe(base);
+    }
+  });
+
+  it("G20: filtered assumptions are not resurrected by Apply", () => {
+    expect(PREVIEW_PROPOSAL.assumptions).toEqual([]);
+    expect(JSON.stringify(applied())).not.toContain("willing to commit");
   });
 });

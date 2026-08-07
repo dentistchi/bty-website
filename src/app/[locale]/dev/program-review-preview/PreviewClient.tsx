@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { ProgramAuthorship, type ProgramGenerateOutcome } from "@/components/foundry/event-rooms/ProgramAuthorship";
-import { FIXTURE_IDENTITY, PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_PROPOSAL } from "./fixture";
+import { FIXTURE_IDENTITY, PREVIEW_ANSWERS, PREVIEW_EVIDENCE_CEILING, PREVIEW_FINGERPRINT, PREVIEW_PROPOSAL } from "./fixture";
 
 /**
  * Physical readability preview (Slice 3.2L-R5) — the REAL review component, a STATIC
@@ -17,7 +17,7 @@ export function PreviewClient({ buildSha }: { buildSha: string }) {
 
   /** Deliberately async so the component's real working → review transition is exercised. */
   const onGenerate = useCallback(async (): Promise<ProgramGenerateOutcome> => {
-    return { ok: true, proposal: PREVIEW_PROPOSAL, evidenceCeiling: PREVIEW_EVIDENCE_CEILING, attemptId: null };
+    return { ok: true, proposal: PREVIEW_PROPOSAL, evidenceCeiling: PREVIEW_EVIDENCE_CEILING, attemptId: null, contextFingerprint: PREVIEW_FINGERPRINT };
   }, []);
 
   const onApply = useCallback(() => {
@@ -74,6 +74,7 @@ export function PreviewClient({ buildSha }: { buildSha: string }) {
           journey={undefined}
           ready
           onGenerate={onGenerate}
+          currentContextFingerprint={PREVIEW_FINGERPRINT}
           onApply={onApply}
         />
 

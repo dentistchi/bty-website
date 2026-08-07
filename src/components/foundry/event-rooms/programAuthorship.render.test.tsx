@@ -55,12 +55,21 @@ const PROPOSAL: ProgramProposal = {
   operationalConstruct: { label: "shared handoff standard", noun: "standard", authorityMode: "proposed" },
 };
 
-const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeiling: "Reading shows exposure only.", attemptId: "att-1" };
+const FP = "fp-canonical";
+const ok: ProgramGenerateOutcome = { ok: true, proposal: PROPOSAL, evidenceCeiling: "Reading shows exposure only.", attemptId: "att-1", contextFingerprint: FP };
 
-function setup(outcome: ProgramGenerateOutcome, onApply = vi.fn()) {
+function setup(outcome: ProgramGenerateOutcome, onApply = vi.fn(), currentFingerprint = FP) {
   const onGenerate = vi.fn(async () => outcome);
   render(
-    <ProgramAuthorship draftId="d-1" answers={ANSWERS} journey={undefined} ready onGenerate={onGenerate} onApply={onApply} />,
+    <ProgramAuthorship
+      draftId="d-1"
+      answers={ANSWERS}
+      journey={undefined}
+      ready
+      onGenerate={onGenerate}
+      onApply={onApply}
+      currentContextFingerprint={currentFingerprint}
+    />,
   );
   return { onGenerate, onApply };
 }
@@ -89,7 +98,7 @@ describe("[3.2L] the authorship entry point", () => {
 
   it("is disabled until the Host has described enough to author from", () => {
     const onGenerate = vi.fn(async () => ok);
-    render(<ProgramAuthorship draftId="d-1" answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} />);
+    render(<ProgramAuthorship draftId="d-1" answers={{}} journey={undefined} ready={false} onGenerate={onGenerate} onApply={vi.fn()} currentContextFingerprint={FP} />);
     expect((screen.getByTestId("program-generate") as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -432,6 +441,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
         ready
         onGenerate={onGenerate}
         onApply={vi.fn()}
+        currentContextFingerprint={FP}
         onPendingChange={(p) => pending.push(p)}
       />,
     );
@@ -457,6 +467,7 @@ describe("[3.2L-R1] G9 — generation and publication never overlap in the UI", 
           ready
           onGenerate={vi.fn(async () => outcome)}
           onApply={vi.fn()}
+          currentContextFingerprint={FP}
           onPendingChange={(p) => pending.push(p)}
         />,
       );
@@ -555,5 +566,49 @@ describe("[3.2L-R2] a grounding refusal tells the Host what to do next", () => {
     setup({ ok: false, code: "invalid_output", refusal: "material_fabrication" });
     await generate();
     expect(screen.queryByTestId("program-review")).toBeNull();
+  });
+});
+
+describe("[3.2L-R11] the Apply boundary", () => {
+  it("G15: a proposal written from older answers cannot silently overwrite them", async () => {
+    const onApply = vi.fn();
+    setup(ok, onApply, "fp-CHANGED-after-generation");
+    await generate();
+    expect(screen.getByTestId("program-stale-block").textContent).toContain("answers changed after BTY wrote this");
+    expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  it("G14: navigation-only movement leaves an otherwise valid proposal applicable", async () => {
+    // The fingerprint is built from ANSWERS only — current_step and updated_at are not in it.
+    const { onApply } = setup(ok, vi.fn(), FP);
+    await generate();
+    expect(screen.queryByTestId("program-stale-block")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
+  it("Apply hands the attempt id through, so adoption can be recorded", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(onApply.mock.calls[0][1]).toBe("att-1");
+  });
+
+  it("G13: Apply cannot fire twice from one review", async () => {
+    const { onApply } = setup(ok);
+    await generate();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    expect(screen.queryByTestId("program-apply")).toBeNull();
+    expect(onApply).toHaveBeenCalledTimes(1);
   });
 });

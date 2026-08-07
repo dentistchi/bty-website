@@ -2,6 +2,8 @@ import {
   deriveEvidenceCeiling,
   deriveInstructionalContent,
   retainGroundedAssumptions,
+  programContext,
+  programContextFingerprint,
   type ProgramContracts,
   type ProgramProposal,
 } from "@/domain/foundry/module/program-authorship";
@@ -171,3 +173,9 @@ export const PREVIEW_PROPOSAL: ProgramProposal = previewProposal();
  * once (Part 4).
  */
 export const PREVIEW_EVIDENCE_CEILING = deriveEvidenceCeiling(PREVIEW_ANSWERS);
+
+/**
+ * The Host-input authority this fixture stands for. The preview compares it with itself,
+ * so the stale gate is inert here and the Apply boundary can be exercised (Slice 3.2L-R11).
+ */
+export const PREVIEW_FINGERPRINT = programContextFingerprint(programContext(PREVIEW_ANSWERS)!);
