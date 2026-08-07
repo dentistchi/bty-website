@@ -20,7 +20,7 @@ import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/mo
 import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
-import { DETAIL_FIELDS, REVIEW_BLOCK_COPY } from "./programReviewFields";
+import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -481,8 +481,22 @@ export function ProgramAuthorship({
                 )}
                 {open ? (
                   <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3" data-testid={`program-details-${e.kind}`}>
-                    {DETAIL_FIELDS[e.kind]?.map((f) => (
-                      <label key={f.id} className="flex flex-col gap-1">
+                    {DETAIL_FIELDS[e.kind]?.map((f, i, all) => (
+                      <div key={f.id} className="flex flex-col gap-1">
+                        {/*
+                          One heading per concept group (Slice 3.2L-R9.2). Rendered when the
+                          group CHANGES, so the panel gains two short headings and no extra
+                          step, modal or scroll depth.
+                        */}
+                        {f.group && f.group !== all[i - 1]?.group ? (
+                          <span
+                            data-testid={`program-field-group-${f.group}`}
+                            className={`text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#C9A66B]/75 ${i > 0 ? "mt-2 border-t border-white/10 pt-3" : ""}`}
+                          >
+                            {FIELD_GROUP_HEADING[f.group]}
+                          </span>
+                        ) : null}
+                      <label className="flex flex-col gap-1">
                         <span className="text-xs text-white/45">{f.label}</span>
                         {f.options ? (
                           <select
@@ -509,6 +523,7 @@ export function ProgramAuthorship({
                           />
                         )}
                       </label>
+                      </div>
                     ))}
                     {e.kind === "follow_up" ? (
                       <p className="text-xs leading-5 text-white/40">

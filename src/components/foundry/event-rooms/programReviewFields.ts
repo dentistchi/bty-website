@@ -23,9 +23,31 @@ import {
  * "Who does this?" and "How do they answer?".
  */
 
+/**
+ * THE TWO THINGS A HOST IS ACTUALLY DECIDING (Slice 3.2L-R9.2).
+ *
+ * THE STANDARD's five controls were one flat list of identically-styled fields, and it
+ * contained two "Who …?" questions and two "What would … see … them do?" questions. Two
+ * consecutive Founder gates typed the confirmer into the ACTOR field — someone who knew
+ * exactly which test they were running, twice. That is not operator error; a Host should
+ * not have to hold `behavior_contract` in their head to edit a training.
+ *
+ * The fields and their meanings are unchanged. They are now presented as the two concepts
+ * they always were: what someone does, and how anyone knows it happened.
+ */
+export type FieldGroup = "action" | "completion";
+
+/** Shown once, above the first control in each group. */
+export const FIELD_GROUP_HEADING: Record<FieldGroup, string> = {
+  action: "The action",
+  completion: "How completion is confirmed",
+};
+
 export type DetailField = {
   /** Stable test/DOM id. Not shown. */
   id: string;
+  /** Which concept this control belongs to. Absent for kinds with a single concept. */
+  group?: FieldGroup;
   /** What the Host reads. */
   label: string;
   get: (c: ProgramContracts) => string;
@@ -52,6 +74,7 @@ const behaviourField = (
 ): DetailField => ({
   id,
   label,
+  group: "action",
   get: (c) => c.behavior[key],
   set: (c, v) => ({ ...c, behavior: { ...c.behavior, [key]: v } }),
 });
@@ -90,18 +113,26 @@ const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
 
 export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> = {
   observable_standard: [
-    behaviourField("actor", "Who does this?", "actor"),
-    behaviourField("trigger", "When is it required?", "trigger"),
-    behaviourField("action", "What would someone see or hear them do?", "observableAction"),
+    /*
+      "Who does this?" and "Who confirms it’s done?" sat four lines apart in one flat list,
+      both opening with "Who", and the two "What would … see … them do?" questions differed
+      only by "someone" and "you". The labels now name the ROLE rather than repeating the
+      interrogative, and the heading above each group says which decision it belongs to.
+    */
+    behaviourField("actor", "Who takes the action?", "actor"),
+    behaviourField("trigger", "When should they do it?", "trigger"),
+    behaviourField("action", "What would you see or hear them do?", "observableAction"),
     {
       id: "confirmed-by",
-      label: "Who confirms it’s done?",
+      group: "completion",
+      label: "Who confirms the action is complete?",
       get: (c) => c.behavior.completion.confirmedBy,
       set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmedBy: v } } }),
     },
     {
       id: "completion",
-      label: "What would you see them do?",
+      group: "completion",
+      label: "What do they do to confirm it?",
       get: (c) => c.behavior.completion.confirmationAction,
       set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmationAction: v } } }),
     },

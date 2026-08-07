@@ -57,6 +57,15 @@ export function PreviewClient({ buildSha }: { buildSha: string }) {
             with — “ultimately affects project success and team collaboration” — is removed here, because a
             training can’t claim that.
           </p>
+          {/*
+            The preview keeps whatever was typed until the page is left, which is correct
+            product behaviour and makes a second check start from someone else's edits. This
+            names the deterministic way back (Slice 3.2L-R9.2).
+          */}
+          <p className="mt-1 text-xs leading-5 text-amber-100/60" data-testid="preview-reset-note">
+            Press “Reset to BTY’s draft” at the bottom before each check — it puts every value, sentence and label
+            back to this fixture.
+          </p>
         </div>
 
         <ProgramAuthorship

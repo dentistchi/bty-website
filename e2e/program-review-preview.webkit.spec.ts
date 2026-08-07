@@ -455,6 +455,90 @@ test.describe("Program review preview — non-paid readability gate", () => {
     await expect(page.getByTestId("program-section-follow_up")).toContainText("Drafted by BTY");
   });
 
+  test("R9.2 G1/G2/G3/G12: the standard's controls read as two decisions on a phone", async ({ page }) => {
+    await openReview(page);
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+    const panel = page.getByTestId("program-details-observable_standard");
+    await expect(panel).toBeVisible();
+
+    // G3 — two headings, in order, with the confirmer group separated from the action group.
+    await expect(page.getByTestId("program-field-group-action")).toHaveText("The action");
+    await expect(page.getByTestId("program-field-group-completion")).toHaveText("How completion is confirmed");
+
+    // G1/G2 — the labels name roles rather than repeating "Who".
+    const text = (await panel.textContent()) ?? "";
+    expect(text).toContain("Who takes the action?");
+    expect(text).toContain("Who confirms the action is complete?");
+    expect(text).toContain("What would you see or hear them do?");
+    expect(text).toContain("What do they do to confirm it?");
+    expect(text).not.toContain("Who does this?");
+    expect(text).not.toContain("Who confirms it’s done?");
+    // No internal vocabulary on screen.
+    expect(text).not.toMatch(/behavior_contract|actor|confirmer|contract/i);
+
+    // The confirmer heading sits BELOW the three action controls, not among them.
+    const order = await page.evaluate(() => {
+      const ids = ["program-field-group-action", "program-field-actor", "program-field-trigger", "program-field-action", "program-field-group-completion", "program-field-confirmed-by", "program-field-completion"];
+      return ids.map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().top ?? -1);
+    });
+    expect(order.every((t, i) => i === 0 || t > order[i - 1]), JSON.stringify(order)).toBe(true);
+
+    // G12 — every control, and the actions below, reachable at an iPhone width.
+    for (const id of ["actor", "trigger", "action", "confirmed-by", "completion"]) {
+      const f = page.getByTestId(`program-field-${id}`);
+      await f.scrollIntoViewIfNeeded();
+      await expect(f).toBeInViewport();
+    }
+    for (const id of ["program-derived-follow_up", "program-evidence-ceiling", "program-reset", "program-discard"]) {
+      const el = page.getByTestId(id);
+      await el.scrollIntoViewIfNeeded();
+      await expect(el).toBeInViewport();
+    }
+    // Nothing clipped inside its own box.
+    const clipped = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="program-field-"], [data-testid^="program-derived-"]'))
+        .filter((el) => el.scrollHeight - el.clientHeight > 1)
+        .map((el) => el.dataset.testid),
+    );
+    expect(clipped).toEqual([]);
+  });
+
+  test("R9.2 G6/G7: typing under a control moves only that field", async ({ page }) => {
+    await openReview(page);
+    const standard = page.getByTestId("program-derived-observable_standard");
+    const next = page.getByTestId("program-derived-follow_up");
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+
+    // THE REPEATED PHYSICAL MISTAKE: "both people" under the ACTOR control.
+    await page.getByTestId("program-field-actor").fill("both people");
+    await expect(standard).toContainText("both people must state each unfinished item");
+    // It is the actor, so the ordinary two-perspective follow-up must remain.
+    await expect(next).toContainText("The receiving team member will be asked a different question");
+    expect((await next.textContent()) ?? "").not.toContain("one shared question");
+    await expect(page.getByTestId("program-field-confirmed-by")).toHaveValue("the receiving team member");
+
+    // …and under the CONFIRMER control it enters the joint branch, leaving the actor alone.
+    await page.getByTestId("program-field-actor").fill("team members");
+    await page.getByTestId("program-field-confirmed-by").fill("both people");
+    await page.getByTestId("program-field-completion").fill("agree who owns the next step");
+    await expect(next).toHaveText(
+      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
+        "Each answer is a report, not an independent observation.",
+    );
+    await expect(standard).toContainText("team members must state each unfinished item");
+
+    // G11 — Reset puts the fixture back, values, sentences and badges together.
+    await page.getByTestId("program-reset").click();
+    await expect(next).toContainText("The receiving team member will be asked a different question");
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+    await expect(page.getByTestId("program-field-actor")).toHaveValue("team members");
+    await expect(page.getByTestId("program-field-confirmed-by")).toHaveValue("the receiving team member");
+    await expect(page.getByTestId("program-field-completion")).toHaveValue("repeat back who owns the next step");
+    for (const kind of ["observable_standard", "scenario", "field_application", "follow_up", "why_it_matters"]) {
+      await expect(page.getByTestId(`program-section-${kind}`)).toContainText("Drafted by BTY");
+    }
+  });
+
   test("R9 G11/G12: no generic adoption assumption, and no empty container", async ({ page }) => {
     await openReview(page);
     /*

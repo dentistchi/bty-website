@@ -19,6 +19,7 @@ import {
   type ProgramContracts,
 } from "@/domain/foundry/module/program-authorship";
 import { resolveRefusalCopy } from "@/components/foundry/event-rooms/programRefusalCopy";
+import { DETAIL_FIELDS, FIELD_GROUP_HEADING } from "@/components/foundry/event-rooms/programReviewFields";
 import {
   isJointConfirmer,
   namesIndependentMoment,
@@ -408,5 +409,83 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
     ]) {
       expect(blob, stale).not.toContain(stale);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R9.2 — actor / confirmer clarity (labels and grouping only)
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
+  const standard = DETAIL_FIELDS.observable_standard!;
+  const labels = standard.map((f) => f.label);
+
+  it("G1/G2: each control names the ROLE, not just 'Who'", () => {
+    expect(standard.find((f) => f.id === "actor")!.label).toBe("Who takes the action?");
+    expect(standard.find((f) => f.id === "confirmed-by")!.label).toBe("Who confirms the action is complete?");
+    expect(standard.find((f) => f.id === "action")!.label).toBe("What would you see or hear them do?");
+    expect(standard.find((f) => f.id === "completion")!.label).toBe("What do they do to confirm it?");
+  });
+
+  it("no two controls open with the same three words any more", () => {
+    /*
+      THE MEASURED CONFUSION. The old set was "Who does this?" / "Who confirms it's done?"
+      and "What would someone see or hear them do?" / "What would you see them do?" — the
+      same interrogative twice, four lines apart, in one flat list of identical fields.
+    */
+    const heads = labels.map((l) => l.split(/\s+/).slice(0, 3).join(" ").toLowerCase());
+    expect(new Set(heads).size).toBe(heads.length);
+  });
+
+  it("G3: the five fields fall into exactly two named groups, in order", () => {
+    expect(standard.map((f) => f.group)).toEqual(["action", "action", "action", "completion", "completion"]);
+    expect(FIELD_GROUP_HEADING.action).toBe("The action");
+    expect(FIELD_GROUP_HEADING.completion).toBe("How completion is confirmed");
+  });
+
+  it("no internal vocabulary reaches a label or a heading", () => {
+    const shown = [...labels, ...Object.values(FIELD_GROUP_HEADING)].join(" ").toLowerCase();
+    for (const internal of ["actor", "contract", "confirmer", "behavior", "behaviour", "field", "trigger", "schema"]) {
+      expect(shown, internal).not.toContain(internal);
+    }
+  });
+
+  it("G4: the same values still produce byte-identical sentences", () => {
+    // Labels are presentation. Every control still reads and writes the same contract field.
+    const get = (id: string) => standard.find((f) => f.id === id)!;
+    expect(get("actor").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.actor);
+    expect(get("confirmed-by").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.completion.confirmedBy);
+    expect(get("completion").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.completion.confirmationAction);
+    expect(derived("observable_standard")).toBe(
+      "At each handoff point, team members must state each unfinished item and identify its next owner. " +
+        "It is complete when you see the receiving team member repeat back who owns the next step.",
+    );
+  });
+
+  it("G6/G7: each control writes ONLY its own field", () => {
+    const get = (id: string) => standard.find((f) => f.id === id)!;
+    // "both people" typed under the CONFIRMER control moves the confirmer, not the actor.
+    const asConfirmer = get("confirmed-by").set(PREVIEW_CONTRACTS, "both people");
+    expect(asConfirmer.behavior.completion.confirmedBy).toBe("both people");
+    expect(asConfirmer.behavior.actor).toBe("team members");
+
+    // …and typed under the ACTOR control it moves the actor, and never enters the joint branch.
+    const asActor = get("actor").set(PREVIEW_CONTRACTS, "both people");
+    expect(asActor.behavior.actor).toBe("both people");
+    expect(asActor.behavior.completion.confirmedBy).toBe("the receiving team member");
+    expect(derived("follow_up", asActor)).toContain("The receiving team member will be asked a different question");
+    expect(derived("follow_up", asActor)).not.toContain("one shared question");
+  });
+
+  it("G8/G9: the joint branch is reached from the confirmer control, and released again", () => {
+    const get = (id: string) => standard.find((f) => f.id === id)!;
+    const joint = get("completion").set(get("confirmed-by").set(PREVIEW_CONTRACTS, "both people"), "agree who owns the next step");
+    expect(derived("follow_up", joint)).toBe(
+      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
+        "Each answer is a report, not an independent observation.",
+    );
+    const back = get("confirmed-by").set(joint, "the next owner");
+    expect(derived("follow_up", back)).toContain("The next owner will be asked a different question: did they see or hear you");
+    expect(derived("follow_up", back)).not.toContain("one shared question");
   });
 });
