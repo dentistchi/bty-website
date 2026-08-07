@@ -660,9 +660,13 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     for (const target of VERIFICATION_TARGETS) {
       for (const mode of RESPONSE_MODES) {
         const q = renderCompletionQuestion(GOOD, { verificationTarget: target, responseMode: mode });
-        expect(q).toMatch(/\?$/);
-        expect(q).not.toMatch(/what (specific )?(elements|fields|steps)/i);
-        expect(q).not.toMatch(/will you include/i);
+        // GOOD's trigger derives, so every pair renders (Slice 3.2L-R10-A.2).
+        expect(q, `${target}/${mode}`).not.toBeNull();
+        expect(q!).toMatch(/\?$/);
+        expect(q!).not.toMatch(/what (specific )?(elements|fields|steps)/i);
+        expect(q!).not.toMatch(/will you include/i);
+        // …and none of them asks the participant to invent an occasion.
+        expect(q!).not.toMatch(/when is the next time/i);
       }
     }
   });
@@ -682,7 +686,7 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
       (b: BehaviorContract) => renderScenarioSentence(b, GOOD_SCENARIO),
       (b: BehaviorContract) => renderDecisionSentence(b, APP),
       (b: BehaviorContract) => renderApplicationSentence(b, APP, null),
-      (b: BehaviorContract) => renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      (b: BehaviorContract) => renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" }),
       (b: BehaviorContract) => renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
     ]) {
       expect(render(other)).not.toBe(render(GOOD));
@@ -712,14 +716,16 @@ describe("[3.2L-R6.2] no rendered sentence guesses the actor's number", () => {
       renderScenarioSentence(b, GOOD_SCENARIO),
       renderDecisionSentence(b, APP2),
       renderApplicationSentence(b, APP2, null),
-      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" }),
       renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
     ];
   };
 
   it("G1: a PLURAL actor never produces 'doctors faces' or 'doctors states'", () => {
     // The exact strings the Founder read on the physical iPhone.
-    const sections = allSections("Doctors");
+    // A completion question can now be null when its trigger does not derive; these
+    // fixtures all derive, so filter defensively rather than assert on a possible null.
+    const sections = allSections("Doctors").filter((s): s is string => s !== null);
     for (const s of sections) {
       expect(s.toLowerCase()).not.toContain("doctors faces");
       expect(s.toLowerCase()).not.toContain("doctors states");
@@ -845,7 +851,7 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
       scenario: renderScenarioSentence(b, GOOD_SCENARIO),
       decision: renderDecisionSentence(b, APP3),
       application: renderApplicationSentence(b, APP3, null),
-      completion: renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      completion: renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" }),
       followUp: renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
     };
   };
@@ -913,7 +919,7 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
 
   it("G5: the plural-actor repair still holds with a colloquial action", () => {
     for (const s of Object.values(contexts("Say it blunt"))) {
-      expect(s.toLowerCase()).not.toMatch(/doctors (faces|states|does)\b/);
+      expect((s ?? "").toLowerCase()).not.toMatch(/doctors (faces|states|does)\b/);
     }
   });
 
@@ -951,7 +957,7 @@ describe("[3.2L-R6.4] a shouted verb is normalised; a shouted acronym is not", (
       renderScenarioSentence(b, GOOD_SCENARIO),
       renderDecisionSentence(b, APP4),
       renderApplicationSentence(b, APP4, null),
-      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }),
+      renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" }),
       renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
     ];
   };
@@ -1046,7 +1052,7 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
     expect(renderStandardSentence(b)).toContain(clause);
     expect(renderScenarioSentence(b, GOOD_SCENARIO)).toContain(clause);
     expect(renderApplicationSentence(b, APP8, null)).toContain(clause);
-    expect(renderCompletionQuestion(b, { verificationTarget: "the_confirmation_step", responseMode: "name_the_moment" })).toContain(clause);
+    expect(renderCompletionQuestion(b, { verificationTarget: "the_confirmation_step", responseMode: "state_what_you_will_say" })).toContain(clause);
     expect(renderFollowUpSentence(b, { reviewFocus: "the_confirmation", confirmer: "self_report" }, 7)).toContain(clause);
 
     // Changing it moves all of them together.

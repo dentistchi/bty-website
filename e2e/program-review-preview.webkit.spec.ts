@@ -246,10 +246,18 @@ test.describe("Program review preview — non-paid readability gate", () => {
     // A short unavailable state, and NO stale text handed back as an editable field.
     await expect(page.getByTestId("program-unavailable-action_decision")).toContainText(/comes round again/i);
     await expect(page.getByTestId("program-unavailable-field_application")).toBeVisible();
+    /*
+      R10-A.2 — BEFORE YOU FINISH was the last section still asking the participant to
+      invent an occasion ("When is the next time you …?") while the other two had gone
+      quiet. It is anchored to the same derived instance now, so it goes quiet too.
+    */
+    await expect(page.getByTestId("program-unavailable-completion_check")).toBeVisible();
+    expect(await page.getByTestId("program-derived-completion_check").count()).toBe(0);
+    expect(body).not.toMatch(/When is the next time/i);
     expect(await page.getByTestId("program-edit-action_decision").count()).toBe(0);
     expect(await page.getByTestId("program-edit-field_application").count()).toBe(0);
     // No provenance badge claiming BTY wrote a sentence that is not there.
-    for (const kind of ["action_decision", "field_application"]) {
+    for (const kind of ["action_decision", "field_application", "completion_check"]) {
       const t = (await page.getByTestId(`program-section-${kind}`).textContent()) ?? "";
       expect(t, kind).not.toContain("Drafted by BTY");
       expect(t, kind).not.toContain("Adjusted by you");
@@ -259,12 +267,14 @@ test.describe("Program review preview — non-paid readability gate", () => {
     await page.getByTestId("program-field-trigger").fill("at each morning huddle");
     await expect(decision).toContainText("At my next morning huddle");
     await expect(apply).toContainText("At the next morning huddle");
+    await expect(page.getByTestId("program-derived-completion_check")).toContainText("At your next morning huddle,");
     await expect(page.getByTestId("program-apply")).toBeEnabled();
     await expect(page.getByTestId("program-section-action_decision")).toContainText("Adjusted by you");
 
     await page.getByTestId("program-reset").click();
     await expect(decision).toContainText("At my next handoff point, I will");
     await expect(apply).toContainText("At the next handoff point, team members must");
+    await expect(page.getByTestId("program-derived-completion_check")).toContainText("At your next handoff point,");
     await expect(page.getByTestId("program-section-action_decision")).toContainText("Drafted by BTY");
   });
 

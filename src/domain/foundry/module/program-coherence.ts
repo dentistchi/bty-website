@@ -505,7 +505,7 @@ export function momentCore(moment: string): string {
  * "next shift change" becomes "At my next shift change" in a first-person commitment and
  * "At the next shift change" in an instruction — never "I will … at your next shift change".
  */
-export function momentClause(moment: string, possessive: "my" | "the"): string {
+export function momentClause(moment: string, possessive: "my" | "the" | "your"): string {
   const core = momentCore(moment);
   if (core.length === 0) return "";
   if (LEADING_TIME_WORD.test(core)) return upperFirst(core);
@@ -1323,15 +1323,42 @@ export function renderApplicationSentence(
   return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} You will know it happened when ${renderCompletionClause(b.completion)}.`;
 }
 
-export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string {
+/**
+ * BEFORE YOU FINISH — SUBORDINATE TO THE ONE MOMENT (Slice 3.2L-R10-A.2).
+ *
+ * `name_the_moment` used to render "When is the next time you …?", which asked the
+ * participant to invent an occasion. That is the authority v9 removed from the model, and
+ * leaving it open here kept one participant-facing side door to a second operational
+ * moment — visible on the phone even while YOUR DECISION and APPLY IT had gone quiet
+ * because the trigger no longer derived.
+ *
+ * The mode keeps its meaning — the answer is a plan — but the WHEN comes from the same
+ * derived first instance as every other section. Returns null when that instance does not
+ * exist, so the section goes quiet rather than asking about a "next time" BTY has already
+ * decided it cannot name.
+ */
+export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string | null {
   const action = baseActionPhrase(b.observableAction);
   const target: Record<VerificationTarget, string> = {
     the_behaviour: `you ${action}`,
     the_application_plan: `you put this into practice`,
     the_confirmation_step: renderCompletionClause(b.completion),
   };
-  const mode: Record<ResponseMode, (t: string) => string> = {
-    name_the_moment: (t) => `When is the next time ${t}?`,
+  if (c.responseMode === "name_the_moment") {
+    const first = deriveFirstApplicationMoment(b.trigger);
+    if (!first.ok) return null;
+    /*
+      Deliberately NOT a verbatim repeat of the standard — the participant has just read it
+      twice. It asks what they will do at the moment that is already established.
+    */
+    const ask: Record<VerificationTarget, string> = {
+      the_behaviour: "what will you do to follow this standard",
+      the_application_plan: "how will you fit this into what you are already doing",
+      the_confirmation_step: "how will you make sure it gets confirmed",
+    };
+    return `${momentClause(first.value, "your")}, ${ask[c.verificationTarget]}?`;
+  }
+  const mode: Record<Exclude<ResponseMode, "name_the_moment">, (t: string) => string> = {
     state_what_you_will_say: (t) => `What exactly will you say when ${t}?`,
     name_what_could_stop_you: (t) => `What could stop you when ${t}?`,
   };

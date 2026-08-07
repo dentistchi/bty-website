@@ -681,3 +681,82 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
     expect(derivesFrom("why_it_matters", { ...PREVIEW_CONTRACTS, problemStatement: "" })).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// R10-A.2 — BEFORE YOU FINISH is subordinate to the one moment
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R10-A.2] no section may create a second operational moment", () => {
+  const withTrigger = (trigger: string): ProgramContracts => ({
+    ...PREVIEW_CONTRACTS,
+    behavior: { ...PREVIEW_CONTRACTS.behavior, trigger },
+  });
+
+  it("G1: the exact physical failure — the last 'next time' side door is closed", () => {
+    const broken = withTrigger("before leaving the floor");
+    // The old sentence asked the participant to invent an occasion.
+    expect(derived("completion_check", broken)).toBeNull();
+    expect(derivesFrom("completion_check", broken)).toBe(true);
+    // …alongside the two sections R10-A.1 already silenced.
+    expect(derived("action_decision", broken)).toBeNull();
+    expect(derived("field_application", broken)).toBeNull();
+  });
+
+  it("G2: the valid state anchors the question to the derived first instance", () => {
+    expect(derived("completion_check")).toBe(
+      "At your next handoff point, what will you do to follow this standard?",
+    );
+    // It never asks WHEN, and it does not repeat the standard verbatim.
+    expect(derived("completion_check")).not.toMatch(/when is the next time/i);
+    expect(derived("completion_check")).not.toContain("state each unfinished item");
+  });
+
+  it("G3: it moves with the trigger, from the same authority", () => {
+    const c = withTrigger("at each morning huddle");
+    expect(derived("completion_check", c)).toBe(
+      "At your next morning huddle, what will you do to follow this standard?",
+    );
+    for (const kind of ["observable_standard", "action_decision", "field_application", "completion_check"] as const) {
+      expect(derived(kind, c), kind).toContain("morning huddle");
+    }
+  });
+
+  it("every enum pair is moment-free or moment-derived, never moment-inventing", () => {
+    for (const verificationTarget of ["the_behaviour", "the_application_plan", "the_confirmation_step"] as const) {
+      for (const responseMode of ["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"] as const) {
+        const ok = { ...PREVIEW_CONTRACTS, completion: { verificationTarget, responseMode } };
+        const bad = { ...withTrigger("before leaving the floor"), completion: { verificationTarget, responseMode } };
+        const q = derived("completion_check", ok);
+        expect(q, `${verificationTarget}/${responseMode}`).not.toBeNull();
+        expect(q!.endsWith("?"), q!).toBe(true);
+        expect(q, `${verificationTarget}/${responseMode}`).not.toMatch(/when is the next time/i);
+        // Only the moment-dependent mode goes quiet when the trigger cannot derive; the
+        // other two never referenced a moment and keep working honestly.
+        if (responseMode === "name_the_moment") {
+          expect(derived("completion_check", bad), `${verificationTarget}`).toBeNull();
+          expect(q).toContain("At your next handoff point,");
+        } else {
+          expect(derived("completion_check", bad), `${verificationTarget}`).not.toBeNull();
+        }
+      }
+    }
+  });
+
+  it("G8/G9: no second moment control, and no narrative escape", () => {
+    const ids = Object.values(DETAIL_FIELDS).flat().map((f) => f?.id);
+    expect(ids).not.toContain("moment");
+    expect(ids).not.toContain("moment-apply");
+    // BEFORE YOU FINISH is edited by two closed enums, never free text.
+    for (const f of DETAIL_FIELDS.completion_check ?? []) expect(f.options, f.id).toBeDefined();
+  });
+
+  it("G10: the question stays a plan, and claims nothing happened", () => {
+    const q = derived("completion_check")!;
+    for (const claim of ["you did", "you have", "confirmed that you", "shows that", "proves"]) {
+      expect(q.toLowerCase(), claim).not.toContain(claim);
+    }
+    expect(outcomeClaimIndex(q)).toBe(-1);
+    // The ceiling is unchanged and still says a written answer is not competence.
+    expect(PREVIEW_EVIDENCE_CEILING).toContain("A written answer shows reflection, not competence.");
+  });
+});
