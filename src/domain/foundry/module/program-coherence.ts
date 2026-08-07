@@ -1025,6 +1025,101 @@ export function isInstructionalKind(k: JourneyElementKind): boolean {
  * actor and the observable action are INHERITED — re-authoring them is precisely how three
  * independent strings drifted apart in the live windows.
  */
+/**
+ * THE FIRST REAL INSTANCE OF THE CANONICAL TRIGGER (Slice 3.2L-R10-A).
+ *
+ * WHY THIS REPLACES A MODEL-AUTHORED MOMENT. Through v8 the model wrote its own
+ * `application_moment` and BTY checked afterwards that it shared a word with the trigger.
+ * The v8 live window died on exactly that check, and the audit that followed showed the
+ * check is unfixable in kind: it correctly refused eight genuinely unrelated events, and it
+ * also refused "when I next hand work over" against "at each handoff point" — a real
+ * instance that happens to paraphrase. Nothing durable could tell the two apart, because
+ * the difference IS the words.
+ *
+ * So the second occasion stops existing. The model has no idea what is actually in anyone's
+ * calendar; the honest first instance of "at each handoff point" is "at the next handoff
+ * point". That is a DETERMINISTIC SPECIALIZATION of a moment already validated — a
+ * determiner swap, not a semantic guess.
+ *
+ * THE SUPPORTED GRAMMAR IS DELIBERATELY SMALL, and it is the grammar of recurrence:
+ *
+ *   each time / every time / any time X   →  the next time X
+ *   whenever X                            →  the next time X
+ *   … each|every N …                      →  … the next N …
+ *
+ * Anything else FAILS CLOSED. A trigger that never says the behaviour recurs cannot have a
+ * "next" one derived from it, and inventing an occasion is the defect this removes.
+ */
+export type FirstInstance = { ok: true; value: string } | { ok: false; reason: "not_recurring" };
+
+/** `each time` / `every time` / `any time` / `whenever`, only as the LEADING clause. */
+const RECURRENCE_CLAUSE = /^\s*(?:each\s+time|every\s+time|any\s+time|whenever)\b\s*/i;
+/** A quantifier used as a determiner — "at EACH handoff point", "of EVERY shift". */
+const RECURRENCE_DETERMINER = /\b(?:each|every)\b(?!\s+(?:time|other)\b)/i;
+
+/**
+ * A BARE recurring occasion — "at shift change", "on handover". English drops the
+ * quantifier here and still means every one of them, and this shape is already in the
+ * fixtures, so refusing it would refuse a perfectly ordinary trigger.
+ *
+ * Deliberately narrow: only `at|on|during`, only when no article or quantifier already
+ * follows, and never in front of an `-ing` word — "before leaving the floor" must not
+ * become "before the next leaving the floor". A gerund that is really a noun ("at
+ * handover meeting") is refused rather than guessed at.
+ */
+const BARE_RECURRING_OCCASION = /^(at|on|during)\s+(?!the\b|a\b|an\b|each\b|every\b|my\b|your\b|our\b|their\b|its\b|this\b|that\b|next\b)([\p{L}][\p{L}\d'-]*)/iu;
+
+function bareRecurringInstance(core: string): string | null {
+  /*
+    Only the FIRST clause is specialized — "at shift change, before leaving the floor"
+    becomes "at the next shift change, before leaving the floor" — and only when that
+    clause is a short, unquantified occasion. "during all relevant transitions of work"
+    is five words and starts on a quantifier; guessing there produced "the next all
+    relevant transitions", which is why the bound exists.
+  */
+  const comma = core.indexOf(",");
+  const head = comma > 0 ? core.slice(0, comma) : core;
+  const m = BARE_RECURRING_OCCASION.exec(head);
+  if (!m || /ing$/i.test(m[2])) return null;
+  const phrase = head.slice(m[1].length).trim();
+  if (phrase.split(/\s+/).length > 3) return null;
+  if (/^(?:all|any|some|most|both|several|few|many|other)\b/i.test(phrase)) return null;
+  return `${m[1]} the next ${phrase}${comma > 0 ? core.slice(comma) : ""}`;
+}
+
+export function deriveFirstApplicationMoment(trigger: string): FirstInstance {
+  const core = stripTrailingStop(trigger.trim());
+  if (core.length === 0) return { ok: false, reason: "not_recurring" };
+
+  const clause = RECURRENCE_CLAUSE.exec(core);
+  const derived = clause
+    ? `the next time ${core.slice(clause[0].length)}`
+    : RECURRENCE_DETERMINER.test(core)
+      ? core.replace(RECURRENCE_DETERMINER, "the next")
+      : bareRecurringInstance(core);
+
+  if (derived === null) return { ok: false, reason: "not_recurring" };
+
+  /*
+    Cheap invariants over the RESULT rather than trust in the rules: a swap must never
+    stutter a determiner or stack two "next"s. If it did, the trigger was shaped in a way
+    this grammar does not actually support, and failing closed is the honest answer.
+  */
+  if (/\b(?:the\s+the|next\s+next|a\s+the|the\s+a)\b/i.test(derived)) {
+    return { ok: false, reason: "not_recurring" };
+  }
+  /*
+    PERSPECTIVE-NEUTRAL, like every stored moment. `momentClause` re-attaches the preposition
+    and chooses "my" or "the" per section, so a folded "at the next X" renders "At my next X"
+    in YOUR DECISION and "At the next X" in APPLY IT. Only the neutral "at/in/on" fold —
+    "after the next handoff" and "during the next round" mean what they say and are kept.
+  */
+  const neutral = derived
+    .replace(/^(?:at|in|on)\s+the\s+(?=next\b)/i, "")
+    .replace(/^the\s+(?=next\s+time\b)/i, "");
+  return { ok: true, value: /^[A-Z]/.test(core) ? upperFirst(neutral) : lowerFirst(neutral) };
+}
+
 export type ApplicationContract = {
   applicationMoment: string;
 };
@@ -1079,6 +1174,15 @@ function momentTokens(m: string): Set<string> {
  * can no longer drift at all (it is rendered FROM the trigger), so this is the one remaining
  * free moment, and a shared-token floor is the strongest deterministic check available
  * without a calendar model.
+ */
+/**
+ * LEGACY — v1-v8 ONLY (Slice 3.2L-R10-A).
+ *
+ * This decided whether a MODEL-AUTHORED first moment belonged to the trigger, and the v8
+ * live window died on it. It is not the v9 authority and is not called by the v9 generation
+ * or review path: the first instance is derived from the trigger, so alignment holds by
+ * construction. Kept so an accepted v1-v8 proposal can still be interpreted exactly as it
+ * was accepted, and so its own tests keep documenting what that check did.
  */
 export function applicationMatchesTrigger(applicationMoment: string, trigger: string): boolean {
   const a = momentTokens(applicationMoment);

@@ -60,7 +60,6 @@ const validProgram = () => ({
     },
     // R5/R6: know-only design — no scenario, decision, application or follow-up required.
     scenario_contract: null,
-    application_contract: null,
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: null,
   },

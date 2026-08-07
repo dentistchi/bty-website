@@ -30,7 +30,7 @@ import type { JourneyElementKind } from "@/domain/foundry/module/journey";
  */
 
 /** Short, safe, shown on the page so a recording carries its own fixture identity. */
-export const FIXTURE_IDENTITY = "R8.1 V7 live result b6842a08";
+export const FIXTURE_IDENTITY = "R10-A V9 canonical instance";
 
 /**
  * The authentic values, verbatim from the recorded v5 result. IMMUTABLE INPUT: every
@@ -57,11 +57,10 @@ export const V7_LIVE = {
     pressureDetail: "",
   },
   /*
-    Stored WITHOUT a leading preposition — that is the only value that reproduces BOTH
-    recorded sentences: "At my next handoff point, I will …" in YOUR DECISION and "At the
-    next handoff point, team members must …" in APPLY IT.
+    NO application moment (Slice 3.2L-R10-A). v8's live window died refusing the model's own
+    first moment; v9 derives it from the trigger, so the fixture carries none and the
+    preview proves the derivation rather than a stored string.
   */
-  applicationMoment: "next handoff point",
   completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
   /** `the_other_person` is what produced the "same question" line. */
   followUpContract: { reviewFocus: "what_happened_next", confirmer: "the_other_person" },
@@ -109,7 +108,8 @@ export const PREVIEW_CONTRACTS: ProgramContracts = {
     completion: { ...V7_LIVE.behavior.completion },
   },
   scenario: { ...V7_LIVE.scenario },
-  application: { applicationMoment: V7_LIVE.applicationMoment },
+  // Derived from `behavior.trigger` at render time — never stored (Slice 3.2L-R10-A).
+  application: null,
   completion: { ...V7_LIVE.completionContract },
   followUp: { ...V7_LIVE.followUpContract },
   construct: null,
@@ -156,7 +156,7 @@ export function previewProposal(): ProgramProposal {
     evidenceLanguage: deriveEvidenceCeiling(PREVIEW_ANSWERS),
     behaviorContract: PREVIEW_CONTRACTS.behavior,
     scenarioContract: PREVIEW_CONTRACTS.scenario,
-    applicationContract: PREVIEW_CONTRACTS.application,
+    applicationContract: null,
     completionContract: PREVIEW_CONTRACTS.completion,
     followUpContract: PREVIEW_CONTRACTS.followUp,
     operationalConstruct: null,

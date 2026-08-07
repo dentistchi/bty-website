@@ -151,10 +151,10 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- So pressure_condition must NOT contain a phrase like 'during a team meeting', 'at the next handover', 'before the deadline' or 'at the end of each project'. Write the difficulty only: 'a tight deadline is approaching and teammates are waiting for information'.",
     "- pressure_condition must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
     "",
-    "THE REST OF THE PROGRAM — application_contract, completion_contract, follow_up_contract:",
+    "THE REST OF THE PROGRAM — completion_contract, follow_up_contract:",
     "- YOUR DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are BUILT from these. Do not write them as free sentences and expect them to be used.",
-    "- application_contract.application_moment: the real next moment this happens ('at your next shift change'), never 'soon' or 'regularly'.",
-    "- application_contract.application_moment must be a REAL INSTANCE OF THE TRIGGER — if the behaviour is required at every shift handover, the first moment is a specific handover, not a different kind of meeting.",
+    "- Do NOT return an application moment. YOUR DECISION and APPLY IT are set at the NEXT OCCURRENCE of behavior_contract.trigger, which BTY works out itself — you have no way to know anyone\u2019s actual schedule.",
+    "- So behavior_contract.trigger MUST describe something that comes round again: 'at each handoff point', 'every time a task is reassigned', 'whenever a deadline moves'. A one-off moment has no next one and the program will be refused.",
     "- Do NOT restate the actor, the action or the completion here. All three are inherited from behavior_contract.",
     "- completion_contract and follow_up_contract are CHOICES from fixed lists, not sentences. Pick the one that fits the training.",
     "- The follow-up window is already set by the host. Do not invent a different one.",
@@ -172,7 +172,7 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"application_contract":{"application_moment":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
   ].join("\n");
 }
 

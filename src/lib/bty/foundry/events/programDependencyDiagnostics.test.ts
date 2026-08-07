@@ -58,9 +58,6 @@ const program = (over: Record<string, unknown> = {}) => ({
     warnings: [],
     behavior_contract: BEHAVIOUR_ONLY,
     scenario_contract: null,
-    application_contract: {
-      application_moment: "at your next shift change, before you leave the floor",
-    },
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     ...over,

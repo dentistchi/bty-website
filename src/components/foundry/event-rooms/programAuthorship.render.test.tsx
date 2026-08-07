@@ -235,13 +235,19 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("I will read the open items");
   });
 
-  it("G2: changing the application moment updates the decision and apply sections", async () => {
+  it("G2: changing the TRIGGER moves the first instance in both sections", async () => {
+    /*
+      The separate first-moment control is gone (Slice 3.2L-R10-A): "when is it required?"
+      and "when do they first do it?" were one decision and one projection of it.
+    */
     setup(ok);
     await generate();
+    expect(screen.queryByTestId("program-details-toggle-action_decision")).toBeNull();
     const before = screen.getByTestId("program-derived-action_decision").textContent ?? "";
-    await openDetails("action_decision");
-    await setField("moment", "at tomorrow’s morning handover");
-    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("tomorrow’s morning handover");
+    await openDetails("observable_standard");
+    await setField("trigger", "at each morning handover");
+    // This fixture carries no APPLY IT element; the browser gate covers both sections.
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("At my next morning handover");
     expect(screen.getByTestId("program-derived-action_decision").textContent).not.toBe(before);
   });
 

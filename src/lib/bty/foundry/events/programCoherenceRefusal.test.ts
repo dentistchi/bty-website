@@ -72,9 +72,6 @@ const validProgram = () => ({
     behavior_contract: DEFINING_CONTRACT,
     // know + decide, no practice and no Arena → this design requires no scenario.
     scenario_contract: null,
-    application_contract: {
-      application_moment: "at your next shift change, before you leave the floor",
-    },
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
   },
@@ -261,7 +258,7 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect([...scenario.required]).toEqual(["pressure_condition", "pressure_detail"]);
     // R6: the three downstream instructional authorities, all nullable for designs that
     // do not require those sections.
-    for (const key of ["application_contract", "completion_contract", "follow_up_contract"] as const) {
+    for (const key of [ "completion_contract", "follow_up_contract"] as const) {
       expect(program.required).toContain(key);
       const c = program.properties[key];
       expect(c.type).toEqual(["object", "null"]);
@@ -288,8 +285,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v8");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v7");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v9");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v8");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

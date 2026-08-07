@@ -174,9 +174,6 @@ test.describe("Program review preview — non-paid readability gate", () => {
       ["observable_standard", ["actor", "trigger", "action", "confirmed-by", "completion"]],
       // R8.1 removes the scenario's own "where and when": one moment, the trigger's.
       ["scenario", ["pressure", "pressure-detail"]],
-      ["action_decision", ["moment"]],
-      // R8 removes the competing evidence field: one completion authority, one control.
-      ["field_application", ["moment-apply"]],
       ["completion_check", ["verifies", "responds"]],
       ["follow_up", ["focus", "confirmer"]],
     ];
@@ -205,18 +202,39 @@ test.describe("Program review preview — non-paid readability gate", () => {
     expect(all.join(" ")).toContain("doctors must");
   });
 
-  test("G4/G13: the moment renders first-person in the decision and neutral in the instruction", async ({ page }) => {
+  test("R10-A: the first instance is derived from the trigger, in both perspectives", async ({ page }) => {
     await openReview(page);
-    const decision = await page.getByTestId("program-derived-action_decision").textContent() ?? "";
-    const apply = await page.getByTestId("program-derived-field_application").textContent() ?? "";
-    expect(decision).not.toMatch(/\byour\b/);
-    expect(decision).toMatch(/I will /);
-    expect(apply).not.toMatch(/\bmy\b/);
+    const decision = page.getByTestId("program-derived-action_decision");
+    const apply = page.getByTestId("program-derived-field_application");
+    await expect(decision).toContainText("At my next handoff point, I will");
+    await expect(apply).toContainText("At the next handoff point, team members must");
+    expect((await decision.textContent()) ?? "").not.toMatch(/\byour\b/);
+    expect((await apply.textContent()) ?? "").not.toMatch(/\bmy\b/);
 
-    await page.getByTestId("program-details-toggle-action_decision").click();
-    await page.getByTestId("program-field-moment").fill("during the Monday huddle");
-    await expect(page.getByTestId("program-derived-action_decision")).toContainText("During the Monday huddle");
-    await expect(page.getByTestId("program-derived-field_application")).toContainText("During the Monday huddle");
+    // There is no separate first-moment control any more — one decision, one projection.
+    expect(await page.getByTestId("program-details-toggle-action_decision").count()).toBe(0);
+    expect(await page.getByTestId("program-field-moment").count()).toBe(0);
+    expect(await page.getByTestId("program-field-moment-apply").count()).toBe(0);
+
+    // Editing the TRIGGER moves both derived sections.
+    await page.getByTestId("program-details-toggle-observable_standard").click();
+    await page.getByTestId("program-field-trigger").fill("at each morning huddle");
+    await expect(decision).toContainText("At my next morning huddle");
+    await expect(apply).toContainText("At the next morning huddle");
+    await expect(page.getByTestId("program-derived-observable_standard")).toContainText("At each morning huddle");
+    for (const kind of ["action_decision", "field_application", "observable_standard"]) {
+      await expect(page.getByTestId(`program-section-${kind}`)).toContainText("Adjusted by you");
+    }
+
+    // A trigger with no next occurrence fails closed, and says so in the Host's terms.
+    await page.getByTestId("program-field-trigger").fill("before leaving the floor");
+    await expect(page.getByTestId("program-review-block")).toContainText(/comes round again/i);
+    await expect(page.getByTestId("program-apply")).toBeDisabled();
+
+    await page.getByTestId("program-reset").click();
+    await expect(decision).toContainText("At my next handoff point, I will");
+    await expect(apply).toContainText("At the next handoff point, team members must");
+    await expect(page.getByTestId("program-section-action_decision")).toContainText("Drafted by BTY");
   });
 
   test("G14/G15: the enum controls re-render grammatical text, day count fixed", async ({ page }) => {
@@ -293,7 +311,7 @@ test.describe("Program review preview — non-paid readability gate", () => {
   });
 
   test("R8.1 G1/G2: the page says which result it replays, and shows the live title", async ({ page }) => {
-    await expect(page.getByTestId("preview-fixture")).toHaveText(/R8.1 V7 live result b6842a08/);
+    await expect(page.getByTestId("preview-fixture")).toHaveText(/R10-A V9 canonical instance/);
     await expect(page.getByTestId("preview-fixture-note")).toContainText(/never stored/i);
     await openReview(page);
     await expect(page.getByTestId("program-title-input")).toHaveValue("Creating Consistent Handoffs");

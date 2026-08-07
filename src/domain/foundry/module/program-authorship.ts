@@ -53,6 +53,7 @@ import {
   renderScenarioSentence,
   renderRationaleSentence,
   renderCounterpartQuestion,
+  deriveFirstApplicationMoment,
   renderStandardSentence,
   ungroundedExistingEntity,
   validateBehaviorContract,
@@ -88,7 +89,7 @@ import {
  * bumped even though the schema did not move, because reconciliation has to be able to tell
  * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v8";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v9";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -326,6 +327,12 @@ export type ProgramRejectCode =
    * Host-facing copy must remain able to explain one.
    */
   | "scenario_unrelated"
+  /**
+   * The canonical trigger never says the behaviour RECURS, so no honest "next one" can be
+   * derived from it (Slice 3.2L-R10-A). Fails before review: a program whose first real
+   * chance cannot be named is not ready, and the fix is the trigger, not another sample.
+   */
+  | "trigger_not_recurring"
   /** The proposed situation carried no pressure, or none that was actually a difficulty. */
   | "scenario_without_pressure"
   /**
@@ -367,6 +374,7 @@ export const PROGRAM_REJECT_CODES: readonly ProgramRejectCode[] = [
   "complaint_replay", "material_fabrication", "invented_specifics", "evidence_overclaim",
   "decision_is_only_reflection", "application_without_actor", "application_moment_unrelated", "scenario_unrelated",
   "scenario_without_pressure", "scenario_independent_moment", "generic_completion", "non_observable_standard",
+  "trigger_not_recurring",
   "dependency_inversion", "section_contradiction", "duplicate_content", "internal_jargon",
   "person_evaluation", "invalid_assumptions", "invalid_warnings",
 ];
@@ -674,7 +682,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v7";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v8";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -697,7 +705,7 @@ export const PROGRAM_JSON_SCHEMA = {
     program: {
       type: "object",
       additionalProperties: false,
-      required: ["display_title", "elements", "assumptions", "warnings", "behavior_contract", "scenario_contract", "application_contract", "completion_contract", "follow_up_contract"],
+      required: ["display_title", "elements", "assumptions", "warnings", "behavior_contract", "scenario_contract", "completion_contract", "follow_up_contract"],
       properties: {
         display_title: { type: "string" },
         assumptions: { type: "array", items: { type: "string" } },
@@ -766,24 +774,13 @@ export const PROGRAM_JSON_SCHEMA = {
          * behavior contract and deliberately NOT re-authored here — three independently
          * written versions of the same action is exactly how the live programs drifted.
          */
-        application_contract: {
-          type: ["object", "null"],
-          additionalProperties: false,
-          /**
-           * APPLICATION MOMENT ONLY. v5 also asked for `evidence_or_confirmation`, which let
-           * the model give a second, different answer to "how will we know it happened" —
-           * and the live proposal gave two. Completion has one authority now.
-           */
-          required: ["application_moment"],
-          properties: {
-            application_moment: { type: "string" },
-          },
-        },
-        /**
-         * BEFORE YOU FINISH — ENUMS ONLY. A closing question that could ask what the
-         * standard should contain is not refused here; it is unrepresentable, because the
-         * model chooses only WHICH established thing to verify and HOW it is answered.
-         */
+        /*
+          NO application_contract (Slice 3.2L-R10-A). v8 let the model author its own first
+          moment and BTY checked afterwards that it overlapped the trigger — the v8 live
+          window died on that check, and the audit showed it cannot separate a paraphrased
+          instance from an unrelated event. The first instance is now DERIVED from the
+          trigger, so a second occasion is not something this response can carry.
+        */
         completion_contract: {
           type: ["object", "null"],
           additionalProperties: false,
@@ -1078,31 +1075,20 @@ export function validateProgramProposal(
     verifiedArtifacts,
   );
 
-  /** APPLY IT / YOUR DECISION authority — required exactly when those sections are. */
+  /**
+   * APPLY IT / YOUR DECISION authority — DERIVED, not read (Slice 3.2L-R10-A).
+   *
+   * The model no longer sends an application contract; the first real chance to do the
+   * behaviour is the next occurrence of the trigger it already established. If that
+   * trigger does not express recurrence, no honest "next one" exists and the program is
+   * refused here — before review — rather than shipped with a moment somebody invented.
+   */
   const applicationRequired = required.includes("field_application") || required.includes("action_decision");
-  const rawApplication = (p as Record<string, unknown>).application_contract;
   let applicationContract: ApplicationContract | null = null;
   if (applicationRequired) {
-    if (rawApplication === undefined || rawApplication === null) {
-      return REJECT_AT("missing_field", "program.application_contract", "an object with application_moment", jsonTypeOf(rawApplication), "field_application");
-    }
-    if (!isPlainObject(rawApplication)) {
-      return REJECT_AT("field_type", "program.application_contract", "an object", jsonTypeOf(rawApplication), "field_application");
-    }
-    for (const key of ["application_moment"] as const) {
-      const v = (rawApplication as Record<string, unknown>)[key];
-      if (typeof v !== "string") {
-        return REJECT_AT("field_type", `program.application_contract.${key}`, `a non-empty string of at most ${APPLICATION_FIELD_LIMIT} characters`, jsonTypeOf(v), "field_application");
-      }
-      const bad = unsafe(v);
-      if (bad) return REJECT(bad, "field_application");
-    }
-    const ac = validateApplicationContract(rawApplication, contract.trigger);
-    if (!ac.ok) {
-      // A moment unrelated to the required trigger is a different fault from a vague one.
-      return REJECT(ac.defect.reason === "unrelated_to_trigger" ? "application_moment_unrelated" : "application_without_actor", "field_application");
-    }
-    applicationContract = ac.value;
+    const first = deriveFirstApplicationMoment(contract.trigger);
+    if (!first.ok) return REJECT("trigger_not_recurring", "observable_standard");
+    applicationContract = { applicationMoment: first.value };
   }
 
   /** BEFORE YOU FINISH authority — enumerated, so it cannot define anything. */
@@ -1566,6 +1552,20 @@ export function contractsFromProposal(
  * whose text the Host owns directly. One function, used by the validator, the review
  * surface and the tests — so what the Host sees and what Apply writes cannot diverge.
  */
+/**
+ * The first real chance to do the behaviour, for a review state (Slice 3.2L-R10-A).
+ *
+ * DERIVED from the current trigger, so editing "When should they do it?" moves YOUR
+ * DECISION and APPLY IT with it and the Host is never asked the same question twice. The
+ * stored contract is the fallback ONLY for a legacy v1-v8 proposal, whose moment the model
+ * wrote and which must still replay exactly as it was accepted.
+ */
+export function applicationMomentFor(c: ProgramContracts): string | null {
+  const derived = deriveFirstApplicationMoment(c.behavior.trigger);
+  if (derived.ok) return derived.value;
+  return c.application?.applicationMoment ?? null;
+}
+
 export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramContracts): string | null {
   // WHY THIS MATTERS is derived only when the Host actually stated a problem; without one
   // there is nothing to ground it in and the model's prose stays (Slice 3.2L-R9).
@@ -1576,8 +1576,14 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
   }
   if (kind === "observable_standard") return renderStandardSentence(c.behavior);
   if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario);
-  if (kind === "action_decision" && c.application) return renderDecisionSentence(c.behavior, c.application);
-  if (kind === "field_application" && c.application) return renderApplicationSentence(c.behavior, c.application, c.construct);
+  if (kind === "action_decision" || kind === "field_application") {
+    const moment = applicationMomentFor(c);
+    if (moment === null) return null;
+    const a = { applicationMoment: moment };
+    return kind === "action_decision"
+      ? renderDecisionSentence(c.behavior, a)
+      : renderApplicationSentence(c.behavior, a, c.construct);
+  }
   if (kind === "completion_check" && c.completion) return renderCompletionQuestion(c.behavior, c.completion);
   if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays);
   return null;
@@ -1648,16 +1654,13 @@ export function validateEditedReview(
   }
 
   if (required.includes("field_application") || required.includes("action_decision")) {
-    if (!c.application) return { ok: false, reason: "application_incomplete", kind: "field_application" };
-    const ac = validateApplicationContract({
-      application_moment: c.application.applicationMoment,
-    }, c.behavior.trigger);
-    if (!ac.ok) {
-      return {
-        ok: false,
-        reason: ac.defect.reason === "unrelated_to_trigger" ? "application_unrelated" : "application_incomplete",
-        kind: "field_application",
-      };
+    /*
+      The Host edits ONE moment — the trigger — and the first instance follows it. So what
+      is checked here is that the edited trigger still expresses recurrence; a legacy
+      proposal whose moment the model wrote keeps its own (Slice 3.2L-R10-A).
+    */
+    if (applicationMomentFor(c) === null) {
+      return { ok: false, reason: "application_incomplete", kind: "observable_standard" };
     }
   }
 

@@ -13,6 +13,7 @@ import {
   outcomeClaimIndex,
   retainGroundedAssumptions,
   validateEditedReview,
+  applicationMomentFor,
   PROGRAM_REJECT_CODES,
   PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME,
@@ -25,7 +26,7 @@ import {
   namesIndependentMoment,
   renderCounterpartQuestion,
   validateScenarioContract,
-  applicationMatchesTrigger,
+  deriveFirstApplicationMoment,
 } from "@/domain/foundry/module/program-coherence";
 
 /**
@@ -335,7 +336,9 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
       expect(derived(kind), kind).toContain(clause);
     }
     expect(namesIndependentMoment(PREVIEW_CONTRACTS.scenario!.pressureCondition)).toBe(false);
-    expect(applicationMatchesTrigger(V7_LIVE.applicationMoment, PREVIEW_CONTRACTS.behavior.trigger)).toBe(true);
+    // v9: the first instance is DERIVED from the trigger, so alignment is not checked — it
+    // is guaranteed by construction (Slice 3.2L-R10-A).
+    expect(deriveFirstApplicationMoment(PREVIEW_CONTRACTS.behavior.trigger)).toEqual({ ok: true, value: "Next handoff point" });
     expect(derived("scenario")!.startsWith("At each handoff point, even when")).toBe(true);
   });
 
@@ -379,7 +382,7 @@ describe("[3.2L-R9] G14/G15 — grounding and one ceiling", () => {
 
 describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
   it("the preview names the window it replays", () => {
-    expect(FIXTURE_IDENTITY).toBe("R8.1 V7 live result b6842a08");
+    expect(FIXTURE_IDENTITY).toBe("R10-A V9 canonical instance");
     expect(FIXTURE_IDENTITY.length).toBeLessThanOrEqual(40);
   });
 
@@ -390,12 +393,11 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
     }
   });
 
-  it("the authority version moves but the wire schema does not", () => {
-    // The elements array, the contracts and every field are byte-identical on the wire;
-    // what changed is who authors WHY THIS MATTERS. Reconciliation still has to tell the
-    // two apart, so the authorship version increments and the schema name does not.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v8");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v7");
+  it("both the authority and the wire schema move", () => {
+    // v9 REMOVES application_contract from the response, so unlike R9 this is a real wire
+    // change and both names increment (Slice 3.2L-R10-A).
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v9");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v8");
   });
 
   it("no string from a retired fixture survives", () => {
@@ -487,5 +489,126 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
     const back = get("confirmed-by").set(joint, "the next owner");
     expect(derived("follow_up", back)).toContain("The next owner will be asked a different question: did they see or hear you");
     expect(derived("follow_up", back)).not.toContain("one shared question");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R10-A — the first instance is derived from the canonical trigger
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
+  const withTrigger = (trigger: string): ProgramContracts => ({
+    ...PREVIEW_CONTRACTS,
+    behavior: { ...PREVIEW_CONTRACTS.behavior, trigger },
+  });
+
+  it("G1: the exact v8 architecture failure is unrepresentable", () => {
+    // v8: trigger "at each handoff point" + a model-authored "at the next weekly staff
+    // meeting". There is no field left to carry a second occasion.
+    expect(PREVIEW_PROPOSAL.applicationContract).toBeNull();
+    expect(PREVIEW_CONTRACTS.application).toBeNull();
+    expect(JSON.stringify(PREVIEW_PROPOSAL)).not.toContain("application_moment");
+    // And the moment APPLY IT shows comes only from the trigger.
+    expect(applicationMomentFor(withTrigger("at each weekly staff meeting"))).toBe("next weekly staff meeting");
+    expect(derived("field_application", withTrigger("at each weekly staff meeting"))).toContain("At the next weekly staff meeting,");
+  });
+
+  it("G2: the canonical live case", () => {
+    expect(deriveFirstApplicationMoment("at each handoff point")).toEqual({ ok: true, value: "next handoff point" });
+    expect(derived("action_decision")).toBe(
+      "At my next handoff point, I will state each unfinished item and identify its next owner.",
+    );
+    expect(derived("field_application")).toContain(
+      "At the next handoff point, team members must state each unfinished item and identify its next owner.",
+    );
+  });
+
+  it("G4: every supported recurrence family derives grammatically", () => {
+    const CASES: [string, string, string][] = [
+      ["at each handoff point", "At my next handoff point", "At the next handoff point"],
+      ["before closing each patient consultation", "Before closing the next patient consultation", "Before closing the next patient consultation"],
+      ["after each shift handoff", "After the next shift handoff", "After the next shift handoff"],
+      ["during each handoff", "During the next handoff", "During the next handoff"],
+      ["when each handoff begins", "When the next handoff begins", "When the next handoff begins"],
+      ["each time the duty lead changes", "Next time the duty lead changes", "Next time the duty lead changes"],
+      ["whenever a handoff is required", "Next time a handoff is required", "Next time a handoff is required"],
+      ["at the end of each project or task", "At the end of the next project or task", "At the end of the next project or task"],
+      ["at every ward round", "At my next ward round", "At the next ward round"],
+      // A bare recurring occasion, the shape the existing service fixtures already use.
+      ["at shift change, before leaving the floor", "At my next shift change, before leaving the floor", "At the next shift change, before leaving the floor"],
+    ];
+    for (const [trigger, decision, apply] of CASES) {
+      const c = withTrigger(trigger);
+      expect(derived("action_decision", c)?.startsWith(`${decision},`), `${trigger} → ${derived("action_decision", c)}`).toBe(true);
+      expect(derived("field_application", c)?.startsWith(`${apply},`), `${trigger} → ${derived("field_application", c)}`).toBe(true);
+      for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
+        expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
+      }
+    }
+  });
+
+  it("G5: a trigger that never recurs fails closed rather than guessing", () => {
+    for (const trigger of [
+      "before leaving the floor",
+      "at the Monday leadership review",
+      "at the end of the shift",
+      "during all relevant transitions of work",
+      "tomorrow at 7am",
+    ]) {
+      expect(deriveFirstApplicationMoment(trigger), trigger).toEqual({ ok: false, reason: "not_recurring" });
+      expect(applicationMomentFor(withTrigger(trigger)), trigger).toBeNull();
+      expect(derived("field_application", withTrigger(trigger)), trigger).toBeNull();
+    }
+    // Apply is blocked, with copy that points at the trigger rather than at another draft.
+    expect(validateEditedReview(withTrigger("before leaving the floor"), REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({
+      ok: false,
+      reason: "application_incomplete",
+      kind: "observable_standard",
+    });
+    expect(PROGRAM_REJECT_CODES).toContain("trigger_not_recurring");
+    expect("trigger_not_recurring".length).toBeLessThanOrEqual(60);
+    expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").headline).toMatch(/first real chance/i);
+    expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").recovery).toBe("adjust_your_training_inputs");
+  });
+
+  it("G6: the derivation changes quantification and nothing else", () => {
+    for (const trigger of ["at each handoff point", "during each ward round", "whenever a deadline moves"]) {
+      const r = deriveFirstApplicationMoment(trigger);
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      const before = new Set(trigger.toLowerCase().match(/[a-z]+/g) ?? []);
+      const added = (r.value.toLowerCase().match(/[a-z]+/g) ?? []).filter((w) => !before.has(w));
+      // Only determiners may appear that were not in the trigger.
+      expect(added.every((w) => ["the", "next", "time"].includes(w)), `${trigger} added ${added}`).toBe(true);
+      for (const invented of ["meeting", "shift", "deadline", "call", "review", "calendar", "tomorrow"]) {
+        if (!before.has(invented)) expect(r.value.toLowerCase(), `${trigger}/${invented}`).not.toContain(invented);
+      }
+    }
+  });
+
+  it("G7: proper nouns and acronyms survive the swap", () => {
+    expect(deriveFirstApplicationMoment("at each SBAR handover")).toEqual({ ok: true, value: "next SBAR handover" });
+    expect(deriveFirstApplicationMoment("during each Monday MDT")).toEqual({ ok: true, value: "during the next Monday MDT" });
+  });
+
+  it("G10/G11: editing the trigger moves both sections, and nothing else can", () => {
+    const moved = withTrigger("at each morning huddle");
+    expect(derived("action_decision", moved)).toContain("At my next morning huddle");
+    expect(derived("field_application", moved)).toContain("At the next morning huddle");
+    expect(derived("observable_standard", moved)).toContain("At each morning huddle");
+    // No control anywhere still edits a first moment.
+    const ids = Object.values(DETAIL_FIELDS).flat().map((f) => f?.id);
+    expect(ids).not.toContain("moment");
+    expect(ids).not.toContain("moment-apply");
+  });
+
+  it("G12: a legacy v1-v8 proposal replays with its own stored moment", () => {
+    // Its trigger cannot derive, so the moment the model wrote is still what renders.
+    const legacy: ProgramContracts = {
+      ...withTrigger("before leaving the floor"),
+      application: { applicationMoment: "next shift change" },
+    };
+    expect(applicationMomentFor(legacy)).toBe("next shift change");
+    expect(derived("field_application", legacy)).toContain("At the next shift change,");
   });
 });

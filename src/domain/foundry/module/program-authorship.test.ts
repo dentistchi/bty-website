@@ -93,9 +93,6 @@ function goodProposal(over: Record<string, unknown> = {}) {
         pressure_condition: "two people are already waiting to ask you questions and the shift ran late",
         pressure_detail: null,
       },
-      application_contract: {
-        application_moment: "at your next shift change, before you leave the floor",
-      },
       completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
       ...over,
@@ -271,10 +268,15 @@ describe("[3.2L] the validator fails closed", () => {
     }
   });
 
-  it("refuses an application moment that names no moment", () => {
+  it("refuses a trigger with no next occurrence to aim at", () => {
+    /*
+      v8 refused a model-authored first moment that named no moment. v9 has no such field:
+      the first instance is derived, so what can fail is a trigger that never recurs
+      (Slice 3.2L-R10-A).
+    */
     reject((p) => {
-      p.program.application_contract = { application_moment: "soon" };
-    }, "application_without_actor");
+      p.program.behavior_contract.trigger = "before leaving the floor";
+    }, "trigger_not_recurring");
   });
 
   it("a derived completion check can never be generic — the enum has no generic option", () => {
@@ -303,7 +305,8 @@ describe("[3.2L] the validator fails closed", () => {
     if (r.ok) {
       const apply = r.value.proposal.elements.find((e) => e.kind === "field_application")!;
       expect(apply.content).toContain("the outgoing person");
-      expect(apply.content).toContain("At the next shift change");
+      // Derived from the trigger "At the end of every shift, before leaving the floor".
+      expect(apply.content).toContain("At the end of the next shift, before leaving the floor");
       expect(apply.content).not.toContain("Handoffs. Standards.");
     }
   });
@@ -383,7 +386,6 @@ describe("[3.2L] the validator fails closed", () => {
         behavior_contract: CONTRACT,
         // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
-        application_contract: null,
         completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
         follow_up_contract: null,
       },
@@ -412,7 +414,6 @@ describe("[3.2L] the validator fails closed", () => {
         behavior_contract: CONTRACT,
         // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
-        application_contract: null,
         completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
         follow_up_contract: null,
       },

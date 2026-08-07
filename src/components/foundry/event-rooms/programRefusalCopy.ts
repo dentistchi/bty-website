@@ -95,6 +95,11 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "A situation only teaches something when it is genuinely hard to do well.",
     recovery: "start_a_new_draft",
   },
+  trigger_not_recurring: {
+    headline: `BTY couldn’t work out when the first real chance to do this would be. ${NOTHING_CHANGED}`,
+    explanation: "The training needs a moment that comes round again — “at each handoff”, “every time a task is reassigned” — so there is a next one to aim at. Say when this keeps happening in your own words and draft again.",
+    recovery: "adjust_your_training_inputs",
+  },
   scenario_independent_moment: {
     headline: `BTY put the practice situation at a different moment than the behaviour itself. ${NOTHING_CHANGED}`,
     explanation: "A program has one moment. Practising at another one teaches people to do it at the wrong time.",

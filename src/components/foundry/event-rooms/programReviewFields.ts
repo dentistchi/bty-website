@@ -79,14 +79,6 @@ const behaviourField = (
   set: (c, v) => ({ ...c, behavior: { ...c.behavior, [key]: v } }),
 });
 
-const applicationField = (id: string, label: string, key: "applicationMoment"): DetailField => ({
-  id,
-  label,
-  get: (c) => c.application?.[key] ?? "",
-  set: (c, v) =>
-    c.application ? { ...c, application: { ...c.application, [key]: v } } : c,
-});
-
 const VERIFICATION_LABEL: Record<(typeof VERIFICATION_TARGETS)[number], string> = {
   the_behaviour: "The behaviour itself",
   the_application_plan: "Their plan to put it into practice",
@@ -157,12 +149,12 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
       set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureDetail: v } } : c),
     },
   ],
-  action_decision: [
-    applicationField("moment", "When will they first do this for real?", "applicationMoment"),
-  ],
-  field_application: [
-    applicationField("moment-apply", "When will they first do this for real?", "applicationMoment"),
-  ],
+  /*
+    NO first-moment control any more (Slice 3.2L-R10-A). "When is it required?" and "when
+    do they first do it for real?" were never two decisions — the second is a deterministic
+    projection of the first. Editing "When should they do it?" under THE ACTION now moves
+    YOUR DECISION and APPLY IT with it.
+  */
   completion_check: [
     {
       id: "verifies",
@@ -205,10 +197,10 @@ export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
   standard_incomplete: "The standard needs all four details filled in: who does it, when, what they do, and what confirms it.",
   standard_not_observable: "The standard doesn’t yet describe something a person could be seen doing, at a particular moment, with a clear finish.",
   scenario_incomplete: "The practice situation needs a real difficulty — not “it’s hard”, and not another moment. When it happens comes from “When is it required?” above.",
-  application_incomplete: "Say when this first happens for real, and what would show it happened.",
+  application_incomplete: "Say when this behaviour is required, in a way that comes round again — “at each handoff”, “every time a task is reassigned”.",
   action_unusable: "That action can’t be turned into a sentence people can follow. Try a short phrase like “state each open item aloud”.",
   completion_incomplete: "Say who confirms it’s done, and what you would see them do.",
-  application_unrelated: "The first real moment should be one of the times the behaviour is required.",
+  application_unrelated: "“When should they do it?” needs to describe something that happens again, so there is a next one to aim at.",
   completion_invalid: "Choose what the closing question checks and how people answer it.",
   follow_up_invalid: "Choose what gets reviewed later and who confirms it.",
   narrative_unsafe: "One of the sections you wrote claims something the training can’t show, or relies on material you haven’t provided.",
