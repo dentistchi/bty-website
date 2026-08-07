@@ -5,32 +5,35 @@ import {
   PREVIEW_CONTRACTS,
   PREVIEW_EVIDENCE_CEILING,
   PREVIEW_PROPOSAL,
-  V5_LIVE,
-  WHY_IT_MATTERS_SHOWN,
-  withoutOutcomeClaim,
+  V7_LIVE,
 } from "./fixture";
 import {
   deriveEvidenceCeiling,
   deriveInstructionalContent,
+  outcomeClaimIndex,
+  retainGroundedAssumptions,
   validateEditedReview,
   PROGRAM_REJECT_CODES,
+  PROGRAM_AUTHORSHIP_VERSION,
+  PROGRAM_SCHEMA_NAME,
+  type ProgramContracts,
 } from "@/domain/foundry/module/program-authorship";
 import { resolveRefusalCopy } from "@/components/foundry/event-rooms/programRefusalCopy";
 import {
+  isJointConfirmer,
   namesIndependentMoment,
-  renderScenarioSentence,
+  renderCounterpartQuestion,
   validateScenarioContract,
   applicationMatchesTrigger,
-  type ScenarioContract,
 } from "@/domain/foundry/module/program-coherence";
 
 /**
- * SLICE 3.2L-R8.1 — the four defects the R8 physical gate found, as failing-first gates.
+ * SLICE 3.2L-R9 — the two participant-facing defects the V7 live window shipped with.
  *
- * The gate itself passed on completion authority and grammar, and failed on: a scenario and
- * a trigger that were still two different moments; a preview fixture that mixed a live
- * result with an older invented narrative; two evidence-ceiling paragraphs; and provenance
- * badges that did not describe the sentence next to them.
+ * The instructional core (standard, scenario, decision, application, completion) was
+ * physically usable and is regression-locked here. What failed was the rationale — four
+ * unmeasured causal promises in new words — and a follow-up that told the actor the person
+ * on the other side would be asked "the same question".
  */
 
 const REQUIRED = [
@@ -43,270 +46,341 @@ const REQUIRED = [
   "follow_up",
 ] as const;
 
-const derived = (kind: (typeof REQUIRED)[number]) => deriveInstructionalContent(kind, PREVIEW_CONTRACTS);
+const derived = (kind: (typeof REQUIRED)[number], c: ProgramContracts = PREVIEW_CONTRACTS) =>
+  deriveInstructionalContent(kind, c);
 
-describe("[3.2L-R8.1] G1 — the preview replays ONE source object", () => {
-  it("every displayed proposal value traces to V5_LIVE or to the derivation over it", () => {
-    expect(PREVIEW_PROPOSAL.displayTitle).toBe(V5_LIVE.displayTitle);
-    expect(PREVIEW_PROPOSAL.behaviorContract).toEqual(PREVIEW_CONTRACTS.behavior);
-    expect(PREVIEW_PROPOSAL.applicationContract?.applicationMoment).toBe(V5_LIVE.applicationMoment);
-    // Instructional sections are RENDERED, never authored in the fixture.
-    for (const kind of REQUIRED) {
-      const d = derived(kind);
-      if (d === null) continue;
-      expect(PREVIEW_PROPOSAL.elements.find((e) => e.kind === kind)?.content).toBe(d);
-    }
-  });
+const withCompletion = (confirmedBy: string, confirmationAction: string): ProgramContracts => ({
+  ...PREVIEW_CONTRACTS,
+  behavior: { ...PREVIEW_CONTRACTS.behavior, completion: { confirmedBy, confirmationAction } },
+});
 
-  it("no string from the retired shift-handover fixture survives anywhere", () => {
-    const blob = JSON.stringify(PREVIEW_PROPOSAL) + JSON.stringify(PREVIEW_ANSWERS) + PREVIEW_EVIDENCE_CEILING;
-    for (const stale of [
-      "Handing over what isn’t finished",
-      "When a shift ends",
-      "Handovers happen at a predictable shift change",
-      "shifts are scheduled with no overlap",
-      "the outgoing team member",
-      "the person taking over",
+// ---------------------------------------------------------------------------
+// G1–G4 — grounded rationale
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R9] G1 — the exact live WHY THIS MATTERS cannot be accepted unchanged", () => {
+  it("every one of the four live claims is caught", () => {
+    expect(outcomeClaimIndex(V7_LIVE.whyItMattersRecorded)).toBeGreaterThan(-1);
+    for (const fragment of [
+      "ensures that everyone is clear on responsibilities",
+      "prevents important tasks from falling through the cracks",
+      "supports team collaboration",
+      "improves overall workflow efficiency",
     ]) {
-      expect(blob, stale).not.toContain(stale);
+      expect(outcomeClaimIndex(fragment), fragment).toBeGreaterThan(-1);
     }
   });
 
-  it("carries a short, safe fixture identity for the recording", () => {
-    expect(FIXTURE_IDENTITY).toBe("R7 V5 live result c9718bd3");
-    expect(FIXTURE_IDENTITY.length).toBeLessThanOrEqual(40);
+  it("and it is not displayed at all — the rationale is derived", () => {
+    const shown = PREVIEW_PROPOSAL.elements.find((e) => e.kind === "why_it_matters")?.content ?? "";
+    expect(shown).not.toContain("ensures");
+    expect(shown).not.toContain("collaboration");
+    expect(shown).toBe(derived("why_it_matters"));
   });
 });
 
-describe("[3.2L-R8.1] G2 — the live title and narrative, handled honestly", () => {
-  it("uses the recorded v5 title", () => {
-    expect(PREVIEW_PROPOSAL.displayTitle).toBe("Improving Handoff Consistency");
+describe("[3.2L-R9] G2 — synonym substitution does not reopen the defect", () => {
+  it("the same claim in unlisted words is still caught", () => {
+    for (const claim of [
+      "This strengthens accountability across the team.",
+      "It eliminates rework and reduces delays.",
+      "The standard fosters better communication.",
+      "This will increase productivity over time.",
+      "It helps to guarantee consistency in every project.",
+      "Doing this leads to fewer mistakes.",
+      "It promotes alignment between the two teams.",
+      "This optimises workflow across shifts.",
+      "It supports engagement and morale.",
+      "This prevents items slipping through.",
+    ]) {
+      expect(outcomeClaimIndex(claim), claim).toBeGreaterThan(-1);
+    }
   });
 
-  it("cuts the recorded outcome promise at the phrase the validator refuses on", () => {
-    expect(V5_LIVE.whyItMattersRecorded).toContain("ultimately affects project success");
-    expect(WHY_IT_MATTERS_SHOWN).not.toContain("ultimately affects");
-    expect(WHY_IT_MATTERS_SHOWN).toContain("Establishing a consistent handoff standard");
-    // Ends on terminal punctuation, with no dangling connective and no doubled stop.
-    expect(WHY_IT_MATTERS_SHOWN).toMatch(/[.…?!]$/u);
-    expect(WHY_IT_MATTERS_SHOWN).not.toMatch(/[,;:—–-]\s*[.…]$/u);
-    expect(WHY_IT_MATTERS_SHOWN).not.toContain("….");
-    // The elision is preserved: the middle of the live narrative was never stored.
-    expect(WHY_IT_MATTERS_SHOWN.endsWith("…")).toBe(true);
+  it("the honest denial of the same claim is NOT caught", () => {
+    for (const honest of [
+      "This does not improve collaboration on its own.",
+      "Nothing here can reduce delays by itself.",
+      "It will not eliminate rework, and it is not meant to.",
+    ]) {
+      // The negation window is what keeps the language the slice wants sayable.
+      expect(
+        validateEditedReview(PREVIEW_CONTRACTS, REQUIRED, { evidence: honest }, PREVIEW_ANSWERS),
+        honest,
+      ).toEqual({ ok: true });
+    }
+  });
+});
+
+describe("[3.2L-R9] G3/G4 — the derived rationale is grounded and claims nothing", () => {
+  const shown = () => derived("why_it_matters")!;
+
+  it("names the Host's problem and the one visible action", () => {
+    expect(shown()).toContain("Our handoffs are inconsistent");
+    expect(shown()).toContain("state each unfinished item and identify its next owner");
+    expect(shown()).toContain("repeat back who owns the next step");
   });
 
-  it("the cut is driven by the phrase list, not a hard-coded substring", () => {
-    expect(withoutOutcomeClaim("Handoffs slip and this equipped to lead teams.")).toBe("Handoffs slip and this.");
-    expect(withoutOutcomeClaim("Handoffs slip when nobody says what is left.")).toBe(
-      "Handoffs slip when nobody says what is left.",
+  it("claims no outcome of any kind", () => {
+    expect(outcomeClaimIndex(shown())).toBe(-1);
+    const t = shown().toLowerCase();
+    for (const claim of ["collaborat", "efficien", "productiv", "no longer", "adopt"]) {
+      expect(t, claim).not.toContain(claim);
+    }
+  });
+
+  it("moves with the Host's problem rather than inventing one", () => {
+    const other = { ...PREVIEW_CONTRACTS, problemStatement: "Nobody writes anything down at the ward round." };
+    expect(derived("why_it_matters", other)).toContain("Nobody writes anything down at the ward round");
+    expect(derived("why_it_matters", other)).not.toContain("handoffs are inconsistent");
+  });
+
+  it("falls back to the model's prose only when the Host stated no problem", () => {
+    expect(derived("why_it_matters", { ...PREVIEW_CONTRACTS, problemStatement: "" })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G5–G10 — counterpart-aware follow-up
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R9] G5 — the exact live follow-up line cannot render", () => {
+  it("'the same question' is gone for a counterpart confirmer", () => {
+    const f = derived("follow_up")!;
+    expect(f).not.toContain("will be asked the same question");
+    expect(f).not.toContain("The person on the other side of it");
+    expect(f).toContain("will be asked a different question");
+  });
+});
+
+describe("[3.2L-R9] G6/G7 — two roles, two questions", () => {
+  it("G6: the actor is asked about performing the actor's action", () => {
+    expect(derived("follow_up")).toContain(
+      "In 7 days you will be asked what happened after you were expected to state each unfinished item and identify its next owner",
+    );
+  });
+
+  it("G7: the counterpart is asked about witnessing it and doing the confirming", () => {
+    const q = renderCounterpartQuestion(PREVIEW_CONTRACTS.behavior);
+    expect(q).toBe(
+      "Did you see or hear team members state each unfinished item and identify its next owner, " +
+        "and did you repeat back who owns the next step?",
+    );
+    // It must NOT ask the counterpart whether they performed the actor's action.
+    expect(q).not.toMatch(/^Did you state each unfinished item/i);
+  });
+
+  it("the actor is told what the counterpart will be asked, in their own terms", () => {
+    expect(derived("follow_up")).toContain(
+      "The receiving team member will be asked a different question: did they see or hear you " +
+        "state each unfinished item and identify its next owner, and did they repeat back who owns the next step?",
     );
   });
 });
 
-describe("[3.2L-R8.1] G3 — assumption and warning fidelity", () => {
-  it("carries no assumption or warning that was never recorded for this proposal", () => {
+describe("[3.2L-R9] G8 — the counterpart question comes from the completion authority", () => {
+  it("changing the confirmer changes who is asked, everywhere", () => {
+    const c = withCompletion("the next owner", "confirm they understand what they are taking on");
+    expect(renderCounterpartQuestion(c.behavior)).toContain("and did you confirm they understand what they are taking on?");
+    expect(derived("follow_up", c)).toContain("The next owner will be asked a different question");
+    expect(derived("follow_up", c)).not.toContain("receiving team member");
+  });
+
+  it("changing the confirmation action changes what they are asked", () => {
+    const c = withCompletion("the receiving team member", "sign the handover sheet");
+    expect(renderCounterpartQuestion(c.behavior)).toContain("and did you sign the handover sheet?");
+    expect(derived("follow_up", c)).toContain("did they sign the handover sheet?");
+  });
+});
+
+describe("[3.2L-R9] G10 — every confirmer shape renders role-correctly", () => {
+  it("the three individual shapes", () => {
+    for (const who of ["the receiving team member", "the next owner", "the incoming team member"]) {
+      const c = withCompletion(who, "repeat back who owns the next step");
+      expect(isJointConfirmer(who), who).toBe(false);
+      const q = renderCounterpartQuestion(c.behavior);
+      expect(q.startsWith("Did you see or hear "), q).toBe(true);
+      expect(q.endsWith("did you repeat back who owns the next step?"), q).toBe(true);
+      const f = derived("follow_up", c)!;
+      expect(f, who).toContain(`${who.charAt(0).toUpperCase()}${who.slice(1)} will be asked a different question`);
+    }
+  });
+
+  it("'both people' gets an honest JOINT confirmation, not a counterpart question", () => {
+    const c = withCompletion("both people", "agree who owns the next step");
+    expect(isJointConfirmer("both people")).toBe(true);
+    // Asking a pair whether they saw the actor act is false for half the audience.
+    const q = renderCounterpartQuestion(c.behavior);
+    expect(q).toBe("Did you agree who owns the next step?");
+    expect(q).not.toContain("see or hear");
+    const f = derived("follow_up", c)!;
+    // One genuinely shared question may honestly be called one.
+    expect(f).toContain("You will both be asked the same one thing: did you agree who owns the next step?");
+    expect(f).not.toContain("will be asked a different question");
+  });
+
+  it("the other joint spellings are recognised too", () => {
+    for (const who of ["both people", "the two of you", "everyone in the room", "each of you", "all three"]) {
+      expect(isJointConfirmer(who), who).toBe(true);
+    }
+    for (const who of ["the next owner", "your manager", "the duty pharmacist"]) {
+      expect(isJointConfirmer(who), who).toBe(false);
+    }
+  });
+});
+
+describe("[3.2L-R9] G9 — both answers stay reports", () => {
+  it("the follow-up says so on its face", () => {
+    const f = derived("follow_up")!;
+    expect(f).toContain("That is your own account of it, not an observation.");
+    expect(f).toContain("That is their account too.");
+    expect(f).not.toMatch(/BTY (?:saw|observed|verified)/i);
+  });
+
+  it("and the evidence ceiling has not softened", () => {
+    expect(PREVIEW_EVIDENCE_CEILING).toContain("not observed behavior");
+    expect(PREVIEW_EVIDENCE_CEILING).toContain(
+      "Nothing here can show that behaviour changed, that it was adopted, or that it lasted",
+    );
+    expect(outcomeClaimIndex(PREVIEW_EVIDENCE_CEILING)).toBe(-1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G11/G12 — assumption integrity
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R9] G11/G12 — assumptions the Host can act on, or none", () => {
+  it("both live assumptions are dropped", () => {
+    expect(retainGroundedAssumptions([...V7_LIVE.assumptionsRecorded])).toEqual([]);
     expect(PREVIEW_PROPOSAL.assumptions).toEqual([]);
     expect(PREVIEW_PROPOSAL.warnings).toEqual([]);
   });
-});
 
-describe("[3.2L-R8.1] G4/G5 — one trigger, and the exact physical failure", () => {
-  it("IN CONTEXT opens on the canonical trigger and stitches no second moment", () => {
-    const s = derived("scenario")!;
-    expect(s.startsWith("At the end of each project or task,")).toBe(true);
-    expect(s).not.toContain("Even then");
-    expect(s).not.toContain("During a team meeting");
-    expect(s).not.toContain("In during");
+  it("motivation, competence, access and adoption assumptions never render", () => {
+    expect(
+      retainGroundedAssumptions([
+        "Participants are willing to commit to adopting new practices.",
+        "Staff are motivated to change.",
+        "People have access to the template.",
+        "Everyone is familiar with the process.",
+        "The team will embrace the new standard.",
+        "Participants are capable of doing this.",
+      ]),
+    ).toEqual([]);
   });
 
-  it("the EXACT live pair can no longer render as two stitched moments", () => {
-    // v5's own values. The pressure is a condition and survives; the context named its own
-    // occasion, and the v7 contract has nowhere to put it.
-    const s = renderScenarioSentence(PREVIEW_CONTRACTS.behavior, {
-      pressureCondition: V5_LIVE.scenarioV5.pressureOrConstraint,
-      pressureDetail: "",
-    });
-    expect(s).toBe(
-      "At the end of each project or task, even when a tight deadline is approaching and team members are waiting for information, " +
-        "each team member must state each unfinished item and identify its next owner. " +
-        "It is complete when you see the next owner confirm they understand what they are taking on.",
+  it("an assumption about the world the behaviour needs survives", () => {
+    const kept = [
+      "The person taking over is present at the end of the shift.",
+      "Handoffs happen at a predictable point in the day.",
+    ];
+    expect(retainGroundedAssumptions(kept)).toEqual(kept);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G13–G15 — regression on what the live window got right
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () => {
+  it("renders exactly what the phone displayed", () => {
+    expect(derived("observable_standard")).toBe(
+      "At each handoff point, team members must state each unfinished item and identify its next owner. " +
+        "It is complete when you see the receiving team member repeat back who owns the next step.",
     );
-    expect(s.indexOf("at the end of each project or task")).toBe(-1); // exactly one, and it leads
-  });
-
-  it("a pressure that smuggles in its own occasion is refused, not rendered", () => {
-    for (const smuggled of [
-      V5_LIVE.scenarioV5.contextDetail,
-      "at the next handover the other person has already left",
-      "before the deadline someone is already waiting",
-      "at the end of each project people are rushing",
-      "when the shift ends nobody is left to tell",
-    ]) {
-      expect(namesIndependentMoment(smuggled), smuggled).toBe(true);
-      const r = validateScenarioContract(
-        { pressure_condition: smuggled, pressure_detail: null },
-        PREVIEW_CONTRACTS.behavior,
-      );
-      expect(r.ok, smuggled).toBe(false);
-      if (!r.ok) expect(r.defect.reason).toBe("independent_moment");
-    }
-  });
-
-  it("a genuine pressure condition that merely mentions a noun is not refused", () => {
-    for (const ok of [
-      "a tight deadline is approaching and team members are waiting for information",
-      "two people are already waiting to ask you something else and the shift ran late",
-      "a senior colleague disagrees in front of everyone",
-    ]) {
-      expect(namesIndependentMoment(ok), ok).toBe(false);
-      expect(validateScenarioContract({ pressure_condition: ok, pressure_detail: null }, PREVIEW_CONTRACTS.behavior).ok, ok).toBe(true);
-    }
-  });
-
-  it("the optional second condition is joined, and obeys the same rule", () => {
-    const two: ScenarioContract = {
-      pressureCondition: "a tight deadline is approaching",
-      pressureDetail: "the next owner has already left for the day",
-    };
-    const s = renderScenarioSentence(PREVIEW_CONTRACTS.behavior, two);
-    expect(s).toContain("even when a tight deadline is approaching and the next owner has already left for the day,");
-    const bad = validateScenarioContract(
-      { pressure_condition: two.pressureCondition, pressure_detail: "during the next team meeting" },
-      PREVIEW_CONTRACTS.behavior,
+    expect(derived("scenario")).toBe(
+      "At each handoff point, even when a tight deadline is approaching and teammates are waiting for information, " +
+        "team members must state each unfinished item and identify its next owner. " +
+        "It is complete when you see the receiving team member repeat back who owns the next step.",
     );
-    expect(bad.ok).toBe(false);
-    if (!bad.ok) expect(bad.defect).toEqual({ field: "pressureDetail", reason: "independent_moment" });
+    expect(derived("action_decision")).toBe(
+      "At my next handoff point, I will state each unfinished item and identify its next owner.",
+    );
+    expect(derived("field_application")).toContain(
+      "At the next handoff point, team members must state each unfinished item and identify its next owner.",
+    );
   });
-});
 
-describe("[3.2L-R8.1] G6 — application alignment survives", () => {
-  it("the first real moment is an instance of the trigger", () => {
-    expect(applicationMatchesTrigger(V5_LIVE.applicationMoment, PREVIEW_CONTRACTS.behavior.trigger)).toBe(true);
-    expect(validateEditedReview(PREVIEW_CONTRACTS, REQUIRED, { why_it_matters: WHY_IT_MATTERS_SHOWN }, PREVIEW_ANSWERS)).toEqual({ ok: true });
-  });
-});
-
-describe("[3.2L-R8.1] G7 — one completion authority reaches every section", () => {
-  it("THE STANDARD, IN CONTEXT and APPLY IT share the same confirmer and act", () => {
-    const clause = "you see the next owner confirm they understand what they are taking on";
+  it("one trigger, one completion authority, aligned application", () => {
+    const clause = "you see the receiving team member repeat back who owns the next step";
     for (const kind of ["observable_standard", "scenario", "field_application"] as const) {
       expect(derived(kind), kind).toContain(clause);
     }
-  });
-});
-
-describe("[3.2L-R8.1] G8/G9 — one honest evidence block", () => {
-  it("the proposal's ceiling and the API's ceiling are the same derivation, not two paragraphs", () => {
-    expect(PREVIEW_PROPOSAL.evidenceLanguage).toBe(deriveEvidenceCeiling(PREVIEW_ANSWERS));
-    expect(PREVIEW_EVIDENCE_CEILING).toBe(PREVIEW_PROPOSAL.evidenceLanguage);
+    expect(namesIndependentMoment(PREVIEW_CONTRACTS.scenario!.pressureCondition)).toBe(false);
+    expect(applicationMatchesTrigger(V7_LIVE.applicationMoment, PREVIEW_CONTRACTS.behavior.trigger)).toBe(true);
+    expect(derived("scenario")!.startsWith("At each handoff point, even when")).toBe(true);
   });
 
-  it("it claims no competence, readiness, adoption, observation or sustained change", () => {
-    const t = PREVIEW_PROPOSAL.evidenceLanguage.toLowerCase();
-    for (const claim of ["equipped to", "ready to", "now competent", "has adopted", "was observed", "sustained improvement"]) {
-      expect(t, claim).not.toContain(claim);
-    }
-    // What it DOES say is what the journey actually records.
-    expect(t).toContain("reflection, not competence");
-    expect(t).toContain("rehearsal, never field mastery");
-    expect(t).toContain("not observed behavior");
-  });
-
-  it("names only the evidence the configured journey actually produces", () => {
-    const knowOnly = deriveEvidenceCeiling({ ...PREVIEW_ANSWERS, learningNeeds: ["know"], arenaRecommended: false, followUpDays: 0 });
-    expect(knowOnly).not.toContain("Practice is rehearsal");
-    expect(knowOnly).not.toContain("scheduled self-report");
-    expect(knowOnly).not.toContain("action decision");
-  });
-});
-
-describe("[3.2L-R8.1] G10/G11 — provenance follows the visible sentence", () => {
-  /** The exact comparison the review surface makes. */
-  const changed = (next: typeof PREVIEW_CONTRACTS, kind: (typeof REQUIRED)[number]) =>
-    deriveInstructionalContent(kind, next) !== deriveInstructionalContent(kind, PREVIEW_CONTRACTS);
-
-  const withConfirmer = {
-    ...PREVIEW_CONTRACTS,
-    behavior: {
-      ...PREVIEW_CONTRACTS.behavior,
-      completion: { confirmedBy: "the incoming team member", confirmationAction: "repeat back who owns the next action" },
-    },
-  };
-
-  it("G10: the exact required case — APPLY IT changes, so APPLY IT is adjusted", () => {
-    expect(deriveInstructionalContent("field_application", PREVIEW_CONTRACTS)).toContain(
-      "You will know it happened when you see the next owner confirm they understand what they are taking on.",
+  it("a smuggled second moment is still refused with its own code", () => {
+    const r = validateScenarioContract(
+      { pressure_condition: "during the next team meeting nobody is listening", pressure_detail: null },
+      PREVIEW_CONTRACTS.behavior,
     );
-    expect(deriveInstructionalContent("field_application", withConfirmer)).toContain(
-      "You will know it happened when you see the incoming team member repeat back who owns the next action.",
-    );
-    expect(changed(withConfirmer, "field_application")).toBe(true);
-    expect(changed(withConfirmer, "observable_standard")).toBe(true);
-    expect(changed(withConfirmer, "scenario")).toBe(true);
-  });
-
-  it("G11: sections whose sentence is byte-identical stay Drafted by BTY", () => {
-    // The live badge defect, inverted: these two did NOT change and claimed they had.
-    expect(deriveInstructionalContent("completion_check", withConfirmer)).toBe(
-      deriveInstructionalContent("completion_check", PREVIEW_CONTRACTS),
-    );
-    expect(changed(withConfirmer, "completion_check")).toBe(false);
-    expect(changed(withConfirmer, "follow_up")).toBe(false);
-    // And an actor change never reaches YOUR DECISION, which speaks in the first person.
-    const withActor = { ...PREVIEW_CONTRACTS, behavior: { ...PREVIEW_CONTRACTS.behavior, actor: "every engineer" } };
-    expect(changed(withActor, "action_decision")).toBe(false);
-    expect(changed(withActor, "observable_standard")).toBe(true);
-  });
-
-  it("G12: restoring the proposed contracts restores every sentence exactly", () => {
-    for (const kind of REQUIRED) {
-      expect(deriveInstructionalContent(kind, { ...PREVIEW_CONTRACTS }), kind).toBe(derived(kind));
-      expect(changed({ ...PREVIEW_CONTRACTS }, kind), kind).toBe(false);
-    }
-  });
-});
-
-describe("[3.2L-R8.1] whole-program coherence (Part 6)", () => {
-  it("the title, the narrative and the standard describe one operating problem", () => {
-    const words = (s: string) => new Set(s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length > 4));
-    const title = words(PREVIEW_PROPOSAL.displayTitle);
-    const shared = [...title].filter((w) => words(WHY_IT_MATTERS_SHOWN).has(w));
-    expect(shared.length, `${[...title]}`).toBeGreaterThan(0);
-    expect(words(PREVIEW_ANSWERS.problem ?? "").has("unfinished")).toBe(true);
-    expect(derived("observable_standard")).toContain("unfinished item");
-  });
-
-  it("nothing in the fixture introduces a conflicting trigger", () => {
-    const blob = [
-      PREVIEW_PROPOSAL.displayTitle,
-      WHY_IT_MATTERS_SHOWN,
-      ...PREVIEW_PROPOSAL.assumptions,
-      ...PREVIEW_PROPOSAL.warnings,
-      PREVIEW_PROPOSAL.evidenceLanguage,
-    ].join(" ");
-    expect(namesIndependentMoment(blob)).toBe(false);
-  });
-
-  it("the whole program passes the same deterministic Apply gate the Host's edits do", () => {
-    expect(validateEditedReview(PREVIEW_CONTRACTS, REQUIRED, { why_it_matters: WHY_IT_MATTERS_SHOWN }, PREVIEW_ANSWERS)).toEqual({ ok: true });
-  });
-});
-
-describe("[3.2L-R8.1] paid-window readiness — a second moment refuses honestly", () => {
-  it("an independent-moment scenario gets its own code, not 'nothing difficult in it'", () => {
-    const raw = {
-      pressure_condition: "during a team meeting just before a project deadline someone is already waiting",
-      pressure_detail: null,
-    };
-    const r = validateScenarioContract(raw, PREVIEW_CONTRACTS.behavior);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect.reason).toBe("independent_moment");
-    // The pressure IS real — telling the Host it was missing would be the wrong reason.
-    expect(/waiting/.test(raw.pressure_condition)).toBe(true);
     expect(PROGRAM_REJECT_CODES).toContain("scenario_independent_moment");
-    expect("scenario_independent_moment".length).toBeLessThanOrEqual(60);
-    // The semantic refusal is the second argument and always wins over the transport code.
     expect(resolveRefusalCopy("validation_refused", "scenario_independent_moment").headline).toMatch(/different moment/i);
-    expect(resolveRefusalCopy("validation_refused", "scenario_without_pressure").headline).toMatch(/nothing difficult/i);
+  });
+});
+
+describe("[3.2L-R9] G14/G15 — grounding and one ceiling", () => {
+  it("the whole program passes the deterministic Apply gate", () => {
+    expect(validateEditedReview(PREVIEW_CONTRACTS, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
+  });
+
+  it("nothing invents a template, tool, approval or existing process", () => {
+    const blob = PREVIEW_PROPOSAL.elements.map((e) => e.content).join(" ").toLowerCase();
+    for (const invented of ["the template", "the checklist", "the form", "approval", "the system", "the tool"]) {
+      expect(blob, invented).not.toContain(invented);
+    }
+  });
+
+  it("exactly one ceiling, matching the configured journey", () => {
+    expect(PREVIEW_PROPOSAL.evidenceLanguage).toBe(deriveEvidenceCeiling(PREVIEW_ANSWERS));
+    expect(PREVIEW_EVIDENCE_CEILING).toBe(PREVIEW_PROPOSAL.evidenceLanguage);
+    const knowOnly = deriveEvidenceCeiling({
+      ...PREVIEW_ANSWERS,
+      learningNeeds: ["know"],
+      arenaRecommended: false,
+      followUpDays: 0,
+    });
+    expect(knowOnly).not.toContain("Practice is rehearsal");
+    expect(knowOnly).not.toContain("scheduled self-report");
+  });
+});
+
+describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
+  it("the preview names the window it replays", () => {
+    expect(FIXTURE_IDENTITY).toBe("R8.1 V7 live result b6842a08");
+    expect(FIXTURE_IDENTITY.length).toBeLessThanOrEqual(40);
+  });
+
+  it("every displayed section is derived from one object", () => {
+    expect(PREVIEW_PROPOSAL.displayTitle).toBe(V7_LIVE.displayTitle);
+    for (const kind of REQUIRED) {
+      expect(PREVIEW_PROPOSAL.elements.find((e) => e.kind === kind)?.content, kind).toBe(derived(kind));
+    }
+  });
+
+  it("the authority version moves but the wire schema does not", () => {
+    // The elements array, the contracts and every field are byte-identical on the wire;
+    // what changed is who authors WHY THIS MATTERS. Reconciliation still has to tell the
+    // two apart, so the authorship version increments and the schema name does not.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v8");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v7");
+  });
+
+  it("no string from a retired fixture survives", () => {
+    const blob = JSON.stringify(PREVIEW_PROPOSAL) + JSON.stringify(PREVIEW_ANSWERS) + PREVIEW_EVIDENCE_CEILING;
+    for (const stale of [
+      "Improving Handoff Consistency",
+      "Handing over what",
+      "When a shift ends",
+      "the next project handoff",
+      "Establishing a consistent",
+    ]) {
+      expect(blob, stale).not.toContain(stale);
+    }
   });
 });

@@ -213,8 +213,24 @@ describe("[3.2L] the validator fails closed", () => {
     reject((p) => { p.program.elements = p.program.elements.filter((e) => e.kind !== "scenario"); }, "missing_required_kind");
   });
 
-  it("refuses the manager's complaint replayed at the team", () => {
-    reject((p) => { p.program.elements[0].content = "Our handoffs are inconsistent and keep being inconsistent."; }, "complaint_replay");
+  it("cannot replay the manager's complaint, because the rationale is no longer model prose", () => {
+    /*
+      RETIRED PATH (Slice 3.2L-R9). `complaint_replay` guarded WHY THIS MATTERS being
+      nothing but the Host's complaint aimed at the team. WHY THIS MATTERS is now RENDERED
+      from the problem plus the behaviour contract, so the model's sentence for it is
+      discarded before any per-kind rule sees it — the defect is unreachable rather than
+      detected. The code stays in the union because live attempt rows still carry it.
+    */
+    const p = goodProposal();
+    p.program.elements[0].content = "Our handoffs are inconsistent and keep being inconsistent.";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      const why = r.value.proposal.elements.find((e) => e.kind === "why_it_matters")!.content;
+      expect(why).not.toBe("Our handoffs are inconsistent and keep being inconsistent.");
+      // It states the problem AND what the program introduces about it.
+      expect(why).toContain("This program introduces");
+    }
   });
 
   it("refuses invented specifics the host never supplied", () => {
@@ -338,8 +354,11 @@ describe("[3.2L] the validator fails closed", () => {
   });
 
   it("refuses two sections that say the same thing", () => {
-    // Still reachable through the NARRATIVE kinds, which remain model-written.
-    reject((p) => { p.program.elements[0].content = p.program.elements[5].content; }, "duplicate_content");
+    // Reachable through the NARRATIVE kinds, which remain model-written. WHY THIS MATTERS
+    // is no longer one of them (Slice 3.2L-R9), so this uses the two that are.
+    reject((p) => {
+      p.program.elements.push(el("reflection", p.program.elements[5].content as string));
+    }, "duplicate_content");
   });
 
   /**
@@ -417,19 +436,23 @@ describe("[3.2L] the validator fails closed", () => {
     expect(validateProgramProposal({ program: { display_title: "t" } }, CANONICAL)).toMatchObject({ ok: false, code: "missing_field" });
   });
 
-  it("refuses overclaim in the evidence language itself", () => {
-    reject((p) => { p.program.elements[0].content = "Completing this guarantees the behaviour is now permanent for everyone."; }, "evidence_overclaim");
+  it("refuses overclaim in a model-written section", () => {
+    reject((p) => { p.program.elements[5].content = "Completing this guarantees the behaviour is now permanent for everyone."; }, "evidence_overclaim");
+  });
+
+  it("refuses overclaim in a warning, where prose still reaches the Host", () => {
+    reject((p) => { p.program.warnings = ["This standard improves team collaboration across every shift."]; }, "evidence_overclaim");
   });
 
   it("names the offending element so a refusal is diagnosable", () => {
     const p = goodProposal();
-    // A per-kind meaning rule over a NARRATIVE kind, which still reads model content.
-    p.program.elements[0].content = "Our handoffs are inconsistent and keep being inconsistent.";
+    // A meaning rule over a NARRATIVE kind, which still reads model content.
+    p.program.elements[5].content = "Completing this guarantees the behaviour is now permanent for everyone.";
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.code).toBe("complaint_replay");
-      expect(r.kind).toBe("why_it_matters");
+      expect(r.code).toBe("evidence_overclaim");
+      expect(r.kind).toBe("evidence");
     }
   });
 });
@@ -824,9 +847,14 @@ describe("[3.2L-R8] the evidence ceiling is BTY's, and outcomes are not promised
     expect(deriveEvidenceCeiling(readOnly)).not.toContain("self-report");
   });
 
-  it("G10: the exact live outcome claim is refused", () => {
+  it("G10: the exact live outcome claim is refused wherever prose still reaches a reader", () => {
+    /*
+      Moved off WHY THIS MATTERS (Slice 3.2L-R9): that section is derived now, so the
+      claim cannot be displayed there at all. The gate still guards every surface where
+      model prose survives — this is the v5 sentence in a model-written section.
+    */
     const p = goodProposal();
-    p.program.elements[0].content =
+    p.program.elements[5].content =
       "When a step is missed the next person starts blind, which ultimately affects project success and team collaboration.";
     const r = validateProgramProposal(p, CANONICAL);
     expect(r.ok).toBe(false);

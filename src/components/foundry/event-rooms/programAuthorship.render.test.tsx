@@ -34,6 +34,9 @@ const PROPOSAL: ProgramProposal = {
     { kind: "why_it_matters", content: "AI why", rationale: "grounds the change" },
     { kind: "observable_standard", content: "AI standard", rationale: "makes it observable" },
     { kind: "action_decision", content: "AI decision", rationale: "forces a commitment" },
+    // A NARRATIVE kind the Host still owns directly. WHY THIS MATTERS stopped being one
+    // when the rationale became derived (Slice 3.2L-R9), so the free-text tests use this.
+    { kind: "evidence", content: "The handoff record shows the items were stated.", rationale: "states the ceiling" },
   ],
   assumptions: ["Handoffs happen at shift change."],
   warnings: ["A missing workflow step will not be fixed by training."],
@@ -150,7 +153,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     });
     expect(onApply).toHaveBeenCalledTimes(1);
     const journey = onApply.mock.calls[0][0];
-    expect(journey.elements).toHaveLength(3);
+    expect(journey.elements).toHaveLength(4);
     expect(journey.displayTitle).toBe("Handing over without gaps");
   });
 
@@ -168,15 +171,15 @@ describe("[3.2L] apply is explicit and atomic", () => {
     const { onApply } = setup(ok);
     await generate();
     await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-why_it_matters"), { target: { value: "My own framing" } });
+      fireEvent.change(screen.getByTestId("program-edit-evidence"), { target: { value: "My own framing of what this shows." } });
     });
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-apply"));
     });
     const journey = onApply.mock.calls[0][0];
-    const why = journey.elements.find((e: { kind: string }) => e.kind === "why_it_matters");
-    expect(why.content).toBe("My own framing");
-    expect(readProvenance(why)).toBe("host_edited");
+    const ev = journey.elements.find((e: { kind: string }) => e.kind === "evidence");
+    expect(ev.content).toBe("My own framing of what this shows.");
+    expect(readProvenance(ev)).toBe("host_edited");
   });
 
   /**
@@ -206,8 +209,11 @@ describe("[3.2L] apply is explicit and atomic", () => {
       expect(screen.getByTestId(`program-derived-${kind}`)).toBeTruthy();
       expect(screen.queryByTestId(`program-edit-${kind}`)).toBeNull();
     }
-    // WHY THIS MATTERS is narrative and stays directly editable.
-    expect(screen.getByTestId("program-edit-why_it_matters")).toBeTruthy();
+    // WHY THIS MATTERS is DERIVED now (Slice 3.2L-R9) — read-only, like the rest.
+    expect(screen.getByTestId("program-derived-why_it_matters")).toBeTruthy();
+    expect(screen.queryByTestId("program-edit-why_it_matters")).toBeNull();
+    // A narrative kind stays directly editable.
+    expect(screen.getByTestId("program-edit-evidence")).toBeTruthy();
   });
 
   it("G1: changing who acts updates EVERY dependent section at once", async () => {
@@ -305,7 +311,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     setup(ok);
     await generate();
     await act(async () => {
-      fireEvent.change(screen.getByTestId("program-edit-why_it_matters"), {
+      fireEvent.change(screen.getByTestId("program-edit-evidence"), {
         target: { value: "Completing this guarantees the behaviour is now permanent." },
       });
     });

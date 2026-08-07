@@ -51,6 +51,8 @@ import {
   renderFollowUpSentence,
   validateApplicationContract,
   renderScenarioSentence,
+  renderRationaleSentence,
+  renderCounterpartQuestion,
   renderStandardSentence,
   ungroundedExistingEntity,
   validateBehaviorContract,
@@ -86,7 +88,7 @@ import {
  * bumped even though the schema did not move, because reconciliation has to be able to tell
  * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v7";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v8";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -424,11 +426,14 @@ function hasUnsafeMarkup(raw: string): boolean {
  * that would silently stop matching if the list moved (Slice 3.2L-R8.1).
  */
 export function outcomeClaimIndex(text: string): number {
+  let best = -1;
   for (const p of OUTCOME_CLAIM_PHRASES) {
     const m = new RegExp(p, "i").exec(text);
-    if (m) return m.index;
+    if (m && (best < 0 || m.index < best)) best = m.index;
   }
-  return -1;
+  const structural = OUTCOME_CLAIM_STRUCTURE.exec(text);
+  if (structural && (best < 0 || structural.index < best)) best = structural.index;
+  return best;
 }
 
 const OUTCOME_CLAIM_PHRASES = [
@@ -439,6 +444,33 @@ const OUTCOME_CLAIM_PHRASES = [
   "equipped to",
   "ready to (?:implement|lead|deliver)",
 ];
+
+/**
+ * WHY A PHRASE LIST WAS NEVER GOING TO HOLD (Slice 3.2L-R9).
+ *
+ * The v5 window promised "…ultimately affects project success and team collaboration" and
+ * the list learned that sentence. The v7 window made the SAME unsupported causal claim in
+ * four new sentences — "ensures that everyone is clear on responsibilities", "prevents
+ * important tasks from falling through the cracks", "supports team collaboration",
+ * "improves overall workflow efficiency" — and every one passed. Three independent reasons:
+ * `prevents` and `supports` were not in the verb list at all; `improves` was, but only when
+ * a listed noun followed IMMEDIATELY, and "overall" sat between them; and no entry covered
+ * an idiom like "falling through the cracks".
+ *
+ * Accumulating those four would buy one more window. The claim is STRUCTURAL — a causal
+ * verb pointed at an organisational outcome — so it is matched structurally: any verb from
+ * the first set, any outcome from the second, within a short window. Synonym substitution
+ * inside those sets no longer reopens the defect.
+ */
+const CAUSAL_VERB =
+  "ensur\\w*|prevent\\w*|improv\\w*|increas\\w*|boost\\w*|driv\\w*|support\\w*|strengthen\\w*|eliminat\\w*|reduc\\w*|enhanc\\w*|guarantee\\w*|maximi[sz]\\w*|minimi[sz]\\w*|optimi[sz]\\w*|foster\\w*|promot\\w*|achiev\\w*|deliver\\w*|lead(?:s|ing)? to|result(?:s|ing)? in|make(?:s)? sure|so that";
+const OUTCOME_OBJECT =
+  "collaborat\\w*|cooperat\\w*|teamwork|efficien\\w*|productivit\\w*|moral\\w*|safet\\w*|qualit\\w*|performanc\\w*|retention|success|workflows?|outcomes?|results?|clarity|responsibilit\\w*|communicat\\w*|accountabilit\\w*|consisten\\w*|adoption|engagement|alignment|throughput|error\\w*|mistakes?|delays?|risks?|rework|falling through the cracks|slipping through|being missed|getting missed";
+/** A causal verb aimed at an organisational outcome, with room for modifiers between them. */
+const OUTCOME_CLAIM_STRUCTURE = new RegExp(
+  `\\b(?:${CAUSAL_VERB})\\b[^.!?]{0,48}?\\b(?:${OUTCOME_OBJECT})\\b`,
+  "i",
+);
 
 const OVERCLAIM_PHRASES = [
   ...OUTCOME_CLAIM_PHRASES,
@@ -464,6 +496,13 @@ const NEGATION_WINDOW = 48;
 
 /** True only when an overclaim phrase is ASSERTED rather than denied. */
 function assertsOverclaim(text: string): boolean {
+  // The structural causal-outcome claim carries the same negation rule: "does not improve
+  // collaboration" is the honest sentence, not the claim (Slice 3.2L-R9).
+  const structural = OUTCOME_CLAIM_STRUCTURE.exec(text);
+  if (structural) {
+    const before = text.slice(Math.max(0, structural.index - NEGATION_WINDOW), structural.index);
+    if (!NEGATOR.test(before)) return true;
+  }
   OVERCLAIM.lastIndex = 0;
   for (let m = OVERCLAIM.exec(text); m !== null; m = OVERCLAIM.exec(text)) {
     const before = text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index);
@@ -1112,6 +1151,11 @@ export function validateProgramProposal(
 
   /** The derived participant-facing text for an instructional kind, or null for narrative. */
   const deriveContent = (kind: JourneyElementKind): string | null => {
+    // WHY THIS MATTERS is rendered from the Host's own problem and the behaviour contract
+    // (Slice 3.2L-R9), so the model's prose for it is discarded like the instructional ones.
+    if (kind === "why_it_matters" && ctx && ctx.problemStatement.trim().length > 0) {
+      return renderRationaleSentence(ctx.problemStatement, contract, operationalConstruct);
+    }
     if (kind === "observable_standard") return renderStandardSentence(contract);
     if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract);
     if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract);
@@ -1180,7 +1224,18 @@ export function validateProgramProposal(
      * there was quietly ignored rather than refused. Nothing dishonest could reach the
      * Host either way — but fail-closed means refusing the proposal, not editing around it.
      */
-    const contentUnsafe = unsafe(c) ?? (c === content.value ? null : unsafe(content.value));
+    /*
+      ONE EXCEPTION, ADDED DELIBERATELY (Slice 3.2L-R9). The discarded original is still
+      checked for fabrication, invented specifics, person evaluation and jargon — a model
+      that invents a template here would likely invent one elsewhere. But an OUTCOME CLAIM
+      in text that is never displayed cannot mislead anyone, and refusing a whole paid
+      window over an invisible sentence is the wrong trade. The derivation is what makes
+      the claim unreachable; the gate stays where prose still reaches a participant —
+      assumptions, warnings, the title and any Host-edited narrative.
+    */
+    const discarded = c === content.value ? null : content.value;
+    const discardedUnsafe = discarded === null ? null : unsafe(discarded);
+    const contentUnsafe = unsafe(c) ?? (discardedUnsafe === "evidence_overclaim" ? null : discardedUnsafe);
     if (contentUnsafe) return REJECT(contentUnsafe, kind);
     // Safety still applies to a rationale whenever one is PRESENT — advisory does not
     // mean unchecked; it only means absence is tolerated.
@@ -1190,8 +1245,13 @@ export function validateProgramProposal(
     }
 
     // --- per-kind meaning ------------------------------------------------
-    if (kind === "why_it_matters" && ctx) {
-      // The manager's complaint replayed at the team is the R2F defect this closes.
+    if (kind === "why_it_matters" && ctx && c === content.value) {
+      /*
+        The manager's complaint replayed at the team is the R2F defect this closes — and it
+        applies to MODEL PROSE only. The derived rationale opens on the Host's problem by
+        design and then says what the program introduces about it, which is the opposite of
+        a bare replay (Slice 3.2L-R9).
+      */
       if (overlapRatio(c, ctx.problemStatement) >= 0.8) return REJECT("complaint_replay", kind);
     }
     // `observable_standard` needs no per-kind text gate: its content IS the validated
@@ -1279,7 +1339,7 @@ export function validateProgramProposal(
       proposal: {
         displayTitle: title.value,
         elements,
-        assumptions: assumptions.value,
+        assumptions: retainGroundedAssumptions(assumptions.value),
         warnings: warnings.value,
         evidenceLanguage: evidenceLanguage.value,
         behaviorContract: contract,
@@ -1413,6 +1473,33 @@ export function attributionKind(el: { grounding?: { sourceType?: unknown }[] } |
  * What the CONFIGURED journey can honestly show, computed from the Host's own design.
  * Nothing here promises competence, adoption, consistency or organisational result.
  */
+/**
+ * ASSUMPTIONS THE PROGRAM DOES NOT ACTUALLY DEPEND ON (Slice 3.2L-R9).
+ *
+ * The live v7 window offered two: "Participants have a basic understanding of handoff
+ * processes" and "Participants are willing to commit to adopting new practices." Labelling
+ * them as assumptions did stop them being presented as fact — but neither is something this
+ * program depends on, and the second quietly assumes the adoption the evidence ceiling
+ * explicitly says the training cannot show. A Host reading "this assumes people are willing
+ * to adopt it" learns nothing they can act on.
+ *
+ * So an assumption about someone's motivation, willingness, competence, prior understanding,
+ * access or adoption is dropped rather than displayed. What survives is an assumption about
+ * the WORLD the behaviour needs — that the moment exists, that the other person is there —
+ * which a Host can actually check or fix.
+ */
+const UNGROUNDED_ASSUMPTION = [
+  /\b(?:willing(?:ness)?|motivat\w*|commit(?:ted|ment)?\s+to|buy[- ]?in|eager|open\s+to|receptive)\b/i,
+  /\b(?:adopt\w*|embrac\w*|engag\w*\s+with)\b/i,
+  /\b(?:understand\w*|familiar\w*|aware(?:ness)?|knowledge\s+of|competen\w*|capable|skilled|trained)\b/i,
+  /\b(?:have\s+access|has\s+access|access\s+to\s+(?:the\s+)?(?:tool|system|template|training|material))\b/i,
+];
+
+/** Keep only the assumptions a Host could act on. Order and wording are never altered. */
+export function retainGroundedAssumptions(assumptions: readonly string[]): string[] {
+  return assumptions.filter((a) => !UNGROUNDED_ASSUMPTION.some((re) => re.test(a)));
+}
+
 export function deriveEvidenceCeiling(answers: BuilderAnswers | undefined): string {
   const ctx = programContext(answers);
   const parts = ["Reading or watching the material can show only that people were exposed to it."];
@@ -1439,6 +1526,11 @@ export function deriveEvidenceCeiling(answers: BuilderAnswers | undefined): stri
  * The initial Guided Builder stays conversational; this exists only inside review.
  */
 export type ProgramContracts = {
+  /**
+   * The Host's own problem, verbatim. WHY THIS MATTERS is rendered from it (Slice
+   * 3.2L-R9), so the rationale cannot describe a problem the Host never stated.
+   */
+  problemStatement: string;
   behavior: BehaviorContract;
   scenario: ScenarioContract | null;
   application: ApplicationContract | null;
@@ -1449,11 +1541,16 @@ export type ProgramContracts = {
 };
 
 /** The contracts a proposal was generated with, as the starting point for review. */
-export function contractsFromProposal(proposal: ProgramProposal, followUpDays: number): ProgramContracts | null {
+export function contractsFromProposal(
+  proposal: ProgramProposal,
+  followUpDays: number,
+  problemStatement = "",
+): ProgramContracts | null {
   // A proposal without a behaviour contract cannot derive anything. Only reachable from a
   // pre-v4 shape; returning null keeps the review surface honest rather than crashing.
   if (!proposal.behaviorContract) return null;
   return {
+    problemStatement,
     behavior: proposal.behaviorContract,
     scenario: proposal.scenarioContract,
     application: proposal.applicationContract,
@@ -1470,6 +1567,13 @@ export function contractsFromProposal(proposal: ProgramProposal, followUpDays: n
  * surface and the tests — so what the Host sees and what Apply writes cannot diverge.
  */
 export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramContracts): string | null {
+  // WHY THIS MATTERS is derived only when the Host actually stated a problem; without one
+  // there is nothing to ground it in and the model's prose stays (Slice 3.2L-R9).
+  if (kind === "why_it_matters") {
+    return c.problemStatement.trim().length > 0
+      ? renderRationaleSentence(c.problemStatement, c.behavior, c.construct)
+      : null;
+  }
   if (kind === "observable_standard") return renderStandardSentence(c.behavior);
   if (kind === "scenario" && c.scenario) return renderScenarioSentence(c.behavior, c.scenario);
   if (kind === "action_decision" && c.application) return renderDecisionSentence(c.behavior, c.application);

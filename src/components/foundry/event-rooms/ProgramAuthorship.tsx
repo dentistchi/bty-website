@@ -157,7 +157,7 @@ export function ProgramAuthorship({
     // one is still an explicit, changeable choice.
     setDecisions(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
     setEdits(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, e.content])));
-    const c = contractsFromProposal(r.proposal, answers.followUpDays ?? 0);
+    const c = contractsFromProposal(r.proposal, answers.followUpDays ?? 0, answers.problem ?? "");
     setContracts(c);
     setBaseContracts(c);
     setOpenDetails(null);
@@ -459,6 +459,16 @@ export function ProgramAuthorship({
                 <p className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85" data-testid={`program-derived-${e.kind}`}>
                   {derived}
                 </p>
+                {/*
+                  WHY THIS MATTERS is derived from the training setup, not from anything
+                  adjustable here, so it gets the explanation instead of a control that
+                  would open an empty panel (Slice 3.2L-R9).
+                */}
+                {(DETAIL_FIELDS[e.kind]?.length ?? 0) === 0 ? (
+                  <p className="text-xs leading-5 text-white/40" data-testid={`program-derived-note-${e.kind}`}>
+                    This comes from the problem you described in your training setup, and isn’t rewritten here.
+                  </p>
+                ) : (
                 <button
                   type="button"
                   onClick={() => setOpenDetails(open ? null : e.kind)}
@@ -468,6 +478,7 @@ export function ProgramAuthorship({
                 >
                   {open ? "Done" : "Edit details"}
                 </button>
+                )}
                 {open ? (
                   <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3" data-testid={`program-details-${e.kind}`}>
                     {DETAIL_FIELDS[e.kind]?.map((f) => (

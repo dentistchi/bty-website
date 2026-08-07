@@ -1234,6 +1234,83 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
   return mode[c.responseMode](target[c.verificationTarget]);
 }
 
+/**
+ * WHY THIS MATTERS, DERIVED (Slice 3.2L-R9).
+ *
+ * THE DEFECT THIS CLOSES. Two live windows in a row promised an organisational result the
+ * Host never established — v5 "ultimately affects project success and team collaboration",
+ * v7 "ensures that everyone is clear on responsibilities … supports team collaboration and
+ * improves overall workflow efficiency". Both were caught only by a phrase list, and the
+ * second slipped it entirely using new words for the same claim.
+ *
+ * A stronger list would have bought one window. So the rationale stops being free prose and
+ * joins the six instructional sections: it is RENDERED from authorities that already exist
+ * and are already validated — the Host's own problem statement, the behaviour the program
+ * introduces, and how that behaviour is confirmed. An unsupported causal outcome is not
+ * something this function can emit, whatever the model writes.
+ *
+ * What it says, and nothing more: here is the problem you described; here is the one
+ * visible thing this program asks people to do about it.
+ */
+export function renderRationaleSentence(
+  problemStatement: string,
+  b: BehaviorContract,
+  construct: OperationalConstruct | null,
+): string {
+  const problem = stripTrailingStop(problemStatement.trim());
+  const action = baseActionPhrase(b.observableAction);
+  const actor = lowerFirst(stripTrailingStop(b.actor.trim()));
+  /*
+    A proposed construct is named as what the program INTRODUCES, never as something that
+    exists or works. Without one the sentence simply describes the behaviour.
+  */
+  const introduces = construct ? `one shared ${construct.noun}` : "one visible way of working";
+  /*
+    The completion reuses `renderCompletionClause` rather than pasting the confirmer in
+    front of the confirming act. "the receiving team member repeat back …" disagrees; "you
+    see the receiving team member repeat back …" takes a bare infinitive whatever the
+    confirmer's number, which is the whole reason that clause exists.
+  */
+  return (
+    `${upperFirst(problem)}. This program introduces ${introduces}: ${actor} ${action}, ` +
+    `and it counts as done when ${renderCompletionClause(b.completion)}.`
+  );
+}
+
+/**
+ * IS THE CONFIRMER A PAIR RATHER THAN A COUNTERPART? (Slice 3.2L-R9)
+ *
+ * "both people" cannot be asked whether they saw the actor act — one of them IS the actor.
+ * A joint confirmer gets an honest JOINT question about the confirmation itself instead of
+ * a counterpart question that would be false for half its audience.
+ */
+export function isJointConfirmer(confirmedBy: string): boolean {
+  return /^\s*(?:both\b|the two of\b|all\b|everyone\b|each of\b|either of\b)/i.test(confirmedBy.trim());
+}
+
+/**
+ * THE QUESTION THE CONFIRMER IS ASKED — second person, and NOT the actor's question.
+ *
+ * The live v7 program told the actor "The person on the other side of it will be asked the
+ * same question." It was a fixed string: nothing derived it from the completion authority,
+ * and it was not true — asking the receiving team member "what happened after you were
+ * expected to state each unfinished item…" asks them about someone else's action.
+ *
+ * Both halves come from `completion`: WHO is asked (`confirmedBy`) and WHAT they are asked
+ * whether they did (`confirmationAction`). Every clause after "did you" / "did they" takes
+ * a bare infinitive, so no person or number agreement is ever decided.
+ */
+export function renderCounterpartQuestion(b: BehaviorContract): string {
+  const confirmation = baseActionPhrase(b.completion.confirmationAction);
+  if (isJointConfirmer(b.completion.confirmedBy)) {
+    // One shared confirmation, honestly described as one — not two questions called one.
+    return `Did you ${confirmation}?`;
+  }
+  const actor = lowerFirst(stripTrailingStop(b.actor.trim()));
+  const action = baseActionPhrase(b.observableAction);
+  return `Did you see or hear ${actor} ${action}, and did you ${confirmation}?`;
+}
+
 export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
   const action = baseActionPhrase(b.observableAction);
   const clause = renderCompletionClause(b.completion);
@@ -1247,10 +1324,19 @@ export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract,
     what_happened_next: `what happened after you were expected to ${action}`,
     the_confirmation: `whether ${clause}`,
   };
-  /** Never claims more than the workflow can show — the evidence ceiling in one clause. */
+  /**
+   * Never claims more than the workflow can show — the evidence ceiling in one clause. The
+   * counterpart line is now DERIVED from the completion authority rather than asserting
+   * that two roles receive one question (Slice 3.2L-R9).
+   */
+  const confirmation = baseActionPhrase(b.completion.confirmationAction);
+  const who = lowerFirst(stripTrailingStop(b.completion.confirmedBy.trim()));
+  const counterpart = isJointConfirmer(b.completion.confirmedBy)
+    ? `You will both be asked the same one thing: did you ${confirmation}?`
+    : `${upperFirst(who)} will be asked a different question: did they see or hear you ${action}, and did they ${confirmation}?`;
   const by: Record<Confirmer, string> = {
     self_report: "That is your own account of it, not an observation.",
-    the_other_person: "The person on the other side of it will be asked the same question.",
+    the_other_person: `That is your own account of it, not an observation. ${counterpart} That is their account too.`,
     the_host: "Your host will read it with you.",
   };
   return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`;
