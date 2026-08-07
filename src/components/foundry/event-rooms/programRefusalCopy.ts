@@ -95,6 +95,11 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "A situation only teaches something when it is genuinely hard to do well.",
     recovery: "start_a_new_draft",
   },
+  scenario_independent_moment: {
+    headline: `BTY put the practice situation at a different moment than the behaviour itself. ${NOTHING_CHANGED}`,
+    explanation: "A program has one moment. Practising at another one teaches people to do it at the wrong time.",
+    recovery: "start_a_new_draft",
+  },
   non_observable_standard: {
     headline: `BTY couldn’t define a behaviour the team could clearly observe and confirm. ${NOTHING_CHANGED}`,
     explanation: "",

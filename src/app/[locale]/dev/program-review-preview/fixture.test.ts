@@ -13,7 +13,9 @@ import {
   deriveEvidenceCeiling,
   deriveInstructionalContent,
   validateEditedReview,
+  PROGRAM_REJECT_CODES,
 } from "@/domain/foundry/module/program-authorship";
+import { resolveRefusalCopy } from "@/components/foundry/event-rooms/programRefusalCopy";
 import {
   namesIndependentMoment,
   renderScenarioSentence,
@@ -287,5 +289,24 @@ describe("[3.2L-R8.1] whole-program coherence (Part 6)", () => {
 
   it("the whole program passes the same deterministic Apply gate the Host's edits do", () => {
     expect(validateEditedReview(PREVIEW_CONTRACTS, REQUIRED, { why_it_matters: WHY_IT_MATTERS_SHOWN }, PREVIEW_ANSWERS)).toEqual({ ok: true });
+  });
+});
+
+describe("[3.2L-R8.1] paid-window readiness — a second moment refuses honestly", () => {
+  it("an independent-moment scenario gets its own code, not 'nothing difficult in it'", () => {
+    const raw = {
+      pressure_condition: "during a team meeting just before a project deadline someone is already waiting",
+      pressure_detail: null,
+    };
+    const r = validateScenarioContract(raw, PREVIEW_CONTRACTS.behavior);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.defect.reason).toBe("independent_moment");
+    // The pressure IS real — telling the Host it was missing would be the wrong reason.
+    expect(/waiting/.test(raw.pressure_condition)).toBe(true);
+    expect(PROGRAM_REJECT_CODES).toContain("scenario_independent_moment");
+    expect("scenario_independent_moment".length).toBeLessThanOrEqual(60);
+    // The semantic refusal is the second argument and always wins over the transport code.
+    expect(resolveRefusalCopy("validation_refused", "scenario_independent_moment").headline).toMatch(/different moment/i);
+    expect(resolveRefusalCopy("validation_refused", "scenario_without_pressure").headline).toMatch(/nothing difficult/i);
   });
 });

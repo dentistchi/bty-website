@@ -326,6 +326,14 @@ export type ProgramRejectCode =
   | "scenario_unrelated"
   /** The proposed situation carried no pressure, or none that was actually a difficulty. */
   | "scenario_without_pressure"
+  /**
+   * The situation gave itself an occasion — "during a team meeting", "at the next
+   * handover" — so the program would require the behaviour at one moment and rehearse it
+   * at another (Slice 3.2L-R8.1). Distinct from `scenario_without_pressure`: the
+   * difficulty may be perfectly real, and telling the Host it was missing would be the
+   * wrong reason for the right refusal.
+   */
+  | "scenario_independent_moment"
   | "generic_completion"
   /**
    * The behavioral contract is incomplete or non-observable (Slice 3.2L-R4). The code name
@@ -356,7 +364,7 @@ export const PROGRAM_REJECT_CODES: readonly ProgramRejectCode[] = [
   "unsafe_markup", "unknown_kind", "duplicate_kind", "missing_required_kind", "unrequested_kind",
   "complaint_replay", "material_fabrication", "invented_specifics", "evidence_overclaim",
   "decision_is_only_reflection", "application_without_actor", "application_moment_unrelated", "scenario_unrelated",
-  "scenario_without_pressure", "generic_completion", "non_observable_standard",
+  "scenario_without_pressure", "scenario_independent_moment", "generic_completion", "non_observable_standard",
   "dependency_inversion", "section_contradiction", "duplicate_content", "internal_jargon",
   "person_evaluation", "invalid_assumptions", "invalid_warnings",
 ];
@@ -1000,8 +1008,18 @@ export function validateProgramProposal(
       if (bad) return REJECT(bad, "scenario");
     }
     const sc = validateScenarioContract(rawScenario, contract);
-    // A situation with no difficulty in it teaches nothing. Meaning fault, not shape.
-    if (!sc.ok) return REJECT("scenario_without_pressure", "scenario");
+    /*
+      Two distinct meaning faults, reported as two. A situation with no difficulty teaches
+      nothing; a situation with its own occasion moves the trained action somewhere the
+      standard never asked for. Collapsing the second into the first would hand the Host a
+      refusal reason that is simply untrue about their program (Slice 3.2L-R8.1).
+    */
+    if (!sc.ok) {
+      return REJECT(
+        sc.defect.reason === "independent_moment" ? "scenario_independent_moment" : "scenario_without_pressure",
+        "scenario",
+      );
+    }
     scenarioContract = sc.value;
   }
 
