@@ -137,10 +137,12 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
-    "- Return behavior_contract with all four: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing), completion_signal (what confirms it is finished).",
+    "- Return behavior_contract with: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing), and completion.",
+    "- completion has TWO parts: confirmed_by (WHO confirms — a person or role) and confirmation_action (what you would SEE THEM DO, in base form: 'repeat back who owns the next step'). Never write a bare phrase like 'receive a confirmation' — say who does the confirming.",
     "- 'A shared handoff standard is created and utilized by team members' is NOT acceptable: it describes the standard's life cycle, not a person's action. Write what someone is seen doing instead.",
     "- Write observable_action in BASE form, as it would follow 'must': 'state each unfinished item and identify its next owner', not 'states … and identifies …'.",
-    "- completion_signal must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
+    "- The confirming act must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
+    "- There is ONE definition of completion. Do not invent a second, different way of knowing it happened for the application step.",
     "",
     "THE PRACTICE SITUATION — scenario_contract:",
     "- Return scenario_contract with pressure_or_constraint (what competes with doing it properly at that moment) and context_detail (where and when it happens).",
@@ -151,8 +153,8 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "THE REST OF THE PROGRAM — application_contract, completion_contract, follow_up_contract:",
     "- YOUR DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are BUILT from these. Do not write them as free sentences and expect them to be used.",
     "- application_contract.application_moment: the real next moment this happens ('at your next shift change'), never 'soon' or 'regularly'.",
-    "- application_contract.evidence_or_confirmation: what someone would see or hear that shows it happened.",
-    "- Do NOT restate the actor or the action here. Both are inherited from behavior_contract.",
+    "- application_contract.application_moment must be a REAL INSTANCE OF THE TRIGGER — if the behaviour is required at every shift handover, the first moment is a specific handover, not a different kind of meeting.",
+    "- Do NOT restate the actor, the action or the completion here. All three are inherited from behavior_contract.",
     "- completion_contract and follow_up_contract are CHOICES from fixed lists, not sentences. Pick the one that fits the training.",
     "- The follow-up window is already set by the host. Do not invent a different one.",
     "",
@@ -163,16 +165,20 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "- DEFINE the behavior in THE STANDARD before any later section asks the participant to use it. A participant cannot follow a standard no section has described.",
     "- BEFORE YOU FINISH verifies understanding, a decision, or an application plan. It must NOT be where the standard's contents are finally decided — never ask what elements, fields or steps the standard should contain when an earlier section already told the participant to use it.",
     "",
-    "Also give a short learner-facing program title, the assumptions the program depends on, warnings when training alone will not fix the problem (a workflow, staffing, access or policy change may be needed), and one sentence of evidence_language stating plainly what completing this program can and cannot show.",
+    "Also give a short learner-facing program title, the assumptions the program depends on, and warnings when training alone will not fix the problem (a workflow, staffing, access or policy change may be needed).",
+    "- Do NOT write what the program proves. BTY states that itself, from what the journey actually records.",
+    "- WHY THIS MATTERS explains the problem the host described. It must NOT promise outcomes — no claim that this improves project success, collaboration, productivity, safety or results.",
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"evidence_language":string,"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion_signal":string},"scenario_contract":{"pressure_or_constraint":string,"context_detail":string}|null,"application_contract":{"application_moment":string,"evidence_or_confirmation":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_or_constraint":string,"context_detail":string}|null,"application_contract":{"application_moment":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
   ].join("\n");
 }
 
 /** The honest ceiling on what THIS configuration can establish. */
 export function evidenceCeilingFor(ctx: ProgramContext): string {
+  // Kept for the prompt's EVIDENCE HONESTY line. The Host-visible ceiling is derived in the
+  // domain by `deriveEvidenceCeiling`, so there is one authority for what the program proves.
   const parts = ["Reading or watching the material can show only that people were exposed to it."];
   if (ctx.completionPrompt) parts.push("A written answer shows reflection, not competence.");
   if (ctx.learningNeeds.includes("decide")) parts.push("An action decision records a decision, never a completed action.");

@@ -51,13 +51,12 @@ const validProgram = () => ({
     ],
     assumptions: [],
     warnings: [],
-    evidence_language: "This shows exposure only. It does not show behaviour changed.",
     // R4: THE STANDARD is rendered from this contract, so every valid program carries one.
     behavior_contract: {
       actor: "the outgoing person",
       trigger: "At the end of every shift, before signing off",
       observable_action: "states each open item aloud to the person taking over",
-      completion_signal: "the person taking over repeats the open items back and confirms them",
+      completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     },
     // R5/R6: know-only design — no scenario, decision, application or follow-up required.
     scenario_contract: null,

@@ -121,6 +121,11 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "",
     recovery: "start_a_new_draft",
   },
+  application_moment_unrelated: {
+    headline: `BTY picked a first moment that isn’t the moment the behaviour is required. ${NOTHING_CHANGED}`,
+    explanation: "The training says when this must happen; the first real chance to do it should be one of those times.",
+    recovery: "start_a_new_draft",
+  },
   application_without_actor: {
     headline: `BTY didn’t say who does this, or when. ${NOTHING_CHANGED}`,
     explanation: "",

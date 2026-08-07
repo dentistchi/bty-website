@@ -56,12 +56,11 @@ const middleGround = () => ({
     ],
     assumptions: [],
     warnings: [],
-    evidence_language: "This shows exposure and a decision. It does not show behaviour changed.",
     behavior_contract: {
       actor: "the outgoing team member",
       trigger: "at shift change, before leaving the floor",
       observable_action: "states each unfinished item and identifies its next owner",
-      completion_signal: "the incoming team member confirms the next action",
+      completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     },
     scenario_contract: {
       pressure_or_constraint: "two people are already waiting and the shift ran late",
@@ -69,7 +68,6 @@ const middleGround = () => ({
     },
     application_contract: {
       application_moment: "at your next shift change",
-      evidence_or_confirmation: "the incoming member repeats the next action back",
     },
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
@@ -213,12 +211,15 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
   });
 
   it("G10/G11: each role and each reason is independently diagnosable", async () => {
-    const cases: [Record<string, string>, string, string][] = [
+    const cases: [Record<string, unknown>, string, string][] = [
       [{ actor: "" }, "actor", "missing"],
       [{ actor: "the shared handoff standard" }, "actor", "not_a_role"],
       [{ trigger: "in a professional manner" }, "trigger", "no_moment"],
       [{ observable_action: "create a shared handoff standard" }, "observable_action", "meta_only"],
-      [{ completion_signal: "the handoff feels smoother" }, "completion_signal", "no_confirmation"],
+      // A confirming act with nothing witnessable in it.
+      [{ completion: { confirmed_by: "the next owner", confirmation_action: "feel better about the handoff" } }, "completion_signal", "no_confirmation"],
+      // A completion authority with no confirmer at all — the exact v5 render defect.
+      [{ completion: { confirmed_by: "", confirmation_action: "repeat back who owns the next step" } }, "completion_signal", "missing"],
       [{ actor: "x".repeat(400) }, "actor", "too_long"],
     ];
     for (const [patch, field, reason] of cases) {
@@ -253,7 +254,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     const arg = chatCreate.mock.calls[0][0] as { response_format: { type: string; json_schema: { strict: boolean; name: string } } };
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
-    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v4");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v5");
+    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v6");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v6");
   });
 });

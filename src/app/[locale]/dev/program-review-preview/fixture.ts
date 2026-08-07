@@ -73,19 +73,31 @@ export const PREVIEW_PROPOSAL: ProgramProposal = {
   warnings: [
     "If shifts are scheduled with no overlap at all, training alone will not create a moment to hand over in.",
   ],
+  // Derived in production by `deriveEvidenceCeiling`; fixed here for the fixture.
+  // Derived by `deriveEvidenceCeiling` in production; fixed here to the same wording.
   evidenceLanguage:
-    "Completing this shows people were exposed to the standard and decided something. It does not show that handovers changed, and a seven-day self-report is what someone says they did, not observed behaviour.",
+    "Reading or watching the material can show only that people were exposed to it. A written answer shows reflection, not competence. An action decision records a decision, never a completed action. Practice is rehearsal, never field mastery. A scheduled self-report is what someone says they did, not observed behavior. Nothing here can show that behaviour changed, that it was adopted, or that it lasted.",
+  /**
+   * The EXACT values the live v5 window returned (parent c9718bd3), re-expressed in the v6
+   * shape. The preview exists to show, on a physical phone, that the four defects that
+   * proposal shipped with are gone: a subject-less completion clause, two different
+   * completion definitions, "In during …", and a scenario that moved the trained action to
+   * another moment.
+   */
   behaviorContract: {
-    actor: "the outgoing team member",
-    trigger: "At the end of every shift, before leaving the floor",
-    observableAction: "states each unfinished task, its deadline and what could go wrong with it out loud to the person taking over",
-    completionSignal: "the person taking over repeats the list back and confirms they have it",
+    actor: "each team member",
+    trigger: "At the end of each project or task",
+    observableAction: "state each unfinished item and identify its next owner",
+    completion: { confirmedBy: "the next owner", confirmationAction: "confirm they understand what they are taking on" },
   },
   scenarioContract: {
-    pressureOrConstraint: "two colleagues already waiting to ask them something else and a shift that has run twenty minutes late",
-    contextDetail: "the last few minutes of a busy evening handover",
+    pressureOrConstraint: "a tight deadline is approaching and team members are waiting for information",
+    // Carries its own preposition — v5 rendered "In during a team meeting…".
+    contextDetail: "during a team meeting just before a project deadline",
   },
-  applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+  // Application moment only: v5's separate evidence field is what produced two different
+  // answers to "how will we know it happened". And this moment is an INSTANCE of the trigger.
+  applicationContract: { applicationMoment: "at the end of the next project" },
   completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
   followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
   /**

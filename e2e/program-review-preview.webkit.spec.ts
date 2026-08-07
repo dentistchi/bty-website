@@ -163,10 +163,12 @@ test.describe("Program review preview — non-paid readability gate", () => {
   test("G12: all six instructional disclosures open and expose their controls", async ({ page }) => {
     await openReview(page);
     const expected: [string, string[]][] = [
-      ["observable_standard", ["actor", "trigger", "action", "completion"]],
+      // R8 splits completion into a named confirmer and the act you would see.
+      ["observable_standard", ["actor", "trigger", "action", "confirmed-by", "completion"]],
       ["scenario", ["pressure", "context"]],
       ["action_decision", ["moment"]],
-      ["field_application", ["moment-apply", "evidence"]],
+      // R8 removes the competing evidence field: one completion authority, one control.
+      ["field_application", ["moment-apply"]],
       ["completion_check", ["verifies", "responds"]],
       ["follow_up", ["focus", "confirmer"]],
     ];
@@ -248,6 +250,33 @@ test.describe("Program review preview — non-paid readability gate", () => {
     for (const kind of ["observable_standard", "field_application", "action_decision"]) {
       await expect(page.getByTestId(`program-section-${kind}`)).toContainText("Drafted by BTY");
     }
+  });
+
+  test("R8: the four defects the live v5 program shipped with are gone", async ({ page }) => {
+    await openReview(page);
+    const text = async (k: string) => (await page.getByTestId(`program-derived-${k}`).textContent()) ?? "";
+    const standard = await text("observable_standard");
+    const scenario = await text("scenario");
+    const apply = await text("field_application");
+
+    // 1. A completion clause with a real subject — v5 rendered "It is complete when receive…".
+    expect(standard).toContain("It is complete when you see the next owner confirm");
+    expect(standard).not.toMatch(/complete when receive/);
+
+    // 2. ONE completion definition — APPLY IT repeats it rather than inventing another.
+    expect(apply).toContain("You will know it happened when you see the next owner confirm");
+
+    // 3. No doubled preposition — v5 rendered "In during a team meeting…".
+    expect(scenario.startsWith("During a team meeting")).toBe(true);
+    expect(scenario).not.toContain("In during");
+
+    // 4. The scenario exercises the action AT THE TRIGGER, which v5 discarded entirely.
+    expect(scenario).toContain("Even then, at the end of each project or task");
+
+    // And the ceiling no longer contradicts itself.
+    const ceiling = (await page.getByTestId("program-evidence-ceiling").textContent()) ?? "";
+    expect(ceiling).toContain("reflection, not competence");
+    expect(ceiling).not.toMatch(/equipped to|ready to implement/i);
   });
 
   test("G15: the page — not the field — is the scrolling surface", async ({ page }) => {

@@ -40,7 +40,7 @@ const BEHAVIOUR_ONLY = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
   observable_action: "states each open item aloud to the person taking over",
-  completion_signal: "the person taking over repeats the open items back and confirms them",
+  completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
 const program = (over: Record<string, unknown> = {}) => ({
@@ -56,12 +56,10 @@ const program = (over: Record<string, unknown> = {}) => ({
     ],
     assumptions: [],
     warnings: [],
-    evidence_language: "This shows exposure and a decision. It does not show behaviour changed.",
     behavior_contract: BEHAVIOUR_ONLY,
     scenario_contract: null,
     application_contract: {
       application_moment: "at your next shift change, before you leave the floor",
-      evidence_or_confirmation: "the person taking over repeats the open items back to you",
     },
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },

@@ -62,10 +62,11 @@ const TRIGGER_DEPENDENTS: JourneyElementKind[] = ["observable_standard"];
 
 const APPLICATION_DEPENDENTS: JourneyElementKind[] = ["action_decision", "field_application"];
 
+/** Only the three string roles are edited this way; completion has its own two controls. */
 const behaviourField = (
   id: string,
   label: string,
-  key: keyof ProgramContracts["behavior"],
+  key: "actor" | "trigger" | "observableAction",
   affects: JourneyElementKind[],
 ): DetailField => ({
   id,
@@ -75,7 +76,7 @@ const behaviourField = (
   set: (c, v) => ({ ...c, behavior: { ...c.behavior, [key]: v } }),
 });
 
-const applicationField = (id: string, label: string, key: "applicationMoment" | "evidenceOrConfirmation"): DetailField => ({
+const applicationField = (id: string, label: string, key: "applicationMoment"): DetailField => ({
   id,
   label,
   affects: APPLICATION_DEPENDENTS,
@@ -113,7 +114,20 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     behaviourField("actor", "Who does this?", "actor", ACTOR_DEPENDENTS),
     behaviourField("trigger", "When is it required?", "trigger", TRIGGER_DEPENDENTS),
     behaviourField("action", "What would someone see or hear them do?", "observableAction", ACTION_DEPENDENTS),
-    behaviourField("completion", "What confirms it’s finished?", "completionSignal", SIGNAL_DEPENDENTS),
+    {
+      id: "confirmed-by",
+      label: "Who confirms it’s done?",
+      affects: SIGNAL_DEPENDENTS,
+      get: (c) => c.behavior.completion.confirmedBy,
+      set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmedBy: v } } }),
+    },
+    {
+      id: "completion",
+      label: "What would you see them do?",
+      affects: SIGNAL_DEPENDENTS,
+      get: (c) => c.behavior.completion.confirmationAction,
+      set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmationAction: v } } }),
+    },
   ],
   scenario: [
     {
@@ -136,7 +150,6 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
   ],
   field_application: [
     applicationField("moment-apply", "When will they first do this for real?", "applicationMoment"),
-    applicationField("evidence", "What would show it happened?", "evidenceOrConfirmation"),
   ],
   completion_check: [
     {
@@ -186,6 +199,8 @@ export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
   scenario_incomplete: "The practice situation needs a real difficulty and a real place — not “it’s hard” or “at work”.",
   application_incomplete: "Say when this first happens for real, and what would show it happened.",
   action_unusable: "That action can’t be turned into a sentence people can follow. Try a short phrase like “state each open item aloud”.",
+  completion_incomplete: "Say who confirms it’s done, and what you would see them do.",
+  application_unrelated: "The first real moment should be one of the times the behaviour is required.",
   completion_invalid: "Choose what the closing question checks and how people answer it.",
   follow_up_invalid: "Choose what gets reviewed later and who confirms it.",
   narrative_unsafe: "One of the sections you wrote claims something the training can’t show, or relies on material you haven’t provided.",

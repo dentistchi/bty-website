@@ -6,6 +6,7 @@ import {
   programContextFingerprint,
   programContextsCompatible,
   validateProgramProposal,
+  deriveEvidenceCeiling,
   groundingCorpus,
   ungroundedArtifact,
   isStructuralCode,
@@ -54,7 +55,7 @@ const CONTRACT = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
   observable_action: "states each open item aloud to the person taking over",
-  completion_signal: "the person taking over repeats the open items back and confirms they have them",
+  completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
 /** A proposal that satisfies every rule for CANONICAL. */
@@ -76,7 +77,6 @@ function goodProposal(over: Record<string, unknown> = {}) {
       ],
       assumptions: ["Handoffs happen at a predictable shift change."],
       warnings: ["If the handoff step is missing from the workflow, training alone will not add it."],
-      evidence_language: "Completing this shows people were exposed to the standard and decided something. It does not show behaviour changed.",
       // R4: the behavioral contract THE STANDARD is rendered from. It NAMES the shared
       // handoff standard while defining it, which is what makes later sections free to
       // refer to it.
@@ -85,7 +85,7 @@ function goodProposal(over: Record<string, unknown> = {}) {
         trigger: "At the end of every shift, before leaving the floor",
         observable_action:
           "follows the shared handoff standard by stating each open item aloud to the person taking over",
-        completion_signal: "the person taking over repeats the open items back and confirms they have them",
+        completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
       },
       // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
       // difficulty and the setting; relevance comes from the derivation.
@@ -95,7 +95,6 @@ function goodProposal(over: Record<string, unknown> = {}) {
       },
       application_contract: {
         application_moment: "at your next shift change, before you leave the floor",
-        evidence_or_confirmation: "the person taking over repeats the open items back to you",
       },
       completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
@@ -258,7 +257,7 @@ describe("[3.2L] the validator fails closed", () => {
 
   it("refuses an application moment that names no moment", () => {
     reject((p) => {
-      p.program.application_contract = { application_moment: "soon", evidence_or_confirmation: "someone notices the difference" };
+      p.program.application_contract = { application_moment: "soon" };
     }, "application_without_actor");
   });
 
@@ -362,7 +361,6 @@ describe("[3.2L] the validator fails closed", () => {
         ],
         assumptions: [],
         warnings: [],
-        evidence_language: "This shows people were exposed to the standard. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
         // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
@@ -392,7 +390,6 @@ describe("[3.2L] the validator fails closed", () => {
         ],
         assumptions: [],
         warnings: [],
-        evidence_language: "This shows exposure only. It does not show behaviour changed.",
         behavior_contract: CONTRACT,
         // know-only design: no scenario, decision, application or follow-up is required.
         scenario_contract: null,
@@ -415,11 +412,13 @@ describe("[3.2L] the validator fails closed", () => {
   it("refuses a non-object, a missing program and a missing field", () => {
     expect(validateProgramProposal(null, CANONICAL)).toMatchObject({ ok: false, code: "not_object" });
     expect(validateProgramProposal({}, CANONICAL)).toMatchObject({ ok: false, code: "missing_program" });
-    expect(validateProgramProposal({ program: { display_title: "t", elements: [] } }, CANONICAL)).toMatchObject({ ok: false, code: "missing_field" });
+    // `evidence_language` is no longer requested (R8), so the first missing key is elements'
+    // own contract rather than the ceiling.
+    expect(validateProgramProposal({ program: { display_title: "t" } }, CANONICAL)).toMatchObject({ ok: false, code: "missing_field" });
   });
 
   it("refuses overclaim in the evidence language itself", () => {
-    reject((p) => { p.program.evidence_language = "Completing this guarantees the behaviour is now permanent."; }, "evidence_overclaim");
+    reject((p) => { p.program.elements[0].content = "Completing this guarantees the behaviour is now permanent for everyone."; }, "evidence_overclaim");
   });
 
   it("names the offending element so a refusal is diagnosable", () => {
@@ -475,15 +474,16 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
     ],
     assumptions: [],
     warnings: [],
-    evidenceLanguage: "honest",
+    // Derived in production by `deriveEvidenceCeiling`; fixed here for the fixture.
+    evidenceLanguage: "Reading or watching the material can show only that people were exposed to it. Nothing here can show that behaviour changed, that it was adopted, or that it lasted.",
     behaviorContract: {
     actor: "the outgoing person",
     trigger: "At the end of every shift",
     observableAction: "states each open item aloud to the person taking over",
-    completionSignal: "the person taking over repeats them back and confirms",
+    completion: { confirmedBy: "the person taking over", confirmationAction: "repeat the open items back" },
     },
     scenarioContract: null,
-    applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+    applicationContract: { applicationMoment: "at your next shift change" },
     completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
     followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
     operationalConstruct: { label: "shared handoff standard", noun: "standard", authorityMode: "proposed" },
@@ -728,7 +728,6 @@ describe("[3.2L-R3] structural faults are diagnosed exactly, not just named", ()
   it("names non-element paths the old refusal_kind could not carry at all", () => {
     const cases: [string, (p: ReturnType<typeof goodProposal>) => void, string][] = [
       ["program.display_title", (p) => { (p.program as Record<string, unknown>).display_title = 7; }, "number"],
-      ["program.evidence_language", (p) => { (p.program as Record<string, unknown>).evidence_language = null; }, "null"],
       ["program.assumptions", (p) => { (p.program as Record<string, unknown>).assumptions = "not a list"; }, "string"],
       ["program.warnings", (p) => { (p.program as Record<string, unknown>).warnings = 3; }, "number"],
     ];
@@ -793,5 +792,51 @@ describe("[3.2L-R3] structural faults are diagnosed exactly, not just named", ()
     expect(el.additionalProperties).toBe(false);
     expect(el.properties.kind.enum).toContain("why_it_matters");
     expect(PROGRAM_JSON_SCHEMA.properties.program.required).toContain("display_title");
+  });
+});
+
+describe("[3.2L-R8] the evidence ceiling is BTY's, and outcomes are not promised", () => {
+  it("G9: the ceiling is derived, and the model cannot author one", () => {
+    const p = goodProposal();
+    // There is no longer a field to put a competing claim in.
+    expect("evidence_language" in p.program).toBe(false);
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok, r.ok ? "" : r.code).toBe(true);
+    if (r.ok) {
+      const ceiling = r.value.proposal.evidenceLanguage;
+      expect(ceiling).toContain("Nothing here can show that behaviour changed, that it was adopted, or that it lasted");
+      // The exact v5 contradiction: "equipped to implement" beside "not competence".
+      expect(ceiling).not.toMatch(/equipped to|competent|ready to|adopted the|consistent/i);
+      expect(ceiling).toContain("A written answer shows reflection, not competence.");
+    }
+  });
+
+  it("the derived ceiling reflects the Host's OWN design, not a fixed sentence", () => {
+    const readOnly: BuilderAnswers = { ...CANONICAL, learningNeeds: ["know"], arenaRecommended: false, followUpDays: 0, completionPrompt: undefined };
+    const full = validateProgramProposal(goodProposal(), CANONICAL);
+    expect(full.ok).toBe(true);
+    if (full.ok) {
+      expect(full.value.proposal.evidenceLanguage).toContain("Practice is rehearsal");
+      expect(full.value.proposal.evidenceLanguage).toContain("self-report");
+    }
+    // A know-only design must not claim practice or a follow-up happened.
+    expect(deriveEvidenceCeiling(readOnly)).not.toContain("Practice is rehearsal");
+    expect(deriveEvidenceCeiling(readOnly)).not.toContain("self-report");
+  });
+
+  it("G10: the exact live outcome claim is refused", () => {
+    const p = goodProposal();
+    p.program.elements[0].content =
+      "When a step is missed the next person starts blind, which ultimately affects project success and team collaboration.";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("evidence_overclaim");
+  });
+
+  it("G10: honest problem framing still passes", () => {
+    const p = goodProposal();
+    p.program.elements[0].content =
+      "When a handoff misses a step, the next person starts without knowing what changed, and the risk lands on them instead.";
+    expect(validateProgramProposal(p, CANONICAL).ok).toBe(true);
   });
 });

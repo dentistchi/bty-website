@@ -41,7 +41,6 @@ const PROGRAM = {
   ],
   assumptions: [],
   warnings: [],
-  evidence_language: "Shows exposure only. It does not show behaviour changed.",
 };
 
 type Call = { url: string; method: string; body: unknown };

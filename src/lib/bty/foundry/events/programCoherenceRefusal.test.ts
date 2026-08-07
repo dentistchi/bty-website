@@ -53,7 +53,7 @@ const DEFINING_CONTRACT = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
   observable_action: "follows the shared handoff standard by stating each open item aloud to the person taking over",
-  completion_signal: "the person taking over repeats the open items back and confirms them",
+  completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
 const validProgram = () => ({
@@ -69,13 +69,11 @@ const validProgram = () => ({
     ],
     assumptions: [],
     warnings: [],
-    evidence_language: "This shows exposure and a decision. It does not show behaviour changed.",
     behavior_contract: DEFINING_CONTRACT,
     // know + decide, no practice and no Arena → this design requires no scenario.
     scenario_contract: null,
     application_contract: {
       application_moment: "at your next shift change, before you leave the floor",
-      evidence_or_confirmation: "the person taking over repeats the open items back to you",
     },
     completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
@@ -153,7 +151,7 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
       actor: "team members",
       trigger: "during all relevant transitions of work",
       observable_action: "a shared handoff standard is created and utilized",
-      completion_signal: "the standard is created and utilized",
+      completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     };
     chatCreate.mockResolvedValueOnce(respond(p));
 
@@ -226,7 +224,8 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
       // THE STANDARD is the rendered contract, not the model's sentence.
       const standard = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!;
       expect(standard.content).toContain("It is complete when");
-      expect(standard.content).toContain("the person taking over repeats the open items back");
+      // R8: one render-safe clause, subject and confirmer both structural.
+      expect(standard.content).toContain("you see the person taking over repeat the open items back");
       expect(r.value.proposal.behaviorContract.actor).toBe("the outgoing person");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
@@ -275,16 +274,22 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect([...comp.response_mode.enum]).toEqual(["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
-    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action", "completion_signal"]);
-    for (const f of contract.required) {
+    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action", "completion"]);
+    for (const f of ["actor", "trigger", "observable_action"]) {
       expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
     }
+    // R8: completion is an OBJECT with a named confirmer, not a free-text signal.
+    const completionAuthority = contract.properties.completion;
+    expect(completionAuthority.additionalProperties).toBe(false);
+    expect([...completionAuthority.required]).toEqual(["confirmed_by", "confirmation_action"]);
     // The version names the materially different contract rather than relabelling v1.
     // R7 bumps the AUTHORSHIP version without moving the JSON shape: the schema name still
     // describes the wire contract, the proposal version describes what the model was
     // authorised to design. Reconciliation needs to tell those two apart.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v5");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v4");
+    // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
+    // and evidence_or_confirmation removed), so the schema name moves with it.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v6");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v6");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

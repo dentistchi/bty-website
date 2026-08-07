@@ -86,7 +86,7 @@ import {
  * bumped even though the schema did not move, because reconciliation has to be able to tell
  * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v5";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v6";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -315,6 +315,8 @@ export type ProgramRejectCode =
   | "evidence_overclaim"
   | "decision_is_only_reflection"
   | "application_without_actor"
+  /** The first real application names a moment that is not an instance of the trigger. */
+  | "application_moment_unrelated"
   /**
    * RETIRED as of program_authorship_v3 (Slice 3.2L-R5) and no longer emitted: relevance
    * is now guaranteed by deriving IN CONTEXT from the behavior contract, not measured by
@@ -353,7 +355,7 @@ export const PROGRAM_REJECT_CODES: readonly ProgramRejectCode[] = [
   "not_object", "missing_program", "missing_field", "field_type", "empty_field", "too_long",
   "unsafe_markup", "unknown_kind", "duplicate_kind", "missing_required_kind", "unrequested_kind",
   "complaint_replay", "material_fabrication", "invented_specifics", "evidence_overclaim",
-  "decision_is_only_reflection", "application_without_actor", "scenario_unrelated",
+  "decision_is_only_reflection", "application_without_actor", "application_moment_unrelated", "scenario_unrelated",
   "scenario_without_pressure", "generic_completion", "non_observable_standard",
   "dependency_inversion", "section_contradiction", "duplicate_content", "internal_jargon",
   "person_evaluation", "invalid_assumptions", "invalid_warnings",
@@ -399,7 +401,23 @@ function hasUnsafeMarkup(raw: string): boolean {
 }
 
 /** Phrases that, ASSERTED, claim what only later observation could show. */
+/**
+ * CAUSAL OUTCOME CLAIMS (Slice 3.2L-R8). The live v5 WHY THIS MATTERS ended "…which
+ * ultimately affects project success and team collaboration" — an organisational result the
+ * Host never established. Training can address the operational problem they described; it
+ * cannot promise the outcome.
+ */
+const OUTCOME_CLAIM_PHRASES = [
+  "ultimately (?:affects?|improves?|leads? to|results? in|drives?)",
+  "(?:improves?|increases?|boosts?|drives?|ensures?) (?:project success|team collaboration|productivity|morale|safety|quality|outcomes|performance|efficiency|retention)",
+  "leads? to (?:better|improved|stronger|greater)",
+  "results? in (?:better|improved|fewer|greater)",
+  "equipped to",
+  "ready to (?:implement|lead|deliver)",
+];
+
 const OVERCLAIM_PHRASES = [
+  ...OUTCOME_CLAIM_PHRASES,
   "now competent", "fully (?:understand|understood|understands)", "permanently",
   "trust (?:was|is|has been) restored", "behaviou?r (?:has |was )?(?:permanently )?changed",
   "mastered", "no longer needs?", "performance improved", "guarantees?",
@@ -417,7 +435,7 @@ const OVERCLAIM = new RegExp(OVERCLAIM_PHRASES.join("|"), "gi");
  * Deliberately a short backward window: "not" three words earlier negates the claim,
  * "not" two sentences earlier does not.
  */
-const NEGATOR = /\b(?:not|never|cannot|can't|doesn't|does not|don't|do not|isn't|is not|won't|will not|without|neither|nor|rather than|instead of)\b|않|아니|없/i;
+const NEGATOR = /\b(?:not|never|cannot|can't|doesn't|does not|don't|do not|isn't|is not|won't|will not|without|neither|nor|nothing|none|no|rather than|instead of)\b|않|아니|없/i;
 const NEGATION_WINDOW = 48;
 
 /** True only when an overclaim phrase is ASSERTED rather than denied. */
@@ -593,7 +611,7 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v4";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v6";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -616,10 +634,9 @@ export const PROGRAM_JSON_SCHEMA = {
     program: {
       type: "object",
       additionalProperties: false,
-      required: ["display_title", "elements", "assumptions", "warnings", "evidence_language", "behavior_contract", "scenario_contract", "application_contract", "completion_contract", "follow_up_contract"],
+      required: ["display_title", "elements", "assumptions", "warnings", "behavior_contract", "scenario_contract", "application_contract", "completion_contract", "follow_up_contract"],
       properties: {
         display_title: { type: "string" },
-        evidence_language: { type: "string" },
         assumptions: { type: "array", items: { type: "string" } },
         warnings: { type: "array", items: { type: "string" } },
         /**
@@ -634,12 +651,26 @@ export const PROGRAM_JSON_SCHEMA = {
         behavior_contract: {
           type: "object",
           additionalProperties: false,
-          required: ["actor", "trigger", "observable_action", "completion_signal"],
+          required: ["actor", "trigger", "observable_action", "completion"],
           properties: {
             actor: { type: "string" },
             trigger: { type: "string" },
             observable_action: { type: "string" },
-            completion_signal: { type: "string" },
+            /**
+             * WHO confirms and WHAT they are seen doing (Slice 3.2L-R8). A single free-text
+             * completion_signal let the model return a bare infinitive, and the renderer
+             * pasted it after "It is complete when …". A named confirmer makes the sentence's
+             * subject structural instead of hoped for.
+             */
+            completion: {
+              type: "object",
+              additionalProperties: false,
+              required: ["confirmed_by", "confirmation_action"],
+              properties: {
+                confirmed_by: { type: "string" },
+                confirmation_action: { type: "string" },
+              },
+            },
           },
         },
         /**
@@ -669,10 +700,14 @@ export const PROGRAM_JSON_SCHEMA = {
         application_contract: {
           type: ["object", "null"],
           additionalProperties: false,
-          required: ["application_moment", "evidence_or_confirmation"],
+          /**
+           * APPLICATION MOMENT ONLY. v5 also asked for `evidence_or_confirmation`, which let
+           * the model give a second, different answer to "how will we know it happened" —
+           * and the live proposal gave two. Completion has one authority now.
+           */
+          required: ["application_moment"],
           properties: {
             application_moment: { type: "string" },
-            evidence_or_confirmation: { type: "string" },
           },
         },
         /**
@@ -819,15 +854,21 @@ export function validateProgramProposal(
   if (!isPlainObject(raw)) return REJECT_AT("not_object", "$", "object", jsonTypeOf(raw));
   const p = raw.program;
   if (!isPlainObject(p)) return REJECT_AT("missing_program", "program", "object", jsonTypeOf(p));
-  for (const k of ["display_title", "elements", "evidence_language"]) {
+  // `evidence_language` is no longer requested: BTY derives the ceiling itself (R8).
+  for (const k of ["display_title", "elements"]) {
     if (!(k in p)) return REJECT_AT("missing_field", `program.${k}`, k === "elements" ? "array" : "string", "missing");
   }
 
   const title = cleanString(p.display_title, LIMITS.title, 4);
   if (!title.ok) return REJECT_AT(title.code, "program.display_title", "string", jsonTypeOf(p.display_title));
 
-  const evidenceLanguage = cleanString(p.evidence_language, LIMITS.evidenceLanguage, 10);
-  if (!evidenceLanguage.ok) return REJECT_AT(evidenceLanguage.code, "program.evidence_language", "string", jsonTypeOf(p.evidence_language));
+  /**
+   * DERIVED, never authored (Slice 3.2L-R8). The live v5 program displayed the honest
+   * static ceiling — "A written answer shows reflection, not competence" — beside the
+   * model's own claim that completing it shows "you are equipped to implement a shared
+   * handoff standard". Both on one screen. A ceiling the model can write is not a ceiling.
+   */
+  const evidenceLanguage = { ok: true as const, value: deriveEvidenceCeiling(answers) };
 
   if (!Array.isArray(p.elements) || p.elements.length === 0) {
     return REJECT_AT("field_type", "program.elements", "non-empty array", jsonTypeOf(p.elements));
@@ -875,13 +916,26 @@ export function validateProgramProposal(
   if (!isPlainObject(rawContract)) {
     return REJECT_AT("field_type", "program.behavior_contract", "an object", jsonTypeOf(rawContract), "observable_standard");
   }
-  for (const key of ["actor", "trigger", "observable_action", "completion_signal"] as const) {
+  for (const key of ["actor", "trigger", "observable_action"] as const) {
     const v = (rawContract as Record<string, unknown>)[key];
     if (typeof v !== "string") {
       return REJECT_AT("field_type", `program.behavior_contract.${key}`, `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
     }
     // The contract is rendered into participant-facing text, so it carries the SAME
     // honesty rules as any other content — a fabricated template cannot enter through it.
+    const bad = unsafe(v);
+    if (bad) return REJECT(bad, "observable_standard");
+  }
+  /** The completion authority is an OBJECT now: a named confirmer plus what they do (R8). */
+  const rawCompletion = (rawContract as Record<string, unknown>).completion;
+  if (!isPlainObject(rawCompletion)) {
+    return REJECT_AT(rawCompletion === undefined || rawCompletion === null ? "missing_field" : "field_type", "program.behavior_contract.completion", "an object with confirmed_by and confirmation_action", jsonTypeOf(rawCompletion), "observable_standard");
+  }
+  for (const key of ["confirmed_by", "confirmation_action"] as const) {
+    const v = (rawCompletion as Record<string, unknown>)[key];
+    if (typeof v !== "string") {
+      return REJECT_AT("field_type", `program.behavior_contract.completion.${key}`, `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
+    }
     const bad = unsafe(v);
     if (bad) return REJECT(bad, "observable_standard");
   }
@@ -946,12 +1000,12 @@ export function validateProgramProposal(
   let applicationContract: ApplicationContract | null = null;
   if (applicationRequired) {
     if (rawApplication === undefined || rawApplication === null) {
-      return REJECT_AT("missing_field", "program.application_contract", "an object with application_moment and evidence_or_confirmation", jsonTypeOf(rawApplication), "field_application");
+      return REJECT_AT("missing_field", "program.application_contract", "an object with application_moment", jsonTypeOf(rawApplication), "field_application");
     }
     if (!isPlainObject(rawApplication)) {
       return REJECT_AT("field_type", "program.application_contract", "an object", jsonTypeOf(rawApplication), "field_application");
     }
-    for (const key of ["application_moment", "evidence_or_confirmation"] as const) {
+    for (const key of ["application_moment"] as const) {
       const v = (rawApplication as Record<string, unknown>)[key];
       if (typeof v !== "string") {
         return REJECT_AT("field_type", `program.application_contract.${key}`, `a non-empty string of at most ${APPLICATION_FIELD_LIMIT} characters`, jsonTypeOf(v), "field_application");
@@ -959,8 +1013,11 @@ export function validateProgramProposal(
       const bad = unsafe(v);
       if (bad) return REJECT(bad, "field_application");
     }
-    const ac = validateApplicationContract(rawApplication);
-    if (!ac.ok) return REJECT("application_without_actor", "field_application");
+    const ac = validateApplicationContract(rawApplication, contract.trigger);
+    if (!ac.ok) {
+      // A moment unrelated to the required trigger is a different fault from a vague one.
+      return REJECT(ac.defect.reason === "unrelated_to_trigger" ? "application_moment_unrelated" : "application_without_actor", "field_application");
+    }
     applicationContract = ac.value;
   }
 
@@ -1149,6 +1206,7 @@ export function validateProgramProposal(
     return { ...REJECT("dependency_inversion", dependency.kind), dependency } as ProgramValidation;
   }
 
+  // Derived text cannot be unsafe, but the check stays: it is cheap and it is a guarantee.
   const ceilingUnsafe = unsafe(evidenceLanguage.value);
   if (ceilingUnsafe) return REJECT(ceilingUnsafe);
 
@@ -1306,6 +1364,21 @@ export function attributionKind(el: { grounding?: { sourceType?: unknown }[] } |
   return "derived";
 }
 
+/**
+ * What the CONFIGURED journey can honestly show, computed from the Host's own design.
+ * Nothing here promises competence, adoption, consistency or organisational result.
+ */
+export function deriveEvidenceCeiling(answers: BuilderAnswers | undefined): string {
+  const ctx = programContext(answers);
+  const parts = ["Reading or watching the material can show only that people were exposed to it."];
+  if (ctx?.completionPrompt) parts.push("A written answer shows reflection, not competence.");
+  if (ctx?.learningNeeds.includes("decide")) parts.push("An action decision records a decision, never a completed action.");
+  if (ctx?.arenaRecommended) parts.push("Practice is rehearsal, never field mastery.");
+  if ((ctx?.followUpDays ?? 0) > 0) parts.push("A scheduled self-report is what someone says they did, not observed behavior.");
+  parts.push("Nothing here can show that behaviour changed, that it was adopted, or that it lasted.");
+  return parts.join(" ");
+}
+
 // ---------------------------------------------------------------------------
 // Structured review authority (Slice 3.2L-R6.1)
 // ---------------------------------------------------------------------------
@@ -1367,6 +1440,10 @@ export type ReviewBlockReason =
   | "standard_not_observable"
   /** The action cannot be rendered into a sentence people could follow. */
   | "action_unusable"
+  /** The completion authority is missing a confirmer or a visible confirming act. */
+  | "completion_incomplete"
+  /** The first application moment is not an instance of the required trigger. */
+  | "application_unrelated"
   | "scenario_incomplete"
   | "application_incomplete"
   | "completion_invalid"
@@ -1403,7 +1480,7 @@ export function validateEditedReview(
     actor: c.behavior.actor,
     trigger: c.behavior.trigger,
     observable_action: c.behavior.observableAction,
-    completion_signal: c.behavior.completionSignal,
+    completion: { confirmed_by: c.behavior.completion.confirmedBy, confirmation_action: c.behavior.completion.confirmationAction },
   });
   if (!behavior.ok) {
     const reason: ReviewBlockReason = behavior.defect.reason === "missing" || behavior.defect.reason === "too_long"
@@ -1425,9 +1502,14 @@ export function validateEditedReview(
     if (!c.application) return { ok: false, reason: "application_incomplete", kind: "field_application" };
     const ac = validateApplicationContract({
       application_moment: c.application.applicationMoment,
-      evidence_or_confirmation: c.application.evidenceOrConfirmation,
-    });
-    if (!ac.ok) return { ok: false, reason: "application_incomplete", kind: "field_application" };
+    }, c.behavior.trigger);
+    if (!ac.ok) {
+      return {
+        ok: false,
+        reason: ac.defect.reason === "unrelated_to_trigger" ? "application_unrelated" : "application_incomplete",
+        kind: "field_application",
+      };
+    }
   }
 
   if (required.includes("completion_check") && !c.completion) {

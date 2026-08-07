@@ -210,11 +210,31 @@ export function mentionsConstruct(text: string, stem: string): boolean {
  * The model PROPOSES this for Host review. It asserts nothing about an organizational
  * policy already existing.
  */
+/**
+ * WHO confirms, and WHAT they are visibly seen doing. Replaces the free-text
+ * `completionSignal` (Slice 3.2L-R8).
+ *
+ * THE LIVE DEFECT. v5 accepted "receive a confirmation from the next owner that they
+ * understand their responsibilities" — a bare infinitive with no subject — and the renderer
+ * pasted it after a fixed prefix, producing "It is complete when receive a confirmation…".
+ * The validator had only asked for a confirmation WORD, never for someone to do the
+ * confirming, so nothing could have caught it.
+ *
+ * Splitting the confirmer from the act makes the subject structural: the sentence is built
+ * around a named confirmer, so it cannot be rendered without one.
+ */
+export type CompletionAuthority = {
+  /** The role that confirms. Becomes the grammatical agent, so it can never be absent. */
+  confirmedBy: string;
+  /** What that role is visibly seen doing, in BASE form: "repeat back who owns the next step". */
+  confirmationAction: string;
+};
+
 export type BehaviorContract = {
   actor: string;
   trigger: string;
   observableAction: string;
-  completionSignal: string;
+  completion: CompletionAuthority;
 };
 
 /**
@@ -225,7 +245,13 @@ export type BehaviorContract = {
 export const CONTRACT_FIELD_LIMIT = 160;
 const CONTRACT_FIELD_MIN = 3;
 
-export type ContractField = keyof BehaviorContract;
+/**
+ * The DIAGNOSTIC vocabulary, deliberately decoupled from `keyof BehaviorContract`. The live
+ * CHECK on `behavior_contract_field` (migration 20260810000000) pins these four values, so
+ * restructuring the contract must not silently change what the ledger can store —
+ * `completionSignal` now names the whole completion authority rather than one string.
+ */
+export type ContractField = "actor" | "trigger" | "observableAction" | "completionSignal";
 
 export const CONTRACT_FIELDS: readonly ContractField[] = ["actor", "trigger", "observableAction", "completionSignal"];
 
@@ -306,16 +332,24 @@ export function validateBehaviorContract(raw: unknown): { ok: true; value: Behav
     return { ok: false, defect: { field: "actor", reason: "missing" } };
   }
   const r = raw as Record<string, unknown>;
+  const rawCompletion = (r.completion ?? {}) as Record<string, unknown>;
   const value: BehaviorContract = {
     actor: trimField(r.actor),
     trigger: trimField(r.trigger),
     observableAction: trimField(r.observable_action ?? r.observableAction),
-    completionSignal: trimField(r.completion_signal ?? r.completionSignal),
+    completion: {
+      confirmedBy: trimField(rawCompletion.confirmed_by ?? rawCompletion.confirmedBy),
+      confirmationAction: trimField(rawCompletion.confirmation_action ?? rawCompletion.confirmationAction),
+    },
   };
 
-  for (const f of CONTRACT_FIELDS) {
+  for (const f of ["actor", "trigger", "observableAction"] as const) {
     if (value[f].length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
     if (value[f].length > CONTRACT_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
+  }
+  for (const c of ["confirmedBy", "confirmationAction"] as const) {
+    if (value.completion[c].length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: "completionSignal", reason: "missing" } };
+    if (value.completion[c].length > CONTRACT_FIELD_LIMIT) return { ok: false, defect: { field: "completionSignal", reason: "too_long" } };
   }
 
   // The actor is a person or role. "The standard" performing itself is the passive
@@ -333,10 +367,14 @@ export function validateBehaviorContract(raw: unknown): { ok: true; value: Behav
 
   // The completion signal is something a second person could witness — and is not itself
   // just "the standard now exists".
-  if (CONSTRUCT_LIFECYCLE_CLAIM(value.completionSignal)) {
+  if (CONSTRUCT_LIFECYCLE_CLAIM(value.completion.confirmationAction)) {
     return { ok: false, defect: { field: "completionSignal", reason: "meta_only" } };
   }
-  if (!CONFIRMATION_MARKER.test(value.completionSignal)) {
+  // The confirmer must be a person or role — the thing being confirmed cannot confirm itself.
+  if (ARTIFACT_OR_CONSTRUCT_HEAD.test(value.completion.confirmedBy)) {
+    return { ok: false, defect: { field: "completionSignal", reason: "not_a_role" } };
+  }
+  if (!CONFIRMATION_MARKER.test(value.completion.confirmationAction)) {
     return { ok: false, defect: { field: "completionSignal", reason: "no_confirmation" } };
   }
 
@@ -423,6 +461,30 @@ export function isRenderableAction(action: string): boolean {
   return /^[\p{L}][\p{L}'-]*$/u.test(head);
 }
 
+/**
+ * A context fragment rendered without a doubled preposition. "during a team meeting" keeps
+ * its own; "the last ten minutes of a shift" gets "In". v5 prefixed unconditionally and
+ * produced "In during a team meeting just before a project deadline".
+ */
+export function contextClause(context: string): string {
+  const c = stripTrailingStop(context.trim());
+  if (c.length === 0) return "";
+  if (LEADING_TIME_WORD.test(c)) return upperFirst(c);
+  return `In ${lowerFirst(c)}`;
+}
+
+/**
+ * THE one completion clause. "you see X do Y" takes a BARE INFINITIVE whatever X's number,
+ * so "the next owner" and "both people" both render correctly with no agreement decision —
+ * the same device the modal provides elsewhere. And it is literally about visibility, which
+ * is what an observable standard is for.
+ */
+export function renderCompletionClause(c: CompletionAuthority): string {
+  const who = lowerFirst(stripTrailingStop(c.confirmedBy.trim()));
+  const act = baseActionPhrase(c.confirmationAction);
+  return `you see ${who} ${act}`;
+}
+
 /** A moment that already begins with its own time preposition needs nothing added. */
 const LEADING_TIME_WORD =
   /^(?:at|in|on|during|before|after|when|whenever|while|as|by|once|every|each|throughout|upon|next\s+time)\b/i;
@@ -462,8 +524,7 @@ export function renderStandardSentence(c: BehaviorContract): string {
   const trigger = stripTrailingStop(c.trigger.trim());
   const actor = stripTrailingStop(c.actor.trim());
   const action = baseActionPhrase(c.observableAction);
-  const signal = stripTrailingStop(c.completionSignal.trim());
-  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. It is complete when ${lowerFirst(signal)}.`;
+  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. It is complete when ${renderCompletionClause(c.completion)}.`;
 }
 
 /**
@@ -618,15 +679,17 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
   const trigger = stripTrailingStop(b.trigger.trim());
   const actor = stripTrailingStop(b.actor.trim());
   const action = baseActionPhrase(b.observableAction);
-  const signal = stripTrailingStop(b.completionSignal.trim());
   const pressure = stripTrailingStop(s.pressureOrConstraint.trim());
-  const context = stripTrailingStop(s.contextDetail.trim());
-  // A colon carries the pressure, so no verb has to agree with the actor OR the pressure.
-  void trigger;
+  /**
+   * The context is NOT given a fixed "In" prefix any more. v5 rendered "In during a team
+   * meeting…" because the model's fragment carried its own preposition. And the trigger is
+   * no longer discarded: without it the scenario silently moved the trained action to a
+   * different moment, which is exactly what the live proposal did.
+   */
   return (
-    `In ${lowerFirst(context)}: ${lowerFirst(pressure)}. ` +
-    `Even then, ${lowerFirst(actor)} must ${action}. ` +
-    `It is complete when ${lowerFirst(signal)}.`
+    `${contextClause(s.contextDetail)}: ${lowerFirst(pressure)}. ` +
+    `Even then, ${lowerFirst(momentClause(b.trigger, "the"))}, ${lowerFirst(actor)} must ${action}. ` +
+    `It is complete when ${renderCompletionClause(b.completion)}.`
   );
 }
 
@@ -698,7 +761,7 @@ export function validateProgramDependencies(
    * a construct mentioned inside it has its behavior established.
    */
   const definedText = standardContract
-    ? [standard?.content ?? "", standardContract.actor, standardContract.trigger, standardContract.observableAction, standardContract.completionSignal].join(" ")
+    ? [standard?.content ?? "", standardContract.actor, standardContract.trigger, standardContract.observableAction, standardContract.completion.confirmedBy, standardContract.completion.confirmationAction].join(" ")
     : "";
   const defined = new Set(
     standardContract
@@ -894,13 +957,12 @@ export function isInstructionalKind(k: JourneyElementKind): boolean {
  */
 export type ApplicationContract = {
   applicationMoment: string;
-  evidenceOrConfirmation: string;
 };
 
 export const APPLICATION_FIELD_LIMIT = 140;
 const APPLICATION_FIELD_MIN = 8;
 
-export type ApplicationDefect = { field: keyof ApplicationContract; reason: "missing" | "too_long" | "generic" | "no_moment" };
+export type ApplicationDefect = { field: keyof ApplicationContract; reason: "missing" | "too_long" | "generic" | "no_moment" | "unrelated_to_trigger" };
 
 /**
  * ENUMERATED on purpose. BEFORE YOU FINISH may only verify something already established,
@@ -925,8 +987,41 @@ const GENERIC_MOMENT = [
   /^\s*(?:at|in)\s+(?:work|the\s+workplace|the\s+office)\.?\s*$/i,
 ];
 
+/** Content words a moment is actually about — the event, not its determiners. */
+function momentTokens(m: string): Set<string> {
+  return new Set(
+    momentCore(m)
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !/^(?:next|each|every|your|their|before|after|during|while|when|first|last|this|that|with|from|into|over|then)$/.test(w)),
+  );
+}
+
+/**
+ * The first real application must be an INSTANCE of the required trigger, not a different
+ * event. The live v5 proposal required the behaviour "at the end of each project or task",
+ * rehearsed it "during a team meeting before a deadline" and applied it "at the next project
+ * handoff" — three moments, no relationship enforced anywhere.
+ *
+ * HONEST LIMIT: this is a content-token test. It catches an unrelated event and cannot
+ * judge whether two related-sounding moments are genuinely the same occasion. The scenario
+ * can no longer drift at all (it is rendered FROM the trigger), so this is the one remaining
+ * free moment, and a shared-token floor is the strongest deterministic check available
+ * without a calendar model.
+ */
+export function applicationMatchesTrigger(applicationMoment: string, trigger: string): boolean {
+  const a = momentTokens(applicationMoment);
+  const t = momentTokens(trigger);
+  if (a.size === 0 || t.size === 0) return true; // nothing to compare — do not invent a fault
+  for (const w of a) if (t.has(w)) return true;
+  return false;
+}
+
 export function validateApplicationContract(
   raw: unknown,
+  /** When supplied, the moment must be an instance of this trigger. */
+  trigger?: string,
 ): { ok: true; value: ApplicationContract } | { ok: false; defect: ApplicationDefect } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return { ok: false, defect: { field: "applicationMoment", reason: "missing" } };
@@ -934,9 +1029,8 @@ export function validateApplicationContract(
   const r = raw as Record<string, unknown>;
   const value: ApplicationContract = {
     applicationMoment: trimField(r.application_moment ?? r.applicationMoment),
-    evidenceOrConfirmation: trimField(r.evidence_or_confirmation ?? r.evidenceOrConfirmation),
   };
-  for (const f of ["applicationMoment", "evidenceOrConfirmation"] as const) {
+  for (const f of ["applicationMoment"] as const) {
     if (value[f].length < APPLICATION_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
     if (value[f].length > APPLICATION_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
   }
@@ -947,6 +1041,10 @@ export function validateApplicationContract(
   if (!MOMENT_MARKER.test(value.applicationMoment) && !/\b(?:next|first|following|tomorrow|today)\b/i.test(value.applicationMoment)) {
     return { ok: false, defect: { field: "applicationMoment", reason: "no_moment" } };
   }
+  if (trigger !== undefined && !applicationMatchesTrigger(value.applicationMoment, trigger)) {
+    return { ok: false, defect: { field: "applicationMoment", reason: "unrelated_to_trigger" } };
+  }
+
   return { ok: true, value };
 }
 
@@ -1045,18 +1143,18 @@ export function renderApplicationSentence(
   const actor = stripTrailingStop(b.actor.trim());
   const action = baseActionPhrase(b.observableAction);
   const moment = stripTrailingStop(a.applicationMoment.trim());
-  const evidence = stripTrailingStop(a.evidenceOrConfirmation.trim());
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
-  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} You will know it happened when ${lowerFirst(evidence)}.`;
+  // ONE completion authority. v5 let the model author a second, different answer to "how
+  // will we know it happened" here, and the live proposal gave two.
+  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} You will know it happened when ${renderCompletionClause(b.completion)}.`;
 }
 
 export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string {
   const action = baseActionPhrase(b.observableAction);
-  const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
   const target: Record<VerificationTarget, string> = {
     the_behaviour: `you ${action}`,
     the_application_plan: `you put this into practice`,
-    the_confirmation_step: `${signal}`,
+    the_confirmation_step: renderCompletionClause(b.completion),
   };
   const mode: Record<ResponseMode, (t: string) => string> = {
     name_the_moment: (t) => `When is the next time ${t}?`,
@@ -1068,7 +1166,7 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
 
 export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
   const action = baseActionPhrase(b.observableAction);
-  const signal = lowerFirst(stripTrailingStop(b.completionSignal.trim()));
+  const clause = renderCompletionClause(b.completion);
   /**
    * TENSE-SAFE. "what you actually said when you say it blunt" mixed a retrospective
    * question with a present-tense action. "when you were expected to …" keeps the whole
@@ -1077,7 +1175,7 @@ export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract,
   const focus: Record<ReviewFocus, string> = {
     what_you_said: `what you actually said when you were expected to ${action}`,
     what_happened_next: `what happened after you were expected to ${action}`,
-    the_confirmation: `whether ${signal}`,
+    the_confirmation: `whether ${clause}`,
   };
   /** Never claims more than the workflow can show — the evidence ceiling in one clause. */
   const by: Record<Confirmer, string> = {

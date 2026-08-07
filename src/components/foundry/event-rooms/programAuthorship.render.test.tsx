@@ -37,15 +37,16 @@ const PROPOSAL: ProgramProposal = {
   ],
   assumptions: ["Handoffs happen at shift change."],
   warnings: ["A missing workflow step will not be fixed by training."],
-  evidenceLanguage: "Shows exposure and a decision. It does not show behaviour changed.",
+  // Derived in production by `deriveEvidenceCeiling`; fixed here for the fixture.
+  evidenceLanguage: "Reading or watching the material can show only that people were exposed to it. Nothing here can show that behaviour changed, that it was adopted, or that it lasted.",
   behaviorContract: {
   actor: "the outgoing person",
   trigger: "At the end of every shift",
   observableAction: "states each open item aloud to the person taking over",
-  completionSignal: "the person taking over repeats them back and confirms",
+  completion: { confirmedBy: "the person taking over", confirmationAction: "repeat the open items back" },
   },
   scenarioContract: null,
-  applicationContract: { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" },
+  applicationContract: { applicationMoment: "at your next shift change" },
   completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
   followUpContract: { reviewFocus: "what_you_said", confirmer: "self_report" },
   operationalConstruct: { label: "shared handoff standard", noun: "standard", authorityMode: "proposed" },
@@ -104,7 +105,10 @@ describe("[3.2L] authorship is legible", () => {
     await generate();
     const ceiling = screen.getByTestId("program-evidence-ceiling").textContent ?? "";
     expect(ceiling).toContain("Reading shows exposure only.");
-    expect(ceiling).toContain("does not show behaviour changed");
+    // R8: the ceiling is DERIVED, so its wording comes from the domain, not the model —
+    // which is what stops a program claiming competence beside a line denying it.
+    expect(ceiling).toContain("Nothing here can show that behaviour changed, that it was adopted, or that it lasted");
+    expect(ceiling).not.toMatch(/equipped to|ready to|competent/i);
   });
 
   it("surfaces assumptions and warnings rather than hiding them", async () => {
