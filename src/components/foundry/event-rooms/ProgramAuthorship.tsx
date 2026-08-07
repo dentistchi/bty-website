@@ -7,6 +7,7 @@ import {
   attributionKind,
   contractsFromProposal,
   deriveInstructionalContent,
+  derivesFrom,
   missingProgramKinds,
   validateEditedReview,
   type ProgramContracts,
@@ -432,7 +433,14 @@ export function ProgramAuthorship({
 
       {p.elements.map((e) => {
         const derived = derivedContent(e.kind);
-        const isDerived = derived !== null;
+        /*
+          OWNERSHIP, not availability (Slice 3.2L-R10-A.1). A BTY-owned section whose
+          sentence cannot be rendered right now must go quiet — never fall back to the
+          Host-narrative branch, which would show the string captured at generation time
+          beside a trigger that no longer produces it.
+        */
+        const isDerived = contracts !== null && derivesFrom(e.kind, contracts);
+        const unavailable = isDerived && derived === null;
         const wasAdjusted = sectionAdjusted(e.kind);
         const open = openDetails === e.kind;
         return (
@@ -444,9 +452,16 @@ export function ProgramAuthorship({
                 still deterministically rendered by BTY — from values the Host changed. Calling
                 that the Host's rewrite would be as inaccurate as calling it BTY's own draft.
               */}
-              <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
-                {wasAdjusted || (!isDerived && decisions[e.kind] === "edit") ? "Adjusted by you" : "Drafted by BTY"}
-              </span>
+              {/*
+                NO BADGE while a BTY-owned section has no sentence (Slice 3.2L-R10-A.1).
+                "Drafted by BTY" over stale text was the misleading half of the defect: it
+                claimed authorship of a moment the current trigger no longer produces.
+              */}
+              {unavailable ? null : (
+                <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
+                  {wasAdjusted || (!isDerived && decisions[e.kind] === "edit") ? "Adjusted by you" : "Drafted by BTY"}
+                </span>
+              )}
             </div>
 
             {isDerived ? (
@@ -456,9 +471,20 @@ export function ProgramAuthorship({
                   textareas let one section drift from another; adjusting the shared values
                   cannot, because every dependent sentence re-renders from them.
                 */}
-                <p className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85" data-testid={`program-derived-${e.kind}`}>
-                  {derived}
-                </p>
+                {unavailable ? (
+                  /*
+                    Deliberately SHORT and not styled as participant content — the long
+                    explanation already sits once at the bottom of the review, and repeating
+                    it in every affected section would read as the program itself.
+                  */
+                  <p className="rounded-lg border border-dashed border-white/15 px-3 py-2 text-sm leading-6 text-white/45" data-testid={`program-unavailable-${e.kind}`}>
+                    Waiting on a moment that comes round again, in “When should they do it?” above.
+                  </p>
+                ) : (
+                  <p className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85" data-testid={`program-derived-${e.kind}`}>
+                    {derived}
+                  </p>
+                )}
                 {/*
                   WHY THIS MATTERS is derived from the training setup, not from anything
                   adjustable here, so it gets the explanation instead of a control that

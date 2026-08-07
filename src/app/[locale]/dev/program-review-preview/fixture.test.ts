@@ -14,6 +14,7 @@ import {
   retainGroundedAssumptions,
   validateEditedReview,
   applicationMomentFor,
+  derivesFrom,
   PROGRAM_REJECT_CODES,
   PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME,
@@ -610,5 +611,73 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     };
     expect(applicationMomentFor(legacy)).toBe("next shift change");
     expect(derived("field_application", legacy)).toContain("At the next shift change,");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R10-A.1 — a BTY-owned section that cannot render must go quiet
+// ---------------------------------------------------------------------------
+
+describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
+  const withTrigger = (trigger: string): ProgramContracts => ({
+    ...PREVIEW_CONTRACTS,
+    behavior: { ...PREVIEW_CONTRACTS.behavior, trigger },
+  });
+
+  it("G1: the exact physical state cannot exist — two moments at once", () => {
+    const broken = withTrigger("before leaving the floor");
+    expect(derived("observable_standard", broken)).toContain("Before leaving the floor");
+    // The sections that would have shown the OLD moment now have no sentence at all.
+    expect(derived("action_decision", broken)).toBeNull();
+    expect(derived("field_application", broken)).toBeNull();
+    // …and they are still BTY's sections, so the surface knows to go quiet rather than
+    // hand them back to the Host as narrative.
+    expect(derivesFrom("action_decision", broken)).toBe(true);
+    expect(derivesFrom("field_application", broken)).toBe(true);
+  });
+
+  it("G4/G9: no legacy moment is reachable from an active v9 review", () => {
+    const broken = withTrigger("before leaving the floor");
+    expect(broken.application).toBeNull();
+    expect(applicationMomentFor(broken)).toBeNull();
+    expect(validateEditedReview(broken, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({
+      ok: false,
+      reason: "application_incomplete",
+      kind: "observable_standard",
+    });
+  });
+
+  it("G6: a valid trigger restores both sections immediately", () => {
+    const fixed = withTrigger("at each morning huddle");
+    expect(derived("action_decision", fixed)).toContain("At my next morning huddle");
+    expect(derived("field_application", fixed)).toContain("At the next morning huddle");
+    expect(validateEditedReview(fixed, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
+  });
+
+  it("G8: a legacy v1-v8 proposal still renders from its stored moment", () => {
+    // Same underivable trigger — but this proposal genuinely carried a moment, and its
+    // evidence must replay exactly as it was accepted.
+    const legacy: ProgramContracts = {
+      ...withTrigger("before leaving the floor"),
+      application: { applicationMoment: "next shift change" },
+    };
+    expect(applicationMomentFor(legacy)).toBe("next shift change");
+    expect(derived("action_decision", legacy)).toContain("At my next shift change");
+    expect(derived("field_application", legacy)).toContain("At the next shift change");
+    expect(derivesFrom("action_decision", legacy)).toBe(true);
+  });
+
+  it("ownership is stable while availability changes", () => {
+    for (const trigger of ["at each handoff point", "before leaving the floor", "whenever a deadline moves"]) {
+      const c = withTrigger(trigger);
+      for (const kind of ["observable_standard", "action_decision", "field_application", "scenario", "completion_check", "follow_up", "why_it_matters"] as const) {
+        expect(derivesFrom(kind, c), `${trigger}/${kind}`).toBe(true);
+      }
+      // A narrative kind is never BTY's.
+      expect(derivesFrom("evidence", c)).toBe(false);
+      expect(derivesFrom("reflection", c)).toBe(false);
+    }
+    // …and WHY THIS MATTERS goes back to the Host when there is no problem to ground it in.
+    expect(derivesFrom("why_it_matters", { ...PREVIEW_CONTRACTS, problemStatement: "" })).toBe(false);
   });
 });

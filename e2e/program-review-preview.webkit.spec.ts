@@ -231,6 +231,37 @@ test.describe("Program review preview — non-paid readability gate", () => {
     await expect(page.getByTestId("program-review-block")).toContainText(/comes round again/i);
     await expect(page.getByTestId("program-apply")).toBeDisabled();
 
+    /*
+      R10-A.1 — THE EXACT PHYSICAL FAILURE. The standard moved to the new trigger while
+      YOUR DECISION and APPLY IT kept showing "at my next handoff point", still badged
+      "Drafted by BTY" — two visible moment authorities in a program built to make that
+      impossible.
+    */
+    await expect(page.getByTestId("program-derived-observable_standard")).toContainText("Before leaving the floor");
+    const body = (await page.getByTestId("program-review").textContent()) ?? "";
+    expect(body).not.toContain("At my next handoff point");
+    expect(body).not.toContain("At the next handoff point");
+    expect(await page.getByTestId("program-derived-action_decision").count()).toBe(0);
+    expect(await page.getByTestId("program-derived-field_application").count()).toBe(0);
+    // A short unavailable state, and NO stale text handed back as an editable field.
+    await expect(page.getByTestId("program-unavailable-action_decision")).toContainText(/comes round again/i);
+    await expect(page.getByTestId("program-unavailable-field_application")).toBeVisible();
+    expect(await page.getByTestId("program-edit-action_decision").count()).toBe(0);
+    expect(await page.getByTestId("program-edit-field_application").count()).toBe(0);
+    // No provenance badge claiming BTY wrote a sentence that is not there.
+    for (const kind of ["action_decision", "field_application"]) {
+      const t = (await page.getByTestId(`program-section-${kind}`).textContent()) ?? "";
+      expect(t, kind).not.toContain("Drafted by BTY");
+      expect(t, kind).not.toContain("Adjusted by you");
+    }
+
+    // G6 — recovery is immediate, with no reload.
+    await page.getByTestId("program-field-trigger").fill("at each morning huddle");
+    await expect(decision).toContainText("At my next morning huddle");
+    await expect(apply).toContainText("At the next morning huddle");
+    await expect(page.getByTestId("program-apply")).toBeEnabled();
+    await expect(page.getByTestId("program-section-action_decision")).toContainText("Adjusted by you");
+
     await page.getByTestId("program-reset").click();
     await expect(decision).toContainText("At my next handoff point, I will");
     await expect(apply).toContainText("At the next handoff point, team members must");

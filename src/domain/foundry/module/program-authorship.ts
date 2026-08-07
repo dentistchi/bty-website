@@ -1566,6 +1566,38 @@ export function applicationMomentFor(c: ProgramContracts): string | null {
   return c.application?.applicationMoment ?? null;
 }
 
+/**
+ * Does BTY OWN this section's sentence under these contracts? (Slice 3.2L-R10-A.1)
+ *
+ * `deriveInstructionalContent` returns null for two very different reasons — "the Host owns
+ * this one" and "BTY owns it but cannot render it right now" — and the review surface read
+ * both as the first. So a v9 trigger that stopped deriving turned YOUR DECISION and APPLY
+ * IT back into Host narrative showing the sentence captured at generation time, which is
+ * how a program came to display two different moments at once.
+ *
+ * This answers OWNERSHIP, which does not change while the Host edits. Availability is
+ * `deriveInstructionalContent` returning a string.
+ */
+export function derivesFrom(kind: JourneyElementKind, c: ProgramContracts): boolean {
+  switch (kind) {
+    case "why_it_matters":
+      return c.problemStatement.trim().length > 0;
+    case "observable_standard":
+    // YOUR DECISION and APPLY IT are always BTY's — their moment comes from the trigger.
+    case "action_decision":
+    case "field_application":
+      return true;
+    case "scenario":
+      return c.scenario !== null;
+    case "completion_check":
+      return c.completion !== null;
+    case "follow_up":
+      return c.followUp !== null;
+    default:
+      return false;
+  }
+}
+
 export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramContracts): string | null {
   // WHY THIS MATTERS is derived only when the Host actually stated a problem; without one
   // there is nothing to ground it in and the model's prose stays (Slice 3.2L-R9).
