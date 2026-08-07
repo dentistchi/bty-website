@@ -206,17 +206,43 @@ describe("[3.2L-R9] G10 — every confirmer shape renders role-correctly", () =>
     }
   });
 
-  it("'both people' gets an honest JOINT confirmation, not a counterpart question", () => {
+  it("'both people' gets ONE shared question, and only that", () => {
     const c = withCompletion("both people", "agree who owns the next step");
     expect(isJointConfirmer("both people")).toBe(true);
     // Asking a pair whether they saw the actor act is false for half the audience.
     const q = renderCounterpartQuestion(c.behavior);
     expect(q).toBe("Did you agree who owns the next step?");
     expect(q).not.toContain("see or hear");
+
     const f = derived("follow_up", c)!;
-    // One genuinely shared question may honestly be called one.
-    expect(f).toContain("You will both be asked the same one thing: did you agree who owns the next step?");
+    /*
+      G1 — THE EXACT PHYSICAL FAILURE. R9 appended the shared question to the actor's own
+      one, so the actor got two questions and the second person got one.
+    */
+    expect(f).toBe(
+      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
+        "Each answer is a report, not an independent observation.",
+    );
+    // G3 — no actor-only question survives.
+    expect(f).not.toContain("you will be asked what happened after you were expected to");
     expect(f).not.toContain("will be asked a different question");
+    // G2 — exactly one substantive question.
+    expect((f.match(/\?/g) ?? []).length).toBe(1);
+    // G5 — none of the awkward R9 copy.
+    for (const bad of ["the same one thing", "That is their account too", "person on the other side"]) {
+      expect(f, bad).not.toContain(bad);
+    }
+    // G4 — still a report, never an observation by BTY.
+    expect(f).toContain("Each answer is a report, not an independent observation.");
+  });
+
+  it("a joint confirmer only takes over when the other party is actually asked", () => {
+    // The enum decides WHO is asked; the completion authority decides the shape.
+    const c = { ...withCompletion("both people", "agree who owns the next step"), followUp: { reviewFocus: "what_happened_next", confirmer: "self_report" } as const };
+    const f = derived("follow_up", c)!;
+    expect(f).toContain("In 7 days you will be asked what happened after you were expected to");
+    expect(f).toContain("That is your own account of it, not an observation.");
+    expect(f).not.toContain("one shared question");
   });
 
   it("the other joint spellings are recognised too", () => {
@@ -233,7 +259,7 @@ describe("[3.2L-R9] G9 — both answers stay reports", () => {
   it("the follow-up says so on its face", () => {
     const f = derived("follow_up")!;
     expect(f).toContain("That is your own account of it, not an observation.");
-    expect(f).toContain("That is their account too.");
+    expect(f).toContain("Their answer is a report too.");
     expect(f).not.toMatch(/BTY (?:saw|observed|verified)/i);
   });
 

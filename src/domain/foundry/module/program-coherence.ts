@@ -1324,19 +1324,36 @@ export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract,
     what_happened_next: `what happened after you were expected to ${action}`,
     the_confirmation: `whether ${clause}`,
   };
+  const who = lowerFirst(stripTrailingStop(b.completion.confirmedBy.trim()));
+
+  /**
+   * THE JOINT BRANCH REPLACES THE WHOLE SENTENCE (Slice 3.2L-R9.1).
+   *
+   * R9 derived the joint question correctly and then APPENDED it to the actor's own
+   * question, because the confirmer only ever chose the trailing clause. So "both people"
+   * gave the actor two questions and the second person one — the opposite of a shared
+   * confirmation. There is exactly ONE substantive question here, both people are its
+   * audience, and no actor-only question survives to be asked separately.
+   */
+  if (f.confirmer === "the_other_person" && isJointConfirmer(b.completion.confirmedBy)) {
+    return (
+      `In ${followUpDays} days, ${who} will be asked one shared question: ` +
+      `${renderCounterpartQuestion(b)} ` +
+      `Each answer is a report, not an independent observation.`
+    );
+  }
+
   /**
    * Never claims more than the workflow can show — the evidence ceiling in one clause. The
-   * counterpart line is now DERIVED from the completion authority rather than asserting
-   * that two roles receive one question (Slice 3.2L-R9).
+   * counterpart line is DERIVED from the completion authority rather than asserting that
+   * two roles receive one question (Slice 3.2L-R9).
    */
   const confirmation = baseActionPhrase(b.completion.confirmationAction);
-  const who = lowerFirst(stripTrailingStop(b.completion.confirmedBy.trim()));
-  const counterpart = isJointConfirmer(b.completion.confirmedBy)
-    ? `You will both be asked the same one thing: did you ${confirmation}?`
-    : `${upperFirst(who)} will be asked a different question: did they see or hear you ${action}, and did they ${confirmation}?`;
+  const counterpart =
+    `${upperFirst(who)} will be asked a different question: did they see or hear you ${action}, and did they ${confirmation}?`;
   const by: Record<Confirmer, string> = {
     self_report: "That is your own account of it, not an observation.",
-    the_other_person: `That is your own account of it, not an observation. ${counterpart} That is their account too.`,
+    the_other_person: `That is your own account of it, not an observation. ${counterpart} Their answer is a report too.`,
     the_host: "Your host will read it with you.",
   };
   return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`;

@@ -414,7 +414,7 @@ test.describe("Program review preview — non-paid readability gate", () => {
     expect(next).toContain("The receiving team member will be asked a different question: did they see or hear you state each unfinished item and identify its next owner, and did they repeat back who owns the next step?");
     // G9 — both remain reports.
     expect(next).toContain("not an observation");
-    expect(next).toContain("That is their account too.");
+    expect(next).toContain("Their answer is a report too.");
   });
 
   test("R9 G8: the counterpart question follows the completion authority", async ({ page }) => {
@@ -427,11 +427,32 @@ test.describe("Program review preview — non-paid readability gate", () => {
     await expect(next).toContainText("did they sign the handover sheet?");
     await expect(page.getByTestId("program-section-follow_up")).toContainText("Adjusted by you");
 
-    // A joint confirmer gets one honest shared question instead.
+    // A joint confirmer REPLACES the pair with one shared question (Slice 3.2L-R9.1).
     await page.getByTestId("program-field-confirmed-by").fill("both people");
     await page.getByTestId("program-field-completion").fill("agree who owns the next step");
-    await expect(next).toContainText("You will both be asked the same one thing: did you agree who owns the next step?");
+    await expect(next).toHaveText(
+      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
+        "Each answer is a report, not an independent observation.",
+    );
+    // THE EXACT PHYSICAL FAILURE: the actor kept their own question and got a second one.
+    await expect(next).not.toContainText("you will be asked what happened after you were expected to");
     await expect(next).not.toContainText("will be asked a different question");
+    for (const bad of ["the same one thing", "That is their account too", "person on the other side"]) {
+      expect(await next.textContent(), bad).not.toContain(bad);
+    }
+    expect(((await next.textContent()) ?? "").match(/\?/g) ?? []).toHaveLength(1);
+
+    // Going back to a single confirmer restores the two-perspective question.
+    await page.getByTestId("program-field-confirmed-by").fill("the next owner");
+    await expect(next).toContainText("The next owner will be asked a different question: did they see or hear you");
+    expect((await next.textContent()) ?? "").not.toContain("one shared question");
+    await expect(page.getByTestId("program-section-follow_up")).toContainText("Adjusted by you");
+    await expect(page.getByTestId("program-section-completion_check")).toContainText("Drafted by BTY");
+
+    // Reset restores the original structure, sentence and badge together.
+    await page.getByTestId("program-reset").click();
+    await expect(next).toContainText("The receiving team member will be asked a different question");
+    await expect(page.getByTestId("program-section-follow_up")).toContainText("Drafted by BTY");
   });
 
   test("R9 G11/G12: no generic adoption assumption, and no empty container", async ({ page }) => {
