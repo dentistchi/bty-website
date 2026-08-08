@@ -15,10 +15,11 @@ const V1 = "b71273e8-0000-0000-0000-000000000000";
 const base = (over: Partial<AdoptionClaim> = {}): AdoptionClaim => ({
   claimedAttemptId: V9,
   journeyInSamePatch: true,
-  attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP },
+  attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
   draftId: DRAFT,
   currentFingerprint: FP,
   latestSuccessfulAttemptId: V9,
+  adoptedJourneyDigest: null,
   ...over,
 });
 
@@ -39,7 +40,7 @@ describe("[3.2L-R11.2] a receipt cannot be invented", () => {
     // while adopting the v9 journey used to be stamped without complaint.
     const claim = base({
       claimedAttemptId: V1,
-      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP },
+      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
       latestSuccessfulAttemptId: V9,
     });
     expect(decideAdoptionReceipt(claim)).toEqual({ ok: false, reason: "superseded_attempt" });
@@ -52,13 +53,13 @@ describe("[3.2L-R11.2] a receipt cannot be invented", () => {
   });
 
   it("an attempt from another draft is refused", () => {
-    const claim = base({ attempt: { id: V9, draftId: "other-draft", outcome: "success", contextFingerprint: FP } });
+    const claim = base({ attempt: { id: V9, draftId: "other-draft", outcome: "success", contextFingerprint: FP, proposalDigest: null } });
     expect(decideAdoptionReceipt(claim)).toEqual({ ok: false, reason: "attempt_other_draft" });
   });
 
   it("a refusal or in-flight attempt produced no proposal to adopt", () => {
     for (const outcome of ["validation_refused", "provider_error", "timeout", "started"]) {
-      const claim = base({ attempt: { id: V9, draftId: DRAFT, outcome, contextFingerprint: FP } });
+      const claim = base({ attempt: { id: V9, draftId: DRAFT, outcome, contextFingerprint: FP, proposalDigest: null } });
       expect(decideAdoptionReceipt(claim), outcome).toEqual({ ok: false, reason: "attempt_not_successful" });
     }
   });
@@ -78,5 +79,72 @@ describe("[3.2L-R11.2] a receipt cannot be invented", () => {
     expect(
       decideAdoptionReceipt(base({ journeyInSamePatch: false, attempt: null, currentFingerprint: "moved" })),
     ).toEqual({ ok: false, reason: "no_journey_in_same_patch" });
+  });
+});
+
+describe("[3.2L-R11.3] exact proposal identity", () => {
+  const D = `program_proposal_digest_v1:${"a".repeat(64)}`;
+  const OTHER = `program_proposal_digest_v1:${"b".repeat(64)}`;
+
+  it("A: the exact generated proposal with its own attempt is accepted", () => {
+    expect(decideAdoptionReceipt(base({
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      adoptedJourneyDigest: D,
+    }))).toEqual({ ok: true });
+  });
+
+  it("B/C: any journey that is not that proposal is refused", () => {
+    expect(decideAdoptionReceipt(base({
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      adoptedJourneyDigest: OTHER,
+    }))).toEqual({ ok: false, reason: "proposal_mismatch" });
+  });
+
+  it("G10: an attempt that never recorded its proposal cannot be bound", () => {
+    // NULL means "not recorded" — never "close enough". This is the state every one of the
+    // five historical successes is in, 15108cf3 included.
+    expect(decideAdoptionReceipt(base({
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+      adoptedJourneyDigest: D,
+    }))).toEqual({ ok: false, reason: "proposal_mismatch" });
+  });
+
+  it("D: predicate ordering is deterministic — recency is judged before content", () => {
+    expect(decideAdoptionReceipt(base({
+      claimedAttemptId: V1,
+      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: OTHER },
+      latestSuccessfulAttemptId: V9,
+      adoptedJourneyDigest: D,
+    }))).toEqual({ ok: false, reason: "superseded_attempt" });
+  });
+
+  it("E/F/G/H: the earlier predicates still win, and are not weakened by the digest", () => {
+    const withDigest = { adoptedJourneyDigest: D };
+    expect(decideAdoptionReceipt(base({ ...withDigest, attempt: null }))).toEqual({ ok: false, reason: "attempt_not_found" });
+    expect(decideAdoptionReceipt(base({ ...withDigest, journeyInSamePatch: false }))).toEqual({ ok: false, reason: "no_journey_in_same_patch" });
+    expect(decideAdoptionReceipt(base({
+      ...withDigest,
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      currentFingerprint: "moved", latestSuccessfulAttemptId: null,
+    }))).toEqual({ ok: false, reason: "context_moved" });
+    expect(decideAdoptionReceipt(base({
+      ...withDigest,
+      attempt: { id: V9, draftId: DRAFT, outcome: "validation_refused", contextFingerprint: FP, proposalDigest: D },
+    }))).toEqual({ ok: false, reason: "attempt_not_successful" });
+  });
+
+  it("I/L: the same exact claim replays identically, however it arrives", () => {
+    const claim = base({
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      adoptedJourneyDigest: D,
+    });
+    for (let i = 0; i < 3; i++) expect(decideAdoptionReceipt(claim)).toEqual({ ok: true });
+  });
+
+  it("K: a forged marker cannot ripen into a receipt through a later generic save", () => {
+    // A later save writes no journey, so the first predicate refuses it forever.
+    expect(decideAdoptionReceipt(base({ journeyInSamePatch: false, adoptedJourneyDigest: null }))).toEqual({
+      ok: false, reason: "no_journey_in_same_patch",
+    });
   });
 });

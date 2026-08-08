@@ -6,9 +6,15 @@ import {
   deleteDraft,
 } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
-import { findActiveProgramGeneration, markProgramAttemptApplied, readAdoptionFacts } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import {
+  findActiveProgramGeneration,
+  markProgramAttemptApplied,
+  readAdoptionFacts,
+  PROPOSAL_DIGEST_ENABLED,
+} from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { journeyDigest } from "@/domain/foundry/module/proposal-digest";
 import { decideAdoptionReceipt } from "@/domain/foundry/module/adoption-authority";
-import { programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
+import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
@@ -113,14 +119,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
     }).catch(() => ({ attempt: null, latestSuccessfulAttemptId: null }));
 
+    const adoptedJourney = validated.value.answers?.realityGroundedJourneyV1;
     const decision = decideAdoptionReceipt({
       claimedAttemptId: adoptedAttemptId,
       // A marker with no journey in the same request adopts nothing.
-      journeyInSamePatch: validated.value.answers?.realityGroundedJourneyV1 !== undefined,
+      journeyInSamePatch: adoptedJourney !== undefined,
       attempt: facts.attempt,
       draftId: id,
       currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
       latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
+      /*
+        The identity of the journey THIS request wrote, computed here and never taken from
+        the client (Slice 3.2L-R11.3). Null until the digest column exists, which leaves the
+        R11.2 predicates as the complete set rather than quietly weakening them.
+      */
+      adoptedJourneyDigest:
+        PROPOSAL_DIGEST_ENABLED && adoptedJourney
+          ? journeyDigest(adoptedJourney, requiredProgramKinds((result.value.answers ?? {}) as BuilderAnswers))
+          : null,
     });
     if (decision.ok) {
       await markProgramAttemptApplied(admin, adoptedAttemptId, user.id).catch(() => false);

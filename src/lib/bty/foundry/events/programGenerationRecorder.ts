@@ -27,6 +27,17 @@ export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 
 /**
+ * EXACT PROPOSAL IDENTITY (Slice 3.2L-R11.3) — OFF until the Founder executes
+ * `20260811000000_foundry_program_proposal_digest_v1.sql`.
+ *
+ * `proposal_digest` does not exist on the live table yet, and selecting or writing a column
+ * that is not there fails the whole statement. So this stays false: generation records no
+ * digest and the Apply-time check reads none, which leaves R11.2's authority exactly as it
+ * is deployed today. Flipping it after the SQL lands is the only change required.
+ */
+export const PROPOSAL_DIGEST_ENABLED = false;
+
+/**
  * Durable observability for whole-program authorship (Slice 3.2L).
  *
  * One parent per Host instruction, one child per provider call. Recording NEVER blocks or
@@ -75,6 +86,8 @@ export type StartProgramAttemptInput = {
 export type FinalizeProgramAttemptInput = {
   attemptId: string;
   outcome: ProgramAttemptOutcome;
+  /** Server-computed identity of the exact proposal returned for review (Slice 3.2L-R11.3). */
+  proposalDigest?: string | null;
   durationMs: number;
   refusalCode?: string | null;
   refusalKind?: string | null;
@@ -181,6 +194,7 @@ export async function finalizeProgramAttempt(admin: SupabaseClient, input: Final
       refusal_code: input.outcome === "validation_refused" ? (input.refusalCode ?? null) : null,
       refusal_kind: input.outcome === "validation_refused" ? (input.refusalKind ?? null) : null,
       element_count: input.elementCount ?? null,
+      ...(PROPOSAL_DIGEST_ENABLED && input.proposalDigest ? { proposal_digest: input.proposalDigest } : {}),
       required_kind_count: input.requiredKindCount ?? null,
     })
     .eq("id", input.attemptId);
@@ -197,15 +211,15 @@ export async function readAdoptionFacts(
   admin: SupabaseClient,
   input: { attemptId: string; draftId: string; ownerUserId: string; currentFingerprint: string },
 ): Promise<{
-  attempt: { id: string; draftId: string; outcome: string; contextFingerprint: string } | null;
+  attempt: { id: string; draftId: string; outcome: string; contextFingerprint: string; proposalDigest: string | null } | null;
   latestSuccessfulAttemptId: string | null;
 }> {
   const { data: row } = await admin
     .from(ATTEMPTS)
-    .select("id,draft_id,outcome,context_fingerprint")
+    .select(PROPOSAL_DIGEST_ENABLED ? "id,draft_id,outcome,context_fingerprint,proposal_digest" : "id,draft_id,outcome,context_fingerprint")
     .eq("id", input.attemptId)
     .eq("owner_user_id", input.ownerUserId)
-    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string }>();
+    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string; proposal_digest?: string | null }>();
 
   const { data: latest } = await admin
     .from(ATTEMPTS)
@@ -220,7 +234,13 @@ export async function readAdoptionFacts(
 
   return {
     attempt: row
-      ? { id: row.id, draftId: row.draft_id, outcome: row.outcome, contextFingerprint: row.context_fingerprint }
+      ? {
+          id: row.id,
+          draftId: row.draft_id,
+          outcome: row.outcome,
+          contextFingerprint: row.context_fingerprint,
+          proposalDigest: row.proposal_digest ?? null,
+        }
       : null,
     latestSuccessfulAttemptId: latest?.id ?? null,
   };

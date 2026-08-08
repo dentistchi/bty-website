@@ -13,6 +13,7 @@ import {
   type ProgramValidated,
   type StructuralDiagnosis,
 } from "@/domain/foundry/module/program-authorship";
+import { proposalDigest } from "@/domain/foundry/module/proposal-digest";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { CONTRACT_FIELD_STORAGE, deriveOperationalConstruct, type OperationalConstruct } from "@/domain/foundry/module/program-coherence";
 import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
@@ -527,6 +528,12 @@ export async function generateProgram(
           durationMs: Date.now() - t0,
           elementCount: validated.value.proposal.elements.length,
           requiredKindCount: required.length,
+          /*
+            The identity of the exact proposal being returned for review, computed HERE from
+            the validated value — never supplied by a client (Slice 3.2L-R11.3). Inert until
+            the digest column exists; the recorder drops it while the gate is off.
+          */
+          proposalDigest: proposalDigest(validated.value.proposal, required),
         });
       }
       logOutcome(i === 0 ? "authored" : "authored_on_retry");
