@@ -6,9 +6,11 @@ import {
   deleteDraft,
 } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
-import { findActiveProgramGeneration, markProgramAttemptApplied } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { findActiveProgramGeneration, markProgramAttemptApplied, readAdoptionFacts } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { decideAdoptionReceipt } from "@/domain/foundry/module/adoption-authority";
+import { programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
-import { validateDraftPatch } from "@/domain/foundry/module/module-builder";
+import { validateDraftPatch, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 export const runtime = "nodejs";
 
@@ -88,10 +90,41 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
    * described as one: the honest guarantee is that adoption is never lost, not that both
    * writes land together.
    */
+  /**
+   * PROVE THE RECEIPT BELONGS TO WHAT WAS ACTUALLY ADOPTED (Slice 3.2L-R11.2).
+   *
+   * A UUID owned by the Host is not proof. This draft has five successful attempts sharing
+   * one context fingerprint, so naming a v1 proposal from days ago while adopting the v9
+   * journey would previously have been stamped without complaint.
+   *
+   * Everything checked here comes from columns that already exist, including the
+   * fingerprint the attempts migration always meant to be enforced at this moment. A claim
+   * that cannot be proved is simply not stamped: the Host's draft still saved, and the
+   * durable marker keeps the fact recoverable.
+   */
   const adoptedAttemptId = (result.value.answers as { programAdoptionV1?: { attemptId?: unknown } } | null)
     ?.programAdoptionV1?.attemptId;
   if (typeof adoptedAttemptId === "string" && adoptedAttemptId.length > 0) {
-    await markProgramAttemptApplied(admin, adoptedAttemptId, user.id).catch(() => false);
+    const ctx = programContext((result.value.answers ?? {}) as BuilderAnswers);
+    const facts = await readAdoptionFacts(admin, {
+      attemptId: adoptedAttemptId,
+      draftId: id,
+      ownerUserId: user.id,
+      currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
+    }).catch(() => ({ attempt: null, latestSuccessfulAttemptId: null }));
+
+    const decision = decideAdoptionReceipt({
+      claimedAttemptId: adoptedAttemptId,
+      // A marker with no journey in the same request adopts nothing.
+      journeyInSamePatch: validated.value.answers?.realityGroundedJourneyV1 !== undefined,
+      attempt: facts.attempt,
+      draftId: id,
+      currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
+      latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
+    });
+    if (decision.ok) {
+      await markProgramAttemptApplied(admin, adoptedAttemptId, user.id).catch(() => false);
+    }
   }
 
   return managerJson(base, req, { draft: toClientDraft(result.value) });

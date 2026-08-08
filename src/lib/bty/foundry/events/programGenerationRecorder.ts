@@ -187,6 +187,46 @@ export async function finalizeProgramAttempt(admin: SupabaseClient, input: Final
 }
 
 /**
+ * The facts the adoption decision needs, read owner-scoped in one pass (Slice 3.2L-R11.2).
+ *
+ * Returns the claimed attempt AND the newest successful sibling for this draft at this
+ * fingerprint, so the caller can refuse an older proposal without trusting the client to
+ * tell the truth about which one it adopted.
+ */
+export async function readAdoptionFacts(
+  admin: SupabaseClient,
+  input: { attemptId: string; draftId: string; ownerUserId: string; currentFingerprint: string },
+): Promise<{
+  attempt: { id: string; draftId: string; outcome: string; contextFingerprint: string } | null;
+  latestSuccessfulAttemptId: string | null;
+}> {
+  const { data: row } = await admin
+    .from(ATTEMPTS)
+    .select("id,draft_id,outcome,context_fingerprint")
+    .eq("id", input.attemptId)
+    .eq("owner_user_id", input.ownerUserId)
+    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string }>();
+
+  const { data: latest } = await admin
+    .from(ATTEMPTS)
+    .select("id")
+    .eq("owner_user_id", input.ownerUserId)
+    .eq("draft_id", input.draftId)
+    .eq("outcome", "success")
+    .eq("context_fingerprint", input.currentFingerprint)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  return {
+    attempt: row
+      ? { id: row.id, draftId: row.draft_id, outcome: row.outcome, contextFingerprint: row.context_fingerprint }
+      : null,
+    latestSuccessfulAttemptId: latest?.id ?? null,
+  };
+}
+
+/**
  * Record that the Host actually applied the proposal. Authorship ≠ adoption.
  *
  * `applied_at is null` makes the FIRST receipt win (Slice 3.2L-R11.1). The draft carries a
