@@ -667,3 +667,65 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
     expect(refused).not.toMatch(/context_moved|proposal_mismatch|attempt|digest/i);
   });
 });
+
+describe("[3.2L-R11.3B] the surface waits for the server before saying added", () => {
+  const setupApply = (onApply: ReturnType<typeof vi.fn>) => {
+    render(
+      <ProgramAuthorship
+        draftId="d-1"
+        answers={ANSWERS}
+        journey={undefined}
+        ready
+        onGenerate={vi.fn(async () => ok)}
+        onApply={onApply}
+        currentContextFingerprint={FP}
+      />,
+    );
+  };
+
+  it("G13: ADDED is never rendered before the server establishes adoption", async () => {
+    let release: (v: { status: "adopted" }) => void = () => undefined;
+    const onApply = vi.fn(() => new Promise<{ status: "adopted" }>((r) => { release = r; }));
+    setupApply(onApply);
+    await generate();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    // In flight: honest "adding", and nothing claiming it is done.
+    expect(screen.getByTestId("program-applying")).toBeTruthy();
+    expect(screen.queryByTestId("program-applied")).toBeNull();
+    await act(async () => { release({ status: "adopted" }); });
+    expect(screen.getByTestId("program-applied")).toBeTruthy();
+  });
+
+  it("G14: an authority refusal says so, in the Host's words", async () => {
+    setupApply(vi.fn(async () => ({ status: "refused" as const })));
+    await generate();
+    await act(async () => { fireEvent.click(screen.getByTestId("program-apply")); });
+    expect(screen.queryByTestId("program-applied")).toBeNull();
+    const t = screen.getByTestId("program-apply-refused").textContent ?? "";
+    expect(t).toContain("wasn’t added");
+    expect(t).toContain("Your other changes were saved");
+    expect(t).not.toMatch(/proposal_mismatch|context_moved|superseded|attempt|digest|fingerprint/i);
+  });
+
+  it("G15: a pending receipt is a distinct, truthful state — added, still finishing", async () => {
+    setupApply(vi.fn(async () => ({ status: "adopted_receipt_pending" as const })));
+    await generate();
+    await act(async () => { fireEvent.click(screen.getByTestId("program-apply")); });
+    const t = screen.getByTestId("program-applied-pending").textContent ?? "";
+    expect(t).toContain("Added to your training");
+    expect(t).toContain("Finishing the record");
+    expect(t).not.toMatch(/receipt|stamp|applied_at|attempt/i);
+    expect(screen.queryByTestId("program-apply-refused")).toBeNull();
+  });
+
+  it("a save that never landed does not claim anything was added", async () => {
+    setupApply(vi.fn(async () => ({ status: "save_failed" as const })));
+    await generate();
+    await act(async () => { fireEvent.click(screen.getByTestId("program-apply")); });
+    const t = screen.getByTestId("program-apply-save-failed").textContent ?? "";
+    expect(t).toContain("wasn’t added");
+    expect(screen.queryByTestId("program-applied")).toBeNull();
+  });
+});

@@ -85,8 +85,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
    * reason to lose their work.
    */
   const patchAnswers = { ...(validated.value.answers ?? {}) };
+  let initialClaimProved = false;
   const claimedAttemptId = patchAnswers.programAdoptionV1?.attemptId;
-  let adoptionOutcome: { ok: true } | { ok: false; reason: string } | null = null;
+  /**
+   * What the caller is told (Slice 3.2L-R11.3B). `receipt` distinguishes the two honest
+   * success shapes: the adoption is durable either way, but only `recorded` means the
+   * ledger already carries its receipt.
+   */
+  let adoptionOutcome: { ok: true; receipt: "recorded" | "pending" } | { ok: false; reason: string } | null = null;
 
   if (typeof claimedAttemptId === "string") {
     const before = await getOwnerDraft(admin, user.id, id);
@@ -101,8 +107,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       journeyInSamePatch: patchAnswers.realityGroundedJourneyV1 !== undefined,
       journey: patchAnswers.realityGroundedJourneyV1,
     });
-    adoptionOutcome = decision;
-    if (!decision.ok) delete patchAnswers.programAdoptionV1;
+    if (!decision.ok) {
+      adoptionOutcome = decision;
+      delete patchAnswers.programAdoptionV1;
+    }
+    initialClaimProved = decision.ok;
   }
 
   const result = await updateDraftStep(admin, user.id, id, {
@@ -121,19 +130,22 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const durable = (result.value.answers ?? {}) as BuilderAnswers;
   const durableAttemptId = durable.programAdoptionV1?.attemptId;
   if (typeof durableAttemptId === "string" && durableAttemptId.length > 0) {
-    const decision =
-      adoptionOutcome ??
-      (await proveAdoption(admin, {
-        mode: "recovery",
-        attemptId: durableAttemptId,
-        draftId: id,
-        ownerUserId: user.id,
-        answers: durable,
-        journeyInSamePatch: false,
-        journey: durable.realityGroundedJourneyV1,
-      }));
+    const decision = initialClaimProved
+      ? ({ ok: true } as const)
+      : await proveAdoption(admin, {
+          mode: "recovery",
+          attemptId: durableAttemptId,
+          draftId: id,
+          ownerUserId: user.id,
+          answers: durable,
+          journeyInSamePatch: false,
+          journey: durable.realityGroundedJourneyV1,
+        });
     if (decision.ok) {
-      await markProgramAttemptApplied(admin, durableAttemptId, user.id).catch(() => false);
+      const recorded = await markProgramAttemptApplied(admin, durableAttemptId, user.id).catch(() => false);
+      // Durable either way — the journey and the marker are on the row. Only the receipt
+      // is in question, and the next save re-proves and completes it.
+      adoptionOutcome = { ok: true, receipt: recorded ? "recorded" : "pending" };
     } else if (adoptionOutcome === null) {
       adoptionOutcome = decision;
     }

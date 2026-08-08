@@ -23,7 +23,7 @@ import {
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
-import { ProgramAuthorship, KIND_LABEL, type ProgramGenerateOutcome } from "./ProgramAuthorship";
+import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
@@ -59,6 +59,9 @@ import {
  */
 
 type Snapshot = { answers: BuilderAnswers; currentStep: number };
+
+/** What the draft PATCH reports about an adoption claim it carried (Slice 3.2L-R11.3B). */
+type AdoptionResult = { ok?: boolean; reason?: string; receipt?: "recorded" | "pending" };
 type Restore = "loading" | "loaded" | "unavailable" | "gone";
 
 export function ModuleBuilderShell({
@@ -112,6 +115,8 @@ export function ModuleBuilderShell({
 
   /** Set when the server refused an adoption claim carried by a save (Slice 3.2L-R11.3A). */
   const [adoptionRefusal, setAdoptionRefusal] = useState<string | null>(null);
+  /** The adoption result the last save carried, read by Apply rather than assumed. */
+  const adoptionResultRef = useRef<AdoptionResult | null>(null);
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
   if (saverRef.current === null) {
     saverRef.current = createSerializedSaver<Snapshot>(async (snap) => {
@@ -137,7 +142,10 @@ export function ModuleBuilderShell({
           read as "added". Surfaced so the review surface can stop claiming success.
         */
         if (res.ok) {
-          const body = (await res.json().catch(() => null)) as { adoption?: { ok?: boolean; reason?: string } } | null;
+          const body = (await res.json().catch(() => null)) as
+          | { adoption?: { ok?: boolean; reason?: string; receipt?: "recorded" | "pending" } }
+          | null;
+          adoptionResultRef.current = body?.adoption ?? null;
           if (body?.adoption && body.adoption.ok === false) {
             setAdoptionRefusal(body.adoption.reason ?? "refused");
           }
@@ -465,19 +473,33 @@ export function ModuleBuilderShell({
   }, [answers]);
 
   const applyProgram = useCallback(
-    (next: RealityGroundedJourneyV1, attemptId: string | null) => {
+    async (next: RealityGroundedJourneyV1, attemptId: string | null): Promise<ProgramApplyOutcome> => {
       /*
         ONE row update carries the adopted journey AND the record of which proposal was
-        adopted, so the server derives the receipt from durable state rather than from a
-        field that vanishes with the request (Slice 3.2L-R11.1).
+        adopted, and Apply now AWAITS it: the surface may not say "added" before the server
+        has established that it was (Slice 3.2L-R11.3B).
       */
       setAdoptionRefusal(null);
-      patchAnswers(
-        { realityGroundedJourneyV1: next, ...(attemptId ? { programAdoptionV1: { attemptId } } : {}) },
-        true,
-      );
+      adoptionResultRef.current = null;
+      cancelDebounce();
+      const merged = {
+        ...answersRef.current,
+        realityGroundedJourneyV1: next,
+        ...(attemptId ? { programAdoptionV1: { attemptId } } : {}),
+      };
+      answersRef.current = merged;
+      setAnswers(merged);
+      const saved = await saver.flush({ answers: merged, currentStep: stepRef.current });
+      if (!saved) return { status: "save_failed" };
+      // Read back through the declared type: assigning null above narrows the ref, and the
+      // value we care about is written by the save that just ran.
+      const adoption = adoptionResultRef.current as AdoptionResult | null;
+      if (adoption && adoption.ok === false) return { status: "refused" };
+      // A fixture or a draft with no attempt id carries no adoption claim at all.
+      if (adoption?.ok === true && adoption.receipt === "pending") return { status: "adopted_receipt_pending" };
+      return { status: "adopted" };
     },
-    [patchAnswers],
+    [saver, cancelDebounce],
   );
 
   // Adaptive Clarification (Slice 2.4C). A clarification answer is persisted through the

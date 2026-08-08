@@ -208,3 +208,39 @@ describe("[3.2L-R11.3A] initial claim vs receipt recovery", () => {
     });
   });
 });
+
+describe("[3.2L-R11.3B] with the digest authority live", () => {
+  const D = `program_proposal_digest_v1:${"a".repeat(64)}`;
+
+  it("G4/G5: every historical null-digest success is ineligible, 15108cf3 included", () => {
+    // The live table: 12 attempts, 0 with a digest. Enabling the feature must not make
+    // any of them adoptable — null means "identity not recorded", never "close enough".
+    for (const mode of ["initial", "recovery"] as const) {
+      expect(decideAdoptionReceipt(base({
+        mode,
+        journeyInSamePatch: mode === "initial",
+        durableJourneyPresent: true,
+        attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+        adoptedJourneyDigest: D,
+      })), mode).toEqual({ ok: false, reason: "proposal_mismatch" });
+    }
+  });
+
+  it("G8: there is no fallback path — a journey always produces a digest to compare", () => {
+    // The only way `adoptedJourneyDigest` is null is the feature being off or no journey at
+    // all; with a journey present the exact check always runs, so a direct PATCH cannot
+    // slip past it into the older newest-success heuristic.
+    const passesEverythingElse = base({
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+      adoptedJourneyDigest: D,
+    });
+    expect(decideAdoptionReceipt(passesEverythingElse).ok).toBe(false);
+  });
+
+  it("G6: an exact match passes, and only an exact match", () => {
+    const attempt = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D };
+    expect(decideAdoptionReceipt(base({ attempt, adoptedJourneyDigest: D }))).toEqual({ ok: true });
+    expect(decideAdoptionReceipt(base({ attempt, adoptedJourneyDigest: `program_proposal_digest_v1:${"a".repeat(63)}b` })))
+      .toEqual({ ok: false, reason: "proposal_mismatch" });
+  });
+});

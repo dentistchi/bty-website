@@ -30,12 +30,17 @@ export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
  * EXACT PROPOSAL IDENTITY (Slice 3.2L-R11.3) — OFF until the Founder executes
  * `20260811000000_foundry_program_proposal_digest_v1.sql`.
  *
- * `proposal_digest` does not exist on the live table yet, and selecting or writing a column
- * that is not there fails the whole statement. So this stays false: generation records no
- * digest and the Apply-time check reads none, which leaves R11.2's authority exactly as it
- * is deployed today. Flipping it after the SQL lands is the only change required.
+ * The column now exists live — Founder-executed and independently verified, with both CHECK
+ * constraints in place and zero rows backfilled. So generation records the digest and Apply
+ * requires it.
+ *
+ * FAIL-CLOSED, not fall-back. With this true, a journey being adopted always produces a
+ * digest to compare, so an attempt whose own digest is NULL can never satisfy the check.
+ * That is deliberate: the twelve historical attempts — 15108cf3 included — stay ineligible,
+ * and a generation whose digest failed to persist is treated as unadoptable rather than
+ * quietly judged by the older newest-success heuristic.
  */
-export const PROPOSAL_DIGEST_ENABLED = false;
+export const PROPOSAL_DIGEST_ENABLED = true;
 
 /**
  * Durable observability for whole-program authorship (Slice 3.2L).

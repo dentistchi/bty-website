@@ -53,6 +53,21 @@ export const KIND_LABEL: Record<JourneyElementKind, string> = {
  * codes fall through to a sentence about honesty — which is what the Founder was shown for
  * a relevance fault in the R4 window.
  */
+/**
+ * What the server established about an Apply (Slice 3.2L-R11.3B). The surface waits for
+ * this before it says anything: "added" is a claim about durable state, and it may not be
+ * made optimistically.
+ */
+export type ProgramApplyOutcome =
+  /** Durable, and the ledger carries its receipt. */
+  | { status: "adopted" }
+  /** Durable — the receipt is still being written and completes on the next save. */
+  | { status: "adopted_receipt_pending" }
+  /** The server refused the claim. The Host's other changes still saved. */
+  | { status: "refused" }
+  /** The save itself did not land. Nothing was added. */
+  | { status: "save_failed" };
+
 export type ProgramGenerateOutcome =
   | {
       ok: true;
@@ -82,7 +97,7 @@ export function ProgramAuthorship({
   ready: boolean;
   onGenerate: () => Promise<ProgramGenerateOutcome>;
   /** Persist the whole approved journey in ONE save. */
-  onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => void;
+  onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => Promise<ProgramApplyOutcome> | void;
   /**
    * The Host-input authority as it is RIGHT NOW. Compared against the fingerprint the
    * proposal was written from, so a proposal cannot silently overwrite answers the Host
@@ -103,7 +118,9 @@ export function ProgramAuthorship({
   // `confirm` sits between the button and the provider. Two controlled windows were
   // spent generating against the wrong training, so the PAID action gets its own target
   // boundary rather than relying on orientation alone (Slice 3.2L-R1.3).
-  const [phase, setPhase] = useState<"idle" | "confirm" | "working" | "review" | "failed" | "applied">("idle");
+  const [phase, setPhase] = useState<"idle" | "confirm" | "working" | "review" | "failed" | "applying" | "applied">("idle");
+  /** What the server established. Never assumed — the panel waits for it. */
+  const [applyOutcome, setApplyOutcome] = useState<ProgramApplyOutcome | null>(null);
   /** The target captured when the confirmation OPENED — never re-derived while it is open. */
   const [target, setTarget] = useState<{ draftId: string; focus: string | null } | null>(null);
   const generateButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -286,7 +303,7 @@ export function ProgramAuthorship({
     currentContextFingerprint.length > 0 &&
     proposalFingerprint !== currentContextFingerprint;
 
-  const apply = useCallback(() => {
+  const apply = useCallback(async () => {
     if (!proposal || reviewBlock || proposalIsStale) return;
     const choices: SectionChoice[] = proposal.elements.map((e) => {
       // Provenance follows what the HOST actually touched. A derived section they never
@@ -299,10 +316,16 @@ export function ProgramAuthorship({
         editedContent: sectionText(e.kind, e.content),
       };
     });
-    onApply(
+    /*
+      NO OPTIMISTIC "ADDED" (Slice 3.2L-R11.3B). The server decides whether this adoption
+      is provable, and until it answers the honest state is "adding", not "added".
+    */
+    setPhase("applying");
+    const outcome = await onApply(
       applyProgramProposal(journey, proposal, choices, { titleDecision, editedTitle: titleEdit }),
       attemptId,
     );
+    setApplyOutcome(outcome ?? { status: "adopted" });
     setPhase("applied");
   }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions]);
 
@@ -439,8 +462,32 @@ export function ProgramAuthorship({
     );
   }
 
+  if (phase === "applying") {
+    return (
+      <section className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-5" data-testid="program-applying">
+        <p className="text-sm text-white/60">Adding this program to your training…</p>
+      </section>
+    );
+  }
+
   if (phase === "applied") {
-    if (adoptionRefusal) {
+    if (applyOutcome?.status === "save_failed") {
+      return (
+        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-save-failed">
+          <p className="text-sm font-medium text-amber-100/90">This program wasn’t added.</p>
+          <p className="mt-1 text-sm leading-6 text-amber-100/75">Your connection dropped before it saved. Try adding it again.</p>
+        </section>
+      );
+    }
+    if (applyOutcome?.status === "adopted_receipt_pending") {
+      return (
+        <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4" data-testid="program-applied-pending">
+          <p className="text-sm font-medium text-emerald-200/90">Added to your training — every section is still editable below.</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-100/70">Finishing the record…</p>
+        </section>
+      );
+    }
+    if (applyOutcome?.status === "refused" || adoptionRefusal) {
       return (
         <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-refused">
           <p className="text-sm font-medium text-amber-100/90">
@@ -670,7 +717,7 @@ export function ProgramAuthorship({
       <div className="flex items-center gap-3 pt-1">
         <button
           type="button"
-          onClick={apply}
+          onClick={() => void apply()}
           disabled={reviewBlock !== null || proposalIsStale}
           data-testid="program-apply"
           className="rounded-xl bg-[#C9A66B] px-5 py-2.5 text-sm font-semibold text-[#0B1F3A] disabled:opacity-40"
