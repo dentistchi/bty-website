@@ -624,3 +624,46 @@ describe("[3.2L-R11] the Apply boundary", () => {
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("[3.2L-R11.3A] the surface never claims an adoption the server refused", () => {
+  it("G10: an authority refusal replaces the added confirmation", async () => {
+    const onGenerate = vi.fn(async () => ok);
+    const { rerender } = render(
+      <ProgramAuthorship
+        draftId="d-1"
+        answers={ANSWERS}
+        journey={undefined}
+        ready
+        onGenerate={onGenerate}
+        onApply={vi.fn()}
+        currentContextFingerprint={FP}
+      />,
+    );
+    await generate();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("program-apply"));
+    });
+    // Optimistically "added" — that is the existing UX and it stays.
+    expect(screen.getByTestId("program-applied")).toBeTruthy();
+
+    // …until the save comes back carrying the server's refusal.
+    rerender(
+      <ProgramAuthorship
+        draftId="d-1"
+        answers={ANSWERS}
+        journey={undefined}
+        ready
+        onGenerate={onGenerate}
+        onApply={vi.fn()}
+        currentContextFingerprint={FP}
+        adoptionRefusal="context_moved"
+      />,
+    );
+    expect(screen.queryByTestId("program-applied")).toBeNull();
+    const refused = screen.getByTestId("program-apply-refused").textContent ?? "";
+    expect(refused).toContain("wasn’t added");
+    expect(refused).toContain("Your other changes were saved");
+    // No internal vocabulary reaches the Host.
+    expect(refused).not.toMatch(/context_moved|proposal_mismatch|attempt|digest/i);
+  });
+});

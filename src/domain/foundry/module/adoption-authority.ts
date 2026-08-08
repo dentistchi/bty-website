@@ -35,11 +35,28 @@ export type AdoptionRefusal =
    */
   | "proposal_mismatch";
 
+/**
+ * TWO MODES, ONE AUTHORITY (Slice 3.2L-R11.3A).
+ *
+ * `initial` — this request is claiming adoption. The journey must be in THIS patch, and the
+ * claim must pass before the marker is allowed to become durable at all.
+ *
+ * `recovery` — the marker is ALREADY durable and the receipt never landed. A later save need
+ * not resend the journey, because the journey is already on the row; everything else is
+ * re-proved from durable state, including the exact proposal identity. The marker's mere
+ * existence is never taken as evidence — a forged or legacy marker has to pass the same
+ * seven checks as a fresh one.
+ */
+export type AdoptionMode = "initial" | "recovery";
+
 export type AdoptionClaim = {
+  mode: AdoptionMode;
   /** The attempt id the draft now carries. */
   claimedAttemptId: string;
-  /** Did THIS request write the journey? A marker alone adopts nothing. */
+  /** Did THIS request write the journey? Required for an `initial` claim only. */
   journeyInSamePatch: boolean;
+  /** Does the row already carry a journey? The `recovery` mode's equivalent. */
+  durableJourneyPresent: boolean;
   /** The attempt row, or null when the Host owns no such attempt. */
   attempt: {
     id: string;
@@ -70,7 +87,14 @@ export type AdoptionClaim = {
 export type AdoptionDecision = { ok: true } | { ok: false; reason: AdoptionRefusal };
 
 export function decideAdoptionReceipt(claim: AdoptionClaim): AdoptionDecision {
-  if (!claim.journeyInSamePatch) return { ok: false, reason: "no_journey_in_same_patch" };
+  /*
+    An INITIAL claim must carry the journey it says it adopted. A RECOVERY has nothing left
+    to prove on that point — the journey is already durable — and demanding it again is what
+    made R11.2's receipt unrecoverable in practice.
+  */
+  if (claim.mode === "initial" ? !claim.journeyInSamePatch : !claim.durableJourneyPresent) {
+    return { ok: false, reason: "no_journey_in_same_patch" };
+  }
   if (claim.attempt === null) return { ok: false, reason: "attempt_not_found" };
   if (claim.attempt.draftId !== claim.draftId) return { ok: false, reason: "attempt_other_draft" };
   if (claim.attempt.outcome !== "success") return { ok: false, reason: "attempt_not_successful" };

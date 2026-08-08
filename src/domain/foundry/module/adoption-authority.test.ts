@@ -13,6 +13,8 @@ const V9 = "15108cf3-0c72-4dea-ba1f-aa54f98ca0e1";
 const V1 = "b71273e8-0000-0000-0000-000000000000";
 
 const base = (over: Partial<AdoptionClaim> = {}): AdoptionClaim => ({
+  mode: "initial",
+  durableJourneyPresent: true,
   claimedAttemptId: V9,
   journeyInSamePatch: true,
   attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
@@ -145,6 +147,64 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
     // A later save writes no journey, so the first predicate refuses it forever.
     expect(decideAdoptionReceipt(base({ journeyInSamePatch: false, adoptedJourneyDigest: null }))).toEqual({
       ok: false, reason: "no_journey_in_same_patch",
+    });
+  });
+});
+
+describe("[3.2L-R11.3A] initial claim vs receipt recovery", () => {
+  const D = `program_proposal_digest_v1:${"a".repeat(64)}`;
+  const OTHER = `program_proposal_digest_v1:${"b".repeat(64)}`;
+  const good = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D };
+
+  it("G8: an INITIAL claim must carry the journey it says it adopted", () => {
+    expect(decideAdoptionReceipt(base({ mode: "initial", journeyInSamePatch: false, durableJourneyPresent: true }))).toEqual({
+      ok: false,
+      reason: "no_journey_in_same_patch",
+    });
+  });
+
+  it("G5: RECOVERY does not need the journey resent — the row already has it", () => {
+    // This is what R11.2 silently broke: with the predicate keyed to the REQUEST, a later
+    // generic save could never complete a receipt, so matrix J was unreachable in the code.
+    expect(decideAdoptionReceipt(base({
+      mode: "recovery",
+      journeyInSamePatch: false,
+      durableJourneyPresent: true,
+      attempt: good,
+      adoptedJourneyDigest: D,
+    }))).toEqual({ ok: true });
+  });
+
+  it("recovery still needs A journey — a marker on a journey-less row proves nothing", () => {
+    expect(decideAdoptionReceipt(base({ mode: "recovery", journeyInSamePatch: false, durableJourneyPresent: false }))).toEqual({
+      ok: false,
+      reason: "no_journey_in_same_patch",
+    });
+  });
+
+  it("G6/G7: recovery re-proves identity against the DURABLE journey", () => {
+    // A forged or legacy marker beside a journey that is not that proposal cannot recover.
+    expect(decideAdoptionReceipt(base({
+      mode: "recovery", journeyInSamePatch: false, durableJourneyPresent: true,
+      attempt: good, adoptedJourneyDigest: OTHER,
+    }))).toEqual({ ok: false, reason: "proposal_mismatch" });
+  });
+
+  it("G9: recovery weakens no other predicate", () => {
+    const rec = { mode: "recovery" as const, journeyInSamePatch: false, durableJourneyPresent: true, adoptedJourneyDigest: D };
+    expect(decideAdoptionReceipt(base({ ...rec, attempt: null }))).toEqual({ ok: false, reason: "attempt_not_found" });
+    expect(decideAdoptionReceipt(base({ ...rec, attempt: { ...good, draftId: "other" } }))).toEqual({ ok: false, reason: "attempt_other_draft" });
+    expect(decideAdoptionReceipt(base({ ...rec, attempt: { ...good, outcome: "validation_refused" } }))).toEqual({ ok: false, reason: "attempt_not_successful" });
+    expect(decideAdoptionReceipt(base({ ...rec, attempt: good, currentFingerprint: "moved", latestSuccessfulAttemptId: null }))).toEqual({ ok: false, reason: "context_moved" });
+    expect(decideAdoptionReceipt(base({ ...rec, attempt: { ...good, id: V1 }, claimedAttemptId: V1, latestSuccessfulAttemptId: V9 }))).toEqual({ ok: false, reason: "superseded_attempt" });
+  });
+
+  it("N: an authority refusal never becomes a receipt because time passed", () => {
+    // The refused claim's marker is never persisted, so there is nothing to recover FROM.
+    // And even if a marker existed, recovery re-proves everything.
+    expect(decideAdoptionReceipt(base({ mode: "recovery", journeyInSamePatch: false, durableJourneyPresent: true, attempt: { ...good, proposalDigest: OTHER }, adoptedJourneyDigest: D }))).toEqual({
+      ok: false,
+      reason: "proposal_mismatch",
     });
   });
 });

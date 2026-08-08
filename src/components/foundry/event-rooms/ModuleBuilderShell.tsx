@@ -110,6 +110,8 @@ export function ModuleBuilderShell({
   const seededPromptRef = useRef(false);
   const seededSharedRef = useRef(false);
 
+  /** Set when the server refused an adoption claim carried by a save (Slice 3.2L-R11.3A). */
+  const [adoptionRefusal, setAdoptionRefusal] = useState<string | null>(null);
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
   if (saverRef.current === null) {
     saverRef.current = createSerializedSaver<Snapshot>(async (snap) => {
@@ -128,6 +130,17 @@ export function ModuleBuilderShell({
         if (res.status === 404) {
           goneRef.current = true;
           return true;
+        }
+        /*
+          The draft saved, but the server may have REFUSED the adoption claim inside it
+          (Slice 3.2L-R11.3A). That is a 200 — the Host's edit is safe — and it must not be
+          read as "added". Surfaced so the review surface can stop claiming success.
+        */
+        if (res.ok) {
+          const body = (await res.json().catch(() => null)) as { adoption?: { ok?: boolean; reason?: string } } | null;
+          if (body?.adoption && body.adoption.ok === false) {
+            setAdoptionRefusal(body.adoption.reason ?? "refused");
+          }
         }
         return res.ok;
       } catch {
@@ -458,6 +471,7 @@ export function ModuleBuilderShell({
         adopted, so the server derives the receipt from durable state rather than from a
         field that vanishes with the request (Slice 3.2L-R11.1).
       */
+      setAdoptionRefusal(null);
       patchAnswers(
         { realityGroundedJourneyV1: next, ...(attemptId ? { programAdoptionV1: { attemptId } } : {}) },
         true,
@@ -615,6 +629,7 @@ export function ModuleBuilderShell({
             ready={programContext(answers) !== null}
             onGenerate={generateProgram}
             currentContextFingerprint={programFingerprint}
+            adoptionRefusal={adoptionRefusal}
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
           />

@@ -72,78 +72,123 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const validated = validateDraftPatch({ answers: body?.answers, currentStep: body?.current_step });
   if (!validated.ok) return managerJson(base, req, { error: "invalid_fields", fields: validated.errors }, 400);
 
+  /**
+   * ADOPTION AUTHORITY RUNS BEFORE THE WRITE (Slice 3.2L-R11.3A).
+   *
+   * R11.1 through R11.3 persisted `programAdoptionV1` first and judged it afterwards, so a
+   * claim that failed every check still left the draft durably saying it had adopted that
+   * proposal. `applied_at` stayed null, which was the point — but the marker itself is an
+   * adoption FACT, and an unprovable one must not survive on the row.
+   *
+   * So an INITIAL claim is proved first and the marker is stripped from the patch if it
+   * cannot be. The rest of the Host's edit still saves: a refused receipt has never been a
+   * reason to lose their work.
+   */
+  const patchAnswers = { ...(validated.value.answers ?? {}) };
+  const claimedAttemptId = patchAnswers.programAdoptionV1?.attemptId;
+  let adoptionOutcome: { ok: true } | { ok: false; reason: string } | null = null;
+
+  if (typeof claimedAttemptId === "string") {
+    const before = await getOwnerDraft(admin, user.id, id);
+    // The answers as they WILL be, so the fingerprint is judged on the state being adopted.
+    const merged = { ...((before?.answers ?? {}) as BuilderAnswers), ...patchAnswers };
+    const decision = await proveAdoption(admin, {
+      mode: "initial",
+      attemptId: claimedAttemptId,
+      draftId: id,
+      ownerUserId: user.id,
+      answers: merged,
+      journeyInSamePatch: patchAnswers.realityGroundedJourneyV1 !== undefined,
+      journey: patchAnswers.realityGroundedJourneyV1,
+    });
+    adoptionOutcome = decision;
+    if (!decision.ok) delete patchAnswers.programAdoptionV1;
+  }
+
   const result = await updateDraftStep(admin, user.id, id, {
-    answers: validated.value.answers,
+    answers: patchAnswers,
     currentStep: validated.value.currentStep,
   });
   if (!result.ok) return managerJson(base, req, { error: result.reason }, statusForReason(result.reason));
 
   /**
-   * ADOPTION RECEIPT, DERIVED FROM DURABLE STATE (Slice 3.2L-R11.1).
+   * RECEIPT, from durable state only.
    *
-   * R11 stamped `applied_at` from a transient request field and swallowed any failure. The
-   * draft write and the attempt write are two separate statements with no transaction
-   * around them, so that could acknowledge an Apply while the ledger still said the
-   * proposal was never adopted — and nothing could say WHICH attempt to stamp afterwards,
-   * because the journey records no attempt id.
-   *
-   * The receipt now follows the draft's own durable `programAdoptionV1` marker, written in
-   * the SAME row update as the journey. So the two facts are recoverable from one another:
-   * if the stamp fails, the marker survives and the very next save completes it. First
-   * receipt wins, so re-offering it never moves the timestamp.
-   *
-   * This is exact, owner-scoped and retry-safe. It is NOT a transaction, and it is not
-   * described as one: the honest guarantee is that adoption is never lost, not that both
-   * writes land together.
+   * An INITIAL claim that just proved itself is stamped here; a marker already on the row
+   * whose receipt never landed is RE-PROVED from the durable journey and stamped. Recovery
+   * never trusts the marker's existence — a forged or legacy marker faces the same checks.
    */
-  /**
-   * PROVE THE RECEIPT BELONGS TO WHAT WAS ACTUALLY ADOPTED (Slice 3.2L-R11.2).
-   *
-   * A UUID owned by the Host is not proof. This draft has five successful attempts sharing
-   * one context fingerprint, so naming a v1 proposal from days ago while adopting the v9
-   * journey would previously have been stamped without complaint.
-   *
-   * Everything checked here comes from columns that already exist, including the
-   * fingerprint the attempts migration always meant to be enforced at this moment. A claim
-   * that cannot be proved is simply not stamped: the Host's draft still saved, and the
-   * durable marker keeps the fact recoverable.
-   */
-  const adoptedAttemptId = (result.value.answers as { programAdoptionV1?: { attemptId?: unknown } } | null)
-    ?.programAdoptionV1?.attemptId;
-  if (typeof adoptedAttemptId === "string" && adoptedAttemptId.length > 0) {
-    const ctx = programContext((result.value.answers ?? {}) as BuilderAnswers);
-    const facts = await readAdoptionFacts(admin, {
-      attemptId: adoptedAttemptId,
-      draftId: id,
-      ownerUserId: user.id,
-      currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
-    }).catch(() => ({ attempt: null, latestSuccessfulAttemptId: null }));
-
-    const adoptedJourney = validated.value.answers?.realityGroundedJourneyV1;
-    const decision = decideAdoptionReceipt({
-      claimedAttemptId: adoptedAttemptId,
-      // A marker with no journey in the same request adopts nothing.
-      journeyInSamePatch: adoptedJourney !== undefined,
-      attempt: facts.attempt,
-      draftId: id,
-      currentFingerprint: ctx ? programContextFingerprint(ctx) : "",
-      latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
-      /*
-        The identity of the journey THIS request wrote, computed here and never taken from
-        the client (Slice 3.2L-R11.3). Null until the digest column exists, which leaves the
-        R11.2 predicates as the complete set rather than quietly weakening them.
-      */
-      adoptedJourneyDigest:
-        PROPOSAL_DIGEST_ENABLED && adoptedJourney
-          ? journeyDigest(adoptedJourney, requiredProgramKinds((result.value.answers ?? {}) as BuilderAnswers))
-          : null,
-    });
+  const durable = (result.value.answers ?? {}) as BuilderAnswers;
+  const durableAttemptId = durable.programAdoptionV1?.attemptId;
+  if (typeof durableAttemptId === "string" && durableAttemptId.length > 0) {
+    const decision =
+      adoptionOutcome ??
+      (await proveAdoption(admin, {
+        mode: "recovery",
+        attemptId: durableAttemptId,
+        draftId: id,
+        ownerUserId: user.id,
+        answers: durable,
+        journeyInSamePatch: false,
+        journey: durable.realityGroundedJourneyV1,
+      }));
     if (decision.ok) {
-      await markProgramAttemptApplied(admin, adoptedAttemptId, user.id).catch(() => false);
+      await markProgramAttemptApplied(admin, durableAttemptId, user.id).catch(() => false);
+    } else if (adoptionOutcome === null) {
+      adoptionOutcome = decision;
     }
   }
 
-  return managerJson(base, req, { draft: toClientDraft(result.value) });
+  return managerJson(base, req, {
+    draft: toClientDraft(result.value),
+    // Never a silent 200-shaped success: a refused claim says so, by its closed reason.
+    ...(adoptionOutcome ? { adoption: adoptionOutcome } : {}),
+  });
+}
+
+/**
+ * Gather the durable facts and decide. Kept beside the route because it is the only caller,
+ * and kept OUT of the domain because it reads the database.
+ */
+async function proveAdoption(
+  admin: Parameters<typeof readAdoptionFacts>[0],
+  input: {
+    mode: "initial" | "recovery";
+    attemptId: string;
+    draftId: string;
+    ownerUserId: string;
+    answers: BuilderAnswers;
+    journeyInSamePatch: boolean;
+    journey: BuilderAnswers["realityGroundedJourneyV1"];
+  },
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const ctx = programContext(input.answers);
+  const fingerprint = ctx ? programContextFingerprint(ctx) : "";
+  const facts = await readAdoptionFacts(admin, {
+    attemptId: input.attemptId,
+    draftId: input.draftId,
+    ownerUserId: input.ownerUserId,
+    currentFingerprint: fingerprint,
+  }).catch(() => ({ attempt: null, latestSuccessfulAttemptId: null }));
+
+  return decideAdoptionReceipt({
+    mode: input.mode,
+    claimedAttemptId: input.attemptId,
+    journeyInSamePatch: input.journeyInSamePatch,
+    durableJourneyPresent: input.journey !== undefined,
+    attempt: facts.attempt,
+    draftId: input.draftId,
+    currentFingerprint: fingerprint,
+    latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
+    /*
+      Recomputed from the journey being proved — the one in this patch for an initial claim,
+      the durable one for a recovery. Never taken from the client (Slice 3.2L-R11.3).
+    */
+    adoptedJourneyDigest:
+      PROPOSAL_DIGEST_ENABLED && input.journey
+        ? journeyDigest(input.journey, requiredProgramKinds(input.answers))
+        : null,
+  });
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

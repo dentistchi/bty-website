@@ -72,6 +72,7 @@ export function ProgramAuthorship({
   onGenerate,
   onApply,
   currentContextFingerprint,
+  adoptionRefusal,
   onPendingChange,
 }: {
   /** The exact loaded draft this surface is bound to. */
@@ -88,6 +89,11 @@ export function ProgramAuthorship({
    * changed after generating it (Slice 3.2L-R11).
    */
   currentContextFingerprint: string;
+  /**
+   * The server refused the adoption claim. The draft still saved — but nothing was added,
+   * and this surface must not say otherwise (Slice 3.2L-R11.3A).
+   */
+  adoptionRefusal?: string | null;
   /**
    * Raised while a program draft is in flight. The Builder uses it to disable
    * publication — a generation and a publication must never overlap on one draft.
@@ -434,6 +440,19 @@ export function ProgramAuthorship({
   }
 
   if (phase === "applied") {
+    if (adoptionRefusal) {
+      return (
+        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-refused">
+          <p className="text-sm font-medium text-amber-100/90">
+            This program wasn’t added. Your other changes were saved.
+          </p>
+          <p className="mt-1 text-sm leading-6 text-amber-100/75">
+            Your training moved on since BTY wrote this draft. Draft the program again so it matches what your
+            training says now.
+          </p>
+        </section>
+      );
+    }
     return (
       <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4" data-testid="program-applied">
         <p className="text-sm font-medium text-emerald-200/90">Added to your training — every section is still editable below.</p>
