@@ -736,6 +736,7 @@ export function ModuleBuilderShell({
             onPublish={doPublish}
             journeyBlockers={journeyEnabled && !journeyApprovable ? journeyBlockers : []}
             generationPending={generationPending}
+            programSectionsMissing={missingProgramKinds(answers, journey).length}
             t={t}
           />
         </>
@@ -1343,6 +1344,7 @@ function PublishAction({
   onPublish,
   journeyBlockers,
   generationPending,
+  programSectionsMissing,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1354,6 +1356,8 @@ function PublishAction({
   journeyBlockers: string[];
   /** A program draft is being written for this training right now. */
   generationPending: boolean;
+  /** Required program sections this training does NOT have. Does not block — it explains. */
+  programSectionsMissing: number;
   t: ModuleBuilderCopy;
 }) {
   // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
@@ -1390,6 +1394,24 @@ function PublishAction({
       ) : error ? (
         <p className="text-xs leading-5 text-amber-300/85" data-testid="publish-error">
           {publishErrorMessage(error, t)}
+        </p>
+      ) : null}
+      {/*
+        WHAT THIS BUTTON ACTUALLY APPROVES (Slice 3.2L-R11.4G).
+
+        A BTY program is OPTIONAL: neither `approveDraft` nor publish consults the journey,
+        and a training made only of the Host's own sections is a legitimate, intended
+        product. So the button is correctly enabled here and is NOT disabled.
+
+        What was missing is the sentence. A Host who has just read "Nothing was added" and
+        then sees an enabled Approve & create session can reasonably read it as approving
+        the draft they were shown. It approves their own training instead — which is a good
+        outcome, but only if they know that is what they are doing.
+      */}
+      {programSectionsMissing > 0 && !notReady ? (
+        <p className="text-sm leading-6 text-white/70" data-testid="publish-without-program">
+          This creates your training from the sections you wrote. The BTY program was not added,
+          so its {programSectionsMissing === 1 ? "remaining section" : `${programSectionsMissing} remaining sections`} will not be part of it.
         </p>
       ) : null}
       <button

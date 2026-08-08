@@ -53,6 +53,7 @@ import {
   renderScenarioSentence,
   renderRationaleSentence,
   renderCounterpartQuestion,
+  CREATION_FRAME,
   deriveFirstApplicationMoment,
   renderStandardSentence,
   ungroundedExistingEntity,
@@ -570,6 +571,79 @@ export { ARTIFACT_NOUNS, CONSTRUCT_NOUNS } from "./program-coherence";
  * A model-authored assumption can never ground anything either — that is precisely the
  * circularity the live miss exploited.
  */
+/**
+ * MATERIAL AUTHORITY — what the generator is actually entitled to say about materials
+ * (Slice 3.2L-R11.4G).
+ *
+ * The canonical draft's one authorized generation was refused for `material_fabrication`,
+ * and the validator was RIGHT: the draft has a YouTube link and no uploaded file, so
+ * nothing established the template the program leaned on. The defect was upstream. The
+ * model was given a bare `Participants will learn from: youtube` and a wall of
+ * prohibitions, and had to infer its own authority — the same shape of failure R7 found in
+ * the behaviour prompt, where prohibitions without a counterweight produced a refusal.
+ *
+ * Four authorities exist in this product, and only three are reachable:
+ *
+ *   A HOST-AUTHORED FACT      "Handoff record" as success evidence — the host said this
+ *                             output matters. Authoritative, and usable.
+ *   B ARTIFACT EXISTENCE      a link or an uploaded file's title. Proves something EXISTS.
+ *   C ARTIFACT CONTENT        what is inside it. **The application never extracts this.**
+ *                             There is no code path that reads a linked video or an
+ *                             uploaded file's body, so this authority is UNREACHABLE and
+ *                             no program may ever speak from it.
+ *   D GENERATED LEARNER OUTPUT what the training asks people to make. Not a claim that
+ *                             anything already exists.
+ *
+ * The refusal came from conflating A/D with B/C. This function states the true position so
+ * the model is told what it MAY author, not only what it may not.
+ */
+export type MaterialAuthority = {
+  /** Anything at all named as material — a link, an upload, or nothing. */
+  readonly exists: readonly string[];
+  /** Always false in this architecture. Named so the day it changes, this is the seam. */
+  readonly contentsVerified: false;
+};
+
+export function deriveMaterialAuthority(
+  answers: BuilderAnswers | undefined,
+  verifiedArtifacts: readonly string[] = [],
+): MaterialAuthority {
+  const intent = typeof answers?.materialIntent === "string" ? answers.materialIntent.trim() : "";
+  const titles = verifiedArtifacts.map((t) => t.trim()).filter((t) => t.length > 0);
+  const exists = [...(intent ? [intent] : []), ...titles];
+  return { exists, contentsVerified: false };
+}
+
+/**
+ * The prompt's material section. Positive first — what the model MAY do — because the
+ * refused attempt proves prohibitions alone leave it guessing.
+ *
+ * Deliberately generic: it never mentions handoffs, records or any other subject. A
+ * training with no materials at all and a training with three uploaded files both get an
+ * honest statement of the same rule.
+ */
+export function materialAuthorityBrief(auth: MaterialAuthority): string[] {
+  const lines: string[] = ["MATERIAL AUTHORITY — what you may say about materials:"];
+  if (auth.exists.length === 0) {
+    lines.push("- There is NO material of any kind. Do not refer to one, and do not imply one is coming.");
+  } else {
+    lines.push(
+      `- The host has named: ${auth.exists.join(", ")}. That is proof it EXISTS and nothing else.`,
+      "- Its CONTENTS have not been read by this system and are not available to you. You cannot know what it says, teaches, shows, lists or requires.",
+      "- So never attribute content to it — not 'the video explains…', not 'as described in the document', not 'the five steps covered in the material'.",
+      "- You may leave it out of the program entirely. That is the honest choice when you cannot use it truthfully.",
+    );
+  }
+  lines.push(
+    "- No template, checklist, worksheet, form, tool, guide or system is available to anyone. Write the program as if none exists, because none does.",
+    "- WHAT YOU MAY DO INSTEAD — this is the intended path, not a fallback: the program is SELF-CONTAINED. Build the whole training from what the host told you.",
+    "- A record, checklist or standard may be an OUTPUT the participant CREATES during the training: 'agree which three items every handover must include, and write them down'. That is a future action, and it is always allowed.",
+    "- What is forbidden is the opposite framing — telling a participant to USE, COMPLETE, FOLLOW or REFER TO something as if it were already in their hands.",
+    "- 'Create a handoff record that names the owner, the next action and how completion is confirmed' — ALLOWED. 'Use the provided handoff template' — FORBIDDEN. The difference is who makes it and when.",
+  );
+  return lines;
+}
+
 export function groundingCorpus(answers: BuilderAnswers | undefined, verifiedArtifacts: readonly string[] = []): string {
   const a = answers ?? {};
   const parts = [
@@ -590,7 +664,64 @@ export function ungroundedArtifact(text: string, corpus: string): string | null 
   return ungroundedExistingEntity(text, corpus);
 }
 
-/** Invented concrete specifics the Host never supplied. */
+/**
+ * CONTENT ATTRIBUTION TO AN UNREAD MATERIAL (Slice 3.2L-R11.4G).
+ *
+ * `ungroundedArtifact` catches a claim that something EXISTS. It does not catch a claim
+ * about what is INSIDE something whose existence is real — "the video explains the five
+ * required steps" names no ungrounded artifact, because the link genuinely exists, and
+ * "video" is deliberately not an artifact noun (adding it would refuse "the video call").
+ * The claim is still false: this system has never read the material.
+ *
+ * So the rule targets attribution, not mention. A program may say the material exists and
+ * may point at it; it may not speak for it.
+ */
+const MATERIAL_SOURCES = "video|recording|webinar|clip|footage|document|file|pdf|link|material|materials|article|slides|deck|handout|reading";
+const ATTRIBUTION_VERBS =
+  "says|state[sd]?|explains?|explained|teaches|taught|shows?|showed|covers?|covered|describes?|described|outlines?|outlined|lists?|listed|demonstrates?|demonstrated|walks? through|contains?|contained|includes?|included|recommends?|recommended|specifies|specified|details|detailed|introduces?|introduced";
+const MATERIAL_CONTENT_CLAIM = [
+  // "the video explains …", "this document lists …"
+  new RegExp(`\\b(?:the|this|that|our|your|their)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\s+(?:${ATTRIBUTION_VERBS})\\b`, "i"),
+  // "as described in the video", "covered in the material"
+  new RegExp(`\\b(?:${ATTRIBUTION_VERBS})\\s+in\\s+(?:the|this|that)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "i"),
+  // "according to the video"
+  new RegExp(`\\baccording to\\s+(?:the|this|that)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "i"),
+];
+
+/**
+ * An UPLOAD does not unlock its contents either. The application stores a file's title and
+ * nothing else, so "the handoff template lists the four required fields" invents contents
+ * for a real file just as surely as the video claim invents them for a real link.
+ *
+ * Applied only to prescriptive artifacts (a template, a checklist, a policy), never to the
+ * things a participant MAKES — a record, a log, a note. And a creation frame in the same
+ * sentence exempts it, so "agree which three items the checklist must include" survives:
+ * that is CASE F, the learner writing one, not a claim about one they were handed.
+ */
+const PRESCRIPTIVE_ARTIFACTS =
+  "template|templates|checklist|checklists|form|forms|policy|policies|guide|guides|manual|manuals|sop|sops|playbook|playbooks|handbook|handbooks|protocol|protocols|worksheet|worksheets|procedure|procedures";
+const PRESCRIPTIVE_CONTENT_CLAIM = new RegExp(
+  `\\b(?:the|this|that|our|your|their)\\s+(?:[\\w'-]+\\s+){0,2}(?:${PRESCRIPTIVE_ARTIFACTS})\\s+(?:${ATTRIBUTION_VERBS})\\b`,
+  "i",
+);
+
+/**
+ * True when the text speaks for a material this system has never read.
+ *
+ * Verified CONTENT authority does not exist anywhere in this product, so there is no
+ * corpus that could ground such a claim — the answer does not depend on what the Host
+ * supplied. `deriveMaterialAuthority().contentsVerified` is the seam that would change
+ * that, and it is permanently false today.
+ */
+export function claimsMaterialContent(text: string): boolean {
+  if (MATERIAL_CONTENT_CLAIM.some((re) => re.test(text))) return true;
+  const m = PRESCRIPTIVE_CONTENT_CLAIM.exec(text);
+  if (!m) return false;
+  // Creation framing anywhere in the surrounding sentence — the participant is making it.
+  const around = text.slice(Math.max(0, m.index - 70), Math.min(text.length, m.index + m[0].length + 70));
+  return !CREATION_FRAME.test(around);
+}
+
 /** Invented concrete specifics the Host never supplied. */
 const INVENTED_SPECIFICS = [
   /\bsection \d+(\.\d+)*\b/i,
@@ -956,6 +1087,9 @@ export function validateProgramProposal(
   const unsafe = (text: string): ProgramRejectCode | null => {
     if (assertsOverclaim(text)) return "evidence_overclaim";
     if (MATERIAL_EXISTS.some((re) => re.test(text))) return "material_fabrication";
+    // Speaking for a material nobody read (Slice 3.2L-R11.4G) — a content claim, not an
+    // existence claim, so the grounding corpus cannot and must not rescue it.
+    if (claimsMaterialContent(text)) return "material_fabrication";
     // Invented specifics first: "section 4.2 of the policy" is BOTH, and the more precise
     // diagnosis is the more useful one to record and to show.
     if (INVENTED_SPECIFICS.some((re) => re.test(text))) return "invented_specifics";

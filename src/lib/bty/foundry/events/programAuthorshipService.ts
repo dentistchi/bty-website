@@ -12,6 +12,9 @@ import {
   type ProgramContext,
   type ProgramValidated,
   type StructuralDiagnosis,
+  deriveMaterialAuthority,
+  materialAuthorityBrief,
+  type MaterialAuthority,
 } from "@/domain/foundry/module/program-authorship";
 import { proposalDigest } from "@/domain/foundry/module/proposal-digest";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
@@ -104,7 +107,12 @@ const KIND_BRIEF: Record<string, string> = {
   follow_up: "what happens at the follow-up: what the participant will be asked, and what it can honestly show.",
 };
 
-function systemPrompt(locale: "en" | "ko", required: readonly string[], evidenceCeiling: string): string {
+function systemPrompt(
+  locale: "en" | "ko",
+  required: readonly string[],
+  evidenceCeiling: string,
+  material: MaterialAuthority,
+): string {
   const isKo = locale === "ko";
   return [
     "You are a workplace training designer. You write the PARTICIPANT-FACING program — the words the team will read. Neutral, practical, respectful. Not a mentor, not a coach, not a character.",
@@ -112,6 +120,14 @@ function systemPrompt(locale: "en" | "ko", required: readonly string[], evidence
     "",
     "ELEMENTS TO WRITE — exactly these kinds, no others:",
     ...required.map((k) => `- ${k}: ${KIND_BRIEF[k] ?? k}`),
+    "",
+    /*
+      Stated BEFORE the prohibitions (Slice 3.2L-R11.4G). The one authorized canonical
+      generation was refused for `material_fabrication` — correctly — because the model was
+      told only what it must not claim and left to guess what it was allowed to author with
+      no materials. The answer is: everything, self-contained. It now reads that first.
+    */
+    ...materialAuthorityBrief(material),
     "",
     "HARD RULES:",
     "- Invent NO facts. No policy numbers, no form codes, no dates, no named people, no incidents, no metrics, no regulations the host did not state.",
@@ -190,7 +206,11 @@ export function evidenceCeilingFor(ctx: ProgramContext): string {
   return parts.join(" ");
 }
 
-function userPrompt(ctx: ProgramContext, construct: OperationalConstruct | null): string {
+function userPrompt(
+  ctx: ProgramContext,
+  construct: OperationalConstruct | null,
+  material: MaterialAuthority,
+): string {
   const lines = [
     `The recurring problem: ${ctx.problemStatement}`,
     `Who needs to change: ${ctx.audienceType}${ctx.audienceDetail ? ` — ${ctx.audienceDetail}` : ""}`,
@@ -207,7 +227,14 @@ function userPrompt(ctx: ProgramContext, construct: OperationalConstruct | null)
     ctx.arenaRecommended ? "The team will also rehearse this under pressure." : null,
     ctx.followUpDays > 0 ? `The host will check back after ${ctx.followUpDays} days.` : "There is no scheduled follow-up.",
     ctx.sharedQuestion ? `The host already asks participants: ${ctx.sharedQuestion}` : null,
-    ctx.materialIntent ? `Participants will learn from: ${ctx.materialIntent}` : null,
+    /*
+      Was `Participants will learn from: youtube` — a bare noun that reads like a resource
+      the program can lean on, next to nothing about what may be said of it. It now states
+      the authority instead of implying one (Slice 3.2L-R11.4G).
+    */
+    material.exists.length > 0
+      ? `Material the host has pointed at (its EXISTENCE only — this system has never read its contents): ${material.exists.join(", ")}`
+      : "The host has supplied no material. Write a program that stands entirely on its own.",
     /**
      * The construct's identity and its AUTHORITY MODE, system-derived from the Host's own
      * words. Until R7 this existed only in server code, so the model had no way to know it
@@ -388,9 +415,12 @@ export async function generateProgram(
     args.verifiedArtifacts ?? [],
   );
 
+  /** One authority for what may be said about materials — the same facts the validator uses. */
+  const materialAuthority = deriveMaterialAuthority(args.answers, args.verifiedArtifacts ?? []);
+
   const base: LlmChatMessage[] = [
-    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx)) },
-    { role: "user", content: userPrompt(args.ctx, promptConstruct) },
+    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority) },
+    { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
 
   let lastCode: ProgramGenerateErrorCode = "invalid_output";
