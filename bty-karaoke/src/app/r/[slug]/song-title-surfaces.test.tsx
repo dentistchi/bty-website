@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestResultCard from './RequestResultCard';
 import RecentlySungSection from './RecentlySungSection';
 import QueueBoard from './QueueBoard';
@@ -26,7 +27,7 @@ afterEach(cleanup);
 describe('R2 — the exact live provider-first row (search card)', () => {
   it('renders the song title first, never "MR 노래방…"', () => {
     const item: YoutubeSearchItem = { videoId: 'dQw4w9WgXcQ', title: LIVE_FAIL, channelTitle: LIVE_FAIL_CHANNEL, thumbnailUrl: null };
-    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
+    renderGuest(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
     const titleEl = document.querySelector('.req-card .title') as HTMLElement;
     expect(titleEl.textContent!.startsWith('난')).toBe(true);
     expect(titleEl.textContent!.startsWith('MR')).toBe(false);
@@ -41,7 +42,7 @@ describe('search card (14, 19, 21, 22)', () => {
   const item: YoutubeSearchItem = { videoId: 'dQw4w9WgXcQ', title: NOISY, channelTitle: NOISY_CHANNEL, thumbnailUrl: null };
 
   it('shows the cleaned title + artist + TJ source, never the provider noise', () => {
-    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
+    renderGuest(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
     expect(screen.getByText('난')).toBeTruthy();
     expect(screen.getByText('옥주현')).toBeTruthy();
     expect(screen.getByText('TJ')).toBeTruthy();
@@ -51,13 +52,13 @@ describe('search card (14, 19, 21, 22)', () => {
 
   it('the raw item is handed to the request callback UNCHANGED (19/20)', () => {
     const onRequest = vi.fn();
-    render(<RequestResultCard item={item} onRequest={onRequest} pending={false} />);
+    renderGuest(<RequestResultCard item={item} onRequest={onRequest} pending={false} />);
     fireEvent.click(screen.getByRole('button', { name: /신청하기/ }));
     expect(onRequest).toHaveBeenCalledWith(item); // raw title + videoId intact
   });
 
   it('the title node uses the 2-line clamp and the request control remains visible (21/22)', () => {
-    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
+    renderGuest(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
     expect(screen.getByText('난').className).toContain('clamp-2');
     expect(screen.getByRole('button', { name: /신청하기/ })).toBeTruthy();
     // BUILD 20M-WEB8 — the web Guest card carries NO bookmark.
@@ -69,14 +70,14 @@ describe('Recently Sung (15, 16)', () => {
   const recent: RecentlySung[] = [{ requestId: 'r1', videoId: 'aaaaaaaaaaa', title: NOISY, artist: NOISY_CHANNEL, thumbnailUrl: null, sungAt: 1 }];
 
   it('Recently Sung shows the cleaned title, not the raw provider string', () => {
-    render(<RecentlySungSection recentlySung={recent} />);
+    renderGuest(<RecentlySungSection recentlySung={recent} />);
     fireEvent.click(screen.getByRole('button', { name: /방금 부른 노래/ }));
     expect(screen.getByText('난')).toBeTruthy();
     expect(screen.queryByText(/TJ Karaoke/)).toBeNull();
   });
 
   it('BUILD 20M-WEB8 — Recently Sung carries no bookmark and no 내 노래 section', () => {
-    render(<RecentlySungSection recentlySung={recent} />);
+    renderGuest(<RecentlySungSection recentlySung={recent} />);
     fireEvent.click(screen.getByRole('button', { name: /방금 부른 노래/ }));
     expect(screen.queryByRole('button', { name: /저장/ })).toBeNull();
     expect(screen.queryByText('내 노래')).toBeNull();
@@ -109,7 +110,7 @@ describe('public Queue + NOW SINGING (18)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('NOW SINGING and waiting rows render cleaned titles', async () => {
-    render(<QueueBoard slug="bty-home" eventId="e1" />);
+    renderGuest(<QueueBoard slug="bty-home" eventId="e1" />);
     await waitFor(() => expect(screen.getAllByText('난').length).toBeGreaterThan(0));
     expect(screen.queryByText(/TJ노래방/)).toBeNull();
     expect(screen.queryByText(/TJ Karaoke/)).toBeNull();
@@ -140,7 +141,7 @@ describe('own NOW SINGING in the dock (17)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('own NOW SINGING perf-card shows the cleaned song title', async () => {
-    render(<MyRequestsDock slug="bty-home" eventId="e1" requests={[req]} onRemoved={vi.fn()} />);
+    renderGuest(<MyRequestsDock slug="bty-home" eventId="e1" requests={[req]} onRemoved={vi.fn()} />);
     await waitFor(() => expect(screen.getByText('지금 노래하는 중')).toBeTruthy());
     expect(screen.getByText('난')).toBeTruthy();
     expect(screen.queryByText(/TJ Karaoke/)).toBeNull();

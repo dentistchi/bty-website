@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CONSENT_STORAGE_KEY, LEGAL_VERSION, LEGAL_LINKS, consentSatisfied } from '@/lib/legal';
+import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
 /**
  * First-use consent gate. Renders its children (the guest search/request flow) only
@@ -12,6 +13,7 @@ import { CONSENT_STORAGE_KEY, LEGAL_VERSION, LEGAL_LINKS, consentSatisfied } fro
  * Requires no Google account.
  */
 export default function GuestConsentGate({ children }: { children: React.ReactNode }) {
+  const t = useGuestT();
   // null = still reading storage (avoid a flash of either state).
   const [consented, setConsented] = useState<boolean | null>(null);
   const [checked, setChecked] = useState(false);
@@ -40,33 +42,34 @@ export default function GuestConsentGate({ children }: { children: React.ReactNo
   const ext = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
   return (
-    <div className="card consent-gate" role="group" aria-label="이용 동의 · Consent">
-      <h2 className="consent-title">시작하기 전에 · Before you start</h2>
+    <div className="card consent-gate" role="group" aria-label={t('guest.consent.a11y')}>
+      <h2 className="consent-title">{t('guest.consent.title')}</h2>
 
       <label className="consent-check">
         <input
           type="checkbox"
           checked={checked}
           onChange={(e) => setChecked(e.target.checked)}
-          aria-describedby="consent-en"
+          aria-describedby="consent-statement"
         />
-        <span>
-          BTY Norebang의 <a href={LEGAL_LINKS.privacy} {...ext}>개인정보처리방침</a>과{' '}
-          <a href={LEGAL_LINKS.terms} {...ext}>이용약관</a>을 확인했으며, YouTube 기능 이용 시{' '}
-          <a href={LEGAL_LINKS.youtubeTerms} {...ext}>YouTube 이용약관</a>이 적용되는 것에 동의합니다.
+        {/* BUILD 26G — ONE language, the Guest's own. This used to render the Korean
+            sentence and an English paragraph together; that was a stand-in for
+            localization, and now that the Guest has a real language it reads once. Every
+            named document — Privacy, Terms, YouTube Terms — is still linked and still
+            focusable, so nothing was dropped from what the Guest consents to. */}
+        <span id="consent-statement">
+          {t('guest.consent.body.before_privacy')}
+          <a href={LEGAL_LINKS.privacy} {...ext}>{t('guest.legal.privacy')}</a>
+          {t('guest.consent.body.between_links')}
+          <a href={LEGAL_LINKS.terms} {...ext}>{t('guest.legal.terms')}</a>
+          {t('guest.consent.body.before_youtube')}
+          <a href={LEGAL_LINKS.youtubeTerms} {...ext}>{t('guest.consent.youtube_terms')}</a>
+          {t('guest.consent.body.after_youtube')}
         </span>
       </label>
 
-      <p id="consent-en" className="muted consent-en">
-        I have reviewed and agree to the BTY Norebang{' '}
-        <a href={LEGAL_LINKS.privacy} {...ext}>Privacy Policy</a> and{' '}
-        <a href={LEGAL_LINKS.terms} {...ext}>Terms of Service</a>, and understand that YouTube-powered
-        features are also subject to the <a href={LEGAL_LINKS.youtubeTerms} {...ext}>YouTube Terms of
-        Service</a>.
-      </p>
-
       <button type="button" className="consent-continue" onClick={accept} disabled={!checked}>
-        동의하고 계속 · Agree &amp; continue
+        {t('guest.consent.agree')}
       </button>
     </div>
   );

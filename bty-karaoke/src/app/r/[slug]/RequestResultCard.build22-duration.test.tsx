@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestResultCard from './RequestResultCard';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 
@@ -32,7 +33,7 @@ function renderCard(over: Partial<YoutubeSearchItem> = {}) {
   const onRequest = vi.fn();
   // `.req-btn` is the always-visible request control (the swipe surface renders its own button,
   // so a role query alone is ambiguous). Both trigger the same action.
-  const { container } = render(
+  const { container } = renderGuest(
     <RequestResultCard item={item(over)} onRequest={onRequest} pending={false} />,
   );
   return {

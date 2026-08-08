@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestForm from './RequestForm';
 
 function installFetch(searchResp: Record<string, unknown>) {
@@ -32,7 +33,7 @@ afterEach(() => {
 describe('search-note copy — quota vs temporary vs direct-link', () => {
   it('quota exhausted → daily-limit copy, NOT "검색이 잠시 붐벼요"', async () => {
     installFetch({ ...base, degraded: true, quotaExceeded: true });
-    render(<RequestForm slug="bty-home" roomOpen eventId="evt-1" />);
+    renderGuest(<RequestForm slug="bty-home" roomOpen eventId="evt-1" />);
     await runSearch();
     await waitFor(() => expect(screen.getByText(/오늘 YouTube 검색 한도를 모두 사용했어요/)).toBeTruthy());
     expect(screen.queryByText(/검색이 잠시 붐벼요/)).toBeNull();
@@ -42,7 +43,7 @@ describe('search-note copy — quota vs temporary vs direct-link', () => {
 
   it('temporary upstream failure (degraded, not quota) → "검색이 잠시 붐벼요" (different copy)', async () => {
     installFetch({ ...base, degraded: true, quotaExceeded: false });
-    render(<RequestForm slug="bty-home" roomOpen eventId="evt-1" />);
+    renderGuest(<RequestForm slug="bty-home" roomOpen eventId="evt-1" />);
     await runSearch();
     await waitFor(() => expect(screen.getByText(/검색이 잠시 붐벼요/)).toBeTruthy());
     expect(screen.queryByText(/오늘 YouTube 검색 한도/)).toBeNull();

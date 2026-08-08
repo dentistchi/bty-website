@@ -6,6 +6,23 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// BUILD 26G — the replacement for a hard-coded-literal source scan.
+//
+// A Guest component no longer holds its copy, so scanning it for Korean text would assert
+// nothing. The contract is now two-sided and STRONGER: the source must reference the catalog
+// KEY, and the catalog must resolve that key to the pinned Korean AND to a non-empty English.
+// A key that lost either language now fails here.
+import { guestT, type GuestMessageKey } from '@/domain/guest-messages';
+
+function rendersKey(source: string, key: GuestMessageKey, koreanIs?: string): boolean {
+  if (!source.includes(`'${key}'`)) return false;
+  const ko = guestT('ko', key);
+  const en = guestT('en', key);
+  if (!ko || !en || ko === key || en === key) return false;
+  return koreanIs === undefined || ko === koreanIs;
+}
+
+
 const appRoot = fileURLToPath(new URL('../../', import.meta.url)); // src/app/
 const read = (p: string) => readFileSync(appRoot + p, 'utf8');
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -83,7 +100,8 @@ describe('PART E — the Guest QR is event-scoped so an old QR cannot join a new
   it('the guest page reads the ?e= param and renders an expired/ended notice', () => {
     expect(guestPage).toContain('searchParams');
     expect(guestPage).toContain('scopedToPastEvent');
-    expect(guestPage).toContain('이벤트 종료');
+    expect(rendersKey(guestPage, 'guest.event.ended.eyebrow', '이벤트 종료')).toBe(true);
+    expect(rendersKey(guestPage, 'guest.event.ended.title', '이 노래방 이벤트는 종료됐어요')).toBe(true);
     // never auto-redirect or auto-create from a scan
     expect(strip(guestPage)).not.toContain('redirect(');
   });

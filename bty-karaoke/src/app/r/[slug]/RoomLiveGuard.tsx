@@ -10,6 +10,7 @@
 // Event 2. Joining the next Event requires scanning its new QR.
 
 import { useEffect, useRef, useState } from 'react';
+import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
 interface Props {
   slug: string;
@@ -29,6 +30,7 @@ export default function RoomLiveGuard({
   pollMs = 4000,
   children,
 }: Props) {
+  const t = useGuestT();
   const [ended, setEnded] = useState<Ended>(null);
   const stop = useRef(false);
 
@@ -67,14 +69,12 @@ export default function RoomLiveGuard({
 
   return (
     <div className="card hero" role="status" data-ended-guard>
-      <div className="eyebrow">이벤트 종료</div>
+      <div className="eyebrow">{t('guest.event.ended.eyebrow')}</div>
       <h1>{roomName}</h1>
       <p className="lead">
-        {ended.kind === 'superseded'
-          ? '이 이벤트는 종료되었어요. 새 이벤트에 참여하려면 새 QR을 스캔해 주세요.'
-          : '이 이벤트가 방금 종료되었어요. 오늘의 기록은 그대로 보존됩니다.'}
+        {t(ended.kind === 'superseded' ? 'guest.event.rotated.body' : 'guest.event.just_ended.body')}
       </p>
-      <p className="muted">진행자가 새 이벤트를 시작하면 새 QR로 다시 신청할 수 있어요.</p>
+      <p className="muted">{t('guest.event.ended.retry')}</p>
     </div>
   );
 }

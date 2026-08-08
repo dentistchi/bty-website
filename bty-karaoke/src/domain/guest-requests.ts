@@ -2,6 +2,9 @@
 // presentation only — never canonical queue truth (each status still comes from
 // the server resolver). Bounded: entries expire with the cancel-capability TTL.
 
+import type { GuestLocale } from './guest-locale';
+import { guestT } from './guest-messages';
+
 import { canGuestCancel, type GuestQueueState } from './queue';
 
 export const MY_REQUESTS_TTL_MS = 12 * 60 * 60 * 1000;
@@ -79,6 +82,7 @@ export interface CollapsedSummary {
  * Terminal rows never inflate the count.
  */
 export function collapsedSummary(
+  locale: GuestLocale,
   rows: readonly { state: GuestQueueState; position: number }[],
 ): CollapsedSummary {
   const active = rows.filter((r) => !isTerminalState(r.state));
@@ -91,8 +95,11 @@ export function collapsedSummary(
 
   let label = '';
   if (count === 0) label = '';
-  else if (nearestPosition != null) label = count > 1 ? `가장 빠른 순번 ${nearestPosition}번` : `지금 대기 ${nearestPosition}번`;
-  else if (onStage) label = '무대 위';
+  else if (nearestPosition != null)
+    label = guestT(locale, count > 1 ? 'guest.summary.earliest' : 'guest.summary.waiting_at', {
+      position: nearestPosition,
+    });
+  else if (onStage) label = guestT(locale, 'guest.summary.on_stage');
   return { count, nearestPosition, label };
 }
 
@@ -186,15 +193,16 @@ export interface ReadyCopyContext {
  * regardless of stage. When the stage is idle there is no previous stage to finish,
  * so that copy would be false.
  */
-export function readyStageCopy(ctx: ReadyCopyContext): string {
-  if (ctx.state === 'now_playing') return '지금 부르는 중입니다';
-  if (ctx.state === 'done') return '이 곡을 불렀어요';
-  if (!ctx.ready) return '준비되면 재생 순서에 반영됩니다';
+export function readyStageCopy(locale: GuestLocale, ctx: ReadyCopyContext): string {
+  if (ctx.state === 'now_playing') return guestT(locale, 'guest.subtitle.now_playing');
+  if (ctx.state === 'done') return guestT(locale, 'guest.subtitle.done');
+  if (!ctx.ready) return guestT(locale, 'guest.subtitle.not_ready');
   // Ready + waiting:
-  if (ctx.readyAheadCount > 0) return `앞에 준비된 노래 ${ctx.readyAheadCount}곡이 있어요`;
-  if (ctx.stageOpen === true && ctx.isEarliestReady) return '첫 곡으로 시작할 준비가 됐어요';
+  if (ctx.readyAheadCount > 0)
+    return guestT(locale, 'guest.subtitle.ready_ahead', { count: ctx.readyAheadCount });
+  if (ctx.stageOpen === true && ctx.isEarliestReady) return guestT(locale, 'guest.subtitle.first_up');
   // A song is playing (or stage state unknown) and this is the next eligible Ready.
-  return '현재 무대가 끝나면 자동으로 이어집니다';
+  return guestT(locale, 'guest.subtitle.auto_follow');
 }
 
 /**

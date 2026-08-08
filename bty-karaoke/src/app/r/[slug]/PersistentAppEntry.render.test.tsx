@@ -7,13 +7,14 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import PersistentAppEntry from './PersistentAppEntry';
 
 afterEach(cleanup);
 
 describe('PersistentAppEntry (persistent web-to-app CTA)', () => {
   it('always shows the label + supporting copy', () => {
-    render(<PersistentAppEntry active={false} universalLink={null} onOpen={() => {}} />);
+    renderGuest(<PersistentAppEntry active={false} universalLink={null} onOpen={() => {}} />);
     expect(screen.getByText('내 노래 순서와 준비 상태를 앱에서 바로 확인하세요')).toBeTruthy();
     // the CTA label appears (as the disabled button in the informational state)
     expect(screen.getByRole('button', { name: '앱에서 보기' })).toBeTruthy();
@@ -21,7 +22,7 @@ describe('PersistentAppEntry (persistent web-to-app CTA)', () => {
 
   it('INFORMATIONAL before a link exists: not tappable, no dead link', () => {
     const onOpen = vi.fn();
-    render(<PersistentAppEntry active={false} universalLink={null} onOpen={onOpen} />);
+    renderGuest(<PersistentAppEntry active={false} universalLink={null} onOpen={onOpen} />);
     const btn = screen.getByRole('button', { name: '앱에서 보기' }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
     // no anchor / no href → never a dead App Store or broken link
@@ -31,7 +32,7 @@ describe('PersistentAppEntry (persistent web-to-app CTA)', () => {
   it('ACTIVE with a Universal Link: renders a real link that fires the tap callback', () => {
     const onOpen = vi.fn();
     const link = 'https://norebang.btydaily.com/app/join/abc123';
-    render(<PersistentAppEntry active universalLink={link} onOpen={onOpen} />);
+    renderGuest(<PersistentAppEntry active universalLink={link} onOpen={onOpen} />);
     const a = screen.getByRole('link', { name: '앱에서 보기' }) as HTMLAnchorElement;
     expect(a.getAttribute('href')).toBe(link);
     fireEvent.click(a);
@@ -39,7 +40,7 @@ describe('PersistentAppEntry (persistent web-to-app CTA)', () => {
   });
 
   it('never uses the forbidden install / App Store wording before BUILD 19D', () => {
-    const { container } = render(
+    const { container } = renderGuest(
       <PersistentAppEntry active universalLink="https://norebang.btydaily.com/app/join/x" onOpen={() => {}} />,
     );
     const text = container.textContent ?? '';

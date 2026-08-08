@@ -5,6 +5,7 @@ import { badgeForVideo } from '@/domain/video-kind';
 import { songDisplay } from '@/domain/song-title';
 import { formatDurationLabel } from '@/domain/duration-admission';
 import SwipeableCard from './SwipeableCard';
+import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
 interface Props {
   item: YoutubeSearchItem;
@@ -27,6 +28,7 @@ export default function RequestResultCard({
   requested = false,
   variant = 'primary',
 }: Props) {
+  const t = useGuestT();
   // BUILD 22 — the verdict is TRI-STATE and only `too_long` blocks. An absent field (an older
   // server, or a result the enrichment could not resolve) reads as `unknown` and stays fully
   // requestable, so a duration outage never disables the product.
@@ -37,7 +39,15 @@ export default function RequestResultCard({
   const act = () => {
     if (!pending && !blocked) onRequest(item);
   };
-  const label = blocked ? '신청 불가' : pending ? '신청 중…' : requested ? '✓ 신청됨' : '신청 →';
+  const label = t(
+    blocked
+      ? 'guest.request.cta.blocked'
+      : pending
+        ? 'guest.request.cta.pending'
+        : requested
+          ? 'guest.request.cta.done'
+          : 'guest.request.cta',
+  );
   // Display-only projection — the raw item.title/channelTitle are unchanged and are
   // what a request/save still stores. The provider name never eats the title line.
   const disp = songDisplay(item.title, item.channelTitle);
@@ -47,7 +57,7 @@ export default function RequestResultCard({
       direction="right"
       tone="gold"
       icon="🎤"
-      label="신청하기"
+      label={t('guest.request.swipe_action')}
       // A blocked card must not offer the swipe affordance either — otherwise the gesture and
       // the button would disagree about whether this song can be requested.
       disabled={pending || blocked}
@@ -84,7 +94,7 @@ export default function RequestResultCard({
           {/* The reason lives in TEXT, never in colour or a disabled style alone — a Guest who
               cannot perceive the greyed button must still learn why, and what to do instead. */}
           {blocked && (
-            <div className="song-blocked-note">15분을 초과해 신청할 수 없어요 · 더 짧은 버전을 선택해 주세요</div>
+            <div className="song-blocked-note">{t('guest.request.too_long_note')}</div>
           )}
         </div>
         <div className="req-card-actions">
@@ -95,8 +105,8 @@ export default function RequestResultCard({
             disabled={pending || blocked}
             aria-label={
               blocked
-                ? `${item.title} — 15분을 초과해 신청할 수 없습니다`
-                : `${item.title} 신청하기`
+                ? t('guest.request.a11y.blocked', { title: item.title })
+                : t('guest.request.a11y', { title: item.title })
             }
           >
             {label}

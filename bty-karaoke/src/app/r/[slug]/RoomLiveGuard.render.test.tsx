@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RoomLiveGuard from './RoomLiveGuard';
 
 function mockFeed(event: { id: string; status: string } | null) {
@@ -28,7 +29,7 @@ afterEach(() => {
 describe('RoomLiveGuard — flips to ended, never redirects', () => {
   it('keeps the live children while the feed reports the SAME live event', async () => {
     vi.stubGlobal('fetch', mockFeed({ id: 'evt-1', status: 'active' }));
-    render(
+    renderGuest(
       <RoomLiveGuard slug="bty-home" initialEventId="evt-1" roomName="Friday Night" pollMs={10_000}>
         <div data-testid="live-ui">신청하기</div>
       </RoomLiveGuard>,
@@ -39,7 +40,7 @@ describe('RoomLiveGuard — flips to ended, never redirects', () => {
 
   it('flips to the ended notice (hides the request UI) when the feed reports status ended', async () => {
     vi.stubGlobal('fetch', mockFeed({ id: 'evt-1', status: 'ended' }));
-    render(
+    renderGuest(
       <RoomLiveGuard slug="bty-home" initialEventId="evt-1" roomName="Friday Night" pollMs={10_000}>
         <div data-testid="live-ui">신청하기</div>
       </RoomLiveGuard>,
@@ -51,7 +52,7 @@ describe('RoomLiveGuard — flips to ended, never redirects', () => {
 
   it('flips to superseded (does NOT hop) when the room now has a DIFFERENT live event', async () => {
     vi.stubGlobal('fetch', mockFeed({ id: 'evt-2', status: 'active' }));
-    render(
+    renderGuest(
       <RoomLiveGuard slug="bty-home" initialEventId="evt-1" roomName="Friday Night" pollMs={10_000}>
         <div data-testid="live-ui">신청하기</div>
       </RoomLiveGuard>,

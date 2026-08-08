@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestForm from './RequestForm';
 import { myRequestsKey } from '@/domain/guest-requests';
 import { guestNameKey } from '@/domain/guest-identity';
@@ -97,7 +98,7 @@ async function openReRequest() {
 
 describe('Gate C — insert-success + response-loss + retry ⇒ exactly one row', () => {
   it('the retry REUSES the original idempotency key ⇒ one committed row', async () => {
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
     const dialog = await openReRequest();
     const btn = within(dialog).getByRole('button', { name: '다시 신청' });
 
@@ -119,7 +120,7 @@ describe('Gate C — insert-success + response-loss + retry ⇒ exactly one row'
   });
 
   it('after confirmed success the durable key is cleared (a later request is genuinely new)', async () => {
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
     const dialog = await openReRequest();
     fireEvent.click(within(dialog).getByRole('button', { name: '다시 신청' }));
     await waitFor(() => expect(postKeys.length).toBe(1));
@@ -131,7 +132,7 @@ describe('Gate C — insert-success + response-loss + retry ⇒ exactly one row'
   });
 
   it('rapid double-tap during submit fires ONE logical request (one key, one row)', async () => {
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
     const dialog = await openReRequest();
     const btn = within(dialog).getByRole('button', { name: '다시 신청' });
     fireEvent.click(btn);

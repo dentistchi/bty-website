@@ -73,11 +73,11 @@ describe('submitCopy', () => {
     'event_closed', 'room_unavailable', 'unauthorized', 'idempotency_conflict',
   ];
   it('every class has non-empty Korean copy', () => {
-    for (const c of classes) expect(submitCopy(c).length).toBeGreaterThan(0);
+    for (const c of classes) expect(submitCopy('ko', c).length).toBeGreaterThan(0);
   });
   it('never leaks internals (no code/stack/endpoint/quota number/"just tap again")', () => {
     for (const c of classes) {
-      const t = submitCopy(c);
+      const t = submitCopy('ko', c);
       expect(t).not.toMatch(/https?:|\/api\/|quota|429|50\d|stack|undefined|null|무조건/i);
     }
   });

@@ -35,11 +35,32 @@ vi.mock('./RoomLiveGuard', () => ({
 vi.mock('@/components/legal/GuestConsentGate', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock('@/components/legal/LegalLinks', () => ({
+// BUILD 26G — the Guest surfaces now use the Guest-language footer. The shared
+// `LegalLinks` is unchanged and still serves the Host/admin/legal pages.
+vi.mock('@/components/guest/GuestLegalLinks', () => ({
   default: () => <div data-testid="legal-links" />,
 }));
 
 import RoomPage from './page';
+
+// BUILD 26G — the Guest page resolves the Browser Guest's language from THIS request's
+// `Accept-Language` and its locale cookie. Calling the server component directly has no
+// request scope, so both are stubbed through a mutable holder.
+//
+// These pre-26G cases assert the SHIPPED KOREAN copy, which is how they prove Korean did
+// not regress — so the default request here is a Korean browser. `guestRequest` lets the
+// 26G cases drive the same page with an English or unsupported browser instead.
+const guestRequest = { acceptLanguage: 'ko-KR,ko;q=0.9', localeCookie: undefined as string | undefined };
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers({ 'accept-language': guestRequest.acceptLanguage }),
+  cookies: async () => ({
+    get: (name: string) =>
+      name === 'bty_guest_locale' && guestRequest.localeCookie
+        ? { name, value: guestRequest.localeCookie }
+        : undefined,
+  }),
+}));
+
 
 async function renderPage(opts: { e?: string } = {}) {
   const ui = await RoomPage({

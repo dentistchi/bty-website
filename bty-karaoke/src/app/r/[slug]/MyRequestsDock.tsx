@@ -25,6 +25,8 @@ import { resolvePerfStage } from '@/domain/self-service';
 import type { OwnStatusRow } from '@/domain/recently-sung';
 import type { RecordInput } from './recently-sung.hooks';
 import SwipeableCard from './SwipeableCard';
+import { useGuestLocale } from '@/components/guest/GuestLocaleProvider';
+import type { GuestTranslator } from '@/domain/guest-messages';
 
 interface Props {
   slug: string;
@@ -42,21 +44,21 @@ interface Props {
 
 const POLL_MS = 4000;
 
-function statusText(s?: GuestQueueStatus): string {
-  if (!s) return '상태 확인 중…';
+function statusText(t: GuestTranslator, s?: GuestQueueStatus): string {
+  if (!s) return t('guest.status.checking');
   switch (s.state) {
     case 'now_playing':
-      return '지금 부를 차례입니다 🎤';
+      return t('guest.status.now_playing');
     case 'up_next':
-      return '곧 당신 차례예요';
+      return t('guest.status.up_next');
     case 'waiting':
-      return `현재 대기 순서 #${s.position}`;
+      return t('guest.status.waiting', { position: s.position });
     case 'done':
-      return '이 곡이 끝났어요 🎉';
+      return t('guest.status.done');
     case 'removed':
-      return '신청이 취소됐어요';
+      return t('guest.status.cancelled');
     default:
-      return '대기열에 없어요';
+      return t('guest.status.gone');
   }
 }
 
@@ -73,8 +75,12 @@ export default function MyRequestsDock({
   onReRequest,
   onRecordRecentlySung,
 }: Props) {
-  // A warm "MC" greeting: "한빛님" when we know the name, else a neutral fallback.
-  const namePrefix = guestName && guestName.trim() ? `${guestName.trim()}님` : '';
+  const { locale, t } = useGuestLocale();
+  // A warm "MC" greeting: "한빛님" / "Alex" when we know the name, else a neutral fallback.
+  // The honorific is a per-language template — English has no equivalent to 님, and
+  // inventing one would read as a bug.
+  const namePrefix =
+    guestName && guestName.trim() ? t('guest.name.honorific', { name: guestName.trim() }) : '';
   const [statuses, setStatuses] = useState<Record<string, GuestQueueStatus>>({});
   /** BUILD 25 — the owner-verified resolutions, newest first. Keyed by requestId throughout. */
   const [resolutions, setResolutions] = useState<ResolvedRequestView[]>([]);
@@ -265,7 +271,7 @@ export default function MyRequestsDock({
     // Compat guard: an older stored entry without a capability can't be cancelled
     // from this device — never send an unauthorized request.
     if (!r.cancelToken) {
-      setError('이 신청은 이 기기에서 취소할 수 없어요.');
+      setError(t('guest.cancel.error.not_this_device'));
       return;
     }
     setCancellingId(r.requestId);
@@ -291,13 +297,13 @@ export default function MyRequestsDock({
         onRemoved(r.requestId);
         return;
       }
-      if (res.status === 403) setError('이 기기에서는 이 신청을 취소할 수 없어요.');
-      else if (res.status === 409) setError('이미 시작되었거나 취소할 수 없는 곡이에요.');
-      else if (res.status === 404) setError('신청곡을 찾을 수 없어요.');
-      else setError('지금은 취소할 수 없어요.');
+      if (res.status === 403) setError(t('guest.cancel.error.forbidden'));
+      else if (res.status === 409) setError(t('guest.cancel.error.conflict'));
+      else if (res.status === 404) setError(t('guest.cancel.error.not_found'));
+      else setError(t('guest.cancel.error.generic'));
       void poll(); // reconcile the real state; keep the row for retry
     } catch {
-      setError('네트워크 오류 — 다시 시도해 주세요. 신청은 그대로 유지돼요.');
+      setError(t('guest.cancel.error.network'));
     } finally {
       setCancellingId(null);
     }
@@ -310,7 +316,7 @@ export default function MyRequestsDock({
   async function doReady(r: MyRequest, ready: boolean) {
     if (actingId) return;
     if (!r.cancelToken) {
-      setError('이 신청은 이 기기에서 준비할 수 없어요.');
+      setError(t('guest.ready.error.not_this_device'));
       return;
     }
     setActingId(r.requestId);
@@ -334,13 +340,13 @@ export default function MyRequestsDock({
         void refreshAll();
         return;
       }
-      if (res.status === 403) setError('이 기기에서는 준비할 수 없어요.');
-      else if (res.status === 409) setError('이미 차례가 지나갔어요.');
-      else if (res.status === 404) setError('신청곡을 찾을 수 없어요.');
-      else setError('지금은 준비할 수 없어요.');
+      if (res.status === 403) setError(t('guest.ready.error.forbidden'));
+      else if (res.status === 409) setError(t('guest.ready.error.conflict'));
+      else if (res.status === 404) setError(t('guest.ready.error.not_found'));
+      else setError(t('guest.ready.error.generic'));
       void refreshAll();
     } catch {
-      setError('네트워크 오류 — 다시 시도해 주세요.');
+      setError(t('guest.ready.error.network'));
     } finally {
       setActingId(null);
     }
@@ -386,6 +392,7 @@ export default function MyRequestsDock({
   const stageSong = stageReq ? songDisplay(stageReq.title, stageReq.artist).title || stageReq.title : '';
 
   const summary = collapsedSummary(
+    locale,
     requests.map((r) => {
       const s = statuses[r.requestId];
       return s ? { state: s.state, position: s.position } : { state: 'waiting' as const, position: 0 };
@@ -435,14 +442,15 @@ export default function MyRequestsDock({
           <div className="perf-card playing hero" role="status">
             <div className="perf-hero-ico" aria-hidden>🎙️</div>
             <div className="perf-eyebrow">
-              <span className="live-dot" aria-hidden /> {namePrefix ? `${namePrefix} 무대 위` : '지금 무대 위'}
+              <span className="live-dot" aria-hidden />{' '}
+              {namePrefix ? t('guest.stage.on_stage_named', { name: namePrefix }) : t('guest.stage.on_stage')}
             </div>
-            <div className="perf-title big">지금 노래하는 중</div>
+            <div className="perf-title big">{t('guest.stage.singing_now')}</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
             {/* V6: the ONE Admin Player runs the TV. The guest neither opens
                 YouTube nor ends the song — the Admin passes the turn. */}
             <div className="perf-sub">
-              TV에서 노래가 재생되고 있어요. 노래가 끝나면 Admin이 다음 차례로 넘깁니다.
+              {t('guest.stage.singing_note')}
             </div>
             {/* BUILD 20B-WEB7 — bookmark THIS song (own, canonically playing by
                 requestId). Save is independent: it never Ready/cancels/starts/
@@ -454,11 +462,13 @@ export default function MyRequestsDock({
           <div className={`perf-card myturn hero${arrived ? ' arrival' : ''}`} role="status">
             <div className="perf-hero-ico" aria-hidden>🎤</div>
             <div className="perf-eyebrow">It’s your turn</div>
-            <div className="perf-title big">{namePrefix ? `${namePrefix}, 다음은 당신의 무대예요` : '다음은 당신의 무대예요'}</div>
+            <div className="perf-title big">
+              {namePrefix ? t('guest.stage.next_named', { name: namePrefix }) : t('guest.stage.next')}
+            </div>
             {/* V8 AUTOPILOT — Ready is the go signal. If nothing is playing, pressing
                 Ready starts the stage right away; otherwise it starts automatically the
                 moment the current song ends. No Admin Start needed. */}
-            <div className="perf-sub">준비되면 눌러주세요 · 앞의 무대가 끝나면 바로 이어집니다.</div>
+            <div className="perf-sub">{t('guest.stage.next_note')}</div>
             <div className="perf-actions">
               <button
                 type="button"
@@ -466,7 +476,7 @@ export default function MyRequestsDock({
                 onClick={() => doReady(stageReq, true)}
                 disabled={actingId === stageReq.requestId}
               >
-                {actingId === stageReq.requestId ? '준비하는 중…' : '준비됐어요'}
+                {t(actingId === stageReq.requestId ? 'guest.stage.readying' : 'guest.stage.ready_action')}
               </button>
             </div>
           </div>
@@ -475,15 +485,15 @@ export default function MyRequestsDock({
         {stageReq && stage.kind === 'my_turn' && isReady && (
           <div className="perf-card ready hero" role="status">
             <div className="perf-hero-ico" aria-hidden>✅</div>
-            <div className="perf-eyebrow">{namePrefix ? namePrefix : '준비 완료'}</div>
-            <div className="perf-title big">준비 완료</div>
+            <div className="perf-eyebrow">{namePrefix ? namePrefix : t('guest.stage.ready_title')}</div>
+            <div className="perf-title big">{t('guest.stage.ready_title')}</div>
             {stageSong && <div className="perf-song">{stageSong}</div>}
             {/* V8: honest — the stage auto-continues on the current song's end; the
                 Admin opens the video on the TV. We never claim TV autoplay. */}
             <div className="perf-sub">
               {justStarted
-                ? '무대가 시작되었습니다 · Admin 화면에서 노래를 열고 있어요.'
-                : readyStageCopy({
+                ? t('guest.stage.ready_note')
+                : readyStageCopy(locale, {
                     state: 'up_next',
                     ready: true,
                     stageOpen,
@@ -498,7 +508,7 @@ export default function MyRequestsDock({
                 onClick={() => doReady(stageReq, false)}
                 disabled={actingId === stageReq.requestId}
               >
-                준비 취소
+                {t('guest.stage.cancel_ready')}
               </button>
             </div>
           </div>
@@ -510,23 +520,23 @@ export default function MyRequestsDock({
             <div className="perf-wait-main">
               <div className="perf-wait-text">
                 {waitReady
-                  ? '준비 완료'
+                  ? t('guest.stage.ready_title')
                   : stage.aheadCount === 0
-                    ? '곧 당신 차례예요'
-                    : `가장 빠른 순번 ${stage.position}번`}
+                    ? t('guest.status.up_next')
+                    : t('guest.summary.earliest', { position: stage.position })}
               </div>
               {/* V8.1 — Ready pre-signals well before the turn; when it lands, the song
                   auto-continues the moment the stage frees. We never claim TV autoplay. */}
               <div className="perf-wait-sub">
                 {waitReady
-                  ? readyStageCopy({
+                  ? readyStageCopy(locale, {
                       state: 'waiting',
                       ready: true,
                       stageOpen,
                       isEarliestReady: stage.aheadCount === 0,
                       readyAheadCount: 0, // perf-card lacks per-Ready-ahead data; idle/continuation only
                     })
-                  : '미리 준비해두면 차례가 오면 자동으로 시작돼요'}
+                  : t('guest.stage.prepare_note')}
               </div>
             </div>
             {/* stopPropagation: a Ready tap must never bubble up to open the sheet. */}
@@ -539,7 +549,9 @@ export default function MyRequestsDock({
               }}
               disabled={actingId === stageReq.requestId}
             >
-              {actingId === stageReq.requestId ? '처리 중…' : waitReady ? '준비 취소' : '준비됐어요'}
+              {actingId === stageReq.requestId
+                ? t('guest.stage.working')
+                : t(waitReady ? 'guest.stage.cancel_ready' : 'guest.stage.ready_action')}
             </button>
           </div>
         )}
@@ -548,10 +560,10 @@ export default function MyRequestsDock({
           className={`dock-pill${pulse ? ' pulse' : ''}`}
           onClick={() => setExpanded(true)}
           aria-haspopup="dialog"
-          aria-label={`내 신청곡 ${summary.count}곡 열기`}
+          aria-label={t('guest.dock.open_a11y', { count: summary.count })}
         >
           <span className="dock-ico" aria-hidden>🎤</span>
-          <span className="dock-count">내 신청곡 {summary.count}</span>
+          <span className="dock-count">{t('guest.dock.title', { count: summary.count })}</span>
           {summary.label && <span className="dock-sub">{summary.label}</span>}
         </button>
       </div>
@@ -563,19 +575,19 @@ export default function MyRequestsDock({
             className="dock-sheet"
             role="dialog"
             aria-modal="true"
-            aria-label="내 신청곡"
+            aria-label={t('guest.dock.a11y')}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="dock-sheet-head">
               <div>
-                <div className="dock-sheet-title">내 신청곡 {summary.count}</div>
-                <div className="dock-sheet-sub">오늘 대기열에 올린 노래</div>
+                <div className="dock-sheet-title">{t('guest.dock.title', { count: summary.count })}</div>
+                <div className="dock-sheet-sub">{t('guest.dock.subtitle')}</div>
               </div>
               <button
                 type="button"
                 className="dock-sheet-close"
                 onClick={() => setExpanded(false)}
-                aria-label="닫기"
+                aria-label={t('guest.dock.close')}
               >
                 ✕
               </button>
@@ -605,7 +617,7 @@ export default function MyRequestsDock({
                     direction="left"
                     tone="coral"
                     icon="✕"
-                    label="신청 취소"
+                    label={t('guest.dock.cancel_request')}
                     disabled={swipeDisabled}
                     onCommit={() => setConfirmingId(r.requestId)}
                   >
@@ -614,7 +626,9 @@ export default function MyRequestsDock({
                       <div className="sheet-row-main">
                         <div className="sheet-row-song">{song.title || r.title}</div>
                         {song.artist && <div className="sheet-row-artist">{song.artist}</div>}
-                        <div className="sheet-row-status">{rowReady && canReady ? '✓ 준비 완료' : statusText(s)}</div>
+                        <div className="sheet-row-status">
+                          {rowReady && canReady ? t('guest.stage.ready_check') : statusText(t, s)}
+                        </div>
                         {/* Per-request Ready — pointer-isolated so a tap never starts the
                             swipe-to-cancel gesture on iOS. Ready ranks visually above cancel. */}
                         {canReady && (
@@ -622,7 +636,7 @@ export default function MyRequestsDock({
                             {rowReady ? (
                               <>
                                 <span className="sheet-ready-note">
-                                  {readyStageCopy({
+                                  {readyStageCopy(locale, {
                                     state,
                                     ready: true,
                                     stageOpen,
@@ -636,7 +650,7 @@ export default function MyRequestsDock({
                                   onClick={() => doReady(r, false)}
                                   disabled={acting}
                                 >
-                                  {acting ? '처리 중…' : '준비 취소'}
+                                  {t(acting ? 'guest.stage.working' : 'guest.stage.cancel_ready')}
                                 </button>
                               </>
                             ) : (
@@ -646,12 +660,14 @@ export default function MyRequestsDock({
                                 onClick={() => doReady(r, true)}
                                 disabled={acting}
                               >
-                                {acting ? '준비하는 중…' : '준비됐어요'}
+                                {t(acting ? 'guest.stage.readying' : 'guest.stage.ready_action')}
                               </button>
                             )}
                           </div>
                         )}
-                        {confirming && <div className="sheet-row-confirm-q">이 신청곡을 취소할까요?</div>}
+                        {confirming && (
+                          <div className="sheet-row-confirm-q">{t('guest.dock.cancel_confirm')}</div>
+                        )}
                       </div>
 
                       {/* Action is pointer-isolated: touching it never starts a
@@ -663,7 +679,7 @@ export default function MyRequestsDock({
                         {confirming ? (
                           <div className="confirm-row">
                             <button type="button" className="linkish" onClick={() => setConfirmingId(null)}>
-                              계속 대기
+                              {t('guest.dock.keep_waiting')}
                             </button>
                             <button
                               type="button"
@@ -671,7 +687,7 @@ export default function MyRequestsDock({
                               onClick={() => doCancel(r)}
                               disabled={cancellingId === r.requestId}
                             >
-                              신청 취소
+                              {t('guest.dock.cancel_request')}
                             </button>
                           </div>
                         ) : action === 'cancel' ? (
@@ -679,12 +695,12 @@ export default function MyRequestsDock({
                             type="button"
                             className="linkish cancel-link"
                             onClick={() => setConfirmingId(r.requestId)}
-                            aria-label={`${song.title || r.title} 신청 취소`}
+                            aria-label={t('guest.dock.cancel_a11y', { title: song.title || r.title })}
                           >
-                            신청 취소
+                            {t('guest.dock.cancel_request')}
                           </button>
                         ) : action === 'unavailable' ? (
-                          <span className="sheet-row-note">이 기기에서 취소 불가</span>
+                          <span className="sheet-row-note">{t('guest.dock.cancel_unavailable')}</span>
                         ) : null}
                       </div>
                     </div>
@@ -692,7 +708,7 @@ export default function MyRequestsDock({
                 );
               })}
               {activeRequests.length === 0 && (
-                <div className="sheet-empty-note">현재 신청한 노래가 없어요.</div>
+                <div className="sheet-empty-note">{t('guest.dock.empty')}</div>
               )}
             </div>
 
@@ -706,7 +722,7 @@ export default function MyRequestsDock({
                   aria-expanded={historyOpen}
                   onClick={() => setHistoryOpen((v) => !v)}
                 >
-                  오늘 부른 노래 {completedRequests.length} {historyOpen ? '〉' : '〉'}
+                  {t('guest.dock.history', { count: completedRequests.length })} {historyOpen ? '〉' : '〉'}
                 </button>
                 {historyOpen && (
                   <div className="dock-history-list">
@@ -718,18 +734,18 @@ export default function MyRequestsDock({
                           <div className="history-row-main">
                             <div className="history-row-song">{song.title || r.title}</div>
                             {song.artist && <div className="history-row-artist">{song.artist}</div>}
-                            <div className="history-row-status">이 곡을 불렀어요</div>
+                            <div className="history-row-status">{t('guest.dock.history_status')}</div>
                           </div>
                           {onReRequest && (
                             dup ? (
-                              <span className="history-dup-note">이미 신청됨</span>
+                              <span className="history-dup-note">{t('guest.dock.already_requested')}</span>
                             ) : (
                               <button
                                 type="button"
                                 className="history-rerequest"
                                 onClick={() => onReRequest(r)}
                               >
-                                다시 신청
+                                {t('guest.dock.request_again')}
                               </button>
                             )
                           )}
@@ -751,24 +767,24 @@ export default function MyRequestsDock({
                 노래 (which is a completed song the Guest actually sang). */}
             {resolvedViews.length > 0 && (
               <div className="dock-resolved">
-                <div className="dock-resolved-title">신청 결과</div>
-                <ul className="dock-resolved-list" aria-label="신청 결과">
+                <div className="dock-resolved-title">{t('guest.dock.resolved_title')}</div>
+                <ul className="dock-resolved-list" aria-label={t('guest.dock.resolved_title')}>
                   {resolvedViews.map((v) => {
                     const song = songDisplay(v.title ?? '', v.channelTitle ?? '');
-                    const shown = song.title || v.title || '신청곡';
+                    const shown = song.title || v.title || t('guest.dock.requested_song');
                     return (
                       <li
                         className="resolved-row"
                         key={v.requestId}
                         // One label per card: which song, then what happened to it.
-                        aria-label={resolutionAccessibilityLabel(shown, v.resolutionCode)}
+                        aria-label={resolutionAccessibilityLabel(locale, shown, v.resolutionCode)}
                       >
                         <div className="resolved-row-song">{shown}</div>
                         {song.artist && <div className="resolved-row-artist">{song.artist}</div>}
                         {/* aria-hidden: the <li> label already reads this sentence, so exposing
                             it again would make VoiceOver announce the reason twice. */}
                         <div className="resolved-row-reason" aria-hidden="true">
-                          {resolutionCopy(v.resolutionCode)}
+                          {resolutionCopy(locale, v.resolutionCode)}
                         </div>
                       </li>
                     );

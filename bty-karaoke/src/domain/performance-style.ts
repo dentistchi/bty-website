@@ -7,6 +7,9 @@
 //   - karaoke   → 노래방 / karaoke videos (likely on-screen words)
 //   - original  → the raw query (official audio / MV), no bias at all
 
+import type { GuestLocale } from './guest-locale';
+import { guestT } from './guest-messages';
+
 import { biasKaraokeQuery } from './youtube-search';
 
 export type PerformanceStyle = 'mr' | 'karaoke' | 'original';
@@ -54,14 +57,30 @@ export interface StyleCopy {
   hint: string; // sub-line under the search box
 }
 
-/** UI copy per style. Honest — never promises guaranteed lyrics. */
-export function styleCopy(style: PerformanceStyle): StyleCopy {
+/**
+ * UI copy per style. Honest — never promises guaranteed lyrics.
+ *
+ * BUILD 26G — the STYLE IDS ('mr' | 'karaoke' | 'original') are the search contract and are
+ * unchanged; `biasStyleQuery` above still augments a Hangul query with Korean search terms
+ * regardless of UI language, because that decides what YouTube is asked for, not what the
+ * Guest reads.
+ */
+export function styleCopy(locale: GuestLocale, style: PerformanceStyle): StyleCopy {
   switch (style) {
     case 'mr':
-      return { label: '🎹 MR', hint: '반주 중심 — 보컬이 빠진 버전을 찾아요' };
+      return {
+        label: guestT(locale, 'guest.style.mr.label'),
+        hint: guestT(locale, 'guest.style.mr.hint'),
+      };
     case 'karaoke':
-      return { label: '🎤 노래방', hint: '화면에 가사가 나올 가능성이 높은 영상' };
+      return {
+        label: guestT(locale, 'guest.style.karaoke.label'),
+        hint: guestT(locale, 'guest.style.karaoke.hint'),
+      };
     case 'original':
-      return { label: '🎵 원곡', hint: '공식 음원 또는 뮤직비디오' };
+      return {
+        label: guestT(locale, 'guest.style.original.label'),
+        hint: guestT(locale, 'guest.style.original.hint'),
+      };
   }
 }

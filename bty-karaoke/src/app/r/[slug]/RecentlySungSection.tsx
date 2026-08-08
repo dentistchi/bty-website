@@ -15,12 +15,14 @@
 import { useState } from 'react';
 import { songDisplay } from '@/domain/song-title';
 import type { RecentlySung } from '@/domain/recently-sung';
+import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
 interface Props {
   recentlySung: readonly RecentlySung[];
 }
 
 export default function RecentlySungSection({ recentlySung }: Props) {
+  const t = useGuestT();
   // Defaults COLLAPSED and never auto-expands on a new performance.
   const [recentOpen, setRecentOpen] = useState(false);
 
@@ -29,7 +31,7 @@ export default function RecentlySungSection({ recentlySung }: Props) {
 
   return (
     <div className="my-songs">
-      <section className="ms-section" aria-label="방금 부른 노래">
+      <section className="ms-section" aria-label={t('guest.recently_sung.title')}>
         <button
           type="button"
           className="ms-head"
@@ -37,7 +39,7 @@ export default function RecentlySungSection({ recentlySung }: Props) {
           onClick={() => setRecentOpen((v) => !v)}
         >
           <span className="ms-caret" aria-hidden>{recentOpen ? '▾' : '▸'}</span>
-          <span className="ms-title">방금 부른 노래</span>
+          <span className="ms-title">{t('guest.recently_sung.title')}</span>
           <span className="ms-count">{recentlySung.length}</span>
         </button>
         {recentOpen && (

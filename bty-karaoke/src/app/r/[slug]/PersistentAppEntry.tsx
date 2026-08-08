@@ -1,6 +1,7 @@
 'use client';
 
-import { PERSISTENT_CTA_COPY } from '@/domain/app-invite';
+import { persistentCtaCopy } from '@/domain/app-invite';
+import { useGuestLocale } from '@/components/guest/GuestLocaleProvider';
 
 // BUILD 19C — the PERSISTENT web-to-app entry CTA, always rendered directly under the Room hero.
 // Independent of the one-time invitation card: dismissing that card never removes this.
@@ -21,12 +22,14 @@ interface Props {
 }
 
 export default function PersistentAppEntry({ active, universalLink, onOpen }: Props) {
+  const { locale, t } = useGuestLocale();
+  const copy = persistentCtaCopy(locale);
   return (
-    <div className="app-cta" role="region" aria-label={PERSISTENT_CTA_COPY.label}>
-      <p className="muted app-cta-support">{PERSISTENT_CTA_COPY.supporting}</p>
+    <div className="app-cta" role="region" aria-label={copy.label}>
+      <p className="muted app-cta-support">{copy.supporting}</p>
       {active && universalLink ? (
         <a href={universalLink} className="button app-cta-action" onClick={onOpen}>
-          {PERSISTENT_CTA_COPY.label}
+          {copy.label}
         </a>
       ) : (
         <button
@@ -34,9 +37,9 @@ export default function PersistentAppEntry({ active, universalLink, onOpen }: Pr
           className="button app-cta-action"
           disabled
           aria-disabled="true"
-          title="첫 노래를 신청하면 앱에서 바로 이어볼 수 있어요"
+          title={t('guest.app_entry.title')}
         >
-          {PERSISTENT_CTA_COPY.label}
+          {copy.label}
         </button>
       )}
     </div>

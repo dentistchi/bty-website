@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestForm from './RequestForm';
 import { myRequestsKey } from '@/domain/guest-requests';
 import { guestNameKey } from '@/domain/guest-identity';
@@ -93,7 +94,7 @@ afterEach(() => {
 
 describe('re-request registers ownership and updates the active count', () => {
   it('내 신청곡 0 → 1 after 다시 신청, without reload; history unchanged', async () => {
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
 
     // Initially: the one owned song is completed → active count 0.
     const pill = await screen.findByRole('button', { name: '내 신청곡 0곡 열기' });
@@ -123,7 +124,7 @@ describe('re-request registers ownership and updates the active count', () => {
     );
     statusById = { 'rem-1': st({ state: 'removed' }), 'old-1': st({ state: 'done' }) };
 
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
     // Let the first poll classify rem-1 as removed → schedules removeMyRequest(+6s).
     await vi.advanceTimersByTimeAsync(100);
     fireEvent.click(await screen.findByRole('button', { name: /내 신청곡 0곡 열기/ }));
@@ -140,7 +141,7 @@ describe('re-request registers ownership and updates the active count', () => {
   });
 
   it('rapid double-tap 다시 신청 creates exactly one request', async () => {
-    render(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
+    renderGuest(<RequestForm slug={SLUG} roomOpen eventId={EVENT} />);
     fireEvent.click(await screen.findByRole('button', { name: '내 신청곡 0곡 열기' }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByText(/오늘 부른 노래 1/));

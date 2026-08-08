@@ -105,6 +105,11 @@ h1.brand {
   align-items: baseline;
   gap: 10px;
   margin-bottom: 18px;
+  /* BUILD 26G — the language switcher lives at the right edge of this row. English copy
+     is wider than Korean, so the row wraps rather than squeezing the wordmark or the
+     tagline; at 320px the switcher simply takes its own line. */
+  flex-wrap: wrap;
+  row-gap: 8px;
 }
 
 .brand-head .brand {
@@ -115,6 +120,78 @@ h1.brand {
   font-size: 0.8rem;
   color: var(--muted-2);
   letter-spacing: 0.01em;
+}
+
+/* BUILD 26G — Guest text that gained width in English. `keep-all` preserves Korean word
+   integrity; `overflow-wrap: anywhere` guarantees a wrap instead of a spill at 320px. */
+.perf-sub,
+.perf-wait-text,
+.dock-sheet-title,
+.dock-sheet-sub,
+.sheet-row-status,
+.sheet-row-confirm-q,
+.qb-empty,
+.consent-title,
+.consent-check span,
+.song-blocked-note,
+.style-hint {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* ── BUILD 26G · Guest language switcher ────────────────────── */
+.guest-lang {
+  display: inline-flex;
+  align-items: stretch;
+  /* Pushes the control to the trailing edge; when the row wraps it starts the new line. */
+  margin-left: auto;
+  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.16));
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.guest-lang-option {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-2);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  /* A real 44px-tall target even though the control reads as compact chrome. */
+  min-height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.guest-lang-option + .guest-lang-option {
+  border-left: 1px solid var(--hairline, rgba(255, 255, 255, 0.16));
+}
+
+.guest-lang-option[data-selected='true'] {
+  background: var(--gold);
+  color: #10161f;
+}
+
+.guest-lang-option:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+
+/* The narrowest phones we support (320px). The switcher keeps its full labels and its
+   44px target; the tagline yields the space instead, because a language control the
+   Guest cannot read or hit is worse than a missing tagline. */
+@media (max-width: 360px) {
+  .brand-head .brand-tag {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .guest-lang-option {
+    padding: 0 10px;
+  }
 }
 
 /* ── Structural type ────────────────────────────────────────── */
@@ -1549,6 +1626,13 @@ main.dj-console {
   font-weight: 900;
   letter-spacing: -0.01em;
   color: var(--text);
+  /* BUILD 26G — this line carries the longest Guest headline in either language
+     ("{name}, you are up next" / "다음은 당신의 무대예요"). `keep-all` is the correct
+     Korean rule (never split a word mid-token); `overflow-wrap: anywhere` is the escape
+     hatch for the narrowest phones, where WebKit would otherwise let it spill out of its
+     flex column rather than wrap. Measured clean at 320/375/390/430 in Chromium + WebKit. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .perf-title.big {
   font-size: 1.42rem;

@@ -5,6 +5,7 @@ import type { DisplayState } from '@/domain/display';
 import { badgeForKind } from '@/domain/video-kind';
 import { songDisplay } from '@/domain/song-title';
 import { myRequestsKey, legacyMyRequestsKey } from '@/domain/guest-requests';
+import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
 interface Props {
   slug: string;
@@ -20,6 +21,7 @@ interface Props {
 // the numbers come straight from the canonical /display resolver. My-song ids are
 // read from localStorage so no prop coupling to the request form is needed.
 export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Props) {
+  const t = useGuestT();
   const [state, setState] = useState<DisplayState | null>(null);
   const [mine, setMine] = useState<Set<string>>(new Set());
   const seq = useRef(0);
@@ -75,28 +77,28 @@ export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Prop
   if (!playing && waitingCount === 0) return null; // empty — the search card leads
 
   return (
-    <div className="qb card" aria-label="대기 현황">
+    <div className="qb card" aria-label={t('guest.queue.a11y')}>
       {playing && (
         <div className={`qb-now${mine.has(playing.id) ? ' me' : ''}`}>
           <div className="qb-now-label">
-            <span className="live-dot" aria-hidden /> 지금 부르는 중
+            <span className="live-dot" aria-hidden /> {t('guest.queue.now_singing')}
           </div>
           <div className="qb-now-song">{songDisplay(playing.title).title || playing.title}</div>
           <div className="qb-now-singer">
             {playing.guestName}
-            {mine.has(playing.id) && <span className="qb-me-tag">나</span>}
+            {mine.has(playing.id) && <span className="qb-me-tag">{t('guest.queue.me')}</span>}
             <QbBadge kind={playing.videoKind} />
           </div>
         </div>
       )}
 
       <div className="qb-head">
-        <span className="eyebrow">다음 대기</span>
-        <span className="muted">{waitingCount}곡</span>
+        <span className="eyebrow">{t('guest.queue.up_next')}</span>
+        <span className="muted">{t('guest.queue.count', { count: waitingCount })}</span>
       </div>
 
       {waiting.length === 0 ? (
-        <p className="muted qb-empty">대기 중인 곡이 없어요.</p>
+        <p className="muted qb-empty">{t('guest.queue.empty')}</p>
       ) : (
         <ol className="qb-list">
           {waiting.map((r, i) => (
@@ -106,7 +108,7 @@ export default function QueueBoard({ slug, eventId = null, pollMs = 4000 }: Prop
                 <span className="qb-song">{songDisplay(r.title).title || r.title}</span>
                 <span className="qb-singer">
                   {r.guestName}
-                  {mine.has(r.id) && <span className="qb-me-tag">나</span>}
+                  {mine.has(r.id) && <span className="qb-me-tag">{t('guest.queue.me')}</span>}
                 </span>
               </span>
               <QbBadge kind={r.videoKind} />

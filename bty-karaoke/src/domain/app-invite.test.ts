@@ -4,8 +4,8 @@ import {
   inviteShownKey,
   shouldShowInvite,
   appStoreAction,
-  INVITE_COPY,
-  PERSISTENT_CTA_COPY,
+  inviteCopy,
+  persistentCtaCopy,
   appUrlKey,
   persistentCtaShownKey,
   resolvePersistentCta,
@@ -64,20 +64,20 @@ describe('funnel event vocabulary + copy', () => {
     expect('PERSISTENT_APP_CTA_SHOWN').not.toBe('INVITE_SHOWN');
   });
   it('copy is action-first and leaks no token/URL/identity', () => {
-    const all = Object.values(INVITE_COPY).join(' ');
+    const all = Object.values(inviteCopy('ko')).join(' ');
     expect(all).not.toMatch(/http|token|apple|id\d{6,}/i);
-    expect(INVITE_COPY.openApp).toBe('앱에서 열기');
-    expect(INVITE_COPY.continueWeb).toBe('웹에서 계속하기');
+    expect(inviteCopy('ko').openApp).toBe('앱에서 열기');
+    expect(inviteCopy('ko').continueWeb).toBe('웹에서 계속하기');
   });
 });
 
 describe('persistent app-entry CTA (BUILD 19C — always under the hero)', () => {
   it('uses the exact product copy', () => {
-    expect(PERSISTENT_CTA_COPY.label).toBe('앱에서 보기');
-    expect(PERSISTENT_CTA_COPY.supporting).toBe('내 노래 순서와 준비 상태를 앱에서 바로 확인하세요');
+    expect(persistentCtaCopy('ko').label).toBe('앱에서 보기');
+    expect(persistentCtaCopy('ko').supporting).toBe('내 노래 순서와 준비 상태를 앱에서 바로 확인하세요');
   });
   it('never uses the forbidden install/App Store wording before BUILD 19D', () => {
-    const all = Object.values(PERSISTENT_CTA_COPY).join(' ');
+    const all = Object.values(persistentCtaCopy('ko')).join(' ');
     expect(all).not.toContain('앱 설치하기');
     expect(all).not.toContain('App Store');
     expect(all).not.toMatch(/http|token|apple|id\d{6,}/i);

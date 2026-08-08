@@ -5,7 +5,7 @@ import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import {
   resolveSubmit,
   submitCopy,
-  SUBMIT_COPY,
+  submitStatusCopy,
   type SubmitPhase,
   type SubmitErrorClass,
 } from '@/domain/request-submit';
@@ -17,6 +17,7 @@ import {
   styleCopy,
 } from '@/domain/performance-style';
 import { guestNameKey, normalizeGuestName, isValidGuestName } from '@/domain/guest-identity';
+import { useGuestLocale } from '@/components/guest/GuestLocaleProvider';
 import {
   myRequestsKey,
   legacyMyRequestsKey,
@@ -62,6 +63,7 @@ type SearchState = 'idle' | 'searching' | 'done';
 const LEGACY_SAVED_SONGS_KEY = 'bty-karaoke:saved-songs';
 
 export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitted }: Props) {
+  const { locale, t } = useGuestLocale();
   // Identity — remembered once per room/device (never authentication).
   const [guestName, setGuestName] = useState('');
   const [nameLocked, setNameLocked] = useState(false);
@@ -234,7 +236,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       );
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error ?? '검색에 실패했어요');
+        setError(data?.error ?? t('guest.search.failed'));
         setSearchState('idle');
         return;
       }
@@ -242,17 +244,16 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
       setResults(items);
       setResultQuery(query.trim());
       setFallbackUrl(data.fallbackUrl ?? null);
-      if (data.gated) setSearchNote('검색을 준비 중이에요. YouTube에서 찾거나 아래에 링크를 붙여넣어 주세요.');
+      if (data.gated) setSearchNote(t('guest.search.warming_up'));
       // Daily YouTube search quota exhausted — honest, distinct from a temporary blip.
-      else if (data.quotaExceeded)
-        setSearchNote('오늘 YouTube 검색 한도를 모두 사용했어요.\n아래에 YouTube 링크를 붙여 넣으면 계속 신청할 수 있어요.');
-      // Temporary upstream/network failure (5xx/timeout) — keep the "잠시" wording.
-      else if (data.degraded) setSearchNote('검색이 잠시 붐벼요. YouTube에서 열거나 아래에 링크를 붙여넣어 주세요.');
-      else if (items.length === 0) setSearchNote('결과가 없어요. 다른 단어로 검색하거나 아래에 링크를 붙여넣어 주세요.');
+      else if (data.quotaExceeded) setSearchNote(t('guest.search.quota'));
+      // Temporary upstream/network failure (5xx/timeout) — a busy moment, not a dead end.
+      else if (data.degraded) setSearchNote(t('guest.search.busy'));
+      else if (items.length === 0) setSearchNote(t('guest.search.no_results'));
       setSearchState('done');
       void loadRecommendations(items, query.trim());
     } catch {
-      setError('네트워크 오류 — 다시 시도해 주세요');
+      setError(t('guest.search.network_error'));
       setSearchState('idle');
     }
   }
@@ -311,7 +312,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
     const name = normalizeGuestName(guestName);
     if (!isValidGuestName(name)) {
       setEditingName(true);
-      setError('먼저 이름을 입력해 주세요');
+      setError(t('guest.name.required'));
       return;
     }
     activeSubmission.current = {
@@ -541,7 +542,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
             appears ONLY for retryable / uncertain phases (reuses the same idempotency key). */}
         {submitPhase === 'submitting' && (
           <div className="banner" role="status" aria-live="polite">
-            {SUBMIT_COPY.submitting}
+            {submitStatusCopy(locale).submitting}
           </div>
         )}
         {submitErrorClass &&
@@ -553,7 +554,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
               role="alert"
               aria-live="assertive"
             >
-              {submitCopy(submitErrorClass)}
+              {submitCopy(locale, submitErrorClass)}
               {(submitPhase === 'failed_retryable' || submitPhase === 'uncertain') && (
                 <button
                   type="button"
@@ -562,7 +563,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                   onClick={retrySubmit}
                   disabled={submittingKey !== null}
                 >
-                  {SUBMIT_COPY.retry}
+                  {submitStatusCopy(locale).retry}
                 </button>
               )}
             </div>
@@ -572,21 +573,21 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         {nameLocked && !editingName ? (
           <div className="identity-row">
             <span className="identity-name">
-              신청자 <b>{guestName}</b>
+              {t('guest.name.requester')} <b>{guestName}</b>
             </span>
             <button type="button" className="linkish" onClick={() => setEditingName(true)}>
-              변경
+              {t('guest.name.change')}
             </button>
           </div>
         ) : (
           <div className="identity-edit">
-            <label htmlFor="name">이름</label>
+            <label htmlFor="name">{t('guest.name.label')}</label>
             <input
               id="name"
               type="text"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
-              placeholder="예: 한빛"
+              placeholder={t('guest.name.placeholder')}
               maxLength={40}
             />
             {nameLocked && (
@@ -595,7 +596,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                 className="linkish"
                 onClick={() => isValidGuestName(guestName) && setEditingName(false)}
               >
-                완료
+                {t('guest.name.done')}
               </button>
             )}
           </div>
@@ -605,22 +606,22 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         <RecentlySungSection recentlySung={recentlySung.items} />
 
         <form onSubmit={runSearch}>
-          <label htmlFor="q">무슨 노래를 부르고 싶으세요?</label>
+          <label htmlFor="q">{t('guest.search.prompt')}</label>
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <input
               id="q"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="노래 제목 또는 가수"
+              placeholder={t('guest.search.placeholder')}
               maxLength={100}
               autoFocus
             />
             <button type="submit" disabled={query.trim().length < 2 || searchState === 'searching'}>
-              {searchState === 'searching' ? '…' : '검색'}
+              {searchState === 'searching' ? '…' : t('guest.search.action')}
             </button>
           </div>
-          <div className="search-modes" role="group" aria-label="공연 스타일">
+          <div className="search-modes" role="group" aria-label={t('guest.search.style_a11y')}>
             {PERFORMANCE_STYLES.map((s) => (
               <button
                 key={s}
@@ -632,11 +633,11 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
                   if (query.trim().length >= 2) void runSearch(null, s);
                 }}
               >
-                {styleCopy(s).label}
+                {styleCopy(locale, s).label}
               </button>
             ))}
           </div>
-          <p className="muted style-hint">{styleCopy(style).hint}</p>
+          <p className="muted style-hint">{styleCopy(locale, style).hint}</p>
         </form>
 
         {searchNote && (
@@ -644,7 +645,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
             {searchNote}{' '}
             {fallbackUrl && (
               <a href={fallbackUrl} target="_blank" rel="noreferrer">
-                YouTube에서 열기 ↗
+                {t('guest.search.open_youtube')}
               </a>
             )}
           </p>
@@ -652,7 +653,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
         {noMrFound && (
           <p className="muted mr-fallback-note" style={{ marginTop: 10 }}>
-            정확한 MR 영상을 찾지 못했어요. 가까운 노래방·원곡 결과도 함께 보여드려요.
+            {t('guest.search.mr_fallback')}
           </p>
         )}
 
@@ -674,7 +675,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
             {!showMore && ranked.more.length > 0 && (
               <button type="button" className="linkish more-results" onClick={() => setShowMore(true)}>
-                결과 더 보기 ({ranked.more.length})
+                {t('guest.search.show_more', { count: ranked.more.length })}
               </button>
             )}
             {showMore &&
@@ -692,7 +693,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
         {recos.length > 0 && (
           <div className="reco-group">
-            <div className="reco-head">이 노래와 잘 어울려요</div>
+            <div className="reco-head">{t('guest.search.recommendations')}</div>
             {recos.slice(0, 3).map((r) => (
               <RequestResultCard
                 key={r.videoId}
@@ -707,12 +708,12 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         )}
 
         <details className="fallback">
-          <summary>YouTube 링크 직접 붙여넣기</summary>
+          <summary>{t('guest.search.paste_link')}</summary>
           <input
             type="text"
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}
-            placeholder="https://youtu.be/… 또는 dQw4w9WgXcQ"
+            placeholder={t('guest.search.paste_placeholder')}
           />
           <button
             type="button"
@@ -720,7 +721,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
             onClick={requestManual}
             disabled={!manualInput.trim() || submittingKey === 'manual'}
           >
-            {submittingKey === 'manual' ? '신청 중…' : '이 링크로 신청'}
+            {submittingKey === 'manual' ? t('guest.request.cta.pending') : t('guest.search.paste_submit')}
           </button>
         </details>
       </div>

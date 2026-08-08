@@ -14,6 +14,23 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// BUILD 26G — the replacement for a hard-coded-literal source scan.
+//
+// A Guest component no longer holds its copy, so scanning it for Korean text would assert
+// nothing. The contract is now two-sided and STRONGER: the source must reference the catalog
+// KEY, and the catalog must resolve that key to the pinned Korean AND to a non-empty English.
+// A key that lost either language now fails here.
+import { guestT, type GuestMessageKey } from '@/domain/guest-messages';
+
+function rendersKey(source: string, key: GuestMessageKey, koreanIs?: string): boolean {
+  if (!source.includes(`'${key}'`)) return false;
+  const ko = guestT('ko', key);
+  const en = guestT('en', key);
+  if (!ko || !en || ko === key || en === key) return false;
+  return koreanIs === undefined || ko === koreanIs;
+}
+
+
 const here = fileURLToPath(new URL('.', import.meta.url));
 const read = (p: string) => readFileSync(here + p, 'utf8');
 const dock = read('MyRequestsDock.tsx');
@@ -70,7 +87,10 @@ describe('MyRequestsDock — self-service performance card', () => {
 
   it('V6: the guest never opens YouTube or connects the TV', () => {
     expect(dockCode).not.toMatch(/safeYoutubeWatchUrl|location\.assign|youtube/i);
-    expect(dock).toContain('Admin이 다음 차례로 넘깁니다'); // playing card: Admin runs the stage
+    expect(rendersKey(dock, 'guest.stage.singing_note')).toBe(true); // playing card: the host runs the stage
+    expect(guestT('ko', 'guest.stage.singing_note')).toContain('Admin이 다음 차례로 넘깁니다');
+    // The English sentence must carry the SAME fact — the host, not the guest, moves on.
+    expect(guestT('en', 'guest.stage.singing_note').toLowerCase()).toContain('your host moves on');
   });
 });
 
@@ -121,14 +141,16 @@ describe('iPad Display — read-only song board, NOT a video player (V3.1)', () 
 describe('Guest cards — MC greeting, Ready-only (V6)', () => {
   it('V8: greets the singer and frames Ready as the auto-start signal', () => {
     expect(dock).toContain('namePrefix');
-    expect(dock).toContain('다음은 당신의 무대예요');
-    expect(dock).toContain('앞의 무대가 끝나면 바로 이어집니다');
+    expect(rendersKey(dock, 'guest.stage.next', '다음은 당신의 무대예요')).toBe(true);
+    expect(rendersKey(dock, 'guest.stage.next_note')).toBe(true);
+    expect(guestT('ko', 'guest.stage.next_note')).toContain('앞의 무대가 끝나면 바로 이어집니다');
   });
 
   it('the playing card explains the Admin runs the stage (no guest finish)', () => {
     expect(dock).toContain('perf-card playing hero');
-    expect(dock).toContain('지금 노래하는 중');
-    expect(dock).toContain('TV에서 노래가 재생되고 있어요');
+    expect(rendersKey(dock, 'guest.stage.singing_now', '지금 노래하는 중')).toBe(true);
+    expect(guestT('ko', 'guest.stage.singing_note')).toContain('TV에서 노래가 재생되고 있어요');
+    expect(guestT('en', 'guest.stage.singing_note').toLowerCase()).toContain('playing on the tv');
   });
 });
 

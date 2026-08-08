@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import RequestResultCard from './RequestResultCard';
 import RecentlySungSection from './RecentlySungSection';
 import MyRequestsDock from './MyRequestsDock';
@@ -45,7 +46,7 @@ afterEach(() => {
 describe('1 — no bookmark in web Guest search results', () => {
   it('a search-result card renders no save control in any variant', () => {
     for (const variant of [undefined, 'reco'] as const) {
-      const { unmount } = render(
+      const { unmount } = renderGuest(
         <RequestResultCard item={item} onRequest={vi.fn()} pending={false} variant={variant} />,
       );
       expect(screen.getByRole('button', { name: /신청하기/ })).toBeTruthy();
@@ -59,7 +60,7 @@ describe('1 — no bookmark in web Guest search results', () => {
   it('the card exposes no save-related props at runtime (extra props are inert)', () => {
     // Passing the removed props must not resurrect a control.
     const rogue = { saved: true, savePending: false, onToggleSave: vi.fn() } as Record<string, unknown>;
-    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} {...rogue} />);
+    renderGuest(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} {...rogue} />);
     expect(screen.queryByRole('button', { name: /저장/ })).toBeNull();
   });
 });
@@ -73,7 +74,7 @@ describe('2 — no save control in NOW SINGING', () => {
   });
 
   it('the own-turn dock renders no 내 노래에 저장 control', () => {
-    render(
+    renderGuest(
       <MyRequestsDock
         slug="bty-home"
         eventId="e1"
@@ -101,7 +102,7 @@ describe('3/4 — no My Songs section, no request-from-saved flow', () => {
   ];
 
   it('the section renders 방금 부른 노래 only — no 내 노래 header, count, or empty state', () => {
-    render(<RecentlySungSection recentlySung={recent} />);
+    renderGuest(<RecentlySungSection recentlySung={recent} />);
     expect(screen.getByRole('button', { name: /방금 부른 노래/ })).toBeTruthy();
     expect(screen.queryByText('내 노래')).toBeNull();
     expect(screen.queryByText(/저장한 노래가 아직 없어요/)).toBeNull();
@@ -109,7 +110,7 @@ describe('3/4 — no My Songs section, no request-from-saved flow', () => {
   });
 
   it('an expanded Recently Sung row offers no 신청하기, no 저장 해제 and no bookmark', () => {
-    render(<RecentlySungSection recentlySung={recent} />);
+    renderGuest(<RecentlySungSection recentlySung={recent} />);
     fireEvent.click(screen.getByRole('button', { name: /방금 부른 노래/ }));
     expect(screen.getByText('너에게원한건')).toBeTruthy();   // 6 — still functional
     expect(screen.queryByRole('button', { name: /신청하기/ })).toBeNull();
@@ -118,7 +119,7 @@ describe('3/4 — no My Songs section, no request-from-saved flow', () => {
   });
 
   it('with no history the section renders nothing at all (no stray empty state)', () => {
-    const { container } = render(<RecentlySungSection recentlySung={[]} />);
+    const { container } = renderGuest(<RecentlySungSection recentlySung={[]} />);
     expect(container.textContent).toBe('');
   });
 });
@@ -126,7 +127,7 @@ describe('3/4 — no My Songs section, no request-from-saved flow', () => {
 describe('5 — stale WEB7 localStorage cannot restore removed UI', () => {
   it('a populated legacy library changes nothing a Guest can see', () => {
     window.localStorage.setItem(LEGACY_SAVED_SONGS_KEY, STALE_LIBRARY);
-    render(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
+    renderGuest(<RequestResultCard item={item} onRequest={vi.fn()} pending={false} />);
     expect(screen.queryByRole('button', { name: /저장/ })).toBeNull();
     expect(screen.queryByText('상상속의너')).toBeNull();   // the stale entry is never rendered
 
@@ -134,7 +135,7 @@ describe('5 — stale WEB7 localStorage cannot restore removed UI', () => {
     const recent: RecentlySung[] = [
       { requestId: 'r1', videoId: 'dQw4w9WgXcQ', title: '너에게원한건', artist: 'TJ', thumbnailUrl: null, sungAt: 1 },
     ];
-    render(<RecentlySungSection recentlySung={recent} />);
+    renderGuest(<RecentlySungSection recentlySung={recent} />);
     expect(screen.queryByText('내 노래')).toBeNull();
   });
 
@@ -148,7 +149,7 @@ describe('5 — stale WEB7 localStorage cannot restore removed UI', () => {
     expect(sources.every(Boolean)).toBe(true);
     window.localStorage.setItem(LEGACY_SAVED_SONGS_KEY, STALE_LIBRARY);
     const spy = vi.spyOn(Storage.prototype, 'getItem');
-    render(<RecentlySungSection recentlySung={[]} />);
+    renderGuest(<RecentlySungSection recentlySung={[]} />);
     const readKeys = spy.mock.calls.map((c) => String(c[0]));
     expect(readKeys).not.toContain(LEGACY_SAVED_SONGS_KEY);
   });

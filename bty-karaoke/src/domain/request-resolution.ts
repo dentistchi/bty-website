@@ -14,6 +14,9 @@
  * The four codes a server mutation may PERSIST. Each has exactly one production writer; none is
  * inferred, defaulted, or client-supplied.
  */
+import type { GuestLocale } from './guest-locale';
+import { guestT, type GuestMessageKey } from './guest-messages';
+
 export const RESOLUTION_CODES = [
   'guest_cancelled',
   'host_removed',
@@ -59,27 +62,35 @@ export function toDisplayResolution(stored: unknown): DisplayResolution {
  *   - never claims the Guest cancelled unless the Guest actually did;
  *   - no internal detail: no error text, no account id, no token, no Host identity.
  */
-export const RESOLUTION_COPY: Readonly<Record<DisplayResolution, string>> = {
-  guest_cancelled: '신청을 취소했어요.',
-  host_removed: 'Host가 이 곡을 대기열에서 제거했어요.',
-  host_skipped: 'Host가 이 곡의 재생을 종료했어요.',
-  event_ended: '노래방이 종료되어 이 신청곡의 진행이 끝났어요.',
+/**
+ * BUILD 26G — the RESOLUTION CODES are the server contract and are never translated; only
+ * these sentences are. The map is code → message key, so a new code is a compile error here
+ * rather than an untranslated string on a Guest's screen.
+ */
+export const RESOLUTION_MESSAGE_KEY: Readonly<Record<DisplayResolution, GuestMessageKey>> = {
+  guest_cancelled: 'guest.resolution.guest_cancelled',
+  host_removed: 'guest.resolution.host_removed',
+  host_skipped: 'guest.resolution.host_skipped',
+  event_ended: 'guest.resolution.event_ended',
   // Says only what is certainly true. It never guesses which of the four actually happened.
-  [UNKNOWN_RESOLUTION]: '이 곡은 더 이상 대기열에 없어요.',
+  [UNKNOWN_RESOLUTION]: 'guest.resolution.unknown',
 };
 
 /** The sentence for a stored value. Total: every input yields honest copy, never an empty string. */
-export function resolutionCopy(stored: unknown): string {
-  return RESOLUTION_COPY[toDisplayResolution(stored)];
+export function resolutionCopy(locale: GuestLocale, stored: unknown): string {
+  return guestT(locale, RESOLUTION_MESSAGE_KEY[toDisplayResolution(stored)]);
 }
 
 /**
  * One VoiceOver / screen-reader label for a resolved card: what the song was, then what happened.
  * The reason comes last because it is the new information; the title identifies which card.
  */
-export function resolutionAccessibilityLabel(title: string, stored: unknown): string {
+export function resolutionAccessibilityLabel(locale: GuestLocale, title: string, stored: unknown): string {
   const t = title.trim();
-  return `${t.length > 0 ? t : '신청곡'}. ${resolutionCopy(stored)}`;
+  return guestT(locale, 'guest.resolution.a11y', {
+    title: t.length > 0 ? t : guestT(locale, 'guest.dock.requested_song'),
+    reason: resolutionCopy(locale, stored),
+  });
 }
 
 /**

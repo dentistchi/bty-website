@@ -10,6 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import type { MyRequest } from '@/domain/guest-requests';
 import MyRequestsDock from './MyRequestsDock';
 
@@ -97,7 +98,7 @@ const onRemoved = () => {};
 describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even at #2)', () => {
   it('a queue #2 waiting song shows a reachable 준비됐어요 button (the regression)', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     const btn = await screen.findByRole('button', { name: '준비됐어요' });
     expect(btn).toBeTruthy();
     expect(screen.getByText('가장 빠른 순번 2번')).toBeTruthy();
@@ -105,14 +106,14 @@ describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even
 
   it('a queue #3 waiting song still shows Ready (never gated to first-in-line)', async () => {
     statusById = { a: st({ state: 'waiting', position: 3, aheadCount: 2 }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     expect(await screen.findByRole('button', { name: '준비됐어요' })).toBeTruthy();
     expect(screen.getByText('가장 빠른 순번 3번')).toBeTruthy();
   });
 
   it('tapping dock Ready calls /ready (ready:true) and does NOT open the sheet', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     fireEvent.click(await screen.findByRole('button', { name: '준비됐어요' }));
     await waitFor(() => expect(readyCalls).toEqual([{ id: 'a', ready: true }]));
     // The modal (dialog) must not have opened from the Ready tap.
@@ -124,7 +125,7 @@ describe('V8.1 — compact dock exposes Ready for the nearest waiting song (even
   it('a now-playing song shows NO Ready button in the dock', async () => {
     statusById = { a: st({ state: 'now_playing', isNowPlaying: true, position: 0, aheadCount: 0 }) };
     display = { playing: { id: 'a' }, next: null };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     await screen.findByText('지금 노래하는 중');
     expect(screen.queryByRole('button', { name: '준비됐어요' })).toBeNull();
   });
@@ -138,14 +139,14 @@ describe('V8.1 — first-in-line Ready auto-starts (honest, no TV-autoplay claim
       statusById[id] = { ...statusById[id], readyAt: '2026-01-01T00:00:00Z' };
       return { ok: true, ready, autoStarted: true, request: { id } };
     };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     fireEvent.click(await screen.findByRole('button', { name: '준비됐어요' }));
     expect(await screen.findByText(/무대가 시작되었습니다/)).toBeTruthy();
   });
 
   it('autoStarted:false (a later song) shows the plain "준비 완료" continuation copy', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     fireEvent.click(await screen.findByRole('button', { name: '준비됐어요' }));
     expect(await screen.findByText(/끝나면 자동으로 이어집니다/)).toBeTruthy();
     expect(screen.queryByText(/무대가 시작되었습니다/)).toBeNull();
@@ -163,7 +164,7 @@ describe('V8.1 — expanded list offers Ready per song, independently', () => {
       a: st({ state: 'waiting', position: 2, aheadCount: 1 }),
       b: st({ state: 'waiting', position: 3, aheadCount: 2 }),
     };
-    render(
+    renderGuest(
       <MyRequestsDock
         slug="bty-home"
         requests={[mkReq('a', 'Song A'), mkReq('b', 'Song B')]}
@@ -190,14 +191,14 @@ describe('V8.1 — expanded list offers Ready per song, independently', () => {
       a: st({ state: 'now_playing', isNowPlaying: true, position: 0, aheadCount: 0 }),
     };
     display = { playing: { id: 'a' }, next: null };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     const dialog = await openSheet();
     expect(within(dialog).queryByRole('button', { name: '준비됐어요' })).toBeNull();
   });
 
   it('a waiting row keeps its 신청 취소 affordance alongside Ready', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     const dialog = await openSheet();
     // Both affordances coexist: Ready (primary) and the destructive cancel link.
     expect(await within(dialog).findByRole('button', { name: '준비됐어요' })).toBeTruthy();
@@ -208,7 +209,7 @@ describe('V8.1 — expanded list offers Ready per song, independently', () => {
 describe('V8.1 — resilience: restore, rollback, dedup', () => {
   it('mounting with an already-ready song restores the ready state (refresh persistence)', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1, readyAt: '2026-01-01T00:00:00Z' }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     expect(await screen.findByRole('button', { name: '준비 취소' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: '준비됐어요' })).toBeNull();
   });
@@ -228,7 +229,7 @@ describe('V8.1 — resilience: restore, rollback, dedup', () => {
       return jsonRes({});
     }) as unknown as typeof fetch;
     readyCalls = [];
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     fireEvent.click(await screen.findByRole('button', { name: '준비됐어요' }));
     // After the failure the control recovers to 준비됐어요 (server never persisted ready).
     await waitFor(() => expect(screen.getByRole('button', { name: '준비됐어요' })).toBeTruthy());
@@ -238,7 +239,7 @@ describe('V8.1 — resilience: restore, rollback, dedup', () => {
   it('a double-tap while in flight sends only ONE /ready call', async () => {
     statusById = { a: st({ state: 'waiting', position: 2, aheadCount: 1 }) };
     hangReady = true; // the POST never resolves, so the guard must block the 2nd tap
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     const btn = await screen.findByRole('button', { name: '준비됐어요' });
     fireEvent.click(btn);
     fireEvent.click(btn);
@@ -258,7 +259,7 @@ describe('Queue Truth V1 — current requests vs completed history', () => {
       c1: st({ state: 'done', position: 0 }),
       c2: st({ state: 'done', position: 0 }),
     };
-    render(
+    renderGuest(
       <MyRequestsDock
         slug="bty-home"
         requests={[mkReq('a', 'Active A'), mkReq('c1', 'Done One'), mkReq('c2', 'Done Two')]}
@@ -283,7 +284,7 @@ describe('Queue Truth V1 — current requests vs completed history', () => {
       c1: st({ state: 'done', position: 0 }),
     };
     const onReRequest = vi.fn();
-    render(
+    renderGuest(
       <MyRequestsDock
         slug="bty-home"
         requests={[mkReq('a', 'Active A'), mkReqV('c1', 'Done One', 'VIDDONE')]}
@@ -305,7 +306,7 @@ describe('Queue Truth V1 — current requests vs completed history', () => {
       a: st({ state: 'waiting', position: 1, aheadCount: 0 }),
       c1: st({ state: 'done', position: 0 }),
     };
-    render(
+    renderGuest(
       <MyRequestsDock
         slug="bty-home"
         requests={[mkReqV('a', 'Same Song', 'DUPVID'), mkReqV('c1', 'Same Song', 'DUPVID')]}
@@ -323,7 +324,7 @@ describe('Queue Truth V1 — current requests vs completed history', () => {
   it('idle earliest-Ready copy does NOT claim a previous stage', async () => {
     display = { playing: null, next: { id: 'a' } }; // stage idle
     statusById = { a: st({ state: 'up_next', position: 1, aheadCount: 0, readyAt: '2026-01-01T00:00:00Z' }) };
-    render(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
+    renderGuest(<MyRequestsDock slug="bty-home" requests={[mkReq('a', 'Song A')]} onRemoved={onRemoved} />);
     expect(await screen.findByText('첫 곡으로 시작할 준비가 됐어요')).toBeTruthy();
     expect(screen.queryByText(/앞의 무대가 끝나면/)).toBeNull();
   });

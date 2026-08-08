@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
+import { renderGuest } from '@/components/guest/guest-test-render';
 import type { MyRequest } from '@/domain/guest-requests';
 import MyRequestsDock from './MyRequestsDock';
 
@@ -65,7 +66,7 @@ function installFetch() {
 }
 
 const mount = (requests: MyRequest[]) =>
-  render(
+  renderGuest(
     <MyRequestsDock slug="bty-home" requests={requests} eventId="evt-1" onRemoved={vi.fn()} />,
   );
 

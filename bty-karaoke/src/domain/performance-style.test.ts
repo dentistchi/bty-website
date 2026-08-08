@@ -63,11 +63,11 @@ describe('biasStyleQuery — edges', () => {
 describe('styleCopy', () => {
   it('has a label + hint for each style and never promises lyrics', () => {
     for (const s of PERFORMANCE_STYLES) {
-      const c = styleCopy(s);
+      const c = styleCopy('ko', s);
       expect(c.label.length).toBeGreaterThan(0);
       expect(c.hint.length).toBeGreaterThan(0);
     }
     // Karaoke copy stays honest: "가능성" (likely), not a guarantee.
-    expect(styleCopy('karaoke').hint).toContain('가능성');
+    expect(styleCopy('ko', 'karaoke').hint).toContain('가능성');
   });
 });

@@ -88,13 +88,13 @@ describe('cancelRowAction', () => {
 
 describe('collapsedSummary', () => {
   it('is empty with no active requests', () => {
-    const s = collapsedSummary([]);
+    const s = collapsedSummary('ko', []);
     expect(s.count).toBe(0);
     expect(s.nearestPosition).toBeNull();
     expect(s.label).toBe('');
   });
   it('reports the nearest position unambiguously (no "N번 · N곡")', () => {
-    const s = collapsedSummary([
+    const s = collapsedSummary('ko', [
       { state: 'waiting', position: 5 },
       { state: 'up_next', position: 1 },
     ]);
@@ -104,10 +104,10 @@ describe('collapsedSummary', () => {
     expect(s.label).not.toContain('곡'); // count lives outside the sub-line
   });
   it('uses a single-request phrasing when only one is active', () => {
-    expect(collapsedSummary([{ state: 'waiting', position: 3 }]).label).toBe('지금 대기 3번');
+    expect(collapsedSummary('ko', [{ state: 'waiting', position: 3 }]).label).toBe('지금 대기 3번');
   });
   it('drops terminal rows from the active count', () => {
-    const s = collapsedSummary([
+    const s = collapsedSummary('ko', [
       { state: 'waiting', position: 3 },
       { state: 'done', position: 0 },
     ]);
@@ -176,24 +176,24 @@ describe('ownedCounts — active / completed / ready', () => {
 describe('readyStageCopy — honest, state-derived', () => {
   const base = { ready: true, stageOpen: null as boolean | null, isEarliestReady: false, readyAheadCount: 0 };
   it('idle earliest Ready does NOT mention a previous stage', () => {
-    const c = readyStageCopy({ ...base, state: 'up_next', stageOpen: true, isEarliestReady: true });
+    const c = readyStageCopy('ko', { ...base, state: 'up_next', stageOpen: true, isEarliestReady: true });
     expect(c).toBe('첫 곡으로 시작할 준비가 됐어요');
     expect(c).not.toContain('앞의 무대가 끝나면');
   });
   it('another song playing + next eligible Ready → continuation copy', () => {
-    expect(readyStageCopy({ ...base, state: 'waiting', stageOpen: false, isEarliestReady: true })).toBe(
+    expect(readyStageCopy('ko', { ...base, state: 'waiting', stageOpen: false, isEarliestReady: true })).toBe(
       '현재 무대가 끝나면 자동으로 이어집니다',
     );
   });
   it('Ready songs ahead → honest ahead count', () => {
-    expect(readyStageCopy({ ...base, state: 'waiting', readyAheadCount: 2 })).toBe('앞에 준비된 노래 2곡이 있어요');
+    expect(readyStageCopy('ko', { ...base, state: 'waiting', readyAheadCount: 2 })).toBe('앞에 준비된 노래 2곡이 있어요');
   });
   it('not ready → neutral copy', () => {
-    expect(readyStageCopy({ ...base, state: 'waiting', ready: false })).toBe('준비되면 재생 순서에 반영됩니다');
+    expect(readyStageCopy('ko', { ...base, state: 'waiting', ready: false })).toBe('준비되면 재생 순서에 반영됩니다');
   });
   it('playing / done have their own copy', () => {
-    expect(readyStageCopy({ ...base, state: 'now_playing' })).toBe('지금 부르는 중입니다');
-    expect(readyStageCopy({ ...base, state: 'done' })).toBe('이 곡을 불렀어요');
+    expect(readyStageCopy('ko', { ...base, state: 'now_playing' })).toBe('지금 부르는 중입니다');
+    expect(readyStageCopy('ko', { ...base, state: 'done' })).toBe('이 곡을 불렀어요');
   });
 });
 

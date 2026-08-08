@@ -26,18 +26,18 @@ describe('BUILD 22 — song_too_long is classified, non-retryable, and specific'
   });
 
   it('is NOT collapsed into generic validation copy', () => {
-    expect(submitCopy('song_too_long')).not.toBe(submitCopy('validation'));
+    expect(submitCopy('ko', 'song_too_long')).not.toBe(submitCopy('ko', 'validation'));
   });
 
   it('states the limit and the remedy, and never invites a retry', () => {
-    const copy = submitCopy('song_too_long');
+    const copy = submitCopy('ko', 'song_too_long');
     expect(copy).toContain('15분');
     expect(copy).toContain('더 짧은 버전');
     expect(copy).not.toContain('다시 시도');
   });
 
   it('matches the canonical product sentence exactly', () => {
-    expect(submitCopy('song_too_long')).toBe(
+    expect(submitCopy('ko', 'song_too_long')).toBe(
       '이 영상은 15분을 초과해 신청할 수 없어요. 더 짧은 버전을 선택해 주세요.',
     );
   });
@@ -48,7 +48,7 @@ describe('BUILD 22 — server-first deploy safety for clients that never heard o
     const r = resolveSubmit({ status: 400, code: 'A_CODE_FROM_A_FUTURE_BUILD' });
     expect(r.errorClass).toBe('validation');
     expect(r.retryable).toBe(false);
-    expect(submitCopy('validation')).toContain('곡을 다시 선택');
+    expect(submitCopy('ko', 'validation')).toContain('곡을 다시 선택');
   });
 
   it('a 400 with NO code at all behaves the same', () => {

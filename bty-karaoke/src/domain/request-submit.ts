@@ -9,6 +9,9 @@
 // with the SAME idempotency key so the (now idempotent) server replays the existing row
 // instead of inserting a duplicate.
 
+import type { GuestLocale } from './guest-locale';
+import { guestT, type GuestMessageKey } from './guest-messages';
+
 export type SubmitPhase =
   | 'idle'
   | 'submitting'
@@ -101,35 +104,34 @@ export function resolveSubmit(signal: SubmitSignal): SubmitResolution {
   return { phase: retryable ? 'failed_retryable' : 'failed_nonretryable', errorClass, retryable };
 }
 
-/** The ONE place submit copy lives (Korean, action-first). Never leaks a code/stack/quota
- *  number/endpoint, and never tells the user to "just tap again". */
-export function submitCopy(errorClass: SubmitErrorClass): string {
-  switch (errorClass) {
-    case 'offline':
-      return '인터넷 연결을 확인한 뒤 다시 시도해 주세요.';
-    case 'timeout':
-      return '신청 결과를 확인하고 있어요. 다시 누르지 말고 잠시 기다려 주세요.';
-    case 'quota':
-      return '지금은 요청이 많아 잠시 후에 다시 시도해 주세요.';
-    case 'server_temporary':
-      return '지금은 신청을 완료하지 못했습니다. 다시 시도해 주세요.';
-    case 'event_closed':
-      return '이 노래방 이벤트가 종료되었습니다. Host에게 새 이벤트를 확인해 주세요.';
-    case 'room_unavailable':
-      return '이 노래방에 연결할 수 없습니다. QR 코드나 초대 링크를 다시 확인해 주세요.';
-    case 'unauthorized':
-      return '세션이 만료되었어요. 노래방에 다시 입장해 주세요.';
-    case 'validation':
-      return '신청 정보를 확인한 뒤 곡을 다시 선택해 주세요.';
-    case 'song_too_long':
-      return '이 영상은 15분을 초과해 신청할 수 없어요. 더 짧은 버전을 선택해 주세요.';
-    case 'idempotency_conflict':
-      return '신청을 다시 시도해 주세요.';
-  }
+/**
+ * The ONE place submit copy lives (action-first). Never leaks a code/stack/quota
+ * number/endpoint, and never tells the user to "just tap again".
+ *
+ * BUILD 26G — the ERROR CLASSES, and the server codes `classifyServerError` maps to them,
+ * are unchanged. Only their presentation is localized, in the Guest's OWN language.
+ */
+export const SUBMIT_ERROR_MESSAGE_KEY: Readonly<Record<SubmitErrorClass, GuestMessageKey>> = {
+  offline: 'guest.submit.error.offline',
+  timeout: 'guest.submit.error.timeout',
+  quota: 'guest.submit.error.quota',
+  server_temporary: 'guest.submit.error.server_temporary',
+  event_closed: 'guest.submit.error.event_closed',
+  room_unavailable: 'guest.submit.error.room_unavailable',
+  unauthorized: 'guest.submit.error.unauthorized',
+  validation: 'guest.submit.error.validation',
+  song_too_long: 'guest.submit.error.song_too_long',
+  idempotency_conflict: 'guest.submit.error.idempotency_conflict',
+};
+
+export function submitCopy(locale: GuestLocale, errorClass: SubmitErrorClass): string {
+  return guestT(locale, SUBMIT_ERROR_MESSAGE_KEY[errorClass]);
 }
 
-export const SUBMIT_COPY = {
-  submitting: '노래를 신청하고 있어요…',
-  succeeded: '노래가 대기열에 추가되었습니다.',
-  retry: '다시 시도',
-} as const;
+export function submitStatusCopy(locale: GuestLocale) {
+  return {
+    submitting: guestT(locale, 'guest.submit.submitting'),
+    succeeded: guestT(locale, 'guest.submit.succeeded'),
+    retry: guestT(locale, 'guest.submit.retry'),
+  } as const;
+}

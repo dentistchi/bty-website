@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { GuestLocaleProvider, useGuestT } from '@/components/guest/GuestLocaleProvider';
+import GuestLanguageSwitcher from '@/components/guest/GuestLanguageSwitcher';
 
 // Resolves the handoff via the server API (slug derived server-side, never from the URL) and
 // renders the non-installed fallback. Guest-safe: only a room name + a link to the public
@@ -13,6 +15,17 @@ interface Resolved {
 }
 
 export default function JoinFallbackClient({ token }: { token: string }) {
+  // This route is fully client-rendered, so the provider resolves from `navigator.languages`
+  // (and any stored choice) on mount — no server locale is threaded in.
+  return (
+    <GuestLocaleProvider>
+      <JoinFallbackBody token={token} />
+    </GuestLocaleProvider>
+  );
+}
+
+function JoinFallbackBody({ token }: { token: string }) {
+  const t = useGuestT();
   const [state, setState] = useState<Resolved | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +50,7 @@ export default function JoinFallbackClient({ token }: { token: string }) {
   if (loading) {
     return (
       <main className="card">
-        <p className="muted">불러오는 중…</p>
+        <p className="muted">{t('guest.join.loading')}</p>
       </main>
     );
   }
@@ -47,11 +60,14 @@ export default function JoinFallbackClient({ token }: { token: string }) {
 
   return (
     <main className="card" style={{ textAlign: 'center', maxWidth: 520, margin: '48px auto' }}>
+      <div className="brand-head" style={{ justifyContent: 'flex-end' }}>
+        <GuestLanguageSwitcher />
+      </div>
       {valid ? (
         <>
-          <h1 style={{ marginBottom: 8 }}>BTY Norebang 앱 연결 준비 완료</h1>
+          <h1 style={{ marginBottom: 8 }}>{t('guest.join.ready.title')}</h1>
           <p className="muted" style={{ whiteSpace: 'pre-line', marginBottom: 20 }}>
-            {'앱이 설치되어 있다면 링크를 다시 눌러 주세요.\n웹 게스트 화면으로 돌아갈 수 있습니다.'}
+            {t('guest.join.ready.body')}
           </p>
           {state?.roomDisplayName && (
             <p style={{ marginBottom: 16 }}>
@@ -60,23 +76,23 @@ export default function JoinFallbackClient({ token }: { token: string }) {
           )}
           {roomUrl && (
             <a href={roomUrl} className="button" role="button">
-              웹에서 계속하기
+              {t('guest.app_invite.continue_web')}
             </a>
           )}
         </>
       ) : state?.resolution === 'event_ended' ? (
         <>
-          <h1 style={{ marginBottom: 8 }}>이 파티는 종료되었습니다</h1>
+          <h1 style={{ marginBottom: 8 }}>{t('guest.join.ended.title')}</h1>
           {roomUrl && (
             <a href={roomUrl} className="button" role="button">
-              웹에서 계속하기
+              {t('guest.app_invite.continue_web')}
             </a>
           )}
         </>
       ) : (
         <>
-          <h1 style={{ marginBottom: 8 }}>이 앱 연결 링크를 열 수 없습니다</h1>
-          <p className="muted">링크가 만료되었거나 올바르지 않아요. QR 코드를 다시 스캔해 주세요.</p>
+          <h1 style={{ marginBottom: 8 }}>{t('guest.join.invalid.title')}</h1>
+          <p className="muted">{t('guest.join.invalid.body')}</p>
         </>
       )}
     </main>

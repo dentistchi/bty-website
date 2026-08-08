@@ -3,6 +3,9 @@
 // most ONCE per guest session per Event after the first successful request; a new Event may
 // show it again. Reuses the BUILD 19B handoff (does not redesign tokens/AASA/native routing).
 
+import type { GuestLocale } from './guest-locale';
+import { guestT } from './guest-messages';
+
 export const GUEST_FUNNEL_EVENTS = [
   'INVITE_ELIGIBLE',
   'INVITE_SHOWN',
@@ -44,14 +47,19 @@ export function appStoreAction(appStoreUrl: string | null | undefined): { visibl
   return url ? { visible: true, url } : { visible: false, url: null };
 }
 
-/** The invitation copy (Korean, action-first). Non-blocking; never forces installation. */
-export const INVITE_COPY = {
-  title: '노래가 신청되었습니다',
-  body: 'BTY Norebang 앱에서 이 파티를 계속하고\n다음 파티도 더 편하게 준비해 보세요.',
-  openApp: '앱에서 열기',
-  getApp: 'App Store에서 받기',
-  continueWeb: '웹에서 계속하기',
-} as const;
+/**
+ * The invitation copy (action-first). Non-blocking; never forces installation.
+ * BUILD 26G — resolved for the Browser Guest's OWN language, not the Host's.
+ */
+export function inviteCopy(locale: GuestLocale) {
+  return {
+    title: guestT(locale, 'guest.app_invite.title'),
+    body: guestT(locale, 'guest.app_invite.body'),
+    openApp: guestT(locale, 'guest.app_invite.open_app'),
+    getApp: guestT(locale, 'guest.app_invite.get_app'),
+    continueWeb: guestT(locale, 'guest.app_invite.continue_web'),
+  } as const;
+}
 
 // MARK: - Persistent web-to-app entry (BUILD 19C — always-present CTA)
 //
@@ -62,11 +70,13 @@ export const INVITE_COPY = {
 // survives reloads within the Event, since a handoff replay returns no fresh link). No App Store
 // action and never the words 앱 설치하기 / App Store에서 받기 until BUILD 19D provides a real URL.
 
-/** The persistent CTA copy. Verbatim product contract. */
-export const PERSISTENT_CTA_COPY = {
-  label: '앱에서 보기',
-  supporting: '내 노래 순서와 준비 상태를 앱에서 바로 확인하세요',
-} as const;
+/** The persistent CTA copy. Verbatim product contract, in the Guest's own language. */
+export function persistentCtaCopy(locale: GuestLocale) {
+  return {
+    label: guestT(locale, 'guest.app_entry.label'),
+    supporting: guestT(locale, 'guest.app_entry.supporting'),
+  } as const;
+}
 
 /** Client-side persistence of the minted Universal Link so the persistent CTA stays ACTIVE across
  *  reloads within the same Event (a handoff replay does not re-emit the link). Per room+event. */

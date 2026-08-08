@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   RESOLUTION_CODES,
-  RESOLUTION_COPY,
+  RESOLUTION_MESSAGE_KEY,
   RESOLVED_MAX,
   RESOLVED_VIEW_KEYS,
   UNKNOWN_RESOLUTION,
@@ -66,36 +66,40 @@ describe('BUILD 25 — resolution codes', () => {
 describe('BUILD 25 — copy mapping', () => {
   it('is exhaustive: every code and the fallback have copy', () => {
     for (const c of [...RESOLUTION_CODES, UNKNOWN_RESOLUTION]) {
-      expect(RESOLUTION_COPY[c]).toBeTruthy();
-      expect(resolutionCopy(c)).toBe(RESOLUTION_COPY[c]);
+      expect(RESOLUTION_MESSAGE_KEY[c]).toBeTruthy();
+      // BUILD 26G — every code must render real copy in EVERY language, not just Korean.
+      for (const locale of ['ko', 'en'] as const) {
+        expect(resolutionCopy(locale, c)).toBeTruthy();
+        expect(resolutionCopy(locale, c)).not.toBe(RESOLUTION_MESSAGE_KEY[c]);
+      }
     }
   });
 
   it('renders the approved Korean sentence for each code', () => {
-    expect(resolutionCopy('guest_cancelled')).toBe('신청을 취소했어요.');
-    expect(resolutionCopy('host_removed')).toBe('Host가 이 곡을 대기열에서 제거했어요.');
-    expect(resolutionCopy('host_skipped')).toBe('Host가 이 곡의 재생을 종료했어요.');
-    expect(resolutionCopy('event_ended')).toBe('노래방이 종료되어 이 신청곡의 진행이 끝났어요.');
-    expect(resolutionCopy(null)).toBe('이 곡은 더 이상 대기열에 없어요.');
+    expect(resolutionCopy('ko', 'guest_cancelled')).toBe('신청을 취소했어요.');
+    expect(resolutionCopy('ko', 'host_removed')).toBe('Host가 이 곡을 대기열에서 제거했어요.');
+    expect(resolutionCopy('ko', 'host_skipped')).toBe('Host가 이 곡의 재생을 종료했어요.');
+    expect(resolutionCopy('ko', 'event_ended')).toBe('노래방이 종료되어 이 신청곡의 진행이 끝났어요.');
+    expect(resolutionCopy('ko', null)).toBe('이 곡은 더 이상 대기열에 없어요.');
   });
 
   it('never claims the song completed', () => {
     for (const c of [...RESOLUTION_CODES, UNKNOWN_RESOLUTION]) {
-      expect(RESOLUTION_COPY[c]).not.toContain('완료');
-      expect(RESOLUTION_COPY[c]).not.toContain('부르셨');
+      expect(resolutionCopy('ko', c)).not.toContain('완료');
+      expect(resolutionCopy('ko', c)).not.toContain('부르셨');
     }
   });
 
   it('only the guest_cancelled sentence says the Guest cancelled', () => {
     const cancelClaim = (s: string) => s.includes('취소');
-    expect(cancelClaim(RESOLUTION_COPY.guest_cancelled)).toBe(true);
+    expect(cancelClaim(resolutionCopy('ko', 'guest_cancelled'))).toBe(true);
     for (const c of ['host_removed', 'host_skipped', 'event_ended', UNKNOWN_RESOLUTION] as const) {
-      expect(cancelClaim(RESOLUTION_COPY[c])).toBe(false);
+      expect(cancelClaim(resolutionCopy('ko', c))).toBe(false);
     }
   });
 
   it('the unknown fallback guesses no specific actor', () => {
-    const u = RESOLUTION_COPY[UNKNOWN_RESOLUTION];
+    const u = resolutionCopy('ko', UNKNOWN_RESOLUTION);
     expect(u).not.toContain('Host');
     expect(u).not.toContain('취소');
     expect(u).not.toContain('종료되어');
@@ -103,16 +107,16 @@ describe('BUILD 25 — copy mapping', () => {
 
   it('exposes no internal detail in any sentence', () => {
     for (const c of [...RESOLUTION_CODES, UNKNOWN_RESOLUTION]) {
-      const s = RESOLUTION_COPY[c];
+      const s = resolutionCopy('ko', c);
       expect(s).not.toMatch(/error|null|undefined|uuid|token|account|segment|lease/i);
     }
   });
 
   it('builds a VoiceOver label that names the song and then what happened', () => {
-    const label = resolutionAccessibilityLabel('아파트', 'host_removed');
+    const label = resolutionAccessibilityLabel('ko', '아파트', 'host_removed');
     expect(label).toBe('아파트. Host가 이 곡을 대기열에서 제거했어요.');
     // A blank title still yields a meaningful label rather than a leading full stop.
-    expect(resolutionAccessibilityLabel('   ', 'event_ended')).toBe(
+    expect(resolutionAccessibilityLabel('ko', '   ', 'event_ended')).toBe(
       '신청곡. 노래방이 종료되어 이 신청곡의 진행이 끝났어요.',
     );
   });

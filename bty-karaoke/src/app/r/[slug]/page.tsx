@@ -1,16 +1,55 @@
+import { headers, cookies } from 'next/headers';
 import { getPublicRoomBySlug } from '@/lib/rooms.server';
 import { getCanonicalEvent } from '@/lib/events.server';
-import { PRODUCT_NAME, PRODUCT_TAGLINE_KO } from '@/lib/brand';
+import { PRODUCT_NAME } from '@/lib/brand';
+import {
+  GUEST_LOCALE_COOKIE,
+  parseAcceptLanguage,
+  resolveGuestLocale,
+  type GuestLocale,
+} from '@/domain/guest-locale';
+import { guestT } from '@/domain/guest-messages';
+import { GuestLocaleProvider } from '@/components/guest/GuestLocaleProvider';
+import GuestLanguageSwitcher from '@/components/guest/GuestLanguageSwitcher';
 import RequestForm from './RequestForm';
 import QueueBoard from './QueueBoard';
 import RoomLiveGuard from './RoomLiveGuard';
 import GuestFreshnessGuard from './GuestFreshnessGuard';
 import GuestConsentGate from '@/components/legal/GuestConsentGate';
-import LegalLinks from '@/components/legal/LegalLinks';
+import GuestLegalLinks from '@/components/guest/GuestLegalLinks';
 import { normalizeTheme } from '@/domain/branding';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// BUILD 26G — the Guest's language, resolved for THIS request.
+//
+// The Room is not consulted. A QR identifies the room; it never carries a presentation
+// language, so a Korean Host's QR cannot make an English browser render Korean.
+//
+// `Accept-Language` is the server's view of the same browser setting `navigator.languages`
+// exposes to the client, and the cookie is the Guest's own explicit choice mirrored out of
+// localStorage — so first paint already matches what the client will resolve after
+// hydration, with no flash. Neither input can be written by a Host.
+async function resolveRequestLocale(): Promise<GuestLocale> {
+  const [headerList, cookieStore] = await Promise.all([headers(), cookies()]);
+  return resolveGuestLocale({
+    stored: cookieStore.get(GUEST_LOCALE_COOKIE)?.value ?? null,
+    browserLanguages: parseAcceptLanguage(headerList.get('accept-language')),
+  });
+}
+
+/** The Guest chrome every branch shows: the wordmark, the tagline, and the switcher. */
+function GuestBrandHead({ locale }: { locale: GuestLocale }) {
+  return (
+    <div className="brand-head">
+      <span className="brand">{PRODUCT_NAME}</span>
+      <span className="brand-tag">{guestT(locale, 'guest.brand.tagline')}</span>
+      {/* Reachable on every Guest screen — before entering the room and after. */}
+      <GuestLanguageSwitcher />
+    </div>
+  );
+}
 
 // Room Settings V1 — the Room's guest-facing identity: its editable display name
 // and, when set, the optional welcome message. Shown whether or not an Event is
@@ -18,7 +57,9 @@ export const runtime = 'nodejs';
 // welcome renders ONLY when present — no empty placeholder when it is null.
 function GuestRoomHeader({
   room,
+  locale,
 }: {
+  locale: GuestLocale;
   room: {
     slug: string;
     display_name: string;
@@ -37,12 +78,20 @@ function GuestRoomHeader({
     <div className="room-identity">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="room-logo" src={logoUrl} alt={`${room.display_name} 로고`} width={72} height={72} />
+        <img
+          className="room-logo"
+          src={logoUrl}
+          alt={guestT(locale, 'guest.room.logo_alt', { name: room.display_name })}
+          width={72}
+          height={72}
+        />
       ) : null}
       <div className="room-identity-text">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <h1>{room.display_name}</h1>
-          <span className="tag">{room.status === 'open' ? '열림' : '닫힘'}</span>
+          <span className="tag">
+            {guestT(locale, room.status === 'open' ? 'guest.room.status.open' : 'guest.room.status.closed')}
+          </span>
         </div>
         {room.guest_welcome_message ? (
           <p className="lead" data-guest-welcome>
@@ -63,13 +112,14 @@ export default async function RoomPage({
 }) {
   const { slug } = await params;
   const { e: assertedEventId } = await searchParams;
+  const locale = await resolveRequestLocale();
   const room = await getPublicRoomBySlug(slug);
 
   if (!room) {
     return (
       <main>
-        <h1>Room not found</h1>
-        <p className="muted">No room exists for “{slug}”.</p>
+        <h1>{guestT(locale, 'guest.room.not_found.title')}</h1>
+        <p className="muted">{guestT(locale, 'guest.room.not_found.body', { slug })}</p>
       </main>
     );
   }
@@ -89,19 +139,18 @@ export default async function RoomPage({
 
   if (scopedToPastEvent) {
     return (
-      <main>
-        <div className="brand-head">
-          <span className="brand">{PRODUCT_NAME}</span>
-          <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
-        </div>
-        <div className="card hero" data-event-ended>
-          <div className="eyebrow">이벤트 종료</div>
-          <h1>이 노래방 이벤트는 종료됐어요</h1>
-          <p className="lead">새 이벤트 QR을 Host에게 받아 주세요.</p>
-        </div>
-        {/* Privacy/Terms/Contact stay reachable on every guest screen. */}
-        <LegalLinks showContact />
-      </main>
+      <GuestLocaleProvider initialLocale={locale}>
+        <main>
+          <GuestBrandHead locale={locale} />
+          <div className="card hero" data-event-ended>
+            <div className="eyebrow">{guestT(locale, 'guest.event.ended.eyebrow')}</div>
+            <h1>{guestT(locale, 'guest.event.ended.title')}</h1>
+            <p className="lead">{guestT(locale, 'guest.event.ended.lead')}</p>
+          </div>
+          {/* Privacy/Terms/Contact stay reachable on every guest screen. */}
+          <GuestLegalLinks showContact />
+        </main>
+      </GuestLocaleProvider>
     );
   }
 
@@ -111,46 +160,44 @@ export default async function RoomPage({
   // and never creates an Event.
   if (!event) {
     return (
-      <main data-theme={normalizeTheme(room.branding_theme)}>
-        <GuestFreshnessGuard />
-        <div className="brand-head">
-          <span className="brand">{PRODUCT_NAME}</span>
-          <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
-        </div>
-        <GuestRoomHeader room={room} />
-        <div className="card hero" data-no-active-event>
-          <h2>지금 진행 중인 노래방이 없습니다</h2>
-          <p className="muted">진행자가 새 이벤트를 시작하면 새 QR로 신청할 수 있어요.</p>
-        </div>
-        <LegalLinks showContact />
-      </main>
+      <GuestLocaleProvider initialLocale={locale}>
+        <main data-theme={normalizeTheme(room.branding_theme)}>
+          <GuestFreshnessGuard />
+          <GuestBrandHead locale={locale} />
+          <GuestRoomHeader room={room} locale={locale} />
+          <div className="card hero" data-no-active-event>
+            <h2>{guestT(locale, 'guest.event.none.title')}</h2>
+            <p className="muted">{guestT(locale, 'guest.event.none.body')}</p>
+          </div>
+          <GuestLegalLinks showContact />
+        </main>
+      </GuestLocaleProvider>
     );
   }
 
   return (
-    <main data-theme={normalizeTheme(room.branding_theme)}>
-      <GuestFreshnessGuard />
-      <div className="brand-head">
-        <span className="brand">{PRODUCT_NAME}</span>
-        <span className="brand-tag">{PRODUCT_TAGLINE_KO}</span>
-      </div>
-      <GuestRoomHeader room={room} />
-      <p className="muted">노래를 검색해 신청하고, 내 차례가 되면 직접 시작하세요.</p>
+    <GuestLocaleProvider initialLocale={locale}>
+      <main data-theme={normalizeTheme(room.branding_theme)}>
+        <GuestFreshnessGuard />
+        <GuestBrandHead locale={locale} />
+        <GuestRoomHeader room={room} locale={locale} />
+        <p className="muted">{guestT(locale, 'guest.room.lead')}</p>
 
       {/* V7.1: flips this already-open screen to the ended notice the instant the
           Event ends or is rotated, so a live screen never keeps taking requests. */}
-      <RoomLiveGuard slug={room.slug} initialEventId={eventId} roomName={room.display_name}>
-        {/* First-use consent gates the YouTube search/request flow (not the queue view). */}
-        <GuestConsentGate>
-          <RequestForm slug={room.slug} roomOpen={room.status === 'open'} eventId={eventId} />
-        </GuestConsentGate>
+        <RoomLiveGuard slug={room.slug} initialEventId={eventId} roomName={room.display_name}>
+          {/* First-use consent gates the YouTube search/request flow (not the queue view). */}
+          <GuestConsentGate>
+            <RequestForm slug={room.slug} roomOpen={room.status === 'open'} eventId={eventId} />
+          </GuestConsentGate>
 
-        {/* Live full-queue view (canonical /display resolver, my songs highlighted). */}
-        <QueueBoard slug={room.slug} eventId={eventId} />
-      </RoomLiveGuard>
+          {/* Live full-queue view (canonical /display resolver, my songs highlighted). */}
+          <QueueBoard slug={room.slug} eventId={eventId} />
+        </RoomLiveGuard>
 
-      {/* Persistent, always-visible legal links on the guest room / search screen. */}
-      <LegalLinks showContact />
-    </main>
+        {/* Persistent, always-visible legal links on the guest room / search screen. */}
+        <GuestLegalLinks showContact />
+      </main>
+    </GuestLocaleProvider>
   );
 }
