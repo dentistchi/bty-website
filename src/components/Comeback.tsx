@@ -36,8 +36,49 @@ function localeFromPath(pathname: string): Locale {
  * Comeback (3+ days away) — docs/JOURNEY_COMEBACK_UX_SPEC.md
  * POST /api/journey/bounce-back only on "Resume Journey", not on dismiss.
  */
+/**
+ * Params that mean "the user asked for a SPECIFIC place" (Slice 3.2L-R11.4E-R1).
+ *
+ * Captured from the URL during the first render, because the app shell consumes and strips
+ * these in an effect — by the time Comeback's own effect runs they can already be gone.
+ */
+const EXPLICIT_TARGET_PARAMS = [
+  "draft",
+  "event",
+  "followup",
+  "review",
+  "fieldAction",
+  "fieldActionAssignment",
+  "fieldActionContract",
+  "actionReview",
+] as const;
+
+function hasExplicitTarget(search: string): boolean {
+  try {
+    const sp = new URLSearchParams(search);
+    return EXPLICIT_TARGET_PARAMS.some((k) => (sp.get(k) ?? "").trim().length > 0);
+  } catch {
+    return false;
+  }
+}
+
 export function Comeback() {
   const pathname = usePathname() ?? "";
+  /**
+   * AN EXPLICIT LINK OUTRANKS AN IMPLICIT RESUME PROMPT (Slice 3.2L-R11.4E-R1).
+   *
+   * This modal is rendered by the locale layout on every page, covers the screen, and its
+   * primary action navigates to the last unlocked train day. Opening a draft-review deep
+   * link therefore showed the review and then handed the screen to a prompt that leads
+   * somewhere else entirely — the live failure that landed on /en/train/day/28.
+   *
+   * Resume is still right when someone simply returns to the app. It is not right when they
+   * followed a link to a particular place, so the prompt stands down for that visit only.
+   * Read in a lazy initializer so it beats the shell's param cleanup, which is an effect.
+   */
+  const [arrivedWithTarget] = useState(() =>
+    typeof window === "undefined" ? false : hasExplicitTarget(window.location.search),
+  );
   const router = useRouter();
   const { user, loading } = useAuth();
   const [show, setShow] = useState(false);
@@ -55,6 +96,7 @@ export function Comeback() {
     if (loading) return;
     if (!user) return;
     if (pathname.includes("/login") || pathname.includes("/auth/")) return;
+    if (arrivedWithTarget) return;
 
     const last = getLastVisit();
     const now = Date.now();
@@ -68,7 +110,7 @@ export function Comeback() {
       setShow(true);
     }
     setLastVisit(now);
-  }, [mounted, loading, user, pathname]);
+  }, [mounted, loading, user, pathname, arrivedWithTarget]);
 
   const dismiss = useCallback(() => {
     setShow(false);
