@@ -70,6 +70,14 @@ import {
   type ProgramSection,
   type ScenarioContract,
 } from "./program-coherence";
+import {
+  assertsOverclaimByPolicy,
+  EVIDENCE_POLICY,
+  outcomePromiseIndex,
+  evidencePolicyPromptLines,
+  OUTCOME_OBJECTS,
+  OUTCOME_OBJECT_WORDS,
+} from "./evidence-policy";
 
 /**
  * MATERIALLY DIFFERENT CONTRACT AGAIN (Slice 3.2L-R6), so v4.
@@ -435,145 +443,29 @@ function hasUnsafeMarkup(raw: string): boolean {
  * that would silently stop matching if the list moved (Slice 3.2L-R8.1).
  */
 export function outcomeClaimIndex(text: string): number {
-  let best = -1;
-  for (const p of OUTCOME_CLAIM_PHRASES) {
-    const m = new RegExp(p, "i").exec(text);
-    if (m && (best < 0 || m.index < best)) best = m.index;
-  }
-  const structural = OUTCOME_CLAIM_STRUCTURE.exec(text);
-  if (structural && (best < 0 || structural.index < best)) best = structural.index;
-  return best;
+  return outcomePromiseIndex(text);
 }
 
-const OUTCOME_CLAIM_PHRASES = [
-  "ultimately (?:affects?|improves?|leads? to|results? in|drives?)",
-  "(?:improves?|increases?|boosts?|drives?|ensures?) (?:project success|team collaboration|productivity|morale|safety|quality|outcomes|performance|efficiency|retention)",
-  "leads? to (?:better|improved|stronger|greater)",
-  "results? in (?:better|improved|fewer|greater)",
-  "equipped to",
-  "ready to (?:implement|lead|deliver)",
-];
-
 /**
- * WHY A PHRASE LIST WAS NEVER GOING TO HOLD (Slice 3.2L-R9).
+ * True only when an overclaim is ASSERTED rather than denied (Slice 3.2L-R11.4I).
  *
- * The v5 window promised "…ultimately affects project success and team collaboration" and
- * the list learned that sentence. The v7 window made the SAME unsupported causal claim in
- * four new sentences — "ensures that everyone is clear on responsibilities", "prevents
- * important tasks from falling through the cracks", "supports team collaboration",
- * "improves overall workflow efficiency" — and every one passed. Three independent reasons:
- * `prevents` and `supports` were not in the verb list at all; `improves` was, but only when
- * a listed noun followed IMMEDIATELY, and "overall" sat between them; and no entry covered
- * an idiom like "falling through the cracks".
- *
- * Accumulating those four would buy one more window. The claim is STRUCTURAL — a causal
- * verb pointed at an organisational outcome — so it is matched structurally: any verb from
- * the first set, any outcome from the second, within a short window. Synonym substitution
- * inside those sets no longer reopens the defect.
+ * The rules themselves moved to `evidence-policy`, where each one carries the sentence the
+ * model is told. Three windows were refused against a prompt that described only part of
+ * this set; two hand-maintained lists could not be kept honest, so there is now one.
  */
-const CAUSAL_VERB =
-  "ensur\\w*|prevent\\w*|improv\\w*|increas\\w*|boost\\w*|driv\\w*|support\\w*|strengthen\\w*|eliminat\\w*|reduc\\w*|enhanc\\w*|guarantee\\w*|maximi[sz]\\w*|minimi[sz]\\w*|optimi[sz]\\w*|foster\\w*|promot\\w*|achiev\\w*|deliver\\w*|lead(?:s|ing)? to|result(?:s|ing)? in|make(?:s)? sure|so that";
-const OUTCOME_OBJECT =
-  "collaborat\\w*|cooperat\\w*|teamwork|efficien\\w*|productivit\\w*|moral\\w*|safet\\w*|qualit\\w*|performanc\\w*|retention|success|workflows?|outcomes?|results?|clarity|responsibilit\\w*|communicat\\w*|accountabilit\\w*|consisten\\w*|adoption|engagement|alignment|throughput|error\\w*|mistakes?|delays?|risks?|rework|falling through the cracks|slipping through|being missed|getting missed";
-/** A causal verb aimed at an organisational outcome, with room for modifiers between them. */
-const OUTCOME_CLAIM_STRUCTURE = new RegExp(
-  `\\b(?:${CAUSAL_VERB})\\b[^.!?]{0,48}?\\b(?:${OUTCOME_OBJECT})\\b`,
-  "i",
-);
-
-const OVERCLAIM_PHRASES = [
-  ...OUTCOME_CLAIM_PHRASES,
-  "now competent", "fully (?:understand|understood|understands)", "permanently",
-  "trust (?:was|is|has been) restored", "behaviou?r (?:has |was )?(?:permanently )?changed",
-  "mastered", "no longer needs?", "performance improved", "guarantees?",
-  "proves? (?:that )?(?:you|they) (?:can|will)", "sustained change", "has been verified",
-];
-const OVERCLAIM = new RegExp(OVERCLAIM_PHRASES.join("|"), "gi");
-
-/**
- * Negation immediately before an overclaim phrase. This gate exists to stop a program
- * CLAIMING behaviour changed — but the honest sentence the slice actively wants,
- * "this does not show behaviour changed", contains the very same words. A purely lexical
- * matcher rejects exactly the language it should encourage, so the assertion has to be
- * distinguished from its denial.
- *
- * Deliberately a short backward window: "not" three words earlier negates the claim,
- * "not" two sentences earlier does not.
- */
-const NEGATOR = /\b(?:not|never|cannot|can't|doesn't|does not|don't|do not|isn't|is not|won't|will not|without|neither|nor|nothing|none|no|rather than|instead of)\b|않|아니|없/i;
-const NEGATION_WINDOW = 48;
-
-/**
- * CLAIMING A RUNG THE PRODUCT CANNOT REACH (Slice 3.2L-R11.4H).
- *
- * The phrase list and the causal-outcome structure between them missed every one of the
- * four claims this slice had to refuse — measured, not assumed:
- *
- *   "Participant now consistently performs complete handoffs."   passed
- *   "Training proved handoff quality improved."                  passed
- *   "Completion demonstrates sustained behavior change."         passed
- *   "Follow-up confirms the new standard is reliably used."      passed
- *
- * None is an organisational-outcome promise, so the R9 structural rule had nothing to
- * match; none uses a listed phrase. What they share is a LEVEL: each asserts applied,
- * observed or sustained evidence, and no training interaction can produce any of the three.
- *
- * Two shapes cover them. HABITUALITY — an adverb of regularity attached to performing the
- * behaviour. PROOF — a verb of demonstration pointed at a high rung. Both are assertions,
- * so both defer to the existing negation rule and to a prospective frame: "review WHETHER
- * the standard was used in a real handover" is the sentence the follow-up SHOULD contain,
- * and it must stay legal.
- */
-const HABITUAL_PERFORMANCE = new RegExp(
-  "\\b(?:consistently|reliably|routinely|habitually|regularly|always|every time|each time)\\b[^.!?]{0,40}?" +
-    "\\b(?:perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|carr(?:y|ies|ied)\\s+out|conduct\\w*|do(?:es)?)\\b" +
-    "|\\b(?:perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|conduct\\w*)\\b[^.!?]{0,40}?" +
-    "\\b(?:consistently|reliably|routinely|habitually|regularly)\\b",
-  "i",
-);
-const PROOF_VERB = "demonstrat\\w*|prov(?:e|es|ed|en)|confirm\\w*|verif\\w*|validat\\w*|establish(?:es|ed)";
-const HIGH_RUNG =
-  "sustained|lasting|permanent\\w*|behaviou?r change|competenc\\w*|mastery|master(?:ed|y)|improvement\\w*|improv(?:es|ed)|adoption|applied|application|reliab\\w*|consisten\\w*";
-const PROOF_OF_HIGH_RUNG = new RegExp(`\\b(?:${PROOF_VERB})\\b[^.!?]{0,48}?\\b(?:${HIGH_RUNG})\\b`, "i");
-
-/** Framing that ASKS rather than asserts — the shape a follow-up is supposed to have. */
-const PROSPECTIVE_FRAME =
-  /\b(?:whether|ask|asks|asked|review|reviews|reviewing|check|checks|checking|if|invite|prompt|consider|discuss)\b/i;
-const PROSPECTIVE_WINDOW = 70;
-
-/**
- * True when the text asserts evidence this product cannot produce — applied, observed or
- * sustained — rather than what the training interaction actually shows.
- */
-export function claimsAboveCeiling(text: string): boolean {
-  for (const re of [HABITUAL_PERFORMANCE, PROOF_OF_HIGH_RUNG]) {
-    const m = re.exec(text);
-    if (!m) continue;
-    const before = text.slice(Math.max(0, m.index - PROSPECTIVE_WINDOW), m.index);
-    if (NEGATOR.test(text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index))) continue;
-    if (PROSPECTIVE_FRAME.test(before)) continue;
-    return true;
-  }
-  return false;
-}
-
-/** True only when an overclaim phrase is ASSERTED rather than denied. */
 function assertsOverclaim(text: string): boolean {
-  // The structural causal-outcome claim carries the same negation rule: "does not improve
-  // collaboration" is the honest sentence, not the claim (Slice 3.2L-R9).
-  const structural = OUTCOME_CLAIM_STRUCTURE.exec(text);
-  if (structural) {
-    const before = text.slice(Math.max(0, structural.index - NEGATION_WINDOW), structural.index);
-    if (!NEGATOR.test(before)) return true;
-  }
-  // A rung this product cannot reach, however it is phrased (Slice 3.2L-R11.4H).
-  if (claimsAboveCeiling(text)) return true;
-  OVERCLAIM.lastIndex = 0;
-  for (let m = OVERCLAIM.exec(text); m !== null; m = OVERCLAIM.exec(text)) {
-    const before = text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index);
-    if (!NEGATOR.test(before)) return true;
-  }
-  return false;
+  return assertsOverclaimByPolicy(text) !== null;
+}
+
+/** Which rule refused it — for the bounded repair instruction, never for a Host. */
+export function overclaimRuleId(text: string): string | null {
+  return assertsOverclaimByPolicy(text)?.id ?? null;
+}
+
+/** Retained name: a rung this product cannot reach, however it is phrased. */
+export function claimsAboveCeiling(text: string): boolean {
+  const rule = assertsOverclaimByPolicy(text);
+  return rule !== null && rule.id !== "organisational_outcome";
 }
 
 /** Claims a concrete asset or policy already exists — the blunt, obvious phrasings. */
@@ -1062,6 +954,53 @@ const STRUCTURAL_CODES: readonly ProgramRejectCode[] = [
 
 export function isStructuralCode(code: ProgramRejectCode): boolean {
   return STRUCTURAL_CODES.includes(code);
+}
+
+/**
+ * BOUNDED SEMANTIC REPAIR (Slice 3.2L-R11.4I).
+ *
+ * A meaning fault used to end the attempt immediately, on the reasoning that asking again
+ * spends a second call to be told the same thing. Three consecutive paid windows have now
+ * proved the opposite for the honesty family: the program was structurally complete every
+ * time and failed on individual SENTENCES, which is precisely what a targeted instruction
+ * can fix without changing anything else.
+ *
+ * Only these two are repairable, and only because a repair instruction for them can be
+ * written entirely in BTY's own vocabulary — the refusal category, the ceiling, and "change
+ * nothing else". Every other meaning fault stays terminal: a program that describes the
+ * wrong behaviour is not one sentence away from being right.
+ */
+const SEMANTIC_REPAIRABLE_CODES: readonly ProgramRejectCode[] = ["evidence_overclaim", "material_fabrication"];
+
+export function isSemanticRepairableCode(code: ProgramRejectCode): boolean {
+  return SEMANTIC_REPAIRABLE_CODES.includes(code);
+}
+
+/**
+ * What the one repair call is told. Carries the refusal CATEGORY — BTY's own classification,
+ * never the model's words — the ceiling it must write inside, and an explicit instruction to
+ * preserve everything that was already right.
+ */
+export function semanticRepairInstruction(
+  code: ProgramRejectCode,
+  answers: BuilderAnswers | undefined,
+): string {
+  const preserve =
+    "Keep the same behaviour, the same practice situation, the same structure and every section that was already honest. Change ONLY the sentences that break the rule. Return the SAME program with those corrected, and return ONLY the JSON object.";
+  if (code === "material_fabrication") {
+    return [
+      "Your previous response relied on a material that does not exist, or spoke for one nobody has read.",
+      "No template, checklist, worksheet, form, tool or guide is available to anyone, and the contents of any link or file are unknown to you.",
+      "Rewrite those sentences so the participant CREATES what they need during the training, or so the material is left out entirely.",
+      preserve,
+    ].join(" ");
+  }
+  return [
+    "Your previous response claimed the training proves more than it can.",
+    deriveEvidenceCeiling(answers),
+    "Rewrite every sentence that claims a result, an improvement, an organisational outcome, or that the behaviour is now performed, verified or sustained. Say what the training ASKS people to do instead.",
+    preserve,
+  ].join(" ");
 }
 
 /** One human-readable repair instruction — shape only, never the model's own words. */
@@ -1722,26 +1661,14 @@ export function availableEvidenceLevels(answers: BuilderAnswers | undefined): Ev
  */
 /** The validator's outcome set, as bare stems — the ground truth the prompt must cover. */
 export function outcomeObjectStems(): string[] {
-  return OUTCOME_OBJECT.split("|")
-    .map((alt) => alt.replace(/\\w\*/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").replace(/s\?$/, "").trim())
-    .filter((w) => w.length > 0);
+  return OUTCOME_OBJECTS.map((alt) =>
+    alt.replace(/s\?$/, "").replace(/\\w\*/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").trim(),
+  ).filter((w) => w.length > 0);
 }
 
-/**
- * The same set, written the way a person says it. Hand-worded for readability, but a test
- * asserts every stem in `outcomeObjectStems()` is covered here — so the prompt can never
- * silently become narrower than the rule again, which is exactly what refused `cdd16aaf`.
- */
+/** The same set, written the way a person says it — one source, in `evidence-policy`. */
 export function outcomeNounsForPrompt(): string[] {
-  return [
-    "collaboration", "cooperation", "teamwork", "efficiency", "productivity", "morale",
-    "safety", "quality", "performance", "retention", "success", "workflow", "outcomes",
-    "results", "workflows", "clarity", "responsibilities", "communication", "accountability",
-    "consistency", "adoption", "engagement", "alignment", "throughput", "errors",
-    "mistakes", "delays", "risks", "rework",
-    "things falling through the cracks", "things slipping through", "work being missed",
-    "anything getting missed",
-  ];
+  return [...OUTCOME_OBJECT_WORDS];
 }
 
 export function evidenceClaimBrief(answers: BuilderAnswers | undefined): string[] {
@@ -1755,8 +1682,14 @@ export function evidenceClaimBrief(answers: BuilderAnswers | undefined): string[
     "WHAT THIS TRAINING CAN PROVE — do not write past this line:",
     `- The most this program can establish: ${may.join("; ")}. Nothing more.`,
     "- ALLOWED, because the interaction really produces them: 'completed the practice'; 'identified the three items they would include'; 'created a practice record'; 'stated what they will do next'; 'made a decision and wrote it down'.",
-    "- FORBIDDEN, because nothing here could show it: that the behaviour is now performed consistently, reliably or routinely; that it was applied in real work; that anyone observed it; that it improved, was demonstrated, was verified, was proven, was mastered, or lasted.",
-    `- ALSO FORBIDDEN — pointing ANY causal verb at an organisational outcome. Not only "improves productivity": "ensures consistency", "prevents work being missed", "so that responsibilities are clear" are the same claim. The outcomes that trigger this include: ${outcomeNounsForPrompt().join(", ")}.`,
+    /*
+      EVERY rule the validator can refuse on, in its own words (Slice 3.2L-R11.4I). Not a
+      summary of them — the list itself, generated from `EVIDENCE_POLICY`. R11.4H described
+      part of the set by hand and the next window was refused for a rule the prompt never
+      mentioned; a hand-written summary is exactly what cannot be kept true.
+    */
+    "- FORBIDDEN, every one of these:",
+    ...evidencePolicyPromptLines().map((l) => `  ${l}`),
     "- Describe what the training ASKS people to do, not what it will achieve.",
     ctx && ctx.followUpDays > 0
       ? "- WHAT HAPPENS NEXT is PROSPECTIVE. Write what will be REVIEWED, never what will be confirmed: 'At follow-up, review whether the record was used in a real handover' — NOT 'the follow-up confirms the standard is now reliably used'. A self-report is what someone says they did."

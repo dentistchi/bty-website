@@ -13,6 +13,9 @@ import {
   type ProgramValidated,
   type StructuralDiagnosis,
   deriveMaterialAuthority,
+  isSemanticRepairableCode,
+  type ProgramRejectCode,
+  semanticRepairInstruction,
   evidenceClaimBrief,
   materialAuthorityBrief,
   type MaterialAuthority,
@@ -438,8 +441,10 @@ export async function generateProgram(
   let lastRefusalKind: string | undefined;
   /** The exact shape fault the repair call must fix. Never carries model prose. */
   let lastDiagnosis: StructuralDiagnosis | undefined;
-  /** A meaning fault is not repairable by asking again — only a shape fault is. */
+  /** A shape fault, or one of the two honesty faults a targeted rewrite can fix (R11.4I). */
   let repairable = false;
+  /** Set when the ONE bounded repair is a meaning fault rather than a shape fault. */
+  let semanticRepairCode: ProgramRejectCode | undefined;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages: LlmChatMessage[] =
@@ -452,9 +457,11 @@ export async function generateProgram(
               // TARGETED. The fourth controlled window handed the model only a code name
               // ("field_type"), so it could not know which field was wrong and produced the
               // same fault twice. This names the exact path and the type actually received.
-              content: lastDiagnosis
-                ? `Your previous response had one formatting problem: ${repairInstruction(lastDiagnosis)} Return the SAME program with only that corrected. Return ONLY the JSON object.`
-                : `The previous response could not be read. Return ONLY the JSON object, exactly in the required shape.`,
+              content: semanticRepairCode
+                ? semanticRepairInstruction(semanticRepairCode, args.answers)
+                : lastDiagnosis
+                  ? `Your previous response had one formatting problem: ${repairInstruction(lastDiagnosis)} Return the SAME program with only that corrected. Return ONLY the JSON object.`
+                  : `The previous response could not be read. Return ONLY the JSON object, exactly in the required shape.`,
             },
           ];
 
@@ -584,11 +591,17 @@ export async function generateProgram(
     lastRefusal = validated.code;
     lastRefusalKind = validated.kind;
     lastDiagnosis = validated.diagnosis;
-    repairable = isStructuralCode(validated.code);
+    /*
+      ONE bounded repair, under the SAME parent attempt and the same submission intent
+      (Slice 3.2L-R11.4I). `MAX_ATTEMPTS` is 2, so a second refusal is terminal and no loop
+      is possible. A meaning fault is repairable only for the two honesty families whose
+      instruction can be written without the model's own words; everything else still ends
+      the attempt immediately, because a program describing the wrong behaviour is not one
+      sentence away from being right.
+    */
+    semanticRepairCode = isSemanticRepairableCode(validated.code) ? validated.code : undefined;
+    repairable = isStructuralCode(validated.code) || semanticRepairCode !== undefined;
     logOutcome("rejected", validated.code);
-    // A SEMANTIC refusal — a fabricated template, an overclaim — is not repaired by
-    // asking again. Retrying spends a second call to be told the same thing, so the loop
-    // stops here and the Host gets an honest answer sooner.
     if (!repairable) break;
   }
 

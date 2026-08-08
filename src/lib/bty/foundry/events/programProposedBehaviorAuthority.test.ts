@@ -237,11 +237,14 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
   it("G5/G6: existing-state and content fabrication still refuse", async () => {
     const p = middleGround();
     p.program.elements[0] = el("why_it_matters", "Use the approved handoff record template, which the team already has.");
-    chatCreate.mockResolvedValueOnce(respond(p));
+    // R11.4I: an honesty fault now gets ONE bounded repair under the same parent. Refusing
+    // the repair too must still be terminal, so both calls return the same bad proposal.
+    chatCreate.mockResolvedValueOnce(respond(p)).mockResolvedValueOnce(respond(p));
     const { admin } = makeAdmin();
     const r = await run(admin);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusal).toBe("material_fabrication");
+    expect(chatCreate, "one repair, never a loop").toHaveBeenCalledTimes(2);
   });
 
   it("G9: the strict schema authority is unchanged", async () => {

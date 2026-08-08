@@ -219,21 +219,65 @@ describe("[3.2L-R3] each provider call keeps its own diagnosis", () => {
     expect([calls[0].call_sequence, calls[1].call_sequence]).toEqual([1, 2]);
   });
 
-  it("G4 — a semantic refusal is recorded as semantic on ONE call, with no retry", async () => {
+  /*
+    R11.4I CHANGED THIS CONTRACT, DELIBERATELY. Three consecutive paid windows were refused
+    on individual SENTENCES of a structurally complete program, so the two honesty families
+    now get ONE bounded repair under the SAME parent. Everything the old test protected is
+    still asserted: call 1 keeps its own semantic diagnosis, `structural_retryable` stays
+    false, and there is exactly one parent. What changed is that the attempt does not end
+    before trying once to fix the sentence.
+  */
+  it("G4 — an honesty fault gets ONE repair under the same parent, and no more", async () => {
     const fabricated = validProgram();
     (fabricated.program.elements[1] as { content: unknown }).content =
       "Complete the handoff record template before signing off at every shift change.";
-    chatCreate.mockResolvedValueOnce(respond(fabricated));
+    chatCreate.mockResolvedValueOnce(respond(fabricated)).mockResolvedValueOnce(respond(fabricated));
 
     const { admin, calls, attempts } = makeAdmin();
     const r = await run(admin);
 
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusal).toBe("material_fabrication");
-    expect(chatCreate, "a meaning fault is never retried").toHaveBeenCalledTimes(1);
-    expect(calls).toHaveLength(1);
+    expect(chatCreate, "exactly one repair — never a loop").toHaveBeenCalledTimes(2);
+    expect(calls).toHaveLength(2);
     expect(calls[0]).toMatchObject({ call_sequence: 1, validation_stage: "semantic", structural_retryable: false });
+    expect(calls[1]).toMatchObject({ call_sequence: 2, validation_stage: "semantic", structural_retryable: false });
+    // ONE parent, one refusal — the repair never creates a second attempt.
+    expect(attempts).toHaveLength(1);
     expect(attempts[0]).toMatchObject({ outcome: "validation_refused", refusal_code: "material_fabrication" });
+  });
+
+  it("G4b — the repair works: a corrected second response succeeds under the SAME parent", async () => {
+    const fabricated = validProgram();
+    (fabricated.program.elements[1] as { content: unknown }).content =
+      "Complete the handoff record template before signing off at every shift change.";
+    chatCreate.mockResolvedValueOnce(respond(fabricated)).mockResolvedValueOnce(respond(validProgram()));
+
+    const { admin, calls, attempts } = makeAdmin();
+    const r = await run(admin);
+
+    expect(r.ok).toBe(true);
+    expect(chatCreate).toHaveBeenCalledTimes(2);
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({ outcome: "success" });
+    // Only the FINAL validated proposal is identified; the refused first call is not.
+    expect(calls[0]).toMatchObject({ call_sequence: 1, outcome: "schema_invalid" });
+    expect(calls[1]).toMatchObject({ call_sequence: 2, outcome: "success" });
+  });
+
+  it("G4c — a meaning fault OUTSIDE the honesty families is still never retried", async () => {
+    const wrongBehaviour = validProgram();
+    (wrongBehaviour.program.behavior_contract as { observable_action: unknown }).observable_action =
+      "a shared handoff standard is created and utilized by team members";
+    chatCreate.mockResolvedValueOnce(respond(wrongBehaviour));
+
+    const { admin, calls, attempts } = makeAdmin();
+    const r = await run(admin);
+
+    expect(r.ok).toBe(false);
+    expect(chatCreate, "not one sentence away from being right").toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({ outcome: "validation_refused" });
   });
 
   it("G5 — every persisted diagnostic field is shape metadata; no generated prose is stored", async () => {
