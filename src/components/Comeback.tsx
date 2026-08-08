@@ -53,10 +53,24 @@ const EXPLICIT_TARGET_PARAMS = [
   "actionReview",
 ] as const;
 
-function hasExplicitTarget(search: string): boolean {
+/**
+ * Params that carry a POSTPONED destination. A gate in front of the app — consent, onboarding —
+ * redirects to itself and folds the original URL in here, so the target survives the trip but
+ * stops being a top-level param. Measured live on staging: an entry to the draft review became
+ * `/en/legal/accept?return=%2Fen%2Fapp%3F…draft%3D…`, and the prompt opened over the gate.
+ */
+const DEFERRED_TARGET_PARAMS = ["return", "next"] as const;
+
+function hasExplicitTarget(search: string, depth = 0): boolean {
   try {
     const sp = new URLSearchParams(search);
-    return EXPLICIT_TARGET_PARAMS.some((k) => (sp.get(k) ?? "").trim().length > 0);
+    if (EXPLICIT_TARGET_PARAMS.some((k) => (sp.get(k) ?? "").trim().length > 0)) return true;
+    if (depth > 0) return false;
+    return DEFERRED_TARGET_PARAMS.some((k) => {
+      const deferred = (sp.get(k) ?? "").trim();
+      const q = deferred.indexOf("?");
+      return q >= 0 && hasExplicitTarget(deferred.slice(q + 1), depth + 1);
+    });
   } catch {
     return false;
   }

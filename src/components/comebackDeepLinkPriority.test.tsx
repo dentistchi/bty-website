@@ -66,6 +66,18 @@ describe("[3.2L-R11.4E-R1] an explicit link outranks the resume prompt", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeTruthy());
   });
 
+  it("a gate that defers the target keeps it protected (live: /en/legal/accept?return=…)", async () => {
+    const target = encodeURIComponent(`/en/app?tab=foundry&draft=${DRAFT}&view=review`);
+    visit(`?return=${target}`);
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("a gate deferring an ordinary destination still gets the prompt", async () => {
+    visit(`?return=${encodeURIComponent("/en/app")}`);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeTruthy());
+  });
+
   it("D: nothing navigates after the delayed effects settle", async () => {
     visit(`?tab=foundry&draft=${DRAFT}&view=review`);
     await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
