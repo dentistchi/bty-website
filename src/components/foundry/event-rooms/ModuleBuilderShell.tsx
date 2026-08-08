@@ -68,6 +68,7 @@ export function ModuleBuilderShell({
   draftId,
   locale,
   initialView,
+  onReviewViewLeft,
   onExit,
 }: {
   draftId: string;
@@ -78,6 +79,9 @@ export function ModuleBuilderShell({
    * authoring act, so nothing about the draft is written by opening it.
    */
   initialView?: "review";
+  /** 3.2L-R11.4E-R2: fired once when a real move ends a deep-linked review, so the address can
+   *  stop claiming `view=review`. Presentation only — nothing is written by leaving. */
+  onReviewViewLeft?: () => void;
   onExit: (result?: { gone?: boolean; publishedEventId?: string }) => void;
 }) {
   const t: ModuleBuilderCopy = MODULE_BUILDER_COPY[locale];
@@ -234,6 +238,7 @@ export function ModuleBuilderShell({
   const navigate = useCallback(
     async (next: number) => {
       // A real move ends the transient view: from here the rendered step is the durable one.
+      if (reviewOverrideRef.current) onReviewViewLeft?.();
       reviewOverrideRef.current = false;
       setReviewOverride(false);
       cancelDebounce();
@@ -243,7 +248,7 @@ export function ModuleBuilderShell({
       setBlocker(null);
       saver.schedule({ answers: answersRef.current, currentStep: next });
     },
-    [saver, cancelDebounce],
+    [saver, cancelDebounce, onReviewViewLeft],
   );
 
   /*

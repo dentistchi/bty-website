@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDraftDeepLink } from "./hostDeepLink";
+import { parseDraftDeepLink, narrowDraftDeepLink } from "./hostDeepLink";
 import { computeInitialFoundryView } from "@/components/foundry/event-rooms/FoundryEventRooms";
 
 const DRAFT = "093b0361-7cc8-4688-9f93-396d60582501";
@@ -46,5 +46,55 @@ describe("[3.2L-R11.4E] draft review deep link", () => {
     const link = parseDraftDeepLink(`?tab=foundry&draft=${DRAFT}&view=review`)!;
     expect(Object.keys(link).sort()).toEqual(["draftId", "view"]);
     expect(JSON.stringify(link)).not.toMatch(/token|key|role|auth/i);
+  });
+});
+
+/**
+ * SLICE 3.2L-R11.4E-R2 — the Review URL is an address, not a bootstrap token.
+ *
+ * R11.4E consumed the link on mount, so the browser URL became `/en/app?draft=<id>` and a reload
+ * of a bookmarked review reopened the Host's last saved step. The link is now left in place while
+ * it is true and narrowed exactly when it stops being true.
+ */
+describe("[3.2L-R11.4E-R2] narrowDraftDeepLink", () => {
+  const CANON = "?tab=foundry&draft=093b0361-7cc8-4688-9f93-396d60582501&view=review";
+
+  it("leaving the review drops only `view` — the draft is still the page", () => {
+    expect(narrowDraftDeepLink(CANON, "view")).toBe(
+      "?tab=foundry&draft=093b0361-7cc8-4688-9f93-396d60582501",
+    );
+  });
+
+  it("closing the builder drops the whole address", () => {
+    expect(narrowDraftDeepLink(CANON, "none")).toBe("");
+  });
+
+  it("never invents or reorders anything else on the URL", () => {
+    expect(narrowDraftDeepLink(`${CANON}&from=today`, "view")).toBe(
+      "?tab=foundry&draft=093b0361-7cc8-4688-9f93-396d60582501&from=today",
+    );
+    expect(narrowDraftDeepLink(`${CANON}&from=today`, "none")).toBe("?from=today");
+  });
+
+  it("is idempotent — narrowing twice is narrowing once", () => {
+    const once = narrowDraftDeepLink(CANON, "view");
+    expect(narrowDraftDeepLink(once, "view")).toBe(once);
+    expect(narrowDraftDeepLink(narrowDraftDeepLink(CANON, "none"), "none")).toBe("");
+  });
+
+  it("what survives a narrow-to-view still parses as the same draft, without the review", () => {
+    const after = narrowDraftDeepLink(CANON, "view");
+    expect(parseDraftDeepLink(after)).toEqual({
+      draftId: "093b0361-7cc8-4688-9f93-396d60582501",
+      view: null,
+    });
+    expect(parseDraftDeepLink(narrowDraftDeepLink(CANON, "none"))).toBeNull();
+  });
+
+  it("the canonical URL still parses as a review AFTER a reload (nothing consumed it)", () => {
+    expect(parseDraftDeepLink(CANON)).toEqual({
+      draftId: "093b0361-7cc8-4688-9f93-396d60582501",
+      view: "review",
+    });
   });
 });

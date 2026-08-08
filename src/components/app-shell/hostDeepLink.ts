@@ -92,3 +92,32 @@ export function parseDraftDeepLink(search: string): DraftDeepLink | null {
     return null;
   }
 }
+
+/**
+ * THE REVIEW URL IS THE AUTHORITY, NOT A BOOTSTRAP TOKEN (Slice 3.2L-R11.4E-R2).
+ *
+ * The shell consumes every other deep link on mount — it opens the target and then erases the
+ * params, so a re-render can never re-trigger them. For a draft review that was wrong: the URL
+ * stopped describing the page, and reloading a bookmarked review returned the Host to whatever
+ * step they last saved. The draft link is therefore LEFT IN PLACE while it is still true, and
+ * narrowed here when it stops being true.
+ *
+ * `keep: "view"` — still on this draft, no longer on its review.
+ * `keep: "none"` — the draft is closed; nothing about it describes the page any more.
+ *
+ * Pure: takes a search string, returns a search string (leading "?" included, or "").
+ */
+export function narrowDraftDeepLink(search: string, keep: "view" | "none"): string {
+  try {
+    const sp = new URLSearchParams(search);
+    sp.delete("view");
+    if (keep === "none") {
+      sp.delete("draft");
+      sp.delete("tab");
+    }
+    const qs = sp.toString();
+    return qs ? `?${qs}` : "";
+  } catch {
+    return search;
+  }
+}

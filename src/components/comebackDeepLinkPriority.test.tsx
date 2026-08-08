@@ -78,6 +78,29 @@ describe("[3.2L-R11.4E-R1] an explicit link outranks the resume prompt", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeTruthy());
   });
 
+  it("the R11.4E-R2 matrix: every explicit destination outranks the prompt", async () => {
+    const explicit = [
+      `?tab=foundry&draft=${DRAFT}&view=review`,
+      `?tab=foundry&draft=${DRAFT}`,
+      "?tab=foundry&event=ev-1111111111111111&section=followups&focus=f-1111111111111111",
+      `?return=${encodeURIComponent(`/en/app?tab=foundry&draft=${DRAFT}&view=review`)}`,
+      `?next=${encodeURIComponent(`/en/app?tab=foundry&draft=${DRAFT}&view=review`)}`,
+    ];
+    for (const q of explicit) {
+      cleanup();
+      visit(q);
+      await act(async () => { await new Promise((r) => setTimeout(r, 40)); });
+      expect(screen.queryByRole("dialog"), q).toBeNull();
+      expect(push, q).not.toHaveBeenCalled();
+    }
+    // …and an ordinary return is still an ordinary return.
+    for (const q of ["", "?tab=today", `?return=${encodeURIComponent("/en/app")}`]) {
+      cleanup();
+      visit(q);
+      await waitFor(() => expect(screen.queryByRole("dialog"), q).toBeTruthy());
+    }
+  });
+
   it("D: nothing navigates after the delayed effects settle", async () => {
     visit(`?tab=foundry&draft=${DRAFT}&view=review`);
     await act(async () => { await new Promise((r) => setTimeout(r, 400)); });

@@ -90,6 +90,8 @@ export default function FoundryEventRooms({
   initialFocusId = null,
   initialReturnTab = null,
   onReturnToOrigin,
+  onDraftReviewLeft = () => {},
+  onDraftClosed = () => {},
   onInitialConsumed = () => {},
 }: {
   locale: string;
@@ -119,6 +121,10 @@ export default function FoundryEventRooms({
   /** Called once after the initial deep-linked control room is opened, so the shell clears the
    *  one-shot params (a later tab re-entry then returns to the Foundry home list). */
   onInitialConsumed?: () => void;
+  /** 3.2L-R11.4E-R2: the Host moved off the deep-linked review — `view=review` stopped being true. */
+  onDraftReviewLeft?: () => void;
+  /** 3.2L-R11.4E-R2: the Builder closed — nothing about that draft describes the page any more. */
+  onDraftClosed?: () => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t: EventRoomsCopy = EVENT_ROOMS_COPY[loc];
@@ -284,13 +290,14 @@ export default function FoundryEventRooms({
   );
 
   const onBuilderExit = useCallback((result?: { gone?: boolean; publishedEventId?: string }) => {
+    onDraftClosed();
     // Publishing hands off straight to the new event's control room.
     if (result?.publishedEventId) {
       setView({ kind: "control", eventId: result.publishedEventId });
       return;
     }
     setView({ kind: "home" });
-  }, []);
+  }, [onDraftClosed]);
 
   const openControl = useCallback((eventId: string) => {
     setView({ kind: "control", eventId });
@@ -325,7 +332,16 @@ export default function FoundryEventRooms({
     // `key` forces a full remount when the Host switches drafts. Without it React reuses
     // the instance, and the previous draft's answers — and therefore its visible identity —
     // would render for the moment before the new draft finishes restoring.
-    return <ModuleBuilderShell key={view.draftId} draftId={view.draftId} locale={loc} initialView={view.initialView} onExit={onBuilderExit} />;
+    return (
+      <ModuleBuilderShell
+        key={view.draftId}
+        draftId={view.draftId}
+        locale={loc}
+        initialView={view.initialView}
+        onReviewViewLeft={onDraftReviewLeft}
+        onExit={onBuilderExit}
+      />
+    );
   }
 
   if (view.kind === "history") {

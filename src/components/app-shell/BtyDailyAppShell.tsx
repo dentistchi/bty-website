@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
-import { parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
+import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
@@ -1293,6 +1293,28 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   /** 3.2L-R11.4E: `?tab=foundry&draft=<id>&view=review` — open THIS draft, optionally at review. */
   const [hostDraftId, setHostDraftId] = useState<string | null>(null);
   const [hostDraftView, setHostDraftView] = useState<"review" | null>(null);
+  /** True while the browser URL still carries a draft address we deliberately did not consume. */
+  const draftUrlLiveRef = useRef(false);
+  const narrowDraftUrl = useCallback((keep: "view" | "none") => {
+    if (!draftUrlLiveRef.current || typeof window === "undefined") return;
+    if (keep === "none") draftUrlLiveRef.current = false;
+    try {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + narrowDraftDeepLink(window.location.search, keep) + window.location.hash,
+      );
+    } catch {
+      /* history unavailable — the view is still correct; only the address lags */
+    }
+  }, []);
+  /*
+    Leaving Learn leaves the draft: the address stops describing the page, so it is narrowed away
+    rather than left behind to reopen the Builder on the next reload.
+  */
+  useEffect(() => {
+    if (tab !== "learn") narrowDraftUrl("none");
+  }, [tab, narrowDraftUrl]);
   const [hostSection, setHostSection] = useState<HostFocusSection | null>(null);
   const [hostFocusId, setHostFocusId] = useState<string | null>(null);
   // 3.2G-R1: bounded one-shot return origin for a host-attention deep link opened FROM Today, so the
@@ -1455,6 +1477,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     }
     try {
       const params = new URLSearchParams(search);
+      /*
+        A draft review link is NOT consumed here (Slice 3.2L-R11.4E-R2). Every other deep link is
+        a one-shot instruction; this one is an address. Erasing it made the URL stop describing
+        the page, so a reload of a bookmarked review reopened the Host's last saved step instead.
+        It is narrowed by `narrowDraftDeepLink` at the moment it stops being true, not on arrival.
+      */
+      if (draftLink) {
+        draftUrlLiveRef.current = true;
+        return;
+      }
       params.delete("tab");
       params.delete("review");
       params.delete("view");
@@ -1790,6 +1822,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}
                 initialReturnTab={hostReturnTab}
+                onDraftReviewLeft={() => narrowDraftUrl("view")}
+                onDraftClosed={() => narrowDraftUrl("none")}
                 onReturnToOrigin={() => setTab("today")}
                 onInitialConsumed={() => {
                   setHostEventId(null);
