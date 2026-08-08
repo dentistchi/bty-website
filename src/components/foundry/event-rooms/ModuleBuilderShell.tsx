@@ -67,10 +67,17 @@ type Restore = "loading" | "loaded" | "unavailable" | "gone";
 export function ModuleBuilderShell({
   draftId,
   locale,
+  initialView,
   onExit,
 }: {
   draftId: string;
   locale: Locale;
+  /**
+   * PRESENTATION ONLY (Slice 3.2L-R11.4E). "review" renders the review the Builder already
+   * has, without touching the Host's durable resume position — arriving by link is not an
+   * authoring act, so nothing about the draft is written by opening it.
+   */
+  initialView?: "review";
   onExit: (result?: { gone?: boolean; publishedEventId?: string }) => void;
 }) {
   const t: ModuleBuilderCopy = MODULE_BUILDER_COPY[locale];
@@ -78,6 +85,15 @@ export function ModuleBuilderShell({
   const [restore, setRestore] = useState<Restore>("loading");
   const [answers, setAnswers] = useState<BuilderAnswers>({});
   const [step, setStep] = useState<number>(1);
+  /**
+   * TRANSIENT REVIEW (Slice 3.2L-R11.4E). A `view=review` link renders the review WITHOUT
+   * moving `stepRef` — so the Host's durable resume position stays exactly where they left
+   * it, and nothing is saved by arriving. The moment they actually navigate, this clears and
+   * ordinary step behaviour resumes.
+   */
+  const [reviewOverride, setReviewOverride] = useState(initialView === "review");
+  /** Read inside callbacks without re-creating them on every toggle. */
+  const reviewOverrideRef = useRef(initialView === "review");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [blocker, setBlocker] = useState<string | null>(null);
   const [assets, setAssets] = useState<ClientAsset[]>([]);
@@ -217,6 +233,9 @@ export function ModuleBuilderShell({
 
   const navigate = useCallback(
     async (next: number) => {
+      // A real move ends the transient view: from here the rendered step is the durable one.
+      reviewOverrideRef.current = false;
+      setReviewOverride(false);
       cancelDebounce();
       await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
       stepRef.current = next;
@@ -227,15 +246,27 @@ export function ModuleBuilderShell({
     [saver, cancelDebounce],
   );
 
+  /*
+    Navigation moves from what the Host is LOOKING AT. While a `view=review` link is being
+    shown that is the review, not the durable position the server restored — otherwise Back
+    from a deep-linked review would jump to wherever they happened to leave off.
+  */
+  const shownStepNow = useCallback(
+    () => (reviewOverrideRef.current ? BUILDER_STEP_MAX : stepRef.current),
+    [],
+  );
+
   const goNext = useCallback(() => {
-    const b = stepBlocker(stepRef.current, answersRef.current);
+    const from = shownStepNow();
+    const b = stepBlocker(from, answersRef.current);
     if (b) return setBlocker(b);
-    if (stepRef.current < BUILDER_STEP_MAX) void navigate(stepRef.current + 1);
-  }, [navigate]);
+    if (from < BUILDER_STEP_MAX) void navigate(from + 1);
+  }, [navigate, shownStepNow]);
 
   const goBack = useCallback(() => {
-    if (stepRef.current > 1) void navigate(stepRef.current - 1);
-  }, [navigate]);
+    const from = shownStepNow();
+    if (from > 1) void navigate(from - 1);
+  }, [navigate, shownStepNow]);
 
   const jumpTo = useCallback((target: number) => void navigate(target), [navigate]);
 
@@ -549,7 +580,9 @@ export function ModuleBuilderShell({
   }
   if (restore === "gone") return <div aria-hidden className="min-h-[30vh]" />;
 
-  const isReview = step === BUILDER_STEP_MAX;
+  /** What the Host SEES. `step` remains the durable position the server restored. */
+  const shownStep = reviewOverride ? BUILDER_STEP_MAX : step;
+  const isReview = shownStep === BUILDER_STEP_MAX;
   // The EXACT blockers, named. R2F measured the old surface claiming "resolve every
   // Needs confirmation element" while the only real blocker was an unconfirmed title.
   const journey = answers.realityGroundedJourneyV1;
@@ -620,7 +653,7 @@ export function ModuleBuilderShell({
     <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
-          {isReview ? t.reviewEyebrow : t.stepOf(step, BUILDER_STEP_MAX - 1)}
+          {isReview ? t.reviewEyebrow : t.stepOf(shownStep, BUILDER_STEP_MAX - 1)}
         </span>
         <SaveStatus state={saveState} t={t} onRetry={retry} />
       </div>
@@ -702,12 +735,12 @@ export function ModuleBuilderShell({
           />
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
+        <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
         <div>
-          {step > 1 ? (
+          {shownStep > 1 ? (
             <button
               type="button"
               onClick={goBack}
@@ -729,7 +762,7 @@ export function ModuleBuilderShell({
           >
             {t.saveAndLeave}
           </button>
-          {step < BUILDER_STEP_MAX ? (
+          {shownStep < BUILDER_STEP_MAX ? (
             <button
               type="button"
               onClick={goNext}

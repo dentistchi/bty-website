@@ -30,7 +30,7 @@ import type { HostFocusSection, HostReturnTab } from "@/components/app-shell/hos
 type View =
   | { kind: "home" }
   | { kind: "create" }
-  | { kind: "builder"; draftId: string }
+  | { kind: "builder"; draftId: string; initialView?: "review" }
   | { kind: "history" }
   | { kind: "arena-practice"; eventId: string }
   | {
@@ -56,7 +56,15 @@ export function computeInitialFoundryView(
   initialFocusSection: HostFocusSection | null,
   initialFocusId: string | null,
   initialReturnTab: HostReturnTab | null,
+  initialDraftId: string | null = null,
+  initialDraftView: "review" | null = null,
 ): View {
+  /*
+    A draft target opens the Builder on the FIRST committed render — the same atomic handoff
+    the control room already gets, so there is no Foundry-home flash and no second navigation
+    (Slice 3.2L-R11.4E).
+  */
+  if (initialDraftId) return { kind: "builder", draftId: initialDraftId, initialView: initialDraftView ?? undefined };
   if (initialEventId) {
     return {
       kind: "control",
@@ -76,6 +84,8 @@ export default function FoundryEventRooms({
   onOpenEvent,
   onOpenMyEvents,
   initialEventId = null,
+  initialDraftId = null,
+  initialDraftView = null,
   initialFocusSection = null,
   initialFocusId = null,
   initialReturnTab = null,
@@ -95,6 +105,9 @@ export default function FoundryEventRooms({
    *  mount, focused on the given section/row. Null = normal Foundry home. Server owner-scopes the
    *  control-room reads; a not-owned event simply resolves to an empty room (no disclosure). */
   initialEventId?: string | null;
+  /** 3.2L-R11.4E: open THIS owned draft directly, optionally at its review. Presentation only. */
+  initialDraftId?: string | null;
+  initialDraftView?: "review" | null;
   initialFocusSection?: HostFocusSection | null;
   initialFocusId?: string | null;
   /** 3.2G-R1: bounded return origin for the deep-linked control room. "today" → Back returns to Today
@@ -115,7 +128,7 @@ export default function FoundryEventRooms({
   // control room (atomic handoff — no Foundry-home flash). The effect below still covers the
   // cold-navigation race (target arriving as a later prop UPDATE) and consumes the one-shot params.
   const [view, setView] = useState<View>(() =>
-    computeInitialFoundryView(initialEventId, initialFocusSection, initialFocusId, initialReturnTab),
+    computeInitialFoundryView(initialEventId, initialFocusSection, initialFocusId, initialReturnTab, initialDraftId ?? null, initialDraftView ?? null),
   );
 
   // Host Leadership Attention deep link (Slice 3.1B-3L; 3.2G-R3): open the EXACT owned control room
@@ -312,7 +325,7 @@ export default function FoundryEventRooms({
     // `key` forces a full remount when the Host switches drafts. Without it React reuses
     // the instance, and the previous draft's answers — and therefore its visible identity —
     // would render for the moment before the new draft finishes restoring.
-    return <ModuleBuilderShell key={view.draftId} draftId={view.draftId} locale={loc} onExit={onBuilderExit} />;
+    return <ModuleBuilderShell key={view.draftId} draftId={view.draftId} locale={loc} initialView={view.initialView} onExit={onBuilderExit} />;
   }
 
   if (view.kind === "history") {

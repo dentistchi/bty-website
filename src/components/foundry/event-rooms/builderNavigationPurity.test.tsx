@@ -104,3 +104,56 @@ describe("[3.2L-R11.4B] generation-context purity", () => {
     expect(fp({ ...CANONICAL, sharedQuestion: "What standard mattered most?" })).not.toBe(fp(CANONICAL));
   });
 });
+
+describe("[3.2L-R11.4E] opening a draft's review by link writes nothing", () => {
+  /** The canonical draft's real state: developed content, resume position well before review. */
+  const DURABLE_STEP = 2;
+
+  function mountDeepLinked(initialView?: "review") {
+    const saved: unknown[] = [];
+    global.fetch = vi.fn(async (url: unknown, init?: { method?: string; body?: string }) => {
+      if (init?.method && init.method !== "GET") {
+        saved.push({ method: init.method, body: init.body });
+        return { ok: true, status: 200, json: async () => ({ draft: {} }) } as never;
+      }
+      if (String(url).includes("/api/bty/foundry/modules/")) {
+        return {
+          ok: true, status: 200,
+          json: async () => ({ draft: { id: "d-1", status: "draft", current_step: DURABLE_STEP, answers: CANONICAL, module_version: 1 } }),
+        } as never;
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as never;
+    }) as never;
+    render(<ModuleBuilderShell draftId="d-1" locale="en" initialView={initialView} onExit={vi.fn()} />);
+    return saved;
+  }
+
+  it("lands on Review even though the durable position is earlier", async () => {
+    mountDeepLinked("review");
+    await waitFor(() => expect(screen.queryByTestId("program-authorship-entry")).toBeTruthy(), { timeout: 3000 });
+    // The generation entry only exists on the review step.
+    expect(screen.getByTestId("program-generate")).toBeTruthy();
+  });
+
+  it("issues NO write of any kind while opening", async () => {
+    const saved = mountDeepLinked("review");
+    await waitFor(() => expect(screen.queryByTestId("program-authorship-entry")).toBeTruthy(), { timeout: 3000 });
+    await act(async () => { await new Promise((r) => setTimeout(r, 1000)); });
+    expect(saved, JSON.stringify(saved).slice(0, 200)).toEqual([]);
+  });
+
+  it("without the link it still opens at the Host's own position", async () => {
+    mountDeepLinked();
+    await act(async () => { await new Promise((r) => setTimeout(r, 500)); });
+    expect(screen.queryByTestId("program-authorship-entry")).toBeNull();
+  });
+
+  it("pressing the generation entry only opens the existing confirmation", async () => {
+    const saved = mountDeepLinked("review");
+    await waitFor(() => expect(screen.queryByTestId("program-generate")).toBeTruthy(), { timeout: 3000 });
+    await act(async () => { fireEvent.click(screen.getByTestId("program-generate")); });
+    expect(screen.getByTestId("program-target-confirm-action")).toBeTruthy();
+    // Still nothing written, and nothing posted to program-draft.
+    expect(saved).toEqual([]);
+  });
+});

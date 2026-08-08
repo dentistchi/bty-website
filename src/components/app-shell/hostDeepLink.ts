@@ -55,3 +55,40 @@ export function parseHostDeepLink(search: string): HostDeepLink | null {
     return null;
   }
 }
+
+/**
+ * DRAFT REVIEW DEEP LINK (Slice 3.2L-R11.4E) — the same shape, for a training still being built.
+ *
+ * An event has had a deep link since 3.1B-3L; a DRAFT never did, so the only way to a draft's
+ * review was the Learn list plus one Next press per remaining step. That made an ordinary
+ * product action — "look at my training and draft its program" — into a navigation exercise,
+ * and every one of those Next presses wrote a resume position.
+ *
+ *   /<locale>/app?tab=foundry&draft=<draft-id>&view=review
+ *
+ * `view=review` is PRESENTATION, never authoring: it asks the Builder to show the review it
+ * already renders, and nothing about the draft is written by arriving. Absent or unknown
+ * `view` opens the draft at the Host's own saved position, exactly as tapping the list does.
+ *
+ * It authorizes nothing. The draft id travels to the same owner-scoped GET the Builder always
+ * uses; a draft the Host does not own simply does not load.
+ */
+export type DraftDeepLinkView = "review";
+
+export type DraftDeepLink = {
+  draftId: string;
+  /** null = open wherever the Host left off. */
+  view: DraftDeepLinkView | null;
+};
+
+export function parseDraftDeepLink(search: string): DraftDeepLink | null {
+  try {
+    const sp = new URLSearchParams(search);
+    if (sp.get("tab") !== "foundry") return null;
+    const draftId = sp.get("draft");
+    if (!draftId || !UUIDISH.test(draftId)) return null;
+    return { draftId, view: sp.get("view") === "review" ? "review" : null };
+  } catch {
+    return null;
+  }
+}

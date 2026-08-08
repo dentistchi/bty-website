@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
-import { parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
+import { parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
@@ -1290,6 +1290,9 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // feed FoundryEventRooms' initial view once; `onInitialConsumed` clears them so a later tab re-entry
   // returns to the Foundry home list (never a stuck re-open). Distinct from the learner `?followup=` path.
   const [hostEventId, setHostEventId] = useState<string | null>(null);
+  /** 3.2L-R11.4E: `?tab=foundry&draft=<id>&view=review` — open THIS draft, optionally at review. */
+  const [hostDraftId, setHostDraftId] = useState<string | null>(null);
+  const [hostDraftView, setHostDraftView] = useState<"review" | null>(null);
   const [hostSection, setHostSection] = useState<HostFocusSection | null>(null);
   const [hostFocusId, setHostFocusId] = useState<string | null>(null);
   // 3.2G-R1: bounded one-shot return origin for a host-attention deep link opened FROM Today, so the
@@ -1381,6 +1384,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     // Host Leadership Attention deep link (tab=foundry + event + section + focus). Validated/sanitized
     // in one pure helper; a malformed/foreign link parses to null (falls through, never a dead-end).
     const hostLink = parseHostDeepLink(search);
+    const draftLink = parseDraftDeepLink(search);
     if (
       !requestedTab &&
       !validReview &&
@@ -1391,7 +1395,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       !validFieldActionAssignment &&
       !validFieldActionContract &&
       !validFieldAction &&
-      !hostLink
+      !hostLink &&
+      !draftLink
     )
       return;
     if (validFieldAction) {
@@ -1415,6 +1420,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       // Canonical Today FOLLOW_UP_DUE deep link (?tab=foundry&followup=) → Learn (=Foundry) follow-up.
       setTab("learn");
       setFollowupId(validFollowup);
+    } else if (draftLink) {
+      // Canonical draft deep link → Learn (=Foundry) with the Builder opened on that draft.
+      setTab("learn");
+      setHostDraftId(draftLink.draftId);
+      setHostDraftView(draftLink.view);
     } else if (hostLink) {
       // Canonical Host attention deep link → Learn (=Foundry) control room + section + focused row.
       setTab("learn");
@@ -1775,12 +1785,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 onOpenEvent={() => setFoundryView("event-create")}
                 onOpenMyEvents={() => setFoundryView("event-list")}
                 initialEventId={hostEventId}
+                initialDraftId={hostDraftId}
+                initialDraftView={hostDraftView}
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}
                 initialReturnTab={hostReturnTab}
                 onReturnToOrigin={() => setTab("today")}
                 onInitialConsumed={() => {
                   setHostEventId(null);
+                  setHostDraftId(null);
+                  setHostDraftView(null);
                   setHostSection(null);
                   setHostFocusId(null);
                   setHostReturnTab(null);
