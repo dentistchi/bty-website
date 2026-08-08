@@ -247,31 +247,45 @@ export function ModuleBuilderShell({
 
   const retry = useCallback(() => void saver.retry(), [saver]);
 
-  // Prefill the participant completion question ONCE when the host first reaches
-  // the material step, using a deterministic (non-AI) suggestion — only if the
-  // field is empty. The host sees + edits it; a blank field defaults at publish.
+  /**
+   * SUGGESTIONS ARE SHOWN, NOT AUTHORED (Slice 3.2L-R11.4B).
+   *
+   * Both of these used to `patchAnswers` the moment `step` became 6 — from any direction,
+   * including Back, a jump, or a reload that lands there. `seededSharedRef` is per-mount, so
+   * re-entry re-armed it. That made TRAVERSAL an authoring act: the canonical draft grew a
+   * `sharedQuestion` the Host never typed, and because that field is part of
+   * `programContextFingerprint` it silently moved the training from a 7-section program to
+   * an 8-section one including REFLECT.
+   *
+   * The suggestion now lives in local state and is only DISPLAYED. It becomes canonical the
+   * moment the Host edits the field — which is the existing, ordinary authoring path. Doing
+   * nothing authors nothing, so navigation can no longer change the generation context.
+   */
+  const [proposedCompletionPrompt, setProposedCompletionPrompt] = useState<string | null>(null);
+  const [proposedSharedQuestion, setProposedSharedQuestion] = useState<string | null>(null);
   useEffect(() => {
-    if (step === 6 && !seededPromptRef.current) {
+    if (step !== 6) return;
+    if (!seededPromptRef.current) {
       seededPromptRef.current = true;
       if (!(answersRef.current.completionPrompt ?? "").trim()) {
         const suggestion = suggestCompletionPrompt(answersRef.current, locale);
-        if (suggestion) patchAnswers({ completionPrompt: suggestion }, false);
+        if (suggestion) setProposedCompletionPrompt(suggestion);
       }
     }
-    // Shared Understanding default (Slice 3.1B-3G, Amendment F): propose a shared question by
-    // default for decide/practice/shared_standard needs, ONCE, and ONLY if the field is untouched
-    // (undefined). Once the Host edits it — even to empty (an explicit remove) — it is no longer
-    // undefined, so we never silently restore a removed question.
-    if (step === 6 && !seededSharedRef.current) {
+    // Shared Understanding default (Slice 3.1B-3G, Amendment F): proposed for
+    // decide/practice/shared_standard needs, ONCE, and ONLY while the field is untouched
+    // (undefined). Once the Host edits it — even to empty, an explicit remove — it is no
+    // longer undefined and nothing is ever re-proposed.
+    if (!seededSharedRef.current) {
       seededSharedRef.current = true;
       if (
         answersRef.current.sharedQuestion === undefined &&
         shouldProposeSharedQuestion(normalizeLearningNeeds(answersRef.current))
       ) {
-        patchAnswers({ sharedQuestion: suggestSharedQuestion(locale) }, false);
+        setProposedSharedQuestion(suggestSharedQuestion(locale));
       }
     }
-  }, [step, patchAnswers, locale]);
+  }, [step, locale]);
 
   // Publish the draft into a live event (approve-on-publish) and hand off to the
   // control room. Flushes any pending autosave first so the server reads the
@@ -688,7 +702,7 @@ export function ModuleBuilderShell({
           />
         </>
       ) : (
-        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode)}</div>
+        <div className="min-h-[42vh]">{renderStep(step, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
       )}
 
       <div className="flex items-center justify-between gap-3 pt-2">
@@ -878,7 +892,21 @@ function BlockerLine({ show, text }: { show: boolean; text: string }) {
   return <p className="text-xs leading-5 text-amber-300/80">{text}</p>;
 }
 
-function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: string | null, t: ModuleBuilderCopy, filesNode: React.ReactNode, copilotNode: React.ReactNode, moduleDraftNode: React.ReactNode) {
+function renderStep(
+  step: number,
+  a: BuilderAnswers,
+  patch: Patch,
+  blocker: string | null,
+  t: ModuleBuilderCopy,
+  filesNode: React.ReactNode,
+  copilotNode: React.ReactNode,
+  moduleDraftNode: React.ReactNode,
+  /**
+   * Proposed text the Host has not authored. Shown in the field so they can accept it by
+   * editing, and never written to the draft on its own (Slice 3.2L-R11.4B).
+   */
+  proposals: { completionPrompt: string | null; sharedQuestion: string | null },
+) {
   switch (step) {
     case 1:
       return (
@@ -1037,7 +1065,7 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
             <div className="flex flex-col gap-2 border-t border-white/8 pt-4">
               <h3 className="text-sm font-medium text-white/70">{t.s6CompletionQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6CompletionHelp}</p>
-              {textArea(a.completionPrompt ?? "", (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
+              {textArea(a.completionPrompt ?? proposals.completionPrompt ?? "", (v) => patch({ completionPrompt: v }, false), t.s6CompletionPlaceholder, t.s6CompletionQ)}
             </div>
           ) : null}
           {a.materialIntent ? (
@@ -1047,7 +1075,7 @@ function renderStep(step: number, a: BuilderAnswers, patch: Patch, blocker: stri
             <div className="flex flex-col gap-2 border-t border-white/8 pt-4" data-testid="builder-shared-question">
               <h3 className="text-sm font-medium text-white/70">{t.s6SharedQ}</h3>
               <p className="text-xs leading-5 text-white/45">{t.s6SharedHelp}</p>
-              {textArea(a.sharedQuestion ?? "", (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
+              {textArea(a.sharedQuestion ?? proposals.sharedQuestion ?? "", (v) => patch({ sharedQuestion: v }, false), t.s6SharedPlaceholder, t.s6SharedQ)}
             </div>
           ) : null}
           <BlockerLine show={blocker === "material_intent_required"} text={t.s6Blocker} />
