@@ -13,6 +13,7 @@ import {
   type ProgramValidated,
   type StructuralDiagnosis,
   deriveMaterialAuthority,
+  evidenceClaimBrief,
   materialAuthorityBrief,
   type MaterialAuthority,
 } from "@/domain/foundry/module/program-authorship";
@@ -112,6 +113,7 @@ function systemPrompt(
   required: readonly string[],
   evidenceCeiling: string,
   material: MaterialAuthority,
+  evidenceClaims: readonly string[],
 ): string {
   const isKo = locale === "ko";
   return [
@@ -128,6 +130,14 @@ function systemPrompt(
       no materials. The answer is: everything, self-contained. It now reads that first.
     */
     ...materialAuthorityBrief(material),
+    "",
+    /*
+      The second refusal, `cdd16aaf`, was `evidence_overclaim` while this prompt already
+      carried a ceiling — but the ceiling described what the training CANNOT show, and the
+      outcome ban named five nouns against a validator that refuses ~30. Derived from the
+      validator's own set, allowed claims first (Slice 3.2L-R11.4H).
+    */
+    ...evidenceClaims,
     "",
     "HARD RULES:",
     "- Invent NO facts. No policy numbers, no form codes, no dates, no named people, no incidents, no metrics, no regulations the host did not state.",
@@ -419,7 +429,7 @@ export async function generateProgram(
   const materialAuthority = deriveMaterialAuthority(args.answers, args.verifiedArtifacts ?? []);
 
   const base: LlmChatMessage[] = [
-    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority) },
+    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers)) },
     { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
 

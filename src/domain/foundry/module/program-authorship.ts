@@ -503,6 +503,60 @@ const OVERCLAIM = new RegExp(OVERCLAIM_PHRASES.join("|"), "gi");
 const NEGATOR = /\b(?:not|never|cannot|can't|doesn't|does not|don't|do not|isn't|is not|won't|will not|without|neither|nor|nothing|none|no|rather than|instead of)\b|않|아니|없/i;
 const NEGATION_WINDOW = 48;
 
+/**
+ * CLAIMING A RUNG THE PRODUCT CANNOT REACH (Slice 3.2L-R11.4H).
+ *
+ * The phrase list and the causal-outcome structure between them missed every one of the
+ * four claims this slice had to refuse — measured, not assumed:
+ *
+ *   "Participant now consistently performs complete handoffs."   passed
+ *   "Training proved handoff quality improved."                  passed
+ *   "Completion demonstrates sustained behavior change."         passed
+ *   "Follow-up confirms the new standard is reliably used."      passed
+ *
+ * None is an organisational-outcome promise, so the R9 structural rule had nothing to
+ * match; none uses a listed phrase. What they share is a LEVEL: each asserts applied,
+ * observed or sustained evidence, and no training interaction can produce any of the three.
+ *
+ * Two shapes cover them. HABITUALITY — an adverb of regularity attached to performing the
+ * behaviour. PROOF — a verb of demonstration pointed at a high rung. Both are assertions,
+ * so both defer to the existing negation rule and to a prospective frame: "review WHETHER
+ * the standard was used in a real handover" is the sentence the follow-up SHOULD contain,
+ * and it must stay legal.
+ */
+const HABITUAL_PERFORMANCE = new RegExp(
+  "\\b(?:consistently|reliably|routinely|habitually|regularly|always|every time|each time)\\b[^.!?]{0,40}?" +
+    "\\b(?:perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|carr(?:y|ies|ied)\\s+out|conduct\\w*|do(?:es)?)\\b" +
+    "|\\b(?:perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|conduct\\w*)\\b[^.!?]{0,40}?" +
+    "\\b(?:consistently|reliably|routinely|habitually|regularly)\\b",
+  "i",
+);
+const PROOF_VERB = "demonstrat\\w*|prov(?:e|es|ed|en)|confirm\\w*|verif\\w*|validat\\w*|establish(?:es|ed)";
+const HIGH_RUNG =
+  "sustained|lasting|permanent\\w*|behaviou?r change|competenc\\w*|mastery|master(?:ed|y)|improvement\\w*|improv(?:es|ed)|adoption|applied|application|reliab\\w*|consisten\\w*";
+const PROOF_OF_HIGH_RUNG = new RegExp(`\\b(?:${PROOF_VERB})\\b[^.!?]{0,48}?\\b(?:${HIGH_RUNG})\\b`, "i");
+
+/** Framing that ASKS rather than asserts — the shape a follow-up is supposed to have. */
+const PROSPECTIVE_FRAME =
+  /\b(?:whether|ask|asks|asked|review|reviews|reviewing|check|checks|checking|if|invite|prompt|consider|discuss)\b/i;
+const PROSPECTIVE_WINDOW = 70;
+
+/**
+ * True when the text asserts evidence this product cannot produce — applied, observed or
+ * sustained — rather than what the training interaction actually shows.
+ */
+export function claimsAboveCeiling(text: string): boolean {
+  for (const re of [HABITUAL_PERFORMANCE, PROOF_OF_HIGH_RUNG]) {
+    const m = re.exec(text);
+    if (!m) continue;
+    const before = text.slice(Math.max(0, m.index - PROSPECTIVE_WINDOW), m.index);
+    if (NEGATOR.test(text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index))) continue;
+    if (PROSPECTIVE_FRAME.test(before)) continue;
+    return true;
+  }
+  return false;
+}
+
 /** True only when an overclaim phrase is ASSERTED rather than denied. */
 function assertsOverclaim(text: string): boolean {
   // The structural causal-outcome claim carries the same negation rule: "does not improve
@@ -512,6 +566,8 @@ function assertsOverclaim(text: string): boolean {
     const before = text.slice(Math.max(0, structural.index - NEGATION_WINDOW), structural.index);
     if (!NEGATOR.test(before)) return true;
   }
+  // A rung this product cannot reach, however it is phrased (Slice 3.2L-R11.4H).
+  if (claimsAboveCeiling(text)) return true;
   OVERCLAIM.lastIndex = 0;
   for (let m = OVERCLAIM.exec(text); m !== null; m = OVERCLAIM.exec(text)) {
     const before = text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index);
@@ -1620,12 +1676,103 @@ export function retainGroundedAssumptions(assumptions: readonly string[]): strin
   return assumptions.filter((a) => !UNGROUNDED_ASSUMPTION.some((re) => re.test(a)));
 }
 
+/**
+ * THE EVIDENCE LADDER, MADE LEGIBLE (Slice 3.2L-R11.4H).
+ *
+ * The ladder is not new — it has been encoded in `deriveEvidenceCeiling` since R8, one
+ * sentence per rung, each gated by the same Host answer that creates the rung. What was
+ * missing is a NAME for each level, so the authorship prompt can be built from the same
+ * authority the Host-visible ceiling is built from instead of restating it by hand.
+ *
+ * The top three are deliberately unreachable from a training interaction: nothing a
+ * participant does inside a program can show they applied it in real work, that anyone
+ * observed them, or that it lasted. Only real-world evidence could, and this product does
+ * not collect any.
+ */
+export const EVIDENCE_LADDER = [
+  "exposed", "reflected", "decided", "practiced", "applied", "observed", "sustained",
+] as const;
+export type EvidenceLevel = (typeof EVIDENCE_LADDER)[number];
+
+/** What THIS configuration can actually establish, lowest rung first. */
+export function availableEvidenceLevels(answers: BuilderAnswers | undefined): EvidenceLevel[] {
+  const ctx = programContext(answers);
+  const out: EvidenceLevel[] = ["exposed"];
+  if (ctx?.completionPrompt) out.push("reflected");
+  if (ctx?.learningNeeds.includes("decide")) out.push("decided");
+  if (ctx?.arenaRecommended) out.push("practiced");
+  // `applied`, `observed` and `sustained` are never added: a self-report says what someone
+  // CLAIMS they did, which is not evidence that they did it.
+  return out;
+}
+
+/**
+ * The prompt's evidence section — the counterweight the refused attempt did not have.
+ *
+ * `cdd16aaf` was refused for `evidence_overclaim` while the prompt DID carry an evidence
+ * ceiling. The instruction was simply narrower than the rule: it named five outcomes
+ * ("project success, collaboration, productivity, safety or results") while the validator
+ * refuses a causal verb pointed at any of ~25, including consistency, clarity,
+ * responsibilities, communication, errors, delays and "falling through the cracks". A model
+ * can obey every word it was given and still be refused.
+ *
+ * So the forbidden list is DERIVED from the validator's own outcome set — it cannot be
+ * narrower than the rule again — and the allowed list is stated first, because a prompt
+ * made only of prohibitions is what produced the last two refusals.
+ */
+/** The validator's outcome set, as bare stems — the ground truth the prompt must cover. */
+export function outcomeObjectStems(): string[] {
+  return OUTCOME_OBJECT.split("|")
+    .map((alt) => alt.replace(/\\w\*/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").replace(/s\?$/, "").trim())
+    .filter((w) => w.length > 0);
+}
+
+/**
+ * The same set, written the way a person says it. Hand-worded for readability, but a test
+ * asserts every stem in `outcomeObjectStems()` is covered here — so the prompt can never
+ * silently become narrower than the rule again, which is exactly what refused `cdd16aaf`.
+ */
+export function outcomeNounsForPrompt(): string[] {
+  return [
+    "collaboration", "cooperation", "teamwork", "efficiency", "productivity", "morale",
+    "safety", "quality", "performance", "retention", "success", "workflow", "outcomes",
+    "results", "workflows", "clarity", "responsibilities", "communication", "accountability",
+    "consistency", "adoption", "engagement", "alignment", "throughput", "errors",
+    "mistakes", "delays", "risks", "rework",
+    "things falling through the cracks", "things slipping through", "work being missed",
+    "anything getting missed",
+  ];
+}
+
+export function evidenceClaimBrief(answers: BuilderAnswers | undefined): string[] {
+  const available = availableEvidenceLevels(answers);
+  const ctx = programContext(answers);
+  const may: string[] = ["that people read or watched what the host provided"];
+  if (available.includes("reflected")) may.push("that someone wrote an answer");
+  if (available.includes("decided")) may.push("that someone made and recorded a decision");
+  if (available.includes("practiced")) may.push("that someone rehearsed the behaviour");
+  return [
+    "WHAT THIS TRAINING CAN PROVE — do not write past this line:",
+    `- The most this program can establish: ${may.join("; ")}. Nothing more.`,
+    "- ALLOWED, because the interaction really produces them: 'completed the practice'; 'identified the three items they would include'; 'created a practice record'; 'stated what they will do next'; 'made a decision and wrote it down'.",
+    "- FORBIDDEN, because nothing here could show it: that the behaviour is now performed consistently, reliably or routinely; that it was applied in real work; that anyone observed it; that it improved, was demonstrated, was verified, was proven, was mastered, or lasted.",
+    `- ALSO FORBIDDEN — pointing ANY causal verb at an organisational outcome. Not only "improves productivity": "ensures consistency", "prevents work being missed", "so that responsibilities are clear" are the same claim. The outcomes that trigger this include: ${outcomeNounsForPrompt().join(", ")}.`,
+    "- Describe what the training ASKS people to do, not what it will achieve.",
+    ctx && ctx.followUpDays > 0
+      ? "- WHAT HAPPENS NEXT is PROSPECTIVE. Write what will be REVIEWED, never what will be confirmed: 'At follow-up, review whether the record was used in a real handover' — NOT 'the follow-up confirms the standard is now reliably used'. A self-report is what someone says they did."
+      : "- There is no follow-up, so nothing in the program may refer to checking back later.",
+  ];
+}
+
 export function deriveEvidenceCeiling(answers: BuilderAnswers | undefined): string {
   const ctx = programContext(answers);
+  // Built from the SAME rungs `availableEvidenceLevels` reports, so the Host-visible ceiling
+  // and the authorship instruction can never describe different limits (Slice 3.2L-R11.4H).
+  const levels = availableEvidenceLevels(answers);
   const parts = ["Reading or watching the material can show only that people were exposed to it."];
-  if (ctx?.completionPrompt) parts.push("A written answer shows reflection, not competence.");
-  if (ctx?.learningNeeds.includes("decide")) parts.push("An action decision records a decision, never a completed action.");
-  if (ctx?.arenaRecommended) parts.push("Practice is rehearsal, never field mastery.");
+  if (levels.includes("reflected")) parts.push("A written answer shows reflection, not competence.");
+  if (levels.includes("decided")) parts.push("An action decision records a decision, never a completed action.");
+  if (levels.includes("practiced")) parts.push("Practice is rehearsal, never field mastery.");
   if ((ctx?.followUpDays ?? 0) > 0) parts.push("A scheduled self-report is what someone says they did, not observed behavior.");
   parts.push("Nothing here can show that behaviour changed, that it was adopted, or that it lasted.");
   return parts.join(" ");
