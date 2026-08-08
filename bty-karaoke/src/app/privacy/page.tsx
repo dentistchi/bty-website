@@ -153,6 +153,46 @@ export default function PrivacyPage() {
           event and request; we will honor reasonable deletion requests manually.
         </p>
 
+        <h2>12a. Host account deletion</h2>
+        <p>
+          If you sign in as a host with Apple or Google, you can permanently delete your account
+          from inside the app at any time (Account &rarr; Delete Account). It is available whether
+          or not you have created a norebang. Deletion is immediate and cannot be undone.
+        </p>
+        <p>What is removed:</p>
+        <ul>
+          <li>Your email address, display name and time zone are erased from your account record.</li>
+          <li>Your Apple and Google sign-in links are deleted, so neither can open the account again.</li>
+          <li>All of your sign-in sessions are revoked, and every device, pairing code and
+            room-management credential belonging to your norebangs is revoked.</li>
+          <li>Your Apple and Google authorizations are withdrawn. If Apple cannot complete the
+            withdrawal, the app tells you how to finish it in iOS Settings.</li>
+          <li>Saved songs and uploaded norebang logos are deleted. Logo files are removed from
+            storage shortly after deletion — normally within 24 hours and at most within 30 days.</li>
+        </ul>
+        <p>What is kept, and why:</p>
+        <ul>
+          <li><strong>Your account record is kept as a non-identifying marker</strong> rather than
+            being erased outright, so the records below stay linked to something and are not
+            silently orphaned. It contains no email, name or sign-in identifier and can no longer
+            be signed into.</li>
+          <li><strong>Norebangs and events</strong> are retired rather than deleted. Their names are
+            replaced with a neutral label, and the web address stays reserved so an old QR code can
+            never lead to someone else&rsquo;s norebang.</li>
+          <li><strong>Song request and playback history</strong> is kept with display names removed,
+            so guests&rsquo; own records of an event remain accurate.</li>
+          <li><strong>Free-time usage and pass records</strong> are kept for accounting and to stop
+            the daily free allowance being reset by deleting and re-creating an account.</li>
+          <li><strong>A one-way fingerprint of your sign-in identifier</strong> is kept for the same
+            reason. It cannot be reversed to reveal your Apple or Google identity, is never shared,
+            and is used only to recognise a repeat deletion.</li>
+          <li><strong>An opaque reference</strong> is kept so any future purchase or refund can be
+            honoured. It carries no email or sign-in identity.</li>
+          <li><strong>Minimal sign-out records</strong> are kept for up to 90 days to investigate
+            abuse, then deleted. The record that a deletion happened is kept permanently and
+            contains no personal information.</li>
+        </ul>
+
         <h2>13. Security</h2>
         <p>
           Access to YouTube uses a server-side API key that is never exposed to your browser.
@@ -294,6 +334,44 @@ export default function PrivacyPage() {
           식별할 수 있는 정보와 함께 <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>로
           요청해 주세요. 합리적인 삭제 요청은 수동으로 처리합니다.
         </p>
+
+        <h2>12a. 호스트 계정 삭제</h2>
+        <p>
+          Apple 또는 Google로 호스트 로그인을 했다면, 앱 안에서 언제든지 계정을 완전히 삭제할 수
+          있습니다(계정 &rarr; 계정 삭제). 노래방을 만들지 않은 상태에서도 사용할 수 있습니다.
+          삭제는 즉시 적용되며 되돌릴 수 없습니다.
+        </p>
+        <p>삭제되는 것:</p>
+        <ul>
+          <li>계정 기록의 이메일·표시 이름·시간대가 지워집니다.</li>
+          <li>Apple·Google 로그인 연결이 삭제되어, 두 방법 모두 이 계정을 다시 열 수 없습니다.</li>
+          <li>모든 로그인 세션이 해지되고, 보유한 노래방의 기기·페어링 코드·운영 자격 증명이
+            모두 해지됩니다.</li>
+          <li>Apple·Google 인증이 철회됩니다. Apple 쪽 철회가 완료되지 못한 경우, 설정에서
+            직접 해제하는 방법을 앱이 안내합니다.</li>
+          <li>저장한 노래와 업로드한 노래방 로고가 삭제됩니다. 로고 파일은 삭제 직후 저장소에서
+            제거되며, 보통 24시간 이내, 최대 30일 이내에 완료됩니다.</li>
+        </ul>
+        <p>남는 것과 그 이유:</p>
+        <ul>
+          <li><strong>계정 기록은 식별할 수 없는 표식으로 남습니다.</strong> 완전히 지우지 않는
+            이유는 아래 기록들이 연결 대상을 잃고 방치되지 않게 하기 위해서입니다. 이메일·이름·
+            로그인 식별자는 남지 않으며 더 이상 로그인할 수 없습니다.</li>
+          <li><strong>노래방과 이벤트</strong>는 삭제 대신 종료 처리됩니다. 이름은 중립적인
+            표시로 바뀌고, 주소는 예약된 상태로 남아 예전 QR이 다른 사람의 노래방으로 연결되는
+            일이 없습니다.</li>
+          <li><strong>신청곡·재생 기록</strong>은 표시 이름을 지운 상태로 남습니다. 손님이 가진
+            그날의 기록이 어긋나지 않도록 하기 위해서입니다.</li>
+          <li><strong>무료 이용 시간과 이용권 기록</strong>은 정산을 위해, 그리고 계정을 지웠다
+            다시 만드는 방식으로 매일 무료 시간이 초기화되는 것을 막기 위해 남습니다.</li>
+          <li><strong>로그인 식별자의 단방향 지문</strong>도 같은 이유로 남습니다. 되돌려서 Apple·
+            Google 신원을 알아낼 수 없고, 외부에 제공하지 않으며, 반복 삭제를 알아보는 데에만
+            사용합니다.</li>
+          <li><strong>불투명한 참조값</strong>은 향후 결제·환불 처리를 위해 남습니다. 이메일이나
+            로그인 신원은 포함하지 않습니다.</li>
+          <li><strong>최소한의 로그아웃 기록</strong>은 악용 조사를 위해 최대 90일간 보관 후
+            삭제합니다. 삭제가 있었다는 기록 자체는 개인정보 없이 영구 보관됩니다.</li>
+        </ul>
 
         <h2>13. 보안</h2>
         <p>
