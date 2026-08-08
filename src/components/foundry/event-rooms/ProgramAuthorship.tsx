@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { clearCachedProposal, readCachedProposal, writeCachedProposal, type CachedProposal } from "./proposalContinuity";
 import type { JourneyElementKind, RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
   applyProgramProposal,
@@ -172,6 +173,46 @@ export function ProgramAuthorship({
     requestAnimationFrame(() => generateButtonRef.current?.focus());
   }, []);
 
+  /**
+   * ONE transition into review, used by a fresh generation and by a resumed one, so the two
+   * can never render different things from the same proposal (Slice 3.2L-R11.4K).
+   */
+  const showProposal = useCallback(
+    (entry: CachedProposal) => {
+      setProposal(entry.proposal);
+      setCeiling(entry.evidenceCeiling);
+      setAttemptId(entry.attemptId);
+      setProposalFingerprint(entry.contextFingerprint);
+      // Default every section to the proposal — the Host asked BTY to draft it — but each
+      // one is still an explicit, changeable choice.
+      setDecisions(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
+      setEdits(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, e.content])));
+      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "");
+      setContracts(c);
+      setBaseContracts(c);
+      setOpenDetails(null);
+      setTitleDecision("use");
+      setTitleEdit(entry.proposal.displayTitle);
+      setPhase("review");
+    },
+    [answers.followUpDays, answers.problem],
+  );
+
+  /**
+   * RESUME. Reads only — no provider call, no attempt, no draft write. The fingerprint the
+   * proposal was written from must still equal the draft's current one, so a Host who has
+   * since changed their inputs is never shown a program written from the old ones.
+   */
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current || phase !== "idle" || !ready) return;
+    if (!currentContextFingerprint) return;
+    const cached = readCachedProposal(draftId, currentContextFingerprint);
+    if (!cached) return;
+    resumedRef.current = true;
+    showProposal(cached);
+  }, [draftId, currentContextFingerprint, phase, ready, showProposal]);
+
   const generate = useCallback(async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -190,22 +231,23 @@ export function ProgramAuthorship({
       setPhase("failed");
       return;
     }
-    setProposal(r.proposal);
-    setCeiling(r.evidenceCeiling);
-    setAttemptId(r.attemptId);
-    setProposalFingerprint(r.contextFingerprint);
-    // Default every section to the proposal — the Host asked BTY to draft it — but each
-    // one is still an explicit, changeable choice.
-    setDecisions(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
-    setEdits(Object.fromEntries(r.proposal.elements.map((e) => [e.kind, e.content])));
-    const c = contractsFromProposal(r.proposal, answers.followUpDays ?? 0, answers.problem ?? "");
-    setContracts(c);
-    setBaseContracts(c);
-    setOpenDetails(null);
-    setTitleDecision("use");
-    setTitleEdit(r.proposal.displayTitle);
-    setPhase("review");
-  }, [onGenerate]);
+    showProposal({
+      attemptId: r.attemptId,
+      contextFingerprint: r.contextFingerprint,
+      proposal: r.proposal,
+      evidenceCeiling: r.evidenceCeiling,
+    });
+    /*
+      A successful generation is unfinished user work. It survives ordinary navigation and a
+      reload from here on, in the Host's own session and nowhere else (Slice 3.2L-R11.4K).
+    */
+    writeCachedProposal(draftId, {
+      attemptId: r.attemptId,
+      contextFingerprint: r.contextFingerprint,
+      proposal: r.proposal,
+      evidenceCeiling: r.evidenceCeiling,
+    });
+  }, [onGenerate, showProposal, draftId]);
 
   // Released only once the attempt reached a terminal state, so a completed or failed
   // generation can be started again — but never twice from one gesture.
@@ -326,8 +368,10 @@ export function ProgramAuthorship({
       attemptId,
     );
     setApplyOutcome(outcome ?? { status: "adopted" });
+    // The work is finished — nothing left to resume (Slice 3.2L-R11.4K).
+    clearCachedProposal(draftId);
     setPhase("applied");
-  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions]);
+  }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId]);
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
@@ -739,7 +783,17 @@ export function ProgramAuthorship({
         >
           Reset to BTY’s draft
         </button>
-        <button type="button" onClick={() => setPhase("idle")} data-testid="program-discard" className="text-sm text-white/55">
+        <button
+          type="button"
+          onClick={() => {
+            // Discard is an explicit "not this one" — it ends the continuity too.
+            clearCachedProposal(draftId);
+            resumedRef.current = true;
+            setPhase("idle");
+          }}
+          data-testid="program-discard"
+          className="text-sm text-white/55"
+        >
           Discard
         </button>
       </div>

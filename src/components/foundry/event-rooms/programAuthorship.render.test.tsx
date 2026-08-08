@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, act, cleanup } from "@testing-library/react";
 import { ProgramAuthorship, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
@@ -14,7 +14,15 @@ import { readProvenance } from "@/domain/foundry/module/program-authorship";
  * whole program rather than a section at a time.
  */
 
-afterEach(cleanup);
+/*
+  One browsing session legitimately keeps an unapplied proposal across mounts (Slice
+  3.2L-R11.4K) — which is the feature, and which makes test isolation explicit work.
+*/
+beforeEach(() => window.sessionStorage.clear());
+afterEach(() => {
+  cleanup();
+  window.sessionStorage.clear();
+});
 
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
