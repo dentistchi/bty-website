@@ -4,7 +4,7 @@ import { getOwnerDraft } from "@/lib/bty/foundry/events/foundryModuleService";
 import { listDraftAssets } from "@/lib/bty/foundry/events/draftAssetService";
 import { generateProgram, evidenceCeilingFor } from "@/lib/bty/foundry/events/programAuthorshipService";
 import { currentSourceIdentity } from "@/lib/bty/foundry/arena/sourceIdentity";
-import { resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
+import { readResumeEligibility, resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import {
   programContext,
   programContextFingerprint,
@@ -29,6 +29,52 @@ export const runtime = "nodejs";
  * A submission intent is REQUIRED: one explicit Host instruction buys one generation,
  * enforced by a unique index, so a re-delivered request cannot spend twice.
  */
+
+/**
+ * GET …/program-draft?attempt=<id> — MAY THIS PROPOSAL STILL BE OFFERED? (R11.4K-R1)
+ *
+ * Eligibility only. It returns no proposal, no section, no sentence — the browser already
+ * holds the words it is asking about; what it cannot know is whether the attempt behind
+ * them is still adoptable. Manager-gated and owner-scoped, so another Host's attempt is
+ * indistinguishable from one that never existed.
+ *
+ * Read-only: no provider call, no attempt, no draft write.
+ */
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireManager(req);
+  if (!gate.ok) return gate.response;
+  const { user, admin, base } = gate.ctx;
+
+  const { id } = await ctx.params;
+  const attemptId = new URL(req.url).searchParams.get("attempt") ?? "";
+  if (!/^[0-9a-f-]{36}$/i.test(attemptId)) {
+    return managerJson(base, req, { eligible: false, reason: "attempt_not_found" }, 200);
+  }
+
+  const draft = await getOwnerDraft(admin, user.id, id);
+  if (!draft) return managerJson(base, req, { eligible: false, reason: "attempt_not_found" }, 200);
+  if (draft.status !== "draft") {
+    return managerJson(base, req, { eligible: false, reason: "attempt_not_successful" }, 200);
+  }
+
+  const answers = (draft.answers ?? {}) as BuilderAnswers;
+  const programCtx = programContext(answers);
+  if (!programCtx) return managerJson(base, req, { eligible: false, reason: "context_moved" }, 200);
+
+  const verdict = await readResumeEligibility(admin, {
+    attemptId,
+    draftId: id,
+    ownerUserId: user.id,
+    currentFingerprint: programContextFingerprint(programCtx),
+  });
+
+  return managerJson(
+    base,
+    req,
+    verdict.ok ? { eligible: true } : { eligible: false, reason: verdict.reason },
+    200,
+  );
+}
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireManager(req);

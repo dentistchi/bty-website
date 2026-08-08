@@ -86,6 +86,7 @@ export function ProgramAuthorship({
   journey,
   ready,
   onGenerate,
+  onCheckResume,
   onApply,
   currentContextFingerprint,
   adoptionRefusal,
@@ -97,6 +98,12 @@ export function ProgramAuthorship({
   journey: RealityGroundedJourneyV1 | undefined;
   ready: boolean;
   onGenerate: () => Promise<ProgramGenerateOutcome>;
+  /**
+   * May a browser-held proposal from this attempt still be offered? (Slice 3.2L-R11.4K-R1)
+   * Server-owned and read-only; absent means the caller cannot check, and continuity then
+   * fails CLOSED rather than showing a program that may already have been adopted.
+   */
+  onCheckResume?: (attemptId: string) => Promise<boolean>;
   /** Persist the whole approved journey in ONE save. */
   onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => Promise<ProgramApplyOutcome> | void;
   /**
@@ -210,8 +217,31 @@ export function ProgramAuthorship({
     const cached = readCachedProposal(draftId, currentContextFingerprint);
     if (!cached) return;
     resumedRef.current = true;
-    showProposal(cached);
-  }, [draftId, currentContextFingerprint, phase, ready, showProposal]);
+
+    /*
+      FAIL CLOSED (Slice 3.2L-R11.4K-R1). The fingerprint match proves the proposal still
+      fits the draft's inputs. It cannot prove the attempt is still adoptable — it may have
+      been applied in another tab, replaced by a newer generation, or stopped being owned.
+      Only the server knows, so the words are not offered until it says so, and a cache it
+      refuses is cleared rather than left to be re-offered on the next mount.
+    */
+    if (!cached.attemptId || !onCheckResume) {
+      clearCachedProposal(draftId);
+      return;
+    }
+    let live = true;
+    void onCheckResume(cached.attemptId).then((eligible) => {
+      if (!live) return;
+      if (!eligible) {
+        clearCachedProposal(draftId);
+        return;
+      }
+      showProposal(cached);
+    });
+    return () => {
+      live = false;
+    };
+  }, [draftId, currentContextFingerprint, phase, ready, showProposal, onCheckResume]);
 
   const generate = useCallback(async () => {
     if (submittingRef.current) return;

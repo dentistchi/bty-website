@@ -418,3 +418,73 @@ export async function digestProgramResponse(raw: string): Promise<{ bytes: numbe
     return null;
   }
 }
+
+/**
+ * RESUME ELIGIBILITY (Slice 3.2L-R11.4K-R1).
+ *
+ * R11.4K let the browser keep an unapplied proposal across navigation, which fixed the loss
+ * — but it decided on its own whether to show it again, from a draft id and a fingerprint it
+ * also held itself. That is enough to avoid rendering a stale program, and not enough to be
+ * truthful: an attempt applied in another tab, superseded by a newer generation, or no longer
+ * owned would still have been presented with "Add this program to my training".
+ *
+ * So the server answers the question. It returns ELIGIBILITY ONLY — never the proposal, never
+ * a sentence of it. The browser still holds the words; the server decides whether they may
+ * still be offered.
+ */
+export type ResumeIneligibility =
+  | "attempt_not_found"
+  | "attempt_other_draft"
+  | "attempt_not_successful"
+  | "proposal_identity_missing"
+  | "already_applied"
+  | "context_moved"
+  | "superseded_attempt";
+
+export type ResumeEligibility = { ok: true } | { ok: false; reason: ResumeIneligibility };
+
+export async function readResumeEligibility(
+  admin: SupabaseClient,
+  input: { attemptId: string; draftId: string; ownerUserId: string; currentFingerprint: string },
+): Promise<ResumeEligibility> {
+  // Owner-scoped: another Host's attempt is indistinguishable from one that does not exist.
+  const { data: row } = await admin
+    .from(ATTEMPTS)
+    .select("id,draft_id,outcome,context_fingerprint,proposal_digest,applied_at")
+    .eq("id", input.attemptId)
+    .eq("owner_user_id", input.ownerUserId)
+    .maybeSingle<{
+      id: string;
+      draft_id: string;
+      outcome: string;
+      context_fingerprint: string;
+      proposal_digest: string | null;
+      applied_at: string | null;
+    }>();
+
+  if (!row) return { ok: false, reason: "attempt_not_found" };
+  if (row.draft_id !== input.draftId) return { ok: false, reason: "attempt_other_draft" };
+  if (row.outcome !== "success") return { ok: false, reason: "attempt_not_successful" };
+  if (!row.proposal_digest) return { ok: false, reason: "proposal_identity_missing" };
+  if (row.applied_at !== null) return { ok: false, reason: "already_applied" };
+  if (row.context_fingerprint !== input.currentFingerprint) return { ok: false, reason: "context_moved" };
+
+  /*
+    The newest DIGEST-BEARING success for these inputs. A Host who generated again is looking
+    at that one; offering the earlier sibling would be offering work they replaced.
+  */
+  const { data: newest } = await admin
+    .from(ATTEMPTS)
+    .select("id")
+    .eq("owner_user_id", input.ownerUserId)
+    .eq("draft_id", input.draftId)
+    .eq("outcome", "success")
+    .eq("context_fingerprint", input.currentFingerprint)
+    .not("proposal_digest", "is", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  if (newest && newest.id !== row.id) return { ok: false, reason: "superseded_attempt" };
+  return { ok: true };
+}

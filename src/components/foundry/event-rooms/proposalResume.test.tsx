@@ -50,12 +50,17 @@ const FINGERPRINT = programContextFingerprint(programContext(ANSWERS)!);
 
 let generateCalls = 0;
 let patchCalls = 0;
+let resumeEligible = true;
 
 function stubFetch(answers: BuilderAnswers = ANSWERS, program: unknown = PROGRAM) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: unknown, init?: { method?: string }) => {
       const u = String(url);
+      if (u.includes("/program-draft?attempt=")) {
+        // Server-owned resume eligibility (R11.4K-R1). Read-only; never returns prose.
+        return { ok: true, json: async () => ({ eligible: resumeEligible }) } as unknown as Response;
+      }
       if (u.includes("/program-draft")) {
         generateCalls += 1;
         return {
@@ -99,6 +104,7 @@ const shownSection = (kind: string) =>
 beforeEach(() => {
   generateCalls = 0;
   patchCalls = 0;
+  resumeEligible = true;
   window.sessionStorage.clear();
   stubFetch();
 });
@@ -194,6 +200,50 @@ describe("[3.2L-R11.4K] continuity through the real Builder", () => {
     mount();
     await screen.findByTestId("program-generate", {}, { timeout: 8000 });
     expect(proposalOnScreen()).toBe(false);
+  }, 30000);
+
+  it("R1/A–E — the server refuses eligibility → the proposal is not offered, and the cache is cleared", async () => {
+    mount();
+    await generateOnce();
+    cleanup();
+    // Applied elsewhere, superseded, no longer owned, no longer digest-bearing: the client
+    // never has to tell these apart. It asks, and a refusal means the same thing each time.
+    resumeEligible = false;
+    stubFetch();
+    mount();
+    await screen.findByTestId("program-generate", {}, { timeout: 8000 });
+    expect(proposalOnScreen()).toBe(false);
+    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`), "a refused cache is not left to be re-offered").toBeNull();
+  }, 30000);
+
+  it("R1 — a network or auth failure fails CLOSED, not open", async () => {
+    mount();
+    await generateOnce();
+    cleanup();
+    vi.stubGlobal("fetch", vi.fn(async (url: unknown) => {
+      const u = String(url);
+      if (u.includes("/program-draft?attempt=")) throw new Error("offline");
+      return { ok: true, json: async () => ({ draft: { id: DRAFT, status: "draft", currentStep: 7, answers: ANSWERS, assets: [] } }) } as unknown as Response;
+    }));
+    mount();
+    await screen.findByTestId("program-generate", {}, { timeout: 8000 });
+    expect(proposalOnScreen()).toBe(false);
+  }, 30000);
+
+  it("G10 — a successful Apply ends the continuity: nothing is restored afterwards", async () => {
+    mount();
+    await generateOnce();
+    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`)).not.toBeNull();
+    fireEvent.click(await screen.findByTestId("program-apply", {}, { timeout: 8000 }));
+    await waitFor(
+      () => expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`)).toBeNull(),
+      { timeout: 8000 },
+    );
+    cleanup();
+    stubFetch();
+    mount();
+    await screen.findByTestId("program-generate", {}, { timeout: 8000 });
+    expect(proposalOnScreen(), "an adopted program must never come back as an offer").toBe(false);
   }, 30000);
 
   it("G12 — the cache is keyed by draft, and a draft this session cannot open is never read", async () => {

@@ -474,6 +474,27 @@ export function ModuleBuilderShell({
   // program. Generation flushes autosave first so the server authors from what the Host is
   // actually looking at, and NEVER mutates the draft — the proposal reaches the database
   // only through applyProgram below, and only if the Host applies it.
+  /**
+   * Server-owned resume eligibility (Slice 3.2L-R11.4K-R1). Read-only, and fails CLOSED:
+   * a network or auth failure is not "still fine", so the cached proposal is not offered.
+   */
+  const checkProgramResume = useCallback(
+    async (attemptId: string): Promise<boolean> => {
+      try {
+        const res = await fetch(
+          `/api/bty/foundry/modules/${draftId}/program-draft?attempt=${encodeURIComponent(attemptId)}`,
+          { credentials: "include", cache: "no-store" },
+        );
+        if (!res.ok) return false;
+        const data = (await res.json().catch(() => null)) as { eligible?: unknown } | null;
+        return data?.eligible === true;
+      } catch {
+        return false;
+      }
+    },
+    [draftId],
+  );
+
   const generateProgram = useCallback(async (): Promise<ProgramGenerateOutcome> => {
     cancelDebounce();
     await saver.flush({ answers: answersRef.current, currentStep: stepRef.current });
@@ -702,6 +723,7 @@ export function ModuleBuilderShell({
             journey={answers.realityGroundedJourneyV1}
             ready={programContext(answers) !== null}
             onGenerate={generateProgram}
+            onCheckResume={checkProgramResume}
             currentContextFingerprint={programFingerprint}
             adoptionRefusal={adoptionRefusal}
             onApply={applyProgram}
