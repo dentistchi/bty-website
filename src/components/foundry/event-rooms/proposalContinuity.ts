@@ -25,15 +25,30 @@
  * proposal therefore fails at Apply with `proposal_mismatch`, exactly as an edit made on
  * screen would. There is no path by which a client value becomes the identity.
  *
- * `sessionStorage`, not `localStorage`, on purpose: continuity has to survive a reload and
- * ordinary in-app navigation, which it does, and it must not become indefinite retention of
- * a Host's training content on a shared device, which `localStorage` would be.
+ * WHY IT IS NO LONGER `sessionStorage` (Slice 3.2L-R11.4K-R2). That choice was bounded and
+ * private, and it was also wrong: measured in a real browser against the deployed origin, a
+ * NEW TAB in the SAME browsing session reads `sessionStorage` as `null` while `localStorage`
+ * is shared. The Founder opened the canonical Review URL from a chat — a new tab — and the
+ * pending proposal was invisible there, so the product asked them to draft it again. A Host
+ * must not have to remember which tab holds their unfinished work.
+ *
+ * So continuity is shared storage, bounded three ways instead of by tab lifetime: an
+ * absolute TTL, removal the moment the work is finished or discarded, and a purge on logout.
+ * Nothing here is indefinite, and nothing reaches the database.
  */
 import type { ProgramProposal } from "@/domain/foundry/module/program-authorship";
 
-const KEY_PREFIX = "bty_program_proposal_v1:";
+const KEY_PREFIX = "bty_program_proposal_v2:";
+
+/**
+ * How long unfinished work stays resumable. Long enough to come back to it tomorrow, short
+ * enough that a shared device does not keep a Host's training content indefinitely.
+ */
+export const PROPOSAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type CachedProposal = {
+  /** When it was written. Read back to enforce the TTL — never sent anywhere. */
+  readonly savedAt?: number;
   /** Which generation this is. Sent to the server on Apply; proved there, never here. */
   readonly attemptId: string | null;
   /** The Host-input authority the proposal was written from. */
@@ -46,10 +61,15 @@ function keyFor(draftId: string): string {
   return `${KEY_PREFIX}${draftId}`;
 }
 
-/** Reading someone else's draft is impossible before this: the draft GET is owner-scoped. */
+/**
+ * Shared across tabs, which is the point. Reaching another Host's proposal is still
+ * impossible: the draft GET is owner-scoped, so a Builder for that draft never mounts for
+ * them, and the eligibility GET is owner-scoped too — a foreign owner is answered
+ * `attempt_not_found`.
+ */
 function store(): Storage | null {
   try {
-    return typeof window === "undefined" ? null : window.sessionStorage;
+    return typeof window === "undefined" ? null : window.localStorage;
   } catch {
     // Private mode / storage disabled. Continuity is lost, nothing else is.
     return null;
@@ -72,7 +92,7 @@ export function writeCachedProposal(draftId: string, entry: CachedProposal): voi
   const s = store();
   if (!s || !draftId) return;
   try {
-    s.setItem(keyFor(draftId), JSON.stringify(entry));
+    s.setItem(keyFor(draftId), JSON.stringify({ ...entry, savedAt: Date.now() }));
   } catch {
     // Quota or serialization failure — the on-screen proposal is unaffected.
   }
@@ -102,7 +122,14 @@ export function readCachedProposal(draftId: string, currentFingerprint: string):
     if (parsed.attemptId !== null && typeof parsed.attemptId !== "string") return null;
     if (!looksLikeProposal(parsed.proposal)) return null;
     if (parsed.contextFingerprint !== currentFingerprint) return null;
+    // Expired work is not offered, and is not left behind either.
+    const savedAt = typeof parsed.savedAt === "number" ? parsed.savedAt : 0;
+    if (!savedAt || Date.now() - savedAt > PROPOSAL_CACHE_TTL_MS) {
+      clearCachedProposal(draftId);
+      return null;
+    }
     return {
+      savedAt,
       attemptId: parsed.attemptId ?? null,
       contextFingerprint: parsed.contextFingerprint,
       proposal: parsed.proposal,
@@ -118,6 +145,27 @@ export function clearCachedProposal(draftId: string): void {
   if (!s || !draftId) return;
   try {
     s.removeItem(keyFor(draftId));
+  } catch {
+    /* nothing to do */
+  }
+}
+
+/**
+ * Everything, for every draft — the logout purge.
+ *
+ * Continuity is for the person who generated it. When they leave the device, their
+ * unfinished training content goes with them.
+ */
+export function clearAllCachedProposals(): void {
+  const s = store();
+  if (!s) return;
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < s.length; i += 1) {
+      const k = s.key(i);
+      if (k && k.startsWith(KEY_PREFIX)) doomed.push(k);
+    }
+    for (const k of doomed) s.removeItem(k);
   } catch {
     /* nothing to do */
   }

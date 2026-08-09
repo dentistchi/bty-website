@@ -18,9 +18,13 @@ import { readProvenance } from "@/domain/foundry/module/program-authorship";
   One browsing session legitimately keeps an unapplied proposal across mounts (Slice
   3.2L-R11.4K) — which is the feature, and which makes test isolation explicit work.
 */
-beforeEach(() => window.sessionStorage.clear());
+beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   window.sessionStorage.clear();
 });
 

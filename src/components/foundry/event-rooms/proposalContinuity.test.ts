@@ -1,6 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach } from "vitest";
-import { clearCachedProposal, readCachedProposal, writeCachedProposal } from "./proposalContinuity";
+import {
+  PROPOSAL_CACHE_TTL_MS,
+  clearAllCachedProposals,
+  clearCachedProposal,
+  readCachedProposal,
+  writeCachedProposal,
+} from "./proposalContinuity";
 import type { ProgramProposal } from "@/domain/foundry/module/program-authorship";
 
 /**
@@ -20,12 +26,14 @@ const PROPOSAL = {
 
 const entry = { attemptId: "496302b6", contextFingerprint: FP, proposal: PROPOSAL, evidenceCeiling: "Nothing here shows change." };
 
-beforeEach(() => window.sessionStorage.clear());
+beforeEach(() => { window.localStorage.clear(); window.sessionStorage.clear(); });
 
 describe("[3.2L-R11.4K] proposal continuity", () => {
   it("survives an unmount: what was written is what comes back", () => {
     writeCachedProposal(DRAFT, entry);
-    expect(readCachedProposal(DRAFT, FP)).toEqual(entry);
+    const back = readCachedProposal(DRAFT, FP);
+    expect(back).toMatchObject(entry);
+    expect(typeof back?.savedAt).toBe("number");
   });
 
   it("is scoped to its draft — another draft never sees it", () => {
@@ -52,15 +60,43 @@ describe("[3.2L-R11.4K] proposal continuity", () => {
     expect(readCachedProposal(DRAFT, FP)).toBeNull();
   });
 
-  it("survives a reload but NOT a new browsing session — it is sessionStorage, never localStorage", () => {
+  /*
+    R11.4K-R2. Measured in a real browser against the deployed origin: a NEW TAB in the SAME
+    browsing session reads sessionStorage as null while localStorage is shared. That is the
+    live failure — the Founder opened the review link from a chat, which is a new tab.
+  */
+  it("is SHARED across tabs, not per-tab — the R11.4K-R2 failure", () => {
     writeCachedProposal(DRAFT, entry);
-    expect(window.localStorage.length).toBe(0);
-    expect(window.sessionStorage.length).toBe(1);
+    expect(window.localStorage.length, "a second tab reads this one").toBe(1);
+    expect(window.sessionStorage.length, "and never this one").toBe(0);
+  });
+
+  it("expires: work older than the TTL is not offered, and is not left behind", () => {
+    writeCachedProposal(DRAFT, entry);
+    const raw = JSON.parse(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)!);
+    raw.savedAt = Date.now() - (PROPOSAL_CACHE_TTL_MS + 1000);
+    window.localStorage.setItem(`bty_program_proposal_v2:${DRAFT}`, JSON.stringify(raw));
+    expect(readCachedProposal(DRAFT, FP)).toBeNull();
+    expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)).toBeNull();
+  });
+
+  it("an entry with no savedAt is treated as expired, never as fresh", () => {
+    window.localStorage.setItem(`bty_program_proposal_v2:${DRAFT}`, JSON.stringify(entry));
+    expect(readCachedProposal(DRAFT, FP)).toBeNull();
+  });
+
+  it("logout purges every draft's pending proposal, and nothing else", () => {
+    writeCachedProposal(DRAFT, entry);
+    writeCachedProposal("35773b57-219b-43fb-829e-80f0656ccb66", entry);
+    window.localStorage.setItem("bty_last_visit", "keep-me");
+    clearAllCachedProposals();
+    expect(readCachedProposal(DRAFT, FP)).toBeNull();
+    expect(window.localStorage.getItem("bty_last_visit")).toBe("keep-me");
   });
 
   it("a corrupted or truncated entry is ignored, never half-rendered", () => {
     for (const junk of ["", "{", "null", '{"contextFingerprint":"x"}', JSON.stringify({ ...entry, proposal: { displayTitle: "t" } })]) {
-      window.sessionStorage.setItem(`bty_program_proposal_v1:${DRAFT}`, junk);
+      window.localStorage.setItem(`bty_program_proposal_v2:${DRAFT}`, junk);
       expect(readCachedProposal(DRAFT, FP), junk).toBeNull();
     }
   });
@@ -69,9 +105,10 @@ describe("[3.2L-R11.4K] proposal continuity", () => {
     // Deliberate: the cache does not police content. Apply recomputes journeyDigest from
     // what is being adopted and compares it with attempt.proposal_digest, so one changed
     // character fails there with proposal_mismatch. Policing here would imply authority.
-    const tampered = JSON.parse(JSON.stringify(entry));
+    writeCachedProposal(DRAFT, entry);
+    const tampered = JSON.parse(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)!);
     tampered.proposal.elements[0].content = "When a handover misses a step, the next person starts BLIND.";
-    window.sessionStorage.setItem(`bty_program_proposal_v1:${DRAFT}`, JSON.stringify(tampered));
+    window.localStorage.setItem(`bty_program_proposal_v2:${DRAFT}`, JSON.stringify(tampered));
     const back = readCachedProposal(DRAFT, FP);
     expect(back?.proposal.elements[0].content).toContain("BLIND");
     expect(back?.attemptId).toBe("496302b6");

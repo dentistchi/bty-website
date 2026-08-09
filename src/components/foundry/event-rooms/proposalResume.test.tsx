@@ -105,6 +105,7 @@ beforeEach(() => {
   generateCalls = 0;
   patchCalls = 0;
   resumeEligible = true;
+  window.localStorage.clear();
   window.sessionStorage.clear();
   stubFetch();
 });
@@ -213,7 +214,7 @@ describe("[3.2L-R11.4K] continuity through the real Builder", () => {
     mount();
     await screen.findByTestId("program-generate", {}, { timeout: 8000 });
     expect(proposalOnScreen()).toBe(false);
-    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`), "a refused cache is not left to be re-offered").toBeNull();
+    expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`), "a refused cache is not left to be re-offered").toBeNull();
   }, 30000);
 
   it("R1 — a network or auth failure fails CLOSED, not open", async () => {
@@ -233,10 +234,10 @@ describe("[3.2L-R11.4K] continuity through the real Builder", () => {
   it("G10 — a successful Apply ends the continuity: nothing is restored afterwards", async () => {
     mount();
     await generateOnce();
-    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`)).not.toBeNull();
+    expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)).not.toBeNull();
     fireEvent.click(await screen.findByTestId("program-apply", {}, { timeout: 8000 }));
     await waitFor(
-      () => expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`)).toBeNull(),
+      () => expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)).toBeNull(),
       { timeout: 8000 },
     );
     cleanup();
@@ -252,8 +253,8 @@ describe("[3.2L-R11.4K] continuity through the real Builder", () => {
     // A different Host's session cannot even mount this draft: the draft GET is
     // owner-scoped, so the id never reaches the Builder. The nearest reachable proof is
     // that no other draft id resolves to this entry.
-    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${OTHER}`)).toBeNull();
-    expect(window.sessionStorage.getItem(`bty_program_proposal_v1:${DRAFT}`)).not.toBeNull();
+    expect(window.localStorage.getItem(`bty_program_proposal_v2:${OTHER}`)).toBeNull();
+    expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)).not.toBeNull();
   }, 30000);
 });
 
@@ -262,3 +263,81 @@ async function generateOnceNewer() {
   fireEvent.click(await screen.findByTestId("program-target-confirm-action", {}, { timeout: 8000 }));
   await waitFor(() => expect(shownTitle()).toBe("The last five minutes"), { timeout: 8000 });
 }
+
+/**
+ * SLICE 3.2L-R11.4K-R2 — the cross-tab matrix.
+ *
+ * A second tab is a second top-level browsing context with its own component tree and its
+ * own empty `sessionStorage`. jsdom gives one `window` per FILE, so a tab is modelled the
+ * only way it honestly can be here: a fresh mount that shares the browser's persistent
+ * store and nothing else. The browser semantics themselves were measured separately, in
+ * WebKit against the deployed origin — sessionStorage `null` in a new tab, localStorage
+ * shared — which is why this now passes and could not have before.
+ */
+describe("[3.2L-R11.4K-R2] a second tab", () => {
+  /** What tab B starts with: no component state, no sessionStorage, the shared store only. */
+  function newTab() {
+    cleanup();
+    window.sessionStorage.clear();
+    stubFetch();
+  }
+
+  it("G2/G3/G4 — tab B restores the exact proposal, spending nothing", async () => {
+    mount();
+    await generateOnce();
+    const title = shownTitle();
+
+    newTab();
+    generateCalls = 0;
+    const patchesBefore = patchCalls;
+    mount();
+    await waitFor(() => expect(proposalOnScreen()).toBe(true), { timeout: 8000 });
+    expect(shownTitle()).toBe(title);
+    for (const e of PROGRAM.elements) expect(shownSection(e.kind), e.kind).toContain(e.content.slice(0, 25));
+    expect(generateCalls, "a second tab must never reach the provider").toBe(0);
+    expect(patchCalls, "and must not write the draft").toBe(patchesBefore);
+  }, 30000);
+
+  it("G5 — tab B asks the server about the SAME attempt", async () => {
+    mount();
+    await generateOnce();
+    newTab();
+    const asked: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: unknown) => {
+      const u = String(url);
+      if (u.includes("/program-draft?attempt=")) {
+        asked.push(new URL(u, "http://localhost").searchParams.get("attempt") ?? "");
+        return { ok: true, json: async () => ({ eligible: true }) } as unknown as Response;
+      }
+      return { ok: true, json: async () => ({ draft: { id: DRAFT, status: "draft", currentStep: 7, answers: ANSWERS, assets: [] } }) } as unknown as Response;
+    }));
+    mount();
+    await waitFor(() => expect(proposalOnScreen()).toBe(true), { timeout: 8000 });
+    expect(asked).toEqual(["496302b6-26ec-4ea0-bad8-fb981ca2c596"]);
+  }, 30000);
+
+  it("G6/G7 — tab B survives its own reload, and outliving tab A changes nothing", async () => {
+    mount();
+    await generateOnce();
+    newTab();                        // tab B
+    mount();
+    await waitFor(() => expect(proposalOnScreen()).toBe(true), { timeout: 8000 });
+    newTab();                        // tab B reloads; tab A is long gone
+    mount();
+    await waitFor(() => expect(proposalOnScreen()).toBe(true), { timeout: 8000 });
+  }, 30000);
+
+  it("G12/G13 — Apply and Discard remove it for every tab, not just the one that acted", async () => {
+    mount();
+    await generateOnce();
+    fireEvent.click(await screen.findByTestId("program-apply", {}, { timeout: 8000 }));
+    await waitFor(
+      () => expect(window.localStorage.getItem(`bty_program_proposal_v2:${DRAFT}`)).toBeNull(),
+      { timeout: 8000 },
+    );
+    newTab();
+    mount();
+    await screen.findByTestId("program-generate", {}, { timeout: 8000 });
+    expect(proposalOnScreen(), "an adopted program must not reappear in another tab").toBe(false);
+  }, 30000);
+});

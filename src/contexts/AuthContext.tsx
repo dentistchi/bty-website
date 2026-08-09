@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
 import { sanitizeNext } from "@/lib/sanitize-next";
+import { clearAllCachedProposals } from "@/components/foundry/event-rooms/proposalContinuity";
 import { isNative } from "@/lib/native/isNative";
 import {
   restoreNativeSession,
@@ -300,6 +301,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // STEP A2 — clear the iOS Keychain session BEFORE refresh(), so the restore path
     // does not silently re-authenticate the user on logout. No-op on web.
     await clearNativeSession();
+    /*
+      Unfinished training content is for the person who generated it (Slice 3.2L-R11.4K-R2).
+      Proposal continuity is shared across tabs so a Host never has to hunt for the right
+      one; leaving the device ends it.
+    */
+    clearAllCachedProposals();
     setUser(null);
     sessionInflight = null;
     await refresh();
