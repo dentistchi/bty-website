@@ -24,6 +24,8 @@ type Response = {
   /** Slice 3.2M-1 — what the learner decided to do, in their own words. */
   decisionResponse: string | null;
   decisionSubmittedAt: string | null;
+  /** Slice 3.2M-2 — did they rehearse it? `unattributable` = anonymous, so nobody can say. */
+  practice?: "practised" | "not_practised" | "unattributable";
   reviewStatus: ReviewStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
@@ -36,6 +38,9 @@ const COPY: Record<Locale, {
   framing: string;
   submitted: string;
   decisionHeading: string;
+  practised: string;
+  notPractised: string;
+  practiceUnattributable: string;
   save: string;
   saving: string;
   notePlaceholder: string;
@@ -46,6 +51,9 @@ const COPY: Record<Locale, {
     framing: "Educational review of the submitted response — not proof of field application, and not an employee performance score.",
     submitted: "Submitted",
     decisionHeading: "Their decision",
+    practised: "Practised",
+    notPractised: "Not practised yet",
+    practiceUnattributable: "Joined without an account — practice can't be matched to them",
     save: "Save review",
     saving: "Saving…",
     notePlaceholder: "Optional educational note…",
@@ -61,6 +69,9 @@ const COPY: Record<Locale, {
     framing: "제출된 답변에 대한 교육적 검토입니다 — 현장 적용의 증거가 아니며, 직원 성과 점수가 아닙니다.",
     submitted: "제출",
     decisionHeading: "본인의 결정",
+    practised: "연습함",
+    notPractised: "아직 연습하지 않음",
+    practiceUnattributable: "계정 없이 참여 — 연습 기록을 이 사람과 연결할 수 없습니다",
     save: "검토 저장",
     saving: "저장 중…",
     notePlaceholder: "선택 교육 메모…",
@@ -186,6 +197,12 @@ export default function FoundrySharedReview({
                   {r.decisionResponse}
                 </p>
               </div>
+            ) : null}
+            {/* Did they rehearse it? Product language only — never a rung name. */}
+            {r.practice ? (
+              <p className="mt-2 text-xs text-white/55" data-testid={`host-practice-${r.practice}`}>
+                {r.practice === "practised" ? t.practised : r.practice === "not_practised" ? t.notPractised : t.practiceUnattributable}
+              </p>
             ) : null}
             {(r.sharedResponse ?? "").trim().length > 0 ? (
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/85">{r.sharedResponse}</p>

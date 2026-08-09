@@ -23,14 +23,15 @@ const journey = {
   ],
 };
 
-function mockRoom(opts: { withJourney?: boolean; stage?: string; onComplete?: (body: unknown) => unknown } = {}) {
+function mockRoom(opts: { withJourney?: boolean; stage?: string; xp?: string; practice?: { id: string; title: string } | null; onComplete?: (body: unknown) => unknown } = {}) {
   const snap = {
     ok: true,
     event: { title: "T", status: "open" },
     participant: { display_name: "Learner" },
     training: { youtube_video_id: "dQw4w9WgXcQ", completion_prompt: "What will you do differently?", shared_question: null },
     stage: opts.stage ?? "response",
-    xp_status: "none",
+    xp_status: opts.xp ?? "none",
+    practice: opts.practice ?? null,
     ...(opts.withJourney === false ? {} : { journey }),
   };
   return vi.fn(async (url: string, init?: RequestInit) => {

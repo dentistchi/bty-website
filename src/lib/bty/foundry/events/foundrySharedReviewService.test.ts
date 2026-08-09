@@ -126,6 +126,48 @@ describe("getSharedUnderstandingForOwner — authorization + privacy", () => {
     expect(await getSharedUnderstandingForOwner(makeFakeAdmin(t), OTHER, EVENT)).toBeNull();
   });
 
+  /*
+    SLICE 3.2M-2 — did they rehearse it? Derived from three durable facts lining up, never
+    cached. `unattributable` is the honest answer for an anonymous participant: no account
+    means no run can belong to them, and "not practised yet" would be a claim about a person
+    the data cannot identify.
+  */
+  it("PRACTISED when a completed run of THIS training's practice belongs to this learner", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).linked_user_id = "u-1";
+    t.foundry_published_arena_practices = [{ id: "pr-1", source_event_id: EVENT, status: "published", published_at: "2026-08-01T00:00:00Z", practice_title: "P" }];
+    t.foundry_arena_practice_runs = [{ id: "run-1", practice_id: "pr-1", user_id: "u-1", status: "completed" }];
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    expect(view?.responses[0]?.practice).toBe("practised");
+  });
+
+  it("NOT PRACTISED when the identified learner has no completed run", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).linked_user_id = "u-1";
+    t.foundry_published_arena_practices = [{ id: "pr-1", source_event_id: EVENT, status: "published", published_at: "2026-08-01T00:00:00Z", practice_title: "P" }];
+    t.foundry_arena_practice_runs = [{ id: "run-1", practice_id: "pr-1", user_id: "u-1", status: "in_progress" }];
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    expect(view?.responses[0]?.practice).toBe("not_practised");
+  });
+
+  it("UNATTRIBUTABLE for an anonymous participant — never a fabricated yes or no", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).linked_user_id = null;
+    t.foundry_published_arena_practices = [{ id: "pr-1", source_event_id: EVENT, status: "published", published_at: "2026-08-01T00:00:00Z", practice_title: "P" }];
+    t.foundry_arena_practice_runs = [{ id: "run-1", practice_id: "pr-1", user_id: "u-1", status: "completed" }];
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    expect(view?.responses[0]?.practice).toBe("unattributable");
+  });
+
+  it("another learner's completed run never becomes this learner's", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).linked_user_id = "u-1";
+    t.foundry_published_arena_practices = [{ id: "pr-1", source_event_id: EVENT, status: "published", published_at: "2026-08-01T00:00:00Z", practice_title: "P" }];
+    t.foundry_arena_practice_runs = [{ id: "run-1", practice_id: "pr-1", user_id: "SOMEONE-ELSE", status: "completed" }];
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    expect(view?.responses[0]?.practice).toBe("not_practised");
+  });
+
   it("an UNRELATED owner receives null (no foreign disclosure)", async () => {
     const view = await getSharedUnderstandingForOwner(makeFakeAdmin(seed()), OTHER, EVENT);
     expect(view).toBeNull();

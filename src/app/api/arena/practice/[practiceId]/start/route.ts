@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import {
-  canAccessPractice,
+
+  resolvePracticeAccess,
   getPlayablePractice,
   startPracticeRun,
 } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
@@ -22,7 +23,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ practiceId: s
 
   const practice = await getPlayablePractice(admin, practiceId);
   if (!practice) return NextResponse.json({ error: "practice_not_available" }, { status: 404 });
-  if (!canAccessPractice(practice, userId, isApprovedMember)) {
+  if (!(await resolvePracticeAccess(admin, practice, userId, isApprovedMember))) {
     return NextResponse.json({ error: "practice_forbidden" }, { status: 403 });
   }
 

@@ -53,6 +53,46 @@ export function canAccessPractice(
   return isApprovedMember || practice.published_by === userId;
 }
 
+/**
+ * A THIRD legitimate way in: you did the training this practice was built from
+ * (Slice 3.2M-2).
+ *
+ * Measured before changing anything: the rule above is `approved member OR creator`, so a
+ * person who completed the source training and was invited to "now try it" was refused by a
+ * membership gate that has nothing to do with their training. That is the blocker preflight
+ * predicted.
+ *
+ * The new path is the narrowest one the durable data already supports: a completed training
+ * progress row for THIS practice's source event, linked to THIS user. `linked_user_id` is
+ * written when an authenticated learner completes (or later claims) — so it means
+ * "identified participant who finished", never "someone who opened a link". Nobody gains
+ * access by guessing a practice id, and no fixture or Founder bypass exists.
+ */
+export async function completedSourceTraining(
+  admin: SupabaseClient,
+  userId: string,
+  sourceEventId: string,
+): Promise<boolean> {
+  if (!userId || !sourceEventId) return false;
+  const { data } = await admin
+    .from("foundry_event_training_progress")
+    .select("id, completed_at")
+    .eq("event_id", sourceEventId)
+    .eq("linked_user_id", userId);
+  return ((data ?? []) as { completed_at: string | null }[]).some((r) => Boolean(r.completed_at));
+}
+
+/** The whole access question, in one place: membership, authorship, or having done it. */
+export async function resolvePracticeAccess(
+  admin: SupabaseClient,
+  practice: { published_by: string; source_event_id: string },
+  userId: string,
+  isApprovedMember: boolean,
+): Promise<boolean> {
+  if (canAccessPractice(practice, userId, isApprovedMember)) return true;
+  return completedSourceTraining(admin, userId, practice.source_event_id);
+}
+
 type PracticeRunRow = {
   id: string;
   practice_id: string;
@@ -278,4 +318,66 @@ export async function getUserPracticeState(
     .maybeSingle<{ status: string }>();
   if (!data) return "none";
   return data.status === "completed" ? "completed" : "in_progress";
+}
+
+// ---------------------------------------------------------------------------
+// Guided training → its own practice (Slice 3.2M-2)
+// ---------------------------------------------------------------------------
+
+/**
+ * The published practice built from THIS training event, if one exists.
+ *
+ * The binding already existed in data — `source_event_id` — and nowhere in the product.
+ * This is the doorway: a learner who just finished a training can be offered the practice
+ * that was made from it, instead of hunting for it in a general list.
+ *
+ * Title only. No scenario, no snapshot, no owner — the practice route re-authorises on entry.
+ */
+export async function publishedPracticeForEvent(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<{ id: string; title: string } | null> {
+  if (!eventId) return null;
+  // Newest chosen in code rather than by `.order().limit()`: this runs on the learner's
+  // completion path, and one practice per training is the norm, not a page of them.
+  const { data } = await admin
+    .from("foundry_published_arena_practices")
+    .select("id, practice_title, published_at, status")
+    .eq("source_event_id", eventId);
+  const rows = ((data ?? []) as { id: string; practice_title: string; published_at: string | null; status: string }[])
+    .filter((r) => r.status === "published")
+    .sort((a, b) => String(b.published_at ?? "").localeCompare(String(a.published_at ?? "")));
+  const top = rows[0];
+  return top ? { id: top.id, title: top.practice_title } : null;
+}
+
+/**
+ * Did THIS person actually rehearse THIS training? (Slice 3.2M-2)
+ *
+ * Derived, never stored. Three durable facts have to line up: the practice was built from
+ * this event, the run belongs to this identified learner, and the run reached the completed
+ * state the existing engine already writes. Reading it, starting it, or making one choice
+ * and leaving all fail this — which is the whole point.
+ *
+ * No new column caches it. A cached rung is a rung that can disagree with its own evidence.
+ */
+export async function hasCompletedPracticeForEvent(
+  admin: SupabaseClient,
+  userId: string,
+  eventId: string,
+): Promise<boolean> {
+  if (!userId || !eventId) return false;
+  const { data: practices } = await admin
+    .from("foundry_published_arena_practices")
+    .select("id")
+    .eq("source_event_id", eventId);
+  const ids = (practices ?? []).map((p) => (p as { id: string }).id);
+  if (ids.length === 0) return false;
+  const { data: runs } = await admin
+    .from("foundry_arena_practice_runs")
+    .select("id, practice_id, status")
+    .eq("user_id", userId)
+    .eq("status", "completed");
+  const set = new Set(ids);
+  return ((runs ?? []) as { practice_id: string }[]).some((r) => set.has(r.practice_id));
 }

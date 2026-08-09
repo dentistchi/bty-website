@@ -33,6 +33,8 @@ type Snapshot = {
   training: { youtube_video_id: string; completion_prompt: string | null; shared_question: string | null } | null;
   stage: Stage;
   xp_status: XpStatus;
+  /** Slice 3.2M-2 — the practice built from THIS training, when one is published. */
+  practice?: { id: string; title: string } | null;
   /** Reality-Grounded Journey V1 (Slice 3.2C-B3A). null = legacy Run → video/PDF + completion fallback. */
   journey?: Journey;
 };
@@ -109,6 +111,9 @@ type Copy = {
   savedBody: string;
   continueToBty: string;
   signedInAs: string;
+  practiceHeading: string;
+  practiceBody: string;
+  practiceCta: string;
   accountUnknownEmail: string;
   accountLoading: string;
   continueWithAccount: string;
@@ -170,6 +175,9 @@ const COPY: Record<Locale, Copy> = {
     savedBody: "Your reflection is private and available in My Learning.",
     continueToBty: "Continue to BTY",
     signedInAs: "Signed in as",
+    practiceHeading: "Now try it",
+    practiceBody: "Practice this in a situation before it happens for real.",
+    practiceCta: "Start the practice",
     accountUnknownEmail: "your account",
     accountLoading: "Checking your account…",
     continueWithAccount: "Continue with this account",
@@ -229,6 +237,9 @@ const COPY: Record<Locale, Copy> = {
     savedBody: "이 성찰은 비공개이며 내 학습에서 다시 볼 수 있습니다.",
     continueToBty: "BTY로 계속하기",
     signedInAs: "로그인 계정:",
+    practiceHeading: "이제 연습해 보세요",
+    practiceBody: "실제로 마주하기 전에, 상황 속에서 연습해 봅니다.",
+    practiceCta: "연습 시작",
     accountUnknownEmail: "내 계정",
     accountLoading: "계정을 확인하는 중…",
     continueWithAccount: "이 계정으로 계속하기",
@@ -723,6 +734,27 @@ export default function FoundryJoinClient({ token }: { token: string }) {
               claim (ownership reconciled: xp awarded to this account) and ONLY for an open-link
               entry (no assigned `?return`). Navigation is non-mutating — it never re-runs completion
               or claim. Assigned learners keep the Frame's "Back to Foundry". */}
+          {/*
+            NOW TRY IT (Slice 3.2M-2). The training and its practice were already bound in
+            data by `source_event_id`; they were never connected in anyone's journey. Shown
+            only when a practice actually exists AND this completion belongs to an account —
+            an anonymous completion cannot be attributed to a person, so offering them a
+            practice whose result nobody could credit would be a dead end dressed as a step.
+          */}
+          {snapshot.practice && xp === "awarded" ? (
+            <div className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.06] p-4" data-testid="now-try-it">
+              <Eyebrow>{t.practiceHeading}</Eyebrow>
+              <p className="mt-2 text-sm leading-6 text-white/85">{t.practiceBody}</p>
+              <a
+                href={`/${locale}/bty-arena/practice/${encodeURIComponent(snapshot.practice.id)}`}
+                data-testid="now-try-it-link"
+                className="mt-3 inline-block rounded-xl bg-[#C9A66B] px-5 py-3 text-sm font-semibold text-[#0B1F3A]"
+              >
+                {t.practiceCta}
+              </a>
+            </div>
+          ) : null}
+
           {!roomReturn && xp === "awarded" ? (
             <div
               data-testid="saved-to-bty"

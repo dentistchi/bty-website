@@ -24,6 +24,7 @@ import {
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
+import { publishedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import {
@@ -280,6 +281,14 @@ export type PublicTrainingSnapshot = {
    *  from the immutable module snapshot. null = legacy Run (no approved Journey) → the
    *  player falls back to the existing video/PDF + completion-question experience. */
   journey?: PublicJourney | null;
+  /**
+   * The practice built from THIS training, when one is published (Slice 3.2M-2).
+   *
+   * Title and id only — the doorway, not the content. The Arena route re-authorises on
+   * entry, so this can never become a way in by itself. null = no practice exists, and the
+   * completion screen stays exactly as it was rather than offering a dead end.
+   */
+  practice?: { id: string; title: string } | null;
 };
 
 async function getProgress(
@@ -357,6 +366,7 @@ function buildPublicSnapshot(
   tokenVersionCurrent: boolean,
   xpOverride?: PublicXpStatus,
   journey?: PublicJourney | null,
+  practice?: { id: string; title: string } | null,
 ): PublicTrainingSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -406,6 +416,11 @@ function buildPublicSnapshot(
     xp_status,
     // Journey shown alongside the content (same visibility gate as the video).
     journey: showVideo ? (journey ?? null) : null,
+    /*
+      The doorway to this training's own practice — offered only once the training is
+      finished. Before that it would be an invitation to skip the thing they came for.
+    */
+    practice: progress?.completed_at ? (practice ?? null) : null,
   };
 }
 
@@ -455,7 +470,8 @@ export async function getPublicTrainingSnapshot(
   }
 
   const journey = participant ? await getEventJourney(admin, event.id) : null;
-  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey);
+  const practice = await publishedPracticeForEvent(admin, event.id);
+  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, practice);
 }
 
 async function snapshotFor(
@@ -467,7 +483,8 @@ async function snapshotFor(
   const progress = await getProgress(admin, event.id, participant.id);
   const content = await getContent(admin, event.id);
   const journey = await getEventJourney(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey);
+  const practice = await publishedPracticeForEvent(admin, event.id);
+  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey, practice);
 }
 
 /** Compute the caller's canonical BTY-day window [start, end) (05:00 user-local). */

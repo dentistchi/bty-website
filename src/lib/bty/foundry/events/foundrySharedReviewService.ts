@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { hasCompletedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 /**
  * Foundry Shared Understanding — Host educational review (Slice 3.1B-3G).
@@ -30,6 +31,13 @@ export type SharedUnderstandingResponse = {
   /** What the LEARNER decided to do, in their own words. Null when the program asked for none. */
   decisionResponse: string | null;
   decisionSubmittedAt: string | null;
+  /**
+   * Slice 3.2M-2 — did this person rehearse it?
+   *
+   * `unattributable` is not a hedge: an anonymous participant has no account, so no practice
+   * run can belong to them. Saying "not practised yet" would be a claim the data cannot make.
+   */
+  practice: "practised" | "not_practised" | "unattributable";
   reviewStatus: HostReviewStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
@@ -94,7 +102,7 @@ export async function getSharedUnderstandingForOwner(
   const { data: rows } = await admin
     .from("foundry_event_training_progress")
     .select(
-      "id, participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at, decision_response_text, decision_submitted_at",
+      "id, participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at, decision_response_text, decision_submitted_at, linked_user_id",
     )
     .eq("event_id", eventId);
 
@@ -112,6 +120,7 @@ export async function getSharedUnderstandingForOwner(
     shared_response_submitted_at: string | null;
     decision_response_text: string | null;
     decision_submitted_at: string | null;
+    linked_user_id: string | null;
     host_review_status: HostReviewStatus | null;
     host_review_note: string | null;
     host_reviewed_at: string | null;
@@ -135,6 +144,19 @@ export async function getSharedUnderstandingForOwner(
     }
   }
 
+  /*
+    Practice status, DERIVED from durable facts (Slice 3.2M-2): a run of a practice built from
+    THIS event, belonging to THIS learner's account, that reached completed. Nothing is cached
+    — a stored rung is one that can disagree with its own evidence.
+  */
+  const practiced = new Set<string>();
+  const linked = [...new Set(progress.map((p) => p.linked_user_id).filter((v): v is string => Boolean(v)))];
+  if (linked.length > 0) {
+    for (const userId of linked) {
+      if (await hasCompletedPracticeForEvent(admin, userId, eventId)) practiced.add(userId);
+    }
+  }
+
   const responses: SharedUnderstandingResponse[] = progress.map((p) => ({
     participantId: p.participant_id,
     progressId: p.id,
@@ -145,6 +167,7 @@ export async function getSharedUnderstandingForOwner(
     /** What the learner decided to do, in their own words. Null when the program asked for none. */
     decisionResponse: p.decision_response_text,
     decisionSubmittedAt: p.decision_submitted_at,
+    practice: !p.linked_user_id ? "unattributable" : practiced.has(p.linked_user_id) ? "practised" : "not_practised",
     reviewStatus: p.host_review_status ?? "NOT_REVIEWED",
     reviewNote: p.host_review_note,
     reviewedAt: p.host_reviewed_at,
