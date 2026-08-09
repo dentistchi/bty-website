@@ -601,6 +601,35 @@ export async function awardTrainingCoreXp(
 }
 
 /**
+ * IDENTITY IS NOT A REWARD (Slice 3.2M-2R1).
+ *
+ * `linked_user_id` used to be written only inside `if (outcome === "awarded")`, bundled with
+ * `xp_awarded_at`. So a legitimate authenticated learner whose completion hit the daily cap,
+ * or who owns the event, completed the training and the system then did not know who they
+ * were — no practice doorway, no attribution, no PRACTICED. Reward eligibility was deciding
+ * identity.
+ *
+ * The codebase already drew this line correctly one function down: the follow-up obligation
+ * materializes for an authenticated completion "regardless of the XP outcome". This brings
+ * `linked_user_id` to the same rule.
+ *
+ * First identified learner wins: the `.is(null)` guard makes it idempotent and means a second
+ * account can never take over a row that already belongs to someone.
+ */
+export async function linkLearnerIdentity(
+  admin: SupabaseClient,
+  progressId: string,
+  authUserId: string | null,
+): Promise<void> {
+  if (!authUserId || !progressId) return;
+  await admin
+    .from("foundry_event_training_progress")
+    .update({ linked_user_id: authUserId })
+    .eq("id", progressId)
+    .is("linked_user_id", null);
+}
+
+/**
  * Submit the completion response. Server-gated: requires the video to be
  * server-marked complete; rejects if the event is closed and not already
  * complete; idempotent (a second submit returns the existing result). If the
@@ -673,6 +702,9 @@ export async function completeTraining(
 
   const progressId = updated?.id ?? prog.id;
 
+  // Identity FIRST, and independent of what the reward turns out to be (Slice 3.2M-2R1).
+  await linkLearnerIdentity(admin, progressId, authUserId);
+
   // Immediate award for an authenticated participant (owner excluded, capped).
   let xpOverride: PublicXpStatus | undefined;
   if (authUserId) {
@@ -739,6 +771,10 @@ export async function claimXp(
     completedAtIso: prog.completed_at,
     deviceTz,
   });
+
+  // The claim is where an anonymous completion becomes an owned one — so it is exactly where
+  // identity belongs, whatever the XP outcome then is (Slice 3.2M-2R1).
+  await linkLearnerIdentity(admin, prog.id, authUserId);
 
   if (prog.xp_awarded_at) {
     return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };

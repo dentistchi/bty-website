@@ -42,7 +42,7 @@ import {
 import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
-import { readEventJourney } from "./foundryTrainingService";
+import { linkLearnerIdentity, readEventJourney } from "./foundryTrainingService";
 import { journeyActionDecision } from "@/domain/foundry/module/journey";
 
 /**
@@ -703,6 +703,9 @@ export async function completeDocumentTraining(
 
   const progressId = updated?.id ?? prog.id;
 
+  // Identity FIRST, independent of the reward (Slice 3.2M-2R1) — same rule as the video path.
+  await linkLearnerIdentity(admin, progressId, authUserId);
+
   let xpOverride: PublicXpStatus | undefined;
   if (authUserId) {
     const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, progressId);
@@ -758,6 +761,9 @@ export async function claimDocumentXp(
     completedAtIso: prog.completed_at,
     deviceTz,
   });
+
+  // The claim turns an anonymous completion into an owned one — identity belongs here too.
+  await linkLearnerIdentity(admin, prog.id, authUserId);
 
   if (prog.xp_awarded_at) {
     return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };

@@ -478,6 +478,69 @@ describe("XP integrity hardening (owner / daily cap / same-user-same-event)", ()
     return completeTraining(admin, token, j.sessionToken, "reflection", authUser);
   }
 
+  /*
+    SLICE 3.2M-2R1 — identity is not a reward.
+
+    `linked_user_id` used to be written only inside `if (outcome === "awarded")`, so a learner
+    who hit the daily cap, or who owned the event, completed the training and the system then
+    did not know who they were: no practice doorway, no attribution, no PRACTICED. These pin
+    the rule that identity now survives every XP outcome.
+  */
+  const linkedFor = (tables: Record<string, Record<string, unknown>[]>) =>
+    (tables.foundry_event_training_progress ?? []).map((r) => r.linked_user_id ?? null);
+
+  it("XP AWARDED → identity linked (unchanged)", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const { token } = await makeEvent(admin, OWNER, "E");
+    const r = await joinComplete(admin, token, "Lee", "learner-1");
+    expect(r.ok && r.snapshot.xp_status).toBe("awarded");
+    expect(linkedFor(tables)).toEqual(["learner-1"]);
+  });
+
+  it("OWNER_INELIGIBLE → identity STILL linked — the owner is who completed it", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const { token } = await makeEvent(admin, OWNER, "Owner's own");
+    const r = await joinComplete(admin, token, "TheOwner", OWNER);
+    expect(r.ok && r.snapshot.xp_status).toBe("owner_ineligible");
+    expect(tables.core_xp_ledger, "XP policy is untouched").toHaveLength(0);
+    expect(linkedFor(tables)).toEqual([OWNER]);
+  });
+
+  it("DAILY_LIMIT → identity STILL linked on the capped completion", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const LEARNER = "learner-capped";
+    for (let i = 1; i <= 3; i++) {
+      const { token } = await makeEvent(admin, OWNER, `E${i}`);
+      await joinComplete(admin, token, "Lee", LEARNER);
+    }
+    const { token } = await makeEvent(admin, OWNER, "E4");
+    const r = await joinComplete(admin, token, "Lee", LEARNER);
+    expect(r.ok && r.snapshot.xp_status).toBe("daily_limit");
+    expect(tables.core_xp_ledger, "the cap still holds").toHaveLength(3);
+    // Every one of the four completions knows who did it, including the capped one.
+    expect(linkedFor(tables)).toEqual([LEARNER, LEARNER, LEARNER, LEARNER]);
+  });
+
+  it("ANONYMOUS completion stays anonymous — identity is never inferred", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const { token } = await makeEvent(admin, OWNER, "E");
+    const r = await joinComplete(admin, token, "Anon", null);
+    expect(r.ok).toBe(true);
+    expect(linkedFor(tables)).toEqual([null]);
+  });
+
+  it("the FIRST identified learner keeps the row — a second account cannot take it over", async () => {
+    const { admin, tables } = makeFakeAdmin();
+    const { token } = await makeEvent(admin, OWNER, "E");
+    const j = await joinEvent(admin, token, "Lee", null);
+    if (!j.ok) throw new Error("join failed");
+    await completeVideo(admin, token, j.sessionToken);
+    await completeTraining(admin, token, j.sessionToken, "reflection", "learner-1");
+    // A repeat completion by a different account is idempotent AND non-transferring.
+    await completeTraining(admin, token, j.sessionToken, "again", "learner-2");
+    expect(linkedFor(tables)).toEqual(["learner-1"]);
+  });
+
   it("event owner earns no XP from their own event (owner_ineligible, completion valid)", async () => {
     const { admin, tables } = makeFakeAdmin();
     const { token } = await makeEvent(admin, OWNER, "Owner's own");
