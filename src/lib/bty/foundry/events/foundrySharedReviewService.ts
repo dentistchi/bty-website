@@ -23,9 +23,13 @@ export type SharedUnderstandingResponse = {
   progressId: string;
   displayName: string;
   completed: boolean;
-  /** The shared answer — visible because the learner was explicitly told it is shared. */
-  sharedResponse: string;
-  submittedAt: string;
+  /** The shared answer — visible because the learner was explicitly told it is shared. Null when
+   *  the training asked no shared question but the learner did record a decision (3.2M-1). */
+  sharedResponse: string | null;
+  submittedAt: string | null;
+  /** What the LEARNER decided to do, in their own words. Null when the program asked for none. */
+  decisionResponse: string | null;
+  decisionSubmittedAt: string | null;
   reviewStatus: HostReviewStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
@@ -90,21 +94,32 @@ export async function getSharedUnderstandingForOwner(
   const { data: rows } = await admin
     .from("foundry_event_training_progress")
     .select(
-      "id, participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at",
+      "id, participant_id, completed_at, shared_understanding_response, shared_response_submitted_at, host_review_status, host_review_note, host_reviewed_at, decision_response_text, decision_submitted_at",
     )
-    .eq("event_id", eventId)
-    .not("shared_understanding_response", "is", null);
+    .eq("event_id", eventId);
 
-  const progress = (rows ?? []) as Array<{
+  /*
+    Slice 3.2M-1: a learner may now have a DECISION without a shared answer — a training can ask
+    for one and not the other — so "has something to show" is decided here rather than by a
+    single-column NOT NULL in the query. `response_text` and `reflection` were never selected and
+    still are not; widening the row filter cannot widen the allow-list.
+  */
+  const progress = ((rows ?? []) as Array<{
     id: string;
     participant_id: string;
     completed_at: string | null;
-    shared_understanding_response: string;
-    shared_response_submitted_at: string;
+    shared_understanding_response: string | null;
+    shared_response_submitted_at: string | null;
+    decision_response_text: string | null;
+    decision_submitted_at: string | null;
     host_review_status: HostReviewStatus | null;
     host_review_note: string | null;
     host_reviewed_at: string | null;
-  }>;
+  }>).filter(
+    (p) =>
+      (p.shared_understanding_response ?? "").trim().length > 0 ||
+      (p.decision_response_text ?? "").trim().length > 0,
+  );
 
   // Participant display names (no PII beyond the display name the learner chose).
   const ids = progress.map((p) => p.participant_id);
@@ -127,6 +142,9 @@ export async function getSharedUnderstandingForOwner(
     completed: Boolean(p.completed_at),
     sharedResponse: p.shared_understanding_response,
     submittedAt: p.shared_response_submitted_at,
+    /** What the learner decided to do, in their own words. Null when the program asked for none. */
+    decisionResponse: p.decision_response_text,
+    decisionSubmittedAt: p.decision_submitted_at,
     reviewStatus: p.host_review_status ?? "NOT_REVIEWED",
     reviewNote: p.host_review_note,
     reviewedAt: p.host_reviewed_at,

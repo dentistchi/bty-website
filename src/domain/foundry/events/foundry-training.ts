@@ -73,6 +73,40 @@ export function resolveSharedResponse(
 }
 
 /**
+ * The learner's own decision (Slice 3.2M-1).
+ *
+ * A published program can contain an `action_decision` section — BTY's proposal for what a
+ * person might commit to. Until now the learner READ it and completed, and the durable record
+ * supported exposure and reflection only. Reading someone else's sentence is not a decision,
+ * so nothing could honestly say DECIDED.
+ *
+ * This is the same shape as the Shared Understanding gate, deliberately: a separate column, a
+ * separate timestamp, required only when the training actually asks for it, and never
+ * conflated with the private reflection in `response_text`.
+ */
+export function validateDecisionResponse(raw: unknown): ValidationResult<string> {
+  const base = validateResponse(raw);
+  if (base.ok) return base;
+  return { ok: false, reason: base.reason === "response_required" ? "decision_required" : base.reason };
+}
+
+/**
+ * Resolve the decision at completion. Pure gate:
+ *   - the published program has no action_decision → value null (nothing stored, input ignored).
+ *   - it has one                                   → a non-empty decision is REQUIRED.
+ *
+ * `actionDecision` is the CONTENT of the frozen journey's action_decision element, so the gate
+ * is driven by what was actually published, never by what a client claims.
+ */
+export function resolveDecisionResponse(
+  actionDecision: string | null | undefined,
+  raw: unknown,
+): ValidationResult<string | null> {
+  if (!actionDecision || actionDecision.trim().length < 1) return { ok: true, value: null };
+  return validateDecisionResponse(raw);
+}
+
+/**
  * The completion response. Newlines are allowed (it's a reflection), so we keep
  * \n and \r but still strip other control chars. Length is measured post-trim.
  */

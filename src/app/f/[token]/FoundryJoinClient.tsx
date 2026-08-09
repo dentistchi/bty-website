@@ -7,6 +7,7 @@ import type { LivingReflection } from "@/domain/foundry/living-reflection";
 import { selectReflectionPrompt, selectCheckpointPrompt } from "@/lib/bty/foundry/events/reflectionExpression";
 import { keepScreenAwake, type WakeLockController } from "@/lib/native/keepAwake";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
+import type { JourneyElementKind } from "@/domain/foundry/module/journey";
 
 type Locale = "en" | "ko";
 
@@ -36,8 +37,16 @@ type Snapshot = {
   journey?: Journey;
 };
 
-// Learner-facing labels per Journey element kind (the content itself is Host-approved).
-const JOURNEY_KIND_LABEL: Record<string, { en: string; ko: string }> = {
+/**
+ * Learner-facing labels per Journey element kind (the content itself is Host-approved).
+ *
+ * EXHAUSTIVE by type (Slice 3.2M-1). It used to be `Record<string, …>` with a `?? el.kind`
+ * fallback, and `follow_up` — added by Guided Authorship in 3.2L — had no entry, so a learner
+ * would have been shown a section headed `follow_up`. The Host's own preview was typed against
+ * the union and therefore could not drift; this one could, and did. Adding a future kind is now
+ * a compile error here rather than an internal identifier on someone's screen.
+ */
+const JOURNEY_KIND_LABEL: Record<JourneyElementKind, { en: string; ko: string }> = {
   why_it_matters: { en: "WHY THIS MATTERS", ko: "왜 중요한가" },
   observable_standard: { en: "THE STANDARD", ko: "기준" },
   scenario: { en: "IN CONTEXT", ko: "상황" },
@@ -46,6 +55,7 @@ const JOURNEY_KIND_LABEL: Record<string, { en: string; ko: string }> = {
   field_application: { en: "APPLY IT", ko: "적용" },
   evidence: { en: "WHAT SUCCESS LOOKS LIKE", ko: "성공의 모습" },
   completion_check: { en: "BEFORE YOU FINISH", ko: "마치기 전에" },
+  follow_up: { en: "WHAT HAPPENS NEXT", ko: "다음에 일어날 일" },
 };
 
 function JourneyReading({ journey, locale }: { journey: Journey; locale: string }) {
@@ -59,7 +69,7 @@ function JourneyReading({ journey, locale }: { journey: Journey; locale: string 
       {blocks.map((el) => (
         <div key={el.id} className="flex flex-col gap-1" data-testid={`journey-el-${el.kind}`}>
           <span className="text-xs font-medium uppercase tracking-[0.14em] text-[#C9A66B]/85">
-            {JOURNEY_KIND_LABEL[el.kind]?.[lang] ?? el.kind}
+            {JOURNEY_KIND_LABEL[el.kind as JourneyElementKind][lang]}
           </span>
           <p className="text-base leading-7 text-white/85">{el.content}</p>
         </div>
@@ -85,6 +95,11 @@ type Copy = {
   sharedDisclosure: string;
   sharedPlaceholder: string;
   sharedError: string;
+  decisionHeading: string;
+  decisionAsk: string;
+  decisionDisclosure: string;
+  decisionPlaceholder: string;
+  decisionError: string;
   complete: string;
   completing: string;
   trainingComplete: string;
@@ -141,6 +156,11 @@ const COPY: Record<Locale, Copy> = {
     sharedDisclosure: "Your response will be shared with the training host.",
     sharedPlaceholder: "Answer the question above…",
     sharedError: "Please answer the shared question to complete.",
+    decisionHeading: "Your decision",
+    decisionAsk: "What will you do?",
+    decisionDisclosure: "In your own words. This is shared with the training host.",
+    decisionPlaceholder: "Next time I will…",
+    decisionError: "Please say what you will do to complete.",
     complete: "Complete training",
     completing: "Saving…",
     trainingComplete: "TRAINING COMPLETE",
@@ -193,6 +213,11 @@ const COPY: Record<Locale, Copy> = {
     responsePlaceholder: "오늘 가지고 갈 한 가지를 적어주세요…",
     sharedHeading: "배운 내용을 설명해 주세요",
     sharedDisclosure: "이 답변은 교육 담당자에게 공유됩니다.",
+    decisionHeading: "당신의 결정",
+    decisionAsk: "무엇을 하시겠습니까?",
+    decisionDisclosure: "직접 작성해 주세요. 이 답변은 교육 담당자에게 공유됩니다.",
+    decisionPlaceholder: "다음에는 …",
+    decisionError: "완료하려면 무엇을 할지 적어 주세요.",
     sharedPlaceholder: "위 질문에 답해 주세요…",
     sharedError: "완료하려면 공유 질문에 답해 주세요.",
     complete: "훈련 완료",
@@ -299,6 +324,8 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [response, setResponse] = useState("");
   // Shared Understanding answer (Slice 3.1B-3G) — SEPARATE from the private `response`.
   const [sharedResponse, setSharedResponse] = useState("");
+  const [decisionResponse, setDecisionResponse] = useState("");
+  const [decisionError, setDecisionError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
@@ -421,31 +448,46 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   }, [post, applyResult, load]);
 
   const sharedQuestion = snapshot?.training?.shared_question ?? null;
+  /*
+    WHAT BTY PROPOSED vs WHAT THE LEARNER DECIDES (Slice 3.2M-1).
+
+    `actionDecisionContext` is BTY's sentence — shown as context, never prefilled into the answer.
+    A decision someone read is not a decision they made, and the field would be worthless as
+    evidence if it arrived already filled in.
+  */
+  const actionDecisionContext =
+    snapshot?.journey?.elements.find((e) => e.kind === "action_decision")?.content ?? null;
   const onComplete = useCallback(async () => {
     if (busyRef.current) return;
     if (response.trim().length < 1) return setResponseError(true);
     // A configured shared question requires a non-empty shared answer BEFORE completion.
     if (sharedQuestion && sharedResponse.trim().length < 1) return setSharedError(true);
+    // The program asked them to decide something — completing without one would make the record
+    // claim a decision that was never made. The server enforces this too.
+    if (actionDecisionContext && decisionResponse.trim().length < 1) return setDecisionError(true);
     busyRef.current = true;
     setBusy(true);
     setResponseError(false);
     setSharedError(false);
+    setDecisionError(false);
     try {
       const { ok, data } = await post("/progress/complete", {
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
+        ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
         tz: deviceTz(),
       });
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long") setSharedError(true);
+      else if (d?.error === "decision_required" || d?.error === "response_too_long") setDecisionError(true);
       else await load();
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, decisionResponse, actionDecisionContext, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -808,6 +850,32 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             className="w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base leading-6 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
           />
           {responseError ? <p className="text-xs text-white/50">{t.responseError}</p> : null}
+
+          {actionDecisionContext ? (
+            /* YOUR DECISION (Slice 3.2M-1). BTY's proposed decision is CONTEXT above the field;
+               the answer is the learner's own, never prefilled, and required to complete. */
+            <div className="rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.06] p-4" data-testid="decision-section">
+              <Eyebrow>{t.decisionHeading}</Eyebrow>
+              <p className="mt-2 text-sm leading-6 text-white/70" data-testid="decision-context">{actionDecisionContext}</p>
+              <p className="mt-3 text-sm font-medium leading-6 text-white/90">{t.decisionAsk}</p>
+              <p className="mt-1 text-xs text-[#C9A66B]/90" data-testid="decision-disclosure">{t.decisionDisclosure}</p>
+              <textarea
+                rows={3}
+                maxLength={1000}
+                value={decisionResponse}
+                onChange={(e) => {
+                  setDecisionResponse(e.target.value);
+                  if (decisionError) setDecisionError(false);
+                }}
+                placeholder={t.decisionPlaceholder}
+                aria-label={t.decisionAsk}
+                aria-invalid={decisionError}
+                data-testid="decision-input"
+                className="mt-3 w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base leading-6 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+              />
+              {decisionError ? <p className="mt-2 text-xs text-red-300" data-testid="decision-error">{t.decisionError}</p> : null}
+            </div>
+          ) : null}
 
           {sharedQuestion ? (
             /* Shared Understanding — VISUALLY + semantically separate from the private reflection

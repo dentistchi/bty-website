@@ -186,6 +186,18 @@ export function unresolvedJourneyElements(j: RealityGroundedJourneyV1 | undefine
   return out;
 }
 
+/**
+ * The approved `action_decision` content, or null (Slice 3.2M-1).
+ *
+ * Grounded elements only — the same rule `toPublicJourney` uses, so the gate can never demand a
+ * decision for a section the learner was never shown.
+ */
+export function journeyActionDecision(j: RealityGroundedJourneyV1 | undefined): string | null {
+  const el = j?.elements.find((e) => e.kind === "action_decision" && e.confirmationStatus === "grounded");
+  const v = (el?.content ?? "").trim();
+  return v.length > 0 ? v : null;
+}
+
 /** The approved participant completion question (completion_check content), or null. */
 export function journeyCompletionCheck(j: RealityGroundedJourneyV1 | undefined): string | null {
   const el = j?.elements.find((e) => e.kind === "completion_check");

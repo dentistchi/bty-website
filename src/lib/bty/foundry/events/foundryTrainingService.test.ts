@@ -551,6 +551,113 @@ describe("public snapshot — Reality-Grounded Journey (B3A)", () => {
   });
 });
 
+/**
+ * SLICE 3.2M-1 — the learner's own decision.
+ *
+ * A client-side required field is not a guard, so these drive `completeTraining` directly with a
+ * published module snapshot that does — or does not — contain a grounded `action_decision`.
+ */
+describe("[3.2M-1] completion requires the learner's own decision", () => {
+  const DECISION_EL = {
+    id: "el_action_decision",
+    kind: "action_decision",
+    content: "I will state each open item at my next handover.",
+    grounding: [{ sourceType: "host_statement", field: "problem" }],
+    confirmationStatus: "grounded",
+  };
+  const journeyWith = (elements: unknown[]) => ({
+    version: 1,
+    displayTitle: "Handing over without gaps",
+    displayTitleStatus: "grounded",
+    elements,
+  });
+
+  async function publishedWithJourney(elements: unknown[]) {
+    const ctx = await setupJoined();
+    await ctx.admin.from("foundry_event_module").insert({
+      event_id: ctx.eventId,
+      source_draft_id: `d-${elements.length}-${Math.round(1)}`,
+      module_version: 1,
+      module_snapshot: { realityGroundedJourneyV1: journeyWith(elements) },
+    });
+    await completeVideo(ctx.admin, ctx.token, ctx.session);
+    return ctx;
+  }
+
+  const progressRow = async (admin: Awaited<ReturnType<typeof setupJoined>>["admin"], eventId: string) => {
+    const { data } = await admin.from("foundry_event_training_progress").select("*").eq("event_id", eventId);
+    return (data ?? [])[0] as Record<string, unknown> | undefined;
+  };
+
+  it("REFUSES completion when the program asked for a decision and none was given", async () => {
+    const { admin, token, session, eventId } = await publishedWithJourney([DECISION_EL]);
+    expect(await completeTraining(admin, token, session, "My reflection.", null)).toEqual({
+      ok: false,
+      reason: "decision_required",
+    });
+    // Nothing was recorded — no half-complete row claiming a decision.
+    const row = await progressRow(admin, eventId);
+    expect(row?.completed_at ?? null).toBeNull();
+    expect(row?.decision_response_text ?? null).toBeNull();
+  });
+
+  it("a blank decision is not a decision", async () => {
+    const { admin, token, session } = await publishedWithJourney([DECISION_EL]);
+    expect(await completeTraining(admin, token, session, "My reflection.", null, undefined, undefined, "   ")).toEqual({
+      ok: false,
+      reason: "decision_required",
+    });
+  });
+
+  it("ACCEPTS completion with a decision, and stores it exactly — beside the reflection, never in it", async () => {
+    const { admin, token, session, eventId } = await publishedWithJourney([DECISION_EL]);
+    const decision = "I will say the two open items out loud before I leave the floor.";
+    const done = await completeTraining(admin, token, session, "My private reflection.", null, undefined, undefined, decision);
+    expect(done.ok).toBe(true);
+    const row = await progressRow(admin, eventId);
+    expect(row?.decision_response_text).toBe(decision);
+    expect(row?.decision_submitted_at).toBeTruthy();
+    expect(row?.response_text, "the private reflection is untouched").toBe("My private reflection.");
+    expect(row?.completed_at).toBeTruthy();
+  });
+
+  it("retry and repeated completion keep ONE decision — the first one", async () => {
+    const { admin, token, session, eventId } = await publishedWithJourney([DECISION_EL]);
+    const first = "I will state the open items.";
+    await completeTraining(admin, token, session, "reflection", null, undefined, undefined, first);
+    // A retry after a dropped response, then a plain re-submit with different words.
+    await completeTraining(admin, token, session, "reflection", null, undefined, undefined, first);
+    await completeTraining(admin, token, session, "different", null, undefined, undefined, "I changed my mind entirely.");
+    const { data } = await admin.from("foundry_event_training_progress").select("*").eq("event_id", eventId);
+    expect((data ?? []).length, "no duplicate progress row").toBe(1);
+    expect(((data ?? [])[0] as Record<string, unknown>).decision_response_text).toBe(first);
+  });
+
+  it("a training WITHOUT action_decision completes exactly as before, and stores no decision", async () => {
+    const { admin, token, session, eventId } = await publishedWithJourney([
+      { ...DECISION_EL, id: "el_why_it_matters", kind: "why_it_matters", content: "Handovers miss steps." },
+    ]);
+    const done = await completeTraining(admin, token, session, "My reflection.", null, undefined, undefined, "unsolicited");
+    expect(done.ok).toBe(true);
+    const row = await progressRow(admin, eventId);
+    expect(row?.completed_at).toBeTruthy();
+    expect(row?.decision_response_text ?? null, "an unasked decision must not be stored").toBeNull();
+  });
+
+  it("a legacy Run with no module snapshot is unaffected", async () => {
+    const { admin, token, session } = await setupJoined();
+    await completeVideo(admin, token, session);
+    expect((await completeTraining(admin, token, session, "My reflection.", null)).ok).toBe(true);
+  });
+
+  it("an UNCONFIRMED action_decision asks for nothing — the learner never saw it", async () => {
+    const { admin, token, session } = await publishedWithJourney([
+      { ...DECISION_EL, confirmationStatus: "needs_confirmation" },
+    ]);
+    expect((await completeTraining(admin, token, session, "My reflection.", null)).ok).toBe(true);
+  });
+});
+
 describe("close + privacy + roster projection", () => {
   it("blocks new completion after close but keeps completed results", async () => {
     const { admin, token, session, eventId } = await setupJoined();

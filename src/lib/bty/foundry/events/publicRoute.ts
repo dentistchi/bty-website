@@ -51,6 +51,8 @@ export const PUBLIC_REASON_STATUS: Record<string, number> = {
   // progress / completion
   response_required: 400,
   response_too_long: 400,
+  // Slice 3.2M-1 — the program asked for a decision and none was given.
+  decision_required: 400,
   video_not_complete: 409,
   reading_not_complete: 409,
   not_completed: 409,

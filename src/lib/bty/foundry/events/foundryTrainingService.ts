@@ -11,10 +11,11 @@ import {
   type PublicTrainingStage,
   type TrainingProgressMarkers,
   FOUNDRY_TRAINING_XP,
+  resolveDecisionResponse,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
 import { programIdForNewRun, programErrorReason, type ProgramLineage } from "./foundryProgramService";
-import { toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import { journeyActionDecision, toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
   resolveYoutubeEmbeddable,
   embedCheckAllowsCreate,
@@ -326,6 +327,18 @@ function markers(p: ProgressRow | null): TrainingProgressMarkers | null {
  * the existing video/PDF + completion-question fallback. Never exposes grounding,
  * confirmation status, draft/program ids, or unresolved needs_confirmation content.
  */
+export async function readEventJourney(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<RealityGroundedJourneyV1 | undefined> {
+  const { data } = await admin
+    .from("foundry_event_module")
+    .select("module_snapshot")
+    .eq("event_id", eventId)
+    .maybeSingle<{ module_snapshot: { realityGroundedJourneyV1?: RealityGroundedJourneyV1 } | null }>();
+  return data?.module_snapshot?.realityGroundedJourneyV1;
+}
+
 async function getEventJourney(admin: SupabaseClient, eventId: string): Promise<PublicJourney | null> {
   const { data } = await admin
     .from("foundry_event_module")
@@ -585,6 +598,7 @@ export async function completeTraining(
   authUserId: string | null,
   rawSharedResponse?: unknown,
   deviceTz?: string | null,
+  rawDecisionResponse?: unknown,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -612,13 +626,29 @@ export async function completeTraining(
   const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
   if (!shared.ok) return { ok: false, reason: shared.reason };
 
+  /*
+    THE LEARNER'S OWN DECISION (Slice 3.2M-1).
+
+    Driven by the FROZEN published journey, never by the client: if the program the learner was
+    actually shown contains a grounded `action_decision`, a decision of their own is required to
+    complete. A training without one behaves exactly as before.
+  */
+  const actionDecision = journeyActionDecision(await readEventJourney(admin, r.event.id));
+  const decision = resolveDecisionResponse(actionDecision, rawDecisionResponse);
+  if (!decision.ok) return { ok: false, reason: decision.reason };
+
   const now = new Date().toISOString();
   const sharedWrite = shared.value
     ? { shared_understanding_response: shared.value, shared_response_submitted_at: now, host_review_status: "NOT_REVIEWED" }
     : {};
+  // Written in the SAME conditional update as completion, so a retry cannot produce a second
+  // decision and a decision can never exist without the completion it belongs to.
+  const decisionWrite = decision.value
+    ? { decision_response_text: decision.value, decision_submitted_at: now }
+    : {};
   const { data: updated } = await admin
     .from("foundry_event_training_progress")
-    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite })
+    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite, ...decisionWrite })
     .eq("id", prog.id)
     .is("completed_at", null)
     .select(PROGRESS_COLS)

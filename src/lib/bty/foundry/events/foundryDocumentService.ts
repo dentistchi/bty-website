@@ -11,6 +11,7 @@ import {
   type ManagerRosterStatus,
   type PublicTrainingStage,
   type TrainingProgressMarkers,
+  resolveDecisionResponse,
 } from "@/domain/foundry/events/foundry-training";
 import {
   validatePageCount,
@@ -41,6 +42,8 @@ import {
 import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
+import { readEventJourney } from "./foundryTrainingService";
+import { journeyActionDecision } from "@/domain/foundry/module/journey";
 
 /**
  * Foundry PDF Study Room — service layer (the DOCUMENT content type).
@@ -642,6 +645,7 @@ export async function completeDocumentTraining(
   authUserId: string | null,
   rawSharedResponse?: unknown,
   deviceTz?: string | null,
+  rawDecisionResponse?: unknown,
 ): Promise<DocumentProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -669,13 +673,29 @@ export async function completeDocumentTraining(
   const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
   if (!shared.ok) return { ok: false, reason: shared.reason };
 
+  /*
+    THE LEARNER'S OWN DECISION (Slice 3.2M-1).
+
+    Driven by the FROZEN published journey, never by the client: if the program the learner was
+    actually shown contains a grounded `action_decision`, a decision of their own is required to
+    complete. A training without one behaves exactly as before.
+  */
+  const actionDecision = journeyActionDecision(await readEventJourney(admin, r.event.id));
+  const decision = resolveDecisionResponse(actionDecision, rawDecisionResponse);
+  if (!decision.ok) return { ok: false, reason: decision.reason };
+
   const now = new Date().toISOString();
   const sharedWrite = shared.value
     ? { shared_understanding_response: shared.value, shared_response_submitted_at: now, host_review_status: "NOT_REVIEWED" }
     : {};
+  // Written in the SAME conditional update as completion, so a retry cannot produce a second
+  // decision and a decision can never exist without the completion it belongs to.
+  const decisionWrite = decision.value
+    ? { decision_response_text: decision.value, decision_submitted_at: now }
+    : {};
   const { data: updated } = await admin
     .from("foundry_event_training_progress")
-    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite })
+    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite, ...decisionWrite })
     .eq("id", prog.id)
     .is("completed_at", null)
     .select(DOC_PROGRESS_COLS)

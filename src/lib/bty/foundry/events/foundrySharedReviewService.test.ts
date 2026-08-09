@@ -88,6 +88,44 @@ describe("getSharedUnderstandingForOwner — authorization + privacy", () => {
     expect(json).not.toContain("reflection");
   });
 
+  /*
+    SLICE 3.2M-1 — the learner's own decision, surfaced beside the shared answer. The privacy
+    posture is unchanged: the allow-list still never selects response_text or reflection, and a
+    decision is Host-visible for the same reason a shared answer is — the learner was told so.
+  */
+  it("the Host sees the learner's DECISION, and it is theirs, not BTY's proposal", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).decision_response_text = "I will say the two open items out loud.";
+    (t.foundry_event_training_progress[0] as Row).decision_submitted_at = "2026-07-22T00:05:00Z";
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    expect(view?.responses[0]?.decisionResponse).toBe("I will say the two open items out loud.");
+    expect(view?.responses[0]?.decisionSubmittedAt).toBe("2026-07-22T00:05:00Z");
+    expect(JSON.stringify(view)).not.toContain(SECRET_REFLECTION);
+    expect(JSON.stringify(view)).not.toContain(SECRET_AI);
+  });
+
+  it("a decision WITHOUT a shared answer still reaches the Host — a training may ask only one", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[1] as Row).decision_response_text = "I will confirm the owner of each task.";
+    (t.foundry_event_training_progress[1] as Row).decision_submitted_at = "2026-07-20T00:05:00Z";
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(t), HOST, EVENT);
+    const legacy = view?.responses.find((r) => r.displayName === "Legacy Learner");
+    expect(legacy?.decisionResponse).toBe("I will confirm the owner of each task.");
+    expect(legacy?.sharedResponse ?? null, "they answered no shared question").toBeNull();
+  });
+
+  it("a participant with NEITHER is still excluded — no empty backlog rows", async () => {
+    const view = await getSharedUnderstandingForOwner(makeFakeAdmin(seed()), HOST, EVENT);
+    expect(view?.responses.map((r) => r.displayName)).toEqual(["Hanbit"]);
+  });
+
+  it("an unrelated owner cannot read another event's decision", async () => {
+    const t = seed();
+    (t.foundry_event_training_progress[0] as Row).decision_response_text = "I will say the two open items out loud.";
+    (t.foundry_event_training_progress[0] as Row).decision_submitted_at = "2026-07-22T00:05:00Z";
+    expect(await getSharedUnderstandingForOwner(makeFakeAdmin(t), OTHER, EVENT)).toBeNull();
+  });
+
   it("an UNRELATED owner receives null (no foreign disclosure)", async () => {
     const view = await getSharedUnderstandingForOwner(makeFakeAdmin(seed()), OTHER, EVENT);
     expect(view).toBeNull();
