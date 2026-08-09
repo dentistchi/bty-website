@@ -23,6 +23,10 @@ type Row = {
   state: State;
   outcome: Outcome | null;
   respondedAt: string | null;
+  /** Slice 3.2M-3 — the behaviour the report is about; without it "Applied" says applied to what? */
+  subject?: string | null;
+  /** Earlier truthful check-ins, oldest first, excluding the current answer. */
+  history?: { outcome: Outcome; at: string }[];
 };
 
 const COPY: Record<Locale, {
@@ -31,6 +35,9 @@ const COPY: Record<Locale, {
   due: string;
   states: Record<State, string>;
   reported: string;
+  subjectLabel: string;
+  earlier: string;
+  selfReportNote: string;
   outcomes: Record<Outcome, string>;
   awaiting: string;
 }> = {
@@ -40,10 +47,16 @@ const COPY: Record<Locale, {
     due: "Due",
     states: { pending: "Upcoming", due: "Due today", overdue: "Overdue", responded: "Responded" },
     reported: "Learner reported",
+    subjectLabel: "They were asked to",
+    earlier: "Earlier they reported",
+    selfReportNote: "Their own report — nobody else confirmed it.",
     outcomes: { APPLIED: "Applied", PARTLY_APPLIED: "Partly applied", NOT_YET: "Not yet", BLOCKED: "Blocked" },
     awaiting: "Awaiting learner response",
   },
   ko: {
+    subjectLabel: "요청받은 행동",
+    earlier: "이전 보고",
+    selfReportNote: "본인이 직접 보고한 내용이며, 제3자가 확인한 것은 아닙니다.",
     title: "후속 확인 상태",
     checkpoint: (n) => `${n}일 후 확인`,
     due: "기한",
@@ -158,10 +171,27 @@ export default function FoundryFollowupStatus({
             <span className="text-xs text-white/45">
               {t.checkpoint(r.followUpDays)} · {t.due} {fmtDate(r.dueAt, locale)}
             </span>
-            {r.state === "responded" && r.outcome ? (
-              <span className="text-xs text-white/70" data-testid="followup-status-outcome">
-                {t.reported}: {t.outcomes[r.outcome]}
+            {/* What they were asked to do — the report is meaningless without it. */}
+            {r.subject ? (
+              <span className="text-xs leading-5 text-white/55" data-testid="followup-subject">
+                {t.subjectLabel}: {r.subject}
               </span>
+            ) : null}
+            {r.state === "responded" && r.outcome ? (
+              <>
+                <span className="text-xs text-white/70" data-testid="followup-status-outcome">
+                  {t.reported}: {t.outcomes[r.outcome]}
+                </span>
+                {/* An earlier honest "not yet" is part of the truth, not something to hide. */}
+                {r.history && r.history.length > 0 ? (
+                  <span className="text-xs text-white/40" data-testid="followup-history">
+                    {t.earlier}: {r.history.map((h) => t.outcomes[h.outcome]).join(" → ")}
+                  </span>
+                ) : null}
+                <span className="text-[0.68rem] text-white/35" data-testid="followup-selfreport-note">
+                  {t.selfReportNote}
+                </span>
+              </>
             ) : (
               <span className="text-xs text-white/40">{t.awaiting}</span>
             )}

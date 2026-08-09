@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { journeyFieldApplication, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import { classifyFollowUpSubmission } from "@/domain/foundry/followup/followUpObligation";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import {
   classifyFollowUpDue,
@@ -161,13 +163,29 @@ export async function getMyFollowupView(
 
   let expectedBehavior: string | null = null;
   if (row.event_id) {
+    /*
+      WHAT THE LEARNER IS ACTUALLY REPORTING ON (Slice 3.2M-3).
+
+      This used to read `completionPrompt` — the Host's BEFORE-YOU-FINISH question. For a
+      Guided training that is the wrong sentence entirely: the learner was asked to DO
+      something in real work, and then asked to report against a question about what they
+      would write. The adopted `field_application` element is already frozen in the same
+      snapshot, so this is a projection fix, not new data.
+
+      Frozen snapshot only — never live draft answers, never a title.
+    */
     const { data: mod } = await admin
       .from("foundry_event_module")
       .select("module_snapshot")
       .eq("event_id", row.event_id)
-      .maybeSingle<{ module_snapshot: { completionPrompt?: unknown } | null }>();
+      .maybeSingle<{
+        module_snapshot: { completionPrompt?: unknown; realityGroundedJourneyV1?: RealityGroundedJourneyV1 } | null;
+      }>();
+    const applied = journeyFieldApplication(mod?.module_snapshot?.realityGroundedJourneyV1);
     const prompt = mod?.module_snapshot?.completionPrompt;
-    expectedBehavior = typeof prompt === "string" && prompt.trim().length > 0 ? prompt.trim() : null;
+    // A training with no grounded field_application keeps the legacy subject exactly as before.
+    expectedBehavior =
+      applied ?? (typeof prompt === "string" && prompt.trim().length > 0 ? prompt.trim() : null);
   }
 
   const dueState: LearnerFollowupState =
@@ -194,6 +212,89 @@ export type SubmitFollowupResult =
   | { result: "invalid_outcome" | "not_found" | "not_owner" | "error" };
 
 /**
+ * A later check-in against an already-answered obligation, or null when this is the first
+ * report (which the RPC owns).
+ *
+ * Ownership is proved the same way the RPC proves it — `user_id_snapshot` must equal the
+ * caller. Concurrency is handled without a row lock by a compare-and-set on the outcome we
+ * read: if another device moved it first, this update matches nothing and the caller is told
+ * the settled truth rather than overwriting it.
+ */
+async function submitLaterCheckIn(
+  admin: SupabaseClient,
+  authUserId: string,
+  followupId: string,
+  outcome: FollowUpOutcome,
+): Promise<SubmitFollowupResult | null> {
+  const { data: row } = await admin
+    .from("foundry_participant_followups")
+    .select("id, event_id, user_id_snapshot, status, outcome")
+    .eq("id", followupId)
+    .maybeSingle<{
+      id: string;
+      event_id: string | null;
+      user_id_snapshot: string;
+      status: FollowUpStatus;
+      outcome: FollowUpOutcome | null;
+    }>();
+
+  /*
+    Defer to the RPC whenever this pre-read cannot settle the question. It is the authority
+    for the first response, for not-found and for not-owner; this path exists only to allow a
+    LATER report that the RPC deliberately refuses. Failing open here can never permit a
+    second write, because the RPC refuses those too.
+  */
+  if (!row) return null;
+  if (row.user_id_snapshot !== authUserId) return { result: "not_owner" };
+  if (row.status !== "RESPONDED" || row.outcome === null) return null; // first report → RPC
+
+  const kind = classifyFollowUpSubmission(row.outcome, outcome).kind;
+  // The same answer again is a double tap, not a second check-in: no history row.
+  if (kind === "repeat") return { result: "unchanged", status: row.status, outcome: row.outcome };
+  // Applied is terminal. Nothing downgrades or replaces it.
+  if (kind === "terminal_locked") return { result: "already_responded", status: row.status, outcome: row.outcome };
+
+  const now = new Date().toISOString();
+  const { data: updated } = await admin
+    .from("foundry_participant_followups")
+    .update({ outcome, responded_at: now, updated_at: now })
+    .eq("id", followupId)
+    // Compare-and-set: only if nobody has moved it since we read it.
+    .eq("outcome", row.outcome)
+    .select("id, outcome, status")
+    .maybeSingle<{ id: string; outcome: FollowUpOutcome; status: FollowUpStatus }>();
+
+  if (!updated) {
+    // Lost the race. Report what is actually settled now, never what we intended.
+    const { data: fresh } = await admin
+      .from("foundry_participant_followups")
+      .select("status, outcome")
+      .eq("id", followupId)
+      .maybeSingle<{ status: FollowUpStatus; outcome: FollowUpOutcome | null }>();
+    return {
+      result: "already_responded",
+      status: fresh?.status ?? "RESPONDED",
+      outcome: fresh?.outcome ?? row.outcome,
+    };
+  }
+
+  // The earlier report is NOT erased — it stays in the append-only audit trail, and this one
+  // is appended beside it with the state it moved from.
+  await admin.from("foundry_participant_followup_audit").insert({
+    followup_id: followupId,
+    event_id: row.event_id,
+    user_id_snapshot: authUserId,
+    event_type: "RESPONDED",
+    previous_status: "RESPONDED",
+    new_status: "RESPONDED",
+    outcome,
+    actor_user_id: authUserId,
+  });
+
+  return { result: "responded", status: "RESPONDED", outcome };
+}
+
+/**
  * Submit the learner's self-reported outcome, owner-scoped + locked via the RPC. A conflicting
  * second outcome never overwrites the first (returns already_responded + the settled state); an
  * identical resubmission is idempotent (unchanged). Never touches completion/XP/assignment/shared.
@@ -206,6 +307,19 @@ export async function submitFollowupOutcome(
 ): Promise<SubmitFollowupResult> {
   if (!isFollowUpOutcome(outcome)) return { result: "invalid_outcome" };
   if (!authUserId || !followupId) return { result: "not_found" };
+  /*
+    A LATER HONEST REPORT IS NOT A RETRY (Slice 3.2M-3).
+
+    The RPC settles PENDING → RESPONDED exactly once and refuses everything after it, which
+    is right for evidence and wrong for people: a learner who truthfully said "not yet" on day
+    7 could never come back on day 14 and say they had done it. So the first report still goes
+    through the RPC unchanged — same lock, same owner check — and a genuinely later report
+    against a NON-TERMINAL state is handled here, appended to the audit trail that already
+    exists. APPLIED stays terminal, and nothing is ever erased.
+  */
+  const progressed = await submitLaterCheckIn(admin, authUserId, followupId, outcome as FollowUpOutcome);
+  if (progressed) return progressed;
+
   const { data, error } = await admin.rpc("bty_foundry_submit_followup", {
     p_followup_id: followupId,
     p_auth_user_id: authUserId,
@@ -241,6 +355,17 @@ export type HostFollowupRow = {
   /** Learner-reported outcome, or null while pending. Labeled "Learner reported: …" in the UI. */
   outcome: FollowUpOutcome | null;
   respondedAt: string | null;
+  /**
+   * Slice 3.2M-3 — the behaviour this report is ABOUT. Without it the Host reads "Applied"
+   * and cannot tell applied to what.
+   */
+  subject: string | null;
+  /**
+   * Earlier truthful check-ins, oldest first, excluding the current one. A learner who said
+   * "not yet" before saying "applied" told the truth twice, and hiding the first would make
+   * the second look like the whole story.
+   */
+  history: { outcome: FollowUpOutcome; at: string }[];
 };
 
 export type HostFollowupView = {
@@ -312,6 +437,40 @@ export async function getEventFollowupsForOwner(
     }
   }
 
+  /*
+    Slice 3.2M-3 — the Host needs two more things to read a report honestly: WHAT it is about,
+    and whether it is the learner's first word on the subject. Both come from data that
+    already exists: the frozen field_application, and the append-only audit trail.
+  */
+  const { data: mod } = await admin
+    .from("foundry_event_module")
+    .select("module_snapshot")
+    .eq("event_id", eventId)
+    .maybeSingle<{
+      module_snapshot: { completionPrompt?: unknown; realityGroundedJourneyV1?: RealityGroundedJourneyV1 } | null;
+    }>();
+  const promptText = mod?.module_snapshot?.completionPrompt;
+  const subject =
+    journeyFieldApplication(mod?.module_snapshot?.realityGroundedJourneyV1) ??
+    (typeof promptText === "string" && promptText.trim().length > 0 ? promptText.trim() : null);
+
+  const historyByFollowup = new Map<string, { outcome: FollowUpOutcome; at: string }[]>();
+  const respondedIds = followups.filter((f) => f.status === "RESPONDED").map((f) => f.id);
+  if (respondedIds.length > 0) {
+    const { data: audit } = await admin
+      .from("foundry_participant_followup_audit")
+      .select("followup_id, outcome, created_at, event_type")
+      .in("followup_id", respondedIds);
+    const all = ((audit ?? []) as Array<{ followup_id: string; outcome: string | null; created_at: string; event_type: string }>)
+      .filter((a) => a.event_type === "RESPONDED" && a.outcome)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    for (const a of all) {
+      const list = historyByFollowup.get(a.followup_id) ?? [];
+      list.push({ outcome: a.outcome as FollowUpOutcome, at: a.created_at });
+      historyByFollowup.set(a.followup_id, list);
+    }
+  }
+
   const rowsOut: HostFollowupRow[] = followups.map((f) => {
     const participantId = f.progress_id ? participantByProgress.get(f.progress_id) ?? null : null;
     // Same day-key boundary as the learner Today classification (classifyFollowUpDue), so Host +
@@ -329,6 +488,9 @@ export async function getEventFollowupsForOwner(
       followUpDays: f.follow_up_days,
       dueAt: f.due_at,
       state,
+      subject,
+      // Everything before the current answer — the earlier truths, not a duplicate of the latest.
+      history: (historyByFollowup.get(f.id) ?? []).slice(0, -1),
       outcome: f.outcome,
       respondedAt: f.responded_at,
     };

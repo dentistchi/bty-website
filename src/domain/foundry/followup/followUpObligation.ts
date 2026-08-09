@@ -103,3 +103,44 @@ export function computeFollowUpDue(
   const dueAtIso = dayKeyToStartInstant(dueBtyDay, tz, 5).toISOString();
   return { completionBtyDay, dueBtyDay, dueAtIso };
 }
+
+/**
+ * HONESTY MUST NOT BE A DEAD END (Slice 3.2M-3).
+ *
+ * The obligation was first-wins and immutable, which is right for evidence and wrong for
+ * people: a learner who truthfully answered "not yet" on day 7 could never come back on day
+ * 14 and say they had done it. The product punished the honest answer.
+ *
+ * So APPLIED is terminal and the other three are check-ins. A later report is a NEW truthful
+ * fact, appended — never an erasure of the earlier one.
+ */
+export const TERMINAL_FOLLOW_UP_OUTCOME: FollowUpOutcome = "APPLIED";
+
+export type FollowUpSubmission =
+  /** No report yet — the first one. */
+  | { kind: "first" }
+  /** The same answer again: a double tap or a retry, not a second check-in. */
+  | { kind: "repeat" }
+  /** A genuinely different, later report against a non-terminal state. */
+  | { kind: "progress" }
+  /** Already applied. Nothing may downgrade or replace it. */
+  | { kind: "terminal_locked" };
+
+/**
+ * What a submission MEANS, given what is already recorded. Pure — the service does the I/O
+ * and the ownership check; this decides only what kind of act this is.
+ */
+export function classifyFollowUpSubmission(
+  current: FollowUpOutcome | null,
+  next: FollowUpOutcome,
+): FollowUpSubmission {
+  if (current === null) return { kind: "first" };
+  if (current === next) return { kind: "repeat" };
+  if (current === TERMINAL_FOLLOW_UP_OUTCOME) return { kind: "terminal_locked" };
+  return { kind: "progress" };
+}
+
+/** Does this outcome establish the learner's own claim that they applied it? */
+export function reportsApplication(outcome: FollowUpOutcome | null): boolean {
+  return outcome === TERMINAL_FOLLOW_UP_OUTCOME;
+}

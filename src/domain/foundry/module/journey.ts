@@ -198,6 +198,18 @@ export function journeyActionDecision(j: RealityGroundedJourneyV1 | undefined): 
   return v.length > 0 ? v : null;
 }
 
+/**
+ * The approved `field_application` content, or null (Slice 3.2M-3).
+ *
+ * What the learner was asked to do in REAL WORK — the thing a follow-up should ask about.
+ * Grounded elements only, the same rule the learner-facing projection uses.
+ */
+export function journeyFieldApplication(j: RealityGroundedJourneyV1 | undefined): string | null {
+  const el = j?.elements.find((e) => e.kind === "field_application" && e.confirmationStatus === "grounded");
+  const v = (el?.content ?? "").trim();
+  return v.length > 0 ? v : null;
+}
+
 /** The approved participant completion question (completion_check content), or null. */
 export function journeyCompletionCheck(j: RealityGroundedJourneyV1 | undefined): string | null {
   const el = j?.elements.find((e) => e.kind === "completion_check");

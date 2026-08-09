@@ -8,7 +8,7 @@ import { establishedEvidence, highestEstablished } from "./learner-evidence";
  * important property is what it can never return.
  */
 const facts = (o: Partial<Parameters<typeof establishedEvidence>[0]> = {}) => ({
-  completed: false, reflection: false, decision: false, practiceCompleted: false, ...o,
+  completed: false, reflection: false, decision: false, practiceCompleted: false, appliedReported: false, ...o,
 });
 
 describe("[3.2M-2] established evidence", () => {
@@ -33,14 +33,29 @@ describe("[3.2M-2] established evidence", () => {
     expect(highestEstablished(facts({ completed: true, practiceCompleted: true }))).toBe("practiced");
   });
 
-  it("NOTHING reaches APPLIED, OBSERVED or SUSTAINED — for any combination at all", () => {
+  it("a reported application adds APPLIED — the 3.2M-3 rung", () => {
+    expect(establishedEvidence(facts({ completed: true, appliedReported: true }))).toEqual(["exposed", "applied"]);
+    expect(highestEstablished(facts({ completed: true, appliedReported: true }))).toBe("applied");
+  });
+
+  it("APPLIED does not require PRACTICED — someone can do it at work without rehearsing here", () => {
+    const got = establishedEvidence(facts({ completed: true, appliedReported: true }));
+    expect(got).toContain("applied");
+    expect(got).not.toContain("practiced");
+  });
+
+  it("NOTHING reaches OBSERVED or SUSTAINED — for any combination at all", () => {
     for (const completed of [true, false]) {
       for (const reflection of [true, false]) {
         for (const decision of [true, false]) {
           for (const practiceCompleted of [true, false]) {
-            const got = establishedEvidence({ completed, reflection, decision, practiceCompleted });
-            for (const forbidden of ["applied", "observed", "sustained"] as const) {
-              expect(got, JSON.stringify({ completed, reflection, decision, practiceCompleted })).not.toContain(forbidden);
+            for (const appliedReported of [true, false]) {
+              const got = establishedEvidence({ completed, reflection, decision, practiceCompleted, appliedReported });
+              for (const forbidden of ["observed", "sustained"] as const) {
+                expect(got, JSON.stringify({ completed, reflection, decision, practiceCompleted, appliedReported })).not.toContain(forbidden);
+              }
+              // And nothing at all is established before the training is finished.
+              if (!completed) expect(got).toEqual([]);
             }
           }
         }
