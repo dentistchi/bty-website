@@ -171,3 +171,52 @@ describe("FoundryFollowupStatus — repetition over time", () => {
     expect(screen.queryByTestId("host-sustained")).toBeNull();
   });
 });
+
+/**
+ * SLICE 3.2M-5 — the observation line and the span line must not use two different meanings
+ * of "date". Found on the live Host surface, not in a unit test: the observation line printed
+ * the filing date directly above a span of occurrence dates.
+ */
+describe("FoundryFollowupStatus — the observation date is when they SAW it", () => {
+  const base = {
+    followupId: "f1", displayName: "Ann", followUpDays: 7,
+    dueAt: "2026-08-08T05:00:00Z", state: "pending", outcome: null, respondedAt: null,
+  };
+  const renderRows = (rows: unknown[]) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, eventId: "ev-1", rows }) })));
+    return render(<FoundryFollowupStatus eventId="ev-1" locale="en" />);
+  };
+
+  it("prefers the occurrence date over the filing timestamp", async () => {
+    renderRows([{ ...base, observation: {
+      observed: true, observerCount: 1,
+      latestAt: "2026-09-30T00:00:00Z", // filed months later
+      observerHistory: [{ outcome: "OBSERVED", at: "2026-09-30T00:00:00Z" }],
+      sustained: false, firstObservedOn: "2026-07-20", lastObservedOn: "2026-07-20", distinctPositiveDates: 1,
+    } }]);
+    const el = await screen.findByTestId("host-observed");
+    expect(el.textContent).toMatch(/Jul 20/);
+    expect(el.textContent, "the filing date is not the sighting date").not.toMatch(/Sep 30/);
+  });
+
+  it("both lines agree when a span exists", async () => {
+    renderRows([{ ...base, observation: {
+      observed: true, observerCount: 1, latestAt: "2026-09-30T00:00:00Z",
+      observerHistory: [{ outcome: "OBSERVED", at: "2026-09-30T00:00:00Z" }],
+      sustained: true, firstObservedOn: "2026-07-20", lastObservedOn: "2026-07-27", distinctPositiveDates: 2,
+    } }]);
+    expect((await screen.findByTestId("host-observed")).textContent).toMatch(/Jul 27/);
+    expect((await screen.findByTestId("host-sustained")).textContent).toMatch(/Jul 20.*Jul 27/);
+  });
+
+  it("a pre-3.2M-5 payload still shows its only available date", async () => {
+    // Midday UTC on purpose: the legacy path formats an INSTANT in the reader's zone, so a
+    // UTC-midnight fixture would slide to the previous day in the Americas and make this test
+    // about timezones rather than about the fallback.
+    renderRows([{ ...base, observation: {
+      observed: true, observerCount: 1, latestAt: "2026-08-03T18:00:00Z",
+      observerHistory: [{ outcome: "OBSERVED", at: "2026-08-03T18:00:00Z" }],
+    } }]);
+    expect((await screen.findByTestId("host-observed")).textContent).toMatch(/Aug 3/);
+  });
+});

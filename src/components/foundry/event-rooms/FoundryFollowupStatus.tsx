@@ -128,6 +128,25 @@ function fmtDayKey(dayKey: string, locale: Locale): string {
   );
 }
 
+/**
+ * WHEN THEY SAW IT, NOT WHEN THEY TOLD US (Slice 3.2M-5).
+ *
+ * The 3.2M-4 line printed `latestAt`, which is the submission timestamp. Once occurrence dates
+ * existed, a live Host read "One colleague saw or heard this · Aug 9" directly above "Sustained
+ * across Jul 20–Jul 27" — two different date meanings on adjacent lines, and the first one
+ * invited exactly the wrong reading: that the sighting happened on the day it was filed.
+ *
+ * So the line prefers the most recent OCCURRENCE date. `latestAt` remains the fallback for a
+ * payload that predates the occurrence field, where the filing date is the only date there is.
+ */
+function observedOnLabel(
+  o: { lastObservedOn?: string | null; latestAt: string | null },
+  locale: Locale,
+): string {
+  if (o.lastObservedOn) return fmtDayKey(o.lastObservedOn, locale);
+  return o.latestAt ? fmtDate(o.latestAt, locale) : "";
+}
+
 function deviceTz(): string | null {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
@@ -240,7 +259,7 @@ export default function FoundryFollowupStatus({
               >
                 {t.observationHeading}:{" "}
                 {r.observation.observed
-                  ? `${t.observedBy(r.observation.observerCount)}${r.observation.latestAt ? ` · ${fmtDate(r.observation.latestAt, locale)}` : ""}`
+                  ? `${t.observedBy(r.observation.observerCount)}${observedOnLabel(r.observation, locale) ? ` · ${observedOnLabel(r.observation, locale)}` : ""}`
                   : r.observation.observerHistory.some((o) => o.outcome === "NOT_OBSERVED")
                     ? t.observerSaidNot
                     : r.observation.observerHistory.some((o) => o.outcome === "UNABLE_TO_TELL")
