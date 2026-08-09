@@ -27,6 +27,13 @@ type Row = {
   subject?: string | null;
   /** Earlier truthful check-ins, oldest first, excluding the current answer. */
   history?: { outcome: Outcome; at: string }[];
+  /** Slice 3.2M-4 — what someone ELSE reported. Never merged with the learner's own words. */
+  observation?: {
+    observed: boolean;
+    observerCount: number;
+    latestAt: string | null;
+    observerHistory: { outcome: "OBSERVED" | "NOT_OBSERVED" | "UNABLE_TO_TELL"; at: string }[];
+  };
 };
 
 const COPY: Record<Locale, {
@@ -38,6 +45,11 @@ const COPY: Record<Locale, {
   subjectLabel: string;
   earlier: string;
   selfReportNote: string;
+  observationHeading: string;
+  observedBy: (n: number) => string;
+  noObservation: string;
+  observerSaidNot: string;
+  observerUnsure: string;
   outcomes: Record<Outcome, string>;
   awaiting: string;
 }> = {
@@ -50,6 +62,11 @@ const COPY: Record<Locale, {
     subjectLabel: "They were asked to",
     earlier: "Earlier they reported",
     selfReportNote: "Their own report — nobody else confirmed it.",
+    observationHeading: "Independent observation",
+    observedBy: (n) => (n === 1 ? "One colleague saw or heard this" : `${n} colleagues saw or heard this`),
+    noObservation: "No independent observation yet",
+    observerSaidNot: "A colleague reported they did not see it",
+    observerUnsure: "A colleague could not tell",
     outcomes: { APPLIED: "Applied", PARTLY_APPLIED: "Partly applied", NOT_YET: "Not yet", BLOCKED: "Blocked" },
     awaiting: "Awaiting learner response",
   },
@@ -57,6 +74,11 @@ const COPY: Record<Locale, {
     subjectLabel: "요청받은 행동",
     earlier: "이전 보고",
     selfReportNote: "본인이 직접 보고한 내용이며, 제3자가 확인한 것은 아닙니다.",
+    observationHeading: "제3자 관찰",
+    observedBy: (n) => `동료 ${n}명이 직접 보거나 들었습니다`,
+    noObservation: "아직 제3자 관찰 없음",
+    observerSaidNot: "동료가 보지 못했다고 보고했습니다",
+    observerUnsure: "동료가 판단할 수 없었습니다",
     title: "후속 확인 상태",
     checkpoint: (n) => `${n}일 후 확인`,
     due: "기한",
@@ -175,6 +197,26 @@ export default function FoundryFollowupStatus({
             {r.subject ? (
               <span className="text-xs leading-5 text-white/55" data-testid="followup-subject">
                 {t.subjectLabel}: {r.subject}
+              </span>
+            ) : null}
+            {/*
+              A SEPARATE SOURCE (Slice 3.2M-4). Kept visually apart from the learner's own
+              report so nobody reads "Applied" and "One colleague saw it" as one claim — and
+              so a colleague who did NOT see it never looks like confirmation.
+            */}
+            {r.observation ? (
+              <span
+                className={"text-xs " + (r.observation.observed ? "text-[#C9A66B]/90" : "text-white/40")}
+                data-testid={r.observation.observed ? "host-observed" : "host-not-observed"}
+              >
+                {t.observationHeading}:{" "}
+                {r.observation.observed
+                  ? `${t.observedBy(r.observation.observerCount)}${r.observation.latestAt ? ` · ${fmtDate(r.observation.latestAt, locale)}` : ""}`
+                  : r.observation.observerHistory.some((o) => o.outcome === "NOT_OBSERVED")
+                    ? t.observerSaidNot
+                    : r.observation.observerHistory.some((o) => o.outcome === "UNABLE_TO_TELL")
+                      ? t.observerUnsure
+                      : t.noObservation}
               </span>
             ) : null}
             {r.state === "responded" && r.outcome ? (

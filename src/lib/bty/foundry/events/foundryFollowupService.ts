@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { journeyFieldApplication, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { classifyFollowUpSubmission } from "@/domain/foundry/followup/followUpObligation";
+import { distinctPositiveObservers, observationEstablished, type ObservationFact, type ObservationOutcome } from "@/domain/foundry/observation/behaviorObservation";
+import { listObservations } from "./foundryObservationService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import {
   classifyFollowUpDue,
@@ -366,6 +368,18 @@ export type HostFollowupRow = {
    * the second look like the whole story.
    */
   history: { outcome: FollowUpOutcome; at: string }[];
+  /**
+   * Slice 3.2M-4 — what someone ELSE said, kept deliberately separate from what the learner
+   * said. `observed` is true only when an authorised distinct person positively attested.
+   * `observerHistory` carries the negative and uncertain reports so they are visible without
+   * ever being mistaken for confirmation.
+   */
+  observation: {
+    observed: boolean;
+    observerCount: number;
+    latestAt: string | null;
+    observerHistory: { outcome: ObservationOutcome; at: string }[];
+  };
 };
 
 export type HostFollowupView = {
@@ -471,6 +485,15 @@ export async function getEventFollowupsForOwner(
     }
   }
 
+  /*
+    Independent observation, per obligation (Slice 3.2M-4). Read separately from the learner's
+    own report and never merged with it: "I applied it" and "I saw it" are two sources.
+  */
+  const observationsByFollowup = new Map<string, ObservationFact[]>();
+  for (const f of followups) {
+    observationsByFollowup.set(f.id, await listObservations(admin, f.id));
+  }
+
   const rowsOut: HostFollowupRow[] = followups.map((f) => {
     const participantId = f.progress_id ? participantByProgress.get(f.progress_id) ?? null : null;
     // Same day-key boundary as the learner Today classification (classifyFollowUpDue), so Host +
@@ -491,6 +514,17 @@ export async function getEventFollowupsForOwner(
       subject,
       // Everything before the current answer — the earlier truths, not a duplicate of the latest.
       history: (historyByFollowup.get(f.id) ?? []).slice(0, -1),
+      observation: (() => {
+        const obs = observationsByFollowup.get(f.id) ?? [];
+        const positives = distinctPositiveObservers(obs);
+        const latest = obs.length > 0 ? obs[obs.length - 1]! : null;
+        return {
+          observed: observationEstablished(obs),
+          observerCount: positives.length,
+          latestAt: latest?.submittedAt ?? null,
+          observerHistory: obs.map((o) => ({ outcome: o.outcome, at: o.submittedAt })),
+        };
+      })(),
       outcome: f.outcome,
       respondedAt: f.responded_at,
     };
