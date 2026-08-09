@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+/** Slice 3.2N — the page now offers an explicit way back (there is no browser chrome in the app). */
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 import ObserverClient from "./ObserverClient";
 
 /**
@@ -142,5 +146,26 @@ describe("ObserverClient", () => {
     }
     // The observer's own prior answer is shown in THEIR words, never as the stored token.
     expect(text).toContain("I saw or heard this");
+  });
+});
+
+/**
+ * SLICE 3.2N — the page is now reached from the reviewer surface, so it needs a way back that
+ * does not depend on browser chrome: in the native shell there is none, and a page whose only
+ * exit is the browser's back button is a dead end there.
+ */
+describe("ObserverClient — getting back out", () => {
+  it("offers an explicit way back to Practice", async () => {
+    mockApi({ ok: true, request: REQUEST });
+    render(<ObserverClient followupId="fu-1" locale="en" />);
+    fireEvent.click(await screen.findByTestId("observe-back"));
+    expect(push).toHaveBeenCalledWith("/en/app?tab=practice");
+  });
+
+  it("offers it even when there is nothing to answer — never a dead end", async () => {
+    mockApi({ ok: false, error: "not_found" }, undefined, 404);
+    render(<ObserverClient followupId="fu-1" locale="en" />);
+    await screen.findByTestId("observe-unavailable");
+    expect(screen.getByTestId("observe-back")).toBeTruthy();
   });
 });

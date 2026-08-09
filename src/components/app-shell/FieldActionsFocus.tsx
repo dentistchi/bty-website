@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import FieldActionForm from "@/components/app-shell/FieldActionForm";
 import HostActionReviewDetail from "@/components/app-shell/HostActionReviewDetail";
+import { useRouter } from "next/navigation";
 import {
   fieldActionLearnerGroup,
   FIELD_ACTION_GROUP_ORDER,
   type FieldActionLearnerGroup,
 } from "@/domain/action-contract/fieldActionGroup";
+import type { OpportunityState } from "@/domain/foundry/observation/observationOpportunity";
 
 /**
  * Practice → Field Actions — focused surface (canonical learner inventory V1).
@@ -50,6 +52,19 @@ type StageCounts = {
   reviewedAccepted: number;
   awaitingResolution: number;
 };
+/**
+ * Slice 3.2N — a behaviour this reviewer is authorised to confirm. Available work, never a task:
+ * nothing here carries a date, a badge count, or a claim that anyone is late.
+ */
+type ObservationOpportunity = {
+  followupId: string;
+  learnerLabel: string;
+  behavior: string;
+  state: OpportunityState;
+  firstObservedOn: string | null;
+  lastObservedOn: string | null;
+  positiveDates: number;
+};
 
 const COPY: Record<Locale, {
   title: string;
@@ -74,6 +89,13 @@ const COPY: Record<Locale, {
   hostAwaitingResolution: string;
   hostQueueSub: string;
   submittedOn: string;
+  /** Slice 3.2N — two kinds of work can live under one heading without pretending to be one thing. */
+  kindFieldAction: string;
+  kindObservation: string;
+  obsState: Record<OpportunityState, string>;
+  obsCtaFirst: string;
+  obsCtaAgain: string;
+  obsDays: (n: number) => string;
 }> = {
   en: {
     title: "Action plans",
@@ -96,14 +118,33 @@ const COPY: Record<Locale, {
     needsRevisionBadge: "Needs revision",
     revisionNote: "Revision requested",
     reviewedOn: "Reviewed",
-    hostTitle: "Review queue",
-    hostLoading: "Loading review queue…",
+    /*
+      "Your review work", not "Review queue" (Slice 3.2N). A queue implies a backlog someone is
+      behind on. This block now holds two different things — action plans somebody submitted for
+      review, and behaviours you are simply permitted to confirm — and only the first is waiting
+      on you. The heading has to be true of both.
+    */
+    hostTitle: "Your review work",
+    hostLoading: "Loading your review work…",
     hostVerificationPending: "Verification pending",
     hostNeedsRevision: "Needs revision",
     hostReviewed: "Reviewed action plans",
     hostAwaitingResolution: "Awaiting resolution",
     hostQueueSub: "Awaiting your review",
     submittedOn: "Submitted",
+    kindFieldAction: "Action plan review",
+    kindObservation: "Behaviour observation",
+    obsState: {
+      none: "You haven't recorded anything yet",
+      // Never "failed" and never "not done": they may simply not have been there.
+      not_seen: "You recorded that you couldn't confirm it",
+      seen_once: "You saw it once",
+      seen_repeatedly: "You saw it more than once",
+      sustained: "Sustained",
+    },
+    obsCtaFirst: "Record what you saw",
+    obsCtaAgain: "Record it again if you see it",
+    obsDays: (n) => (n === 1 ? "on 1 day" : `on ${n} days`),
   },
   ko: {
     title: "행동 계획",
@@ -126,16 +167,42 @@ const COPY: Record<Locale, {
     needsRevisionBadge: "수정 필요",
     revisionNote: "수정 요청",
     reviewedOn: "검토됨",
-    hostTitle: "검토 대기열",
-    hostLoading: "검토 대기열을 불러오는 중입니다…",
+    hostTitle: "내 검토 업무",
+    hostLoading: "검토 업무를 불러오는 중입니다…",
     hostVerificationPending: "검토 대기",
     hostNeedsRevision: "수정 필요",
     hostReviewed: "검토·승인된 행동 계획",
     hostAwaitingResolution: "해결 대기",
     hostQueueSub: "검토를 기다리고 있습니다",
     submittedOn: "제출",
+    kindFieldAction: "행동 계획 검토",
+    kindObservation: "행동 관찰",
+    obsState: {
+      none: "아직 기록하지 않았습니다",
+      not_seen: "확인하지 못했다고 기록하셨습니다",
+      seen_once: "한 번 보셨습니다",
+      seen_repeatedly: "여러 번 보셨습니다",
+      sustained: "지속됨",
+    },
+    obsCtaFirst: "본 것을 기록하기",
+    obsCtaAgain: "또 보셨다면 기록하기",
+    obsDays: (n) => `${n}일`,
   },
 };
+
+/**
+ * Format an OCCURRENCE day key ("YYYY-MM-DD") in UTC from its own components (Slice 3.2N), so the
+ * date a colleague reported is the date they read back. Passing it through the reader's zone
+ * could shift it a day and quietly change what they think they recorded.
+ */
+function fmtDayKey(dayKey: string, loc: Locale): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayKey);
+  if (!m) return "";
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toLocaleDateString(
+    loc === "ko" ? "ko-KR" : "en-US",
+    { month: "short", day: "numeric", timeZone: "UTC" },
+  );
+}
 
 function fmtDate(iso: string | null, loc: Locale): string | null {
   if (!iso) return null;
@@ -166,6 +233,8 @@ export default function FieldActionsFocus({
   const [hostQueue, setHostQueue] = useState<HostReview[]>([]);
   const [stageCounts, setStageCounts] = useState<StageCounts | null>(null);
   const [hostState, setHostState] = useState<"loading" | "ready">("loading");
+  const [opportunities, setOpportunities] = useState<ObservationOpportunity[]>([]);
+  const router = useRouter();
   const [view, setView] = useState<View>(
     initialFieldActionId ? { mode: "form", contractId: initialFieldActionId } : { mode: "list" },
   );
@@ -205,9 +274,22 @@ export default function FieldActionsFocus({
         }
       } catch {
         /* fail-soft — Host sections omitted (honest: no authorized scope surfaced) */
-      } finally {
-        if (!cancelled) setHostState("ready");
       }
+      /*
+        Slice 3.2N — observation opportunities. A SEPARATE, independently fail-soft read: a
+        failure here must not remove the action-plan reviews a reviewer can still act on, and
+        vice versa. Empty is the normal answer for everyone who holds no reviewer edges.
+      */
+      try {
+        const res = await fetch(`/api/bty/foundry/observations/mine`, { credentials: "include", cache: "no-store" });
+        if (res.ok) {
+          const d = (await res.json()) as { items?: ObservationOpportunity[] };
+          if (!cancelled) setOpportunities(Array.isArray(d.items) ? d.items : []);
+        }
+      } catch {
+        /* fail-soft — observation section omitted */
+      }
+      if (!cancelled) setHostState("ready");
     })();
     return () => {
       cancelled = true;
@@ -236,7 +318,9 @@ export default function FieldActionsFocus({
   const hostTotal = stageCounts
     ? stageCounts.verificationPending + stageCounts.needsRevision + stageCounts.reviewedAccepted + stageCounts.awaitingResolution
     : 0;
-  const showHost = hostState === "ready" && hostTotal > 0;
+  // The block appears for EITHER kind of work. A reviewer with no action plans but a behaviour
+  // to confirm still has review work, and a stage-count-only gate would have hidden it.
+  const showHost = hostState === "ready" && (hostTotal > 0 || opportunities.length > 0);
 
   const eyebrow = "text-[0.7rem] font-semibold uppercase tracking-[0.16em]";
   const rowCls = "flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-left w-full";
@@ -330,9 +414,14 @@ export default function FieldActionsFocus({
       {/* ── HOST (reviewer-authority scoped; explicit loading; non-reviewer → no section) ── */}
       {hostState === "loading" ? (
         <p className="text-sm text-white/45" role="status" data-testid="fa-host-loading">{t.hostLoading}</p>
-      ) : showHost && stageCounts ? (
-        <section className="flex flex-col gap-2" data-testid="fa-host">
+      ) : showHost ? (
+        <section className="flex flex-col gap-3" data-testid="fa-host">
           <span className={eyebrow + " text-[#C9A66B]/70"}>{t.hostTitle}</span>
+          {stageCounts ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/35" data-testid="fa-kind-field-action">
+            {t.kindFieldAction}
+          </span>
           <div className="grid grid-cols-2 gap-1.5">
             {([
               ["verificationPending", t.hostVerificationPending, stageCounts.verificationPending],
@@ -361,6 +450,53 @@ export default function FieldActionsFocus({
                     </div>
                     {q.actionSummary ? <span className="truncate text-xs text-white/60">{q.actionSummary}</span> : null}
                     {on ? <span className="text-[0.7rem] text-white/35">{t.submittedOn} · {on}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+          ) : null}
+
+          {/*
+            BEHAVIOUR OBSERVATION (Slice 3.2N) — available work, kept visually distinct from the
+            action plans above so the shared heading never implies the two are the same object.
+
+            Nothing here is a task: no due date, no overdue tone, no count badge. The card carries
+            only what the observer page will carry anyway — who, the behaviour, and this
+            reviewer's own record — and the button opens that page rather than duplicating the
+            form. It stays after a report, because the opportunity genuinely stays.
+          */}
+          {opportunities.length > 0 ? (
+            <div className="flex flex-col gap-2" data-testid="fa-observations">
+              <span className="text-[0.66rem] uppercase tracking-[0.14em] text-white/35" data-testid="fa-kind-observation">
+                {t.kindObservation}
+              </span>
+              {opportunities.map((o) => {
+                const seen = o.state === "seen_once" || o.state === "seen_repeatedly" || o.state === "sustained";
+                const span =
+                  o.firstObservedOn && o.lastObservedOn && o.firstObservedOn !== o.lastObservedOn
+                    ? `${fmtDayKey(o.firstObservedOn, loc)}–${fmtDayKey(o.lastObservedOn, loc)}`
+                    : o.lastObservedOn
+                      ? fmtDayKey(o.lastObservedOn, loc)
+                      : null;
+                return (
+                  <button
+                    key={o.followupId}
+                    type="button"
+                    data-testid="fa-observation-item"
+                    data-state={o.state}
+                    className={rowCls}
+                    onClick={() => router.push(`/${loc}/observe/${encodeURIComponent(o.followupId)}`)}
+                  >
+                    <span className="min-w-0 truncate text-sm font-medium text-white/85">{o.learnerLabel}</span>
+                    <span className="line-clamp-2 text-xs leading-5 text-[#C9A66B]/80">{o.behavior}</span>
+                    <span className="text-[0.7rem] text-white/40">
+                      {t.obsState[o.state]}
+                      {seen && o.positiveDates > 1 ? ` · ${t.obsDays(o.positiveDates)}` : ""}
+                      {span ? ` · ${span}` : ""}
+                    </span>
+                    <span className="text-[0.72rem] text-sky-200/75">{seen ? t.obsCtaAgain : t.obsCtaFirst}</span>
                   </button>
                 );
               })}

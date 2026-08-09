@@ -38,6 +38,8 @@ type Row = {
     firstObservedOn?: string | null;
     lastObservedOn?: string | null;
     distinctPositiveDates?: number;
+    /** Slice 3.2N — false = nobody is authorised to confirm this. Capability, never evidence. */
+    eligibleObserver?: boolean | null;
   };
 };
 
@@ -54,6 +56,7 @@ const COPY: Record<Locale, {
   observedBy: (n: number) => string;
   seenMoreThanOnce: (first: string, last: string) => string;
   sustainedAcross: (first: string, last: string) => string;
+  noEligibleObserver: string;
   noObservation: string;
   observerSaidNot: string;
   observerUnsure: string;
@@ -75,6 +78,12 @@ const COPY: Record<Locale, {
     // PAST TENSE, WITH ITS DATES. Not "is sustained" — a span that happened, which is the only
     // thing the evidence says. It never means the behaviour is still happening today.
     sustainedAcross: (first, last) => `Sustained across ${first}–${last}`,
+    /*
+      CAPABILITY, NOT BLAME. It names a missing permission, not a missing effort, and it asks
+      nothing of the Host — assigning a reviewer is not something they can do here, so the line
+      must not read as a task, a warning, or a fault of the learner's.
+    */
+    noEligibleObserver: "No one is authorised to confirm this yet",
     noObservation: "No independent observation yet",
     observerSaidNot: "A colleague reported they did not see it",
     observerUnsure: "A colleague could not tell",
@@ -89,6 +98,7 @@ const COPY: Record<Locale, {
     observedBy: (n) => `동료 ${n}명이 직접 보거나 들었습니다`,
     seenMoreThanOnce: (first, last) => `여러 번 관찰됨 · 처음 ${first} · 최근 ${last}`,
     sustainedAcross: (first, last) => `${first}–${last} 기간에 걸쳐 지속됨`,
+    noEligibleObserver: "아직 이 행동을 확인할 권한을 가진 사람이 없습니다",
     noObservation: "아직 제3자 관찰 없음",
     observerSaidNot: "동료가 보지 못했다고 보고했습니다",
     observerUnsure: "동료가 판단할 수 없었습니다",
@@ -276,6 +286,20 @@ export default function FoundryFollowupStatus({
               wording is past tense with its dates attached: it says a span happened, not that a
               habit was formed, not that it is still happening today.
             */}
+            {/*
+              CAPABILITY, SEPARATE FROM EVIDENCE (Slice 3.2N). Shown only when the training HAS a
+              behaviour to confirm and nobody currently holds the standing to confirm it —
+              otherwise "No independent observation yet" sits there alone and reads as though a
+              colleague failed to look, when in truth nobody was ever allowed to.
+
+              Suppressed the moment an eligible observer exists, whether or not they have reported:
+              at that point the evidence line is the whole truth.
+            */}
+            {r.observation && r.observation.eligibleObserver === false ? (
+              <span className="text-xs text-white/40" data-testid="host-no-eligible-observer">
+                {t.noEligibleObserver}
+              </span>
+            ) : null}
             {r.observation && (r.observation.distinctPositiveDates ?? 0) >= 2 && r.observation.firstObservedOn && r.observation.lastObservedOn ? (
               <span
                 className={"text-xs " + (r.observation.sustained ? "text-[#C9A66B]" : "text-white/55")}

@@ -220,3 +220,66 @@ describe("FoundryFollowupStatus — the observation date is when they SAW it", (
     expect((await screen.findByTestId("host-observed")).textContent).toMatch(/Aug 3/);
   });
 });
+
+/**
+ * SLICE 3.2N — capability is not evidence.
+ *
+ * "No independent observation yet" says nobody has reported. Shown alone when nobody is even
+ * permitted to look, it reads as though a colleague let it slip — when in fact the product never
+ * gave anyone the standing.
+ */
+describe("FoundryFollowupStatus — who is even allowed to confirm this", () => {
+  const base = {
+    followupId: "f1", displayName: "Ann", followUpDays: 7,
+    dueAt: "2026-08-08T05:00:00Z", state: "pending", outcome: null, respondedAt: null,
+  };
+  const renderRows = (rows: unknown[]) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, eventId: "ev-1", rows }) })));
+    return render(<FoundryFollowupStatus eventId="ev-1" locale="en" />);
+  };
+  const noObs = (over: Record<string, unknown>) => ({
+    observed: false, observerCount: 0, latestAt: null, observerHistory: [], ...over,
+  });
+
+  it("says so plainly when nobody is authorised", async () => {
+    renderRows([{ ...base, observation: noObs({ eligibleObserver: false }) }]);
+    const el = await screen.findByTestId("host-no-eligible-observer");
+    expect(el.textContent).toMatch(/No one is authorised to confirm this yet/);
+  });
+
+  it("never blames the learner, warns the Host, or claims anything was requested", async () => {
+    const { container } = renderRows([{ ...base, observation: noObs({ eligibleObserver: false }) }]);
+    await screen.findByTestId("host-no-eligible-observer");
+    const text = container.textContent ?? "";
+    for (const forbidden of [/overdue/i, /requested/i, /action needed/i, /failed/i, /did not/i, /assign/i]) {
+      expect(text, String(forbidden)).not.toMatch(forbidden);
+    }
+  });
+
+  it("is SUPPRESSED the moment an eligible observer exists, reported or not", async () => {
+    renderRows([{ ...base, observation: noObs({ eligibleObserver: true }) }]);
+    await screen.findByTestId("host-not-observed");
+    expect(screen.queryByTestId("host-no-eligible-observer")).toBeNull();
+  });
+
+  it("is absent when the training has no behaviour to confirm at all", async () => {
+    // null = the question does not arise; saying "nobody is authorised" would misattribute it.
+    renderRows([{ ...base, observation: noObs({ eligibleObserver: null }) }]);
+    await screen.findByTestId("host-not-observed");
+    expect(screen.queryByTestId("host-no-eligible-observer")).toBeNull();
+  });
+
+  it("a pre-3.2N payload shows nothing new", async () => {
+    renderRows([{ ...base, observation: noObs({}) }]);
+    await screen.findByTestId("host-not-observed");
+    expect(screen.queryByTestId("host-no-eligible-observer")).toBeNull();
+  });
+
+  it("capability and evidence are two separate lines, never merged", async () => {
+    renderRows([{ ...base, observation: noObs({ eligibleObserver: false }) }]);
+    const cap = await screen.findByTestId("host-no-eligible-observer");
+    const ev = await screen.findByTestId("host-not-observed");
+    expect(cap).not.toBe(ev);
+    expect(ev.textContent).toMatch(/No independent observation yet/);
+  });
+});

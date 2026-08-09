@@ -8,6 +8,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+/** Slice 3.2N — the observation card navigates to the existing observer page. */
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 vi.mock("@/components/app-shell/FieldActionForm", () => ({
   default: ({ contractId, onBack }: { contractId?: string | null; onBack: () => void }) => (
     <div data-testid="field-action-form-mock" data-contract={contractId ?? ""}>
@@ -40,6 +44,8 @@ type StubOpts = {
   queue?: unknown[];
   stageCounts?: unknown;
   onMineCall?: () => void;
+  /** Slice 3.2N — observation opportunities from /api/bty/foundry/observations/mine. */
+  opps?: unknown[];
 };
 function stub(o: StubOpts = {}) {
   vi.stubGlobal(
@@ -52,6 +58,7 @@ function stub(o: StubOpts = {}) {
         return json({ ok: o.mineOk ?? true, items: o.items ?? [] });
       }
       if (u.includes("/api/arena/action-review-queue")) return json({ items: o.queue ?? [], stageCounts: o.stageCounts ?? null });
+      if (u.includes("/api/bty/foundry/observations/mine")) return json({ ok: true, items: o.opps ?? [] });
       return json({});
     }),
   );
@@ -229,5 +236,116 @@ describe("FieldActionsFocus — canonical inventory + load states", () => {
     render(<FieldActionsFocus locale="ko" onBack={() => {}} />);
     expect((await screen.findByTestId("fa-group-needs_revision")).textContent).toContain("수정이 필요합니다");
     expect((await screen.findByTestId("fa-group-reviewed")).textContent).toContain("검토·승인된 행동 계획");
+  });
+});
+
+/**
+ * SLICE 3.2N — an authorised reviewer can now FIND a behaviour to confirm.
+ *
+ * The observation engine has been live since 3.2M-4 with no product path leading to it. These
+ * tests hold the two things that make the connection honest: the block is truthful about what it
+ * contains, and nothing in it turns a standing permission into a task.
+ */
+const opp = (over: Record<string, unknown> = {}) => ({
+  followupId: "fu-1",
+  learnerLabel: "Yoon Learner",
+  behavior: "The outgoing person states each open item aloud.",
+  state: "none",
+  firstObservedOn: null,
+  lastObservedOn: null,
+  positiveDates: 0,
+  ...over,
+});
+
+describe("FieldActionsFocus — behaviour observation discovery", () => {
+  it("the reviewer block is headed by review WORK, not a queue", async () => {
+    stub({ opps: [opp()] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const host = await screen.findByTestId("fa-host");
+    expect(host.textContent).toMatch(/Your review work/);
+    expect(host.textContent, "a queue implies a backlog someone is behind on").not.toMatch(/Review queue/);
+  });
+
+  it("shows the learner and the behaviour, and offers to record", async () => {
+    stub({ opps: [opp()] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const card = await screen.findByTestId("fa-observation-item");
+    expect(card.textContent).toMatch(/Yoon Learner/);
+    expect(card.textContent).toMatch(/states each open item aloud/);
+    expect(card.textContent).toMatch(/Record what you saw/);
+  });
+
+  it("appears even when there are NO action plans to review", async () => {
+    // A reviewer whose only work is a behaviour still has review work — the block used to be
+    // gated on action-plan stage counts alone, which would have hidden this entirely.
+    stub({ opps: [opp()], stageCounts: null, queue: [] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    expect(await screen.findByTestId("fa-observation-item")).toBeTruthy();
+  });
+
+  it("opens the EXISTING observer page — the form is never duplicated here", async () => {
+    stub({ opps: [opp()] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    fireEvent.click(await screen.findByTestId("fa-observation-item"));
+    expect(push).toHaveBeenCalledWith("/en/observe/fu-1");
+  });
+
+  it("the two kinds of work are labelled apart under the one heading", async () => {
+    stub({
+      opps: [opp()],
+      queue: [{ actionContractId: "c1", learnerLabel: "Sam", actionSummary: "Run the 1:1", submittedAt: null, statusLabel: "Awaiting your review" }],
+      stageCounts: { verificationPending: 1, needsRevision: 0, reviewedAccepted: 0, awaitingResolution: 0 },
+    });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    expect((await screen.findByTestId("fa-kind-observation")).textContent).toMatch(/Behaviour observation/);
+    expect(screen.getByTestId("fa-kind-field-action").textContent).toMatch(/Action plan review/);
+  });
+
+  it("a non-reviewer sees no observation section at all — and no permission error", async () => {
+    stub({ opps: [] });
+    const { container } = render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    await waitFor(() => expect(screen.queryByTestId("fa-host-loading")).toBeNull());
+    expect(screen.queryByTestId("fa-observations")).toBeNull();
+    expect(container.textContent).not.toMatch(/permission|not authoris|not authoriz|forbidden/i);
+  });
+
+  it("states read as available work — never as something late", async () => {
+    stub({
+      opps: [
+        opp({ followupId: "a", state: "none" }),
+        opp({ followupId: "b", state: "not_seen" }),
+        opp({ followupId: "c", state: "seen_once", positiveDates: 1, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-01" }),
+        opp({ followupId: "d", state: "sustained", positiveDates: 2, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-08" }),
+      ],
+    });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const cards = await screen.findAllByTestId("fa-observation-item");
+    expect(cards).toHaveLength(4);
+    const text = cards.map((c) => c.textContent ?? "").join(" | ");
+    expect(text).toMatch(/You haven't recorded anything yet/);
+    expect(text).toMatch(/You recorded that you couldn't confirm it/);
+    expect(text).toMatch(/You saw it once/);
+    expect(text).toMatch(/Sustained/);
+    // Nothing may read as a deadline, a backlog, or a fault.
+    for (const forbidden of [/overdue/i, /due today/i, /late/i, /required/i, /failed/i, /missed/i]) {
+      expect(text, String(forbidden)).not.toMatch(forbidden);
+    }
+  });
+
+  it("after a sighting the card stays, and asks for the next one", async () => {
+    stub({ opps: [opp({ state: "seen_once", positiveDates: 1, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-01" })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const card = await screen.findByTestId("fa-observation-item");
+    expect(card.textContent).toMatch(/Record it again if you see it/);
+  });
+
+  it("exposes no implementation vocabulary", async () => {
+    stub({ opps: [opp({ state: "sustained", positiveDates: 2, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-08" })] });
+    const { container } = render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    await screen.findByTestId("fa-observation-item");
+    const text = container.textContent ?? "";
+    for (const forbidden of ["followup", "observable_standard", "ACTION_REVIEWER", "OBSERVED", "fu-1", "user_id"]) {
+      expect(text, forbidden).not.toContain(forbidden);
+    }
   });
 });

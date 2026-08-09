@@ -8,6 +8,7 @@ import { classifyFollowUpSubmission } from "@/domain/foundry/followup/followUpOb
 import { distinctPositiveObservers, observationEstablished, type ObservationOutcome } from "@/domain/foundry/observation/behaviorObservation";
 import { deriveSustainedEvidence } from "@/domain/foundry/observation/sustainedEvidence";
 import { listObservations, type StoredObservation } from "./foundryObservationService";
+import { learnersWithAnEligibleObserver } from "./observationOpportunityService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import {
   classifyFollowUpDue,
@@ -394,6 +395,14 @@ export type HostFollowupRow = {
     firstObservedOn: string | null;
     lastObservedOn: string | null;
     distinctPositiveDates: number;
+    /**
+     * Slice 3.2N — CAPABILITY, not evidence. False means nobody currently holds the standing to
+     * confirm this behaviour at all. "No independent observation yet" says nobody has reported;
+     * shown alone when this is false it reads as though a colleague let it slip, when in fact the
+     * product never gave anyone the standing to look. Null when the training has no grounded
+     * standard, where the question does not arise.
+     */
+    eligibleObserver: boolean | null;
   };
 };
 
@@ -428,12 +437,13 @@ export async function getEventFollowupsForOwner(
 
   const { data: rows } = await admin
     .from("foundry_participant_followups")
-    .select("id, progress_id, follow_up_days, due_at, status, outcome, responded_at")
+    .select("id, progress_id, user_id_snapshot, follow_up_days, due_at, status, outcome, responded_at")
     .eq("event_id", eventId);
 
   const followups = (rows ?? []) as Array<{
     id: string;
     progress_id: string | null;
+    user_id_snapshot: string;
     follow_up_days: number;
     due_at: string;
     status: FollowUpStatus;
@@ -510,6 +520,15 @@ export async function getEventFollowupsForOwner(
     Independent observation, per obligation (Slice 3.2M-4). Read separately from the learner's
     own report and never merged with it: "I applied it" and "I saw it" are two sources.
   */
+  /*
+    Slice 3.2N — is anyone even permitted to confirm these behaviours? Batched for the whole
+    roster (three queries, not three per participant), and only consulted when a grounded
+    standard exists, because with no standard there is no observation path to be authorised for.
+  */
+  const observerCapable = observableStandard
+    ? await learnersWithAnEligibleObserver(admin, followups.map((f) => f.user_id_snapshot))
+    : new Set<string>();
+
   const observationsByFollowup = new Map<string, StoredObservation[]>();
   for (const f of followups) {
     observationsByFollowup.set(f.id, await listObservations(admin, f.id));
@@ -557,6 +576,7 @@ export async function getEventFollowupsForOwner(
           firstObservedOn: temporal.firstObservedOn,
           lastObservedOn: temporal.lastObservedOn,
           distinctPositiveDates: temporal.distinctPositiveDates.length,
+          eligibleObserver: observableStandard ? observerCapable.has(f.user_id_snapshot) : null,
         };
       })(),
       outcome: f.outcome,

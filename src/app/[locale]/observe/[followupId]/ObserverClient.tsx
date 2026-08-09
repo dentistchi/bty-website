@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Locale } from "@/components/foundry/event-rooms/copy";
 
 /**
@@ -50,6 +51,7 @@ const COPY: Record<
     futureDate: string;
     submitError: string;
     privacyNote: string;
+    back: string;
   }
 > = {
   en: {
@@ -72,6 +74,7 @@ const COPY: Record<
     loadError: "Couldn't load this right now.",
     futureDate: "Please choose a date that has already happened.",
     submitError: "That didn't save. Tap your answer once more.",
+    back: "Back",
     privacyNote: "Only what you report here is recorded. Nothing you write elsewhere is shown to you here.",
   },
   ko: {
@@ -95,6 +98,7 @@ const COPY: Record<
     futureDate: "이미 지난 날짜를 선택해 주세요.",
     submitError: "저장하지 못했습니다. 다시 시도해 주세요.",
     privacyNote: "여기서 보고하신 내용만 기록됩니다.",
+    back: "뒤로",
   },
 };
 
@@ -113,6 +117,23 @@ function fmtDay(dayKey: string, locale: Locale): string {
 
 export default function ObserverClient({ followupId, locale }: { followupId: string; locale: Locale }) {
   const t = COPY[locale];
+  const router = useRouter();
+  /**
+   * AN EXPLICIT WAY OUT (Slice 3.2N). BTY runs inside a WKWebView in the native shell, where
+   * there is no browser chrome and therefore no back button — a page whose only exit is the
+   * browser's is a dead end there. Returns to Practice, which is where the reviewer surface that
+   * now links here lives; harmless for someone who arrived by URL.
+   */
+  const back = (
+    <button
+      type="button"
+      onClick={() => router.push(`/${locale}/app?tab=practice`)}
+      data-testid="observe-back"
+      className="self-start text-xs text-white/45"
+    >
+      ← {t.back}
+    </button>
+  );
   const [req, setReq] = useState<ObservationRequest | null>(null);
   const [phase, setPhase] = useState<"loading" | "ready" | "unavailable" | "error">("loading");
   const [observedOn, setObservedOn] = useState("");
@@ -183,9 +204,12 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
   if (phase === "unavailable" || phase === "error") {
     return (
       <main className="min-h-screen bg-[#0B1220] px-5 py-10">
-        <p className="text-sm text-white/55" data-testid="observe-unavailable">
-          {phase === "unavailable" ? t.unavailable : t.loadError}
-        </p>
+        <div className="mx-auto flex max-w-md flex-col gap-4">
+          {back}
+          <p className="text-sm text-white/55" data-testid="observe-unavailable">
+            {phase === "unavailable" ? t.unavailable : t.loadError}
+          </p>
+        </div>
       </main>
     );
   }
@@ -194,6 +218,7 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
   return (
     <main className="min-h-screen bg-[#0B1220] px-5 py-10 text-white">
       <div className="mx-auto flex max-w-md flex-col gap-6">
+        {back}
         <h1 className="text-lg font-medium text-white/90">{t.heading}</h1>
 
         <section className="flex flex-col gap-1">
