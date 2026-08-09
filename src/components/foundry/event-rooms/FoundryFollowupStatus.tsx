@@ -33,6 +33,11 @@ type Row = {
     observerCount: number;
     latestAt: string | null;
     observerHistory: { outcome: "OBSERVED" | "NOT_OBSERVED" | "UNABLE_TO_TELL"; at: string }[];
+    /** Slice 3.2M-5 — repetition over time, derived server-side from OCCURRENCE dates. */
+    sustained?: boolean;
+    firstObservedOn?: string | null;
+    lastObservedOn?: string | null;
+    distinctPositiveDates?: number;
   };
 };
 
@@ -47,6 +52,8 @@ const COPY: Record<Locale, {
   selfReportNote: string;
   observationHeading: string;
   observedBy: (n: number) => string;
+  seenMoreThanOnce: (first: string, last: string) => string;
+  sustainedAcross: (first: string, last: string) => string;
   noObservation: string;
   observerSaidNot: string;
   observerUnsure: string;
@@ -64,6 +71,10 @@ const COPY: Record<Locale, {
     selfReportNote: "Their own report — nobody else confirmed it.",
     observationHeading: "Independent observation",
     observedBy: (n) => (n === 1 ? "One colleague saw or heard this" : `${n} colleagues saw or heard this`),
+    seenMoreThanOnce: (first, last) => `Seen more than once · first ${first} · most recent ${last}`,
+    // PAST TENSE, WITH ITS DATES. Not "is sustained" — a span that happened, which is the only
+    // thing the evidence says. It never means the behaviour is still happening today.
+    sustainedAcross: (first, last) => `Sustained across ${first}–${last}`,
     noObservation: "No independent observation yet",
     observerSaidNot: "A colleague reported they did not see it",
     observerUnsure: "A colleague could not tell",
@@ -76,6 +87,8 @@ const COPY: Record<Locale, {
     selfReportNote: "본인이 직접 보고한 내용이며, 제3자가 확인한 것은 아닙니다.",
     observationHeading: "제3자 관찰",
     observedBy: (n) => `동료 ${n}명이 직접 보거나 들었습니다`,
+    seenMoreThanOnce: (first, last) => `여러 번 관찰됨 · 처음 ${first} · 최근 ${last}`,
+    sustainedAcross: (first, last) => `${first}–${last} 기간에 걸쳐 지속됨`,
     noObservation: "아직 제3자 관찰 없음",
     observerSaidNot: "동료가 보지 못했다고 보고했습니다",
     observerUnsure: "동료가 판단할 수 없었습니다",
@@ -97,6 +110,22 @@ function fmtDate(iso: string, locale: Locale): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/**
+ * Format an OCCURRENCE day key ("YYYY-MM-DD"), not an instant (Slice 3.2M-5).
+ *
+ * Rendered in UTC from the key's own components so the date a colleague reported is the date a
+ * Host reads. Passing it through the reader's zone could shift it by a day and quietly change
+ * what the evidence says.
+ */
+function fmtDayKey(dayKey: string, locale: Locale): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayKey);
+  if (!m) return "";
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toLocaleDateString(
+    locale === "ko" ? "ko-KR" : "en-US",
+    { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" },
+  );
 }
 
 function deviceTz(): string | null {
@@ -217,6 +246,26 @@ export default function FoundryFollowupStatus({
                     : r.observation.observerHistory.some((o) => o.outcome === "UNABLE_TO_TELL")
                       ? t.observerUnsure
                       : t.noObservation}
+              </span>
+            ) : null}
+            {/*
+              REPETITION OVER TIME (Slice 3.2M-5) — a SECOND line, never folded into the first.
+              "One colleague saw this" and "seen across three weeks" are different claims, and
+              merging them would let a single sighting borrow the weight of a span.
+
+              Shown only when there is genuinely more than one occurrence date. The sustained
+              wording is past tense with its dates attached: it says a span happened, not that a
+              habit was formed, not that it is still happening today.
+            */}
+            {r.observation && (r.observation.distinctPositiveDates ?? 0) >= 2 && r.observation.firstObservedOn && r.observation.lastObservedOn ? (
+              <span
+                className={"text-xs " + (r.observation.sustained ? "text-[#C9A66B]" : "text-white/55")}
+                data-testid={r.observation.sustained ? "host-sustained" : "host-seen-more-than-once"}
+              >
+                {(r.observation.sustained ? t.sustainedAcross : t.seenMoreThanOnce)(
+                  fmtDayKey(r.observation.firstObservedOn, locale),
+                  fmtDayKey(r.observation.lastObservedOn, locale),
+                )}
               </span>
             ) : null}
             {r.state === "responded" && r.outcome ? (

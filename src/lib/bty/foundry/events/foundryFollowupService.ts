@@ -1,8 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { journeyFieldApplication, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import {
+  journeyFieldApplication,
+  journeyObservableStandard,
+  type RealityGroundedJourneyV1,
+} from "@/domain/foundry/module/journey";
 import { classifyFollowUpSubmission } from "@/domain/foundry/followup/followUpObligation";
-import { distinctPositiveObservers, observationEstablished, type ObservationFact, type ObservationOutcome } from "@/domain/foundry/observation/behaviorObservation";
-import { listObservations } from "./foundryObservationService";
+import { distinctPositiveObservers, observationEstablished, type ObservationOutcome } from "@/domain/foundry/observation/behaviorObservation";
+import { deriveSustainedEvidence } from "@/domain/foundry/observation/sustainedEvidence";
+import { listObservations, type StoredObservation } from "./foundryObservationService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import {
   classifyFollowUpDue,
@@ -379,6 +384,16 @@ export type HostFollowupRow = {
     observerCount: number;
     latestAt: string | null;
     observerHistory: { outcome: ObservationOutcome; at: string }[];
+    /**
+     * Slice 3.2M-5 — repetition over time, derived from OCCURRENCE dates. `sustained` is true
+     * only when the training's own follow-up window has actually elapsed between two positive
+     * sightings; `firstObservedOn`/`lastObservedOn` are shown alongside it so the Host reads a
+     * span rather than a badge they have to trust.
+     */
+    sustained: boolean;
+    firstObservedOn: string | null;
+    lastObservedOn: string | null;
+    distinctPositiveDates: number;
   };
 };
 
@@ -467,6 +482,12 @@ export async function getEventFollowupsForOwner(
   const subject =
     journeyFieldApplication(mod?.module_snapshot?.realityGroundedJourneyV1) ??
     (typeof promptText === "string" && promptText.trim().length > 0 ? promptText.trim() : null);
+  /*
+    The behaviour identity a sustained claim must be about (Slice 3.2M-5). Read from the SAME
+    already-loaded frozen snapshot — no extra query — and passed into the pure derivation, which
+    discards any attestation whose own snapshot is not byte-identical to it.
+  */
+  const observableStandard = journeyObservableStandard(mod?.module_snapshot?.realityGroundedJourneyV1);
 
   const historyByFollowup = new Map<string, { outcome: FollowUpOutcome; at: string }[]>();
   const respondedIds = followups.filter((f) => f.status === "RESPONDED").map((f) => f.id);
@@ -489,7 +510,7 @@ export async function getEventFollowupsForOwner(
     Independent observation, per obligation (Slice 3.2M-4). Read separately from the learner's
     own report and never merged with it: "I applied it" and "I saw it" are two sources.
   */
-  const observationsByFollowup = new Map<string, ObservationFact[]>();
+  const observationsByFollowup = new Map<string, StoredObservation[]>();
   for (const f of followups) {
     observationsByFollowup.set(f.id, await listObservations(admin, f.id));
   }
@@ -518,11 +539,24 @@ export async function getEventFollowupsForOwner(
         const obs = observationsByFollowup.get(f.id) ?? [];
         const positives = distinctPositiveObservers(obs);
         const latest = obs.length > 0 ? obs[obs.length - 1]! : null;
+        /*
+          Slice 3.2M-5 — the temporal rung, derived in the domain from this row's OWN authored
+          checkpoint. A training with no grounded standard has no observation path and therefore
+          no sustained path; an empty scope makes every fact out-of-scope and the answer false.
+        */
+        const temporal = deriveSustainedEvidence(
+          obs.map((o) => ({ ...o, eventId })),
+          { eventId, observableStandard: observableStandard ?? "", followUpDays: f.follow_up_days },
+        );
         return {
           observed: observationEstablished(obs),
           observerCount: positives.length,
           latestAt: latest?.submittedAt ?? null,
           observerHistory: obs.map((o) => ({ outcome: o.outcome, at: o.submittedAt })),
+          sustained: temporal.sustained,
+          firstObservedOn: temporal.firstObservedOn,
+          lastObservedOn: temporal.lastObservedOn,
+          distinctPositiveDates: temporal.distinctPositiveDates.length,
         };
       })(),
       outcome: f.outcome,

@@ -100,3 +100,74 @@ describe("FoundryFollowupStatus — independent observation", () => {
     }
   });
 });
+
+/**
+ * SLICE 3.2M-5 — "seen once" and "seen across three weeks" are different claims, and the Host
+ * must be able to tell them apart without reading an audit log.
+ */
+describe("FoundryFollowupStatus — repetition over time", () => {
+  const base = {
+    followupId: "f1", displayName: "Ann", followUpDays: 7,
+    dueAt: "2026-08-08T05:00:00Z", state: "responded", outcome: "APPLIED", respondedAt: "2026-08-08T06:00:00Z",
+  };
+  const obs = (over: Record<string, unknown>) => ({
+    observed: true, observerCount: 1, latestAt: "2026-08-08T00:00:00Z",
+    observerHistory: [{ outcome: "OBSERVED", at: "2026-08-08T00:00:00Z" }], ...over,
+  });
+  const renderRows = (rows: unknown[]) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, eventId: "ev-1", rows }) })));
+    return render(<FoundryFollowupStatus eventId="ev-1" locale="en" />);
+  };
+
+  it("one sighting shows NO longitudinal line — there is no span to report", async () => {
+    renderRows([{ ...base, observation: obs({ sustained: false, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-01", distinctPositiveDates: 1 }) }]);
+    await screen.findByTestId("host-observed");
+    expect(screen.queryByTestId("host-seen-more-than-once")).toBeNull();
+    expect(screen.queryByTestId("host-sustained")).toBeNull();
+  });
+
+  it("two sightings inside the window read as repetition, NOT as sustained", async () => {
+    renderRows([{ ...base, observation: obs({ sustained: false, firstObservedOn: "2026-08-01", lastObservedOn: "2026-08-05", distinctPositiveDates: 2 }) }]);
+    const el = await screen.findByTestId("host-seen-more-than-once");
+    expect(el.textContent).toMatch(/Seen more than once/);
+    expect(el.textContent).toMatch(/Aug 1/);
+    expect(el.textContent).toMatch(/Aug 5/);
+    expect(screen.queryByTestId("host-sustained")).toBeNull();
+  });
+
+  it("a qualifying span reads as a PAST span with its dates", async () => {
+    renderRows([{ ...base, observation: obs({ sustained: true, firstObservedOn: "2026-08-10", lastObservedOn: "2026-08-24", distinctPositiveDates: 2 }) }]);
+    const el = await screen.findByTestId("host-sustained");
+    expect(el.textContent).toMatch(/Sustained across/);
+    expect(el.textContent).toMatch(/Aug 10/);
+    expect(el.textContent).toMatch(/Aug 24/);
+  });
+
+  it("never claims permanence, currency or mastery", async () => {
+    const { container } = renderRows([{ ...base, observation: obs({ sustained: true, firstObservedOn: "2026-08-10", lastObservedOn: "2026-08-24", distinctPositiveDates: 2 }) }]);
+    await screen.findByTestId("host-sustained");
+    const text = container.textContent ?? "";
+    for (const forbidden of ["Habit formed", "Permanently", "Still sustained", "mastery", "Verified"]) {
+      expect(text, forbidden).not.toContain(forbidden);
+    }
+    // Past tense, not a present-state badge.
+    expect(text).not.toMatch(/\bis sustained\b/i);
+  });
+
+  it("the observation line and the span line stay SEPARATE — one never absorbs the other", async () => {
+    renderRows([{ ...base, observation: obs({ observerCount: 2, sustained: true, firstObservedOn: "2026-08-10", lastObservedOn: "2026-08-24", distinctPositiveDates: 2 }) }]);
+    const seen = await screen.findByTestId("host-observed");
+    const span = await screen.findByTestId("host-sustained");
+    expect(seen).not.toBe(span);
+    expect(seen.textContent).toMatch(/colleagues saw or heard this/);
+    expect(span.textContent).not.toMatch(/colleagues/);
+  });
+
+  it("a 3.2M-4 payload with no temporal fields renders exactly as before", async () => {
+    // Forward-only: a row from before this slice must not invent a span.
+    renderRows([{ ...base, observation: obs({}) }]);
+    await screen.findByTestId("host-observed");
+    expect(screen.queryByTestId("host-seen-more-than-once")).toBeNull();
+    expect(screen.queryByTestId("host-sustained")).toBeNull();
+  });
+});

@@ -35,6 +35,14 @@ export function establishesObservation(outcome: ObservationOutcome): boolean {
 export type ObservationFact = {
   readonly outcome: ObservationOutcome;
   readonly observerUserId: string;
+  /**
+   * The date the observer says they personally saw or heard it, "YYYY-MM-DD" (Slice 3.2M-5).
+   *
+   * OCCURRENCE time. `submittedAt` is when they told us, which is a fact about the observer's
+   * admin habits — two reports filed the same afternoon may describe two different weeks. Only
+   * this field may ever be used to reason about repetition over time.
+   */
+  readonly observedOn: string;
   readonly submittedAt: string;
 };
 

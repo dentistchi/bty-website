@@ -15,6 +15,7 @@ import { EVIDENCE_LADDER, type EvidenceLevel } from "@/domain/foundry/module/pro
  *   PRACTICED they completed a rehearsal built from this training (Slice 3.2M-2).
  *   APPLIED   they reported, in their own follow-up, that they did it at work (3.2M-3).
  *   OBSERVED  a DIFFERENT authorised person said they personally saw or heard it (3.2M-4).
+ *   SUSTAINED that observation repeated over the training's own window (3.2M-5).
  *
  * APPLIED IS A SELF-REPORT AND THE PRODUCT SAYS SO. It means the learner says they tried it
  * — not that anyone saw it, not that it met the standard, not that anything improved.
@@ -23,9 +24,13 @@ import { EVIDENCE_LADDER, type EvidenceLevel } from "@/domain/foundry/module/pro
  * applying something nobody saw; someone may see a behaviour the learner never reported. Both
  * states are representable, and neither is fabricated to make the ladder look sequential.
  *
- * SUSTAINED remains unreachable and must stay that way: lasting change needs repetition over
- * time, and no number of observations is a substitute for it. Nothing in this file may ever
- * return it.
+ * SUSTAINED IS NOT DERIVED HERE, AND STILL MUST NOT BE (Slice 3.2M-5). Lasting change needs
+ * repetition over time, and this function holds six booleans: no dates, no history, no module
+ * versions. It could not tell two sightings a week apart from the same sighting reported
+ * twice. So `sustained` arrives as an ALREADY-DECIDED fact from `deriveSustainedEvidence`,
+ * which owns the temporal contract, and this file only records it — exactly as `observed`
+ * arrives already decided from the observation service. A future edit that computes the rung
+ * from anything in this file would be reintroducing the bug the split exists to prevent.
  *
  * PRACTICED is NOT a prerequisite for APPLIED. Someone can do a thing at work without having
  * rehearsed it here, and inventing a rung to keep the sequence looking tidy would be exactly
@@ -51,6 +56,12 @@ export type LearnerEvidenceFacts = {
    * frozen observable standard. Never the learner, never an attendance record, never a scan.
    */
   readonly independentlyObserved: boolean;
+  /**
+   * The temporal rung, ALREADY DECIDED by `deriveSustainedEvidence` (Slice 3.2M-5): positive
+   * attestations about this exact behaviour on at least two distinct occurrence dates, spanning
+   * at least the training's own followUpDays. Never computed from anything in this file.
+   */
+  readonly sustained: boolean;
 };
 
 /** The rungs this record legitimately supports, lowest first. Never above OBSERVED. */
@@ -70,6 +81,13 @@ export function establishedEvidence(facts: LearnerEvidenceFacts): EvidenceLevel[
     tidy sequence.
   */
   if (facts.completed && facts.independentlyObserved) out.push("observed");
+  /*
+    Gated on `independentlyObserved` because it is a TAUTOLOGY, not a tidiness rule: the
+    positives that make a record sustained are the same positives that make it observed, so a
+    sustained record that is not observed is a contradiction the caller has constructed. Refusing
+    it here means an impossible fact cannot become a visible claim.
+  */
+  if (facts.completed && facts.independentlyObserved && facts.sustained) out.push("sustained");
   return out;
 }
 

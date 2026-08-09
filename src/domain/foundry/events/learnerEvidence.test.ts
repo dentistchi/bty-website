@@ -8,7 +8,8 @@ import { establishedEvidence, highestEstablished } from "./learner-evidence";
  * important property is what it can never return.
  */
 const facts = (o: Partial<Parameters<typeof establishedEvidence>[0]> = {}) => ({
-  completed: false, reflection: false, decision: false, practiceCompleted: false, appliedReported: false, independentlyObserved: false, ...o,
+  completed: false, reflection: false, decision: false, practiceCompleted: false, appliedReported: false,
+  independentlyObserved: false, sustained: false, ...o,
 });
 
 describe("[3.2M-2] established evidence", () => {
@@ -59,23 +60,61 @@ describe("[3.2M-2] established evidence", () => {
     expect(f(true, true)).toEqual(["exposed", "applied", "observed"]);
   });
 
-  it("NOTHING reaches SUSTAINED — for any combination at all", () => {
+  /**
+   * SLICE 3.2M-5 — SUSTAINED appears if and only if it was DECIDED ELSEWHERE.
+   *
+   * The 3.2M-2 version of this test asserted `sustained` was never returned for any of the 64
+   * combinations, which was the right guarantee while the rung had no contract. It now has one,
+   * owned by `deriveSustainedEvidence`, and the guarantee that replaces it is stronger: across
+   * all 128 combinations the rung tracks the precomputed fact exactly — never inferred from a
+   * count, a self-report, a rehearsal, or the shape of the ladder.
+   */
+  it("SUSTAINED appears only when the precomputed temporal fact is true — all 128 combinations", () => {
     for (const completed of [true, false]) {
       for (const reflection of [true, false]) {
         for (const decision of [true, false]) {
           for (const practiceCompleted of [true, false]) {
             for (const appliedReported of [true, false]) {
               for (const independentlyObserved of [true, false]) {
-                const all = { completed, reflection, decision, practiceCompleted, appliedReported, independentlyObserved };
-                const got = establishedEvidence(all);
-                expect(got, JSON.stringify(all)).not.toContain("sustained");
-                if (!completed) expect(got).toEqual([]);
+                for (const sustained of [true, false]) {
+                  const all = { completed, reflection, decision, practiceCompleted, appliedReported, independentlyObserved, sustained };
+                  const got = establishedEvidence(all);
+                  const label = JSON.stringify(all);
+                  // Never without the fact — nothing in this file may derive it.
+                  if (!sustained) expect(got, label).not.toContain("sustained");
+                  // And never from the fact alone: an unfinished training, or one nobody
+                  // observed, cannot carry a claim about repetition.
+                  expect(got.includes("sustained"), label).toBe(completed && independentlyObserved && sustained);
+                  if (!completed) expect(got, label).toEqual([]);
+                }
               }
             }
           }
         }
       }
     }
+  });
+
+  it("SUSTAINED sits above OBSERVED and never replaces it — the 3.2M-5 rung", () => {
+    const f = facts({ completed: true, independentlyObserved: true, sustained: true });
+    expect(establishedEvidence(f)).toEqual(["exposed", "observed", "sustained"]);
+    expect(highestEstablished(f)).toBe("sustained");
+  });
+
+  it("repeated SELF-REPORT never reaches SUSTAINED, however much of it there is", () => {
+    // The learner saying they applied it — even alongside a rehearsal and a decision — is not
+    // an observation, and no quantity of it becomes one.
+    const got = establishedEvidence(
+      facts({ completed: true, reflection: true, decision: true, practiceCompleted: true, appliedReported: true }),
+    );
+    expect(got).not.toContain("sustained");
+    expect(got).not.toContain("observed");
+  });
+
+  it("SUSTAINED does not require APPLIED — being seen twice needs no self-report", () => {
+    const got = establishedEvidence(facts({ completed: true, independentlyObserved: true, sustained: true }));
+    expect(got).toContain("sustained");
+    expect(got).not.toContain("applied");
   });
 
   it("a decision is not a rehearsal — DECIDED never implies PRACTICED", () => {

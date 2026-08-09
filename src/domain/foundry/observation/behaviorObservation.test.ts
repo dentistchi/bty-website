@@ -12,8 +12,11 @@ import {
  * SLICE 3.2M-4 — what an independent observation can and cannot say.
  */
 const at = (n: number) => `2026-08-0${n}T00:00:00Z`;
+const on = (n: number) => `2026-08-0${n}`;
 const fact = (outcome: (typeof OBSERVATION_OUTCOMES)[number], observer: string, day = 1): ObservationFact => ({
-  outcome, observerUserId: observer, submittedAt: at(day),
+  // Slice 3.2M-5 added the occurrence date. It is irrelevant to every assertion here — these
+  // tests are about what ONE attestation establishes, which is a question with no time in it.
+  outcome, observerUserId: observer, observedOn: on(day), submittedAt: at(day),
 });
 
 describe("[3.2M-4] observation outcomes", () => {
