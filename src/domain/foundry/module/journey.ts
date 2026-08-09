@@ -210,6 +210,19 @@ export function journeyFieldApplication(j: RealityGroundedJourneyV1 | undefined)
   return v.length > 0 ? v : null;
 }
 
+/**
+ * The approved `observable_standard` content, or null (Slice 3.2M-4).
+ *
+ * R8 wrote the standard as what ANOTHER PERSON can see or hear, which is exactly what an
+ * independent observer must be asked about — never `field_application`, which tells the
+ * learner what to try, and never the completion prompt.
+ */
+export function journeyObservableStandard(j: RealityGroundedJourneyV1 | undefined): string | null {
+  const el = j?.elements.find((e) => e.kind === "observable_standard" && e.confirmationStatus === "grounded");
+  const v = (el?.content ?? "").trim();
+  return v.length > 0 ? v : null;
+}
+
 /** The approved participant completion question (completion_check content), or null. */
 export function journeyCompletionCheck(j: RealityGroundedJourneyV1 | undefined): string | null {
   const el = j?.elements.find((e) => e.kind === "completion_check");

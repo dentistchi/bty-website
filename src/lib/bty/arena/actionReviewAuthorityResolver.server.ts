@@ -20,6 +20,8 @@ import {
   type ActionReviewFacts,
   type AuthorityEdgeFact,
   type MembershipFact,
+  decideEdgeAuthority,
+  type EdgeAuthorityDecision,
 } from "@/domain/arena/actionReviewAuthority";
 
 const MEMBERSHIP_COLS = "id, user_id, organization_id, status";
@@ -128,4 +130,60 @@ export async function resolveActionReviewAuthority(
   });
 
   return decision;
+}
+
+/**
+ * THE SAME AUTHORITY, WITHOUT A CONTRACT (Slice 3.2M-4).
+ *
+ * Guided observation needs exactly the question this file already answers — may THIS actor act
+ * on THIS learner — but has no action contract. Rather than manufacture a fake one to satisfy
+ * the signature (which would put a lie in the database), the learner is passed in directly,
+ * resolved on the SERVER from the follow-up obligation and never from client input.
+ *
+ * Same loaders, same edge table, same fail-closed decision.
+ */
+export async function resolveEdgeAuthority(
+  admin: SupabaseClient,
+  input: { actorUserId: string; learnerUserId: string },
+  options?: { now?: Date },
+): Promise<EdgeAuthorityDecision> {
+  const actorUserId = typeof input.actorUserId === "string" ? input.actorUserId.trim() : "";
+  const learnerUserId = typeof input.learnerUserId === "string" ? input.learnerUserId.trim() : "";
+  const today = serverToday(options?.now ?? new Date());
+
+  const actorMemberships = actorUserId ? await loadMemberships(admin, actorUserId) : [];
+  const learnerMemberships = learnerUserId ? await loadMemberships(admin, learnerUserId) : [];
+
+  let edges: AuthorityEdgeFact[] = [];
+  const actorMembershipIds = actorMemberships.map((m) => m.id);
+  const learnerMembershipIds = learnerMemberships.map((m) => m.id);
+  if (actorMembershipIds.length > 0 && learnerMembershipIds.length > 0) {
+    const { data } = await admin
+      .from("bty_org_action_review_authority")
+      .select("id, reviewer_membership_id, learner_membership_id, organization_id, authority_key, status, revoked_at, started_on")
+      .eq("authority_key", AUTHORITY_KEY)
+      .in("reviewer_membership_id", actorMembershipIds)
+      .in("learner_membership_id", learnerMembershipIds);
+    edges = ((data ?? []) as Array<{
+      id: string;
+      reviewer_membership_id: string;
+      learner_membership_id: string;
+      organization_id: string | null;
+      authority_key: string;
+      status: string;
+      revoked_at: string | null;
+      started_on: string;
+    }>).map((r) => ({
+      id: r.id,
+      reviewerMembershipId: r.reviewer_membership_id,
+      learnerMembershipId: r.learner_membership_id,
+      organizationId: r.organization_id,
+      authorityKey: r.authority_key,
+      status: r.status,
+      revokedAt: r.revoked_at,
+      startedOn: r.started_on,
+    }));
+  }
+
+  return decideEdgeAuthority({ actorUserId, learnerUserId, actorMemberships, learnerMemberships, edges, today });
 }

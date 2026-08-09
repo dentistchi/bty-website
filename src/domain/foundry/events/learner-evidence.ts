@@ -14,13 +14,18 @@ import { EVIDENCE_LADDER, type EvidenceLevel } from "@/domain/foundry/module/pro
  *   DECIDED   they wrote what THEY will do (Slice 3.2M-1).
  *   PRACTICED they completed a rehearsal built from this training (Slice 3.2M-2).
  *   APPLIED   they reported, in their own follow-up, that they did it at work (3.2M-3).
+ *   OBSERVED  a DIFFERENT authorised person said they personally saw or heard it (3.2M-4).
  *
  * APPLIED IS A SELF-REPORT AND THE PRODUCT SAYS SO. It means the learner says they tried it
  * — not that anyone saw it, not that it met the standard, not that anything improved.
  *
- * OBSERVED and SUSTAINED remain unreachable and must stay that way: observation needs a
- * second person, and lasting change needs repetition. Nothing in this file may ever return
- * them.
+ * APPLIED and OBSERVED are INDEPENDENT SOURCES, not degrees of one claim. A learner may report
+ * applying something nobody saw; someone may see a behaviour the learner never reported. Both
+ * states are representable, and neither is fabricated to make the ladder look sequential.
+ *
+ * SUSTAINED remains unreachable and must stay that way: lasting change needs repetition over
+ * time, and no number of observations is a substitute for it. Nothing in this file may ever
+ * return it.
  *
  * PRACTICED is NOT a prerequisite for APPLIED. Someone can do a thing at work without having
  * rehearsed it here, and inventing a rung to keep the sequence looking tidy would be exactly
@@ -41,9 +46,14 @@ export type LearnerEvidenceFacts = {
    * claims of application.
    */
   readonly appliedReported: boolean;
+  /**
+   * A distinct authorised person durably attested that they personally saw or heard the
+   * frozen observable standard. Never the learner, never an attendance record, never a scan.
+   */
+  readonly independentlyObserved: boolean;
 };
 
-/** The rungs this record legitimately supports, lowest first. Never above APPLIED. */
+/** The rungs this record legitimately supports, lowest first. Never above OBSERVED. */
 export function establishedEvidence(facts: LearnerEvidenceFacts): EvidenceLevel[] {
   const out: EvidenceLevel[] = [];
   if (facts.completed) out.push("exposed");
@@ -54,6 +64,12 @@ export function establishedEvidence(facts: LearnerEvidenceFacts): EvidenceLevel[
   if (facts.completed && facts.practiceCompleted) out.push("practiced");
   // Not gated on practice: the ladder records what happened, not a tidy sequence.
   if (facts.completed && facts.appliedReported) out.push("applied");
+  /*
+    Not gated on the learner's own report: someone can be seen doing a thing they never got
+    round to reporting. Requiring APPLIED first would discard a true observation to protect a
+    tidy sequence.
+  */
+  if (facts.completed && facts.independentlyObserved) out.push("observed");
   return out;
 }
 

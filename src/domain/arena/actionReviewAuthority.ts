@@ -205,3 +205,103 @@ export function decideActionReviewAuthority(facts: ActionReviewFacts): ActionRev
     verificationMode,
   };
 }
+
+/**
+ * THE EDGE AUTHORITY ON ITS OWN (Slice 3.2M-4).
+ *
+ * Everything below except the contract lookup and the verification-mode test is a general
+ * question: may THIS actor act on THIS learner, by an explicit one-hop reviewer edge? Guided
+ * observation needs exactly that and has no action contract, so the answer is extracted here
+ * rather than duplicated — and rather than manufacturing a fake contract to call the wrapper,
+ * which would put a lie in the database to satisfy a function signature.
+ *
+ * Identical semantics: default-deny, non-self, active-bound memberships on both sides, an
+ * ACTION_REVIEWER edge that is active, unrevoked, in-window and org-consistent, and
+ * fail-closed on more than one effective edge.
+ */
+export type EdgeAuthorityFacts = {
+  actorUserId: string | null;
+  /** Resolved on the SERVER from the parent record — never from client input. */
+  learnerUserId: string | null;
+  actorMemberships: MembershipFact[];
+  learnerMemberships: MembershipFact[];
+  edges: AuthorityEdgeFact[];
+  today: string;
+};
+
+export type EdgeAuthorityDecision =
+  | {
+      allowed: true;
+      actorUserId: string;
+      authorityId: string;
+      reviewerMembershipId: string;
+      learnerMembershipId: string;
+      organizationId: string;
+    }
+  | { allowed: false; reason: ActionReviewAuthorityDenyReason };
+
+export function decideEdgeAuthority(facts: EdgeAuthorityFacts): EdgeAuthorityDecision {
+  if (!facts.actorUserId) return { allowed: false, reason: "ACTOR_MISSING" };
+  if (!facts.learnerUserId) return { allowed: false, reason: "LEARNER_MEMBERSHIP_MISSING" };
+  if (facts.actorUserId === facts.learnerUserId) return { allowed: false, reason: "SELF_REVIEW_FORBIDDEN" };
+
+  const reviewer = classifyMemberships(
+    facts.actorMemberships,
+    "REVIEWER_MEMBERSHIP_MISSING",
+    "REVIEWER_MEMBERSHIP_INACTIVE",
+    "REVIEWER_MEMBERSHIP_UNBOUND",
+  );
+  if (!reviewer.ok) return { allowed: false, reason: reviewer.reason };
+  const learner = classifyMemberships(
+    facts.learnerMemberships,
+    "LEARNER_MEMBERSHIP_MISSING",
+    "LEARNER_MEMBERSHIP_INACTIVE",
+    "LEARNER_MEMBERSHIP_UNBOUND",
+  );
+  if (!learner.ok) return { allowed: false, reason: learner.reason };
+
+  const reviewerById = new Map(reviewer.active.map((m) => [m.id, m]));
+  const learnerById = new Map(learner.active.map((m) => [m.id, m]));
+
+  const edgesForActivePairs = facts.edges.filter(
+    (e) =>
+      e.authorityKey === AUTHORITY_KEY &&
+      reviewerById.has(e.reviewerMembershipId) &&
+      learnerById.has(e.learnerMembershipId),
+  );
+
+  const orgConsistent = (e: AuthorityEdgeFact): boolean => {
+    const rm = reviewerById.get(e.reviewerMembershipId);
+    const lm = learnerById.get(e.learnerMembershipId);
+    return (
+      !!rm && !!lm && rm.organizationId != null && rm.organizationId === lm.organizationId &&
+      e.organizationId === rm.organizationId
+    );
+  };
+  const isEffective = (e: AuthorityEdgeFact): boolean =>
+    e.status === "active" && e.revokedAt == null && e.startedOn <= facts.today && orgConsistent(e);
+
+  const effective = edgesForActivePairs.filter(isEffective);
+  if (effective.length === 0) {
+    const activeInWindow = edgesForActivePairs.filter(
+      (e) => e.status === "active" && e.revokedAt == null && e.startedOn <= facts.today,
+    );
+    if (activeInWindow.some((e) => !orgConsistent(e))) return { allowed: false, reason: "ORGANIZATION_MISMATCH" };
+    if (edgesForActivePairs.length > 0) return { allowed: false, reason: "AUTHORITY_EDGE_REVOKED_OR_INEFFECTIVE" };
+    return { allowed: false, reason: "AUTHORITY_EDGE_MISSING" };
+  }
+
+  const distinct = new Map(effective.map((e) => [e.id, e]));
+  if (distinct.size > 1) return { allowed: false, reason: "AMBIGUOUS_AUTHORITY" };
+
+  const edge = effective[0]!;
+  const rm = reviewerById.get(edge.reviewerMembershipId)!;
+  return {
+    allowed: true,
+    actorUserId: facts.actorUserId,
+    authorityId: edge.id,
+    reviewerMembershipId: edge.reviewerMembershipId,
+    learnerMembershipId: edge.learnerMembershipId,
+    organizationId: rm.organizationId as string,
+  };
+}
