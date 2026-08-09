@@ -39,6 +39,8 @@ import {
   resolvePersistentCta,
   type GuestFunnelEvent,
 } from '@/domain/app-invite';
+import { roomNavIdentifier } from '@/domain/guest-handoff';
+import { canonicalUniversalLink } from '@/domain/app-link';
 
 interface Props {
   slug: string;
@@ -513,7 +515,21 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
   const requestManual = () =>
     submit({ youtubeInput: manualInput.trim() }, manualInput.trim(), null, 'manual');
 
-  const persistentCta = resolvePersistentCta({ universalLink: persistentApp?.url ?? null });
+  // BUILD 26H — the room-only app link.
+  //
+  // A QR identifies the ROOM, so opening the app is navigation and needs nothing else: no
+  // name, no search, no selected song, no request, no requestId. The link is built purely
+  // from the slug this page already has, so producing it performs NO fetch, mints NO
+  // handoff, and writes NOTHING — the CTA is simply available from the first render.
+  //
+  // It requires a CURRENT live event (`eventId`), matching the public Guest surface: with no
+  // live event there is nothing to join, and the resolver refuses anyway.
+  //
+  // The request-backed link still WINS when one exists. That preserves BUILD 19B/19C
+  // behaviour exactly, including its open telemetry, for the post-request invitation path.
+  const roomNavLink = eventId ? canonicalUniversalLink(roomNavIdentifier(slug) ?? '') : null;
+  const appEntryLink = persistentApp?.url ?? roomNavLink;
+  const persistentCta = resolvePersistentCta({ universalLink: appEntryLink });
 
   return (
     <>
@@ -522,7 +538,7 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
           dismissing the one-time card below; no App Store link before BUILD 19D. */}
       <PersistentAppEntry
         active={persistentCta.active}
-        universalLink={persistentApp?.url ?? null}
+        universalLink={appEntryLink}
         onOpen={openPersistentApp}
       />
       {/* BUILD 19C — contextual, non-blocking app invitation (App Store action hidden until 19D). */}

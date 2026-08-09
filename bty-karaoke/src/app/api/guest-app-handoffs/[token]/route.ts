@@ -4,7 +4,8 @@
 //   Reopenable + idempotent: repeated resolution creates no durable duplicate.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveGuestAppHandoff } from '@/lib/guest-handoff.server';
+import { resolveGuestAppHandoff, resolveRoomNavigation } from '@/lib/guest-handoff.server';
+import { isRoomNavIdentifier } from '@/domain/guest-handoff';
 import { makeLimiter, isLockedOut, recordFailure } from '@/lib/rate-limit.server';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     return NextResponse.json({ resolution: 'invalid' }, { status: 404, headers: noStore });
   }
 
-  const result = await resolveGuestAppHandoff(token);
+  // BUILD 26H — TWO identifier forms share this one already-AASA-claimed path.
+  //
+  // The request-backed token is tried FIRST, always. That ordering is the belt-and-braces
+  // half of the disjointness guarantee: a genuine hash-backed handoff can never be
+  // re-interpreted as room navigation, even if the structural length invariant in
+  // `domain/guest-handoff` were ever violated by a future token-format change.
+  //
+  // Room navigation is considered ONLY when no real handoff matched AND the identifier
+  // satisfies the explicit namespace contract. It writes nothing.
+  let result = await resolveGuestAppHandoff(token);
+  if (result.resolution === 'invalid' && isRoomNavIdentifier(token)) {
+    result = await resolveRoomNavigation(token);
+  }
 
   switch (result.resolution) {
     case 'active':

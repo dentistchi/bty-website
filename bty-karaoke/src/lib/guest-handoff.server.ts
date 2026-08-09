@@ -11,8 +11,11 @@ import {
   handoffExpiry,
   resolveHandoffState,
   countsAsOpen,
+  parseRoomNavIdentifier,
+  roomNavHandoffMarker,
   type HandoffResolution,
 } from '@/domain/guest-handoff';
+import { getCanonicalEvent } from './events.server';
 
 /** ≥128-bit opaque token. 24 bytes = 192 bits, base64url-ish via randomToken. */
 const TOKEN_BYTES = 24;
@@ -241,4 +244,60 @@ export async function resolveGuestAppHandoff(rawToken: string, nowMs?: number): 
   });
 
   return resolution === 'active' ? { resolution: 'active', nav } : { resolution: 'event_ended', nav };
+}
+
+
+// MARK: - BUILD 26H — ROOM-ONLY NAVIGATION (no handoff row, no writes)
+//
+// The request-backed handoff above is unchanged. This is the SECOND form: a Guest who has
+// scanned a room QR opens the room in the app before entering a name or choosing a song.
+//
+// It is NAVIGATION, not admission. Everything it touches is a READ:
+//   * no handoff row is created (the table's `source_request_id` is NOT NULL by design, and
+//     BUILD 26H does not relax it, does not migrate, and does not fabricate a request);
+//   * no open_count / first_opened_at / last_opened_at is stamped — that telemetry belongs to
+//     a real request-backed handoff and simulating it would corrupt the funnel;
+//   * no audit row is written, for the same reason;
+//   * no request, queue, session, or admission write of any kind.
+//
+// The live Event is revalidated HERE, at resolve time — never trusted from the identifier or
+// from whatever was live when the CTA rendered. A Guest who waits while the Host ends the
+// event gets a safe refusal, not a stale room.
+
+/**
+ * Resolve a room-only navigation identifier to the SAME envelope Native already understands.
+ *
+ * Returns `invalid` for an unknown/retired room and for a room with no CURRENT live event —
+ * one generic outcome, so this path reveals no more about room existence than the public
+ * `/r/<slug>` page already does.
+ */
+export async function resolveRoomNavigation(identifier: string): Promise<HandoffResolveResult> {
+  const slug = parseRoomNavIdentifier(identifier);
+  if (!slug) return { resolution: 'invalid' };
+
+  const room = await getPublicRoomBySlug(slug);
+  // `getPublicRoomBySlug` already excludes what a Guest may not see; a retired/absent room is
+  // indistinguishable from a bad identifier here.
+  if (!room) return { resolution: 'invalid' };
+
+  // CURRENT live event only. Never the latest ended event, never a previous one, never
+  // synthesized — exactly the rule the public Guest page follows.
+  const event = await getCanonicalEvent(room.id);
+  if (!event || event.status !== 'active') return { resolution: 'invalid' };
+
+  return {
+    resolution: 'active',
+    nav: {
+      // Not a UUID and not a stored id: nothing was persisted, so there is nothing to identify.
+      handoffId: roomNavHandoffMarker(room.slug),
+      roomSlug: room.slug,
+      roomDisplayName: room.display_name,
+      eventId: event.id,
+      eventStatus: event.status,
+      // Room navigation does not expire on its own — it is re-validated on every open, which
+      // is strictly stronger than a stored TTL. The field is reported for envelope
+      // compatibility; Native decodes it and never acts on it.
+      expiresAt: new Date(Date.now() + DEFAULT_HANDOFF_TTL_MS).toISOString(),
+    },
+  };
 }

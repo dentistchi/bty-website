@@ -66,3 +66,94 @@ export function extractHandoffToken(pathname: string): string | null {
   if (!/^[A-Za-z0-9_-]+$/.test(rest)) return null;
   return rest;
 }
+
+// MARK: - BUILD 26H — ROOM-ONLY NAVIGATION IDENTIFIER
+//
+// A SECOND identifier form carried on the SAME already-claimed `/app/join/*` path, so the
+// installed app needs no change and AASA is untouched. It is navigation, not admission: it
+// mints nothing, stores nothing, and is not backed by a handoff row.
+//
+// DISJOINTNESS IS STRUCTURAL, NOT PROBABILISTIC.
+//
+// A real request-backed token is `randomToken(24)` = base64url of 24 bytes. 24 is divisible
+// by 3, so there is never padding: the token is ALWAYS EXACTLY 32 characters. Its alphabet
+// (`A-Za-z0-9-_`) is the FULL 64-symbol base64url set, which is byte-for-byte the charset the
+// native parser accepts — so no character exists that a token cannot contain, and a
+// character-based namespace is impossible. Length is therefore the only structural axis, and
+// it is a hard invariant rather than a guess:
+//
+//   a room-nav identifier is NEVER 32 characters, by construction.
+//
+// A bare `rnav1-` prefix alone would NOT be collision-proof (a random token could in principle
+// begin with those bytes), which is why the length rule — not the prefix — carries the proof.
+// The prefix only names the namespace; the length makes the two sets provably disjoint.
+//
+// Belt and braces: the resolver still tries the real hash-backed token FIRST, so even if this
+// invariant were ever violated by a future token-length change, a genuine handoff still wins.
+
+/** base64url(24 bytes) with no padding. Proven by `randomTokenLengthIsInvariant` in tests. */
+export const LEGACY_HANDOFF_TOKEN_LENGTH = 32;
+
+/** The room-navigation namespace marker. Versioned so a future format can coexist. */
+export const ROOM_NAV_PREFIX = 'rnav1-';
+
+/** Room slugs are generated as `[a-z0-9-]`, never leading/trailing hyphen (domain/room-slug). */
+const SLUG_SHAPE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+/**
+ * The resolve route refuses any identifier shorter than this BEFORE it looks anything up, so a
+ * room-nav identifier must clear it or a short-slugged room would fail for a reason that has
+ * nothing to do with the room.
+ */
+export const MIN_HANDOFF_IDENTIFIER_LENGTH = 8;
+
+/**
+ * Build the room-only navigation identifier for a slug, or null when the slug is not a
+ * canonical room slug (never a malformed or guessed link).
+ *
+ * Deterministic hyphen padding after the prefix enforces BOTH invariants at once — long enough
+ * for the resolver's guard, and never the legacy token length. The padding is transparent to
+ * `parseRoomNavIdentifier` and unambiguous because a canonical slug never starts with a hyphen.
+ */
+export function roomNavIdentifier(slug: string): string | null {
+  const s = (slug ?? '').trim().toLowerCase();
+  if (!SLUG_SHAPE.test(s)) return null;
+  let pad = '';
+  const build = () => ROOM_NAV_PREFIX + pad + s;
+  while (
+    build().length < MIN_HANDOFF_IDENTIFIER_LENGTH ||
+    build().length === LEGACY_HANDOFF_TOKEN_LENGTH
+  ) {
+    pad += '-';
+  }
+  return build();
+}
+
+/**
+ * Read the room slug back out of a room-navigation identifier, or null when this is not one.
+ *
+ * Refuses anything of legacy-token length FIRST — that shape belongs to the request-backed
+ * handoff and must never be re-interpreted as navigation.
+ */
+export function parseRoomNavIdentifier(identifier: string): string | null {
+  const id = identifier ?? '';
+  if (id.length === LEGACY_HANDOFF_TOKEN_LENGTH) return null;
+  if (!id.startsWith(ROOM_NAV_PREFIX)) return null;
+  const rest = id.slice(ROOM_NAV_PREFIX.length).replace(/^-+/, '');
+  return SLUG_SHAPE.test(rest) ? rest : null;
+}
+
+/** True when the identifier is a room-navigation form rather than a request-backed token. */
+export function isRoomNavIdentifier(identifier: string): boolean {
+  return parseRoomNavIdentifier(identifier) !== null;
+}
+
+/**
+ * The `handoffId` a room-only resolution reports. Deliberately NOT a UUID and deliberately not
+ * a real id: nothing is stored, so there is nothing to identify. Native decodes this field as a
+ * plain String and never reads it again (pinned by a regression test), so no UUID is fabricated
+ * and no analytics join can mistake it for a real handoff.
+ */
+export function roomNavHandoffMarker(slug: string): string {
+  return `room-nav:${slug}`;
+}
