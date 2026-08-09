@@ -14,6 +14,8 @@
 // terminal transcript answers that question badly.
 //
 //   node scripts/build26i-gate-evidence.mjs --list
+//   node scripts/build26i-gate-evidence.mjs --census  > evidence/G1-before.json
+//   node scripts/build26i-gate-evidence.mjs --census-diff evidence/G1-before.json
 //   node scripts/build26i-gate-evidence.mjs --baseline <accountId> > evidence/G5-before.json
 //   node scripts/build26i-gate-evidence.mjs --verify   <accountId>
 //   node scripts/build26i-gate-evidence.mjs --recreation <oldAccountId> <newAccountId>
@@ -258,7 +260,77 @@ function verify(s) {
 
 const [mode, ...rest] = process.argv.slice(2);
 
-if (mode === '--list') {
+/**
+ * A whole-database census of every deletion-relevant fact.
+ *
+ * The non-destructive gates (G1, G2, and the Cancel legs) must prove the OPPOSITE of a
+ * deletion: that nothing changed anywhere. Checking one account cannot prove that, and
+ * asking the Founder which account they were signed in as puts a UUID in their hands for
+ * no reason. Censusing everything before and after answers it exactly, and also catches
+ * the failure a single-account check would miss entirely — a cancel that mutated some
+ * OTHER account.
+ */
+async function census() {
+  const [accts, ids, sess, grants, audit, fps, evts, jobs, outbox, rooms, ws, carry] = await Promise.all([
+    q('karaoke_accounts?select=id,account_status,deleted_at,anonymized_at,updated_at&order=created_at'),
+    q('karaoke_account_identities?select=account_id,provider&order=account_id'),
+    q('karaoke_host_sessions?select=id,account_id,status&order=id'),
+    q('timed_access_pass_grants?select=id,account_id,status,activated_at,revoked_at&order=id'),
+    q('karaoke_account_deletion_audit?select=account_id,deleted_at&order=deleted_at'),
+    q('karaoke_identity_fingerprints?select=fingerprint,provider,account_tombstone_id,first_deleted_at,last_deleted_at&order=fingerprint'),
+    q('karaoke_account_deletion_events?select=account_id,event_type,created_at&order=created_at'),
+    q('karaoke_provider_revocation_jobs?select=account_id,provider,status&order=account_id'),
+    q('karaoke_storage_cleanup_outbox?select=object_key,status&order=object_key'),
+    q('karaoke_rooms?select=id,slug,status,retired_at&order=id'),
+    q('karaoke_workspaces?select=id,status&order=id'),
+    q('karaoke_free_window_carryover?select=account_id,charged_window_start,carried_used_seconds,grace_consumed&order=account_id'),
+  ]);
+  return {
+    capturedAt: new Date().toISOString(),
+    accounts: accts.rows,
+    identities: ids.rows,
+    sessions: sess.rows,
+    pass_grants: grants.rows,
+    deletion_audit: audit.rows,
+    fingerprints: fps.rows,
+    deletion_events: evts.rows,
+    revocation_jobs: jobs.rows,
+    storage_outbox: outbox.rows,
+    rooms: rooms.rows,
+    workspaces: ws.rows,
+    carryover: carry.rows,
+  };
+}
+
+if (mode === '--census') {
+  console.log(JSON.stringify(await census(), null, 2));
+} else if (mode === '--census-diff') {
+  const before = JSON.parse(readFileSync(rest[0], 'utf8'));
+  const after = await census();
+  const keys = Object.keys(before).filter((k) => k !== 'capturedAt');
+  console.log(`\nBUILD 26I census diff — non-destructive gate proof`);
+  console.log(`before ${before.capturedAt}`);
+  console.log(`after  ${after.capturedAt}\n`);
+  let changed = 0;
+  for (const k of keys) {
+    const b = JSON.stringify(before[k]);
+    const a = JSON.stringify(after[k]);
+    const same = b === a;
+    if (!same) changed++;
+    console.log(`${same ? 'UNCHANGED' : 'CHANGED  '}  ${k.padEnd(18)} ${before[k].length} row(s)${same ? '' : ` → ${after[k].length}`}`);
+    if (!same) {
+      const bs = new Set(before[k].map((r) => JSON.stringify(r)));
+      const as = new Set(after[k].map((r) => JSON.stringify(r)));
+      for (const r of after[k].map((r) => JSON.stringify(r))) if (!bs.has(r)) console.log(`            + ${r}`);
+      for (const r of before[k].map((r) => JSON.stringify(r))) if (!as.has(r)) console.log(`            - ${r}`);
+    }
+  }
+  console.log('─'.repeat(70));
+  console.log(changed === 0
+    ? 'CENSUS IDENTICAL — zero server mutation anywhere in production'
+    : `CENSUS CHANGED — ${changed} table(s) differ (see above)`);
+  process.exit(changed === 0 ? 0 : 1);
+} else if (mode === '--list') {
   const accts = await q('karaoke_accounts?select=id,created_at,account_status,deleted_at&order=created_at');
   const ids = await q('karaoke_account_identities?select=account_id,provider');
   const byAcct = {};
