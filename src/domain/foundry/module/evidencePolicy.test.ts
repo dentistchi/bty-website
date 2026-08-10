@@ -131,7 +131,15 @@ describe("[3.2L-R11.4I] bounded semantic repair", () => {
     expect(msg).toMatch(/proves more than it can/i);
     expect(msg).toMatch(/reflection, not competence/);      // the derived ceiling
     expect(msg).toMatch(/Change ONLY the sentences/);
-    expect(msg).toMatch(/Keep the same behaviour/);
+    /*
+      Preservation wording updated in Slice 3.2P-R0. "Keep the same behaviour" was true and
+      unenforceable — a repair obeyed it in spirit and deleted a required element. The
+      instruction now names the same envelope `repairFreezeViolated` enforces, so the words
+      and the check describe one thing. The property this line protects — the instruction
+      states what must be preserved — is unchanged.
+    */
+    expect(msg).toMatch(/Do NOT add, remove, rename or reorder any element/i);
+    expect(msg).toMatch(/every other section exactly as it was/i);
     expect(msg).toMatch(/ONLY the JSON object/);
     const material = semanticRepairInstruction("material_fabrication", CANONICAL);
     expect(material).toMatch(/does not exist|nobody has read/i);

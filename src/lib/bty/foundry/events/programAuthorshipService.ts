@@ -16,11 +16,12 @@ import {
   isSemanticRepairableCode,
   type ProgramRejectCode,
   semanticRepairInstruction,
-  scenarioRepairFreezeViolated,
+  repairFreezeViolated,
   evidenceClaimBrief,
   materialAuthorityBrief,
   type MaterialAuthority,
 } from "@/domain/foundry/module/program-authorship";
+import type { JourneyElementKind } from "@/domain/foundry/module/journey";
 import { proposalDigest } from "@/domain/foundry/module/proposal-digest";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import {
@@ -483,10 +484,12 @@ export async function generateProgram(
   /** Set when the ONE bounded repair is a meaning fault rather than a shape fault. */
   let semanticRepairCode: ProgramRejectCode | undefined;
   /**
-   * The RAW proposal the repair is allowed to correct one field of (Slice 3.2O-R4). Held in
-   * memory for the length of this call only — never persisted, never logged, never returned.
+   * The RAW proposal a repair is licensed to correct part of, and the refusal that licensed
+   * it (Slice 3.2P-R0). Held in memory for the length of this call only — never persisted,
+   * never logged, never returned.
    */
   let frozenBaseline: unknown;
+  let frozenRefusal: { code: ProgramRejectCode; kind: JourneyElementKind | undefined } | undefined;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages: LlmChatMessage[] =
@@ -546,16 +549,17 @@ export async function generateProgram(
 
     let validated = validateProgramProposal(r.parsed, args.answers, args.verifiedArtifacts ?? []);
     /*
-      THE BOUNDED PRESSURE REPAIR IS FROZEN (Slice 3.2O-R4). A repair licensed to fix one
-      field may not return a second draft. If anything outside
-      `scenario_contract.pressure_condition` moved, the repair is discarded and the attempt
-      ends on the ORIGINAL refusal — the honest outcome, and one the vocabulary already has.
+      EVERY BOUNDED REPAIR IS FROZEN (Slice 3.2P-R0). A repair licensed to fix one surface may
+      not return a second draft. Checked whatever the repair produced — a repair that turns an
+      honest refusal into a DIFFERENT refusal is exactly the case window 4 hit, where a
+      reflection fix deleted `follow_up` and the attempt died on the consequence.
+
+      On violation the candidate is discarded and the attempt terminates on the ORIGINAL
+      refusal. A failed repair does not get to rewrite what went wrong.
     */
-    if (i > 0 && semanticRepairCode === "scenario_without_pressure" && validated.ok) {
-      if (scenarioRepairFreezeViolated(frozenBaseline, r.parsed)) {
-        logOutcome("repair_freeze_violated", "scenario_without_pressure");
-        validated = { ok: false, code: "scenario_without_pressure", kind: "scenario" };
-      }
+    if (i > 0 && frozenRefusal && repairFreezeViolated({ ...frozenRefusal, before: frozenBaseline, after: r.parsed })) {
+      logOutcome("repair_freeze_violated", frozenRefusal.code);
+      validated = { ok: false, code: frozenRefusal.code, kind: frozenRefusal.kind };
     }
     if (callId) {
       await finalizeProgramCall(admin, {
@@ -654,8 +658,10 @@ export async function generateProgram(
       sentence away from being right.
     */
     semanticRepairCode = isSemanticRepairableCode(validated.code) ? validated.code : undefined;
-    // Only the pressure repair is field-scoped, so only it needs a baseline to freeze against.
-    frozenBaseline = semanticRepairCode === "scenario_without_pressure" ? r.parsed : undefined;
+    // Every semantic repair is licensed and frozen, so every one needs its baseline and the
+    // refusal that authorised it.
+    frozenBaseline = semanticRepairCode ? r.parsed : undefined;
+    frozenRefusal = semanticRepairCode ? { code: semanticRepairCode, kind: validated.kind } : undefined;
     repairable = isStructuralCode(validated.code) || semanticRepairCode !== undefined;
     logOutcome("rejected", validated.code);
     if (!repairable) break;

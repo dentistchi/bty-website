@@ -1001,8 +1001,15 @@ export function semanticRepairInstruction(
   code: ProgramRejectCode,
   answers: BuilderAnswers | undefined,
 ): string {
+  /*
+    PARITY WITH THE LICENSE (Slice 3.2P-R0). The old wording said "change only the sentences
+    that break the rule", which is true and unenforceable — window 4's repair obeyed it in
+    spirit and deleted a whole required section. The instruction now names the SAME surface
+    `repairLicenseFor` permits, and says explicitly that the structure is fixed, so the words
+    the model reads and the check the code runs describe one thing.
+  */
   const preserve =
-    "Keep the same behaviour, the same practice situation, the same structure and every section that was already honest. Change ONLY the sentences that break the rule. Return the SAME program with those corrected, and return ONLY the JSON object.";
+    "Return the SAME program with every other section exactly as it was. Do NOT add, remove, rename or reorder any element — the same kinds must come back in the same order. Do NOT touch the title, the assumptions, the warnings, or any section that was already honest. Change ONLY the sentences that break the rule, and return ONLY the JSON object.";
   if (code === "scenario_without_pressure") {
     return [
       "Your previous response gave the practice situation no real difficulty — the pressure field named nothing that competes with doing the behaviour properly.",
@@ -1032,42 +1039,127 @@ export function semanticRepairInstruction(
 }
 
 /**
- * THE REPAIR FREEZE (Slice 3.2O-R4) — enforcement, not trust.
+ * THE REPAIR ENVELOPE (Slice 3.2P-R0) — enforcement, not trust, for EVERY repair class.
  *
- * A bounded repair is only safe if the model cannot use it as a second free draft. The
- * instruction says to change one field; this proves it did. Everything except
- * `program.scenario_contract.pressure_condition` must survive byte-identical — every element,
- * the behaviour contract, the trigger, the pressure DETAIL, the enum contracts, the title,
- * the assumptions and the warnings.
+ * R4 built a freeze and scoped it to `scenario_without_pressure` alone. The fourth pilot
+ * window then proved why that was too narrow: a repair licensed to fix a reflection sentence
+ * DELETED the `follow_up` element, and the attempt died on `missing_required_kind` — the
+ * consequence — instead of on the refusal that actually happened. A repair that is only asked
+ * to stay in its lane will eventually leave it.
+ *
+ * So every repairable class now carries an explicit LICENSE naming the smallest surface it may
+ * change, and everything outside it must survive byte-identical.
+ *
+ * WHAT IS FROZEN IN EVERY CASE, whatever the license: the number of elements, their kinds,
+ * their order, every element not named by the license, both enum contracts, and — unless the
+ * license says otherwise — the title, the assumptions, the warnings and the behaviour contract.
+ *
+ * ONE TRADE-OFF, STATED. `unsafe()` also guards the behaviour and scenario CONTRACT fields, and
+ * a hit there is reported as kind `observable_standard` / `scenario` — indistinguishable at
+ * repair time from a hit on the element's own prose. Licensing only the element would make
+ * those repairs impossible rather than merely bounded, so those two kinds license their
+ * backing contract as well. Every other kind licenses prose alone.
+ */
+export type RepairLicense =
+  /** Only the two scenario pressure fields. The measured R4 minimum, unchanged. */
+  | { readonly surface: "scenario_pressure" }
+  /** One element's own prose. Presence, kind and order still frozen. */
+  | { readonly surface: "element"; readonly kind: JourneyElementKind }
+  /** One element's prose plus the contract it is rendered from. */
+  | { readonly surface: "element_and_contract"; readonly kind: JourneyElementKind; readonly contract: "behavior_contract" | "scenario_contract" }
+  /** Title, assumptions and warnings — the prose that belongs to no element. */
+  | { readonly surface: "narrative" };
+
+/**
+ * What this refusal is allowed to have changed. Derived from the code and the kind the
+ * validator itself reported — never from the model's claim about what it fixed.
+ */
+export function repairLicenseFor(code: ProgramRejectCode, kind: JourneyElementKind | undefined): RepairLicense {
+  if (code === "scenario_without_pressure") return { surface: "scenario_pressure" };
+  if (kind === undefined) return { surface: "narrative" };
+  if (kind === "observable_standard") return { surface: "element_and_contract", kind, contract: "behavior_contract" };
+  if (kind === "scenario") return { surface: "element_and_contract", kind, contract: "scenario_contract" };
+  return { surface: "element", kind };
+}
+
+const FROZEN = "\u0000FROZEN";
+
+/** Blank exactly the licensed surface, leaving all structure in place to be compared. */
+function applyLicense(program: Record<string, unknown>, license: RepairLicense): void {
+  const blankElement = (k: JourneyElementKind) => {
+    const els = program.elements;
+    if (!Array.isArray(els)) return;
+    for (const el of els) {
+      if (isPlainObject(el) && (el as Record<string, unknown>).kind === k) {
+        (el as Record<string, unknown>).content = FROZEN;
+        (el as Record<string, unknown>).rationale = FROZEN;
+      }
+    }
+  };
+  const blankObject = (key: string, fields: readonly string[] | "all") => {
+    const o = program[key];
+    if (!isPlainObject(o)) return;
+    const rec = o as Record<string, unknown>;
+    for (const f of fields === "all" ? Object.keys(rec) : fields) {
+      if (isPlainObject(rec[f])) {
+        for (const sub of Object.keys(rec[f] as Record<string, unknown>)) {
+          (rec[f] as Record<string, unknown>)[sub] = FROZEN;
+        }
+      } else if (f in rec) rec[f] = FROZEN;
+    }
+  };
+  switch (license.surface) {
+    case "scenario_pressure":
+      blankObject("scenario_contract", ["pressure_condition", "pressure_detail"]);
+      return;
+    case "element":
+      blankElement(license.kind);
+      return;
+    case "element_and_contract":
+      blankElement(license.kind);
+      blankObject(license.contract, "all");
+      return;
+    case "narrative":
+      program.display_title = FROZEN;
+      program.assumptions = FROZEN;
+      program.warnings = FROZEN;
+      return;
+  }
+}
+
+/**
+ * Did the repair change anything it was not licensed to change?
  *
  * Compared on the RAW parsed proposals rather than the validated ones, because the validated
  * shape is partly derived and would hide a model edit behind BTY's own rendering.
  */
-export function scenarioRepairFreezeViolated(before: unknown, after: unknown): boolean {
-  const blank = (v: unknown): string | null => {
+export function repairFreezeViolated(input: {
+  readonly code: ProgramRejectCode;
+  readonly kind: JourneyElementKind | undefined;
+  readonly before: unknown;
+  readonly after: unknown;
+}): boolean {
+  const license = repairLicenseFor(input.code, input.kind);
+  const normalise = (v: unknown): string | null => {
     if (!isPlainObject(v)) return null;
-    const p = (v as Record<string, unknown>).program;
-    if (!isPlainObject(p)) return null;
-    // Structured clone via JSON: the proposal is plain data by contract.
-    const copy = JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
-    const sc = copy.scenario_contract;
-    if (!isPlainObject(sc)) return null; // a repair that drops the contract is a violation
-    /*
-      BOTH pressure fields, and nothing else. `scenario_without_pressure` is the code for
-      EVERY scenario defect except `independent_moment` — including `too_long` on
-      `pressure_detail` — so freezing the detail would make that sub-case unrepairable by
-      construction and waste the child call. Widening to the two pressure fields costs
-      nothing in safety: neither carries the actor, the trigger or the trained action, which
-      live in `behavior_contract` and are frozen with everything else.
-    */
-    (sc as Record<string, unknown>).pressure_condition = "\u0000FROZEN";
-    (sc as Record<string, unknown>).pressure_detail = "\u0000FROZEN";
-    return JSON.stringify(copy);
+    const raw = (v as Record<string, unknown>).program;
+    if (!isPlainObject(raw)) return null;
+    const program = JSON.parse(JSON.stringify(raw)) as Record<string, unknown>;
+    // A repair that drops the contract its license names has left its envelope.
+    if (license.surface === "scenario_pressure" && !isPlainObject(program.scenario_contract)) return null;
+    if (license.surface === "element_and_contract" && !isPlainObject(program[license.contract])) return null;
+    applyLicense(program, license);
+    return JSON.stringify(program);
   };
-  const a = blank(before);
-  const b = blank(after);
+  const a = normalise(input.before);
+  const b = normalise(input.after);
   if (a === null || b === null) return true;
   return a !== b;
+}
+
+/** The R4 entry point, preserved. Scenario pressure is one license among several now. */
+export function scenarioRepairFreezeViolated(before: unknown, after: unknown): boolean {
+  return repairFreezeViolated({ code: "scenario_without_pressure", kind: "scenario", before, after });
 }
 
 /** One human-readable repair instruction — shape only, never the model's own words. */
