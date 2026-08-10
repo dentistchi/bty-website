@@ -74,6 +74,22 @@ function storableContractReason(reason: string | undefined): string | null {
 export const CHILD_REFUSAL_DIAGNOSTICS_ENABLED = true;
 
 /**
+ * Live schema support for the repair-freeze verdict (migration 20260817000000).
+ *
+ * FALSE until the Founder executes that migration. While it is false the update payload stays
+ * byte-identical to the pre-migration one — writing a column that does not exist fails the
+ * whole update and loses every other diagnostic on the row, which is strictly worse than
+ * recording nothing. Same deploy order the three flags above each followed.
+ *
+ * WHY THE COLUMN EXISTS. W2's two child calls record the same refusal, and the ledger cannot
+ * say whether the licensed retry stayed inside its envelope and failed honestly, or left it
+ * and was discarded — because the freeze overwrites the validation result BEFORE the child is
+ * finalized, so both outcomes write identical rows. The distinction lived only in a
+ * `console.info` on a Worker that retains no logs.
+ */
+export const REPAIR_FREEZE_VERDICT_ENABLED = false;
+
+/**
  * EXACT PROPOSAL IDENTITY (Slice 3.2L-R11.3) — OFF until the Founder executes
  * `20260811000000_foundry_program_proposal_digest_v1.sql`.
  *
@@ -201,6 +217,14 @@ export type FinalizeProgramCallInput = {
    * `non_observable_standard`. Closed vocabulary only — the rejected phrase is never passed.
    */
   behaviorContract?: { field: string; reason: string } | null;
+  /**
+   * Did THIS call's licensed repair stay inside its envelope? (Slice 3.2P-R0.3)
+   *
+   * Three-valued on purpose. `undefined`/`null` means the freeze was NOT EVALUATED for this
+   * call — the initial authorship call, or a refusal outside the repairable set — and must
+   * never be read as "it held". Only a retry that was actually measured passes true or false.
+   */
+  repairFreezeViolated?: boolean | null;
   diagnosis?: {
     stage: "structural" | "semantic";
     path: string;
@@ -398,6 +422,16 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
        * be worse than recording nothing. Coexists with every other diagnostic: a dependency
        * refusal carries its code, its kind AND its three dependency facts.
        */
+      /**
+       * THE FREEZE VERDICT (Slice 3.2P-R0.3). Written from the same evaluation that decided
+       * whether to discard the repair, and deliberately INDEPENDENT of `refusal_code`: on a
+       * violation the code stays the ORIGINAL frozen refusal — that truth-preservation is the
+       * whole point of the freeze — so this boolean is the only thing that can say the
+       * candidate was discarded rather than honestly refused again.
+       */
+      ...(REPAIR_FREEZE_VERDICT_ENABLED
+        ? { repair_freeze_violated: input.repairFreezeViolated ?? null }
+        : {}),
       ...(CHILD_REFUSAL_DIAGNOSTICS_ENABLED
         ? {
             refusal_code: input.refusal?.code ?? null,

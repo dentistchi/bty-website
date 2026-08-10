@@ -603,9 +603,20 @@ export async function generateProgram(
       On violation the candidate is discarded and the attempt terminates on the ORIGINAL
       refusal. A failed repair does not get to rewrite what went wrong.
     */
-    if (i > 0 && frozenRefusal && repairFreezeViolated({ ...frozenRefusal, before: frozenBaseline, after: r.parsed })) {
-      logOutcome("repair_freeze_violated", frozenRefusal.code);
-      validated = { ok: false, code: frozenRefusal.code, kind: frozenRefusal.kind };
+    /*
+      EVALUATED ONCE, BEFORE THE ROW IS WRITTEN (Slice 3.2P-R0.3). `undefined` means the freeze
+      was not evaluated for this call at all — the initial authorship call, or a refusal outside
+      the repairable set — and must never be stored as `false`. Only a retry that was actually
+      measured yields a boolean, and it is the SAME evaluation that decides whether to discard
+      the candidate, so the row can never disagree with what the service did.
+    */
+    let freezeVerdict: boolean | undefined;
+    if (i > 0 && frozenRefusal) {
+      freezeVerdict = repairFreezeViolated({ ...frozenRefusal, before: frozenBaseline, after: r.parsed });
+      if (freezeVerdict) {
+        logOutcome("repair_freeze_violated", frozenRefusal.code);
+        validated = { ok: false, code: frozenRefusal.code, kind: frozenRefusal.kind };
+      }
     }
     if (callId) {
       await finalizeProgramCall(admin, {
@@ -625,6 +636,13 @@ export async function generateProgram(
           only the last one.
         */
         refusal: validated.ok ? null : { code: validated.code, kind: validated.kind ?? null },
+        /*
+          INDEPENDENT OF `refusal` ABOVE, on purpose. A discarded repair keeps call 1's
+          ORIGINAL code — that truth-preservation is the point of the freeze — so this boolean
+          is the only field that can say the candidate was thrown away rather than refused
+          again on its own merits.
+        */
+        repairFreezeViolated: freezeVerdict ?? null,
         // THIS call's own diagnosis, written before the loop moves on — so a repair call
         // can never overwrite what call 1 proved. A structural fault carries its exact
         // path; a semantic one records only that it was a meaning fault and where.

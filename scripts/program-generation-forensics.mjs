@@ -40,6 +40,7 @@ const PARENT_COLS = [
 const CALL_COLS = [
   "call_sequence", "call_kind", "lifecycle_state", "outcome",
   "refusal_code", "refusal_kind",
+  "repair_freeze_violated",
   "validation_stage", "offending_path", "expected_type", "actual_type", "structural_retryable",
   "dependency_branch", "dependency_construct_kind", "dependency_counterpart_kind",
   "behavior_contract_field", "behavior_contract_reason",
@@ -71,16 +72,57 @@ for (const p of parents) {
     if (v === null || v === undefined) continue;
     console.log(`   ${c}: ${typeof v === "string" && v.length > 100 ? v.slice(0, 100) + "…" : v}`);
   }
-  const { data: calls } = await db
-    .from("foundry_program_generation_attempt_calls")
-    .select(CALL_COLS.join(", "))
-    .eq("attempt_id", p.id)
-    .order("call_sequence");
+  /*
+    A column named here may not exist live yet — this file deliberately lists every diagnostic,
+    including ones whose migration is still held. A failed projection must NOT silently blank
+    the child section; it degrades to the columns that do exist and SAYS which it dropped.
+  */
+  let calls = null;
+  let pending = [];
+  {
+    const first = await db
+      .from("foundry_program_generation_attempt_calls")
+      .select(CALL_COLS.join(", "))
+      .eq("attempt_id", p.id)
+      .order("call_sequence");
+    if (first.error) {
+      for (const c of CALL_COLS) {
+        const probe = await db.from("foundry_program_generation_attempt_calls").select(c).limit(1);
+        if (probe.error) pending.push(c);
+      }
+      const available = CALL_COLS.filter((c) => !pending.includes(c));
+      const retry = await db
+        .from("foundry_program_generation_attempt_calls")
+        .select(available.join(", "))
+        .eq("attempt_id", p.id)
+        .order("call_sequence");
+      calls = retry.data;
+      console.log(`   ! columns not yet live (migration held): ${pending.join(", ")}`);
+    } else {
+      calls = first.data;
+    }
+  }
   for (const call of calls ?? []) {
+    const absent = new Set(pending);
     console.log(`   ├─ seq${call.call_sequence} ${call.call_kind} → ${call.outcome}`);
     for (const c of CALL_COLS) {
       if (["call_sequence", "call_kind", "outcome"].includes(c)) continue;
       const v = call[c];
+      /*
+        `repair_freeze_violated` is the one column whose NULL is a DISTINCT third answer rather
+        than an absence, so it is always printed with its meaning spelled out. Never inferred
+        from response hashes, and a historical NULL is never read as "it held".
+      */
+      if (c === "repair_freeze_violated") {
+        if (absent.has(c)) { console.log("   │    repair_freeze_violated: (column not live yet)"); continue; }
+        const meaning = v === null || v === undefined
+          ? "null  (not evaluated / historical unknown)"
+          : v === true
+            ? "true  (evaluated — repair left its licence and was discarded)"
+            : "false (evaluated — repair stayed inside its licence)";
+        console.log(`   │    repair_freeze_violated: ${meaning}`);
+        continue;
+      }
       // NULL is meaningful here — it is how "no semantic refusal" is expressed — but printing
       // every null would bury the signal. Absence in this list means the column was null.
       if (v === null || v === undefined) continue;
