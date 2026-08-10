@@ -16,6 +16,7 @@ import {
   isSemanticRepairableCode,
   type ProgramRejectCode,
   semanticRepairInstruction,
+  scenarioRepairFreezeViolated,
   evidenceClaimBrief,
   materialAuthorityBrief,
   type MaterialAuthority,
@@ -481,6 +482,11 @@ export async function generateProgram(
   let repairable = false;
   /** Set when the ONE bounded repair is a meaning fault rather than a shape fault. */
   let semanticRepairCode: ProgramRejectCode | undefined;
+  /**
+   * The RAW proposal the repair is allowed to correct one field of (Slice 3.2O-R4). Held in
+   * memory for the length of this call only — never persisted, never logged, never returned.
+   */
+  let frozenBaseline: unknown;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const messages: LlmChatMessage[] =
@@ -538,7 +544,19 @@ export async function generateProgram(
       continue;
     }
 
-    const validated = validateProgramProposal(r.parsed, args.answers, args.verifiedArtifacts ?? []);
+    let validated = validateProgramProposal(r.parsed, args.answers, args.verifiedArtifacts ?? []);
+    /*
+      THE BOUNDED PRESSURE REPAIR IS FROZEN (Slice 3.2O-R4). A repair licensed to fix one
+      field may not return a second draft. If anything outside
+      `scenario_contract.pressure_condition` moved, the repair is discarded and the attempt
+      ends on the ORIGINAL refusal — the honest outcome, and one the vocabulary already has.
+    */
+    if (i > 0 && semanticRepairCode === "scenario_without_pressure" && validated.ok) {
+      if (scenarioRepairFreezeViolated(frozenBaseline, r.parsed)) {
+        logOutcome("repair_freeze_violated", "scenario_without_pressure");
+        validated = { ok: false, code: "scenario_without_pressure", kind: "scenario" };
+      }
+    }
     if (callId) {
       await finalizeProgramCall(admin, {
         callId,
@@ -636,6 +654,8 @@ export async function generateProgram(
       sentence away from being right.
     */
     semanticRepairCode = isSemanticRepairableCode(validated.code) ? validated.code : undefined;
+    // Only the pressure repair is field-scoped, so only it needs a baseline to freeze against.
+    frozenBaseline = semanticRepairCode === "scenario_without_pressure" ? r.parsed : undefined;
     repairable = isStructuralCode(validated.code) || semanticRepairCode !== undefined;
     logOutcome("rejected", validated.code);
     if (!repairable) break;

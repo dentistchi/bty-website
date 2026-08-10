@@ -105,10 +105,23 @@ describe("[3.2L-R11.4I] adversarial matrix, derived from the policy itself", () 
 });
 
 describe("[3.2L-R11.4I] bounded semantic repair", () => {
-  it("only the two honesty families are repairable", () => {
+  it("only the authorised families are repairable — everything else stays terminal", () => {
+    /*
+      R11.4I authorised two honesty families. Slice 3.2O-R4 added a third,
+      `scenario_without_pressure`, on proof that every defect carrying that code lives in the
+      two scenario pressure fields and touches neither the behaviour, the trigger nor the
+      trained action — and only alongside a deterministic freeze that discards any repair
+      which moves anything else. The property this test protects is unchanged: the set is
+      exactly the authorised codes, and every other code ends the attempt.
+    */
     expect(isSemanticRepairableCode("evidence_overclaim")).toBe(true);
     expect(isSemanticRepairableCode("material_fabrication")).toBe(true);
-    for (const terminal of ["scenario_without_pressure", "non_observable_standard", "dependency_inversion", "person_evaluation"] as const) {
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
+    for (const terminal of [
+      "scenario_independent_moment", "non_observable_standard", "dependency_inversion",
+      "person_evaluation", "scenario_unrelated", "application_moment_unrelated",
+      "generic_completion", "trigger_not_recurring", "complaint_replay",
+    ] as const) {
       expect(isSemanticRepairableCode(terminal), terminal).toBe(false);
     }
   });

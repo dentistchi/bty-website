@@ -60,6 +60,7 @@ import {
   validateBehaviorContract,
   validateProgramDependencies,
   validateScenarioContract,
+  scenarioPressurePromptLines,
   type ApplicationContract,
   type BehaviorContract,
   type CompletionContract,
@@ -970,7 +971,22 @@ export function isStructuralCode(code: ProgramRejectCode): boolean {
  * nothing else". Every other meaning fault stays terminal: a program that describes the
  * wrong behaviour is not one sentence away from being right.
  */
-const SEMANTIC_REPAIRABLE_CODES: readonly ProgramRejectCode[] = ["evidence_overclaim", "material_fabrication"];
+const SEMANTIC_REPAIRABLE_CODES: readonly ProgramRejectCode[] = [
+  "evidence_overclaim",
+  "material_fabrication",
+  /*
+    ADDED IN SLICE 3.2O-R4, and only after isolation was proven.
+    `no_pressure` is the LAST check in `validateScenarioContract` and is applied to
+    `pressure_condition` ALONE. So when this code fires, everything else about the scenario
+    has already passed: the detail is well-formed, neither field named a second occasion, and
+    the condition does not restate the trained action. The single field that has to change is
+    known before the repair call is written, which is what makes a bounded repair safe here
+    and not for its sibling `scenario_independent_moment` — a second occasion can mean the
+    scenario was built around the wrong moment, which is not one phrase away from right.
+    The repair is additionally frozen deterministically; see `scenarioRepairFreezeViolated`.
+  */
+  "scenario_without_pressure",
+];
 
 export function isSemanticRepairableCode(code: ProgramRejectCode): boolean {
   return SEMANTIC_REPAIRABLE_CODES.includes(code);
@@ -987,6 +1003,18 @@ export function semanticRepairInstruction(
 ): string {
   const preserve =
     "Keep the same behaviour, the same practice situation, the same structure and every section that was already honest. Change ONLY the sentences that break the rule. Return the SAME program with those corrected, and return ONLY the JSON object.";
+  if (code === "scenario_without_pressure") {
+    return [
+      "Your previous response gave the practice situation no real difficulty — the pressure field named nothing that competes with doing the behaviour properly.",
+      "Change ONLY the scenario pressure fields — scenario_contract.pressure_condition, and scenario_contract.pressure_detail if that is the one at fault. Leave every other field and every element exactly as they were.",
+      "Keep the same behaviour, the same actor, the same trigger and the same trained action. The situation still happens at the trigger.",
+      "Replace the pressure with a real constraint of one of these kinds:",
+      ...scenarioPressurePromptLines(),
+      "Do NOT introduce another time, meeting, call, appointment, deadline, shift or occasion — the pressure is a difficulty, never a second moment.",
+      "Do NOT restate the trained action as the pressure.",
+      "Return the SAME program with only that one field corrected, and return ONLY the JSON object.",
+    ].join(" ");
+  }
   if (code === "material_fabrication") {
     return [
       "Your previous response relied on a material that does not exist, or spoke for one nobody has read.",
@@ -1001,6 +1029,45 @@ export function semanticRepairInstruction(
     "Rewrite every sentence that claims a result, an improvement, an organisational outcome, or that the behaviour is now performed, verified or sustained. Say what the training ASKS people to do instead.",
     preserve,
   ].join(" ");
+}
+
+/**
+ * THE REPAIR FREEZE (Slice 3.2O-R4) — enforcement, not trust.
+ *
+ * A bounded repair is only safe if the model cannot use it as a second free draft. The
+ * instruction says to change one field; this proves it did. Everything except
+ * `program.scenario_contract.pressure_condition` must survive byte-identical — every element,
+ * the behaviour contract, the trigger, the pressure DETAIL, the enum contracts, the title,
+ * the assumptions and the warnings.
+ *
+ * Compared on the RAW parsed proposals rather than the validated ones, because the validated
+ * shape is partly derived and would hide a model edit behind BTY's own rendering.
+ */
+export function scenarioRepairFreezeViolated(before: unknown, after: unknown): boolean {
+  const blank = (v: unknown): string | null => {
+    if (!isPlainObject(v)) return null;
+    const p = (v as Record<string, unknown>).program;
+    if (!isPlainObject(p)) return null;
+    // Structured clone via JSON: the proposal is plain data by contract.
+    const copy = JSON.parse(JSON.stringify(p)) as Record<string, unknown>;
+    const sc = copy.scenario_contract;
+    if (!isPlainObject(sc)) return null; // a repair that drops the contract is a violation
+    /*
+      BOTH pressure fields, and nothing else. `scenario_without_pressure` is the code for
+      EVERY scenario defect except `independent_moment` — including `too_long` on
+      `pressure_detail` — so freezing the detail would make that sub-case unrepairable by
+      construction and waste the child call. Widening to the two pressure fields costs
+      nothing in safety: neither carries the actor, the trigger or the trained action, which
+      live in `behavior_contract` and are frozen with everything else.
+    */
+    (sc as Record<string, unknown>).pressure_condition = "\u0000FROZEN";
+    (sc as Record<string, unknown>).pressure_detail = "\u0000FROZEN";
+    return JSON.stringify(copy);
+  };
+  const a = blank(before);
+  const b = blank(after);
+  if (a === null || b === null) return true;
+  return a !== b;
 }
 
 /** One human-readable repair instruction — shape only, never the model's own words. */
