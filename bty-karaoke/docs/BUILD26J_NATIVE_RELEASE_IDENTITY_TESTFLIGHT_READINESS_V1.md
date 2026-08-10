@@ -1,10 +1,14 @@
 # BUILD 26J — Native Release Identity & TestFlight Readiness V1
 
-**Status:** `BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`
-**Interim closure:** 2026-08-10. Every repository-owned item (§1–§10, §15) is complete and
-verified. What remains requires assets and an Apple Developer account role this environment
-does not have: a distribution certificate, an App Store distribution profile, an App Store
-Connect app record, the upload, TestFlight processing, and the physical TestFlight gates.
+**Status:** `PASS / CLOSED`
+**Closed:** 2026-08-10, when build 88 was archived, validated, uploaded, processed by
+TestFlight, installed from TestFlight on a physical iPhone, and gates G1–G10 all passed.
+
+The distribution leg — certificate, App Store Connect record, archive, validation, upload,
+TestFlight, and the physical gates — was performed by the Founder as distribution operator.
+Those results are recorded here as **Founder-attested**; this document does not claim to have
+executed them. Everything measured from the repository, the built artifacts and live
+production was verified directly and is marked as such.
 
 BUILD 26J is a **release-readiness build**, not a feature build. No product behaviour was
 changed. Starting point: BUILD 26I `PASS / CLOSED`, native build 87.
@@ -13,26 +17,27 @@ changed. Starting point: BUILD 26I `PASS / CLOSED`, native build 87.
 
 ## 1. Verdict
 
-`BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`
+`PASS / CLOSED`
 
 | §19 PASS requirement | State |
 |---|---|
 | customer-facing name = `BTY Norebang` | ✅ verified in the built artifact, not just settings |
-| build = 88 | ✅ `CFBundleVersion 88` in the artifact |
+| build = 88 | ✅ `CFBundleVersion 88` in the artifact; **no build 89 was created** |
 | version = 1.0 | ✅ `CFBundleShortVersionString 1.0` |
-| valid Release archive | ⛔ **no distribution certificate exists** |
-| App Store validation clean | ⛔ blocked by the above |
-| TestFlight build processed | ⛔ blocked by the above |
-| TestFlight artifact installed on a physical iPhone | ⛔ blocked by the above |
-| G1–G10 | ⛔ blocked by the above |
-| privacy / support / deletion reviewer info verified | ✅ **privacy repaired (§9a) and `/support` created — both live (§9b, §9c)** |
-| full regression green | ✅ §15 |
+| valid Release archive | ✅ **archive succeeded** — Founder-attested |
+| App Store validation clean | ✅ **passed all checks** — Founder-attested |
+| TestFlight build processed | ✅ **upload succeeded, processing completed** — Founder-attested |
+| TestFlight artifact installed on a physical iPhone | ✅ **confirmed** — Founder-attested |
+| G1–G10 | ✅ **all PASS** — §19a, Founder-attested |
+| privacy / support / deletion reviewer info verified | ✅ privacy repaired (§9a/§9b), `/support` live (§9c), export declared (§10) |
+| full regression green | ✅ §13 — re-measured at closure |
 | closure committed and pushed | ✅ this file |
-| HEAD/origin `0 0` | ✅ §19 |
-| unrelated dirty state preserved | ✅ §19 |
+| HEAD/origin `0 0` | ✅ §18 |
+| unrelated dirty state preserved | ✅ §18 |
 
 **A successful build is not PASS. An archive is not PASS. An upload without installing the
-TestFlight artifact is not PASS.** None of those has happened, and none is claimed.
+TestFlight artifact is not PASS.** All three happened, plus the install and the gates — which
+is why this closes.
 
 ---
 
@@ -490,23 +495,27 @@ Authority for every line: BUILD 26I `PASS / CLOSED`, 12/12 production tombstones
 
 ---
 
-## 13. Regression (§15) — measured this build
+## 13. Regression (§15) — re-measured at closure
 
 ```
-server unit suite      220 files / 2441 tests passed, 0 failed   (+2 legal, +12 support)
-TypeScript             tsc --noEmit clean, exit 0
-Cloudflare build       OpenNext build complete — worker.js emitted
-native host suite      2002 passed, 0 failed      (1993 at 26I; +9 identity pins)
-                       NOTE: the directive's expected 1999 is stale — it predates pins 17g/17h
+server unit suite      220 files / 2441 tests passed, 0 failed
+TypeScript             tsc --noEmit clean
+Cloudflare build       clean — OpenNext build complete
+native host suite      2002 passed, 0 failed      (1993 at 26I; +9 identity/compliance pins)
 native Guest suite      854 passed, 0 failed
-identity mutants        11 / 11 killed, 0 survivors, pbxproj restored byte-identical
-privacy mutants          8 / 8  killed, 0 survivors, page.tsx restored byte-identical
-export-compliance        4 / 4  killed, 0 survivors, pbxproj restored byte-identical
-tracked-tree stability  digest identical at t0 / t1 / t2 across build+test activity
-native Debug build     ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
-native Release build   ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
-Archive                NOT ATTEMPTED — no distribution certificate (§4)
-xcscheme SHA-256       32b3247e…aa1e — unchanged
+localization           403 keys · 403 manual · 0 non-manual · 12/12 mutants
+identity mutants        11 / 11 killed   privacy mutants 8 / 8   export-compliance 4 / 4
+                        0 survivors; every mutated file restored byte-identical
+native Debug build     ** BUILD SUCCEEDED **   iOS 18.0
+native Release build   ** BUILD SUCCEEDED **   iOS 18.0
+xcscheme SHA-256       32b3247e…aa1e — unchanged throughout
+```
+
+Built artifact, both configurations, re-checked at closure:
+
+```
+Release / Debug   name 'BTY Norebang' · build 88 · version 1.0 · minOS 18.0
+                  UIDeviceFamily [1] · ITSAppUsesNonExemptEncryption False (Boolean, not "NO")
 ```
 
 ---
@@ -577,8 +586,9 @@ f4de8d76  docs(karaoke): BUILD 26J — interim release-readiness record, BLOCKED
 cdc6488c  fix(karaoke):  BUILD 26J — privacy policy must not deny the Google Sign-In it ships
 e226beaa  docs(karaoke): BUILD 26J — privacy repair deployed and proven live
 22054248  feat(karaoke): BUILD 26J-R2 — public /support page (App Store requires a Support URL)
-<native>  chore(ios):    BUILD 26J-R2 — declare export compliance NO in every configuration
-<this>    docs(karaoke): BUILD 26J-R2 — support page + export compliance, both proven
+459744a   chore(ios):    BUILD 26J-R2 — declare export compliance NO in every configuration
+df43accb  docs(karaoke): BUILD 26J-R2 — support page + export compliance, both proven
+<this>    docs(karaoke): BUILD 26J — PASS / CLOSED, TestFlight build 88 gates G1–G10
 ```
 
 **Provenance, stated factually:** every BUILD 26J change was authored and verified in the
@@ -591,52 +601,134 @@ deliberately left uncommitted.
 
 ---
 
-## 17. What remains — distribution operator gates
+## 17. Distribution — operator evidence (Founder-attested)
+
+The distribution leg was executed by the Founder as distribution operator. Recorded exactly as
+reported; this document did not perform it.
 
 ```
-§11  Archive              requires an Apple Distribution certificate
-§12  Validation           requires the archive
-§13  TestFlight upload    requires an App Store Connect app record + credentials
-§14  G1–G10 on device     requires the processed TestFlight artifact
+App Store Connect record   BTY Norebang
+Bundle ID                  com.bty.BTYNorebangAdmin      (unchanged — never renamed)
+Version                    1.0
+Build                      88                            (no build 89 was created)
+Archive                    SUCCEEDED
+App Store validation       PASSED — all checks
+Upload                     SUCCEEDED
+TestFlight processing      COMPLETED
+Internal test group        BTY Internal
+Physical iPhone install    CONFIRMED — installed from TestFlight, not from Xcode
 ```
 
-Plus, before submission:
-
-- delete the stray **`com.bty.BTYNorebang`** App ID (§15) — manual, operator-only.
-
-Closed by this build: the privacy-policy scope now names the iOS app and the Google Sign-In
-disclosure is truthful and live (§9a/§9b); **`/support` exists and is live** (§9c); and
-**export compliance is declared and artifact-proven** (§10).
+The install distinction matters and was the standing rule for this build: an Xcode-installed
+build proves the project compiles; only the TestFlight artifact proves what a tester receives.
 
 ---
 
-## 18. Explicit non-claims
+## 17a. G1–G10 — physical device, TestFlight build 88
 
-1. **No archive was produced.** Not attempted — there is no distribution certificate.
-2. **Nothing was uploaded to App Store Connect or TestFlight.**
-3. **G1–G10 have not been run.** No TestFlight artifact exists to install.
-4. **The release candidate has not been installed on a physical device.** The Release build
-   verified here is development-signed (`get-task-allow: true`) and is not the artifact that
-   would ship.
-5. **iOS 18.0 is proven to compile, not proven at runtime on an iOS 18 device.** Every device
-   gate to date ran on the tester's current OS. A genuine iOS 18 device check belongs with
-   the TestFlight gates.
-6. **The `workers.dev` API origin was not changed**, only recorded (§7).
-6a. **`/support` now exists** (§9c) — but no App Store Connect record exists to enter it
-   into, so the Support URL is verified live and still unconsumed.
-7. **`ITSAppUsesNonExemptEncryption` was not declared** — a legal statement for the Founder.
-8. **The Apple-linking product gap was not repaired** (§13), by directive.
+All ten gates **PASS**, run on a real iPhone against the TestFlight artifact.
+
+| Gate | Verdict | What it established |
+|---|---|---|
+| **G1** Installed identity | **PASS** | home screen reads **BTY Norebang**, not "BTY Norebang Admin" |
+| **G2** Launch | **PASS** | cold launch succeeds with no dev-server dependency |
+| **G3** Google sign-in | **PASS** | |
+| **G4** Apple sign-in | **PASS** | |
+| **G5** Host | **PASS** | Host surface opens / creates normally |
+| **G6** Guest QR | **PASS** | guest QR flow loads |
+| **G7** QR → Native handoff | **PASS — with a UX finding** | see below |
+| **G8** KO / EN | **PASS** | both languages render correctly |
+| **G9** Delete Account discoverability | **PASS** | deletion remains visible and reachable; main account NOT deleted |
+| **G10** Relaunch | **PASS** | force-quit → relaunch keeps the correct auth state |
+
+**G7 in full, because the headline hides something real.** The technical QR → Native handoff
+works: the deep link resolves and the app opens into the room. But the Safari handoff page
+tells the user to **tap the link again**, while the affordance that actually opens the
+installed app is Safari's **Smart App Banner "OPEN" button**. The instruction and the working
+control are different things on the same screen.
+
+That is a copy defect, not a handoff defect — the mechanism BUILD 19B/26H built is intact and
+was exercised end to end. It is recorded as a **finding, not a silent pass**, and repair is
+deferred to a future UX build rather than patched here: BUILD 26J does not own UX, and the
+alternative would have been an unreviewed copy change shipped after the gates that validated
+the build.
 
 ---
 
-**BUILD 26J is `BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`.**
+## 17b. Live production surfaces at closure
 
-The app's customer-facing identity is now correct and pinned against regression: it installs
-as **BTY Norebang**, build **88**, version **1.0**, iPhone-only, minimum iOS **18.0**, with
-the bundle identifier deliberately unchanged. The Release artifact was audited as an artifact
-— its Info.plist, its entitlements, its icon assets, and its raw strings — and carries no
-development leak. The App Privacy ledger and reviewer notes are evidence-backed and ready to
-transcribe into App Store Connect.
+Re-verified at closure, not carried over from the deploy:
 
-What stands between this and TestFlight is not code. It is a distribution certificate, an app
-record, and a support page.
+```
+/support   200   bilingual (Support / 고객지원)      live
+/privacy   200   Google Sign-In disclosed as authentication — repair still live
+/terms     200
+live build {"build":"22054248ecc1"}
+```
+
+---
+
+## 18. Preserved findings and explicit non-claims
+
+Closed by BUILD 26J and no longer open: the archive, validation, upload, TestFlight
+processing, the physical install and G1–G10; `/support`; the export-compliance declaration;
+the privacy-policy scope and the Google Sign-In disclosure.
+
+**Findings that remain true and are deliberately NOT repaired here:**
+
+1. **Google-first → Add Apple is not supported in the native UI.** `canAdd` is hard-coded
+   `false` for Apple at
+   [`HostViews.swift:915`](../../bty-norebang-admin-ios/BTYNorebangAdmin/HostViews.swift#L915),
+   with no `add_apple` affordance anywhere in the client, while the server's
+   `POST /api/host/identities` accepts both providers. A Google-first user cannot reach the
+   linked topology on iOS. Measured in BUILD 26I; it cost two extra production deletions to
+   work around during that build's G6. **Recommended as its own build.**
+2. **The QR → Native handoff copy is ambiguous although the technical flow passes** (§17a,
+   G7). The Safari handoff page says to tap the link again; the control that actually opens
+   the installed app is Safari's Smart App Banner **OPEN** button. Copy defect, not a handoff
+   defect. **Deferred to a future UX build.**
+3. **The stray developer App ID `com.bty.BTYNorebang` remains unused and pending manual
+   housekeeping** (§15). It was created when a mutation test rewrote the bundle identifier
+   while Xcode was open. It is a development App ID, consumes no certificate slot, is not
+   referenced by the project, and was never touched again. **Delete it manually; nothing
+   automated should.**
+4. **iOS 17 is not supported without a `QueueView` fallback.** `onScrollGeometryChange`
+   ([`QueueView.swift:169`](../../bty-norebang-admin-ios/BTYNorebangAdmin/QueueView.swift#L169))
+   is iOS 18+, and it is the single call site standing between 18.0 and 17.0; 16.0 fails on
+   thirteen further sites. **iOS 18.0 is the measured minimum for the current code**, proven
+   by compilation rather than asserted — an API grep claimed 16.0 and the compiler disproved
+   it.
+
+**Still not claimed:**
+
+5. **App Review submission has not happened.** BUILD 26J ends at TestFlight; nothing here
+   asserts the app has been submitted for review or released.
+6. **The `workers.dev` API origin was not changed**, only recorded (§7). Pinning a shipped app
+   to a Cloudflare-owned hostname remains a fragility worth a future decision.
+7. **`-allowProvisioningUpdates` was run once contrary to instruction** (§15). Re-verified at
+   every subsequent checkpoint: it created no distribution certificate and no distribution
+   profile.
+8. **The §18 xcscheme baseline describes the dirty working tree, not HEAD** (§2). It was
+   preserved byte-identical at `32b3247e…aa1e` through every phase.
+
+---
+
+**BUILD 26J is `PASS / CLOSED`** as of 2026-08-10.
+
+The app now installs as **BTY Norebang** — build **88**, version **1.0**, iPhone-only, minimum
+iOS **18.0**, English and Korean — and that identity was verified in the built artifact rather
+than in project settings, then pinned against regression by checks that count declarations per
+build configuration, because mutation testing proved a `contains` assertion lets a
+Debug/Release split through.
+
+Two false or missing public promises were found and fixed on the way: a privacy policy that
+denied the Google Sign-In the product ships, with the denial pinned as contract by its own
+test, and a Support URL that did not exist. Both are live and proven on production, not merely
+built. Export compliance is declared and proven in the artifact as a genuine Boolean, backed
+by a symbol-level audit that covered the statically linked Google SDKs and found zero
+non-exempt cryptography.
+
+Build 88 was archived, validated, uploaded, processed, installed from TestFlight on a physical
+iPhone, and put through ten gates. **No build 89 was created**, no bundle identifier was
+renamed, no Apple Developer resource was created or deleted automatically, and the four
+findings above are recorded as findings rather than quietly closed.
