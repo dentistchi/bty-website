@@ -218,13 +218,15 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
 });
 
 describe("[3.2P-R0.3] historical compatibility", () => {
-  it("F — the write is gated until the column exists, so old rows and old payloads are safe", async () => {
+  it("F — the column is live, so the verdict is written; historical rows keep their own NULL", async () => {
     /*
-      The flag is FALSE until the Founder applies 20260817000000. While it is, the update
-      payload is byte-identical to the pre-migration one — the verdict is computed and passed,
-      and simply not written. That is what makes deploying this before the DDL safe.
+      Gated FALSE while 20260817000000 was held, so the payload stayed byte-identical to the
+      pre-migration one and a generation could not fail on a column that did not exist. The
+      Founder has applied it and the live column was verified before this flipped, so the
+      verdict is now persisted. Historical rows are untouched by that: they hold NULL, which
+      means UNKNOWN, and nothing backfills them.
     */
-    expect(REPAIR_FREEZE_VERDICT_ENABLED).toBe(false);
+    expect(REPAIR_FREEZE_VERDICT_ENABLED).toBe(true);
 
     const writes: Record<string, unknown>[] = [];
     const capturing = {
@@ -250,8 +252,9 @@ describe("[3.2P-R0.3] historical compatibility", () => {
       refusal: { code: "scenario_without_pressure", kind: "scenario" },
       repairFreezeViolated: true,
     });
-    expect(Object.keys(writes[0]), "column absent from the payload while the flag is off")
-      .not.toContain("repair_freeze_violated");
+    expect(Object.keys(writes[0]), "the verdict now reaches the row")
+      .toContain("repair_freeze_violated");
+    expect(writes[0].repair_freeze_violated).toBe(true);
     // Every other diagnostic still goes out, so nothing is lost by the gate.
     expect(writes[0]).toMatchObject({ outcome: "schema_invalid", refusal_code: "scenario_without_pressure" });
   });

@@ -76,18 +76,23 @@ export const CHILD_REFUSAL_DIAGNOSTICS_ENABLED = true;
 /**
  * Live schema support for the repair-freeze verdict (migration 20260817000000).
  *
- * FALSE until the Founder executes that migration. While it is false the update payload stays
- * byte-identical to the pre-migration one — writing a column that does not exist fails the
- * whole update and loses every other diagnostic on the row, which is strictly worse than
- * recording nothing. Same deploy order the three flags above each followed.
+ * TRUE since the Founder executed that migration (Slice 3.2P-R0.3A). Verified live before this
+ * flag was flipped, not inferred from the migration text: the column resolves through a direct
+ * projection; all 32 historical rows hold NULL and none holds a value; and a non-writing type
+ * probe — an insert whose `attempt_id` does not exist, so no row is ever created — was rejected
+ * `22P02` for `'banana'` and for `7`, while `true`, `false` and `null` passed the column and
+ * were stopped later by an unrelated constraint. That is a boolean column, nullable, holding
+ * nothing historical. It was false through the preceding commit for the same reason as its
+ * three predecessors: writing a column that does not exist fails the whole update and loses
+ * every other diagnostic on the row.
  *
- * WHY THE COLUMN EXISTS. W2's two child calls record the same refusal, and the ledger cannot
- * say whether the licensed retry stayed inside its envelope and failed honestly, or left it
- * and was discarded — because the freeze overwrites the validation result BEFORE the child is
- * finalized, so both outcomes write identical rows. The distinction lived only in a
+ * WHY THE COLUMN EXISTS. W2's two child calls record the same refusal, and the ledger could not
+ * say whether the licensed retry stayed inside its envelope and failed honestly, or left it and
+ * was discarded — because the freeze overwrites the validation result BEFORE the child is
+ * finalized, so both outcomes wrote identical rows. The distinction lived only in a
  * `console.info` on a Worker that retains no logs.
  */
-export const REPAIR_FREEZE_VERDICT_ENABLED = false;
+export const REPAIR_FREEZE_VERDICT_ENABLED = true;
 
 /**
  * EXACT PROPOSAL IDENTITY (Slice 3.2L-R11.3) — OFF until the Founder executes
