@@ -27,6 +27,23 @@ export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 
 /**
+ * Live schema support for the two child refusal columns (migration 20260815000000).
+ *
+ * TRUE since the Founder executed that migration (Slice 3.2P-R0.2): both columns exist and
+ * are nullable, and all thirty historical rows hold NULL — verified live before this flag was
+ * flipped. It was false through the preceding deploy for the same reason as its two
+ * predecessors: writing a column that does not exist fails the whole update and loses the
+ * diagnosis entirely, which is strictly worse than recording nothing.
+ *
+ * WHY THE COLUMNS EXIST AT ALL. The PARENT stores one refusal — the last one. A repaired
+ * attempt makes two calls that can fail for different reasons, and the fourth pilot window
+ * proved the cost: its first call was refused on `elements.reflection`, its repair was refused
+ * for a different fault, and afterwards nothing could say which honesty rule the first refusal
+ * had been. Each call now carries its own answer.
+ */
+export const CHILD_REFUSAL_DIAGNOSTICS_ENABLED = true;
+
+/**
  * EXACT PROPOSAL IDENTITY (Slice 3.2L-R11.3) — OFF until the Founder executes
  * `20260811000000_foundry_program_proposal_digest_v1.sql`.
  *
@@ -134,6 +151,16 @@ export type FinalizeProgramCallInput = {
    * Dependency facts for THIS call, when the refusal was a dependency inversion. A closed
    * vocabulary only: the construct's generated LABEL is prose and is never passed here.
    */
+  /**
+   * The refusal THIS call produced, exactly as the validator reported it (Slice 3.2P-R0.2).
+   * Passed from the same result that controls runtime behaviour — never re-derived from the
+   * parent, the offending path, or whether a repair was eligible. Absent for every outcome
+   * that is not a semantic/validation refusal, where NULL is the honest value.
+   */
+  refusal?: {
+    code: string;
+    kind: string | null;
+  } | null;
   dependency?: {
     branch: DependencyBranch;
     constructKind: string | null;
@@ -332,6 +359,19 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
             dependency_branch: input.dependency?.branch ?? null,
             dependency_construct_kind: input.dependency?.constructKind ?? null,
             dependency_counterpart_kind: input.dependency?.counterpartKind ?? null,
+          }
+        : {}),
+      /**
+       * THIS CALL'S OWN REFUSAL (Slice 3.2P-R0.2). Written only when the caller passes one —
+       * a provider timeout, a transport error, an unparseable body or a success all leave both
+       * NULL, because none of them produced a named semantic refusal and inventing one would
+       * be worse than recording nothing. Coexists with every other diagnostic: a dependency
+       * refusal carries its code, its kind AND its three dependency facts.
+       */
+      ...(CHILD_REFUSAL_DIAGNOSTICS_ENABLED
+        ? {
+            refusal_code: input.refusal?.code ?? null,
+            refusal_kind: input.refusal?.kind ?? null,
           }
         : {}),
     })

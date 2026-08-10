@@ -572,6 +572,13 @@ export async function generateProgram(
         totalTokens: r.usage?.total ?? null,
         responseBytes: digest?.bytes ?? null,
         responseSha256: digest?.sha256 ?? null,
+        /*
+          THIS CALL'S OWN REFUSAL, from the SAME validated result that decides what happens
+          next (Slice 3.2P-R0.2) — never re-derived from the parent's final outcome. A
+          repaired attempt makes two calls that can fail differently, and the parent keeps
+          only the last one.
+        */
+        refusal: validated.ok ? null : { code: validated.code, kind: validated.kind ?? null },
         // THIS call's own diagnosis, written before the loop moves on — so a repair call
         // can never overwrite what call 1 proved. A structural fault carries its exact
         // path; a semantic one records only that it was a meaning fault and where.
