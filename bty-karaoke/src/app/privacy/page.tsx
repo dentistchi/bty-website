@@ -41,9 +41,10 @@ export default function PrivacyPage() {
 
         <h2>2. Scope</h2>
         <p>
-          This policy covers the public {PRODUCT_NAME} web service. It does not cover YouTube, Google,
-          or any third-party website you open from our service; those are governed by their own
-          policies.
+          This policy covers the public {PRODUCT_NAME} web service <strong>and the BTY Norebang iOS
+          app</strong>. They are the same service; “BTY Norebang” is the name the app installs under.
+          It does not cover YouTube, Google, or any third-party website you open from our service;
+          those are governed by their own policies.
         </p>
 
         <h2>3. Information you provide</h2>
@@ -79,13 +80,19 @@ export default function PrivacyPage() {
           <Ext href={LEGAL_LINKS.googlePrivacy}>Google Privacy Policy</Ext>.
         </p>
         <p>
-          <strong>No Google sign-in.</strong> {PRODUCT_NAME} does not use Google OAuth or Google
-          sign-in, does not access your private Google or YouTube account, does not read your
-          subscriptions/history/playlists, and never uploads, deletes, or modifies anything in a
-          YouTube account. We do not collect Google passwords or credentials. You can review or manage
-          which apps have access to your Google Account at any time on the{' '}
-          <Ext href={LEGAL_LINKS.googlePermissions}>Google security &amp; permissions page</Ext>;
-          because we request no Google authorization, {PRODUCT_NAME} does not appear there.
+          <strong>Google Sign-In and YouTube access are separate.</strong> {PRODUCT_NAME} uses Google
+          Sign-In for authentication. It does <strong>not</strong> request authorization to access or
+          manage your YouTube account: it does not read your subscriptions, watch history, or
+          playlists, and it never uploads, deletes, or modifies anything in a YouTube account. We do
+          not collect Google passwords or credentials.
+        </p>
+        <p>
+          If you sign in with Google, {PRODUCT_NAME} may appear among the apps connected to your
+          Google Account on the{' '}
+          <Ext href={LEGAL_LINKS.googlePermissions}>Google security &amp; permissions page</Ext>,
+          where you can review or remove that access at any time. That entry reflects Google Sign-In
+          access for authentication; it does not mean the app has access to your YouTube
+          subscriptions, watch history, playlists, or channel-management permissions.
         </p>
 
         <h2>6. Browser storage and cookies</h2>
@@ -238,8 +245,9 @@ export default function PrivacyPage() {
 
         <h2>2. 적용 범위</h2>
         <p>
-          본 방침은 공개 {PRODUCT_NAME} 웹 서비스에 적용됩니다. 서비스에서 이동하는 YouTube·Google 등
-          외부 사이트에는 각 사업자의 방침이 적용됩니다.
+          본 방침은 공개 {PRODUCT_NAME} 웹 서비스와 <strong>BTY Norebang iOS 앱</strong>에
+          적용됩니다. 둘은 동일한 서비스이며, “BTY Norebang”은 앱이 설치될 때 표시되는 이름입니다.
+          서비스에서 이동하는 YouTube·Google 등 외부 사이트에는 각 사업자의 방침이 적용됩니다.
         </p>
 
         <h2>3. 이용자가 제공하는 정보</h2>
@@ -269,12 +277,17 @@ export default function PrivacyPage() {
           데이터 처리는 <Ext href={LEGAL_LINKS.googlePrivacy}>Google 개인정보처리방침</Ext>을 따릅니다.
         </p>
         <p>
-          <strong>Google 로그인 없음.</strong> {PRODUCT_NAME}은(는) Google OAuth·로그인을 사용하지
-          않고, 이용자의 비공개 Google·YouTube 계정에 접근하지 않으며(구독·기록·재생목록 등 읽지 않음),
-          YouTube 계정에 무엇도 업로드·삭제·수정하지 않습니다. Google 비밀번호나 자격 증명을 수집하지
-          않습니다. Google 계정 접근 권한은 언제든{' '}
-          <Ext href={LEGAL_LINKS.googlePermissions}>Google 보안·권한 페이지</Ext>에서 관리할 수 있으며,
-          {PRODUCT_NAME}은(는) 어떤 Google 권한도 요청하지 않으므로 그 목록에 표시되지 않습니다.
+          <strong>Google 로그인과 YouTube 접근은 별개입니다.</strong> {PRODUCT_NAME}은(는) 사용자
+          인증을 위해 Google 로그인을 사용합니다. YouTube 계정에 접근하거나 이를 관리하기 위한 권한은{' '}
+          <strong>요청하지 않습니다</strong> — 구독·시청 기록·재생목록을 읽지 않으며, YouTube 계정에
+          무엇도 업로드·삭제·수정하지 않습니다. Google 비밀번호나 자격 증명을 수집하지 않습니다.
+        </p>
+        <p>
+          Google로 로그인한 경우 {PRODUCT_NAME}이(가) Google 계정에 연결된 앱 목록(
+          <Ext href={LEGAL_LINKS.googlePermissions}>Google 보안·권한 페이지</Ext>)에 표시될 수
+          있으며, 해당 페이지에서 언제든 확인하거나 연결을 해제할 수 있습니다. 이는 로그인 인증을 위한
+          연결을 의미하며, YouTube 구독, 시청 기록, 재생목록 또는 채널 관리 권한에 접근한다는 의미가
+          아닙니다.
         </p>
 
         <h2>6. 브라우저 저장소·쿠키</h2>

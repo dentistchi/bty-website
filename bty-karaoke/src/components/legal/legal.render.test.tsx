@@ -24,10 +24,49 @@ describe('Privacy page — public, bilingual, YouTube + retention + contact', ()
     expect(screen.getByRole('heading', { level: 1, name: '개인정보처리방침' })).toBeTruthy();
     const text = container.textContent ?? '';
     expect(text).toMatch(/YouTube API Services/); // states BTY uses YouTube API Services
-    expect(text).toMatch(/does not use Google OAuth|Google 로그인 없음/);
     expect(text).toMatch(/Retention|보관/);
     expect(text).toMatch(/deletion|삭제/);
     expect(text).toContain(CONTACT_EMAIL); // real contact
+  });
+
+  // BUILD 26J. This test used to assert `/does not use Google OAuth|Google 로그인 없음/`,
+  // pinning a claim that had become FALSE: the product ships Google Sign-In on both web
+  // (/host/auth/google) and iOS (GoogleSignIn SDK). A test that encodes a false disclosure
+  // as contract makes the disclosure harder to fix than it was to write — the same failure
+  // BUILD 26E hit. What is pinned now is the distinction that is actually true and actually
+  // matters to a user: we authenticate with Google, and we ask for nothing on YouTube.
+  it('states Google Sign-In is authentication only, with no YouTube authorization — both languages', () => {
+    const { container } = render(<PrivacyPage />);
+    const text = container.textContent ?? '';
+
+    // The false claim must never return, in either language.
+    expect(text).not.toMatch(/does not use Google OAuth/);
+    expect(text).not.toMatch(/Google 로그인 없음/);
+    expect(text).not.toMatch(/does not appear there/);
+    expect(text).not.toMatch(/어떤 Google 권한도 요청하지 않으므로/);
+
+    // Google Sign-In is disclosed as authentication.
+    expect(text).toMatch(/uses Google\s+Sign-In for authentication/);
+    expect(text).toMatch(/인증을 위해\s+Google 로그인을 사용합니다/);
+
+    // …and the YouTube boundary is stated, not implied.
+    expect(text).toMatch(/not.{0,40}request authorization to access or\s+manage your YouTube account/s);
+    expect(text).toMatch(/YouTube 계정에 접근하거나 이를 관리하기 위한 권한은/);
+
+    // The connected-apps entry is explained rather than denied.
+    expect(text).toMatch(/may appear among the apps connected to your\s+Google Account/);
+    expect(text).toMatch(/Google 계정에 연결된 앱 목록/);
+    expect(text).toMatch(/does not mean the app has access to your YouTube/);
+    expect(text).toMatch(/채널 관리 권한에 접근한다는 의미가\s+아닙니다/);
+  });
+
+  // The scope sentence had to name the iOS app: BUILD 26J submits an App Store binary, and a
+  // policy scoped to "the web service" is the wrong document to hand a reviewer.
+  it('scopes itself to the iOS app as well as the web service — both languages', () => {
+    const { container } = render(<PrivacyPage />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/web service.{0,30}and the BTY Norebang iOS\s+app/s);
+    expect(text).toMatch(/BTY Norebang iOS 앱/);
   });
 
   it('links to Google Privacy Policy, YouTube Terms, and BTY Terms — with safe attrs', () => {
