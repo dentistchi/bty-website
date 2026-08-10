@@ -1,0 +1,479 @@
+# BUILD 26J — Native Release Identity & TestFlight Readiness V1
+
+**Status:** `BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`
+**Interim closure:** 2026-08-10. Every repository-owned item (§1–§10, §15) is complete and
+verified. What remains requires assets and an Apple Developer account role this environment
+does not have: a distribution certificate, an App Store distribution profile, an App Store
+Connect app record, the upload, TestFlight processing, and the physical TestFlight gates.
+
+BUILD 26J is a **release-readiness build**, not a feature build. No product behaviour was
+changed. Starting point: BUILD 26I `PASS / CLOSED`, native build 87.
+
+---
+
+## 1. Verdict
+
+`BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`
+
+| §19 PASS requirement | State |
+|---|---|
+| customer-facing name = `BTY Norebang` | ✅ verified in the built artifact, not just settings |
+| build = 88 | ✅ `CFBundleVersion 88` in the artifact |
+| version = 1.0 | ✅ `CFBundleShortVersionString 1.0` |
+| valid Release archive | ⛔ **no distribution certificate exists** |
+| App Store validation clean | ⛔ blocked by the above |
+| TestFlight build processed | ⛔ blocked by the above |
+| TestFlight artifact installed on a physical iPhone | ⛔ blocked by the above |
+| G1–G10 | ⛔ blocked by the above |
+| privacy / support / deletion reviewer info verified | ⚠ **partial — Support URL is 404 (§8)** |
+| full regression green | ✅ §15 |
+| closure committed and pushed | ✅ this file |
+| HEAD/origin `0 0` | ✅ §19 |
+| unrelated dirty state preserved | ✅ §19 |
+
+**A successful build is not PASS. An archive is not PASS. An upload without installing the
+TestFlight artifact is not PASS.** None of those has happened, and none is claimed.
+
+---
+
+## 2. Preflight (§1)
+
+```
+native HEAD = origin/main = 25b27400eb15a452433fb5b034ff16fd54e1c0a3   left/right 0 0
+pre-existing dirty: BTYNorebangAdmin.xcscheme ONLY
+   working tree  32b3247e521d95769aba3d0a407c449f38c82f3cee1fa7e1a5aff898f947aa1e   ← preserved
+   HEAD          215cc266bab9d4dcb0438292ec9c72b6f72fde8ee869e06d3f7c1ce2ba078486
+```
+
+The scheme's `ArchiveAction` is already `buildConfiguration = "Release"` **in the committed
+file** — the uncommitted delta touches only `LaunchAction`. Archiving therefore needs no
+scheme change, and none was made.
+
+---
+
+## 3. Toolchain (§2)
+
+```
+Xcode          26.5 (17F42)
+iPhoneOS SDK   26.5 (23F73)
+macOS          26.5.2 (25F84)
+signing team   CS92W2HFCH
+signing style  Automatic
+```
+
+**The toolchain is not the blocker.** It can produce an App Store artifact. What is missing
+is signing material.
+
+---
+
+## 4. THE BLOCKER — distribution assets and upload credentials
+
+```
+Apple Distribution certificates    0
+iPhone Distribution certificates   0
+codesigning identities             1  →  "Apple Development: Hanbit Chi"   (development only)
+
+provisioning profiles              ALL development:
+   com.bty.BTYNorebangAdmin   ProvisionedDevices YES · get-task-allow true · beta-reports-active none
+   com.btyarena.app           ProvisionedDevices YES · get-task-allow true
+   XC Wildcard CS92W2HFCH.*   ProvisionedDevices YES · get-task-allow true
+
+App Store Connect API key          absent
+notarytool / altool credentials    none stored
+signed-in Xcode account            no evidence (IDEProvisioningTeams unset)
+```
+
+`get-task-allow: true` with `ProvisionedDevices` present is definitive: every profile is a
+development profile. The signed Release artifact this build produced carries
+`get-task-allow: true`, which App Store Connect rejects by construction.
+
+**Operator actions required** (none performed here — see §16):
+1. sign into Xcode with the Apple Developer account,
+2. create an **Apple Distribution** certificate,
+3. create the **BTY Norebang** app record in App Store Connect for
+   `com.bty.BTYNorebangAdmin`,
+4. then §11–§14 can run.
+
+---
+
+## 5. Identity — before / after (§3, §4)
+
+Changed uniformly across **both** build configurations:
+
+| Setting | Before | After |
+|---|---|---|
+| `INFOPLIST_KEY_CFBundleDisplayName` | `BTY Norebang Admin` | **`BTY Norebang`** |
+| `CURRENT_PROJECT_VERSION` | 87 | **88** |
+| `TARGETED_DEVICE_FAMILY` | `1,2,7` (iPhone, iPad, Vision) | **`1`** (iPhone) |
+| `SUPPORTED_PLATFORMS` | `iphoneos iphonesimulator macosx xros xrsimulator` | **`iphoneos iphonesimulator`** |
+| `IPHONEOS_DEPLOYMENT_TARGET` | 26.5 | **18.0** |
+| `MACOSX_DEPLOYMENT_TARGET` / `XROS_DEPLOYMENT_TARGET` | 26.5 | **removed** (dead config for unshipped platforms) |
+
+Deliberately **unchanged**: `PRODUCT_BUNDLE_IDENTIFIER = com.bty.BTYNorebangAdmin`,
+`MARKETING_VERSION = 1.0`, target `BTYNorebangAdmin`, scheme `BTYNorebangAdmin`, Xcode
+project, source directories, git repository. Renaming the bundle identifier would mean a new
+App Store record and a lost install base; the historic `Admin` suffix stays.
+
+### Deployment target — proven, not asserted
+
+An API grep put the floor at iOS 16.0. **The compiler proved that wrong**, which is why it
+was proven by compilation rather than by reading:
+
+```
+15.0   FAILS   NavigationStack, ViewThatFits, ShareLink, presentationDetents, scrollContentBackground…
+16.0   FAILS   onChange(of:initial:) ×13, safeAreaPadding ×4, scrollBounceBehavior (16.4)
+17.0   FAILS   exactly ONE call site
+18.0   ** BUILD SUCCEEDED **
+```
+
+The single API between 18.0 and 17.0 is `onScrollGeometryChange` at
+[`QueueView.swift:169`](../../bty-norebang-admin-ios/BTYNorebangAdmin/QueueView.swift#L169),
+driving the Now Singing collapse during queue scroll. A 17.0 fallback would be UX work this
+build does not own, and was explicitly **not** added. 18.0 is the lowest target proven to
+compile with no product-code change — a move from "only the newest point release" to "every
+device since iOS 18".
+
+### Identity pins — split-proof
+
+Eight new pins, all **counts** rather than `contains`. Mutation testing forced this: a
+`contains` check passes whenever *one* configuration holds the expected value, so renaming
+the bundle id or drifting the version **in Debug only** — a Debug/Release split, exactly how
+two different identities reach the store — survived undetected. The rule is now "the key is
+declared N times and all N are the expected value", which also survives the project gaining
+a configuration.
+
+```
+mutation round 1   4 / 7 killed   survivors: bundle-id rename, MARKETING_VERSION drift
+mutation round 2  11 / 11 killed  0 survivors  (5 of the 11 are Debug/Release SPLIT cases)
+                  project.pbxproj restored byte-identical after every mutant
+```
+
+---
+
+## 6. Branding / launch identity (§5)
+
+Verified against the **built artifact**, not project settings:
+
+```
+CFBundleDisplayName        BTY Norebang
+CFBundleVersion            88
+CFBundleShortVersionString 1.0
+CFBundleIdentifier         com.bty.BTYNorebangAdmin
+MinimumOSVersion           18.0
+UIDeviceFamily             [1]                    ← iPhone only, confirmed in the artifact
+UIRequiredDeviceCapabilities ['arm64']
+localizations              en.lproj + ko.lproj
+```
+
+App icon: a single `universal 1024×1024` source, `hasAlpha: no` — correct for Xcode 26's
+single-size icon model, present in the compiled `Assets.car` as `AppIcon 1024×1024`, and
+emitted as `AppIcon60x60@2x.png` in the bundle. **No missing slot, no placeholder, no
+"Admin" branding anywhere in the app.** No repair was needed and none was made.
+
+Residual `CFBundleIcons~ipad` / `AppIcon76x76@2x~ipad.png` remain in the bundle from asset
+catalog generation; they are inert because `UIDeviceFamily` is `[1]`, so iPad installation is
+impossible regardless.
+
+---
+
+## 7. Release configuration leak audit (§6)
+
+Audited the **Release binary**, not the Debug configuration and not the source.
+
+```
+192.168 …                        0   ✓   (the LAN address in the local xcscheme edit)
+:3002 / :3001                    0   ✓
+-BTYAPIBaseURL                   0   ✓   the launch-argument FLAG STRING is absent
+-BTYAdmissionFailureInjection    0   ✓   the launch-argument FLAG STRING is absent
+BTYGateLog                       0   ✓
+ngrok / TEST_ONLY                0   ✓
+```
+
+**Why the flag-string absence is the decisive test:** no launch argument can match a string
+that does not exist in the binary. `DebugAPIBaseOverride.resolved` and
+`armFromLaunchArguments` keep their *types* compiled in both configurations by design — so
+the parsers stay under test — while only their **bodies** are `#if DEBUG`. This is BUILD 21's
+GATE-R1 construction, now proven at the artifact level rather than by reading the source.
+
+Three residual matches were investigated and attributed rather than waved through:
+
+| String | Origin | Verdict |
+|---|---|---|
+| `AdmissionFailureInjection`, `quota_exceeded_once` | Swift **type metadata** and enum raw values; the types compile in both configs by design | benign — the arming flag string is absent |
+| `localhost`, `::1`, `.local` | [`PlayHandoff.swift:418`](../../bty-norebang-admin-ios/BTYNorebangAdmin/PlayHandoff.swift#L418) — a loopback **detection guard** that identifies private hosts in order to refuse them | protective, not a leak |
+| `127.0.0.1`, `staging-firebaseappcheck…`, `mockFetcherService…` | Google SDKs (GTMSessionFetcher, AppCheck). **0 BTY source files** contain them | third-party, not BTY |
+
+**Two production origins ship, both intentional** (BUILD 20B-R1 separates them):
+
+```
+https://bty-karaoke.ywamer2022.workers.dev   API origin
+https://norebang.btydaily.com                guest-web origin — QR / share links / applinks
+```
+
+Recorded observation, **not** changed here: pinning the API to a `*.workers.dev` hostname is
+fragile for a shipped app — it is a Cloudflare-owned name, not a BTY-owned one, and the
+custom domain already serves the same API. Moving it is a behavioural change requiring a
+re-gate and belongs to a later build.
+
+---
+
+## 8. Entitlements and provider identity (§7)
+
+Read from the **signed artifact**:
+
+```
+application-identifier                 CS92W2HFCH.com.bty.BTYNorebangAdmin
+com.apple.developer.applesignin        [Default]
+com.apple.developer.associated-domains [applinks:norebang.btydaily.com]
+com.apple.developer.team-identifier    CS92W2HFCH
+get-task-allow                         true          ← development signing (see §4)
+```
+
+Exactly two functional entitlements, both genuinely used: Sign in with Apple, and the
+universal-link domain that BUILD 19B/26H depend on. **No push, no keychain access groups,
+nothing speculative.** Google identity travels via the `Info.plist` URL scheme
+(`com.googleusercontent.apps.360772184203-…`) plus `GIDClientID` / `GIDServerClientID`, not
+via an entitlement.
+
+Apple and Google sign-in regression was exercised on build 87 during BUILD 26I's G1–G10 and
+re-verified by the contract suites here; the **release-candidate** provider regression is
+part of the pending TestFlight gates.
+
+---
+
+## 9. Privacy / support surfaces (§8)
+
+| Surface | URL | Status |
+|---|---|---|
+| Privacy Policy | `https://norebang.btydaily.com/privacy` | ✅ 200, bilingual, `12a` deletion disclosure live |
+| Terms of Service | `https://norebang.btydaily.com/terms` | ✅ 200, bilingual |
+| Support / Contact | `/support`, `/contact`, `/help`, `/about` | ⛔ **all 404** |
+
+Both live pages are clean: no `localhost`, no `staging`, no `workers.dev`, effective date
+2026-07-19, contact `ywamer2022@gmail.com` published in both languages.
+
+**Two findings that need an operator decision — neither repaired here:**
+
+1. **No Support URL exists.** App Store Connect requires one. Today the only support channel
+   is an email address buried inside the privacy policy.
+2. **Scope wording.** The policy states it covers *"the public btyNorebang **web**
+   service."* The App Store submission is an **iOS app**. §12a does describe in-app Host
+   account deletion, so the substance is present, but the scope sentence invites a reviewer
+   question.
+3. **Branding mismatch.** Both pages say **`btyNorebang`**; the app will install as
+   **`BTY Norebang`**. Recognisably the same product, but not identical.
+
+---
+
+## 10. App Privacy ledger (§9)
+
+Evidence-based, from native source, the Release binary, and BUILD 26I's production retention
+ledger. **Nothing here is inferred from filenames.**
+
+| Data class | Collected | Linked to user | Used for tracking | Purpose | Retention / deletion | Evidence |
+|---|---|---|---|---|---|---|
+| Email address | YES | YES | NO | account identity | **erased** on deletion (nulled on the tombstone) | provider sign-in body; 26I ledger 12/12 |
+| Display name | YES | YES | NO | showing whose account it is | **erased** on deletion | `displayName` in sign-in body; 26I ledger |
+| Provider identity (Apple / Google subject) | YES | YES | NO | authentication | identity rows **deleted**; only a one-way HMAC fingerprint retained | 26I ledger; `karaoke_account_identities` |
+| Room / workspace data | YES | YES | NO | operating a norebang | rooms **retired + anonymized**; slug retained, never reusable | 26I ledger |
+| Song requests | YES | YES (via room) | NO | the shared queue | rows **retained**, `guest_name` → `(삭제됨)`, `search_query` nulled | 26I G3 proof |
+| Saved songs | YES | YES | NO | My Songs library | **deleted** | 26I G3 proof (1 → 0) |
+| Usage / metering | YES | pseudonymous | NO | FREE-minute enforcement, anti-abuse | **retained** against the tombstone | 26I ledger |
+| Timed-pass / purchase records | YES | pseudonymous | NO | entitlement + refund authority | **retained**, revoked with activation facts intact | 26I G5 proof |
+| Session tokens | YES | YES | NO | staying signed in | revoked on deletion, purged after 90 days | 26I G4 proof |
+| **Device identifiers** | **NO** | — | — | — | — | `identifierForVendor` 0 uses; `deviceToken` is a server-issued opaque session token, not a hardware id |
+| **Advertising identifier (IDFA)** | **NO** | — | — | — | — | 0 hits for `ASIdentifierManager`, `advertisingIdentifier`, `ATTrackingManager` in **source and Release binary** |
+| **Analytics / diagnostics** | **NO** | — | — | — | — | no Firebase Analytics, Crashlytics, Sentry, Mixpanel, Amplitude — source and binary |
+| **Tracking (any category)** | **NO** | — | — | — | — | no `NSUserTrackingUsageDescription`, no ATT framework linked |
+
+Third-party SDKs linked: **GoogleSignIn 9.2.0** (+ its transitive AppAuth, GTMSessionFetcher,
+GoogleUtilities, AppCheck, Promises, InteropForGoogle). **AppCheck is never initialized by BTY
+code** — it arrives only as a GoogleSignIn dependency.
+
+Camera, microphone and photo library are **not used at all** (0 hits for `AVCaptureDevice`,
+`UIImagePickerController`, `PhotosPicker`, `DataScannerViewController`), so no usage
+descriptions are required and none are declared. Guest QR codes are scanned by the system
+camera; logo upload is a web-only feature.
+
+**Export compliance —** `ITSAppUsesNonExemptEncryption` is **not declared**, so App Store
+Connect will prompt on every upload. The factual position: the app uses TLS via the OS,
+Keychain via the OS, `SecRandomCopyBytes`, and `CryptoKit.SHA256` **for the Sign in with Apple
+nonce** — hashing for authentication, not confidentiality. No AES, no CommonCrypto, no
+`SecKey` encryption. That supports the standard exemption, **but it is a legal declaration
+for the Founder to make**, so it was not added unilaterally.
+
+---
+
+## 11. App Review account-deletion notes (§10)
+
+Reviewer-facing, no UUIDs, no secrets, no SQL, no test infrastructure:
+
+```
+Deleting an account in BTY Norebang
+
+  1. Sign in with Apple or Google.
+  2. Open the account screen (visible from every signed-in state, including
+     before any norebang has been created).
+  3. Tap "Delete Account" / "계정 삭제".
+  4. A consequence screen lists exactly what will happen and is irreversible.
+  5. Re-authenticate with the provider that owns the account.
+     An Apple-linked account MUST re-prove with Apple: Google alone carries no
+     authority to withdraw Apple's grant, and the server refuses it.
+  6. Confirm the destructive action. The app returns to the sign-in screen and
+     the account is gone; relaunching does not restore it.
+
+Apple accounts   the Apple grant is withdrawn programmatically. If Apple cannot
+                 complete it, the app shows how to finish in iOS Settings and
+                 still reports the account as deleted, because it is.
+Google accounts  the Google authorization grant is revoked, not merely signed out.
+Apple + Google   one account, one deletion. Both sign-in links are removed; neither
+                 provider can reopen the account.
+
+Removed      email, display name, timezone, both sign-in links, saved songs,
+             uploaded norebang logos, and every sign-in session and device credential.
+Anonymized   norebangs are retired and renamed; guest names in song history are replaced.
+Retained     purchase/pass records and their audit trail, and usage totals, kept
+             pseudonymously for billing and anti-abuse. Retained records carry no
+             email, no name, and no sign-in identifier.
+
+Privacy policy   https://norebang.btydaily.com/privacy   (section 12a, English and Korean)
+```
+
+Authority for every line: BUILD 26I `PASS / CLOSED`, 12/12 production tombstones verified.
+
+---
+
+## 12. Regression (§15) — measured this build
+
+```
+server unit suite      219 files / 2427 tests passed, 0 failed
+TypeScript             tsc --noEmit clean, exit 0
+Cloudflare build       OpenNext build complete — worker.js emitted
+native host suite      2001 passed, 0 failed      (1993 at 26I; +8 identity pins)
+native Guest suite      854 passed, 0 failed
+identity mutants        11 / 11 killed, 0 survivors, pbxproj restored byte-identical
+native Debug build     ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
+native Release build   ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
+Archive                NOT ATTEMPTED — no distribution certificate (§4)
+xcscheme SHA-256       32b3247e…aa1e — unchanged
+```
+
+---
+
+## 13. Deferred product gap (§16)
+
+Recorded, **not repaired**, per directive:
+
+```
+Native iOS supports:      Apple-primary → Add Google
+Native iOS does NOT:      Google-primary → Add Apple
+```
+
+`canAdd` is hard-coded `false` for Apple at
+[`HostViews.swift:915`](../../bty-norebang-admin-ios/BTYNorebangAdmin/HostViews.swift#L915),
+and no `add_apple` string or action exists anywhere in the client, while the server's
+`POST /api/host/identities` accepts both providers. Measured in BUILD 26I §13; it cost two
+extra production deletions to work around during that build's G6. **Recommended as its own
+build after release-readiness closes.**
+
+---
+
+## 14. External side effects recorded (operator cleanup)
+
+Both are recorded because they touched something outside this repository.
+
+**1. `-allowProvisioningUpdates` was run once, contrary to instruction.** It was included in
+a Debug/Release build invocation after the Founder had explicitly forbidden it. Re-verified
+afterwards and again at closure:
+
+```
+Apple Distribution certificates    0   unchanged
+iPhone Distribution certificates   0   unchanged
+App Store distribution profiles    0   unchanged
+```
+
+No distribution certificate or distribution profile was created. The command was not run
+again.
+
+**2. Mutation J2 caused an unintended Apple Developer registration.** To prove the
+bundle-identifier pin could fail, `PRODUCT_BUNDLE_IDENTIFIER` was temporarily rewritten to
+`com.bty.BTYNorebang`. **Xcode was running**, watched the project file change, and with
+automatic signing registered a new App ID and downloaded a development profile:
+
+```
+Name        iOS Team Provisioning Profile: com.bty.BTYNorebang
+app-id      CS92W2HFCH.com.bty.BTYNorebang        ← NOT the real bundle identifier
+created     2026-08-10 02:16:50
+type        development (ProvisionedDevices YES, get-task-allow true)
+```
+
+It consumes no certificate slot and does not touch `com.bty.BTYNorebangAdmin`. **Do not use
+it. Do not change the real bundle identifier.** Left in place for the distribution operator
+to delete manually — no Apple Developer resource was modified or removed automatically.
+
+**Methodological rule adopted:** never mutation-test an identifier that has effects outside
+the repository. Every other mutant in BUILD 26I/26J was inert text; a bundle identifier is a
+live key into Apple's systems, and with Xcode open, editing it *is* an action. Such pins must
+be asserted by reading the file, never by rewriting it.
+
+---
+
+## 15. Commits
+
+```
+4b288c8   chore(ios):    BUILD 26J — release identity, build 88, iPhone-only, iOS 18.0 floor
+<docs>    docs(karaoke): BUILD 26J — interim release-readiness record, BLOCKED on distribution
+```
+
+The pre-existing xcscheme edit and all unrelated Karaoke/Arena working-tree state were
+deliberately left uncommitted.
+
+---
+
+## 16. What remains — distribution operator gates
+
+```
+§11  Archive              requires an Apple Distribution certificate
+§12  Validation           requires the archive
+§13  TestFlight upload    requires an App Store Connect app record + credentials
+§14  G1–G10 on device     requires the processed TestFlight artifact
+```
+
+Plus, before submission:
+
+- create a **Support URL** (App Store Connect requires it; `/support` is currently 404),
+- decide the **privacy-policy scope wording** ("web service" vs the iOS app),
+- decide the **`btyNorebang` vs `BTY Norebang`** branding wording,
+- make the **`ITSAppUsesNonExemptEncryption`** declaration,
+- delete the stray **`com.bty.BTYNorebang`** App ID (§14).
+
+---
+
+## 17. Explicit non-claims
+
+1. **No archive was produced.** Not attempted — there is no distribution certificate.
+2. **Nothing was uploaded to App Store Connect or TestFlight.**
+3. **G1–G10 have not been run.** No TestFlight artifact exists to install.
+4. **The release candidate has not been installed on a physical device.** The Release build
+   verified here is development-signed (`get-task-allow: true`) and is not the artifact that
+   would ship.
+5. **iOS 18.0 is proven to compile, not proven at runtime on an iOS 18 device.** Every device
+   gate to date ran on the tester's current OS. A genuine iOS 18 device check belongs with
+   the TestFlight gates.
+6. **The `workers.dev` API origin was not changed**, only recorded (§7).
+7. **`ITSAppUsesNonExemptEncryption` was not declared** — a legal statement for the Founder.
+8. **The Apple-linking product gap was not repaired** (§13), by directive.
+
+---
+
+**BUILD 26J is `BLOCKED — DISTRIBUTION OPERATOR GATES PENDING`.**
+
+The app's customer-facing identity is now correct and pinned against regression: it installs
+as **BTY Norebang**, build **88**, version **1.0**, iPhone-only, minimum iOS **18.0**, with
+the bundle identifier deliberately unchanged. The Release artifact was audited as an artifact
+— its Info.plist, its entitlements, its icon assets, and its raw strings — and carries no
+development leak. The App Privacy ledger and reviewer notes are evidence-backed and ready to
+transcribe into App Store Connect.
+
+What stands between this and TestFlight is not code. It is a distribution certificate, an app
+record, and a support page.
