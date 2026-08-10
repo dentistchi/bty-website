@@ -1341,7 +1341,13 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
   const action = baseActionPhrase(b.observableAction);
   const target: Record<VerificationTarget, string> = {
     the_behaviour: `you ${action}`,
-    the_application_plan: `you put this into practice`,
+    /*
+      "put this into practice" reads as an idiom and parses as a definite construct
+      reference — "practice" is one of the nouns the dependency graph gates, so the phrase
+      quietly claimed a construct the program had not defined (Slice 3.2O-R1). Found by
+      auditing the whole target × mode matrix rather than only the pair that failed live.
+    */
+    the_application_plan: `you apply this`,
     the_confirmation_step: renderCompletionClause(b.completion),
   };
   if (c.responseMode === "name_the_moment") {
@@ -1350,9 +1356,21 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
     /*
       Deliberately NOT a verbatim repeat of the standard — the participant has just read it
       twice. It asks what they will do at the moment that is already established.
+
+      AND IT NAMES NO CONSTRUCT (Slice 3.2O-R1). This branch used to ask "what will you do to
+      follow this standard". For a training whose behaviour IS a standard that reads
+      correctly; for one about confirmation calls and a checklist it does not, because
+      nothing in the program ever defined a "standard". BTY's own dependency graph then
+      refused BTY's own sentence — `used_before_defined`, construct `standard` — on a real
+      pilot, and the model was blamed for a line it never wrote.
+
+      So the question points at the behaviour, which every program has by construction, and
+      never at a noun the behaviour contract may not have established. The rule this restores
+      is the same one the graph enforces on the model: do not refer definitely to a construct
+      no section has defined.
     */
     const ask: Record<VerificationTarget, string> = {
-      the_behaviour: "what will you do to follow this standard",
+      the_behaviour: "what exactly will you do",
       the_application_plan: "how will you fit this into what you are already doing",
       the_confirmation_step: "how will you make sure it gets confirmed",
     };

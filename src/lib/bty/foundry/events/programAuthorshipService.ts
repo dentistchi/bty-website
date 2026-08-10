@@ -111,7 +111,13 @@ const KIND_BRIEF: Record<string, string> = {
   follow_up: "what happens at the follow-up: what the participant will be asked, and what it can honestly show.",
 };
 
-function systemPrompt(
+/**
+ * Exported for the generator-contract test (Slice 3.2O-R1) — the prompt is half of a contract
+ * whose other half is a validator, and a rule that lives only in a string literal is one
+ * refactor away from silently covering one field instead of two. Asserting the composed
+ * prompt is the only way to hold the two halves together.
+ */
+export function systemPrompt(
   locale: "en" | "ko",
   required: readonly string[],
   evidenceCeiling: string,
@@ -178,7 +184,22 @@ function systemPrompt(
     "- Return scenario_contract with pressure_condition (what competes with doing it properly) and pressure_detail (a second circumstance, or null when one is enough).",
     "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger, action or completion signal for it.",
     "- THE SITUATION HAPPENS AT THE TRIGGER. There is ONE moment in the program and behavior_contract.trigger already named it. Do NOT give the situation an occasion of its own.",
-    "- So pressure_condition must NOT contain a phrase like 'during a team meeting', 'at the next handover', 'before the deadline' or 'at the end of each project'. Write the difficulty only: 'a tight deadline is approaching and teammates are waiting for information'.",
+    /*
+      BOTH FIELDS, NOT ONE (Slice 3.2O-R1). The rule was stated for pressure_condition only,
+      while the validator has always applied it to pressure_detail too — and pressure_detail
+      was introduced as "a second circumstance", which invites exactly the phrasing that is
+      refused. A live pilot was refused for it.
+    */
+    "- THIS APPLIES TO BOTH pressure_condition AND pressure_detail. Neither may name an occasion of its own.",
+    "- Forbidden in EITHER field: 'during a team meeting', 'at the next handover', 'before the deadline', 'at the end of each project', 'during the call', 'before the appointment', 'at the end of the day' — any phrase that anchors a second time or event.",
+    /*
+      THE OCCASION COLLISION. The trigger's own noun — call, appointment, handover, shift,
+      round — is exactly the vocabulary the refusal watches for, so a scenario about the very
+      thing being trained is the easiest one to fail. The model is the only party that knows
+      which noun it chose, so the rule is written to be self-applied rather than parsed here.
+    */
+    "- In particular: whatever occasion your own behavior_contract.trigger names, do NOT restate that occasion in either pressure field. If the trigger is 'before each confirmation call', then 'during the call' is a second moment and will be refused — describe only what makes it hard.",
+    "- ALLOWED in either field, because none of these is an occasion: workload, an interruption, missing or incomplete information, competing priorities, uncertainty, social or emotional pressure, an operational constraint. 'A queue is building at the desk' is fine; 'during the call the patient is distracted' is not.",
     "- pressure_condition must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
     "",
     "THE REST OF THE PROGRAM — completion_contract, follow_up_contract:",

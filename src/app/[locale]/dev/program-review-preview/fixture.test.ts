@@ -711,18 +711,26 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
   });
 
   it("G2: the valid state anchors the question to the derived first instance", () => {
+    /*
+      Wording updated in Slice 3.2O-R1: the question used to end "…to follow this standard",
+      which named a construct the behaviour contract may never have defined and which BTY's
+      own dependency graph then refused. The property G2 exists to protect — the question is
+      anchored to the DERIVED first instance — is unchanged and still asserted.
+    */
     expect(derived("completion_check")).toBe(
-      "At your next handoff point, what will you do to follow this standard?",
+      "At your next handoff point, what exactly will you do?",
     );
     // It never asks WHEN, and it does not repeat the standard verbatim.
     expect(derived("completion_check")).not.toMatch(/when is the next time/i);
     expect(derived("completion_check")).not.toContain("state each unfinished item");
+    // And it introduces no construct of its own.
+    expect(derived("completion_check")).not.toMatch(/\bthis standard\b/i);
   });
 
   it("G3: it moves with the trigger, from the same authority", () => {
     const c = withTrigger("at each morning huddle");
     expect(derived("completion_check", c)).toBe(
-      "At your next morning huddle, what will you do to follow this standard?",
+      "At your next morning huddle, what exactly will you do?",
     );
     for (const kind of ["observable_standard", "action_decision", "field_application", "completion_check"] as const) {
       expect(derived(kind, c), kind).toContain("morning huddle");
