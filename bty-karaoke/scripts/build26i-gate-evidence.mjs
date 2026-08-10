@@ -91,7 +91,13 @@ async function snapshot(accountId) {
     roomIds.length ? q(`karaoke_requests?select=guest_name,search_query,status,resolution_code,position&room_id=in.${rl}`) : { rows: [] },
     roomIds.length ? q(`karaoke_events?select=status,name,host_name,created_by&room_id=in.${rl}`) : { rows: [] },
     roomIds.length ? q(`karaoke_guest_app_handoffs?select=status&room_id=in.${rl}`) : { rows: [] },
-    q(`karaoke_identity_fingerprints?select=provider,account_tombstone_id,first_deleted_at,last_deleted_at&account_tombstone_id=eq.${accountId}`),
+    // ALL fingerprints, not only those pointing at this tombstone. One identity yields
+    // exactly one row (the fingerprint is the primary key), and the BUILD 26I repair
+    // advances its account_tombstone_id to the newest tombstone — so an older tombstone
+    // NECESSARILY stops being pointed at once that identity is deleted again. Scoping the
+    // query to this account made the check true only until the next deletion. See
+    // `provider fingerprints` in LEDGER for the time-invariant assertion.
+    q(`karaoke_identity_fingerprints?select=provider,account_tombstone_id,first_deleted_at,last_deleted_at`),
     q(`karaoke_account_deletion_audit?select=deleted_at,deletion_version,deletion_source,completion_status,credential_revocation_status,storage_cleanup_status,provider_revocation&account_id=eq.${accountId}`),
     q(`karaoke_account_deletion_events?select=event_type,detail_code,attempt_count,created_at&account_id=eq.${accountId}&order=created_at`),
     q(`karaoke_provider_revocation_jobs?select=provider,status,encrypted_refresh_token,token_nonce,attempt_count,last_error_code,completed_at,manual_required_at&account_id=eq.${accountId}`),
@@ -183,8 +189,33 @@ const LEDGER = [
   ['pseudonymous refs', 'RETAIN', (s) =>
     s.account.refs_independent ? null : 'purchase_owner_ref / authority_ref are not independent'],
   ['identity links', 'DELETE', (s) => s.identities.length === 0 ? null : `identities still present: ${s.identities}`],
-  ['provider fingerprints', 'RETAIN', (s) =>
-    s.identity_fingerprints.length > 0 ? null : 'no one-way fingerprint retained (FREE-window reset would reopen)'],
+  // NOT "a fingerprint points at this tombstone" — that is true only until the same
+  // identity is deleted again, because the repaired upsert advances the pointer forward.
+  // The durable fact is that for every provider this account had linked, a fingerprint of
+  // that provider EXISTS and its [first_deleted_at, last_deleted_at] span CONTAINS this
+  // account's deletion instant. That says the fingerprint was written by this deletion and
+  // has only ever moved forward since — which is exactly what F-5 needs, and it stays true
+  // no matter how many later cycles that identity goes through.
+  ['provider fingerprints', 'RETAIN', (s) => {
+    const audit = s.deletion_audit[0];
+    if (!audit) return 'no deletion audit row to establish which providers were linked';
+    const linked = Object.entries(audit.provider_revocation ?? {})
+      .filter(([, v]) => v !== 'not_linked')
+      .map(([p]) => p);
+    if (!linked.length) return null; // account had no provider identity at deletion
+    const missing = linked.filter(
+      (p) =>
+        !s.identity_fingerprints.some(
+          (f) =>
+            f.provider === p &&
+            f.first_deleted_at <= s.account.deleted_at &&
+            s.account.deleted_at <= f.last_deleted_at,
+        ),
+    );
+    return missing.length
+      ? `no retained fingerprint spanning this deletion for: ${missing.join(', ')} (FREE-window reset would reopen)`
+      : null;
+  }],
   ['host sessions', 'RETAIN (revoked, 90d)', (s) =>
     !s.sessions.active ? null : `${s.sessions.active} session(s) still active`],
   ['dj devices (account)', 'RETAIN (revoked)', (s) =>
