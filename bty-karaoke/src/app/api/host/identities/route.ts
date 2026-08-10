@@ -62,6 +62,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400, headers: NO_STORE });
   }
 
+  // BUILD 26K — Apple linking is FAIL-CLOSED on the nonce.
+  //
+  // `verifyAppleIdentityToken` only enforces the token's `nonce` claim when it is GIVEN a
+  // raw nonce: with none it computes `expectedNonceHash = null` and the claim goes
+  // unchecked. That is a replay window — an Apple identity token captured from any earlier
+  // authorization would verify on signature/audience/expiry alone and could be attached to
+  // whichever account the caller's session holds. Trusting the client to always send the
+  // nonce is not a control; the client is the thing being defended against. So the refusal
+  // lives HERE, before verification and therefore far before `linkIdentityToAccount`, and
+  // rejects null / absent / empty / whitespace-only alike.
+  //
+  // The status and message are deliberately IDENTICAL to a failed verification: which part
+  // of a link attempt was wrong is not something this endpoint tells an unauthenticated
+  // guess. Google is untouched — its verifier has its own nonce policy.
+  if (provider === 'apple' && (nonce === null || nonce.trim().length === 0)) {
+    return NextResponse.json(
+      { error: 'That sign-in could not be verified.' },
+      { status: 401, headers: NO_STORE },
+    );
+  }
+
   // FRESH provider proof — a session alone can never attach an identity.
   const verified =
     provider === 'apple'

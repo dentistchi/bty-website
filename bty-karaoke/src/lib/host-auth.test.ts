@@ -422,6 +422,90 @@ describe('(12)-(28) CROSS-PLATFORM IDENTITY — one person, many providers', () 
     expect(await accountHasRoomAccess(viaGoogle.id, 'room-pilot')).toBe(false);
   });
 
+  // BUILD 26K — the SYMMETRIC leg. Every case above attaches Google onto an Apple-primary
+  // account, which is the only direction the native app could ever reach. `linkIdentityToAccount`
+  // is provider-neutral by construction, but "by construction" is an argument, not a proof, and
+  // the Google-first → Apple direction is the one the product now ships.
+
+  it('(26K) a GOOGLE-primary account can link an Apple identity, onto the SAME account', async () => {
+    const google = await resolveAccountForIdentity({ provider: 'google', subject: 'g-1' });
+    const accountIdBefore = google.id;
+
+    const res = await linkIdentityToAccount({ accountId: google.id, provider: 'apple', subject: 'a-1' });
+    expect(res.outcome).toBe('linked');
+
+    // Same-account correctness asserted against the id that existed BEFORE the link —
+    // never inferred from the outcome string.
+    expect(db.identities.find((i) => i.provider === 'apple')!.account_id).toBe(accountIdBefore);
+    // Signing in with Apple now lands on that same canonical account.
+    const viaApple = await resolveAccountForIdentity({ provider: 'apple', subject: 'a-1' });
+    expect(viaApple.id).toBe(accountIdBefore);
+    // No second account was created as a side effect, and the Google identity survives.
+    expect(db.accounts).toHaveLength(1);
+    expect(await listAccountIdentities(accountIdBefore)).toHaveLength(2);
+    expect(db.identities.some((i) => i.provider === 'google' && i.account_id === accountIdBefore)).toBe(true);
+  });
+
+  it('(26K) re-linking the SAME Apple identity is idempotent — no duplicate row', async () => {
+    const google = await resolveAccountForIdentity({ provider: 'google', subject: 'g-1' });
+    await linkIdentityToAccount({ accountId: google.id, provider: 'apple', subject: 'a-1' });
+    const rowsAfterFirst = JSON.stringify(db.identities);
+
+    const again = await linkIdentityToAccount({ accountId: google.id, provider: 'apple', subject: 'a-1' });
+
+    expect(again.outcome).toBe('already_linked');
+    expect(JSON.stringify(db.identities)).toBe(rowsAfterFirst);   // byte-identical
+    expect(db.identities).toHaveLength(2);
+  });
+
+  it('(26K) an APPLE identity owned by another account is refused, never re-pointed', async () => {
+    const owner = await resolveAccountForIdentity({ provider: 'apple', subject: 'a-1' });
+    const mine = await resolveAccountForIdentity({ provider: 'google', subject: 'g-1' });
+    const before = JSON.stringify(db.identities);
+
+    const res = await linkIdentityToAccount({ accountId: mine.id, provider: 'apple', subject: 'a-1' });
+
+    expect(res.outcome).toBe('owned_by_other');
+    expect(JSON.stringify(db.identities)).toBe(before);           // zero mutation
+    expect(db.identities.find((i) => i.provider_subject === 'a-1')!.account_id).toBe(owner.id);
+    // Both accounts still stand alone — refusal is not a quiet merge.
+    expect(db.accounts).toHaveLength(2);
+    expect(await listAccountIdentities(mine.id)).toHaveLength(1);
+    expect(await listAccountIdentities(owner.id)).toHaveLength(1);
+  });
+
+  it('(26K) losing the unique-index race on an APPLE subject reports the truthful owner', async () => {
+    const mine = await resolveAccountForIdentity({ provider: 'google', subject: 'g-1' });
+    const rival = await resolveAccountForIdentity({ provider: 'google', subject: 'g-2' });
+    // Simulate the concurrent winner: the row appears between our SELECT and our INSERT,
+    // so the insert trips 23505 and the code must RE-READ rather than assume success.
+    db.identities.push({
+      id: 'race-row', account_id: rival.id, provider: 'apple', provider_subject: 'a-race',
+    });
+
+    const res = await linkIdentityToAccount({ accountId: mine.id, provider: 'apple', subject: 'a-race' });
+
+    expect(res.outcome).toBe('owned_by_other');
+    expect(db.identities.filter((i) => i.provider_subject === 'a-race')).toHaveLength(1);
+    expect(await listAccountIdentities(mine.id)).toHaveLength(1);   // no partial row left behind
+  });
+
+  it('(26K) linking Apple onto a Google account creates no Event and moves no Room ownership', async () => {
+    const google = await resolveAccountForIdentity({ provider: 'google', subject: 'g-1' });
+    await claimRoomForAccount({ accountId: google.id, roomId: 'room-pilot' });
+    const ownershipBefore = JSON.stringify(db.ownership);
+    const membersBefore = JSON.stringify(db.members);
+
+    await linkIdentityToAccount({ accountId: google.id, provider: 'apple', subject: 'a-1' });
+
+    expect(db.eventInserts).toBe(0);
+    expect(JSON.stringify(db.ownership)).toBe(ownershipBefore);
+    expect(JSON.stringify(db.members)).toBe(membersBefore);
+    // The Room resolves identically from the newly-linked Apple identity.
+    const viaApple = await resolveAccountForIdentity({ provider: 'apple', subject: 'a-1' });
+    expect(await accountHasRoomAccess(viaApple.id, 'room-pilot')).toBe(true);
+  });
+
   it('a linked Host sees the same Room from either provider (My Norebang parity)', async () => {
     const apple = await resolveAccountForIdentity({ provider: 'apple', subject: 'a-1' });
     await linkIdentityToAccount({ accountId: apple.id, provider: 'google', subject: 'g-1' });
