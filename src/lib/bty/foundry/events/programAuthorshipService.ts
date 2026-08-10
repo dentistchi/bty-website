@@ -30,7 +30,7 @@ import {
   scenarioPressurePromptLines,
   type OperationalConstruct,
 } from "@/domain/foundry/module/program-coherence";
-import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
+import { staleReason, isGenerationUuid, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
 import {
   startProgramAttempt,
   finalizeProgramAttempt,
@@ -86,7 +86,14 @@ export type ProgramGenerateErrorCode =
   | "invalid_output"
   | "duplicate_intent"
   /** The draft changed while the provider was working — the proposal is unusable. */
-  | "stale_context";
+  | "stale_context"
+  /**
+   * The attempt could not be recorded, so nothing was generated (Slice 3.2P-W1-R1).
+   *
+   * DELIBERATELY NOT `invalid_output`, `provider_error` or `validation_refused`: no provider
+   * call happened, so every one of those would describe a generation that does not exist.
+   */
+  | "attempt_recording_failed";
 
 export type ProgramGenerateResult =
   | { ok: true; value: ProgramValidated; attemptId: string | null; contextFingerprint: string }
@@ -375,6 +382,12 @@ const ATTEMPT_OUTCOME: Record<ProgramGenerateErrorCode, ProgramAttemptOutcome> =
   invalid_output: "validation_refused",
   duplicate_intent: "internal_failure",
   stale_context: "stale_context",
+  /*
+    Unreachable by construction: this code is returned BEFORE an attempt row exists, so there
+    is never a row to finalize with it. Present because the map is exhaustive over the error
+    vocabulary, and an incomplete map would fail to compile the day that changes.
+  */
+  attempt_recording_failed: "internal_failure",
 };
 
 /**
@@ -408,6 +421,30 @@ export async function generateProgram(
   const fingerprint = programContextFingerprint(args.ctx);
   const required = requiredProgramKinds(args.answers);
 
+  /**
+   * NO DURABLE RECORD, NO SPEND (Slice 3.2P-W1-R1).
+   *
+   * WHAT HAPPENED. A governed window was executed by calling this service directly with a
+   * hand-built `submission_intent_id` that was not a uuid. The HTTP route validates that field
+   * and would have refused; the direct call did not go through the route. The ledger insert
+   * failed on the uuid column, `startProgramAttempt` returned `{ok:false, duplicate:false}`,
+   * `attemptId` became null — and the provider call ran anyway. The money was spent and NOTHING
+   * was recorded: no attempt, no child call, no refusal reason. Only a returned top-level code
+   * survived, so the fine-grained diagnosis of that refusal is permanently unknown.
+   *
+   * THE INVARIANT, stated as ordering rather than as atomicity, because there is none across
+   * Postgres and the provider:
+   *
+   *     identifiers valid → durable parent attempt id → THEN the provider
+   *
+   * A generation that cannot be recorded is a generation that must not happen. Attempt
+   * recording is not observability here; it is the authority to spend.
+   */
+  if (!isGenerationUuid(args.submissionIntentId) || !isGenerationUuid(args.correlationId)) {
+    logOutcome("attempt_recording_failed", "identifier_not_uuid");
+    return { ok: false, code: "attempt_recording_failed" };
+  }
+
   const started = await startProgramAttempt(admin, {
     draftId: args.draftId,
     ownerUserId: args.ownerUserId,
@@ -422,7 +459,16 @@ export async function generateProgram(
     logOutcome("duplicate_intent");
     return { ok: false, code: "duplicate_intent" };
   }
-  const attemptId = started.ok ? started.attemptId : null;
+  /*
+    Any OTHER start failure — insert error, thrown request, a row that came back without a
+    usable id — stops here. There is nothing to finalize against, so this returns before `t0`
+    rather than through `finish()`, which exists to close an attempt that was opened.
+  */
+  if (!started.ok || !isGenerationUuid(started.attemptId)) {
+    logOutcome("attempt_recording_failed", started.ok ? "attempt_id_unusable" : "attempt_insert_failed");
+    return { ok: false, code: "attempt_recording_failed" };
+  }
+  const attemptId: string = started.attemptId;
   const t0 = Date.now();
 
   /**

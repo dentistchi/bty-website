@@ -87,7 +87,14 @@ function makeAdmin() {
       };
       chain.is = () => self();
       chain.insert = (row: Record<string, unknown>) => {
-        const id = `${isCalls ? "call" : "attempt"}-${++seq}`;
+        /*
+          Slice 3.2P-W1-R1: these ids stand in for `uuid` primary keys, and the generation
+          service now refuses to spend on an attempt id it could never query back. A fake that
+          hands out "attempt-1" is not imitating the database it replaces. Deterministic, so
+          every assertion below stays stable.
+        */
+        const n = ++seq;
+        const id = `${isCalls ? "ca11" : "a77e"}${String(n).padStart(4, "0")}-0000-4000-8000-000000000000`;
         const stored = { id, ...row };
         (isCalls ? calls : attempts).push(stored);
         const ins: Record<string, unknown> = {};

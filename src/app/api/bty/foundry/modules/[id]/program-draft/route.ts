@@ -11,6 +11,7 @@ import {
   requiredProgramKinds,
 } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
+import { isGenerationUuid } from "@/domain/foundry/module/program-generation-lease";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const { id } = await ctx.params;
   const attemptId = new URL(req.url).searchParams.get("attempt") ?? "";
-  if (!/^[0-9a-f-]{36}$/i.test(attemptId)) {
+  if (!isGenerationUuid(attemptId)) {
     return managerJson(base, req, { eligible: false, reason: "attempt_not_found" }, 200);
   }
 
@@ -90,7 +91,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const locale = body.locale === "ko" ? "ko" : "en";
   const submissionIntentId = typeof body.submission_intent_id === "string" ? body.submission_intent_id : "";
-  if (!/^[0-9a-f-]{36}$/i.test(submissionIntentId)) {
+  // ONE shape, shared with the generation service (Slice 3.2P-W1-R1). Two regexes were how
+  // the route and the service came to disagree about what a usable identifier is.
+  if (!isGenerationUuid(submissionIntentId)) {
     return managerJson(base, req, { error: "submission_intent_required" }, 400);
   }
 

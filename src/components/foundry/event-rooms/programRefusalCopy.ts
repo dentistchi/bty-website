@@ -226,6 +226,16 @@ export const GENERATE_ERROR_COPY: Record<ProgramGenerateErrorCode, RefusalCopy> 
     explanation: "",
     recovery: "start_a_new_draft",
   },
+  /**
+   * The attempt could not be recorded, so drafting never started (Slice 3.2P-W1-R1). The Host
+   * is told nothing ran — which is the whole point of the code existing separately from the
+   * refusals above, all of which describe something that DID run.
+   */
+  attempt_recording_failed: {
+    headline: `Drafting didn’t start. ${NOTHING_CHANGED}`,
+    explanation: "Nothing was written and nothing was used. Ask for it again in a moment.",
+    recovery: "wait_and_try_later",
+  },
 };
 
 /** Failures raised by the page around the service rather than by the validator. */

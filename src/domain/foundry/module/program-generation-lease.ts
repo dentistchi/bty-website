@@ -26,6 +26,29 @@
  */
 
 /** The provider deadline the authorship service enforces (`LLM_TIMEOUT_MS`). */
+/**
+ * THE ONE UUID SHAPE THIS SYSTEM ACCEPTS FOR A GENERATION KEY (Slice 3.2P-W1-R1).
+ *
+ * `submission_intent_id` and `correlation_id` are keys on the generation ledger and those
+ * columns are `uuid`. A value that is not one cannot be stored — so a caller supplying one has,
+ * in effect, asked for a generation that cannot be recorded.
+ *
+ * WHY IT LIVES HERE. The HTTP route already tested `/^[0-9a-f-]{36}$/i` inline, and W1 proved
+ * one boundary is not enough: a direct service call bypassed the route, the attempt insert
+ * failed on the malformed uuid, and the paid provider call ran anyway with nothing recorded.
+ * The generation service now checks too — and both must check the SAME thing, so the shape is
+ * defined once, in the domain, with no I/O.
+ *
+ * STRICTER THAN THE OLD ROUTE REGEX, deliberately: thirty-six dashes satisfied `[0-9a-f-]{36}`
+ * and is not a uuid. Everything `crypto.randomUUID()` produces satisfies both, so nothing
+ * legitimate is narrowed.
+ */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isGenerationUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_SHAPE.test(value.trim());
+}
+
 export const PROGRAM_PROVIDER_TIMEOUT_MS = 45_000;
 
 /**
