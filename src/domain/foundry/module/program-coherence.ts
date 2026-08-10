@@ -296,13 +296,14 @@ export const CONTRACT_DEFECT_REASONS = [
   /**
    * Slice 3.2P-R3.2 — the role does not trace to the Host's authority.
    *
-   * `actor_unauthorized`: the actor speaks for a population the Host did not choose.
-   * `confirmer_unauthorized`: the confirmer is a responsibility-bearing person nobody named.
-   *
-   * Both are SOURCE-authority faults rather than shape faults, so they are decided where the
-   * source is in scope (`validateProgramProposal`), not inside `validateBehaviorContract`.
+   * A SOURCE-authority fault rather than a shape fault, so it is decided where the source is in
+   * scope (`validateProgramProposal`), not inside `validateBehaviorContract`.
    */
-  "actor_unauthorized",
+  /**
+   * Slice 3.2P-R3.2-R1 — the confirmer is a responsibility-bearing person the source never
+   * named. There is deliberately no `actor_unauthorized` beside it: the actor is server-written
+   * (`CANONICAL_ACTOR`), so the model has nothing left to get wrong there.
+   */
   "confirmer_unauthorized",
 ] as const;
 
@@ -535,6 +536,31 @@ const S_FINAL_FUNCTION_WORDS = new Set(["hers", "ours", "yours", "theirs", "this
  * "and their owner" are untouched, which is what matters — corrupting the Host's nouns
  * would be worse than the awkwardness being fixed.
  */
+/**
+ * THE ACTOR IS SERVER-WRITTEN (Slice 3.2P-R3.2-R1).
+ *
+ * MEASURED, not assumed. Every derived sentence already addresses the learner in the second
+ * person on its other half — "It is complete when YOU see…", "YOU will know it happened when…",
+ * "What exactly will YOU say…" — while the subject was a third-person label the model chose. The
+ * result reads with two different people in one sentence: "the huddle leader must … It is
+ * complete when you see …". Rendering the subject as `you` removes that ambiguity and needs no
+ * renderer change at all, because `must` is person-invariant (the R6.2 fix).
+ *
+ * WHY IT IS THE RIGHT AUTHORITY. W3 proved the model will happily name a population the Host did
+ * not choose — `audienceType: leaders` produced "a team member". Constraining the model's label
+ * meant judging whether one role denotes the same population as another, which no source in this
+ * product states. `you` sidesteps the judgement entirely: the Host's audience already decides who
+ * receives the training, so `you` is exactly that population and cannot drift from it.
+ *
+ * The model still returns an actor — the schema and the shape checks are unchanged — and it is
+ * simply not what the participant reads.
+ */
+export const CANONICAL_ACTOR = "you";
+
+export function withCanonicalActor(contract: BehaviorContract): BehaviorContract {
+  return { ...contract, actor: CANONICAL_ACTOR };
+}
+
 export function baseActionPhrase(action: string): string {
   const t = stripTrailingStop(action.trim());
   if (t.length === 0) return t;

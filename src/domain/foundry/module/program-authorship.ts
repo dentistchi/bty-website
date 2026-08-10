@@ -18,7 +18,7 @@
  */
 
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
-import { audienceAuthorityFor, actorAuthorized, confirmerAuthorized } from "./audience-authority";
+import { audienceAuthorityFor, confirmerAuthorized } from "./audience-authority";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -41,6 +41,7 @@ import {
   CONTRACT_FIELD_LIMIT,
   SCENARIO_FIELD_LIMIT,
   deriveOperationalConstruct,
+  withCanonicalActor,
   isConfirmer,
   isRenderableAction,
   isInstructionalKind,
@@ -1331,7 +1332,13 @@ export function validateProgramProposal(
     // failed and why — the gap that made the R6 window undiagnosable.
     return { ...REJECT("non_observable_standard", "observable_standard"), contract: contractResult.defect } as ProgramValidation;
   }
-  const contract: BehaviorContract = contractResult.value;
+  /**
+   * THE ACTOR IS SERVER-WRITTEN (Slice 3.2P-R3.2-R1). The model's label is validated for shape
+   * and then replaced: every participant-facing sentence addresses the learner as `you`, which is
+   * exactly the population the Host's audience already selected and cannot drift from it. W3
+   * produced "a team member" for a `leaders` audience; there is now nothing for that to reach.
+   */
+  const contract: BehaviorContract = withCanonicalActor(contractResult.value);
 
   /**
    * WHO THE PROGRAM IS ABOUT (Slice 3.2P-R3.2).
@@ -1348,14 +1355,12 @@ export function validateProgramProposal(
    * from right, and asking the model again to guess who the training is for is how it drifted.
    */
   const audience = audienceAuthorityFor(answers);
-  const actorAuthority = actorAuthorized(contract.actor, audience, corpus);
-  if (!actorAuthority.ok) {
-    return {
-      ...REJECT("non_observable_standard", "observable_standard"),
-      contract: { field: "actor", reason: "actor_unauthorized" },
-    } as ProgramValidation;
-  }
-  const confirmerAuthority = confirmerAuthorized(contract.completion.confirmedBy, audience, corpus);
+  const confirmerAuthority = confirmerAuthorized(
+    contract.completion.confirmedBy,
+    contract.observableAction,
+    audience,
+    corpus,
+  );
   if (!confirmerAuthority.ok) {
     return {
       ...REJECT("non_observable_standard", "observable_standard"),

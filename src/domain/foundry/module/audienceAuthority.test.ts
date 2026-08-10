@@ -1,21 +1,27 @@
 import { describe, it, expect } from "vitest";
-import {
-  AUDIENCE_POLICY, audienceAuthorityFor, actorAuthorized, confirmerAuthorized, audiencePromptLines,
-} from "./audience-authority";
+import { AUDIENCE_POLICY, audienceAuthorityFor, confirmerAuthorized, audiencePromptLines } from "./audience-authority";
 import { AUDIENCE_TYPES, type BuilderAnswers } from "./module-builder";
 import {
   validateProgramProposal, requiredProgramKinds, groundingCorpus, isSemanticRepairableCode,
 } from "./program-authorship";
-import { CONTRACT_DEFECT_REASONS, isInterrogativeAction } from "./program-coherence";
+import { CONTRACT_DEFECT_REASONS, CANONICAL_ACTOR, isInterrogativeAction } from "./program-coherence";
 
 /**
- * SLICE 3.2P-R3.2 — WHO THE TRAINING IS FOR IS THE HOST'S DECISION.
+ * SLICE 3.2P-R3.2-R1 — THREE ROLES, KEPT APART.
  *
- * W3 generated successfully for a `leaders` draft and produced `actor: "a team member"`,
- * `confirmed_by: "the team lead"`. The source names "team members" only as the people who
- * REPORT problems and leave without naming an owner — the population the training is ABOUT —
- * and never mentions a team lead. `audienceType` reached the prompt and no validator, so one
- * invented word rendered into all four derived instructional sections.
+ * W3 generated cleanly for a `leaders` draft and produced `actor: "a team member"` with
+ * `confirmed_by: "the team lead"`. The source names team members only as the people who REPORT
+ * problems and leave — the group the training is ABOUT — and never mentions a team lead. Its
+ * evidence sentence is agentless.
+ *
+ * R3.2 blocked that by constraining the model's actor LABEL, and was still too permissive: it let
+ * the AUDIENCE authorize a confirmer, so "the team lead" stayed legal for a `leaders` draft, and
+ * it let any role word anywhere in the source authorize an actor.
+ *
+ * The repair separates the three roles. The LEARNER is server-written as `you` — the Host's
+ * audience already decides who that is, so nothing the model writes can widen or narrow it. A
+ * COUNTERPART is whoever the trained action itself involves. A CONFIRMER must be one of those, or
+ * someone the Host's own words name; an audience never authorizes one.
  */
 const PILOT = {
   problem: "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
@@ -47,6 +53,21 @@ const CONTENT: Record<string, string> = {
 };
 const KINDS = requiredProgramKinds(PILOT);
 
+const ACTION = "names one owner and one deadline for every agreed action and writes them in the huddle note";
+const GROUNDED = {
+  actor: "the huddle leader",
+  trigger: "at each morning huddle, before the group leaves",
+  observable_action: ACTION,
+  completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
+};
+/** The exact W3 shape. */
+const DRIFTED = {
+  ...GROUNDED,
+  actor: "a team member",
+  observable_action: "confirm the owner of each action and state the deadline",
+  completion: { confirmed_by: "the team lead", confirmation_action: "record the owner and deadline in the huddle notes" },
+};
+
 const proposal = (contract: Record<string, unknown>, over: Record<string, unknown> = {}) => ({
   program: {
     display_title: "End every huddle with an owner and a deadline",
@@ -61,195 +82,182 @@ const proposal = (contract: Record<string, unknown>, over: Record<string, unknow
   },
 });
 
-const GROUNDED = {
-  actor: "the huddle leader",
-  trigger: "at each morning huddle, before the group leaves",
-  observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
-  completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
-};
-/** The exact W3 shape. */
-const DRIFTED = {
-  ...GROUNDED,
-  actor: "a team member",
-  observable_action: "confirm the owner of each action and state the deadline",
-  completion: { confirmed_by: "the team lead", confirmation_action: "record the owner and deadline in the huddle notes" },
-};
-
-const verdict = (c: Record<string, unknown>) => {
-  const r = validateProgramProposal(proposal(c), PILOT, VERIFIED);
+const run = (c: Record<string, unknown>, over: Record<string, unknown> = {}) =>
+  validateProgramProposal(proposal(c, over), PILOT, VERIFIED);
+const verdict = (c: Record<string, unknown>, over: Record<string, unknown> = {}) => {
+  const r = run(c, over);
   return r.ok ? "PASS" : `${r.code}${r.contract ? ` [${r.contract.field}/${r.contract.reason}]` : ""}`;
 };
+const rendered = (c: Record<string, unknown>) => {
+  const r = run(c);
+  if (!r.ok) throw new Error(`expected PASS, got ${r.code}`);
+  return Object.fromEntries(r.value.proposal.elements.map((e) => [e.kind, e.content])) as Record<string, string>;
+};
 
-describe("[3.2P-R3.2] A/E — the W3 drift is refused deterministically", () => {
-  it("A — the actor alone", () => {
-    expect(actorAuthorized("a team member", AUTH, CORPUS)).toEqual({ ok: false, reason: "audience_mismatch" });
-  });
-
-  it("E — and the whole seven-kind proposal never reaches success", () => {
-    expect(verdict(DRIFTED)).toBe("non_observable_standard [actor/actor_unauthorized]");
-  });
-
-  it("the fault is NOT repairable — a wrong audience is not one sentence away from right", () => {
-    expect(isSemanticRepairableCode("non_observable_standard")).toBe(false);
-  });
-});
-
-describe("[3.2P-R3.2] B/D — the authoritative shapes still pass", () => {
-  it("B — a leading role for a `leaders` audience", () => {
-    for (const actor of ["the huddle leader", "the shift supervisor", "the team lead", "the charge nurse", "the manager on duty", "팀장"]) {
-      expect(actorAuthorized(actor, AUTH, CORPUS).ok, actor).toBe(true);
+describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the model", () => {
+  it("A — the W3 actor never reaches a participant: the subject is server-written", () => {
+    const out = rendered({ ...DRIFTED, completion: GROUNDED.completion });
+    for (const kind of ["observable_standard", "scenario", "field_application"]) {
+      expect(out[kind], kind).toContain(`, ${CANONICAL_ACTOR} must `);
+      expect(out[kind].toLowerCase(), kind).not.toContain("a team member must");
     }
   });
 
-  it("D — a confirmer the Host's own words name", () => {
-    // "owner" is in the host's successEvidence and completionPrompt.
-    expect(confirmerAuthorized("the named owner", AUTH, CORPUS).ok).toBe(true);
-    expect(confirmerAuthorized("the action owner", AUTH, CORPUS).ok).toBe(true);
+  it("B — the subject no longer depends on the label at all", () => {
+    const a = rendered(GROUNDED);
+    const b = rendered({ ...GROUNDED, actor: "the shift supervisor" });
+    const c = rendered({ ...GROUNDED, actor: "a team member" });
+    expect(a.observable_standard).toBe(b.observable_standard);
+    expect(a.observable_standard).toBe(c.observable_standard);
+    expect(a.observable_standard).toMatch(/^At each morning huddle, before the group leaves, you must /);
   });
 
-  it("and the fully grounded proposal still PASSES end to end", () => {
-    expect(verdict(GROUNDED)).toBe("PASS");
+  it("F — a non-learner mentioned in the problem cannot become the subject", () => {
+    expect(CORPUS).toContain("team members");
+    expect(rendered({ ...DRIFTED, completion: GROUNDED.completion }).observable_standard.toLowerCase())
+      .not.toContain("team member");
+  });
+
+  it("C/D/E — no audience can be widened or narrowed, because none of them writes the subject", () => {
+    for (const audienceType of AUDIENCE_TYPES) {
+      const detail = audienceType === "job_group" || audienceType === "specific_role" ? "Marketing team" : undefined;
+      const answers = { ...PILOT, audienceType, audienceDetail: detail } as unknown as BuilderAnswers;
+      for (const actor of ["a team member", "the charge nurse", "front desk staff", "the regional director"]) {
+        const r = validateProgramProposal(proposal({ ...GROUNDED, actor }), answers, VERIFIED);
+        expect(r.ok, `${audienceType} / ${actor}`).toBe(true);
+        if (!r.ok) continue;
+        const std = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!.content;
+        expect(std, `${audienceType} / ${actor}`).toContain(`, ${CANONICAL_ACTOR} must `);
+      }
+    }
   });
 });
 
-describe("[3.2P-R3.2] C — the confirmer rule, and exactly how far it reaches", () => {
-  it("for a DETAIL-BEARING audience, a confirmer from outside the named population is refused", () => {
-    const jobGroup = { ...PILOT, audienceType: "job_group", audienceDetail: "Marketing team" } as unknown as BuilderAnswers;
-    const auth = audienceAuthorityFor(jobGroup);
-    expect(confirmerAuthorized("the compliance officer", auth, groundingCorpus(jobGroup, []))).toEqual({ ok: false, reason: "ungrounded_role" });
-    expect(confirmerAuthorized("the marketing lead", auth, groundingCorpus(jobGroup, [])).ok).toBe(true);
+describe("[R3.2-R1] G/H/I — the confirmer has its own authority", () => {
+  it("G — the W3 confirmer is refused: an audience does not appoint a record keeper", () => {
+    expect(confirmerAuthorized("the team lead", DRIFTED.observable_action, AUTH, CORPUS))
+      .toEqual({ ok: false, reason: "ungrounded_role" });
+    expect(verdict(DRIFTED)).toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
   });
 
-  it("MEASURED, AND WHY THE RULE IS NARROW: a broad audience keeps its generic counterpart", () => {
-    /*
-      The first version of this rule required EVERY confirmer to be grounded in the host's own
-      words. It refused "the person taking over" — the confirmer in this repository's canonical
-      fixture, and an honest one: the other party to a handover is not a role anybody invented.
-      Forty-four existing assertions said so, so the rule now applies only where the host named
-      exactly who the training is for. `everyone` and `leaders` are governed by the ACTOR rule,
-      which is where W3's defect actually lived.
-    */
-    expect(confirmerAuthorized("the person taking over", audienceAuthorityFor({ ...PILOT, audienceType: "everyone" } as unknown as BuilderAnswers), CORPUS).ok).toBe(true);
-    expect(confirmerAuthorized("the compliance officer", AUTH, CORPUS).ok, "leaders: not reached by this rule").toBe(true);
+  it("and neither does a leading title of any other kind", () => {
+    for (const invented of ["the manager on duty", "a supervisor", "the compliance officer"]) {
+      expect(confirmerAuthorized(invented, ACTION, AUTH, CORPUS).ok, invented).toBe(false);
+      expect(
+        verdict({ ...GROUNDED, completion: { confirmed_by: invented, confirmation_action: "repeat back the action and the deadline" } }),
+        invented,
+      ).toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
+    }
   });
 
-  it("the host's own agentless artifact may still confirm — that is their sentence, not an invention", () => {
-    // "The huddle note records one owner and one deadline" is the host's own evidence.
+  it("H — someone the Host's OWN words name is accepted", () => {
+    expect(confirmerAuthorized("the named owner", ACTION, AUTH, CORPUS).ok).toBe(true);
+    expect(verdict(GROUNDED)).toBe("PASS");
+  });
+
+  it("H — the Host's own agentless artifact stays an artifact, and acquires no keeper", () => {
     expect(verdict({ ...GROUNDED, completion: { confirmed_by: "the huddle note", confirmation_action: "record the owner and the deadline" } }))
       .toBe("PASS");
   });
-});
 
-describe("[3.2P-R3.2] J — the authority works across every audience type, not just this one", () => {
-  const withAudience = (audienceType: string, audienceDetail?: string) =>
-    audienceAuthorityFor({ ...PILOT, audienceType, audienceDetail } as unknown as BuilderAnswers);
-
-  it("every enum value has exactly one policy", () => {
-    expect(AUDIENCE_POLICY.map((p) => p.id).sort()).toEqual([...AUDIENCE_TYPES].sort());
-    for (const p of AUDIENCE_POLICY) {
-      expect(p.promptLine.length, p.id).toBeGreaterThan(20);
-      expect(p.example.length, p.id).toBeGreaterThan(3);
-    }
-  });
-
-  it("`everyone` accepts any role — the Host named no narrower one", () => {
-    const a = withAudience("everyone");
-    for (const actor of ["a team member", "the night shift pharmacist", "each person on the team"]) {
-      expect(actorAuthorized(actor, a, CORPUS).ok, actor).toBe(true);
-    }
-  });
-
-  it("`job_group` is bound to the group the Host named", () => {
-    const a = withAudience("job_group", "Marketing team");
-    expect(actorAuthorized("the marketing coordinator", a, CORPUS).ok).toBe(true);
-    expect(actorAuthorized("the night shift pharmacist", a, CORPUS).ok).toBe(false);
-  });
-
-  it("`specific_role` is bound to the role the Host named", () => {
-    const a = withAudience("specific_role", "Assistant");
-    expect(actorAuthorized("the assistant on duty", a, CORPUS).ok).toBe(true);
-    expect(actorAuthorized("the regional director", a, CORPUS).ok).toBe(false);
-  });
-
-  it("a role the Host wrote anywhere in their own answers is authorized", () => {
-    // Nothing in `leaders`' vocabulary covers this, but the Host's own problem text does.
-    const answers = { ...PILOT, problem: "Our dispatchers close a job without recording who signed it off." } as unknown as BuilderAnswers;
-    const corpus = groundingCorpus(answers, []);
-    expect(actorAuthorized("the dispatcher", audienceAuthorityFor(answers), corpus).ok).toBe(true);
-  });
-
-  it("IDENTITY, not substring — the W3 drift cannot pass on shared filler words", () => {
+  it("MEASURED LIMIT — a host's VERB can still authorize a same-stemmed role noun", () => {
     /*
-      "team", "member", "people", "staff" appear all over the Host's problem statement while
-      describing a DIFFERENT population. A naive corpus check would have accepted "a team
-      member" for exactly that reason. These are stop words.
+      "the records manager" is ACCEPTED: "records" stems to "record", and the host's own evidence
+      sentence contains it. The identity check is word-level, so it cannot tell a host's verb from
+      a role noun. Narrower than the W3 defect — which invented a role sharing nothing with the
+      source — and closing it would need part-of-speech knowledge this codebase does not have.
+      Recorded rather than guessed at.
     */
-    expect(CORPUS).toContain("team members");
-    expect(actorAuthorized("a team member", AUTH, CORPUS).ok).toBe(false);
-    expect(actorAuthorized("the people", AUTH, CORPUS).ok).toBe(false);
-    expect(actorAuthorized("a staff member", AUTH, CORPUS).ok).toBe(false);
+    expect(confirmerAuthorized("the records manager", ACTION, AUTH, CORPUS).ok).toBe(true);
+  });
+
+  it("I — 'the person taking over' is legitimate because the ACTION names them", () => {
+    /*
+      MEASURED on this repository's canonical fixture rather than judged by taste. Its trained
+      action is "states each open item aloud TO THE PERSON TAKING OVER" — the confirmer is the
+      direct object of the behaviour. Classification B: a relational counterpart entailed by the
+      act. That is the general rule, and it needs no list of job titles.
+    */
+    const handover = "states each open item aloud to the person taking over";
+    expect(confirmerAuthorized("the person taking over", handover, null, "").ok).toBe(true);
+    /*
+      And also where the action names the SAME counterpart in different words — "identifies its
+      next owner". A counterpart entailed by an act cannot be recognised by word overlap alone,
+      which is why the rule tests the RELATION ("taking over", "next", "receiving") rather than a
+      list of job titles.
+    */
+    expect(confirmerAuthorized("the person taking over", "states each unfinished item and identifies its next owner", null, "").ok).toBe(true);
+    // An OFFICE, by contrast, is refused however the action is worded.
+    expect(confirmerAuthorized("the compliance officer", handover, AUTH, CORPUS).ok).toBe(false);
   });
 });
 
-describe("[3.2P-R3.2] F/G/H/I — nothing else moved", () => {
-  it("F — scenario pressure still works and is still repairable", () => {
-    expect(verdict({ ...GROUNDED })).toBe("PASS");
-    const noPressure = validateProgramProposal(
-      proposal(GROUNDED, { scenario_contract: { pressure_condition: "the team works hard every day", pressure_detail: null } }),
-      PILOT, VERIFIED,
-    );
-    expect(noPressure.ok).toBe(false);
-    if (!noPressure.ok) expect(noPressure.code).toBe("scenario_without_pressure");
+describe("[R3.2-R1] J–P — everything else is unchanged", () => {
+  it("J — the W3-shaped seven-kind proposal is refused", () => {
+    expect(run(DRIFTED).ok).toBe(false);
+  });
+
+  it("K — the fully grounded seven-kind proposal still PASSES", () => {
+    expect(verdict(GROUNDED)).toBe("PASS");
+  });
+
+  it("L — scenario pressure still works and is still repairable", () => {
+    const r = run(GROUNDED, { scenario_contract: { pressure_condition: "the team works hard every day", pressure_detail: null } });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("scenario_without_pressure");
     expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
   });
 
-  it("G — the interrogative floor is unchanged", () => {
+  it("M — the interrogative floor is unchanged", () => {
     expect(isInterrogativeAction(PILOT.observableBehavior as string)).toBe(true);
     expect(verdict({ ...GROUNDED, observable_action: PILOT.observableBehavior as string }))
       .toBe("non_observable_standard [observableAction/interrogative_action]");
   });
 
-  it("H — the filename material floor is unchanged", () => {
-    const r = validateProgramProposal(
-      proposal(GROUNDED, {
-        elements: KINDS.map((k) => ({
-          kind: k,
-          content: k === "reflection" ? "Which of the items the education.pdf checklist lists do you skip most often?" : CONTENT[k],
-          rationale: "grounded",
-        })),
-      }),
-      PILOT, VERIFIED,
-    );
+  it("N — the filename material floor is unchanged", () => {
+    const r = run(GROUNDED, {
+      elements: KINDS.map((k) => ({
+        kind: k,
+        content: k === "reflection" ? "Which of the items the education.pdf checklist lists do you skip most often?" : CONTENT[k],
+        rationale: "grounded",
+      })),
+    });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe("material_fabrication");
   });
 
-  it("I — the evidence ceiling and follow-up semantics are unchanged", () => {
-    const r = validateProgramProposal(proposal(GROUNDED), PILOT, VERIFIED);
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    const followUp = r.value.proposal.elements.find((e) => e.kind === "follow_up")!;
-    expect(followUp.content).toContain("7 days");
-    expect(followUp.content.toLowerCase()).toContain("not an observation");
+  it("O — the evidence ceiling and follow-up semantics are unchanged", () => {
+    const out = rendered(GROUNDED);
+    expect(out.follow_up).toContain("7 days");
+    expect(out.follow_up.toLowerCase()).toContain("not an observation");
   });
 
-  it("the closed reason vocabulary grew by exactly two, and lost nothing", () => {
+  it("the confirmer failure is NOT repairable", () => {
+    expect(isSemanticRepairableCode("non_observable_standard")).toBe(false);
+  });
+
+  it("the closed vocabulary gained exactly one reason, and `actor_unauthorized` is not in it", () => {
     for (const r of ["missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation", "interrogative_action"]) {
       expect(CONTRACT_DEFECT_REASONS, r).toContain(r);
     }
-    expect(CONTRACT_DEFECT_REASONS).toContain("actor_unauthorized");
     expect(CONTRACT_DEFECT_REASONS).toContain("confirmer_unauthorized");
-    expect(CONTRACT_DEFECT_REASONS).toHaveLength(9);
+    expect(CONTRACT_DEFECT_REASONS as readonly string[]).not.toContain("actor_unauthorized");
+    expect(CONTRACT_DEFECT_REASONS).toHaveLength(8);
   });
 });
 
-describe("[3.2P-R3.2] prompt / validator parity", () => {
-  it("the prompt states the rule the floor enforces, from the same authority", () => {
+describe("[R3.2-R1] prompt / validator / renderer parity", () => {
+  it("every audience value has exactly one policy line", () => {
+    expect(AUDIENCE_POLICY.map((p) => p.id).sort()).toEqual([...AUDIENCE_TYPES].sort());
+  });
+
+  it("the prompt states the rules the floor enforces, from the same authority", () => {
     const lines = audiencePromptLines(AUTH).join("\n");
     expect(lines).toContain(AUTH!.policy.promptLine);
     expect(lines).toMatch(/host decided this, not you/i);
-    expect(lines).toMatch(/is ABOUT — it is not automatically who the training is FOR/);
-    expect(lines).toMatch(/Do NOT invent a new responsible person/i);
+    expect(lines).toMatch(/BTY writes the participant-facing subject itself, in the second person/i);
+    expect(lines).toMatch(/is ABOUT\. It is not automatically who the training is FOR/);
+    expect(lines).toMatch(/Do NOT appoint a manager, lead or reviewer the host never mentioned/i);
     expect(lines).toMatch(/leave it that way/i);
   });
 
@@ -258,11 +266,8 @@ describe("[3.2P-R3.2] prompt / validator parity", () => {
     expect(audiencePromptLines(a).join("\n")).toContain("Marketing team");
   });
 
-  it("every policy's own example is authorized by its own audience", () => {
-    for (const p of AUDIENCE_POLICY) {
-      const detail = p.id === "job_group" || p.id === "specific_role" ? "the named group" : undefined;
-      const a = audienceAuthorityFor({ ...PILOT, audienceType: p.id, audienceDetail: detail } as unknown as BuilderAnswers);
-      expect(actorAuthorized(p.example, a, CORPUS).ok, `${p.id}: ${p.example}`).toBe(true);
-    }
+  it("the renderer and the validator agree on the subject", () => {
+    expect(CANONICAL_ACTOR).toBe("you");
+    expect(rendered(GROUNDED).observable_standard).toContain("you must name one owner");
   });
 });

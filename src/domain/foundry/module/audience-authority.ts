@@ -33,65 +33,17 @@ import { nounStem } from "./program-coherence";
  * field and the field acquires an authority it must satisfy.
  */
 
-/** How an audience authorizes an actor. One entry per `AudienceType`; no pilot-specific terms. */
+/** What the model is told about the audience. One entry per `AudienceType`; no pilot terms. */
 export type AudiencePolicy = {
   readonly id: AudienceType;
-  /** What the model is told about who the training is for. Consumed by the prompt builder. */
   readonly promptLine: string;
-  /** A legal actor for this audience — used by the parity test, never by the validator. */
-  readonly example: string;
-  /**
-   * Words this audience's own MEANING authorizes, beyond the Host's free text. Empty when the
-   * audience carries no inherent vocabulary — then only the Host's own words can authorize.
-   */
-  readonly vocabulary: readonly string[];
-  /** True when this audience accepts any human role, because the Host named no narrower one. */
-  readonly openToAnyRole: boolean;
 };
 
 export const AUDIENCE_POLICY: readonly AudiencePolicy[] = [
-  {
-    id: "everyone",
-    promptLine: "everyone in the organisation — any role may be the actor, because the host named no narrower group",
-    example: "each person on the team",
-    vocabulary: [],
-    openToAnyRole: true,
-  },
-  {
-    id: "leaders",
-    promptLine:
-      "the people who LEAD — the actor must be a leading or supervising role, not the people they lead",
-    example: "the shift supervisor",
-    /*
-      The enum's own meaning, in the words English actually uses for it. Deliberately about
-      leading rather than about any particular workplace: a clinic, a warehouse and a software
-      team all name this role differently, and all of them are here.
-    */
-    vocabulary: [
-      "leader", "leaders", "lead", "leads", "leading",
-      "manager", "managers", "management", "supervisor", "supervisors", "supervising",
-      "head", "heads", "chief", "director", "directors", "principal",
-      "owner", "owners", "captain", "coordinator", "coordinators",
-      "foreman", "charge", "senior", "in charge", "team lead", "teamlead",
-      "boss", "chair", "chairs", "facilitator", "facilitators", "host", "hosts",
-      "리더", "관리자", "책임자", "팀장", "매니저",
-    ],
-    openToAnyRole: false,
-  },
-  {
-    id: "job_group",
-    promptLine: "the specific job group the host named — the actor must be that group, not another one",
-    example: "the named job group",
-    vocabulary: [],
-    openToAnyRole: false,
-  },
-  {
-    id: "specific_role",
-    promptLine: "the specific role the host named — the actor must be that role, not another one",
-    example: "the named role",
-    vocabulary: [],
-    openToAnyRole: false,
-  },
+  { id: "everyone", promptLine: "everyone in the organisation" },
+  { id: "leaders", promptLine: "the people who lead" },
+  { id: "job_group", promptLine: "one specific job group" },
+  { id: "specific_role", promptLine: "one specific role" },
 ];
 
 export type AudienceAuthority = {
@@ -121,8 +73,8 @@ const STOP = new Set([
 ]);
 
 /*
-  Stemmed with the EXISTING `nounStem`, because a Host who wrote "our dispatchers" has plainly
-  authorized "the dispatcher" — measured: without it, that legitimate actor was refused.
+  Stemmed with the EXISTING `nounStem`, so a host who wrote "our dispatchers" has authorized
+  "the dispatcher" — measured: without it, that legitimate role was refused.
 */
 function identityTokens(text: string): string[] {
   return text
@@ -133,110 +85,81 @@ function identityTokens(text: string): string[] {
     .filter((t) => !STOP.has(t));
 }
 
-/**
- * IDENTITY, NOT SUBSTRING. "team", "member", "staff" and "people" are stripped as stop words
- * precisely because they are the vocabulary of ANY workplace sentence — matching on them is
- * how "a team member" would have slipped through a naive corpus check, since the Host's problem
- * statement contains those exact words while describing a different population entirely.
- */
-function sharesIdentity(actor: string, source: string): boolean {
+function sharesIdentity(candidate: string, source: string): boolean {
   const wanted = new Set(identityTokens(source));
   if (wanted.size === 0) return false;
-  return identityTokens(actor).some((t) => wanted.has(t));
+  return identityTokens(candidate).some((t) => wanted.has(t));
 }
 
 export type RoleAuthorityResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly reason: "audience_mismatch" | "ungrounded_role" };
+  | { readonly ok: false; readonly reason: "ungrounded_role" };
 
 /**
- * May this actor speak for this Host's audience?
+ * WHO ESTABLISHES THAT IT HAPPENED — and who may not be invented to do so.
  *
- * Three ways to be authorized, in order of authority:
- *   1. the audience accepts any role (`everyone`) — the Host said so;
- *   2. the audience's own meaning covers it (`leaders` + a leading word);
- *   3. the Host's own words cover it — the audience detail, or anything they wrote.
+ * THREE ROLES, KEPT APART. The learner is who the Host chose. A COUNTERPART is the other party
+ * to the trained act itself. A CONFIRMER is whoever or whatever establishes completion. Authority
+ * over one is not authority over another — and in particular the audience is authority over the
+ * LEARNER only. `audienceType: leaders` says who is being trained; it does not appoint a team
+ * lead to keep anyone's records.
  *
- * `corpus` is the existing grounding corpus, so a Host who names a role anywhere in their own
- * answers has already authorized it. Nothing new is invented to hold this rule.
+ * MEASURED ON THE CANONICAL FIXTURE. An earlier rule refused "the person taking over", which is
+ * plainly legitimate — and the repository already says why, structurally: the trained action is
+ * "states each open item aloud TO THE PERSON TAKING OVER". The confirmer is the direct object of
+ * the behaviour. That is a relational counterpart, entailed by the act, and it needs no list of
+ * job titles to recognise.
+ *
+ * So a confirmer is authorized when the SOURCE or the ACTION already contains them:
+ *   1. the trained action names them — the counterpart case;
+ *   2. the Host's own words name them — success evidence, completion prompt, problem, detail.
+ * Nothing else. An audience cannot authorize a confirmer, and an agentless evidence sentence
+ * ("the huddle note records…") never acquires a keeper.
  */
-export function actorAuthorized(
-  actor: string,
-  authority: AudienceAuthority | null,
-  corpus: string,
-): RoleAuthorityResult {
-  const value = actor.trim();
-  if (value.length === 0) return { ok: false, reason: "ungrounded_role" };
-  // No audience recorded at all — the Builder gates on it, so this is defence in depth only.
-  if (!authority) return { ok: true };
-
-  if (authority.policy.openToAnyRole) return { ok: true };
-
-  const inVocabulary = authority.policy.vocabulary.some((w) =>
-    w.includes(" ") ? value.toLowerCase().includes(w) : identityTokens(value).includes(w) || value.toLowerCase().includes(w),
-  );
-  if (inVocabulary) return { ok: true };
-
-  if (authority.detail && sharesIdentity(value, authority.detail)) return { ok: true };
-  if (sharesIdentity(value, corpus)) return { ok: true };
-
-  /*
-    A detail-bearing audience names its population explicitly, so failing to match it is a
-    different fault from failing to look like a leader — the diagnosis says which.
-  */
-  return { ok: false, reason: authority.detail ? "audience_mismatch" : "audience_mismatch" };
-}
-
 /**
- * May this person or role be named as the one who CONFIRMS?
+ * A RELATION, NOT A TITLE. "the person taking over", "the next owner", "the receiving colleague"
+ * describe someone by their position in the act itself; "the team lead", "the compliance officer"
+ * name an office. That is the distinction this rule turns on, and it is why this is a list of
+ * RELATIONS rather than of job titles — the thing §5 warns against building.
  *
- * Deliberately NOT "must equal the actor": a read-back by the person receiving the handover is
- * the most honest confirmation there is, and that person is not the learner. What it may not be
- * is a NEW responsibility-bearing role the source never named — the W3 defect, where an
- * agentless evidence sentence ("the huddle note records…") acquired an invented recorder.
- *
- * Authorized when the Host's own words name them, or when the audience's meaning covers them.
- * An artifact can never reach here: `validateBehaviorContract` already refuses an artifact or
- * construct head as the confirmer, and that rule is left exactly as it was.
+ * MEASURED: the lexical-containment rule alone refused "the person taking over" against the
+ * action "states each unfinished item and identifies its next owner" — the same counterpart,
+ * named differently. A counterpart entailed by an act cannot be recognised by word overlap.
  */
+const RELATIONAL_COUNTERPART =
+  /\b(?:taking|takes|took|receiving|receives|recipient|incoming|oncoming|next|other|counterpart|opposite|following|picking up|picks up|handing|hands)\b|받는|인수/i;
+
 export function confirmerAuthorized(
   confirmedBy: string,
+  observableAction: string,
   authority: AudienceAuthority | null,
   corpus: string,
 ): RoleAuthorityResult {
   const value = confirmedBy.trim();
   if (value.length === 0) return { ok: false, reason: "ungrounded_role" };
-
-  /*
-    DELIBERATELY NARROWER THAN THE ACTOR RULE, and the narrowing is measured rather than
-    cautious. The first version required every confirmer to be grounded in the host's own words,
-    and it refused "the person taking over" — the confirmer in this repository's canonical
-    fixture, and a perfectly honest one: the other party to a handover is not a role anybody
-    invented. Forty-four existing assertions said so.
-
-    So the rule applies only where the host named EXACTLY who the training is for — `job_group`
-    and `specific_role` carry a free-text population, and a confirmer from outside it is a
-    substitution rather than a counterpart. For `everyone` and `leaders` the host named a broad
-    population, and a generic counterpart ("the person taking over", "the recipient") stays
-    legal; those audiences are governed by the ACTOR rule, which is where W3's defect lived.
-  */
-  if (!authority?.detail) return { ok: true };
-  if (sharesIdentity(value, authority.detail)) return { ok: true };
+  // 1. the counterpart the trained action itself names, lexically…
+  if (sharesIdentity(value, observableAction)) return { ok: true };
+  // …or relationally: someone described by their place in the act rather than by an office.
+  if (RELATIONAL_COUNTERPART.test(value)) return { ok: true };
+  // 2. anyone the host's own words name.
   if (sharesIdentity(value, corpus)) return { ok: true };
+  if (authority?.detail && sharesIdentity(value, authority.detail)) return { ok: true };
   return { ok: false, reason: "ungrounded_role" };
 }
 
-/** The prompt's audience section, derived from the same policy the validator uses. */
+/** The prompt's audience section, derived from the same policy the validator consults. */
 export function audiencePromptLines(authority: AudienceAuthority | null): string[] {
-  if (!authority) return [];
-  const who = authority.detail
-    ? `${authority.policy.promptLine} — the host named: ${authority.detail}`
-    : authority.policy.promptLine;
+  const who = !authority
+    ? "the people the host selected"
+    : authority.detail
+      ? `${authority.policy.promptLine} — the host named: ${authority.detail}`
+      : authority.policy.promptLine;
   return [
-    "WHO THE TRAINING IS FOR — behavior_contract.actor:",
+    "WHO THE TRAINING IS FOR:",
     `- The host decided this, not you: ${who}.`,
-    "- Do NOT substitute a different population. If the host's problem describes a group that is FAILING to do something, that group is what the training is ABOUT — it is not automatically who the training is FOR.",
-    "- completion.confirmed_by must be a person or role the host's own words name, or one this audience covers. Do NOT invent a new responsible person.",
-    "- If the host's evidence sentence names no one — 'the record shows X' — leave it that way. Do not appoint someone to keep it.",
+    "- BTY writes the participant-facing subject itself, in the second person, so behavior_contract.actor is NOT displayed. Return a plain actor anyway; do not try to redefine who the training is for through it.",
+    "- If the host's problem describes a group that is FAILING to do something, that group is what the training is ABOUT. It is not automatically who the training is FOR.",
+    "- completion.confirmed_by must be someone the trained action itself involves, or someone the host's own words name. Do NOT appoint a manager, lead or reviewer the host never mentioned.",
+    "- If the host's evidence sentence names no one — 'the record shows X' — leave it that way.",
   ];
 }

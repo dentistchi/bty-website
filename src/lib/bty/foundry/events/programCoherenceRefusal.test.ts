@@ -230,7 +230,7 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
       expect(standard.content).toContain("It is complete when");
       // R8: one render-safe clause, subject and confirmer both structural.
       expect(standard.content).toContain("you see the person taking over repeat the open items back");
-      expect(r.value.proposal.behaviorContract.actor).toBe("the outgoing person");
+      expect(r.value.proposal.behaviorContract.actor).toBe("you");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
   });

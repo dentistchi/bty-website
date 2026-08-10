@@ -304,7 +304,10 @@ describe("[3.2L] the validator fails closed", () => {
     expect(r.ok, r.ok ? "" : r.code).toBe(true);
     if (r.ok) {
       const apply = r.value.proposal.elements.find((e) => e.kind === "field_application")!;
-      expect(apply.content).toContain("the outgoing person");
+      // 3.2P-R3.2-R1: the subject is server-written in the second person, so the actor the
+      // model supplied is never displayed. The assertion's intent — the application names WHO
+      // and WHEN — is unchanged.
+      expect(apply.content).toContain("you must");
       // Derived from the trigger "At the end of every shift, before leaving the floor".
       expect(apply.content).toContain("At the end of the next shift, before leaving the floor");
       expect(apply.content).not.toContain("Handoffs. Standards.");

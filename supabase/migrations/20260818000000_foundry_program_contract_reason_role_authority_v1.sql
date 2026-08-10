@@ -1,6 +1,6 @@
 -- Copy-friendly (LF, no trailing spaces). Select all to copy.
 -- ============================================================================
--- Foundry — two more behaviour-contract reasons: who the program is for (Slice 3.2P-R3.2)
+-- Foundry — one more behaviour-contract reason: who may confirm (Slice 3.2P-R3.2-R1)
 --
 -- HELD, NOT APPLIED. `supabase db push` does not scan this directory. Applying it is a
 -- separate, deliberate Founder SQL gate.
@@ -14,15 +14,20 @@
 -- never reached a validator, and one invented word then rendered into all four derived
 -- instructional sections.
 --
--- The floor added in 3.2P-R3.2 produces two new closed-vocabulary reasons on the EXISTING
--- `non_observable_standard` refusal family:
+-- The floor added in 3.2P-R3.2 and settled in R3.2-R1 produces ONE new closed-vocabulary reason
+-- on the EXISTING `non_observable_standard` refusal family:
 --
---   actor_unauthorized       the actor speaks for a population the host did not choose
 --   confirmer_unauthorized   the confirmer is a responsibility-bearing person nobody named
+--
+-- There is deliberately no `actor_unauthorized`. R3.2 first tried to constrain the model's actor
+-- LABEL, which meant judging whether one role denotes the same population as another — a judgement
+-- nothing in this product states. R3.2-R1 removed the question instead: the participant-facing
+-- subject is server-written as the second person (`CANONICAL_ACTOR`), the host's audience already
+-- decides who that is, and the model's label is never displayed. Nothing is left to refuse.
 --
 -- This widens the CHECK so the ledger can store them. The floor itself does not depend on it:
 -- the refusal fires today, and `refusal_code` = `non_observable_standard` plus
--- `behavior_contract_field` = `actor` / `completion_signal` are already legal. Only the
+-- `behavior_contract_field` = `completion_signal` are already legal. Only the
 -- fine-grained REASON is withheld until this runs — `storableContractReason` writes NULL for
 -- any value the live CHECK would refuse, so no insert can ever fail on it.
 --
@@ -68,7 +73,6 @@ alter table public.foundry_program_generation_attempt_calls
       'no_moment',
       'no_confirmation',
       'interrogative_action',
-      'actor_unauthorized',
       'confirmer_unauthorized'
     ));
 
@@ -81,4 +85,4 @@ commit;
 -- ROLLBACK (documented, not executed) — restores the seven-value vocabulary. Safe only while no
 -- row holds either new reason; check first:
 --   select count(*) from public.foundry_program_generation_attempt_calls
---     where behavior_contract_reason in ('actor_unauthorized', 'confirmer_unauthorized');
+--     where behavior_contract_reason = 'confirmer_unauthorized';
