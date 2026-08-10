@@ -74,7 +74,7 @@ describe("[3.2L-R7] behaviour-contract diagnostics migration", () => {
 
     /*
       The vocabulary now spans THREE migrations: this one, `20260816000000` (interrogative_action,
-      applied) and `20260818000000` (actor_unauthorized / confirmer_unauthorized, held). Each
+      applied) and `20260818000000` (confirmer_unauthorized, held). Each
       later file restates the full list, so the union is what the schema will accept once all are
       applied — and `storableContractReason` withholds anything the LIVE check has not reached.
     */
