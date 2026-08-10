@@ -27,21 +27,28 @@ export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 
 /**
- * The reason vocabulary the LIVE CHECK accepts (migration 20260810000000), which is not the
- * same thing as the reason vocabulary the domain can produce (Slice 3.2P-R2.1).
+ * The reason vocabulary the LIVE CHECK accepts, which is not automatically the same thing as
+ * the vocabulary the domain can produce (Slice 3.2P-R2.1).
  *
- * That migration pinned six values in a CHECK constraint. `interrogative_action` is a seventh,
- * added by the observable-action grammar floor, and writing it before the constraint is widened
- * would make the whole child update fail — losing every other diagnostic on that row to record
- * one. So an unrecognised reason is stored as NULL until `20260816000000` is applied, and the
- * refusal is still fully identified by `refusal_code` = `non_observable_standard` and
- * `behavior_contract_field` = `observable_action`, both of which stay legal.
+ * Migration 20260810000000 pinned six values. `interrogative_action` is the seventh, added by
+ * the observable-action grammar floor, and writing it before the constraint was widened would
+ * have made the whole child update fail — losing every other diagnostic on that row to record
+ * one. So it was withheld and stored as NULL for one deploy.
  *
- * This is the same deploy-order discipline the three flags above follow, applied to a value
- * inside a column rather than to the column itself: never write what the schema will refuse.
+ * WIDENED AND VERIFIED (Slice 3.2P-R3). `20260816000000` is applied live, and the live CHECK
+ * was proven — not assumed — by a non-writing probe: an insert carrying an attempt_id that
+ * does not exist fails either way, and Postgres names the constraint it hit first. With
+ * `interrogative_action` it named the unrelated lifecycle constraint (so the reason passed);
+ * with a nonsense value it named `foundry_program_call_behavior_contract_reason_check` (so the
+ * constraint is still active and still discriminating). No row was written by either.
+ *
+ * This list stays explicit rather than deriving from `CONTRACT_DEFECT_REASONS`: the point is
+ * to record what the SCHEMA accepts, and deriving it from the domain would silently re-create
+ * the failure it exists to prevent the next time the domain adds a reason first.
  */
 const LIVE_CONTRACT_REASONS: readonly string[] = [
   "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
+  "interrogative_action",
 ];
 
 function storableContractReason(reason: string | undefined): string | null {

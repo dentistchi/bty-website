@@ -53,10 +53,10 @@ describe("[3.2L-R7] behaviour-contract diagnostics migration", () => {
    * THE VOCABULARY IS NOW SPREAD ACROSS TWO MIGRATIONS (Slice 3.2P-R2.1).
    *
    * This migration pinned six reasons. The observable-action grammar floor adds a seventh,
-   * `interrogative_action`, widened by `20260816000000` — which is HELD for the Founder SQL
-   * gate, so until it runs the live CHECK still accepts only these six. That is not drift: the
-   * recorder writes NULL rather than a value the live schema would refuse
-   * (`storableContractReason`), so nothing can fail an insert while the two are out of step.
+   * `interrogative_action`, widened by `20260816000000` — Founder-applied and independently
+   * probed live in Slice 3.2P-R3. While the two were out of step the recorder wrote NULL
+   * rather than a value the live schema would refuse (`storableContractReason`), so no insert
+   * could ever fail on it; that guard stays, for the next time the domain moves first.
    *
    * The invariant this test exists for is unchanged — the schema and the validator must agree
    * on the vocabulary — so it is now asserted against the UNION of the two migrations, and the

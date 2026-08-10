@@ -158,19 +158,35 @@ describe("[3.2P-R0.2] D — a dependency refusal stores everything at once", () 
     });
   });
 
-  it("[3.2P-R2.1] a reason the LIVE CHECK would refuse is stored as NULL, not as a failed write", async () => {
+  it("[3.2P-R3] the interrogative refusal now records ALL FIVE diagnostics", async () => {
     /*
-      `interrogative_action` is real in the domain and not yet in the live CHECK constraint
-      (migration 20260816000000 is held). Writing it would fail the whole update and lose every
-      other diagnostic on the row, so it is withheld — while the code and the FIELD, both
-      legal, still identify the refusal. This assertion flips to expect the value once the
-      constraint is widened and `LIVE_CONTRACT_REASONS` grows.
+      The full end-to-end shape a question-shaped `observable_action` produces. Withheld for
+      one deploy while the live CHECK still pinned six reasons; `20260816000000` is applied and
+      the live constraint was probed without writing a row, so the seventh is now storable.
     */
     await finalize({
       callId: "c1", outcome: "schema_invalid", durationMs: 3000,
       refusal: { code: "non_observable_standard", kind: "observable_standard" },
       diagnosis: semantic("elements.observable_standard"),
       behaviorContract: { field: "observable_action", reason: "interrogative_action" },
+    });
+    expect(written(0)).toMatchObject({
+      refusal_code: "non_observable_standard",
+      refusal_kind: "observable_standard",
+      offending_path: "elements.observable_standard",
+      behavior_contract_field: "observable_action",
+      behavior_contract_reason: "interrogative_action",
+    });
+  });
+
+  it("[3.2P-R3] a reason the live schema does NOT know is still withheld, not written blind", async () => {
+    // The guard is about what the SCHEMA accepts, so it must keep refusing anything the live
+    // CHECK has not been widened for — otherwise the next domain-first addition breaks writes.
+    await finalize({
+      callId: "c1", outcome: "schema_invalid", durationMs: 3000,
+      refusal: { code: "non_observable_standard", kind: "observable_standard" },
+      diagnosis: semantic("elements.observable_standard"),
+      behaviorContract: { field: "observable_action", reason: "a_reason_no_migration_added" },
     });
     expect(written(0)).toMatchObject({
       refusal_code: "non_observable_standard",
