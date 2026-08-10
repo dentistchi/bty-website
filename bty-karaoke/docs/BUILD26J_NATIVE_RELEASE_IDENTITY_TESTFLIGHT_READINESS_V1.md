@@ -25,7 +25,7 @@ changed. Starting point: BUILD 26I `PASS / CLOSED`, native build 87.
 | TestFlight build processed | ⛔ blocked by the above |
 | TestFlight artifact installed on a physical iPhone | ⛔ blocked by the above |
 | G1–G10 | ⛔ blocked by the above |
-| privacy / support / deletion reviewer info verified | ⚠ **partial — privacy REPAIRED and live (§9a); Support URL still 404** |
+| privacy / support / deletion reviewer info verified | ✅ **privacy repaired (§9a) and `/support` created — both live (§9b, §9c)** |
 | full regression green | ✅ §15 |
 | closure committed and pushed | ✅ this file |
 | HEAD/origin `0 0` | ✅ §19 |
@@ -247,7 +247,7 @@ part of the pending TestFlight gates.
 |---|---|---|
 | Privacy Policy | `https://norebang.btydaily.com/privacy` | ✅ 200, bilingual, **repaired — §9a** |
 | Terms of Service | `https://norebang.btydaily.com/terms` | ✅ 200, bilingual |
-| Support / Contact | `/support`, `/contact`, `/help`, `/about` | ⛔ **all 404 — still open** |
+| Support | `https://norebang.btydaily.com/support` | ✅ 200, bilingual, **created — §9c** |
 
 Effective date 2026-07-19, contact `ywamer2022@gmail.com` published in both languages, no
 `localhost` / `staging` / `workers.dev` references.
@@ -324,7 +324,95 @@ PASS        : no localhost / staging references
 Regression controls after deploy: `POST /api/host/account/delete` → **401** (control
 `…/delete-nope` → 404), `/terms` → 200.
 
-## 10. App Privacy ledger (§9)
+### 9c. `/support` — created and live (BUILD 26J-R2)
+
+App Store Connect requires a Support URL. `/support` returned **404**, and the only support
+channel was an email address buried mid-way through the privacy policy.
+
+The page is **public, unauthenticated and static** — deliberately, because a customer who
+needs support is frequently a customer who cannot sign in. It answers the two questions a
+reviewer and a real user actually arrive with: how to reach a human, and how to delete an
+account. Deletion is documented as the in-app self-service path it has been since BUILD 26E,
+deep-linked to Privacy §12a for the exact delete/anonymize/retain detail, with a fallback for
+users who can no longer reach the screen.
+
+**Branding.** `APP_NAME = "BTY Norebang"` is a **new** constant, deliberately distinct from
+`PRODUCT_NAME = "btyNorebang"`. The page names both and says they are the same service, so two
+names are not mistaken for two products — without the product-wide rebrand a global rename
+would require.
+
+Support is now linked from `LegalLinks`, so it is reachable from **every** public surface
+rather than only from the page a user already found; App Review follows footer links.
+
+**12 tests**, each failing on a specific way this stops being a usable support surface: the
+route file missing (the 404 case), rendering requiring auth/room/event context, the contact
+address absent or not actionable as `mailto`, no reply-time commitment, deletion instructions
+or the §12a links missing, privacy/terms unreachable, the retired `BTY Norebang Admin` name
+reappearing, or any staging / localhost / private-network / secret / `workers.dev` leakage.
+
+```
+version     55ae6f8b-0c86-409c-b084-3131c3aaa782 @ 100%
+deployed    2026-08-10T03:42:29Z   rollback target 38d52a9e (26J privacy repair)
+live build  {"build":"22054248ecc1"}
+```
+
+Pre-verified 17/17 on the isolated version preview URL **before** promoting. After promotion
+the rollout mixed versions — probes returned 404, 404, 200 — so the result was **not** read
+until it settled: **12/12 consecutive 200s**, and the support link present on `/`, `/privacy`,
+`/terms` and `/support` in **5/5** probes each. Final live content check **13/13 PASS**.
+Regression controls after deploy: the §9a privacy repair still live, `/privacy` and `/terms`
+200, `POST /api/host/account/delete` → 401.
+
+---
+
+## 10. Export compliance (§9 addendum, BUILD 26J-R2)
+
+`ITSAppUsesNonExemptEncryption` is now **declared `NO` in every build configuration**, backed
+by an artifact audit rather than an assumption. Re-audited **including linked and statically
+linked third-party code**:
+
+```
+linked frameworks   Apple system only — no third-party crypto library is linked
+CryptoKit           referenced symbols are SHA256 / SHA256Digest / HashFunction ONLY
+                    (the Sign in with Apple nonce). Zero references to AES, ChaChaPoly,
+                    SealedBox, SymmetricKey, P256/P384, Curve25519, HPKE
+Security.framework  SecItemAdd / CopyMatching / Delete / Update (Keychain),
+                    SecRandomCopyBytes, SecTrustEvaluate.
+                    No SecKeyEncrypt, no SecKeyCreateEncryptedData
+whole-binary scan   0 hits: CCCrypt, CCCryptor, kCCEncrypt, EVP_, RSA_, AES_encrypt,
+                    libcrypto, BoringSSL, OpenSSL, chacha, curve25519
+                    — covering the statically linked Google SDKs, not just BTY code
+```
+
+All confidentiality comes from the operating system (TLS via URLSession, Keychain); the app's
+own cryptography is hashing for authentication. That is the standard exemption.
+
+**Proven in the artifact, both configurations** — the key resolves as a genuine Boolean
+`false`, not the string `"NO"`:
+
+```
+plutil type                bool
+isinstance(v, bool)        True
+v is False                 True
+CFBundleVersion            88     (unchanged — build 88 has never been uploaded)
+MARKETING_VERSION          1.0    unchanged
+PRODUCT_BUNDLE_IDENTIFIER  com.bty.BTYNorebangAdmin   unchanged
+```
+
+**The pin helper had a real gap, and mutation testing exposed it.** `uniform` required every
+*declaration* to carry the right value but not that the key be *declared in every
+configuration* — deleting it from one config left `1 == 1` and passed. For a hand-added key
+that is the most likely mistake, and the shipped configuration is the one that would have been
+missing it. It now anchors to the configuration count derived from `PRODUCT_BUNDLE_IDENTIFIER`,
+which strengthens **every** earlier 26J pin as a side effect. **4/4 mutants killed**: removed
+entirely, removed from one config, flipped to `YES` in both, flipped in one.
+
+**No identifier was mutated at any point in BUILD 26J-R2.**
+
+---
+
+## 11. App Privacy ledger (§9)
+
 
 Evidence-based, from native source, the Release binary, and BUILD 26I's production retention
 ledger. **Nothing here is inferred from filenames.**
@@ -363,7 +451,7 @@ for the Founder to make**, so it was not added unilaterally.
 
 ---
 
-## 11. App Review account-deletion notes (§10)
+## 12. App Review account-deletion notes (§10)
 
 Reviewer-facing, no UUIDs, no secrets, no SQL, no test infrastructure:
 
@@ -402,17 +490,18 @@ Authority for every line: BUILD 26I `PASS / CLOSED`, 12/12 production tombstones
 
 ---
 
-## 12. Regression (§15) — measured this build
+## 13. Regression (§15) — measured this build
 
 ```
-server unit suite      219 files / 2429 tests passed, 0 failed   (+2 legal tests)
+server unit suite      220 files / 2441 tests passed, 0 failed   (+2 legal, +12 support)
 TypeScript             tsc --noEmit clean, exit 0
 Cloudflare build       OpenNext build complete — worker.js emitted
-native host suite      2001 passed, 0 failed      (1993 at 26I; +8 identity pins)
+native host suite      2002 passed, 0 failed      (1993 at 26I; +9 identity pins)
                        NOTE: the directive's expected 1999 is stale — it predates pins 17g/17h
 native Guest suite      854 passed, 0 failed
 identity mutants        11 / 11 killed, 0 survivors, pbxproj restored byte-identical
 privacy mutants          8 / 8  killed, 0 survivors, page.tsx restored byte-identical
+export-compliance        4 / 4  killed, 0 survivors, pbxproj restored byte-identical
 tracked-tree stability  digest identical at t0 / t1 / t2 across build+test activity
 native Debug build     ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
 native Release build   ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
@@ -422,7 +511,7 @@ xcscheme SHA-256       32b3247e…aa1e — unchanged
 
 ---
 
-## 13. Deferred product gap (§16)
+## 14. Deferred product gap (§16)
 
 Recorded, **not repaired**, per directive:
 
@@ -440,7 +529,7 @@ build after release-readiness closes.**
 
 ---
 
-## 14. External side effects recorded (operator cleanup)
+## 15. External side effects recorded (operator cleanup)
 
 Both are recorded because they touched something outside this repository.
 
@@ -480,13 +569,16 @@ be asserted by reading the file, never by rewriting it.
 
 ---
 
-## 15. Commits
+## 16. Commits
 
 ```
 4b288c8   chore(ios):    BUILD 26J — release identity, build 88, iPhone-only, iOS 18.0 floor
 f4de8d76  docs(karaoke): BUILD 26J — interim release-readiness record, BLOCKED on distribution
 cdc6488c  fix(karaoke):  BUILD 26J — privacy policy must not deny the Google Sign-In it ships
-<this>    docs(karaoke): BUILD 26J — privacy repair deployed and proven live
+e226beaa  docs(karaoke): BUILD 26J — privacy repair deployed and proven live
+22054248  feat(karaoke): BUILD 26J-R2 — public /support page (App Store requires a Support URL)
+<native>  chore(ios):    BUILD 26J-R2 — declare export compliance NO in every configuration
+<this>    docs(karaoke): BUILD 26J-R2 — support page + export compliance, both proven
 ```
 
 **Provenance, stated factually:** every BUILD 26J change was authored and verified in the
@@ -499,7 +591,7 @@ deliberately left uncommitted.
 
 ---
 
-## 16. What remains — distribution operator gates
+## 17. What remains — distribution operator gates
 
 ```
 §11  Archive              requires an Apple Distribution certificate
@@ -510,17 +602,15 @@ deliberately left uncommitted.
 
 Plus, before submission:
 
-- create a **Support URL** — App Store Connect requires it; `/support` is still **404**,
-- make the **`ITSAppUsesNonExemptEncryption`** declaration (a legal statement, deliberately
-  not made here),
-- delete the stray **`com.bty.BTYNorebang`** App ID (§14).
+- delete the stray **`com.bty.BTYNorebang`** App ID (§15) — manual, operator-only.
 
-Closed by this build: the privacy-policy scope now names the iOS app, and the Google
-Sign-In disclosure is truthful and live (§9a/§9b).
+Closed by this build: the privacy-policy scope now names the iOS app and the Google Sign-In
+disclosure is truthful and live (§9a/§9b); **`/support` exists and is live** (§9c); and
+**export compliance is declared and artifact-proven** (§10).
 
 ---
 
-## 17. Explicit non-claims
+## 18. Explicit non-claims
 
 1. **No archive was produced.** Not attempted — there is no distribution certificate.
 2. **Nothing was uploaded to App Store Connect or TestFlight.**
@@ -532,8 +622,8 @@ Sign-In disclosure is truthful and live (§9a/§9b).
    gate to date ran on the tester's current OS. A genuine iOS 18 device check belongs with
    the TestFlight gates.
 6. **The `workers.dev` API origin was not changed**, only recorded (§7).
-6a. **`/support` is still 404.** The privacy repair did not create a support page; App Store
-   Connect will still have no Support URL to point at.
+6a. **`/support` now exists** (§9c) — but no App Store Connect record exists to enter it
+   into, so the Support URL is verified live and still unconsumed.
 7. **`ITSAppUsesNonExemptEncryption` was not declared** — a legal statement for the Founder.
 8. **The Apple-linking product gap was not repaired** (§13), by directive.
 
