@@ -7,8 +7,21 @@
 export const OPERATOR_NAME = 'BTY (Better Than Yesterday)';
 export const OPERATOR_LONG = 'BTY (Better Than Yesterday), operated by Dr. Chi';
 export const PRODUCT_NAME = 'btyNorebang';
+/**
+ * Customer-facing name of the iOS app (BUILD 26J). Deliberately DISTINCT from
+ * PRODUCT_NAME: the App Store binary installs as "BTY Norebang", while the web service
+ * keeps its established name. Both are the same service and the public pages say so —
+ * renaming PRODUCT_NAME globally would be a product-wide rebrand touching room display
+ * names, the Display screen and brand.ts, which is not a legal-surface change.
+ */
+export const APP_NAME = 'BTY Norebang';
 /** Public privacy/support contact — designated by the operator. */
 export const CONTACT_EMAIL = 'ywamer2022@gmail.com';
+/**
+ * Stated reply target on /support. A support page that promises nothing is not a support
+ * channel; this is the commitment shown to customers and to App Review.
+ */
+export const SUPPORT_RESPONSE_TARGET = '2 business days';
 
 /** Effective date shown on the pages = the deployment date of this version. */
 export const LEGAL_EFFECTIVE_DATE = '2026-07-19';
@@ -30,6 +43,7 @@ export const LEGAL_LINKS = {
   googlePermissions: 'https://myaccount.google.com/permissions',
   privacy: '/privacy',
   terms: '/terms',
+  support: '/support',
 } as const;
 
 /**

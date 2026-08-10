@@ -11,6 +11,10 @@ export default function LegalLinks({ showContact = false }: { showContact?: bool
       <a href={LEGAL_LINKS.privacy}>개인정보처리방침</a>
       <span aria-hidden>·</span>
       <a href={LEGAL_LINKS.terms}>이용약관</a>
+      <span aria-hidden>·</span>
+      {/* BUILD 26J-R2: support must be reachable from every public surface, not only from
+          the page a user already found. App Review follows footer links. */}
+      <a href={LEGAL_LINKS.support}>고객지원</a>
       {showContact && (
         <>
           <span aria-hidden>·</span>
