@@ -640,13 +640,119 @@ export function namesIndependentMoment(text: string): boolean {
 }
 
 /**
- * Something that competes with doing it properly. This is a FLOOR on the pressure field's
- * own content — it is deliberately NOT the relevance authority, which is now structural.
- * A scenario cannot become relevant by matching this list, and cannot become irrelevant by
- * missing it: relevance comes from the derivation.
+ * WHAT COUNTS AS PRESSURE — ONE DEFINITION, TWO CONSUMERS (Slice 3.2O-R2).
+ *
+ * Three paid windows were spent on one real training. The third was refused
+ * `scenario_without_pressure` against a prompt that had just been hardened to say what
+ * pressure MAY be — and two of the categories that prompt named ("workload", "operational
+ * constraint") match nothing this floor recognises. The prompt was written from intuition
+ * beside a regex written months earlier, and they disagreed.
+ *
+ * That is the same failure `EVIDENCE_POLICY` was built to end, and the same cure applies:
+ * the families live here once, `namesRealPressure` is what the validator runs, and
+ * `scenarioPressurePromptLines` is what the model reads, and both are built from the SAME
+ * array. A family without a `promptLine` cannot compile, and an `example` that the real
+ * validator refuses fails a test — so a category the product cannot accept can no longer be
+ * recommended to the model.
+ *
+ * NOTHING IS RELAXED. Every alternative of the original regex is carried over verbatim and
+ * regrouped; a characterization test proves the union still matches exactly what it did.
+ * This is a FLOOR on the pressure field's own content — deliberately NOT the relevance
+ * authority, which is structural: a scenario cannot become relevant by matching this list,
+ * and cannot become irrelevant by missing it.
  */
-const CONSTRAINT_MARKER =
-  /\b(?:no\s+time|not\s+enough\s+time|short\s+of\s+time|running\s+late|late|rush\w*|hurry|busy|queue|waiting|already|interrupt\w*|pressure|push\w*\s+back|pushback|resist\w*|disagree\w*|argu\w*|refus\w*|tired|exhaust\w*|end\s+of\s+(?:the\s+)?(?:shift|day)|understaffed|short-staffed|missing|unavailable|absent|urgent|deadline|competing|conflict\w*|distract\w*|noisy|noise|nobody|no\s+one|someone\s+else|another\s+(?:person|task|request)|only\s+\w+\s+minutes|still\s+\w+ing|has\s+not\s+arrived|hasn't\s+arrived|left\s+(?:early|for\s+the\s+day)|awkward|uncomfortable|senior|manager\s+is|being\s+watched|first\s+time|unclear|unsure)\b|바쁘|늦|압박|서둘/i;
+export type PressureFamily = {
+  /** Stable id — appears in tests and the audit map, never shown to a Host. */
+  readonly id: string;
+  /** What the model is told, in its own terms. Required — this is the anti-drift device. */
+  readonly promptLine: string;
+  /** One sentence that MUST survive the whole scenario validator. Machine-verified. */
+  readonly example: string;
+  readonly pattern: RegExp;
+};
+
+export const SCENARIO_PRESSURE_POLICY: readonly PressureFamily[] = [
+  {
+    id: "time_scarcity",
+    promptLine: "there is no time, someone is running late, it is a rush, something is urgent, a deadline is close, there are only a few minutes",
+    example: "there is no time left before the patient is due",
+    pattern: /\b(?:no\s+time|not\s+enough\s+time|short\s+of\s+time|running\s+late|late|rush\w*|hurry|urgent|deadline|only\s+\w+\s+minutes)\b/i,
+  },
+  {
+    id: "queue_or_busy",
+    promptLine: "it is busy, a queue is building, someone is waiting, something is already under way, work is still running",
+    example: "a queue is building at the desk and someone is waiting",
+    pattern: /\b(?:busy|queue|waiting|already|still\s+\w+ing)\b/i,
+  },
+  {
+    id: "interruption",
+    promptLine: "there are interruptions, distractions, or it is noisy",
+    example: "the phone keeps interrupting and the room is noisy",
+    pattern: /\b(?:interrupt\w*|distract\w*|noisy|noise)\b/i,
+  },
+  {
+    id: "resistance",
+    promptLine: "someone pushes back, resists, disagrees, argues, or refuses",
+    example: "a colleague disagrees and pushes back on doing it",
+    pattern: /\b(?:push\w*\s+back|pushback|resist\w*|disagree\w*|argu\w*|refus\w*)\b/i,
+  },
+  {
+    id: "fatigue",
+    promptLine: "people are tired or exhausted, or it is the end of the shift or the day",
+    example: "the person is exhausted and wants to get home",
+    pattern: /\b(?:tired|exhaust\w*|end\s+of\s+(?:the\s+)?(?:shift|day))\b/i,
+  },
+  {
+    id: "absence_or_staffing",
+    promptLine: "someone is unavailable, absent, has not arrived, has left, nobody is there, it is understaffed, or someone else is doing it",
+    example: "the team is understaffed and the other person has not arrived",
+    pattern: /\b(?:understaffed|short-staffed|unavailable|absent|nobody|no\s+one|someone\s+else|has\s+not\s+arrived|hasn't\s+arrived|left\s+(?:early|for\s+the\s+day))\b/i,
+  },
+  {
+    id: "missing_or_unclear",
+    promptLine: "information is missing, or someone is unclear or unsure",
+    example: "the information is missing and staff are unsure what to say",
+    pattern: /\b(?:missing|unclear|unsure)\b/i,
+  },
+  {
+    id: "competing_demands",
+    promptLine: "something is competing or conflicting, or another person, task or request is pulling attention away",
+    example: "another task is competing for attention at the same desk",
+    pattern: /\b(?:competing|conflict\w*|another\s+(?:person|task|request))\b/i,
+  },
+  {
+    id: "social_exposure",
+    promptLine: "it is awkward or uncomfortable, a senior or a manager is there, someone is being watched, or it is their first time",
+    example: "it is awkward because a senior colleague is watching",
+    pattern: /\b(?:awkward|uncomfortable|senior|manager\s+is|being\s+watched|first\s+time)\b/i,
+  },
+  {
+    id: "named_pressure",
+    promptLine: "the word pressure itself, when it names a real one rather than standing alone",
+    example: "there is pressure from the queue to move on quickly",
+    pattern: /\bpressure\b/i,
+  },
+  {
+    id: "korean_markers",
+    // Deliberately unbounded, exactly as before: Korean has no \b word boundary.
+    promptLine: "the Korean equivalents — 바쁘 (busy), 늦 (late), 압박 (pressure), 서둘 (hurry)",
+    example: "환자가 기다리고 있어 바쁘다",
+    pattern: /바쁘|늦|압박|서둘/,
+  },
+];
+
+/**
+ * Does this text name a real constraint? The validator's floor, derived from the families
+ * above rather than from a second list nobody can compare against the first.
+ */
+export function namesRealPressure(text: string): boolean {
+  return SCENARIO_PRESSURE_POLICY.some((f) => f.pattern.test(text));
+}
+
+/** Every family, as instructions. The whole policy — a family that says nothing is impossible. */
+export function scenarioPressurePromptLines(): string[] {
+  return SCENARIO_PRESSURE_POLICY.map((f) => `  - ${f.promptLine}`);
+}
 
 /** Placeholders that describe difficulty without naming any. */
 const GENERIC_PRESSURE = [
@@ -731,7 +837,7 @@ export function validateScenarioContract(
   if (saysTheSameThing(value.pressureCondition, behavior.observableAction)) {
     return { ok: false, defect: { field: "pressureCondition", reason: "restates_action" } };
   }
-  if (!CONSTRAINT_MARKER.test(value.pressureCondition)) {
+  if (!namesRealPressure(value.pressureCondition)) {
     return { ok: false, defect: { field: "pressureCondition", reason: "no_pressure" } };
   }
 

@@ -22,7 +22,12 @@ import {
 } from "@/domain/foundry/module/program-authorship";
 import { proposalDigest } from "@/domain/foundry/module/proposal-digest";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
-import { CONTRACT_FIELD_STORAGE, deriveOperationalConstruct, type OperationalConstruct } from "@/domain/foundry/module/program-coherence";
+import {
+  CONTRACT_FIELD_STORAGE,
+  deriveOperationalConstruct,
+  scenarioPressurePromptLines,
+  type OperationalConstruct,
+} from "@/domain/foundry/module/program-coherence";
 import { staleReason, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
 import {
   startProgramAttempt,
@@ -199,7 +204,17 @@ export function systemPrompt(
       which noun it chose, so the rule is written to be self-applied rather than parsed here.
     */
     "- In particular: whatever occasion your own behavior_contract.trigger names, do NOT restate that occasion in either pressure field. If the trigger is 'before each confirmation call', then 'during the call' is a second moment and will be refused — describe only what makes it hard.",
-    "- ALLOWED in either field, because none of these is an occasion: workload, an interruption, missing or incomplete information, competing priorities, uncertainty, social or emotional pressure, an operational constraint. 'A queue is building at the desk' is fine; 'during the call the patient is distracted' is not.",
+    /*
+      DERIVED, NOT HAND-WRITTEN (Slice 3.2O-R2). The R1 version of this line was written from
+      product intuition and named two categories — "workload" and "operational constraint" —
+      that the pressure floor recognises nothing of. A window was then refused
+      `scenario_without_pressure` against a prompt that had just recommended them. These
+      lines now come from SCENARIO_PRESSURE_POLICY, the same array the validator matches on,
+      so the two cannot disagree again.
+    */
+    "- A real difficulty is one of these, and none of them is an occasion:",
+    ...scenarioPressurePromptLines(),
+    "- 'A queue is building at the desk' is fine; 'during the call the patient is distracted' is not.",
     "- pressure_condition must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
     "",
     "THE REST OF THE PROGRAM — completion_contract, follow_up_contract:",
