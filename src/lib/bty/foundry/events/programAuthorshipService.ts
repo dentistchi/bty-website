@@ -30,6 +30,7 @@ import {
   scenarioPressurePromptLines,
   type OperationalConstruct,
 } from "@/domain/foundry/module/program-coherence";
+import { audienceAuthorityFor, audiencePromptLines } from "@/domain/foundry/module/audience-authority";
 import { staleReason, isGenerationUuid, type DraftAuthorshipState } from "@/domain/foundry/module/program-generation-lease";
 import {
   startProgramAttempt,
@@ -137,6 +138,12 @@ export function systemPrompt(
   evidenceCeiling: string,
   material: MaterialAuthority,
   evidenceClaims: readonly string[],
+  /**
+   * The Host's audience, as an authority rather than as decoration (Slice 3.2P-R3.2). Derived
+   * from the SAME policy the validator consults, so the prompt cannot ask for an actor the
+   * floor refuses — the parity rule R2 established for scenario pressure.
+   */
+  audienceLines: readonly string[] = [],
 ): string {
   const isKo = locale === "ko";
   return [
@@ -184,6 +191,8 @@ export function systemPrompt(
     "- ALLOWED (designing future behavior): 'states each unfinished item aloud'; 'identifies who owns the next action'; 'confirms the agreed next step'; 'repeats back what will happen next'.",
     "- FORBIDDEN (claiming today's reality): 'the team already follows this standard'; 'the approved standard requires these steps'; 'use the existing template fields'; 'record it in the tool everyone already has'; 'the manager observes and scores it'; 'this has already improved handoffs'.",
     "- Those are illustrations of the boundary, not a menu. Choose the behavior THIS host's problem actually needs.",
+    "",
+    ...audienceLines,
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
@@ -516,7 +525,7 @@ export async function generateProgram(
   const materialAuthority = deriveMaterialAuthority(args.answers, args.verifiedArtifacts ?? []);
 
   const base: LlmChatMessage[] = [
-    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers)) },
+    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers))) },
     { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
 

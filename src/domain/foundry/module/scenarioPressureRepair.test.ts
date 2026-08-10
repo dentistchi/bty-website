@@ -51,7 +51,7 @@ const proposal = (pressureCondition: string, over: Record<string, unknown> = {})
     assumptions: ["staff can reach the person before the appointment"],
     warnings: ["an out-of-date phone list needs fixing, not training"],
     behavior_contract: {
-      actor: "Front desk staff",
+      actor: "the admin on duty",
       trigger: "before each scheduled appointment",
       observable_action: "make a confirmation call and follow the checklist of required questions",
       completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
@@ -126,7 +126,7 @@ describe("[3.2O-R4] the repair fixture matrix", () => {
   it("B — repair alters the trained behaviour → FROZEN OUT", () => {
     const after = proposal("a queue is building at the desk", {
       behavior_contract: {
-        actor: "Front desk staff", trigger: "before each scheduled appointment",
+        actor: "the admin on duty", trigger: "before each scheduled appointment",
         observable_action: "send a confirmation text instead",
         completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
       },
@@ -137,7 +137,7 @@ describe("[3.2O-R4] the repair fixture matrix", () => {
   it("C — repair alters the scenario trigger → FROZEN OUT", () => {
     const after = proposal("a queue is building at the desk", {
       behavior_contract: {
-        actor: "Front desk staff", trigger: "at each weekly huddle",
+        actor: "the admin on duty", trigger: "at each weekly huddle",
         observable_action: "make a confirmation call and follow the checklist of required questions",
         completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
       },

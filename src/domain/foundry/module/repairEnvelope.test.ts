@@ -45,7 +45,7 @@ const proposal = (over: { reflection?: string; elements?: unknown; program?: Rec
     assumptions: ["staff can reach the person before the appointment"],
     warnings: ["an out-of-date phone list needs fixing, not training"],
     behavior_contract: {
-      actor: "Front desk staff", trigger: "before each scheduled appointment",
+      actor: "the admin on duty", trigger: "before each scheduled appointment",
       observable_action: "make a confirmation call and follow the checklist of required questions",
       completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
     },

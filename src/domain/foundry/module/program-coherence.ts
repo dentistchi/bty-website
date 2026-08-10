@@ -293,6 +293,17 @@ export const CONTRACT_DEFECT_REASONS = [
   "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
   /** Slice 3.2P-R2.1 — the action is a QUESTION. See `isInterrogativeAction`. */
   "interrogative_action",
+  /**
+   * Slice 3.2P-R3.2 — the role does not trace to the Host's authority.
+   *
+   * `actor_unauthorized`: the actor speaks for a population the Host did not choose.
+   * `confirmer_unauthorized`: the confirmer is a responsibility-bearing person nobody named.
+   *
+   * Both are SOURCE-authority faults rather than shape faults, so they are decided where the
+   * source is in scope (`validateProgramProposal`), not inside `validateBehaviorContract`.
+   */
+  "actor_unauthorized",
+  "confirmer_unauthorized",
 ] as const;
 
 /** Which field failed, so a refusal is diagnosable without echoing model prose. */

@@ -18,6 +18,7 @@
  */
 
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
+import { audienceAuthorityFor, actorAuthorized, confirmerAuthorized } from "./audience-authority";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -1331,6 +1332,36 @@ export function validateProgramProposal(
     return { ...REJECT("non_observable_standard", "observable_standard"), contract: contractResult.defect } as ProgramValidation;
   }
   const contract: BehaviorContract = contractResult.value;
+
+  /**
+   * WHO THE PROGRAM IS ABOUT (Slice 3.2P-R3.2).
+   *
+   * Decided HERE rather than inside `validateBehaviorContract`, because it is a SOURCE-authority
+   * question and that function sees only the contract. W3 proved the cost of leaving it unasked:
+   * a draft whose Host audience is `leaders` produced `actor: "a team member"` and
+   * `confirmed_by: "the team lead"` — a population the source names as the one WITH the problem,
+   * and a role the source never mentions — and both rendered into all four derived sections.
+   *
+   * The top-level code is unchanged: this is still a contract that fails to describe the
+   * required behaviour, so it stays `non_observable_standard` and the ledger records WHICH role
+   * failed. Not repairable, and deliberately so — a wrong audience is not one sentence away
+   * from right, and asking the model again to guess who the training is for is how it drifted.
+   */
+  const audience = audienceAuthorityFor(answers);
+  const actorAuthority = actorAuthorized(contract.actor, audience, corpus);
+  if (!actorAuthority.ok) {
+    return {
+      ...REJECT("non_observable_standard", "observable_standard"),
+      contract: { field: "actor", reason: "actor_unauthorized" },
+    } as ProgramValidation;
+  }
+  const confirmerAuthority = confirmerAuthorized(contract.completion.confirmedBy, audience, corpus);
+  if (!confirmerAuthority.ok) {
+    return {
+      ...REJECT("non_observable_standard", "observable_standard"),
+      contract: { field: "completionSignal", reason: "confirmer_unauthorized" },
+    } as ProgramValidation;
+  }
 
   /**
    * THE SCENARIO CONTRACT (Slice 3.2L-R5). Required exactly when the Host's design asks

@@ -72,12 +72,20 @@ describe("[3.2L-R7] behaviour-contract diagnostics migration", () => {
       ["meta_only", "missing", "no_confirmation", "no_moment", "not_a_role", "too_long"],
     );
 
-    const widenedRaw = readFileSync(
-      join(process.cwd(), "supabase", "migrations", "20260816000000_foundry_program_contract_reason_interrogative_v1.sql"),
-      "utf8",
-    );
-    const widened = widenedRaw.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
-    const union = [...new Set([...reasonsIn(EXECUTABLE), ...reasonsIn(widened)])].sort();
+    /*
+      The vocabulary now spans THREE migrations: this one, `20260816000000` (interrogative_action,
+      applied) and `20260818000000` (actor_unauthorized / confirmer_unauthorized, held). Each
+      later file restates the full list, so the union is what the schema will accept once all are
+      applied — and `storableContractReason` withholds anything the LIVE check has not reached.
+    */
+    const executableOf = (file: string) =>
+      readFileSync(join(process.cwd(), "supabase", "migrations", file), "utf8")
+        .split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+    const union = [...new Set([
+      ...reasonsIn(EXECUTABLE),
+      ...reasonsIn(executableOf("20260816000000_foundry_program_contract_reason_interrogative_v1.sql")),
+      ...reasonsIn(executableOf("20260818000000_foundry_program_contract_reason_role_authority_v1.sql")),
+    ])].sort();
     expect(union).toEqual([...CONTRACT_DEFECT_REASONS].sort());
   });
 
