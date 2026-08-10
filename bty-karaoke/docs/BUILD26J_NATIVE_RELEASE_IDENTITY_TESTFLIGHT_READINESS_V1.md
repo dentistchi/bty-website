@@ -25,7 +25,7 @@ changed. Starting point: BUILD 26I `PASS / CLOSED`, native build 87.
 | TestFlight build processed | ⛔ blocked by the above |
 | TestFlight artifact installed on a physical iPhone | ⛔ blocked by the above |
 | G1–G10 | ⛔ blocked by the above |
-| privacy / support / deletion reviewer info verified | ⚠ **partial — Support URL is 404 (§8)** |
+| privacy / support / deletion reviewer info verified | ⚠ **partial — privacy REPAIRED and live (§9a); Support URL still 404** |
 | full regression green | ✅ §15 |
 | closure committed and pushed | ✅ this file |
 | HEAD/origin `0 0` | ✅ §19 |
@@ -241,29 +241,88 @@ part of the pending TestFlight gates.
 
 ---
 
-## 9. Privacy / support surfaces (§8)
+## 9. Privacy / support surfaces (§8) — and the repair
 
 | Surface | URL | Status |
 |---|---|---|
-| Privacy Policy | `https://norebang.btydaily.com/privacy` | ✅ 200, bilingual, `12a` deletion disclosure live |
+| Privacy Policy | `https://norebang.btydaily.com/privacy` | ✅ 200, bilingual, **repaired — §9a** |
 | Terms of Service | `https://norebang.btydaily.com/terms` | ✅ 200, bilingual |
-| Support / Contact | `/support`, `/contact`, `/help`, `/about` | ⛔ **all 404** |
+| Support / Contact | `/support`, `/contact`, `/help`, `/about` | ⛔ **all 404 — still open** |
 
-Both live pages are clean: no `localhost`, no `staging`, no `workers.dev`, effective date
-2026-07-19, contact `ywamer2022@gmail.com` published in both languages.
+Effective date 2026-07-19, contact `ywamer2022@gmail.com` published in both languages, no
+`localhost` / `staging` / `workers.dev` references.
 
-**Two findings that need an operator decision — neither repaired here:**
+### 9a. DEFECT-26J-1 — the policy denied the Google Sign-In the product ships
 
-1. **No Support URL exists.** App Store Connect requires one. Today the only support channel
-   is an email address buried inside the privacy policy.
-2. **Scope wording.** The policy states it covers *"the public btyNorebang **web**
-   service."* The App Store submission is an **iOS app**. §12a does describe in-app Host
-   account deletion, so the substance is present, but the scope sentence invites a reviewer
-   question.
-3. **Branding mismatch.** Both pages say **`btyNorebang`**; the app will install as
-   **`BTY Norebang`**. Recognisably the same product, but not identical.
+The live policy asserted, in **both** languages:
 
----
+```
+"No Google sign-in. btyNorebang does not use Google OAuth or Google sign-in …
+ because we request no Google authorization, btyNorebang does not appear there."
+```
+
+**False, and false for some time.** Google Sign-In ships on web (`/host/auth/google`,
+`POST /api/host/auth/google`) and on iOS (GoogleSignIn SDK 9.2.0), and BUILD 26I exercised
+it through six production account lifecycles. A user who signed in with Google and then found
+the app listed on Google's security & permissions page was reading a policy telling them it
+could not be there.
+
+**The test had pinned the false claim as contract** —
+`legal.render.test.tsx` asserted `/does not use Google OAuth|Google 로그인 없음/`, which made
+the false disclosure harder to fix than it had been to write. That is the BUILD 26E trap
+(*"tests that encoded a defect as contract"*) recurring in the legal layer.
+
+**Repair — §2 and §5, English and Korean.** Google Sign-In is now disclosed as
+**authentication**, and the YouTube boundary is stated rather than implied: no authorization
+to access or manage a YouTube account, no reading of subscriptions/history/playlists, nothing
+ever uploaded, deleted or modified. The connected-apps entry is **explained rather than
+denied**. §2 now scopes the policy to the **BTY Norebang iOS app** as well as the web service —
+BUILD 26J submits an App Store binary, and a policy scoped to "the web service" is the wrong
+document to hand a reviewer.
+
+Every truthful YouTube statement was preserved verbatim. **Zero lines** of BUILD 26E/26I
+deletion, retention, anonymization, provider-revocation or audit disclosure were touched — the
+diff is exactly four hunks: EN §2, EN §5, KO §2, KO §5.
+
+**Branding.** The web product keeps its established name `btyNorebang`; §2 now names both it
+and the iOS app. A global rename would touch 16 files including `brand.ts` and its own pinning
+test — a product-wide rebrand, outside a privacy path-scoped commit.
+
+**Mutation-verified: 8 / 8 killed, 0 survivors** — reinstating either language's false claim,
+restoring either denial, deleting either YouTube boundary, or reverting either scope sentence
+all fail the suite. `page.tsx` restored byte-identical after every mutant.
+
+**Deployed and proven live** (§9b), not merely built.
+
+### 9b. Live production proof
+
+```
+version      38d52a9e-a05d-4d16-8bdc-7f253bae9589 @ 100%
+deployed     2026-08-10T03:25:50Z   rollback target 9b2701e4 (BUILD 26H)
+live build   GET /api/karaoke-build -> {"build":"cdc6488c3cf9"}
+migrations   39 / 39 local ↔ remote — UNCHANGED; BUILD 26J added no migration
+secrets      16 / 16 verified inherited BEFORE deploy, not assumed
+```
+
+Pre-verified on the isolated version preview URL **before** promoting to production traffic
+(12/12), then re-verified on `norebang.btydaily.com` after promotion — three consecutive
+probes all served the new version, so no propagation split was mistaken for success:
+
+```
+PASS  EN + KO: the false "no Google sign-in" claim is GONE
+PASS  EN + KO: "does not appear there" / "권한도 요청하지 않으므로" GONE
+PASS  EN + KO: Google Sign-In stated as authentication
+PASS  EN + KO: no YouTube authorization requested — boundary stated
+PASS  EN + KO: connected-apps entry explained
+PASS  EN + KO: policy scoped to the BTY Norebang iOS app
+PASS  EN + KO: 12a account-deletion disclosure still live
+PASS        : retention section intact, YouTube truths preserved
+PASS        : no localhost / staging references
+                                                          19 / 19
+```
+
+Regression controls after deploy: `POST /api/host/account/delete` → **401** (control
+`…/delete-nope` → 404), `/terms` → 200.
 
 ## 10. App Privacy ledger (§9)
 
@@ -346,12 +405,15 @@ Authority for every line: BUILD 26I `PASS / CLOSED`, 12/12 production tombstones
 ## 12. Regression (§15) — measured this build
 
 ```
-server unit suite      219 files / 2427 tests passed, 0 failed
+server unit suite      219 files / 2429 tests passed, 0 failed   (+2 legal tests)
 TypeScript             tsc --noEmit clean, exit 0
 Cloudflare build       OpenNext build complete — worker.js emitted
 native host suite      2001 passed, 0 failed      (1993 at 26I; +8 identity pins)
+                       NOTE: the directive's expected 1999 is stale — it predates pins 17g/17h
 native Guest suite      854 passed, 0 failed
 identity mutants        11 / 11 killed, 0 survivors, pbxproj restored byte-identical
+privacy mutants          8 / 8  killed, 0 survivors, page.tsx restored byte-identical
+tracked-tree stability  digest identical at t0 / t1 / t2 across build+test activity
 native Debug build     ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
 native Release build   ** BUILD SUCCEEDED **   iOS 18.0, generic/platform=iOS
 Archive                NOT ATTEMPTED — no distribution certificate (§4)
@@ -422,8 +484,15 @@ be asserted by reading the file, never by rewriting it.
 
 ```
 4b288c8   chore(ios):    BUILD 26J — release identity, build 88, iPhone-only, iOS 18.0 floor
-<docs>    docs(karaoke): BUILD 26J — interim release-readiness record, BLOCKED on distribution
+f4de8d76  docs(karaoke): BUILD 26J — interim release-readiness record, BLOCKED on distribution
+cdc6488c  fix(karaoke):  BUILD 26J — privacy policy must not deny the Google Sign-In it ships
+<this>    docs(karaoke): BUILD 26J — privacy repair deployed and proven live
 ```
+
+**Provenance, stated factually:** every BUILD 26J change was authored and verified in the
+session that produced this document. Commit `4b288c8` carries the native release identity and
+its pins; `cdc6488c` carries the privacy repair. Nothing here was externally pre-staged, and
+no authorship is claimed for work not done here.
 
 The pre-existing xcscheme edit and all unrelated Karaoke/Arena working-tree state were
 deliberately left uncommitted.
@@ -441,11 +510,13 @@ deliberately left uncommitted.
 
 Plus, before submission:
 
-- create a **Support URL** (App Store Connect requires it; `/support` is currently 404),
-- decide the **privacy-policy scope wording** ("web service" vs the iOS app),
-- decide the **`btyNorebang` vs `BTY Norebang`** branding wording,
-- make the **`ITSAppUsesNonExemptEncryption`** declaration,
+- create a **Support URL** — App Store Connect requires it; `/support` is still **404**,
+- make the **`ITSAppUsesNonExemptEncryption`** declaration (a legal statement, deliberately
+  not made here),
 - delete the stray **`com.bty.BTYNorebang`** App ID (§14).
+
+Closed by this build: the privacy-policy scope now names the iOS app, and the Google
+Sign-In disclosure is truthful and live (§9a/§9b).
 
 ---
 
@@ -461,6 +532,8 @@ Plus, before submission:
    gate to date ran on the tester's current OS. A genuine iOS 18 device check belongs with
    the TestFlight gates.
 6. **The `workers.dev` API origin was not changed**, only recorded (§7).
+6a. **`/support` is still 404.** The privacy repair did not create a support page; App Store
+   Connect will still have no Support URL to point at.
 7. **`ITSAppUsesNonExemptEncryption` was not declared** — a legal statement for the Founder.
 8. **The Apple-linking product gap was not repaired** (§13), by directive.
 
