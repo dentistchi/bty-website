@@ -14,7 +14,7 @@ import {
 } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import { journeyDigest } from "@/domain/foundry/module/proposal-digest";
 import { decideAdoptionReceipt } from "@/domain/foundry/module/adoption-authority";
-import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
+import { programContext, programContextFingerprint, requiredProgramKinds, PROGRAM_AUTHORSHIP_VERSION } from "@/domain/foundry/module/program-authorship";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
@@ -108,6 +108,20 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       journey: patchAnswers.realityGroundedJourneyV1,
     });
     if (!decision.ok) {
+      /*
+        ZERO WRITES when the proposal is no longer acceptable (Slice 3.2P-W4-R1).
+
+        Every other refusal is about the RECEIPT: the journey being written is the host's own
+        work, possibly edited, and dropping the marker while keeping their edits is right — that
+        is why this branch exists at all. `proposal_no_longer_valid` is different in kind. The
+        journey in this patch IS the proposal today's rules reject, so stripping the marker and
+        writing it anyway would put exactly the content this gate exists to stop into the draft,
+        just without a receipt. It refuses before `updateDraftStep`, so nothing is written: no
+        journey, no answers, no marker, no `applied_at`.
+      */
+      if (decision.reason === "proposal_no_longer_valid") {
+        return managerJson(base, req, { error: "proposal_no_longer_valid" }, 409);
+      }
       adoptionOutcome = decision;
       delete patchAnswers.programAdoptionV1;
     }
@@ -191,6 +205,11 @@ async function proveAdoption(
     attempt: facts.attempt,
     draftId: input.draftId,
     currentFingerprint: fingerprint,
+    /*
+      The acceptance contract in force NOW. A proposal generated under an older one is refused
+      before any write — identity is not validity (Slice 3.2P-W4-R1).
+    */
+    currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
     latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
     /*
       Recomputed from the journey being proved — the one in this patch for an initial claim,

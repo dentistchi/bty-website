@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import { proposalDigest } from "@/domain/foundry/module/proposal-digest";
-import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
+import { programContext, programContextFingerprint, requiredProgramKinds, PROGRAM_AUTHORSHIP_VERSION } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
@@ -24,6 +24,8 @@ let attemptRow: {
   id: string;
   draftId: string;
   outcome: string;
+  /** Slice 3.2P-W4-R1 — the acceptance contract the attempt was generated under. */
+  proposalVersion: string | null;
   contextFingerprint: string;
   proposalDigest: string | null;
 } | null = null;
@@ -146,7 +148,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   currentUser.mockReturnValue({ id: "owner-1" });
   markApplied.mockResolvedValue(true);
-  attemptRow = { id: ATTEMPT, draftId: DRAFT, outcome: "success", contextFingerprint: FINGERPRINT, proposalDigest: EXACT_DIGEST };
+  attemptRow = { id: ATTEMPT, draftId: DRAFT, outcome: "success", contextFingerprint: FINGERPRINT, proposalDigest: EXACT_DIGEST, proposalVersion: PROGRAM_AUTHORSHIP_VERSION };
   latestSuccessfulAttemptId = ATTEMPT;
 });
 
@@ -176,7 +178,7 @@ describe("[3.2L-R11.4K-R1] tamper → proposal_mismatch, through the real route"
   });
 
   it("an attempt with no recorded identity can never be adopted, tampered or not", async () => {
-    attemptRow = { id: ATTEMPT, draftId: DRAFT, outcome: "success", contextFingerprint: FINGERPRINT, proposalDigest: null };
+    attemptRow = { id: ATTEMPT, draftId: DRAFT, outcome: "success", contextFingerprint: FINGERPRINT, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION };
     const { body } = await patchWith(JOURNEY);
     expect(body.adoption?.ok).toBe(false);
     expect(body.adoption?.reason).toBe("proposal_mismatch");

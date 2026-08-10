@@ -103,7 +103,27 @@ import {
  * bumped even though the schema did not move, because reconciliation has to be able to tell
  * the contradictory authority that refused parent `604d09e5` from the repaired one.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v9";
+/**
+ * THE SEMANTIC ACCEPTANCE CONTRACT (Slice 3.2P-W4-R1).
+ *
+ * This string already answered "which authorship contract produced this proposal" — it is what
+ * the ledger stores as `proposal_version`. W4-R1 makes that meaning load-bearing: it is now
+ * ALSO the authority a cached or unapplied proposal is bound to, so a proposal accepted under
+ * an older contract cannot be restored or adopted under a newer one.
+ *
+ * IT MOVES ONLY WHEN ACCEPTANCE MOVES. A cosmetic deploy, a UI change, a doc change or a
+ * refactor must NOT invalidate a Host's unfinished work — which is exactly why the deploy SHA
+ * was rejected for this job. Bump it when a change can alter whether an EXISTING proposal is
+ * valid: actor authority, confirmer authority, scenario floors, material grounding, evidence
+ * ceilings, required-kind semantics.
+ *
+ * v9 → v10 corrects a real versioning defect. Between them, acceptance changed four times —
+ * the interrogative-action floor, the filename material floor, the server-written participant
+ * subject, and confirmer role-head authority — while the version stood still. W3 was generated
+ * under v9 and keeps that in its ledger row; it is no longer adoptable, and its history is not
+ * rewritten to say it was refused.
+ */
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v10";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { PROGRAM_AUTHORSHIP_VERSION } from "./program-authorship";
 import { decideAdoptionReceipt, type AdoptionClaim } from "./adoption-authority";
 
 /**
@@ -17,9 +18,10 @@ const base = (over: Partial<AdoptionClaim> = {}): AdoptionClaim => ({
   durableJourneyPresent: true,
   claimedAttemptId: V9,
   journeyInSamePatch: true,
-  attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+  attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
   draftId: DRAFT,
   currentFingerprint: FP,
+  currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
   latestSuccessfulAttemptId: V9,
   adoptedJourneyDigest: null,
   ...over,
@@ -42,7 +44,7 @@ describe("[3.2L-R11.2] a receipt cannot be invented", () => {
     // while adopting the v9 journey used to be stamped without complaint.
     const claim = base({
       claimedAttemptId: V1,
-      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       latestSuccessfulAttemptId: V9,
     });
     expect(decideAdoptionReceipt(claim)).toEqual({ ok: false, reason: "superseded_attempt" });
@@ -55,13 +57,13 @@ describe("[3.2L-R11.2] a receipt cannot be invented", () => {
   });
 
   it("an attempt from another draft is refused", () => {
-    const claim = base({ attempt: { id: V9, draftId: "other-draft", outcome: "success", contextFingerprint: FP, proposalDigest: null } });
+    const claim = base({ attempt: { id: V9, draftId: "other-draft", outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION } });
     expect(decideAdoptionReceipt(claim)).toEqual({ ok: false, reason: "attempt_other_draft" });
   });
 
   it("a refusal or in-flight attempt produced no proposal to adopt", () => {
     for (const outcome of ["validation_refused", "provider_error", "timeout", "started"]) {
-      const claim = base({ attempt: { id: V9, draftId: DRAFT, outcome, contextFingerprint: FP, proposalDigest: null } });
+      const claim = base({ attempt: { id: V9, draftId: DRAFT, outcome, contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION } });
       expect(decideAdoptionReceipt(claim), outcome).toEqual({ ok: false, reason: "attempt_not_successful" });
     }
   });
@@ -90,14 +92,14 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
 
   it("A: the exact generated proposal with its own attempt is accepted", () => {
     expect(decideAdoptionReceipt(base({
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       adoptedJourneyDigest: D,
     }))).toEqual({ ok: true });
   });
 
   it("B/C: any journey that is not that proposal is refused", () => {
     expect(decideAdoptionReceipt(base({
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       adoptedJourneyDigest: OTHER,
     }))).toEqual({ ok: false, reason: "proposal_mismatch" });
   });
@@ -106,7 +108,7 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
     // NULL means "not recorded" — never "close enough". This is the state every one of the
     // five historical successes is in, 15108cf3 included.
     expect(decideAdoptionReceipt(base({
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       adoptedJourneyDigest: D,
     }))).toEqual({ ok: false, reason: "proposal_mismatch" });
   });
@@ -114,7 +116,7 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
   it("D: predicate ordering is deterministic — recency is judged before content", () => {
     expect(decideAdoptionReceipt(base({
       claimedAttemptId: V1,
-      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: OTHER },
+      attempt: { id: V1, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: OTHER, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       latestSuccessfulAttemptId: V9,
       adoptedJourneyDigest: D,
     }))).toEqual({ ok: false, reason: "superseded_attempt" });
@@ -126,18 +128,18 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
     expect(decideAdoptionReceipt(base({ ...withDigest, journeyInSamePatch: false }))).toEqual({ ok: false, reason: "no_journey_in_same_patch" });
     expect(decideAdoptionReceipt(base({
       ...withDigest,
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       currentFingerprint: "moved", latestSuccessfulAttemptId: null,
     }))).toEqual({ ok: false, reason: "context_moved" });
     expect(decideAdoptionReceipt(base({
       ...withDigest,
-      attempt: { id: V9, draftId: DRAFT, outcome: "validation_refused", contextFingerprint: FP, proposalDigest: D },
+      attempt: { id: V9, draftId: DRAFT, outcome: "validation_refused", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
     }))).toEqual({ ok: false, reason: "attempt_not_successful" });
   });
 
   it("I/L: the same exact claim replays identically, however it arrives", () => {
     const claim = base({
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       adoptedJourneyDigest: D,
     });
     for (let i = 0; i < 3; i++) expect(decideAdoptionReceipt(claim)).toEqual({ ok: true });
@@ -154,7 +156,7 @@ describe("[3.2L-R11.3] exact proposal identity", () => {
 describe("[3.2L-R11.3A] initial claim vs receipt recovery", () => {
   const D = `program_proposal_digest_v1:${"a".repeat(64)}`;
   const OTHER = `program_proposal_digest_v1:${"b".repeat(64)}`;
-  const good = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D };
+  const good = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION };
 
   it("G8: an INITIAL claim must carry the journey it says it adopted", () => {
     expect(decideAdoptionReceipt(base({ mode: "initial", journeyInSamePatch: false, durableJourneyPresent: true }))).toEqual({
@@ -202,7 +204,7 @@ describe("[3.2L-R11.3A] initial claim vs receipt recovery", () => {
   it("N: an authority refusal never becomes a receipt because time passed", () => {
     // The refused claim's marker is never persisted, so there is nothing to recover FROM.
     // And even if a marker existed, recovery re-proves everything.
-    expect(decideAdoptionReceipt(base({ mode: "recovery", journeyInSamePatch: false, durableJourneyPresent: true, attempt: { ...good, proposalDigest: OTHER }, adoptedJourneyDigest: D }))).toEqual({
+    expect(decideAdoptionReceipt(base({ mode: "recovery", journeyInSamePatch: false, durableJourneyPresent: true, attempt: { ...good, proposalDigest: OTHER, proposalVersion: PROGRAM_AUTHORSHIP_VERSION }, adoptedJourneyDigest: D }))).toEqual({
       ok: false,
       reason: "proposal_mismatch",
     });
@@ -220,7 +222,7 @@ describe("[3.2L-R11.3B] with the digest authority live", () => {
         mode,
         journeyInSamePatch: mode === "initial",
         durableJourneyPresent: true,
-        attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+        attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
         adoptedJourneyDigest: D,
       })), mode).toEqual({ ok: false, reason: "proposal_mismatch" });
     }
@@ -231,14 +233,14 @@ describe("[3.2L-R11.3B] with the digest authority live", () => {
     // all; with a journey present the exact check always runs, so a direct PATCH cannot
     // slip past it into the older newest-success heuristic.
     const passesEverythingElse = base({
-      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null },
+      attempt: { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: null, proposalVersion: PROGRAM_AUTHORSHIP_VERSION },
       adoptedJourneyDigest: D,
     });
     expect(decideAdoptionReceipt(passesEverythingElse).ok).toBe(false);
   });
 
   it("G6: an exact match passes, and only an exact match", () => {
-    const attempt = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D };
+    const attempt = { id: V9, draftId: DRAFT, outcome: "success", contextFingerprint: FP, proposalDigest: D, proposalVersion: PROGRAM_AUTHORSHIP_VERSION };
     expect(decideAdoptionReceipt(base({ attempt, adoptedJourneyDigest: D }))).toEqual({ ok: true });
     expect(decideAdoptionReceipt(base({ attempt, adoptedJourneyDigest: `program_proposal_digest_v1:${"a".repeat(63)}b` })))
       .toEqual({ ok: false, reason: "proposal_mismatch" });

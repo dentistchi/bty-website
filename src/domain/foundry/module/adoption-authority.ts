@@ -16,6 +16,12 @@
 
 /** Why a claimed adoption may not be stamped. Closed vocabulary, never prose. */
 export type AdoptionRefusal =
+  /**
+   * The proposal was valid when it was generated and is not acceptable under the rules in force
+   * now (Slice 3.2P-W4-R1). NOT `proposal_mismatch` — the identity is exact — and NOT
+   * `context_moved`: the host changed nothing.
+   */
+  | "proposal_no_longer_valid"
   /** The request named an attempt without also writing the journey it claims to have adopted. */
   | "no_journey_in_same_patch"
   /** No such attempt for this Host. */
@@ -65,6 +71,11 @@ export type AdoptionClaim = {
     contextFingerprint: string;
     /** The exact proposal identity, or null when this attempt never recorded one. */
     proposalDigest: string | null;
+    /**
+     * The semantic acceptance contract this proposal was generated under (Slice 3.2P-W4-R1).
+     * Null for an attempt predating the column's use.
+     */
+    proposalVersion: string | null;
   } | null;
   /** This draft's identity, recomputed by the server from its own stored answers. */
   draftId: string;
@@ -82,6 +93,8 @@ export type AdoptionClaim = {
    * complete set rather than silently weakening them.
    */
   adoptedJourneyDigest: string | null;
+  /** The acceptance contract in force NOW, from `PROGRAM_AUTHORSHIP_VERSION`. */
+  currentAuthorityVersion: string;
 };
 
 export type AdoptionDecision = { ok: true } | { ok: false; reason: AdoptionRefusal };
@@ -116,6 +129,24 @@ export function decideAdoptionReceipt(claim: AdoptionClaim): AdoptionDecision {
   if (claim.adoptedJourneyDigest !== null) {
     if (claim.attempt.proposalDigest === null) return { ok: false, reason: "proposal_mismatch" };
     if (claim.attempt.proposalDigest !== claim.adoptedJourneyDigest) return { ok: false, reason: "proposal_mismatch" };
+  }
+
+  /*
+    STILL ACCEPTABLE TODAY (Slice 3.2P-W4-R1). Everything above proves IDENTITY — that this
+    journey is what that generation produced. None of it proves VALIDITY, and those stopped
+    being the same question the moment a semantic floor moved.
+
+    MEASURED: W3 succeeded under `program_authorship_v9`, before the participant subject became
+    server-written and before confirmer role-head authority existed. Its cached proposal names a
+    learner population the host did not choose and a record keeper the source never mentioned,
+    and every check above passes for it — same draft, success, fingerprint unchanged, newest
+    attempt, digest exact. Only this refuses it.
+
+    Deliberately LAST, so a genuine identity fault is still reported as one, and deliberately
+    distinct from `proposal_mismatch`: nothing about this proposal changed. The rules did.
+  */
+  if (claim.attempt.proposalVersion !== claim.currentAuthorityVersion) {
+    return { ok: false, reason: "proposal_no_longer_valid" };
   }
   return { ok: true };
 }

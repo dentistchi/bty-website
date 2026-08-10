@@ -405,7 +405,7 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
   it("both the authority and the wire schema move", () => {
     // v9 REMOVES application_contract from the response, so unlike R9 this is a real wire
     // change and both names increment (Slice 3.2L-R10-A).
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v9");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v10");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v8");
   });
 

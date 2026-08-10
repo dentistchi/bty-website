@@ -304,15 +304,20 @@ export async function readAdoptionFacts(
   admin: SupabaseClient,
   input: { attemptId: string; draftId: string; ownerUserId: string; currentFingerprint: string },
 ): Promise<{
-  attempt: { id: string; draftId: string; outcome: string; contextFingerprint: string; proposalDigest: string | null } | null;
+  attempt: {
+    id: string; draftId: string; outcome: string; contextFingerprint: string;
+    proposalDigest: string | null;
+    /** The acceptance contract it was generated under (Slice 3.2P-W4-R1). */
+    proposalVersion: string | null;
+  } | null;
   latestSuccessfulAttemptId: string | null;
 }> {
   const { data: row } = await admin
     .from(ATTEMPTS)
-    .select(PROPOSAL_DIGEST_ENABLED ? "id,draft_id,outcome,context_fingerprint,proposal_digest" : "id,draft_id,outcome,context_fingerprint")
+    .select(PROPOSAL_DIGEST_ENABLED ? "id,draft_id,outcome,context_fingerprint,proposal_version,proposal_digest" : "id,draft_id,outcome,context_fingerprint,proposal_version")
     .eq("id", input.attemptId)
     .eq("owner_user_id", input.ownerUserId)
-    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string; proposal_digest?: string | null }>();
+    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string; proposal_version?: string | null; proposal_digest?: string | null }>();
 
   const { data: latest } = await admin
     .from(ATTEMPTS)
@@ -333,6 +338,7 @@ export async function readAdoptionFacts(
           outcome: row.outcome,
           contextFingerprint: row.context_fingerprint,
           proposalDigest: row.proposal_digest ?? null,
+          proposalVersion: row.proposal_version ?? null,
         }
       : null,
     latestSuccessfulAttemptId: latest?.id ?? null,

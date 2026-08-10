@@ -36,7 +36,7 @@
  * absolute TTL, removal the moment the work is finished or discarded, and a purge on logout.
  * Nothing here is indefinite, and nothing reaches the database.
  */
-import type { ProgramProposal } from "@/domain/foundry/module/program-authorship";
+import { PROGRAM_AUTHORSHIP_VERSION, type ProgramProposal } from "@/domain/foundry/module/program-authorship";
 
 const KEY_PREFIX = "bty_program_proposal_v2:";
 
@@ -47,6 +47,17 @@ const KEY_PREFIX = "bty_program_proposal_v2:";
 export const PROPOSAL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type CachedProposal = {
+  /**
+   * The semantic acceptance contract this proposal was generated under (Slice 3.2P-W4-R1).
+   *
+   * MEASURED: a successful W3 proposal sat here for 24 hours across four changes to what the
+   * validator accepts, and reappeared on Review re-entry looking like current work — naming a
+   * learner population the host had not chosen and a record keeper the source never mentioned.
+   * The fingerprint gate could not see it, because the host had changed nothing; the inputs were
+   * identical and the RULES had moved. Absent on an entry written before this field existed,
+   * which is treated as "not the current contract".
+   */
+  readonly authorityVersion?: string;
   /** When it was written. Read back to enforce the TTL — never sent anywhere. */
   readonly savedAt?: number;
   /** Which generation this is. Sent to the server on Apply; proved there, never here. */
@@ -92,7 +103,8 @@ export function writeCachedProposal(draftId: string, entry: CachedProposal): voi
   const s = store();
   if (!s || !draftId) return;
   try {
-    s.setItem(keyFor(draftId), JSON.stringify({ ...entry, savedAt: Date.now() }));
+    // The authority is stamped here, never taken from the caller — one source for both halves.
+    s.setItem(keyFor(draftId), JSON.stringify({ ...entry, authorityVersion: PROGRAM_AUTHORSHIP_VERSION, savedAt: Date.now() }));
   } catch {
     // Quota or serialization failure — the on-screen proposal is unaffected.
   }
@@ -122,6 +134,15 @@ export function readCachedProposal(draftId: string, currentFingerprint: string):
     if (parsed.attemptId !== null && typeof parsed.attemptId !== "string") return null;
     if (!looksLikeProposal(parsed.proposal)) return null;
     if (parsed.contextFingerprint !== currentFingerprint) return null;
+    /*
+      Same inputs is not the same thing as the same rules. A proposal accepted under an older
+      acceptance contract is not offered again, and the stale entry is removed rather than left
+      to reappear tomorrow. Only this draft's entry — never anyone else's work.
+    */
+    if (parsed.authorityVersion !== PROGRAM_AUTHORSHIP_VERSION) {
+      clearCachedProposal(draftId);
+      return null;
+    }
     // Expired work is not offered, and is not left behind either.
     const savedAt = typeof parsed.savedAt === "number" ? parsed.savedAt : 0;
     if (!savedAt || Date.now() - savedAt > PROPOSAL_CACHE_TTL_MS) {
@@ -130,6 +151,7 @@ export function readCachedProposal(draftId: string, currentFingerprint: string):
     }
     return {
       savedAt,
+      authorityVersion: parsed.authorityVersion,
       attemptId: parsed.attemptId ?? null,
       contextFingerprint: parsed.contextFingerprint,
       proposal: parsed.proposal,
