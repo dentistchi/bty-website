@@ -35,12 +35,13 @@ export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
  * have made the whole child update fail — losing every other diagnostic on that row to record
  * one. So it was withheld and stored as NULL for one deploy.
  *
- * WIDENED AND VERIFIED (Slice 3.2P-R3). `20260816000000` is applied live, and the live CHECK
- * was proven — not assumed — by a non-writing probe: an insert carrying an attempt_id that
- * does not exist fails either way, and Postgres names the constraint it hit first. With
- * `interrogative_action` it named the unrelated lifecycle constraint (so the reason passed);
- * with a nonsense value it named `foundry_program_call_behavior_contract_reason_check` (so the
- * constraint is still active and still discriminating). No row was written by either.
+ * WIDENED AND VERIFIED TWICE. `20260816000000` (3.2P-R3) added `interrogative_action`;
+ * `20260818000000` (3.2P-R3.2-R2A) added `confirmer_unauthorized`. Both live CHECKs were proven —
+ * not assumed — by a non-writing probe: an insert carrying an attempt_id that does not exist
+ * fails either way, and Postgres names the constraint it hit first. All eight allowed reasons
+ * passed the reason CHECK and were stopped by an unrelated lifecycle constraint; a nonsense
+ * value, and `actor_unauthorized` (deliberately never added), were named by
+ * `foundry_program_call_behavior_contract_reason_check` itself. No row was written by any probe.
  *
  * This list stays explicit rather than deriving from `CONTRACT_DEFECT_REASONS`: the point is
  * to record what the SCHEMA accepts, and deriving it from the domain would silently re-create
@@ -49,6 +50,7 @@ export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 const LIVE_CONTRACT_REASONS: readonly string[] = [
   "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
   "interrogative_action",
+  "confirmer_unauthorized",
 ];
 
 function storableContractReason(reason: string | undefined): string | null {
