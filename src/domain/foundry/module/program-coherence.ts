@@ -92,20 +92,41 @@ const ARTIFACT_ALT = ARTIFACT_NOUNS.join("|");
 const CONSTRUCT_ALT = CONSTRUCT_NOUNS.join("|");
 
 /**
+ * A MODIFIER TOKEN inside a noun phrase (Slice 3.2P-R3.1).
+ *
+ * Was `[\w'-]+`, which is ASCII-only and cannot contain a dot — so a FILENAME sitting between
+ * the determiner and the artifact head made the whole pattern miss. Measured: "the checklist
+ * lists five steps" and "the training checklist lists five steps" were both refused, while
+ * "the education.pdf checklist lists five steps" passed, along with the same claim built on
+ * `notes.txt`, `slides.pptx`, `training.v2.pdf`, `MRONJ-1.pdf` and `측정지표.pdf`. That is
+ * exactly the shape this pilot invites, because its prompt legitimately names `education.pdf`.
+ *
+ * Two changes, each with evidence behind it and nothing more:
+ *
+ *   DOTS, ONLY INSIDE A TOKEN. `word(.word)*` — never a trailing dot. A trailing dot would
+ *   let the phrase walk across a sentence boundary ("the team. The template lists…") and
+ *   invent a claim out of two unrelated clauses. Measured on that exact sentence.
+ *
+ *   NON-ASCII LETTERS. `\w` excludes Hangul, and 8 of the 27 real filenames on staging are
+ *   Korean. A Korean-named file broke the pattern the same way a dot did.
+ */
+export const MODIFIER_TOKEN = "[\\p{L}\\p{N}_'-]+(?:\\.[\\p{L}\\p{N}_'-]+)*";
+
+/**
  * GREEDY modifiers on purpose. "the handoff record template" contains TWO artifact nouns;
  * a lazy match stops at "record", finds it grounded (the Host wrote "Handoff record") and
  * never examines "template" — the ungrounded one. Measured: that made the R2 live miss
  * pass. Greedy matching reaches the HEAD noun, which is the artifact being claimed.
  */
 const DEFINITE_ARTIFACT = new RegExp(
-  `\\b(?:the|our|your|its|their|this|that|these|those|existing|available|current|ready-made|pre-made)\\s+((?:[\\w'-]+\\s+){0,3}(${ARTIFACT_ALT}))\\b`,
-  "gi",
+  `\\b(?:the|our|your|its|their|this|that|these|those|existing|available|current|ready-made|pre-made)\\s+((?:${MODIFIER_TOKEN}\\s+){0,3}(${ARTIFACT_ALT}))\\b`,
+  "giu",
 );
 
 /** "access to the necessary tools and templates" — an availability claim. */
 const ACCESS_ARTIFACT = new RegExp(
-  `\\baccess\\s+to\\s+(?:the\\s+|any\\s+)?(?:necessary\\s+|required\\s+|appropriate\\s+|relevant\\s+)?((?:[\\w'-]+\\s+){0,3}(${ARTIFACT_ALT}))\\b`,
-  "gi",
+  `\\baccess\\s+to\\s+(?:the\\s+|any\\s+)?(?:necessary\\s+|required\\s+|appropriate\\s+|relevant\\s+)?((?:${MODIFIER_TOKEN}\\s+){0,3}(${ARTIFACT_ALT}))\\b`,
+  "giu",
 );
 
 /**

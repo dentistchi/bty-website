@@ -17,6 +17,7 @@
  * No DB, no I/O, no providers.
  */
 
+import { SUPPORTED_EXTENSIONS } from "./draft-asset";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -57,6 +58,7 @@ import {
   deriveFirstApplicationMoment,
   renderStandardSentence,
   ungroundedExistingEntity,
+  MODIFIER_TOKEN,
   validateBehaviorContract,
   validateProgramDependencies,
   validateScenarioContract,
@@ -627,15 +629,42 @@ export function ungroundedArtifact(text: string, corpus: string): string | null 
  */
 const MATERIAL_SOURCES = "video|recording|webinar|clip|footage|document|file|pdf|link|material|materials|article|slides|deck|handout|reading";
 const ATTRIBUTION_VERBS =
-  "says|state[sd]?|explains?|explained|teaches|taught|shows?|showed|covers?|covered|describes?|described|outlines?|outlined|lists?|listed|demonstrates?|demonstrated|walks? through|contains?|contained|includes?|included|recommends?|recommended|specifies|specified|details|detailed|introduces?|introduced";
+  "says|state[sd]?|explains?|explained|teaches|taught|shows?|showed|covers?|covered|describes?|described|outlines?|outlined|lists?|listed|demonstrates?|demonstrated|walks? through|contains?|contained|includes?|included|recommends?|recommended|specifies|specified|details|detailed|introduces?|introduced|requires?|required";
 const MATERIAL_CONTENT_CLAIM = [
   // "the video explains …", "this document lists …"
-  new RegExp(`\\b(?:the|this|that|our|your|their)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\s+(?:${ATTRIBUTION_VERBS})\\b`, "i"),
+  new RegExp(`\\b(?:the|this|that|our|your|their)\\s+(?:${MODIFIER_TOKEN}\\s+){0,2}(?:${MATERIAL_SOURCES})\\s+(?:${ATTRIBUTION_VERBS})\\b`, "iu"),
   // "as described in the video", "covered in the material"
-  new RegExp(`\\b(?:${ATTRIBUTION_VERBS})\\s+in\\s+(?:the|this|that)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "i"),
+  new RegExp(`\\b(?:${ATTRIBUTION_VERBS})\\s+in\\s+(?:the|this|that)\\s+(?:${MODIFIER_TOKEN}\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "iu"),
   // "according to the video"
-  new RegExp(`\\baccording to\\s+(?:the|this|that)\\s+(?:[\\w'-]+\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "i"),
+  new RegExp(`\\baccording to\\s+(?:the|this|that)\\s+(?:${MODIFIER_TOKEN}\\s+){0,2}(?:${MATERIAL_SOURCES})\\b`, "iu"),
 ];
+
+/**
+ * A FILE, NAMED, SPEAKING FOR ITSELF (Slice 3.2P-R3.1).
+ *
+ * The patterns above all need a determiner and a generic source noun, so they never saw
+ * "education.pdf says to name an owner" — the filename IS the subject, and no article
+ * introduces it. Measured: that sentence, "education.pdf requires every leader to…" and
+ * "the slides.pptx require a named owner" all passed every honesty check.
+ *
+ * Naming a verified file is authority for its EXISTENCE and nothing else, so a filename
+ * followed by an attribution verb is a content claim regardless of who supplied the file.
+ * The extension list is the application's own upload allowlist, which keeps this from firing
+ * on ordinary dotted prose ("e.g." and "i.e." are not file types).
+ *
+ * BOUNDED DELIBERATELY. At most two intervening words, and none of them a connective — so
+ * "the education.pdf checklist lists…" matches while "Open education.pdf and the team lists
+ * the owners" does not. A trailing sentence stop also breaks the match, because the
+ * whitespace this requires is not there.
+ */
+const FILE_EXTENSIONS = SUPPORTED_EXTENSIONS.join("|");
+const CLAUSE_CONNECTIVES = "and|or|but|then|so|because|which|that|who|while|before|after";
+const FILE_CONTENT_CLAIM = new RegExp(
+  `\\b${MODIFIER_TOKEN}\\.(?:${FILE_EXTENSIONS})\\b` +
+    `(?:\\s+(?!(?:${CLAUSE_CONNECTIVES})\\b)[\\p{L}\\p{N}_'-]+){0,2}` +
+    `\\s+(?:${ATTRIBUTION_VERBS})\\b`,
+  "iu",
+);
 
 /**
  * An UPLOAD does not unlock its contents either. The application stores a file's title and
@@ -650,8 +679,8 @@ const MATERIAL_CONTENT_CLAIM = [
 const PRESCRIPTIVE_ARTIFACTS =
   "template|templates|checklist|checklists|form|forms|policy|policies|guide|guides|manual|manuals|sop|sops|playbook|playbooks|handbook|handbooks|protocol|protocols|worksheet|worksheets|procedure|procedures";
 const PRESCRIPTIVE_CONTENT_CLAIM = new RegExp(
-  `\\b(?:the|this|that|our|your|their)\\s+(?:[\\w'-]+\\s+){0,2}(?:${PRESCRIPTIVE_ARTIFACTS})\\s+(?:${ATTRIBUTION_VERBS})\\b`,
-  "i",
+  `\\b(?:the|this|that|our|your|their)\\s+(?:${MODIFIER_TOKEN}\\s+){0,2}(?:${PRESCRIPTIVE_ARTIFACTS})\\s+(?:${ATTRIBUTION_VERBS})\\b`,
+  "iu",
 );
 
 /**
@@ -664,6 +693,7 @@ const PRESCRIPTIVE_CONTENT_CLAIM = new RegExp(
  */
 export function claimsMaterialContent(text: string): boolean {
   if (MATERIAL_CONTENT_CLAIM.some((re) => re.test(text))) return true;
+  if (FILE_CONTENT_CLAIM.test(text)) return true;
   const m = PRESCRIPTIVE_CONTENT_CLAIM.exec(text);
   if (!m) return false;
   // Creation framing anywhere in the surrounding sentence — the participant is making it.
