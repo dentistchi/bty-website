@@ -83,6 +83,15 @@ function makeAdmin(seed: { modules?: Row[]; drafts?: Row[] } = {}) {
       maybeSingle() {
         return Promise.resolve({ data: this._match()[0] ?? null, error: null });
       },
+      /*
+        Slice 3.2P-R2.1: revision creation now clones the parent's source attachment, and that
+        read uses `.returns<T>()`. With no asset rows in these fixtures it resolves empty and
+        the clone is a no-op — which is exactly the case these tests describe (a draft with no
+        material). Asset copying itself is proved in `revisionAssetContinuity.test.ts`.
+      */
+      returns() {
+        return Promise.resolve({ data: this._match(), error: null });
+      },
       single() {
         if (this._insert) {
           const row = draftDefaults(this._insert);

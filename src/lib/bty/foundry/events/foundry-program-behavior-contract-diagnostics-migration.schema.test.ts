@@ -49,10 +49,36 @@ describe("[3.2L-R7] behaviour-contract diagnostics migration", () => {
     expect(allowed).not.toContain("observableAction");
   });
 
-  it("the REASON vocabulary equals the validator's own exactly", () => {
-    const m = EXECUTABLE.match(/behavior_contract_reason in \(([\s\S]*?)\)/i);
-    const allowed = [...m![1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort();
-    expect(allowed).toEqual([...CONTRACT_DEFECT_REASONS].sort());
+  /**
+   * THE VOCABULARY IS NOW SPREAD ACROSS TWO MIGRATIONS (Slice 3.2P-R2.1).
+   *
+   * This migration pinned six reasons. The observable-action grammar floor adds a seventh,
+   * `interrogative_action`, widened by `20260816000000` — which is HELD for the Founder SQL
+   * gate, so until it runs the live CHECK still accepts only these six. That is not drift: the
+   * recorder writes NULL rather than a value the live schema would refuse
+   * (`storableContractReason`), so nothing can fail an insert while the two are out of step.
+   *
+   * The invariant this test exists for is unchanged — the schema and the validator must agree
+   * on the vocabulary — so it is now asserted against the UNION of the two migrations, and the
+   * older file is still asserted to be exactly what it was.
+   */
+  it("the REASON vocabulary, across both migrations, equals the validator's own exactly", () => {
+    const reasonsIn = (sql: string) => {
+      const m = sql.match(/behavior_contract_reason in \(([\s\S]*?)\)/i);
+      return m ? [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]) : [];
+    };
+    // This migration, unchanged: the original six.
+    expect(reasonsIn(EXECUTABLE).sort()).toEqual(
+      ["meta_only", "missing", "no_confirmation", "no_moment", "not_a_role", "too_long"],
+    );
+
+    const widenedRaw = readFileSync(
+      join(process.cwd(), "supabase", "migrations", "20260816000000_foundry_program_contract_reason_interrogative_v1.sql"),
+      "utf8",
+    );
+    const widened = widenedRaw.split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
+    const union = [...new Set([...reasonsIn(EXECUTABLE), ...reasonsIn(widened)])].sort();
+    expect(union).toEqual([...CONTRACT_DEFECT_REASONS].sort());
   });
 
   it("neither column can hold prose", () => {

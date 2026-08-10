@@ -125,6 +125,132 @@ export async function attachAsset(
 }
 
 /**
+ * COPY-ON-REVISION (Slice 3.2P-R2.1) — the one primitive that carries a source attachment
+ * from a parent draft to its new version.
+ *
+ * THE DEFECT IT CLOSES. "Create new version" copied the parent's answers verbatim, including
+ * `materialIntent: "pdf"`, and copied no assets — so the child declared a PDF it did not
+ * have, and the Host was asked to re-upload a file this system already holds, verified,
+ * hashed and page-counted. Measured on the live pilot: v2 inherited `materialIntent: "pdf"`,
+ * zero asset rows, `document_asset_ref: null`, and an empty `verifiedArtifacts` for
+ * generation.
+ *
+ * WHY THE OBJECT IS COPIED AND NOT SHARED. `removeAsset` deletes the underlying storage
+ * object. A child row pointing at the parent's path would mean a Host detaching the file from
+ * v2 destroys the object that v1's PUBLISHED event still serves to learners. So each
+ * inherited asset gets its own object at a fresh owner-scoped path; identical bytes, and
+ * therefore an identical `content_hash`, which is what makes the copy verifiable.
+ *
+ * IDEMPOTENT BY CONTENT HASH. A parent asset whose hash already exists on the child is
+ * skipped — no second row, no second object. So a retry after a partial failure completes the
+ * remainder rather than duplicating what already landed.
+ *
+ * NOT A "RESTORE" HOOK. This runs at revision CREATION only. A Host who later removes an
+ * attachment means it; resurrecting it because the child has no assets would override that.
+ */
+export type AssetCloneResult = {
+  /** Parent assets found. Zero means there was nothing to inherit — not a failure. */
+  readonly found: number;
+  /** Rows newly written on the child by this call. */
+  readonly copied: number;
+  /** Already present on the child (same content hash) and correctly left alone. */
+  readonly skipped: number;
+  /** True only when every parent asset is now present on the child. */
+  readonly complete: boolean;
+};
+
+export async function cloneDraftAssets(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  fromDraftId: string,
+  toDraftId: string,
+): Promise<ServiceResult<AssetCloneResult>> {
+  // Both sides owner-resolved first, exactly like every other op here: an asset must never
+  // cross an owner boundary, and neither id is trusted from a caller.
+  const parent = await getOwnerDraft(admin, ownerUserId, fromDraftId);
+  if (!parent) return { ok: false, reason: "parent_not_found" };
+  const child = await getOwnerDraft(admin, ownerUserId, toDraftId);
+  if (!child) return { ok: false, reason: "draft_not_found" };
+  if (!canMutateDraft(child.status)) return { ok: false, reason: "draft_not_mutable" };
+
+  const { data: sources } = await admin
+    .from("foundry_module_draft_assets")
+    .select(ASSET_COLS)
+    .eq("draft_id", fromDraftId)
+    .order("created_at", { ascending: true })
+    .returns<DraftAssetRow[]>();
+  const parentAssets = sources ?? [];
+  if (parentAssets.length === 0) {
+    return { ok: true, value: { found: 0, copied: 0, skipped: 0, complete: true } };
+  }
+
+  const { data: already } = await admin
+    .from("foundry_module_draft_assets")
+    .select("content_hash")
+    .eq("draft_id", toDraftId)
+    .returns<{ content_hash: string }[]>();
+  const present = new Set((already ?? []).map((r) => r.content_hash));
+
+  let copied = 0;
+  let skipped = 0;
+  for (const src of parentAssets) {
+    if (present.has(src.content_hash)) {
+      skipped += 1;
+      continue;
+    }
+
+    // 1. READ the parent object. A read failure stops this asset and leaves everything as it
+    //    was — nothing has been written yet.
+    const { data: blob, error: dlErr } = await admin.storage.from(src.storage_bucket).download(src.storage_path);
+    if (dlErr || !blob) return { ok: false, reason: "storage_failed" };
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+
+    // 2. VERIFY the bytes are what the parent row claims before writing anything derived from
+    //    them. A silent mismatch would produce a "copy" that is not one.
+    if (sha256Hex(bytes) !== src.content_hash) return { ok: false, reason: "asset_content_mismatch" };
+
+    // 3. WRITE the child's own object at a fresh path. `upsert: false` so a UUID collision
+    //    fails loudly instead of overwriting somebody's file.
+    const path = `${ownerUserId}/${crypto.randomUUID()}.${src.normalized_extension}`;
+    const { error: upErr } = await admin.storage.from(FOUNDRY_DOC_BUCKET).upload(path, bytes, {
+      contentType: src.mime_type,
+      upsert: false,
+    });
+    if (upErr) return { ok: false, reason: "storage_failed" };
+
+    // 4. RECORD it. Metadata is carried across because the SERVER derived it from these exact
+    //    bytes at intake — page count, verification flag, dimensions — and the bytes are
+    //    provably identical. `created_at` is the child row's own.
+    const { error } = await admin.from("foundry_module_draft_assets").insert({
+      draft_id: toDraftId,
+      original_filename: src.original_filename,
+      normalized_extension: src.normalized_extension,
+      mime_type: src.mime_type,
+      file_kind: src.file_kind,
+      byte_size: src.byte_size,
+      storage_bucket: FOUNDRY_DOC_BUCKET,
+      storage_path: path,
+      content_hash: src.content_hash,
+      page_count: src.page_count,
+      page_count_verified: src.page_count_verified,
+      width: src.width,
+      height: src.height,
+    });
+    if (error) {
+      // Storage and Postgres are not one transaction. Compensate the object THIS iteration
+      // just created — the same both-or-neither discipline `attachAsset` uses — and report.
+      // Objects written by earlier iterations already have their rows and are legitimate.
+      await deleteFoundryDocument(admin, FOUNDRY_DOC_BUCKET, path);
+      return { ok: false, reason: "asset_record_failed" };
+    }
+    copied += 1;
+    present.add(src.content_hash);
+  }
+
+  return { ok: true, value: { found: parentAssets.length, copied, skipped, complete: true } };
+}
+
+/**
  * Remove one asset from a draft. Removes the private object FIRST (strict — a real
  * storage failure keeps the row and reports honestly; a missing object is
  * idempotent), then deletes the row. Never touches another draft's asset.

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createDraft } from "./foundryModuleService";
+import { cloneDraftAssets } from "./draftAssetService";
 import type { ModuleDraftAnswers, ModuleDraftStatus } from "@/domain/foundry/module/module-draft";
 
 /**
@@ -39,8 +40,25 @@ export type RevisionReason =
   | "newer_version_exists"
   | "revision_unavailable";
 
+/**
+ * What happened to the parent's source attachment (Slice 3.2P-R2.1).
+ *
+ * `incomplete` is the honest answer when the draft was created but the copy did not finish.
+ * It exists so a caller can never read a plain success and assume the material came across —
+ * which is exactly what the old silent behaviour let everyone do.
+ */
+export type SourceMaterialState = "inherited" | "none_to_inherit" | "incomplete";
+
 export type RevisionResult =
-  | { ok: true; draftId: string; programId: string; moduleVersion: number; resumed: boolean }
+  | {
+      ok: true;
+      draftId: string;
+      programId: string;
+      moduleVersion: number;
+      resumed: boolean;
+      /** Absent on a resume: inheritance is a creation-time act, never re-run. */
+      sourceMaterial?: SourceMaterialState;
+    }
   | { ok: false; reason: RevisionReason; latestVersionDraftId?: string };
 
 type SourceResult = { ok: true; source: SourceDraft } | { ok: false; reason: RevisionReason };
@@ -155,11 +173,33 @@ export async function createOrResumeRevision(
     answers: latestPub.answers ? (JSON.parse(JSON.stringify(latestPub.answers)) as ModuleDraftAnswers) : latestPub.answers,
   });
   if (!created.ok) return { ok: false, reason: "revision_unavailable" };
+
+  /**
+   * SOURCE CONTINUITY (Slice 3.2P-R2.1). The answers arrive verbatim, `materialIntent`
+   * included, so the attachment they describe has to arrive too — otherwise the new version
+   * declares a PDF it does not have and the Host is told to re-upload a file the system
+   * already holds. The clone runs HERE, at creation, and never on the resume branch above: a
+   * Host who removes an attachment later means it.
+   *
+   * ORDER IS DELIBERATE. The draft row exists before the copy starts, so a copy failure never
+   * costs the lineage and a retry RESUMES this same child rather than minting a second one.
+   * The cost of that ordering is that a failure leaves a real draft with incomplete material —
+   * which is why it is reported as `incomplete` rather than swallowed. Recovery is to run the
+   * same primitive again; it is idempotent by content hash.
+   */
+  const clone = await cloneDraftAssets(admin, ownerUserId, latestPub.id, created.value.id);
+  const sourceMaterial: SourceMaterialState = !clone.ok
+    ? "incomplete"
+    : clone.value.found === 0
+      ? "none_to_inherit"
+      : "inherited";
+
   return {
     ok: true,
     draftId: created.value.id,
     programId: (created.value.program_id ?? programId) as string,
     moduleVersion: created.value.module_version,
     resumed: false,
+    sourceMaterial,
   };
 }

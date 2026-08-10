@@ -27,6 +27,29 @@ export const DEPENDENCY_DIAGNOSTICS_ENABLED = true;
 export const BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED = true;
 
 /**
+ * The reason vocabulary the LIVE CHECK accepts (migration 20260810000000), which is not the
+ * same thing as the reason vocabulary the domain can produce (Slice 3.2P-R2.1).
+ *
+ * That migration pinned six values in a CHECK constraint. `interrogative_action` is a seventh,
+ * added by the observable-action grammar floor, and writing it before the constraint is widened
+ * would make the whole child update fail — losing every other diagnostic on that row to record
+ * one. So an unrecognised reason is stored as NULL until `20260816000000` is applied, and the
+ * refusal is still fully identified by `refusal_code` = `non_observable_standard` and
+ * `behavior_contract_field` = `observable_action`, both of which stay legal.
+ *
+ * This is the same deploy-order discipline the three flags above follow, applied to a value
+ * inside a column rather than to the column itself: never write what the schema will refuse.
+ */
+const LIVE_CONTRACT_REASONS: readonly string[] = [
+  "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
+];
+
+function storableContractReason(reason: string | undefined): string | null {
+  if (!reason) return null;
+  return LIVE_CONTRACT_REASONS.includes(reason) ? reason : null;
+}
+
+/**
  * Live schema support for the two child refusal columns (migration 20260815000000).
  *
  * TRUE since the Founder executed that migration (Slice 3.2P-R0.2): both columns exist and
@@ -351,7 +374,7 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
       ...(BEHAVIOR_CONTRACT_DIAGNOSTICS_ENABLED
         ? {
             behavior_contract_field: input.behaviorContract?.field ?? null,
-            behavior_contract_reason: input.behaviorContract?.reason ?? null,
+            behavior_contract_reason: storableContractReason(input.behaviorContract?.reason),
           }
         : {}),
       ...(DEPENDENCY_DIAGNOSTICS_ENABLED

@@ -756,7 +756,17 @@ export function ModuleBuilderShell({
             error={publishErr}
             onEdit={jumpTo}
             onPublish={doPublish}
-            journeyBlockers={journeyEnabled && !journeyApprovable ? journeyBlockers : []}
+            /*
+              NOT gated on `journeyApprovable` (Slice 3.2P-R2.1). Approvability answers "is
+              every element the Host approved grounded?"; this list also carries "are all the
+              elements this Host's design requires present?", and a v2 that inherits its
+              parent's complete five-element journey answers TRUE to the first while missing
+              three of the seven kinds. Suppressing the list there hid the only blockers that
+              existed. The two title/confirmation entries are empty whenever the journey IS
+              approvable, so an approvable-and-complete draft still shows nothing.
+              The server refuses the same case independently — this only reflects that truth.
+            */
+            journeyBlockers={journeyEnabled ? journeyBlockers : []}
             generationPending={generationPending}
             programSectionsMissing={missingProgramKinds(answers, journey).length}
             t={t}

@@ -149,12 +149,33 @@ describe("[3.2P-R0.2] D — a dependency refusal stores everything at once", () 
       callId: "c1", outcome: "schema_invalid", durationMs: 3000,
       refusal: { code: "non_observable_standard", kind: "observable_standard" },
       diagnosis: semantic("elements.observable_standard"),
-      behaviorContract: { field: "observable_action", reason: "not_observable" },
+      behaviorContract: { field: "observable_action", reason: "meta_only" },
     });
     expect(written(0)).toMatchObject({
       refusal_code: "non_observable_standard",
       behavior_contract_field: "observable_action",
-      behavior_contract_reason: "not_observable",
+      behavior_contract_reason: "meta_only",
+    });
+  });
+
+  it("[3.2P-R2.1] a reason the LIVE CHECK would refuse is stored as NULL, not as a failed write", async () => {
+    /*
+      `interrogative_action` is real in the domain and not yet in the live CHECK constraint
+      (migration 20260816000000 is held). Writing it would fail the whole update and lose every
+      other diagnostic on the row, so it is withheld — while the code and the FIELD, both
+      legal, still identify the refusal. This assertion flips to expect the value once the
+      constraint is widened and `LIVE_CONTRACT_REASONS` grows.
+    */
+    await finalize({
+      callId: "c1", outcome: "schema_invalid", durationMs: 3000,
+      refusal: { code: "non_observable_standard", kind: "observable_standard" },
+      diagnosis: semantic("elements.observable_standard"),
+      behaviorContract: { field: "observable_action", reason: "interrogative_action" },
+    });
+    expect(written(0)).toMatchObject({
+      refusal_code: "non_observable_standard",
+      behavior_contract_field: "observable_action",
+      behavior_contract_reason: null,
     });
   });
 });

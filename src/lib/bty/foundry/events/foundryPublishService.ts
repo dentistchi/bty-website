@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { isJourneyApprovable, journeyCompletionCheck } from "@/domain/foundry/module/journey";
+import { missingProgramKinds } from "@/domain/foundry/module/program-authorship";
 import {
   deriveEventMaterial,
   buildModuleSnapshot,
@@ -243,6 +244,39 @@ export async function publishDraft(
   const journeyEnabled = journey !== undefined;
   if (journeyEnabled && !isJourneyApprovable(journey)) {
     return { ok: false, reason: "journey_not_approved" };
+  }
+
+  /**
+   * PROGRAM COMPLETENESS — a SEPARATE invariant from journey approvability (Slice 3.2P-R2.1).
+   *
+   * MEASURED. A v2 revision inherits its parent's answers verbatim, journey included. The
+   * pilot's v2 therefore arrived carrying v1's five-element journey, and every element in it
+   * is grounded — so `isJourneyApprovable` returns TRUE while `scenario`, `field_application`
+   * and `follow_up`, all required by the Host's OWN stored intent, are absent. Nothing on this
+   * path checked for them: `missingProgramKinds` existed only in client components, and the
+   * client suppressed it precisely when the journey was approvable. The two questions are not
+   * substitutes — "is every element the Host approved grounded?" and "are all the elements
+   * this Host's design requires present?" have different answers, and this is the second one.
+   *
+   * GRANDFATHERING, exactly as decided. This runs at PUBLISH, so an already-published legacy
+   * version is untouched and stays readable — v1 of this very pilot is published today with
+   * the same three kinds missing and remains valid. What is refused is a FUTURE publish. An
+   * unpublished draft is not grandfathered by predating the fix, by inheriting a legacy
+   * journey, by being module_version 1, or by being approvable.
+   *
+   * THE PREDICATE IS `journeyEnabled`, the same one the check above already uses, not
+   * `module_version` and not the presence of a `program_id` (which `createDraft` resolves for
+   * essentially every original draft and so would sweep in non-Guided content). Measured on
+   * staging: of eight unpublished drafts, three are journey-enabled and exactly two would be
+   * newly blocked — both v2 revisions carrying inherited legacy journeys, which is the entire
+   * class this exists for. The five drafts with no journey are untouched.
+   *
+   * REQUIRED KINDS COME FROM THE HOST'S INTENT, never from a maximal ladder: this pilot's
+   * `learningNeeds` omit `decide`, so `action_decision` is not required and is not demanded.
+   */
+  if (journeyEnabled) {
+    const missingKinds = missingProgramKinds(answers, journey);
+    if (missingKinds.length > 0) return { ok: false, reason: "program_sections_missing" };
   }
 
   const title = journeyEnabled

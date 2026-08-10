@@ -268,10 +268,74 @@ export const CONTRACT_FIELD_STORAGE: Record<ContractField, string> = {
 };
 
 /** Every reason `validateBehaviorContract` can return. Closed vocabulary, never prose. */
-export const CONTRACT_DEFECT_REASONS = ["missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation"] as const;
+export const CONTRACT_DEFECT_REASONS = [
+  "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
+  /** Slice 3.2P-R2.1 — the action is a QUESTION. See `isInterrogativeAction`. */
+  "interrogative_action",
+] as const;
 
 /** Which field failed, so a refusal is diagnosable without echoing model prose. */
-export type ContractDefect = { field: ContractField; reason: "missing" | "too_long" | "meta_only" | "not_a_role" | "no_moment" | "no_confirmation" };
+export type ContractDefect = { field: ContractField; reason: (typeof CONTRACT_DEFECT_REASONS)[number] };
+
+/**
+ * THE ACTION IS A QUESTION (Slice 3.2P-R2.1).
+ *
+ * MEASURED ON THE LIVE PILOT. The Host's stored `observableBehavior` for
+ * "End Every Huddle With an Owner and Deadline" is, verbatim:
+ *
+ *   "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?"
+ *
+ * A question, saved in the field the model is shown as the change the host wants. Supplied as
+ * `observable_action` with everything else grounded, it passed EVERY check — length, actor,
+ * moment marker, construct life cycle, completion — and `validateProgramProposal` returned
+ * PASS. The learner would then have been shown the renderer's faithful composition:
+ *
+ *   "…the huddle leader must at the next huddle, what exact words will you use to confirm
+ *    the owner, action, and deadline?. It is complete when…"
+ *
+ * So the gap was never the prompt (which correctly hands this field over as INTENT, labelled
+ * "The change the host wants"), and never the renderer. There was simply no floor on the
+ * GRAMMATICAL SHAPE of the action.
+ *
+ * DELIBERATELY NARROW. Two signals, both unambiguous, chosen against the real corpus of
+ * observable actions in this repository and on staging:
+ *
+ *   1. terminal question mark — `?` / `？`. Korean questions carry one too, so the rule is not
+ *      English-only by accident.
+ *   2. SUBJECT-AUXILIARY INVERSION under a wh-head — "what … will you", "how … does the team".
+ *      That shape is a question in a way a bare wh-head is not.
+ *
+ * A BARE WH-HEAD WAS TRIED AND REJECTED, by this file's own fixtures. "when in doubt, name the
+ * owner out loud" is an ordinary conditional action, and `when`/`where`/`how` open adverbial
+ * clauses constantly. So the head alone is not evidence, and the inversion has to appear
+ * before the first clause boundary — a comma ends the search, which is what keeps that
+ * sentence passing.
+ *
+ * WHAT IT MUST NOT REFUSE, and does not: an action ABOUT asking or checking. "Ask the patient
+ * to confirm the date", "Check whether the owner is named", "Confirm who owns the action",
+ * "Record the deadline" — every one has a verb head and no terminal question mark. The
+ * distinction is interrogative SHAPE, not interrogative vocabulary, which is why a keyword
+ * list was rejected: "confirm who owns it" is the behaviour this very training teaches.
+ *
+ * Anything genuinely ambiguous without punctuation — "which action needs an owner" — is left
+ * ACCEPTED on purpose. A false refusal costs a Host a legitimate program; the marked and
+ * inverted forms already cover the measured defect.
+ */
+const AUXILIARIES =
+  "will|would|can|could|should|shall|do|does|did|is|are|was|were|am|have|has|had|may|might|must";
+const SUBJECTS = "you|we|they|i|he|she|it|the|a|an|your|our|their|his|her|its|this|that|people|someone|anyone";
+/** wh-word … auxiliary + subject, all before the first clause boundary. */
+const INTERROGATIVE_INVERSION = new RegExp(
+  `^(?:what|which|who|whom|whose|when|where|why|how)\\b[^,.;:?!]{0,60}?\\b(?:${AUXILIARIES})\\s+(?:${SUBJECTS})\\b`,
+  "i",
+);
+
+export function isInterrogativeAction(action: string): boolean {
+  const t = action.replace(/\s+/g, " ").trim();
+  if (t.length === 0) return false; // emptiness is `missing`, a different and earlier defect
+  if (/[?？]\s*$/.test(t)) return true;
+  return INTERROGATIVE_INVERSION.test(t);
+}
 
 /**
  * Creating or adopting a construct, stated as the behavior itself. This is the exact live
@@ -363,6 +427,16 @@ export function validateBehaviorContract(raw: unknown): { ok: true; value: Behav
   // instruction to follow something unspecified.
   if (CONSTRUCT_LIFECYCLE_CLAIM(value.observableAction) || BARE_CONSTRUCT_USE.test(value.observableAction)) {
     return { ok: false, defect: { field: "observableAction", reason: "meta_only" } };
+  }
+
+  /*
+    …and it is a statement, not a question. Separate from `meta_only` on purpose: a question
+    is not a claim about a construct's life cycle, it is a different failure with a different
+    cause (a question-shaped Host answer copied through), and collapsing the two would make
+    the ledger say something untrue about which rule fired.
+  */
+  if (isInterrogativeAction(value.observableAction)) {
+    return { ok: false, defect: { field: "observableAction", reason: "interrogative_action" } };
   }
 
   // The completion signal is something a second person could witness — and is not itself

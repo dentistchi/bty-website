@@ -230,15 +230,31 @@ describe("publishDraft — YouTube", () => {
 });
 
 // --- Slice 3.2C-B3A: Journey-enabled publish (title + completion from the approved Journey) ---
+/**
+ * Slice 3.2P-R2.1 — this fixture now carries every kind `youtubeDraft`'s Host intent requires
+ * (`practice` + a 7-day follow-up ⇒ scenario, field_application, follow_up), in canonical
+ * order. It previously held three, which was enough while publish checked only approvability
+ * and is no longer: program completeness is now a server invariant. What these tests are
+ * about — the title and completion coming from the approved Journey, and the Journey being
+ * frozen into the snapshot — is unchanged.
+ */
 function groundedJourney(over: Record<string, unknown> = {}) {
+  const el = (kind: string, content: string, field: string) => ({
+    id: `el_${kind}`, kind, content,
+    grounding: [{ sourceType: "host_statement", field }],
+    confirmationStatus: "grounded",
+  });
   return {
     version: 1,
     displayTitle: "Read-back before sign-off",
     displayTitleStatus: "grounded",
     elements: [
-      { id: "el_why_it_matters", kind: "why_it_matters", content: "Handoffs skip the double-check.", grounding: [{ sourceType: "host_statement", field: "problem" }], confirmationStatus: "grounded" },
-      { id: "el_observable_standard", kind: "observable_standard", content: "The charge nurse reads back the dosage before sign-off.", grounding: [{ sourceType: "host_statement", field: "observableBehavior" }], confirmationStatus: "grounded" },
-      { id: "el_completion_check", kind: "completion_check", content: "What read-back will you commit to?", grounding: [{ sourceType: "host_statement", field: "completionPrompt" }], confirmationStatus: "grounded" },
+      el("why_it_matters", "Handoffs skip the double-check.", "problem"),
+      el("observable_standard", "The charge nurse reads back the dosage before sign-off.", "observableBehavior"),
+      el("scenario", "The unit is busy and two people are already waiting to ask you something.", "problem"),
+      el("field_application", "At the next sign-off, read the dosage back before you sign.", "observableBehavior"),
+      el("completion_check", "What read-back will you commit to?", "completionPrompt"),
+      el("follow_up", "In seven days you will be asked what you actually read back.", "successEvidence"),
     ],
     ...over,
   };
