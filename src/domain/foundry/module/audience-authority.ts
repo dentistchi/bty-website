@@ -72,6 +72,24 @@ const STOP = new Set([
   "workers", "employee", "employees", "colleague", "colleagues",
 ]);
 
+/**
+ * Korean marks a noun's grammatical role with a trailing particle, so the same word appears as
+ * `담당자`, `담당자를`, `담당자가`. Identity has to see through that the way `nounStem` sees through
+ * an English plural — measured: without it, a Korean role the host explicitly named was refused
+ * because the source wrote it with an object particle.
+ *
+ * Deliberately a closed list of particles and only on a word long enough to survive the strip.
+ */
+const KOREAN_PARTICLES = ["으로", "에서", "에게", "이란", "라는", "를", "을", "이", "가", "은", "는", "의", "에", "와", "과", "도", "로", "만"];
+
+function koreanStem(token: string): string {
+  if (!/[\uac00-\ud7a3]/.test(token)) return token;
+  for (const particle of KOREAN_PARTICLES) {
+    if (token.length > particle.length + 1 && token.endsWith(particle)) return token.slice(0, -particle.length);
+  }
+  return token;
+}
+
 /*
   Stemmed with the EXISTING `nounStem`, so a host who wrote "our dispatchers" has authorized
   "the dispatcher" — measured: without it, that legitimate role was refused.
@@ -81,7 +99,7 @@ function identityTokens(text: string): string[] {
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter((t) => t.length > 2 && !STOP.has(t))
-    .map((t) => nounStem(t))
+    .map((t) => nounStem(koreanStem(t)))
     .filter((t) => !STOP.has(t));
 }
 
@@ -129,6 +147,28 @@ export type RoleAuthorityResult =
 const RELATIONAL_COUNTERPART =
   /\b(?:taking|takes|took|receiving|receives|recipient|incoming|oncoming|next|other|counterpart|opposite|following|picking up|picks up|handing|hands)\b|받는|인수/i;
 
+/**
+ * THE HEAD OF A ROLE PHRASE — what the phrase actually names.
+ *
+ * English and Korean are both head-final for this shape: "the records MANAGER", "the named
+ * OWNER", "기록 관리자". So the identity is the last content word, stemmed with the existing
+ * `nounStem`. Modifiers are deliberately ignored, because a modifier is exactly how an invented
+ * office smuggles itself in on a source word that means something else.
+ */
+function roleHead(text: string): string | null {
+  const tokens = text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((t) => t.length > 0);
+  for (let i = tokens.length - 1; i >= 0; i -= 1) {
+    const stem = nounStem(koreanStem(tokens[i]));
+    if (stem.length > 2 && !STOP.has(stem)) return stem;
+  }
+  return null;
+}
+
+/** Is this exact identity present in the source, as its own word? */
+function identityGrounded(head: string, source: string): boolean {
+  return identityTokens(source).includes(head);
+}
+
 export function confirmerAuthorized(
   confirmedBy: string,
   observableAction: string,
@@ -137,13 +177,30 @@ export function confirmerAuthorized(
 ): RoleAuthorityResult {
   const value = confirmedBy.trim();
   if (value.length === 0) return { ok: false, reason: "ungrounded_role" };
-  // 1. the counterpart the trained action itself names, lexically…
-  if (sharesIdentity(value, observableAction)) return { ok: true };
-  // …or relationally: someone described by their place in the act rather than by an office.
+
+  /*
+    AUTHORITY B — RELATIONAL COUNTERPART, checked first because it is not a role at all. Someone
+    described by their place in the trained act ("the person taking over", "the next owner") is
+    entailed by the behaviour rather than appointed beside it. Measured on this repository's
+    canonical handover fixture, where the action hands the work to exactly that person.
+  */
   if (RELATIONAL_COUNTERPART.test(value)) return { ok: true };
-  // 2. anyone the host's own words name.
-  if (sharesIdentity(value, corpus)) return { ok: true };
-  if (authority?.detail && sharesIdentity(value, authority.detail)) return { ok: true };
+
+  /*
+    AUTHORITIES A and C — a named person/role, or a grounded artifact. Both are decided on the
+    phrase's HEAD, never on any word it happens to contain.
+
+    THE FALSE POSITIVE THIS CLOSES. "the records manager" was accepted because `records` shares a
+    stem with the host's own sentence — "The huddle note RECORDS one owner and one deadline" —
+    where it is a VERB. The role being named is `manager`, and nothing in the source establishes
+    one. A source verb must not be able to staff an organisation: "checks" cannot authorize "the
+    checker", and "record" cannot authorize "the records supervisor".
+  */
+  const head = roleHead(value);
+  if (head === null) return { ok: false, reason: "ungrounded_role" };
+  if (identityGrounded(head, observableAction)) return { ok: true };
+  if (identityGrounded(head, corpus)) return { ok: true };
+  if (authority?.detail && identityGrounded(head, authority.detail)) return { ok: true };
   return { ok: false, reason: "ungrounded_role" };
 }
 

@@ -160,15 +160,17 @@ describe("[R3.2-R1] G/H/I — the confirmer has its own authority", () => {
       .toBe("PASS");
   });
 
-  it("MEASURED LIMIT — a host's VERB can still authorize a same-stemmed role noun", () => {
+  it("B — a host's VERB can no longer staff an organisation (R3.2-R2)", () => {
     /*
-      "the records manager" is ACCEPTED: "records" stems to "record", and the host's own evidence
-      sentence contains it. The identity check is word-level, so it cannot tell a host's verb from
-      a role noun. Narrower than the W3 defect — which invented a role sharing nothing with the
-      source — and closing it would need part-of-speech knowledge this codebase does not have.
-      Recorded rather than guessed at.
+      "the records manager" was accepted while the rule compared every token: `records` shares a
+      stem with the host's own sentence — "The huddle note RECORDS one owner and one deadline" —
+      where it is a VERB. The role being named is `manager`, and nothing establishes one. The rule
+      now decides on the phrase's HEAD, so a modifier can no longer smuggle in an office.
     */
-    expect(confirmerAuthorized("the records manager", ACTION, AUTH, CORPUS).ok).toBe(true);
+    expect(confirmerAuthorized("the records manager", ACTION, AUTH, CORPUS)).toEqual({ ok: false, reason: "ungrounded_role" });
+    expect(confirmerAuthorized("the records supervisor", ACTION, AUTH, CORPUS).ok).toBe(false);
+    expect(verdict({ ...GROUNDED, completion: { confirmed_by: "the records manager", confirmation_action: "record the owner and the deadline" } }))
+      .toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
   });
 
   it("I — 'the person taking over' is legitimate because the ACTION names them", () => {
@@ -189,6 +191,43 @@ describe("[R3.2-R1] G/H/I — the confirmer has its own authority", () => {
     expect(confirmerAuthorized("the person taking over", "states each unfinished item and identifies its next owner", null, "").ok).toBe(true);
     // An OFFICE, by contrast, is refused however the action is worded.
     expect(confirmerAuthorized("the compliance officer", handover, AUTH, CORPUS).ok).toBe(false);
+  });
+});
+
+describe("[R3.2-R2] F/G/H/I — role identity, in English and Korean", () => {
+  it("F — an invented office sharing only a stem with source prose is refused", () => {
+    for (const invented of ["the records manager", "the recording officer", "the deadline supervisor", "the action lead", "the owner's manager"]) {
+      expect(confirmerAuthorized(invented, ACTION, AUTH, CORPUS).ok, invented).toBe(false);
+    }
+  });
+
+  it("G — a human role the Host actually names is accepted", () => {
+    const answers = { ...PILOT, successEvidence: "The duty pharmacist signs the huddle note for every agreed action." } as unknown as BuilderAnswers;
+    const corpus = groundingCorpus(answers, []);
+    expect(confirmerAuthorized("the duty pharmacist", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(true);
+    // …and an office the host did NOT name is still refused against the same source.
+    expect(confirmerAuthorized("the pharmacy manager", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(false);
+  });
+
+  it("H — a Korean role the Host names is accepted", () => {
+    const answers = {
+      ...PILOT,
+      problem: "아침 허들에서 문제를 보고하지만 담당자를 정하지 않고 끝납니다.",
+      successEvidence: "허들 기록에 담당자와 마감일이 남습니다.",
+    } as unknown as BuilderAnswers;
+    const corpus = groundingCorpus(answers, []);
+    expect(confirmerAuthorized("담당자", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(true);
+  });
+
+  it("I — a Korean office invented from incidental overlap is refused", () => {
+    const answers = {
+      ...PILOT,
+      problem: "아침 허들에서 문제를 보고하지만 담당자를 정하지 않고 끝납니다.",
+      successEvidence: "허들 기록에 담당자와 마감일이 남습니다.",
+    } as unknown as BuilderAnswers;
+    const corpus = groundingCorpus(answers, []);
+    // Korean is head-final too: "기록 관리자" names 관리자, which the source never establishes.
+    expect(confirmerAuthorized("기록 관리자", ACTION, audienceAuthorityFor(answers), corpus)).toEqual({ ok: false, reason: "ungrounded_role" });
   });
 });
 
