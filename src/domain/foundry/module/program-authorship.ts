@@ -128,8 +128,18 @@ import {
  * behaviour contract that carried a confirmer this version has no field for, so no unapplied
  * v10 proposal can be adopted under it. W4's refusal and W3's success both keep the versions
  * they were recorded under.
+ *
+ * v11 → v12 (Slice 3.2P-R3.5) is a WIDENING, and it is the first bump this constant has taken
+ * for a bug fix rather than a design change. The recurring-moment fold refused any occasion
+ * whose head ended in `-ing`, which caught `morning` and `evening`; repairing it means triggers
+ * like "at morning huddles" move from REFUSED to ACCEPTED. That is precisely the condition this
+ * version exists to track — a change that alters whether an existing proposal is valid — and it
+ * does not stop being that because the movement is in the Host's favour.
+ *
+ * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
+ * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v11";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v12";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence

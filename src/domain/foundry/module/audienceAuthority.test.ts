@@ -98,7 +98,7 @@ const rendered = (c: Record<string, unknown>) => {
 
 describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the model", () => {
   it("A — the W3 actor never reaches a participant: the subject is server-written", () => {
-    const out = rendered({ ...DRIFTED, completion: GROUNDED.completion });
+    const out = rendered(DRIFTED);
     for (const kind of ["observable_standard", "scenario", "field_application"]) {
       expect(out[kind], kind).toContain(`, ${CANONICAL_ACTOR} must `);
       expect(out[kind].toLowerCase(), kind).not.toContain("a team member must");
@@ -116,7 +116,7 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
 
   it("F — a non-learner mentioned in the problem cannot become the subject", () => {
     expect(CORPUS).toContain("team members");
-    expect(rendered({ ...DRIFTED, completion: GROUNDED.completion }).observable_standard.toLowerCase())
+    expect(rendered(DRIFTED).observable_standard.toLowerCase())
       .not.toContain("team member");
   });
 

@@ -93,10 +93,12 @@ describe("[3.2P-W4-R1] E/H/I — the adoption gate", () => {
 
 describe("[3.2P-W4-R1] the acceptance contract version", () => {
   it("moved, because acceptance moved", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe(OLD_AUTHORITY);
-    // S — and W4's own v10, which no v11 Apply may accept either.
-    expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe("program_authorship_v10");
+    // Every version this pilot generated under is now stale: W2/W3 v9, W4 v10, W5 v11.
+    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11"]) {
+      expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe(spent);
+    }
   });
 
   it("C — it is NOT the deploy sha, so a cosmetic release keeps a Host's work", () => {

@@ -122,3 +122,49 @@ describe("[3.2L-R5] G12 — no terminal refusal permits a direct provider call",
     expect(resolveRefusalCopy(null, null)).toBe(UNKNOWN_FAILURE_COPY);
   });
 });
+
+/**
+ * SLICE 3.2P-R3.5 — THE REFUSAL MUST NOT ASK FOR WHAT THE HOST ALREADY GAVE.
+ *
+ * W5 refused `trigger_not_recurring` on a draft whose Host answers name the same repeating
+ * moment three times, and told the Host to "Say when this keeps happening in your own words".
+ * There is no Builder question that holds a moment, so the sentence asked for something already
+ * supplied through a control that does not exist.
+ */
+describe("[3.2P-R3.5] trigger_not_recurring says only what BTY can know", () => {
+  const copy = PROGRAM_REFUSAL_COPY.trigger_not_recurring;
+
+  it("names what BTY could not produce, and that nothing changed", () => {
+    expect(copy.headline).toContain("BTY couldn’t work out when the first real chance to do this would be");
+    expect(copy.headline).toContain("Nothing was changed.");
+    expect(copy.explanation).toContain("The moment BTY wrote");
+  });
+
+  it("does not instruct the Host to supply a moment through a field that does not exist", () => {
+    const text = `${copy.headline} ${copy.explanation} ${RECOVERY_NOTE[copy.recovery]}`;
+    expect(text).not.toMatch(/say when this keeps happening/i);
+    expect(text).not.toMatch(/in your own words/i);
+    expect(text).not.toMatch(/update your training answers/i);
+    // …and it does not promise that editing anything will fix it.
+    expect(text).not.toMatch(/will fix|then it will|so that it/i);
+  });
+
+  it("its recovery is the 'nothing for you to change' category", () => {
+    expect(copy.recovery).toBe("start_a_new_draft");
+  });
+
+  it("exposes none of the internal vocabulary this repair touched", () => {
+    const text = `${copy.headline} ${copy.explanation}`;
+    expect(text).not.toMatch(/trigger|parser|quantifier|recurrence|gerund|fold/i);
+  });
+
+  it("NO refusal anywhere claims the Host withheld the moment", () => {
+    /*
+      The product cannot know that until a Host-owned recurring moment exists. Asserted across
+      the whole map so the sentence cannot reappear under another code.
+    */
+    for (const [code, c] of Object.entries(PROGRAM_REFUSAL_COPY)) {
+      expect(`${c.headline} ${c.explanation}`, code).not.toMatch(/say when this keeps happening/i);
+    }
+  });
+});

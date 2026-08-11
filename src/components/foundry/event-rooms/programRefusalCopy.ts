@@ -95,10 +95,27 @@ export const PROGRAM_REFUSAL_COPY: Record<ProgramRejectCode, RefusalCopy> = {
     explanation: "A situation only teaches something when it is genuinely hard to do well.",
     recovery: "start_a_new_draft",
   },
+  /**
+   * REWRITTEN (Slice 3.2P-R3.5). The old copy read:
+   *
+   *   "…Say when this keeps happening in your own words and draft again."
+   *
+   * On the W5 window that sentence was untrue twice over. The Host HAD said it, in their own
+   * words, in three separate answers — "During morning huddles…", "At the next huddle…",
+   * "…in the next huddle…" — and there is no Builder question that holds a moment, so there
+   * was no field for them to put it in. It asked for something already given, through a
+   * control that does not exist, and blamed them for the gap.
+   *
+   * Until a Host-owned recurring moment exists, BTY cannot know whether the Host supplied one.
+   * So the copy says only what is certainly true: BTY wrote the moment, BTY could not turn it
+   * into a repeating one, and nothing changed. The recovery moves to `start_a_new_draft` for
+   * the same reason — that category means "nothing for you to change; a new draft may simply
+   * go better", which is the honest instruction here.
+   */
   trigger_not_recurring: {
     headline: `BTY couldn’t work out when the first real chance to do this would be. ${NOTHING_CHANGED}`,
-    explanation: "The training needs a moment that comes round again — “at each handoff”, “every time a task is reassigned” — so there is a next one to aim at. Say when this keeps happening in your own words and draft again.",
-    recovery: "adjust_your_training_inputs",
+    explanation: "The moment BTY wrote wasn’t clearly one that comes round again, so there was no next one to point people at.",
+    recovery: "start_a_new_draft",
   },
   scenario_independent_moment: {
     headline: `BTY put the practice situation at a different moment than the behaviour itself. ${NOTHING_CHANGED}`,

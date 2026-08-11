@@ -342,7 +342,7 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
   });
 
@@ -501,7 +501,12 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     expect(PROGRAM_REJECT_CODES).toContain("trigger_not_recurring");
     expect("trigger_not_recurring".length).toBeLessThanOrEqual(60);
     expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").headline).toMatch(/first real chance/i);
-    expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").recovery).toBe("adjust_your_training_inputs");
+    /*
+      `start_a_new_draft` since Slice 3.2P-R3.5 — the "nothing for you to change" category.
+      W5 showed the old `adjust_your_training_inputs` telling a Host to supply a moment they
+      had already given three times, through a Builder field that does not exist.
+    */
+    expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").recovery).toBe("start_a_new_draft");
   });
 
   it("G6: the derivation changes quantification and nothing else", () => {

@@ -1360,12 +1360,52 @@ const RECURRENCE_DETERMINER = /\b(?:each|every)\b(?!\s+(?:time|other)\b)/i;
  * quantifier here and still means every one of them, and this shape is already in the
  * fixtures, so refusing it would refuse a perfectly ordinary trigger.
  *
- * Deliberately narrow: only `at|on|during`, only when no article or quantifier already
- * follows, and never in front of an `-ing` word — "before leaving the floor" must not
- * become "before the next leaving the floor". A gerund that is really a noun ("at
- * handover meeting") is refused rather than guessed at.
+ * Deliberately narrow: only `at|on|during`, and only when no article or quantifier
+ * already follows. A gerund that is really a noun ("at handover meeting") is refused
+ * rather than guessed at.
  */
 const BARE_RECURRING_OCCASION = /^(at|on|during)\s+(?!the\b|a\b|an\b|each\b|every\b|my\b|your\b|our\b|their\b|its\b|this\b|that\b|next\b)([\p{L}][\p{L}\d'-]*)/iu;
+
+/** Words that introduce a gerund's OBJECT rather than continuing a noun phrase. */
+const OBJECT_INTRODUCER = /^(?:the|a|an|my|your|our|their|his|her|its|this|that|these|those|them|it|him|us|me)\b/i;
+
+/**
+ * IS THE `-ing` WORD A GERUND, OR A MODIFIER? (Slice 3.2P-R3.5)
+ *
+ * THE MEASURED DEFECT. `bareRecurringInstance` refused any occasion whose first word ended
+ * in `-ing`, to stop "on leaving the floor" folding into "on the next leaving the floor".
+ * The suffix is not the distinction. `morning` and `evening` end in `-ing`, so the live W5
+ * window (attempt `65923a21`) — a training about MORNING HUDDLES — could not express its own
+ * moment. Isolated to one word: `at daily huddles` folded, `at morning huddles` did not.
+ *
+ * The rule's own stated example never even reached it: "before leaving the floor" is refused
+ * by the preposition set, since `before` is not one of `at|on|during`. So the guard was
+ * defending against a case it could not see, using a test that hit ordinary time words.
+ *
+ * WHAT ACTUALLY SEPARATES THEM IS PHRASE SHAPE, not vocabulary:
+ *
+ *   at MORNING huddles      → a noun follows, bare      → `morning` MODIFIES it   → an occasion
+ *   at EVENING handover     → a noun follows, bare      → modifier                → an occasion
+ *   on LEAVING the floor    → a determiner follows      → `the floor` is its OBJECT → a gerund
+ *   on COMPLETING the form  → a determiner follows      → object                  → a gerund
+ *   at BRIEFING             → nothing follows           → undecidable             → refused
+ *
+ * So: an `-ing` head is a modifier when another bare word follows it inside the occasion, and
+ * a gerund when it is phrase-final or takes a determiner/pronoun. No temporal word list, no
+ * job dictionary, no NLP dependency — and phrase-final stays refused, exactly as before.
+ *
+ * THE RESIDUAL AMBIGUITY, stated rather than hidden: "on finishing rounds" has a gerund with a
+ * bare-plural object and is indistinguishable in shape from "at morning huddles". English does
+ * not disambiguate it either without knowing the verb. It folds to "on the next finishing
+ * rounds", which is awkward but not false — and it is a far rarer trigger than one naming a
+ * morning. Trading a common refusal for a rare awkwardness is the deliberate choice here.
+ */
+function isGerundHead(head: string, rest: string): boolean {
+  if (!/ing$/i.test(head)) return false;
+  const following = rest.trim();
+  if (following.length === 0) return true; // phrase-final: undecidable, stay conservative
+  return OBJECT_INTRODUCER.test(following);
+}
 
 function bareRecurringInstance(core: string): string | null {
   /*
@@ -1378,8 +1418,9 @@ function bareRecurringInstance(core: string): string | null {
   const comma = core.indexOf(",");
   const head = comma > 0 ? core.slice(0, comma) : core;
   const m = BARE_RECURRING_OCCASION.exec(head);
-  if (!m || /ing$/i.test(m[2])) return null;
+  if (!m) return null;
   const phrase = head.slice(m[1].length).trim();
+  if (isGerundHead(m[2], phrase.slice(m[2].length))) return null;
   if (phrase.split(/\s+/).length > 3) return null;
   if (/^(?:all|any|some|most|both|several|few|many|other)\b/i.test(phrase)) return null;
   return `${m[1]} the next ${phrase}${comma > 0 ? core.slice(comma) : ""}`;

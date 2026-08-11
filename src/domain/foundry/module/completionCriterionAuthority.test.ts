@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   validateProgramProposal, requiredProgramKinds, programContext, completionCriterionFrom,
-  PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION, repairLicenseFor, isSemanticRepairableCode,
+  PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
 import { CANONICAL_ACTOR, CONTRACT_DEFECT_REASONS, CONFIRMERS } from "./program-coherence";
 import { stepBlocker, type BuilderAnswers } from "./module-builder";
@@ -227,8 +227,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
     adoptedJourneyDigest: DIGEST,
   });
 
-  it("S — W3's v9 and W4's v10 are both refused by the v11 Apply gate", () => {
-    for (const old of ["program_authorship_v9", "program_authorship_v10"]) {
+  it("S — every version this pilot spent under is refused by the current Apply gate", () => {
+    // v9 (W2/W3), v10 (W4), v11 (W5). R3.5 widened the recurring-moment fold, so v11 joins them.
+    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11"]) {
       expect(decideAdoptionReceipt(claim(old)), old).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
   });
@@ -238,7 +239,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
+    // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
   });
 });
