@@ -41,11 +41,13 @@ const ANSWERS = {
 /** The exact stored Host answer, verbatim — the value that must be refused as an action. */
 const LIVE_QUESTION = ANSWERS.observableBehavior as string;
 
+/** Server-owned since v11 (Slice 3.2P-R3.4-R1) — the Host's evidence, not a model field. */
+const CRITERION = "The huddle note records one owner and one deadline for every agreed action";
+
 const GROUNDED = {
   actor: "the huddle leader",
   trigger: "at each morning huddle, before the group leaves",
   observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
-  completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
 };
 
 describe("[3.2P-R2.1] the corpus the floor must not break", () => {
@@ -107,7 +109,7 @@ describe("[3.2P-R2.1] what the floor refuses", () => {
   it("empty is NOT interrogative — emptiness is `missing`, an earlier and different defect", () => {
     expect(isInterrogativeAction("")).toBe(false);
     expect(isInterrogativeAction("   ")).toBe(false);
-    const r = validateBehaviorContract({ ...GROUNDED, observable_action: "" });
+    const r = validateBehaviorContract({ ...GROUNDED, observable_action: "" }, CRITERION);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "observableAction", reason: "missing" });
   });
@@ -115,7 +117,7 @@ describe("[3.2P-R2.1] what the floor refuses", () => {
 
 describe("[3.2P-R2.1] PART 4 — the exact live negative control", () => {
   it("BEFORE the floor this passed; now the contract refuses it precisely", () => {
-    const r = validateBehaviorContract({ ...GROUNDED, observable_action: LIVE_QUESTION });
+    const r = validateBehaviorContract({ ...GROUNDED, observable_action: LIVE_QUESTION }, CRITERION);
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.defect).toEqual({ field: "observableAction", reason: "interrogative_action" });
@@ -159,7 +161,7 @@ describe("[3.2P-R2.1] PART 4 — the exact live negative control", () => {
   });
 
   it("the grounded contract still PASSES, and still renders", () => {
-    const r = validateBehaviorContract(GROUNDED);
+    const r = validateBehaviorContract(GROUNDED, CRITERION);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(renderStandardSentence(r.value)).toContain("must name one owner and one deadline");

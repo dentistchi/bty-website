@@ -195,7 +195,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
       const standard = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!;
       // Compound action, both verbs in base form after the modal (R7).
       expect(standard.content).toContain("must state each unfinished item and identify its next owner");
-      expect(standard.content).toContain("It is complete when");
+      expect(standard.content).toContain("Completion evidence: Handoff record.");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
   });
@@ -220,10 +220,12 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
       [{ actor: "the shared handoff standard" }, "actor", "not_a_role"],
       [{ trigger: "in a professional manner" }, "trigger", "no_moment"],
       [{ observable_action: "create a shared handoff standard" }, "observable_action", "meta_only"],
-      // A confirming act with nothing witnessable in it.
-      [{ completion: { confirmed_by: "the next owner", confirmation_action: "feel better about the handoff" } }, "completion_signal", "no_confirmation"],
-      // A completion authority with no confirmer at all — the exact v5 render defect.
-      [{ completion: { confirmed_by: "", confirmation_action: "repeat back who owns the next step" } }, "completion_signal", "missing"],
+      /*
+        THE TWO COMPLETION CASES ARE GONE WITH THE FIELD (Slice 3.2P-R3.4-R1). `no_confirmation`
+        judged a confirming act and `missing` caught an absent confirmer; the model returns
+        neither now, and the criterion it does not author is the Host's own. What replaced them
+        is the case below: a completion the model tries to send anyway changes nothing.
+      */
       [{ actor: "x".repeat(400) }, "actor", "too_long"],
     ];
     for (const [patch, field, reason] of cases) {
@@ -238,6 +240,29 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
       // The domain surfaces the closed-vocabulary pair the recorder will persist.
       expect(Object.values(CONTRACT_FIELD_STORAGE)).toContain(field);
       expect(["missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation"]).toContain(reason);
+    }
+  });
+
+  it("Q: a completion the model sends anyway is inert — it cannot reach the participant", async () => {
+    const p = middleGround();
+    Object.assign(p.program.behavior_contract, {
+      completion: { confirmed_by: "the records manager", confirmation_action: "file the huddle note" },
+    });
+    chatCreate.mockReset();
+    chatCreate.mockResolvedValueOnce(respond(p));
+    const { admin } = makeAdmin();
+    const r = await run(admin);
+    /*
+      Strict mode would refuse this at the provider; a non-strict path or a hand-built payload
+      could still carry it. It is IGNORED rather than validated, so the generation succeeds and
+      the invented role reaches no sentence — which is the W4 failure made structural.
+    */
+    expect(r.ok, r.ok ? "" : `code=${r.code}`).toBe(true);
+    if (r.ok) {
+      const text = r.value.proposal.elements.map((e) => e.content).join(" ");
+      expect(text).not.toContain("records manager");
+      expect(text).toContain("Completion evidence: Handoff record.");
+      expect(r.value.proposal.behaviorContract!.completion).toEqual({ criterion: "Handoff record" });
     }
   });
 
@@ -261,7 +286,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     const arg = chatCreate.mock.calls[0][0] as { response_format: { type: string; json_schema: { strict: boolean; name: string } } };
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
-    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v8");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v10");
+    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v9");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
   });
 });

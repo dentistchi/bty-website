@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AUDIENCE_POLICY, audienceAuthorityFor, confirmerAuthorized, audiencePromptLines } from "./audience-authority";
+import { AUDIENCE_POLICY, audienceAuthorityFor, audiencePromptLines } from "./audience-authority";
 import { AUDIENCE_TYPES, type BuilderAnswers } from "./module-builder";
 import {
   validateProgramProposal, requiredProgramKinds, groundingCorpus, isSemanticRepairableCode,
@@ -58,14 +58,16 @@ const GROUNDED = {
   actor: "the huddle leader",
   trigger: "at each morning huddle, before the group leaves",
   observable_action: ACTION,
-  completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
 };
-/** The exact W3 shape. */
+/**
+ * The exact W3 shape, MINUS the half v11 deleted (Slice 3.2P-R3.4-R1). W3 also returned
+ * `completion: { confirmed_by: "the team lead", … }` for a source that never mentions one; the
+ * schema has no field for it now, so what remains of the drift is the actor label.
+ */
 const DRIFTED = {
   ...GROUNDED,
   actor: "a team member",
   observable_action: "confirm the owner of each action and state the deadline",
-  completion: { confirmed_by: "the team lead", confirmation_action: "record the owner and deadline in the huddle notes" },
 };
 
 const proposal = (contract: Record<string, unknown>, over: Record<string, unknown> = {}) => ({
@@ -133,107 +135,38 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
   });
 });
 
-describe("[R3.2-R1] G/H/I — the confirmer has its own authority", () => {
-  it("G — the W3 confirmer is refused: an audience does not appoint a record keeper", () => {
-    expect(confirmerAuthorized("the team lead", DRIFTED.observable_action, AUTH, CORPUS))
-      .toEqual({ ok: false, reason: "ungrounded_role" });
-    expect(verdict(DRIFTED)).toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
-  });
+/*
+  G–I and the R3.2-R2 role-identity block are REMOVED (Slice 3.2P-R3.4-R1), with the function
+  they tested.
 
-  it("and neither does a leading title of any other kind", () => {
-    for (const invented of ["the manager on duty", "a supervisor", "the compliance officer"]) {
-      expect(confirmerAuthorized(invented, ACTION, AUTH, CORPUS).ok, invented).toBe(false);
-      expect(
-        verdict({ ...GROUNDED, completion: { confirmed_by: invented, confirmation_action: "repeat back the action and the deadline" } }),
-        invented,
-      ).toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
-    }
-  });
+  `confirmerAuthorized` was three gates deep and earned every one of them against real
+  refusals — the relational counterpart that saved "the person taking over", the role-head rule
+  that caught "the records manager" matching the host's VERB, the Korean particle stripping that
+  let 담당자를 authorise 담당자. It refused W4 correctly.
 
-  it("H — someone the Host's OWN words name is accepted", () => {
-    expect(confirmerAuthorized("the named owner", ACTION, AUTH, CORPUS).ok).toBe(true);
-    expect(verdict(GROUNDED)).toBe("PASS");
-  });
+  It is gone because the field it guarded is gone. v11 takes completion from the host's own
+  `successEvidence`, so there is no confirmer for a model to invent and nothing for an authority
+  check to be right about. Deleting the tests with the code is the honest move: a suite that
+  still described a confirmer floor would say this product has one.
 
-  it("H — the Host's own agentless artifact stays an artifact, and acquires no keeper", () => {
-    expect(verdict({ ...GROUNDED, completion: { confirmed_by: "the huddle note", confirmation_action: "record the owner and the deadline" } }))
-      .toBe("PASS");
-  });
-
-  it("B — a host's VERB can no longer staff an organisation (R3.2-R2)", () => {
-    /*
-      "the records manager" was accepted while the rule compared every token: `records` shares a
-      stem with the host's own sentence — "The huddle note RECORDS one owner and one deadline" —
-      where it is a VERB. The role being named is `manager`, and nothing establishes one. The rule
-      now decides on the phrase's HEAD, so a modifier can no longer smuggle in an office.
-    */
-    expect(confirmerAuthorized("the records manager", ACTION, AUTH, CORPUS)).toEqual({ ok: false, reason: "ungrounded_role" });
-    expect(confirmerAuthorized("the records supervisor", ACTION, AUTH, CORPUS).ok).toBe(false);
-    expect(verdict({ ...GROUNDED, completion: { confirmed_by: "the records manager", confirmation_action: "record the owner and the deadline" } }))
-      .toBe("non_observable_standard [completionSignal/confirmer_unauthorized]");
-  });
-
-  it("I — 'the person taking over' is legitimate because the ACTION names them", () => {
-    /*
-      MEASURED on this repository's canonical fixture rather than judged by taste. Its trained
-      action is "states each open item aloud TO THE PERSON TAKING OVER" — the confirmer is the
-      direct object of the behaviour. Classification B: a relational counterpart entailed by the
-      act. That is the general rule, and it needs no list of job titles.
-    */
-    const handover = "states each open item aloud to the person taking over";
-    expect(confirmerAuthorized("the person taking over", handover, null, "").ok).toBe(true);
-    /*
-      And also where the action names the SAME counterpart in different words — "identifies its
-      next owner". A counterpart entailed by an act cannot be recognised by word overlap alone,
-      which is why the rule tests the RELATION ("taking over", "next", "receiving") rather than a
-      list of job titles.
-    */
-    expect(confirmerAuthorized("the person taking over", "states each unfinished item and identifies its next owner", null, "").ok).toBe(true);
-    // An OFFICE, by contrast, is refused however the action is worded.
-    expect(confirmerAuthorized("the compliance officer", handover, AUTH, CORPUS).ok).toBe(false);
-  });
-});
-
-describe("[R3.2-R2] F/G/H/I — role identity, in English and Korean", () => {
-  it("F — an invented office sharing only a stem with source prose is refused", () => {
-    for (const invented of ["the records manager", "the recording officer", "the deadline supervisor", "the action lead", "the owner's manager"]) {
-      expect(confirmerAuthorized(invented, ACTION, AUTH, CORPUS).ok, invented).toBe(false);
-    }
-  });
-
-  it("G — a human role the Host actually names is accepted", () => {
-    const answers = { ...PILOT, successEvidence: "The duty pharmacist signs the huddle note for every agreed action." } as unknown as BuilderAnswers;
-    const corpus = groundingCorpus(answers, []);
-    expect(confirmerAuthorized("the duty pharmacist", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(true);
-    // …and an office the host did NOT name is still refused against the same source.
-    expect(confirmerAuthorized("the pharmacy manager", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(false);
-  });
-
-  it("H — a Korean role the Host names is accepted", () => {
-    const answers = {
-      ...PILOT,
-      problem: "아침 허들에서 문제를 보고하지만 담당자를 정하지 않고 끝납니다.",
-      successEvidence: "허들 기록에 담당자와 마감일이 남습니다.",
-    } as unknown as BuilderAnswers;
-    const corpus = groundingCorpus(answers, []);
-    expect(confirmerAuthorized("담당자", ACTION, audienceAuthorityFor(answers), corpus).ok).toBe(true);
-  });
-
-  it("I — a Korean office invented from incidental overlap is refused", () => {
-    const answers = {
-      ...PILOT,
-      problem: "아침 허들에서 문제를 보고하지만 담당자를 정하지 않고 끝납니다.",
-      successEvidence: "허들 기록에 담당자와 마감일이 남습니다.",
-    } as unknown as BuilderAnswers;
-    const corpus = groundingCorpus(answers, []);
-    // Korean is head-final too: "기록 관리자" names 관리자, which the source never establishes.
-    expect(confirmerAuthorized("기록 관리자", ACTION, audienceAuthorityFor(answers), corpus)).toEqual({ ok: false, reason: "ungrounded_role" });
-  });
-});
+  What it protected is now asserted structurally instead — see `programCoherenceRefusal` (no
+  completion field in the schema) and the preview's "no second person appears anywhere".
+*/
 
 describe("[R3.2-R1] J–P — everything else is unchanged", () => {
-  it("J — the W3-shaped seven-kind proposal is refused", () => {
-    expect(run(DRIFTED).ok).toBe(false);
+  it("J — Q: the W3 actor label reaches nothing, because the subject is server-written", () => {
+    /*
+      R3.2-R1's answer to a drifted actor was not to refuse it but to make it inert: every
+      participant-facing subject is `CANONICAL_ACTOR`. So this PASSES, and the sentence it
+      produces addresses the learner the Host chose — which is exactly what the confirmer half
+      of W3 could not do, and why that half needed removing rather than policing.
+    */
+    const r = run(DRIFTED);
+    expect(r.ok).toBe(true);
+    const text = Object.values(rendered(DRIFTED)).join(" ");
+    expect(text).not.toContain("a team member");
+    expect(text).not.toContain("the team lead");
+    expect(rendered(DRIFTED).observable_standard.startsWith(`At each morning huddle, before the group leaves, ${CANONICAL_ACTOR} must`)).toBe(true);
   });
 
   it("K — the fully grounded seven-kind proposal still PASSES", () => {

@@ -55,7 +55,6 @@ const CONTRACT = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
   observable_action: "states each open item aloud to the person taking over",
-  completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
 /** A proposal that satisfies every rule for CANONICAL. */
@@ -85,7 +84,6 @@ function goodProposal(over: Record<string, unknown> = {}) {
         trigger: "At the end of every shift, before leaving the floor",
         observable_action:
           "follows the shared handoff standard by stating each open item aloud to the person taking over",
-        completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
       },
       // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
       // difficulty and the setting; relevance comes from the derivation.
@@ -507,7 +505,7 @@ describe("[3.2L] apply is atomic and decision-driven", () => {
     actor: "the outgoing person",
     trigger: "At the end of every shift",
     observableAction: "states each open item aloud to the person taking over",
-    completion: { confirmedBy: "the person taking over", confirmationAction: "repeat the open items back" },
+    completion: { criterion: "The handover note lists every open item and who now owns it" },
     },
     scenarioContract: null,
     applicationContract: { applicationMoment: "at your next shift change" },

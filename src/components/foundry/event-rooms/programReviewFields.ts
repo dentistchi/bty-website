@@ -35,6 +35,11 @@ import {
  * The fields and their meanings are unchanged. They are now presented as the two concepts
  * they always were: what someone does, and how anyone knows it happened.
  */
+/*
+  ONE GROUP SINCE v11 (Slice 3.2P-R3.4-R1). `completion` is kept in the type because the
+  grouping mechanism is general and the heading map is what a second group would need; the
+  completion controls themselves are gone, so nothing currently declares it.
+*/
 export type FieldGroup = "action" | "completion";
 
 /** Shown once, above the first control in each group. */
@@ -99,7 +104,6 @@ const FOCUS_LABEL: Record<(typeof REVIEW_FOCUSES)[number], string> = {
 
 const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
   self_report: "They report it themselves",
-  the_other_person: "The other person is asked too",
   the_host: "You read it with them",
 };
 
@@ -114,20 +118,17 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
     behaviourField("actor", "Who takes the action?", "actor"),
     behaviourField("trigger", "When should they do it?", "trigger"),
     behaviourField("action", "What would you see or hear them do?", "observableAction"),
-    {
-      id: "confirmed-by",
-      group: "completion",
-      label: "Who confirms the action is complete?",
-      get: (c) => c.behavior.completion.confirmedBy,
-      set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmedBy: v } } }),
-    },
-    {
-      id: "completion",
-      group: "completion",
-      label: "What do they do to confirm it?",
-      get: (c) => c.behavior.completion.confirmationAction,
-      set: (c, v) => ({ ...c, behavior: { ...c.behavior, completion: { ...c.behavior.completion, confirmationAction: v } } }),
-    },
+    /*
+      NO COMPLETION CONTROLS (Slice 3.2P-R3.4-R1).
+
+      Two controls used to sit here — "Who confirms the action is complete?" and "What do they
+      do to confirm it?" — because completion was a contract role the model authored and the
+      Host corrected. It is now the Host's own answer to "How will you know it worked?", asked
+      once in the Builder. Editing it again here would create a second authority for one
+      sentence, and the two would drift the moment either was touched.
+
+      The Host has not lost the edit. It moved back to where they wrote it.
+    */
   ],
   scenario: [
     {
@@ -199,7 +200,6 @@ export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
   scenario_incomplete: "The practice situation needs a real difficulty — not “it’s hard”, and not another moment. When it happens comes from “When is it required?” above.",
   application_incomplete: "Say when this behaviour is required, in a way that comes round again — “at each handoff”, “every time a task is reassigned”.",
   action_unusable: "That action can’t be turned into a sentence people can follow. Try a short phrase like “state each open item aloud”.",
-  completion_incomplete: "Say who confirms it’s done, and what you would see them do.",
   application_unrelated: "“When should they do it?” needs to describe something that happens again, so there is a next one to aim at.",
   completion_invalid: "Choose what the closing question checks and how people answer it.",
   follow_up_invalid: "Choose what gets reviewed later and who confirms it.",

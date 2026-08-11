@@ -18,7 +18,7 @@
  */
 
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
-import { audienceAuthorityFor, confirmerAuthorized } from "./audience-authority";
+import { audienceAuthorityFor } from "./audience-authority";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -55,7 +55,7 @@ import {
   validateApplicationContract,
   renderScenarioSentence,
   renderRationaleSentence,
-  renderCounterpartQuestion,
+  CONFIRMERS,
   CREATION_FRAME,
   deriveFirstApplicationMoment,
   renderStandardSentence,
@@ -122,8 +122,14 @@ import {
  * subject, and confirmer role-head authority — while the version stood still. W3 was generated
  * under v9 and keeps that in its ledger row; it is no longer adoptable, and its history is not
  * rewritten to say it was refused.
+ *
+ * v10 → v11 (Slice 3.2P-R3.4-R1) changes the accepted proposal SHAPE, not just a floor: the
+ * model no longer authors completion at all. Every v10 proposal was generated against a
+ * behaviour contract that carried a confirmer this version has no field for, so no unapplied
+ * v10 proposal can be adopted under it. W4's refusal and W3's success both keep the versions
+ * they were recorded under.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v10";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v11";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -258,6 +264,19 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
     completionPrompt: text(a.completionPrompt) || null,
     materialIntent: typeof a.materialIntent === "string" ? a.materialIntent : null,
   };
+}
+
+/**
+ * THE COMPLETION CRITERION, from the one place it lives (Slice 3.2P-R3.4-R1).
+ *
+ * ONE accessor, so the criterion cannot be copied into the prompt, the validator and the
+ * renderers as three drifting reads of the same answer. `programContext` is the canonical
+ * route and already guarantees presence; this is the direct-answers fallback for callers that
+ * hold answers without a full context (the review surface, tests).
+ */
+export function completionCriterionFrom(answers: BuilderAnswers | undefined): string {
+  const v = answers?.successEvidence;
+  return typeof v === "string" ? v.trim() : "";
 }
 
 const norm = (s: string): string => s.replace(/\s+/g, " ").trim().toLowerCase();
@@ -814,7 +833,12 @@ function overlapRatio(a: string, b: string): number {
 // Provider-facing strict JSON Schema (Slice 3.2L-R3)
 // ---------------------------------------------------------------------------
 
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v8";
+/**
+ * The WIRE contract's name, which moves only when the JSON shape does — unlike
+ * `PROGRAM_AUTHORSHIP_VERSION`, which moves whenever ACCEPTANCE does. v8 → v9 because v11
+ * removed `behavior_contract.completion` from the response (Slice 3.2P-R3.4-R1).
+ */
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v9";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -854,26 +878,22 @@ export const PROGRAM_JSON_SCHEMA = {
         behavior_contract: {
           type: "object",
           additionalProperties: false,
-          required: ["actor", "trigger", "observable_action", "completion"],
+          /**
+           * NO `completion` (Slice 3.2P-R3.4-R1). It was `{confirmed_by, confirmation_action}`
+           * from R8 until v10, and it is the field that made W3 and W4 invent a person: the
+           * schema demanded a confirmer and the validator refused artifact heads, so a Host
+           * whose evidence is agentless left no legal answer. Completion is now the Host's own
+           * `successEvidence`, carried by the server.
+           *
+           * REMOVED, not deprecated. With `additionalProperties: false` the provider cannot
+           * return a confirmer at all — a prohibition in prose would only have made inventing
+           * one a rule violation instead of an impossibility.
+           */
+          required: ["actor", "trigger", "observable_action"],
           properties: {
             actor: { type: "string" },
             trigger: { type: "string" },
             observable_action: { type: "string" },
-            /**
-             * WHO confirms and WHAT they are seen doing (Slice 3.2L-R8). A single free-text
-             * completion_signal let the model return a bare infinitive, and the renderer
-             * pasted it after "It is complete when …". A named confirmer makes the sentence's
-             * subject structural instead of hoped for.
-             */
-            completion: {
-              type: "object",
-              additionalProperties: false,
-              required: ["confirmed_by", "confirmation_action"],
-              properties: {
-                confirmed_by: { type: "string" },
-                confirmation_action: { type: "string" },
-              },
-            },
           },
         },
         /**
@@ -932,7 +952,7 @@ export const PROGRAM_JSON_SCHEMA = {
           required: ["review_focus", "confirmer"],
           properties: {
             review_focus: { type: "string", enum: ["what_you_said", "what_happened_next", "the_confirmation"] },
-            confirmer: { type: "string", enum: ["self_report", "the_other_person", "the_host"] },
+            confirmer: { type: "string", enum: [...CONFIRMERS] },
           },
         },
         elements: {
@@ -1317,7 +1337,7 @@ export function validateProgramProposal(
    */
   const rawContract = (p as Record<string, unknown>).behavior_contract;
   if (rawContract === undefined || rawContract === null) {
-    return REJECT_AT("missing_field", "program.behavior_contract", "an object with actor, trigger, observable_action and completion_signal", jsonTypeOf(rawContract), "observable_standard");
+    return REJECT_AT("missing_field", "program.behavior_contract", "an object with actor, trigger and observable_action", jsonTypeOf(rawContract), "observable_standard");
   }
   if (!isPlainObject(rawContract)) {
     return REJECT_AT("field_type", "program.behavior_contract", "an object", jsonTypeOf(rawContract), "observable_standard");
@@ -1332,20 +1352,20 @@ export function validateProgramProposal(
     const bad = unsafe(v);
     if (bad) return REJECT(bad, "observable_standard");
   }
-  /** The completion authority is an OBJECT now: a named confirmer plus what they do (R8). */
-  const rawCompletion = (rawContract as Record<string, unknown>).completion;
-  if (!isPlainObject(rawCompletion)) {
-    return REJECT_AT(rawCompletion === undefined || rawCompletion === null ? "missing_field" : "field_type", "program.behavior_contract.completion", "an object with confirmed_by and confirmation_action", jsonTypeOf(rawCompletion), "observable_standard");
-  }
-  for (const key of ["confirmed_by", "confirmation_action"] as const) {
-    const v = (rawCompletion as Record<string, unknown>)[key];
-    if (typeof v !== "string") {
-      return REJECT_AT("field_type", `program.behavior_contract.completion.${key}`, `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
-    }
-    const bad = unsafe(v);
-    if (bad) return REJECT(bad, "observable_standard");
-  }
-  const contractResult = validateBehaviorContract(rawContract);
+  /**
+   * COMPLETION COMES FROM THE HOST (Slice 3.2P-R3.4-R1).
+   *
+   * Not read off the response, not merged with it, not defaulted from it: passed in as the
+   * Host's `successEvidence`. Anything the model puts under `completion` — strict mode
+   * forbids it, but a non-strict provider path or a hand-built payload could — is ignored
+   * rather than validated, so there is no shape of response that can supply one.
+   *
+   * `programContext` returns non-null only when Builder steps 1–4 pass, and step 4 is
+   * `evidence_required`, so a criterion exists by the time a generation is legal. The
+   * `answers` fallback keeps this honest for direct callers that hold answers but no context.
+   */
+  const completionCriterion = ctx?.successEvidence ?? completionCriterionFrom(answers);
+  const contractResult = validateBehaviorContract(rawContract, completionCriterion);
   // A well-formed contract that states no behavior. Not retryable: the shape was right.
   if (!contractResult.ok) {
     // The defect travels with the refusal so the ledger records WHICH of the four roles
@@ -1360,33 +1380,18 @@ export function validateProgramProposal(
    */
   const contract: BehaviorContract = withCanonicalActor(contractResult.value);
 
-  /**
-   * WHO THE PROGRAM IS ABOUT (Slice 3.2P-R3.2).
-   *
-   * Decided HERE rather than inside `validateBehaviorContract`, because it is a SOURCE-authority
-   * question and that function sees only the contract. W3 proved the cost of leaving it unasked:
-   * a draft whose Host audience is `leaders` produced `actor: "a team member"` and
-   * `confirmed_by: "the team lead"` — a population the source names as the one WITH the problem,
-   * and a role the source never mentions — and both rendered into all four derived sections.
-   *
-   * The top-level code is unchanged: this is still a contract that fails to describe the
-   * required behaviour, so it stays `non_observable_standard` and the ledger records WHICH role
-   * failed. Not repairable, and deliberately so — a wrong audience is not one sentence away
-   * from right, and asking the model again to guess who the training is for is how it drifted.
-   */
-  const audience = audienceAuthorityFor(answers);
-  const confirmerAuthority = confirmerAuthorized(
-    contract.completion.confirmedBy,
-    contract.observableAction,
-    audience,
-    corpus,
-  );
-  if (!confirmerAuthority.ok) {
-    return {
-      ...REJECT("non_observable_standard", "observable_standard"),
-      contract: { field: "completionSignal", reason: "confirmer_unauthorized" },
-    } as ProgramValidation;
-  }
+  /*
+    NO CONFIRMER AUTHORITY CHECK (Slice 3.2P-R3.4-R1).
+
+    R3.2-R2 built one — relational counterpart, then role-head grounding, then corpus — because
+    W3 named "the team lead" for a source that never mentions one. It worked, and W4 was refused
+    by it. But it was a floor under a field that should not have existed: the model was being
+    asked to name a person for a completion the Host had already described without one, and the
+    floor's job was to catch the invention afterwards.
+
+    v11 removes the field, so there is no confirmer to authorise. `confirmer_unauthorized` stays
+    in the ledger vocabulary for the W4 row that carries it; nothing on this path emits it.
+  */
 
   /**
    * THE SCENARIO CONTRACT (Slice 3.2L-R5). Required exactly when the Host's design asks
@@ -2086,8 +2091,6 @@ export type ReviewBlockReason =
   | "standard_not_observable"
   /** The action cannot be rendered into a sentence people could follow. */
   | "action_unusable"
-  /** The completion authority is missing a confirmer or a visible confirming act. */
-  | "completion_incomplete"
   /** The first application moment is not an instance of the required trigger. */
   | "application_unrelated"
   | "scenario_incomplete"
@@ -2122,12 +2125,20 @@ export function validateEditedReview(
     return { ok: false, reason: "action_unusable", kind: "observable_standard" };
   }
 
-  const behavior = validateBehaviorContract({
-    actor: c.behavior.actor,
-    trigger: c.behavior.trigger,
-    observable_action: c.behavior.observableAction,
-    completion: { confirmed_by: c.behavior.completion.confirmedBy, confirmation_action: c.behavior.completion.confirmationAction },
-  });
+  const behavior = validateBehaviorContract(
+    {
+      actor: c.behavior.actor,
+      trigger: c.behavior.trigger,
+      observable_action: c.behavior.observableAction,
+    },
+    /*
+      The criterion on the review state, NOT re-read from answers: a Host editing in review is
+      working from the contracts they were shown, and silently swapping in a different
+      successEvidence mid-review would change a sentence they did not touch. It came from the
+      Host either way.
+    */
+    c.behavior.completion.criterion,
+  );
   if (!behavior.ok) {
     const reason: ReviewBlockReason = behavior.defect.reason === "missing" || behavior.defect.reason === "too_long"
       ? "standard_incomplete"

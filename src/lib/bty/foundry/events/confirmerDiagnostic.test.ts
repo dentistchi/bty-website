@@ -6,10 +6,16 @@ import { CONTRACT_FIELD_STORAGE } from "@/domain/foundry/module/program-coherenc
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
- * SLICE 3.2P-R3.2-R2A — the confirmer refusal, end to end, with no provider.
+ * SLICE 3.2P-R3.2-R2A, REFRAMED AT v11 (Slice 3.2P-R3.4-R1) — R: a retired reason stays readable.
  *
- * The validator decides it, the service passes it, and the live CHECK now accepts it — so the
- * whole diagnosis reaches the row instead of stopping at the field. Nothing here calls a model.
+ * R2A proved the confirmer refusal end to end: the validator decided it, the service passed it,
+ * the live CHECK accepted it. v11 removed the field, so the FIRST half of that chain is gone —
+ * no current path can produce `confirmer_unauthorized`.
+ *
+ * The second half must not be. Attempt `df6b239b` (W4) carries that exact reason on a real row,
+ * and a stored refusal that no longer decodes is data loss. So this file now proves two things
+ * that must both stay true: the invention is unrepresentable going forward, and the ledger can
+ * still read what it recorded when it was. Nothing here calls a model.
  */
 const PILOT = {
   problem: "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
@@ -36,6 +42,7 @@ const CONTENT: Record<string, string> = {
 const contract = (confirmedBy: string) => ({
   actor: "the huddle leader", trigger: "at each morning huddle, before the group leaves",
   observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+  // Kept on the payload deliberately: the point is that sending it changes nothing.
   completion: { confirmed_by: confirmedBy, confirmation_action: "repeat back the action and the deadline" },
 });
 const proposalWith = (confirmedBy: string) => ({
@@ -50,19 +57,27 @@ const proposalWith = (confirmedBy: string) => ({
   },
 });
 
-describe("[3.2P-R3.2-R2A] the fine-grained reason survives to the row", () => {
-  it("the validator produces the exact diagnosis the service passes on", () => {
+describe("[3.2P-R3.4-R1] Q — the refusal is retired because the invention is", () => {
+  it("the W4 payload no longer refuses, because its confirmer reaches nothing", () => {
+    /*
+      W4 was refused for `confirmer_unauthorized` on exactly this value: "the team lead", for a
+      source that names no lead. Under v11 the same payload is ACCEPTED — and that is the
+      stronger outcome, not a weaker one. The field is not read, so the invented role reaches no
+      sentence. A refusal was the right answer while the model could still say it.
+    */
     const r = validateProgramProposal(proposalWith("the team lead"), PILOT, ["education.pdf"]);
-    expect(r.ok).toBe(false);
-    if (r.ok) return;
-    expect(r.code).toBe("non_observable_standard");
-    expect(r.kind).toBe("observable_standard");
-    expect(r.contract).toEqual({ field: "completionSignal", reason: "confirmer_unauthorized" });
-    // The stored spelling the ledger uses.
-    expect(CONTRACT_FIELD_STORAGE[r.contract!.field]).toBe("completion_signal");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const text = r.value.proposal.elements.map((e) => e.content).join(" ");
+    expect(text).not.toContain("team lead");
+    expect(r.value.proposal.behaviorContract!.completion).toEqual({ criterion: PILOT.successEvidence });
   });
 
-  it("and the recorder writes all four fields, now the live CHECK accepts the reason", async () => {
+  it("the stored spelling of the field is unchanged, so old rows still resolve", () => {
+    expect(CONTRACT_FIELD_STORAGE.completionSignal).toBe("completion_signal");
+  });
+
+  it("R — the recorder still writes the retired reason, and the live CHECK still accepts it", async () => {
     const writes: Record<string, unknown>[] = [];
     const admin = {
       from() {

@@ -32,7 +32,7 @@ const CALLS: BehaviorContract = {
   actor: "Front desk staff",
   trigger: "before each scheduled appointment",
   observableAction: "make a confirmation call and follow the checklist of required questions",
-  completion: { confirmedBy: "the supervisor", confirmationAction: "review the completed checklist" },
+  completion: { criterion: "The completed checklist is reviewed before the shift ends" },
 };
 
 /** A training whose behaviour genuinely IS a standard — the case that must not regress. */
@@ -40,7 +40,7 @@ const HANDOVER: BehaviorContract = {
   actor: "The outgoing person",
   trigger: "at each handover",
   observableAction: "state each open item using the handover standard",
-  completion: { confirmedBy: "the incoming person", confirmationAction: "repeat back each open item" },
+  completion: { criterion: "The handover note lists every open item and who now owns it" },
 };
 
 const standardSection = (b: BehaviorContract, content: string): ProgramSection[] => [
@@ -94,7 +94,7 @@ describe("[3.2O-R1] the renderer may never invent a construct the program has no
   it("never ADDS a construct noun the behaviour contract does not already use", () => {
     const contractText = [
       CALLS.actor, CALLS.trigger, CALLS.observableAction,
-      CALLS.completion.confirmedBy, CALLS.completion.confirmationAction,
+      CALLS.completion.criterion,
     ].join(" ").toLowerCase();
     for (const target of VERIFICATION_TARGETS) {
       for (const mode of RESPONSE_MODES) {

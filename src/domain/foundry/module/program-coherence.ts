@@ -232,23 +232,34 @@ export function mentionsConstruct(text: string, stem: string): boolean {
  * policy already existing.
  */
 /**
- * WHO confirms, and WHAT they are visibly seen doing. Replaces the free-text
- * `completionSignal` (Slice 3.2L-R8).
+ * HOW COMPLETION IS RECOGNISED — SERVER-OWNED, FROM THE HOST (Slice 3.2P-R3.4-R1).
  *
- * THE LIVE DEFECT. v5 accepted "receive a confirmation from the next owner that they
- * understand their responsibilities" — a bare infinitive with no subject — and the renderer
- * pasted it after a fixed prefix, producing "It is complete when receive a confirmation…".
- * The validator had only asked for a confirmation WORD, never for someone to do the
- * confirming, so nothing could have caught it.
+ * R8 split this into `confirmedBy` + `confirmationAction`, on the reasoning that a named
+ * confirmer makes the sentence's subject structural rather than hoped for. That fixed the
+ * grammar and created a worse problem: the model had to NAME A PERSON, and
+ * `ARTIFACT_OR_CONSTRUCT_HEAD` refused artifact heads, so any Host whose evidence is
+ * agentless left the model no legal answer but to invent someone. W3 and W4 both did — a
+ * "team lead" and a "records manager" the source never mentions.
  *
- * Splitting the confirmer from the act makes the subject structural: the sentence is built
- * around a named confirmer, so it cannot be rendered without one.
+ * R3.3 measured that contradiction and R3.4 measured the way out: across all 34 real drafts,
+ * the Host's own `successEvidence` is directly usable as the completion criterion for the
+ * clear majority, and it already covers every shape the two-field form could not — an
+ * artifact ("The huddle note records one owner and one deadline"), a system ("Supervisors
+ * can access the software…"), an explicitly observed human ("A dentist observes … and
+ * confirms"), a relational counterpart, and Korean.
+ *
+ * So completion stops being something the model authors and becomes something the server
+ * carries: ONE string, the Host's sentence, never decomposed into person / role / artifact /
+ * system. Nothing about generation needs that decomposition, and every attempt at it
+ * manufactured a responsibility nobody assigned.
  */
 export type CompletionAuthority = {
-  /** The role that confirms. Becomes the grammatical agent, so it can never be absent. */
-  confirmedBy: string;
-  /** What that role is visibly seen doing, in BASE form: "repeat back who owns the next step". */
-  confirmationAction: string;
+  /**
+   * The Host's own `successEvidence`, verbatim. Rendered as a standalone sentence rather
+   * than forced under "when …", because that is the only frame every real shape survives —
+   * including Korean, which has no grammatical connection to an English subordinator.
+   */
+  criterion: string;
 };
 
 export type BehaviorContract = {
@@ -288,7 +299,17 @@ export const CONTRACT_FIELD_STORAGE: Record<ContractField, string> = {
   completionSignal: "completion_signal",
 };
 
-/** Every reason `validateBehaviorContract` can return. Closed vocabulary, never prose. */
+/**
+ * Every reason a behaviour-contract refusal has EVER carried. Closed vocabulary, never prose.
+ *
+ * WIDER THAN THE CURRENT RUNTIME, deliberately (Slice 3.2P-R3.4-R1). This is the ledger's
+ * vocabulary, and the ledger holds history: `confirmer_unauthorized` is on a real W4 row, and
+ * `not_a_role` / `no_confirmation` / `meta_only` are how completion used to fail. v11 removed
+ * model authority over completion, so no current path can emit those four for
+ * `completionSignal` — but a stored refusal must stay readable, and shrinking this list to
+ * match today's runtime would make old rows undecodable and the CHECK constraint disagree
+ * with the code. Removing a reason is a data-loss decision, not a cleanup.
+ */
 export const CONTRACT_DEFECT_REASONS = [
   "missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation",
   /** Slice 3.2P-R2.1 — the action is a QUESTION. See `isInterrogativeAction`. */
@@ -424,29 +445,38 @@ const trimField = (v: unknown): string => (typeof v === "string" ? v.replace(/\s
  * proxy wearing four hats. Word count, passive voice, keyword overlap and "contains a verb"
  * were each rejected as the sole signal: the live sentence passes all four.
  */
-export function validateBehaviorContract(raw: unknown): { ok: true; value: BehaviorContract } | { ok: false; defect: ContractDefect } {
+export function validateBehaviorContract(
+  raw: unknown,
+  /**
+   * SERVER-OWNED (Slice 3.2P-R3.4-R1). Passed IN rather than read off `raw`, so no shape the
+   * model can return reaches it. Any `completion` key on `raw` is ignored, not merged.
+   */
+  criterion: string,
+): { ok: true; value: BehaviorContract } | { ok: false; defect: ContractDefect } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return { ok: false, defect: { field: "actor", reason: "missing" } };
   }
   const r = raw as Record<string, unknown>;
-  const rawCompletion = (r.completion ?? {}) as Record<string, unknown>;
   const value: BehaviorContract = {
     actor: trimField(r.actor),
     trigger: trimField(r.trigger),
     observableAction: trimField(r.observable_action ?? r.observableAction),
-    completion: {
-      confirmedBy: trimField(rawCompletion.confirmed_by ?? rawCompletion.confirmedBy),
-      confirmationAction: trimField(rawCompletion.confirmation_action ?? rawCompletion.confirmationAction),
-    },
+    completion: { criterion: trimField(criterion) },
   };
 
   for (const f of ["actor", "trigger", "observableAction"] as const) {
     if (value[f].length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
     if (value[f].length > CONTRACT_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
   }
-  for (const c of ["confirmedBy", "confirmationAction"] as const) {
-    if (value.completion[c].length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: "completionSignal", reason: "missing" } };
-    if (value.completion[c].length > CONTRACT_FIELD_LIMIT) return { ok: false, defect: { field: "completionSignal", reason: "too_long" } };
+  /*
+    The criterion is the HOST's sentence, so it is checked for presence and nothing else. It
+    carries no upper bound here: `CONTRACT_FIELD_LIMIT` exists to keep the model's four fields
+    inside the rendered element ceiling, and refusing a generation because the Host wrote a
+    long evidence sentence would blame the model for the source. Length is caught where it
+    actually matters, on the rendered section (`derived_too_long` / `LIMITS.content`).
+  */
+  if (value.completion.criterion.length < CONTRACT_FIELD_MIN) {
+    return { ok: false, defect: { field: "completionSignal", reason: "missing" } };
   }
 
   // The actor is a person or role. "The standard" performing itself is the passive
@@ -472,19 +502,19 @@ export function validateBehaviorContract(raw: unknown): { ok: true; value: Behav
     return { ok: false, defect: { field: "observableAction", reason: "interrogative_action" } };
   }
 
-  // The completion signal is something a second person could witness — and is not itself
-  // just "the standard now exists".
-  if (CONSTRUCT_LIFECYCLE_CLAIM(value.completion.confirmationAction)) {
-    return { ok: false, defect: { field: "completionSignal", reason: "meta_only" } };
-  }
-  // The confirmer must be a person or role — the thing being confirmed cannot confirm itself.
-  if (ARTIFACT_OR_CONSTRUCT_HEAD.test(value.completion.confirmedBy)) {
-    return { ok: false, defect: { field: "completionSignal", reason: "not_a_role" } };
-  }
-  if (!CONFIRMATION_MARKER.test(value.completion.confirmationAction)) {
-    return { ok: false, defect: { field: "completionSignal", reason: "no_confirmation" } };
-  }
+  /*
+    NOTHING ELSE IS ASKED OF THE CRITERION (Slice 3.2P-R3.4-R1).
 
+    Three rules used to live here — `meta_only` on the confirming act, `not_a_role` on the
+    confirmer, `no_confirmation` on the marker word. All three policed MODEL prose. Turned on
+    the Host's own evidence they would refuse the corpus: `not_a_role` rejects every artifact
+    a Host actually named, and R3.4 measured `CONFIRMATION_MARKER` refusing perfectly good
+    evidence ("Feedback forms are completed after role-playing sessions") because it knows
+    `record` and `confirm` but not `complete` or `submit`.
+
+    Their reasons stay in `CONTRACT_DEFECT_REASONS` because the ledger already holds rows that
+    used them. Nothing on the current path can emit them.
+  */
   return { ok: true, value };
 }
 
@@ -606,16 +636,46 @@ export function contextClause(context: string): string {
 }
 
 /**
- * THE one completion clause. "you see X do Y" takes a BARE INFINITIVE whatever X's number,
- * so "the next owner" and "both people" both render correctly with no agreement decision —
- * the same device the modal provides elsewhere. And it is literally about visibility, which
- * is what an observable standard is for.
+ * THE one completion sentence (Slice 3.2P-R3.4-R1).
+ *
+ * A STANDALONE SENTENCE, not a subordinate clause. "It is complete when you see X do Y"
+ * needed a grammatical subject and a bare infinitive, which is precisely what forced a person
+ * to be invented. The Host's evidence arrives in every shape English and Korean allow — a
+ * declarative about an artifact, a passive about a form, a Korean noun phrase — and no "when
+ * …" frame survives all of them:
+ *
+ *   when the huddle note records one owner …     ✓
+ *   when a checklist review form is signed off … ✓
+ *   when 바른 자세로 앉기                          ✗   ungrammatical, and not ours to fix
+ *
+ * A labelled sentence survives all of them, and preserves the Host's wording exactly — which
+ * is the point: this is their sentence, not a paraphrase of it.
  */
-export function renderCompletionClause(c: CompletionAuthority): string {
-  const who = lowerFirst(stripTrailingStop(c.confirmedBy.trim()));
-  const act = baseActionPhrase(c.confirmationAction);
-  return `you see ${who} ${act}`;
+export function renderCompletionEvidence(c: CompletionAuthority, lead = "Completion evidence"): string {
+  const criterion = stripTrailingStop(c.criterion.trim());
+  if (criterion.length === 0) return "";
+  return `${lead}: ${upperFirst(criterion)}.`;
 }
+
+/**
+ * ONE CRITERION, NOT ONE SENTENCE REPEATED FOUR TIMES.
+ *
+ * Caught by the R3.4-R1 corpus render audit, not by a test: with a single fixed lead-in, THE
+ * STANDARD, IN CONTEXT, APPLY IT and WHY THIS MATTERS all closed on the same words verbatim,
+ * and a participant reads all four in one sitting. The old two-field renderer varied its
+ * framing by accident ("It is complete when …", "You will know it happened when …", "and it
+ * counts as done when …"); losing that would have been a quiet regression in how the program
+ * reads.
+ *
+ * The criterion itself is never touched — only the words BTY puts in front of it. THE STANDARD
+ * and IN CONTEXT deliberately share one lead, because IN CONTEXT is the same standard restated
+ * under pressure and pretending otherwise would imply a second rule.
+ */
+const COMPLETION_LEAD = {
+  standard: "Completion evidence",
+  application: "You will know it happened by this",
+  rationale: "What shows it happened",
+} as const;
 
 /** A moment that already begins with its own time preposition needs nothing added. */
 const LEADING_DETERMINER = /^(?:the|a|an|my|your|our|their|his|her|its|each|every|this|that)\b/i;
@@ -664,7 +724,7 @@ export function renderStandardSentence(c: BehaviorContract): string {
   const trigger = stripTrailingStop(c.trigger.trim());
   const actor = stripTrailingStop(c.actor.trim());
   const action = baseActionPhrase(c.observableAction);
-  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. It is complete when ${renderCompletionClause(c.completion)}.`;
+  return `${upperFirst(trigger)}, ${lowerFirst(actor)} must ${action}. ${renderCompletionEvidence(c.completion, COMPLETION_LEAD.standard)}`.trimEnd();
 }
 
 /**
@@ -997,8 +1057,8 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
   return (
     `${momentClause(b.trigger, "the")}, even when ${condition}${extra}, ` +
     `${lowerFirst(actor)} must ${action}. ` +
-    `It is complete when ${renderCompletionClause(b.completion)}.`
-  );
+    renderCompletionEvidence(b.completion, COMPLETION_LEAD.standard)
+  ).trimEnd();
 }
 
 // ---------------------------------------------------------------------------
@@ -1069,7 +1129,7 @@ export function validateProgramDependencies(
    * a construct mentioned inside it has its behavior established.
    */
   const definedText = standardContract
-    ? [standard?.content ?? "", standardContract.actor, standardContract.trigger, standardContract.observableAction, standardContract.completion.confirmedBy, standardContract.completion.confirmationAction].join(" ")
+    ? [standard?.content ?? "", standardContract.actor, standardContract.trigger, standardContract.observableAction, standardContract.completion.criterion].join(" ")
     : "";
   const defined = new Set(
     standardContract
@@ -1380,7 +1440,13 @@ export type CompletionContract = { verificationTarget: VerificationTarget; respo
 
 /** Also enumerated: a follow-up may not introduce a new construct or a new action. */
 export const REVIEW_FOCUSES = ["what_you_said", "what_happened_next", "the_confirmation"] as const;
-export const CONFIRMERS = ["self_report", "the_other_person", "the_host"] as const;
+/*
+  `the_other_person` was REMOVED in v11 (Slice 3.2P-R3.4-R1). Its whole rendering came from a
+  model-authored confirmer; with completion server-owned there is nobody for the follow-up to
+  address, and keeping the option would mean inventing one. A follow-up is a self-report or a
+  conversation with the host.
+*/
+export const CONFIRMERS = ["self_report", "the_host"] as const;
 export type ReviewFocus = (typeof REVIEW_FOCUSES)[number];
 export type Confirmer = (typeof CONFIRMERS)[number];
 export type FollowUpContract = { reviewFocus: ReviewFocus; confirmer: Confirmer };
@@ -1557,8 +1623,10 @@ export function renderApplicationSentence(
   const moment = stripTrailingStop(a.applicationMoment.trim());
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
   // ONE completion authority. v5 let the model author a second, different answer to "how
-  // will we know it happened" here, and the live proposal gave two.
-  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} You will know it happened when ${renderCompletionClause(b.completion)}.`;
+  // will we know it happened" here, and the live proposal gave two. v11 goes further: there
+  // is nothing to author — this is the Host's evidence sentence, the same one THE STANDARD
+  // carries.
+  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} ${renderCompletionEvidence(b.completion, COMPLETION_LEAD.application)}`.trimEnd();
 }
 
 /**
@@ -1586,7 +1654,15 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
       auditing the whole target × mode matrix rather than only the pair that failed live.
     */
     the_application_plan: `you apply this`,
-    the_confirmation_step: renderCompletionClause(b.completion),
+    /*
+      THE CONFIRMATION STEP, WITHOUT A CONFIRMER (Slice 3.2P-R3.4-R1). This slot sits inside
+      "What exactly will you say when …?", so it needs a CLAUSE, and the criterion is a
+      sentence in an unknown shape — dropping it in raw produces "when The huddle note records
+      …". What the participant is being asked about is the step that PRODUCES the evidence, so
+      the clause names that step and the evidence itself is carried by the sections that can
+      hold a sentence. No person is introduced to do it.
+    */
+    the_confirmation_step: `you make sure this is completed`,
   };
   if (c.responseMode === "name_the_moment") {
     const first = deriveFirstApplicationMoment(b.trigger);
@@ -1653,54 +1729,33 @@ export function renderRationaleSentence(
   */
   const introduces = construct ? `one shared ${construct.noun}` : "one visible way of working";
   /*
-    The completion reuses `renderCompletionClause` rather than pasting the confirmer in
-    front of the confirming act. "the receiving team member repeat back …" disagrees; "you
-    see the receiving team member repeat back …" takes a bare infinitive whatever the
-    confirmer's number, which is the whole reason that clause exists.
+    The Host's evidence closes the sentence as its own sentence (Slice 3.2P-R3.4-R1), for the
+    same reason it does everywhere else: no "…counts as done when X" frame survives every
+    shape a real evidence answer takes.
   */
   return (
-    `${upperFirst(problem)}. This program introduces ${introduces}: ${actor} ${action}, ` +
-    `and it counts as done when ${renderCompletionClause(b.completion)}.`
-  );
+    `${upperFirst(problem)}. This program introduces ${introduces}: ${actor} ${action}. ` +
+    renderCompletionEvidence(b.completion, COMPLETION_LEAD.rationale)
+  ).trimEnd();
 }
 
 /**
- * IS THE CONFIRMER A PAIR RATHER THAN A COUNTERPART? (Slice 3.2L-R9)
+ * WHAT HAPPENS NEXT — self-report, and now with no second person to ask (Slice 3.2P-R3.4-R1).
  *
- * "both people" cannot be asked whether they saw the actor act — one of them IS the actor.
- * A joint confirmer gets an honest JOINT question about the confirmation itself instead of
- * a counterpart question that would be false for half its audience.
+ * R9's counterpart question ("Did you see or hear the receiving team member …?") was derived
+ * ENTIRELY from `confirmedBy` and `confirmationAction`. With completion server-owned there is
+ * no confirmer to address, and manufacturing one here would reintroduce exactly the invention
+ * this version removed — one section quietly asking a person the rest of the program never
+ * names. So `the_other_person` is gone from `CONFIRMERS`, and `isJointConfirmer` /
+ * `renderCounterpartQuestion` went with it.
+ *
+ * THE EVIDENCE LADDER IS UNMOVED. The Host's criterion is stated as the completion evidence
+ * and the answer is still described as a report. A sentence about a log, a form or a
+ * supervisor is what COMPLETION looks like in this workplace; it is not this program
+ * observing anything, and nothing here says it is.
  */
-export function isJointConfirmer(confirmedBy: string): boolean {
-  return /^\s*(?:both\b|the two of\b|all\b|everyone\b|each of\b|either of\b)/i.test(confirmedBy.trim());
-}
-
-/**
- * THE QUESTION THE CONFIRMER IS ASKED — second person, and NOT the actor's question.
- *
- * The live v7 program told the actor "The person on the other side of it will be asked the
- * same question." It was a fixed string: nothing derived it from the completion authority,
- * and it was not true — asking the receiving team member "what happened after you were
- * expected to state each unfinished item…" asks them about someone else's action.
- *
- * Both halves come from `completion`: WHO is asked (`confirmedBy`) and WHAT they are asked
- * whether they did (`confirmationAction`). Every clause after "did you" / "did they" takes
- * a bare infinitive, so no person or number agreement is ever decided.
- */
-export function renderCounterpartQuestion(b: BehaviorContract): string {
-  const confirmation = baseActionPhrase(b.completion.confirmationAction);
-  if (isJointConfirmer(b.completion.confirmedBy)) {
-    // One shared confirmation, honestly described as one — not two questions called one.
-    return `Did you ${confirmation}?`;
-  }
-  const actor = lowerFirst(stripTrailingStop(b.actor.trim()));
-  const action = baseActionPhrase(b.observableAction);
-  return `Did you see or hear ${actor} ${action}, and did you ${confirmation}?`;
-}
-
 export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
   const action = baseActionPhrase(b.observableAction);
-  const clause = renderCompletionClause(b.completion);
   /**
    * TENSE-SAFE. "what you actually said when you say it blunt" mixed a retrospective
    * question with a present-tense action. "when you were expected to …" keeps the whole
@@ -1709,39 +1764,17 @@ export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract,
   const focus: Record<ReviewFocus, string> = {
     what_you_said: `what you actually said when you were expected to ${action}`,
     what_happened_next: `what happened after you were expected to ${action}`,
-    the_confirmation: `whether ${clause}`,
+    the_confirmation: `whether it was completed`,
   };
-  const who = lowerFirst(stripTrailingStop(b.completion.confirmedBy.trim()));
-
-  /**
-   * THE JOINT BRANCH REPLACES THE WHOLE SENTENCE (Slice 3.2L-R9.1).
-   *
-   * R9 derived the joint question correctly and then APPENDED it to the actor's own
-   * question, because the confirmer only ever chose the trailing clause. So "both people"
-   * gave the actor two questions and the second person one — the opposite of a shared
-   * confirmation. There is exactly ONE substantive question here, both people are its
-   * audience, and no actor-only question survives to be asked separately.
-   */
-  if (f.confirmer === "the_other_person" && isJointConfirmer(b.completion.confirmedBy)) {
-    return (
-      `In ${followUpDays} days, ${who} will be asked one shared question: ` +
-      `${renderCounterpartQuestion(b)} ` +
-      `Each answer is a report, not an independent observation.`
-    );
-  }
-
-  /**
-   * Never claims more than the workflow can show — the evidence ceiling in one clause. The
-   * counterpart line is DERIVED from the completion authority rather than asserting that
-   * two roles receive one question (Slice 3.2L-R9).
-   */
-  const confirmation = baseActionPhrase(b.completion.confirmationAction);
-  const counterpart =
-    `${upperFirst(who)} will be asked a different question: did they see or hear you ${action}, and did they ${confirmation}?`;
+  /*
+    The criterion is stated only for the focus that is ABOUT completion. Repeating it under
+    "what you actually said" would attach the Host's evidence to a question that is not asking
+    for it.
+  */
+  const evidence = f.reviewFocus === "the_confirmation" ? ` ${renderCompletionEvidence(b.completion)}` : "";
   const by: Record<Confirmer, string> = {
     self_report: "That is your own account of it, not an observation.",
-    the_other_person: `That is your own account of it, not an observation. ${counterpart} Their answer is a report too.`,
     the_host: "Your host will read it with you.",
   };
-  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`;
+  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}.${evidence} ${by[f.confirmer]}`.replace(/\s+/g, " ").trim();
 }

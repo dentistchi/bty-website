@@ -31,9 +31,7 @@ import {
 import { resolveRefusalCopy } from "@/components/foundry/event-rooms/programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING } from "@/components/foundry/event-rooms/programReviewFields";
 import {
-  isJointConfirmer,
   namesIndependentMoment,
-  renderCounterpartQuestion,
   validateScenarioContract,
   deriveFirstApplicationMoment,
 } from "@/domain/foundry/module/program-coherence";
@@ -60,9 +58,9 @@ const REQUIRED = [
 const derived = (kind: (typeof REQUIRED)[number], c: ProgramContracts = PREVIEW_CONTRACTS) =>
   deriveInstructionalContent(kind, c);
 
-const withCompletion = (confirmedBy: string, confirmationAction: string): ProgramContracts => ({
+const withCompletion = (criterion: string): ProgramContracts => ({
   ...PREVIEW_CONTRACTS,
-  behavior: { ...PREVIEW_CONTRACTS.behavior, completion: { confirmedBy, confirmationAction } },
+  behavior: { ...PREVIEW_CONTRACTS.behavior, completion: { criterion } },
 });
 
 // ---------------------------------------------------------------------------
@@ -129,7 +127,8 @@ describe("[3.2L-R9] G3/G4 — the derived rationale is grounded and claims nothi
   it("names the Host's problem and the one visible action", () => {
     expect(shown()).toContain("Our handoffs are inconsistent");
     expect(shown()).toContain("state each unfinished item and identify its next owner");
-    expect(shown()).toContain("repeat back who owns the next step");
+    // v11: WHY THIS MATTERS closes on the Host's own evidence, in their words.
+    expect(shown()).toContain("What shows it happened: Handoff record.");
   });
 
   it("claims no outcome of any kind", () => {
@@ -152,126 +151,55 @@ describe("[3.2L-R9] G3/G4 — the derived rationale is grounded and claims nothi
 });
 
 // ---------------------------------------------------------------------------
-// G5–G10 — counterpart-aware follow-up
+// The counterpart follow-up, and why it is gone (Slice 3.2P-R3.4-R1)
 // ---------------------------------------------------------------------------
 
-describe("[3.2L-R9] G5 — the exact live follow-up line cannot render", () => {
-  it("'the same question' is gone for a counterpart confirmer", () => {
+/*
+  R9 built an entire counterpart apparatus here — G5 through G10, some forty assertions —
+  because the live v7 follow-up told the actor "The person on the other side of it will be
+  asked the same question", which was a fixed string and was not true. R9's fix derived the
+  counterpart from the completion authority instead: WHO is asked came from `confirmed_by`,
+  WHAT they were asked came from `confirmation_action`, and `isJointConfirmer` kept "both
+  people" from being asked whether they had witnessed themselves.
+
+  Every one of those assertions was about a person the MODEL named. v11 has no such field, so
+  there is nobody to address and no shape to get right — the honest replacement is not a
+  migrated version of those tests but the guarantee that replaced them: this follow-up asks
+  the participant, and introduces no one else.
+*/
+describe("[3.2P-R3.4-R1] O — the follow-up asks the participant, and nobody else", () => {
+  it("the live v7 line, and R9's own replacement for it, are both unreachable", () => {
     const f = derived("follow_up")!;
     expect(f).not.toContain("will be asked the same question");
     expect(f).not.toContain("The person on the other side of it");
-    expect(f).toContain("will be asked a different question");
-  });
-});
-
-describe("[3.2L-R9] G6/G7 — two roles, two questions", () => {
-  it("G6: the actor is asked about performing the actor's action", () => {
-    expect(derived("follow_up")).toContain(
-      "In 7 days you will be asked what happened after you were expected to state each unfinished item and identify its next owner",
-    );
-  });
-
-  it("G7: the counterpart is asked about witnessing it and doing the confirming", () => {
-    const q = renderCounterpartQuestion(PREVIEW_CONTRACTS.behavior);
-    expect(q).toBe(
-      "Did you see or hear team members state each unfinished item and identify its next owner, " +
-        "and did you repeat back who owns the next step?",
-    );
-    // It must NOT ask the counterpart whether they performed the actor's action.
-    expect(q).not.toMatch(/^Did you state each unfinished item/i);
-  });
-
-  it("the actor is told what the counterpart will be asked, in their own terms", () => {
-    expect(derived("follow_up")).toContain(
-      "The receiving team member will be asked a different question: did they see or hear you " +
-        "state each unfinished item and identify its next owner, and did they repeat back who owns the next step?",
-    );
-  });
-});
-
-describe("[3.2L-R9] G8 — the counterpart question comes from the completion authority", () => {
-  it("changing the confirmer changes who is asked, everywhere", () => {
-    const c = withCompletion("the next owner", "confirm they understand what they are taking on");
-    expect(renderCounterpartQuestion(c.behavior)).toContain("and did you confirm they understand what they are taking on?");
-    expect(derived("follow_up", c)).toContain("The next owner will be asked a different question");
-    expect(derived("follow_up", c)).not.toContain("receiving team member");
-  });
-
-  it("changing the confirmation action changes what they are asked", () => {
-    const c = withCompletion("the receiving team member", "sign the handover sheet");
-    expect(renderCounterpartQuestion(c.behavior)).toContain("and did you sign the handover sheet?");
-    expect(derived("follow_up", c)).toContain("did they sign the handover sheet?");
-  });
-});
-
-describe("[3.2L-R9] G10 — every confirmer shape renders role-correctly", () => {
-  it("the three individual shapes", () => {
-    for (const who of ["the receiving team member", "the next owner", "the incoming team member"]) {
-      const c = withCompletion(who, "repeat back who owns the next step");
-      expect(isJointConfirmer(who), who).toBe(false);
-      const q = renderCounterpartQuestion(c.behavior);
-      expect(q.startsWith("Did you see or hear "), q).toBe(true);
-      expect(q.endsWith("did you repeat back who owns the next step?"), q).toBe(true);
-      const f = derived("follow_up", c)!;
-      expect(f, who).toContain(`${who.charAt(0).toUpperCase()}${who.slice(1)} will be asked a different question`);
-    }
-  });
-
-  it("'both people' gets ONE shared question, and only that", () => {
-    const c = withCompletion("both people", "agree who owns the next step");
-    expect(isJointConfirmer("both people")).toBe(true);
-    // Asking a pair whether they saw the actor act is false for half the audience.
-    const q = renderCounterpartQuestion(c.behavior);
-    expect(q).toBe("Did you agree who owns the next step?");
-    expect(q).not.toContain("see or hear");
-
-    const f = derived("follow_up", c)!;
-    /*
-      G1 — THE EXACT PHYSICAL FAILURE. R9 appended the shared question to the actor's own
-      one, so the actor got two questions and the second person got one.
-    */
-    expect(f).toBe(
-      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
-        "Each answer is a report, not an independent observation.",
-    );
-    // G3 — no actor-only question survives.
-    expect(f).not.toContain("you will be asked what happened after you were expected to");
+    // R9's counterpart sentence needed a confirmer to name. There is none to name.
     expect(f).not.toContain("will be asked a different question");
-    // G2 — exactly one substantive question.
-    expect((f.match(/\?/g) ?? []).length).toBe(1);
-    // G5 — none of the awkward R9 copy.
-    for (const bad of ["the same one thing", "That is their account too", "person on the other side"]) {
-      expect(f, bad).not.toContain(bad);
-    }
-    // G4 — still a report, never an observation by BTY.
-    expect(f).toContain("Each answer is a report, not an independent observation.");
+    expect(f).not.toMatch(/did they (?:see|hear)/i);
   });
 
-  it("a joint confirmer only takes over when the other party is actually asked", () => {
-    // The enum decides WHO is asked; the completion authority decides the shape.
-    const c = { ...withCompletion("both people", "agree who owns the next step"), followUp: { reviewFocus: "what_happened_next", confirmer: "self_report" } as const };
-    const f = derived("follow_up", c)!;
-    expect(f).toContain("In 7 days you will be asked what happened after you were expected to");
+  it("Q — no second person appears anywhere in the rendered program", () => {
+    /*
+      The W3/W4 failure was not that a confirmer rendered badly — it rendered perfectly. It was
+      that a person nobody had named acquired a job. This asserts the absence across every
+      section, which is the only place that failure could have shown up.
+    */
+    for (const kind of ["observable_standard", "scenario", "field_application", "why_it_matters", "follow_up"] as const) {
+      const text = derived(kind);
+      if (text === null) continue;
+      expect(text, kind).not.toMatch(/(?:records manager|team lead|supervisor|reviewer|keeper)/i);
+    }
+  });
+
+  it("and it is still a self-report, not an observation", () => {
+    const f = derived("follow_up")!;
     expect(f).toContain("That is your own account of it, not an observation.");
-    expect(f).not.toContain("one shared question");
-  });
-
-  it("the other joint spellings are recognised too", () => {
-    for (const who of ["both people", "the two of you", "everyone in the room", "each of you", "all three"]) {
-      expect(isJointConfirmer(who), who).toBe(true);
-    }
-    for (const who of ["the next owner", "your manager", "the duty pharmacist"]) {
-      expect(isJointConfirmer(who), who).toBe(false);
-    }
+    expect(f).not.toMatch(/BTY (?:saw|observed|verified)/i);
   });
 });
 
 describe("[3.2L-R9] G9 — both answers stay reports", () => {
   it("the follow-up says so on its face", () => {
-    const f = derived("follow_up")!;
-    expect(f).toContain("That is your own account of it, not an observation.");
-    expect(f).toContain("Their answer is a report too.");
-    expect(f).not.toMatch(/BTY (?:saw|observed|verified)/i);
+    expect(derived("follow_up")).toContain("That is your own account of it, not an observation.");
   });
 
   it("and the evidence ceiling has not softened", () => {
@@ -324,12 +252,12 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
   it("renders exactly what the phone displayed", () => {
     expect(derived("observable_standard")).toBe(
       "At each handoff point, team members must state each unfinished item and identify its next owner. " +
-        "It is complete when you see the receiving team member repeat back who owns the next step.",
+        "Completion evidence: Handoff record.",
     );
     expect(derived("scenario")).toBe(
       "At each handoff point, even when a tight deadline is approaching and teammates are waiting for information, " +
         "team members must state each unfinished item and identify its next owner. " +
-        "It is complete when you see the receiving team member repeat back who owns the next step.",
+        "Completion evidence: Handoff record.",
     );
     expect(derived("action_decision")).toBe(
       "At my next handoff point, I will state each unfinished item and identify its next owner.",
@@ -340,10 +268,15 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
   });
 
   it("one trigger, one completion authority, aligned application", () => {
-    const clause = "you see the receiving team member repeat back who owns the next step";
+    /*
+      B (Slice 3.2P-R3.4-R1): ONE criterion, from the Host, in all three — with a different
+      lead-in in APPLY IT, because four sections closing on identical words is what the R3.4-R1
+      corpus render audit caught.
+    */
     for (const kind of ["observable_standard", "scenario", "field_application"] as const) {
-      expect(derived(kind), kind).toContain(clause);
+      expect(derived(kind), kind).toContain(PREVIEW_ANSWERS.successEvidence!);
     }
+    expect(derived("field_application")).toContain("You will know it happened by this: Handoff record.");
     expect(namesIndependentMoment(PREVIEW_CONTRACTS.scenario!.pressureCondition)).toBe(false);
     // v9: the first instance is DERIVED from the trigger, so alignment is not checked — it
     // is guaranteed by construction (Slice 3.2L-R10-A).
@@ -405,8 +338,12 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
   it("both the authority and the wire schema move", () => {
     // v9 REMOVES application_contract from the response, so unlike R9 this is a real wire
     // change and both names increment (Slice 3.2L-R10-A).
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v10");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v8");
+    /*
+      v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
+      this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
+    */
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
   });
 
   it("no string from a retired fixture survives", () => {
@@ -433,9 +370,17 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
 
   it("G1/G2: each control names the ROLE, not just 'Who'", () => {
     expect(standard.find((f) => f.id === "actor")!.label).toBe("Who takes the action?");
-    expect(standard.find((f) => f.id === "confirmed-by")!.label).toBe("Who confirms the action is complete?");
     expect(standard.find((f) => f.id === "action")!.label).toBe("What would you see or hear them do?");
-    expect(standard.find((f) => f.id === "completion")!.label).toBe("What do they do to confirm it?");
+  });
+
+  it("[3.2P-R3.4-R1] the two completion controls are gone, not renamed", () => {
+    /*
+      R9.2 gave completion its own group because it was a contract role the Host corrected on
+      the model's behalf. v11 sources it from the Host's own "How will you know it worked?" in
+      the Builder, so editing it here would create a second authority for one sentence. The
+      Host did not lose the edit; it moved back to where they wrote it.
+    */
+    expect(standard.map((f) => f.id)).toEqual(["actor", "trigger", "action"]);
   });
 
   it("no two controls open with the same three words any more", () => {
@@ -448,10 +393,9 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
     expect(new Set(heads).size).toBe(heads.length);
   });
 
-  it("G3: the five fields fall into exactly two named groups, in order", () => {
-    expect(standard.map((f) => f.group)).toEqual(["action", "action", "action", "completion", "completion"]);
+  it("G3: what remains is one named group", () => {
+    expect(standard.map((f) => f.group)).toEqual(["action", "action", "action"]);
     expect(FIELD_GROUP_HEADING.action).toBe("The action");
-    expect(FIELD_GROUP_HEADING.completion).toBe("How completion is confirmed");
   });
 
   it("no internal vocabulary reaches a label or a heading", () => {
@@ -461,43 +405,23 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
     }
   });
 
-  it("G4: the same values still produce byte-identical sentences", () => {
-    // Labels are presentation. Every control still reads and writes the same contract field.
+  it("G4: B — the standard renders from the ACTION controls plus the Host's own evidence", () => {
     const get = (id: string) => standard.find((f) => f.id === id)!;
     expect(get("actor").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.actor);
-    expect(get("confirmed-by").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.completion.confirmedBy);
-    expect(get("completion").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.completion.confirmationAction);
     expect(derived("observable_standard")).toBe(
       "At each handoff point, team members must state each unfinished item and identify its next owner. " +
-        "It is complete when you see the receiving team member repeat back who owns the next step.",
+        "Completion evidence: Handoff record.",
     );
+    // …and that criterion is the Host's step-4 answer, not anything the model returned.
+    expect(PREVIEW_CONTRACTS.behavior.completion.criterion).toBe(PREVIEW_ANSWERS.successEvidence);
   });
 
   it("G6/G7: each control writes ONLY its own field", () => {
     const get = (id: string) => standard.find((f) => f.id === id)!;
-    // "both people" typed under the CONFIRMER control moves the confirmer, not the actor.
-    const asConfirmer = get("confirmed-by").set(PREVIEW_CONTRACTS, "both people");
-    expect(asConfirmer.behavior.completion.confirmedBy).toBe("both people");
-    expect(asConfirmer.behavior.actor).toBe("team members");
-
-    // …and typed under the ACTOR control it moves the actor, and never enters the joint branch.
-    const asActor = get("actor").set(PREVIEW_CONTRACTS, "both people");
-    expect(asActor.behavior.actor).toBe("both people");
-    expect(asActor.behavior.completion.confirmedBy).toBe("the receiving team member");
-    expect(derived("follow_up", asActor)).toContain("The receiving team member will be asked a different question");
-    expect(derived("follow_up", asActor)).not.toContain("one shared question");
-  });
-
-  it("G8/G9: the joint branch is reached from the confirmer control, and released again", () => {
-    const get = (id: string) => standard.find((f) => f.id === id)!;
-    const joint = get("completion").set(get("confirmed-by").set(PREVIEW_CONTRACTS, "both people"), "agree who owns the next step");
-    expect(derived("follow_up", joint)).toBe(
-      "In 7 days, both people will be asked one shared question: Did you agree who owns the next step? " +
-        "Each answer is a report, not an independent observation.",
-    );
-    const back = get("confirmed-by").set(joint, "the next owner");
-    expect(derived("follow_up", back)).toContain("The next owner will be asked a different question: did they see or hear you");
-    expect(derived("follow_up", back)).not.toContain("one shared question");
+    const moved = get("actor").set(PREVIEW_CONTRACTS, "both people");
+    expect(moved.behavior.actor).toBe("both people");
+    // Nothing a Host types into an action control can reach the completion criterion.
+    expect(moved.behavior.completion.criterion).toBe(PREVIEW_CONTRACTS.behavior.completion.criterion);
   });
 });
 
@@ -866,9 +790,10 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     expect(text("action_decision")).toContain("At my next handoff point");
     expect(text("field_application")).toContain("At the next handoff point");
     expect(text("completion_check")).toContain("At your next handoff point");
-    const clause = "you see the receiving team member repeat back who owns the next step";
-    for (const k of ["observable_standard", "scenario", "field_application"]) expect(text(k), k).toContain(clause);
-    expect(text("follow_up")).toContain("will be asked a different question");
+    for (const k of ["observable_standard", "scenario", "field_application"]) {
+      expect(text(k), k).toContain(PREVIEW_ANSWERS.successEvidence!);
+    }
+    expect(text("follow_up")).toContain("That is your own account of it, not an observation.");
     expect(text("why_it_matters")).toContain("Our handoffs are inconsistent");
   });
 

@@ -144,6 +144,11 @@ export function systemPrompt(
    * floor refuses — the parity rule R2 established for scenario pressure.
    */
   audienceLines: readonly string[] = [],
+  /**
+   * The host's own completion evidence (Slice 3.2P-R3.4-R1). Quoted to the model so it knows
+   * completion is already decided — not so it can restate it. There is no field to put it in.
+   */
+  completionCriterion = "",
 ): string {
   const isKo = locale === "ko";
   return [
@@ -196,16 +201,21 @@ export function systemPrompt(
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
-    "- Return behavior_contract with: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing), and completion.",
-    "- completion has TWO parts: confirmed_by (WHO confirms — a person or role) and confirmation_action (what you would SEE THEM DO, in base form: 'repeat back who owns the next step'). Never write a bare phrase like 'receive a confirmation' — say who does the confirming.",
+    "- Return behavior_contract with exactly THREE fields: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing).",
+    /*
+      COMPLETION IS NOT YOURS TO WRITE (Slice 3.2P-R3.4-R1). The schema has no field for it, so
+      this line is not a prohibition holding a door shut — it explains why the door is absent,
+      which is what stops the model compensating by naming a confirmer inside another field.
+    */
+    `- HOW COMPLETION IS RECOGNISED is already decided by the host, in their own words: "${completionCriterion}". BTY states that itself. There is no completion field for you to return.`,
+    "- So do NOT name a person, role, reviewer, manager, keeper or system who confirms it, anywhere — not in behavior_contract, not in any section. Nobody has been assigned that job, and inventing one puts a responsibility on someone the host never named.",
     "- 'A shared handoff standard is created and utilized by team members' is NOT acceptable: it describes the standard's life cycle, not a person's action. Write what someone is seen doing instead.",
     "- Write observable_action in BASE form, as it would follow 'must': 'state each unfinished item and identify its next owner', not 'states … and identifies …'.",
-    "- The confirming act must be something a second person could witness — a read-back, a confirmation, a signature, a logged entry. Not a feeling, and not 'the standard now exists'.",
-    "- There is ONE definition of completion. Do not invent a second, different way of knowing it happened for the application step.",
+    "- There is ONE definition of completion and the host already wrote it. Do not restate it, improve it, or give the application step a second way of knowing it happened.",
     "",
     "THE PRACTICE SITUATION — scenario_contract:",
     "- Return scenario_contract with pressure_condition (what competes with doing it properly) and pressure_detail (a second circumstance, or null when one is enough).",
-    "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger, action or completion signal for it.",
+    "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger or action for it, and do not describe how completion is recognised.",
     "- THE SITUATION HAPPENS AT THE TRIGGER. There is ONE moment in the program and behavior_contract.trigger already named it. Do NOT give the situation an occasion of its own.",
     /*
       BOTH FIELDS, NOT ONE (Slice 3.2O-R1). The rule was stated for pressure_condition only,
@@ -256,7 +266,7 @@ export function systemPrompt(
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string,"completion":{"confirmed_by":string,"confirmation_action":string}},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_other_person"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
   ].join("\n");
 }
 
@@ -525,7 +535,7 @@ export async function generateProgram(
   const materialAuthority = deriveMaterialAuthority(args.answers, args.verifiedArtifacts ?? []);
 
   const base: LlmChatMessage[] = [
-    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers))) },
+    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers)), args.ctx.successEvidence) },
     { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
 

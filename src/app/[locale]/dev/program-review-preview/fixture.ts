@@ -49,10 +49,19 @@ export const V7_LIVE = {
     actor: "team members",
     trigger: "At each handoff point",
     observableAction: "state each unfinished item and identify its next owner",
-    completion: {
+    /**
+     * WHAT v5 ACTUALLY RETURNED, kept as the record and no longer fed to the product
+     * (Slice 3.2P-R3.4-R1). The model authored a confirmer and a confirming act; v11 has no
+     * such field, so the preview renders completion from the Host's own `successEvidence`
+     * below. Preserved verbatim rather than deleted — this file's whole job is to hold the
+     * authentic input, and rewriting it to look v11-native would fake the history.
+     */
+    completionRecorded: {
       confirmedBy: "the receiving team member",
       confirmationAction: "repeat back who owns the next step",
     },
+    /** v11: the Host's evidence, carried by the server. Same string as `PREVIEW_ANSWERS`. */
+    completion: { criterion: "Handoff record" },
   },
   scenario: {
     pressureCondition: "a tight deadline is approaching and teammates are waiting for information",
@@ -64,8 +73,12 @@ export const V7_LIVE = {
     preview proves the derivation rather than a stored string.
   */
   completionContract: { verificationTarget: "the_behaviour", responseMode: "name_the_moment" },
-  /** `the_other_person` is what produced the "same question" line. */
-  followUpContract: { reviewFocus: "what_happened_next", confirmer: "the_other_person" },
+  /*
+    v5 chose `the_other_person`, which produced the "same question" line R9 was built to fix.
+    v11 removed that option with the confirmer it depended on, so the preview carries the
+    nearest honest v11 value: this follow-up is a self-report.
+  */
+  followUpContract: { reviewFocus: "what_happened_next", confirmer: "self_report" },
   /** Both recorded assumptions; both are dropped by `retainGroundedAssumptions`. */
   assumptionsRecorded: [
     "Participants have a basic understanding of handoff processes.",

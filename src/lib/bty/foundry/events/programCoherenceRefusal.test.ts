@@ -227,9 +227,8 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     if (r.ok) {
       // THE STANDARD is the rendered contract, not the model's sentence.
       const standard = r.value.proposal.elements.find((e) => e.kind === "observable_standard")!;
-      expect(standard.content).toContain("It is complete when");
-      // R8: one render-safe clause, subject and confirmer both structural.
-      expect(standard.content).toContain("you see the person taking over repeat the open items back");
+      // v11: the completion is the HOST's evidence, stated as its own sentence (R3.4-R1).
+      expect(standard.content).toContain("Completion evidence: Handoff record.");
       expect(r.value.proposal.behaviorContract.actor).toBe("you");
     }
     expect(attempts[0]).toMatchObject({ outcome: "success", proposal_version: PROGRAM_AUTHORSHIP_VERSION });
@@ -278,22 +277,26 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect([...comp.response_mode.enum]).toEqual(["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
-    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action", "completion"]);
+    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action"]);
     for (const f of ["actor", "trigger", "observable_action"]) {
       expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
     }
-    // R8: completion is an OBJECT with a named confirmer, not a free-text signal.
-    const completionAuthority = contract.properties.completion;
-    expect(completionAuthority.additionalProperties).toBe(false);
-    expect([...completionAuthority.required]).toEqual(["confirmed_by", "confirmation_action"]);
+    /*
+      A (Slice 3.2P-R3.4-R1): THERE IS NO COMPLETION FIELD. R8 required an object with
+      `confirmed_by` and `confirmation_action`; v11 removed it, and `additionalProperties:
+      false` above means the provider cannot return one under any name. This is the structural
+      half of the guarantee — the prompt says the same thing, and `programPromptContract`
+      holds the two together.
+    */
+    expect("completion" in contract.properties).toBe(false);
     // The version names the materially different contract rather than relabelling v1.
     // R7 bumps the AUTHORSHIP version without moving the JSON shape: the schema name still
     // describes the wire contract, the proposal version describes what the model was
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v10");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v8");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v11");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

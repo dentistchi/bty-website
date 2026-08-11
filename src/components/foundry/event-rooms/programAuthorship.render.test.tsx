@@ -58,7 +58,7 @@ const PROPOSAL: ProgramProposal = {
   actor: "the outgoing person",
   trigger: "At the end of every shift",
   observableAction: "states each open item aloud to the person taking over",
-  completion: { confirmedBy: "the person taking over", confirmationAction: "repeat the open items back" },
+  completion: { criterion: "The handover note lists every open item and who now owns it" },
   },
   scenarioContract: null,
   applicationContract: { applicationMoment: "at your next shift change" },

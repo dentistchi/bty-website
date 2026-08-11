@@ -81,7 +81,7 @@ const PRESSURE_BEHAVIOR: BehaviorContract = {
   actor: "Front desk staff",
   trigger: "before each scheduled appointment",
   observableAction: "make a confirmation call and follow the checklist of required questions",
-  completion: { confirmedBy: "the supervisor", confirmationAction: "review the completed checklist" },
+  completion: { criterion: "The completed checklist is reviewed before the shift ends" },
 };
 
 describe("[3.2O-R2] the prompt's pressure vocabulary is derived, not hand-written", () => {

@@ -49,25 +49,32 @@ const LIVE_COMPLETION_CHECK =
 const LIVE_APPLY =
   "During the next project handoff meeting, I will actively use the shared handoff standard to ensure all necessary information is communicated clearly.";
 
+/** The Host's own completion evidence — agentless, which v10 could not have accepted. */
+const CRITERION = "The handover note lists every open item and who now owns it";
+
 /** A contract that satisfies all four roles — synthetic, never written to any draft. */
 const GOOD: BehaviorContract = {
   actor: "the outgoing team member",
   trigger: "At the end of every shift, before leaving the floor",
   observableAction: "states each unfinished task, its deadline and its risk out loud to the person taking over",
-  completion: { confirmedBy: "the person taking over", confirmationAction: "repeat the open items back" },
+  completion: { criterion: CRITERION },
 };
 
+/*
+  SERVER-OWNED SINCE v11 (Slice 3.2P-R3.4-R1). This is a HOST answer, not a model field, so it
+  is passed to `validateBehaviorContract` as its own argument and never appears in `raw()` —
+  the fixture mirrors the real call, where no response shape can supply it.
+*/
 const raw = (c: Partial<Record<string, unknown>> = {}) => ({
   actor: GOOD.actor,
   trigger: GOOD.trigger,
   observable_action: GOOD.observableAction,
-  completion: { confirmed_by: GOOD.completion.confirmedBy, confirmation_action: GOOD.completion.confirmationAction },
   ...c,
 });
 
 describe("[3.2L-R4] G2 — a complete behavioral contract is accepted", () => {
   it("accepts actor + trigger + observable action + completion signal", () => {
-    const r = validateBehaviorContract(raw());
+    const r = validateBehaviorContract(raw(), CRITERION);
     expect(r.ok, r.ok ? "" : `${r.defect.field}:${r.defect.reason}`).toBe(true);
   });
 
@@ -75,9 +82,8 @@ describe("[3.2L-R4] G2 — a complete behavioral contract is accepted", () => {
     const s = renderStandardSentence(GOOD);
     expect(s).toContain("the outgoing team member");
     expect(s).toContain("out loud to the person taking over");
-    expect(s).toContain("It is complete when");
-    // R8: one render-safe clause with a named confirmer and an explicit subject.
-    expect(s).toContain("you see the person taking over repeat the open items back");
+    // v11: the completion is the HOST's evidence sentence, stated as its own sentence.
+    expect(s).toContain(`Completion evidence: ${CRITERION}.`);
     // The rendered standard can never overflow the 700-character element ceiling.
     expect(s.length).toBeLessThanOrEqual(700);
   });
@@ -105,8 +111,8 @@ describe("[3.2L-R4] G1 — the exact live meta-standard is refused", () => {
         actor: "team members",
         trigger: "during all relevant transitions of work",
         observable_action: "a shared handoff standard is created and utilized",
-        completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
       }),
+      CRITERION,
     );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect.field).toBe("observableAction");
@@ -120,62 +126,74 @@ describe("[3.2L-R4] G1 — the exact live meta-standard is refused", () => {
 
 describe("[3.2L-R4] G3 — meta creation only", () => {
   it("refuses 'Create and implement a shared process.'", () => {
-    const r = validateBehaviorContract(raw({ observable_action: "Create and implement a shared process." }));
+    const r = validateBehaviorContract(raw({ observable_action: "Create and implement a shared process." }), CRITERION);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "observableAction", reason: "meta_only" });
   });
 
   it("refuses a bare instruction to use the construct", () => {
     for (const bare of ["uses the shared handoff standard", "will follow the agreed process", "applies the new framework"]) {
-      const r = validateBehaviorContract(raw({ observable_action: bare }));
+      const r = validateBehaviorContract(raw({ observable_action: bare }), CRITERION);
       expect(r.ok, `expected refusal for: ${bare}`).toBe(false);
     }
   });
 
-  it("refuses a confirming act that is only the construct being established", () => {
-    const r = validateBehaviorContract(raw({ completion: { confirmed_by: "the team", confirmation_action: "establish the shared standard" } }));
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "completionSignal", reason: "meta_only" });
-  });
+  /*
+    THE CONFIRMING-ACT RULES ARE GONE WITH THE FIELD (Slice 3.2P-R3.4-R1). `meta_only` on
+    `confirmation_action` and `no_confirmation` on its marker word both policed model prose.
+    There is no model prose here now — see `completionCriterionAuthority.test.ts` for what the
+    criterion is actually held to, and `A` there for why no response can supply one.
+  */
 });
 
 describe("[3.2L-R4] each contract role is checked for a DIFFERENT property", () => {
-  it("a completion authority with no confirmer is refused — the v5 render defect", () => {
-    // "receive a confirmation from the next owner" had no subject; the renderer pasted it
-    // after "It is complete when …". A named confirmer is now structural.
-    const r = validateBehaviorContract(raw({ completion: { confirmed_by: "", confirmation_action: "receive a confirmation from the next owner" } }));
+  it("an absent completion criterion is still refused — but it is a SOURCE fault now", () => {
+    // v5's defect was a subjectless confirming act the renderer pasted after "It is complete
+    // when …". v11 has no such field; what can still be empty is the Host's evidence, and the
+    // Builder blocks that at step 4 long before a generation is legal.
+    const r = validateBehaviorContract(raw(), "");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "completionSignal", reason: "missing" });
   });
 
   it("a missing field is a defect, whichever it is", () => {
     for (const f of ["actor", "trigger", "observable_action"]) {
-      const r = validateBehaviorContract(raw({ [f]: "" }));
+      const r = validateBehaviorContract(raw({ [f]: "" }), CRITERION);
       expect(r.ok, `expected refusal for empty ${f}`).toBe(false);
       if (!r.ok) expect(r.defect.reason).toBe("missing");
     }
   });
 
   it("the actor must be a person, not the construct performing itself", () => {
-    const r = validateBehaviorContract(raw({ actor: "the shared handoff standard" }));
+    const r = validateBehaviorContract(raw({ actor: "the shared handoff standard" }), CRITERION);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "actor", reason: "not_a_role" });
   });
 
   it("the trigger must place the behavior in time", () => {
-    const r = validateBehaviorContract(raw({ trigger: "in a professional manner" }));
+    const r = validateBehaviorContract(raw({ trigger: "in a professional manner" }), CRITERION);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "trigger", reason: "no_moment" });
   });
 
-  it("the confirming act must be something a second person could witness", () => {
-    const r = validateBehaviorContract(raw({ completion: { confirmed_by: "the next owner", confirmation_action: "feel better about the handoff" } }));
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "completionSignal", reason: "no_confirmation" });
+  it("the Host's own evidence is NOT second-guessed, however it is phrased", () => {
+    /*
+      R3.4 measured `CONFIRMATION_MARKER` — the old `no_confirmation` rule — refusing real Host
+      evidence such as "Feedback forms are completed after role-playing sessions", because it
+      knows `record` and `confirm` but not `complete` or `submit`. Turning a rule built for
+      model prose on the Host's own words would refuse the corpus.
+    */
+    for (const host of [
+      "Feedback forms are completed after role-playing sessions",
+      "Participants submit their daily schedules with meal times marked",
+      "바른 자세로 앉기",
+    ]) {
+      expect(validateBehaviorContract(raw(), host).ok, host).toBe(true);
+    }
   });
 
   it("an over-long field is bounded", () => {
-    const r = validateBehaviorContract(raw({ actor: "x".repeat(400) }));
+    const r = validateBehaviorContract(raw({ actor: "x".repeat(400) }), CRITERION);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect.reason).toBe("too_long");
   });
@@ -462,7 +480,7 @@ describe("[3.2L-R5] G4 — the displayed scenario cannot drift from its groundin
     expect(derived).toContain(GOOD_SCENARIO.pressureCondition);
     // The MOMENT is the trigger's, never the scenario's (Slice 3.2L-R8.1).
     expect(derived.toLowerCase()).toContain(GOOD.trigger.toLowerCase().replace(/^at\s+/, ""));
-    expect(derived).toContain(GOOD.completion.confirmationAction);
+    expect(derived).toContain(GOOD.completion.criterion);
     expect(derived.length).toBeLessThanOrEqual(700);
   });
 
@@ -653,7 +671,8 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     // Actor-neutral possessive here, because the sentence names a third-party actor.
     expect(a).toContain("At the next shift change");
     expect(a).toContain("must state each unfinished task");
-    expect(a).toContain("you see the person taking over repeat the open items back");
+    // Same criterion, different lead-in — one authority, four surfaces that do not read alike.
+    expect(a).toContain(`You will know it happened by this: ${CRITERION}.`);
   });
 
   it("G8: a completion check verifies; it cannot ask what the construct contains", () => {
@@ -1023,43 +1042,47 @@ describe("[3.2L-R6.4] a shouted verb is normalised; a shouted acronym is not", (
 describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
   const APP8 = { applicationMoment: "at the end of the next project" };
 
-  it("G1: a subject-less completion phrase can no longer be rendered", () => {
-    // The exact v5 value: a bare infinitive, which produced
-    // "It is complete when receive a confirmation from the next owner…".
-    const r = validateBehaviorContract({
-      actor: GOOD.actor,
-      trigger: GOOD.trigger,
-      observable_action: GOOD.observableAction,
-      completion: { confirmed_by: "", confirmation_action: "receive a confirmation from the next owner" },
-    });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "completionSignal", reason: "missing" });
+  it("G1: the v5 subject-less completion phrase is unrepresentable, not refused", () => {
+    /*
+      v5 returned "receive a confirmation from the next owner" — a bare infinitive that
+      rendered as "It is complete when receive a confirmation…". R8 refused it by demanding a
+      named confirmer; v11 removes the field, so the model has no place to return that string
+      and no grammatical subject is ever decided. `raw()` proves it: the fixture mirrors the
+      real response shape and carries no completion key at all.
+    */
+    expect(Object.keys(raw())).toEqual(["actor", "trigger", "observable_action"]);
+    expect(validateBehaviorContract(raw(), CRITERION).ok).toBe(true);
   });
 
-  it("G2: every rendered completion clause has an explicit subject and a named confirmer", () => {
-    for (const confirmedBy of ["the next owner", "both people", "the incoming team member"]) {
-      const b = { ...GOOD, completion: { confirmedBy, confirmationAction: "repeat back who owns the next step" } };
-      const s = renderStandardSentence(b);
-      expect(s).toContain(`It is complete when you see ${confirmedBy} repeat back who owns the next step.`);
-      // "you see X do Y" takes a bare infinitive, so plural and singular both render.
-      expect(s).not.toMatch(/see (?:the next owner|both people|the incoming team member) repeats/);
+  it("G2: a completion the model tried to smuggle back in is IGNORED, not merged", () => {
+    const smuggled = validateBehaviorContract(
+      { ...raw(), completion: { confirmed_by: "the records manager", confirmation_action: "file the note" } },
+      CRITERION,
+    );
+    expect(smuggled.ok).toBe(true);
+    if (smuggled.ok) {
+      expect(smuggled.value.completion).toEqual({ criterion: CRITERION });
+      expect(JSON.stringify(smuggled.value)).not.toContain("records manager");
     }
   });
 
   it("G3/G4: ONE completion authority reaches every section", () => {
-    const b = { ...GOOD, completion: { confirmedBy: "the next owner", confirmationAction: "confirm the next action" } };
-    const clause = "you see the next owner confirm the next action";
-    expect(renderStandardSentence(b)).toContain(clause);
-    expect(renderScenarioSentence(b, GOOD_SCENARIO)).toContain(clause);
-    expect(renderApplicationSentence(b, APP8, null)).toContain(clause);
-    expect(renderCompletionQuestion(b, { verificationTarget: "the_confirmation_step", responseMode: "state_what_you_will_say" })).toContain(clause);
-    expect(renderFollowUpSentence(b, { reviewFocus: "the_confirmation", confirmer: "self_report" }, 7)).toContain(clause);
+    const b = { ...GOOD, completion: { criterion: "The handover log shows the next owner for every open item" } };
+    const criterion = "The handover log shows the next owner for every open item";
+    for (const s of [
+      renderStandardSentence(b),
+      renderScenarioSentence(b, GOOD_SCENARIO),
+      renderApplicationSentence(b, APP8, null),
+      renderFollowUpSentence(b, { reviewFocus: "the_confirmation", confirmer: "self_report" }, 7),
+    ]) {
+      expect(s).toContain(criterion);
+    }
 
     // Changing it moves all of them together.
-    const other = { ...b, completion: { confirmedBy: "the duty lead", confirmationAction: "sign the handover" } };
+    const other = { ...b, completion: { criterion: "The duty lead signs the handover" } };
     for (const s of [renderStandardSentence(other), renderScenarioSentence(other, GOOD_SCENARIO), renderApplicationSentence(other, APP8, null)]) {
-      expect(s).toContain("you see the duty lead sign the handover");
-      expect(s).not.toContain(clause);
+      expect(s).toContain("The duty lead signs the handover");
+      expect(s).not.toContain(criterion);
     }
   });
 
@@ -1068,7 +1091,7 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
     // put a competing answer to "how will we know it happened".
     expect(Object.keys(APP8)).toEqual(["applicationMoment"]);
     const a = renderApplicationSentence(GOOD, APP8, null);
-    expect(a).toContain("You will know it happened when you see");
+    expect(a).toContain("You will know it happened by this:");
   });
 
   it("G5/G6: a context fragment never receives a doubled preposition", () => {
