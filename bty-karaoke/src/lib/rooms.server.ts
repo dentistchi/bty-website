@@ -1002,6 +1002,11 @@ export interface AdmissionDetail {
   remainingSeconds?: number | null;
   /** pass_insufficient: the pass expiry the whole video had to finish inside. */
   passExpiresAt?: string | null;
+  /**
+   * BUILD 26M — pass_insufficient only: how many passes the Host could switch to. Chooses which
+   * sentence the block shows; grants nothing. Absent means the authority did not count.
+   */
+  switchCandidateCount?: number | null;
   // BUILD 20M-R4 — FREE Final Song Grace (success path only).
   finalSongGraceApplied?: boolean;
   finalSongGraceSeconds?: number | null;
@@ -1017,6 +1022,7 @@ function admissionDetailOf(r: AdmissionDetail): AdmissionDetail {
     requiredChargeSeconds: r.requiredChargeSeconds,
     remainingSeconds: r.remainingSeconds,
     passExpiresAt: r.passExpiresAt,
+    switchCandidateCount: r.switchCandidateCount,
     finalSongGraceApplied: r.finalSongGraceApplied,
     finalSongGraceSeconds: r.finalSongGraceSeconds,
     finalSongChargedSeconds: r.finalSongChargedSeconds,

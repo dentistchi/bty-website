@@ -257,6 +257,15 @@ export const SelectTimedPassSchema = z.object({
   idempotencyKey: z.string().trim().min(1).max(128).optional(),
 });
 
+// BUILD 26M — switching from the RUNNING pass to another owned one. Same shape as selection
+// (the account is derived from the session and is never accepted from the body); the endpoint
+// differs because the outcome differs: switching FORFEITS the residual time on the active pass,
+// so it must be a distinct, explicitly-confirmed action rather than a silent variant of select.
+export const SwitchTimedPassSchema = z.object({
+  passGrantId: z.string().uuid(),
+  idempotencyKey: z.string().trim().min(1).max(128).optional(),
+});
+
 // BUILD 26E — permanent account deletion. The account is ALWAYS derived server-side from
 // the session; there is deliberately NO accountId field, so a body-supplied one has
 // nowhere to land even if a client sends it. `confirmation` must equal the exact

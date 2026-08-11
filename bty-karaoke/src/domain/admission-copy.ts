@@ -138,6 +138,9 @@ export interface PublishableAdmissionDetail {
   finalSongGraceSeconds?: number | null;
   finalSongChargedSeconds?: number | null;
   remainingBeforeSeconds?: number | null;
+  /** BUILD 26M — count of passes the Host could switch to. Publishable: a bare count names no
+   *  grant, no account and no pass identity, and it only chooses which sentence is shown. */
+  switchCandidateCount?: number | null;
 }
 
 /**
@@ -162,6 +165,10 @@ export function publishAdmissionFields(
   if (typeof r.requiredChargeSeconds === 'number') out.requiredChargeSeconds = r.requiredChargeSeconds;
   if (typeof r.remainingSeconds === 'number') out.remainingSeconds = r.remainingSeconds;
   if (typeof r.passExpiresAt === 'string' && r.passExpiresAt) out.passExpiresAt = r.passExpiresAt;
+  // BUILD 26M — emitted only when the authority actually counted (i.e. on a pass refusal). An
+  // absent key means "unknown", and the client must then keep the existing shorter-song wording
+  // rather than offering a switch it cannot know is possible.
+  if (typeof r.switchCandidateCount === 'number') out.switchCandidateCount = r.switchCandidateCount;
   // R4 — grace is published ONLY when it actually applied. An ordinary start emits no grace key
   // at all, so older clients and the v1 path see the exact payload they saw before.
   if (r.finalSongGraceApplied === true) {

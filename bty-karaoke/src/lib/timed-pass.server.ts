@@ -198,6 +198,76 @@ export async function selectTimedPass(input: {
   return { ok: true, passGrantId: String(row.passGrantId), status: String(row.status) as PassStatus, changed: row.changed === true };
 }
 
+export type SwitchTimedPassError = 'pass_not_found' | 'not_switchable' | 'switch_conflict';
+export type SwitchTimedPassOutcome =
+  | {
+      ok: true;
+      passGrantId: string;
+      status: PassStatus;
+      changed: boolean;
+      /** The ACTIVE pass that was revoked to make room, or null when none was running. */
+      switchedFromPassId: string | null;
+      /** Residual seconds destroyed by the switch, or null when nothing was running. */
+      forfeitedSeconds: number | null;
+    }
+  | { ok: false; error: SwitchTimedPassError; status?: PassStatus };
+
+/**
+ * BUILD 26M — Host switches from the running pass to another one they own (Model B).
+ *
+ * The ACTIVE pass is REVOKED (`revoke_reason='switched_pass'`, activation facts retained) and
+ * the target is merely ARMED. It is NOT activated here: the new clock starts only at the next
+ * real `waiting->playing` transition, exactly as ordinary selection does. Both transitions are
+ * one RPC — and therefore one transaction — so the old pass can never be terminated without the
+ * new one being armed.
+ *
+ * This is deliberately NOT an admission bypass. The switch only changes WHICH pass is
+ * authoritative; `karaoke_begin_song_v2` still independently refuses a song the newly armed pass
+ * cannot cover in full.
+ */
+export async function switchTimedPass(input: {
+  accountId: string;
+  passGrantId: string;
+  idempotencyKey?: string | null;
+}): Promise<SwitchTimedPassOutcome> {
+  const { data, error } = await karaokeDb().rpc('switch_timed_access_pass', {
+    p_account_id: input.accountId,
+    p_pass_grant_id: input.passGrantId,
+    p_idempotency_key: input.idempotencyKey ?? null,
+  });
+  if (error) throw error;
+  const row = (data ?? {}) as Record<string, unknown>;
+  if (row.ok === false) {
+    return {
+      ok: false,
+      error: String(row.error ?? 'pass_not_found') as SwitchTimedPassError,
+      status: row.status ? (String(row.status) as PassStatus) : undefined,
+    };
+  }
+  return {
+    ok: true,
+    passGrantId: String(row.passGrantId),
+    status: String(row.status) as PassStatus,
+    changed: row.changed === true,
+    switchedFromPassId: typeof row.switchedFromPassId === 'string' ? row.switchedFromPassId : null,
+    forfeitedSeconds: typeof row.forfeitedSeconds === 'number' ? Math.floor(row.forfeitedSeconds) : null,
+  };
+}
+
+/**
+ * How many passes this account could switch to right now. ADVISORY ONLY — it decides which
+ * sentence the insufficient-pass notice shows, never whether a start is admitted. Never let a
+ * caller turn this into an eligibility decision: the switch RPC re-validates under the account
+ * lock, and the start authority re-checks full-song coverage regardless.
+ */
+export async function countSwitchCandidates(accountId: string): Promise<number> {
+  const { data, error } = await karaokeDb().rpc('karaoke_timed_pass_switch_candidates', {
+    p_account_id: accountId,
+  });
+  if (error) throw error;
+  return typeof data === 'number' && Number.isFinite(data) ? Math.max(0, Math.floor(data)) : 0;
+}
+
 export type RevokeTimedPassError = 'pass_not_found' | 'not_revocable' | 'idempotency_key_required';
 export type RevokeTimedPassOutcome =
   | { ok: true; passGrantId: string; status: PassStatus; replayed: boolean }

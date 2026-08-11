@@ -9,6 +9,7 @@
 
 import { karaokeDb } from './supabase.server';
 import { resolveVideoDuration, type DurationFailureReason } from './youtube-duration.server';
+import { countSwitchCandidates } from './timed-pass.server';
 import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 
 /** karaoke_begin_song outcomes (superset; callers map to their own result types). */
@@ -58,6 +59,16 @@ export interface BeginResult {
   remainingSeconds?: number | null;
   /** pass_insufficient: the canonical pass expiry the whole video had to fit inside. */
   passExpiresAt?: string | null;
+  /**
+   * BUILD 26M — how many passes the Host could switch to, present ONLY on `pass_insufficient`.
+   *
+   * ADVISORY. It selects which sentence the block shows ("pick a shorter one" when there is no
+   * alternative, "use another pass" when there is) and grants nothing: the switch RPC re-validates
+   * under the account lock, and this same authority still refuses any song the newly armed pass
+   * cannot cover. It is read AFTER the refusal, so it can race a concurrent switch — the worst
+   * case is an offered action that then fails cleanly, never an admitted song that should not be.
+   */
+  switchCandidateCount?: number | null;
   // BUILD 20M-R4 — FREE Final Song Grace. Present only on the v2 success path.
   /** True when this start was admitted by the once-per-window final-song grace. */
   finalSongGraceApplied?: boolean;
@@ -129,11 +140,22 @@ async function beginSongV2(roomId: string, requestId: string, mode: 'guest' | 'p
   });
   if (error) throw error;
   const row = first(data);
+  const outcome = String(row.outcome ?? 'shadow_metering_error') as BeginOutcome;
+  // BUILD 26M — on a pass refusal ONLY, ask how many passes the Host could switch to, so the
+  // notice can offer the real remedy instead of "pick a shorter one" while usable passes sit
+  // idle. Read on the refusal path only: it costs nothing on a successful start, and admission
+  // has already been decided above, so this can never influence it.
+  let switchCandidateCount: number | undefined;
+  if (outcome === 'pass_insufficient') {
+    const account = await roomOwnerAccountId(roomId);
+    if (account) switchCandidateCount = await countSwitchCandidates(account);
+  }
   // R1 — carry the RPC's authoritative admission detail through unchanged. `num`/`iso` only
   // narrow the type; they never substitute a value, so a field the RPC omitted stays undefined
   // (the client then falls back to its generic copy rather than showing a fabricated number).
   return {
-    outcome: String(row.outcome ?? 'shadow_metering_error') as BeginOutcome,
+    outcome,
+    ...(switchCandidateCount === undefined ? {} : { switchCandidateCount }),
     entitlement: row.entitlement,
     leaseEndsAt: iso(row.leaseEndsAt),
     durationSeconds: num(row.durationSeconds),
