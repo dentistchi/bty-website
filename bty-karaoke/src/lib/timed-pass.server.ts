@@ -235,7 +235,16 @@ export async function switchTimedPass(input: {
     p_pass_grant_id: input.passGrantId,
     p_idempotency_key: input.idempotencyKey ?? null,
   });
-  if (error) throw error;
+  if (error) {
+    // A lost race RAISES inside the RPC rather than returning, because a plpgsql `return`
+    // commits whatever the function already wrote — which would terminate the running pass and
+    // arm nothing. The raise rolls both halves back; this maps it to the ordinary outcome so the
+    // caller's contract is unchanged and the Host is told to retry against fresh state.
+    if (error.code === '40001' || /switch_conflict/.test(error.message ?? '')) {
+      return { ok: false, error: 'switch_conflict' };
+    }
+    throw error;
+  }
   const row = (data ?? {}) as Record<string, unknown>;
   if (row.ok === false) {
     return {

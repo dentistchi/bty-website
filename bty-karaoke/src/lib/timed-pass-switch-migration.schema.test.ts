@@ -116,6 +116,29 @@ describe('BUILD 26M — atomicity and concurrency', () => {
     expect((switchBody.match(/get diagnostics v_upd = row_count/g) ?? []).length).toBeGreaterThanOrEqual(2);
   });
 
+  it('RAISES on a lost race — never RETURNS, which would commit a half-applied switch', () => {
+    // THE DEFECT THIS PINS, found by fault injection during BUILD 26M: a plpgsql `return` is a
+    // NORMAL return and commits everything the function already wrote. With `return`, forcing the
+    // arm to affect 0 rows left the running pass REVOKED('switched_pass') and the target still
+    // AVAILABLE — the Host lost their pass and got nothing, violating "failure cannot terminate A
+    // without selecting B". Only `raise` rolls the statement back.
+    for (const [, stmt] of switchBody.matchAll(/(\w+) exception 'switch_conflict'/g)) {
+      expect(stmt).toBe('raise');
+    }
+    expect((switchBody.match(/raise exception 'switch_conflict' using errcode = '40001'/g) ?? []).length).toBe(2);
+    expect(switchBody).not.toMatch(/return jsonb_build_object\('ok', false, 'error', 'switch_conflict'\)/);
+  });
+
+  it('every post-mutation failure path raises; only pre-mutation checks may return', () => {
+    // A `return` is safe ONLY before anything has been written. Both guards that follow a write
+    // must raise, or the rollback guarantee is decorative.
+    const firstWrite = switchBody.search(/update public\.timed_access_pass_grants/);
+    expect(firstWrite).toBeGreaterThan(0);
+    const afterFirstWrite = switchBody.slice(firstWrite);
+    const returnsAfterWrite = [...afterFirstWrite.matchAll(/return jsonb_build_object\('ok', false/g)];
+    expect(returnsAfterWrite).toHaveLength(0);
+  });
+
   it('scopes the target to the account, so another Host’s pass is simply not found', () => {
     expect(switchBody).toMatch(/where id = p_pass_grant_id and account_id = p_account_id for update/);
     expect(switchBody).toMatch(/'pass_not_found'/);

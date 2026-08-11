@@ -35,9 +35,15 @@
 -- customer policy is a separate commerce ruling; all catalog products remain is_active=false.)
 --
 -- ATOMICITY. One plpgsql function body is one transaction, so "A terminated but B not selected"
--- is unreachable -- the pair commits together or not at all. Concurrency is serialized by the
--- SAME per-account advisory lock the issue/select/begin-song paths already take, so a switch
--- can never interleave with a song start.
+-- is unreachable -- BUT ONLY BECAUSE THE FAILURE PATHS RAISE. A `return` is a normal return and
+-- commits whatever the function already wrote; fault injection proved that returning on a lost
+-- race committed the revoke and left the target AVAILABLE, stranding the Host with neither pass.
+-- Both post-mutation failure paths therefore raise (errcode 40001) and the service layer maps
+-- that back to `switch_conflict`, so the caller's contract is unchanged and the rollback is real.
+--
+-- Concurrency against other PASS mutations is the per-account advisory lock (the same key
+-- issue/select/revoke use). It is NOT begin_song_v2's key, so a song start is excluded instead by
+-- the FOR UPDATE row locks on the same grant rows, plus the raise-not-return rule above.
 --
 -- ROLLBACK: additive. drop function public.switch_timed_access_pass(uuid, uuid, text);
 -- drop function public.karaoke_timed_pass_switch_candidates(uuid); No table, column, index or
@@ -60,8 +66,12 @@ declare
   v_from      uuid := null;
   v_upd       int;
 begin
-  -- The SAME lock key the pass lifecycle already uses, so a switch and a song start can never
-  -- interleave: whichever gets the lock completes before the other observes any state.
+  -- The SAME key issue/select/revoke take, so no two pass mutations for one account interleave.
+  -- It is NOT begin_song_v2's key (that one is karaoke_account_lock_key = hashtextextended
+  -- 'acct:'...), so a song start is NOT excluded by this lock. Serialization against a start
+  -- comes from the FOR UPDATE row locks below, which contend on the very grant rows
+  -- begin_song_v2 also locks FOR UPDATE — and, decisively, from this function raising rather
+  -- than returning on any lost race, so a half-applied switch cannot commit.
   perform pg_advisory_xact_lock(hashtext('timed_pass:' || p_account_id::text));
 
   select * into v_target
@@ -114,9 +124,10 @@ begin
      where id = v_active.id and status = 'ACTIVE';
     get diagnostics v_upd = row_count;
     if v_upd <> 1 then
-      -- Lost a race for this row despite the lock: refuse rather than continue and risk
-      -- terminating nothing while arming something.
-      return jsonb_build_object('ok', false, 'error', 'switch_conflict');
+      -- RAISE, never RETURN. A plpgsql `return` is a NORMAL return and COMMITS everything the
+      -- function already wrote; only an exception rolls the statement back. Returning here would
+      -- leave the account with a terminated pass and nothing armed.
+      raise exception 'switch_conflict' using errcode = '40001';
     end if;
 
     insert into public.timed_access_pass_audit
@@ -146,7 +157,10 @@ begin
    where id = p_pass_grant_id and status = 'AVAILABLE';
   get diagnostics v_upd = row_count;
   if v_upd <> 1 then
-    return jsonb_build_object('ok', false, 'error', 'switch_conflict');
+    -- THE INVARIANT THIS PROTECTS: "failure cannot terminate A without selecting B".
+    -- Fault injection proved a `return` here COMMITTED the revoke while leaving the target
+    -- AVAILABLE — the Host lost the running pass and got nothing. Raising discards both halves.
+    raise exception 'switch_conflict' using errcode = '40001';
   end if;
 
   insert into public.timed_access_pass_audit
