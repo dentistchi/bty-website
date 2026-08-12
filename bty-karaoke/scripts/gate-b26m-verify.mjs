@@ -3,9 +3,16 @@
 //
 // WHY THIS EXISTS: a switch gate passed from the phone screen proves only that the app drew a
 // card. G4, G6, G7 and G8 are claims about SERVER state — that the switch did not start the new
-// pass's clock, that the clock started at the song, that the window is exactly the product
-// duration with no residual added, and that only one pass is ACTIVE. A screenshot cannot
-// establish any of them. This reads the authority directly, before and after each step.
+// pass's clock, that the clock started at the song, that the window is exactly base + carried,
+// and that only one pass is ACTIVE. A screenshot cannot establish any of them. This reads the
+// authority directly, before and after each step.
+//
+// BUILD 26M-R2 — G7 IS REWRITTEN, NOT TWEAKED. Residual forfeiture was withdrawn after physical
+// use. R1's G7 asserted `window == base duration, no residual added`; under carryover that is
+// exactly backwards — a bare base-duration window would mean the Host's transferred time had been
+// silently dropped. G7 now asserts `window == duration_seconds + carryover_seconds`, and G4 gains
+// assertions that the carry arrived, that the canonical product duration was NOT inflated to
+// represent it, and that the live carry exists exactly once (MOVE, never COPY).
 //
 // STRICTLY READ-ONLY. It creates nothing, switches nothing, revokes nothing and starts nothing.
 // The gate must travel the REAL native path or it proves nothing about the product. It also never
@@ -29,6 +36,16 @@ import { createClient } from '@supabase/supabase-js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function env() {
+  // An explicit environment override lets this harness run against the ISOLATED LOCAL authority
+  // (the BUILD 23 rig) so the assertions themselves can be exercised on a manufactured carrying
+  // fixture. Without it the only way to test the checker would be to manufacture a switch in
+  // production, which is exactly what a read-only gate tool must never require.
+  if (process.env.KARAOKE_SUPABASE_URL && process.env.KARAOKE_SUPABASE_SERVICE_ROLE_KEY) {
+    return {
+      url: process.env.KARAOKE_SUPABASE_URL,
+      key: process.env.KARAOKE_SUPABASE_SERVICE_ROLE_KEY,
+    };
+  }
   const raw = readFileSync(join(ROOT, '.dev.vars'), 'utf8');
   const kv = {};
   for (const line of raw.split('\n')) {
@@ -51,7 +68,7 @@ const secs = (a, b) => Math.round((new Date(a).getTime() - new Date(b).getTime()
 async function grantsFor(acctRef) {
   const { data, error } = await db
     .from('timed_access_pass_grants')
-    .select('id,account_id,pass_type,duration_seconds,status,source_type,is_paid,apple_purchase_id,selected_at,activated_at,expires_at,expired_at,revoked_at,revoke_reason,created_at');
+    .select('id,account_id,pass_type,duration_seconds,carryover_seconds,status,source_type,is_paid,apple_purchase_id,selected_at,activated_at,expires_at,expired_at,revoked_at,revoke_reason,created_at');
   if (error) throw error;
   const rows = data.filter((g) => ref(g.account_id) === acctRef);
   if (!rows.length) throw new Error(`no grants for account ref ${acctRef} — run --accounts first`);
@@ -71,14 +88,27 @@ function summarise(rows) {
     activatedAt: g.activated_at,
     expiresAt: g.expires_at,
     revokeReason: g.revoke_reason,
+    // BUILD 26M-R2 — base duration stays canonical; the carry is what makes the window bigger.
+    baseDurationSeconds: g.duration_seconds,
+    carryoverSeconds: g.carryover_seconds ?? 0,
+    /** What this pass is/was worth in total: base + carried. The R2 entitlement authority. */
+    effectiveWindowSeconds: g.duration_seconds + (g.carryover_seconds ?? 0),
     windowSeconds: g.activated_at && g.expires_at ? secs(g.expires_at, g.activated_at) : null,
     remainingSeconds: g.status === 'ACTIVE' && g.expires_at
       ? Math.max(0, Math.round((new Date(g.expires_at).getTime() - now) / 1000)) : null,
   });
+  // Live carry lives on a SELECTED row as carryover_seconds, or inside an ACTIVE row's
+  // expires_at. A REVOKED/EXPIRED row's carryover is inert history, not spendable value.
+  const liveCarryRows = rows.filter(
+    (g) => ['AVAILABLE', 'SELECTED'].includes(g.status) && (g.carryover_seconds ?? 0) > 0,
+  );
   return {
     counts: rows.reduce((a, g) => ((a[g.status] = (a[g.status] ?? 0) + 1), a), {}),
     activeValid: rows.filter((g) => g.status === 'ACTIVE' && new Date(g.expires_at) > now).length,
     selected: rows.filter((g) => g.status === 'SELECTED').length,
+    liveCarryRows: liveCarryRows.length,
+    liveCarrySeconds: liveCarryRows.reduce((n, g) => n + (g.carryover_seconds ?? 0), 0),
+    availableWithCarry: rows.filter((g) => g.status === 'AVAILABLE' && (g.carryover_seconds ?? 0) > 0).length,
     grants: rows.map(view).sort((a, b) => a.status.localeCompare(b.status)),
   };
 }
@@ -148,6 +178,34 @@ if (mode === '--accounts') {
   // THE POINT OF G4: arming must not have started a clock.
   assert('armed pass has activated_at = null', armed.every((g) => g.activatedAt == null));
   assert('armed pass has expires_at = null', armed.every((g) => g.expiresAt == null));
+
+  // ── BUILD 26M-R2 — the residual is CARRIED, not destroyed ──
+  const target = armed[0];
+  if (target) {
+    assert('armed pass carries the transferred residual (carryover_seconds > 0)',
+      target.carryoverSeconds > 0, `carryover=${target.carryoverSeconds}s`);
+    // The canonical product duration must NOT have been inflated to represent the carry.
+    const canonical = { ONE_HOUR: 3600, FOUR_HOURS: 14400, TWENTY_FOUR_HOURS: 86400 }[target.type];
+    assert('target base duration is still the canonical product duration',
+      target.baseDurationSeconds === canonical,
+      `base=${target.baseDurationSeconds}s canonical=${canonical}s`);
+    assert('effectiveWindowSeconds == base + carryover (the total the card must show)',
+      target.effectiveWindowSeconds === target.baseDurationSeconds + target.carryoverSeconds,
+      `${target.baseDurationSeconds} + ${target.carryoverSeconds} = ${target.effectiveWindowSeconds}s`);
+    console.log(`\n  Compare carryover=${target.carryoverSeconds}s against the switch response's`);
+    console.log('  carriedSeconds. The SERVER value at commit is authoritative — the dialog is');
+    console.log('  rendered before the switch while the source is still counting down, so an');
+    console.log('  earlier on-screen figure may legitimately be a few seconds larger.');
+    console.log(`  The card must show ${target.effectiveWindowSeconds}s as ONE total, not an equation.`);
+  }
+  // MOVE, not COPY: after the switch the live carry must exist exactly once.
+  assert('exactly ONE live carry row on the account (MOVE, not COPY)',
+    s.liveCarryRows === 1, `liveCarryRows=${s.liveCarryRows} totalling ${s.liveCarrySeconds}s`);
+  assert('no AVAILABLE grant holds carry (would be stranded value)',
+    s.availableWithCarry === 0, `availableWithCarry=${s.availableWithCarry}`);
+  // The source keeps its OWN carryover as inert history; it is not live value.
+  assert('the revoked source surrendered its live carry',
+    revoked.every((g) => g.status === 'REVOKED'));
 } else if (mode === '--after-start') {
   const s = summarise(await grantsFor(acctRef));
   console.log('=== G6 / G7 / G8 — AFTER the previously blocked song started ===');
@@ -157,15 +215,31 @@ if (mode === '--accounts') {
   assert('exactly ONE ACTIVE pass (G8)', act.length === 1, `ACTIVE=${act.length}`);
   if (act.length === 1) {
     const a = act[0];
-    const expected = { ONE_HOUR: 3600, FOUR_HOURS: 14400, TWENTY_FOUR_HOURS: 86400 }[a.type];
-    // G7: the forfeited residual must NOT have been added to the new pass.
-    assert(`window is EXACTLY the product duration, no residual added (G7)`,
-      a.windowSeconds === expected, `window=${a.windowSeconds}s expected=${expected}s`);
+    // ── G7 — REWRITTEN FOR BUILD 26M-R2 ──
+    // The withdrawn R1 assertion demanded `window === base duration, no residual added`. Under
+    // carryover that is precisely BACKWARDS: a window equal to the bare base duration would mean
+    // the Host's transferred time had been silently dropped. The authoritative invariant is now
+    // window == duration_seconds + carryover_seconds.
+    const canonical = { ONE_HOUR: 3600, FOUR_HOURS: 14400, TWENTY_FOUR_HOURS: 86400 }[a.type];
+    assert('base duration is still the canonical product duration (never inflated)',
+      a.baseDurationSeconds === canonical, `base=${a.baseDurationSeconds}s canonical=${canonical}s`);
+    assert('window == duration_seconds + carryover_seconds (G7, R2)',
+      a.windowSeconds === a.effectiveWindowSeconds,
+      `window=${a.windowSeconds}s vs ${a.baseDurationSeconds}+${a.carryoverSeconds}=${a.effectiveWindowSeconds}s`);
+    // The carry must survive on the row, so the transfer stays reconstructable after the fact.
+    assert('carryover_seconds persists on the now-ACTIVE row',
+      a.carryoverSeconds > 0, `carryover=${a.carryoverSeconds}s`);
+    // Added twice would read as base + 2x carry.
+    assert('the residual was not added twice',
+      a.windowSeconds !== a.baseDurationSeconds + 2 * a.carryoverSeconds,
+      `window=${a.windowSeconds}s`);
     assert('activated_at is set (clock started at the song, not the switch) (G6)', a.activatedAt != null);
     console.log(`\n  activated_at = ${a.activatedAt}`);
     console.log('  Compare this against the wall-clock instant you tapped start — NOT the switch instant.');
   }
   assert('no pass is left armed', s.selected === 0, `SELECTED=${s.selected}`);
+  assert('no AVAILABLE grant holds carry after activation',
+    s.availableWithCarry === 0, `availableWithCarry=${s.availableWithCarry}`);
 } else {
   console.log('usage: --accounts | --before <acctRef> | --after-switch <acctRef> | --after-start <acctRef>');
   process.exit(1);
