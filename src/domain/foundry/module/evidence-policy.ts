@@ -28,13 +28,42 @@
  */
 export type EvidenceGuard = "negation" | "negation+prospective";
 
+/**
+ * WHERE THE POLICY BITES (Slice 3.2P-A4-R2).
+ *
+ * Every rule already declared this same sentence in its own `appliesTo`, eleven times, and
+ * NONE of it reached the model: `evidencePolicyPromptLines` renders `promptLine` alone. So the
+ * validator swept the title, the assumptions and the warnings while the prompt's evidence
+ * block never once named them and closed by asking for "participant-facing text" — which
+ * assumptions and warnings are not.
+ *
+ * Two live initial-authorship windows were refused on exactly that surface, A1 (v15) and A4
+ * (v18), both `evidence_overclaim` / kind null / path `program`, and no element has ever been
+ * refused for it. A rule the model is never told the reach of is a rule it can obey and still
+ * break.
+ *
+ * One constant, referenced by every rule and rendered into both prompts. It cannot describe a
+ * scope the rules do not have, because they have no other source for theirs.
+ */
+export const EVIDENCE_SCOPE =
+  "every participant-visible sentence, plus assumptions, warnings and the title";
+
+/**
+ * The distinct WAYS a program can claim more than it can show. Coarser than `id` on purpose:
+ * eleven rules, five ways to be wrong. The prompt illustrates one contrast per family rather
+ * than all eleven pairs — see `evidenceFamilyContrasts`.
+ */
+export type EvidenceFamily = "outcome" | "habit" | "proof" | "readiness" | "guarantee";
+
 export type EvidenceRule = {
   /** Stable id — appears in the policy map and in the tests, never shown to a Host. */
   readonly id: string;
   /** What the rule means, for the audit map. */
   readonly meaning: string;
-  /** The participant-visible fields it protects. */
-  readonly appliesTo: string;
+  /** Which of the five ways of over-claiming this rule is an instance of. */
+  readonly family: EvidenceFamily;
+  /** The participant-visible fields it protects. Always `EVIDENCE_SCOPE` — never a local edit. */
+  readonly appliesTo: typeof EVIDENCE_SCOPE;
   /** What the model is told, in its own terms. Required — this is the anti-drift device. */
   readonly promptLine: string;
   /** One sample that must be refused, and the nearest honest rewrite. */
@@ -87,8 +116,9 @@ const HIGH_RUNG =
 export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   {
     id: "organisational_outcome",
+    family: "outcome",
     meaning: "A causal verb pointed at an organisational outcome — a promise about what the training will achieve.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine: `Never point a causal verb at an organisational outcome. Not only "improves productivity" — "ensures consistency", "prevents work being missed" and "so that responsibilities are clear" are the same claim. The outcomes that trigger this: ${OUTCOME_OBJECT_WORDS.join(", ")}.`,
     forbiddenSample: "This ensures consistency across every shift.",
     legalRewrite: "This training asks each person to state their open items at handover.",
@@ -97,8 +127,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "habitual_performance",
+    family: "habit",
     meaning: "Asserting the behaviour is now performed regularly — an APPLIED/SUSTAINED claim.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say the behaviour is done consistently, reliably, routinely, regularly, habitually or always. Nothing in a training can show what someone does at work afterwards. Say what the training asks for instead: "state each open item at your next handover".',
     forbiddenSample: "The team consistently performs complete handovers.",
@@ -112,8 +143,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "proof_of_high_rung",
+    family: "proof",
     meaning: "A verb of demonstration pointed at applied, observed or sustained evidence.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say anything is demonstrated, proved, confirmed, verified or validated — and never attach those to change, adoption, competence, mastery, improvement, reliability or consistency. A follow-up REVIEWS; it never confirms.',
     forbiddenSample: "This demonstrates sustained change in how people work.",
@@ -123,8 +155,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "readiness_claim",
+    family: "readiness",
     meaning: "Declaring the participant ready or equipped to act — a competence claim a program cannot make.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say anyone is "equipped to" do something, or "ready to implement", "ready to lead" or "ready to deliver". Finishing a program is not readiness.',
     forbiddenSample: "Participants are equipped to run a complete handover.",
@@ -134,8 +167,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "competence_claim",
+    family: "readiness",
     meaning: "Asserting understanding, competence or mastery was achieved.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say anyone is "now competent", "fully understands" anything, or has "mastered" it. A written answer shows reflection, not competence.',
     forbiddenSample: "Participants now fully understand the standard.",
@@ -145,8 +179,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "permanence_claim",
+    family: "habit",
     meaning: "Asserting the change is permanent or sustained.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say anything is "permanent", produces "sustained change", or that "behaviour changed". Nothing here can show that anything lasted.',
     forbiddenSample: "This produces sustained change in how the team hands over.",
@@ -156,8 +191,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "verification_claim",
+    family: "proof",
     meaning: "Asserting something has been verified, or that the program proves what someone can do.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say something "has been verified", and never say the program "proves that you can" or "proves that they will" do anything. Nobody observed it.',
     forbiddenSample: "This proves that you can hand over safely.",
@@ -167,8 +203,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "relationship_repair_claim",
+    family: "outcome",
     meaning: "Asserting trust or a relationship was restored.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine: 'Never say trust "was restored" or that a relationship improved. A training cannot show that.',
     forbiddenSample: "Trust was restored between the two shifts.",
     legalRewrite: "Both shifts agreed what the outgoing person will state.",
@@ -177,8 +214,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "dependency_removed_claim",
+    family: "outcome",
     meaning: "Asserting a need has gone away.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine: 'Never say anyone "no longer needs" something as a result of the training.',
     forbiddenSample: "The team no longer needs a written checklist.",
     legalRewrite: "The team decides together which items belong in the record.",
@@ -187,8 +225,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "guarantee_claim",
+    family: "guarantee",
     meaning: "Guaranteeing an outcome.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine: "Never guarantee anything.",
     forbiddenSample: "This guarantees nothing is missed at handover.",
     legalRewrite: "This asks each person to name what is still open at handover.",
@@ -197,8 +236,9 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
   },
   {
     id: "improvement_claim",
+    family: "outcome",
     meaning: "Asserting performance improved, or that the training leads to or results in something better.",
-    appliesTo: "every participant-visible sentence, plus assumptions, warnings and the title",
+    appliesTo: EVIDENCE_SCOPE,
     promptLine:
       'Never say performance improved, or that this "leads to better", "results in better/fewer/greater" anything, or "ultimately affects" anything. Describe what the training asks people to do, not what it will achieve.',
     forbiddenSample: "This leads to better handovers across the team.",
@@ -247,6 +287,37 @@ export function assertsOverclaimByPolicy(text: string): EvidenceRule | null {
  */
 export function evidencePolicyPromptLines(): string[] {
   return EVIDENCE_POLICY.map((r) => `- ${r.promptLine}`);
+}
+
+/**
+ * The scope, as the model is told it (Slice 3.2P-A4-R2). Built from `EVIDENCE_SCOPE`, which is
+ * also every rule's `appliesTo`, so the sentence cannot claim a reach the rules do not have.
+ */
+export function evidenceScopeLine(): string {
+  return `THIS APPLIES TO THE WHOLE PROGRAM — ${EVIDENCE_SCOPE}. A title, an assumption or a warning is NOT an exception; they are checked by exactly the same rules.`;
+}
+
+/**
+ * ONE CONTRAST PER FAMILY, not eleven (Slice 3.2P-A4-R2, measured).
+ *
+ * The policy carries a `forbiddenSample`/`legalRewrite` pair for all eleven rules and NONE of
+ * them reached the model. Rendering all twenty-two was measured against rendering one per
+ * family: +762 characters for six extra pairs whose failure mode is already illustrated by a
+ * sibling in the same family. Every rule still states itself through `promptLine`; what the
+ * contrasts add is the SHAPE of the fix, and there are five distinct shapes.
+ *
+ * The representative is the first rule of its family in policy order, so a new family gets a
+ * contrast automatically and a new rule inside an existing family does not.
+ */
+export function evidenceFamilyContrasts(): { family: EvidenceFamily; forbidden: string; legal: string }[] {
+  const seen = new Set<EvidenceFamily>();
+  const out: { family: EvidenceFamily; forbidden: string; legal: string }[] = [];
+  for (const r of EVIDENCE_POLICY) {
+    if (seen.has(r.family)) continue;
+    seen.add(r.family);
+    out.push({ family: r.family, forbidden: r.forbiddenSample, legal: r.legalRewrite });
+  }
+  return out;
 }
 
 /**

@@ -311,7 +311,20 @@ export function systemPrompt(
     "- DEFINE the behavior in THE STANDARD before any later section asks the participant to use it. A participant cannot follow a standard no section has described.",
     "- BEFORE YOU FINISH verifies understanding, a decision, or an application plan. It must NOT be where the standard's contents are finally decided — never ask what elements, fields or steps the standard should contain when an earlier section already told the participant to use it.",
     "",
-    "Also give a short learner-facing program title, the assumptions the program depends on, and warnings when training alone will not fix the problem (a workflow, staffing, access or policy change may be needed).",
+    /*
+      THE ADVISORY COMMISSION (Slice 3.2P-A4-R2).
+
+      The previous wording asked for "warnings when training alone will not fix the problem (a
+      workflow, staffing, access or policy change may be needed)" — and naming the remedy is
+      one clause away from naming what the remedy will achieve, which is the rule that refused
+      A1 and A4. It commissioned the exact shape the validator refuses.
+
+      So it now asks for the CONDITION and stops there. The evidence block above carries the
+      general relation and the illustrations; this line only has to stop steering into it.
+    */
+    "Also give a short learner-facing program title, the assumptions the program depends on, and warnings for what training alone cannot settle.",
+    "- A warning names a CONDITION, not a cure: what lies outside this training's control, what support, process, access or staffing may also be needed, and what limitation remains afterwards. Never say what that other thing would achieve — the evidence rules above apply to every warning, every assumption and the title.",
+    "- A title names the capability or the problem. It never claims mastery, readiness or a result.",
     "- Do NOT write what the program proves. BTY states that itself, from what the journey actually records.",
     "- WHY THIS MATTERS explains the problem the host described. It must NOT promise outcomes — no claim that this improves project success, collaboration, productivity, safety or results.",
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,

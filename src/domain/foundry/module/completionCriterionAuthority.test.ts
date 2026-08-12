@@ -240,7 +240,7 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v18");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v19");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");

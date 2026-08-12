@@ -83,6 +83,8 @@ import {
   EVIDENCE_POLICY,
   outcomePromiseIndex,
   evidencePolicyPromptLines,
+  evidenceScopeLine,
+  evidenceFamilyContrasts,
   OUTCOME_OBJECTS,
   OUTCOME_OBJECT_WORDS,
 } from "./evidence-policy";
@@ -136,6 +138,26 @@ import {
 
 
 
+ * v18 → v19 (Slice 3.2P-A4-R2) tells the model where the evidence ceiling reaches. Every rule
+ * has always declared `appliesTo` — "plus assumptions, warnings and the title" — and none of it
+ * was ever rendered; the prompt then closed by asking for "participant-facing text", which
+ * assumptions and warnings are not. Two live initial-authorship windows were refused there and
+ * nowhere else: A1 (v15) and A4 (v18), both `evidence_overclaim` / kind null / path `program`.
+ * A4 additionally proved the repair channel is sound — a 72-token patch merged inside its
+ * licence — and that a sound repair cannot fix an unstated rule, so the narrative repair now
+ * carries the same scope.
+ *
+ * The advisory commission moved with it. Asking for "warnings when training alone will not fix
+ * the problem (a workflow, staffing, access or policy change may be needed)" commissions the
+ * remedy clause, and a remedy clause finished with an outcome is the refused shape. It now asks
+ * for the condition and stops.
+ *
+ * Acceptance does NOT move — no validator, guard or ceiling changed, and a proposal valid under
+ * v18 is valid under v19. The version moves because the SEMANTIC CONTRACT with the provider did:
+ * the model is now told a scope it was previously judged against silently, and a stale cached
+ * proposal authored without it should not be adopted as though it had been. The wire shape and
+ * every repair patch shape are untouched.
+ *
  * v17 → v18 (Slice 3.2P-A3-R2) widens what counts as pressure. A3's first call was refused
  * `scenario_without_pressure`, its licensed patch was asked for "a real constraint of one of
  * these kinds", and the repaired pressure named a different occasion. The moment floor caught
@@ -197,7 +219,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v18";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v19";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1259,10 +1281,21 @@ export function semanticRepairInstruction(
       patchOnly,
     ].join(" ");
   }
+  /*
+    THE REPAIR SEES THE SAME SCOPE AS THE AUTHOR (Slice 3.2P-A4-R2).
+
+    A4's narrative patch worked mechanically — 72 tokens, freeze false, merged, revalidated —
+    and the merged candidate was refused for the same code on the same surface. The licensed
+    fields ARE the title, the assumptions and the warnings, so a repair that is not told those
+    are inside the ceiling is being asked to fix a rule it has not been given. Same authority as
+    the initial brief, same relation, nothing whole-program.
+  */
   return [
     "Your previous response claimed the training proves more than it can.",
     deriveEvidenceCeiling(answers),
+    evidenceScopeLine(),
     "Rewrite every sentence that claims a result, an improvement, an organisational outcome, or that the behaviour is now performed, verified or sustained. Say what the training ASKS people to do instead.",
+    "A warning may still say what is outside this training's control and what else may be needed — it may NOT say what that other thing will achieve.",
     patchOnly,
   ].join(" ");
 }
@@ -2342,6 +2375,28 @@ export function evidenceClaimBrief(answers: BuilderAnswers | undefined): string[
     "- FORBIDDEN, every one of these:",
     ...evidencePolicyPromptLines().map((l) => `  ${l}`),
     "- Describe what the training ASKS people to do, not what it will achieve.",
+    /*
+      SCOPE (Slice 3.2P-A4-R2). The rules above were rendered without the one thing every one
+      of them already declared: where they apply. A1 (v15) and A4 (v18) were both refused on
+      `program` — the title, the assumptions and the warnings — and no element has ever been
+      refused for evidence. The model was obeying a ceiling it had been told was about
+      participant-facing prose, in fields that are not participant-facing.
+    */
+    `- ${evidenceScopeLine()}`,
+    /*
+      THE REMEDY CLAUSE (Slice 3.2P-A4-R2). The advisory instruction ASKS for what else may be
+      needed, and "a policy change may be required to improve communication" is the natural way
+      to write that — a causal verb at an outcome noun, with no negator in front of it to save
+      it. Measured: of thirteen plausible advisory sentences, the three that were refused were
+      all of this shape. So the distinction is stated as a relation, not as a word list, and
+      honest limitation language is explicitly protected — a warning that cannot say what the
+      training will not do is not a warning.
+    */
+    "- LIMITATIONS ARE WELCOME; THE OUTCOME OF A REMEDY IS NOT. Name what sits outside this training's control, what else may be needed, and what stays unknown — never what that other thing will achieve.",
+    '  ALLOWED, and wanted: "Training alone cannot ensure consistency." "A shared workflow may also be needed." "Coverage may need to be addressed separately from this training." "This training does not show whether the behaviour was used in real work."',
+    '  REFUSED, the same sentence finished with an outcome: "A workflow change will improve communication." "Managers must reinforce this so the team performs consistently."',
+    "- The five ways this goes wrong, and the honest form of each:",
+    ...evidenceFamilyContrasts().map((c) => `  NEVER "${c.forbidden}"  →  INSTEAD "${c.legal}"`),
     ctx && ctx.followUpDays > 0
       ? "- WHAT HAPPENS NEXT is PROSPECTIVE. Write what will be REVIEWED, never what will be confirmed: 'At follow-up, review whether the record was used in a real handover' — NOT 'the follow-up confirms the standard is now reliably used'. A self-report is what someone says they did."
       : "- There is no follow-up, so nothing in the program may refer to checking back later.",
