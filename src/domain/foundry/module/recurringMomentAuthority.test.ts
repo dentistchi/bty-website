@@ -7,7 +7,8 @@ import {
 import { CANONICAL_ACTOR, deriveFirstApplicationMoment } from "./program-coherence";
 import { decideAdoptionReceipt } from "./adoption-authority";
 import {
-  stepBlocker, validateDraftPatch, BUILDER_STEP_MAX, LEGACY_STEP_GRAPH_MAX, RECURRING_MOMENT_MAX,
+  stepBlocker, validateDraftPatch, BUILDER_STEP_MAX, BUILDER_STEP_MIN, LEGACY_STEP_GRAPH_MAX,
+  RECURRING_MOMENT_MAX, LIVE_STEP_CEILING, persistableStep,
   type BuilderAnswers,
 } from "./module-builder";
 import { reviewMissingSections, ALL_BLOCKING_CODES } from "./module-publish";
@@ -283,5 +284,37 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
     expect(stepBlocker(7, {})).toBe("material_intent_required");
     expect(stepBlocker(8, {})).toBe("follow_up_required");
     expect(stepBlocker(9, {})).toBeNull(); // Review never blocks
+  });
+});
+
+/**
+ * SLICE 3.2P-R3.6-R1 — THE BOUND THE CODE DID NOT OWN.
+ *
+ * `current_step` is validated in the domain AND by a CHECK constraint on the row. Adding a
+ * ninth screen moved one of those and not the other, and the gap was found by a live write:
+ * 8 accepted, 9 refused by `foundry_module_drafts_current_step_check`. A host could reach
+ * Review and not save from it.
+ *
+ * Until migration `20260819000000` runs, the app clamps what it PERSISTS. It clamps rather
+ * than errors because this is a resume bookmark and nothing derives authority from it — a lost
+ * screen of accuracy costs a click, a failed save costs the answer they just typed.
+ */
+describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row accepts", () => {
+  it("clamps Review to the live ceiling, and leaves every other step alone", () => {
+    expect(LIVE_STEP_CEILING).toBeLessThanOrEqual(BUILDER_STEP_MAX);
+    for (let s = BUILDER_STEP_MIN; s <= LIVE_STEP_CEILING; s += 1) {
+      expect(persistableStep(s), `step ${s}`).toBe(s);
+    }
+    expect(persistableStep(BUILDER_STEP_MAX)).toBe(LIVE_STEP_CEILING);
+    // …and it is never out of range in either direction.
+    expect(persistableStep(0)).toBe(BUILDER_STEP_MIN);
+    expect(persistableStep(99)).toBe(LIVE_STEP_CEILING);
+  });
+
+  it("the domain validator still accepts the whole new graph — only the WRITE is clamped", () => {
+    // The clamp is a deploy-order accommodation, not a narrower contract: once the migration
+    // runs, moving LIVE_STEP_CEILING to 9 is the only change needed.
+    expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX }).ok).toBe(true);
+    expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX + 1 }).ok).toBe(false);
   });
 });

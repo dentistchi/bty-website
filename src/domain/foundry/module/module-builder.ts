@@ -59,6 +59,29 @@ export const BUILDER_STEP_MAX = 9;
  * both refer to it, and a bare `8` in either place would read as an arbitrary number.
  */
 export const LEGACY_STEP_GRAPH_MAX = 8;
+/**
+ * WHAT THE DATABASE WILL CURRENTLY ACCEPT (Slice 3.2P-R3.6-R1).
+ *
+ * `current_step` carries a CHECK constraint — `between 1 and 8` from migration
+ * `20260716174444`, measured live on staging rather than read off the file. Adding a ninth
+ * screen therefore needs DDL, and DDL here is a separate Founder gate, so for the interval
+ * between this deploy and `20260819000000` the app must not send a value the row would reject.
+ *
+ * It clamps rather than errors because `current_step` is a RESUME BOOKMARK and nothing derives
+ * readiness or authority from it. Losing one screen of bookmark accuracy costs the host a
+ * click; failing the save would cost them the answer they just typed.
+ *
+ * MOVE THIS TO 9 IN THE SAME EDIT THAT APPLIES THE MIGRATION — the deploy-order pattern every
+ * diagnostic column in this system has followed.
+ */
+export const LIVE_STEP_CEILING = 8;
+
+/**
+ * The step to PERSIST for a host sitting on `step`. Never above what the live row accepts.
+ */
+export function persistableStep(step: number): number {
+  return Math.min(Math.max(step, BUILDER_STEP_MIN), LIVE_STEP_CEILING);
+}
 
 // Field length bounds (generous — the builder is drafting, not publishing).
 export const PROBLEM_MAX = 2000;

@@ -10,6 +10,7 @@ import {
   normalizeLearningNeeds,
   shouldProposeSharedQuestion,
   stepBlocker,
+  persistableStep,
   draftIdentityStatement,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
@@ -146,7 +147,11 @@ export function ModuleBuilderShell({
           credentials: "include",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers: snap.answers, current_step: snap.currentStep }),
+          /*
+            CLAMPED (Slice 3.2P-R3.6-R1). The row's CHECK still ends at the old graph's Review
+            until migration `20260819000000` runs; a bookmark is not worth failing a save over.
+          */
+          body: JSON.stringify({ answers: snap.answers, current_step: persistableStep(snap.currentStep) }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
           // it never settled, so `inFlight` never cleared and every later flush hung.
           // Aborting turns that into an ordinary retryable failure.
