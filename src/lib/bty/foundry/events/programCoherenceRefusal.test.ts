@@ -53,7 +53,7 @@ const el = (kind: string, content: string, rationale = "because it fits") => ({ 
 const DEFINING_CONTRACT = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
-  observable_action: "follows the shared handoff standard by stating each open item aloud to the person taking over",
+  action_verb: "follow", action_detail: "the shared handoff standard by stating each open item aloud to the person taking over",
   completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
@@ -155,7 +155,7 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     p.program.behavior_contract = {
       actor: "team members",
       trigger: "during all relevant transitions of work",
-      observable_action: "a shared handoff standard is created and utilized",
+      action_verb: "create", action_detail: "a shared handoff standard that is then utilized",
       completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     };
     chatCreate.mockResolvedValueOnce(respond(p));
@@ -278,9 +278,10 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect([...comp.response_mode.enum]).toEqual(["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
-    expect([...contract.required]).toEqual(["observable_action"]);
-    expect(Object.keys(contract.properties)).toEqual(["observable_action"]);
-    expect((contract.properties as Record<string, { type: string }>).observable_action.type).toBe("string");
+    expect([...contract.required]).toEqual(["action_verb", "action_detail"]);
+    expect(Object.keys(contract.properties)).toEqual(["action_verb", "action_detail"]);
+    expect((contract.properties as Record<string, { type: string }>).action_verb.type).toBe("string");
+    expect((contract.properties as Record<string, { type: string }>).action_detail.type).toBe("string");
     /*
       NO `actor`, NO `trigger` (Slice 3.2P-R3.6-R1). Both were model fields whose values were
       then discarded or refused: the actor was overwritten by `CANONICAL_ACTOR`, and the trigger
@@ -304,8 +305,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

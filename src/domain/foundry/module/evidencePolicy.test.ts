@@ -16,6 +16,12 @@ import {
 } from "./program-authorship";
 import type { BuilderAnswers } from "./module-builder";
 
+/** Split a whole action phrase into the v15 wire fields (Slice 3.2P-R3.7-R2). */
+const splitAction = (action: string) => {
+  const [verb, ...rest] = action.trim().split(/\s+/);
+  return { action_verb: verb ?? "", action_detail: rest.join(" ") };
+};
+
 /**
  * SLICE 3.2L-R11.4I — the anti-drift tests.
  *
@@ -176,7 +182,7 @@ describe("[3.2L-R11.4I] multiple different 7-section proposals validate", () => 
       assumptions: ["The moment described happens regularly."],
       warnings: ["If the step is missing from the workflow, training alone will not add it."],
       behavior_contract: {
-        actor: v.actor, trigger: v.trigger, observable_action: v.action,
+        actor: v.actor, trigger: v.trigger, ...splitAction(v.action),
         completion: { confirmed_by: v.confirmedBy, confirmation_action: v.confirmation },
       },
       scenario_contract: { pressure_condition: v.pressure, pressure_detail: null },

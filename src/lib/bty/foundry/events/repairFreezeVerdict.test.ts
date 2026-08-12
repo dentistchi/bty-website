@@ -41,6 +41,12 @@ import { REPAIR_FREEZE_VERDICT_ENABLED } from "./programGenerationRecorder";
 import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
+/** Split a whole action phrase into the v15 wire fields (Slice 3.2P-R3.7-R2). */
+const splitAction = (action: string) => {
+  const [verb, ...rest] = action.trim().split(/\s+/);
+  return { action_verb: verb ?? "", action_detail: rest.join(" ") };
+};
+
 /** The live pilot's Host intent — the exact source W2 ran against. */
 const ANSWERS = {
   problem: "During morning huddles, team members report problems but leave without naming who will act.",
@@ -71,7 +77,7 @@ const CONTENT: Record<string, string> = {
 const CONTRACT = {
   actor: "the huddle leader",
   trigger: "at each morning huddle, before the group leaves",
-  observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+  action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
   completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
 };
 
@@ -207,7 +213,7 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   it("H — a NON-repairable refusal is never evaluated: one call, NULL", async () => {
     // A question-shaped observable_action is `non_observable_standard`, which is terminal.
     chatCreate.mockResolvedValueOnce(
-      respond(program({ behavior_contract: { ...CONTRACT, observable_action: ANSWERS.observableBehavior as string } })),
+      respond(program({ behavior_contract: { ...CONTRACT, ...splitAction(ANSWERS.observableBehavior as string) } })),
     );
     await run();
     const c = calls();

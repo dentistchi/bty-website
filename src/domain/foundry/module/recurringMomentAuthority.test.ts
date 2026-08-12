@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   validateProgramProposal, requiredProgramKinds, programContext, programContextFingerprint,
-  programSourceBlocker, recurringMomentReadsOnceOnly, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
+  programSourceBlocker, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
 import { CANONICAL_ACTOR, deriveFirstApplicationMoment } from "./program-coherence";
@@ -62,7 +62,7 @@ const proposal = (contractOver: Record<string, unknown> = {}) => ({
     assumptions: ["the team holds a morning huddle"],
     warnings: ["a huddle nobody attends is an attendance problem"],
     behavior_contract: {
-      observable_action: "name one owner and one deadline for every agreed action and write them in the huddle note",
+      action_verb: "name", action_detail: "one owner and one deadline for every agreed action and write them in the huddle note",
       ...contractOver,
     },
     scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
@@ -92,10 +92,15 @@ describe("[3.2P-R3.6-R1] A/B — nothing reaches the provider without a usable H
       their own workplace, so this is advisory only. Same decision R3.4 made about the Host's
       evidence sentence.
     */
+    /*
+      AMENDED AGAIN BY 3.2P-R3.7-R2. R3.7 accepted this, because "I cannot parse it" was the only
+      signal available and that signal refuses ordinary answers. R3.7-R2 asserts one-off-ness
+      POSITIVELY — "the next X" names one upcoming instance — so this blocks, while everything
+      the rule cannot prove still passes. Saving is still never blocked.
+    */
     const answers = { ...HOST, recurringMoment: "At the next huddle" };
-    expect(programSourceBlocker(answers)).toBeNull();
-    expect(recurringMomentReadsOnceOnly(answers), "…but the Builder still says so, beside it").toBe(true);
-    expect(stepBlocker(3, answers)).toBeNull();
+    expect(programSourceBlocker(answers)).toBe("recurring_moment_not_repeatable");
+    expect(stepBlocker(3, answers), "the host may always save what they wrote").toBeNull();
     expect(programContext(answers)).not.toBeNull();
   });
 
@@ -106,15 +111,16 @@ describe("[3.2P-R3.6-R1] A/B — nothing reaches the provider without a usable H
   });
 
   it("no phrasing blocks a generation any more — only absence does (3.2P-R3.7)", () => {
+    // Parser UNCERTAINTY blocks nothing — only a moment that can only mean one occasion does.
     for (const moment of [
       "During morning huddles", "at each handoff", "Whenever a deadline moves",
-      "At the next huddle", "During the weekly scheduling review", "아침 허들 때마다",
+      "During the weekly scheduling review", "아침 허들 때마다", "before leaving the floor",
     ]) {
       expect(programSourceBlocker({ ...HOST, recurringMoment: moment }), moment).toBeNull();
     }
-    // The advisory still distinguishes them; it just no longer decides anything.
-    expect(recurringMomentReadsOnceOnly({ ...HOST, recurringMoment: "During morning huddles" })).toBe(false);
-    expect(recurringMomentReadsOnceOnly({ ...HOST, recurringMoment: "At the next huddle" })).toBe(true);
+    for (const moment of ["At the next huddle", "Tomorrow at 3 PM", "On August 20"]) {
+      expect(programSourceBlocker({ ...HOST, recurringMoment: moment }), moment).toBe("recurring_moment_not_repeatable");
+    }
   });
 });
 
@@ -174,8 +180,8 @@ describe("[3.2P-R3.6-R1] C/D/E/G — it is a first-class Host answer", () => {
 describe("[3.2P-R3.6-R1] H/I/J/K — the model cannot author the moment or the actor", () => {
   it("H/J — the provider contract carries ONE field", () => {
     const bc = PROGRAM_JSON_SCHEMA.properties.program.properties.behavior_contract;
-    expect(Object.keys(bc.properties)).toEqual(["observable_action"]);
-    expect(bc.required).toEqual(["observable_action"]);
+    expect(Object.keys(bc.properties)).toEqual(["action_verb", "action_detail"]);
+    expect(bc.required).toEqual(["action_verb", "action_detail"]);
     expect(bc.additionalProperties).toBe(false);
     const wire = JSON.stringify(PROGRAM_JSON_SCHEMA);
     for (const gone of ["trigger", "actor", "confirmed_by", "confirmation_action"]) {
@@ -262,15 +268,15 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13"]) {
+    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14"]) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
     expect(decideAdoptionReceipt(claim(PROGRAM_AUTHORSHIP_VERSION))).toEqual({ ok: true });
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 
   it("Y — the step graph grew by exactly one, and the old one is still named", () => {

@@ -47,7 +47,7 @@ const proposal = (over: { reflection?: string; elements?: unknown; program?: Rec
     warnings: ["an out-of-date phone list needs fixing, not training"],
     behavior_contract: {
       actor: "the admin on duty", trigger: "before each scheduled appointment",
-      observable_action: "make a confirmation call and follow the checklist of required questions",
+      action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions",
       completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
     },
     scenario_contract: { pressure_condition: "a queue is building at the desk", pressure_detail: "the phone list is out of date" },
@@ -140,7 +140,7 @@ describe("[3.2P-R0] WINDOW 4 REPLAY — a reflection repair may not delete follo
 
       it("E — repair mutates a contract outside its license → freeze FAIL", () => {
         for (const program of [
-          { behavior_contract: { actor: "Someone else", trigger: "before each scheduled appointment", observable_action: "make a confirmation call and follow the checklist of required questions", completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" } } },
+          { behavior_contract: { actor: "Someone else", trigger: "before each scheduled appointment", action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions", completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" } } },
           { scenario_contract: { pressure_condition: "something else entirely", pressure_detail: "the phone list is out of date" } },
           { completion_contract: { verification_target: "the_confirmation_step", response_mode: "name_the_moment" } },
           { follow_up_contract: { review_focus: "the_confirmation", confirmer: "the_host" } },

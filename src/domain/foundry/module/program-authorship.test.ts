@@ -56,7 +56,7 @@ const el = (kind: string, content: string, rationale = "because it fits") => ({ 
 const CONTRACT = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
-  observable_action: "states each open item aloud to the person taking over",
+  action_verb: "state", action_detail: "each open item aloud to the person taking over",
 };
 
 /** A proposal that satisfies every rule for CANONICAL. */
@@ -84,8 +84,8 @@ function goodProposal(over: Record<string, unknown> = {}) {
       behavior_contract: {
         actor: "the outgoing person",
         trigger: "At the end of every shift, before leaving the floor",
-        observable_action:
-          "follows the shared handoff standard by stating each open item aloud to the person taking over",
+        action_verb: "follow",
+        action_detail: "the shared handoff standard by stating each open item aloud to the person taking over",
       },
       // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
       // difficulty and the setting; relevance comes from the derivation.

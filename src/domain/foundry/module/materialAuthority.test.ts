@@ -172,7 +172,7 @@ describe("[3.2L-R11.4G] a complete self-contained program validates (Part 6)", (
       behavior_contract: {
         actor: "the outgoing person",
         trigger: "At the end of every shift, before leaving the floor",
-        observable_action: "state each open item aloud to the person taking over",
+        action_verb: "state", action_detail: "each open item aloud to the person taking over",
         completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
       },
       scenario_contract: {

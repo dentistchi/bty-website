@@ -342,6 +342,90 @@ export const CONTRACT_DEFECT_REASONS = [
 export type ContractDefect = { field: ContractField; reason: (typeof CONTRACT_DEFECT_REASONS)[number] };
 
 /**
+ * THE MODEL HAS NO FIELD FOR A SUBJECT (Slice 3.2P-R3.7-R2).
+ *
+ * R3.7 refused a subject it could SEE — a pronoun or a determiner — and measurement showed that
+ * is as far as a free string goes. `team members name the owner` differs from `name the team
+ * members who own each item` only by word order and by knowing that *team* is a noun and *name*
+ * is a verb, which is lexical knowledge this system will not build. Scored across 28 real and
+ * adversarial actions, the only heuristic that caught the bare-noun subjects also refused
+ * `write owner and deadline in the note` — a real behaviour. Refusing real work to catch a leak
+ * is the worse trade.
+ *
+ * So the leak stops being detectable and starts being unrepresentable. The model returns the
+ * verb HEAD and the rest of the phrase separately, and the server composes them immediately
+ * after `must`. There is no position for a subject to occupy.
+ *
+ *   state  + "the owner and deadline"          → "you must state the owner and deadline"
+ *   follow + "up with the owner"               → "you must follow up with the owner"
+ *   sign   + "off on the checklist"            → "you must sign off on the checklist"
+ *
+ * `action_detail` is deliberately NOT "the object": phrasal verbs put a particle there, and
+ * forcing a grammatical object would mean inventing one.
+ */
+
+/** Function words that cannot be a verb head, whatever else they are. */
+const NOT_A_VERB_HEAD = new Set([
+  "you", "i", "we", "they", "he", "she", "it", "me", "us", "them", "him", "her",
+  "the", "a", "an", "this", "that", "these", "those",
+  "my", "your", "our", "their", "his", "its",
+  "each", "every", "all", "both", "some", "any", "no",
+]);
+
+/** A Korean subject marker — the particle that makes an eojeol the SUBJECT, never the verb. */
+const KOREAN_SUBJECT_PARTICLE = /(?:이|가|은|는|께서)$/;
+
+export type ActionVerbDefect = "missing" | "not_one_word" | "not_a_verb_head" | "not_base_form";
+
+/**
+ * Is this a single lexical verb head? Shape only — no dictionary, and no claim to know what
+ * verbs exist.
+ *
+ * THE RESIDUAL, STATED: `action_verb: "team"` with `action_detail: "members name the owner"` is
+ * a real base form followed by a real phrase, and nothing here can prove it wrong. It is not so
+ * much a subject leak as nonsense in a field labelled `verb`, and closing it needs the lexicon
+ * this system does not have. It is not closed, and this comment is the honest record of that.
+ */
+export function actionVerbDefect(verb: string): ActionVerbDefect | null {
+  const v = verb.trim();
+  if (v.length === 0) return "missing";
+  // A subject is almost always more than one word — "team members", "each team member",
+  // "직원들이 담당자를". One token makes those unrepresentable rather than merely refused.
+  if (/\s/.test(v)) return "not_one_word";
+  const lower = v.toLowerCase();
+  if (NOT_A_VERB_HEAD.has(lower)) return "not_a_verb_head";
+  if (KOREAN_SUBJECT_PARTICLE.test(v) && /[\uac00-\ud7a3]/.test(v)) return "not_a_verb_head";
+  /*
+    BASE FORM, via the de-inflection the renderers already use. This is what catches a bare
+    plural-noun subject without knowing it is a noun: `leaders` reduces to `leader` and
+    `supervisors` to `supervisor`, exactly as `states` reduces to `state`. A word that changes
+    under de-inflection was not written as a verb head following "must".
+  */
+  if (baseForm(lower) !== lower) return "not_base_form";
+  return null;
+}
+
+/**
+ * THE ONE ASSEMBLY PATH (Slice 3.2P-R3.7-R2).
+ *
+ * Every renderer consumes `observableAction`; none of them sees the two fields. Composition
+ * happens once, here, so a second reconstruction cannot drift from this one.
+ *
+ * DELIBERATELY LOCALE-FREE, and that is a measurement rather than a preference: the derived
+ * instructional renderers in this module take no locale and never have. They compose English
+ * scaffolding — "you must", "Completion evidence:", "The next time this happens" — around
+ * whatever the host and the model wrote, in any language. Adding a locale-aware join here would
+ * be inventing Korean support the surrounding sentences do not have, and would hide the real
+ * limitation instead of leaving it visible. THE PRE-EXISTING LIMITATION, recorded honestly: a
+ * Korean program renders Korean content inside English sentence frames.
+ */
+export function composeObservableAction(verb: string, detail: string): string {
+  const v = verb.trim();
+  const d = detail.trim();
+  return d.length > 0 ? `${v} ${d}` : v;
+}
+
+/**
  * THE ACTION MUST BE THE ACTION, AND NOTHING ELSE (Slice 3.2P-R3.7).
  *
  * W6 succeeded and was unusable. The proposal read:
@@ -1555,6 +1639,37 @@ function bareRecurringInstance(core: string): string | null {
   if (phrase.split(/\s+/).length > 3) return null;
   if (/^(?:all|any|some|most|both|several|few|many|other)\b/i.test(phrase)) return null;
   return `${m[1]} the next ${phrase}${comma > 0 ? core.slice(comma) : ""}`;
+}
+
+/**
+ * IS THIS CONFIDENTLY ONE SPECIFIC TIME? (Slice 3.2P-R3.7-R2)
+ *
+ * NEGATIVE CERTAINTY, never a failure to parse. R3.7 demoted the recurrence fold from readiness
+ * authority because "I could not parse this" refused ordinary answers — "During the weekly
+ * scheduling review" and every Korean moment. That decision stands. But the product now renders
+ * "The next time this happens", and that sentence is false if the host named a date.
+ *
+ * So this asserts one-off-ness POSITIVELY, from four shapes that can only mean one occasion:
+ * a singular deictic (`tomorrow`, `this Friday`), `the next …`, a calendar date or clock time,
+ * and an explicit `one time`. Anything it cannot prove is accepted — which is the whole point,
+ * and why it is a separate question from whether the fold succeeds. Measured: `"On August 20"`
+ * FOLDS and is still one-off, so the two questions genuinely differ.
+ *
+ * The host is never corrected. "At the next huddle" is refused, not rewritten into "At each
+ * huddle" — their words stay theirs.
+ */
+const SINGULAR_DEICTIC =
+  /(?:^|\s)(?:tomorrow|today|tonight|yesterday|this\s+(?:morning|afternoon|evening|week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i;
+/** "the next X" names ONE upcoming instance — there is no next one after it. */
+const THE_NEXT_ONE = /(?:^|\s)(?:at|on|in|by|before|after)?\s*the\s+next\s+/i;
+const CALENDAR_POINT =
+  /(?:^|\s)(?:on\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2}\b|\b\d{1,2}\s*(?:am|pm)\b|\b\d{4}-\d{2}-\d{2}\b/i;
+const EXPLICIT_ONE_TIME = /(?:^|\s)(?:one\s+time|once|a\s+single\s+time|just\s+once)\b/i;
+
+export function momentIsConfidentlyOneOff(moment: string): boolean {
+  const m = moment.trim();
+  if (m.length === 0) return false;
+  return SINGULAR_DEICTIC.test(m) || THE_NEXT_ONE.test(m) || CALENDAR_POINT.test(m) || EXPLICIT_ONE_TIME.test(m);
 }
 
 export function deriveFirstApplicationMoment(trigger: string): FirstInstance {

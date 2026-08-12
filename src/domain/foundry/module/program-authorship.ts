@@ -58,6 +58,9 @@ import {
   CONFIRMERS,
   CREATION_FRAME,
   deriveFirstApplicationMoment,
+  momentIsConfidentlyOneOff,
+  composeObservableAction,
+  actionVerbDefect,
   renderStandardSentence,
   ungroundedExistingEntity,
   MODIFIER_TOKEN,
@@ -129,6 +132,13 @@ import {
  * v10 proposal can be adopted under it. W4's refusal and W3's success both keep the versions
 
 
+
+ * v14 → v15 (Slice 3.2P-R3.7-R2) closes WHO structurally. v14 refused a subject it could see —
+ * a pronoun or a determiner — and measurement proved a free string goes no further without
+ * refusing real behaviours. The model now returns the verb HEAD and the rest of the phrase
+ * separately, so a subject has no position to occupy. The wire shape moves with it, so
+ * `PROGRAM_SCHEMA_NAME` advances to v11 — the second time both have moved together.
+ *
  * v13 → v14 (Slice 3.2P-R3.7) makes the authority split SEMANTIC rather than schema-deep. W6
  * succeeded under v13 and was unusable: the model wrote the host's own occasion into
  * `observable_action` and the renderer, which owns the moment, prepended it again. An action
@@ -152,7 +162,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v14";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v15";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -313,7 +323,7 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
  *
  * Returns null when the source can be authored from.
  */
-export type ProgramSourceBlocker = "recurring_moment_required";
+export type ProgramSourceBlocker = "recurring_moment_required" | "recurring_moment_not_repeatable";
 
 /**
  * THE HOST IS THE AUTHORITY ON THEIR OWN MOMENT (Slice 3.2P-R3.7).
@@ -334,17 +344,16 @@ export type ProgramSourceBlocker = "recurring_moment_required";
  */
 export function programSourceBlocker(answers: BuilderAnswers | undefined): ProgramSourceBlocker | null {
   const moment = typeof answers?.recurringMoment === "string" ? answers.recurringMoment.trim() : "";
-  return moment.length === 0 ? "recurring_moment_required" : null;
+  if (moment.length === 0) return "recurring_moment_required";
+  /*
+    CONFIDENTLY one-off blocks; UNCERTAIN does not (Slice 3.2P-R3.7-R2). The product renders
+    "The next time this happens", which is simply false if the host named a date — so a moment
+    that can only mean one occasion is refused before spend. Everything the rule cannot prove is
+    accepted, which is what keeps Korean and ordinary English answers working.
+  */
+  return momentIsConfidentlyOneOff(moment) ? "recurring_moment_not_repeatable" : null;
 }
 
-/**
- * Does this moment READ as one that comes round again? Advisory only — the Builder shows it
- * beside what the Host wrote and never blocks on it.
- */
-export function recurringMomentReadsOnceOnly(answers: BuilderAnswers | undefined): boolean {
-  const moment = typeof answers?.recurringMoment === "string" ? answers.recurringMoment.trim() : "";
-  return moment.length > 0 && !deriveFirstApplicationMoment(moment).ok;
-}
 
 /**
  * THE COMPLETION CRITERION, from the one place it lives (Slice 3.2P-R3.4-R1).
@@ -930,7 +939,7 @@ function overlapRatio(a: string, b: string): number {
  * `PROGRAM_AUTHORSHIP_VERSION`, which moves whenever ACCEPTANCE does. v8 → v9 because v11
  * removed `behavior_contract.completion` from the response (Slice 3.2P-R3.4-R1).
  */
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v10";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v11";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -986,9 +995,21 @@ export const PROGRAM_JSON_SCHEMA = {
            * REMOVED, not deprecated. `additionalProperties: false` makes a returned trigger or
            * actor a schema violation rather than a rule violation.
            */
-          required: ["observable_action"],
+          required: ["action_verb", "action_detail"],
           properties: {
-            observable_action: { type: "string" },
+            /**
+             * THE VERB HEAD, ALONE (Slice 3.2P-R3.7-R2). Splitting the action here is what makes
+             * a model-authored SUBJECT unrepresentable rather than merely refused: the server
+             * composes `you must {action_verb} {action_detail}`, so the verb sits immediately
+             * after the modal by construction and nothing can precede it.
+             */
+            action_verb: { type: "string" },
+            /**
+             * The rest of the phrase — NOT necessarily an object. Phrasal verbs put a particle
+             * here ("up with the owner", "off on the checklist"), and demanding a grammatical
+             * object would mean inventing one.
+             */
+            action_detail: { type: "string" },
           },
         },
         /**
@@ -1437,16 +1458,40 @@ export function validateProgramProposal(
   if (!isPlainObject(rawContract)) {
     return REJECT_AT("field_type", "program.behavior_contract", "an object", jsonTypeOf(rawContract), "observable_standard");
   }
-  {
-    const v = (rawContract as Record<string, unknown>).observable_action;
+  /**
+   * THE TWO ACTION FIELDS (Slice 3.2P-R3.7-R2), shape-checked before they are composed.
+   *
+   * A malformed `action_verb` is a SHAPE fault and reported as one — "team members" in a field
+   * that takes one word is the model misreading the contract, not reclaiming an authority. The
+   * semantic reason is reserved for a well-formed action that says WHO or WHEN anyway.
+   */
+  const rawVerb = (rawContract as Record<string, unknown>).action_verb;
+  const rawDetail = (rawContract as Record<string, unknown>).action_detail;
+  for (const [key, v] of [["action_verb", rawVerb], ["action_detail", rawDetail]] as const) {
     if (typeof v !== "string") {
-      return REJECT_AT("field_type", "program.behavior_contract.observable_action", `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
+      return REJECT_AT("field_type", `program.behavior_contract.${key}`, `a string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
     }
-    // The contract is rendered into participant-facing text, so it carries the SAME
-    // honesty rules as any other content — a fabricated template cannot enter through it.
+    // Rendered into participant-facing text, so it carries the same honesty rules as any other
+    // content — a fabricated template cannot enter through it.
     const bad = unsafe(v);
     if (bad) return REJECT(bad, "observable_standard");
   }
+  if (actionVerbDefect(rawVerb as string) !== null) {
+    /*
+      A SHAPE fault, and reported as one. "team members" in a field that takes one word is the
+      model misreading the contract; `action_reclaims_authority` is reserved for a well-formed
+      action that says WHO or WHEN anyway. The offending value is never echoed — the path names
+      the field, which is all a reader needs.
+    */
+    return REJECT_AT(
+      "field_type",
+      "program.behavior_contract.action_verb",
+      "one verb, in the form it takes after \u201cmust\u201d",
+      "string",
+      "observable_standard",
+    );
+  }
+  const composedAction = composeObservableAction(rawVerb as string, rawDetail as string);
   /**
    * COMPLETION COMES FROM THE HOST (Slice 3.2P-R3.4-R1).
    *
@@ -1459,7 +1504,7 @@ export function validateProgramProposal(
    * `evidence_required`, so a criterion exists by the time a generation is legal. The
    * `answers` fallback keeps this honest for direct callers that hold answers but no context.
    */
-  const contractResult = validateBehaviorContract(rawContract, {
+  const contractResult = validateBehaviorContract({ observable_action: composedAction }, {
     /*
       THE SERVER'S THREE ROLES, assembled here and nowhere else. Every one of them traces to a
       Host answer or to a product decision; none of them can be reached by anything in the

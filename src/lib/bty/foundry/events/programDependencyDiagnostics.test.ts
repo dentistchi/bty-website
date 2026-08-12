@@ -41,7 +41,7 @@ const PRACTICE_ANSWERS: BuilderAnswers = {
 const BEHAVIOUR_ONLY = {
   actor: "the outgoing person",
   trigger: "At the end of every shift, before leaving the floor",
-  observable_action: "states each open item aloud to the person taking over",
+  action_verb: "state", action_detail: "each open item aloud to the person taking over",
   completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
 };
 
@@ -134,7 +134,7 @@ describe("[3.2L-R6.1] G12 — every other outcome leaves the dependency fields n
   it("structural and other semantic refusals carry none either", () => {
     const cases: [string, Record<string, unknown>][] = [
       ["structural", { behavior_contract: undefined }],
-      ["non_observable_standard", { behavior_contract: { ...BEHAVIOUR_ONLY, observable_action: "a shared standard is created and utilized" } }],
+      ["non_observable_standard", { behavior_contract: { ...BEHAVIOUR_ONLY, action_verb: "create", action_detail: "a shared standard that is then utilized" } }],
     ];
     for (const [name, over] of cases) {
       const r = validateProgramProposal(program(over), ANSWERS);

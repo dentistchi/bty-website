@@ -113,7 +113,7 @@ const KIND_BRIEF: Record<string, string> = {
   why_it_matters:
     "why this change matters, written FOR the participants. NEVER restate the manager's complaint back at them — reframe it as what is at stake for the people doing the work and for whoever depends on them.",
   observable_standard:
-    "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the observable_action you also return.",
+    "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the action_verb and action_detail you also return.",
   scenario:
     "one short realistic situation where the behavior is hard to hold AT THE MOMENT THE HOST NAMED. It must match the scenario_contract you also return, and must not move the action to another occasion. Invent no policy number, no named person, no incident, no date.",
   reflection: "one question that makes the participant examine their own current practice honestly.",
@@ -203,15 +203,17 @@ export function systemPrompt(
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
-    "- Return behavior_contract with exactly ONE field: observable_action.",
+    "- Return behavior_contract with exactly TWO fields: action_verb and action_detail.",
+    "- action_verb is ONE verb naming what the learner visibly does, in the form it takes after the word 'must': 'state', 'write', 'follow', 'sign', 'check'. Never 'states', never two words, never a person.",
+    "- action_detail is the REST of that action phrase and nothing else. It is not always an object: 'follow' + 'up with the owner'; 'sign' + 'off on the checklist'; 'state' + 'the owner and deadline'.",
     /*
       POSITIVE OWNERSHIP (Slice 3.2P-R3.7). v13 said only what not to do, and W6 did it anyway —
       the model wrote the host's occasion into the action and BTY rendered it twice. The validator
       now refuses that, and this says what the field IS so the two halves describe one thing.
     */
-    "- observable_action is ONLY the verb phrase for what the learner is seen or heard doing, written as it would follow the word 'must'.",
-    "- BTY supplies the rest of the sentence: WHO does it, WHEN it happens, HOW OFTEN, and WHAT SHOWS it was done. Do not write any of them into observable_action.",
-    "- CORRECT: 'state the owner, action, and deadline for each agreed item'. WRONG: 'you state the owner…' (BTY writes the subject); 'state the owner during the morning meeting' (BTY writes the moment); 'state the owner until it is recorded' (BTY writes the evidence).",
+    "- BTY supplies the rest of the sentence: WHO does it, WHEN it happens, HOW OFTEN, and WHAT SHOWS it was done. Write none of them into either field.",
+    "- CORRECT: action_verb 'state', action_detail 'the owner, action, and deadline for each agreed item'.",
+    "- WRONG: action_verb 'you' or 'the leader' (BTY writes the subject); action_detail '… during the weekly meeting' (BTY writes the moment); action_detail '… until it is recorded' (BTY writes the evidence).",
     /*
       WHO and WHEN ARE SETTLED (Slice 3.2P-R3.6-R1). Both were model fields until v12 and both
       drifted: W3 named "a team member" for a `leaders` audience, and W5 died on a moment the
@@ -283,7 +285,7 @@ export function systemPrompt(
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"observable_action":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"action_verb":string,"action_detail":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
   ].join("\n");
 }
 

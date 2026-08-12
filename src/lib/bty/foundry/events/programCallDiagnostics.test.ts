@@ -56,7 +56,7 @@ const validProgram = () => ({
     behavior_contract: {
       actor: "the outgoing person",
       trigger: "At the end of every shift, before signing off",
-      observable_action: "states each open item aloud to the person taking over",
+      action_verb: "state", action_detail: "each open item aloud to the person taking over",
       completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     },
     // R5/R6: know-only design — no scenario, decision, application or follow-up required.
@@ -275,8 +275,9 @@ describe("[3.2L-R3] each provider call keeps its own diagnosis", () => {
 
   it("G4c — a meaning fault OUTSIDE the honesty families is still never retried", async () => {
     const wrongBehaviour = validProgram();
-    (wrongBehaviour.program.behavior_contract as { observable_action: unknown }).observable_action =
-      "a shared handoff standard is created and utilized by team members";
+    const bc = wrongBehaviour.program.behavior_contract as { action_verb: unknown; action_detail: unknown };
+    bc.action_verb = "share";
+    bc.action_detail = "a handoff standard that is created and utilized by team members";
     chatCreate.mockResolvedValueOnce(respond(wrongBehaviour));
 
     const { admin, calls, attempts } = makeAdmin();

@@ -96,8 +96,8 @@ describe("R3.7 §6 — expanded labelled corpus", () => {
   });
 });
 
-import { validateProgramProposal, requiredProgramKinds, programSourceBlocker, recurringMomentReadsOnceOnly, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, repairLicenseFor } from "./program-authorship";
-import { CANONICAL_ACTOR } from "./program-coherence";
+import { validateProgramProposal, requiredProgramKinds, programSourceBlocker, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME, repairLicenseFor } from "./program-authorship";
+import { CANONICAL_ACTOR, composeObservableAction, actionVerbDefect, momentIsConfidentlyOneOff } from "./program-coherence";
 import { decideAdoptionReceipt } from "./adoption-authority";
 import type { BuilderAnswers } from "./module-builder";
 
@@ -113,7 +113,12 @@ const host = (recurringMoment: string): BuilderAnswers => ({
 } as unknown as BuilderAnswers);
 
 const CLEAN_ACTION = "state the owner, action, and deadline for each agreed item";
-const propose = (action: string, h: BuilderAnswers) => {
+/** Split a whole action into the v15 wire fields the way a model would. */
+const split = (action: string) => {
+  const [verb, ...rest] = action.trim().split(/\s+/);
+  return { action_verb: verb ?? "", action_detail: rest.join(" ") };
+};
+const proposeFields = (fields: { action_verb: string; action_detail: string }, h: BuilderAnswers) => {
   const kinds = requiredProgramKinds(h);
   const c: Record<string, string> = {
     why_it_matters: "When a discussion ends without a named owner and a deadline, the problem stays where it was.",
@@ -129,13 +134,15 @@ const propose = (action: string, h: BuilderAnswers) => {
       display_title: "End every discussion with an owner and a deadline",
       elements: kinds.map((k) => ({ kind: k, content: c[k], rationale: "grounded in the host's own answers" })),
       assumptions: ["the team meets regularly"], warnings: ["a meeting nobody attends is an attendance problem"],
-      behavior_contract: { observable_action: action },
+      behavior_contract: fields,
       scenario_contract: { pressure_condition: "the group is running late and people are already standing to leave", pressure_detail: null },
       completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     },
   }, h, ["education.pdf"]);
 };
+/** The whole-phrase convenience the older cases were written against. */
+const propose = (action: string, h: BuilderAnswers) => proposeFields(split(action), h);
 
 describe("[3.2P-R3.7] A/B/C — the floor, end to end", () => {
   it("A — a pure action is accepted, and the moment appears exactly once", () => {
@@ -165,12 +172,81 @@ describe("[3.2P-R3.7] A/B/C — the floor, end to end", () => {
     }
   });
 
-  it("a subject the sentence already has is refused too", () => {
-    for (const a of ["you state the owner and deadline", "the leader states the owner and deadline"]) {
-      const r = propose(a, host("During morning huddles"));
-      expect(r.ok, a).toBe(false);
-      if (!r.ok) expect(r.contract?.reason).toBe("action_reclaims_authority");
+  /**
+   * A/B/C — A SUBJECT IS NOW UNREPRESENTABLE, not merely refused (Slice 3.2P-R3.7-R2).
+   *
+   * v14 caught a pronoun or a determiner and measurement showed a free string goes no further:
+   * the only heuristic that also caught "team members name the owner" refused "write owner and
+   * deadline in the note", a real behaviour. So the model returns the verb head separately and
+   * the server composes it straight after "must". These are SHAPE refusals — the model misread
+   * the contract — which is why they are not `action_reclaims_authority`.
+   */
+  it("A/B/C — no subject form can occupy the verb field", () => {
+    /*
+      The fixtures are TWO-FIELD, because that is what the contract receives. A model leaking a
+      subject puts the subject where the sentence's first word goes — the verb field — and every
+      shape of it is refused there: multi-word, pronoun, determiner, an inflected plural noun
+      (`leaders` → `leader` under the same de-inflection that turns `states` into `state`), and a
+      Korean subject particle.
+    */
+    const LEAKS: [string, string][] = [
+      ["you", "state the owner and deadline"],
+      ["the", "leader states the owner and deadline"],
+      ["the leader", "states the owner and deadline"],
+      ["team members", "name the owner"],          // v14 missed this as a free string
+      ["leaders", "confirm the deadline"],
+      ["supervisors", "review the note"],
+      ["직원들이", "담당자를 정한다"],
+      ["팀장이", "마감일을 말한다"],
+      ["states", "the owner"],                     // inflected head, not a base form
+    ];
+    for (const [action_verb, action_detail] of LEAKS) {
+      expect(actionVerbDefect(action_verb), action_verb).not.toBeNull();
+      const r = proposeFields({ action_verb, action_detail }, host("During morning huddles"));
+      expect(r.ok, action_verb).toBe(false);
+      if (!r.ok) expect(r.code, action_verb).toBe("field_type");
     }
+  });
+
+  it("D/E/F — clean verbs, phrasal verbs, and role nouns inside the detail all compose", () => {
+    const CASES: [string, string, string][] = [
+      ["state", "the owner and deadline", "state the owner and deadline"],
+      ["follow", "up with the owner", "follow up with the owner"],
+      ["check", "in with the patient", "check in with the patient"],
+      ["sign", "off on the checklist", "sign off on the checklist"],
+      ["hand", "off the item", "hand off the item"],
+      ["name", "the team members who own each item", "name the team members who own each item"],
+      ["record", "the supervisor's approval", "record the supervisor's approval"],
+      ["read", "the value aloud", "read the value aloud"],
+    ];
+    for (const [verb, detail, whole] of CASES) {
+      expect(composeObservableAction(verb, detail), whole).toBe(whole);
+      expect(actionVerbDefect(verb), verb).toBeNull();
+    }
+    /*
+      End to end for the ones this HOST's material can ground. "the checklist" and "the patient"
+      are refused by the pre-existing artifact floor for this draft — correctly, since neither
+      appears in its source — so the phrasal-verb property is proven by composition above and by
+      these two through the full pipeline.
+    */
+    for (const whole of ["follow up with the owner", "name the team members who own each item"]) {
+      const r = propose(whole, host("During morning huddles"));
+      expect(r.ok, whole).toBe(true);
+      if (r.ok) {
+        expect(r.value.proposal.behaviorContract!.observableAction).toBe(whole);
+        expect(r.value.proposal.elements.find((e) => e.kind === "observable_standard")!.content)
+          .toContain(`you must ${whole}`);
+      }
+    }
+  });
+
+  it("the residual is stated, not hidden", () => {
+    /*
+      `action_verb: "team"` is a real base form and `action_detail: "members name the owner"` is
+      a real phrase. Nothing here can prove that wrong without the lexicon this system does not
+      build. Asserted so the boundary stays a decision.
+    */
+    expect(actionVerbDefect("team")).toBeNull();
   });
 
   it("D/E/F — ordinary object phrases are NOT refused", () => {
@@ -213,11 +289,29 @@ describe("[3.2P-R3.7] J–N — every real moment shape renders naturally", () =
     }
   });
 
-  it("the advisory is advisory: a one-off phrase is guidance, not a refusal", () => {
-    const once = host("At the next huddle");
-    expect(recurringMomentReadsOnceOnly(once)).toBe(true);
-    expect(programSourceBlocker(once), "the host is the authority on their own workplace").toBeNull();
-    expect(propose(CLEAN_ACTION, once).ok).toBe(true);
+  it("I/J — confidently one-off blocks; merely unparsed never does", () => {
+    /*
+      NEGATIVE CERTAINTY (Slice 3.2P-R3.7-R2). The program says "the next time this happens",
+      which is false against a date — so a moment that can only mean one occasion is refused
+      before spend. Everything the rule cannot PROVE one-off is accepted, which is what keeps
+      Korean and ordinary English answers working. Measured: "On August 20" folds and is still
+      one-off, so recurrence-parsing and one-off-detection are genuinely different questions.
+    */
+    for (const m of ["Tomorrow at 3 PM", "At the next huddle", "This Friday", "On August 20", "One time after the meeting"]) {
+      expect(momentIsConfidentlyOneOff(m), m).toBe(true);
+      expect(programSourceBlocker(host(m)), m).toBe("recurring_moment_not_repeatable");
+    }
+    for (const m of [
+      "During morning huddles", "At each patient handoff", "Whenever a deadline changes",
+      "During the weekly scheduling review", "아침 허들 때마다", "매 인수인계마다",
+      // uncertain — the parser cannot classify these, and that must never be a refusal
+      "at the end of the shift", "before leaving the floor", "when the escalation lands", "매주 월요일 회의",
+    ]) {
+      expect(momentIsConfidentlyOneOff(m), m).toBe(false);
+      expect(programSourceBlocker(host(m)), m).toBeNull();
+    }
+    // …and the host's words are never rewritten into a recurring form.
+    expect(host("At the next huddle").recurringMoment).toBe("At the next huddle");
   });
 
   it("T — an absent moment still blocks before any provider call", () => {
@@ -231,16 +325,16 @@ describe("[3.2P-R3.7] R/V/W — authority is unchanged where it should be", () =
     expect(repairLicenseFor("scenario_without_pressure", "scenario")).toEqual({ surface: "scenario_pressure" });
   });
 
-  it("V/W — W6's v13 is stale under v14, and v14 adopts its own", () => {
+  it("R/S — W6's v13 is stale under v15, and v15 adopts its own", () => {
     const claim = (v: string) => ({
       mode: "initial" as const, claimedAttemptId: "a", journeyInSamePatch: true, durableJourneyPresent: false,
       attempt: { id: "a", draftId: "d", outcome: "success", contextFingerprint: "f", proposalDigest: "g", proposalVersion: v },
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
-    for (const spent of ["v9", "v10", "v11", "v12", "v13"].map((v) => `program_authorship_${v}`)) {
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    for (const spent of ["v9", "v10", "v11", "v12", "v13", "v14"].map((v) => `program_authorship_${v}`)) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
     expect(decideAdoptionReceipt(claim(PROGRAM_AUTHORSHIP_VERSION))).toEqual({ ok: true });

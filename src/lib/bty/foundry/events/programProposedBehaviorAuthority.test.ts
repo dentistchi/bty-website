@@ -60,7 +60,8 @@ const middleGround = () => ({
     behavior_contract: {
       actor: "the outgoing team member",
       trigger: "at shift change, before leaving the floor",
-      observable_action: "states each unfinished item and identifies its next owner",
+      action_verb: "state",
+      action_detail: "each unfinished item and identify its next owner",
       completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
     },
     scenario_contract: {
@@ -203,7 +204,8 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
 
   it("G4: a meta behaviour is still refused, and now says WHICH role failed and why", async () => {
     const p = middleGround();
-    p.program.behavior_contract.observable_action = "create a shared handoff standard";
+    p.program.behavior_contract.action_verb = "create";
+    p.program.behavior_contract.action_detail = "a shared handoff standard";
     chatCreate.mockResolvedValueOnce(respond(p));
     const { admin, calls, attempts } = makeAdmin();
     const r = await run(admin);
@@ -224,9 +226,14 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
       the fields they judged.
     */
     const cases: [Record<string, unknown>, string, string][] = [
-      [{ observable_action: "" }, "observable_action", "missing"],
-      [{ observable_action: "create a shared handoff standard" }, "observable_action", "meta_only"],
-      [{ observable_action: "x".repeat(400) }, "observable_action", "too_long"],
+      /*
+        An empty detail is LEGAL since 3.2P-R3.7-R2 — some actions are intransitive and forcing a
+        fake object would be worse. What is still missing is a composed action too short to be
+        one: "do" on its own.
+      */
+      [{ action_verb: "do", action_detail: "" }, "observable_action", "missing"],
+      [{ action_verb: "create", action_detail: "a shared handoff standard" }, "observable_action", "meta_only"],
+      [{ action_verb: "state", action_detail: "x".repeat(400) }, "observable_action", "too_long"],
     ];
     for (const [patch, field, reason] of cases) {
       const p = middleGround();
@@ -286,7 +293,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     const arg = chatCreate.mock.calls[0][0] as { response_format: { type: string; json_schema: { strict: boolean; name: string } } };
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
-    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v10");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
+    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
   });
 });

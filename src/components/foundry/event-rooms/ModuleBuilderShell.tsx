@@ -25,7 +25,7 @@ import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
-import { missingProgramKinds, programContext, programContextFingerprint, recurringMomentReadsOnceOnly } from "@/domain/foundry/module/program-authorship";
+import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -1075,14 +1075,15 @@ function renderStep(
     /**
      * WHEN DOES THIS USUALLY HAPPEN? (Slice 3.2P-R3.6-R1)
      *
-     * TWO DIFFERENT SIGNALS, deliberately not collapsed. `recurring_moment_required` blocks Next
-     * because a blank answer is a blank answer. A phrase that reads as one specific time does
-     * NOT block anything (Slice 3.2P-R3.7): the Host has answered honestly, and a narrow English
-     * grammar must not outrank them on their own workplace. It is guidance, shown beside what
-     * they wrote, and they may keep it — nothing is normalized and nothing is refused for it.
+     * TWO SIGNALS, from two different certainties (Slice 3.2P-R3.7-R2). `recurring_moment_required`
+     * blocks Next because a blank answer is a blank answer. `recurring_moment_not_repeatable`
+     * fires only when the phrase can ONLY mean one occasion — a date, a time, "the next huddle" —
+     * because the program then promises "the next time this happens" against something that has
+     * no next time. A phrase the parser merely cannot classify blocks nothing: the host owns
+     * their own workplace, and nothing they wrote is ever rewritten.
      */
     case 3: {
-      const notRepeatable = recurringMomentReadsOnceOnly(a);
+      const notRepeatable = programSourceBlocker(a) === "recurring_moment_not_repeatable";
       return (
         <StepFrame q={t.sMomentQ} help={t.sMomentHelp}>
           {textArea(a.recurringMoment ?? "", (v) => patch({ recurringMoment: v }, false), t.sMomentPlaceholder, t.sMomentQ)}

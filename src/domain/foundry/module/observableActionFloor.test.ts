@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  composeObservableAction,
   isInterrogativeAction,
   isRenderableAction,
   isMetaStandardText,
@@ -46,7 +47,7 @@ const LIVE_QUESTION = ANSWERS.observableBehavior as string;
 /**
  * WHAT THE SERVER SUPPLIES (Slice 3.2P-R3.6-R1). Three of the contract's four roles are Host or
  * product authority now — actor, moment, evidence — so a validator fixture supplies them the way
- * the runtime does, and the model's object carries only `observable_action`.
+ * the runtime does, and the model's object carries only the two action fields.
  */
 const SERVER = {
   actor: "you",
@@ -57,7 +58,8 @@ const SERVER = {
 const GROUNDED = {
   actor: "the huddle leader",
   trigger: "at each morning huddle, before the group leaves",
-  observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+  action_verb: "name",
+  action_detail: "one owner and one deadline for every agreed action and write them in the huddle note",
 };
 
 describe("[3.2P-R2.1] the corpus the floor must not break", () => {
@@ -119,7 +121,7 @@ describe("[3.2P-R2.1] what the floor refuses", () => {
   it("empty is NOT interrogative — emptiness is `missing`, an earlier and different defect", () => {
     expect(isInterrogativeAction("")).toBe(false);
     expect(isInterrogativeAction("   ")).toBe(false);
-    const r = validateBehaviorContract({ ...GROUNDED, observable_action: "" }, SERVER);
+    const r = validateBehaviorContract({ observable_action: "" }, SERVER);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "observableAction", reason: "missing" });
   });
@@ -127,7 +129,7 @@ describe("[3.2P-R2.1] what the floor refuses", () => {
 
 describe("[3.2P-R2.1] PART 4 — the exact live negative control", () => {
   it("BEFORE the floor this passed; now the contract refuses it precisely", () => {
-    const r = validateBehaviorContract({ ...GROUNDED, observable_action: LIVE_QUESTION }, SERVER);
+    const r = validateBehaviorContract({ observable_action: LIVE_QUESTION }, SERVER);
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.defect).toEqual({ field: "observableAction", reason: "interrogative_action" });
@@ -150,7 +152,8 @@ describe("[3.2P-R2.1] PART 4 — the exact live negative control", () => {
           display_title: "End every huddle with an owner and a deadline",
           elements: kinds.map((k) => ({ kind: k, content: content[k], rationale: "grounded" })),
           assumptions: [], warnings: [],
-          behavior_contract: { ...GROUNDED, observable_action: LIVE_QUESTION },
+          /* The host's question, split the way a model would send it (Slice 3.2P-R3.7-R2). */
+          behavior_contract: { action_verb: "at", action_detail: LIVE_QUESTION.replace(/^at\s+/i, "") },
           scenario_contract: {
             pressure_condition: "the huddle is running late and people are already standing to leave",
             pressure_detail: null,
@@ -171,7 +174,11 @@ describe("[3.2P-R2.1] PART 4 — the exact live negative control", () => {
   });
 
   it("the grounded contract still PASSES, and still renders", () => {
-    const r = validateBehaviorContract(GROUNDED, SERVER);
+    // The domain validator takes the COMPOSED action; the two wire fields are the proposal's.
+    const r = validateBehaviorContract(
+      { observable_action: composeObservableAction(GROUNDED.action_verb, GROUNDED.action_detail) },
+      SERVER,
+    );
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(renderStandardSentence(r.value)).toContain("must name one owner and one deadline");

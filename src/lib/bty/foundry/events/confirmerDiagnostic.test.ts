@@ -42,7 +42,7 @@ const CONTENT: Record<string, string> = {
 };
 const contract = (confirmedBy: string) => ({
   actor: "the huddle leader", trigger: "at each morning huddle, before the group leaves",
-  observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+  action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
   // Kept on the payload deliberately: the point is that sending it changes nothing.
   completion: { confirmed_by: confirmedBy, confirmation_action: "repeat back the action and the deadline" },
 });

@@ -6,6 +6,12 @@ import {
 } from "./program-authorship";
 import { CONTRACT_DEFECT_REASONS, CANONICAL_ACTOR, isInterrogativeAction } from "./program-coherence";
 
+/** Split a whole action phrase into the v15 wire fields (Slice 3.2P-R3.7-R2). */
+const splitAction = (action: string) => {
+  const [verb, ...rest] = action.trim().split(/\s+/);
+  return { action_verb: verb ?? "", action_detail: rest.join(" ") };
+};
+
 /**
  * SLICE 3.2P-R3.2-R1 — THREE ROLES, KEPT APART.
  *
@@ -54,13 +60,14 @@ const CONTENT: Record<string, string> = {
 };
 const KINDS = requiredProgramKinds(PILOT);
 
-const ACTION = "names one owner and one deadline for every agreed action and writes them in the huddle note";
+// Base form, as the wire contract takes it after "must" (Slice 3.2P-R3.7-R2).
+const ACTION = "name one owner and one deadline for every agreed action and write them in the huddle note";
 /*
   ONE MODEL FIELD since Slice 3.2P-R3.6-R1 — the trigger joined the actor and the completion as
   Host/server authority. The overrides below still pass an `actor`, which is exactly how these
   tests prove the label reaches nothing.
 */
-const GROUNDED = { observable_action: ACTION };
+const GROUNDED = splitAction(ACTION);
 /**
  * The exact W3 shape, MINUS the half v11 deleted (Slice 3.2P-R3.4-R1). W3 also returned
  * `completion: { confirmed_by: "the team lead", … }` for a source that never mentions one; the
@@ -70,7 +77,7 @@ const DRIFTED = {
   ...GROUNDED,
   actor: "a team member",
   trigger: "every Tuesday at the quarterly review",
-  observable_action: "confirm the owner of each action and state the deadline",
+  action_verb: "confirm", action_detail: "the owner of each action and state the deadline",
 };
 
 const proposal = (contract: Record<string, unknown>, over: Record<string, unknown> = {}) => ({
@@ -187,7 +194,7 @@ describe("[R3.2-R1] J–P — everything else is unchanged", () => {
 
   it("M — the interrogative floor is unchanged", () => {
     expect(isInterrogativeAction(PILOT.observableBehavior as string)).toBe(true);
-    expect(verdict({ ...GROUNDED, observable_action: PILOT.observableBehavior as string }))
+    expect(verdict({ ...GROUNDED, ...splitAction(PILOT.observableBehavior as string) }))
       .toBe("non_observable_standard [observableAction/interrogative_action]");
   });
 

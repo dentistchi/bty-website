@@ -290,15 +290,20 @@ export const SURFACE_FAILURE_COPY: Record<string, RefusalCopy> = {
     explanation: "BTY builds the whole training around that one moment.",
     recovery: "adjust_your_training_inputs",
   },
-  /*
-    KEPT, UNREACHABLE (Slice 3.2P-R3.7). Generation no longer refuses a moment for its phrasing —
-    the Host owns their own workplace and a narrow English grammar must not outrank them. The
-    same sentence now appears as non-blocking guidance beside the question itself. This entry
-    stays so a client holding an older response still renders something true.
-  */
+  /**
+   * REACHABLE AGAIN, FOR A NARROWER REASON (Slice 3.2P-R3.7-R2).
+   *
+   * R3.7 stopped refusing a moment because an English parser could not fold it — that refused
+   * ordinary answers and every Korean one. What can still be refused is a moment that can only
+   * mean ONE occasion: a date, a time, "tomorrow", "the next huddle". The program tells the
+   * participant "the next time this happens", and that sentence is simply false against a date.
+   *
+   * So the copy states what BTY read, and asks for the thing the question was asking for. It
+   * names no parser and points at no other field.
+   */
   recurring_moment_not_repeatable: {
-    headline: "BTY couldn’t tell when the next chance to do this would be.",
-    explanation: "The moment you described sounds like one specific time. If it happens again and again, say that where you wrote it.",
+    headline: "This sounds like one specific time.",
+    explanation: "Add the kind of moment that happens again — BTY builds the whole training around it coming back round.",
     recovery: "adjust_your_training_inputs",
   },
   source_identity_unavailable: {

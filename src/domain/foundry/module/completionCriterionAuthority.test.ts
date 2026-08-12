@@ -56,7 +56,7 @@ const proposal = (over: Record<string, unknown> = {}) => ({
     behavior_contract: {
       actor: "the huddle leader",
       trigger: "at each morning huddle, before the group leaves",
-      observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+      action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
     },
     scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
@@ -79,7 +79,7 @@ const forEvidence = (evidence: string) => {
 describe("[3.2P-R3.4-R1] A/B — the model has no completion field, and the Host supplies one", () => {
   it("A — `completion` is absent from the provider contract entirely", () => {
     const contract = PROGRAM_JSON_SCHEMA.properties.program.properties.behavior_contract;
-    expect([...contract.required]).toEqual(["observable_action"]);
+    expect([...contract.required]).toEqual(["action_verb", "action_detail"]);
     expect("completion" in contract.properties).toBe(false);
     // …and nothing else may be added under another name.
     expect(contract.additionalProperties).toBe(false);
@@ -230,7 +230,7 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
 
   it("S — every version this pilot spent under is refused by the current Apply gate", () => {
     // v9 (W2/W3), v10 (W4), v11 (W5). R3.5 widened the recurring-moment fold, so v11 joins them.
-    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13"]) {
+    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14"]) {
       expect(decideAdoptionReceipt(claim(old)), old).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
   });
@@ -240,9 +240,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 });

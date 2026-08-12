@@ -54,7 +54,7 @@ const proposal = (pressureCondition: string, over: Record<string, unknown> = {})
     behavior_contract: {
       actor: "the admin on duty",
       trigger: "before each scheduled appointment",
-      observable_action: "make a confirmation call and follow the checklist of required questions",
+      action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions",
       completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
     },
     scenario_contract: { pressure_condition: pressureCondition, pressure_detail: "the phone list is out of date" },
@@ -128,7 +128,7 @@ describe("[3.2O-R4] the repair fixture matrix", () => {
     const after = proposal("a queue is building at the desk", {
       behavior_contract: {
         actor: "the admin on duty", trigger: "before each scheduled appointment",
-        observable_action: "send a confirmation text instead",
+        action_verb: "send", action_detail: "a confirmation text instead",
         completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
       },
     });
@@ -139,7 +139,7 @@ describe("[3.2O-R4] the repair fixture matrix", () => {
     const after = proposal("a queue is building at the desk", {
       behavior_contract: {
         actor: "the admin on duty", trigger: "at each weekly huddle",
-        observable_action: "make a confirmation call and follow the checklist of required questions",
+        action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions",
         completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
       },
     });

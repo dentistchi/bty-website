@@ -191,7 +191,7 @@ describe("[3.2P-R3.1] through the real validator, on the real pilot answers", ()
       behavior_contract: {
         actor: "the huddle leader",
         trigger: "at each morning huddle, before the group leaves",
-        observable_action: "names one owner and one deadline for every agreed action and writes them in the huddle note",
+        action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
         completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
       },
       scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
