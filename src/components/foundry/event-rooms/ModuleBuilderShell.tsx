@@ -267,19 +267,61 @@ export function ModuleBuilderShell({
     [],
   );
 
+  /**
+   * DID THE HOST COME HERE FROM REVIEW TO FIX ONE THING? (Slice 3.2P-R3.6-R2)
+   *
+   * THE DEVICE DEFECT. Review said "When it happens — Add", the Host tapped it, answered, pressed
+   * Next — and landed on STEP 4 OF 8, walking forward through questions they had answered weeks
+   * earlier. Nothing was broken and nothing was lost; the answer saved correctly. What was lost
+   * was the INTENT: `jumpTo` called the same `navigate` as an ordinary move, so by the time Next
+   * ran, the shell could no longer tell a one-section correction from sequential authoring.
+   *
+   * There are two navigation modes and only one was represented:
+   *
+   *   sequential   step N  → Next → step N+1
+   *   review edit  Review → one section → Next → Review
+   *
+   * This is the second mode, held for exactly one move. Deliberately a ref, not state: nothing
+   * renders from it, and a re-render must not be able to drop it. It does not survive a refresh,
+   * which is right — a reload is a new session, and the durable step is then the truth.
+   */
+  const returnToReviewRef = useRef(false);
+
   const goNext = useCallback(() => {
     const from = shownStepNow();
     const b = stepBlocker(from, answersRef.current);
     if (b) return setBlocker(b);
+    /*
+      The answer is saved either way: `navigate` flushes the current step before it moves, so
+      returning to Review persists exactly what a sequential Next would have.
+    */
+    if (returnToReviewRef.current) {
+      returnToReviewRef.current = false;
+      return void navigate(BUILDER_STEP_MAX);
+    }
     if (from < BUILDER_STEP_MAX) void navigate(from + 1);
   }, [navigate, shownStepNow]);
 
   const goBack = useCallback(() => {
     const from = shownStepNow();
+    // Back means they chose to go somewhere else, so the correction is over — a later Next must
+    // be ordinary. Back's own behaviour is unchanged.
+    returnToReviewRef.current = false;
     if (from > 1) void navigate(from - 1);
   }, [navigate, shownStepNow]);
 
-  const jumpTo = useCallback((target: number) => void navigate(target), [navigate]);
+  /**
+   * The ONLY entry point Review uses to open a section, so setting the intent here covers every
+   * Review Edit row — the missing-input summary and the detail list alike — rather than only the
+   * one that exposed the defect.
+   */
+  const jumpTo = useCallback(
+    (target: number) => {
+      returnToReviewRef.current = true;
+      void navigate(target);
+    },
+    [navigate],
+  );
 
   const saveAndLeave = useCallback(async () => {
     cancelDebounce();
