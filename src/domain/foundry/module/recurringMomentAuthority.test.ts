@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   validateProgramProposal, requiredProgramKinds, programContext, programContextFingerprint,
-  programSourceBlocker, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
+  programSourceBlocker, recurringMomentReadsOnceOnly, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
 import { CANONICAL_ACTOR, deriveFirstApplicationMoment } from "./program-coherence";
@@ -83,16 +83,19 @@ describe("[3.2P-R3.6-R1] A/B — nothing reaches the provider without a usable H
     expect(stepBlocker(3, answers)).toBe("recurring_moment_required");
   });
 
-  it("B — present but not repeatable: a DIFFERENT fault, and not a blank-field one", () => {
+  it("B — present but reading as one-off: guidance, never a refusal (amended by 3.2P-R3.7)", () => {
     /*
-      The Host's own `observableBehavior` opens "At the next huddle" — a real answer naming one
-      upcoming occasion. Telling them to add a moment would be false, so this is its own code.
+      R3.6-R1 blocked this with `recurring_moment_not_repeatable`, because a renderer then needed
+      to fold the phrase into a noun phrase. No renderer does now, and R3.7 measured what the fold
+      refuses: "During the weekly scheduling review" and every Korean moment — ordinary answers to
+      "when does this usually happen?". A narrow English grammar must not outrank the Host on
+      their own workplace, so this is advisory only. Same decision R3.4 made about the Host's
+      evidence sentence.
     */
     const answers = { ...HOST, recurringMoment: "At the next huddle" };
-    expect(programSourceBlocker(answers)).toBe("recurring_moment_not_repeatable");
-    // …and it is NOT a step blocker: the Host may save and keep what they wrote.
+    expect(programSourceBlocker(answers)).toBeNull();
+    expect(recurringMomentReadsOnceOnly(answers), "…but the Builder still says so, beside it").toBe(true);
     expect(stepBlocker(3, answers)).toBeNull();
-    // The source is otherwise complete, so only the moment gate stops the spend.
     expect(programContext(answers)).not.toBeNull();
   });
 
@@ -102,17 +105,16 @@ describe("[3.2P-R3.6-R1] A/B — nothing reaches the provider without a usable H
     expect(programSourceBlocker({ recurringMoment: "   " } as BuilderAnswers)).toBe("recurring_moment_required");
   });
 
-  it("the readiness gate and the renderer ask the SAME question", () => {
-    // A phrase that passes readiness must derive; one that fails must not. Two interpreters
-    // would let a draft pass the gate and then fail derivation on the paid path.
-    for (const moment of ["During morning huddles", "at each handoff", "Whenever a deadline moves"]) {
-      expect(programSourceBlocker({ ...HOST, recurringMoment: moment })).toBeNull();
-      expect(deriveFirstApplicationMoment(moment).ok, moment).toBe(true);
+  it("no phrasing blocks a generation any more — only absence does (3.2P-R3.7)", () => {
+    for (const moment of [
+      "During morning huddles", "at each handoff", "Whenever a deadline moves",
+      "At the next huddle", "During the weekly scheduling review", "아침 허들 때마다",
+    ]) {
+      expect(programSourceBlocker({ ...HOST, recurringMoment: moment }), moment).toBeNull();
     }
-    for (const moment of ["At the next huddle", "tomorrow at 3 PM", "in a professional manner"]) {
-      expect(programSourceBlocker({ ...HOST, recurringMoment: moment })).toBe("recurring_moment_not_repeatable");
-      expect(deriveFirstApplicationMoment(moment).ok, moment).toBe(false);
-    }
+    // The advisory still distinguishes them; it just no longer decides anything.
+    expect(recurringMomentReadsOnceOnly({ ...HOST, recurringMoment: "During morning huddles" })).toBe(false);
+    expect(recurringMomentReadsOnceOnly({ ...HOST, recurringMoment: "At the next huddle" })).toBe(true);
   });
 });
 
@@ -260,14 +262,14 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12"]) {
+    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13"]) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
     expect(decideAdoptionReceipt(claim(PROGRAM_AUTHORSHIP_VERSION))).toEqual({ ok: true });
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
   });
 

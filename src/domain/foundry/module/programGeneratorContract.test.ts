@@ -107,9 +107,11 @@ describe("[3.2O-R1] the renderer may never invent a construct the program has no
     }
   });
 
-  it("still asks a real closing question — a wh-word, at the derived moment", () => {
+  it("still asks a real closing question — a wh-word, at the next occurrence", () => {
+    // 3.2P-R3.7: the question points at the next occurrence rather than a folded version of the
+    // host's phrase, which is what let "During morning huddles" become "the next morning huddles".
     const s = renderCompletionQuestion(CALLS, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" });
-    expect(s).toBe("Before the next scheduled appointment, what exactly will you do?");
+    expect(s).toBe("The next time this happens, what exactly will you do?");
   });
 
   /** The second offender the matrix audit caught — an idiom that parsed as a construct. */
@@ -122,9 +124,17 @@ describe("[3.2O-R1] the renderer may never invent a construct the program has no
       .toBe("What exactly will you say when you apply this?");
   });
 
-  it("goes quiet rather than inventing a moment when the trigger does not recur", () => {
+  it("RETIRED BY 3.2P-R3.7 — there is no moment to invent, so nothing to go quiet about", () => {
+    /*
+      This returned null when the host's phrase could not be folded into "the next X", because
+      rendering it would have meant guessing. Nothing is folded now: the question points at the
+      next occurrence and names no occasion at all, so a one-off trigger produces a sentence that
+      is still true. Whether the host's moment reads as recurring is advisory guidance on their
+      own question — `recurringMomentReadsOnceOnly` — not a renderer's decision.
+    */
     const oneOff: BehaviorContract = { ...CALLS, trigger: "at the annual audit on 3 March" };
-    expect(renderCompletionQuestion(oneOff, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" })).toBeNull();
+    expect(renderCompletionQuestion(oneOff, { verificationTarget: "the_behaviour", responseMode: "name_the_moment" }))
+      .toBe("The next time this happens, what exactly will you do?");
   });
 });
 

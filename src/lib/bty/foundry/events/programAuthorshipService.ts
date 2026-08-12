@@ -203,7 +203,15 @@ export function systemPrompt(
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
-    "- Return behavior_contract with exactly ONE field: observable_action (what another person can SEE or HEAR the learner doing).",
+    "- Return behavior_contract with exactly ONE field: observable_action.",
+    /*
+      POSITIVE OWNERSHIP (Slice 3.2P-R3.7). v13 said only what not to do, and W6 did it anyway —
+      the model wrote the host's occasion into the action and BTY rendered it twice. The validator
+      now refuses that, and this says what the field IS so the two halves describe one thing.
+    */
+    "- observable_action is ONLY the verb phrase for what the learner is seen or heard doing, written as it would follow the word 'must'.",
+    "- BTY supplies the rest of the sentence: WHO does it, WHEN it happens, HOW OFTEN, and WHAT SHOWS it was done. Do not write any of them into observable_action.",
+    "- CORRECT: 'state the owner, action, and deadline for each agreed item'. WRONG: 'you state the owner…' (BTY writes the subject); 'state the owner during the morning meeting' (BTY writes the moment); 'state the owner until it is recorded' (BTY writes the evidence).",
     /*
       WHO and WHEN ARE SETTLED (Slice 3.2P-R3.6-R1). Both were model fields until v12 and both
       drifted: W3 named "a team member" for a `leaders` audience, and W5 died on a moment the

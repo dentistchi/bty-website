@@ -672,7 +672,15 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     // in base form — "I will states" and "…at your next shift change" are both impossible.
     expect(d).toContain("I will state each unfinished task");
     expect(d).not.toContain("I will states");
-    expect(d).toContain("At my next shift change");
+    /*
+      THE MOMENT NO LONGER LEADS THESE TWO SECTIONS (Slice 3.2P-R3.7). They used to open on a
+      folded version of the host's phrase — "At my next shift change" / "At the next shift
+      change". W6 shipped "During the next morning huddles" from that fold, and measurement
+      showed it also refuses "During the weekly scheduling review" and every Korean moment.
+      The host's phrase is now stated verbatim in THE STANDARD and IN CONTEXT above; these
+      sections point at the next one, which needs no grammar and works in any language.
+    */
+    expect(d.startsWith("the next time this happens, I will ")).toBe(true);
     expect(d).not.toContain("your");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
@@ -681,8 +689,7 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("G7: an application names the moment, the inherited actor and the confirmation", () => {
     const a = renderApplicationSentence(GOOD, APP, null);
     expect(a).toContain(GOOD.actor);
-    // Actor-neutral possessive here, because the sentence names a third-party actor.
-    expect(a).toContain("At the next shift change");
+    expect(a.startsWith("The next time this happens, ")).toBe(true);
     expect(a).toContain("must state each unfinished task");
     // Same criterion, different lead-in — one authority, four surfaces that do not read alike.
     expect(a).toContain(`You will know it happened by this: ${SERVER.criterion}.`);
@@ -793,35 +800,28 @@ describe("[3.2L-R6.2] perspective never collides", () => {
 
   it("G4: a first-person decision never carries a second-person possessive", () => {
     const d = renderDecisionSentence(GOOD, APP2);
-    expect(d).toContain("At my next shift change");
     expect(d).toContain("I will state");
     // The exact live collision: "I will … starting at your next shift change."
     expect(d).not.toMatch(/\byour\b/);
   });
 
-  it("G5: the SAME semantic moment renders actor-neutral in the instruction", () => {
+  it("G5: the instruction stays actor-neutral", () => {
     const a = renderApplicationSentence(GOOD, APP2, null);
-    expect(a).toContain("At the next shift change");
     expect(a).not.toMatch(/\bmy\b/);
   });
 
-  it("G13: moments that carry their own preposition are left alone", () => {
-    for (const [moment, expected] of [
-      ["during the Monday huddle", "During the Monday huddle"],
-      ["before closing the case", "Before closing the case"],
-      ["when the next escalation arrives", "When the next escalation arrives"],
-      ["next shift change", "At my next shift change"],
-    ] as const) {
+  it("G13 — RETIRED BY 3.2P-R3.7: no host moment is transformed at all now", () => {
+    /*
+      This asserted that a moment carrying its own preposition was left alone while a bare one
+      gained "At my next …". Both halves were the same mechanism, and the mechanism is gone: the
+      application sections never touch the host's phrase. The property it protected — BTY does
+      not rewrite the host's words — is now total rather than conditional.
+    */
+    for (const moment of ["during the Monday huddle", "before closing the case", "next shift change", "아침 허들 때마다"]) {
       const d = renderDecisionSentence(GOOD, { ...APP2, applicationMoment: moment });
-      expect(d.startsWith(expected), `${moment} → ${d}`).toBe(true);
+      expect(d.startsWith("the next time this happens, I will "), `${moment} → ${d}`).toBe(true);
+      expect(d, "the host's phrase is not echoed, edited or re-cased here").not.toContain(moment);
     }
-  });
-
-  it("the possessive strip is anchored — it never rewrites inside the Host's prose", () => {
-    const m = "before your team closes your last case";
-    // Only a LEADING "at/in/on + possessive" is removed; this has neither.
-    expect(momentCore(m)).toBe(m);
-    expect(renderDecisionSentence(GOOD, { ...APP2, applicationMoment: m })).toContain("your team closes your last case");
   });
 });
 
@@ -957,8 +957,8 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
 
   it("G6: perspective stays separated", () => {
     const c = contexts("Say it blunt");
-    expect(c.decision).toBe("At my next shift change, I will say it blunt.");
-    expect(c.application.startsWith("At the next shift change, doctors must say it blunt.")).toBe(true);
+    expect(c.decision).toBe("the next time this happens, I will say it blunt.");
+    expect(c.application.startsWith("The next time this happens, doctors must say it blunt.")).toBe(true);
     expect(c.decision).not.toMatch(/\byour\b/);
     expect(c.application).not.toMatch(/\bmy\b/);
   });
@@ -1115,10 +1115,15 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
       ["while the ward is at capacity", "While the ward is at capacity"],
       ["before the case closes", "Before the case closes"],
       ["after the last patient leaves", "After the last patient leaves"],
-      ["the last ten minutes of a busy shift", "At the last ten minutes"],
+      /*
+        3.2P-R3.7: a fragment with NO preposition of its own is now stated as the host wrote it,
+        rather than gaining "At ". That is the same decision as everywhere else — BTY repeats the
+        host's moment, it does not complete their grammar — and it is what lets a Korean moment
+        render at all. The property this test exists for is unchanged: never a doubled one.
+      */
+      ["the last ten minutes of a busy shift", "The last ten minutes of a busy shift"],
     ] as const) {
-      // The leading moment is now the TRIGGER's, so the no-doubled-preposition property is
-      // asserted where the moment actually lives (Slice 3.2L-R8.1).
+      // The leading moment is the TRIGGER's — the host's own words (Slice 3.2L-R8.1, 3.2P-R3.7).
       const s = renderScenarioSentence({ ...GOOD, trigger: context }, GOOD_SCENARIO);
       expect(s.startsWith(expected), `${context} → ${s}`).toBe(true);
       for (const doubled of ["In during", "At at", "When when", "In while", "In before", "In after"]) {

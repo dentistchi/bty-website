@@ -213,13 +213,13 @@ describe("[R3.2-R1] J–P — everything else is unchanged", () => {
     expect(isSemanticRepairableCode("non_observable_standard")).toBe(false);
   });
 
-  it("the closed vocabulary gained exactly one reason, and `actor_unauthorized` is not in it", () => {
+  it("the closed vocabulary grows only by decision, and `actor_unauthorized` is not in it", () => {
     for (const r of ["missing", "too_long", "meta_only", "not_a_role", "no_moment", "no_confirmation", "interrogative_action"]) {
       expect(CONTRACT_DEFECT_REASONS, r).toContain(r);
     }
     expect(CONTRACT_DEFECT_REASONS).toContain("confirmer_unauthorized");
     expect(CONTRACT_DEFECT_REASONS as readonly string[]).not.toContain("actor_unauthorized");
-    expect(CONTRACT_DEFECT_REASONS).toHaveLength(8);
+    expect(CONTRACT_DEFECT_REASONS).toHaveLength(9);
   });
 });
 

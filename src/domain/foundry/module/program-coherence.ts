@@ -326,10 +326,120 @@ export const CONTRACT_DEFECT_REASONS = [
    * (`CANONICAL_ACTOR`), so the model has nothing left to get wrong there.
    */
   "confirmer_unauthorized",
+  /**
+   * Slice 3.2P-R3.7 — the action reclaimed an authority it does not hold.
+   *
+   * ONE reason for both leaks, because they are one fault: the model wrote a part of the
+   * sentence the server composes. W6 proved it with WHEN ("…during morning huddles" after the
+   * server had already said it) and the same audit proved WHO ("you must you state…").
+   * Splitting them would imply the Host or the product could act on the difference; they
+   * cannot — the response is refused either way and the field is rewritten from scratch.
+   */
+  "action_reclaims_authority",
 ] as const;
 
 /** Which field failed, so a refusal is diagnosable without echoing model prose. */
 export type ContractDefect = { field: ContractField; reason: (typeof CONTRACT_DEFECT_REASONS)[number] };
+
+/**
+ * THE ACTION MUST BE THE ACTION, AND NOTHING ELSE (Slice 3.2P-R3.7).
+ *
+ * W6 succeeded and was unusable. The proposal read:
+ *
+ *   "During morning huddles, you must state the owner, action, and deadline for each agreed
+ *    item DURING MORNING HUDDLES."
+ *
+ * The model had written the Host's own occasion into `observable_action`, and the renderer —
+ * which owns the moment — prepended it again. Measured afterwards, EVERY leak of every
+ * server-owned role was accepted: "you state the owner…" rendered as "you must you state…",
+ * "the leader states…" as "you must the leader states…", "at the next huddle, name an owner" as
+ * "you must at the next huddle, name an owner".
+ *
+ * The prompt already said not to. The validator never asked. A rule that lives only in prose is
+ * a rule with a floor of zero, which is the failure this arc keeps returning to.
+ *
+ * Since v13 the server supplies WHO, WHEN and COMPLETION. So the model's one field is a BARE
+ * VERB PHRASE — what a person is seen or heard doing, as it would follow "must".
+ */
+
+/**
+ * A SUBJECT the sentence already has (`you must …`).
+ *
+ * HIGH-CONFIDENCE SHAPES ONLY, and the boundary is stated rather than hidden. A verb phrase
+ * begins with its verb; recognising that in general needs a lexicon this system will not build.
+ * What it can recognise without one is the two ways a subject announces itself structurally:
+ *
+ *   a pronoun          "you state …", "they name …"
+ *   a determiner       "the leader states …", "each member confirms …"
+ *
+ * RESIDUAL, deliberately left open: a bare plural noun subject — "team members name the owner"
+ * — begins with neither, and separating it from a verb requires knowing that "team" is not one.
+ * The prompt asks for the base form; this catches the shapes it can prove.
+ */
+const ACTION_HAS_SUBJECT =
+  /^\s*(?:you|i|we|they|he|she|it|the|a|an|this|that|these|those|my|your|our|their|his|her|its|each|every|all|both|some|any)\b/i;
+
+/**
+ * A TEMPORAL ADJUNCT — the action saying WHEN, which the Host already answered.
+ *
+ * SHAPE, NOT VOCABULARY. The naive rule ("reject `daily`, `weekly`, `morning`") refuses ordinary
+ * objects: "write the daily schedule", "record the morning reading", "complete the evening
+ * checklist" are all actions, not occasions. Those same words are ADJECTIVES under a determiner
+ * and ADVERBIALS without one, and that position is what this reads.
+ *
+ * Three shapes, each unambiguous on its own:
+ *
+ *   1. an unambiguously temporal head — `during`, `whenever`, `while`, `each/every time`,
+ *      `as soon as`, `upon`, `until`. None of these introduces an object.
+ *   2. a temporal preposition pointing at an ordinal/quantified occasion — "at the next huddle",
+ *      "before each shift", "after the meeting ends, …". Plain `in the shared note` and
+ *      `before signing off` are untouched: the complement is not `next|each|every|start|end`.
+ *   3. a frequency adverbial — `every|each` + a CALENDAR unit, or a bare `-ly` adverb in
+ *      adverbial position. The unit list is closed and universal (minute…year, shift, time); it
+ *      is not a list of workplace occasions, and nothing in it is domain-specific.
+ *
+ * `every agreed action` is quantification over ITEMS, not time, and passes — which is why the
+ * frequency rule names time units instead of accepting any `every`.
+ */
+const TIME_UNIT = "(?:morning|afternoon|evening|night|day|week|weekend|month|quarter|year|hour|minute|shift|time)s?";
+const TEMPORAL_HEAD =
+  /(?:^|[\s,;(])(?:during|whenever|while|until|as\s+soon\s+as|upon|each\s+time|every\s+time|any\s+time|anytime)\b/i;
+const TEMPORAL_PREPOSITION =
+  /(?:^|[\s,;(])(?:at|on|in|before|after|by|from)\s+(?:the\s+)?(?:next|each|every|following|start|end|beginning|close|first|last)\b/i;
+/*
+  THE `-ly` WORD IS THE HARD ONE, and position is what settles it. Measured: a first attempt
+  flagged "write the daily schedule", "update the weekly report" and "enter the weekly total in
+  the log" — three ordinary objects — because it matched the word anywhere. Those same words are
+  ADJECTIVES in front of the noun they modify and ADVERBS when nothing follows them, so the rule
+  fires only in adverbial position: phrase-final, or closing on punctuation.
+
+    "report the total weekly"        → adverbial → WHEN
+    "write the daily schedule"       → attributive → an object, untouched
+*/
+const FREQUENCY_ADVERBIAL = new RegExp(
+  `(?:^|[\\s,;(])(?:every|each)\\s+${TIME_UNIT}\\b` +
+    `|(?:^|[\\s,;(])(?:daily|weekly|monthly|hourly|nightly|yearly|annually)(?=[,.;)]|\\s*$)`,
+  "i",
+);
+/** A leading subordinate clause that closes on a comma — "after the meeting ends, record it". */
+const LEADING_TIME_CLAUSE = /^\s*(?:when|once|as|after|before|at|on)\b[^,]{0,80},/i;
+
+/** Does this action name WHEN, which the Host owns? */
+export function actionNamesMoment(action: string): boolean {
+  const a = action.trim();
+  if (a.length === 0) return false;
+  return (
+    TEMPORAL_HEAD.test(a) ||
+    TEMPORAL_PREPOSITION.test(a) ||
+    FREQUENCY_ADVERBIAL.test(a) ||
+    LEADING_TIME_CLAUSE.test(a)
+  );
+}
+
+/** Does this action supply its own subject, when the sentence already has one? */
+export function actionNamesActor(action: string): boolean {
+  return ACTION_HAS_SUBJECT.test(action.trim());
+}
 
 /**
  * THE ACTION IS A QUESTION (Slice 3.2P-R2.1).
@@ -528,6 +638,17 @@ export function validateBehaviorContract(
   }
 
   /*
+    …and it is the ACTION ALONE (Slice 3.2P-R3.7). The sentence around it already says who acts
+    and when, from the Host's own answers, so an action that says either produces "you must you
+    state…" or "During morning huddles, you must … during morning huddles" — both of which W6
+    shipped to a Founder. Not repairable: a model that reclaims a settled authority is not one
+    sentence away from right, and offering it a creative retry invites the same move again.
+  */
+  if (actionNamesActor(value.observableAction) || actionNamesMoment(value.observableAction)) {
+    return { ok: false, defect: { field: "observableAction", reason: "action_reclaims_authority" } };
+  }
+
+  /*
     NOTHING ELSE IS ASKED OF THE CRITERION (Slice 3.2P-R3.4-R1).
 
     Three rules used to live here — `meta_only` on the confirming act, `not_a_role` on the
@@ -706,23 +827,13 @@ export function momentCore(moment: string): string {
   return stripTrailingStop(moment.trim()).replace(/^(?:at|in|on)\s+(?:your|my|our|their|his|her)\s+/i, "");
 }
 
-/**
- * The same semantic moment, rendered for the perspective that section speaks in.
- * "next shift change" becomes "At my next shift change" in a first-person commitment and
- * "At the next shift change" in an instruction — never "I will … at your next shift change".
- */
-export function momentClause(moment: string, possessive: "my" | "the" | "your"): string {
-  const core = momentCore(moment);
-  if (core.length === 0) return "";
-  if (LEADING_TIME_WORD.test(core)) return upperFirst(core);
-  /*
-    A trigger that already begins with a determiner gets the preposition only — v6 produced
-    "At the the last ten minutes …" for one, which never surfaced while the scenario's own
-    context supplied the leading moment (Slice 3.2L-R8.1).
-  */
-  if (LEADING_DETERMINER.test(core)) return `At ${lowerFirst(core)}`;
-  return `At ${possessive} ${lowerFirst(core)}`;
-}
+/*
+  `momentClause` IS GONE (Slice 3.2P-R3.7). It re-cased the host's moment and attached an English
+  preposition per section — "At my next shift change" / "At the next shift change". Every caller
+  now states the host's phrase verbatim instead, because the one thing this product must not do
+  with a host's own words is quietly rewrite them. `momentCore` survives: `momentTokens` still
+  uses it to compare two moments, which is reading, not rewriting.
+*/
 
 /**
  * THE participant-facing sentence, DERIVED from the contract rather than authored beside
@@ -1068,8 +1179,14 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
    * and no "Even then" bridge, because there is no second event to bridge to — v6's
    * `contextDetail` is gone from the contract entirely.
    */
+  /*
+    THE HOST'S MOMENT VERBATIM, exactly as THE STANDARD states it (Slice 3.2P-R3.7). This used
+    `momentClause`, which re-attaches an English preposition when the phrase does not open with
+    a time word — so a Korean moment rendered as "At the 아침 허들 때마다". Nothing here needs to
+    grammar-check the host's own words; it needs to repeat them.
+  */
   return (
-    `${momentClause(b.trigger, "the")}, even when ${condition}${extra}, ` +
+    `${upperFirst(stripTrailingStop(b.trigger.trim()))}, even when ${condition}${extra}, ` +
     `${lowerFirst(actor)} must ${action}. ` +
     renderCompletionEvidence(b.completion, COMPLETION_LEAD.standard)
   ).trimEnd();
@@ -1664,9 +1781,25 @@ function reduceInflection(lower: string): string {
 
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
   const action = baseActionPhrase(b.observableAction);
-  const moment = stripTrailingStop(a.applicationMoment.trim());
-  return `${momentClause(moment, "my")}, I will ${action}.`;
+  // First person, same pointer — the commitment is to the next occurrence, not to a rewritten
+  // version of the host's phrase (Slice 3.2P-R3.7).
+  return `${lowerFirst(NEXT_OCCURRENCE)}, I will ${action}.`;
 }
+
+/**
+ * THE NEXT OCCURRENCE, WITHOUT REWRITING THE HOST (Slice 3.2P-R3.7).
+ *
+ * v13 folded the Host's moment into a noun phrase — `"During morning huddles"` became
+ * `"During the next morning huddles"`, a plural under a singular determiner, and W6 shipped it.
+ * Measured across real answers the fold refuses `"During the weekly scheduling review"`
+ * outright and every Korean moment, and mis-renders the one this pilot actually uses.
+ *
+ * So it stops transforming Host prose. The Host's occasion is stated verbatim two sections
+ * above, in THE STANDARD and IN CONTEXT; what this section needs is a POINTER to the next one,
+ * and a pointer needs no grammar. "The next time this happens" is correct for every shape a
+ * Host can write, in any language, because it inspects none of them.
+ */
+const NEXT_OCCURRENCE = "The next time this happens";
 
 export function renderApplicationSentence(
   b: BehaviorContract,
@@ -1675,13 +1808,12 @@ export function renderApplicationSentence(
 ): string {
   const actor = stripTrailingStop(b.actor.trim());
   const action = baseActionPhrase(b.observableAction);
-  const moment = stripTrailingStop(a.applicationMoment.trim());
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
   // ONE completion authority. v5 let the model author a second, different answer to "how
   // will we know it happened" here, and the live proposal gave two. v11 goes further: there
   // is nothing to author — this is the Host's evidence sentence, the same one THE STANDARD
   // carries.
-  return `${momentClause(moment, "the")}, ${lowerFirst(actor)} must ${action}.${named} ${renderCompletionEvidence(b.completion, COMPLETION_LEAD.application)}`.trimEnd();
+  return `${NEXT_OCCURRENCE}, ${lowerFirst(actor)} must ${action}.${named} ${renderCompletionEvidence(b.completion, COMPLETION_LEAD.application)}`.trimEnd();
 }
 
 /**
@@ -1720,8 +1852,6 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
     the_confirmation_step: `you make sure this is completed`,
   };
   if (c.responseMode === "name_the_moment") {
-    const first = deriveFirstApplicationMoment(b.trigger);
-    if (!first.ok) return null;
     /*
       Deliberately NOT a verbatim repeat of the standard — the participant has just read it
       twice. It asks what they will do at the moment that is already established.
@@ -1743,7 +1873,7 @@ export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContr
       the_application_plan: "how will you fit this into what you are already doing",
       the_confirmation_step: "how will you make sure it gets confirmed",
     };
-    return `${momentClause(first.value, "your")}, ${ask[c.verificationTarget]}?`;
+    return `${NEXT_OCCURRENCE}, ${ask[c.verificationTarget]}?`;
   }
   const mode: Record<Exclude<ResponseMode, "name_the_moment">, (t: string) => string> = {
     state_what_you_will_say: (t) => `What exactly will you say when ${t}?`,

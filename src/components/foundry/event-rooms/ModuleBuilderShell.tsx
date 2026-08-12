@@ -25,7 +25,7 @@ import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
-import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker } from "@/domain/foundry/module/program-authorship";
+import { missingProgramKinds, programContext, programContextFingerprint, recurringMomentReadsOnceOnly } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -1076,13 +1076,13 @@ function renderStep(
      * WHEN DOES THIS USUALLY HAPPEN? (Slice 3.2P-R3.6-R1)
      *
      * TWO DIFFERENT SIGNALS, deliberately not collapsed. `recurring_moment_required` blocks Next
-     * because a blank answer is a blank answer. `recurring_moment_not_repeatable` does NOT block:
-     * the Host has answered honestly and BTY simply cannot build a "next one" from the phrase, so
-     * it is guidance, shown beside what they wrote, and they may keep it. Generation is what the
-     * second one stops, at the source boundary, before a single provider call.
+     * because a blank answer is a blank answer. A phrase that reads as one specific time does
+     * NOT block anything (Slice 3.2P-R3.7): the Host has answered honestly, and a narrow English
+     * grammar must not outrank them on their own workplace. It is guidance, shown beside what
+     * they wrote, and they may keep it — nothing is normalized and nothing is refused for it.
      */
     case 3: {
-      const notRepeatable = programSourceBlocker(a) === "recurring_moment_not_repeatable";
+      const notRepeatable = recurringMomentReadsOnceOnly(a);
       return (
         <StepFrame q={t.sMomentQ} help={t.sMomentHelp}>
           {textArea(a.recurringMoment ?? "", (v) => patch({ recurringMoment: v }, false), t.sMomentPlaceholder, t.sMomentQ)}

@@ -84,7 +84,7 @@ describe("[3.2L-R7] behaviour-contract diagnostics migration", () => {
     const union = [...new Set([
       ...reasonsIn(EXECUTABLE),
       ...reasonsIn(executableOf("20260816000000_foundry_program_contract_reason_interrogative_v1.sql")),
-      ...reasonsIn(executableOf("20260818000000_foundry_program_contract_reason_role_authority_v1.sql")),
+      ...reasonsIn(executableOf("20260820000000_foundry_program_contract_reason_action_authority_v1.sql")),
     ])].sort();
     expect(union).toEqual([...CONTRACT_DEFECT_REASONS].sort());
   });

@@ -275,8 +275,12 @@ describe("[3.2L] the validator fails closed", () => {
       HOST's, so the same fault is answered at the source boundary — before an attempt row, and
       therefore before any spend. W5 is the window that paid to learn this.
     */
-    expect(programSourceBlocker({ ...CANONICAL, recurringMoment: "before leaving the floor" }))
-      .toBe("recurring_moment_not_repeatable");
+    /*
+      3.2P-R3.7 amended this: a phrase the English fold cannot parse no longer blocks anything.
+      The fold refused "During the weekly scheduling review" and every Korean moment — ordinary
+      answers — so the host's own answer is accepted and the Builder offers guidance instead.
+    */
+    expect(programSourceBlocker({ ...CANONICAL, recurringMoment: "before leaving the floor" })).toBeNull();
     // …and a trigger the model tries to supply cannot reach the contract at all.
     const p = goodProposal();
     (p.program.behavior_contract as Record<string, unknown>).trigger = "before leaving the floor";
@@ -314,8 +318,9 @@ describe("[3.2L] the validator fails closed", () => {
       // model supplied is never displayed. The assertion's intent — the application names WHO
       // and WHEN — is unchanged.
       expect(apply.content).toContain("you must");
-      // Derived from the trigger "At the end of every shift, before leaving the floor".
-      expect(apply.content).toContain("At the end of the next shift, before leaving the floor");
+      // 3.2P-R3.7: the application points at the next occurrence; the host's moment is stated
+      // verbatim in THE STANDARD above rather than folded into a noun phrase here.
+      expect(apply.content).toContain("The next time this happens, you must");
       expect(apply.content).not.toContain("Handoffs. Standards.");
     }
   });

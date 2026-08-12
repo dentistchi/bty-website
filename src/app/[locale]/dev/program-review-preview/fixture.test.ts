@@ -259,11 +259,14 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
         "team members must state each unfinished item and identify its next owner. " +
         "Completion evidence: Handoff record.",
     );
+    // 3.2P-R3.7: this line used to read "At my next handoff point". The fold that produced it
+    // shipped "During the next morning huddles" in W6, so the commitment now points at the next
+    // occurrence and the host's moment stays where it renders correctly, two sections above.
     expect(derived("action_decision")).toBe(
-      "At my next handoff point, I will state each unfinished item and identify its next owner.",
+      "the next time this happens, I will state each unfinished item and identify its next owner.",
     );
     expect(derived("field_application")).toContain(
-      "At the next handoff point, team members must state each unfinished item and identify its next owner.",
+      "The next time this happens, team members must state each unfinished item and identify its next owner.",
     );
   });
 
@@ -342,7 +345,7 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v14");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
   });
 
@@ -448,63 +451,60 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     expect(PREVIEW_PROPOSAL.applicationContract).toBeNull();
     expect(PREVIEW_CONTRACTS.application).toBeNull();
     expect(JSON.stringify(PREVIEW_PROPOSAL)).not.toContain("application_moment");
-    // And the moment APPLY IT shows comes only from the trigger.
-    expect(applicationMomentFor(withTrigger("at each weekly staff meeting"))).toBe("next weekly staff meeting");
-    expect(derived("field_application", withTrigger("at each weekly staff meeting"))).toContain("At the next weekly staff meeting,");
+    // And the moment is the HOST's, verbatim — 3.2P-R3.7 stopped folding it into a noun phrase.
+    expect(applicationMomentFor(withTrigger("at each weekly staff meeting"))).toBe("at each weekly staff meeting");
   });
 
-  it("G2: the canonical live case", () => {
-    expect(deriveFirstApplicationMoment("at each handoff point")).toEqual({ ok: true, value: "next handoff point" });
-    expect(derived("action_decision")).toBe(
-      "At my next handoff point, I will state each unfinished item and identify its next owner.",
-    );
-    expect(derived("field_application")).toContain(
-      "At the next handoff point, team members must state each unfinished item and identify its next owner.",
-    );
-  });
-
-  it("G4: every supported recurrence family derives grammatically", () => {
-    const CASES: [string, string, string][] = [
-      ["at each handoff point", "At my next handoff point", "At the next handoff point"],
-      ["before closing each patient consultation", "Before closing the next patient consultation", "Before closing the next patient consultation"],
-      ["after each shift handoff", "After the next shift handoff", "After the next shift handoff"],
-      ["during each handoff", "During the next handoff", "During the next handoff"],
-      ["when each handoff begins", "When the next handoff begins", "When the next handoff begins"],
-      ["each time the duty lead changes", "Next time the duty lead changes", "Next time the duty lead changes"],
-      ["whenever a handoff is required", "Next time a handoff is required", "Next time a handoff is required"],
-      ["at the end of each project or task", "At the end of the next project or task", "At the end of the next project or task"],
-      ["at every ward round", "At my next ward round", "At the next ward round"],
-      // A bare recurring occasion, the shape the existing service fixtures already use.
-      ["at shift change, before leaving the floor", "At my next shift change, before leaving the floor", "At the next shift change, before leaving the floor"],
-    ];
-    for (const [trigger, decision, apply] of CASES) {
+  /**
+   * G2/G4 REPLACED BY 3.2P-R3.7 — the fold is gone, so there are no families to enumerate.
+   *
+   * These asserted a ten-row table of trigger → "At my next X" / "At the next X". W6 shipped
+   * "During the next morning huddles" out of that machinery, and measuring it against real host
+   * answers showed it also refuses "During the weekly scheduling review" and every Korean
+   * moment. The application sections now point at the next occurrence and read the host's phrase
+   * not at all, so every family renders the same way and none can be mis-transformed.
+   */
+  it("G2/G4: every moment, in any language, renders the same pointer", () => {
+    for (const trigger of [
+      "at each handoff point",
+      "before closing each patient consultation",
+      "each time the duty lead changes",
+      "at shift change, before leaving the floor",
+      "During the weekly scheduling review",
+      "아침 허들 때마다",
+    ]) {
       const c = withTrigger(trigger);
-      expect(derived("action_decision", c)?.startsWith(`${decision},`), `${trigger} → ${derived("action_decision", c)}`).toBe(true);
-      expect(derived("field_application", c)?.startsWith(`${apply},`), `${trigger} → ${derived("field_application", c)}`).toBe(true);
+      expect(derived("action_decision", c)?.startsWith("the next time this happens, I will "), trigger).toBe(true);
+      expect(derived("field_application", c)?.startsWith("The next time this happens, "), trigger).toBe(true);
       for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
         expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
       }
+      // THE STANDARD still states the host's own words, exactly once and unedited.
+      expect(derived("observable_standard", c)?.startsWith(trigger.charAt(0).toUpperCase() + trigger.slice(1)), trigger).toBe(true);
     }
   });
 
-  it("G5: a trigger that never recurs fails closed rather than guessing", () => {
+  it("G5: a moment the fold cannot parse is the HOST's answer, not a failure (3.2P-R3.7)", () => {
+    /*
+      This asserted that such a trigger rendered nothing and blocked Apply. That was right while
+      a renderer needed the fold; it is wrong now. The fold refuses "During the weekly scheduling
+      review" and every Korean moment — ordinary answers to "when does this usually happen?" —
+      and no renderer reads it any more. Whether a phrase reads as recurring is advisory guidance
+      on the host's own question, never a refusal of their program.
+    */
     for (const trigger of [
       "before leaving the floor",
       "at the Monday leadership review",
-      "at the end of the shift",
       "during all relevant transitions of work",
       "tomorrow at 7am",
     ]) {
       expect(deriveFirstApplicationMoment(trigger), trigger).toEqual({ ok: false, reason: "not_recurring" });
-      expect(applicationMomentFor(withTrigger(trigger)), trigger).toBeNull();
-      expect(derived("field_application", withTrigger(trigger)), trigger).toBeNull();
+      // …and the program renders anyway, from the host's words.
+      expect(applicationMomentFor(withTrigger(trigger)), trigger).toBe(trigger);
+      expect(derived("field_application", withTrigger(trigger)), trigger).toContain("The next time this happens");
+      expect(validateEditedReview(withTrigger(trigger), REQUIRED, {}, PREVIEW_ANSWERS), trigger).toEqual({ ok: true });
     }
-    // Apply is blocked, with copy that points at the trigger rather than at another draft.
-    expect(validateEditedReview(withTrigger("before leaving the floor"), REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({
-      ok: false,
-      reason: "application_incomplete",
-      kind: "observable_standard",
-    });
+    // The historical refusal stays readable — W5 carries it (Slice 3.2P-R3.5).
     expect(PROGRAM_REJECT_CODES).toContain("trigger_not_recurring");
     expect("trigger_not_recurring".length).toBeLessThanOrEqual(60);
     expect(resolveRefusalCopy("validation_refused", "trigger_not_recurring").headline).toMatch(/first real chance/i);
@@ -538,23 +538,31 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
 
   it("G10/G11: editing the trigger moves both sections, and nothing else can", () => {
     const moved = withTrigger("at each morning huddle");
-    expect(derived("action_decision", moved)).toContain("At my next morning huddle");
-    expect(derived("field_application", moved)).toContain("At the next morning huddle");
+    // THE STANDARD and IN CONTEXT carry the host's moment; the two application sections point at
+    // its next occurrence. Editing the trigger still moves all four, and nothing else can.
     expect(derived("observable_standard", moved)).toContain("At each morning huddle");
+    expect(derived("scenario", moved)).toContain("At each morning huddle");
+    expect(derived("action_decision", moved)).toContain("the next time this happens");
+    expect(derived("field_application", moved)).toContain("The next time this happens");
     // No control anywhere still edits a first moment.
     const ids = Object.values(DETAIL_FIELDS).flat().map((f) => f?.id);
     expect(ids).not.toContain("moment");
     expect(ids).not.toContain("moment-apply");
   });
 
-  it("G12: a legacy v1-v8 proposal replays with its own stored moment", () => {
-    // Its trigger cannot derive, so the moment the model wrote is still what renders.
+  it("G12: a legacy v1-v8 stored moment is no longer needed to replay one", () => {
+    /*
+      A legacy proposal carried its own model-authored moment, and this asserted it was used when
+      the trigger could not fold. Nothing folds now and no section renders a moment noun phrase,
+      so the host's trigger answers "is there a moment" on its own and the legacy field is inert.
+    */
     const legacy: ProgramContracts = {
       ...withTrigger("before leaving the floor"),
       application: { applicationMoment: "next shift change" },
     };
-    expect(applicationMomentFor(legacy)).toBe("next shift change");
-    expect(derived("field_application", legacy)).toContain("At the next shift change,");
+    expect(applicationMomentFor(legacy)).toBe("before leaving the floor");
+    expect(derived("field_application", legacy)).toContain("The next time this happens");
+    expect(derived("field_application", legacy)).not.toContain("next shift change");
   });
 });
 
@@ -571,43 +579,50 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
   it("G1: the exact physical state cannot exist — two moments at once", () => {
     const broken = withTrigger("before leaving the floor");
     expect(derived("observable_standard", broken)).toContain("Before leaving the floor");
-    // The sections that would have shown the OLD moment now have no sentence at all.
-    expect(derived("action_decision", broken)).toBeNull();
-    expect(derived("field_application", broken)).toBeNull();
+    /*
+      3.2P-R3.7: these went quiet rather than render a second moment. They no longer name a
+      moment at all, so the property is stronger — there is only ever ONE occasion in the
+      program, and it is the host's, stated where it renders correctly.
+    */
+    expect(derived("action_decision", broken)).toContain("the next time this happens");
+    expect(derived("field_application", broken)).toContain("The next time this happens");
+    expect(derived("action_decision", broken)).not.toContain("leaving the floor");
     // …and they are still BTY's sections, so the surface knows to go quiet rather than
     // hand them back to the Host as narrative.
     expect(derivesFrom("action_decision", broken)).toBe(true);
     expect(derivesFrom("field_application", broken)).toBe(true);
   });
 
-  it("G4/G9: no legacy moment is reachable from an active v9 review", () => {
+  it("G4/G9: no legacy moment is reachable from an active review", () => {
     const broken = withTrigger("before leaving the floor");
     expect(broken.application).toBeNull();
-    expect(applicationMomentFor(broken)).toBeNull();
-    expect(validateEditedReview(broken, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({
-      ok: false,
-      reason: "application_incomplete",
-      kind: "observable_standard",
-    });
+    // 3.2P-R3.7: the host's own trigger answers this, whatever its phrasing — the fold that used
+    // to refuse it also refused ordinary answers like "During the weekly scheduling review".
+    expect(applicationMomentFor(broken)).toBe("before leaving the floor");
+    expect(validateEditedReview(broken, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
   });
 
-  it("G6: a valid trigger restores both sections immediately", () => {
+  it("G6: editing the trigger keeps both sections coherent", () => {
     const fixed = withTrigger("at each morning huddle");
-    expect(derived("action_decision", fixed)).toContain("At my next morning huddle");
-    expect(derived("field_application", fixed)).toContain("At the next morning huddle");
+    expect(derived("observable_standard", fixed)).toContain("At each morning huddle");
+    expect(derived("action_decision", fixed)).toContain("the next time this happens");
+    expect(derived("field_application", fixed)).toContain("The next time this happens");
     expect(validateEditedReview(fixed, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
   });
 
-  it("G8: a legacy v1-v8 proposal still renders from its stored moment", () => {
-    // Same underivable trigger — but this proposal genuinely carried a moment, and its
-    // evidence must replay exactly as it was accepted.
+  it("G8: a legacy stored moment no longer competes with the host's", () => {
+    /*
+      A v1-v8 proposal carried its own model-authored moment, and it used to render when the
+      trigger could not fold. No section renders a moment noun phrase now, so the legacy field
+      cannot reach a participant — which is the same guarantee, reached by removing the fork.
+    */
     const legacy: ProgramContracts = {
       ...withTrigger("before leaving the floor"),
       application: { applicationMoment: "next shift change" },
     };
-    expect(applicationMomentFor(legacy)).toBe("next shift change");
-    expect(derived("action_decision", legacy)).toContain("At my next shift change");
-    expect(derived("field_application", legacy)).toContain("At the next shift change");
+    expect(applicationMomentFor(legacy)).toBe("before leaving the floor");
+    expect(derived("action_decision", legacy)).not.toContain("next shift change");
+    expect(derived("field_application", legacy)).not.toContain("next shift change");
     expect(derivesFrom("action_decision", legacy)).toBe(true);
   });
 
@@ -636,14 +651,20 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
     behavior: { ...PREVIEW_CONTRACTS.behavior, trigger },
   });
 
-  it("G1: the exact physical failure — the last 'next time' side door is closed", () => {
+  it("G1: the 'next time' side door is closed — now by naming no occasion at all", () => {
+    /*
+      R10-A.2 closed it by going quiet when the host's phrase could not be folded. 3.2P-R3.7
+      closes it further: none of these three sections names an occasion any more, so there is no
+      occasion for a participant to invent and nothing to fall silent about. The one moment in
+      the program is the host's, stated where it renders correctly.
+    */
     const broken = withTrigger("before leaving the floor");
-    // The old sentence asked the participant to invent an occasion.
-    expect(derived("completion_check", broken)).toBeNull();
     expect(derivesFrom("completion_check", broken)).toBe(true);
-    // …alongside the two sections R10-A.1 already silenced.
-    expect(derived("action_decision", broken)).toBeNull();
-    expect(derived("field_application", broken)).toBeNull();
+    for (const kind of ["completion_check", "action_decision", "field_application"] as const) {
+      const q = derived(kind, broken)!;
+      expect(q, kind).toMatch(/next time this happens/i);
+      expect(q, kind).not.toContain("leaving the floor");
+    }
   });
 
   it("G2: the valid state anchors the question to the derived first instance", () => {
@@ -654,7 +675,7 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
       anchored to the DERIVED first instance — is unchanged and still asserted.
     */
     expect(derived("completion_check")).toBe(
-      "At your next handoff point, what exactly will you do?",
+      "The next time this happens, what exactly will you do?",
     );
     // It never asks WHEN, and it does not repeat the standard verbatim.
     expect(derived("completion_check")).not.toMatch(/when is the next time/i);
@@ -666,10 +687,15 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
   it("G3: it moves with the trigger, from the same authority", () => {
     const c = withTrigger("at each morning huddle");
     expect(derived("completion_check", c)).toBe(
-      "At your next morning huddle, what exactly will you do?",
+      "The next time this happens, what exactly will you do?",
     );
-    for (const kind of ["observable_standard", "action_decision", "field_application", "completion_check"] as const) {
+    // The host's moment appears where it is STATED — the standard and the scenario. The three
+    // derived sections point at its next occurrence without naming it (3.2P-R3.7).
+    for (const kind of ["observable_standard", "scenario"] as const) {
       expect(derived(kind, c), kind).toContain("morning huddle");
+    }
+    for (const kind of ["action_decision", "field_application", "completion_check"] as const) {
+      expect(derived(kind, c), kind).toMatch(/next time this happens/i);
     }
   });
 
@@ -682,14 +708,10 @@ describe("[3.2L-R10-A.2] no section may create a second operational moment", () 
         expect(q, `${verificationTarget}/${responseMode}`).not.toBeNull();
         expect(q!.endsWith("?"), q!).toBe(true);
         expect(q, `${verificationTarget}/${responseMode}`).not.toMatch(/when is the next time/i);
-        // Only the moment-dependent mode goes quiet when the trigger cannot derive; the
-        // other two never referenced a moment and keep working honestly.
-        if (responseMode === "name_the_moment") {
-          expect(derived("completion_check", bad), `${verificationTarget}`).toBeNull();
-          expect(q).toContain("At your next handoff point,");
-        } else {
-          expect(derived("completion_check", bad), `${verificationTarget}`).not.toBeNull();
-        }
+        // 3.2P-R3.7: no pair reads the host's moment any more, so none of them can go quiet
+        // for its phrasing — and none can invent an occasion either.
+        expect(derived("completion_check", bad), `${verificationTarget}`).not.toBeNull();
+        if (responseMode === "name_the_moment") expect(q).toContain("The next time this happens,");
       }
     }
   });
@@ -799,9 +821,9 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     const out = applied();
     const text = (k: string) => out.elements.find((e) => e.kind === k)!.content;
     expect(text("observable_standard")).toContain("At each handoff point");
-    expect(text("action_decision")).toContain("At my next handoff point");
-    expect(text("field_application")).toContain("At the next handoff point");
-    expect(text("completion_check")).toContain("At your next handoff point");
+    expect(text("action_decision")).toContain("the next time this happens");
+    expect(text("field_application")).toContain("The next time this happens");
+    expect(text("completion_check")).toContain("The next time this happens");
     for (const k of ["observable_standard", "scenario", "field_application"]) {
       expect(text(k), k).toContain(PREVIEW_ANSWERS.successEvidence!);
     }

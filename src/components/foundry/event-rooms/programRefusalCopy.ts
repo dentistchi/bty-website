@@ -290,6 +290,12 @@ export const SURFACE_FAILURE_COPY: Record<string, RefusalCopy> = {
     explanation: "BTY builds the whole training around that one moment.",
     recovery: "adjust_your_training_inputs",
   },
+  /*
+    KEPT, UNREACHABLE (Slice 3.2P-R3.7). Generation no longer refuses a moment for its phrasing —
+    the Host owns their own workplace and a narrow English grammar must not outrank them. The
+    same sentence now appears as non-blocking guidance beside the question itself. This entry
+    stays so a client holding an older response still renders something true.
+  */
   recurring_moment_not_repeatable: {
     headline: "BTY couldn’t tell when the next chance to do this would be.",
     explanation: "The moment you described sounds like one specific time. If it happens again and again, say that where you wrote it.",

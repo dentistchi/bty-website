@@ -128,6 +128,14 @@ import {
  * behaviour contract that carried a confirmer this version has no field for, so no unapplied
  * v10 proposal can be adopted under it. W4's refusal and W3's success both keep the versions
 
+
+ * v13 → v14 (Slice 3.2P-R3.7) makes the authority split SEMANTIC rather than schema-deep. W6
+ * succeeded under v13 and was unusable: the model wrote the host's own occasion into
+ * `observable_action` and the renderer, which owns the moment, prepended it again. An action
+ * that names WHO or WHEN is now refused, and — in the other direction — a host moment the
+ * English fold cannot parse is no longer refused at all. Acceptance moved both ways, so the
+ * version moves. The wire shape did not, so `PROGRAM_SCHEMA_NAME` stays at v10.
+ *
  * v12 → v13 (Slice 3.2P-R3.6-R1) removes the last two model-authored contract roles: the
  * trigger becomes the Host's `recurringMoment` and the discarded `actor` field goes with it. The
  * WIRE shape changes too, so `PROGRAM_SCHEMA_NAME` moves to v10 alongside — the first time both
@@ -144,7 +152,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v13";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v14";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -305,18 +313,37 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
  *
  * Returns null when the source can be authored from.
  */
-export type ProgramSourceBlocker = "recurring_moment_required" | "recurring_moment_not_repeatable";
+export type ProgramSourceBlocker = "recurring_moment_required";
 
+/**
+ * THE HOST IS THE AUTHORITY ON THEIR OWN MOMENT (Slice 3.2P-R3.7).
+ *
+ * R3.6-R1 blocked generation when `deriveFirstApplicationMoment` could not fold the Host's
+ * phrase, because a renderer then needed that fold. No renderer needs it any more, and the
+ * measurement of what it refuses is damning: "During the weekly scheduling review" — an
+ * ordinary answer to "when does this usually happen?" — is rejected, and so is every Korean
+ * moment, because the fold is an English noun-phrase grammar.
+ *
+ * That would make a narrow parser a stronger authority than the Host, which is exactly the
+ * mistake R3.4 refused to make with `CONFIRMATION_MARKER` and the Host's own evidence sentence.
+ *
+ * So absence still blocks — there is nothing to build a program around — and phrasing does not.
+ * A phrase the parser cannot fold earns NON-BLOCKING guidance on the Builder step, where the
+ * Host can act on it or overrule it. Nothing is normalized, and "At the next huddle" is never
+ * silently turned into "At each huddle".
+ */
 export function programSourceBlocker(answers: BuilderAnswers | undefined): ProgramSourceBlocker | null {
   const moment = typeof answers?.recurringMoment === "string" ? answers.recurringMoment.trim() : "";
-  if (moment.length === 0) return "recurring_moment_required";
-  /*
-    The SAME interpreter the program will use (R3.5). Asking a different question here than the
-    one the renderers ask later is how a draft passes readiness and then fails derivation — so
-    this calls `deriveFirstApplicationMoment` itself rather than approximating it.
-  */
-  if (!deriveFirstApplicationMoment(moment).ok) return "recurring_moment_not_repeatable";
-  return null;
+  return moment.length === 0 ? "recurring_moment_required" : null;
+}
+
+/**
+ * Does this moment READ as one that comes round again? Advisory only — the Builder shows it
+ * beside what the Host wrote and never blocks on it.
+ */
+export function recurringMomentReadsOnceOnly(answers: BuilderAnswers | undefined): boolean {
+  const moment = typeof answers?.recurringMoment === "string" ? answers.recurringMoment.trim() : "";
+  return moment.length > 0 && !deriveFirstApplicationMoment(moment).ok;
 }
 
 /**
@@ -1543,13 +1570,17 @@ export function validateProgramProposal(
    * trigger does not express recurrence, no honest "next one" exists and the program is
    * refused here — before review — rather than shipped with a moment somebody invented.
    */
+  /*
+    NO FOLD, SO NO REFUSAL (Slice 3.2P-R3.7). This built a noun phrase from the Host's moment and
+    refused the program when English grammar would not cooperate — which cost W5 a paid window
+    and, once the Host owned the moment, would have refused their own ordinary wording. The
+    application sections now point at "the next time this happens", so there is nothing to derive
+    and nothing to fail. `trigger_not_recurring` stays in the vocabulary for the rows that hold it.
+  */
   const applicationRequired = required.includes("field_application") || required.includes("action_decision");
-  let applicationContract: ApplicationContract | null = null;
-  if (applicationRequired) {
-    const first = deriveFirstApplicationMoment(contract.trigger);
-    if (!first.ok) return REJECT("trigger_not_recurring", "observable_standard");
-    applicationContract = { applicationMoment: first.value };
-  }
+  const applicationContract: ApplicationContract | null = applicationRequired
+    ? { applicationMoment: contract.trigger }
+    : null;
 
   /** BEFORE YOU FINISH authority — enumerated, so it cannot define anything. */
   let completionContract: CompletionContract | null = null;
@@ -2106,9 +2137,13 @@ export function contractsFromProposal(
  * wrote and which must still replay exactly as it was accepted.
  */
 export function applicationMomentFor(c: ProgramContracts): string | null {
-  const derived = deriveFirstApplicationMoment(c.behavior.trigger);
-  if (derived.ok) return derived.value;
-  return c.application?.applicationMoment ?? null;
+  /*
+    THE HOST'S MOMENT, VERBATIM (Slice 3.2P-R3.7). It used to be a folded noun phrase; the
+    renderers no longer read it as one, and this answers only "is there a moment to apply at",
+    which the Host's own answer settles.
+  */
+  const moment = c.behavior.trigger.trim();
+  return moment.length > 0 ? moment : c.application?.applicationMoment ?? null;
 }
 
 /**
