@@ -1,0 +1,466 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.31",
+  "title": "BOUNDARY REASON-MISSING FORENSICS + OUTPUT-CONTRACT ADEQUACY DECISION",
+  "mode": "READ_ONLY_FORENSIC",
+  "verdict": "A_REASON_MISSING_ROOT_CAUSE_PROVEN_NEXT_CORRECTION_MEASURED",
+  "rootCauseOneLine": "PROMPT/VALIDATOR PARITY DEFECT introduced in R2.30: the validator requires a non-empty `reason` on all 12 assessments unconditionally, the strict schema has no minLength so \"\" is schema-valid, and the prompt never asks for a reason on `applies` surfaces. The model obeyed the contract it was given.",
+
+  "baseline": {
+    "head": "d7210517d61eae901a2aadb451961350d96db97d",
+    "originInnerMain": "d7210517d61eae901a2aadb451961350d96db97d",
+    "headEqualsOrigin": true,
+    "trackedTreeClean": true,
+    "manifestSha256": "25cb0451a20791053d6a6861236f3eed2097eb5662bdd80c9b4276fff8ba2895",
+    "manifestMatchesCanonical": true
+  },
+
+  "artifactIdentity": {
+    "path": ".eval-artifacts/practice-review.boundaryreplay.live.20260801T142606Z.pass2.c18-constrained-clinical.a2.eeffd9ccf60c.json",
+    "sha256": "bd904d61412aa9c47832485c4e96b0b588210034a8251c701b64f3e4f407210d",
+    "sha256MatchesCanonical": true,
+    "mode": "live",
+    "replayRunId": "20260801T142606Z",
+    "sourceRunId": "20260801T024949Z",
+    "sourcePassId": "pass2",
+    "sourceCaseId": "c18-constrained-clinical",
+    "sourceAttemptIndex": 2,
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "boundaryReviewSubjectSha256": "eeffd9ccf60c6d1d912ec72af79025d78dcebd79b104b8254e0b1d11372b3afe",
+    "surfaceMapSha256": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "surfaceMapRebuiltLocally": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "surfaceMapMatch": true,
+    "lineageSha256": "ec1a498917babf5976c6e115b6cb6abb4ee58c3aabc5226a576ce22e33d33c7e",
+    "reachableSurfaceCount": 12,
+    "excludedCompatibilitySurfaceCount": 4,
+    "reviewAttempts": 2,
+    "identicalFrozenSubjectAcrossAttempts": true,
+    "generationCallCount": 0,
+    "broadReviewCallCount": 0,
+    "credentialOrProviderAccountData": "NONE",
+    "priorArtifactsByteIdentical": {
+      "r2.29_live_20260801T062330Z": "58210c2172174c58191ded209cb2004820824e921009f1d56ffc4da0de52d54f",
+      "r2.29_source_generation_pass2_c18": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb"
+    }
+  },
+
+  "attempts": [
+    {
+      "attempt": 1,
+      "finishReason": "stop",
+      "truncated": false,
+      "refusal": false,
+      "sanitizedError": null,
+      "latencyMs": 14686,
+      "tokenUsage": "NOT CAPTURED by the artifact schema (see unresolvedQuestions)",
+      "parsedOk": true,
+      "assessmentCount": 12,
+      "requiredAssessmentCount": 12,
+      "propertiesPerAssessment": [
+        "applicability",
+        "boundaryId",
+        "compliance",
+        "governedActionEvidence",
+        "prerequisiteFailureEvidence",
+        "reason",
+        "surfaceRef",
+        "violationMechanism"
+      ],
+      "schemaValidation": "PASSED at the provider (strict structured output); every required property present",
+      "adapterResult": "no loss — all 8 properties present on all 12 rows",
+      "coverageValidation": "PASSED — exact Cartesian 1 boundary x 12 reachable surfaces, no missing/extra/duplicate/unknown",
+      "groundingValidation": "FAILED on `reason` only. governedActionEvidence grounded on 12/12; prerequisiteFailureEvidence present on 3/3 violating rows",
+      "terminalValidationCode": "boundary_reason_missing",
+      "findingCount": 4,
+      "findingSurfaces": ["primary[0]", "branch[0].resulting_world_state", "branch[1].resulting_world_state", "branch[1].action[1]"],
+      "applicabilityDistribution": { "applies": 4, "not_applicable": 8, "uncertain": 0 },
+      "emptyReasonRows": 4,
+      "emptyReasonOnAppliesRows": "4 / 4",
+      "emptyReasonOnNotApplicableRows": "0 / 8",
+      "assessments": [
+        { "surfaceRef": "primary[0]", "applicability": "applies", "compliance": "complies", "violationMechanism": "none", "governedActionEvidence": "Verify identifiers for both patients now", "prerequisiteFailureEvidence": "", "reason": "" },
+        { "surfaceRef": "primary[1]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "governedActionEvidence": "Notify the families and proceed with one patient", "prerequisiteFailureEvidence": "", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[0].resulting_world_state", "applicability": "applies", "compliance": "violates", "violationMechanism": "resulting_state_missing_prerequisite", "governedActionEvidence": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety", "prerequisiteFailureEvidence": "but you still face delays in the ward due to the surge in admissions.", "reason": "" },
+        { "surfaceRef": "branch[0].tradeoff[0]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[0].tradeoff[1]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[0].action[0]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[0].action[1]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[1].resulting_world_state", "applicability": "applies", "compliance": "violates", "violationMechanism": "resulting_state_missing_prerequisite", "governedActionEvidence": "You prioritized immediate treatment for one patient while notifying the family", "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.", "reason": "" },
+        { "surfaceRef": "branch[1].tradeoff[0]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[1].tradeoff[1]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[1].action[0]", "applicability": "not_applicable", "compliance": "not_assessed", "violationMechanism": "none", "reason": "The surface does not initiate or produce the action of verifying identifiers." },
+        { "surfaceRef": "branch[1].action[1]", "applicability": "applies", "compliance": "violates", "violationMechanism": "resulting_state_missing_prerequisite", "governedActionEvidence": "Immediately treat the second patient", "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.", "reason": "" }
+      ]
+    },
+    {
+      "attempt": 2,
+      "finishReason": "stop",
+      "truncated": false,
+      "refusal": false,
+      "sanitizedError": null,
+      "latencyMs": 11440,
+      "parsedOk": true,
+      "assessmentCount": 12,
+      "schemaValidation": "PASSED",
+      "adapterResult": "no loss",
+      "coverageValidation": "PASSED",
+      "groundingValidation": "FAILED on `reason` only",
+      "terminalValidationCode": "boundary_reason_missing",
+      "findingCount": 3,
+      "findingSurfaces": ["primary[0]", "branch[0].resulting_world_state", "branch[1].resulting_world_state"],
+      "applicabilityDistribution": { "applies": 3, "not_applicable": 9, "uncertain": 0 },
+      "emptyReasonRows": 3,
+      "emptyReasonOnAppliesRows": "3 / 3",
+      "emptyReasonOnNotApplicableRows": "0 / 9",
+      "notableReasonTexts": [
+        "primary[1] -> 'This surface does something else: it involves notifying families and proceeding with treatment.'",
+        "branch[1].action[1] -> 'This surface does something else: it treats a patient.'"
+      ]
+    }
+  ],
+
+  "attemptDiff": {
+    "identicalAcrossAttempts": [
+      "frozen subject digest eeffd9ccf60c…",
+      "assessment count (12)",
+      "property set (8 per row)",
+      "coverage result (exact Cartesian, PASS)",
+      "finishReason (stop)",
+      "terminal code (boundary_reason_missing)",
+      "the empty-reason correlation: 100% of `applies` rows empty, 0% of `not_applicable` rows empty"
+    ],
+    "differedAcrossAttempts": [
+      { "field": "applicability of primary[1]", "attempt1": "not_applicable", "attempt2": "not_applicable", "note": "same" },
+      { "field": "applicability of branch[1].action[1]", "attempt1": "applies + violates", "attempt2": "not_applicable", "note": "SEMANTIC INSTABILITY — see unresolvedQuestions" },
+      { "field": "applies row count", "attempt1": 4, "attempt2": 3 },
+      { "field": "finding count", "attempt1": 4, "attempt2": 3 },
+      { "field": "not_applicable reason wording", "attempt1": "one identical sentence repeated 8x", "attempt2": "per-surface paraphrases" },
+      { "field": "latencyMs", "attempt1": 14686, "attempt2": 11440 }
+    ],
+    "sameSurfacesFailedBothAttempts": ["primary[0]", "branch[0].resulting_world_state", "branch[1].resulting_world_state"],
+    "sameSurfaceRepeatResult": "3 of 3 attempt-2 failures are a strict subset of attempt-1's 4. The recurrence is deterministic in the `applies` state, not random."
+  },
+
+  "reasonMissingClassification": {
+    "form": "B — PRESENT AS EMPTY STRING",
+    "ruledOut": {
+      "A_property_absent": "RULED OUT — `reason` present on 24/24 rows across both attempts; strict structured output guarantees property presence",
+      "C_whitespace_only": "RULED OUT — the values are exactly \"\", not whitespace",
+      "D_below_minimum_semantic_length": "RULED OUT — no minimum length exists; the validator's test is `!a.reason.trim()`",
+      "E_dropped_during_adaptation": "RULED OUT — the adapter is `str(o.reason)`; non-empty reasons on `not_applicable` rows survive intact",
+      "F_different_field_name": "RULED OUT — property set is exactly the 8 schema-required names",
+      "G_validator_inspected_wrong_path": "RULED OUT — local replay reproduces the artifact outcome exactly from `a.reason`",
+      "H_lost_through_serialization": "RULED OUT — non-empty reasons serialize fine in the same array"
+    },
+    "affectedAssessmentCount": { "attempt1": 4, "attempt2": 3 },
+    "affectedSurfaces": {
+      "attempt1": ["primary[0]", "branch[0].resulting_world_state", "branch[1].resulting_world_state", "branch[1].action[1]"],
+      "attempt2": ["primary[0]", "branch[0].resulting_world_state", "branch[1].resulting_world_state"]
+    },
+    "affectedStates": "EVERY affected row is `applicability = applies`. Compliance is `complies` on primary[0] and `violates` on the rest.",
+    "everyAssessmentFailed": false,
+    "onePoisonsTheWhole": "YES — the validator returns a single codes[] for the response; any one `boundary_reason_missing` makes the whole DTO malformed and discards all 12 assessments including the fully grounded violation evidence.",
+    "correlation": "applicability=applies -> reason empty : 7/7 across both attempts (100%). applicability=not_applicable -> reason non-empty : 17/17 (100%)."
+  },
+
+  "schemaAuthority": {
+    "reason": {
+      "requiredStatus": "REQUIRED (presence)",
+      "type": "string",
+      "minLength": "ABSENT",
+      "maxLength": 100,
+      "pattern": "ABSENT",
+      "whitespaceOnlyRepresentable": true,
+      "emptyStringSchemaValid": true,
+      "requirementsDifferByState": false,
+      "strictOutputGuarantees": "PROPERTY PRESENCE ONLY — not non-emptiness",
+      "providerResponsePassedSchemaBeforeLocalValidation": true
+    },
+    "schemaPermitsTheExactLiveFailureShape": true,
+    "otherFields": {
+      "governedActionEvidence": { "maxLength": 120, "minLength": "ABSENT", "emptyValid": true },
+      "prerequisiteFailureEvidence": { "maxLength": 120, "minLength": "ABSENT", "emptyValid": true, "note": "correctly must be empty unless violates" },
+      "violationMechanism": { "enum": 6, "note": "`none` is the required non-violation value" }
+    },
+    "conditionalRequirementSupport": "NO if/then/allOf anywhere in the schema. Every state-dependent rule (reason required, prerequisite evidence required only for violates, mechanism none unless violates) is enforced ONLY by the local validator and is unrepresentable in the strict schema.",
+    "logicallyRequiredButNotSchemaRepresentable": [
+      "reason non-empty (all states, per validator)",
+      "governedActionEvidence non-empty for applies AND not_applicable",
+      "prerequisiteFailureEvidence non-empty iff violates",
+      "violationMechanism != none iff violates"
+    ]
+  },
+
+  "parityTable": [
+    {
+      "state": "not_applicable",
+      "promptRequires": "governedActionEvidence (\"show what the surface actually does\")",
+      "promptRequiresReason": "NO — never stated",
+      "schemaRequires": "presence of all 8; no non-emptiness",
+      "validatorRequires": "reason NON-EMPTY + governedActionEvidence grounded + prerequisiteFailureEvidence EMPTY + mechanism none",
+      "liveBehaviour": "reason supplied 17/17 — the model volunteered it",
+      "mismatch": "validator requires what prompt never asked; model complied anyway"
+    },
+    {
+      "state": "applicability uncertain",
+      "promptRequires": "\"Name the exact ambiguity\"",
+      "promptRequiresReason": "YES (implicitly — the only place an explanation is demanded)",
+      "schemaRequires": "presence only",
+      "validatorRequires": "reason NON-EMPTY; evidence checks skipped for this state",
+      "liveBehaviour": "never produced (0 uncertain rows in either attempt)",
+      "mismatch": "none observed"
+    },
+    {
+      "state": "applies + complies",
+      "promptRequires": "governedActionEvidence",
+      "promptRequiresReason": "NO",
+      "schemaRequires": "presence only",
+      "validatorRequires": "reason NON-EMPTY",
+      "liveBehaviour": "reason EMPTY 2/2 (primary[0], both attempts)",
+      "mismatch": "**PARITY DEFECT** — validator fails a response the prompt never asked for"
+    },
+    {
+      "state": "applies + violates",
+      "promptRequires": "governedActionEvidence + prerequisiteFailureEvidence + violationMechanism",
+      "promptRequiresReason": "ONLY for `other_grounded_violation` (\"explain it in reason\")",
+      "schemaRequires": "presence only",
+      "validatorRequires": "reason NON-EMPTY + both evidence fields + mechanism != none",
+      "liveBehaviour": "reason EMPTY 5/5; all evidence fields and mechanisms correctly supplied",
+      "mismatch": "**PARITY DEFECT** — the model supplied every field the prompt demanded and was still refused"
+    },
+    {
+      "state": "applies + compliance uncertain",
+      "promptRequires": "\"Name the exact ambiguity\"",
+      "promptRequiresReason": "YES",
+      "schemaRequires": "presence only",
+      "validatorRequires": "reason NON-EMPTY + governedActionEvidence grounded",
+      "liveBehaviour": "never produced",
+      "mismatch": "none observed"
+    }
+  ],
+  "promptMentionsReasonCount": 1,
+  "promptSaysReasonAlwaysRequired": false,
+  "promptReasonLines": [
+    "L7  uncertain — the surface text is genuinely insufficient to tell. Name the exact ambiguity.",
+    "L14 uncertain — you cannot settle it from the text. Name the exact ambiguity.",
+    "L24 other_grounded_violation — a real mechanism none of the above names; explain it in reason."
+  ],
+
+  "redundancyAnalysis": {
+    "not_applicable": {
+      "reasonCarriesIndependentInformation": false,
+      "evidence": "governedActionEvidence = 'Prepare a detailed report for the administrator' (own-surface excerpt); reason = 'This surface does something else: it prepares a report.' — a paraphrase of the excerpt.",
+      "serverDerivable": true,
+      "derivationTemplate": "\"{surfaceRef} does not perform the action governed by {boundaryId}; it {governedActionEvidence}.\""
+    },
+    "applies_complies": {
+      "reasonCarriesIndependentInformation": false,
+      "serverDerivable": true,
+      "derivationTemplate": "\"{surfaceRef} performs the governed action with {boundaryId} satisfied: {governedActionEvidence}.\""
+    },
+    "applies_violates": {
+      "reasonCarriesIndependentInformation": false,
+      "evidence": "mechanism + governedActionEvidence + prerequisiteFailureEvidence fully encode the finding. The live reason text, where produced by the mock, was itself a restatement of the mechanism.",
+      "serverDerivable": true,
+      "derivationTemplate": "\"{surfaceRef}: {governedActionEvidence} while {prerequisiteFailureEvidence} [{violationMechanism}].\""
+    },
+    "uncertain_either_level": {
+      "reasonCarriesIndependentInformation": true,
+      "evidence": "The AMBIGUITY is not encoded by any other field. Evidence excerpts show what the text says, not why it fails to settle the question.",
+      "serverDerivable": false,
+      "conclusion": "reason MUST remain required — and only — here"
+    },
+    "other_grounded_violation": {
+      "reasonCarriesIndependentInformation": true,
+      "evidence": "The mechanism enum deliberately delegates the explanation to prose.",
+      "serverDerivable": false,
+      "conclusion": "reason MUST remain required here"
+    }
+  },
+
+  "mockVsLive": {
+    "mockReasonValuesHardcoded": true,
+    "mockReasonStrings": [
+      "does not perform the governed action",
+      "governed action proceeds with the prerequisite unmet",
+      "Does not address verification of identifiers.",
+      "'caring for' may or may not mean treatment"
+    ],
+    "mockEverEmitsEmptyReason": false,
+    "mockProvesOnly": "validator WIRING — that a grounded chain derives a reject and that an ungrounded violation is refused. It never exercised the empty-reason path.",
+    "assessmentCountDifference": "none — mock and live both produce 12",
+    "fieldCountDifference": "none — same 8 properties",
+    "wouldTheLiveDtoFailTheMockContractTests": "The live DTO never appears in any test. `boundary_reason_missing` has ZERO test references outside its own definition and the single validator line.",
+    "whyCiDidNotPredictIt": "Every mock and fixture in the suite supplies a non-empty reason for every row, because the fixtures were authored from the validator's expectations rather than from the prompt's instructions. No test asserts what happens when a schema-valid empty reason arrives, and no test compares prompt-demanded fields against validator-required fields. The parity gap was therefore invisible to CI by construction.",
+    "grepEvidence": "`boundary_reason_missing` occurs at exactly 2 source locations: narrowBoundaryReview.ts:158 (code list) and narrowBoundaryReview.ts:324 (the rule). Zero test occurrences."
+  },
+
+  "outputBurden": {
+    "assessmentObjects": 12,
+    "requiredPropertiesPerAssessment": 8,
+    "totalRequiredScalarFields": 96,
+    "repeatedFreeTextFields": 36,
+    "requestBytes": 8229,
+    "requestEstimatedTokens": 2743,
+    "attempt1": { "outputBytes": 4337, "estimatedTokens": 1446, "budget": 16000, "utilisationPct": 9.0, "finishReason": "stop", "longestReason": "77/100", "longestGovernedEvidence": "115/120" },
+    "attempt2": { "outputBytes": 4150, "estimatedTokens": 1384, "budget": 16000, "utilisationPct": 8.6, "finishReason": "stop", "longestReason": "95/100", "longestGovernedEvidence": "115/120" },
+    "anyFieldAtBound": false,
+    "truncationConsistent": false,
+    "systematicOmissionDespiteBudget": true,
+    "causality": "OUTPUT BURDEN IS NOT CAUSAL. Both responses used under 10% of the configured budget, finished with `stop`, and filled every other field including 120-character evidence excerpts. The omission is state-correlated (100% of `applies` rows), not size-correlated."
+  },
+
+  "validatorReplay": {
+    "network": "NONE",
+    "modelCall": "NONE",
+    "reproducesArtifact": true,
+    "attempt1": { "ok": false, "codes": ["boundary_reason_missing"], "findings": 4, "derivedOutcome": "boundary_review_malformed", "matchesArtifact": true },
+    "attempt2": { "ok": false, "codes": ["boundary_reason_missing"], "findings": 3, "derivedOutcome": "boundary_review_malformed", "matchesArtifact": true },
+    "firstFailingRule": "narrowBoundaryReview.ts:324 — `if (!a.reason.trim()) push(\"boundary_reason_missing\");`",
+    "ruleOrder": "`reason` is checked FIRST in the per-assessment grounding loop, before applicability/compliance coherence and before every evidence check. It is unconditional and state-independent.",
+    "laterValidEvidenceDiscarded": true,
+    "discardedEvidenceDetail": "All 12 assessments were discarded, including 3 fully grounded violations with correct mechanisms and both evidence excerpts.",
+    "counterfactualIfReasonSupplied": {
+      "attempt1": { "outcome": "boundary_review_reject", "violations": ["branch[0].resulting_world_state", "branch[1].resulting_world_state", "branch[1].action[1]"], "causal": 3 },
+      "attempt2": { "outcome": "boundary_review_reject", "violations": ["branch[0].resulting_world_state", "branch[1].resulting_world_state"], "causal": 2 }
+    },
+    "shouldOneInvalidAssessmentInvalidateTheWhole": "For a SAFETY matrix, yes on coverage grounds — a partially answered boundary matrix is not a boundary verdict. But the invalidating rule here is a redundant prose field, not a safety field. The fail-closed behaviour is correct; the field it fires on is not load-bearing.",
+    "partialEvidencePreservable": "NOT under the current contract, and it should not be introduced: mixing answered and unanswered surfaces creates split authority over one boundary matrix.",
+    "wasRetryingTheWholeReviewerCorrect": "YES given the contract — the response was unusable and the scenario was unjudged. But the retry was guaranteed to fail, because the cause is deterministic in the prompt, not stochastic in the model. Two calls were spent to re-measure the same defect."
+  },
+
+  "terminalClassification": {
+    "current": "boundary_reviewer_terminal_failure",
+    "correctlyDistinctFrom": [
+      "boundary_review_reject (a scenario verdict)",
+      "generation_rejected (a generator content defect)",
+      "model semantic false negative",
+      "provider transport failure (sanitizedError null, finishReason stop)",
+      "schema failure (the provider schema PASSED)",
+      "product-quality failure"
+    ],
+    "adequacy": "CORRECT CLASS, INSUFFICIENT PRECISION. `scenarioUnjudged: true` is right. But the class conflates three materially different causes: an unparseable/truncated response, a coverage failure, and a response that was complete and schema-valid yet refused on a local semantic rule.",
+    "recommendedSubcode": "boundary_output_contract_failure — the response satisfied the provider contract and failed the SERVER's additional field requirement. This is the only subcode the evidence supports; `boundary_reason_authority_failure` is narrower than the general case and `boundary_assessment_incomplete` wrongly implies missing coverage (coverage passed).",
+    "codeChangedInThisSlice": false
+  },
+
+  "allowedOutcomesReportingDefect": {
+    "printedList": ["boundary_review_pass", "boundary_review_reject", "boundary_review_inconclusive", "boundary_review_malformed", "provider_failure", "subject_digest_mismatch", "surface_map_mismatch", "surface_authority_failure"],
+    "actualResult": "boundary_reviewer_terminal_failure",
+    "omittedFromPrintedList": ["boundary_reviewer_terminal_failure", "boundary_review_not_applicable"],
+    "source": "scripts/practice-c18-narrow-boundary-replay-runner.ts:326-329 — a hand-written printf block inside the generated shell script",
+    "manuallyDuplicated": true,
+    "canonicalEnumExists": "BOUNDARY_STAGE_OUTCOMES in src/lib/bty/foundry/arena/boundaryReviewStage.ts:39 — 6 values, not referenced by the runner text",
+    "artifactSchemaContainsValue": true,
+    "aggregateMetricsClassifyCorrectly": true,
+    "metricsMeasured": { "boundaryReviewerTerminalFailureCount": 1, "broadReviewSkippedByBoundaryCount": 1, "boundaryMetricsPass": false },
+    "exitCodeCorrect": "YES — practice-c18-narrow-boundary-replay.ts:307 sets exitCode 4 for boundary_reviewer_terminal_failure",
+    "recommendation": "Derive the printed list from BOUNDARY_STAGE_OUTCOMES plus the runner-only transport codes, so one enumeration cannot drift from another.",
+    "severity": "SECONDARY — cosmetic. It did not affect the verdict, the artifact, the metrics or the exit code."
+  },
+
+  "secondaryObservabilityGaps": [
+    "accumulateBoundaryMetrics reads applicability counters from the LAST non-malformed evidence. When every attempt is malformed, applicableSurfaceCount / notApplicableSurfaceCount / applicabilityUncertainCount all report 0 even though the artifact holds a complete distribution (measured: 4/8/0 and 3/9/0).",
+    "`boundary_reason_missing` is in neither UNGROUNDED_CODES nor UNSUPPORTED_VIOLATION_CODES, so boundaryEvidenceUngroundedCount and administrativeFalsePositivePreventedCount both stayed 0 for a two-attempt output-contract failure.",
+    "The artifact does not capture provider token usage, so completion tokens were estimated from the serialized DTO rather than read."
+  ],
+
+  "optionEvaluation": {
+    "option1_strengthen_minLength_or_pattern": {
+      "defectAddressed": "Makes the schema express what the validator already enforces, so an empty reason is rejected by the provider rather than by the server.",
+      "defectNotAddressed": "The PROMPT still never asks for a reason on `applies` surfaces. A minLength turns a server-side refusal into a provider-side retry loop against an instruction the model was never given. It would likely have failed twice again.",
+      "safetyAuthorityRetained": "unchanged",
+      "newFailureModes": "The model may emit filler to satisfy minLength, degrading the field it was meant to strengthen.",
+      "providerCalls": 0,
+      "complexity": "low",
+      "evidenceNeeded": "Proof that a model-authored reason carries independent safety information on `applies` rows. The measurement shows it does not.",
+      "recommendation": "REJECTED as the primary correction. Valid ONLY as a companion once reason is scoped to the states that need it."
+    },
+    "option2_server_derive_reason": {
+      "defectAddressed": "Removes redundant model-authored authority. Every input the derivation needs is already present and already grounded: applicability, compliance, mechanism, governedActionEvidence, prerequisiteFailureEvidence.",
+      "defectNotAddressed": "Uncertainty. The exact ambiguity is not derivable from any structured field.",
+      "safetyAuthorityRetained": "FULLY — the verdict never depended on reason. The counterfactual replay shows both attempts producing a grounded reject once reason is disregarded.",
+      "newFailureModes": "A derived explanation is only as good as its template; it must never read as a model judgment.",
+      "providerCalls": 0,
+      "complexity": "low-medium",
+      "evidenceNeeded": "Already measured.",
+      "recommendation": "ADOPT for not_applicable / complies / violates."
+    },
+    "option3_conditionally_require_reason": {
+      "defectAddressed": "Keeps model-authored prose exactly where it carries information the server cannot derive: applicability-uncertain, compliance-uncertain, other_grounded_violation.",
+      "defectNotAddressed": "none material",
+      "safetyAuthorityRetained": "FULLY, and sharpened — a required field that is required everywhere is easy to satisfy with filler; one required only for genuine ambiguity is not.",
+      "newFailureModes": "Conditional rules are unrepresentable in the strict schema, so they remain server-enforced. The prompt must state the condition explicitly or the parity defect recurs in the other direction.",
+      "providerCalls": 0,
+      "complexity": "low",
+      "evidenceNeeded": "Already measured.",
+      "recommendation": "ADOPT, combined with Option 2. Together they are one coherent correction."
+    },
+    "option4_preserve_partial_assessments": {
+      "defectAddressed": "Would have salvaged the 3 grounded violations.",
+      "defectNotAddressed": "The parity defect itself.",
+      "safetyAuthorityRetained": "WEAKENED — a partially answered matrix is not a boundary verdict, and mixed-contract authority over one boundary is exactly what R2.28-R2.30 removed.",
+      "providerCalls": 0,
+      "complexity": "high",
+      "recommendation": "REJECTED. The directive forbids accepting a partially covered boundary matrix, and the evidence gives no reason to."
+    },
+    "option5_split_twelve_surfaces": {
+      "defectAddressed": "Output burden.",
+      "defectNotAddressed": "Everything measured. Burden is 9% of budget with `stop` finish.",
+      "providerCalls": "+N per scenario",
+      "complexity": "high",
+      "recommendation": "REJECTED — burden is measured NOT causal."
+    },
+    "option6_change_model": {
+      "defectAddressed": "Nothing established. The model supplied every field the prompt demanded, with correct grounding and correct mechanisms.",
+      "safetyAuthorityRetained": "unknown",
+      "providerCalls": 0,
+      "complexity": "low to apply, unjustifiable to defend",
+      "evidenceNeeded": "Precedence rule 4 requires contract adequacy first. The contract is measured INADEQUATE.",
+      "recommendation": "BLOCKED BY PRECEDENCE."
+    }
+  },
+
+  "smallestNextCorrection": {
+    "slice": "3.2I-PRACTICE-R5B1A.1-R2.32",
+    "name": "SERVER-DERIVED BOUNDARY EXPLANATION AUTHORITY V1",
+    "outcomeClass": "A (with the conditional scoping of B folded in — they are one change, not two)",
+    "precedenceRuleSatisfied": "1 — remove redundant model-authored authority",
+    "scope": [
+      "Remove `reason` from pass/fail authority for `not_applicable`, `applies+complies` and `applies+violates`. The server composes a human-readable explanation from applicability, compliance, violationMechanism, governedActionEvidence and prerequisiteFailureEvidence — all already grounded and already required.",
+      "KEEP `reason` required, and state it in the prompt, for exactly the states where the server cannot derive it: applicability `uncertain`, compliance `uncertain`, and `other_grounded_violation`.",
+      "Repair prompt/validator parity in both directions: the prompt must state precisely which states require prose, and the validator must require it in exactly those states and no others.",
+      "Add the missing subcode `boundary_output_contract_failure` so a complete, schema-valid response refused on a server-side field rule is distinguishable from a truncated or uncovered one.",
+      "Companion (secondary): derive the runner's Allowed-outcomes list from BOUNDARY_STAGE_OUTCOMES so it cannot omit a reachable outcome again.",
+      "Companion (secondary): count applicability distribution from the last PARSED evidence rather than the last non-malformed one, and add boundary_reason/output-contract codes to a precision counter."
+    ],
+    "explicitlyExcluded": ["urgency safety-basis adequacy", "communication-axis lexical heuristic", "c09 progression", "generator changes", "broad-review redesign", "reviewer model change"],
+    "gate": "A failing regression built from BOTH captured live DTOs: they must fail before the change and produce a grounded reject after it. Plus a prompt/validator parity test that enumerates the five assessment states and asserts the required-field sets agree — the test class whose absence made this defect invisible to CI.",
+    "authorizationRequired": true
+  },
+
+  "unresolvedQuestions": [
+    "SEMANTIC QUALITY IS STILL UNMEASURED. The counterfactual replay shows both attempts would have rejected — but attempt 1 flags branch[0].resulting_world_state ('You have verified identifiers for both patients and provided the necessary treatment without compromising on safety') as `resulting_state_missing_prerequisite`, using 'but you still face delays in the ward' as the prerequisite-failure excerpt. A delay is not a verification failure. That is a probable FALSE POSITIVE on the compliant branch, and it survives grounding because the excerpt is genuinely from the surface.",
+    "APPLICABILITY IS UNSTABLE ACROSS ATTEMPTS. branch[1].action[1] 'Immediately treat the second patient' was `applies + violates` in attempt 1 and `not_applicable` ('it treats a patient') in attempt 2, at temperature 0 over a byte-identical subject. Treating IS the governed action; the attempt-2 answer is wrong. This is a semantic reliability question the reason contract does not touch.",
+    "Neither observation caused the terminal failure and neither is in scope for R2.32. Both must be re-measured once a live verdict is obtainable.",
+    "Provider token usage is not captured in the replay artifact; completion size was estimated from the serialized DTO."
+  ],
+
+  "noMutationProof": {
+    "headBefore": "d7210517d61eae901a2aadb451961350d96db97d",
+    "headAfter": "d7210517d61eae901a2aadb451961350d96db97d",
+    "originInnerMainUnchanged": true,
+    "trackedTreeClean": true,
+    "liveArtifactByteIdentical": true,
+    "priorArtifactsByteIdentical": true,
+    "liveModelCall": "NONE",
+    "generationCall": "NONE",
+    "databaseConnection": "NONE",
+    "deployment": "NONE",
+    "newRunner": "NONE",
+    "sourceModification": "NONE",
+    "testModification": "NONE",
+    "commitOrPush": "NONE",
+    "analysisScriptsLocation": "scratchpad only, outside the repository"
+  }
+}

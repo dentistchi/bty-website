@@ -1,0 +1,19 @@
+
+> bty-website@0.1.0 compare:foundry-migration-audit
+> npx tsx scripts/migration-proof/compare/cli.ts live_audit_result.json
+
+packet 8d87c4b16393… OK · PostgreSQL major: expected 16 vs live 17 — MISMATCH (digests → manual)
+totals: {"effects":93,"exact":60,"conflict":3,"missing":0,"evidenceAbsent":0,"manual":30}
+
+Per-migration verdict candidates (grouped by FINAL authority):
+  20260726000000: D  blocked by 13: acl:table:public.foundry_shared_review_audit, check:foundry_event_document_content.foundry_doc_shared_q_len_check, check:foundry_event_training_content.foundry_content_shared_q_len_check, check:foundry_event_training_progress.foundry_progress_review_needs_shared_check …
+  20260727000000: A (REPAIR-ELIGIBLE candidate)
+  20260728000000: D  blocked by 19: acl:table:public.foundry_participant_followup_audit, acl:table:public.foundry_participant_followups, check:foundry_participant_followup_audit.foundry_followup_audit_event_type_check, check:foundry_participant_followups.foundry_followup_days_check …
+  20260729000000: E  blocked by 1: function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)
+
+Conflicts / missing objects:
+  [CONFLICT] acl:table:public.foundry_participant_followup_audit — structured properties differ
+  [CONFLICT] acl:table:public.foundry_participant_followups — structured properties differ
+  [CONFLICT] acl:table:public.foundry_shared_review_audit — structured properties differ
+
+NOTE: an A candidate is NOT authorization to repair migration history or apply schema.

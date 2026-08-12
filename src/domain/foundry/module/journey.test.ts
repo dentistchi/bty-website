@@ -17,6 +17,7 @@ const FIXTURE: BuilderAnswers = {
   problem:
     "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
   audienceType: "everyone",
+  recurringMoment: "During morning huddles",
   observableBehavior: "Before the huddle ends, the owner of each next step repeats the action and deadline aloud.",
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   completionPrompt: "After your next huddle, what one action had a named owner and deadline?",

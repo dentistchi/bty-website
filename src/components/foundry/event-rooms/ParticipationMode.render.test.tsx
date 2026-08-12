@@ -21,11 +21,12 @@ function readyDraft(audienceType: string) {
   return {
     id: "d-1",
     status: "draft",
-    current_step: 8,
+    current_step: 9,
     answers: {
       problem: "Handoffs skip the double-check.",
       audienceType,
       audienceDetail: null,
+      recurringMoment: "at each handoff point",
       observableBehavior: "The charge nurse reads back the dosage.",
       successEvidence: "Sign-offs include a witnessed read-back.",
       evidenceType: "seen",

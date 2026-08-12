@@ -1,0 +1,331 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.33",
+  "title": "BOUNDARY REVIEW TRANSPORT FAILURE FORENSICS + RETRY / TERMINAL CLASSIFICATION DECISION",
+  "mode": "READ_ONLY_FORENSIC",
+  "verdict": "B_TRANSPORT_EVIDENCE_OR_CLASSIFICATION_IS_INSUFFICIENT",
+  "rootCauseOneLine": "The provider-side cause is UNKNOWABLE from the artifact. The client threw an error carrying the HTTP status in its message; the narrow reviewer's outer catch does not bind the error at all, so status, code, retriable and layer were all discarded before anything was recorded. Retrying now would spend another call to produce another unclassifiable artifact.",
+
+  "baseline": {
+    "head": "67ebf45636e6b64b947022fbdf8611a548ea8f99",
+    "originInnerMain": "67ebf45636e6b64b947022fbdf8611a548ea8f99",
+    "headEqualsOrigin": true,
+    "trackedTreeClean": true,
+    "manifestSha256": "5b2abf97a1de5074af0f47f6f63cc641757a1bd0a87e5253ff8926394c446463",
+    "manifestMatchesCanonical": true
+  },
+
+  "artifactIdentity": {
+    "path": ".eval-artifacts/practice-review.boundaryreplay.live.20260801T151001Z.pass2.c18-constrained-clinical.a2.b15bfb8f703b.json",
+    "sha256": "5b675bcf160fc0d6f6e541e8a81bebd80dff41b4008ada6c974f171ae0bfdf4a",
+    "sha256MatchesCanonical": true,
+    "mode": "live",
+    "replayRunId": "20260801T151001Z",
+    "sourcePassId": "pass2",
+    "sourceCaseId": "c18-constrained-clinical",
+    "sourceAttemptIndex": 2,
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "boundaryReviewSubjectSha256": "b15bfb8f703b17b2379ffe4222fb623149e74e0350f3e5e0516ab4a02a867280",
+    "surfaceMapSha256": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "lineageSha256": "ec1a498917babf5976c6e115b6cb6abb4ee58c3aabc5226a576ce22e33d33c7e",
+    "reasonParityTableSha256": "343805e5c8f4a169145bcb4ed9cc8403f265add99d073c4f9e7389781bfe7fc3",
+    "explanationAuthoritySha256": "923f6d0c3a47329d6814adc2060b32a8bb1779f6d90d5f40d86b8f0118b00273",
+    "reviewCalls": 1,
+    "reruns": 0,
+    "generationCallCount": 0,
+    "broadReviewCallCount": 0,
+    "parsedAssessments": 0,
+    "serverDerivedExplanations": 0,
+    "credentialOrProviderAccountData": "NONE (0 pattern matches for sk-/api-key/authorization/bearer/cookie/org-)",
+    "artifactVersionDrift": {
+      "artifactRecords": "practice-narrow-boundary-replay/1",
+      "replayModuleConstant": "practice-narrow-boundary-replay/1",
+      "runnerBinds": "practice-narrow-boundary-replay/3",
+      "severity": "SECONDARY — the runner's artifactSchemaVersion binding was bumped in R2.30/R2.32 while the writer's constant was not. No effect on this failure."
+    }
+  },
+
+  "transportAttempt": {
+    "provider": "OpenAI-compatible chat completions",
+    "endpointClass": "https://api.openai.com/v1/chat/completions (LLM_BASE_URL unset)",
+    "clientImplementation": "hand-written fetch wrapper — src/lib/bty/llm/client.ts (NOT the OpenAI SDK)",
+    "model": "gpt-4o-mini",
+    "requestMethod": "POST",
+    "measuredLatencyMs": 459,
+    "configuredTimeoutMs": 120000,
+    "timeoutActuallyWired": false,
+    "abortSignalPassed": false,
+    "abortOrTimeoutFired": "NO — no AbortSignal exists on this path, so no timeout layer could fire",
+    "httpResponseObtained": "NOT RECORDED",
+    "httpStatus": "NOT RECORDED",
+    "providerErrorType": "NOT RECORDED",
+    "providerErrorCode": "NOT RECORDED",
+    "retryAfter": "NOT RECORDED",
+    "sanitizedErrorMessage": "boundary_review_request_failed",
+    "finishReason": null,
+    "responseBodyExisted": "NOT RECORDED",
+    "structuredOutputEnvelopeExisted": "NOT RECORDED (parsed = null)",
+    "tokenUsageExisted": "NOT RECORDED — the artifact schema does not capture usage",
+    "localExceptionName": "NOT RECORDED — the catch clause does not bind the error",
+    "clientLibraryErrorClass": "NOT RECORDED",
+    "artifactSerialization": "SUCCEEDED — one immutable artifact written, digest verified on read-back",
+
+    "deepestConfirmedLayer": {
+      "code": "B",
+      "label": "client invocation started",
+      "proof": "latencyMs 459 is inconsistent with a throw from `getLlmClient()` (which would be sub-millisecond and is guarded by the runner's non-empty credential check). The elapsed time was spent inside `chat.completions.create`.",
+      "stronglyIndicatedButUNPROVEN": {
+        "code": "D",
+        "label": "HTTP response received",
+        "circumstantialEvidence": "459 ms is a realistic TLS handshake + round trip to api.openai.com and matches the shape of a non-2xx rejection. The client's only non-2xx path is `throw new Error('LLM API error: ' + status + ' ' + statusText)`, which is exactly what the outer catch would swallow.",
+        "whyUnproven": "The status was discarded before any record was written. A DNS/TLS failure at a similar latency is not excluded."
+      }
+    }
+  },
+
+  "failureClassification": {
+    "primaryCause": "M — EVIDENCE INSUFFICIENT",
+    "reason": "Distinguishing A (auth), B (quota), C (rate limit), G (provider 5xx), H (invalid request), I (schema rejection) and F (network) requires the HTTP status or the provider error code. Both were available at the throw site and neither was recorded.",
+    "excludedWithEvidence": {
+      "D_provider_timeout": "EXCLUDED — 459 ms elapsed against a nominal 120,000 ms; no timeout of any kind fired.",
+      "E_local_abort_timeout": "EXCLUDED — no AbortSignal is passed on this path, so no local abort is possible.",
+      "L_parsing_failure_misclassified": "EXCLUDED — `parsed` is null and the failure came from the outer catch, not from the JSON.parse branch (which returns `boundary_review_not_json` via `malformed()`, not `boundary_review_request_failed`)."
+    },
+    "notExcluded": ["A credential/authentication", "B quota exhaustion", "C rate limit", "F DNS/TLS/network", "G provider 5xx", "H invalid-request rejection", "I strict-schema rejection", "K client/local adapter exception"],
+    "secondaryContributingDefects": [
+      "The error adapter collapses every provider outcome into one opaque string, which is what makes the primary cause unknowable.",
+      "`verdict.codes` records `boundary_review_not_json` for a TRANSPORT failure, and `classifyFailure` therefore labels it `coverage` — a transport failure presented as a coverage failure.",
+      "The narrow reviewer wires no AbortSignal, so its configured 120 s timeout is decorative."
+    ]
+  },
+
+  "requestValidity": {
+    "rebuiltLocally": true,
+    "boundaryReviewSubjectSha256Local": "b15bfb8f703b17b2379ffe4222fb623149e74e0350f3e5e0516ab4a02a867280",
+    "matchesArtifact": true,
+    "matchesPreflightBoundSubject": true,
+    "model": "gpt-4o-mini",
+    "responseFormat": "json_schema, strict: true",
+    "schemaName": "bty_practice_boundary_surface_review_v2",
+    "schemaSha256Short": "1a293d8784fd62b9",
+    "promptSha256Short": "22da7de355e6c83f",
+    "samplingSha256Short": "dd68a10052bb3dd0",
+    "sampling": { "temperature": 0, "topP": 1, "maxTokens": 16000, "timeoutMs": 120000 },
+    "messageCount": 2,
+    "requestBytes": 8229,
+    "requestEstimatedTokens": 2743,
+    "promptBytes": 6451,
+    "promptEstimatedTokens": 2151,
+    "activeBoundaries": 1,
+    "surfacesPresent": 12,
+    "requiredAssessmentCount": 12,
+    "schemaShape": {
+      "rootAdditionalPropertiesFalse": true,
+      "itemAdditionalPropertiesFalse": true,
+      "everyPropertyRequired": true,
+      "unsupportedConstructs": "NONE — no if/then/allOf/anyOf/oneOf/$ref/pattern/format",
+      "usesMinItemsMaxItems": true,
+      "usesMaxLength": true,
+      "schemaBytes": 1035
+    },
+    "verdict": "THE REQUEST IS VALID AND WELL-FORMED. Nothing in its shape explains a rejection."
+  },
+
+  "priorSuccessfulRequestComparison": {
+    "priorRun": "20260801T142606Z (R2.30) — the same call SUCCEEDED TWICE, ~30 minutes earlier",
+    "identical": {
+      "requestBytes": "8229 vs 8229",
+      "surfaces": "12 vs 12",
+      "boundaries": "1 vs 1",
+      "requiredAssessmentCount": "12 vs 12",
+      "surfaceMapSha256": "identical",
+      "model": "gpt-4o-mini",
+      "responseFormatMode": "json_schema strict",
+      "schema": "unchanged — R2.32 did not alter NARROW_BOUNDARY_JSON_SCHEMA",
+      "sampling": "unchanged",
+      "tokenBudget": "16000 unchanged",
+      "clientInvocationPath": "unchanged — same fetch wrapper, same no-signal call"
+    },
+    "differences": [
+      {
+        "field": "system prompt",
+        "prior": "~1,514 estimated tokens",
+        "current": "2,151 estimated tokens (6,451 bytes)",
+        "cause": "R2.32 regenerated the prompt from the canonical parity table",
+        "transportRelevance": "NEGLIGIBLE — total input is ~4,894 estimated tokens against a 128k context. This cannot produce a transport-layer rejection."
+      },
+      {
+        "field": "boundaryReviewSubjectSha256",
+        "prior": "eeffd9ccf60c6d1d",
+        "current": "b15bfb8f703b17b2",
+        "cause": "the subject digest now covers the parity table and explanation authority",
+        "transportRelevance": "NONE — an internal identity, not sent as a provider parameter that could be rejected."
+      }
+    ],
+    "latency": { "priorSuccess": [14686, 11440], "currentFailure": 459 },
+    "conclusion": "The request that failed is transport-equivalent to one that succeeded twice shortly before. This points AWAY from request/schema validity and TOWARD an environmental or account-side cause — which is exactly the class the artifact cannot name."
+  },
+
+  "adapterFidelity": {
+    "chain": [
+      { "step": "client", "location": "src/lib/bty/llm/client.ts:56", "behaviour": "on non-2xx: `throw new Error(`LLM API error: ${response.status} ${response.statusText}`)` — the status EXISTS here, encoded in the message string only. No status property, no error class, no retriable flag." },
+      { "step": "narrow reviewer catch", "location": "src/lib/bty/foundry/arena/narrowBoundaryReviewer.ts (outer `} catch {`)", "behaviour": "THE INFORMATION-LOSS POINT. The catch clause does NOT BIND the error — `catch {` with no parameter. Everything the client encoded is discarded here and replaced with the constant `boundary_review_request_failed`." },
+      { "step": "verdict", "behaviour": "a synthetic malformed verdict is built with codes `['boundary_review_not_json']` — a code that means 'the body was not JSON', which is false: no body was ever received." },
+      { "step": "stage", "behaviour": "`decideAfterBoundaryReview` returns `boundary_reviewer_infrastructure_failure` with code `boundary_review_transport_failed`; the stage records it as the terminal outcome." },
+      { "step": "artifact", "behaviour": "records outcome `boundary_reviewer_terminal_failure`, authorityCodes `['boundary_review_transport_failed']`, latency and the sanitized string. Nothing else." },
+      { "step": "terminal + exit", "behaviour": "exit code 4 — correct for a terminal failure." }
+    ],
+    "informationLossPoint": "src/lib/bty/foundry/arena/narrowBoundaryReviewer.ts — the unbound `catch { }` on the provider call",
+    "fieldsPreservedByArtifact": ["latencyMs", "sanitizedError (constant)", "finishReason (null)", "parsed (null)", "subject/surface/provenance digests", "call and rerun counts"],
+    "fieldsLost": ["httpStatus", "providerErrorType", "providerErrorCode", "retryAfter", "retriable indicator", "responseReceived indicator", "requestReachedProvider indicator", "exact local failure layer", "local exception name", "token usage"],
+    "assessment": "The artifact is durable and honest about what it knows, and it knows almost nothing. Every field needed to choose between auth, quota, rate limit, 5xx and network was available at the throw site and none survived."
+  },
+
+  "terminalClassification": {
+    "currentTopLevel": "boundary_reviewer_terminal_failure",
+    "currentSubcode": "boundary_review_transport_failed",
+    "canonicalEnumContains": "provider_failure",
+    "questions": {
+      "1_isTransportFailureAReviewAttempt": "NO. The reviewer never received the subject. Nothing was judged and nothing could be.",
+      "2_shouldItConsumeReviewerCallCount": "NO — but it DID. The artifact records reviewCalls: 1. The two-call budget exists to absorb reviewer self-inconsistency over a frozen subject; a call that never reached the reviewer should not spend it.",
+      "3_shouldItConsumeRerunAuthority": "NO. It did not directly (reruns: 0), but because it consumed a call, only one call would remain for an actual review.",
+      "4_shouldOneTransportFailureBeImmediatelyTerminal": "DEFENSIBLE as fail-closed — R2.25 established that infrastructure failures are not blindly rerun. But terminal-for-the-run is different from terminal-for-the-reviewer, and the current code conflates them.",
+      "5_shouldTopLevelBeProviderFailure": "YES. `provider_failure` exists in the canonical enumeration precisely for this, and `boundary_reviewer_terminal_failure` asserts something false: that the reviewer failed twice over an identical frozen subject.",
+      "6_whenIsBoundaryReviewerTerminalFailureAppropriate": "When the REVIEWER produced two unusable responses over an identical frozen subject — the R2.30 shape. Not when no response existed.",
+      "7_shouldTheSubcodeSurviveSeparately": "YES. `boundary_review_transport_failed` is correct and must be preserved beneath whatever top-level outcome is chosen."
+    },
+    "classification": "MULTIPLE DEFECTS — incorrect top-level classification (should be `provider_failure`), incorrect reviewer-call consumption, and a false detail code (`boundary_review_not_json` for a response that never arrived, mislabelled `coverage` by `classifyFailure`).",
+    "scenarioUnjudgedFlag": "CORRECT — the scenario genuinely was not judged."
+  },
+
+  "retrySafety": {
+    "noGenerationOrScenarioMutation": "PROVEN — generationCallCount 0, scenario digest unchanged, artifact immutable",
+    "identicalSubjectAndRequestDigests": "PROVEN — subject rebuilt locally matches the artifact byte-for-byte",
+    "noProviderSuccessConsumed": "PROVEN — parsed null, no envelope, no usage",
+    "failureClassRetriable": "UNKNOWN — this is the blocking gap. Auth and quota are NOT usefully retriable; rate limit and 5xx are.",
+    "quotaOrBillingAmbiguity": "UNRESOLVED — cannot be excluded without the status",
+    "withinReviewerCallLimits": "A second call would be recorded as call 2 of 2 within the same subject IF executed in the same stage run; as a NEW execution it starts a fresh budget with a new run id and a new artifact filename.",
+    "credentialHandlingSafe": "YES — see credentialLifecycle",
+    "artifactImmutability": "PRESERVED — a new run writes a new filename; `writeReplayArtifact` refuses to overwrite",
+    "hiddenClientRetryCount": 0,
+    "hiddenClientRetryProof": "The client is a bare `fetch` wrapper with no retry loop, no backoff and no SDK retry policy. One application call == at most one HTTP request.",
+    "applicationLevelAttemptCount": 1,
+    "providerRequestCountIfKnowable": "1 at most — unknowable whether it reached the provider at all",
+    "replayIdempotency": "Relevant only for artifact naming; the review itself has no server-side idempotency key.",
+    "exactStopCondition": "Do not retry until the transport record carries the HTTP status or an explicit no-response indicator. Otherwise a second failure is as unclassifiable as the first.",
+    "recommendation": "NOT SAFE TO RETRY BLINDLY — not because the call is dangerous, but because it is uninformative. The R2.30 -> R2.31 arc already spent two calls re-measuring one invisible defect."
+  },
+
+  "timeoutAuthority": {
+    "configuredTimeoutMs": 120000,
+    "actualElapsedMs": 459,
+    "abortControllerOwnership": "NONE on the narrow path — `reviewBoundarySurfaces` calls `create({...})` with no options argument, so no signal is attached",
+    "nestedClientTimeout": "NONE — the fetch wrapper sets no timeout of its own",
+    "shellRunnerTimeout": "NONE",
+    "providerSdkTimeout": "N/A — no SDK is used",
+    "networkErrorWrapping": "fetch rejection propagates directly to the unbound catch",
+    "layersPresent": 1,
+    "layersThatFired": 0,
+    "explicitFinding": "NO TIMEOUT FIRED. `NARROW_BOUNDARY_SAMPLING.timeoutMs: 120000` is recorded in the contract and in the manifest but is never applied to the request. The broad reviewer DOES wire an AbortController + timer (arenaScenarioGenerationService.ts:747-748); the narrow reviewer does not. This did not cause the present failure, but a hung request on this path would run unbounded."
+  },
+
+  "credentialLifecycle": {
+    "requestedOnlyAfterPreflight": "PASS — `read -rs` sits after the full preflight and after the `--credential-boundary-check` early exit",
+    "readWithoutTerminalEcho": "PASS — `read -rs`",
+    "notWrittenToDiskOrArtifact": "PASS — 0 credential-pattern matches in the artifact",
+    "historySuppressed": "PASS — `unset HISTFILE`",
+    "environmentScope": "exported to the replay child process only",
+    "cleanupExecuted": "PASS — `cleanup() { unset LLM_API_KEY OPENAI_API_KEY || true; }` with `trap cleanup EXIT INT TERM`, which fires on normal exit, failure and interrupt",
+    "cleanupOnAllExceptionPaths": "PASS — the replay ran under `set +e`, so the trap fired on the normal shell exit path after the failure",
+    "credentialBearingChildRemained": "NO — the replay process completed and wrote its artifact before the shell exited",
+    "residualRisk": "The exported variable is visible in the child process environment for the duration of the call. That is inherent to the pattern and was not exercised beyond the intended child.",
+    "classification": "PASS"
+  },
+
+  "optionEvaluation": {
+    "option1_one_identical_manual_retry": {
+      "measuredCauseAddressed": "none — it assumes a transient failure that has not been demonstrated",
+      "evidence": "The request is transport-equivalent to one that succeeded twice 30 minutes earlier, which makes transience plausible. But plausible is not measured.",
+      "risk": "A second failure would produce a second artifact with the same single opaque string. That is exactly the R2.30 -> R2.31 pattern: two calls, one invisible defect, no new evidence.",
+      "codeChange": "none",
+      "providerCalls": 1,
+      "recommendation": "NOT RECOMMENDED AS THE NEXT ACTION — cheap, but uninformative on failure."
+    },
+    "option2_transport_evidence_and_classification_repair": {
+      "measuredCauseAddressed": "The information-loss point, the false `boundary_review_not_json` code, the `coverage` misclassification, the incorrect `boundary_reviewer_terminal_failure` top level, and the reviewer-call consumption.",
+      "evidence": "The catch clause discards a bound error that already carries the status; every diagnostic field is ABSENT from the artifact; `provider_failure` exists unused in the canonical enum.",
+      "risk": "LOW — additive evidence capture plus a classification correction. Sanitization rules must be preserved so no credential or account identity enters the record.",
+      "codeChange": "bind the error; record status / provider code / retriable / response-received / failure layer; classify transport as `provider_failure` at top level with the subcode preserved; stop counting it as a reviewer call.",
+      "providerCalls": 0,
+      "recommendation": "RECOMMENDED — it makes the NEXT call diagnostic whether it succeeds or fails."
+    },
+    "option3_request_or_schema_correction": {
+      "measuredCauseAddressed": "none",
+      "evidence": "AGAINST — the request is byte-equivalent in size to a twice-successful one, the schema is unchanged from that run, and it contains no construct outside the strict subset.",
+      "risk": "would change a contract that has no measured defect",
+      "providerCalls": 0,
+      "recommendation": "NOT RECOMMENDED."
+    },
+    "option4_timeout_correction": {
+      "measuredCauseAddressed": "A real defect — the narrow path's configured timeout cannot fire — but NOT the cause of this failure (459 ms elapsed).",
+      "evidence": "No AbortSignal on the narrow call; the broad reviewer wires one.",
+      "risk": "LOW",
+      "providerCalls": 0,
+      "recommendation": "WORTH FIXING, but as a companion inside Option 2 rather than as the headline action. It cannot explain a 459 ms failure."
+    },
+    "option5_credential_or_quota_operational_action": {
+      "measuredCauseAddressed": "would address A/B/C if either were established",
+      "evidence": "NONE either way — the status that would distinguish them was discarded. Credential handling itself passed.",
+      "risk": "acting on an unproven cause",
+      "providerCalls": 0,
+      "recommendation": "NOT RECOMMENDED YET — becomes the right action immediately if the repaired record shows 401 / 429 / insufficient_quota."
+    },
+    "option6_provider_or_model_routing_change": {
+      "measuredCauseAddressed": "none",
+      "evidence": "Request validity is proven, but NO repeated provider capability failure is measured — this is the first transport failure on this path.",
+      "risk": "changes the measured contract on one unexplained event",
+      "recommendation": "NOT AUTHORIZED."
+    }
+  },
+
+  "smallestNextAction": {
+    "choice": "B — IMPLEMENT TRANSPORT EVIDENCE / CLASSIFICATION AUTHORITY",
+    "slice": "3.2I-PRACTICE-R5B1A.1-R2.34",
+    "name": "BOUNDARY REVIEW TRANSPORT EVIDENCE AUTHORITY V1",
+    "why": "The provider-side cause cannot be named from this artifact, and a retry before repairing the record would produce a second artifact just as silent. Repairing the evidence first makes the next call diagnostic in BOTH directions.",
+    "scope": [
+      "Bind the error in the narrow reviewer's catch and record, sanitized: HTTP status, provider error type/code, retry-after, a retriable indicator, whether a response was received, whether the request reached the provider, and the local failure layer.",
+      "Stop recording `boundary_review_not_json` for a response that never arrived; give transport its own code.",
+      "Classify a transport failure as `provider_failure` at the top level, preserving `boundary_review_transport_failed` as the subcode.",
+      "Do not consume reviewer-call budget for a call the reviewer never saw.",
+      "Companion: wire the narrow path's AbortSignal so its configured 120 s timeout can actually fire, matching the broad reviewer.",
+      "Companion: align the replay artifact version constant with the runner binding (/1 vs /3)."
+    ],
+    "explicitlyExcluded": ["urgency safety-basis adequacy", "communication-axis heuristic", "c09 progression", "semantic precision corrections", "reviewer model change", "generator changes"],
+    "gate": "A test that drives a simulated non-2xx and a simulated network rejection through the adapter and asserts the status/code/layer survive into the artifact — plus assertions that a transport failure classifies as `provider_failure` and does not consume a reviewer call.",
+    "authorizationRequired": true
+  },
+
+  "unresolvedQuestions": [
+    "Whether the provider returned 401, 429, 5xx or an invalid-request error — or whether the request reached the provider at all. Unknowable from this artifact by construction.",
+    "Whether the failure is transient. The transport-equivalence to a twice-successful request 30 minutes earlier makes it plausible but does not establish it.",
+    "The two R2.30 open semantic questions (branch[0] world-state false positive, branch[1].action[1] instability) remain unmeasured, because no live verdict has been obtained since."
+  ],
+
+  "noMutationProof": {
+    "headBefore": "67ebf45636e6b64b947022fbdf8611a548ea8f99",
+    "headAfter": "67ebf45636e6b64b947022fbdf8611a548ea8f99",
+    "originInnerMainUnchanged": true,
+    "trackedTreeClean": true,
+    "liveArtifactByteIdentical": true,
+    "priorArtifactsByteIdentical": true,
+    "liveProviderCall": "NONE",
+    "generationCall": "NONE",
+    "databaseConnection": "NONE",
+    "deployment": "NONE",
+    "sourceOrTestChange": "NONE",
+    "commitOrPush": "NONE",
+    "newRunner": "NONE",
+    "analysisScriptsLocation": "scratchpad only, outside the repository"
+  }
+}

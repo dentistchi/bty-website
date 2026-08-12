@@ -38,6 +38,7 @@ const V2_ANSWERS = {
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the owner and deadline?",
+  recurringMoment: "During morning huddles",
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
   capabilityCandidate: "Accountability",
   realityGroundedJourneyV1: {
@@ -61,7 +62,7 @@ function server(answers: Record<string, unknown>) {
     if (url.includes("/api/bty/foundry/modules/")) {
       return jsonRes({
         draft: {
-          id: "v2", status: "draft", current_step: 8, answers,
+          id: "v2", status: "draft", current_step: 9, answers,
           module_version: 2, parent_module_id: "v1",
           document_asset_ref_present: false, created_at: "t", updated_at: "t",
         },

@@ -29,13 +29,14 @@ const ANSWERS = {
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?",
+  recurringMoment: "During morning huddles",
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
   capabilityCandidate: "Accountability",
 } as unknown as BuilderAnswers;
 
 /** The live pilot v2's canonical fingerprint, verbatim. `¦` is the field separator. */
 const CANONICAL =
-  "during morning huddles, team members report problems but leave without naming who will act or when the next step will happen.¦leaders¦¦accountability¦at the next huddle, what exact words will you use to confirm the owner, action, and deadline?¦the huddle note records one owner and one deadline for every agreed action.¦shared_standard+practice¦true¦7¦in your own words, what is the most important standard from this training?¦what specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?¦pdf";
+  "during morning huddles, team members report problems but leave without naming who will act or when the next step will happen.¦leaders¦¦accountability¦during morning huddles¦at the next huddle, what exact words will you use to confirm the owner, action, and deadline?¦the huddle note records one owner and one deadline for every agreed action.¦shared_standard+practice¦true¦7¦in your own words, what is the most important standard from this training?¦what specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?¦pdf";
 
 describe("[3.2P-W1-R1] the fingerprint is a string, and there is exactly one of it", () => {
   it("the pilot's canonical fingerprint is stable", () => {

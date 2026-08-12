@@ -1,0 +1,58 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.12 Gate D",
+  "note": "Sanitized technical evidence. No credentials, no application row content.",
+  "ledger": {
+    "preCount": 189,
+    "postCount": 191,
+    "preSnapshotSha256": "3fc7066c9446bada4a9f3ac8fe1d1492cdee01eafd9d7b06afba1874b90b6026",
+    "postSnapshotSha256": "0a219cb6f78e166722bef6e1c24bbae3e210040abef04467a2d4836cb1560c20",
+    "added": [
+      "20260802000000",
+      "20260803000000"
+    ],
+    "removed": []
+  },
+  "repairExitStatus": 0,
+  "practiceCatalog": {
+    "selectedPath": [
+      {
+        "type": "jsonb",
+        "nullable": "YES",
+        "default": null,
+        "identity": "NO",
+        "generated": "NEVER"
+      }
+    ],
+    "checkConstraint": [
+      "CHECK (((selected_path IS NULL) OR (jsonb_typeof(selected_path) = 'object'::text)))"
+    ],
+    "oneShellIndex": [
+      {
+        "def": "CREATE UNIQUE INDEX foundry_arena_scenario_drafts_one_shell_idx ON public.foundry_arena_scenario_drafts USING btree (owner_user_id, source_event_id) WHERE ((guided_answers ->> 'practiceSetupVersion'::text) IS NOT NULL)",
+        "unique": true,
+        "valid": true,
+        "ready": true,
+        "pred": "((guided_answers ->> 'practiceSetupVersion'::text) IS NOT NULL)",
+        "am": "btree",
+        "tbl": "foundry_arena_scenario_drafts"
+      }
+    ],
+    "duplicateGroups": 0,
+    "selectedPathNonNull": 0,
+    "rows": {
+      "foundry_arena_practice_runs": 9,
+      "foundry_arena_scenario_drafts": 7
+    }
+  },
+  "packet": {
+    "packetId": "a2725391048c6e049ed92e0ec3703de4c20c11a60ea565b71d9cb02a9be5294d",
+    "totals": "93 exact / 0 conflict / 0 missing / 0 evidenceAbsent / 0 manual"
+  },
+  "functionDigests": {
+    "bty_foundry_set_shared_review": "ea74856969177950a0c6e59fd1dc2fd766f4161b1289f360bc22d61980bc2af9",
+    "bty_foundry_submit_followup": "4826ad0d0359719b67433a131c5595c1402067259f2294bcfb6da9f08ef47b59"
+  },
+  "aclChanged": false,
+  "schemaMutationByRepair": "none",
+  "credentialCleanup": "see GATE 12 CLEANUP block"
+}

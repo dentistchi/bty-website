@@ -47,7 +47,18 @@ export const FOLLOW_UP_DAY_OPTIONS = [0, 7, 30] as const;
 export type FollowUpDays = (typeof FOLLOW_UP_DAY_OPTIONS)[number];
 
 export const BUILDER_STEP_MIN = 1;
-export const BUILDER_STEP_MAX = 8;
+/**
+ * NINE STEPS SINCE 3.2P-R3.6-R1. "When does this usually happen?" was inserted at position 3,
+ * so every later step moved once and Review became 9. See `LEGACY_STEP_GRAPH_MAX`.
+ */
+export const BUILDER_STEP_MAX = 9;
+/**
+ * The step count BEFORE the recurring-moment question existed. A `current_step` stored under
+ * that graph is a bookmark against a different sequence: 8 meant Review, and now means the
+ * follow-up screen. Kept as a named constant because the one-time reconciliation and its test
+ * both refer to it, and a bare `8` in either place would read as an arbitrary number.
+ */
+export const LEGACY_STEP_GRAPH_MAX = 8;
 
 // Field length bounds (generous — the builder is drafting, not publishing).
 export const PROBLEM_MAX = 2000;
@@ -55,6 +66,13 @@ export const BEHAVIOR_MAX = 2000;
 export const EVIDENCE_MAX = 2000;
 export const MATERIAL_TEXT_MAX = 2000;
 export const AUDIENCE_DETAIL_MAX = 120;
+/**
+ * "When does this usually happen?" — a phrase, not a paragraph (Slice 3.2P-R3.6-R1). Bounded
+ * between `AUDIENCE_DETAIL_MAX` (120) and the 2000-character prose fields, because the answers
+ * this expects are of the form "During morning huddles" / "Whenever a deadline changes", and a
+ * moment long enough to need 2000 characters is not one moment.
+ */
+export const RECURRING_MOMENT_MAX = 200;
 // The participant-facing completion question. Bounded to match the event content
 // validator (FOUNDRY_COMPLETION_PROMPT_MAX = 300) so a saved value always publishes.
 export const COMPLETION_PROMPT_MAX = 300;
@@ -73,6 +91,19 @@ export type BuilderAnswers = ModuleDraftAnswers & {
   problem?: string;
   audienceType?: AudienceType;
   audienceDetail?: string;
+  /**
+   * WHEN THE REAL SITUATION COMES ROUND AGAIN (Slice 3.2P-R3.6-R1).
+   *
+   * The Host's own words for the recurring workplace occasion — "During morning huddles". This
+   * is first-class Host authority, not a hint: the server builds the program's one moment from
+   * it, and the model no longer authors a trigger at all.
+   *
+   * NEVER inferred from `problem` prose and never AI-backfilled. W5 measured why: this pilot's
+   * draft says "During morning huddles" in `problem` and "At the next huddle" in
+   * `observableBehavior` — two different moments, one of them not a recurrence. A guess would
+   * have had to pick, and would then have been indistinguishable from something the Host said.
+   */
+  recurringMoment?: string;
   observableBehavior?: string;
   successEvidence?: string;
   evidenceType?: EvidenceObservation;
@@ -308,6 +339,11 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
       const audienceDetail = checkText(a.audienceDetail, AUDIENCE_DETAIL_MAX, "audience_detail_too_long", "audience_detail_invalid", errors);
       if (audienceDetail !== undefined) clean.audienceDetail = audienceDetail;
 
+      const recurringMoment = checkText(
+        a.recurringMoment, RECURRING_MOMENT_MAX, "recurring_moment_too_long", "recurring_moment_invalid", errors,
+      );
+      if (recurringMoment !== undefined) clean.recurringMoment = recurringMoment;
+
       const behavior = checkText(a.observableBehavior, BEHAVIOR_MAX, "behavior_too_long", "behavior_invalid", errors);
       if (behavior !== undefined) clean.observableBehavior = behavior;
 
@@ -462,18 +498,30 @@ export function stepBlocker(step: number, answers: BuilderAnswers | undefined): 
         return "audience_detail_required";
       }
       return null;
+    /*
+      THE MOMENT, BEFORE THE ACTION (Slice 3.2P-R3.6-R1). It sits here because step 4 already
+      assumed one — its own placeholder reads "…at every handoff before signing off" — so asking
+      when it happens first makes the next question easier rather than repeating it.
+
+      PRESENCE ONLY. Whether the phrase expresses a repeatable occasion is a separate question,
+      asked at the generation boundary (`programSourceBlocker`) and shown as inline guidance on
+      this step. A Host may always SAVE what they wrote; the Builder never requires them to
+      phrase a moment the way a parser prefers.
+    */
     case 3:
-      return meaningful(a.observableBehavior) ? null : "behavior_required";
+      return meaningful(a.recurringMoment) ? null : "recurring_moment_required";
     case 4:
-      return meaningful(a.successEvidence) ? null : "evidence_required";
+      return meaningful(a.observableBehavior) ? null : "behavior_required";
     case 5:
-      return normalizeLearningNeeds(a).length > 0 ? null : "learning_need_required";
+      return meaningful(a.successEvidence) ? null : "evidence_required";
     case 6:
-      return a.materialIntent ? null : "material_intent_required";
+      return normalizeLearningNeeds(a).length > 0 ? null : "learning_need_required";
     case 7:
+      return a.materialIntent ? null : "material_intent_required";
+    case 8:
       return (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1) ? null : "follow_up_required";
     default:
-      return null; // step 8 (review) and out-of-range never block.
+      return null; // step 9 (review) and out-of-range never block.
   }
 }
 

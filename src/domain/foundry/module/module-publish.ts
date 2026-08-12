@@ -22,7 +22,7 @@ import { stepBlocker, type BuilderAnswers } from "./module-builder";
 // ---------------------------------------------------------------------------
 
 /** The builder input steps whose completeness is required before approval. */
-const APPROVAL_STEPS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+const APPROVAL_STEPS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /**
  * Collect the blocking reasons that prevent approving/publishing this draft, using
@@ -62,6 +62,8 @@ export function isBuilderApprovable(answers: BuilderAnswers | undefined): boolea
 export type ReviewSectionKey =
   | "problem"
   | "audience"
+  /** "When it happens" — the Host's recurring moment (Slice 3.2P-R3.6-R1). */
+  | "recurringMoment"
   | "behavior"
   | "evidence"
   | "learning"
@@ -75,13 +77,21 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
   problem_required: { section: "problem", step: 1 },
   audience_required: { section: "audience", step: 2 },
   audience_detail_required: { section: "audience", step: 2 },
-  behavior_required: { section: "behavior", step: 3 },
-  evidence_required: { section: "evidence", step: 4 },
-  learning_need_required: { section: "learning", step: 5 },
-  material_intent_required: { section: "material", step: 6 },
-  material_youtube_url_required: { section: "material", step: 6 },
-  material_pdf_required: { section: "material", step: 6 },
-  follow_up_required: { section: "followUp", step: 7 },
+  /*
+    REGISTERED IN BOTH READINESS LAYERS (Slice 3.2P-R3.6-R1). Generation readiness
+    (`programSourceBlocker`) and approval readiness (`builderApprovalErrors`) each ask about the
+    recurring moment, and the Review screen renders from THIS map. Registering it in only one
+    would let Review report a draft as ready to draft while the server refused it, with nothing
+    on screen naming what was missing — the failure mode R3.6 measured and set out to avoid.
+  */
+  recurring_moment_required: { section: "recurringMoment", step: 3 },
+  behavior_required: { section: "behavior", step: 4 },
+  evidence_required: { section: "evidence", step: 5 },
+  learning_need_required: { section: "learning", step: 6 },
+  material_intent_required: { section: "material", step: 7 },
+  material_youtube_url_required: { section: "material", step: 7 },
+  material_pdf_required: { section: "material", step: 7 },
+  follow_up_required: { section: "followUp", step: 8 },
 };
 
 /** Every blocking code the readiness gates can emit — used to prove the map is total. */
@@ -89,6 +99,7 @@ export const ALL_BLOCKING_CODES: readonly string[] = [
   "problem_required",
   "audience_required",
   "audience_detail_required",
+  "recurring_moment_required",
   "behavior_required",
   "evidence_required",
   "learning_need_required",

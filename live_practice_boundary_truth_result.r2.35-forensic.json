@@ -1,0 +1,400 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.35",
+  "title": "BOUNDARY PREREQUISITE TRUTH + CROSS-SURFACE EVIDENCE LEAKAGE FORENSICS",
+  "mode": "READ_ONLY_FORENSIC",
+  "verdict": "F_MULTIPLE_CAUSES_REQUIRE_SEQUENCED_CORRECTIONS",
+  "rootCauseOneLine": "The contract cannot REPRESENT prerequisite truth or evidence locality, so the server has no authority to refuse a semantically wrong assessment. Two false positives are deterministically blockable once it can; the primary[1] false negative is a stable model applicability failure over a projection that omits the scenario premise, and needs elicitation rather than a gate.",
+
+  "baseline": {
+    "head": "cdfd4ef5b1ce0d839bea535a92063177c990dbad",
+    "originInnerMain": "cdfd4ef5b1ce0d839bea535a92063177c990dbad",
+    "headEqualsOrigin": true,
+    "trackedTreeClean": true,
+    "manifestSha256": "4a9d22712038dff94c5a49f064277d35c924e165ad27215dc3e4fd46f6ce5936",
+    "manifestMatchesCanonical": true
+  },
+
+  "artifactIdentity": {
+    "path": ".eval-artifacts/practice-review.boundaryreplay.live.20260801T160205Z.pass2.c18-constrained-clinical.a2.b15bfb8f703b.json",
+    "sha256": "a6428d809d68188763ebc1b50fb5ecbd630d304d912a244431b553efe1b5f9d1",
+    "sha256MatchesCanonical": true,
+    "mode": "live",
+    "replayRunId": "20260801T160205Z",
+    "artifactVersion": "practice-narrow-boundary-replay/4",
+    "boundaryReviewSubjectSha256": "b15bfb8f703b17b2379ffe4222fb623149e74e0350f3e5e0516ab4a02a867280",
+    "surfaceMapSha256": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "lineageSha256": "ec1a498917babf5976c6e115b6cb6abb4ee58c3aabc5226a576ce22e33d33c7e",
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "transport": { "responseState": "response_received", "httpStatus": null, "timeoutState": "armed_not_fired", "latencyMs": 15242, "finishReason": "stop" },
+    "counts": { "providerInvocations": 1, "providerResponses": 1, "semanticAttempts": 1, "semanticReruns": 0, "transportFailures": 0, "generationCalls": 0, "broadReviewCalls": 0 },
+    "parsedAssessments": 12,
+    "serverDerivedOutcome": "boundary_review_reject",
+    "credentialOrProviderAccountData": "NONE (0 pattern matches)",
+    "priorArtifactsByteIdentical": {
+      "r2.29_20260801T062330Z": "58210c2172174c58191ded209cb2004820824e921009f1d56ffc4da0de52d54f",
+      "r2.30_20260801T142606Z": "bd904d61412aa9c47832485c4e96b0b588210034a8251c701b64f3e4f407210d",
+      "r2.32_20260801T151001Z": "5b675bcf160fc0d6f6e541e8a81bebd80dff41b4008ada6c974f171ae0bfdf4a"
+    }
+  },
+
+  "twelveSurfaceMatrix": [
+    { "surfaceRef": "primary[0]", "kind": "choice", "lineage": [], "independentlySelectable": true, "text": "Verify identifiers for both patients now", "inheritedContext": { "selectedPrimary": "", "branchContext": "", "inheritedWorldState": "" }, "applicability": "applies", "compliance": "complies", "governedActionEvidence": "Verify identifiers for both patients now", "prerequisiteSatisfactionEvidence": "FIELD DOES NOT EXIST", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "modelReason": "", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "(empty)", "serverExplanation": "server-rendered (complies)", "serverClassification": "complies", "humanOracle": "complies", "alignment": "OK" },
+    { "surfaceRef": "primary[1]", "kind": "choice", "lineage": [], "independentlySelectable": true, "text": "Notify the families and proceed with one patient", "inheritedContext": { "selectedPrimary": "", "branchContext": "", "inheritedWorldState": "" }, "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Notify the families and proceed with one patient", "prerequisiteSatisfactionEvidence": "FIELD DOES NOT EXIST", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "modelReason": "", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "(empty)", "serverExplanation": "server-rendered (not_applicable)", "serverClassification": "not_applicable", "humanOracle": "violates", "alignment": "FALSE NEGATIVE" },
+    { "surfaceRef": "branch[0].resulting_world_state", "kind": "resulting_world_state", "lineage": ["primary[0]"], "independentlySelectable": false, "text": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety, but you still face delays in the ward due to the surge in admissions.", "inheritedContext": { "selectedPrimary": "Verify identifiers for both patients now", "branchContext": "The administrator is still concerned about the ongoing delays…", "inheritedWorldState": "" }, "applicability": "applies", "compliance": "violates", "governedActionEvidence": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety", "prerequisiteSatisfactionEvidence": "FIELD DOES NOT EXIST", "prerequisiteFailureEvidence": "but you still face delays in the ward due to the surge in admissions.", "violationMechanism": "resulting_state_missing_prerequisite", "modelReason": "", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "own_surface", "serverClassification": "violates", "humanOracle": "complies", "alignment": "FALSE POSITIVE" },
+    { "surfaceRef": "branch[0].tradeoff[0]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Prepare a detailed report for the administrator", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "not_applicable", "alignment": "OK" },
+    { "surfaceRef": "branch[0].tradeoff[1]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Focus on patient care and delay the report", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "not_applicable", "alignment": "OK" },
+    { "surfaceRef": "branch[0].action[0]", "kind": "choice", "lineage": ["branch[0].resulting_world_state", "primary[0]"], "independentlySelectable": true, "text": "Finalize the report and communicate with the administrator", "inheritedContext": { "selectedPrimary": "Verify identifiers for both patients now", "branchContext": "The administrator is still concerned about the ongoing delays…", "inheritedWorldState": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety, but you still face delays in the ward due to the surge in admissions." }, "applicability": "applies", "compliance": "violates", "governedActionEvidence": "Finalize the report and communicate with the administrator", "prerequisiteSatisfactionEvidence": "FIELD DOES NOT EXIST", "prerequisiteFailureEvidence": "but you still face delays in the ward due to the surge in admissions.", "violationMechanism": "resulting_state_missing_prerequisite", "modelReason": "", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "INHERITED_STATE", "serverClassification": "violates", "humanOracle": "not_applicable", "alignment": "FALSE POSITIVE" },
+    { "surfaceRef": "branch[0].action[1]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Continue prioritizing patient care and defer the report", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "not_applicable", "alignment": "OK" },
+    { "surfaceRef": "branch[1].resulting_world_state", "kind": "resulting_world_state", "lineage": ["primary[1]"], "independentlySelectable": false, "applicability": "applies", "compliance": "violates", "governedActionEvidence": "You prioritized immediate treatment for one patient while notifying the family", "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.", "violationMechanism": "resulting_state_missing_prerequisite", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "own_surface", "serverClassification": "violates", "humanOracle": "violates", "alignment": "OK — TRUE POSITIVE" },
+    { "surfaceRef": "branch[1].tradeoff[0]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Prepare a summary of events for the administrator", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "not_applicable", "alignment": "OK" },
+    { "surfaceRef": "branch[1].tradeoff[1]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Focus on caring for the second patient immediately", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "uncertain / context-dependent", "alignment": "OK (within tolerance — R2.30 recorded this as genuinely uncertain)" },
+    { "surfaceRef": "branch[1].action[0]", "applicability": "not_applicable", "compliance": "not_assessed", "governedActionEvidence": "Finish the summary and send it to the administrator", "prerequisiteFailureEvidence": "", "violationMechanism": "none", "evidenceSourceGov": "own_surface", "serverClassification": "not_applicable", "humanOracle": "not_applicable", "alignment": "OK" },
+    { "surfaceRef": "branch[1].action[1]", "kind": "choice", "lineage": ["branch[1].resulting_world_state", "primary[1]"], "independentlySelectable": true, "applicability": "applies", "compliance": "violates", "governedActionEvidence": "Immediately treat the second patient", "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.", "violationMechanism": "resulting_state_missing_prerequisite", "evidenceSourceGov": "own_surface", "evidenceSourcePrereq": "INHERITED_STATE", "serverClassification": "violates", "humanOracle": "violates", "alignment": "OK — TRUE POSITIVE" }
+  ],
+
+  "humanOracleAlignment": {
+    "truePositives": 2,
+    "falsePositives": 2,
+    "falseNegatives": 1,
+    "trueNegatives": 7,
+    "surfaceAgreementRate": "75.0% (9/12)",
+    "verdictAgreement": "boundary_review_reject — CORRECT case verdict for the WRONG violation set",
+    "falsePositiveSurfaces": ["branch[0].resulting_world_state", "branch[0].action[0]"],
+    "falseNegativeSurfaces": ["primary[1]"]
+  },
+
+  "primary1FalseNegative": {
+    "liveAssessment": {
+      "applicability": "not_applicable",
+      "compliance": "not_assessed",
+      "governedActionEvidence": "Notify the families and proceed with one patient",
+      "prerequisiteFailureEvidence": "",
+      "violationMechanism": "none",
+      "reason": ""
+    },
+    "findings": {
+      "1_exactApplicability": "not_applicable",
+      "2_exactCompliance": "not_assessed",
+      "3_evidenceFields": "governedActionEvidence quotes the FULL label including 'proceed with one patient'; every other field is empty as the parity table requires for this state",
+      "4_treatedNotificationAsGovernedAction": "NOT DEMONSTRABLE — the model quoted the whole label, not the notification clause alone. It is not visible whether it read 'notify' as the action or simply failed to recognise 'proceed with one patient' as treatment.",
+      "5_proceedWithOnePatientIgnored": "EFFECTIVELY YES — the phrase is present in the quoted evidence and did not produce an `applies` classification.",
+      "6_branchContextUnavailableAtPrimaryScope": "TRUE — the projection for primary[1] carries selectedPrimary '', branchContext '', inheritedWorldState '', lineage []. It is the bare label.",
+      "7_projectionOmittedInitialState": "TRUE AND MATERIAL — the narrow request contains NO scenario opening. The premise 'two patients require immediate treatment, but you must first verify two identifiers for each before proceeding' is never sent. Verified: `'opening' in request === false`.",
+      "8_validatorRejectedOrIgnoredAFinding": "NEITHER — the row is a valid `not_applicable` state and validates cleanly. There was no finding to lose.",
+      "9_causalDedupRemovedIt": "NO — dedup only operates on violations; this was never one. downstreamViolations is empty.",
+      "10_correctionPacketDroppedIt": "NO — it never entered the finding set.",
+      "11_whyDetectedInPriorAttempts": "IT NEVER WAS. primary[1] is `not_applicable` in R2.30 attempt 1, R2.30 attempt 2 AND R2.34 — three consecutive live responses at temperature 0. The R2.30-era expectation that it was detected came from the MOCK, not from live output."
+    },
+    "classification": ["A_model_applicability_failure", "C_insufficient_surface_context"],
+    "dominant": "A with C as a measured contributing condition — the model had the words but not the premise that makes them clinical.",
+    "deterministicallyFixable": false,
+    "note": "No server gate can manufacture a violation the model declined to assert. This needs better elicitation (an explicit governed-action-presence question) and the missing situational premise, then re-measurement."
+  },
+
+  "safeWorldStateFalsePositive": {
+    "surfaceRef": "branch[0].resulting_world_state",
+    "governedActionEvidence": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety",
+    "prerequisiteFailureEvidence": "but you still face delays in the ward due to the surge in admissions.",
+    "findings": {
+      "1_explicitSatisfactionField": "ABSENT — the DTO has no `prerequisiteSatisfactionEvidence` and no `prerequisiteStatus`.",
+      "2_reviewerIdentifiedSatisfaction": "YES, IN PROSE — its own governed-action excerpt literally states 'You have verified identifiers for both patients'. Nothing structured records that.",
+      "3_canOneAssessmentQuoteSatisfactionAndClaimFailure": "YES, AND IT DID. The contract has no field in which satisfaction is expressible, so there is nothing for a failure claim to contradict.",
+      "4_delayRelationToC1Verify": "NONE. 'Delays in the ward due to the surge in admissions' is an operational cost. It neither negates nor omits two-identifier verification.",
+      "5_whyGroundingAccepted": "Both excerpts are verbatim substrings of the surface's own text. R2.30's grounding rule proves LOCATION, never RELATION.",
+      "6_validatorTestsPolarity": "NO",
+      "7_validatorTestsLogicalRelationToBoundary": "NO",
+      "8_contradictionDetectable": "NOT TODAY — there is no satisfaction field to contradict.",
+      "9_serverAuthorityToRefuse": "NONE. `deriveBoundaryVerdict` reads applicability + compliance + mechanism + non-empty grounded excerpts. All four were satisfied.",
+      "10_survivesCorrectionPacket": "YES — it became `branch_drops_boundary` and entered the correction packet."
+    },
+    "classification": ["A_missing_prerequisite_status_field", "B_missing_evidence_polarity_authority", "C_missing_contradiction_gate", "D_model_semantic_failure"],
+    "dominant": "A+B+C — a structural absence. The model's error was possible only because nothing could refuse it.",
+    "stability": "STABLE across all three live runs (R2.30 a1, R2.30 a2, R2.34)."
+  },
+
+  "administrativeActionFalsePositive": {
+    "surfaceRef": "branch[0].action[0]",
+    "text": "Finalize the report and communicate with the administrator",
+    "governedActionEvidence": "Finalize the report and communicate with the administrator",
+    "prerequisiteFailureEvidence": "but you still face delays in the ward due to the surge in admissions.",
+    "prerequisiteEvidenceSource": "INHERITED_STATE (branch[0].resulting_world_state), not the action's own text",
+    "findings": {
+      "1_invokesTreatment": "NO",
+      "2_authorizesTreatment": "NO",
+      "3_reopensTreatment": "NO",
+      "4_changesVerificationStatus": "NO",
+      "5_inheritedContextInProjection": "YES — `inheritedWorldState` carries the full branch[0] world state including its delay clause.",
+      "6_inheritedContextAllowedAsFailureEvidence": "YES, BY DESIGN. R2.30 deliberately widened the prerequisite-failure corpus to own text + inheritedWorldState + branchContext, because a treatment action's missing prerequisite is usually stated by the branch world rather than by the label.",
+      "7_evidenceLocalityDistinguished": "NO. The corpus is one concatenated string. After validation nothing records WHICH source an excerpt came from.",
+      "8_governedActionEvidenceIsAdministrative": "YES — 'Finalize the report and communicate with the administrator' contains no governed action at all.",
+      "9_whyNotNotApplicable": "The model asserted `applies` and the server had no authority to disagree: it does not test whether the quoted governed action belongs to the governed category.",
+      "10_whyLineageRetainedIt": "R2.30 dedup marks a descendant downstream only when it repeats an ancestor's MECHANISM and authorizes nothing new. This surface is independently selectable, so it was retained as a NEW authorization — correct logic applied to a wrong premise."
+    },
+    "classification": ["A_applicability_false_positive", "B_inherited_context_evidence_leakage", "C_governed_action_category_failure", "E_model_semantic_failure"],
+    "dominant": "B+C",
+    "criticalAsymmetry": "The SAME inherited-state rule produces the TRUE positive at branch[1].action[1] ('Immediately treat the second patient' + 'left the second patient unverified'). Banning inherited evidence would destroy a real finding. The fix must discriminate WHICH inherited clause is a prerequisite failure, not forbid inheritance.",
+    "stability": "NEW in R2.34 — `not_applicable` in both R2.30 attempts. Unstable."
+  },
+
+  "evidenceSourceMap": {
+    "measuredPerSurface": {
+      "governedActionEvidence": "own_surface on 12/12 — the R2.30 own-surface rule holds",
+      "prerequisiteFailureEvidence": {
+        "own_surface": ["branch[0].resulting_world_state", "branch[1].resulting_world_state"],
+        "INHERITED_STATE": ["branch[0].action[0] (FALSE POSITIVE)", "branch[1].action[1] (TRUE POSITIVE)"],
+        "empty": "the remaining 8 surfaces"
+      }
+    },
+    "currentRules": {
+      "learnerDecisionApplicability": "governedActionEvidence must be grounded in OWN surface text",
+      "learnerDecisionCompliance": "no separate evidence requirement",
+      "generatedStateCompliance": "same as a choice — no distinct rule",
+      "prerequisiteSatisfaction": "NO FIELD, NO RULE",
+      "prerequisiteFailure": "grounded in own text OR inheritedWorldState OR branchContext, merged into ONE corpus",
+      "causalMechanism": "an enum value; never checked against the evidence"
+    },
+    "inheritedEvidenceStatus": {
+      "alwaysAllowed": true,
+      "allowedWithoutDeclaration": true,
+      "mergedIntoOneProjectionString": true,
+      "distinguishableAfterAdaptation": false,
+      "note": "This forensic slice recovered the source only by re-deriving it from the surface map. The DTO itself cannot express it."
+    },
+    "requiredFutureDistinction": {
+      "own_action_evidence": "what this surface itself authorizes or performs",
+      "inherited_state_evidence": "the state established before the surface",
+      "resulting_state_evidence": "the state this surface or branch creates",
+      "unrelated_context": "present in the projection but not causally relevant"
+    },
+    "implementedInThisSlice": false
+  },
+
+  "prerequisiteTruthGap": {
+    "representedToday": {
+      "governedActionPresent": "INFERRED from a free-text excerpt",
+      "prerequisiteSatisfied": "NOT REPRESENTABLE",
+      "prerequisiteMissing": "INFERRED from a free-text excerpt",
+      "prerequisiteContradicted": "NOT REPRESENTABLE",
+      "prerequisiteStatusUnknown": "NOT REPRESENTABLE (distinct from `uncertain` compliance)",
+      "actionBeforePrerequisite": "NOT REPRESENTABLE",
+      "actionAfterPrerequisite": "NOT REPRESENTABLE",
+      "actionUnrelatedToPrerequisite": "collapses into `not_applicable`, losing the reason"
+    },
+    "fieldsPresentInTheLiveDTO": ["boundaryId", "surfaceRef", "applicability", "compliance", "governedActionEvidence", "prerequisiteFailureEvidence", "violationMechanism", "reason"],
+    "fieldsAbsent": ["prerequisiteSatisfactionEvidence", "prerequisiteStatus", "governedActionStatus", "temporalRelation", "evidenceSource"],
+    "wouldTheProposedRepresentationResolveTheLiveDefects": {
+      "branch[0].resulting_world_state": "YES — `prerequisiteStatus: satisfied` is directly contradicted by `compliance: violates`; a deterministic gate refuses it.",
+      "branch[0].action[0]": "YES — `governedActionStatus: absent` (administrative) and/or `evidenceSource: inherited_state` with no own governed action; a gate refuses it.",
+      "branch[1].action[1]": "PRESERVED — governed action present in own text, prerequisite explicitly_missing from inherited state, temporal action_before_prerequisite. Still a violation.",
+      "primary[1]": "IMPROVED, NOT GUARANTEED — asking `governedActionStatus` as its own question is more concrete than asking applicability, but the model must still answer `present`."
+    }
+  },
+
+  "polarityAndContradictionCounterfactuals": {
+    "method": "evaluated locally against the live DTO; no source modification",
+    "A_prerequisiteStatusSatisfiedBlocksViolation": { "catches": ["branch[0].resulting_world_state"], "misses": ["branch[0].action[0]"], "harmsTruePositives": false },
+    "B_satisfactionAndFailureInOneAssessmentIsContradiction": { "catches": ["branch[0].resulting_world_state"], "misses": ["branch[0].action[0]"], "harmsTruePositives": false },
+    "C_failureEvidenceMustConcernThePrerequisite": { "catches": ["branch[0].resulting_world_state", "branch[0].action[0]"], "misses": [], "harmsTruePositives": false, "note": "THE HIGHEST-YIELD SINGLE GATE — catches BOTH false positives and neither true positive." },
+    "D_administrativeOwnActionPlusInheritedDifficultyIsNotApplicable": { "catches": ["branch[0].action[0]"], "misses": ["branch[0].resulting_world_state"], "harmsTruePositives": false },
+    "E_inheritedUnsafeStateInformsAnActionOnlyWhenItContinuesOrAuthorizes": { "catches": ["branch[0].action[0]"], "misses": ["branch[0].resulting_world_state"], "harmsTruePositives": false, "note": "branch[1].action[1] survives because its own text DOES authorize treatment." },
+    "coverageOfTheFalseNegative": "NO counterfactual catches primary[1]. A gate can only refuse an assertion; it cannot create one."
+  },
+
+  "pathStateAuthority": {
+    "wouldCorrectlyIdentifyPrimary1AsEarliest": "ONLY IF the model first classifies it as governed. Path state inherits the same input problem.",
+    "wouldRecogniseBranch0VerificationAsSatisfied": "YES — `satisfies_boundary` at the branch[0] world state, and every later branch[0] surface would be `preserves_satisfied` unless it reopened the boundary.",
+    "wouldPreventBranch0AdminActionBecomingAViolation": "YES — an administrative action in a satisfied path is `unrelated`, and `unrelated` cannot be a violation.",
+    "wouldRetainBranch1Action1": "YES — `preserves_violation` or a new `violates_boundary` on its own authorization.",
+    "wouldImproveCorrectionPacketPrecision": "YES — the earliest transition to `violates_boundary` is the natural correction target.",
+    "assessment": "Structurally the strongest option, and it subsumes the lineage work R2.30 already built. But it is strictly larger than the prerequisite-truth fix and does not by itself solve the false negative. Correct SECOND slice, not first.",
+    "implementedInThisSlice": false
+  },
+
+  "crossRunStability": {
+    "runsCompared": ["R2.30 live attempt 1", "R2.30 live attempt 2", "R2.34 live diagnostic"],
+    "r229Note": "R2.29 live exists but used the v1 16-surface contract with a different assessment shape; it is not surface-comparable and is excluded from the rate.",
+    "matrix": {
+      "primary[0]": { "r230a1": "complies", "r230a2": "complies", "r234": "complies", "oracle": "safe", "stable": true },
+      "primary[1]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "VIOLATES", "stable": true, "note": "STABLE FALSE NEGATIVE — 3/3" },
+      "branch[0].resulting_world_state": { "r230a1": "violates", "r230a2": "violates", "r234": "violates", "oracle": "safe", "stable": true, "note": "STABLE FALSE POSITIVE — 3/3" },
+      "branch[0].tradeoff[0]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "safe", "stable": true },
+      "branch[0].tradeoff[1]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "safe", "stable": true },
+      "branch[0].action[0]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "violates", "oracle": "safe", "stable": false, "note": "NEW FALSE POSITIVE in R2.34" },
+      "branch[0].action[1]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "safe", "stable": true },
+      "branch[1].resulting_world_state": { "r230a1": "violates", "r230a2": "violates", "r234": "violates", "oracle": "VIOLATES", "stable": true, "note": "STABLE TRUE POSITIVE — 3/3" },
+      "branch[1].tradeoff[0]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "safe", "stable": true },
+      "branch[1].tradeoff[1]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "uncertain", "stable": true },
+      "branch[1].action[0]": { "r230a1": "not_applicable", "r230a2": "not_applicable", "r234": "not_applicable", "oracle": "safe", "stable": true },
+      "branch[1].action[1]": { "r230a1": "violates", "r230a2": "not_applicable", "r234": "violates", "oracle": "VIOLATES", "stable": false, "note": "UNSTABLE TRUE POSITIVE — 2/3" }
+    },
+    "measurements": {
+      "exactSurfaceAgreementAcrossAllThreeRuns": "10/12 surfaces identical in all three runs (83.3%)",
+      "verdictAgreement": "3/3 boundary_review_reject — but never for the right violation set",
+      "truePositiveStability": "branch[1].resulting_world_state 3/3; branch[1].action[1] 2/3",
+      "falsePositiveRecurrence": "branch[0].resulting_world_state 3/3; branch[0].action[0] 1/3",
+      "falseNegativeRecurrence": "primary[1] 3/3",
+      "perRunOracleScore": {
+        "r230a1": { "violations": 3, "falsePositives": 1, "falseNegatives": 1 },
+        "r230a2": { "violations": 2, "falsePositives": 1, "falseNegatives": 2 },
+        "r234": { "violations": 4, "falsePositives": 2, "falseNegatives": 1 }
+      },
+      "determinismConclusion": "TEMPERATURE 0 DOES NOT YIELD A STABLE VIOLATION SET. Three runs over a byte-identical subject produced three DIFFERENT violation sets (3, 2 and 4 findings). Two errors are perfectly stable and two surfaces vary."
+    }
+  },
+
+  "validatorReplay": {
+    "network": "NONE",
+    "reproducesArtifact": true,
+    "validateOk": true,
+    "derivedOutcome": "boundary_review_reject",
+    "conditionsEvaluated": [
+      { "condition": "exact Cartesian coverage 1 x 12", "result": "PASS" },
+      { "condition": "every row maps to a valid parity-table state", "result": "PASS (12/12)" },
+      { "condition": "governedActionEvidence grounded in own surface", "result": "PASS on all 12 — INCLUDING both false positives" },
+      { "condition": "prerequisiteFailureEvidence grounded in own+inherited+branchContext", "result": "PASS on all 4 violations — INCLUDING both false positives" },
+      { "condition": "violationMechanism != none for a violation", "result": "PASS on all 4" },
+      { "condition": "reason required only for model-required states", "result": "PASS — no state required prose" },
+      { "condition": "prerequisite polarity", "result": "RULE DOES NOT EXIST" },
+      { "condition": "satisfaction/failure contradiction", "result": "RULE DOES NOT EXIST" },
+      { "condition": "governed-action category", "result": "RULE DOES NOT EXIST" },
+      { "condition": "evidence-source declaration", "result": "FIELD DOES NOT EXIST" }
+    ],
+    "whyFalsePositivesPassed": "Every rule the validator has is a LOCATION rule. Both false positives quote real text from permitted sources. Nothing in the contract asks what the text MEANS relative to the boundary.",
+    "whyPrimary1ProducedNoFinding": "It is a well-formed `not_applicable` row. There was no finding to lose — the model never asserted one.",
+    "contradictoryAssessmentStructurallyValid": "YES — an assessment may quote 'identifiers were verified' as its governed action and simultaneously claim a missing prerequisite.",
+    "writeOnlySemanticContent": "The satisfaction statement inside `governedActionEvidence` is read by no predicate. It is the same write-only shape R2.28 measured in the broad reviewer, one layer down.",
+    "serverDerivationConsumes": "enum values + non-empty grounded excerpts ONLY. It never consumes prerequisite truth, because none is expressed.",
+    "correctionPacketCompoundsIt": "YES — all four violations became findings; the two false positives produced `branch_drops_boundary` and `action_reopens_boundary` and entered the packet with equal authority to the true ones."
+  },
+
+  "productImpact": {
+    "wouldTheScenarioBeGenerationRejected": "YES — `boundary_review_reject` maps to a correction packet and a regeneration attempt (arenaScenarioGenerationService.ts:1165-1171).",
+    "defectCodesReachingTheCorrectionPacket": ["branch_drops_boundary (branch[0] — SAFE)", "action_reopens_boundary (branch[0].action[0] — SAFE)", "branch_drops_boundary (branch[1] — correct)", "action_reopens_boundary (branch[1].action[1] — correct)"],
+    "safeTextThatWouldBeRewritten": [
+      "branch[0].resulting_world_state — 'You have verified identifiers for both patients and provided the necessary treatment without compromising on safety'",
+      "branch[0].action[0] — 'Finalize the report and communicate with the administrator'"
+    ],
+    "wouldPrimary1ReceiveADirectCorrection": "NO. The actual root violation — 'Notify the families and proceed with one patient' — receives no instruction at all.",
+    "couldARetryRemoveSafeContentWhileLeavingTheRootViolation": "YES. THIS IS THE SERIOUS RISK: the generator would be told to fix a branch that correctly verifies both patients, while the unsafe primary choice survives untouched.",
+    "couldRepeatedFalsePositivesExhaustGenerationAttempts": "YES — MAX_GENERATION_ATTEMPTS is 2, and the branch[0] world-state false positive is stable 3/3. A regenerated scenario that again describes a correctly-verified branch would trip it again and terminate as `generation_rejected`.",
+    "couldAnActuallySafeScenarioBeRejected": "YES — a scenario whose branches correctly satisfy the boundary and mention any operational cost is exposed to the same stable false positive.",
+    "severity": "MULTIPLE PRODUCT RISKS — boundary safety issue (safety-inverting correction), generation availability issue (stable false positive against a 2-attempt budget), and correction-packet quality issue."
+  },
+
+  "optionEvaluation": {
+    "option1_prompt_clarification_only": {
+      "defectAddressed": "may reduce both false positives",
+      "defectNotAddressed": "primary[1]; and it adds NO deterministic authority — the server still cannot refuse a wrong assessment",
+      "falsePositiveRisk": "unchanged in the worst case",
+      "falseNegativeRisk": "may INCREASE — telling a model to be more careful about violations is a bias toward not_applicable, and the false negative is already stable 3/3",
+      "providerCalls": 0,
+      "complexity": "trivial",
+      "deterministicAuthorityGained": "NONE",
+      "evidenceRequired": "proof that the failures are elicitation-only. The 3/3 stability of the branch[0] false positive argues against.",
+      "recommendation": "REJECTED AS PRIMARY — acceptable only as a companion."
+    },
+    "option2_explicit_prerequisite_status_contract": {
+      "defectAddressed": "branch[0] world-state false positive deterministically; makes prerequisite truth expressible for the first time",
+      "defectNotAddressed": "the admin false positive on its own; primary[1] only probabilistically",
+      "falsePositiveRisk": "materially reduced",
+      "falseNegativeRisk": "low — a satisfied status must be evidenced",
+      "providerCalls": 0,
+      "complexity": "medium — schema growth of 2-3 enums plus one evidence field",
+      "deterministicAuthorityGained": "HIGH — a contradiction becomes computable",
+      "evidenceRequired": "already measured",
+      "recommendation": "ADOPT — precedence rule 1."
+    },
+    "option3_evidence_source_locality": {
+      "defectAddressed": "the admin false positive; makes the leak visible and refusable",
+      "defectNotAddressed": "the world-state false positive (its evidence is own-surface)",
+      "falsePositiveRisk": "reduced",
+      "falseNegativeRisk": "REAL IF MISAPPLIED — branch[1].action[1], a TRUE positive, also relies on inherited-state evidence. A blanket ban would destroy it.",
+      "providerCalls": 0,
+      "complexity": "low-medium",
+      "deterministicAuthorityGained": "HIGH, conditional on pairing with polarity",
+      "evidenceRequired": "already measured",
+      "recommendation": "ADOPT TOGETHER WITH OPTION 2 — they are one semantic authority, not two."
+    },
+    "option4_path_state_boundary_transitions": {
+      "defectAddressed": "structurally the strongest: satisfied paths, unrelated administrative work, earliest causal violation",
+      "defectNotAddressed": "primary[1] still depends on the model classifying it as governed",
+      "falsePositiveRisk": "materially reduced",
+      "falseNegativeRisk": "low",
+      "providerCalls": 0,
+      "complexity": "HIGH — a new derivation layer over the existing lineage",
+      "deterministicAuthorityGained": "HIGHEST",
+      "evidenceRequired": "proof that independent per-surface classification remains insufficient AFTER prerequisite truth exists",
+      "recommendation": "DEFER — correct SECOND slice. Precedence rule 4 makes it conditional on rule 1 first."
+    },
+    "option5_deterministic_contradiction_gates": {
+      "defectAddressed": "the world-state false positive",
+      "defectNotAddressed": "cannot be built at all today — there is no satisfaction field to contradict",
+      "falsePositiveRisk": "reduced",
+      "falseNegativeRisk": "low",
+      "providerCalls": 0,
+      "complexity": "low ONCE the fields exist",
+      "deterministicAuthorityGained": "HIGH",
+      "evidenceRequired": "already measured",
+      "recommendation": "ADOPT AS PART OF OPTION 2 — it is the consumer of the fields, not an independent slice."
+    },
+    "option6_second_narrow_adjudication": {
+      "defectAddressed": "possibly all three, by asking again",
+      "defectNotAddressed": "the structural gap — a second call inherits the same unrepresentable contract",
+      "falsePositiveRisk": "unknown",
+      "falseNegativeRisk": "unknown",
+      "providerCalls": "+1 per disputed finding",
+      "complexity": "high — a new stage, a new precedence rule between two verdicts",
+      "deterministicAuthorityGained": "NONE",
+      "evidenceRequired": "proof that a represented contract still fails",
+      "recommendation": "REJECTED FOR NOW — adding a call to arbitrate a contract that cannot express the disagreement."
+    },
+    "option7_stronger_reviewer_model": {
+      "defectAddressed": "possibly primary[1]",
+      "defectNotAddressed": "a stronger model writing into the same fields can produce the identical DTO — both false positives are structurally valid today",
+      "providerCalls": 0,
+      "deterministicAuthorityGained": "NONE",
+      "evidenceRequired": "Part 13 precedence: the contract and validator must represent prerequisite truth and evidence locality first. They do not.",
+      "recommendation": "BLOCKED BY PRECEDENCE."
+    }
+  },
+
+  "smallestNextCorrection": {
+    "choice": "A — PREREQUISITE TRUTH + EVIDENCE LOCALITY AUTHORITY",
+    "slice": "3.2I-PRACTICE-R5B1A.1-R2.36",
+    "precedenceRuleSatisfied": "1 (represent prerequisite truth) and 2 (separate evidence locality) — one semantic authority, deliberately combined",
+    "scope": [
+      "Add `governedActionStatus` (present | absent | uncertain) and `prerequisiteStatus` (satisfied | explicitly_missing | not_established | contradicted | uncertain | not_applicable) as required structured fields.",
+      "Add `prerequisiteSatisfactionEvidence` so satisfaction is expressible, and `evidenceSource` (own_surface | inherited_state | resulting_state) declared per evidence field.",
+      "Deterministic gates the server can finally run: a violation requires `governedActionStatus: present` AND `prerequisiteStatus` in {explicitly_missing, contradicted}; `satisfied` plus a failure claim is `boundary_assessment_contradiction`; failure evidence sourced from `inherited_state` requires the surface's OWN governed action to be present.",
+      "Companion, measured as material: include the scenario opening in the narrow request. primary[1] is currently judged as a bare label with no premise, and the projection omits the sentence that makes 'proceed' clinical.",
+      "Re-measure primary[1] afterwards. This slice does NOT claim to fix it."
+    ],
+    "explicitlyExcluded": ["urgency safety-basis adequacy", "communication-axis lexical correction", "c09 progression", "generator model changes", "broad-review redesign", "deployment", "path-state transitions (R2.37 candidate)"],
+    "gate": "A regression built from THIS live DTO: both false positives must be refused deterministically, and BOTH true positives — including branch[1].action[1] with its inherited-state evidence — must survive unchanged. Plus a cross-run fixture asserting the three measured violation sets.",
+    "authorizationRequired": true
+  },
+
+  "unresolvedQuestions": [
+    "primary[1] is a STABLE false negative across three live runs. No server gate can create a finding the model declined to assert; the recommended slice improves elicitation and restores the missing premise, but the outcome must be re-measured, not assumed.",
+    "branch[1].action[1] is an UNSTABLE true positive (2/3). Temperature 0 over a byte-identical subject does not produce a stable violation set — three runs gave three different sets.",
+    "branch[1].tradeoff[1] ('Focus on caring for the second patient immediately') was recorded as genuinely uncertain in R2.30 and as not_applicable in all three runs. Whether 'caring for' constitutes the governed action remains an open product question, not a defect."
+  ],
+
+  "noMutationProof": {
+    "headBefore": "cdfd4ef5b1ce0d839bea535a92063177c990dbad",
+    "headAfter": "cdfd4ef5b1ce0d839bea535a92063177c990dbad",
+    "originInnerMainUnchanged": true,
+    "trackedTreeClean": true,
+    "liveArtifactByteIdentical": true,
+    "priorArtifactsByteIdentical": true,
+    "liveProviderCall": "NONE",
+    "generationCall": "NONE",
+    "databaseConnection": "NONE",
+    "deployment": "NONE",
+    "sourceOrTestChange": "NONE",
+    "commitOrPush": "NONE",
+    "newRunner": "NONE",
+    "analysisScriptsLocation": "scratchpad only, outside the repository"
+  }
+}

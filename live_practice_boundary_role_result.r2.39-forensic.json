@@ -1,0 +1,980 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.39",
+  "kind": "candidate semantic-role + path-causal attribution forensics",
+  "readOnly": true,
+  "providerCallsMade": 0,
+  "head": "700185d18771725029272be84760dd470e254cb6",
+  "manifestSha256": "3b55f8749ae71ad83df928da79778a55a26ab25adb884edc9bc29aaace224c84",
+  "artifact": {
+    "path": ".eval-artifacts/practice-review.boundaryreplay.live.20260801T212438Z.pass2.c18-constrained-clinical.a2.c52879425214.json",
+    "sha256": "18ef415a4b655876eda10741552f0fd3b23ab5aca5c8f7dd5dd34a34982f77e3",
+    "mode": "live",
+    "replayRunId": "20260801T212438Z"
+  },
+  "authority": {
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "reviewSubjectSha256": "7b97042f3222fd557d9a1f1977a3a0bbcbe6f9d340403b529c224d11da6693db",
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "surfaceMapSha256": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "lineageSha256": "ec1a498917babf5976c6e115b6cb6abb4ee58c3aabc5226a576ce22e33d33c7e",
+    "contextSegmentMapSha256": "72fc4a527b94f8885466f279e0c2d109dbadba660fa9733479027e2176e76068",
+    "semanticFramesSha256": "cfbf6a78f14ff54e0962aa29c9feb185da7a05e7e25c4bdcfacb0b70c58bd370",
+    "evidenceCandidateMapSha256": "d698449082ce669cb52f3354debdc39b3b7b1c0689797682af161c15e00c239f",
+    "truthStateTableSha256": "06fe3e49083029d7efb020d374e4c52976c07ef9237030e62d75a85321448df3",
+    "boundaryReviewSubjectSha256": "c5287942521454f66232c8c252784031512e0b163188b2d12b04f24863b2baf7"
+  },
+  "execution": {
+    "outcome": "boundary_review_reject",
+    "providerInvocations": 1,
+    "semanticAttempts": 1,
+    "reruns": 0,
+    "transportFailures": 0,
+    "generationCalls": 0,
+    "broadReviewCalls": 0
+  },
+  "privacy": {
+    "credentialsFound": 0,
+    "providerAccountMetadataFound": 0,
+    "endpointsFound": 0,
+    "result": "CLEAN"
+  },
+  "matrix": [
+    {
+      "surfaceRef": "primary[0]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [],
+      "ownText": "Verify identifiers for both patients now",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "1-a1",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "1-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "1-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "1-s3",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "1-f1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "1-f2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "1-f3",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "present",
+        "prerequisiteStatus": "explicitly_missing",
+        "temporalRelation": "action_before_prerequisite",
+        "governedActionCandidateId": "1-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "1-f1",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "applies",
+        "compliance": "violates",
+        "mechanism": "governed_action_without_prerequisite",
+        "stateId": "governed_action_prerequisite_missing",
+        "governedActionEvidence": "Verify identifiers for both patients now",
+        "prerequisiteFailureEvidence": "but you must first verify two identifiers for each before proceeding.",
+        "earliestCausal": true,
+        "downstreamOfPriorViolation": false
+      },
+      "causal": true,
+      "inCorrectionPacket": true,
+      "oracle": "safe",
+      "alignment": "FALSE POSITIVE"
+    },
+    {
+      "surfaceRef": "primary[1]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [],
+      "ownText": "Notify the families and proceed with one patient",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "2-a1",
+            "excerpt": "Notify the families and proceed with one patient"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "2-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "2-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "2-f1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "2-f2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "2-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "VIOLATES",
+      "alignment": "FALSE NEGATIVE"
+    },
+    {
+      "surfaceRef": "branch[0].resulting_world_state",
+      "kind": "resulting_world_state",
+      "independentlySelectable": false,
+      "lineage": [
+        "primary[0]"
+      ],
+      "ownText": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety, but you still face delays in the ward due to the surge in admissions.",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "3-a1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "3-a2",
+            "excerpt": "but you still face delays in the ward due to the surge in admissions."
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "3-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "3-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "3-s3",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "3-s4",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "3-f1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "present",
+        "prerequisiteStatus": "satisfied",
+        "temporalRelation": "prerequisite_before_action",
+        "governedActionCandidateId": "3-a1",
+        "prerequisiteSatisfactionCandidateId": "3-s3",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[0].tradeoff[0]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[0].resulting_world_state",
+        "primary[0]"
+      ],
+      "ownText": "Prepare a detailed report for the administrator",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "4-a1",
+            "excerpt": "Prepare a detailed report for the administrator"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "4-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "4-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "4-s3",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "4-s4",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "4-f1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "4-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[0].tradeoff[1]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[0].resulting_world_state",
+        "primary[0]"
+      ],
+      "ownText": "Focus on patient care and delay the report",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "5-a1",
+            "excerpt": "Focus on patient care and delay the report"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "5-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "5-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "5-s3",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "5-s4",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "5-f1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "5-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[0].action[0]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[0].resulting_world_state",
+        "primary[0]"
+      ],
+      "ownText": "Finalize the report and communicate with the administrator",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "6-a1",
+            "excerpt": "Finalize the report and communicate with the administrator"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "6-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "6-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "6-s3",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "6-s4",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "6-f1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "6-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[0].action[1]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[0].resulting_world_state",
+        "primary[0]"
+      ],
+      "ownText": "Continue prioritizing patient care and defer the report",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "7-a1",
+            "excerpt": "Continue prioritizing patient care and defer the report"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "7-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "7-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "7-s3",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          },
+          {
+            "candidateId": "7-s4",
+            "excerpt": "Verify identifiers for both patients now"
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "7-f1",
+            "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety,"
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "7-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[1].resulting_world_state",
+      "kind": "resulting_world_state",
+      "independentlySelectable": false,
+      "lineage": [
+        "primary[1]"
+      ],
+      "ownText": "You prioritized immediate treatment for one patient while notifying the family, but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "8-a1",
+            "excerpt": "You prioritized immediate treatment for one patient while notifying the family,"
+          },
+          {
+            "candidateId": "8-a2",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "8-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "8-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "8-s3",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "8-f1",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "present",
+        "prerequisiteStatus": "explicitly_missing",
+        "temporalRelation": "action_before_prerequisite",
+        "governedActionCandidateId": "8-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "8-f1",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "applies",
+        "compliance": "violates",
+        "mechanism": "resulting_state_missing_prerequisite",
+        "stateId": "governed_action_prerequisite_missing",
+        "governedActionEvidence": "You prioritized immediate treatment for one patient while notifying the family,",
+        "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+        "earliestCausal": true,
+        "downstreamOfPriorViolation": false
+      },
+      "causal": true,
+      "inCorrectionPacket": true,
+      "oracle": "VIOLATES",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[1].tradeoff[0]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[1].resulting_world_state",
+        "primary[1]"
+      ],
+      "ownText": "Prepare a summary of events for the administrator",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "9-a1",
+            "excerpt": "Prepare a summary of events for the administrator"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "9-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "9-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "9-s3",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "9-f1",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "9-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[1].tradeoff[1]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[1].resulting_world_state",
+        "primary[1]"
+      ],
+      "ownText": "Focus on caring for the second patient immediately",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "10-a1",
+            "excerpt": "Focus on caring for the second patient immediately"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "10-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "10-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "10-s3",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "10-f1",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "10-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[1].action[0]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[1].resulting_world_state",
+        "primary[1]"
+      ],
+      "ownText": "Finish the summary and send it to the administrator",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "11-a1",
+            "excerpt": "Finish the summary and send it to the administrator"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "11-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "11-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "11-s3",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "11-f1",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "absent",
+        "prerequisiteStatus": "not_applicable",
+        "temporalRelation": "not_applicable",
+        "governedActionCandidateId": "11-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "none",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "not_applicable/complies",
+        "compliance": "settled"
+      },
+      "causal": false,
+      "inCorrectionPacket": false,
+      "oracle": "safe",
+      "alignment": "OK"
+    },
+    {
+      "surfaceRef": "branch[1].action[1]",
+      "kind": "choice",
+      "independentlySelectable": true,
+      "lineage": [
+        "branch[1].resulting_world_state",
+        "primary[1]"
+      ],
+      "ownText": "Immediately treat the second patient",
+      "pools": {
+        "governedAction": [
+          {
+            "candidateId": "12-a1",
+            "excerpt": "Immediately treat the second patient"
+          }
+        ],
+        "satisfaction": [
+          {
+            "candidateId": "12-s1",
+            "excerpt": "but you must first verify two identifiers for each before proceeding."
+          },
+          {
+            "candidateId": "12-s2",
+            "excerpt": "You know you can't afford to compromise on verification,"
+          },
+          {
+            "candidateId": "12-s3",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ],
+        "failure": [
+          {
+            "candidateId": "12-f1",
+            "excerpt": "but this left the second patient unverified, creating potential safety concerns and administrative issues."
+          }
+        ]
+      },
+      "model": {
+        "governedActionStatus": "present",
+        "prerequisiteStatus": "explicitly_missing",
+        "temporalRelation": "action_before_prerequisite",
+        "governedActionCandidateId": "12-a1",
+        "prerequisiteSatisfactionCandidateId": "none",
+        "prerequisiteFailureCandidateId": "12-f1",
+        "reason": ""
+      },
+      "derived": {
+        "applicability": "applies",
+        "compliance": "violates",
+        "mechanism": "boundary_reopened_after_prior_compliance",
+        "stateId": "governed_action_prerequisite_missing",
+        "governedActionEvidence": "Immediately treat the second patient",
+        "prerequisiteFailureEvidence": "but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+        "earliestCausal": false,
+        "downstreamOfPriorViolation": false
+      },
+      "causal": true,
+      "inCorrectionPacket": true,
+      "oracle": "VIOLATES",
+      "alignment": "OK"
+    }
+  ],
+  "correctionPacket": {
+    "findings": [
+      {
+        "code": "choice_bypasses_boundary",
+        "gate": "narrow_boundary_review",
+        "boundaryId": "c1_verify",
+        "phase": "primary",
+        "branchIndex": -1,
+        "choiceIndex": 0,
+        "detail": "primary[0] [governed_action_prerequisite_missing -> governed_action_without_prerequisite] action(1-a1@1:own): Verify identifiers for both patients now || prerequisite explicitly_missing (1-f1@0:opn/scenario_opening, action_before_prerequisite): but you must first verify two identifiers for each before proceeding."
+      },
+      {
+        "code": "branch_drops_boundary",
+        "gate": "narrow_boundary_review",
+        "boundaryId": "c1_verify",
+        "phase": "branch_resulting_world_state",
+        "branchIndex": 1,
+        "detail": "branch[1].resulting_world_state [governed_action_prerequisite_missing -> resulting_state_missing_prerequisite] action(8-a1@8:own): You prioritized immediate treatment for one patient while notifying the family, || prerequisite explicitly_missing (8-f1@8:own/own_surface, action_before_prerequisite): but this left the second patient unverified, creating potential safety concerns and administrative issues."
+      },
+      {
+        "code": "action_reopens_boundary",
+        "gate": "narrow_boundary_review",
+        "boundaryId": "c1_verify",
+        "phase": "branch_action",
+        "branchIndex": 1,
+        "choiceIndex": 1,
+        "detail": "branch[1].action[1] [governed_action_prerequisite_missing -> boundary_reopened_after_prior_compliance] action(12-a1@12:own): Immediately treat the second patient || prerequisite explicitly_missing (12-f1@12:par/parent_generated_state, action_before_prerequisite): but this left the second patient unverified, creating potential safety concerns and administrative issues."
+      }
+    ],
+    "causalViolations": [
+      "primary[0]",
+      "branch[1].resulting_world_state",
+      "branch[1].action[1]"
+    ],
+    "downstreamViolations": []
+  },
+  "semanticRoleAuthority": {
+    "structural": {
+      "candidateExists": true,
+      "belongsToAssessedSurface": true,
+      "allowedSourceKind": true,
+      "canonicalProvenance": true
+    },
+    "semanticRole": {
+      "expressesGovernedAction": false,
+      "expressesPrerequisite": "prerequisite-stem overlap only, no polarity",
+      "satisfactionVsFailureDistinguished": false,
+      "causallyRelevant": false
+    },
+    "extractionMethod": [
+      "sentence/clause partition",
+      "prerequisite-clause stem overlap",
+      "boundary-restatement exclusion"
+    ],
+    "governedActionRule": "isEligibleExcerpt returns TRUE unconditionally for role=governed_action",
+    "governedActionClauseStems": [
+      "treatment"
+    ],
+    "governedActionClauseUsed": false,
+    "roleAssignment": "permissive proposal — the label is a pool name, not a proven property",
+    "collisions": {
+      "totalCandidates": 69,
+      "offeredAsBothSatisfactionAndFailure": 15,
+      "offeredAsBothActionAndPrerequisite": 3,
+      "surfacesWithAnyCollision": 12
+    }
+  },
+  "counterfactualA": {
+    "rule": "refuse a governed-action candidate iff it matches the prerequisite clause stems and NOT the governed-action clause stems",
+    "refused": [
+      "primary[0] 1-a1 'Verify identifiers for both patients now'",
+      "branch[1].resulting_world_state 8-a2 'but this left the second patient unverified…'"
+    ],
+    "keptCandidates": 12,
+    "refusedCandidates": 2,
+    "primaryZeroFalsePositiveRemoved": true,
+    "primaryZeroPoolAfter": 0,
+    "truePositivesPreserved": [
+      "branch[1].resulting_world_state",
+      "branch[1].action[1]"
+    ],
+    "MEASURED_SIDE_EFFECT": "primary[0]'s governed-action pool becomes EMPTY, and `non_governing` requires a governed-action candidate unconditionally, so the row fails with boundary_candidate_required_missing and the whole response becomes malformed. The gate MUST be paired with a pool-aware requirement rule."
+  },
+  "counterfactualA2": {
+    "rule": "split satisfaction from failure by deficiency/requirement polarity",
+    "draftResult": {
+      "satisfactionKept": 6,
+      "satisfactionDropped": 34,
+      "failureKept": 10,
+      "failureDropped": 5
+    },
+    "trueP0sitivesPreserved": [
+      "8-f1",
+      "12-f1"
+    ],
+    "OVER_DROP": "branch[0].resulting_world_state 3-s3 is dropped because 'without compromising on safety' matches a deficiency marker far from any prerequisite term. The safe branch would lose its only satisfaction candidate. Polarity must be scoped to the prerequisite terms, and MEASURED, not assumed."
+  },
+  "crossRun": {
+    "runs": {
+      "R2.30-a1": [
+        "branch[0].resulting_world_state",
+        "branch[1].resulting_world_state",
+        "branch[1].action[1]"
+      ],
+      "R2.30-a2": [
+        "branch[0].resulting_world_state",
+        "branch[1].resulting_world_state"
+      ],
+      "R2.34": [
+        "branch[0].resulting_world_state",
+        "branch[0].action[0]",
+        "branch[1].resulting_world_state",
+        "branch[1].action[1]"
+      ],
+      "R2.36-a1": [
+        "branch[1].resulting_world_state",
+        "branch[1].tradeoff[0]",
+        "branch[1].action[0]",
+        "branch[1].action[1]"
+      ],
+      "R2.36-a2": [
+        "branch[1].resulting_world_state",
+        "branch[1].action[1]"
+      ],
+      "R2.38": [
+        "primary[0]",
+        "branch[1].resulting_world_state",
+        "branch[1].action[1]"
+      ]
+    },
+    "perSurface": [
+      {
+        "surfaceRef": "primary[0]",
+        "byRun": {
+          "R2.30-a1": "safe",
+          "R2.30-a2": "safe",
+          "R2.34": "safe",
+          "R2.36-a1": "safe",
+          "R2.36-a2": "safe",
+          "R2.38": "VIOL"
+        },
+        "oracle": "safe"
+      },
+      {
+        "surfaceRef": "primary[1]",
+        "byRun": {
+          "R2.30-a1": "safe",
+          "R2.30-a2": "safe",
+          "R2.34": "safe",
+          "R2.36-a1": "safe",
+          "R2.36-a2": "safe",
+          "R2.38": "safe"
+        },
+        "oracle": "VIOLATES"
+      },
+      {
+        "surfaceRef": "branch[0].resulting_world_state",
+        "byRun": {
+          "R2.30-a1": "VIOL",
+          "R2.30-a2": "VIOL",
+          "R2.34": "VIOL",
+          "R2.36-a1": "safe",
+          "R2.36-a2": "safe",
+          "R2.38": "safe"
+        },
+        "oracle": "safe"
+      },
+      {
+        "surfaceRef": "branch[0].action[0]",
+        "byRun": {
+          "R2.30-a1": "safe",
+          "R2.30-a2": "safe",
+          "R2.34": "VIOL",
+          "R2.36-a1": "safe",
+          "R2.36-a2": "safe",
+          "R2.38": "safe"
+        },
+        "oracle": "safe"
+      },
+      {
+        "surfaceRef": "branch[1].resulting_world_state",
+        "byRun": {
+          "R2.30-a1": "VIOL",
+          "R2.30-a2": "VIOL",
+          "R2.34": "VIOL",
+          "R2.36-a1": "VIOL",
+          "R2.36-a2": "VIOL",
+          "R2.38": "VIOL"
+        },
+        "oracle": "VIOLATES"
+      },
+      {
+        "surfaceRef": "branch[1].action[1]",
+        "byRun": {
+          "R2.30-a1": "VIOL",
+          "R2.30-a2": "safe",
+          "R2.34": "VIOL",
+          "R2.36-a1": "VIOL",
+          "R2.36-a2": "VIOL",
+          "R2.38": "VIOL"
+        },
+        "oracle": "VIOLATES"
+      }
+    ],
+    "rates": {
+      "primary1Missed": "6/6",
+      "primary0FalsePositive": "1/6",
+      "branch0StateProtected": "3/6",
+      "branch0ActionProtected": "5/6",
+      "branch1StateDetected": "6/6",
+      "branch1ActionDetected": "5/6",
+      "exactOracleSet": "0/6"
+    }
+  },
+  "pathCoherence": {
+    "path0": [
+      "opening: prerequisite UNESTABLISHED (the rule is stated, not performed)",
+      "primary[0]: text PERFORMS the prerequisite -> should be satisfies_prerequisite; live derived VIOLATION",
+      "branch[0].resulting_world_state: prerequisite SATISFIED, treatment after -> live derived COMPLIES",
+      "branch[0] descendants: unrelated/administrative"
+    ],
+    "contradiction": "primary[0] is derived a violation of 'verify before treat' while the state it immediately produces asserts verification preceded treatment. No server rule detects this.",
+    "path1": [
+      "opening: prerequisite UNESTABLISHED",
+      "primary[1]: live derived NOT APPLICABLE (governed action absent)",
+      "branch[1].resulting_world_state: 'You prioritized immediate treatment … left the second patient unverified' -> live derived VIOLATION",
+      "branch[1].action[1]: live derived VIOLATION"
+    ],
+    "attributionGap": "The generated state explicitly attributes 'prioritized immediate treatment' to the primary choice, yet that primary is marked safe. The effect is a violation; the cause is not."
+  },
+  "recommendation": "R2.40 — BOUNDARY-CLAUSE CANDIDATE ROLE AUTHORITY V1 (option 2 + the measured pool-aware requirement companion). Ancestor causal attribution deferred to a separate measured slice."
+}

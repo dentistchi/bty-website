@@ -52,7 +52,7 @@ function server(initialDrafts: Summary[], events: Ev[] = []) {
 const draft = (over: Partial<Summary>): Summary => ({
   id: "d-1",
   status: "draft",
-  current_step: 4,
+  current_step: 5,
   module_version: 1,
   title: null,
   updated_at: new Date().toISOString(),
@@ -100,10 +100,10 @@ describe("FoundryEventRooms — Guided Module Builder entry (2.1)", () => {
   });
 
   it("draft card shows a problem-derived title + step progress", async () => {
-    server([draft({ title: "Patient plans are ending before completion", current_step: 4 })]);
+    server([draft({ title: "Patient plans are ending before completion", current_step: 5 })]);
     render(<FoundryEventRooms locale="en" />);
     expect(await screen.findByText("Patient plans are ending before completion")).toBeTruthy();
-    expect(screen.getByText(/Step 4 of 7/)).toBeTruthy();
+    expect(screen.getByText(/Step 5 of 8/)).toBeTruthy();
   });
 
   it("draft card falls back to Untitled training when there is no problem yet", async () => {

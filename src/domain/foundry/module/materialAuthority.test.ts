@@ -22,6 +22,7 @@ import type { BuilderAnswers } from "./module-builder";
 /** The canonical handoffs draft: a YouTube link, no uploaded file. */
 const CANONICAL: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   completionPrompt:
@@ -138,6 +139,7 @@ describe("[3.2L-R11.4G] a complete self-contained program validates (Part 6)", (
   const SELF_CONTAINED: BuilderAnswers = {
     problem: "Our handoffs are inconsistent.",
     audienceType: "everyone",
+    recurringMoment: "at each handoff point",
     observableBehavior: "Create a shared handoff standard.",
     successEvidence: "Handoff record",
     evidenceType: "seen",

@@ -43,6 +43,7 @@ export type ModuleDraftContext = {
   audienceType: AudienceType;
   audienceDetail: string | null;
   capabilityCandidate: string | null;
+  recurringMoment: "at each handoff point",
   observableBehavior: string;
   successEvidence: string;
 };
@@ -54,7 +55,15 @@ export type ModuleDraftContext = {
  */
 export function moduleDraftContext(answers: BuilderAnswers | undefined): ModuleDraftContext | null {
   const a = answers ?? {};
-  for (const step of [1, 2, 3, 4]) {
+  /*
+    THE COPILOT'S MINIMUM CONTEXT, listed by MEANING not by range (Slice 3.2P-R3.6-R1).
+
+    It was `[1,2,3,4]` — problem, audience, behaviour, evidence — back when those were steps
+    1 to 4. Inserting the recurring moment at 3 moved behaviour and evidence to 4 and 5, and a
+    range would silently have swapped "evidence" for "the moment". This assistant drafts module
+    CONTENT and has never needed the occasion, so it keeps exactly the four it always had.
+  */
+  for (const step of [1, 2, 4, 5]) {
     if (stepBlocker(step, a)) return null;
   }
   const audienceType = a.audienceType as AudienceType;
@@ -64,6 +73,7 @@ export function moduleDraftContext(answers: BuilderAnswers | undefined): ModuleD
     audienceType,
     audienceDetail: needsDetail ? (a.audienceDetail ?? "").trim() : null,
     capabilityCandidate: (a.capabilityCandidate ?? "").trim() || null,
+    recurringMoment: "at each handoff point",
     observableBehavior: (a.observableBehavior ?? "").trim(),
     successEvidence: (a.successEvidence ?? "").trim(),
   };

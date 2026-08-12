@@ -7,6 +7,7 @@ import { currentSourceIdentity } from "@/lib/bty/foundry/arena/sourceIdentity";
 import { readResumeEligibility, resolveProgramGenerationAuthority } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import {
   programContext,
+  programSourceBlocker,
   programContextFingerprint,
   requiredProgramKinds,
 } from "@/domain/foundry/module/program-authorship";
@@ -104,6 +105,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const answers = (draft.answers ?? {}) as BuilderAnswers;
   const programCtx = programContext(answers);
   if (!programCtx) return managerJson(base, req, { error: "context_incomplete" }, 409);
+
+  /**
+   * THE HOST'S MOMENT MUST BE USABLE, AND THAT IS KNOWABLE HERE (Slice 3.2P-R3.6-R1).
+   *
+   * W5 spent a provider call, received a program, and refused it `trigger_not_recurring`. Every
+   * fact that refusal rested on was in the draft before the call: the moment is the Host's now,
+   * and whether a repeatable occasion derives from it is deterministic. So it is answered before
+   * the attempt row exists, with its own code, in Builder language — not discovered by paying.
+   */
+  const sourceBlocker = programSourceBlocker(answers);
+  if (sourceBlocker) return managerJson(base, req, { error: sourceBlocker }, 409);
 
   // Stale-context protection. The client echoes the fingerprint it was showing; if the
   // draft has moved since, refuse rather than author from something the Host is no

@@ -31,6 +31,7 @@ const PILOT = {
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?",
+  recurringMoment: "During morning huddles",
   observableBehavior: "At the next huddle, name the owner, the action and the deadline out loud.",
   capabilityCandidate: "Accountability",
 } as unknown as BuilderAnswers;
@@ -78,7 +79,7 @@ const forEvidence = (evidence: string) => {
 describe("[3.2P-R3.4-R1] A/B — the model has no completion field, and the Host supplies one", () => {
   it("A — `completion` is absent from the provider contract entirely", () => {
     const contract = PROGRAM_JSON_SCHEMA.properties.program.properties.behavior_contract;
-    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action"]);
+    expect([...contract.required]).toEqual(["observable_action"]);
     expect("completion" in contract.properties).toBe(false);
     // …and nothing else may be added under another name.
     expect(contract.additionalProperties).toBe(false);
@@ -155,7 +156,7 @@ describe("[3.2P-R3.4-R1] I/J — the source gate and the participant subject are
       `programContext` returns null, and generation cannot be reached — so an empty criterion is
       never something a paid call discovers.
     */
-    expect(stepBlocker(4, noEvidence)).toBe("evidence_required");
+    expect(stepBlocker(5, noEvidence)).toBe("evidence_required");
     expect(programContext(noEvidence)).toBeNull();
   });
 
@@ -229,7 +230,7 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
 
   it("S — every version this pilot spent under is refused by the current Apply gate", () => {
     // v9 (W2/W3), v10 (W4), v11 (W5). R3.5 widened the recurring-moment fold, so v11 joins them.
-    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11"]) {
+    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12"]) {
       expect(decideAdoptionReceipt(claim(old)), old).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
   });
@@ -239,9 +240,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
   });
 });

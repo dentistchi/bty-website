@@ -1,0 +1,483 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.28",
+  "title": "CONFIRMED-BOUNDARY FALSE-NEGATIVE FORENSICS",
+  "mode": "READ_ONLY_FORENSIC",
+  "verdict": "F_MULTIPLE_CAUSES_REQUIRE_SEQUENCED_CORRECTIONS",
+
+  "baseline": {
+    "head": "508cbeb4ecbe816e7750de7516e8a76527b18903",
+    "originInnerMain": "508cbeb4ecbe816e7750de7516e8a76527b18903",
+    "headEqualsOrigin": true,
+    "trackedTreeClean": true,
+    "manifestSha256": "1deeb9372131550c63fc3ca98fcd877840411d1714b7c66a68c80e33edae6dda",
+    "manifestMatchesCanonical": true,
+    "canaryCaseSha256": "c20b4d90e991c87f6b4dccf82af6feb2c4271effee1e7427e1c688f9e8389570"
+  },
+
+  "artifactIdentity": {
+    "path": ".eval-artifacts/practice-review.reviewreplay.live.20260801T052044Z.pass2.c18-constrained-clinical.a2.7b97042f3222.json",
+    "sha256": "c7f94324cbdc4ecdfd3fa0fb58e8c96efd57beaae54e821bfc881fa03ced378a",
+    "sha256MatchesCanonical": true,
+    "mode": "live",
+    "replayRunId": "20260801T052044Z",
+    "sourceRunId": "20260801T024949Z",
+    "sourcePassId": "pass2",
+    "sourceCaseId": "c18-constrained-clinical",
+    "sourceAttemptIndex": 2,
+    "sourceArtifactFile": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+    "sourceArtifactSha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb",
+    "sourceArtifactSha256Verified": true,
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "reviewContractSha256": "32310122c1b24b3067cefc05e8bd49edeaf5a3a7e17c2c079dcb50a048527104",
+    "reviewContractRecomputedLocally": "32310122c1b24b3067cefc05e8bd49edeaf5a3a7e17c2c079dcb50a048527104",
+    "reviewContractUnchanged": true,
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "reviewSubjectSha256": "7b97042f3222fd557d9a1f1977a3a0bbcbe6f9d340403b529c224d11da6693db",
+    "reconstructed": true,
+    "sourceKind": "historical_reconstruction",
+    "boundaryMode": "bearing",
+    "boundaryScopeConfirmed": true,
+    "reviewerCallCount": 1,
+    "generationCallCount": 0,
+    "finishReason": "stop",
+    "latencyMs": 23777,
+    "sanitizedError": null,
+    "credentialOrProviderAccountData": "NONE"
+  },
+
+  "reconstructionSources": [
+    {
+      "path": "src/lib/bty/foundry/arena/practice-generation.eval.ts",
+      "sha256": "cb86c303d01936b0cf9d54689ddbf2f5ad2a3d14049ffef2584267b2f5d21a26",
+      "evidenceLocation": "EVAL_CORPUS c18-constrained-clinical .boundary.constraints[0]",
+      "normalizedBoundaryDigest": "b2d2d2166ce0371e41b4347a6177ef1b3a4184bb48d1a60da08fac639689360c"
+    },
+    {
+      "path": ".eval-artifacts/practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb",
+      "evidenceLocation": "attempts[1].correctionPacket.immutable.boundaries[0]",
+      "normalizedBoundaryDigest": "b2d2d2166ce0371e41b4347a6177ef1b3a4184bb48d1a60da08fac639689360c"
+    }
+  ],
+  "reconstructionSourcesAgree": true,
+
+  "activeBoundary": {
+    "id": "c1_verify",
+    "statement": "Two identifiers must be verified before treatment",
+    "provenance": "manager_entered",
+    "order": 0,
+    "active": true
+  },
+
+  "exactReviewRequest": {
+    "codePath": "src/lib/bty/foundry/arena/reviewFrozenSubject.ts",
+    "systemPrompt": "REVIEW_SYSTEM_PROMPT (src/lib/bty/foundry/arena/arenaScenarioGenerationService.ts:641) — 10365 chars, 54 lines, unmodified",
+    "userPayloadTopLevelKeys": ["branches", "constraints", "flatAction", "flatTradeoff", "opening", "primary", "visibleChoices"],
+    "userPayloadChars": 4144,
+    "boundaryProjection": [{ "id": "c1_verify", "statement": "Two identifiers must be verified before treatment" }],
+    "activeBoundaryIds": ["c1_verify"],
+    "activeBoundaryCountFieldPresent": false,
+    "boundaryComplianceScopeFieldPresent": false,
+    "schemaName": "bty_practice_semantic_review_v1",
+    "schemaStrict": true,
+    "sampling": { "temperature": 0, "topP": 1, "maxTokens": 16000, "timeoutMs": 120000 },
+    "fieldBounds": { "GEN_REVIEW_TEXT_MAX": 100, "violatedChoiceReferencesMaxItems": 4, "boundaryAssessmentsMaxItems": null },
+
+    "instructionCoverage": {
+      "primaryChoices": "PRESENT — system prompt L42 'allPrimaryChoicesComply'",
+      "tradeoffChoices": "PRESENT — system prompt L42 'allTradeoffChoicesComply'",
+      "actionChoices": "PRESENT — system prompt L42 'allActionChoicesComply'",
+      "resultingWorldStates": "ABSENT — the CONFIRMED-BOUNDARY GROUNDING section (L37-L44) never names the resulting world state as a boundary-compliance surface. 'resulting world state' appears only at L18 (BRANCH REVIEW), L31 (SAME-BRANCH PROGRESSION) and L33 (CROSS-BRANCH CAUSAL DIVERSITY) — all non-boundary contracts. The nearest boundary proxy is 'allBranchesPreserve'."
+    },
+
+    "explicitlyToldEveryChoiceAndWorldStateMustComply": false,
+    "exactOmission": {
+      "code": "REPLAY_REQUEST_OMITS_BOUNDARY_COMPLIANCE_SCOPE",
+      "detail": "The replay path (reviewFrozenSubject.ts) builds a payload WITHOUT the two fields the production path (arenaScenarioGenerationService.ts:724-728) sends: `activeBoundaryCount` and `boundaryComplianceScope`. The production `boundaryComplianceScope` string is the ONLY place in the entire contract that states 'Every primary, tradeoff and action choice — and every resulting world state — must comply with EVERY boundary listed in `constraints`.' It was NOT sent in this replay.",
+      "grepEvidence": "activeBoundaryCount / boundaryComplianceScope occur only in arenaScenarioGenerationService.ts:724-725 and reviewRerunEvidence.contract.test.ts:401 — never in reviewFrozenSubject.ts",
+      "consequence": "This artifact measures a WEAKER request than production. Replay/production request divergence is itself a defect.",
+      "sufficientToExplainFalseNegative": false,
+      "whyNotSufficient": "Even with the scope sentence, the schema provides no per-choice and no per-world-state boundary field in which the answer could be recorded, and no derivation reads the free-text `branches[].boundaryState` where it would land."
+    }
+  },
+
+  "reviewerDto": {
+    "overallVerdict": "accept",
+    "defectCodes": [],
+    "retryInstruction": "",
+    "explanation": "The scenario allows for legitimate judgment in terms of sequencing actions, prioritizing patient care, and managing communication with stakeholders. There are multiple dimensions of judgment available, such as deciding the order of verification and treatment, and how to communicate with the families",
+    "noSafeJudgmentSpace": false,
+    "noSafeReasonCode": "judgment_space_remains",
+    "remainingJudgmentDimensions": ["sequencing", "notification order", "escalation", "supervision"],
+    "twoValuesInTension": true,
+    "tensionValueA": "Patient safety through verification",
+    "tensionValueB": "Timely treatment of patients",
+
+    "boundaryIdsConsidered": ["c1_verify"],
+    "boundaryCompliant": true,
+    "violatedBoundaryIds": [],
+    "boundaryAssessmentCount": 1,
+    "boundaryAssessments": [
+      {
+        "boundaryId": "c1_verify",
+        "presentInScenario": true,
+        "operationalized": true,
+        "affectedStages": ["primary", "flat_tradeoff", "flat_action", "branch_tradeoff", "branch_action"],
+        "allPrimaryChoicesComply": true,
+        "allBranchesPreserve": true,
+        "allTradeoffChoicesComply": true,
+        "allActionChoicesComply": true,
+        "prohibitedAlternativeExcluded": true,
+        "remainingJudgmentDimensions": ["sequencing", "notification order", "escalation", "supervision"],
+        "violatedChoiceReferences": [],
+        "violatedBranchReferences": [],
+        "defectCodes": [],
+        "conciseExplanation": "The verification boundary is present and operationalized, ensuring compliance."
+      }
+    ],
+
+    "primaryChoices": [
+      { "index": 0, "legitimateValue": "Ensures patient safety by verifying identifiers before treatment", "acceptedCost": "Potential delay in treatment for both patients", "defensible": true, "defectCodes": [] },
+      { "index": 1, "legitimateValue": "Addresses family concerns by notifying them", "acceptedCost": "Risk of not verifying identifiers before treatment", "defensible": true, "defectCodes": [] }
+    ],
+
+    "branches": [
+      {
+        "index": 0,
+        "selectedPrimarySummary": "Verify identifiers for both patients now",
+        "resultingWorldState": "Both patients are verified, but treatment is delayed",
+        "boundaryState": "c1_verify is operational",
+        "urgencyState": "high",
+        "selectedPrimaryEffect": "Verification of both patients",
+        "causalLink": "Verification leads to safe treatment",
+        "resourceOrRelationshipChange": "Increased pressure on staff to manage both verification and treatment",
+        "repeatsPrimaryDecision": false,
+        "branchDistinct": true,
+        "overlapsOtherBranchIndex": -1,
+        "primaryDecisionPreserved": true,
+        "progressionValid": true,
+        "repeatedMeaningPairs": [],
+        "defectCodes": []
+      },
+      {
+        "index": 1,
+        "selectedPrimarySummary": "Notify the families and proceed with one patient",
+        "resultingWorldState": "One patient is treated without verification, risking safety",
+        "boundaryState": "c1_verify is operational",
+        "urgencyState": "high",
+        "selectedPrimaryEffect": "Treatment of one patient without verification",
+        "causalLink": "Treatment without verification leads to risk",
+        "resourceOrRelationshipChange": "Potential compromise of patient safety",
+        "repeatsPrimaryDecision": false,
+        "branchDistinct": true,
+        "overlapsOtherBranchIndex": -1,
+        "primaryDecisionPreserved": true,
+        "progressionValid": true,
+        "repeatedMeaningPairs": [],
+        "defectCodes": []
+      }
+    ],
+
+    "phaseChoicesCount": 14,
+    "phaseChoicesAllDefensible": true,
+    "phaseChoicesAllUnsafeFalse": true,
+    "phaseChoicesAllDefectCodesEmpty": true,
+    "phaseChoicesBoundaryField": "NONE — the phaseChoices schema has no boundary field of any kind",
+    "phaseChoicesViolationBearing": [
+      { "phase": "primary", "branchIndex": -1, "choiceIndex": 1, "label": "Notify the families and proceed with one patient", "acceptedCost": "Risk of not verifying identifiers before treatment", "conciseExplanation": "This choice addresses family concerns but risks patient safety.", "unsafe": false, "defensible": true, "defectCodes": [] },
+      { "phase": "flat_action", "branchIndex": -1, "choiceIndex": 1, "label": "Proceed with treatment for the first patient only", "acceptedCost": "Risks safety by not verifying identifiers", "conciseExplanation": "This choice prioritizes immediate treatment.", "unsafe": false, "defensible": true, "defectCodes": [] }
+    ],
+
+    "crossBranch": {
+      "resultingWorldOverlapPairs": [],
+      "nextDecisionAxisOverlapPairs": [],
+      "stakeholderOverlapPairs": [],
+      "repeatedActionMeaningPairs": [],
+      "branchesInterchangeable": false,
+      "allBranchesSameGenericAxis": false,
+      "defectCodes": [],
+      "conciseExplanation": "Branches are distinct in their consequences and decisions."
+    },
+
+    "urgency": {
+      "urgencyPresent": true,
+      "urgencySource": "The need for immediate treatment of two patients",
+      "timeSensitiveHarmPossible": true,
+      "overallUrgencyVerdict": "safe",
+      "choices": [
+        { "index": 0, "introducesDelay": true, "delayPurpose": "To ensure verification of both patients before treatment", "safetyBasis": "Verification is necessary for patient safety", "foreseeableHarm": "Risk of treatment delays impacting patient outcomes", "escalationUsed": false, "defensible": true, "defectCodes": [] },
+        { "index": 1, "introducesDelay": true, "delayPurpose": "To notify families and proceed with one patient", "safetyBasis": "Addressing family concerns while ensuring some treatment occurs", "foreseeableHarm": "Risk of not verifying identifiers before treatment", "escalationUsed": false, "defensible": true, "defectCodes": [] }
+      ]
+    },
+
+    "truncationIndicators": "NONE (finishReason=stop)",
+    "refusalIndicators": "NONE",
+    "fieldBoundResult": "PASS — no field exceeded its bound; validateSemanticReview returned ok=true with zero errors"
+  },
+
+  "boundaryCoverage": {
+    "boundaryIdsConsideredEqualsActive": true,
+    "assessmentCount": 1,
+    "duplicateAssessments": 0,
+    "unknownAssessments": 0,
+    "omittedAssessments": 0,
+    "normalizedTextAgreesWithProvenance": true,
+    "schemaRequiresPerDecisionGranularity": false,
+    "schemaGranularityMeasured": "ONE aggregate BoundaryAssessment per boundary id. Four booleans (allPrimaryChoicesComply, allTradeoffChoicesComply, allActionChoicesComply, allBranchesPreserve) cover all 14 visible choices; NO field covers a resulting world state; violatedChoiceReferences is an optional free-string array (maxItems 4) that may be empty; no evidence field is required when compliant.",
+    "matrix": [
+      { "row": "primary p1 · 'Verify identifiers for both patients now'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allPrimaryChoicesComply=true)", "evidenceText": "(none — no per-choice boundary evidence field exists)", "humanOracle": "COMPLIES", "alignment": "ALIGNED" },
+      { "row": "primary p2 · 'Notify the families and proceed with one patient'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allPrimaryChoicesComply=true; violatedChoiceReferences=[])", "evidenceText": "acceptedCost='Risk of not verifying identifiers before treatment'; conciseExplanation='...but risks patient safety'", "humanOracle": "VIOLATES", "alignment": "MISMATCH" },
+      { "row": "flat tradeoff 1 · ft1 'Continue with the current plan and explain to the administrator'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allTradeoffChoicesComply=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "flat tradeoff 2 · ft2 'Escalate the issue by requesting additional staff'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allTradeoffChoicesComply=true)", "evidenceText": "(none)", "humanOracle": "COMPLIES", "alignment": "ALIGNED" },
+      { "row": "flat action 1 · fa1 'Continue with the verification process for both patients'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allActionChoicesComply=true)", "evidenceText": "(none)", "humanOracle": "COMPLIES", "alignment": "ALIGNED" },
+      { "row": "flat action 2 · fa2 'Proceed with treatment for the first patient only'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allActionChoicesComply=true)", "evidenceText": "acceptedCost='Risks safety by not verifying identifiers'", "humanOracle": "VIOLATES", "alignment": "MISMATCH" },
+      { "row": "branch p1 tradeoff 1 · p1-t1", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "branch p1 tradeoff 2 · p1-t2", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "branch p1 action 1 · p1-a1", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "branch p1 action 2 · p1-a2", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "COMPLIES", "alignment": "ALIGNED" },
+      { "row": "branch p2 tradeoff 1 · p2-t1 'Prepare a summary of events for the administrator'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "branch p2 tradeoff 2 · p2-t2 'Focus on caring for the second patient immediately'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "VIOLATES (care delivered to the explicitly-unverified second patient; weaker than p2-a2 because 'caring' is not verbatim 'treatment')", "alignment": "MISMATCH" },
+      { "row": "branch p2 action 1 · p2-a1 'Finish the summary and send it to the administrator'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "NEUTRAL", "alignment": "ALIGNED" },
+      { "row": "branch p2 action 2 · p2-a2 'Immediately treat the second patient'", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (aggregate allActionChoicesComply=true, allBranchesPreserve=true)", "evidenceText": "(none)", "humanOracle": "VIOLATES — treats a patient the branch world state declares unverified; 'Immediately' excludes the two-identifier check", "alignment": "MISMATCH" },
+      { "row": "p1 resulting world state", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (free-text boundaryState='c1_verify is operational'; not consumed by any derivation)", "evidenceText": "resultingWorldState='Both patients are verified, but treatment is delayed'", "humanOracle": "COMPLIES", "alignment": "ALIGNED" },
+      { "row": "p2 resulting world state", "explicitlyAssessed": false, "reviewerComplianceResult": "compliant (free-text boundaryState='c1_verify is operational'; not consumed by any derivation)", "evidenceText": "resultingWorldState='One patient is treated without verification, risking safety'; selectedPrimaryEffect='Treatment of one patient without verification'; causalLink='Treatment without verification leads to risk'", "humanOracle": "VIOLATES", "alignment": "MISMATCH" }
+    ],
+    "matrixTotals": { "rows": 16, "explicitlyAssessed": 0, "aligned": 11, "mismatch": 5 }
+  },
+
+  "exactViolatingPath": {
+    "primary": "p2 · 'Notify the families and proceed with one patient'",
+    "frozenResultingWorldState": "You prioritized immediate treatment for one patient while notifying the family, but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+    "reviewerRenderingOfThatState": "One patient is treated without verification, risking safety",
+    "downstreamChoicesInBranch": [
+      { "id": "p2-t1", "label": "Prepare a summary of events for the administrator", "reviewerDefensible": true, "reviewerUnsafe": false },
+      { "id": "p2-t2", "label": "Focus on caring for the second patient immediately", "reviewerDefensible": true, "reviewerUnsafe": false },
+      { "id": "p2-a1", "label": "Finish the summary and send it to the administrator", "reviewerDefensible": true, "reviewerUnsafe": false },
+      { "id": "p2-a2", "label": "Immediately treat the second patient", "reviewerDefensible": true, "reviewerUnsafe": false }
+    ],
+    "alsoViolatingOutsideTheBranch": [
+      { "id": "fa2", "phase": "flat_action", "label": "Proceed with treatment for the first patient only", "note": "Paired against fa1 'Continue with the verification process for both patients' — the contrast makes fa2 the treat-before-verify option." }
+    ],
+
+    "findings": {
+      "1_quotedOrParaphrasedTheViolation": "YES — in at least 8 independent free-text fields.",
+      "2_claimedPrimaryBoundaryCompliant": "YES — allPrimaryChoicesComply=true, violatedChoiceReferences=[], phaseChoices[primary,1].unsafe=false, defensible=true.",
+      "3_claimedResultingStateBoundaryCompliant": "YES — branches[1].boundaryState='c1_verify is operational' and allBranchesPreserve=true.",
+      "4_omittedTheResultingStateEntirely": "NO — it recorded it verbatim as 'One patient is treated without verification, risking safety'.",
+      "5_treatedNotificationAsSubstituteForVerification": "YES (in the urgency record) — urgency.choices[1].safetyBasis='Addressing family concerns while ensuring some treatment occurs' is offered as the justification for a delay whose named harm is non-verification.",
+      "6_interpretedProceedWithOnePatientAsVerification": "NO — it explicitly read it as 'Treatment of one patient without verification'.",
+      "7_reliedOnUnrelatedSafetyBasis": "YES — the safetyBasis names family reassurance and partial treatment; the foreseeableHarm names non-verification. The basis does not address the harm.",
+      "8_detailFieldsIndependentlyContainViolationEvidence": "YES — 8 fields, enumerated in violationEvidenceFields below.",
+      "9_whyNoDerivedBoundaryDefect": "Every boundary and urgency predicate in validateSemanticReview reads ONLY booleans, enum values and string arrays: boundaryCompliant, the four per-assessment booleans, violatedChoiceReferences/violatedBranchReferences, defectCodes, phaseChoices.unsafe/defensible, urgency.overallUrgencyVerdict, and non-empty checks on safetyBasis. Every one of those was set to the compliant value. No predicate reads acceptedCost, resultingWorldState, selectedPrimaryEffect, causalLink, conciseExplanation or boundaryState — the six fields that carry the violation. Measured derivedDefects = [].",
+      "10_consistencyGateHadContradictoryDetail": "NOT IN THE FORM IT READS. The gate is `overallVerdict==='accept' && unique.length>0`, where `unique` is derived exclusively from structured fields. PROVEN by counterfactual: flipping ONLY overallVerdict to 'reject' and changing nothing else yields errors=['review_reject_without_defect'] and defects=[] — the detail fields establish ZERO derivable defects. The gate had contradictory PROSE but no contradictory STRUCTURE."
+    },
+
+    "violationEvidenceFields": [
+      "primaryChoices[1].acceptedCost = 'Risk of not verifying identifiers before treatment'",
+      "phaseChoices[primary,-1,1].conciseExplanation = 'This choice addresses family concerns but risks patient safety.'",
+      "phaseChoices[flat_action,-1,1].acceptedCost = 'Risks safety by not verifying identifiers'",
+      "branches[1].resultingWorldState = 'One patient is treated without verification, risking safety'",
+      "branches[1].selectedPrimaryEffect = 'Treatment of one patient without verification'",
+      "branches[1].causalLink = 'Treatment without verification leads to risk'",
+      "branches[1].resourceOrRelationshipChange = 'Potential compromise of patient safety'",
+      "urgency.choices[1].foreseeableHarm = 'Risk of not verifying identifiers before treatment'"
+    ],
+
+    "classification": ["A_REQUEST_OMISSION (partial — replay/production divergence)", "B_SCHEMA_GRANULARITY_GAP", "C_EVIDENCE_GROUNDING_GAP", "D_DERIVED_DEFECT_LOGIC_GAP", "E_REVIEWER_MODEL_SEMANTIC_FAILURE", "F_MULTIPLE_CAUSES"],
+    "dominantCauses": ["B_SCHEMA_GRANULARITY_GAP", "C_EVIDENCE_GROUNDING_GAP"]
+  },
+
+  "urgencyInteraction": {
+    "sameOrEquivalentHarmRecorded": "SAME — verbatim identical to the previously measured wording: 'Risk of not verifying identifiers before treatment'",
+    "exactSafetyBasis": "Addressing family concerns while ensuring some treatment occurs",
+    "safetyBasisAddressesTheHarm": false,
+    "safetyBasisAnalysis": "The named harm is the absence of two-identifier verification before treatment. The stated basis offers (a) family reassurance and (b) partial treatment delivery. Neither restores nor substitutes for the verification predicate. It is a restatement of the choice, not a justification.",
+    "currentDerivationChecksOnlyNonEmptyPresence": true,
+    "currentDerivationRule": "semanticReview.ts:702 — `if (c.foreseeableHarm.trim() && !c.safetyBasis.trim()) defects.push('avoidable_foreseeable_harm')`",
+    "currentRuleFiresOnChoice1": false,
+    "urgencyAndBoundaryReviewDisagree": false,
+    "urgencyAndBoundaryAgreementNote": "Both say compliant/safe. They agree — and both are wrong. There is no internal disagreement to exploit.",
+    "dtoCanBeInternallyConsistentWithSemanticallyInvalidSafetyBasis": true,
+    "proof": "validateSemanticReview returned ok=true, verdict=accept, defects=[], errors=[] while urgency.choices[1] pairs an unaddressed harm with an unrelated basis. Internal consistency is a structural property; it never inspected the semantic relation between the two strings.",
+    "wouldFixingUrgencyAdequacyAloneRejectThisScenario": "YES for this artifact, but only via a rule that does not yet exist and cannot be built from presence checks.",
+    "naiveVariantMeasured": "A naive 'non-empty foreseeableHarm => defect' rule fires on choices [0, 1] — a FALSE POSITIVE on the compliant p1, whose harm is 'Risk of treatment delays impacting patient outcomes'. The system prompt (L50) explicitly states 'Time cost alone is NOT a defect — do not mark a required safety pause unsafe merely because it takes time.' A correct rule therefore requires a NEW structured harm-resolution field, not a tightened predicate over the existing ones.",
+    "classification": "NECESSARY_BUT_INSUFFICIENT",
+    "classificationRationale": "It would catch this artifact, but only because the urgency contract happened to name the boundary. A boundary violation in a scenario with no urgency would leave the urgency record silent, so it cannot be the primary boundary safeguard.",
+    "urgencyRuleModifiedInThisSlice": false
+  },
+
+  "deterministicDerivationReplay": {
+    "network": "NONE",
+    "modelCall": "NONE",
+    "method": "validateSemanticReview(artifact.reviewResponse, {primaryCount:2, branchCount:2, constraintIds:['c1_verify'], choices:enumerateChoices(frozenDraft)})",
+    "result": { "ok": true, "verdict": "accept", "defects": [], "errors": [], "derivedDefects": [] },
+    "reproducesArtifact": true,
+    "derivedBoundaryDefects": [],
+    "derivedUrgencyDefects": [],
+    "consistencyGateResult": "consistent (no contradiction detected)",
+
+    "boundaryConditionsEvaluated": [
+      { "condition": "!boundaryCompliant && constraintIds.length > 0 => boundary_violation", "input": "boundaryCompliant=true", "fired": false },
+      { "condition": "!presentInScenario => confirmed_boundary_absent", "input": "true", "fired": false },
+      { "condition": "!operationalized => boundary_not_operationalized", "input": "true", "fired": false },
+      { "condition": "present && operationalized && no OPERATIVE stage in affectedStages => vacuous_boundary_compliance", "input": "affectedStages includes primary/flat_tradeoff/flat_action/branch_tradeoff/branch_action", "fired": false },
+      { "condition": "!allPrimaryChoicesComply || !allTradeoffChoicesComply || violatedChoiceReferences.length > 0 => choice_bypasses_boundary", "input": "true, true, []", "fired": false, "isTheDecisiveFalse": true },
+      { "condition": "!allActionChoicesComply => action_reopens_boundary", "input": "true", "fired": false, "isTheDecisiveFalse": true },
+      { "condition": "!allBranchesPreserve || violatedBranchReferences.length > 0 => branch_drops_boundary", "input": "true, []", "fired": false, "isTheDecisiveFalse": true },
+      { "condition": "!prohibitedAlternativeExcluded => boundary_treated_as_optional", "input": "true", "fired": false },
+      { "condition": "boundaryAssessments[].defectCodes spread", "input": "[]", "fired": false }
+    ],
+    "urgencyConditionsEvaluated": [
+      { "condition": "overallUrgencyVerdict === 'unsafe' => unsafe_delay", "input": "'safe'", "fired": false },
+      { "condition": "introducesDelay && !safetyBasis.trim() => unsafe_delay", "input": "choice0: true && basis non-empty; choice1: true && basis non-empty", "fired": false },
+      { "condition": "foreseeableHarm.trim() && !safetyBasis.trim() => avoidable_foreseeable_harm", "input": "choice1: harm non-empty, basis non-empty", "fired": false, "isTheDecisiveFalse": true },
+      { "condition": "!defensible => defectCodes || unsafe_delay", "input": "both defensible=true", "fired": false }
+    ],
+    "skippedDerivations": [
+      "branches[].boundaryState — captured at semanticReview.ts:479 and required by the schema, but read by NO defect predicate anywhere in the codebase (grep-verified). Write-only field.",
+      "branches[].resultingWorldState — used only for cross-branch OVERLAP comparison, never for boundary compliance.",
+      "primaryChoices[].acceptedCost — only a non-empty check (empty => dominated_choice). Content never inspected.",
+      "phaseChoices[].acceptedCost / conciseExplanation — content never inspected.",
+      "branches[].selectedPrimaryEffect / causalLink / resourceOrRelationshipChange — used only for cross-branch overlap, never for boundary compliance.",
+      "urgency.choices[].delayPurpose — captured, never inspected."
+    ],
+
+    "counterfactualFlipVerdictOnly": {
+      "change": "overallVerdict 'accept' -> 'reject', nothing else",
+      "result": { "ok": false, "errors": ["review_reject_without_defect"], "defects": [] },
+      "interpretation": "Removing top-level overallVerdict authority would NOT help. The detail fields, read as the derivation reads them, establish zero defects — so a forced reject is itself rejected as unsupported. The defect is in what the details ENCODE, not in the verdict's authority over them."
+    },
+
+    "counterfactuals": {
+      "A_perChoiceBoundaryEvidence": { "wouldHaveCaught": "LIKELY, NOT DETERMINISTIC", "basis": "The model already wrote 'Risks safety by not verifying identifiers' as fa2's acceptedCost and 'Risk of not verifying identifiers before treatment' as p2's. Asking it per-choice 'does this comply with c1_verify, quote the text' targets a question it demonstrably answers correctly in prose. Still a model judgment, not a derivation." },
+      "B_evidenceForResultingWorldStates": { "wouldHaveCaught": "MOST LIKELY OF ALL", "basis": "The single most damning text in the DTO is already written in that exact field: 'One patient is treated without verification, risking safety'. A required per-world-state boundaryComplies boolean plus quoted evidence places the question directly on top of the sentence the model already wrote. Highest yield per field added." },
+      "C_safetyBasisMustAnswerForeseeableHarm": { "wouldHaveCaught": "YES IF SEMANTIC, NO IF PRESENCE-BASED", "basis": "Presence-based is the current rule and it did not fire. A semantic adequacy judgment needs a new structured field (e.g. harmResolution enum + evidence), otherwise it is another free-text string no predicate can read." },
+      "D_foreseeableHarmHardDefectUnlessResolved": { "wouldHaveCaught": "YES BUT WITH A FALSE POSITIVE", "basis": "Measured: the naive form fires on choices [0,1], wrongly rejecting the compliant verify-first pause. Needs the same new resolution field as C, at which point C and D are the same correction." },
+      "E_narrowBoundaryOnlyReviewer": { "wouldHaveCaught": "LIKELY, HIGHEST SIGNAL", "basis": "A dedicated call with one question and a small schema removes the 14-choice / 8-contract cognitive load under which the model produced correct prose and incorrect booleans. Costs one additional provider call per boundary-bearing scenario." }
+    },
+    "whichCounterfactualCatchesThisExactArtifact": "None catches it DETERMINISTICALLY from the current DTO — every existing structured field says compliant, and the violation exists only as prose. Ranked by likelihood of catching it on re-ask: B > A > E > C > D."
+  },
+
+  "contractAdequacy": {
+    "boundaryFieldCount": { "topLevel": 4, "perAssessment": 14, "perChoice": 0, "perWorldState": 1 },
+    "topLevelBoundaryFields": ["boundaryIdsConsidered", "violatedBoundaryIds", "boundaryCompliant", "boundaryAssessments"],
+    "perWorldStateBoundaryField": "branches[].boundaryState — free text, maxLength 100, required by schema, consumed by nothing",
+    "requiredVsOptional": "All 14 BoundaryAssessment fields are REQUIRED by the strict schema, but two of them (violatedChoiceReferences, violatedBranchReferences) are arrays that satisfy 'required' while empty. Compliance therefore costs zero evidence.",
+    "aggregateVsPerChoice": "AGGREGATE ONLY. Four booleans cover 14 choices. phaseChoices has no boundary field.",
+    "evidenceFields": ["violatedChoiceReferences (maxItems 4, maxLength 100)", "violatedBranchReferences (maxItems 4, maxLength 100)", "conciseExplanation (maxLength 100)"],
+    "evidenceMayBeEmpty": true,
+    "evidenceRequiredWhenCompliant": false,
+    "oneAssessmentCanCoverFourteenChoicesAndTwoWorldStates": true,
+    "complianceAndViolationRepresentedRedundantly": true,
+    "redundancyDetail": "boundaryCompliant (global) + violatedBoundaryIds (global) + four per-assessment booleans + two per-assessment reference arrays = three redundant encodings of the same claim. All are self-consistent when the model simply asserts compliance, so redundancy adds no cross-check.",
+    "topLevelVerdictCanRemainAcceptWhenDetailIsSemanticallyWrongButStructurallyClean": true,
+    "classification": "E_MULTIPLE_CONTRACT_DEFECTS",
+    "componentClassifications": ["B_STRUCTURALLY_INSUFFICIENT (no per-choice, no per-world-state boundary field)", "C_ADEQUATE_FOR_COVERAGE_BUT_INSUFFICIENT_FOR_EVIDENCE (coverage of the boundary ID set was exact and correct; evidence was never demanded)"],
+    "coverageWasCorrect": "YES — boundaryIdsConsidered == ['c1_verify'], exactly one assessment, no duplicate, no unknown, no omission. R2.27's coverage repair worked. Coverage is not the defect."
+  },
+
+  "optionEvaluation": {
+    "option1_currentBroadReviewPlusOneRerun": {
+      "defectAddressed": "Transient provider variance only.",
+      "defectNotAddressed": "Every measured cause. Sampling is temperature=0, top_p=1 — this verdict is near-deterministic for this subject, so a rerun re-measures the same failure.",
+      "addedProviderCalls": 1,
+      "safetyEffect": "NONE",
+      "complexity": "trivial",
+      "falsePositiveRisk": "n/a",
+      "evidenceRequiredBeforeAdoption": "Evidence of an isolated provider anomaly. None exists; the failure is systematic in the contract.",
+      "result": "REJECTED"
+    },
+    "option2_failClosedUrgencyAdequacy": {
+      "defectAddressed": "The unrelated safetyBasis on the violating choice (urgency.choices[1]).",
+      "defectNotAddressed": "Boundary violations in scenarios with no urgency; the missing per-choice and per-world-state boundary fields; the write-only boundaryState field.",
+      "addedProviderCalls": 0,
+      "safetyEffect": "MODERATE — a genuine second net, but a proxy one.",
+      "complexity": "medium — requires a NEW structured harm-resolution field; a presence-tightening alone false-positives (measured on choices [0,1]).",
+      "falsePositiveRisk": "HIGH if implemented naively; LOW with an explicit resolution field.",
+      "evidenceRequiredBeforeAdoption": "A fixture set separating a legitimate safety pause (p1) from an unresolved harm (p2), proving the rule fires only on the latter.",
+      "result": "DEFER — sequence AFTER the boundary correction (this is R2.30)."
+    },
+    "option3_perChoiceBoundaryEvidenceContract": {
+      "defectAddressed": "B (schema granularity), C (evidence grounding), D (derivation has structured fields to read), and the resulting-world-state blind spot when world states are included.",
+      "defectNotAddressed": "E — the model must still judge correctly; the contract only forces the judgment to be made per surface and to carry evidence. Does not by itself fix the replay/production request divergence (a one-line companion repair).",
+      "addedProviderCalls": 0,
+      "safetyEffect": "HIGH — moves compliance from three redundant assertions to 16 evidence-bearing answers, each independently derivable.",
+      "complexity": "medium — schema growth of roughly 16 small records; token-budget headroom must be measured (current run: finishReason=stop, maxTokens=16000, 23.8s).",
+      "falsePositiveRisk": "MODERATE — per-surface questioning can mark inherited or neutral choices non-compliant; needs a NEUTRAL/NOT_APPLICABLE result value alongside COMPLIES/VIOLATES.",
+      "evidenceRequiredBeforeAdoption": "Token-budget headroom measurement (no truncation across the 3 canary cases) and failing regression fixtures on this exact frozen c18 subject.",
+      "result": "RECOMMENDED"
+    },
+    "option4_narrowIndependentBoundaryReview": {
+      "defectAddressed": "B, C, E — a single-question call maximizes the chance the model encodes what it already perceives.",
+      "defectNotAddressed": "The broad review keeps its blind aggregate booleans unless they are also removed; two boundary verdicts could then disagree with no arbitration rule.",
+      "addedProviderCalls": "+1 per boundary-bearing scenario, per attempt.",
+      "safetyEffect": "HIGH",
+      "complexity": "high — a new review stage, a new schema, a new artifact shape, and a precedence rule between the two boundary verdicts.",
+      "falsePositiveRisk": "MODERATE",
+      "evidenceRequiredBeforeAdoption": "Proof that Option 3 is insufficient — i.e. that a granular evidence-bearing contract still produces false negatives on this subject.",
+      "result": "DEFER — this is precedence step 3; Option 3 is step 1 and has not been tried."
+    },
+    "option5_deterministicTextInvariant": {
+      "defectAddressed": "Mechanically detectable cases only — e.g. an action label containing 'treat' with no verification predicate anywhere in its branch.",
+      "defectNotAddressed": "Semantic boundary compliance in general. Would not generalize past this phrasing.",
+      "addedProviderCalls": 0,
+      "safetyEffect": "LOW and brittle.",
+      "complexity": "low",
+      "falsePositiveRisk": "HIGH — 'Focus on caring for the second patient immediately' and 'Immediately treat the second patient' differ from compliant phrasings by connotation, not by token.",
+      "evidenceRequiredBeforeAdoption": "N/A — must not be presented as a semantic safeguard.",
+      "result": "NOT ADOPTED AS A SAFEGUARD"
+    },
+    "option6_strongerReviewerModel": {
+      "defectAddressed": "E, potentially.",
+      "defectNotAddressed": "B, C, D — a stronger model writing into the same aggregate booleans with no evidence obligation and no per-world-state field can produce the identical DTO.",
+      "addedProviderCalls": 0,
+      "safetyEffect": "UNKNOWN — unmeasurable while the contract cannot represent the finding.",
+      "complexity": "low to apply, high to justify.",
+      "falsePositiveRisk": "unknown",
+      "evidenceRequiredBeforeAdoption": "Precedence rule 4: the contract must first be shown adequate and granular. It is measured NOT adequate. Blocked.",
+      "result": "BLOCKED BY PRECEDENCE"
+    }
+  },
+
+  "smallestNextCorrection": {
+    "slice": "3.2I-PRACTICE-R5B1A.1-R2.29",
+    "name": "PER-DECISION-SURFACE BOUNDARY EVIDENCE AUTHORITY",
+    "option": "OPTION 3",
+    "precedenceRuleSatisfied": "1 — repair missing or insufficient boundary evidence authority",
+    "scope": [
+      "Extend the review schema so EVERY decision surface carries, per active boundary, a compliance result (complies | violates | not_applicable) plus REQUIRED concrete scenario evidence: the 14 visible choices and the 2 resulting world states.",
+      "Make evidence non-empty a validation requirement for a 'complies' result, so bare assertion becomes unrepresentable.",
+      "Extend the deterministic derivation to consume the new per-surface results, and to consume branches[].boundaryState, which is currently write-only.",
+      "Companion one-line repair: add `activeBoundaryCount` and `boundaryComplianceScope` to the reviewFrozenSubject payload so the replay request is byte-equivalent in contract to production."
+    ],
+    "explicitlyExcluded": ["c01 communication-axis correction", "c09 phase progression", "generator construction metadata", "generation model routing", "general full-review splitting", "urgency-rule modification", "reviewer model change"],
+    "gate": "Failing regression fixtures built from THIS frozen c18 subject (sha256 7b97042f3222…) must fail before the change and pass after. Token-budget headroom must be measured across all 3 canary cases with no finishReason='length'.",
+    "authorizationRequired": true
+  },
+
+  "urgencySliceRelationship": {
+    "r230RemainsSeparate": true,
+    "ration": "R2.30 urgency adequacy is NOT a necessary component of the boundary correction. The boundary repair stands alone and addresses the dominant causes; urgency adequacy is a second, proxy net that only fires when a boundary violation happens to be named in the urgency record. Merging them would couple two schema growths into one already-large call and raise truncation risk. Sequence: R2.29 boundary evidence authority, then R2.30 urgency adequacy.",
+    "classification": "NECESSARY_BUT_INSUFFICIENT · SEQUENCED_AFTER"
+  },
+
+  "noMutationProof": {
+    "headBefore": "508cbeb4ecbe816e7750de7516e8a76527b18903",
+    "headAfter": "508cbeb4ecbe816e7750de7516e8a76527b18903",
+    "originInnerMainUnchanged": true,
+    "trackedTreeClean": true,
+    "liveReplayArtifactByteIdentical": true,
+    "sourceArtifactByteIdentical": true,
+    "reconstructionSourcesByteIdentical": true,
+    "reviewContractDigestUnchanged": true,
+    "liveModelCall": "NONE",
+    "generationCall": "NONE",
+    "databaseConnection": "NONE",
+    "deployment": "NONE",
+    "newRunner": "NONE",
+    "commitOrPush": "NONE",
+    "sourceModification": "NONE",
+    "testModification": "NONE",
+    "analysisScriptsLocation": "scratchpad only (outside the repository)"
+  }
+}

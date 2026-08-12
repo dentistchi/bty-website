@@ -89,6 +89,7 @@ const HOST_ANSWERS = {
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the owner and deadline?",
+  recurringMoment: "During morning huddles",
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
   capabilityCandidate: "Accountability",
 };

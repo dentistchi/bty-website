@@ -24,7 +24,7 @@ import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
-import { missingProgramKinds, programContext, programContextFingerprint } from "@/domain/foundry/module/program-authorship";
+import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -300,7 +300,8 @@ export function ModuleBuilderShell({
   const [proposedCompletionPrompt, setProposedCompletionPrompt] = useState<string | null>(null);
   const [proposedSharedQuestion, setProposedSharedQuestion] = useState<string | null>(null);
   useEffect(() => {
-    if (step !== 6) return;
+    // The material step — 7 since Slice 3.2P-R3.6-R1 inserted the recurring-moment question.
+    if (step !== 7) return;
     if (!seededPromptRef.current) {
       seededPromptRef.current = true;
       if (!(answersRef.current.completionPrompt ?? "").trim()) {
@@ -1023,7 +1024,26 @@ function renderStep(
         </StepFrame>
       );
     }
+    /**
+     * WHEN DOES THIS USUALLY HAPPEN? (Slice 3.2P-R3.6-R1)
+     *
+     * TWO DIFFERENT SIGNALS, deliberately not collapsed. `recurring_moment_required` blocks Next
+     * because a blank answer is a blank answer. `recurring_moment_not_repeatable` does NOT block:
+     * the Host has answered honestly and BTY simply cannot build a "next one" from the phrase, so
+     * it is guidance, shown beside what they wrote, and they may keep it. Generation is what the
+     * second one stops, at the source boundary, before a single provider call.
+     */
     case 3: {
+      const notRepeatable = programSourceBlocker(a) === "recurring_moment_not_repeatable";
+      return (
+        <StepFrame q={t.sMomentQ} help={t.sMomentHelp}>
+          {textArea(a.recurringMoment ?? "", (v) => patch({ recurringMoment: v }, false), t.sMomentPlaceholder, t.sMomentQ)}
+          <BlockerLine show={blocker === "recurring_moment_required"} text={t.sMomentBlocker} />
+          <BlockerLine show={notRepeatable} text={t.sMomentNotRepeatable} />
+        </StepFrame>
+      );
+    }
+    case 4: {
       const vague = observableBehaviorWarning(a.observableBehavior) === "observable_behavior_vague";
       return (
         <StepFrame q={t.s3Q} help={t.s3Help}>
@@ -1049,7 +1069,7 @@ function renderStep(
         </StepFrame>
       );
     }
-    case 4: {
+    case 5: {
       const behavior = a.observableBehavior?.trim();
       const opt = (type: EvidenceObservation, label: string) => (
         <OptionButton active={a.evidenceType === type} label={label} onClick={() => patch({ evidenceType: type }, true)} />
@@ -1078,7 +1098,7 @@ function renderStep(
         </StepFrame>
       );
     }
-    case 5: {
+    case 6: {
       const selected = normalizeLearningNeeds(a);
       const toggle = (need: LearningNeed) => {
         const next = selected.includes(need) ? selected.filter((n) => n !== need) : [...selected, need];
@@ -1103,7 +1123,7 @@ function renderStep(
         </StepFrame>
       );
     }
-    case 6: {
+    case 7: {
       const opt = (m: "youtube" | "pdf", label: string) => (
         <OptionButton active={a.materialIntent === m} label={label} onClick={() => patch({ materialIntent: m }, true)} />
       );
@@ -1153,7 +1173,7 @@ function renderStep(
         </StepFrame>
       );
     }
-    case 7: {
+    case 8: {
       const recommend = recommendArenaForNeeds(normalizeLearningNeeds(a));
       const chosen = a.arenaRecommended ?? recommend;
       const followOpt = (days: FollowUpDays, label: string) => (
@@ -1201,6 +1221,8 @@ function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string 
       return t.s1Blocker;
     case "audience":
       return t.s2Blocker;
+    case "recurringMoment":
+      return t.sMomentBlocker;
     case "behavior":
       return t.s3Blocker;
     case "evidence":
@@ -1221,6 +1243,8 @@ function sectionLabel(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
       return t.reviewChange;
     case "audience":
       return t.reviewWho;
+    case "recurringMoment":
+      return t.reviewWhenItHappens;
     case "behavior":
       return t.reviewBehavior;
     case "evidence":
@@ -1289,14 +1313,15 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
   return [
     { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1, section: "problem" },
     { label: t.reviewWho, value: audience, step: 2, section: "audience" },
-    { label: t.reviewCapability, value: a.capabilityCandidate?.trim() ? a.capabilityCandidate : null, step: 3 },
-    { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 3, section: "behavior", note: behaviorNote },
-    { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 4, section: "evidence" },
-    { label: t.reviewLearning, value: learning, step: 5, section: "learning" },
-    { label: t.reviewMaterials, value: material, step: 6, section: "material", lines: materialLines },
-    { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 6 },
-    { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 7 },
-    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 7, section: "followUp" },
+    { label: t.reviewWhenItHappens, value: a.recurringMoment?.trim() ? a.recurringMoment : null, step: 3, section: "recurringMoment" },
+    { label: t.reviewCapability, value: a.capabilityCandidate?.trim() ? a.capabilityCandidate : null, step: 4 },
+    { label: t.reviewBehavior, value: a.observableBehavior?.trim() ? a.observableBehavior : null, step: 4, section: "behavior", note: behaviorNote },
+    { label: t.reviewEvidence, value: a.successEvidence?.trim() ? a.successEvidence : null, step: 5, section: "evidence" },
+    { label: t.reviewLearning, value: learning, step: 6, section: "learning" },
+    { label: t.reviewMaterials, value: material, step: 7, section: "material", lines: materialLines },
+    { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 7 },
+    { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 8 },
+    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 8, section: "followUp" },
   ];
 }
 

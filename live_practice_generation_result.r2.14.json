@@ -1,0 +1,216 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.14",
+  "note": "Sanitized live-evaluation summary. No API key, no Authorization header, no provider account identifier, no production user data.",
+  "expectedCases": 20,
+  "executedCases": 20,
+  "model": "gpt-4o-mini",
+  "promptDigest": "NOT INSTRUMENTED — the harness does not record a prompt/template digest",
+  "verdictCounts": {
+    "PROVIDER_FAILURE": 14,
+    "DECLINED_AS_INTENDED": 2,
+    "BLOCKED_AWAITING_CONFIRMED_BOUNDARIES": 4
+  },
+  "generatedScenarios": 0,
+  "providerFailures": 14,
+  "providerError": "HTTP 401 invalid_api_key — local .env credential is revoked",
+  "noFallbackAssertion": "ENFORCED — production contract returns generation_unavailable; deterministic substitution is test-forbidden and none entered these results",
+  "retryCount": "NOT INSTRUMENTED",
+  "tokenUsage": "NOT INSTRUMENTED",
+  "hardGates": {
+    "allCasesExecuted": true,
+    "noSkippedLiveBlock": true,
+    "noDeterministicFallback": true,
+    "everySuccessParsesCanonically": "VACUOUS — zero successes",
+    "noProviderErrorPresentedAsContent": true,
+    "declineCasesRefusedSafely": true,
+    "atLeastOneGeneratedScenario": false
+  },
+  "overallAutomatedResult": "FAILED — zero generated scenarios; no product-quality evidence obtained",
+  "perCase": [
+    {
+      "id": "c01-missed-commitment",
+      "locale": "en",
+      "latencyMs": 380,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c02-uncertain-customer",
+      "locale": "en",
+      "latencyMs": 184,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c03-fairness-retention",
+      "locale": "en",
+      "latencyMs": 119,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c04-safety-hardstop",
+      "locale": "en",
+      "latencyMs": 0,
+      "verdict": "DECLINED_AS_INTENDED",
+      "reason": "fixed_answer_knowledge",
+      "reviewFlag": "PASS CANDIDATE",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c05-speed-accuracy",
+      "locale": "en",
+      "latencyMs": 186,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c06-authority-escalation",
+      "locale": "en",
+      "latencyMs": 88,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c07-limited-staffing",
+      "locale": "en",
+      "latencyMs": 120,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c08-two-strong-members",
+      "locale": "en",
+      "latencyMs": 203,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c09-transparency-verification",
+      "locale": "ko",
+      "latencyMs": 118,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c10-consistency-context",
+      "locale": "ko",
+      "latencyMs": 0,
+      "verdict": "BLOCKED_AWAITING_CONFIRMED_BOUNDARIES",
+      "reason": "boundary_confirmation_required",
+      "reviewFlag": "REVIEW REQUIRED",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c11-relationship-accountability",
+      "locale": "ko",
+      "latencyMs": 75,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c12-autonomy-standardization",
+      "locale": "ko",
+      "latencyMs": 60,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c13-mixed-clinical",
+      "locale": "en",
+      "latencyMs": 0,
+      "verdict": "BLOCKED_AWAITING_CONFIRMED_BOUNDARIES",
+      "reason": "boundary_confirmation_required",
+      "reviewFlag": "REVIEW REQUIRED",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c14-mixed-privacy",
+      "locale": "en",
+      "latencyMs": 0,
+      "verdict": "BLOCKED_AWAITING_CONFIRMED_BOUNDARIES",
+      "reason": "boundary_confirmation_required",
+      "reviewFlag": "REVIEW REQUIRED",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c15-mixed-reporting",
+      "locale": "en",
+      "latencyMs": 0,
+      "verdict": "BLOCKED_AWAITING_CONFIRMED_BOUNDARIES",
+      "reason": "boundary_confirmation_required",
+      "reviewFlag": "REVIEW REQUIRED",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c16-ambiguous-boundary",
+      "locale": "en",
+      "latencyMs": 0,
+      "verdict": "DECLINED_AS_INTENDED",
+      "reason": "boundary_confirmation_required",
+      "reviewFlag": "PASS CANDIDATE",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c17-confirmed-no-rule",
+      "locale": "en",
+      "latencyMs": 95,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c18-constrained-clinical",
+      "locale": "en",
+      "latencyMs": 86,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c19-indirect-violation",
+      "locale": "en",
+      "latencyMs": 90,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    },
+    {
+      "id": "c20-no-safe-space",
+      "locale": "en",
+      "latencyMs": 101,
+      "verdict": "PROVIDER_FAILURE",
+      "reason": "generation_failed",
+      "reviewFlag": "FAIL",
+      "parsedCanonicalOutput": false
+    }
+  ],
+  "rawArtifact": {
+    "path": ".eval-artifacts/practice-generation.latest.json",
+    "sha256": "40a476fc263e7e916b5d10d4702476ad36145caa3cb7184d97e85f78b7ba8291",
+    "tracked": false
+  }
+}

@@ -42,6 +42,7 @@ beforeAll(async () => {
 const ANSWERS: BuilderAnswers = {
   problem: "Handoffs skip the double-check.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "The charge nurse reads the dosage back before sign-off.",
   successEvidence: "Sign-offs include a witnessed read-back.",
 };

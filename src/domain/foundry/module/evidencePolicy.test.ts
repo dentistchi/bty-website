@@ -28,6 +28,7 @@ import type { BuilderAnswers } from "./module-builder";
 const CANONICAL: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   evidenceType: "seen",

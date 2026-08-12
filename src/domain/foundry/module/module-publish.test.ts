@@ -15,6 +15,7 @@ function completeYoutube(): BuilderAnswers {
   return {
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
+    recurringMoment: "at each handoff point",
     observableBehavior: "The charge nurse reads back the dosage before sign-off.",
     successEvidence: "Sign-offs include a witnessed read-back.",
     evidenceType: "seen",
@@ -68,12 +69,14 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
     const cases: Array<[Partial<BuilderAnswers>, string, number]> = [
       [{ problem: "   " }, "problem", 1],
       [{ audienceType: undefined }, "audience", 2],
-      [{ observableBehavior: "  " }, "behavior", 3],
-      [{ successEvidence: "\n\t" }, "evidence", 4],
-      [{ learningNeeds: [] }, "learning", 5],
-      [{ materialIntent: undefined, materialText: undefined }, "material", 6],
-      [{ materialText: "" }, "material", 6], // youtube intent but blank URL
-      [{ followUpDays: undefined }, "followUp", 7],
+      // Slice 3.2P-R3.6-R1 — the Host's recurring moment, and the one-step shift it caused.
+      [{ recurringMoment: "  " }, "recurringMoment", 3],
+      [{ observableBehavior: "  " }, "behavior", 4],
+      [{ successEvidence: "\n\t" }, "evidence", 5],
+      [{ learningNeeds: [] }, "learning", 6],
+      [{ materialIntent: undefined, materialText: undefined }, "material", 7],
+      [{ materialText: "" }, "material", 7], // youtube intent but blank URL
+      [{ followUpDays: undefined }, "followUp", 8],
     ];
     for (const [override, section, step] of cases) {
       const m = reviewMissingSections({ ...completeYoutube(), ...override });
@@ -89,7 +92,8 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
     // pdf intent set (so material is satisfied at the answers level); everything else empty.
     const m = reviewMissingSections({ materialIntent: "pdf" });
     expect(m.map((x) => x.step)).toEqual([...m.map((x) => x.step)].sort((a, b) => a - b));
-    expect(m.map((x) => x.section)).toEqual(["problem", "audience", "behavior", "evidence", "learning", "followUp"]);
+    // Slice 3.2P-R3.6-R1 — "When it happens" sits between the audience and the behaviour.
+    expect(m.map((x) => x.section)).toEqual(["problem", "audience", "recurringMoment", "behavior", "evidence", "learning", "followUp"]);
   });
 
   it("does NOT block on an empty (optional) capability candidate", () => {
@@ -100,6 +104,7 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
   it("counts Copilot-applied behavior + evidence exactly like manual entry", () => {
     const a: BuilderAnswers = {
       ...completeYoutube(),
+      recurringMoment: "at each handoff point",
       observableBehavior: "Before ending the handoff, the nurse records the owner and next check time.",
       successEvidence: "The handoff record lists the owner and a follow-up time.",
     };

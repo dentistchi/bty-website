@@ -23,6 +23,7 @@ const WRONG_FOCUS = "새로운 의사들의 교만이 문제야";
 const answersFor = (problem: string) => ({
   problem,
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know"],
@@ -112,7 +113,7 @@ afterEach(() => {
 
 describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   it("G1 — pressing the entry button opens the confirmation and calls NO provider", async () => {
-    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
 
@@ -122,7 +123,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   });
 
   it("G2 — Go back spends nothing and restores focus to the entry button", async () => {
-    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls, draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     await act(async () => {
@@ -139,7 +140,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
   });
 
   it("Escape dismisses without spending anything", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     await act(async () => {
@@ -152,7 +153,7 @@ describe("[3.2L-R1.3] opening the confirmation spends nothing", () => {
 
 describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   it("G3 — canonical draft: shows its focus, bound to its own id", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
 
@@ -164,7 +165,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("G4 — wrong draft: shows ITS focus, and the canonical focus is absent", async () => {
-    mockServer({ drafts: { [WRONG_ID]: { current_step: 8, answers: answersFor(WRONG_FOCUS) } } });
+    mockServer({ drafts: { [WRONG_ID]: { current_step: 9, answers: answersFor(WRONG_FOCUS) } } });
     await openDraft(WRONG_ID);
     await pressGenerate();
 
@@ -177,8 +178,8 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   it("G5 — switching drafts shows only the NEW target; no stale value survives", async () => {
     mockServer({
       drafts: {
-        [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) },
-        [WRONG_ID]: { current_step: 8, answers: answersFor(WRONG_FOCUS) },
+        [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) },
+        [WRONG_ID]: { current_step: 9, answers: answersFor(WRONG_FOCUS) },
       },
     });
     await openDraft(CANONICAL_ID);
@@ -197,7 +198,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("the primary action names what will happen — not a generic Continue/Confirm/Yes", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     const label = screen.getByTestId("program-target-confirm-action").textContent ?? "";
@@ -206,7 +207,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
   });
 
   it("states plainly that nothing is added or published yet", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     expect(screen.getByTestId("program-target-confirm").textContent).toContain(
@@ -217,7 +218,7 @@ describe("[3.2L-R1.3] the confirmation names the exact target", () => {
 
 describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
   it("G8 — rapid taps create exactly ONE provider request", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
 
@@ -231,7 +232,7 @@ describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
   });
 
   it("one confirmation sends exactly one submission intent", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     await pressConfirm();
@@ -243,7 +244,7 @@ describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
   });
 
   it("reopening after a completed run issues a NEW intent, never a replay", async () => {
-    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { providerCalls } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     await pressConfirm();
@@ -262,7 +263,7 @@ describe("[3.2L-R1.3] only an explicit confirmation spends", () => {
 describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
   it("G7 — an already-active generation refuses without a proposal", async () => {
     mockServer({
-      drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } },
+      drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } },
       programResponse: () =>
         new Response(JSON.stringify({ error: "program_generation_in_progress" }), { status: 409 }),
     });
@@ -275,7 +276,7 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
 
   it("G6 — a stale target refuses with its specific reason and no proposal", async () => {
     mockServer({
-      drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } },
+      drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } },
       programResponse: () =>
         new Response(JSON.stringify({ error: "stale_context", refusal: "status_no_longer_draft" }), { status: 409 }),
     });
@@ -287,7 +288,7 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
   });
 
   it("G11 — confirm → success → Discard writes no journey to the draft", async () => {
-    const { draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    const { draftWrites } = mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     await pressConfirm();
@@ -305,7 +306,7 @@ describe("[3.2L-R1.3] server refusals reach the Host intact", () => {
 
 describe("[3.2L-R1.3] missing focus and accessibility", () => {
   it("G9 — a draft with no focus shows the neutral fallback, and invents nothing", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: { audienceType: "everyone" } } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: { audienceType: "everyone" } } } });
     await openDraft(CANONICAL_ID);
     // The entry action is blocked while the required inputs are missing, so the paid path
     // is unreachable — but if it is reached, the fallback is neutral.
@@ -315,7 +316,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   it("G9b — a long focus keeps its distinguishing tail and does not truncate", async () => {
     const shared = "Our handoffs at shift change keep missing steps and this creates risk for everyone involved daily";
     const long = `${shared}, especially on the night shift.`;
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(long) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(long) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     const el = screen.getByTestId("program-target-focus");
@@ -325,7 +326,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   });
 
   it("G10 — the confirmation is a labelled dialog that takes focus, with a 44px touch target", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
 
@@ -345,7 +346,7 @@ describe("[3.2L-R1.3] missing focus and accessibility", () => {
   });
 
   it("the target label is announced before the actions", async () => {
-    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_FOCUS) } } });
+    mockServer({ drafts: { [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_FOCUS) } } });
     await openDraft(CANONICAL_ID);
     await pressGenerate();
     const html = screen.getByTestId("program-target-confirm").innerHTML;

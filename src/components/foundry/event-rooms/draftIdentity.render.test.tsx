@@ -24,6 +24,7 @@ const INCIDENT_PROBLEM = "새로운 의사들의 교만이 문제야";
 const answersFor = (problem: string) => ({
   problem,
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide", "practice"],
@@ -76,7 +77,7 @@ afterEach(() => {
 
 describe("[3.2L-R1.2] the open draft names itself", () => {
   it("G1 — the canonical draft shows its own statement at Step 8, without expanding anything", async () => {
-    const { seen } = mockServer({ [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_PROBLEM) } });
+    const { seen } = mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
     await open(CANONICAL_ID);
 
     // Visible identity …
@@ -89,15 +90,15 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
   });
 
   it("G1b — the label is neutral, not an approved program title", async () => {
-    mockServer({ [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_PROBLEM) } });
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
     await open(CANONICAL_ID);
     expect(screen.getByTestId("draft-identity").textContent).toContain("Training focus");
   });
 
   it("G2 — a different Step-8 draft shows ITS statement, and the previous one is gone", async () => {
     mockServer({
-      [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_PROBLEM) },
-      [INCIDENT_ID]: { current_step: 8, answers: answersFor(INCIDENT_PROBLEM) },
+      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) },
+      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM) },
     });
     await open(CANONICAL_ID);
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
@@ -113,8 +114,8 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
     // The incident draft is deliberately the "newest" here. Opening the canonical draft
     // explicitly must still show the canonical statement — recency is not identity.
     const { seen } = mockServer({
-      [INCIDENT_ID]: { current_step: 8, answers: answersFor(INCIDENT_PROBLEM) },
-      [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_PROBLEM) },
+      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM) },
+      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) },
     });
     await open(CANONICAL_ID);
     expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
@@ -132,7 +133,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
         if (method === "GET") {
           return new Response(
             JSON.stringify({
-              draft: { id: CANONICAL_ID, status: "draft", current_step: 8, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
+              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
               program_generation_active: false,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
@@ -166,7 +167,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
         if ((init?.method ?? "GET").toUpperCase() === "GET") {
           return new Response(
             JSON.stringify({
-              draft: { id: CANONICAL_ID, status: "draft", current_step: 8, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
+              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
               program_generation_active: false,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
@@ -204,7 +205,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
     expect(draftIdentityStatement({ problem: a })).not.toBe(draftIdentityStatement({ problem: b }));
     expect(draftIdentityStatement({ problem: a })).toBe(a);
 
-    mockServer({ [CANONICAL_ID]: { current_step: 8, answers: answersFor(a) } });
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(a) } });
     await open(CANONICAL_ID);
     const el = screen.getByTestId("draft-identity-statement");
     expect(el.textContent).toBe(a);
@@ -214,7 +215,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
   });
 
   it("G8 — identity is a labelled region, read before the Review actions, without stealing the step heading", async () => {
-    mockServer({ [CANONICAL_ID]: { current_step: 8, answers: answersFor(CANONICAL_PROBLEM) } });
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
     const { container } = await open(CANONICAL_ID);
     const section = screen.getByTestId("draft-identity");
     // A NAMED region carries the semantics. It is deliberately not a heading: the Builder

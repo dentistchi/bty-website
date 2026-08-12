@@ -15,6 +15,7 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide"],
@@ -30,6 +31,7 @@ const el = (kind: string, content: string, rationale = "because it fits") => ({ 
 /** Same draft with practice + Arena, so a scenario is required. No construct in the behaviour. */
 const PRACTICE_ANSWERS: BuilderAnswers = {
   ...ANSWERS,
+  recurringMoment: "at each handoff point",
   observableBehavior: "Hand over unfinished work out loud.",
   learningNeeds: ["know", "decide", "practice"],
   arenaRecommended: true,

@@ -1,0 +1,69 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.17",
+  "note": "Sanitized canary review. No credential, no Authorization header, no provider account id, no production data.",
+  "artifact": {
+    "path": ".eval-artifacts/practice-generation.canary.json",
+    "sha256": "e3f153852cd9e0a6bb813835898f57f7d699f5932f15fec0bfd39a0b626b9ca9",
+    "tracked": false
+  },
+  "model": "gpt-4o-mini",
+  "expected": 3,
+  "executed": 3,
+  "generated": 2,
+  "cases": {
+    "c01-missed-commitment": {
+      "locale": "en",
+      "attempts": 1,
+      "structural": "PASS",
+      "contentFlag": "FAIL",
+      "reason": "Primary choices are honesty vs concealment — p2 'Provide a vague timeline ... without admitting the mistake'. The system prompt explicitly forbids framing the dilemma as honesty vs lying and requires every option to be defensible and not written as the obvious wrong answer. The opening states the choice as 'admit the oversight ... or downplay the situation'. The same pattern repeats in ft2, fa2 and p2-a2.",
+      "gateGap": "The difficult-choice validator passed a scenario that violates the prompt's own explicit rule."
+    },
+    "c09-transparency-verification": {
+      "locale": "ko",
+      "attempts": 2,
+      "attempt1": "branch_paraphrase",
+      "structural": "PASS",
+      "contentFlag": "FAIL",
+      "reason": "Branches collapse: both branches re-ask the same notify-now vs verify-first binary already posed by the primary choices. p1-a2 and p2-a2 are the identical string. Branch escalations carry no new concrete pressure ('team tension rises, which may affect project progress').",
+      "retry": "UNSTABLE GENERATION — attempt 1 was caught as branch_paraphrase; attempt 2 passed the validator while remaining substantively collapsed, so the differentiation check is too weak."
+    },
+    "c18-constrained-clinical": {
+      "locale": "en",
+      "attempts": 0,
+      "classification": "D_INSUFFICIENT_ARTIFACT_EVIDENCE",
+      "reason": "attempts[] is EMPTY although the run took 18.1s. The generator's no-safe path logs; the semantic reviewer's did not. An empty trace therefore proves the SEMANTIC REVIEWER declared no-safe-space after the generator produced a scenario — but neither that scenario nor the reviewer's rationale was captured.",
+      "hypothesis": "OVER-REFUSAL. The corpus sets expectDecline=false with the note 'Manager confirmed rule; generate only inside it', and the single constraint (verify two identifiers) does not remove sequencing / notification / recovery judgment. The reviewer prompt asks it to decide noSafeJudgmentSpace with NO definition of the term.",
+      "decision": "Not changing the safety contract on an unproven cause."
+    }
+  },
+  "noSafeCanonicalDefinition": [
+    "every plausible choice would violate a confirmed non-negotiable boundary",
+    "the request asks the learner to choose among unsafe or prohibited actions",
+    "essential safety boundaries remain unresolved and generation must wait for confirmation"
+  ],
+  "retryPolicy": {
+    "maxAttempts": 2,
+    "retriesOn": [
+      "quality/semantic rejection",
+      "reviewer violation"
+    ],
+    "feedbackToModel": "NONE — the retry re-sends the identical prompt; the model never learns the first-attempt defect",
+    "terminalNoRetry": [
+      "generation_failed",
+      "no_safe_judgment_space",
+      "structured_output_unavailable"
+    ]
+  },
+  "releaseMetric": {
+    "firstAttemptSuccess": 1,
+    "retryRecovered": 1,
+    "terminalFailure": 1,
+    "perCodeRetry": {
+      "branch_paraphrase": 1
+    },
+    "note": "1 of 3 succeeded first try. Eventual success via retry is not stable quality."
+  },
+  "sourceCorrection": "Observability only — all four semantic-reviewer outcomes now log. No safety, quality or gate semantics changed.",
+  "verdict": "C_GENERATED_CONTENT_QUALITY_FAILED_RELEASE_HOLD"
+}

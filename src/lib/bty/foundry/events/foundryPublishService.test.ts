@@ -142,6 +142,7 @@ function youtubeDraft(over: Row = {}): Row {
     answers: {
       problem: "Handoffs skip the double-check.",
       audienceType: "everyone",
+      recurringMoment: "at each handoff point",
       observableBehavior: "The charge nurse reads back the dosage before sign-off.",
       successEvidence: "Sign-offs include a witnessed read-back.",
       evidenceType: "seen",
@@ -299,6 +300,7 @@ describe("publishDraft — PDF (durable-reference reuse)", () => {
           answers: {
             problem: "Read the safety manual.",
             audienceType: "everyone",
+            recurringMoment: "at each handoff point",
             observableBehavior: "Staff follow the lockout steps in order.",
             successEvidence: "Observed correct lockout on the floor.",
             evidenceType: "seen",

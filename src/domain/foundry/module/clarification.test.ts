@@ -24,6 +24,7 @@ function sufficientAnswers(): BuilderAnswers {
     problem: "Front desk staff schedule emergency patients without asking triage questions.",
     audienceType: "specific_role",
     audienceDetail: "Front desk staff",
+    recurringMoment: "at each handoff point",
     observableBehavior:
       "The front desk asks about swelling, pain duration, and breathing difficulty before booking an emergency slot.",
     successEvidence: "The triage answers are noted on the appointment record before the slot is confirmed.",

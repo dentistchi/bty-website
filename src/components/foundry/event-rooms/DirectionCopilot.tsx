@@ -31,6 +31,7 @@ export type DirectionGenerateOutcome =
 
 export type AppliedDirection = {
   capabilityCandidate: string;
+  recurringMoment: "at each handoff point",
   observableBehavior: string;
   successEvidence: string;
 };
@@ -124,6 +125,7 @@ export function DirectionCopilot({
     if (stale) return;
     onApply({
       capabilityCandidate: review.capability.trim(),
+      recurringMoment: "at each handoff point",
       observableBehavior: review.behavior.trim(),
       successEvidence: review.evidence.trim(),
     });

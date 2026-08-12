@@ -46,6 +46,7 @@ function build(focus: string): void {
      import { createRoot } from "react-dom/client";
      import { ProgramAuthorship } from "../ProgramAuthorship";
      const ANSWERS = { problem: ${JSON.stringify(focus)}, audienceType: "everyone",
+       recurringMoment: "at each handoff point",
        observableBehavior: "Create a shared handoff standard.", successEvidence: "Handoff record",
        learningNeeds: ["know"], materialIntent: "youtube", materialText: "https://youtu.be/x",
        completionPrompt: "What will you include?", followUpDays: 7 };

@@ -21,6 +21,7 @@ const CTX: ModuleDraftContext = {
   audienceType: "everyone",
   audienceDetail: null,
   capabilityCandidate: "Accurate handoff",
+  recurringMoment: "at each handoff point",
   observableBehavior: "The charge nurse reads the dosage back before sign-off.",
   successEvidence: "Sign-offs include a witnessed read-back.",
 };

@@ -113,9 +113,9 @@ const KIND_BRIEF: Record<string, string> = {
   why_it_matters:
     "why this change matters, written FOR the participants. NEVER restate the manager's complaint back at them — reframe it as what is at stake for the people doing the work and for whoever depends on them.",
   observable_standard:
-    "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the behavior_contract you also return.",
+    "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the observable_action you also return.",
   scenario:
-    "one short realistic situation where the behavior is hard to hold AT THE MOMENT THE TRIGGER NAMES. It must match the scenario_contract you also return, and must not move the action to another occasion. Invent no policy number, no named person, no incident, no date.",
+    "one short realistic situation where the behavior is hard to hold AT THE MOMENT THE HOST NAMED. It must match the scenario_contract you also return, and must not move the action to another occasion. Invent no policy number, no named person, no incident, no date.",
   reflection: "one question that makes the participant examine their own current practice honestly.",
   action_decision:
     "one specific commitment the participant makes. It must COMMIT to an action ('I will …'), not merely invite thought.",
@@ -149,6 +149,8 @@ export function systemPrompt(
    * completion is already decided — not so it can restate it. There is no field to put it in.
    */
   completionCriterion = "",
+  /** The host's own recurring occasion (Slice 3.2P-R3.6-R1). Quoted so the model knows it is fixed. */
+  recurringMoment = "",
 ): string {
   const isKo = locale === "ko";
   return [
@@ -201,7 +203,15 @@ export function systemPrompt(
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",
-    "- Return behavior_contract with exactly THREE fields: actor (who performs it), trigger (the moment it must happen), observable_action (what another person can SEE or HEAR the actor doing).",
+    "- Return behavior_contract with exactly ONE field: observable_action (what another person can SEE or HEAR the learner doing).",
+    /*
+      WHO and WHEN ARE SETTLED (Slice 3.2P-R3.6-R1). Both were model fields until v12 and both
+      drifted: W3 named "a team member" for a `leaders` audience, and W5 died on a moment the
+      Host had already stated three times. The schema no longer has either field, so these lines
+      explain the absence rather than prohibit a field that exists.
+    */
+    `- WHO does it is already settled: the program speaks to the learner directly as "you". Do not name a role, population or job title as the person performing the behaviour.`,
+    `- WHEN it happens is already settled by the host, in their own words: "${recurringMoment}". BTY states that itself. Do not restate it, sharpen it, or give the behaviour a different occasion.`,
     /*
       COMPLETION IS NOT YOURS TO WRITE (Slice 3.2P-R3.4-R1). The schema has no field for it, so
       this line is not a prohibition holding a door shut — it explains why the door is absent,
@@ -216,7 +226,7 @@ export function systemPrompt(
     "THE PRACTICE SITUATION — scenario_contract:",
     "- Return scenario_contract with pressure_condition (what competes with doing it properly) and pressure_detail (a second circumstance, or null when one is enough).",
     "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger or action for it, and do not describe how completion is recognised.",
-    "- THE SITUATION HAPPENS AT THE TRIGGER. There is ONE moment in the program and behavior_contract.trigger already named it. Do NOT give the situation an occasion of its own.",
+    "- THE SITUATION HAPPENS AT THE HOST'S MOMENT. There is ONE moment in the program and the host already named it. Do NOT give the situation an occasion of its own.",
     /*
       BOTH FIELDS, NOT ONE (Slice 3.2O-R1). The rule was stated for pressure_condition only,
       while the validator has always applied it to pressure_detail too — and pressure_detail
@@ -231,7 +241,7 @@ export function systemPrompt(
       thing being trained is the easiest one to fail. The model is the only party that knows
       which noun it chose, so the rule is written to be self-applied rather than parsed here.
     */
-    "- In particular: whatever occasion your own behavior_contract.trigger names, do NOT restate that occasion in either pressure field. If the trigger is 'before each confirmation call', then 'during the call' is a second moment and will be refused — describe only what makes it hard.",
+    `- In particular: do NOT restate the host's occasion in either pressure field. If the moment is "before each confirmation call", then "during the call" is a second moment and will be refused — describe only what makes it hard.`,
     /*
       DERIVED, NOT HAND-WRITTEN (Slice 3.2O-R2). The R1 version of this line was written from
       product intuition and named two categories — "workload" and "operational constraint" —
@@ -247,8 +257,7 @@ export function systemPrompt(
     "",
     "THE REST OF THE PROGRAM — completion_contract, follow_up_contract:",
     "- YOUR DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are BUILT from these. Do not write them as free sentences and expect them to be used.",
-    "- Do NOT return an application moment. YOUR DECISION and APPLY IT are set at the NEXT OCCURRENCE of behavior_contract.trigger, which BTY works out itself — you have no way to know anyone\u2019s actual schedule.",
-    "- So behavior_contract.trigger MUST describe something that comes round again: 'at each handoff point', 'every time a task is reassigned', 'whenever a deadline moves'. A one-off moment has no next one and the program will be refused.",
+    "- Do NOT return an application moment. YOUR DECISION and APPLY IT are set at the NEXT OCCURRENCE of the host's own moment, which BTY works out itself — you have no way to know anyone\u2019s actual schedule.",
     "- Do NOT restate the actor, the action or the completion here. All three are inherited from behavior_contract.",
     "- completion_contract and follow_up_contract are CHOICES from fixed lists, not sentences. Pick the one that fits the training.",
     "- The follow-up window is already set by the host. Do not invent a different one.",
@@ -266,7 +275,7 @@ export function systemPrompt(
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"actor":string,"trigger":string,"observable_action":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"observable_action":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
   ].join("\n");
 }
 
@@ -535,7 +544,7 @@ export async function generateProgram(
   const materialAuthority = deriveMaterialAuthority(args.answers, args.verifiedArtifacts ?? []);
 
   const base: LlmChatMessage[] = [
-    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers)), args.ctx.successEvidence) },
+    { role: "system", content: systemPrompt(args.locale, required, evidenceCeilingFor(args.ctx), materialAuthority, evidenceClaimBrief(args.answers), audiencePromptLines(audienceAuthorityFor(args.answers)), args.ctx.successEvidence, args.ctx.recurringMoment) },
     { role: "user", content: userPrompt(args.ctx, promptConstruct, materialAuthority) },
   ];
 

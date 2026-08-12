@@ -34,6 +34,7 @@ const PILOT = {
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?",
+  recurringMoment: "During morning huddles",
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
   capabilityCandidate: "Accountability",
 } as unknown as BuilderAnswers;
@@ -54,11 +55,12 @@ const CONTENT: Record<string, string> = {
 const KINDS = requiredProgramKinds(PILOT);
 
 const ACTION = "names one owner and one deadline for every agreed action and writes them in the huddle note";
-const GROUNDED = {
-  actor: "the huddle leader",
-  trigger: "at each morning huddle, before the group leaves",
-  observable_action: ACTION,
-};
+/*
+  ONE MODEL FIELD since Slice 3.2P-R3.6-R1 — the trigger joined the actor and the completion as
+  Host/server authority. The overrides below still pass an `actor`, which is exactly how these
+  tests prove the label reaches nothing.
+*/
+const GROUNDED = { observable_action: ACTION };
 /**
  * The exact W3 shape, MINUS the half v11 deleted (Slice 3.2P-R3.4-R1). W3 also returned
  * `completion: { confirmed_by: "the team lead", … }` for a source that never mentions one; the
@@ -67,6 +69,7 @@ const GROUNDED = {
 const DRIFTED = {
   ...GROUNDED,
   actor: "a team member",
+  trigger: "every Tuesday at the quarterly review",
   observable_action: "confirm the owner of each action and state the deadline",
 };
 
@@ -111,7 +114,7 @@ describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the 
     const c = rendered({ ...GROUNDED, actor: "a team member" });
     expect(a.observable_standard).toBe(b.observable_standard);
     expect(a.observable_standard).toBe(c.observable_standard);
-    expect(a.observable_standard).toMatch(/^At each morning huddle, before the group leaves, you must /);
+    expect(a.observable_standard).toMatch(/^During morning huddles, you must /);
   });
 
   it("F — a non-learner mentioned in the problem cannot become the subject", () => {
@@ -166,7 +169,9 @@ describe("[R3.2-R1] J–P — everything else is unchanged", () => {
     const text = Object.values(rendered(DRIFTED)).join(" ");
     expect(text).not.toContain("a team member");
     expect(text).not.toContain("the team lead");
-    expect(rendered(DRIFTED).observable_standard.startsWith(`At each morning huddle, before the group leaves, ${CANONICAL_ACTOR} must`)).toBe(true);
+    // …and since R3.6-R1 a drifted MOMENT is inert for the same reason: the Host owns it.
+    expect(text).not.toContain("quarterly review");
+    expect(rendered(DRIFTED).observable_standard.startsWith(`During morning huddles, ${CANONICAL_ACTOR} must`)).toBe(true);
   });
 
   it("K — the fully grounded seven-kind proposal still PASSES", () => {

@@ -1,0 +1,321 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.24",
+  "correctionOf": "live_practice_stability_result.r2.23d-r4.json",
+  "correctionStatement": "The original R2.23D-R4 aggregate label was incorrect. Its counts were accurate; its verdict was not. The six immutable case artifacts remain authoritative and are unmodified.",
+  "runId": "20260801T024949Z",
+  "mode": "live",
+  "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+  "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+  "model": "gpt-4o-mini",
+  "executionComplete": true,
+  "evidenceComplete": true,
+  "infrastructureHealthy": true,
+  "stabilityHardGatesPass": false,
+  "humanReviewRequired": true,
+  "productQualityPass": null,
+  "productQualityAuthority": "human_only",
+  "hardGateFailures": [
+    {
+      "rule": "generatedValid",
+      "expected": "6",
+      "actual": "1"
+    },
+    {
+      "rule": "firstAttemptValid",
+      "expected": ">= 5",
+      "actual": "1"
+    },
+    {
+      "rule": "retryExhausted",
+      "expected": "0",
+      "actual": "5"
+    },
+    {
+      "rule": "reviewerMalformed",
+      "expected": "0",
+      "actual": "4"
+    },
+    {
+      "rule": "semanticDefectTotal",
+      "expected": "0",
+      "actual": "11"
+    }
+  ],
+  "metrics": {
+    "expectedCases": 6,
+    "executedCases": 6,
+    "generatedValid": 1,
+    "generationRejected": 5,
+    "infrastructureFailure": 0,
+    "firstAttemptValid": 1,
+    "retryRecovered": 0,
+    "retryExhausted": 5,
+    "reviewerMalformed": 4,
+    "truncation": 0,
+    "fallback": 0,
+    "semanticDefectTotal": 11
+  },
+  "generatedCaseIds": [
+    "pass2/c09-transparency-verification"
+  ],
+  "rejectedCaseIds": [
+    "pass1/c01-missed-commitment",
+    "pass1/c09-transparency-verification",
+    "pass1/c18-constrained-clinical",
+    "pass2/c01-missed-commitment",
+    "pass2/c18-constrained-clinical"
+  ],
+  "reviewerMalformedCount": 4,
+  "artifactPathsAndDigests": [
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "d65e50c04f65b5d27ea96ee9addd3185b70c1e5f9368f0dfc33b654f9297ed5a"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "f9b3e22d0d2b91807771045ba3ada8fb1306f48d867288ef7d86bc56822f0417"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "6935d15630a0494299b0e3b96680f641be26a6de390d4649571236675b31f295"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "bb4083d3fc074d90c5e42e78078726a3c1b32130d400c2994fe3df2d6721c91b"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb"
+    }
+  ],
+  "forensicClasses": {
+    "A": "GENERATOR_CONTENT_DEFECT",
+    "B": "REVIEWER_OUTPUT_DEFECT",
+    "C": "REVIEWER_FALSE_POSITIVE",
+    "D": "REVIEWER_FALSE_NEGATIVE",
+    "E": "RETRY_CORRECTION_DEFECT",
+    "F": "MODEL_FAILED_ADEQUATE_CORRECTION",
+    "G": "DETERMINISTIC_GATE_CORRECT_REJECTION",
+    "H": "UNRESOLVED_DUE_TO_MISSING_EVIDENCE"
+  },
+  "everyAttemptClassified": true,
+  "unresolvedAttemptCount": 4,
+  "forensics": [
+    {
+      "passId": "pass1",
+      "caseId": "c01-missed-commitment",
+      "ok": false,
+      "terminalReason": "generation_rejected",
+      "terminalPrimaryCode": "review_verdict_contradicts_details",
+      "generationAttempts": 2,
+      "retriesAttempted": 1,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "B",
+          "unresolvedReason": null,
+          "note": "review_verdict_contradicts_details fires only when the reviewer's overallVerdict is 'accept' while its own detail fields derive at least one defect. The reviewer intended to accept. The scenario was discarded and regenerated on the strength of a broken review, not a bad scenario."
+        },
+        {
+          "index": 1,
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "B",
+          "unresolvedReason": null,
+          "note": "review_verdict_contradicts_details fires only when the reviewer's overallVerdict is 'accept' while its own detail fields derive at least one defect. The reviewer intended to accept. The scenario was discarded and regenerated on the strength of a broken review, not a bad scenario."
+        }
+      ]
+    },
+    {
+      "passId": "pass1",
+      "caseId": "c09-transparency-verification",
+      "ok": false,
+      "terminalReason": "generation_rejected",
+      "terminalPrimaryCode": "repeated_action_meaning",
+      "generationAttempts": 2,
+      "retriesAttempted": 1,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "gate_level_4",
+          "code": "construction_metadata_generic",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "H",
+          "unresolvedReason": "the deterministic-gate rejection path records findings but does not capture the draft, so the content behind this defect code no longer exists",
+          "note": "Defect code is known; the scenario it describes is not recoverable from this artifact."
+        },
+        {
+          "index": 1,
+          "outcome": "correction_packet",
+          "code": "construction_metadata_generic",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "RETRY_BOOKKEEPING",
+          "unresolvedReason": null,
+          "note": "Ledger entry restating the previous attempt's defects; not a generation and not counted as one."
+        },
+        {
+          "index": 2,
+          "outcome": "gate_level_6",
+          "code": "repeated_action_meaning",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "H",
+          "unresolvedReason": "the deterministic-gate rejection path records findings but does not capture the draft, so the content behind this defect code no longer exists",
+          "note": "Defect code is known; the scenario it describes is not recoverable from this artifact."
+        }
+      ]
+    },
+    {
+      "passId": "pass1",
+      "caseId": "c18-constrained-clinical",
+      "ok": false,
+      "terminalReason": "generation_rejected",
+      "terminalPrimaryCode": "unsafe_delay",
+      "generationAttempts": 2,
+      "retriesAttempted": 1,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "gate_level_4",
+          "code": "unsupported_boundary_compliance",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "H",
+          "unresolvedReason": "the deterministic-gate rejection path records findings but does not capture the draft, so the content behind this defect code no longer exists",
+          "note": "Defect code is known; the scenario it describes is not recoverable from this artifact."
+        },
+        {
+          "index": 1,
+          "outcome": "correction_packet",
+          "code": "unsupported_boundary_compliance",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "RETRY_BOOKKEEPING",
+          "unresolvedReason": null,
+          "note": "Ledger entry restating the previous attempt's defects; not a generation and not counted as one."
+        },
+        {
+          "index": 2,
+          "outcome": "gate_level_3",
+          "code": "unsafe_delay",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "G",
+          "unresolvedReason": null,
+          "note": "Scenario captured alongside the finding; the rejection can be checked against the content."
+        }
+      ]
+    },
+    {
+      "passId": "pass2",
+      "caseId": "c01-missed-commitment",
+      "ok": false,
+      "terminalReason": "generation_rejected",
+      "terminalPrimaryCode": "unsafe_delay",
+      "generationAttempts": 2,
+      "retriesAttempted": 1,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "B",
+          "unresolvedReason": null,
+          "note": "review_verdict_contradicts_details fires only when the reviewer's overallVerdict is 'accept' while its own detail fields derive at least one defect. The reviewer intended to accept. The scenario was discarded and regenerated on the strength of a broken review, not a bad scenario."
+        },
+        {
+          "index": 1,
+          "outcome": "gate_level_3",
+          "code": "unsafe_delay",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "G",
+          "unresolvedReason": null,
+          "note": "Scenario captured alongside the finding; the rejection can be checked against the content."
+        }
+      ]
+    },
+    {
+      "passId": "pass2",
+      "caseId": "c09-transparency-verification",
+      "ok": true,
+      "terminalReason": null,
+      "terminalPrimaryCode": null,
+      "generationAttempts": 1,
+      "retriesAttempted": 0,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "generated_valid",
+          "code": null,
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "PENDING_HUMAN_REVIEW",
+          "unresolvedReason": "automated generated_valid means no gate fired; it is not a quality verdict",
+          "note": "Requires full human product review before any claim of quality."
+        }
+      ]
+    },
+    {
+      "passId": "pass2",
+      "caseId": "c18-constrained-clinical",
+      "ok": false,
+      "terminalReason": "generation_rejected",
+      "terminalPrimaryCode": "review_verdict_contradicts_details",
+      "generationAttempts": 2,
+      "retriesAttempted": 1,
+      "retryRecovered": false,
+      "attempts": [
+        {
+          "index": 0,
+          "outcome": "gate_level_3",
+          "code": "confirmed_boundary_absent",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "H",
+          "unresolvedReason": "the deterministic-gate rejection path records findings but does not capture the draft, so the content behind this defect code no longer exists",
+          "note": "Defect code is known; the scenario it describes is not recoverable from this artifact."
+        },
+        {
+          "index": 1,
+          "outcome": "correction_packet",
+          "code": "confirmed_boundary_absent",
+          "scenarioCaptured": false,
+          "reviewCaptured": false,
+          "machineClass": "RETRY_BOOKKEEPING",
+          "unresolvedReason": null,
+          "note": "Ledger entry restating the previous attempt's defects; not a generation and not counted as one."
+        },
+        {
+          "index": 2,
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenarioCaptured": true,
+          "reviewCaptured": true,
+          "machineClass": "B",
+          "unresolvedReason": null,
+          "note": "review_verdict_contradicts_details fires only when the reviewer's overallVerdict is 'accept' while its own detail fields derive at least one defect. The reviewer intended to accept. The scenario was discarded and regenerated on the strength of a broken review, not a bad scenario."
+        }
+      ]
+    }
+  ]
+}

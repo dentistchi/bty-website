@@ -96,6 +96,7 @@ export const V7_LIVE = {
 export const PREVIEW_ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide", "practice"],

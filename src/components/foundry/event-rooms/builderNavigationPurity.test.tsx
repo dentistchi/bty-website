@@ -18,6 +18,7 @@ afterEach(cleanup);
 const CANONICAL: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record\n",
   learningNeeds: ["know", "decide", "practice"],
@@ -51,8 +52,8 @@ function mountAt(step: number) {
 }
 
 describe("[3.2L-R11.4B] traversing a step never authors content", () => {
-  it("resuming ON step 6 does not write sharedQuestion", async () => {
-    const saved = mountAt(6);
+  it("resuming ON the material step does not write sharedQuestion", async () => {
+    const saved = mountAt(7);
     await waitFor(() => expect(screen.queryByTestId("module-builder-step")).toBeTruthy(), { timeout: 2000 }).catch(() => undefined);
     await act(async () => { await new Promise((r) => setTimeout(r, 900)); });
     for (const a of saved) {
@@ -61,14 +62,14 @@ describe("[3.2L-R11.4B] traversing a step never authors content", () => {
   });
 
   it("the proposal is still SHOWN, so the Host can accept it by editing", async () => {
-    mountAt(6);
+    mountAt(7);
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     const shown = Array.from(document.querySelectorAll("textarea")).map((t) => (t as HTMLTextAreaElement).value);
     expect(shown.some((v) => v.includes("In your own words")), shown.join(" | ")).toBe(true);
   });
 
   it("editing the field IS authoring, and persists", async () => {
-    const saved = mountAt(6);
+    const saved = mountAt(7);
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     const areas = Array.from(document.querySelectorAll("textarea")) as HTMLTextAreaElement[];
     const target = areas.find((t) => t.value.includes("In your own words"));

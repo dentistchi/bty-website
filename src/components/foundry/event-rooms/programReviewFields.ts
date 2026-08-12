@@ -109,26 +109,22 @@ const CONFIRMER_LABEL: Record<(typeof CONFIRMERS)[number], string> = {
 
 export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> = {
   observable_standard: [
-    /*
-      "Who does this?" and "Who confirms it’s done?" sat four lines apart in one flat list,
-      both opening with "Who", and the two "What would … see … them do?" questions differed
-      only by "someone" and "you". The labels now name the ROLE rather than repeating the
-      interrogative, and the heading above each group says which decision it belongs to.
-    */
-    behaviourField("actor", "Who takes the action?", "actor"),
-    behaviourField("trigger", "When should they do it?", "trigger"),
+    /**
+     * ONE CONTROL (Slice 3.2P-R3.6-R1).
+     *
+     * THE STANDARD had four: who, when, what they do, and what confirms it. Three of them are
+     * no longer this surface's to edit, and each left for the same reason — the Host already
+     * answered it somewhere with authority, and a second editor for one sentence means two
+     * answers that drift the moment either is touched:
+     *
+     *   who      → the audience, rendered as "you"          (removed at v11)
+     *   confirms → "How will you know it worked?"           (removed at v11)
+     *   when     → "When does this usually happen?"         (removed here)
+     *
+     * The Host has lost no edit. Each moved back to the question that owns it, and changing it
+     * there re-renders every sentence derived from it.
+     */
     behaviourField("action", "What would you see or hear them do?", "observableAction"),
-    /*
-      NO COMPLETION CONTROLS (Slice 3.2P-R3.4-R1).
-
-      Two controls used to sit here — "Who confirms the action is complete?" and "What do they
-      do to confirm it?" — because completion was a contract role the model authored and the
-      Host corrected. It is now the Host's own answer to "How will you know it worked?", asked
-      once in the Builder. Editing it again here would create a second authority for one
-      sentence, and the two would drift the moment either was touched.
-
-      The Host has not lost the edit. It moved back to where they wrote it.
-    */
   ],
   scenario: [
     {
@@ -195,7 +191,7 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
  * field id — the Host adjusted "Who does this?", not `behavior_contract.actor`.
  */
 export const REVIEW_BLOCK_COPY: Record<ReviewBlockReason, string> = {
-  standard_incomplete: "The standard needs all four details filled in: who does it, when, what they do, and what confirms it.",
+  standard_incomplete: "Describe what someone would see or hear the person doing.",
   standard_not_observable: "The standard doesn’t yet describe something a person could be seen doing, at a particular moment, with a clear finish.",
   scenario_incomplete: "The practice situation needs a real difficulty — not “it’s hard”, and not another moment. When it happens comes from “When is it required?” above.",
   application_incomplete: "Say when this behaviour is required, in a way that comes round again — “at each handoff”, “every time a task is reassigned”.",

@@ -27,6 +27,7 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide", "practice"],
@@ -215,18 +216,17 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
   });
 
   it("G10/G11: each role and each reason is independently diagnosable", async () => {
+    /*
+      ONE ROLE LEFT TO DIAGNOSE (Slice 3.2P-R3.6-R1). The completion cases went at v11 with the
+      field; the actor and trigger cases went at v13 with theirs. `not_a_role`, `no_moment`,
+      `no_confirmation` and the rest stay in the ledger vocabulary for the rows that hold them —
+      what is gone is any current path that can produce them, because the model no longer writes
+      the fields they judged.
+    */
     const cases: [Record<string, unknown>, string, string][] = [
-      [{ actor: "" }, "actor", "missing"],
-      [{ actor: "the shared handoff standard" }, "actor", "not_a_role"],
-      [{ trigger: "in a professional manner" }, "trigger", "no_moment"],
+      [{ observable_action: "" }, "observable_action", "missing"],
       [{ observable_action: "create a shared handoff standard" }, "observable_action", "meta_only"],
-      /*
-        THE TWO COMPLETION CASES ARE GONE WITH THE FIELD (Slice 3.2P-R3.4-R1). `no_confirmation`
-        judged a confirming act and `missing` caught an absent confirmer; the model returns
-        neither now, and the criterion it does not author is the Host's own. What replaced them
-        is the case below: a completion the model tries to send anyway changes nothing.
-      */
-      [{ actor: "x".repeat(400) }, "actor", "too_long"],
+      [{ observable_action: "x".repeat(400) }, "observable_action", "too_long"],
     ];
     for (const [patch, field, reason] of cases) {
       const p = middleGround();
@@ -286,7 +286,7 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     const arg = chatCreate.mock.calls[0][0] as { response_format: { type: string; json_schema: { strict: boolean; name: string } } };
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
-    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v9");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
+    expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v10");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
   });
 });

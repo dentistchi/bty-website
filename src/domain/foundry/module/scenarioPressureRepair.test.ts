@@ -23,6 +23,7 @@ import { SCENARIO_PRESSURE_POLICY, scenarioPressurePromptLines } from "./program
  */
 const ANSWERS = {
   problem: "No confirmation calls made",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Employees make a confirmation call and follow a checklist of required questions.",
   successEvidence: "A checklist is completed and submitted after each call, with supervisor verification.",
   learningNeeds: ["shared_standard", "practice", "decide"],

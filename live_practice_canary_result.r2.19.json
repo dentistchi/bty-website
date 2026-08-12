@@ -1,0 +1,80 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.19",
+  "note": "Sanitized canary content review. No credential, no Authorization header, no account id, no production data.",
+  "artifact": {
+    "path": ".eval-artifacts/practice-generation.canary.json",
+    "sha256": "ead9638bd35df6b7faca8f265a18380003f85ad0ed9546170d4fa55e379af128",
+    "tracked": false,
+    "preserved": true
+  },
+  "model": "gpt-4o-mini",
+  "expected": 3,
+  "executed": 3,
+  "generated": 2,
+  "metrics": {
+    "firstAttemptSuccess": 1,
+    "retryRecovered": 1,
+    "terminalFailure": 1,
+    "perCodeAttempts": {
+      "bad_faith_option": 1,
+      "moral_decoy": 1,
+      "review_verdict_contradicts_details": 1
+    }
+  },
+  "c01": {
+    "generated": false,
+    "attempts": [
+      {
+        "n": 1,
+        "code": "bad_faith_option"
+      },
+      {
+        "n": 2,
+        "code": "moral_decoy"
+      }
+    ],
+    "evidence": "INSUFFICIENT — no rejected scenario, no reviewer detail, no retry feedback was stored.",
+    "corpusFraming": "MORALISED (measured): observableBehavior = 'Own the miss and reset the client honestly'; avoidancePressure = 'admitting the miss feels like losing the client's trust'. The input names the right behaviour, so the generated axis becomes admit-vs-conceal.",
+    "rootCause": {
+      "measured": [
+        "A_CORPUS_MORALIZATION"
+      ],
+      "undiscriminated": [
+        "B_GENERATOR_CONTRACT",
+        "C_RETRY_FEEDBACK",
+        "D_MODEL_IGNORED_FEEDBACK",
+        "E_REVIEWER_FALSE_POSITIVE"
+      ],
+      "why": "Cause A is provable from the committed corpus alone. B/C/D/E all require the rejected scenarios, which were never captured."
+    }
+  },
+  "c09": {
+    "flag": "REVIEW REQUIRED",
+    "generated": true,
+    "attempts": 1,
+    "improved": "The R2.17 branch collapse is FIXED — each branch preserves the primary decision as already made, states a distinct resulting world, and poses a different next decision. No cross-branch duplicate labels.",
+    "remaining": [
+      "Branch p2's tradeoff/action axis (partial disclosure vs wait for verification) still hovers near the original notify-vs-verify question.",
+      "Intra-branch duplication: in branch p2 the tradeoff option and the action option are the identical string '검증을 완료할 때까지 기다린다'."
+    ],
+    "korean": "Natural and professional; no translation-like word order; labels terse but acceptable.",
+    "defensibility": "Both primaries defensible — p1 protects transparency and costs confusion; p2 protects accuracy and costs delay and anxiety. Neither is signposted."
+  },
+  "c18": {
+    "flag": "FAIL",
+    "generated": true,
+    "attempts": 2,
+    "defects": [
+      "The CONFIRMED CONSTRAINT IS ABSENT. Zero occurrences of identifier / verify / verification anywhere in the scenario. The boundary the case exists to rehearse never appears, so compliance is vacuous rather than practised.",
+      "All three branches share ONE next-decision axis — what to tell the family/patients about timelines.",
+      "The non-commitment option in all three branches is the same vague-reassurance decoy ('as soon as possible', 'without specifics') — the c01 defect class, reproduced three times and accepted by the reviewer.",
+      "Primary 2 delays urgent care with a stated risk of the patient's condition escalating, which invites unsafe clinical rehearsal even though the literal rule is untouched."
+    ],
+    "boundaryIntegrity": "Literally unviolated, but only because verification is never mentioned."
+  },
+  "reviewerStability": "c18 attempt 1 was rejected as review_verdict_contradicts_details — the consistency gate caught a self-contradictory reviewer response, which is the gate working. But the reviewer then ACCEPTED a c18 scenario that omits the confirmed constraint entirely and repeats a vague-reassurance decoy in every branch, so reviewer judgement is not yet reliable on content.",
+  "evidenceSufficiency": "c09 and c18 sufficient; c01 INSUFFICIENT.",
+  "observabilityChange": "Evaluation-only, opt-in capture of the rejected scenario, structured reviewer verdict and exact retry feedback. Off by default; production behaviour unchanged.",
+  "verdict": "C_CONTENT_QUALITY_FAILED_RELEASE_HOLD",
+  "fullCorpus": "NOT AUTHORIZED"
+}

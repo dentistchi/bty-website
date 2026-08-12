@@ -87,6 +87,7 @@ describe("DirectionCopilot", () => {
     fireEvent.click(screen.getByTestId("direction-copilot-apply"));
     expect(onApply).toHaveBeenCalledWith({
       capabilityCandidate: "Edited Capability",
+      recurringMoment: "at each handoff point",
       observableBehavior: "Edited behavior",
       successEvidence: "evidence 1",
     });

@@ -19,6 +19,7 @@ import {
   attributionKind,
   isHostAuthored,
   type ProgramProposal,
+  programSourceBlocker,
 } from "./program-authorship";
 import type { BuilderAnswers } from "./module-builder";
 import { journeyElementId, type RealityGroundedJourneyV1 } from "./journey";
@@ -37,6 +38,7 @@ import { journeyElementId, type RealityGroundedJourneyV1 } from "./journey";
 const CANONICAL: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "At the end of every shift, before leaving the floor",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   evidenceType: "seen",
@@ -266,15 +268,21 @@ describe("[3.2L] the validator fails closed", () => {
     }
   });
 
-  it("refuses a trigger with no next occurrence to aim at", () => {
+  it("a non-recurring moment is now caught BEFORE the provider, not after it", () => {
     /*
-      v8 refused a model-authored first moment that named no moment. v9 has no such field:
-      the first instance is derived, so what can fail is a trigger that never recurs
-      (Slice 3.2L-R10-A).
+      v8 refused a model-authored first moment; v9 derived it from a model trigger and refused
+      `trigger_not_recurring` when it would not fold. Since Slice 3.2P-R3.6-R1 the moment is the
+      HOST's, so the same fault is answered at the source boundary — before an attempt row, and
+      therefore before any spend. W5 is the window that paid to learn this.
     */
-    reject((p) => {
-      p.program.behavior_contract.trigger = "before leaving the floor";
-    }, "trigger_not_recurring");
+    expect(programSourceBlocker({ ...CANONICAL, recurringMoment: "before leaving the floor" }))
+      .toBe("recurring_moment_not_repeatable");
+    // …and a trigger the model tries to supply cannot reach the contract at all.
+    const p = goodProposal();
+    (p.program.behavior_contract as Record<string, unknown>).trigger = "before leaving the floor";
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value.proposal.behaviorContract!.trigger).toBe(CANONICAL.recurringMoment);
   });
 
   it("a derived completion check can never be generic — the enum has no generic option", () => {

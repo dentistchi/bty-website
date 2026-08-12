@@ -273,8 +273,26 @@ export const SURFACE_FAILURE_COPY: Record<string, RefusalCopy> = {
     recovery: "start_a_new_draft",
   },
   context_incomplete: {
-    headline: "Add the problem, audience, behaviour and evidence first.",
+    headline: "Add the problem, audience, moment, behaviour and evidence first.",
     explanation: "BTY drafts from those.",
+    recovery: "adjust_your_training_inputs",
+  },
+  /**
+   * THE TWO HOST-MOMENT READINESS CODES (Slice 3.2P-R3.6-R1).
+   *
+   * These are SURFACE failures, not paid refusals, and that is the whole point of them existing.
+   * W5 paid for a generation and returned `trigger_not_recurring` for something the draft already
+   * knew. Both of these answer before an attempt row is created, and both say what to do — which
+   * is now truthful, because there is a field to do it in.
+   */
+  recurring_moment_required: {
+    headline: "Add when this situation usually happens.",
+    explanation: "BTY builds the whole training around that one moment.",
+    recovery: "adjust_your_training_inputs",
+  },
+  recurring_moment_not_repeatable: {
+    headline: "BTY couldn’t tell when the next chance to do this would be.",
+    explanation: "The moment you described sounds like one specific time. If it happens again and again, say that where you wrote it.",
     recovery: "adjust_your_training_inputs",
   },
   source_identity_unavailable: {

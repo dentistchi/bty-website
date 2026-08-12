@@ -1,0 +1,181 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.26",
+  "mode": "read_only_forensics",
+  "head": "a473ecc5d1fc8a8e36dff94cc544115bb74150cc",
+  "manifestSha256": "fd11c5357219e7803c512202f4e48f98eb8e1f4a0e51e0a1dc8dafde9a05cb69",
+  "replayRunId": "20260801T044343Z",
+  "sourceRunId": "20260801T024949Z",
+  "reviewerCalls": 4,
+  "generationCalls": 0,
+  "outcomeTotals": {
+    "consistent_accept": 2,
+    "consistent_reject": 1,
+    "repeated_contradiction": 1,
+    "provider_failure": 0,
+    "schema_failure": 0,
+    "subject_digest_mismatch": 0
+  },
+  "accuracy": {
+    "resolvableSubjects": 3,
+    "correct": 2,
+    "falseNegatives": 1,
+    "unresolved": 1,
+    "note": "Internal consistency is NOT accuracy: 3 of 4 responses were internally consistent, but only 2 of those 3 were semantically correct."
+  },
+  "subjects": [
+    {
+      "replayArtifact": "practice-review.reviewreplay.live.20260801T044343Z.pass1.c01-missed-commitment.a0.14cff616cbef.json",
+      "replayArtifactSha256": "ceb6d93f97927ddaa458784d7bb513f628315503ecedce930a52660258adee00",
+      "sourceArtifact": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0",
+      "source": "pass1/c01-missed-commitment#0",
+      "reviewSubjectSha256": "14cff616cbeff28f97cea6319be6cf90f36809715b94181a522ee08deee9101c",
+      "replayOutcome": "consistent_accept",
+      "overallVerdict": "accept",
+      "derivedDefects": [],
+      "consistency": "consistent",
+      "finishReason": "stop",
+      "latencyMs": 23073,
+      "boundaryIdsConsidered": [],
+      "boundaryAssessmentCount": 0,
+      "boundaryCompliant": true,
+      "explanationChars": 0,
+      "retryInstructionChars": 0,
+      "humanOracleLabel": "serviceable; no deception or false reassurance",
+      "alignment": "TRUE_NEGATIVE_ACCEPT"
+    },
+    {
+      "replayArtifact": "practice-review.reviewreplay.live.20260801T044343Z.pass1.c01-missed-commitment.a1.f0bed2546f96.json",
+      "replayArtifactSha256": "dd048314074996f9e08413c0eb870ce456011ff574c784bc2b1a8b1e4515d5b4",
+      "sourceArtifact": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0",
+      "source": "pass1/c01-missed-commitment#1",
+      "reviewSubjectSha256": "f0bed2546f96308fc28ab39e1783792018467ba6ea6ef1757f2104090228e4c5",
+      "replayOutcome": "consistent_reject",
+      "overallVerdict": "reject",
+      "derivedDefects": [
+        "vague_reassurance"
+      ],
+      "consistency": "consistent",
+      "finishReason": "stop",
+      "latencyMs": 23725,
+      "boundaryIdsConsidered": [],
+      "boundaryAssessmentCount": 0,
+      "boundaryCompliant": true,
+      "explanationChars": 0,
+      "retryInstructionChars": 0,
+      "humanOracleLabel": "contains a literal vague-reassurance option; must be rejected",
+      "alignment": "TRUE_POSITIVE_REJECT"
+    },
+    {
+      "replayArtifact": "practice-review.reviewreplay.live.20260801T044343Z.pass2.c01-missed-commitment.a0.38568c3e50a2.json",
+      "replayArtifactSha256": "b7761ed3f2c59beb4f7e89181e6715081f82b8deb3f7e06b18b8f4a7e1d61696",
+      "sourceArtifact": "practice-generation.stability.live.20260801T024949Z.pass2.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "6935d15630a0494299b0e3b96680f641be26a6de390d4649571236675b31f295",
+      "source": "pass2/c01-missed-commitment#0",
+      "reviewSubjectSha256": "38568c3e50a2e6c43c7c8d151d10a4829b5cee7c2c4d50f89611630e5d027fd7",
+      "replayOutcome": "repeated_contradiction",
+      "overallVerdict": "accept",
+      "derivedDefects": [
+        "generic_communication_collapse"
+      ],
+      "consistency": "contradictory",
+      "finishReason": "stop",
+      "latencyMs": 22274,
+      "boundaryIdsConsidered": [],
+      "boundaryAssessmentCount": 0,
+      "boundaryCompliant": true,
+      "explanationChars": 0,
+      "retryInstructionChars": 0,
+      "humanOracleLabel": "serviceable candidate; prior reviewer response was contradictory",
+      "alignment": "UNRESOLVED_CONTRADICTION"
+    },
+    {
+      "replayArtifact": "practice-review.reviewreplay.live.20260801T044343Z.pass2.c18-constrained-clinical.a2.1ed40ea4913c.json",
+      "replayArtifactSha256": "2dca49ad90cf0a644452fbf146c825e2a125bba63f6358669f9de7b1b5b56cf2",
+      "sourceArtifact": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sourceArtifactSha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb",
+      "source": "pass2/c18-constrained-clinical#2",
+      "reviewSubjectSha256": "1ed40ea4913c54d086916d88f5a1af891e40761184049158df877b4d8d6aed18",
+      "replayOutcome": "consistent_accept",
+      "overallVerdict": "accept",
+      "derivedDefects": [],
+      "consistency": "consistent",
+      "finishReason": "stop",
+      "latencyMs": 21459,
+      "boundaryIdsConsidered": [],
+      "boundaryAssessmentCount": 0,
+      "boundaryCompliant": true,
+      "explanationChars": 0,
+      "retryInstructionChars": 0,
+      "humanOracleLabel": "violates the confirmed two-identifier boundary; must be rejected",
+      "alignment": "FALSE_NEGATIVE_ACCEPT"
+    }
+  ],
+  "c18RootCause": {
+    "classification": "F_MULTIPLE_CAUSES",
+    "primary": "E_FROZEN_SUBJECT_BOUNDARY_DATA_LOSS",
+    "evidence": [
+      "The R2.25 replay harness constructs the frozen subject with confirmedBoundaries: [] and activeBoundaryIds: [] (scripts/practice-review-replay.ts:89-90).",
+      "The reviewer's own boundaryIdsConsidered is [] and boundaryAssessments is [], consistent with having been asked about zero boundaries.",
+      "With ctx.constraintIds empty, every boundary derivation is inert BY DESIGN: the count check (0===0) passes, the per-id coverage loop does not execute, the per-assessment defect loop does not execute, and boundary_violation is guarded by constraintIds.length > 0.",
+      "Therefore this accept is NOT evidence that the reviewer fails at boundary compliance. The question was never put to it.",
+      "The boundary text WAS recoverable: c1_verify and the two-identifier statement appear in the source artifact inside attempt 1's correctionPacket immutable context. The case artifact has no dedicated boundary field, and the frozen subject was never persisted."
+    ],
+    "independentSecondCause": "C_DERIVED_DEFECT_LOGIC_GAP",
+    "independentEvidence": [
+      "Primary choice 1 urgency record: introducesDelay=true, foreseeableHarm='Risk of not verifying the second patient before treatment', safetyBasis='Ensures families are informed while treating one patient', defensible=true.",
+      "The reviewer NAMED the violation in free text and still voted the choice defensible.",
+      "The server derivation cancels a named harm on mere NON-EMPTINESS of safetyBasis: `if (c.foreseeableHarm.trim() && !c.safetyBasis.trim())`. It tests presence, never adequacy, so a non-sequitur basis silently clears a stated harm.",
+      "This gap is independent of the boundary loss and would fire even with boundaries present."
+    ],
+    "thirdPartialCause": "D_MODEL_FALSE_NEGATIVE (overallUrgencyVerdict='safe' over a choice whose own foreseeableHarm names skipping verification)"
+  },
+  "repeatedContradictionRootCause": {
+    "subject": "pass2/c01-missed-commitment#0",
+    "finding": "NOT a reviewer self-contradiction in the ordinary sense. A SERVER-SIDE LEXICAL heuristic contradicted the reviewer's structured judgment.",
+    "evidence": [
+      "Reviewer structured fields were unanimous and clean: allBranchesSameGenericAxis=false, branchesInterchangeable=false, both branches branchDistinct=true, every defectCodes array empty, all 14 phase choices defensible.",
+      "The single derived defect was generic_communication_collapse, produced by branchProgression.ts:205 — axes.every(isCommunicationAxis).",
+      "COMMUNICATION_AXIS matches the bare word 'timeline'. Axis 1 'Action commitment regarding the specifics of the timeline.' matched on 'timeline'; axis 2 'Action commitment regarding the communication strategy.' matched on 'communicat'.",
+      "c01 is a missed-commitment case whose decision axis is inherently WHEN and WHAT to tell the client, so the lexical rule declares that scenario family structurally invalid. Same shape as the deferred c01 urgency overreach."
+    ],
+    "terminalPolicy": "reviewer_terminal_failure is CORRECT as a stop (nothing is shipped and no scenario is blindly regenerated) but MISATTRIBUTES the cause: this is a server-derivation defect, not a reviewer defect. No third review is authorized."
+  },
+  "contractAdequacy": {
+    "topLevelRequiredFields": 18,
+    "nestedReviewObjects": 8,
+    "totalSchemaProperties": 98,
+    "perPrimaryChoiceFields": 5,
+    "perPhaseChoiceFields": 17,
+    "perBranchFields": 23,
+    "perBoundaryFields": 14,
+    "crossBranchFields": 8,
+    "urgencyFields": 5,
+    "perUrgencyChoiceFields": 8,
+    "approxJudgmentsPerCall_2primary_2branch_1boundary": 241,
+    "duplicatedVerdictAuthorities": [
+      "overallVerdict",
+      "defectCodes (top level)",
+      "boundaryCompliant + violatedBoundaryIds",
+      "noSafeJudgmentSpace + noSafeReasonCode",
+      "per-choice defensible + defectCodes",
+      "per-branch defectCodes",
+      "crossBranch defectCodes",
+      "urgency overallUrgencyVerdict + per-choice defensible"
+    ],
+    "evidenceGrounding": "OPTIONAL AND UNUSED. explanation, retryInstruction and crossBranch.conciseExplanation were EMPTY (0 chars) in 4 of 4 responses, including the REJECT. violatedChoiceReferences exists only inside boundaryAssessments, which was empty for every subject. No reviewer field requires citing concrete scenario text.",
+    "primaryReliabilityHarm": "MIXED — redundant verdict representations plus server lexical heuristics that can override explicit structured judgment; evidence grounding absent. Excessive breadth is plausible but NOT proven by this evidence. Insufficient boundary granularity is NOT proven — the boundary path was never engaged."
+  },
+  "recommendedNextSlice": {
+    "name": "CONFIRMED-BOUNDARY REVIEW SUBJECT PERSISTENCE + FAIL-CLOSED BOUNDARY AUTHORITY V1",
+    "why": "The most upstream measured defect. Until the confirmed boundaries are persisted in the frozen subject and in the case artifact, no run can prove WHAT the reviewer was asked, and the c18 result is uninterpretable rather than damning.",
+    "sequencedSecond": "URGENCY SAFETY-BASIS ADEQUACY V1 — a named foreseeableHarm must not be cancelled by a merely non-empty safetyBasis. Proven, safety-relevant, and independent of the boundary loss."
+  },
+  "unresolvedQuestions": [
+    "Whether the reviewer detects a confirmed-boundary violation when the boundary IS supplied — never measured.",
+    "Whether the 241-judgment breadth causes independent failure families — plausible, unproven.",
+    "Whether the c01 lexical axis rule misfires on other scenario families beyond timing/communication.",
+    "Whether a repeat contradiction on the same subject is stable or sampling noise (n=1 per subject)."
+  ]
+}

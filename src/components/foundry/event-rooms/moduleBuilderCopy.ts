@@ -190,7 +190,23 @@ export type ModuleBuilderCopy = {
   audRoleDetail: string;
   s2Blocker: string;
   s2DetailBlocker: string;
-  // step 3 behavior
+  /*
+    step 3 — the Host's recurring moment (Slice 3.2P-R3.6-R1).
+
+    KEYED BY MEANING, NOT BY POSITION. Every other question is `sNQ`, numbered when the sequence
+    was fixed. Inserting one proved that numbering is a second, drifting record of step order —
+    renaming forty keys across two locales to keep it true would be churn with real risk and no
+    product value, so the new question is named for what it asks and the old numbers stay as the
+    historical labels they now are.
+  */
+  sMomentQ: string;
+  sMomentHelp: string;
+  sMomentPlaceholder: string;
+  sMomentBlocker: string;
+  /** Advisory, never blocking: the answer is stored, but no repeatable occasion derives from it. */
+  sMomentNotRepeatable: string;
+  reviewWhenItHappens: string;
+  // step 4 behavior
   s3Q: string;
   s3Help: string;
   s3Placeholder: string;
@@ -335,7 +351,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     starting: "Starting…",
     continueLead: "Pick up where you left off.",
     untitled: "Untitled training",
-    stepProgress: (n) => `Step ${n} of 7`,
+    stepProgress: (n) => `Step ${n} of 8`,
     editedRel: (rel) => `Edited ${rel}`,
     relJustNow: "just now",
     relMin: (n) => `${n} min ago`,
@@ -409,6 +425,12 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     audRoleDetail: "Which role?",
     s2Blocker: "Choose who this is for.",
     s2DetailBlocker: "Add the group or role.",
+    sMomentQ: "When does this usually happen?",
+    sMomentHelp: "Name the real moment that comes around again.",
+    sMomentPlaceholder: "e.g. During morning huddles.",
+    sMomentBlocker: "Add when this situation usually happens.",
+    sMomentNotRepeatable: "This sounds like one specific time. If it happens again and again, say that here — for example, “at each morning huddle”.",
+    reviewWhenItHappens: "When it happens",
     s3Q: "After this training, what should they do differently?",
     s3Help: "Describe something another person could see or hear.",
     s3Placeholder: "e.g. The charge nurse reads the dosage back at every handoff before signing off.",
@@ -619,7 +641,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     starting: "시작하는 중…",
     continueLead: "이어서 계속하세요.",
     untitled: "제목 없는 훈련",
-    stepProgress: (n) => `7단계 중 ${n}단계`,
+    stepProgress: (n) => `8단계 중 ${n}단계`,
     editedRel: (rel) => `${rel} 편집`,
     relJustNow: "방금",
     relMin: (n) => `${n}분 전`,
@@ -690,6 +712,12 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     audRoleDetail: "어떤 역할인가요?",
     s2Blocker: "대상을 선택하세요.",
     s2DetailBlocker: "직군 또는 역할을 적어 주세요.",
+    sMomentQ: "이런 일은 보통 언제 일어나나요?",
+    sMomentHelp: "다시 돌아오는 실제 순간을 적어 주세요.",
+    sMomentPlaceholder: "예: 아침 허들 때마다.",
+    sMomentBlocker: "이 상황이 보통 언제 일어나는지 적어 주세요.",
+    sMomentNotRepeatable: "한 번뿐인 시점처럼 읽힙니다. 반복해서 일어난다면 그렇게 적어 주세요 — 예: “아침 허들 때마다”.",
+    reviewWhenItHappens: "언제 일어나는지",
     s3Q: "이 훈련 후, 무엇을 다르게 해야 하나요?",
     s3Help: "다른 사람이 보거나 들을 수 있는 것을 설명하세요.",
     s3Placeholder: "예: 담당 간호사가 인수인계마다 서명 전 투약량을 복창합니다.",

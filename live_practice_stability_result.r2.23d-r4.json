@@ -1,0 +1,1637 @@
+{
+  "runId": "20260801T024949Z",
+  "mode": "live",
+  "complete": true,
+  "status": "COMPLETE",
+  "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+  "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+  "model": "gpt-4o-mini",
+  "sampling": {
+    "generation": {
+      "temperature": 0.8,
+      "topP": 0.9,
+      "maxTokens": 16000,
+      "timeoutMs": 120000
+    },
+    "review": {
+      "temperature": 0,
+      "topP": 1,
+      "maxTokens": 16000,
+      "timeoutMs": 120000
+    },
+    "retry": {
+      "maxAttempts": 2,
+      "inheritsGenerationSampling": true
+    },
+    "environmentOverrides": []
+  },
+  "expectedCases": 6,
+  "presentCases": 6,
+  "missingCases": [],
+  "problems": [],
+  "artifacts": [
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0",
+      "passId": "pass1",
+      "caseId": "c01-missed-commitment"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "d65e50c04f65b5d27ea96ee9addd3185b70c1e5f9368f0dfc33b654f9297ed5a",
+      "passId": "pass1",
+      "caseId": "c09-transparency-verification"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass1.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "f9b3e22d0d2b91807771045ba3ada8fb1306f48d867288ef7d86bc56822f0417",
+      "passId": "pass1",
+      "caseId": "c18-constrained-clinical"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "6935d15630a0494299b0e3b96680f641be26a6de390d4649571236675b31f295",
+      "passId": "pass2",
+      "caseId": "c01-missed-commitment"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "bb4083d3fc074d90c5e42e78078726a3c1b32130d400c2994fe3df2d6721c91b",
+      "passId": "pass2",
+      "caseId": "c09-transparency-verification"
+    },
+    {
+      "file": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "sha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb",
+      "passId": "pass2",
+      "caseId": "c18-constrained-clinical"
+    }
+  ],
+  "generated": 1,
+  "firstAttemptValid": 1,
+  "retryRecovered": 0,
+  "contentFailures": 5,
+  "infrastructureFailures": 0,
+  "abortClassification": null,
+  "requiresNewRunnerAuthorization": false,
+  "defectFrequency": {
+    "construction_metadata_generic": 2,
+    "repeated_action_meaning": 1,
+    "unsupported_boundary_compliance": 4,
+    "unsafe_delay": 2,
+    "bad_faith_option": 1,
+    "vague_reassurance": 1,
+    "branch_semantic_collapse": 1,
+    "cross_branch_axis_collapse": 1,
+    "confirmed_boundary_absent": 2
+  },
+  "latencyMs": [
+    {
+      "caseId": "c01-missed-commitment",
+      "passId": "pass1",
+      "ms": 92038
+    },
+    {
+      "caseId": "c09-transparency-verification",
+      "passId": "pass1",
+      "ms": 51846
+    },
+    {
+      "caseId": "c18-constrained-clinical",
+      "passId": "pass1",
+      "ms": 74046
+    },
+    {
+      "caseId": "c01-missed-commitment",
+      "passId": "pass2",
+      "ms": 88703
+    },
+    {
+      "caseId": "c09-transparency-verification",
+      "passId": "pass2",
+      "ms": 53963
+    },
+    {
+      "caseId": "c18-constrained-clinical",
+      "passId": "pass2",
+      "ms": 67798
+    }
+  ],
+  "results": [
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass1",
+      "caseId": "c01-missed-commitment",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:50:03.542Z",
+      "endedAt": "2026-08-01T02:51:35.580Z",
+      "latencyMs": 92038,
+      "attempts": [
+        {
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenario": {
+            "title": "Client Delivery Delay Communication",
+            "opening": "As the project manager, you just learned that your team missed a critical delivery deadline you personally assured the client would be met. The client is awaiting an update on the situation, and your team is still finalizing the recovery plan. With the client expecting immediate clarity, you realize that you can't both ensure transparency and guarantee a reliable timeline.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Call the client to discuss the situation"
+                },
+                {
+                  "id": "p2",
+                  "label": "Wait until the recovery plan is finalized before contacting the client"
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "Before you can act, a senior executive learns of the missed deadline and insists on a prompt update for the client, demanding a clear timeline and accountability, regardless of the recovery plan status.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Provide a high-level overview of the situation without specifics"
+                },
+                {
+                  "id": "ft2",
+                  "label": "Commit to a follow-up meeting once the plan is ready"
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "Given the situation, what will you do next?",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Share an overview of the recovery situation with the client now",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Postpone the discussion until the recovery plan is confirmed",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "You called the client to explain the delay, providing them with a high-level overview of the issues at hand.",
+                "escalationText": "The executive is now concerned about the client's reaction and is pressuring you for a detailed follow-up and accountability.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Assure the client that you will work on a solution and keep them updated regularly"
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Provide a timeline for when they can expect a detailed plan"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What specific action will you take next?",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Commit to a regular update schedule with the client until the plan is finalized",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Provide a specific date for a follow-up meeting to discuss the finalized recovery plan",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "You decided to wait until the recovery plan is finalized before contacting the client.",
+                "escalationText": "The executive is now urging immediate contact with the client, demanding a clear response to avoid losing their trust.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Send a brief email acknowledging the delay and stating that a detailed plan is forthcoming"
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Establish a timeline for the client follow-up once the plan is finalized"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What specific action will you take next?",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Send the email acknowledging the delay and promising a follow-up once the plan is ready",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Wait until the plan is ready to reach out to the client",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": [
+            "review_verdict_contradicts_details"
+          ],
+          "retryFeedback": "ATTEMPT 1 CORRECTION — your previous scenario was rejected by an independent review.\nRejection codes: review_contradictory.\nUNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose, and the required JSON shape. Return the complete corrected scenario."
+        },
+        {
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenario": {
+            "title": "Client Delivery Update Dilemma",
+            "opening": "As the project manager, you just learned that your team has missed a crucial delivery deadline you personally assured the client would be met. The client is now waiting for an update, and the recovery plan is still under discussion with your team. You realize you need to communicate with the client quickly, but you know you can’t provide a definitive timeline without risking further trust issues.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Update the client now with a potential new date"
+                },
+                {
+                  "id": "p2",
+                  "label": "Wait to confirm the recovery plan before updating the client"
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "Before you make your choice, your team has just informed you that the project timeline has shifted even further due to unforeseen complications. The client is now more anxious, pressing for answers, and the need for a clear communication strategy has become critical.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Assure the client of your commitment to resolve the issue swiftly"
+                },
+                {
+                  "id": "ft2",
+                  "label": "Provide a vague update indicating that you are working on the issue"
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "Given the situation, what concrete step will you take next?",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Call the client with a tentative update",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Hold off on any client communication until the recovery plan is ready",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "The client is informed of the situation, but they express disappointment due to the lack of a confirmed plan.",
+                "escalationText": "The client is now considering other options due to their frustration with the uncertainty surrounding the timeline.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Reassure the client about your team's commitment to resolving the issue soon"
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Acknowledge the delay and express that you will update them once the plan is ready"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What is your next step in addressing the client's concerns?",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Send a detailed message outlining steps you are taking to resolve the issue",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Schedule a meeting to discuss the matter once you have more information",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "The client is informed that you are working on a recovery plan, but they feel unsettled by the lack of specific details.",
+                "escalationText": "The client has begun to express doubts about your ability to manage the project effectively, heightening their concerns about future deliveries.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Provide a vague reassurance that you will address their concerns shortly"
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Commit to providing a full update by the end of the week"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What action will you take to address the client’s concerns going forward?",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Send a follow-up message promising a detailed update by the end of the week",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Request more time to gather all necessary details before contacting the client",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": [
+            "review_verdict_contradicts_details"
+          ],
+          "retryFeedback": "ATTEMPT 2 CORRECTION — your previous scenario was rejected by an independent review.\nRejection codes: review_contradictory.\nUNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose, and the required JSON shape. Return the complete corrected scenario."
+        }
+      ],
+      "ok": false,
+      "reason": "generation_rejected",
+      "classification": "content",
+      "primaryCode": "review_verdict_contradicts_details",
+      "defectCodes": [],
+      "draft": null,
+      "constraintEvidence": null,
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass1.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "444a2651b65c44146e31fa6df4c26e2e255fbbbe118dec941dfa6b7341117ba0"
+    },
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass1",
+      "caseId": "c09-transparency-verification",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:51:35.594Z",
+      "endedAt": "2026-08-01T02:52:27.440Z",
+      "latencyMs": 51846,
+      "attempts": [
+        {
+          "outcome": "gate_level_4",
+          "code": "construction_metadata_generic",
+          "gate": "choice_construction",
+          "level": 4,
+          "defectCodes": [
+            "construction_metadata_generic"
+          ],
+          "findings": [
+            {
+              "code": "construction_metadata_generic",
+              "gate": "choice_construction",
+              "level": 4,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {}
+        },
+        {
+          "outcome": "correction_packet",
+          "code": "construction_metadata_generic",
+          "correctionPacketSha256": "405823596bd1867a7ff806cf0b8559ca833355c9c7822deaad9b1eb28e726bfd",
+          "defectCodes": [
+            "construction_metadata_generic"
+          ],
+          "correctionPacket": {
+            "attempt": 1,
+            "primaryCode": "construction_metadata_generic",
+            "primaryLevel": 4,
+            "defectCodes": [
+              "construction_metadata_generic"
+            ],
+            "items": [
+              {
+                "code": "construction_metadata_generic",
+                "level": 4,
+                "coordinates": [],
+                "requiredCorrection": "Placeholder justification. State the actual value, cost and intent for this specific option."
+              }
+            ],
+            "immutable": {
+              "facts": [
+                "확인되지 않은 오류 가능성을 팀 전체에 지금 알릴지 먼저 검증할지 결정해야 한다",
+                "불확실할 때 투명성과 검증 사이에서 판단한다"
+              ],
+              "role": "leaders",
+              "locale": "ko",
+              "boundaries": []
+            },
+            "mustRemainUnchanged": [
+              "the training facts",
+              "the confirmed boundary ids and statements",
+              "the output language",
+              "the target role",
+              "the scenario purpose",
+              "the required JSON shape"
+            ]
+          }
+        },
+        {
+          "outcome": "gate_level_6",
+          "code": "repeated_action_meaning",
+          "gate": "measured_labels",
+          "level": 6,
+          "defectCodes": [
+            "repeated_action_meaning"
+          ],
+          "findings": [
+            {
+              "code": "repeated_action_meaning",
+              "gate": "measured_labels",
+              "level": 6,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {}
+        }
+      ],
+      "ok": false,
+      "reason": "generation_rejected",
+      "classification": "content",
+      "primaryCode": "repeated_action_meaning",
+      "defectCodes": [
+        "repeated_action_meaning"
+      ],
+      "draft": null,
+      "constraintEvidence": null,
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass1.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "d65e50c04f65b5d27ea96ee9addd3185b70c1e5f9368f0dfc33b654f9297ed5a"
+    },
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass1",
+      "caseId": "c18-constrained-clinical",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:52:27.447Z",
+      "endedAt": "2026-08-01T02:53:41.493Z",
+      "latencyMs": 74046,
+      "attempts": [
+        {
+          "outcome": "gate_level_4",
+          "code": "unsupported_boundary_compliance",
+          "gate": "choice_construction",
+          "level": 4,
+          "defectCodes": [
+            "unsupported_boundary_compliance"
+          ],
+          "findings": [
+            {
+              "code": "unsupported_boundary_compliance",
+              "gate": "choice_construction",
+              "level": 4,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {}
+        },
+        {
+          "outcome": "correction_packet",
+          "code": "unsupported_boundary_compliance",
+          "correctionPacketSha256": "aa3a4f7898b6deecdc9264e1fc96bf26731fdca0ce8c1aab4804b633e6703c35",
+          "defectCodes": [
+            "unsupported_boundary_compliance"
+          ],
+          "correctionPacket": {
+            "attempt": 1,
+            "primaryCode": "unsupported_boundary_compliance",
+            "primaryLevel": 4,
+            "defectCodes": [
+              "unsupported_boundary_compliance"
+            ],
+            "items": [
+              {
+                "code": "unsupported_boundary_compliance",
+                "level": 4,
+                "coordinates": [],
+                "requiredCorrection": "Reference only the confirmed boundary ids you were given, and account for every one of them."
+              }
+            ],
+            "immutable": {
+              "facts": [
+                "Decide how to sequence, notify, and recover while the ward is backed up",
+                "Manage the delay professionally"
+              ],
+              "role": "leaders",
+              "locale": "en",
+              "boundaries": [
+                {
+                  "id": "c1_verify",
+                  "statement": "Two identifiers must be verified before treatment"
+                }
+              ]
+            },
+            "mustRemainUnchanged": [
+              "the training facts",
+              "the confirmed boundary ids and statements",
+              "the output language",
+              "the target role",
+              "the scenario purpose",
+              "the required JSON shape"
+            ]
+          }
+        },
+        {
+          "outcome": "gate_level_3",
+          "code": "unsafe_delay",
+          "gate": "urgency_review",
+          "level": 3,
+          "defectCodes": [
+            "unsafe_delay"
+          ],
+          "findings": [
+            {
+              "code": "unsafe_delay",
+              "gate": "urgency_review",
+              "phase": "primary",
+              "choiceIndex": 1,
+              "level": 3,
+              "terminal": false
+            },
+            {
+              "code": "unsafe_delay",
+              "gate": "semantic_review",
+              "level": 3,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {
+            "unsafe_delay": [
+              "semantic_review",
+              "urgency_review"
+            ]
+          },
+          "correctionPacketSha256": "4fe41a443524b5aaa3afa7b7b35217bbef7b82db609f650194777e06d17f52a8",
+          "scenario": {
+            "title": "Managing Ward Delays",
+            "opening": "You’re the lead nurse on a busy ward, and you've just been informed that a critical patient requires immediate treatment. The treatment can only proceed once two identifiers have been verified. The ward is currently backed up with patients, and every moment spent confirming information delays care for others. The pressure is mounting with additional patients waiting in the emergency room and a doctor awaiting your confirmation. You must decide how to manage this situation under the constraints of verifying the required identifiers.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Verify identifiers immediately and notify the team."
+                },
+                {
+                  "id": "p2",
+                  "label": "Pause to coordinate with the team before verifying."
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "As you finalize your decision, another nurse informs you that the emergency room is overflowing with patients, and the doctor is now asking for an update. Time is of the essence, and you feel the pressure to act quickly to avoid further delays.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Proceed with verification and give a brief update to the doctor."
+                },
+                {
+                  "id": "ft2",
+                  "label": "Delay the verification to hold a full team briefing."
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "What do you want to do next?",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Verify the identifiers and update the doctor.",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Hold a team briefing before proceeding with verification.",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "The identifiers have been verified, and the doctor has been informed, allowing treatment to begin promptly, though the team felt slightly rushed.",
+                "escalationText": "As the treatment begins, you receive another alert about a potential overflow in the emergency room, adding to the stress of the situation.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Continue with treatment while monitoring team feedback."
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Pause briefly to assess team readiness after treatment initiation."
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What do you want to do next?",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Proceed with treatment while checking in with the team later.",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Pause to gather team feedback immediately before continuing treatment.",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "The team is fully briefed, but treatment has been delayed, causing concern for the critical patient’s condition and possible overflow of other patients.",
+                "escalationText": "As you begin treatment, you hear more complaints from the emergency room about delays, and additional patients are arriving with urgent needs.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Begin treatment promptly while communicating with the team as you go."
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Continue with the team briefing to ensure everyone understands the situation."
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What do you want to do next?",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Start treatment while keeping the team updated.",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Complete the team briefing before starting treatment.",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": {
+            "defects": [
+              "unsafe_delay"
+            ],
+            "instruction": ""
+          },
+          "retryFeedback": "ATTEMPT 2 CORRECTION — an independent review rejected your previous scenario.\nPrimary defect: unsafe_delay. All defects: unsafe_delay.\nCorrect EVERY item below. Safety and confirmed-boundary items come first and are not negotiable.\n- [unsafe_delay] (primary choice 2) Replace the option that delays urgent action without a safety or verification basis. A short pause REQUIRED by a safety rule is acceptable; an unexplained delay is not.\nCONFIRMED BOUNDARIES — unchanged and still binding: [c1_verify] \"Two identifiers must be verified before treatment\"\nUNCHANGED: the training facts, the confirmed boundary ids and statements, the output language, the target role, the scenario purpose, the required JSON shape. Return the complete corrected scenario.",
+          "correctionPacket": {
+            "attempt": 2,
+            "primaryCode": "unsafe_delay",
+            "primaryLevel": 3,
+            "defectCodes": [
+              "unsafe_delay"
+            ],
+            "items": [
+              {
+                "code": "unsafe_delay",
+                "level": 3,
+                "coordinates": [
+                  {
+                    "phase": "primary",
+                    "choiceIndex": 1
+                  }
+                ],
+                "requiredCorrection": "Replace the option that delays urgent action without a safety or verification basis. A short pause REQUIRED by a safety rule is acceptable; an unexplained delay is not."
+              }
+            ],
+            "immutable": {
+              "facts": [
+                "Decide how to sequence, notify, and recover while the ward is backed up",
+                "Manage the delay professionally"
+              ],
+              "role": "leaders",
+              "locale": "en",
+              "boundaries": [
+                {
+                  "id": "c1_verify",
+                  "statement": "Two identifiers must be verified before treatment"
+                }
+              ]
+            },
+            "mustRemainUnchanged": [
+              "the training facts",
+              "the confirmed boundary ids and statements",
+              "the output language",
+              "the target role",
+              "the scenario purpose",
+              "the required JSON shape"
+            ]
+          }
+        }
+      ],
+      "ok": false,
+      "reason": "generation_rejected",
+      "classification": "content",
+      "primaryCode": "unsafe_delay",
+      "defectCodes": [
+        "unsafe_delay"
+      ],
+      "draft": null,
+      "constraintEvidence": null,
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass1.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "f9b3e22d0d2b91807771045ba3ada8fb1306f48d867288ef7d86bc56822f0417"
+    },
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass2",
+      "caseId": "c01-missed-commitment",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:53:41.498Z",
+      "endedAt": "2026-08-01T02:55:10.201Z",
+      "latencyMs": 88703,
+      "attempts": [
+        {
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenario": {
+            "title": "Client Delivery Update",
+            "opening": "As the project lead, you've just learned that your team missed a critical delivery deadline you had personally assured the client about. The recovery plan is still in the works, and the client is waiting for an update. With a high-stakes meeting scheduled for tomorrow, you face the challenge of deciding how to communicate this setback while managing the client's expectations and protecting the team's integrity.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Communicate an estimated timeline to the client"
+                },
+                {
+                  "id": "p2",
+                  "label": "Delay communication until the recovery plan is confirmed"
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "As you prepare for the meeting, you receive a message from the client expressing their frustration over the missed deadline and requesting a formal update. This increases the urgency and pressure to respond promptly, raising the stakes for how you will proceed.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Provide a brief update acknowledging the issue"
+                },
+                {
+                  "id": "ft2",
+                  "label": "Request an internal team meeting to finalize the recovery plan"
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "Decide your next step in addressing the client's concerns about the missed deadline.",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Update the client with the current situation and timeline",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Inform the client that you are still working on a recovery plan",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "You communicated an estimated timeline to the client, which they appreciate but express concern about the feasibility. Now you must manage their expectations further as they await more concrete details.",
+                "escalationText": "The client has responded positively to your update but is now asking for more details about the implications of the delay on their project.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Reassure the client with a commitment to the timeline"
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Ask for additional time to finalize the details before committing further"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "Choose how to proceed with the client following their request for more details.",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Reiterate your commitment to the timeline with specifics",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Schedule a follow-up meeting to provide a detailed plan",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "You decided to delay communication until the recovery plan was confirmed. The internal team is now working hard to finalize the plan, but the client is still waiting for news.",
+                "escalationText": "As the meeting approaches, the client is becoming increasingly impatient and has sent a follow-up email demanding an update on their project.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Send a brief acknowledgment to the client without specifics"
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Call the client to discuss the ongoing efforts and timeline"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "Decide how to address the client's email about the update.",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Apologize for the delay and provide a brief status update",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Inform the client that a comprehensive plan is in progress and will be shared soon",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": [
+            "review_verdict_contradicts_details"
+          ],
+          "retryFeedback": "ATTEMPT 1 CORRECTION — your previous scenario was rejected by an independent review.\nRejection codes: review_contradictory.\nUNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose, and the required JSON shape. Return the complete corrected scenario."
+        },
+        {
+          "outcome": "gate_level_3",
+          "code": "unsafe_delay",
+          "gate": "urgency_review",
+          "level": 3,
+          "defectCodes": [
+            "unsafe_delay",
+            "bad_faith_option",
+            "vague_reassurance",
+            "branch_semantic_collapse",
+            "cross_branch_axis_collapse"
+          ],
+          "findings": [
+            {
+              "code": "unsafe_delay",
+              "gate": "urgency_review",
+              "phase": "primary",
+              "choiceIndex": 1,
+              "level": 3,
+              "terminal": false
+            },
+            {
+              "code": "unsafe_delay",
+              "gate": "semantic_review",
+              "level": 3,
+              "terminal": false
+            },
+            {
+              "code": "bad_faith_option",
+              "gate": "semantic_review",
+              "level": 5,
+              "terminal": false
+            },
+            {
+              "code": "vague_reassurance",
+              "gate": "phase_choice_review",
+              "phase": "branch_action",
+              "branchIndex": 1,
+              "choiceIndex": 0,
+              "level": 5,
+              "terminal": false
+            },
+            {
+              "code": "vague_reassurance",
+              "gate": "phase_choice_review",
+              "phase": "branch_tradeoff",
+              "branchIndex": 1,
+              "choiceIndex": 0,
+              "level": 5,
+              "terminal": false
+            },
+            {
+              "code": "vague_reassurance",
+              "gate": "phase_choice_review",
+              "phase": "flat_tradeoff",
+              "branchIndex": -1,
+              "choiceIndex": 0,
+              "level": 5,
+              "terminal": false
+            },
+            {
+              "code": "vague_reassurance",
+              "gate": "semantic_review",
+              "level": 5,
+              "terminal": false
+            },
+            {
+              "code": "branch_semantic_collapse",
+              "gate": "semantic_review",
+              "level": 6,
+              "terminal": false
+            },
+            {
+              "code": "cross_branch_axis_collapse",
+              "gate": "semantic_review",
+              "level": 6,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {
+            "vague_reassurance": [
+              "phase_choice_review",
+              "semantic_review"
+            ],
+            "unsafe_delay": [
+              "semantic_review",
+              "urgency_review"
+            ]
+          },
+          "correctionPacketSha256": "7b3217952f24c0ab597fc2dcf1c06bb0478bf9f5e38c26634433faff9ea63481",
+          "scenario": {
+            "title": "Client Communication After Missed Delivery",
+            "opening": "As the project lead, you just learned that your team has missed the delivery deadline you promised to the client. The team is still finalizing the recovery plan, but the client is eager for an update. You know that they are waiting for a commitment on the revised timeline, and you feel the pressure to act quickly while also ensuring you don’t promise something you can’t deliver.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Contact the client to provide an update now"
+                },
+                {
+                  "id": "p2",
+                  "label": "Wait until the recovery plan is confirmed before reaching out"
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "As you weigh your options, you receive a message from the client expressing concern about the missed deadline and requesting immediate clarification on the status of the project. They are considering other options if they do not hear back soon.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Provide a brief, vague update to ease client concerns"
+                },
+                {
+                  "id": "ft2",
+                  "label": "Commit to a follow-up meeting once the plan is confirmed"
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "What concrete action will you take next?",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Contact the client immediately with a general update",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Delay communication until the plan is confirmed",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "You contacted the client and provided a general update, which relieved some of their immediate concerns, but they expressed dissatisfaction with the lack of specifics.",
+                "escalationText": "The client has now asked for a more detailed timeline and is growing impatient, indicating they may seek alternatives if they do not receive clarity soon.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Provide a more detailed but still uncertain timeline"
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Reiterate the commitment to follow up once the plan is confirmed"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "What will you do next?",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Give a rough timeline based on what you know",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Confirm a follow-up meeting for next week",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "You decided to wait until the recovery plan was confirmed, leaving the client without immediate communication, which has increased their anxiety about the project.",
+                "escalationText": "The client has reached out multiple times for updates, expressing frustration about the lack of communication and stating they are considering other options if they do not hear back soon.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Provide a vague assurance of progress without specifics"
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Schedule a meeting to discuss the plan once it's ready"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "How will you respond to the client's requests for updates?",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Send a reassuring but vague update about the ongoing work",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Confirm a follow-up meeting for when the plan is ready",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": {
+            "defects": [
+              "unsafe_delay",
+              "bad_faith_option",
+              "vague_reassurance",
+              "branch_semantic_collapse",
+              "cross_branch_axis_collapse"
+            ],
+            "instruction": ""
+          },
+          "retryFeedback": "ATTEMPT 2 CORRECTION — an independent review rejected your previous scenario.\nPrimary defect: unsafe_delay. All defects: unsafe_delay, bad_faith_option, vague_reassurance, branch_semantic_collapse, cross_branch_axis_collapse.\nCorrect EVERY item below. Safety and confirmed-boundary items come first and are not negotiable.\n- [unsafe_delay] (primary choice 2) Replace the option that delays urgent action without a safety or verification basis. A short pause REQUIRED by a safety rule is acceptable; an unexplained delay is not.\n- [bad_faith_option] Replace this option with one that protects a named legitimate value and accepts a real stated cost.\n- [vague_reassurance] (branch 2, action choice 1; branch 2, tradeoff choice 1; tradeoff choice 1) Replace this reassurance with an owned, actionable response: who acts, what they do, and the trigger, checkpoint or threshold that follows. Invent no dates, people or resources.\n- [branch_semantic_collapse] Two branches mean the same thing. Synonyms are not causal difference.\n- [cross_branch_axis_collapse] Every branch poses the same next decision, so the primary choice changed nothing. Give each branch its own decision dimension.\nUNCHANGED: the training facts, the confirmed boundary ids and statements, the output language, the target role, the scenario purpose, the required JSON shape. Return the complete corrected scenario.",
+          "correctionPacket": {
+            "attempt": 2,
+            "primaryCode": "unsafe_delay",
+            "primaryLevel": 3,
+            "defectCodes": [
+              "unsafe_delay",
+              "bad_faith_option",
+              "vague_reassurance",
+              "branch_semantic_collapse",
+              "cross_branch_axis_collapse"
+            ],
+            "items": [
+              {
+                "code": "unsafe_delay",
+                "level": 3,
+                "coordinates": [
+                  {
+                    "phase": "primary",
+                    "choiceIndex": 1
+                  }
+                ],
+                "requiredCorrection": "Replace the option that delays urgent action without a safety or verification basis. A short pause REQUIRED by a safety rule is acceptable; an unexplained delay is not."
+              },
+              {
+                "code": "bad_faith_option",
+                "level": 5,
+                "coordinates": [],
+                "requiredCorrection": "Replace this option with one that protects a named legitimate value and accepts a real stated cost."
+              },
+              {
+                "code": "vague_reassurance",
+                "level": 5,
+                "coordinates": [
+                  {
+                    "phase": "branch_action",
+                    "branchIndex": 1,
+                    "choiceIndex": 0
+                  },
+                  {
+                    "phase": "branch_tradeoff",
+                    "branchIndex": 1,
+                    "choiceIndex": 0
+                  },
+                  {
+                    "phase": "flat_tradeoff",
+                    "choiceIndex": 0
+                  }
+                ],
+                "requiredCorrection": "Replace this reassurance with an owned, actionable response: who acts, what they do, and the trigger, checkpoint or threshold that follows. Invent no dates, people or resources."
+              },
+              {
+                "code": "branch_semantic_collapse",
+                "level": 6,
+                "coordinates": [],
+                "requiredCorrection": "Two branches mean the same thing. Synonyms are not causal difference."
+              },
+              {
+                "code": "cross_branch_axis_collapse",
+                "level": 6,
+                "coordinates": [],
+                "requiredCorrection": "Every branch poses the same next decision, so the primary choice changed nothing. Give each branch its own decision dimension."
+              }
+            ],
+            "immutable": {
+              "facts": [
+                "Your team missed a delivery you personally promised the client, and the recovery plan is not yet confirmed",
+                "Restore client trust while deciding the timing, scope and ownership of the update"
+              ],
+              "role": "leaders",
+              "locale": "en",
+              "boundaries": []
+            },
+            "mustRemainUnchanged": [
+              "the training facts",
+              "the confirmed boundary ids and statements",
+              "the output language",
+              "the target role",
+              "the scenario purpose",
+              "the required JSON shape"
+            ]
+          }
+        }
+      ],
+      "ok": false,
+      "reason": "generation_rejected",
+      "classification": "content",
+      "primaryCode": "unsafe_delay",
+      "defectCodes": [
+        "unsafe_delay",
+        "bad_faith_option",
+        "vague_reassurance",
+        "branch_semantic_collapse",
+        "cross_branch_axis_collapse"
+      ],
+      "draft": null,
+      "constraintEvidence": null,
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass2.c01-missed-commitment.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "6935d15630a0494299b0e3b96680f641be26a6de390d4649571236675b31f295"
+    },
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass2",
+      "caseId": "c09-transparency-verification",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:55:10.210Z",
+      "endedAt": "2026-08-01T02:56:04.173Z",
+      "latencyMs": 53963,
+      "attempts": [
+        {
+          "outcome": "generated_valid"
+        }
+      ],
+      "ok": true,
+      "reason": null,
+      "classification": "content",
+      "primaryCode": null,
+      "defectCodes": [],
+      "draft": {
+        "title": "오류 가능성 통지 여부 결정",
+        "opening": "팀 리더로서, 당신은 최근 시스템에서 확인되지 않은 오류 가능성을 발견했습니다. 이 정보는 팀의 진행 중인 프로젝트에 영향을 미칠 수 있습니다. 하지만 지금은 팀이 중대한 마감일을 앞두고 있고, 동료들은 이 오류에 대해 전혀 알지 못합니다. 당신은 팀에게 이 오류를 즉시 알릴 것인지, 아니면 검증 후에 알릴 것인지 결정해야 합니다.",
+        "primary": {
+          "choices": [
+            {
+              "id": "p1",
+              "label": "즉시 오류 가능성 알리기"
+            },
+            {
+              "id": "p2",
+              "label": "먼저 오류 검증하기"
+            }
+          ]
+        },
+        "tradeoff": {
+          "escalationText": "결정을 내리기 전, 팀에서의 상황이 급박해지고 있으며 마감일이 다가오고 있습니다. 팀원들은 현재 작업에만 집중하고 있어, 정보의 부족으로 인해 오류에 대한 경각심이 부족합니다.",
+          "choices": [
+            {
+              "id": "ft1",
+              "label": "팀과 논의하여 의견 수렴하기"
+            },
+            {
+              "id": "ft2",
+              "label": "팀원에게 간단히 상황 설명하기"
+            }
+          ]
+        },
+        "actionDecision": {
+          "prompt": "팀에 상황을 어떻게 전달할 것인지 결정해야 합니다.",
+          "choices": [
+            {
+              "id": "fa1",
+              "label": "팀 미팅 소집하기",
+              "isActionCommitment": true
+            },
+            {
+              "id": "fa2",
+              "label": "팀원에게 이메일 발송하기",
+              "isActionCommitment": false
+            }
+          ]
+        },
+        "branches": {
+          "p1": {
+            "resultingWorldState": "팀이 즉시 오류 가능성을 인지했지만 혼란스러운 상태에 있다.",
+            "escalationText": "팀의 혼란이 커지고 있으며, 프로젝트의 마감일이 다가오고 있습니다. 팀원들은 정보에 대한 불안감이 높아지고 있습니다.",
+            "tradeoffChoices": [
+              {
+                "id": "p1-t1",
+                "label": "팀과 함께 문제 해결 방법 논의하기"
+              },
+              {
+                "id": "p1-t2",
+                "label": "즉시 조치를 취하기 위한 계획 세우기"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "어떤 조치를 취할 것인지 결정해야 합니다.",
+              "choices": [
+                {
+                  "id": "p1-a1",
+                  "label": "문제 해결을 위한 팀 미팅 소집하기",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p1-a2",
+                  "label": "즉각적인 조치 실행하기",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          },
+          "p2": {
+            "resultingWorldState": "팀이 오류 검증을 기다리고 있으며 정보가 지연되고 있다.",
+            "escalationText": "정보의 부재로 인해 팀의 불안감이 커지고 있으며, 마감일이 가까워지고 있습니다. 팀원들은 작업에 집중하기 어려워하고 있습니다.",
+            "tradeoffChoices": [
+              {
+                "id": "p2-t1",
+                "label": "즉시 간단한 상황 설명하기"
+              },
+              {
+                "id": "p2-t2",
+                "label": "팀원에게 문제 해결을 위한 아이디어 수집하기"
+              }
+            ],
+            "actionDecision": {
+              "prompt": "어떤 조치를 취할 것인지 결정해야 합니다.",
+              "choices": [
+                {
+                  "id": "p2-a1",
+                  "label": "팀원에게 이메일로 상황 설명하기",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "p2-a2",
+                  "label": "문제 해결을 위한 아이디어 모으기 위한 팀 논의하기",
+                  "isActionCommitment": false
+                }
+              ]
+            }
+          }
+        }
+      },
+      "constraintEvidence": {},
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass2.c09-transparency-verification.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "bb4083d3fc074d90c5e42e78078726a3c1b32130d400c2994fe3df2d6721c91b"
+    },
+    {
+      "mode": "live",
+      "runId": "20260801T024949Z",
+      "passId": "pass2",
+      "caseId": "c18-constrained-clinical",
+      "head": "341c20e95a5e5ddae35a13105f447e49debf36df",
+      "manifestSha256": "d816a3dc62df9a797a875c89254e17d26efc155b9e2fe67d6dbaf89b320cfc90",
+      "model": "gpt-4o-mini",
+      "sampling": {
+        "generation": {
+          "temperature": 0.8,
+          "topP": 0.9,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "review": {
+          "temperature": 0,
+          "topP": 1,
+          "maxTokens": 16000,
+          "timeoutMs": 120000
+        },
+        "retry": {
+          "maxAttempts": 2,
+          "inheritsGenerationSampling": true
+        },
+        "environmentOverrides": []
+      },
+      "startedAt": "2026-08-01T02:56:04.180Z",
+      "endedAt": "2026-08-01T02:57:11.978Z",
+      "latencyMs": 67798,
+      "attempts": [
+        {
+          "outcome": "gate_level_3",
+          "code": "confirmed_boundary_absent",
+          "gate": "boundary_grounding",
+          "level": 3,
+          "defectCodes": [
+            "confirmed_boundary_absent",
+            "unsupported_boundary_compliance"
+          ],
+          "findings": [
+            {
+              "code": "confirmed_boundary_absent",
+              "gate": "boundary_grounding",
+              "level": 3,
+              "terminal": false
+            },
+            {
+              "code": "unsupported_boundary_compliance",
+              "gate": "choice_construction",
+              "level": 4,
+              "terminal": false
+            }
+          ],
+          "evidenceSources": {}
+        },
+        {
+          "outcome": "correction_packet",
+          "code": "confirmed_boundary_absent",
+          "correctionPacketSha256": "4323d6e0651a70ac85d30068cf758fb6465c7bc85a2517fb4d8fd37d787e37e8",
+          "defectCodes": [
+            "confirmed_boundary_absent",
+            "unsupported_boundary_compliance"
+          ],
+          "correctionPacket": {
+            "attempt": 1,
+            "primaryCode": "confirmed_boundary_absent",
+            "primaryLevel": 3,
+            "defectCodes": [
+              "confirmed_boundary_absent",
+              "unsupported_boundary_compliance"
+            ],
+            "items": [
+              {
+                "code": "confirmed_boundary_absent",
+                "level": 3,
+                "coordinates": [],
+                "requiredCorrection": "Establish the confirmed rule in the opening or immediate context in natural language, then regenerate the decisions so the rule actively constrains what can be chosen. Do not state it as a policy quotation."
+              },
+              {
+                "code": "unsupported_boundary_compliance",
+                "level": 4,
+                "coordinates": [],
+                "requiredCorrection": "Reference only the confirmed boundary ids you were given, and account for every one of them."
+              }
+            ],
+            "immutable": {
+              "facts": [
+                "Decide how to sequence, notify, and recover while the ward is backed up",
+                "Manage the delay professionally"
+              ],
+              "role": "leaders",
+              "locale": "en",
+              "boundaries": [
+                {
+                  "id": "c1_verify",
+                  "statement": "Two identifiers must be verified before treatment"
+                }
+              ]
+            },
+            "mustRemainUnchanged": [
+              "the training facts",
+              "the confirmed boundary ids and statements",
+              "the output language",
+              "the target role",
+              "the scenario purpose",
+              "the required JSON shape"
+            ]
+          }
+        },
+        {
+          "outcome": "review_malformed",
+          "code": "review_verdict_contradicts_details",
+          "scenario": {
+            "title": "Managing a Backed-Up Ward",
+            "opening": "You are a charge nurse on a busy ward, and the patient admissions have surged unexpectedly. You just learned that two patients require immediate treatment, but you must first verify two identifiers for each before proceeding. As the clock ticks, the waiting patients and their families are growing anxious, and there’s a risk of delays impacting care quality. You know you can't afford to compromise on verification, but the pressure to act quickly is intense.",
+            "primary": {
+              "choices": [
+                {
+                  "id": "p1",
+                  "label": "Verify identifiers for both patients now"
+                },
+                {
+                  "id": "p2",
+                  "label": "Notify the families and proceed with one patient"
+                }
+              ]
+            },
+            "tradeoff": {
+              "escalationText": "As you start your chosen approach, the hospital administrator calls to inquire about the delays in patient care, emphasizing that the hospital's reputation is at stake and urging a swift resolution. You feel the pressure mounting.",
+              "choices": [
+                {
+                  "id": "ft1",
+                  "label": "Continue with the current plan and explain to the administrator"
+                },
+                {
+                  "id": "ft2",
+                  "label": "Escalate the issue by requesting additional staff"
+                }
+              ]
+            },
+            "actionDecision": {
+              "prompt": "Choose how to proceed based on your earlier choice:",
+              "choices": [
+                {
+                  "id": "fa1",
+                  "label": "Continue with the verification process for both patients",
+                  "isActionCommitment": true
+                },
+                {
+                  "id": "fa2",
+                  "label": "Proceed with treatment for the first patient only",
+                  "isActionCommitment": false
+                }
+              ]
+            },
+            "branches": {
+              "p1": {
+                "resultingWorldState": "You have verified identifiers for both patients and provided the necessary treatment without compromising on safety, but you still face delays in the ward due to the surge in admissions.",
+                "escalationText": "The administrator is still concerned about the ongoing delays and requests a detailed report on the situation within the hour.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p1-t1",
+                    "label": "Prepare a detailed report for the administrator"
+                  },
+                  {
+                    "id": "p1-t2",
+                    "label": "Focus on patient care and delay the report"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "Decide how to balance your priorities moving forward:",
+                  "choices": [
+                    {
+                      "id": "p1-a1",
+                      "label": "Finalize the report and communicate with the administrator",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p1-a2",
+                      "label": "Continue prioritizing patient care and defer the report",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              },
+              "p2": {
+                "resultingWorldState": "You prioritized immediate treatment for one patient while notifying the family, but this left the second patient unverified, creating potential safety concerns and administrative issues.",
+                "escalationText": "The administrator has been informed about the situation and is now pushing for an urgent review of the process to prevent future delays.",
+                "tradeoffChoices": [
+                  {
+                    "id": "p2-t1",
+                    "label": "Prepare a summary of events for the administrator"
+                  },
+                  {
+                    "id": "p2-t2",
+                    "label": "Focus on caring for the second patient immediately"
+                  }
+                ],
+                "actionDecision": {
+                  "prompt": "Choose your next step to resolve the situation:",
+                  "choices": [
+                    {
+                      "id": "p2-a1",
+                      "label": "Finish the summary and send it to the administrator",
+                      "isActionCommitment": true
+                    },
+                    {
+                      "id": "p2-a2",
+                      "label": "Immediately treat the second patient",
+                      "isActionCommitment": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "review": [
+            "review_verdict_contradicts_details"
+          ],
+          "retryFeedback": "ATTEMPT 2 CORRECTION — your previous scenario was rejected by an independent review.\nRejection codes: review_contradictory.\nUNCHANGED: the training facts, the confirmed boundaries, the output language, the role, the scenario purpose, and the required JSON shape. Return the complete corrected scenario."
+        }
+      ],
+      "ok": false,
+      "reason": "generation_rejected",
+      "classification": "content",
+      "primaryCode": "review_verdict_contradicts_details",
+      "defectCodes": [],
+      "draft": null,
+      "constraintEvidence": null,
+      "sanitizedError": null,
+      "__file": "practice-generation.stability.live.20260801T024949Z.pass2.c18-constrained-clinical.341c20e95a5e.d816a3dc62df.json",
+      "__sha256": "7f5292f32f05c5051700c4ac5fd4d556c1e905b8b9d069536f9412cdae8d79cb"
+    }
+  ]
+}

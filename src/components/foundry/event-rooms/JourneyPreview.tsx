@@ -36,6 +36,7 @@ const KIND_LABEL: Record<JourneyElementKind, string> = {
 
 const FIELD_LABEL: Record<string, string> = {
   problem: "What keeps going wrong",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Expected behavior",
   successEvidence: "Success evidence",
   sharedQuestion: "Shared question",

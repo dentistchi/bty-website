@@ -8,6 +8,7 @@ import {
   normalizeLearningNeeds,
   draftTitleFrom,
   PROBLEM_MAX,
+  BUILDER_STEP_MAX,
   type BuilderAnswers,
 } from "./module-builder";
 
@@ -43,11 +44,11 @@ describe("validateDraftPatch — partial-save friendly", () => {
     if (r.ok) expect(r.value.answers).toEqual({ problem: "x" });
   });
 
-  it("validates current_step range 1..8", () => {
+  it("validates current_step range 1..BUILDER_STEP_MAX", () => {
     expect(validateDraftPatch({ currentStep: 1 }).ok).toBe(true);
-    expect(validateDraftPatch({ currentStep: 8 }).ok).toBe(true);
+    expect(validateDraftPatch({ currentStep: BUILDER_STEP_MAX }).ok).toBe(true);
     expect(validateDraftPatch({ currentStep: 0 })).toEqual({ ok: false, errors: ["current_step_invalid"] });
-    expect(validateDraftPatch({ currentStep: 9 })).toEqual({ ok: false, errors: ["current_step_invalid"] });
+    expect(validateDraftPatch({ currentStep: 10 })).toEqual({ ok: false, errors: ["current_step_invalid"] });
     expect(validateDraftPatch({ currentStep: 2.5 })).toEqual({ ok: false, errors: ["current_step_invalid"] });
   });
 
@@ -129,6 +130,7 @@ describe("stepBlocker / canAdvanceStep — client Next-guard", () => {
     problem: "handoffs keep missing the double-check",
     audienceType: "specific_role",
     audienceDetail: "charge nurse",
+    recurringMoment: "at each handoff point",
     observableBehavior: "reads the dosage back at handoff",
     successEvidence: "receiving nurse confirms a read-back",
     learningNeed: "practice",
@@ -149,21 +151,23 @@ describe("stepBlocker / canAdvanceStep — client Next-guard", () => {
     expect(stepBlocker(2, { audienceType: "everyone" })).toBeNull();
   });
 
-  it("blocks steps 3-7 on their own required field", () => {
-    expect(stepBlocker(3, {})).toBe("behavior_required");
-    expect(stepBlocker(4, {})).toBe("evidence_required");
-    expect(stepBlocker(5, {})).toBe("learning_need_required");
-    expect(stepBlocker(6, {})).toBe("material_intent_required");
-    expect(stepBlocker(7, {})).toBe("follow_up_required");
-    expect(stepBlocker(7, { followUpDays: 0 })).toBeNull(); // "none" is a valid pick
+  it("blocks steps 3-8 on their own required field", () => {
+    // Slice 3.2P-R3.6-R1 inserted "When does this usually happen?" at 3; everything after moved once.
+    expect(stepBlocker(3, {})).toBe("recurring_moment_required");
+    expect(stepBlocker(4, {})).toBe("behavior_required");
+    expect(stepBlocker(5, {})).toBe("evidence_required");
+    expect(stepBlocker(6, {})).toBe("learning_need_required");
+    expect(stepBlocker(7, {})).toBe("material_intent_required");
+    expect(stepBlocker(8, {})).toBe("follow_up_required");
+    expect(stepBlocker(8, { followUpDays: 0 })).toBeNull(); // "none" is a valid pick
   });
 
   it("never blocks the review step", () => {
-    expect(stepBlocker(8, {})).toBeNull();
+    expect(stepBlocker(BUILDER_STEP_MAX, {})).toBeNull();
   });
 
   it("canAdvanceStep passes with a full answer set", () => {
-    for (let s = 1; s <= 8; s++) expect(canAdvanceStep(s, full)).toBe(true);
+    for (let s = 1; s <= 9; s++) expect(canAdvanceStep(s, full)).toBe(true);
   });
 });
 
@@ -200,8 +204,8 @@ describe("multi-select learning needs (2.1)", () => {
   });
 
   it("step 5 is satisfied by a non-empty learningNeeds array", () => {
-    expect(stepBlocker(5, { learningNeeds: ["know"] })).toBeNull();
-    expect(stepBlocker(5, { learningNeeds: [] })).toBe("learning_need_required");
+    expect(stepBlocker(6, { learningNeeds: ["know"] })).toBeNull();
+    expect(stepBlocker(6, { learningNeeds: [] })).toBe("learning_need_required");
   });
 
   it("Arena recommendation derives from the array (any qualifying need)", () => {

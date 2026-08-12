@@ -46,10 +46,11 @@ describe("[3.2O-R1] the scenario prompt constrains BOTH pressure fields", () => 
     }
   });
 
-  it("tells the model not to restate ITS OWN trigger's occasion — the collision that fails hardest", () => {
-    const line = PROMPT.split("\n").find((l) => /behavior_contract\.trigger names/i.test(l));
-    expect(line, "the trigger's own noun is the easiest way to trip the rule").toBeTruthy();
-    expect(line).toMatch(/do NOT restate that occasion in either pressure field/i);
+  it("tells the model not to restate the HOST'S occasion — the collision that fails hardest", () => {
+    // The occasion is the HOST's since 3.2P-R3.6-R1, so the rule names theirs, not the model's.
+    const line = PROMPT.split("\n").find((l) => /do NOT restate the host's occasion/i.test(l));
+    expect(line, "the occasion's own noun is the easiest way to trip the rule").toBeTruthy();
+    expect(line).toMatch(/do NOT restate the host's occasion in either pressure field/i);
   });
 
   it("states positively what IS allowed, so the rule is not only prohibition", () => {
@@ -65,7 +66,7 @@ describe("[3.2O-R1] the scenario prompt constrains BOTH pressure fields", () => 
   });
 
   it("keeps the original single-moment rule intact", () => {
-    expect(PROMPT).toMatch(/THE SITUATION HAPPENS AT THE TRIGGER/);
+    expect(PROMPT).toMatch(/THE SITUATION HAPPENS AT THE HOST'S MOMENT/);
     expect(PROMPT).toMatch(/Do NOT give the situation an occasion of its own/);
   });
 });

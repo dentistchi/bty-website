@@ -148,7 +148,7 @@ afterEach(() => {
 
 describe("ModuleBuilderShell — restore + navigation", () => {
   it("restores exact answers + current_step from the server (no empty flash)", async () => {
-    mockDraftServer({ current_step: 3, answers: { observableBehavior: "reads back the dosage" } });
+    mockDraftServer({ current_step: 4, answers: { observableBehavior: "reads back the dosage" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // step 3 question appears, with the restored value.
     expect(await screen.findByText("After this training, what should they do differently?")).toBeTruthy();
@@ -217,6 +217,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
     problem: "handoffs miss the double-check",
     audienceType: "specific_role",
     audienceDetail: "charge nurse",
+    recurringMoment: "at each handoff point",
     observableBehavior: "reads the dosage back at handoff",
     successEvidence: "receiving nurse confirms a read-back",
     learningNeed: "practice",
@@ -226,7 +227,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
   };
 
   it("review shows the summary + the Approve & create session action (Slice 2.3A)", async () => {
-    mockDraftServer({ current_step: 8, answers: fullAnswers });
+    mockDraftServer({ current_step: 9, answers: fullAnswers });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review header + a summary value
     expect(await screen.findByText("TRAINING DRAFT")).toBeTruthy();
@@ -239,7 +240,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
   });
 
   it("choosing Files and documents reveals the attach affordances without uploading", async () => {
-    const srv = mockDraftServer({ current_step: 6, answers: {} });
+    const srv = mockDraftServer({ current_step: 7, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("Files and documents"));
@@ -254,7 +255,7 @@ describe("ModuleBuilderShell — review + material intent", () => {
 
 describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   it("Step 4 asks about post-training evidence and shows the behavior as context", async () => {
-    mockDraftServer({ current_step: 4, answers: { observableBehavior: "reads the dosage back" } });
+    mockDraftServer({ current_step: 5, answers: { observableBehavior: "reads the dosage back" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     expect(
       await screen.findByText("After the training, what would show that people are doing this differently?"),
@@ -272,7 +273,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   });
 
   it("Step 5 supports MULTIPLE learning-type selections and persists the array", async () => {
-    const srv = mockDraftServer({ current_step: 5, answers: {} });
+    const srv = mockDraftServer({ current_step: 6, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What does this training need to include?");
     fireEvent.click(screen.getByText("Information"));
@@ -284,14 +285,14 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   });
 
   it("Step 5 restores a legacy singular learning_type into the multi-select", async () => {
-    mockDraftServer({ current_step: 5, answers: { learningNeed: "decide" } });
+    mockDraftServer({ current_step: 6, answers: { learningNeed: "decide" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     const decision = (await screen.findByText("Decision")).closest("button") as HTMLButtonElement;
     expect(decision.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("Step 6 offers only YouTube + PDF; Written guidance and Live discussion are gone", async () => {
-    mockDraftServer({ current_step: 6, answers: {} });
+    mockDraftServer({ current_step: 7, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText("YouTube video")).toBeTruthy();
@@ -301,7 +302,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   });
 
   it("Step 6 YouTube without a URL shows the missing-link state", async () => {
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "youtube" } });
+    mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText(/Link not added yet · Required before approval/i)).toBeTruthy();
@@ -309,7 +310,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
 
   it("review begins near the top (no viewport spacer) and shows the explicit missing summary", async () => {
     mockDraftServer({
-      current_step: 8,
+      current_step: 9,
       answers: { problem: "x", observableBehavior: "show leadership", materialIntent: "youtube" },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -331,7 +332,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
 
 describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   it("Files selection shows Attach files + Add photo or screenshot inputs", async () => {
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } });
+    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     expect(await screen.findByText("Attach files")).toBeTruthy();
     expect(screen.getByText("Add photo or screenshot")).toBeTruthy();
@@ -343,7 +344,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   });
 
   it("uploads each selected file independently and shows them as attached", async () => {
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } });
+    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Attach files");
     selectFiles([pdf("Alpha.pdf"), pdf("Beta.pdf")]);
@@ -354,7 +355,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("one invalid file does not discard the valid ones, and is retryable", async () => {
     // First selection fails (unsupported); the valid one still uploads on retry via a fresh server.
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "pdf" } }, { assetReason: "unsupported_file_type" });
+    mockDraftServer({ current_step: 7, answers: { materialIntent: "pdf" } }, { assetReason: "unsupported_file_type" });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("Attach files");
     selectFiles([new File(["x"], "malware.exe", { type: "" })]);
@@ -363,7 +364,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("cold-restores attached files after remount", async () => {
     mockDraftServer({
-      current_step: 6,
+      current_step: 7,
       answers: { materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Existing.docx" })],
     });
@@ -374,7 +375,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("removing one file preserves the others", async () => {
     mockDraftServer({
-      current_step: 6,
+      current_step: 7,
       answers: { materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Keep.docx" }), mkAsset({ id: "a2", filename: "Drop.png", file_kind: "image" })],
     });
@@ -388,7 +389,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("review lists attached files and does NOT flag the material section when a file is present", async () => {
     mockDraftServer({
-      current_step: 8,
+      current_step: 9,
       answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Care.pdf", file_kind: "pdf", participant_delivery_ready: true })],
     });
@@ -401,7 +402,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
   it("review highlights the material section (Required) when no PDF file is attached", async () => {
     mockDraftServer({
-      current_step: 8,
+      current_step: 9,
       answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
       assets: [],
     });
@@ -415,7 +416,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   });
 
   it("YouTube regression: switching to YouTube still shows the missing-link state", async () => {
-    mockDraftServer({ current_step: 6, answers: {} });
+    mockDraftServer({ current_step: 7, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     fireEvent.click(screen.getByText("YouTube video"));
@@ -427,6 +428,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   const completeYoutube = {
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
+    recurringMoment: "at each handoff point",
     observableBehavior: "The charge nurse reads back the dosage before sign-off.",
     successEvidence: "Sign-offs include a witnessed read-back.",
     evidenceType: "seen",
@@ -438,7 +440,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   };
 
   it("prefills an editable Completion question on the material step", async () => {
-    mockDraftServer({ current_step: 6, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
+    mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     expect(await screen.findByText("Completion question")).toBeTruthy();
     const ta = screen.getByLabelText("Completion question") as HTMLTextAreaElement;
@@ -449,7 +451,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
 
   it("review → Approve & create session publishes, confirms, then hands off the new event id", async () => {
     const onExit = vi.fn();
-    mockDraftServer({ current_step: 8, answers: completeYoutube });
+    mockDraftServer({ current_step: 9, answers: completeYoutube });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
     const btn = await screen.findByText("Approve & create session");
     expect((btn as HTMLButtonElement).disabled).toBe(false);
@@ -463,7 +465,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   });
 
   it("disables publish for an incomplete draft and names the missing sections", async () => {
-    mockDraftServer({ current_step: 8, answers: { problem: "only this" } });
+    mockDraftServer({ current_step: 9, answers: { problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     const btn = await screen.findByText("Approve & create session");
     expect((btn as HTMLButtonElement).disabled).toBe(true);
@@ -474,7 +476,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
 
   it("surfaces a publish failure without leaving the builder", async () => {
     const onExit = vi.fn();
-    mockDraftServer({ current_step: 8, answers: completeYoutube }, { publishError: true });
+    mockDraftServer({ current_step: 9, answers: completeYoutube }, { publishError: true });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={onExit} />);
     fireEvent.click(await screen.findByText("Approve & create session"));
     expect(await screen.findByText(/Couldn’t create the session/)).toBeTruthy();
@@ -521,7 +523,7 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
     expect(await screen.findByTestId("direction-copilot-applied")).toBeTruthy();
 
     // Reload at the behavior step → the applied capability restores and is editable.
-    srv.draft.current_step = 3;
+    srv.draft.current_step = 4;
     unmount();
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     const capInput = (await screen.findByLabelText("Capability (optional)")) as HTMLInputElement;
@@ -574,6 +576,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   const nearCompleteNoFollow = {
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone" as const,
+    recurringMoment: "at each handoff point",
     observableBehavior: "The charge nurse reads back the dosage before sign-off.",
     successEvidence: "Sign-offs include a witnessed read-back.",
     evidenceType: "seen" as const,
@@ -585,7 +588,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   };
 
   it("REPRODUCTION: a draft missing only follow-up disables Approve, names the exact section, and highlights ONLY that row", async () => {
-    mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
+    mockDraftServer({ current_step: 9, answers: nearCompleteNoFollow });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await showAllDetails();
 
@@ -604,7 +607,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   });
 
   it("Edit from the missing summary navigates to the correct Builder step, and completing it enables Approve on return", async () => {
-    mockDraftServer({ current_step: 8, answers: nearCompleteNoFollow });
+    mockDraftServer({ current_step: 9, answers: nearCompleteNoFollow });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await showAllDetails();
 
@@ -623,7 +626,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   });
 
   it("a fully complete draft shows no summary, no highlighted row, and an enabled Approve", async () => {
-    mockDraftServer({ current_step: 8, answers: { ...nearCompleteNoFollow, followUpDays: 7 } });
+    mockDraftServer({ current_step: 9, answers: { ...nearCompleteNoFollow, followUpDays: 7 } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await showAllDetails();
     expect(screen.queryByTestId("review-missing-summary")).toBeNull();
@@ -638,10 +641,11 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
       followUpDays: 0 as const,
       audienceType: undefined,
       capabilityCandidate: "Shift Handoff",
+      recurringMoment: "at each handoff point",
       observableBehavior: "Before ending the handoff, the nurse records the owner and next check time.",
       successEvidence: "The handoff record lists the owner and a follow-up time.",
     };
-    mockDraftServer({ current_step: 8, answers: copilotApplied });
+    mockDraftServer({ current_step: 9, answers: copilotApplied });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await showAllDetails();
     // Behavior + evidence are NOT flagged (Copilot values count); only audience is.
@@ -656,6 +660,7 @@ describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)",
   const CONTEXT = {
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
+    recurringMoment: "at each handoff point",
     observableBehavior: "The charge nurse reads the dosage back before sign-off.",
     successEvidence: "Sign-offs include a witnessed read-back.",
   };
@@ -676,14 +681,14 @@ describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)",
   };
 
   it("entry is absent on step 5 until the canonical minimum context is complete", async () => {
-    mockDraftServer({ current_step: 5, answers: { problem: "only this" } });
+    mockDraftServer({ current_step: 6, answers: { problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What does this training need to include?");
     expect(screen.queryByTestId("module-draft-copilot")).toBeNull();
   });
 
   it("generates, applies only approved fields via the canonical PATCH, preserves context, and restores", async () => {
-    const srv = mockDraftServer({ current_step: 5, answers: CONTEXT }, { moduleDraft: { body: DRAFT_BODY } });
+    const srv = mockDraftServer({ current_step: 6, answers: CONTEXT }, { moduleDraft: { body: DRAFT_BODY } });
     const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What does this training need to include?");
 
@@ -720,7 +725,7 @@ describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)",
   });
 
   it("a generation failure keeps the manual Builder intact", async () => {
-    const srv = mockDraftServer({ current_step: 5, answers: CONTEXT }, { moduleDraft: { status: 502 } });
+    const srv = mockDraftServer({ current_step: 6, answers: CONTEXT }, { moduleDraft: { status: 502 } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What does this training need to include?");
     fireEvent.click(await screen.findByTestId("module-draft-trigger"));

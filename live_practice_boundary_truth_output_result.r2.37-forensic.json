@@ -1,0 +1,1942 @@
+{
+  "slice": "3.2I-PRACTICE-R5B1A.1-R2.37",
+  "kind": "prerequisite-truth output-contract forensics",
+  "readOnly": true,
+  "providerCallsMade": 0,
+  "head": "c99599aa2a459b2cf59ecbca1219abf8e7175beb",
+  "manifestSha256": "3b4f9612a2a3ba0c55fd47198b5d8f1e1fe92fd48e1b91da51f3371a55092821",
+  "artifact": {
+    "path": ".eval-artifacts/practice-review.boundaryreplay.live.20260801T193105Z.pass2.c18-constrained-clinical.a2.4a638eeca815.json",
+    "sha256": "04fc6f48e03f5ecad961d65565cd0b4473a866eb28ea2f255540b9569c4f38d2",
+    "mode": "live",
+    "replayRunId": "20260801T193105Z",
+    "sourceRunId": "20260801T024949Z",
+    "sourceCaseId": "c18-constrained-clinical",
+    "sourceAttemptIndex": 2
+  },
+  "subjectIdentity": {
+    "boundaryReviewSubjectSha256": "4a638eeca815a55fb95d9478fee3cac8128e79bf391579836fe3e611d2e4bf06",
+    "scenarioSha256": "eec15f10ce2e42ce67e8387dfc19638af7763cfaf0c365299756291c77e265a6",
+    "boundaryProvenanceSha256": "69e89b33ca3abd61571b030b5221ab61a900a93c1a456f72ee217a9632f28590",
+    "surfaceMapSha256": "59c57451f3fe7545e11fef65bbe95d7479cf2d20e997694e0e90a4afe38dac48",
+    "lineageSha256": "ec1a498917babf5976c6e115b6cb6abb4ee58c3aabc5226a576ce22e33d33c7e",
+    "contextSegmentMapSha256": "72fc4a527b94f8885466f279e0c2d109dbadba660fa9733479027e2176e76068",
+    "semanticFramesSha256": "cfbf6a78f14ff54e0962aa29c9feb185da7a05e7e25c4bdcfacb0b70c58bd370",
+    "identicalAcrossAttempts": true
+  },
+  "execution": {
+    "providerInvocations": 2,
+    "providerResponses": 2,
+    "semanticAttempts": 2,
+    "reruns": 1,
+    "transportFailures": 0,
+    "generationCalls": 0,
+    "broadReviewCalls": 0,
+    "outcome": "boundary_reviewer_terminal_failure",
+    "authorityCodes": [
+      "boundary_output_contract_failure"
+    ],
+    "outputContractFailure": true
+  },
+  "privacy": {
+    "credentialsFound": 0,
+    "providerAccountMetadataFound": 0,
+    "rawRequestIdFound": 0,
+    "endpointsFound": 0,
+    "result": "CLEAN"
+  },
+  "segmentMap": {
+    "count": 41,
+    "distinctTexts": 15,
+    "duplicateTextGroups": [
+      {
+        "refs": [
+          "1:own(own_surface)",
+          "3:anc(ancestor_primary)",
+          "4:anc(ancestor_primary)",
+          "5:anc(ancestor_primary)",
+          "6:anc(ancestor_primary)",
+          "7:anc(ancestor_primary)"
+        ],
+        "occurrences": 6,
+        "text": "Verify identifiers for both patients now"
+      },
+      {
+        "refs": [
+          "2:own(own_surface)",
+          "8:anc(ancestor_primary)",
+          "9:anc(ancestor_primary)",
+          "10:anc(ancestor_primary)",
+          "11:anc(ancestor_primary)",
+          "12:anc(ancestor_primary)"
+        ],
+        "occurrences": 6,
+        "text": "Notify the families and proceed with one patient"
+      },
+      {
+        "refs": [
+          "3:own(own_surface)",
+          "4:par(parent_generated_state)",
+          "5:par(parent_generated_state)",
+          "6:par(parent_generated_state)",
+          "7:par(parent_generated_state)"
+        ],
+        "occurrences": 5,
+        "text": "You have verified identifiers for both patients and provided the necessary treat"
+      },
+      {
+        "refs": [
+          "3:esc(branch_escalation)",
+          "4:esc(branch_escalation)",
+          "5:esc(branch_escalation)",
+          "6:esc(branch_escalation)",
+          "7:esc(branch_escalation)"
+        ],
+        "occurrences": 5,
+        "text": "The administrator is still concerned about the ongoing delays and requests a det"
+      },
+      {
+        "refs": [
+          "8:own(own_surface)",
+          "9:par(parent_generated_state)",
+          "10:par(parent_generated_state)",
+          "11:par(parent_generated_state)",
+          "12:par(parent_generated_state)"
+        ],
+        "occurrences": 5,
+        "text": "You prioritized immediate treatment for one patient while notifying the family, "
+      },
+      {
+        "refs": [
+          "8:esc(branch_escalation)",
+          "9:esc(branch_escalation)",
+          "10:esc(branch_escalation)",
+          "11:esc(branch_escalation)",
+          "12:esc(branch_escalation)"
+        ],
+        "occurrences": 5,
+        "text": "The administrator has been informed about the situation and is now pushing for a"
+      }
+    ],
+    "segments": [
+      {
+        "segmentRef": "0:opn",
+        "segmentKind": "scenario_opening",
+        "sourceSurfaceRef": "(scenario-wide)",
+        "textPreview": "You are a charge nurse on a busy ward, and the patient admissions have"
+      },
+      {
+        "segmentRef": "1:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "primary[0]",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "2:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "primary[1]",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "3:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[0].resulting_world_state",
+        "textPreview": "You have verified identifiers for both patients and provided the neces"
+      },
+      {
+        "segmentRef": "3:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[0].resulting_world_state",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "3:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[0].resulting_world_state",
+        "textPreview": "The administrator is still concerned about the ongoing delays and requ"
+      },
+      {
+        "segmentRef": "4:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[0].tradeoff[0]",
+        "textPreview": "Prepare a detailed report for the administrator"
+      },
+      {
+        "segmentRef": "4:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[0].tradeoff[0]",
+        "textPreview": "You have verified identifiers for both patients and provided the neces"
+      },
+      {
+        "segmentRef": "4:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[0].tradeoff[0]",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "4:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[0].tradeoff[0]",
+        "textPreview": "The administrator is still concerned about the ongoing delays and requ"
+      },
+      {
+        "segmentRef": "5:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[0].tradeoff[1]",
+        "textPreview": "Focus on patient care and delay the report"
+      },
+      {
+        "segmentRef": "5:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[0].tradeoff[1]",
+        "textPreview": "You have verified identifiers for both patients and provided the neces"
+      },
+      {
+        "segmentRef": "5:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[0].tradeoff[1]",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "5:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[0].tradeoff[1]",
+        "textPreview": "The administrator is still concerned about the ongoing delays and requ"
+      },
+      {
+        "segmentRef": "6:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[0].action[0]",
+        "textPreview": "Finalize the report and communicate with the administrator"
+      },
+      {
+        "segmentRef": "6:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[0].action[0]",
+        "textPreview": "You have verified identifiers for both patients and provided the neces"
+      },
+      {
+        "segmentRef": "6:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[0].action[0]",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "6:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[0].action[0]",
+        "textPreview": "The administrator is still concerned about the ongoing delays and requ"
+      },
+      {
+        "segmentRef": "7:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[0].action[1]",
+        "textPreview": "Continue prioritizing patient care and defer the report"
+      },
+      {
+        "segmentRef": "7:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[0].action[1]",
+        "textPreview": "You have verified identifiers for both patients and provided the neces"
+      },
+      {
+        "segmentRef": "7:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[0].action[1]",
+        "textPreview": "Verify identifiers for both patients now"
+      },
+      {
+        "segmentRef": "7:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[0].action[1]",
+        "textPreview": "The administrator is still concerned about the ongoing delays and requ"
+      },
+      {
+        "segmentRef": "8:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[1].resulting_world_state",
+        "textPreview": "You prioritized immediate treatment for one patient while notifying th"
+      },
+      {
+        "segmentRef": "8:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[1].resulting_world_state",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "8:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[1].resulting_world_state",
+        "textPreview": "The administrator has been informed about the situation and is now pus"
+      },
+      {
+        "segmentRef": "9:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[1].tradeoff[0]",
+        "textPreview": "Prepare a summary of events for the administrator"
+      },
+      {
+        "segmentRef": "9:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[1].tradeoff[0]",
+        "textPreview": "You prioritized immediate treatment for one patient while notifying th"
+      },
+      {
+        "segmentRef": "9:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[1].tradeoff[0]",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "9:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[1].tradeoff[0]",
+        "textPreview": "The administrator has been informed about the situation and is now pus"
+      },
+      {
+        "segmentRef": "10:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[1].tradeoff[1]",
+        "textPreview": "Focus on caring for the second patient immediately"
+      },
+      {
+        "segmentRef": "10:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[1].tradeoff[1]",
+        "textPreview": "You prioritized immediate treatment for one patient while notifying th"
+      },
+      {
+        "segmentRef": "10:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[1].tradeoff[1]",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "10:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[1].tradeoff[1]",
+        "textPreview": "The administrator has been informed about the situation and is now pus"
+      },
+      {
+        "segmentRef": "11:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[1].action[0]",
+        "textPreview": "Finish the summary and send it to the administrator"
+      },
+      {
+        "segmentRef": "11:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[1].action[0]",
+        "textPreview": "You prioritized immediate treatment for one patient while notifying th"
+      },
+      {
+        "segmentRef": "11:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[1].action[0]",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "11:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[1].action[0]",
+        "textPreview": "The administrator has been informed about the situation and is now pus"
+      },
+      {
+        "segmentRef": "12:own",
+        "segmentKind": "own_surface",
+        "sourceSurfaceRef": "branch[1].action[1]",
+        "textPreview": "Immediately treat the second patient"
+      },
+      {
+        "segmentRef": "12:par",
+        "segmentKind": "parent_generated_state",
+        "sourceSurfaceRef": "branch[1].action[1]",
+        "textPreview": "You prioritized immediate treatment for one patient while notifying th"
+      },
+      {
+        "segmentRef": "12:anc",
+        "segmentKind": "ancestor_primary",
+        "sourceSurfaceRef": "branch[1].action[1]",
+        "textPreview": "Notify the families and proceed with one patient"
+      },
+      {
+        "segmentRef": "12:esc",
+        "segmentKind": "branch_escalation",
+        "sourceSurfaceRef": "branch[1].action[1]",
+        "textPreview": "The administrator has been informed about the situation and is now pus"
+      }
+    ]
+  },
+  "outputBurden": {
+    "requestBytes": 18575,
+    "assessmentsPerResponse": 12,
+    "propertiesPerAssessment": 11,
+    "modelAuthoredEnumFields": 60,
+    "evidenceReferences": 24,
+    "modelAuthoredMetadataFields": 0,
+    "totalScalarFields": 156,
+    "responseEstimatedTokens": {
+      "attempt1": 2003,
+      "attempt2": 1971
+    },
+    "configuredBudget": 16000,
+    "modelOutputCap": 16384,
+    "proximityToBudget": "12.3%–12.5%",
+    "finishReasons": [
+      "stop",
+      "stop"
+    ],
+    "causality": "NOT CAUSAL — both responses completed at ~12% of budget with finishReason=stop and no truncation"
+  },
+  "schemaAdequacy": {
+    "form": "one flat assessment object with six independent enums",
+    "permittedEnumCombinations": 6480,
+    "canonicalValidStates": 6,
+    "schemaRepresentableButValidatorInvalid": [
+      "not_applicable + governedActionStatus=present",
+      "applies + compliance=not_assessed  <-- 12 of 24 measured rows",
+      "prerequisiteStatus=satisfied + temporalRelation=action_before_prerequisite",
+      "violates with no usable prerequisite evidence",
+      "administrative own action + inherited failure only"
+    ],
+    "schemaFields": [
+      "boundaryId",
+      "surfaceRef",
+      "applicability",
+      "governedActionStatus",
+      "prerequisiteStatus",
+      "temporalRelation",
+      "compliance",
+      "violationMechanism",
+      "actionEvidence",
+      "prerequisiteEvidence",
+      "reason"
+    ]
+  },
+  "promptSchemaValidatorParity": {
+    "staleFieldNamesRenderedIntoLivePrompt": [
+      "governedActionEvidence",
+      "prerequisiteFailureEvidence"
+    ],
+    "thoseFieldsExistInSchema": false,
+    "source": "boundaryReasonParity.renderPromptStateRules() / renderReasonPolicyLines() — not updated when R2.36 restructured evidence into {segmentRef, excerpt}",
+    "parityTableAxes": [
+      "applicability",
+      "compliance",
+      "mechanismClass"
+    ],
+    "axesAddedByR236WithNoCanonicalTable": [
+      "governedActionStatus",
+      "prerequisiteStatus",
+      "temporalRelation"
+    ],
+    "duplicatedSemanticAxis": "applicability(applies|not_applicable) vs governedActionStatus(present|absent) ask the same question twice"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "finishReason": "stop",
+      "latencyMs": 13340,
+      "refusalOrTruncationIndicators": {
+        "finishReason": "stop",
+        "truncated": false,
+        "refusalPresent": false,
+        "sanitizedError": null
+      },
+      "transport": {
+        "responseState": "response_received",
+        "envelopePresent": true,
+        "structuredOutputPresent": true,
+        "tokenUsagePresent": true,
+        "numericUsageRecorded": false,
+        "providerRequestIdHash": null
+      },
+      "responseBytes": 5673,
+      "assessments": [
+        {
+          "surfaceRef": "primary[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "not_established",
+            "temporalRelation": "unrelated",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "1:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "primary[0]",
+              "excerpt": "Verify identifiers for both patients now",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "primary[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "2:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "primary[1]",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].resulting_world_state",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "satisfied",
+            "temporalRelation": "prerequisite_before_action",
+            "compliance": "complies",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "3:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].resulting_world_state",
+              "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without compens",
+              "excerptVerbatimInCitedSegment": false,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "3:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[0].resulting_world_state",
+              "excerpt": "Verify identifiers for both patients now",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].tradeoff[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "satisfied",
+            "temporalRelation": "prerequisite_before_action",
+            "compliance": "complies",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "4:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].tradeoff[0]",
+              "excerpt": "Prepare a detailed report for the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "4:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[0].tradeoff[0]",
+              "excerpt": "Verify identifiers for both patients now",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].tradeoff[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "5:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].tradeoff[1]",
+              "excerpt": "Focus on patient care and delay the report",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].action[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "satisfied",
+            "temporalRelation": "prerequisite_before_action",
+            "compliance": "complies",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "6:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].action[0]",
+              "excerpt": "Finalize the report and communicate with the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "6:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[0].action[0]",
+              "excerpt": "Verify identifiers for both patients now",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].action[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "7:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].action[1]",
+              "excerpt": "Continue prioritizing patient care and defer the report",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].resulting_world_state",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "8:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].resulting_world_state",
+              "excerpt": "You prioritized immediate treatment for one patient while notifying the family, but this left the",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "8:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[1].resulting_world_state",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].tradeoff[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "9:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].tradeoff[0]",
+              "excerpt": "Prepare a summary of events for the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "9:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[1].tradeoff[0]",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].tradeoff[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "10:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].tradeoff[1]",
+              "excerpt": "Focus on caring for the second patient immediately",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].action[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "11:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[0]",
+              "excerpt": "Finish the summary and send it to the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "11:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[0]",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].action[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "12:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[1]",
+              "excerpt": "Immediately treat the second patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "12:anc",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "ancestor_primary",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[1]",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        }
+      ],
+      "providerSchemaResult": "accepted — strict schema validated, 12/12 assessments, all enums in range",
+      "serverValidation": {
+        "label": "as received",
+        "valid": false,
+        "outcome": "boundary_review_malformed",
+        "codes": [
+          "boundary_assessment_state_invalid",
+          "boundary_evidence_excerpt_not_in_segment",
+          "boundary_evidence_wrong_segment_kind"
+        ],
+        "perSurface": [
+          {
+            "surfaceRef": "primary[0]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "primary[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].resulting_world_state",
+            "code": "boundary_evidence_excerpt_not_in_segment"
+          },
+          {
+            "surfaceRef": "branch[0].resulting_world_state",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[0].tradeoff[0]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[0].tradeoff[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].action[0]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[0].action[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].resulting_world_state",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[1].tradeoff[0]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[1].tradeoff[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].action[0]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[1].action[1]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          }
+        ],
+        "violations": [],
+        "refutedClaims": []
+      },
+      "semanticVsOracle": {
+        "claimedViolations": [
+          "branch[1].resulting_world_state",
+          "branch[1].tradeoff[0]",
+          "branch[1].action[0]",
+          "branch[1].action[1]"
+        ],
+        "truePositives": [
+          "branch[1].resulting_world_state",
+          "branch[1].action[1]"
+        ],
+        "falsePositives": [
+          "branch[1].tradeoff[0]",
+          "branch[1].action[0]"
+        ],
+        "falseNegatives": [
+          "primary[1]"
+        ]
+      },
+      "counterfactuals": [
+        {
+          "label": "A refCanonicalization",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_assessment_state_invalid",
+            "boundary_evidence_excerpt_not_in_segment",
+            "boundary_evidence_wrong_segment_kind"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "primary[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_excerpt_not_in_segment"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].action[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[1].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[1].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[1]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "B applicabilityDerived",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_assessment_state_invalid",
+            "boundary_evidence_excerpt_not_in_segment",
+            "boundary_evidence_wrong_segment_kind"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_excerpt_not_in_segment"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[1]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "A+B",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_assessment_state_invalid",
+            "boundary_evidence_excerpt_not_in_segment",
+            "boundary_evidence_wrong_segment_kind"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_excerpt_not_in_segment"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[1]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "A+B+C satisfactionSources",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_assessment_state_invalid",
+            "boundary_evidence_excerpt_not_in_segment",
+            "boundary_evidence_wrong_segment_kind"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_excerpt_not_in_segment"
+            },
+            {
+              "surfaceRef": "branch[1].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[1]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "finishReason": "stop",
+      "latencyMs": 18916,
+      "refusalOrTruncationIndicators": {
+        "finishReason": "stop",
+        "truncated": false,
+        "refusalPresent": false,
+        "sanitizedError": null
+      },
+      "transport": {
+        "responseState": "response_received",
+        "envelopePresent": true,
+        "structuredOutputPresent": true,
+        "tokenUsagePresent": true,
+        "numericUsageRecorded": false,
+        "providerRequestIdHash": null
+      },
+      "responseBytes": 5575,
+      "assessments": [
+        {
+          "surfaceRef": "primary[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "satisfied",
+            "temporalRelation": "prerequisite_before_action",
+            "compliance": "complies",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "1:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "primary[0]",
+              "excerpt": "Verify identifiers for both patients now",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "0:opn",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "scenario_opening",
+              "serverOwnedSourceSurfaceRef": "(scenario-wide)",
+              "excerpt": "you must first verify two identifiers for each before proceeding.",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "primary[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "2:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "primary[1]",
+              "excerpt": "Notify the families and proceed with one patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].resulting_world_state",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "satisfied",
+            "temporalRelation": "prerequisite_before_action",
+            "compliance": "complies",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "3:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].resulting_world_state",
+              "excerpt": "You have verified identifiers for both patients and provided the necessary treatment without...",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "0:opn",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "scenario_opening",
+              "serverOwnedSourceSurfaceRef": "(scenario-wide)",
+              "excerpt": "you must first verify two identifiers for each before proceeding.",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].tradeoff[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "4:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].tradeoff[0]",
+              "excerpt": "Prepare a detailed report for the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].tradeoff[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "5:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].tradeoff[1]",
+              "excerpt": "Focus on patient care and delay the report",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].action[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "6:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].action[0]",
+              "excerpt": "Finalize the report and communicate with the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[0].action[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "7:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[0].action[1]",
+              "excerpt": "Continue prioritizing patient care and defer the report",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].resulting_world_state",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "8:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].resulting_world_state",
+              "excerpt": "You prioritized immediate treatment for one patient while notifying the family, but this left the...",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "8:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].resulting_world_state",
+              "excerpt": "this left the second patient unverified, creating potential safety concerns and administrative...",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].tradeoff[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "9:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].tradeoff[0]",
+              "excerpt": "Prepare a summary of events for the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].tradeoff[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "10:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].tradeoff[1]",
+              "excerpt": "Focus on caring for the second patient immediately",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].action[0]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "absent",
+            "prerequisiteStatus": "not_applicable",
+            "temporalRelation": "not_applicable",
+            "compliance": "not_assessed",
+            "violationMechanism": "none"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "11:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[0]",
+              "excerpt": "Finish the summary and send it to the administrator",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": null,
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": null,
+              "serverOwnedSourceSurfaceRef": null,
+              "excerpt": "",
+              "excerptVerbatimInCitedSegment": null,
+              "visibleToThisSurface": null,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        },
+        {
+          "surfaceRef": "branch[1].action[1]",
+          "state": {
+            "applicability": "applies",
+            "governedActionStatus": "present",
+            "prerequisiteStatus": "explicitly_missing",
+            "temporalRelation": "action_before_prerequisite",
+            "compliance": "violates",
+            "violationMechanism": "governed_action_without_prerequisite"
+          },
+          "reason": "",
+          "evidence": [
+            {
+              "semanticRole": "governed_action",
+              "segmentRef": "12:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].action[1]",
+              "excerpt": "Immediately treat the second patient",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": true,
+              "allowedKinds": [
+                "own_surface"
+              ]
+            },
+            {
+              "semanticRole": "prerequisite",
+              "segmentRef": "8:own",
+              "modelAuthoredSegmentKind": null,
+              "serverOwnedSegmentKind": "own_surface",
+              "serverOwnedSourceSurfaceRef": "branch[1].resulting_world_state",
+              "excerpt": "this left the second patient unverified, creating potential safety concerns and administrative...",
+              "excerptVerbatimInCitedSegment": true,
+              "visibleToThisSurface": false,
+              "allowedKinds": [
+                "own_surface",
+                "parent_generated_state"
+              ]
+            }
+          ]
+        }
+      ],
+      "providerSchemaResult": "accepted — strict schema validated, 12/12 assessments, all enums in range",
+      "serverValidation": {
+        "label": "as received",
+        "valid": false,
+        "outcome": "boundary_review_malformed",
+        "codes": [
+          "boundary_evidence_wrong_segment_kind",
+          "boundary_assessment_state_invalid",
+          "boundary_evidence_segment_not_visible"
+        ],
+        "perSurface": [
+          {
+            "surfaceRef": "primary[0]",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "primary[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].resulting_world_state",
+            "code": "boundary_evidence_wrong_segment_kind"
+          },
+          {
+            "surfaceRef": "branch[0].tradeoff[0]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].tradeoff[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].action[0]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[0].action[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].tradeoff[0]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].tradeoff[1]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].action[0]",
+            "code": "boundary_assessment_state_invalid"
+          },
+          {
+            "surfaceRef": "branch[1].action[1]",
+            "code": "boundary_evidence_segment_not_visible"
+          }
+        ],
+        "violations": [],
+        "refutedClaims": []
+      },
+      "semanticVsOracle": {
+        "claimedViolations": [
+          "branch[1].resulting_world_state",
+          "branch[1].action[1]"
+        ],
+        "truePositives": [
+          "branch[1].resulting_world_state",
+          "branch[1].action[1]"
+        ],
+        "falsePositives": [],
+        "falseNegatives": [
+          "primary[1]"
+        ]
+      },
+      "counterfactuals": [
+        {
+          "label": "A refCanonicalization",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_evidence_wrong_segment_kind",
+            "boundary_assessment_state_invalid"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "primary[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].tradeoff[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].action[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[0].action[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[0]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[1].tradeoff[1]",
+              "code": "boundary_assessment_state_invalid"
+            },
+            {
+              "surfaceRef": "branch[1].action[0]",
+              "code": "boundary_assessment_state_invalid"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "B applicabilityDerived",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_evidence_wrong_segment_kind",
+            "boundary_evidence_segment_not_visible"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[1].action[1]",
+              "code": "boundary_evidence_segment_not_visible"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "A+B",
+          "valid": false,
+          "outcome": "boundary_review_malformed",
+          "codes": [
+            "boundary_evidence_wrong_segment_kind"
+          ],
+          "perSurface": [
+            {
+              "surfaceRef": "primary[0]",
+              "code": "boundary_evidence_wrong_segment_kind"
+            },
+            {
+              "surfaceRef": "branch[0].resulting_world_state",
+              "code": "boundary_evidence_wrong_segment_kind"
+            }
+          ],
+          "violations": [],
+          "refutedClaims": []
+        },
+        {
+          "label": "A+B+C satisfactionSources",
+          "valid": true,
+          "outcome": "boundary_review_reject",
+          "codes": [],
+          "perSurface": [],
+          "violations": [
+            "branch[1].resulting_world_state",
+            "branch[1].action[1]"
+          ],
+          "refutedClaims": []
+        }
+      ]
+    }
+  ]
+}

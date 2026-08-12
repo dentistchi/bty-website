@@ -1,0 +1,18 @@
+
+> bty-website@0.1.0 compare:foundry-migration-audit
+> npx tsx scripts/migration-proof/compare/cli.ts live_audit_result.r2.6.json
+
+packet d5171bbd5033… OK · PostgreSQL major: expected 17 vs live 17 — match
+totals: {"effects":93,"exact":91,"conflict":2,"missing":0,"evidenceAbsent":0,"manual":0}
+
+Per-migration verdict candidates (grouped by FINAL authority):
+  20260726000000: D  blocked by 1: function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text)
+  20260727000000: A (REPAIR-ELIGIBLE candidate)
+  20260728000000: A (REPAIR-ELIGIBLE candidate)
+  20260729000000: D  blocked by 1: function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text)
+
+Conflicts / missing objects:
+  [CONFLICT] function:public.bty_foundry_set_shared_review(p_event_id uuid, p_participant_id uuid, p_owner_user_id uuid, p_status text, p_note text) — definition/body digest differs
+  [CONFLICT] function:public.bty_foundry_submit_followup(p_followup_id uuid, p_auth_user_id uuid, p_outcome text) — definition/body digest differs
+
+NOTE: an A candidate is NOT authorization to repair migration history or apply schema.

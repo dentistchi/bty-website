@@ -50,14 +50,19 @@ const LIVE_APPLY =
   "During the next project handoff meeting, I will actively use the shared handoff standard to ensure all necessary information is communicated clearly.";
 
 /** The Host's own completion evidence — agentless, which v10 could not have accepted. */
-const CRITERION = "The handover note lists every open item and who now owns it";
+/** Server-owned authority: actor from the audience, moment and evidence from the Host (R3.6-R1). */
+const SERVER = {
+  actor: "you",
+  trigger: "at each handoff point",
+  criterion: "The handover note lists every open item and who now owns it",
+};
 
 /** A contract that satisfies all four roles — synthetic, never written to any draft. */
 const GOOD: BehaviorContract = {
   actor: "the outgoing team member",
   trigger: "At the end of every shift, before leaving the floor",
   observableAction: "states each unfinished task, its deadline and its risk out loud to the person taking over",
-  completion: { criterion: CRITERION },
+  completion: { criterion: SERVER.criterion },
 };
 
 /*
@@ -65,16 +70,19 @@ const GOOD: BehaviorContract = {
   is passed to `validateBehaviorContract` as its own argument and never appears in `raw()` —
   the fixture mirrors the real call, where no response shape can supply it.
 */
+/**
+ * WHAT THE MODEL RETURNS — one field since Slice 3.2P-R3.6-R1. `actor` and `trigger` left the
+ * provider contract with `completion`; overrides may still pass them, which is exactly how the
+ * smuggling tests below prove they are ignored rather than merged.
+ */
 const raw = (c: Partial<Record<string, unknown>> = {}) => ({
-  actor: GOOD.actor,
-  trigger: GOOD.trigger,
   observable_action: GOOD.observableAction,
   ...c,
 });
 
 describe("[3.2L-R4] G2 — a complete behavioral contract is accepted", () => {
-  it("accepts actor + trigger + observable action + completion signal", () => {
-    const r = validateBehaviorContract(raw(), CRITERION);
+  it("accepts the model's one field, with the server's three supplied beside it", () => {
+    const r = validateBehaviorContract(raw(), SERVER);
     expect(r.ok, r.ok ? "" : `${r.defect.field}:${r.defect.reason}`).toBe(true);
   });
 
@@ -83,7 +91,7 @@ describe("[3.2L-R4] G2 — a complete behavioral contract is accepted", () => {
     expect(s).toContain("the outgoing team member");
     expect(s).toContain("out loud to the person taking over");
     // v11: the completion is the HOST's evidence sentence, stated as its own sentence.
-    expect(s).toContain(`Completion evidence: ${CRITERION}.`);
+    expect(s).toContain(`Completion evidence: ${SERVER.criterion}.`);
     // The rendered standard can never overflow the 700-character element ceiling.
     expect(s.length).toBeLessThanOrEqual(700);
   });
@@ -107,12 +115,8 @@ describe("[3.2L-R4] G1 — the exact live meta-standard is refused", () => {
 
   it("refuses the same meaning expressed as a contract", () => {
     const r = validateBehaviorContract(
-      raw({
-        actor: "team members",
-        trigger: "during all relevant transitions of work",
-        observable_action: "a shared handoff standard is created and utilized",
-      }),
-      CRITERION,
+      raw({ observable_action: "a shared handoff standard is created and utilized" }),
+      SERVER,
     );
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect.field).toBe("observableAction");
@@ -126,14 +130,14 @@ describe("[3.2L-R4] G1 — the exact live meta-standard is refused", () => {
 
 describe("[3.2L-R4] G3 — meta creation only", () => {
   it("refuses 'Create and implement a shared process.'", () => {
-    const r = validateBehaviorContract(raw({ observable_action: "Create and implement a shared process." }), CRITERION);
+    const r = validateBehaviorContract(raw({ observable_action: "Create and implement a shared process." }), SERVER);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "observableAction", reason: "meta_only" });
   });
 
   it("refuses a bare instruction to use the construct", () => {
     for (const bare of ["uses the shared handoff standard", "will follow the agreed process", "applies the new framework"]) {
-      const r = validateBehaviorContract(raw({ observable_action: bare }), CRITERION);
+      const r = validateBehaviorContract(raw({ observable_action: bare }), SERVER);
       expect(r.ok, `expected refusal for: ${bare}`).toBe(false);
     }
   });
@@ -150,30 +154,45 @@ describe("[3.2L-R4] each contract role is checked for a DIFFERENT property", () 
   it("an absent completion criterion is still refused — but it is a SOURCE fault now", () => {
     // v5's defect was a subjectless confirming act the renderer pasted after "It is complete
     // when …". v11 has no such field; what can still be empty is the Host's evidence, and the
-    // Builder blocks that at step 4 long before a generation is legal.
-    const r = validateBehaviorContract(raw(), "");
+    // Builder blocks that at its own step long before a generation is legal.
+    const r = validateBehaviorContract(raw(), { ...SERVER, criterion: "" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.defect).toEqual({ field: "completionSignal", reason: "missing" });
   });
 
-  it("a missing field is a defect, whichever it is", () => {
-    for (const f of ["actor", "trigger", "observable_action"]) {
-      const r = validateBehaviorContract(raw({ [f]: "" }), CRITERION);
-      expect(r.ok, `expected refusal for empty ${f}`).toBe(false);
-      if (!r.ok) expect(r.defect.reason).toBe("missing");
+  it("an absent Host moment is refused the same way, and named as the trigger", () => {
+    // Also a source fault since 3.2P-R3.6-R1 — `programSourceBlocker` stops it before spend, and
+    // this is the last line of defence for a caller that bypassed readiness.
+    const r = validateBehaviorContract(raw(), { ...SERVER, trigger: "" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.defect).toEqual({ field: "trigger", reason: "missing" });
+  });
+
+  it("the model's one field is still required, and still bounded", () => {
+    const empty = validateBehaviorContract(raw({ observable_action: "" }), SERVER);
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.defect).toEqual({ field: "observableAction", reason: "missing" });
+
+    const long = validateBehaviorContract(raw({ observable_action: "x".repeat(400) }), SERVER);
+    expect(long.ok).toBe(false);
+    if (!long.ok) expect(long.defect).toEqual({ field: "observableAction", reason: "too_long" });
+  });
+
+  it("a smuggled actor or trigger is IGNORED, not validated and not merged", () => {
+    /*
+      `not_a_role` and `no_moment` used to live here, policing a model actor and a model trigger.
+      Both fields are gone from the provider contract, so an override that would once have been
+      refused now simply has nowhere to land — which is a stronger guarantee than refusing it.
+    */
+    const r = validateBehaviorContract(
+      raw({ actor: "the shared handoff standard", trigger: "in a professional manner" }),
+      SERVER,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.actor).toBe(SERVER.actor);
+      expect(r.value.trigger).toBe(SERVER.trigger);
     }
-  });
-
-  it("the actor must be a person, not the construct performing itself", () => {
-    const r = validateBehaviorContract(raw({ actor: "the shared handoff standard" }), CRITERION);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "actor", reason: "not_a_role" });
-  });
-
-  it("the trigger must place the behavior in time", () => {
-    const r = validateBehaviorContract(raw({ trigger: "in a professional manner" }), CRITERION);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "trigger", reason: "no_moment" });
   });
 
   it("the Host's own evidence is NOT second-guessed, however it is phrased", () => {
@@ -188,14 +207,8 @@ describe("[3.2L-R4] each contract role is checked for a DIFFERENT property", () 
       "Participants submit their daily schedules with meal times marked",
       "바른 자세로 앉기",
     ]) {
-      expect(validateBehaviorContract(raw(), host).ok, host).toBe(true);
+      expect(validateBehaviorContract(raw(), { ...SERVER, criterion: host }).ok, host).toBe(true);
     }
-  });
-
-  it("an over-long field is bounded", () => {
-    const r = validateBehaviorContract(raw({ actor: "x".repeat(400) }), CRITERION);
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect.reason).toBe("too_long");
   });
 
   it("no single weak proxy decides it — the live sentence passes all four", () => {
@@ -672,7 +685,7 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     expect(a).toContain("At the next shift change");
     expect(a).toContain("must state each unfinished task");
     // Same criterion, different lead-in — one authority, four surfaces that do not read alike.
-    expect(a).toContain(`You will know it happened by this: ${CRITERION}.`);
+    expect(a).toContain(`You will know it happened by this: ${SERVER.criterion}.`);
   });
 
   it("G8: a completion check verifies; it cannot ask what the construct contains", () => {
@@ -1050,18 +1063,18 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
       and no grammatical subject is ever decided. `raw()` proves it: the fixture mirrors the
       real response shape and carries no completion key at all.
     */
-    expect(Object.keys(raw())).toEqual(["actor", "trigger", "observable_action"]);
-    expect(validateBehaviorContract(raw(), CRITERION).ok).toBe(true);
+    expect(Object.keys(raw())).toEqual(["observable_action"]);
+    expect(validateBehaviorContract(raw(), SERVER).ok).toBe(true);
   });
 
   it("G2: a completion the model tried to smuggle back in is IGNORED, not merged", () => {
     const smuggled = validateBehaviorContract(
       { ...raw(), completion: { confirmed_by: "the records manager", confirmation_action: "file the note" } },
-      CRITERION,
+      SERVER,
     );
     expect(smuggled.ok).toBe(true);
     if (smuggled.ok) {
-      expect(smuggled.value.completion).toEqual({ criterion: CRITERION });
+      expect(smuggled.value.completion).toEqual({ criterion: SERVER.criterion });
       expect(JSON.stringify(smuggled.value)).not.toContain("records manager");
     }
   });

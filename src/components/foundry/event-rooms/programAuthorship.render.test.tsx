@@ -31,6 +31,7 @@ afterEach(() => {
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide", "practice"],
@@ -237,7 +238,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(screen.getByTestId("program-edit-evidence")).toBeTruthy();
   });
 
-  it("G1: changing who acts updates EVERY dependent section at once", async () => {
+  it("G1: changing the ACTION updates EVERY dependent section at once", async () => {
     setup(ok);
     await generate();
     const before = {
@@ -245,8 +246,10 @@ describe("[3.2L] apply is explicit and atomic", () => {
       decision: screen.getByTestId("program-derived-action_decision").textContent ?? "",
     };
     await openDetails("observable_standard");
-    await setField("actor", "the duty pharmacist");
-    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("the duty pharmacist");
+    await setField("action", "reads the open items aloud from the board");
+    // The modal takes a BASE form — "must read", never "must reads" — so the rendered sentence
+    // carries the de-inflected phrase, which is the point of `baseActionPhrase`.
+    expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("read the open items aloud from the board");
     expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(before.standard);
     // YOUR DECISION is first person, so it carries the ACTION rather than the actor —
     // changing the action is what must move it.
@@ -256,20 +259,21 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("I will read the open items");
   });
 
-  it("G2: changing the TRIGGER moves the first instance in both sections", async () => {
+  it("G2: the moment is no longer editable here — it belongs to the Host's own question", async () => {
     /*
-      The separate first-moment control is gone (Slice 3.2L-R10-A): "when is it required?"
-      and "when do they first do it?" were one decision and one projection of it.
+      This test used to change `trigger` and assert both derived moments moved with it. Since
+      Slice 3.2P-R3.6-R1 the moment is the Host's answer to "When does this usually happen?",
+      so there is no control to change — which is a stronger version of the same property: the
+      two sections cannot disagree about the occasion because neither can be edited apart from
+      it. The same is true of who acts and of what shows completion.
     */
     setup(ok);
     await generate();
-    expect(screen.queryByTestId("program-details-toggle-action_decision")).toBeNull();
-    const before = screen.getByTestId("program-derived-action_decision").textContent ?? "";
     await openDetails("observable_standard");
-    await setField("trigger", "at each morning handover");
-    // This fixture carries no APPLY IT element; the browser gate covers both sections.
-    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("At my next morning handover");
-    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toBe(before);
+    for (const gone of ["actor", "trigger", "confirmed-by", "completion"]) {
+      expect(screen.queryByTestId(`program-field-${gone}`), gone).toBeNull();
+    }
+    expect(screen.getByTestId("program-field-action")).toBeTruthy();
   });
 
   it("G3: no independent drift — apply and the standard always share one behaviour", async () => {
@@ -287,9 +291,14 @@ describe("[3.2L] apply is explicit and atomic", () => {
     const { onApply } = setup(ok);
     await generate();
     await openDetails("observable_standard");
-    await setField("actor", "");
+    /*
+      THE ONLY EDITABLE DETAIL since 3.2P-R3.6-R1. Who, when and what-confirms are Host answers
+      now, edited at their own Builder questions, so the one field this surface still owns is
+      the action — and blanking it must still block Apply.
+    */
+    await setField("action", "");
     const block = screen.getByTestId("program-review-block");
-    expect(block.textContent).toContain("all four details");
+    expect(block.textContent).toContain("turned into a sentence");
     expect(block.textContent).not.toMatch(/contract|validator|behavior_contract/i);
     expect((screen.getByTestId("program-apply") as HTMLButtonElement).disabled).toBe(true);
     await act(async () => {
@@ -313,7 +322,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     const section = screen.getByTestId("program-section-observable_standard");
     expect(section.textContent).toContain("Drafted by BTY");
     await openDetails("observable_standard");
-    await setField("actor", "the duty pharmacist");
+    await setField("action", "reads the open items aloud from the board");
     expect(section.textContent).toContain("Adjusted by you");
     expect(section.textContent).not.toContain("Your rewrite");
     expect(section.textContent).not.toContain("Drafted by BTY");
@@ -324,7 +333,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     await generate();
     const original = screen.getByTestId("program-derived-observable_standard").textContent ?? "";
     await openDetails("observable_standard");
-    await setField("actor", "the duty pharmacist");
+    await setField("action", "reads the open items aloud from the board");
     expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(original);
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-reset"));
@@ -350,7 +359,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     const { onApply } = setup(ok);
     await generate();
     await openDetails("observable_standard");
-    await setField("actor", "the duty pharmacist");
+    await setField("action", "reads the open items aloud from the board");
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-discard"));
     });

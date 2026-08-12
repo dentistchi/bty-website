@@ -6,6 +6,7 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 const FIXTURE: BuilderAnswers = {
   problem: "During huddles people leave without naming who will act or when.",
+  recurringMoment: "at each handoff point",
   observableBehavior: "The owner repeats the action and deadline aloud before the huddle ends.",
   successEvidence: "The huddle note records one owner and one deadline per action.",
   completionPrompt: "After your next huddle, what action had a named owner and deadline?",

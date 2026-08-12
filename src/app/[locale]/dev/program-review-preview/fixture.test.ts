@@ -342,8 +342,8 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
   });
 
   it("no string from a retired fixture survives", () => {
@@ -368,19 +368,23 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
   const standard = DETAIL_FIELDS.observable_standard!;
   const labels = standard.map((f) => f.label);
 
-  it("G1/G2: each control names the ROLE, not just 'Who'", () => {
-    expect(standard.find((f) => f.id === "actor")!.label).toBe("Who takes the action?");
+  it("G1/G2: the one control names what it edits", () => {
     expect(standard.find((f) => f.id === "action")!.label).toBe("What would you see or hear them do?");
   });
 
-  it("[3.2P-R3.4-R1] the two completion controls are gone, not renamed", () => {
+  it("[3.2P-R3.4-R1 / R3.6-R1] three controls are gone, not renamed", () => {
     /*
-      R9.2 gave completion its own group because it was a contract role the Host corrected on
-      the model's behalf. v11 sources it from the Host's own "How will you know it worked?" in
-      the Builder, so editing it here would create a second authority for one sentence. The
-      Host did not lose the edit; it moved back to where they wrote it.
+      R9.2 gave these their own groups because they were contract roles the Host corrected on
+      the model's behalf. Each is now sourced from a Host question in the Builder, so editing it
+      here would create a second authority for one sentence:
+
+        who confirms → "How will you know it worked?"        (v11)
+        who acts     → the audience, rendered as "you"       (v11)
+        when         → "When does this usually happen?"      (v13)
+
+      The Host did not lose an edit; each moved back to where they wrote it.
     */
-    expect(standard.map((f) => f.id)).toEqual(["actor", "trigger", "action"]);
+    expect(standard.map((f) => f.id)).toEqual(["action"]);
   });
 
   it("no two controls open with the same three words any more", () => {
@@ -394,7 +398,7 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
   });
 
   it("G3: what remains is one named group", () => {
-    expect(standard.map((f) => f.group)).toEqual(["action", "action", "action"]);
+    expect(standard.map((f) => f.group)).toEqual(["action"]);
     expect(FIELD_GROUP_HEADING.action).toBe("The action");
   });
 
@@ -407,7 +411,7 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
 
   it("G4: B — the standard renders from the ACTION controls plus the Host's own evidence", () => {
     const get = (id: string) => standard.find((f) => f.id === id)!;
-    expect(get("actor").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.actor);
+    expect(get("action").get(PREVIEW_CONTRACTS)).toBe(PREVIEW_CONTRACTS.behavior.observableAction);
     expect(derived("observable_standard")).toBe(
       "At each handoff point, team members must state each unfinished item and identify its next owner. " +
         "Completion evidence: Handoff record.",
@@ -418,9 +422,12 @@ describe("[3.2L-R9.2] the two decisions a Host is making are named", () => {
 
   it("G6/G7: each control writes ONLY its own field", () => {
     const get = (id: string) => standard.find((f) => f.id === id)!;
-    const moved = get("actor").set(PREVIEW_CONTRACTS, "both people");
-    expect(moved.behavior.actor).toBe("both people");
-    // Nothing a Host types into an action control can reach the completion criterion.
+    const moved = get("action").set(PREVIEW_CONTRACTS, "reads every open item aloud");
+    expect(moved.behavior.observableAction).toBe("reads every open item aloud");
+    // Nothing a Host types into the action control can reach the moment, the actor or the
+    // criterion — the three the product and the Host own.
+    expect(moved.behavior.trigger).toBe(PREVIEW_CONTRACTS.behavior.trigger);
+    expect(moved.behavior.actor).toBe(PREVIEW_CONTRACTS.behavior.actor);
     expect(moved.behavior.completion.criterion).toBe(PREVIEW_CONTRACTS.behavior.completion.criterion);
   });
 });

@@ -1,0 +1,165 @@
+PostgreSQL: 17.10 (Homebrew)
+############################################################
+# bty_foundry_set_shared_review
+############################################################
+
+=== set_shared_review / repo-20260726 ===
+    measured raw-prosrc SHA-256: ea74856969177950a0c6e59fd1dc2fd766f4161b1289f360bc22d61980bc2af9
+    PASS  1  authorized owner ALIGNED
+    PASS  2  target row updated (status, note, reviewer, snapshot, reviewed_at set)
+    PASS  3  one audit row written with prev_status NULL and new_status ALIGNED
+    PASS  4  learner response + completion untouched by review
+    PASS  5  identical resubmission returns unchanged
+    PASS  6  idempotent resubmission writes no second audit row
+    PASS  7  note-only change is a real review
+    PASS  8  status transition audits prev>new
+    PASS  9  audit chain after transition
+    PASS 10  whitespace-only note normalizes to NULL
+    PASS 11  blank note stored as NULL
+    PASS 12  PARTIALLY_CLEAR accepted (already applied above)
+    PASS 13  invalid status rejected
+    PASS 14  foreign owner refused
+    PASS 15  foreign owner mutated nothing
+    PASS 16  cross-account review refused
+    PASS 17  other account row untouched
+    PASS 18  unknown event refused as not_owner
+    PASS 19  no progress row
+    PASS 20  no shared response
+    PASS 21  returns TABLE(result text)
+    PASS 22  security definer with pinned search_path
+    PASS 23  refused calls wrote no audit rows
+    PASS 24  one call returns exactly one row
+    ---- 24/24 contract cases passed
+    VERDICT: this body satisfies the deployed caller contract
+
+=== set_shared_review / live ===
+    measured raw-prosrc SHA-256: 52cc335a92cf65351cfc5b2378ba9c587af51e35bfd02273a26dce71909c753b
+    PASS  1  authorized owner ALIGNED
+    PASS  2  target row updated (status, note, reviewer, snapshot, reviewed_at set)
+    PASS  3  one audit row written with prev_status NULL and new_status ALIGNED
+    PASS  4  learner response + completion untouched by review
+    PASS  5  identical resubmission returns unchanged
+    PASS  6  idempotent resubmission writes no second audit row
+    PASS  7  note-only change is a real review
+    PASS  8  status transition audits prev>new
+    PASS  9  audit chain after transition
+    PASS 10  whitespace-only note normalizes to NULL
+    PASS 11  blank note stored as NULL
+    PASS 12  PARTIALLY_CLEAR accepted (already applied above)
+    PASS 13  invalid status rejected
+    PASS 14  foreign owner refused
+    PASS 15  foreign owner mutated nothing
+    PASS 16  cross-account review refused
+    PASS 17  other account row untouched
+    PASS 18  unknown event refused as not_owner
+    PASS 19  no progress row
+    PASS 20  no shared response
+    PASS 21  returns TABLE(result text)
+    PASS 22  security definer with pinned search_path
+    PASS 23  refused calls wrote no audit rows
+    PASS 24  one call returns exactly one row
+    ---- 24/24 contract cases passed
+    VERDICT: this body satisfies the deployed caller contract
+
+############################################################
+# bty_foundry_submit_followup
+############################################################
+
+=== submit_followup / repo-20260728 ===
+    measured raw-prosrc SHA-256: ba0ba9e6122e94b30ea1e1109a69551247c444f3ab3725a81c40fbce85301860
+    FAIL  1  valid submission does not raise 42702 (ambiguity hotfix present)   [observed: ERROR:42702 | contract: responded|RESPONDED|NOT_YET]
+    FAIL  2  target row RESPONDED with outcome + responded_at   [observed: PENDING|<null>|NO-ts | contract: RESPONDED|NOT_YET|ts]
+    FAIL  3  one RESPONDED audit row PENDING>RESPONDED with outcome + actor   [observed: <none> | contract: RESPONDED:PENDING>RESPONDED:NOT_YET:actor-ok]
+    FAIL  4  identical resubmission returns unchanged   [observed: ERROR:42702 | contract: unchanged|RESPONDED|NOT_YET]
+    FAIL  5  retry writes no duplicate audit row   [observed: 0 | contract: 1]
+    FAIL  6  conflicting second outcome refused   [observed: ERROR:42702 | contract: already_responded|RESPONDED|NOT_YET]
+    FAIL  7  original outcome preserved after conflict   [observed: <null> | contract: NOT_YET]
+    FAIL  8  foreign learner refused   [observed: ERROR:42702 | contract: not_owner|<null>|<null>]
+    FAIL  9  unknown followup id   [observed: ERROR:42702 | contract: not_found|<null>|<null>]
+    PASS 10  invalid outcome rejected
+    FAIL 11  outcome APPLIED accepted   [observed: ERROR:42702 | contract: responded|RESPONDED|APPLIED]
+    FAIL 12  outcome PARTLY_APPLIED accepted   [observed: ERROR:42702 | contract: responded|RESPONDED|PARTLY_APPLIED]
+    FAIL 13  outcome BLOCKED accepted   [observed: ERROR:42702 | contract: responded|RESPONDED|BLOCKED]
+    FAIL 14  outcome NOT_YET accepted   [observed: ERROR:42702 | contract: responded|RESPONDED|NOT_YET]
+    FAIL 15  pre-existing RESPONDED row is idempotent   [observed: ERROR:42702 | contract: unchanged|RESPONDED|NOT_YET]
+    PASS 16  pre-existing RESPONDED row gains no audit row
+    PASS 17  foreign submission mutated nothing
+    PASS 18  returns TABLE(result text, status text, outcome text)
+    PASS 19  security definer with pinned search_path
+    FAIL 20  identical retry returns exactly one row   [observed: ERROR:42702 | contract: 1]
+    FAIL 21  first response wins after a conflicting submission   [observed: <null> | contract: NOT_YET]
+    FAIL 22  conflicting submission writes no extra audit row   [observed: 0 | contract: 1]
+    ---- 5/22 contract cases passed
+    VERDICT: this body does NOT satisfy the deployed caller contract
+
+=== submit_followup / repo-20260729 ===
+    measured raw-prosrc SHA-256: 99c66ac7785ad2a3d20c4e99e981f09498876ede1ac31f989f12febc3cb0269f
+    PASS  1  valid submission does not raise 42702 (ambiguity hotfix present)
+    PASS  2  target row RESPONDED with outcome + responded_at
+    PASS  3  one RESPONDED audit row PENDING>RESPONDED with outcome + actor
+    PASS  4  identical resubmission returns unchanged
+    FAIL  5  retry writes no duplicate audit row   [observed: 2 | contract: 1]
+    PASS  6  conflicting second outcome refused
+    FAIL  7  original outcome preserved after conflict   [observed: APPLIED | contract: NOT_YET]
+    PASS  8  foreign learner refused
+    PASS  9  unknown followup id
+    PASS 10  invalid outcome rejected
+    PASS 11  outcome APPLIED accepted
+    PASS 12  outcome PARTLY_APPLIED accepted
+    PASS 13  outcome BLOCKED accepted
+    PASS 14  outcome NOT_YET accepted
+    PASS 15  pre-existing RESPONDED row is idempotent
+    FAIL 16  pre-existing RESPONDED row gains no audit row   [observed: 1 | contract: 0]
+    PASS 17  foreign submission mutated nothing
+    PASS 18  returns TABLE(result text, status text, outcome text)
+    PASS 19  security definer with pinned search_path
+    FAIL 20  identical retry returns exactly one row   [observed: 2 | contract: 1]
+    FAIL 21  first response wins after a conflicting submission   [observed: APPLIED | contract: NOT_YET]
+    FAIL 22  conflicting submission writes no extra audit row   [observed: 2 | contract: 1]
+    ---- 16/22 contract cases passed
+    VERDICT: this body does NOT satisfy the deployed caller contract
+
+=== submit_followup / live ===
+    measured raw-prosrc SHA-256: 21cdd472fd38a9cc7414eabeda1d028857aeddccb057f9ae956b52f793f43958
+    PASS  1  valid submission does not raise 42702 (ambiguity hotfix present)
+    PASS  2  target row RESPONDED with outcome + responded_at
+    PASS  3  one RESPONDED audit row PENDING>RESPONDED with outcome + actor
+    PASS  4  identical resubmission returns unchanged
+    FAIL  5  retry writes no duplicate audit row   [observed: 2 | contract: 1]
+    PASS  6  conflicting second outcome refused
+    FAIL  7  original outcome preserved after conflict   [observed: APPLIED | contract: NOT_YET]
+    PASS  8  foreign learner refused
+    PASS  9  unknown followup id
+    PASS 10  invalid outcome rejected
+    PASS 11  outcome APPLIED accepted
+    PASS 12  outcome PARTLY_APPLIED accepted
+    PASS 13  outcome BLOCKED accepted
+    PASS 14  outcome NOT_YET accepted
+    PASS 15  pre-existing RESPONDED row is idempotent
+    FAIL 16  pre-existing RESPONDED row gains no audit row   [observed: 1 | contract: 0]
+    PASS 17  foreign submission mutated nothing
+    PASS 18  returns TABLE(result text, status text, outcome text)
+    PASS 19  security definer with pinned search_path
+    FAIL 20  identical retry returns exactly one row   [observed: 2 | contract: 1]
+    FAIL 21  first response wins after a conflicting submission   [observed: APPLIED | contract: NOT_YET]
+    FAIL 22  conflicting submission writes no extra audit row   [observed: 2 | contract: 1]
+    ---- 16/22 contract cases passed
+    VERDICT: this body does NOT satisfy the deployed caller contract
+
+############################################################
+# Baseline comparison
+############################################################
+  FAIL: forensic behavior changed vs the recorded baseline
+--- /Users/hanbit/Dev/btytrainingcenter/bty-app/docs/audit/forensics/body_forensics_baseline.tsv	2026-07-30 18:32:20
++++ /tmp/bty-bodyforensics/measured.tsv	2026-07-30 20:37:31
+@@ -1,5 +1,5 @@
+ set_shared_review	repo-20260726	ea74856969177950a0c6e59fd1dc2fd766f4161b1289f360bc22d61980bc2af9	24	-
+-set_shared_review	live	ABSENT	0	ABSENT
++set_shared_review	live	52cc335a92cf65351cfc5b2378ba9c587af51e35bfd02273a26dce71909c753b	24	-
+ submit_followup	repo-20260728	ba0ba9e6122e94b30ea1e1109a69551247c444f3ab3725a81c40fbce85301860	22	1,2,3,4,5,6,7,8,9,11,12,13,14,15,20,21,22
+ submit_followup	repo-20260729	99c66ac7785ad2a3d20c4e99e981f09498876ede1ac31f989f12febc3cb0269f	22	5,7,16,20,21,22
+-submit_followup	live	ABSENT	0	ABSENT
++submit_followup	live	21cdd472fd38a9cc7414eabeda1d028857aeddccb057f9ae956b52f793f43958	22	5,7,16,20,21,22
+
+----
+BODY_FORENSICS: FAIL (1)

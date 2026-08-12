@@ -36,6 +36,7 @@ import {
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   learningNeeds: ["know", "decide"],
@@ -250,7 +251,7 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect(arg.response_format.json_schema.schema).toBe(PROGRAM_JSON_SCHEMA);
   });
 
-  it("the schema is exact: no additional properties, contract required with all four fields", () => {
+  it("the schema is exact: no additional properties, and the contract carries the model's one field", () => {
     const program = PROGRAM_JSON_SCHEMA.properties.program;
     expect(PROGRAM_JSON_SCHEMA.additionalProperties).toBe(false);
     expect(program.additionalProperties).toBe(false);
@@ -277,9 +278,17 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     expect([...comp.response_mode.enum]).toEqual(["name_the_moment", "state_what_you_will_say", "name_what_could_stop_you"]);
     const contract = program.properties.behavior_contract;
     expect(contract.additionalProperties).toBe(false);
-    expect([...contract.required]).toEqual(["actor", "trigger", "observable_action"]);
-    for (const f of ["actor", "trigger", "observable_action"]) {
-      expect((contract.properties as Record<string, { type: string }>)[f].type).toBe("string");
+    expect([...contract.required]).toEqual(["observable_action"]);
+    expect(Object.keys(contract.properties)).toEqual(["observable_action"]);
+    expect((contract.properties as Record<string, { type: string }>).observable_action.type).toBe("string");
+    /*
+      NO `actor`, NO `trigger` (Slice 3.2P-R3.6-R1). Both were model fields whose values were
+      then discarded or refused: the actor was overwritten by `CANONICAL_ACTOR`, and the trigger
+      cost W5 a paid window for a moment the Host had already stated. They are the Host's and the
+      product's now, and `additionalProperties: false` makes returning them a schema violation.
+    */
+    for (const gone of ["actor", "trigger", "completion"]) {
+      expect(JSON.stringify(contract), gone).not.toContain(`"${gone}"`);
     }
     /*
       A (Slice 3.2P-R3.4-R1): THERE IS NO COMPLETION FIELD. R8 required an object with
@@ -295,8 +304,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v12");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v9");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v13");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v10");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

@@ -60,6 +60,7 @@ const ATTEMPT = "f2000000-0000-4000-8000-000000000002";
 const ANSWERS: BuilderAnswers = {
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
+  recurringMoment: "at each handoff point",
   observableBehavior: "Create a shared handoff standard.",
   successEvidence: "Handoff record",
   evidenceType: "seen",

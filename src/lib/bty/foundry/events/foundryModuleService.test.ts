@@ -146,6 +146,7 @@ function completeAnswers(): BuilderAnswers {
   return {
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
+    recurringMoment: "at each handoff point",
     observableBehavior: "The charge nurse reads back the dosage at every shift handoff before sign-off.",
     successEvidence: "Sign-offs include a witnessed verbal read-back.",
     evidenceType: "seen",

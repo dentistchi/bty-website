@@ -41,7 +41,7 @@ import {
   CONTRACT_FIELD_LIMIT,
   SCENARIO_FIELD_LIMIT,
   deriveOperationalConstruct,
-  withCanonicalActor,
+  CANONICAL_ACTOR,
   isConfirmer,
   isRenderableAction,
   isInstructionalKind,
@@ -127,7 +127,12 @@ import {
  * model no longer authors completion at all. Every v10 proposal was generated against a
  * behaviour contract that carried a confirmer this version has no field for, so no unapplied
  * v10 proposal can be adopted under it. W4's refusal and W3's success both keep the versions
- * they were recorded under.
+
+ * v12 → v13 (Slice 3.2P-R3.6-R1) removes the last two model-authored contract roles: the
+ * trigger becomes the Host's `recurringMoment` and the discarded `actor` field goes with it. The
+ * WIRE shape changes too, so `PROGRAM_SCHEMA_NAME` moves to v10 alongside — the first time both
+ * have moved together, because this is the first change that is both a new acceptance rule and a
+ * new response shape.
  *
  * v11 → v12 (Slice 3.2P-R3.5) is a WIDENING, and it is the first bump this constant has taken
  * for a bug fix rather than a design change. The recurring-moment fold refused any occasion
@@ -139,7 +144,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v12";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v13";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -236,6 +241,8 @@ export type ProgramContext = {
   audienceType: AudienceType;
   audienceDetail: string | null;
   capabilityCandidate: string | null;
+  /** The Host's own recurring workplace occasion (Slice 3.2P-R3.6-R1). The program's ONE moment. */
+  recurringMoment: string;
   observableBehavior: string;
   successEvidence: string;
   learningNeeds: LearningNeed[];
@@ -253,7 +260,13 @@ export type ProgramContext = {
  */
 export function programContext(answers: BuilderAnswers | undefined): ProgramContext | null {
   const a = answers ?? {};
-  for (const step of [1, 2, 3, 4]) {
+  /*
+    FIVE STEPS NOW (Slice 3.2P-R3.6-R1) — the recurring moment joined problem, audience,
+    behaviour and evidence as source the program cannot be authored without. The list still
+    reuses the EXACT Builder gates rather than restating them, so the Host's screen and the
+    generation boundary can never disagree about what "ready" means.
+  */
+  for (const step of [1, 2, 3, 4, 5]) {
     if (stepBlocker(step, a)) return null;
   }
   const audienceType = a.audienceType as AudienceType;
@@ -265,6 +278,7 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
     audienceType,
     audienceDetail: needsDetail ? text(a.audienceDetail) : null,
     capabilityCandidate: text(a.capabilityCandidate) || null,
+    recurringMoment: text(a.recurringMoment),
     observableBehavior: text(a.observableBehavior),
     successEvidence: text(a.successEvidence),
     learningNeeds: needs,
@@ -277,6 +291,35 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
 }
 
 /**
+ * IS THE SOURCE READY TO AUTHOR FROM? (Slice 3.2P-R3.6-R1)
+ *
+ * WHY THIS EXISTS SEPARATELY FROM `programContext`. Absence and unusability are different
+ * faults with different sentences, and only one of them is about a blank field. A Host who
+ * wrote "At the next huddle" has answered the question — honestly, in their own words — and
+ * telling them to add a moment would be false. So this reports which of the two it is.
+ *
+ * BOTH BLOCK BEFORE SPEND, and that is the whole point. W5 (attempt `65923a21`) paid for a
+ * provider call, got a program back, and refused it `trigger_not_recurring` — a paid semantic
+ * refusal for something knowable from the draft alone, before an attempt row existed. Host
+ * input quality is a readiness question; it is not something to discover by generating.
+ *
+ * Returns null when the source can be authored from.
+ */
+export type ProgramSourceBlocker = "recurring_moment_required" | "recurring_moment_not_repeatable";
+
+export function programSourceBlocker(answers: BuilderAnswers | undefined): ProgramSourceBlocker | null {
+  const moment = typeof answers?.recurringMoment === "string" ? answers.recurringMoment.trim() : "";
+  if (moment.length === 0) return "recurring_moment_required";
+  /*
+    The SAME interpreter the program will use (R3.5). Asking a different question here than the
+    one the renderers ask later is how a draft passes readiness and then fails derivation — so
+    this calls `deriveFirstApplicationMoment` itself rather than approximating it.
+  */
+  if (!deriveFirstApplicationMoment(moment).ok) return "recurring_moment_not_repeatable";
+  return null;
+}
+
+/**
  * THE COMPLETION CRITERION, from the one place it lives (Slice 3.2P-R3.4-R1).
  *
  * ONE accessor, so the criterion cannot be copied into the prompt, the validator and the
@@ -286,6 +329,12 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
  */
 export function completionCriterionFrom(answers: BuilderAnswers | undefined): string {
   const v = answers?.successEvidence;
+  return typeof v === "string" ? v.trim() : "";
+}
+
+/** The same accessor for the Host's moment (Slice 3.2P-R3.6-R1). One read, never re-derived. */
+export function recurringMomentFrom(answers: BuilderAnswers | undefined): string {
+  const v = answers?.recurringMoment;
   return typeof v === "string" ? v.trim() : "";
 }
 
@@ -302,6 +351,12 @@ export function programContextFingerprint(ctx: ProgramContext): string {
     ctx.audienceType,
     norm(ctx.audienceDetail ?? ""),
     norm(ctx.capabilityCandidate ?? ""),
+    /*
+      Appended INSIDE the joined string, so changing only the moment changes the fingerprint —
+      and so every proposal authored before this field existed reads as stale context as well as
+      stale authority. Both are true, and neither record is rewritten.
+    */
+    norm(ctx.recurringMoment),
     norm(ctx.observableBehavior),
     norm(ctx.successEvidence),
     ctx.learningNeeds.join("+"),
@@ -848,7 +903,7 @@ function overlapRatio(a: string, b: string): number {
  * `PROGRAM_AUTHORSHIP_VERSION`, which moves whenever ACCEPTANCE does. v8 → v9 because v11
  * removed `behavior_contract.completion` from the response (Slice 3.2P-R3.4-R1).
  */
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v9";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v10";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -889,20 +944,23 @@ export const PROGRAM_JSON_SCHEMA = {
           type: "object",
           additionalProperties: false,
           /**
-           * NO `completion` (Slice 3.2P-R3.4-R1). It was `{confirmed_by, confirmation_action}`
-           * from R8 until v10, and it is the field that made W3 and W4 invent a person: the
-           * schema demanded a confirmer and the validator refused artifact heads, so a Host
-           * whose evidence is agentless left no legal answer. Completion is now the Host's own
-           * `successEvidence`, carried by the server.
+           * ONE FIELD (Slice 3.2P-R3.6-R1). The behaviour contract has four roles and the model
+           * now authors exactly one of them.
            *
-           * REMOVED, not deprecated. With `additionalProperties: false` the provider cannot
-           * return a confirmer at all — a prohibition in prose would only have made inventing
-           * one a rule violation instead of an impossibility.
+           *   actor      → `CANONICAL_ACTOR`, from the Host's audience    (removed at v11)
+           *   completion → the Host's `successEvidence`                    (removed at v11)
+           *   trigger    → the Host's `recurringMoment`                    (removed here)
+           *   observable_action → still the model's, and genuinely creative
+           *
+           * `actor` went with `trigger` in the same edit. It had been discarded by
+           * `withCanonicalActor` since v10 and validated only for shape — asking a model for a
+           * string that is thrown away is not freedom, it is noise that reads like authority.
+           *
+           * REMOVED, not deprecated. `additionalProperties: false` makes a returned trigger or
+           * actor a schema violation rather than a rule violation.
            */
-          required: ["actor", "trigger", "observable_action"],
+          required: ["observable_action"],
           properties: {
-            actor: { type: "string" },
-            trigger: { type: "string" },
             observable_action: { type: "string" },
           },
         },
@@ -1352,10 +1410,10 @@ export function validateProgramProposal(
   if (!isPlainObject(rawContract)) {
     return REJECT_AT("field_type", "program.behavior_contract", "an object", jsonTypeOf(rawContract), "observable_standard");
   }
-  for (const key of ["actor", "trigger", "observable_action"] as const) {
-    const v = (rawContract as Record<string, unknown>)[key];
+  {
+    const v = (rawContract as Record<string, unknown>).observable_action;
     if (typeof v !== "string") {
-      return REJECT_AT("field_type", `program.behavior_contract.${key}`, `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
+      return REJECT_AT("field_type", "program.behavior_contract.observable_action", `a non-empty string of at most ${CONTRACT_FIELD_LIMIT} characters`, jsonTypeOf(v), "observable_standard");
     }
     // The contract is rendered into participant-facing text, so it carries the SAME
     // honesty rules as any other content — a fabricated template cannot enter through it.
@@ -1374,8 +1432,17 @@ export function validateProgramProposal(
    * `evidence_required`, so a criterion exists by the time a generation is legal. The
    * `answers` fallback keeps this honest for direct callers that hold answers but no context.
    */
-  const completionCriterion = ctx?.successEvidence ?? completionCriterionFrom(answers);
-  const contractResult = validateBehaviorContract(rawContract, completionCriterion);
+  const contractResult = validateBehaviorContract(rawContract, {
+    /*
+      THE SERVER'S THREE ROLES, assembled here and nowhere else. Every one of them traces to a
+      Host answer or to a product decision; none of them can be reached by anything in the
+      response. `programContext` is the canonical route and guarantees all three are present —
+      the `answers` fallbacks keep direct callers honest without inventing values.
+    */
+    actor: CANONICAL_ACTOR,
+    trigger: ctx?.recurringMoment ?? recurringMomentFrom(answers),
+    criterion: ctx?.successEvidence ?? completionCriterionFrom(answers),
+  });
   // A well-formed contract that states no behavior. Not retryable: the shape was right.
   if (!contractResult.ok) {
     // The defect travels with the refusal so the ledger records WHICH of the four roles
@@ -1388,7 +1455,11 @@ export function validateProgramProposal(
    * exactly the population the Host's audience already selected and cannot drift from it. W3
    * produced "a team member" for a `leaders` audience; there is now nothing for that to reach.
    */
-  const contract: BehaviorContract = withCanonicalActor(contractResult.value);
+  /*
+    `withCanonicalActor` is gone: since R3.6-R1 the actor is passed IN as server authority, so
+    there is no model label left to overwrite. Keeping the overwrite would have implied one.
+  */
+  const contract: BehaviorContract = contractResult.value;
 
   /*
     NO CONFIRMER AUTHORITY CHECK (Slice 3.2P-R3.4-R1).
@@ -2136,18 +2207,14 @@ export function validateEditedReview(
   }
 
   const behavior = validateBehaviorContract(
-    {
-      actor: c.behavior.actor,
-      trigger: c.behavior.trigger,
-      observable_action: c.behavior.observableAction,
-    },
+    { observable_action: c.behavior.observableAction },
     /*
-      The criterion on the review state, NOT re-read from answers: a Host editing in review is
-      working from the contracts they were shown, and silently swapping in a different
-      successEvidence mid-review would change a sentence they did not touch. It came from the
-      Host either way.
+      Taken from the REVIEW STATE, not re-read from answers: a Host editing in review is working
+      from the contracts they were shown, and silently swapping in a different moment or evidence
+      mid-review would change sentences they never touched. All three came from the Host (or from
+      `CANONICAL_ACTOR`) when the state was built.
     */
-    c.behavior.completion.criterion,
+    { actor: c.behavior.actor, trigger: c.behavior.trigger, criterion: c.behavior.completion.criterion },
   );
   if (!behavior.ok) {
     const reason: ReviewBlockReason = behavior.defect.reason === "missing" || behavior.defect.reason === "too_long"

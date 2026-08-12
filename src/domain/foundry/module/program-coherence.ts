@@ -445,29 +445,51 @@ const trimField = (v: unknown): string => (typeof v === "string" ? v.replace(/\s
  * proxy wearing four hats. Word count, passive voice, keyword overlap and "contains a verb"
  * were each rejected as the sole signal: the live sentence passes all four.
  */
+/**
+ * WHAT THE SERVER SUPPLIES, and the model cannot (Slice 3.2P-R3.6-R1).
+ *
+ * Three of the contract's four roles are now Host or product authority. They are passed IN
+ * rather than read off the response, so no shape the model can return reaches them — a
+ * `trigger`, `actor` or `completion` key on `raw` is IGNORED, not merged, not validated.
+ */
+export type ServerBehaviorAuthority = {
+  /** From the Host's audience, via `CANONICAL_ACTOR`. Always the second person. */
+  actor: string;
+  /** From the Host's `recurringMoment`, verbatim. The program's one occasion. */
+  trigger: string;
+  /** From the Host's `successEvidence`, verbatim. */
+  criterion: string;
+};
+
 export function validateBehaviorContract(
   raw: unknown,
-  /**
-   * SERVER-OWNED (Slice 3.2P-R3.4-R1). Passed IN rather than read off `raw`, so no shape the
-   * model can return reaches it. Any `completion` key on `raw` is ignored, not merged.
-   */
-  criterion: string,
+  server: ServerBehaviorAuthority,
 ): { ok: true; value: BehaviorContract } | { ok: false; defect: ContractDefect } {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { ok: false, defect: { field: "actor", reason: "missing" } };
+    return { ok: false, defect: { field: "observableAction", reason: "missing" } };
   }
   const r = raw as Record<string, unknown>;
   const value: BehaviorContract = {
-    actor: trimField(r.actor),
-    trigger: trimField(r.trigger),
+    actor: trimField(server.actor),
+    trigger: trimField(server.trigger),
     observableAction: trimField(r.observable_action ?? r.observableAction),
-    completion: { criterion: trimField(criterion) },
+    completion: { criterion: trimField(server.criterion) },
   };
 
-  for (const f of ["actor", "trigger", "observableAction"] as const) {
-    if (value[f].length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: f, reason: "missing" } };
-    if (value[f].length > CONTRACT_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
+  /*
+    ONLY THE MODEL'S FIELD CARRIES THE MODEL'S BOUNDS. `CONTRACT_FIELD_LIMIT` exists to keep the
+    RENDERED sentence inside the element ceiling, and it was written when four fields were the
+    model's to overrun. The Host's moment and evidence are bounded where the Host writes them
+    (`RECURRING_MOMENT_MAX`, `EVIDENCE_MAX`); refusing a generation because a Host wrote a long
+    phrase would blame the model for the source. Length is caught on the rendered section.
+  */
+  if (value.observableAction.length < CONTRACT_FIELD_MIN) {
+    return { ok: false, defect: { field: "observableAction", reason: "missing" } };
   }
+  if (value.observableAction.length > CONTRACT_FIELD_LIMIT) {
+    return { ok: false, defect: { field: "observableAction", reason: "too_long" } };
+  }
+  if (value.trigger.length < CONTRACT_FIELD_MIN) return { ok: false, defect: { field: "trigger", reason: "missing" } };
   /*
     The criterion is the HOST's sentence, so it is checked for presence and nothing else. It
     carries no upper bound here: `CONTRACT_FIELD_LIMIT` exists to keep the model's four fields
@@ -479,12 +501,15 @@ export function validateBehaviorContract(
     return { ok: false, defect: { field: "completionSignal", reason: "missing" } };
   }
 
-  // The actor is a person or role. "The standard" performing itself is the passive
-  // construction the live defect used.
-  if (ARTIFACT_OR_CONSTRUCT_HEAD.test(value.actor)) return { ok: false, defect: { field: "actor", reason: "not_a_role" } };
+  /*
+    NO ACTOR RULE, NO MOMENT RULE (Slice 3.2P-R3.6-R1). `not_a_role` guarded against the model
+    making a construct perform itself, and `no_moment` against a trigger that named no time.
+    Both policed model prose. The actor is now `CANONICAL_ACTOR` and the trigger is the Host's
+    own phrase, already checked for repeatability at the source boundary — running a floor over
+    the Host's words here would refuse the source in the model's name.
 
-  // The trigger places it in time.
-  if (!MOMENT_MARKER.test(value.trigger)) return { ok: false, defect: { field: "trigger", reason: "no_moment" } };
+    Their reasons stay in `CONTRACT_DEFECT_REASONS` for the ledger rows that hold them.
+  */
 
   // The action is a behavior, not the construct's own life cycle, and not a bare
   // instruction to follow something unspecified.
@@ -552,6 +577,19 @@ const upperFirst = (s: string): string => (s.length > 0 ? s[0].toUpperCase() + s
 const S_FINAL_FUNCTION_WORDS = new Set(["hers", "ours", "yours", "theirs", "this", "thus", "plus", "less", "unless"]);
 
 /**
+ * WHO THE PARTICIPANT IS — SERVER-WRITTEN (Slice 3.2P-R3.2-R1, sole authority since R3.6-R1).
+ *
+ * Every participant-facing sentence addresses the learner directly. The Host's audience already
+ * decides who that is, so a model label naming the population was a second answer to a settled
+ * question — and W3 gave a different one, calling a `leaders` training "a team member".
+ *
+ * R3.2-R1 kept the model's label and overwrote it. R3.6-R1 removed the field: the actor is now
+ * passed into `validateBehaviorContract` as server authority, so there is nothing to overwrite
+ * and nothing for the model to get wrong.
+ */
+export const CANONICAL_ACTOR = "you";
+
+/**
  * The action as it appears after a modal.
  *
  * The HEAD verb is de-inflected, and — only when the head actually WAS inflected — so is a
@@ -566,30 +604,6 @@ const S_FINAL_FUNCTION_WORDS = new Set(["hers", "ours", "yours", "theirs", "this
  * "and their owner" are untouched, which is what matters — corrupting the Host's nouns
  * would be worse than the awkwardness being fixed.
  */
-/**
- * THE ACTOR IS SERVER-WRITTEN (Slice 3.2P-R3.2-R1).
- *
- * MEASURED, not assumed. Every derived sentence already addresses the learner in the second
- * person on its other half — "It is complete when YOU see…", "YOU will know it happened when…",
- * "What exactly will YOU say…" — while the subject was a third-person label the model chose. The
- * result reads with two different people in one sentence: "the huddle leader must … It is
- * complete when you see …". Rendering the subject as `you` removes that ambiguity and needs no
- * renderer change at all, because `must` is person-invariant (the R6.2 fix).
- *
- * WHY IT IS THE RIGHT AUTHORITY. W3 proved the model will happily name a population the Host did
- * not choose — `audienceType: leaders` produced "a team member". Constraining the model's label
- * meant judging whether one role denotes the same population as another, which no source in this
- * product states. `you` sidesteps the judgement entirely: the Host's audience already decides who
- * receives the training, so `you` is exactly that population and cannot drift from it.
- *
- * The model still returns an actor — the schema and the shape checks are unchanged — and it is
- * simply not what the participant reads.
- */
-export const CANONICAL_ACTOR = "you";
-
-export function withCanonicalActor(contract: BehaviorContract): BehaviorContract {
-  return { ...contract, actor: CANONICAL_ACTOR };
-}
 
 export function baseActionPhrase(action: string): string {
   const t = stripTrailingStop(action.trim());
