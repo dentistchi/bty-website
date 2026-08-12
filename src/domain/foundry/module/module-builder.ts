@@ -60,24 +60,28 @@ export const BUILDER_STEP_MAX = 9;
  */
 export const LEGACY_STEP_GRAPH_MAX = 8;
 /**
- * WHAT THE DATABASE WILL CURRENTLY ACCEPT (Slice 3.2P-R3.6-R1).
+ * WHAT THE DATABASE ACCEPTS (Slice 3.2P-R3.6-R1, activated R3.6-R1A).
  *
- * `current_step` carries a CHECK constraint — `between 1 and 8` from migration
- * `20260716174444`, measured live on staging rather than read off the file. Adding a ninth
- * screen therefore needs DDL, and DDL here is a separate Founder gate, so for the interval
- * between this deploy and `20260819000000` the app must not send a value the row would reject.
+ * `current_step` is bounded in TWO places — this module and a CHECK constraint on the row — and
+ * R3.6-R1 moved only one of them. The Builder grew a ninth screen while the constraint from
+ * `20260716174444` still ended at 8, so a host could reach Review and not save from it. Nothing
+ * in the suite could catch that: every test that touches the value stops at the domain. A live
+ * write found it.
  *
- * It clamps rather than errors because `current_step` is a RESUME BOOKMARK and nothing derives
- * readiness or authority from it. Losing one screen of bookmark accuracy costs the host a
- * click; failing the save would cost them the answer they just typed.
+ * Migration `20260819000000` widened the bound and is APPLIED — measured, not assumed: 8 and 9
+ * accepted, 10 refused by `foundry_module_drafts_current_step_check`. So this now equals
+ * `BUILDER_STEP_MAX` and the clamp below is a no-op for every legal step.
  *
- * MOVE THIS TO 9 IN THE SAME EDIT THAT APPLIES THE MIGRATION — the deploy-order pattern every
- * diagnostic column in this system has followed.
+ * IT STAYS. Not because it is doing anything today, but because it is the thing that made the
+ * mismatch survivable: while the two bounds disagreed, a host lost a click instead of an answer.
+ * The next screen added to this Builder will need the same interval, and deleting the mechanism
+ * would mean rediscovering the failure to rebuild it.
  */
-export const LIVE_STEP_CEILING = 8;
+export const LIVE_STEP_CEILING = 9;
 
 /**
- * The step to PERSIST for a host sitting on `step`. Never above what the live row accepts.
+ * The step to PERSIST for a host sitting on `step`. Never above what the live row accepts, and
+ * never below the first — a bookmark that the row would reject is worse than a stale one.
  */
 export function persistableStep(step: number): number {
   return Math.min(Math.max(step, BUILDER_STEP_MIN), LIVE_STEP_CEILING);

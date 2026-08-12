@@ -300,7 +300,7 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
  * screen of accuracy costs a click, a failed save costs the answer they just typed.
  */
 describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row accepts", () => {
-  it("clamps Review to the live ceiling, and leaves every other step alone", () => {
+  it("never persists a step the live row would reject", () => {
     expect(LIVE_STEP_CEILING).toBeLessThanOrEqual(BUILDER_STEP_MAX);
     for (let s = BUILDER_STEP_MIN; s <= LIVE_STEP_CEILING; s += 1) {
       expect(persistableStep(s), `step ${s}`).toBe(s);
@@ -309,6 +309,16 @@ describe("[3.2P-R3.6-R1] the persisted step never exceeds what the live row acce
     // …and it is never out of range in either direction.
     expect(persistableStep(0)).toBe(BUILDER_STEP_MIN);
     expect(persistableStep(99)).toBe(LIVE_STEP_CEILING);
+  });
+
+  it("Review persists as itself now that `20260819000000` is applied", () => {
+    /*
+      MEASURED LIVE, not assumed: 8 and 9 accepted, 10 refused by
+      `foundry_module_drafts_current_step_check`. Until that ran, this returned 8 for Review and
+      a host resumed one screen early rather than failing a save.
+    */
+    expect(LIVE_STEP_CEILING).toBe(BUILDER_STEP_MAX);
+    expect(persistableStep(BUILDER_STEP_MAX)).toBe(BUILDER_STEP_MAX);
   });
 
   it("the domain validator still accepts the whole new graph — only the WRITE is clamped", () => {

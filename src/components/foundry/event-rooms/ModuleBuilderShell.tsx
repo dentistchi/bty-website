@@ -148,8 +148,9 @@ export function ModuleBuilderShell({
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
           /*
-            CLAMPED (Slice 3.2P-R3.6-R1). The row's CHECK still ends at the old graph's Review
-            until migration `20260819000000` runs; a bookmark is not worth failing a save over.
+            BOUNDED BY WHAT THE ROW ACCEPTS (Slice 3.2P-R3.6-R1). A no-op since `20260819000000`
+            widened the CHECK to the ninth screen, and kept for the next one: while the two
+            bounds disagree, a host loses a click rather than the answer they just typed.
           */
           body: JSON.stringify({ answers: snap.answers, current_step: persistableStep(snap.currentStep) }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
