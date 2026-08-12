@@ -137,17 +137,21 @@ describe("[3.2L-R11.4I] bounded semantic repair", () => {
     const msg = semanticRepairInstruction("evidence_overclaim", CANONICAL);
     expect(msg).toMatch(/proves more than it can/i);
     expect(msg).toMatch(/reflection, not competence/);      // the derived ceiling
-    expect(msg).toMatch(/Change ONLY the sentences/);
+    // 3.2P-A3-R2: a semantic repair returns its licensed PATCH, so the instruction names the
+    // response shape rather than promising to preserve a program the model never receives.
+    expect(msg).toMatch(/the response shape contains those fields and nothing else/);
     /*
-      Preservation wording updated in Slice 3.2P-R0. "Keep the same behaviour" was true and
-      unenforceable — a repair obeyed it in spirit and deleted a required element. The
-      instruction now names the same envelope `repairFreezeViolated` enforces, so the words
-      and the check describe one thing. The property this line protects — the instruction
-      states what must be preserved — is unchanged.
+      Preservation wording rewritten twice. R0 replaced "keep the same behaviour" with the
+      envelope `repairFreezeViolated` enforces, because the softer version let a repair delete a
+      required element. A3-R2 replaced THAT, because A1-R3 had already retired the whole-program
+      retry it described: the model now receives only its licensed fields and returns only those,
+      so the server owns preservation outright and the instruction says so.
+
+      The property this line protects — the instruction states what the model may change and what
+      it may not touch — is unchanged through both.
     */
-    expect(msg).toMatch(/Do NOT add, remove, rename or reorder any element/i);
-    expect(msg).toMatch(/every other section exactly as it was/i);
-    expect(msg).toMatch(/ONLY the JSON object/);
+    expect(msg).toMatch(/Do not describe, repeat or recreate any other part of the program/i);
+    expect(msg).toMatch(/current value of every field you may change/i);
     const material = semanticRepairInstruction("material_fabrication", CANONICAL);
     expect(material).toMatch(/does not exist|nobody has read/i);
     expect(material).toMatch(/CREATES what they need/);

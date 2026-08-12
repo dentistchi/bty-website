@@ -135,6 +135,19 @@ import {
 
 
 
+
+ * v17 → v18 (Slice 3.2P-A3-R2) widens what counts as pressure. A3's first call was refused
+ * `scenario_without_pressure`, its licensed patch was asked for "a real constraint of one of
+ * these kinds", and the repaired pressure named a different occasion. The moment floor caught
+ * that correctly — precision 1.00 — but the pressure floor is what sent the model looking:
+ * measured on 36 phrases of ordinary workplace difficulty it recognised 13. Six families later
+ * it recognises all 36 with no false positives, and a bare `deadline` — which had been accepting
+ * "state the owner and deadline" and "every item has a deadline" since the family was written —
+ * now needs to be a close one.
+ *
+ * Acceptance moves in both directions, so the version moves. The wire shape and the repair patch
+ * shapes are untouched; only the pressure policy and the repair PROSE changed.
+ *
  * v16 → v17 (Slice 3.2P-A2-R2) states a product requirement the model was never given. A2 passed
  * every floor and still failed acceptance: its reflection asked "How do you currently ensure…",
  * which assumes the trained behaviour already happens and leaves the learner this training
@@ -184,7 +197,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v17";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v18";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1211,25 +1224,31 @@ export function semanticRepairInstruction(
   code: ProgramRejectCode,
   answers: BuilderAnswers | undefined,
 ): string {
-  /*
-    PARITY WITH THE LICENSE (Slice 3.2P-R0). The old wording said "change only the sentences
-    that break the rule", which is true and unenforceable — window 4's repair obeyed it in
-    spirit and deleted a whole required section. The instruction now names the SAME surface
-    `repairLicenseFor` permits, and says explicitly that the structure is fixed, so the words
-    the model reads and the check the code runs describe one thing.
-  */
-  const preserve =
-    "Return the SAME program with every other section exactly as it was. Do NOT add, remove, rename or reorder any element — the same kinds must come back in the same order. Do NOT touch the title, the assumptions, the warnings, or any section that was already honest. Change ONLY the sentences that break the rule, and return ONLY the JSON object.";
+  /**
+   * PARITY WITH THE RESPONSE SHAPE (Slice 3.2P-R0, rewritten 3.2P-A3-R2).
+   *
+   * R0's wording named the licensed surface and told the model to return "the SAME program with
+   * every other section exactly as it was". That was true of the whole-program retry it was
+   * written for. A1-R3 retired that retry: a semantic repair now answers a PATCH schema
+   * containing only its licensed fields, and the server merges it into a baseline the model never
+   * receives. So every instruction about preserving, not reordering, and returning the whole
+   * program describes a contract that no longer exists — A3's repair returned 32 tokens and
+   * followed the schema, not this text.
+   *
+   * Telling a model to preserve fields it is not sent is worse than saying nothing: it implies
+   * the response should contain them.
+   */
+  const patchOnly =
+    "You are given the current value of every field you may change, and the response shape contains those fields and nothing else. Return ONLY those fields, corrected. Do not describe, repeat or recreate any other part of the program — BTY keeps it exactly as it is.";
   if (code === "scenario_without_pressure") {
     return [
       "Your previous response gave the practice situation no real difficulty — the pressure field named nothing that competes with doing the behaviour properly.",
-      "Change ONLY the scenario pressure fields — scenario_contract.pressure_condition, and scenario_contract.pressure_detail if that is the one at fault. Leave every other field and every element exactly as they were.",
-      "Keep the same behaviour, the same actor, the same trigger and the same trained action. The situation still happens at the trigger.",
-      "Replace the pressure with a real constraint of one of these kinds:",
+      "The situation still happens at the host's own moment, which is fixed. Your pressure makes THAT moment harder — it never moves the learner to a different one.",
+      "Replace the pressure with a real difficulty of one of these kinds:",
       ...scenarioPressurePromptLines(),
-      "Do NOT introduce another time, meeting, call, appointment, deadline, shift or occasion — the pressure is a difficulty, never a second moment.",
+      "Do NOT introduce another time, meeting, call, appointment, shift or occasion — the pressure is a difficulty inside the moment, never a second moment.",
       "Do NOT restate the trained action as the pressure.",
-      "Return the SAME program with only that one field corrected, and return ONLY the JSON object.",
+      patchOnly,
     ].join(" ");
   }
   if (code === "material_fabrication") {
@@ -1237,14 +1256,14 @@ export function semanticRepairInstruction(
       "Your previous response relied on a material that does not exist, or spoke for one nobody has read.",
       "No template, checklist, worksheet, form, tool or guide is available to anyone, and the contents of any link or file are unknown to you.",
       "Rewrite those sentences so the participant CREATES what they need during the training, or so the material is left out entirely.",
-      preserve,
+      patchOnly,
     ].join(" ");
   }
   return [
     "Your previous response claimed the training proves more than it can.",
     deriveEvidenceCeiling(answers),
     "Rewrite every sentence that claims a result, an improvement, an organisational outcome, or that the behaviour is now performed, verified or sustained. Say what the training ASKS people to do instead.",
-    preserve,
+    patchOnly,
   ].join(" ");
 }
 

@@ -1077,7 +1077,14 @@ export const SCENARIO_PRESSURE_POLICY: readonly PressureFamily[] = [
     id: "time_scarcity",
     promptLine: "there is no time, someone is running late, it is a rush, something is urgent, a deadline is close, there are only a few minutes",
     example: "there is no time left before the patient is due",
-    pattern: /\b(?:no\s+time|not\s+enough\s+time|short\s+of\s+time|running\s+late|late|rush\w*|hurry|urgent|deadline|only\s+\w+\s+minutes)\b/i,
+    /*
+      A BARE `deadline` IS NOT A PRESSURE (Slice 3.2P-A3-R2). It accepted "state the owner and
+      deadline" — a restatement of the trained action — and "every item has a deadline" — a
+      completion claim. Both are exactly what this floor exists to refuse, and both had been
+      passing since the family was written. What makes a deadline a pressure is its PROXIMITY,
+      which is also what the family's own prompt line has always said: "a deadline is close".
+    */
+    pattern: /\b(?:no\s+time|not\s+enough\s+time|short\s+of\s+time|running\s+late|late|rush\w*|hurry|urgent|(?:close|near|approaching|looming|tight)\s+deadline|deadline\s+is\s+(?:close|near|approaching|looming|today|tight)|deadline\s+(?:has\s+)?(?:passed|slipped)|only\s+\w+\s+minutes)\b/i,
   },
   {
     id: "queue_or_busy",
@@ -1105,9 +1112,9 @@ export const SCENARIO_PRESSURE_POLICY: readonly PressureFamily[] = [
   },
   {
     id: "absence_or_staffing",
-    promptLine: "someone is unavailable, absent, has not arrived, has left, nobody is there, it is understaffed, or someone else is doing it",
+    promptLine: "someone is unavailable, absent, not there, has not arrived, has left, nobody is there, it is understaffed or stretched, or someone else is doing it",
     example: "the team is understaffed and the other person has not arrived",
-    pattern: /\b(?:understaffed|short-staffed|unavailable|absent|nobody|no\s+one|someone\s+else|has\s+not\s+arrived|hasn't\s+arrived|left\s+(?:early|for\s+the\s+day))\b/i,
+    pattern: /\b(?:understaffed|short-staffed|short[- ]handed|stretched|unavailable|absent|nobody|no\s+one|someone\s+else|is\s+not\s+there|has\s+not\s+arrived|hasn't\s+arrived|left\s+(?:early|for\s+the\s+day)|coverage\s+is\s+thin)\b/i,
   },
   {
     id: "missing_or_unclear",
@@ -1123,9 +1130,64 @@ export const SCENARIO_PRESSURE_POLICY: readonly PressureFamily[] = [
   },
   {
     id: "social_exposure",
-    promptLine: "it is awkward or uncomfortable, a senior or a manager is there, someone is being watched, or it is their first time",
+    promptLine: "it is awkward or uncomfortable, a senior or a manager is watching, someone is being watched, or it is their first time",
     example: "it is awkward because a senior colleague is watching",
-    pattern: /\b(?:awkward|uncomfortable|senior|manager\s+is|being\s+watched|first\s+time)\b/i,
+    /*
+      `manager\s+is` matched "the manager is speaking" — a neutral description of a meeting, not
+      a pressure. Measured as the one false positive on the A3-R2 corpus. The exposure is being
+      OBSERVED, so the verb has to be there.
+    */
+    pattern: /\b(?:awkward|uncomfortable|senior|being\s+watched|(?:manager|supervisor|lead)\s+is\s+(?:watching|listening|present)|first\s+time)\b/i,
+  },
+  /*
+    THE SIX FAMILIES A3 EXPOSED (Slice 3.2P-A3-R2).
+
+    A3's first call was refused `scenario_without_pressure`, the licensed patch asked for "a real
+    constraint of one of these kinds", and the repaired pressure named a different occasion. The
+    moment floor caught that correctly — it measures precision 1.00 — but the pressure floor is
+    what sent the model looking: measured on a 36-phrase corpus of ordinary workplace difficulty
+    it recognised 13. A model steered away from meeting dynamics has fewer places to go, and one
+    of the remaining ones is a second occasion.
+
+    These are the families that were missing, named by what they ARE rather than by this pilot's
+    vocabulary. Every one reaches the prompt through the same array, so the model is now told
+    about them in the same breath the validator accepts them.
+  */
+  {
+    id: "overrun_or_pace",
+    promptLine: "the session is running over or behind, or people want to wrap up, finish quickly or move on",
+    example: "the session is running over time and people want to move on",
+    pattern: /\b(?:running\s+over|overrun\w*|behind\b|finish\s+quick\w*|wrap\s+up|move\s+on|no\s+pause)\b/i,
+  },
+  {
+    id: "divided_attention",
+    promptLine: "attention is elsewhere — people are checking messages or the time, talking over each other, or half-listening",
+    example: "people are checking messages and talking over each other",
+    pattern: /\b(?:checking\s+(?:messages|phones|email|the\s+time)|talking\s+over|watching\s+the\s+clock|attention\s+is\s+(?:fading|drifting|elsewhere)|half[- ]?listening)\b/i,
+  },
+  {
+    id: "simultaneity_or_volume",
+    promptLine: "several things are happening at once, more is raised than can be handled, or items are still unresolved",
+    example: "several issues are raised at once and some are still unresolved",
+    pattern: /\b(?:at\s+once|one\s+after\s+another|unresolved|multiple|several\s+(?:possible|issues|items|things)|more\s+\w+\s+(?:are\s+)?(?:raised|added)\s+than)\b/i,
+  },
+  {
+    id: "hesitation_or_avoidance",
+    promptLine: "people hesitate, avoid it, go quiet, or nobody wants to be the one",
+    example: "the room goes quiet and people avoid saying who will take it",
+    pattern: /\b(?:hesitat\w*|avoid\w*|reluctan\w*|goes?\s+quiet|went\s+quiet|silence|nobody\s+wants|no\s+one\s+wants)\b/i,
+  },
+  {
+    id: "ownership_ambiguity",
+    promptLine: "it is not clear who owns it — each person assumes another does, or several people could",
+    example: "each person assumes the other one owns it",
+    pattern: /\b(?:who\s+(?:owns|will\s+take|should\s+take)|thinks?\s+the\s+other|assume\w*\s+(?:the\s+other|someone)|not\s+sure\s+who)\b/i,
+  },
+  {
+    id: "flow_break",
+    promptLine: "one thing cuts across another before it is settled, or questions keep breaking the flow",
+    example: "questions keep breaking the flow before anything is settled",
+    pattern: /\b(?:break\w*\s+the\s+flow|cuts?\s+across|before\s+(?:\w+\s+){0,3}(?:has\s+|is\s+)?(?:finished|resolved|settled|decided|closed))\b/i,
   },
   {
     id: "named_pressure",

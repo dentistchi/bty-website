@@ -345,7 +345,7 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v17");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v18");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 

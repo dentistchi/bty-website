@@ -100,11 +100,16 @@ describe("[3.2O-R4] the repair instruction is derived, never hand-listed", () =>
     for (const line of scenarioPressurePromptLines()) expect(instruction).toContain(line.trim());
   });
 
-  it("names the editable fields and freezes the rest in words too", () => {
-    expect(instruction).toMatch(/ONLY the scenario pressure fields/i);
-    expect(instruction).toMatch(/pressure_condition/);
-    expect(instruction).toMatch(/every other field and every element exactly as they were/i);
-    expect(instruction).toMatch(/same actor, the same trigger and the same trained action/i);
+  it("names the response shape, and still states the moment rule", () => {
+    /*
+      3.2P-A3-R2. This asserted "ONLY the scenario pressure fields" and "every other field and
+      every element exactly as they were" — the whole-program retry A1-R3 retired. The repair now
+      answers a two-field patch schema, so the words name that shape instead of promising to
+      preserve a program the model is never sent. The two rules that matter are unchanged: the
+      pressure stays inside the host's moment, and it may not restate the action.
+    */
+    expect(instruction).toMatch(/the response shape contains those fields and nothing else/i);
+    expect(instruction).toMatch(/still happens at the host's own moment/i);
     expect(instruction).toMatch(/never a second moment/i);
     expect(instruction).toMatch(/Do NOT restate the trained action/i);
   });

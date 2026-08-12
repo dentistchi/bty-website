@@ -184,14 +184,21 @@ describe("[3.2P-R0] the narrative license", () => {
 describe("[3.2P-R0] instruction ↔ license parity", () => {
   for (const code of ["evidence_overclaim", "material_fabrication", "scenario_without_pressure"] as const) {
     it(`${code}: the words describe the same envelope the code enforces`, () => {
+      /*
+        WORDING REWRITTEN IN 3.2P-A3-R2. These asserted the whole-program preservation string —
+        "Do NOT add, remove, rename or reorder any element", "Change ONLY the sentences". A1-R3
+        retired that retry: a semantic repair answers a PATCH schema containing only its licensed
+        fields, and the server merges it into a baseline the model never receives. Telling a model
+        to preserve fields it is not sent implies the response should contain them.
+
+        The property these tests protect — the words describe the same envelope the code enforces
+        — is unchanged, and is now asserted against the envelope that exists.
+      */
       const msg = semanticRepairInstruction(code, ANSWERS);
+      expect(msg).toMatch(/the response shape contains those fields and nothing else/i);
+      expect(msg).toMatch(/Do not describe, repeat or recreate any other part of the program/i);
       if (code === "scenario_without_pressure") {
-        expect(msg).toMatch(/ONLY the scenario pressure fields/i);
-      } else {
-        // Structure is frozen deterministically, so the instruction must say so too.
-        expect(msg).toMatch(/Do NOT add, remove, rename or reorder any element/i);
-        expect(msg).toMatch(/same kinds must come back in the same order/i);
-        expect(msg).toMatch(/Do NOT touch the title, the assumptions, the warnings/i);
+        expect(msg).toMatch(/still happens at the host's own moment/i);
       }
     });
   }
