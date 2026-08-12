@@ -2,8 +2,11 @@
 //
 // Pins the route's authority boundary: the account comes from the SESSION and never the body;
 // an unauthenticated request is a uniform 401; an ineligible or already-consumed target is a 409
-// rather than a silent success; and the forfeit figure the client must show in its confirmation
-// is passed through from the server rather than computed here.
+// rather than a silent success; and the CARRIED figure the client shows in its confirmation is
+// passed through from the server rather than computed here.
+//
+// BUILD 26M-R2 withdrew residual forfeiture. Two assertions below previously encoded the forfeit
+// contract as if it were the product rule; they are corrected rather than accommodated.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -50,7 +53,7 @@ describe('POST /api/host/timed-passes/switch', () => {
   it('derives the account from the session, never the body', async () => {
     switchTimedPass.mockResolvedValue({
       ok: true, passGrantId: GRANT, status: 'SELECTED', changed: true,
-      switchedFromPassId: 'old', forfeitedSeconds: 121,
+      switchedFromPassId: 'old', carriedSeconds: 121, effectiveWindowSeconds: 3721,
     });
     const res = await POST(req({ passGrantId: GRANT, accountId: 'attacker' }));
     expect(res.status).toBe(200);
@@ -59,15 +62,19 @@ describe('POST /api/host/timed-passes/switch', () => {
     });
   });
 
-  it('reports what was given up so the client can state the forfeit truthfully', async () => {
+  it('reports what was CARRIED, and the total the armed pass will be worth', async () => {
     switchTimedPass.mockResolvedValue({
       ok: true, passGrantId: GRANT, status: 'SELECTED', changed: true,
-      switchedFromPassId: 'old-pass', forfeitedSeconds: 121,
+      switchedFromPassId: 'old-pass', carriedSeconds: 121, effectiveWindowSeconds: 3721,
     });
     const body = await (await POST(req({ passGrantId: GRANT }))).json();
     expect(body.ok).toBe(true);
-    expect(body.forfeitedSeconds).toBe(121);
+    expect(body.carriedSeconds).toBe(121);
+    // The client must never have to add 3600 + 121 itself.
+    expect(body.effectiveWindowSeconds).toBe(3721);
     expect(body.switchedFromPassId).toBe('old-pass');
+    // The withdrawn contract must not leak back into the payload.
+    expect(body.forfeitedSeconds).toBeUndefined();
     // The refreshed inventory rides along so the client never renders a stale pass list after a
     // destructive change.
     expect(body.state).toBeDefined();
@@ -98,14 +105,16 @@ describe('POST /api/host/timed-passes/switch', () => {
     expect((await res.json()).error).toBe('switch_conflict');
   });
 
-  it('a replayed switch reports changed:false and no second forfeit', async () => {
+  it('a replayed switch reports changed:false and does not transfer twice', async () => {
     switchTimedPass.mockResolvedValue({
       ok: true, passGrantId: GRANT, status: 'SELECTED', changed: false,
-      switchedFromPassId: null, forfeitedSeconds: null,
+      switchedFromPassId: null, carriedSeconds: 121, effectiveWindowSeconds: 3721,
     });
     const body = await (await POST(req({ passGrantId: GRANT }))).json();
     expect(body.changed).toBe(false);
-    expect(body.forfeitedSeconds).toBeNull();
+    // A replay reports the carry the target ALREADY holds — it must not read as a second transfer.
+    expect(body.carriedSeconds).toBe(121);
+    expect(body.switchedFromPassId).toBeNull();
   });
 
   it('rejects a malformed body and a non-uuid grant id without calling the RPC', async () => {
@@ -118,7 +127,7 @@ describe('POST /api/host/timed-passes/switch', () => {
   it('never caches a pass-state response', async () => {
     switchTimedPass.mockResolvedValue({
       ok: true, passGrantId: GRANT, status: 'SELECTED', changed: true,
-      switchedFromPassId: null, forfeitedSeconds: null,
+      switchedFromPassId: null, carriedSeconds: 0, effectiveWindowSeconds: 3600,
     });
     const res = await POST(req({ passGrantId: GRANT }));
     expect(res.headers.get('Cache-Control')).toContain('no-store');

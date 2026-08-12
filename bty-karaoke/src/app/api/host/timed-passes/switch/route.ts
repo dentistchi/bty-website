@@ -1,14 +1,13 @@
 // A Host SWITCHES from the running Timed Access Pass to another one they own (BUILD 26M).
 //
 // POST (web cookie OR native Bearer host session) { passGrantId, idempotencyKey? }
-//   -> ACTIVE pass becomes REVOKED (revoke_reason 'switched_pass', activation facts retained)
-//   and the target becomes SELECTED, atomically, through one RPC. Returns the refreshed
-//   inventory + state plus what was given up.
+//   -> ACTIVE pass becomes REVOKED (revoke_reason 'switched_pass', activation facts retained), its
+//   remaining entitlement TRANSFERS to the target, and the target becomes SELECTED — all in one
+//   RPC, one transaction. Returns the refreshed inventory + state plus what was carried across.
 //
-// WHY THIS IS NOT /select. Selecting is free; switching DESTROYS the residual time on the pass
-// that is currently running, and that is irreversible. A destructive action must have its own
-// endpoint and its own confirmed intent rather than riding on a verb the client already uses for
-// something harmless — otherwise an ordinary retry of a select could silently burn an hour.
+// WHY THIS IS STILL NOT /select. BUILD 26M-R2 withdrew forfeiture, so a switch no longer destroys
+// time — but it still ENDS the running pass, which is a state change the Host must intend. Keeping
+// it on its own verb also keeps the confirmation copy honest about what is happening.
 //
 // The switch ARMS but never ACTIVATES: the new pass's clock starts only when a real song start
 // commits. It is also NOT an admission bypass — the start authority still refuses any song the
@@ -78,7 +77,8 @@ export async function POST(req: NextRequest) {
       ok: true,
       changed: outcome.changed,
       switchedFromPassId: outcome.switchedFromPassId,
-      forfeitedSeconds: outcome.forfeitedSeconds,
+      carriedSeconds: outcome.carriedSeconds,
+      effectiveWindowSeconds: outcome.effectiveWindowSeconds,
       state,
       passes,
     },

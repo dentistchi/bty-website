@@ -78,6 +78,14 @@ export interface SelectedPassView {
   id: string;
   passType: PassType;
   durationSeconds: number;
+  /** BUILD 26M-R2: residual transferred from a previous pass. 0 for an ordinary selection. */
+  carryoverSeconds: number;
+  /**
+   * What this pass will actually be worth the moment it starts: durationSeconds +
+   * carryoverSeconds. Published so no client ever has to add two numbers to tell a Host what
+   * they own — the UI shows a total, never an arithmetic problem.
+   */
+  effectiveWindowSeconds: number;
   selectedAt: string;
 }
 
@@ -122,9 +130,26 @@ function parseSelected(raw: unknown): SelectedPassView | null {
   const passType = passTypeOf(r.passType);
   const selectedAt = str(r.selectedAt);
   if (!id || !passType || !selectedAt) return null;
+  // BUILD 26M-R2 — a missing carryover reads as 0, never as "unknown". An armed pass with no
+  // transferred residual is the ordinary case, and defaulting to 0 keeps the effective window
+  // equal to the base duration, which is exactly right for it.
+  const carryoverSeconds =
+    typeof r.carryoverSeconds === 'number' && Number.isFinite(r.carryoverSeconds)
+      ? Math.max(0, Math.floor(r.carryoverSeconds))
+      : 0;
+  const baseDuration =
+    typeof r.durationSeconds === 'number' ? r.durationSeconds : durationForPassType(passType);
   return {
     id,
     passType,
+    carryoverSeconds,
+    // Trust the server's own total when it sent one; otherwise derive it. Never let the two
+    // disagree silently — a client that shows a different total than the authority is worse
+    // than one that shows none.
+    effectiveWindowSeconds:
+      typeof r.effectiveWindowSeconds === 'number' && Number.isFinite(r.effectiveWindowSeconds)
+        ? Math.max(0, Math.floor(r.effectiveWindowSeconds))
+        : baseDuration + carryoverSeconds,
     durationSeconds: typeof r.durationSeconds === 'number' ? r.durationSeconds : durationForPassType(passType),
     selectedAt,
   };

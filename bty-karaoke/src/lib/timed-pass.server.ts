@@ -207,16 +207,19 @@ export type SwitchTimedPassOutcome =
       changed: boolean;
       /** The ACTIVE pass that was revoked to make room, or null when none was running. */
       switchedFromPassId: string | null;
-      /** Residual seconds destroyed by the switch, or null when nothing was running. */
-      forfeitedSeconds: number | null;
+      /** BUILD 26M-R2: residual seconds TRANSFERRED to the target (never destroyed). */
+      carriedSeconds: number | null;
+      /** What the armed pass will be worth when it starts: base duration + carried. */
+      effectiveWindowSeconds: number | null;
     }
   | { ok: false; error: SwitchTimedPassError; status?: PassStatus };
 
 /**
  * BUILD 26M — Host switches from the running pass to another one they own (Model B).
  *
- * The ACTIVE pass is REVOKED (`revoke_reason='switched_pass'`, activation facts retained) and
- * the target is merely ARMED. It is NOT activated here: the new clock starts only at the next
+ * BUILD 26M-R2 WITHDREW FORFEITURE. The ACTIVE pass is REVOKED (`revoke_reason='switched_pass'`,
+ * activation facts retained) and its remaining entitlement is TRANSFERRED to the target, which is
+ * merely ARMED. It is NOT activated here: the new clock starts only at the next
  * real `waiting->playing` transition, exactly as ordinary selection does. Both transitions are
  * one RPC — and therefore one transaction — so the old pass can never be terminated without the
  * new one being armed.
@@ -259,7 +262,9 @@ export async function switchTimedPass(input: {
     status: String(row.status) as PassStatus,
     changed: row.changed === true,
     switchedFromPassId: typeof row.switchedFromPassId === 'string' ? row.switchedFromPassId : null,
-    forfeitedSeconds: typeof row.forfeitedSeconds === 'number' ? Math.floor(row.forfeitedSeconds) : null,
+    carriedSeconds: typeof row.carriedSeconds === 'number' ? Math.floor(row.carriedSeconds) : null,
+    effectiveWindowSeconds:
+      typeof row.effectiveWindowSeconds === 'number' ? Math.floor(row.effectiveWindowSeconds) : null,
   };
 }
 

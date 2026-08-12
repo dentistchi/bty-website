@@ -7,6 +7,13 @@
 //
 // Comments are STRIPPED before every assertion — a migration that promised "never activates" in
 // prose while writing status='ACTIVE' in DDL would otherwise pass.
+//
+// SUPERSEDED IN PART — READ THIS BEFORE TRUSTING THE FORFEIT ASSERTIONS BELOW. BUILD 26M-R2
+// (20260813120000) WITHDREW residual forfeiture after physical use: switching now TRANSFERS the
+// remaining entitlement to the incoming pass. The assertions here still correctly describe the
+// 20260812120000 migration as written and are kept as its historical pin, but the forfeit rule is
+// NOT current product behaviour. Current behaviour is pinned by
+// timed-pass-carryover-migration.schema.test.ts.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
