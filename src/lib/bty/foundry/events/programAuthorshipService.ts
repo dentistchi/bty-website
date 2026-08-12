@@ -17,6 +17,10 @@ import {
   type ProgramRejectCode,
   semanticRepairInstruction,
   repairFreezeViolated,
+  repairLicenseFor,
+  repairPatchContract,
+  licensedRepairContext,
+  applyRepairPatch,
   evidenceClaimBrief,
   materialAuthorityBrief,
   type MaterialAuthority,
@@ -360,7 +364,15 @@ type CallOutcome = {
   usage?: { prompt?: number; completion?: number; total?: number };
 };
 
-async function invoke(messages: LlmChatMessage[]): Promise<CallOutcome> {
+async function invoke(
+  messages: LlmChatMessage[],
+  /**
+   * WHICH response shape this call must return (Slice 3.2P-A1-R3). The initial authorship call
+   * asks for the whole program; a repair asks ONLY for its licensed surface, so an unlicensed
+   * field has nowhere to be written rather than being caught afterwards.
+   */
+  responseContract: { name: string; schema: Record<string, unknown> },
+): Promise<CallOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
   try {
@@ -377,7 +389,7 @@ async function invoke(messages: LlmChatMessage[]): Promise<CallOutcome> {
         // the schema fails CLOSED rather than silently downgrading to free-form JSON.
         response_format: {
           type: "json_schema",
-          json_schema: { name: PROGRAM_SCHEMA_NAME, strict: true, schema: PROGRAM_JSON_SCHEMA },
+          json_schema: { name: responseContract.name, strict: true, schema: responseContract.schema },
         },
       },
       { signal: controller.signal },
@@ -576,21 +588,68 @@ export async function generateProgram(
   let frozenRefusal: { code: ProgramRejectCode; kind: JourneyElementKind | undefined } | undefined;
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    /**
+     * A REPAIR RETURNS ONLY ITS LICENCE (Slice 3.2P-A1-R3).
+     *
+     * A1's retry asked for the whole program, told the model in prose to preserve the rest, and
+     * never showed it what the rest was. It could not be won, and it was not. Now the licence IS
+     * the response schema, and the model is shown the current value of every field it may change
+     * — the smallest context that makes the task possible, and nothing it has no authority over.
+     */
+    const license = i === 0 || !frozenRefusal ? null : repairLicenseFor(frozenRefusal.code, frozenRefusal.kind);
+    const patchContract = license ? repairPatchContract(license) : null;
+    const patchContext = license ? licensedRepairContext(frozenBaseline, license) : null;
+    /*
+      NO KNOWN-UNWINNABLE FALLBACK — for the repairs that are FROZEN.
+
+      A SEMANTIC repair is measured against `repairFreezeViolated`, so it must be able to leave
+      the frozen content untouched. If its licence cannot be expressed as a patch, or its current
+      values cannot be read back, the attempt ends on the ORIGINAL refusal rather than spending a
+      call on something that could not succeed. A retry nobody can win is not a retry.
+
+      A STRUCTURAL fault is different in kind and deliberately keeps whole-program regeneration:
+      the previous response was MALFORMED, `frozenRefusal` is undefined, and the freeze is never
+      evaluated for it. There is nothing to preserve — asking again for the whole object is the
+      only meaningful repair, and no invariant later punishes it for differing.
+    */
+    if (i > 0 && frozenRefusal && (!patchContract || !patchContext)) {
+      logOutcome("repair_not_representable", frozenRefusal.code);
+      break;
+    }
+    /*
+      A STRUCTURAL retry still regenerates the whole program — and still gets its exact
+      diagnosis. Only the FROZEN (semantic) repairs became patches.
+    */
+    const structuralRepair =
+      i > 0 && !patchContext
+        ? [
+            ...base,
+            {
+              role: "user" as const,
+              content: lastDiagnosis
+                ? `Your previous response had one formatting problem: ${repairInstruction(lastDiagnosis)} Return the SAME program with only that corrected. Return ONLY the JSON object.`
+                : "The previous response could not be read. Return ONLY the JSON object, exactly in the required shape.",
+            },
+          ]
+        : null;
     const messages: LlmChatMessage[] =
       i === 0
         ? base
-        : [
+        : structuralRepair ?? [
             ...base,
             {
               role: "user" as const,
               // TARGETED. The fourth controlled window handed the model only a code name
               // ("field_type"), so it could not know which field was wrong and produced the
-              // same fault twice. This names the exact path and the type actually received.
-              content: semanticRepairCode
-                ? semanticRepairInstruction(semanticRepairCode, args.answers)
-                : lastDiagnosis
-                  ? `Your previous response had one formatting problem: ${repairInstruction(lastDiagnosis)} Return the SAME program with only that corrected. Return ONLY the JSON object.`
-                  : `The previous response could not be read. Return ONLY the JSON object, exactly in the required shape.`,
+              // same fault twice. This names the fault AND supplies what it is repairing.
+              content: [
+                semanticRepairInstruction(semanticRepairCode!, args.answers),
+                "",
+                "This is what you wrote in the fields you may change:",
+                JSON.stringify(patchContext),
+                "",
+                "Return ONLY those fields, corrected. The response shape contains everything you are allowed to change; everything else in the program is kept exactly as it is and is not yours to rewrite.",
+              ].join("\n"),
             },
           ];
 
@@ -607,7 +666,12 @@ export async function generateProgram(
       : null;
 
     const c0 = Date.now();
-    const r = await invoke(messages);
+    const r = await invoke(
+      messages,
+      patchContract ?? { name: PROGRAM_SCHEMA_NAME, schema: PROGRAM_JSON_SCHEMA },
+    );
+    // The digest describes what the PROVIDER actually returned — the patch on a repair call,
+    // not a fictional whole program (Slice 3.2P-A1-R3).
     const digest = r.raw ? await digestProgramResponse(r.raw) : null;
 
     if (!r.ok) {
@@ -631,7 +695,31 @@ export async function generateProgram(
       continue;
     }
 
-    let validated = validateProgramProposal(r.parsed, args.answers, args.verifiedArtifacts ?? []);
+    /**
+     * MERGE BEFORE VALIDATION (Slice 3.2P-A1-R3). The patch is not a proposal; the merged
+     * candidate is. It then goes through the SAME `validateProgramProposal` as any first call,
+     * so a repair that fixes its own fault but breaks another floor is still refused.
+     */
+    let candidate = r.parsed;
+    /**
+     * A PATCH THE MERGE REFUSES IS A FREEZE VIOLATION (Slice 3.2P-A1-R3).
+     *
+     * The schema should already have made an unlicensed field unreturnable, so reaching here
+     * means the provider ignored its contract. That is exactly what `repair_freeze_violated`
+     * has always meant — the repair left its envelope — so it is recorded as one rather than
+     * invented as a new code, and the child row is finalized honestly instead of being
+     * abandoned mid-flight.
+     */
+    let mergeRefused = false;
+    if (license) {
+      const mergedResult = applyRepairPatch({ baseline: frozenBaseline, license, patch: r.parsed });
+      if (mergedResult.ok) candidate = mergedResult.merged;
+      else {
+        logOutcome("repair_merge_refused", mergedResult.reason);
+        mergeRefused = true;
+      }
+    }
+    let validated = validateProgramProposal(candidate, args.answers, args.verifiedArtifacts ?? []);
     /*
       EVERY BOUNDED REPAIR IS FROZEN (Slice 3.2P-R0). A repair licensed to fix one surface may
       not return a second draft. Checked whatever the repair produced — a repair that turns an
@@ -649,8 +737,16 @@ export async function generateProgram(
       the candidate, so the row can never disagree with what the service did.
     */
     let freezeVerdict: boolean | undefined;
-    if (i > 0 && frozenRefusal) {
-      freezeVerdict = repairFreezeViolated({ ...frozenRefusal, before: frozenBaseline, after: r.parsed });
+    if (mergeRefused && frozenRefusal) {
+      freezeVerdict = true;
+      validated = { ok: false, code: frozenRefusal.code, kind: frozenRefusal.kind };
+    } else if (i > 0 && frozenRefusal) {
+      /*
+        A DEFENSIVE INVARIANT NOW, not a gate (Slice 3.2P-A1-R3). The merge writes only what the
+        licence names, so this should always be false. If it is ever true the server merge is
+        wrong, and the candidate is discarded exactly as before rather than shipped.
+      */
+      freezeVerdict = repairFreezeViolated({ ...frozenRefusal, before: frozenBaseline, after: candidate });
       if (freezeVerdict) {
         logOutcome("repair_freeze_violated", frozenRefusal.code);
         validated = { ok: false, code: frozenRefusal.code, kind: frozenRefusal.kind };
@@ -769,7 +865,9 @@ export async function generateProgram(
     semanticRepairCode = isSemanticRepairableCode(validated.code) ? validated.code : undefined;
     // Every semantic repair is licensed and frozen, so every one needs its baseline and the
     // refusal that authorised it.
-    frozenBaseline = semanticRepairCode ? r.parsed : undefined;
+    // The candidate a repair will patch — the MERGED one on a retry, so a second repair would
+    // build on what was actually judged.
+    frozenBaseline = semanticRepairCode ? candidate : undefined;
     frozenRefusal = semanticRepairCode ? { code: semanticRepairCode, kind: validated.kind } : undefined;
     repairable = isStructuralCode(validated.code) || semanticRepairCode !== undefined;
     logOutcome("rejected", validated.code);

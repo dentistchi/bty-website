@@ -259,7 +259,17 @@ describe("[3.2L-R3] each provider call keeps its own diagnosis", () => {
     const fabricated = validProgram();
     (fabricated.program.elements[1] as { content: unknown }).content =
       "Complete the handoff record template before signing off at every shift change.";
-    chatCreate.mockResolvedValueOnce(respond(fabricated)).mockResolvedValueOnce(respond(validProgram()));
+    /*
+      SINCE 3.2P-A1-R3 the repair answers its LICENCE, not a program. A fabrication on
+      `observable_standard` licenses `element_and_contract`, so the patch is that element's two
+      fields plus the behaviour contract — and the server merges it into the baseline it kept.
+    */
+    const patch = {
+      content: "The outgoing person states each open item aloud before signing off.",
+      rationale: "grounded",
+      contract: { action_verb: "state", action_detail: "each open item aloud to the person taking over" },
+    };
+    chatCreate.mockResolvedValueOnce(respond(fabricated)).mockResolvedValueOnce(respond(patch));
 
     const { admin, calls, attempts } = makeAdmin();
     const r = await run(admin);

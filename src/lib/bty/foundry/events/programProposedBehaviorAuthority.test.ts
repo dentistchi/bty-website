@@ -294,6 +294,6 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
     expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v11");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v15");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v16");
   });
 });

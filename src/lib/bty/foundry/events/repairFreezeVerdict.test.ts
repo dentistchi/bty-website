@@ -104,19 +104,27 @@ const respond = (body: unknown) => ({
 const NO_PRESSURE = program({
   scenario_contract: { pressure_condition: "the team works hard every day", pressure_detail: null },
 });
-/** A retry that fixes pressure but ALSO deletes a required element — outside its licence. */
-const OUT_OF_LICENCE = {
-  program: {
-    ...program().program,
-    elements: KINDS.filter((k) => k !== "follow_up").map((k) => ({ kind: k, content: CONTENT[k], rationale: "grounded in the host's own answers" })),
-  },
-};
-/** A retry that stays inside its licence and still names no real pressure. */
-const STILL_NO_PRESSURE = program({
-  scenario_contract: { pressure_condition: "the team is focused and everything moves along", pressure_detail: null },
+/**
+ * SINCE 3.2P-A1-R3 A REPAIR RETURNS ITS LICENCE, NOT A PROGRAM.
+ *
+ * A1 proved the whole-program retry unwinnable: the model was told to preserve content it was
+ * never shown, and judged on exact serialisation. The retry now answers a patch schema — here,
+ * the two scenario-pressure fields — and the server merges it into a baseline it kept.
+ */
+const pressurePatch = (pressure_condition: string, pressure_detail: string | null = null) => ({
+  pressure_condition, pressure_detail,
 });
-/** A retry that fixes exactly the licensed field. */
-const REPAIRED = program();
+/**
+ * A patch carrying a field its licence does not name. The schema makes this impossible at the
+ * provider; the merge refuses it anyway, so a server-side mistake cannot slip through.
+ */
+const OUT_OF_LICENCE = { ...pressurePatch("a queue is building at the desk"), elements: [] };
+/** A patch that stays inside its licence and still names no real pressure. */
+const STILL_NO_PRESSURE = pressurePatch("the team is focused and everything moves along");
+/** A patch that fixes exactly the licensed field. */
+const REPAIRED = pressurePatch("a queue is building at the desk and two people are waiting");
+/** A whole valid program — what the FIRST call answers, and only the first. */
+const VALID_PROGRAM = program();
 
 const admin = { from: () => ({}), rpc: async () => ({ data: null, error: null }) } as unknown as SupabaseClient;
 
@@ -153,7 +161,7 @@ beforeEach(() => {
 
 describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   it("A — the initial authorship call is never evaluated, so it stores NULL", async () => {
-    chatCreate.mockResolvedValueOnce(respond(REPAIRED));
+    chatCreate.mockResolvedValueOnce(respond(VALID_PROGRAM));
     await run();
     expect(calls()).toHaveLength(1);
     expect(calls()[0].repairFreezeViolated, "not evaluated ⇒ NULL, never false").toBeNull();

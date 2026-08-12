@@ -133,6 +133,17 @@ import {
 
 
 
+
+ * v15 → v16 (Slice 3.2P-A1-R3) makes a licensed repair winnable. A1's retry asked for the whole
+ * program, instructed the model in prose to preserve what it could not see, and was then judged
+ * on exact serialisation — so the call was spent before it began. A repair now returns only its
+ * licensed surface and the server merges it into a baseline it never released. Acceptance moves:
+ * proposals that could not have survived a repair can now survive one.
+ *
+ * The INITIAL wire shape is untouched, so `PROGRAM_SCHEMA_NAME` stays at v11. The repair schemas
+ * carry their own names instead — pretending the authorship contract changed would be less
+ * truthful than giving the new contracts an identity of their own.
+ *
  * v14 → v15 (Slice 3.2P-R3.7-R2) closes WHO structurally. v14 refused a subject it could see —
  * a pronoun or a determiner — and measurement proved a free string goes no further without
  * refusing real behaviours. The model now returns the verb HEAD and the rest of the phrase
@@ -162,7 +173,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v15";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v16";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1268,6 +1279,209 @@ export function repairLicenseFor(code: ProgramRejectCode, kind: JourneyElementKi
   if (kind === "observable_standard") return { surface: "element_and_contract", kind, contract: "behavior_contract" };
   if (kind === "scenario") return { surface: "element_and_contract", kind, contract: "scenario_contract" };
   return { surface: "element", kind };
+}
+
+/**
+ * THE REPAIR PATCH CONTRACT (Slice 3.2P-A1-R3).
+ *
+ * WHAT A1 PROVED. The retry asked the model for the WHOLE program again, told it in prose to
+ * preserve everything it was not licensed to change — and never showed it what that was. No
+ * assistant turn is appended; `base` is the original prompt. So the model had to reproduce
+ * ~2 000 bytes of JSON byte-identically, from a `temperature: 0.7` sample, against a target it
+ * could not see, while `repairFreezeViolated` compares exact serialisation. Measured across
+ * twelve synthetic cases: one dropped full stop, one extra space, one array reorder, one object
+ * key order — every single one is a violation.
+ *
+ * That is not a strict retry. It is a retry that cannot be won, and A1 spent a real call on it.
+ *
+ * So the licence stops being a post-hoc diff and becomes the RESPONSE SHAPE. The model returns
+ * only what it may change; the server owns everything else and merges. An unlicensed field is
+ * not refused after the fact — it has nowhere to be written.
+ *
+ *   ONE LICENCE  →  patch schema (what the provider may return)
+ *                →  licensed context (what the model is shown)
+ *                →  server merge allowlist (what may be written)
+ *
+ * All three read the same `RepairLicense`, so they cannot drift into three lists.
+ */
+
+/** A patch response schema, named truthfully so the ledger and the provider agree. */
+export type RepairPatchContract = {
+  /** Distinct from `PROGRAM_SCHEMA_NAME`: the INITIAL wire shape did not change. */
+  readonly name: string;
+  readonly schema: Record<string, unknown>;
+};
+
+const strictObject = (properties: Record<string, unknown>): Record<string, unknown> => ({
+  type: "object",
+  additionalProperties: false,
+  required: Object.keys(properties),
+  properties,
+});
+
+/**
+ * EVERY field is required, because strict structured output demands it — and because §6's real
+ * invariant is not minimal textual difference, it is that no unlicensed field can be returned.
+ * Asking for the whole licensed surface is safe; asking for one field of it is not expressible.
+ */
+export function repairPatchContract(license: RepairLicense): RepairPatchContract | null {
+  switch (license.surface) {
+    case "narrative":
+      return {
+        name: "bty_guided_program_repair_narrative_v1",
+        schema: strictObject({
+          display_title: { type: "string" },
+          assumptions: { type: "array", items: { type: "string" } },
+          warnings: { type: "array", items: { type: "string" } },
+        }),
+      };
+    case "element":
+      return {
+        name: "bty_guided_program_repair_element_v1",
+        schema: strictObject({ content: { type: "string" }, rationale: { type: "string" } }),
+      };
+    case "scenario_pressure":
+      return {
+        name: "bty_guided_program_repair_scenario_pressure_v1",
+        schema: strictObject({
+          pressure_condition: { type: "string" },
+          pressure_detail: { type: ["string", "null"] },
+        }),
+      };
+    case "element_and_contract":
+      return {
+        name: `bty_guided_program_repair_${license.contract}_v1`,
+        schema: strictObject({
+          content: { type: "string" },
+          rationale: { type: "string" },
+          contract:
+            license.contract === "behavior_contract"
+              ? strictObject({ action_verb: { type: "string" }, action_detail: { type: "string" } })
+              : strictObject({
+                  pressure_condition: { type: "string" },
+                  pressure_detail: { type: ["string", "null"] },
+                }),
+        }),
+      };
+  }
+}
+
+/**
+ * WHAT THE MODEL IS SHOWN — the licensed values only (Slice 3.2P-A1-R3).
+ *
+ * The second half of the A1 defect: a model cannot repair what it has never seen. This returns
+ * the CURRENT value of every field the licence permits, and nothing else. Sending the whole
+ * frozen program back merely because it is convenient would hand the model content it has no
+ * authority over and invite it to re-author it.
+ *
+ * Transient by construction: the caller holds this for one request execution. No proposal prose
+ * becomes durable, so R7 is untouched.
+ */
+export function licensedRepairContext(candidate: unknown, license: RepairLicense): Record<string, unknown> | null {
+  if (!isPlainObject(candidate)) return null;
+  const program = (candidate as Record<string, unknown>).program;
+  if (!isPlainObject(program)) return null;
+  const p = program as Record<string, unknown>;
+  const element = (kind: JourneyElementKind): Record<string, unknown> | null => {
+    const els = p.elements;
+    if (!Array.isArray(els)) return null;
+    const found = els.find((e) => isPlainObject(e) && (e as Record<string, unknown>).kind === kind);
+    return isPlainObject(found) ? (found as Record<string, unknown>) : null;
+  };
+  switch (license.surface) {
+    case "narrative":
+      return { display_title: p.display_title, assumptions: p.assumptions, warnings: p.warnings };
+    case "element": {
+      const e = element(license.kind);
+      return e ? { content: e.content, rationale: e.rationale } : null;
+    }
+    case "scenario_pressure": {
+      const sc = p.scenario_contract;
+      return isPlainObject(sc)
+        ? { pressure_condition: (sc as Record<string, unknown>).pressure_condition, pressure_detail: (sc as Record<string, unknown>).pressure_detail }
+        : null;
+    }
+    case "element_and_contract": {
+      const e = element(license.kind);
+      const c = p[license.contract];
+      return e && isPlainObject(c) ? { content: e.content, rationale: e.rationale, contract: c } : null;
+    }
+  }
+}
+
+/** Why a patch could not be merged. Closed vocabulary; never the model's prose. */
+export type RepairMergeFailure = "malformed_baseline" | "malformed_patch" | "unlicensed_field" | "surface_missing";
+
+/**
+ * THE ONE MERGE BOUNDARY (Slice 3.2P-A1-R3).
+ *
+ * Deep-copies the baseline and writes ONLY what the licence names. A patch key outside the
+ * licence is refused rather than ignored: the schema should already have made it impossible, so
+ * its presence means something upstream is wrong and continuing would hide that.
+ *
+ * No call site merges independently — this is the only place a repair can change a candidate.
+ */
+export function applyRepairPatch(input: {
+  readonly baseline: unknown;
+  readonly license: RepairLicense;
+  readonly patch: unknown;
+}): { ok: true; merged: unknown } | { ok: false; reason: RepairMergeFailure } {
+  const { baseline, license, patch } = input;
+  if (!isPlainObject(baseline) || !isPlainObject((baseline as Record<string, unknown>).program)) {
+    return { ok: false, reason: "malformed_baseline" };
+  }
+  if (!isPlainObject(patch)) return { ok: false, reason: "malformed_patch" };
+
+  const contract = repairPatchContract(license);
+  if (!contract) return { ok: false, reason: "surface_missing" };
+  const allowed = new Set(Object.keys((contract.schema.properties ?? {}) as Record<string, unknown>));
+  for (const key of Object.keys(patch as Record<string, unknown>)) {
+    if (!allowed.has(key)) return { ok: false, reason: "unlicensed_field" };
+  }
+
+  const merged = JSON.parse(JSON.stringify(baseline)) as Record<string, unknown>;
+  const program = merged.program as Record<string, unknown>;
+  const pv = patch as Record<string, unknown>;
+  const writeElement = (kind: JourneyElementKind): boolean => {
+    const els = program.elements;
+    if (!Array.isArray(els)) return false;
+    const found = els.find((e) => isPlainObject(e) && (e as Record<string, unknown>).kind === kind);
+    if (!isPlainObject(found)) return false;
+    (found as Record<string, unknown>).content = pv.content;
+    (found as Record<string, unknown>).rationale = pv.rationale;
+    return true;
+  };
+
+  switch (license.surface) {
+    case "narrative":
+      program.display_title = pv.display_title;
+      program.assumptions = pv.assumptions;
+      program.warnings = pv.warnings;
+      return { ok: true, merged };
+    case "element":
+      return writeElement(license.kind) ? { ok: true, merged } : { ok: false, reason: "surface_missing" };
+    case "scenario_pressure": {
+      const sc = program.scenario_contract;
+      if (!isPlainObject(sc)) return { ok: false, reason: "surface_missing" };
+      (sc as Record<string, unknown>).pressure_condition = pv.pressure_condition;
+      (sc as Record<string, unknown>).pressure_detail = pv.pressure_detail;
+      return { ok: true, merged };
+    }
+    case "element_and_contract": {
+      if (!writeElement(license.kind)) return { ok: false, reason: "surface_missing" };
+      const target = program[license.contract];
+      if (!isPlainObject(pv.contract) || !isPlainObject(target)) return { ok: false, reason: "malformed_patch" };
+      /*
+        FIELDS, NOT THE OBJECT. Replacing the whole contract would DELETE any key the patch
+        schema does not name — and the patch names only what the model owns. Caught by a real
+        test: a legacy contract carrying server-owned keys came back two keys shorter, which the
+        freeze then correctly reported as a change outside the licence. Assigning field by field
+        keeps everything the model was never asked about exactly where it was.
+      */
+      Object.assign(target as Record<string, unknown>, pv.contract as Record<string, unknown>);
+      return { ok: true, merged };
+    }
+  }
 }
 
 const FROZEN = "\u0000FROZEN";
