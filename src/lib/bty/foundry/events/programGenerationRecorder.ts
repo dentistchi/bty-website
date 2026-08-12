@@ -52,11 +52,11 @@ const LIVE_CONTRACT_REASONS: readonly string[] = [
   "interrogative_action",
   "confirmer_unauthorized",
   /*
-    `action_reclaims_authority` is DELIBERATELY ABSENT until migration `20260820000000` runs
-    (Slice 3.2P-R3.7). The floor is live and refuses; `storableContractReason` writes NULL for
-    this value meanwhile, so the refusal is recorded with its family and field and only the
-    fine-grained reason waits. Add it here in the same edit that applies the DDL.
+    LIVE since migration `20260820000000` (Slice 3.2P-R3.7-R2A). Measured before enabling, with
+    a non-writing probe: all nine reasons and NULL fall through the CHECK to the FK, and five
+    invented values are refused by name. Zero rows written.
   */
+  "action_reclaims_authority",
 ];
 
 function storableContractReason(reason: string | undefined): string | null {
