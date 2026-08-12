@@ -134,6 +134,17 @@ import {
 
 
 
+
+ * v16 → v17 (Slice 3.2P-A2-R2) states a product requirement the model was never given. A2 passed
+ * every floor and still failed acceptance: its reflection asked "How do you currently ensure…",
+ * which assumes the trained behaviour already happens and leaves the learner this training
+ * exists for no truthful answer. The instruction had described how to ANSWER, never what the
+ * question may ASSUME. Acceptance moves, so the version does; the wire shape does not.
+ *
+ * NOT deterministically enforced, and the boundary is recorded rather than blurred: measured on
+ * seventeen labelled questions, every lexical rule refuses ordinary reflections. Neutrality is
+ * prompt-enforced and product-reviewed. The server cannot prove it.
+ *
  * v15 → v16 (Slice 3.2P-A1-R3) makes a licensed repair winnable. A1's retry asked for the whole
  * program, instructed the model in prose to preserve what it could not see, and was then judged
  * on exact serialisation — so the call was spent before it began. A repair now returns only its
@@ -173,7 +184,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v16";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v17";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence

@@ -268,14 +268,14 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15"]) {
+    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15", "program_authorship_v16"]) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
     expect(decideAdoptionReceipt(claim(PROGRAM_AUTHORSHIP_VERSION))).toEqual({ ok: true });
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v16");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v17");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 

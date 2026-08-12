@@ -120,7 +120,8 @@ const KIND_BRIEF: Record<string, string> = {
     "the concrete standard. Write it as ONE sentence describing a visible repeatable behavior — it must match the action_verb and action_detail you also return.",
   scenario:
     "one short realistic situation where the behavior is hard to hold AT THE MOMENT THE HOST NAMED. It must match the scenario_contract you also return, and must not move the action to another occasion. Invent no policy number, no named person, no incident, no date.",
-  reflection: "one question that makes the participant examine their own current practice honestly.",
+  reflection:
+    "one question about the participant's CURRENT practice. It must not assume the trained behaviour already happens — see REFLECT below.",
   action_decision:
     "one specific commitment the participant makes. It must COMMIT to an action ('I will …'), not merely invite thought.",
   field_application: "where in real work this shows up next: who does what, and when.",
@@ -204,6 +205,33 @@ export function systemPrompt(
     "- Those are illustrations of the boundary, not a menu. Choose the behavior THIS host's problem actually needs.",
     "",
     ...audienceLines,
+    "",
+    /*
+      REFLECT MUST LEAVE ROOM FOR "IT DOESN'T HAPPEN" (Slice 3.2P-A2-R2).
+
+      A2 succeeded on every floor and still failed Founder acceptance. Its reflection read "How
+      do you currently ensure that action items are assigned to specific owners and deadlines
+      during your huddles?" — a wh-question over the MANNER of an asserted proposition. It takes
+      "you ensure this" as given and asks only how. The learner this training exists for is
+      precisely the one for whom it does not happen; that question leaves them no truthful
+      answer but an invented process.
+
+      The instruction said only "examine their own current practice honestly", which describes
+      how they should ANSWER, not what the question may ASSUME. A requirement that lives only in
+      the acceptance gate is a requirement the model was never given.
+
+      DELIBERATELY NOT A WORD RULE. Measured on seventeen labelled questions, banning `ensure` /
+      `make sure` / `always` refuses ordinary reflections — "How do you currently ensure everyone
+      can hear the huddle?" is fine, because what it presupposes is not the trained behaviour.
+      The distinction is a RELATION between the question and the behaviour, so it is stated as
+      one, and the examples below are illustrations of that relation rather than a vocabulary.
+    */
+    "REFLECT — the honest question:",
+    "- Ask about the participant's CURRENT practice, and write it so it stays truthfully answerable by someone who does NOT do the trained behaviour today.",
+    "- The answer 'it doesn't happen', 'it happens sometimes', or 'nobody does this' must all fit the question. If the only possible answers describe a working practice, the question assumes its own answer.",
+    "- GOOD, because they ask what happens: 'What usually happens when an action needs an owner?'; 'How is this handled today?'",
+    "- BAD, because they assume it already happens and ask only how: 'How do you ensure this always happens?'; 'How do you make sure the standard is followed?'",
+    "- This is about what the question ASSUMES, not about particular words. Asking how someone ensures something UNRELATED to the trained behaviour is perfectly fine.",
     "",
     "THE STANDARD — behavior_contract:",
     "- THE STANDARD must define a VISIBLE REPEATABLE BEHAVIOR. It must NOT merely say that a standard, process or framework will be created, adopted or used.",

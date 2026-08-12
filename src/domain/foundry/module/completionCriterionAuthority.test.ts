@@ -230,7 +230,7 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
 
   it("S — every version this pilot spent under is refused by the current Apply gate", () => {
     // v9 (W2/W3), v10 (W4), v11 (W5). R3.5 widened the recurring-moment fold, so v11 joins them.
-    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15"]) {
+    for (const old of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15", "program_authorship_v16"]) {
       expect(decideAdoptionReceipt(claim(old)), old).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }
   });
@@ -240,7 +240,7 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v16");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v17");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
