@@ -198,7 +198,12 @@ export async function selectTimedPass(input: {
   return { ok: true, passGrantId: String(row.passGrantId), status: String(row.status) as PassStatus, changed: row.changed === true };
 }
 
-export type SwitchTimedPassError = 'pass_not_found' | 'not_switchable' | 'switch_conflict';
+export type SwitchTimedPassError =
+  | 'pass_not_found'
+  | 'not_switchable'
+  | 'switch_conflict'
+  /** BUILD 26M-R3 — a song is playing; switching would strand the rest of it uncovered. */
+  | 'song_playing';
 export type SwitchTimedPassOutcome =
   | {
       ok: true;
@@ -227,6 +232,10 @@ export type SwitchTimedPassOutcome =
  * This is deliberately NOT an admission bypass. The switch only changes WHICH pass is
  * authoritative; `karaoke_begin_song_v2` still independently refuses a song the newly armed pass
  * cannot cover in full.
+ *
+ * BUILD 26M-R3: refuses with `song_playing` while playback is in flight. Transferring the whole
+ * residual away mid-song would leave the rest of that song covered by nothing. The refusal is
+ * decided inside the switch transaction, so a stale client cannot talk its way past it.
  */
 export async function switchTimedPass(input: {
   accountId: string;

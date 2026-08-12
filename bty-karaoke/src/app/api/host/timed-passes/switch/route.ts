@@ -66,6 +66,12 @@ export async function POST(req: NextRequest) {
         { status: 409, headers: NO_STORE },
       );
     }
+    if (outcome.error === 'song_playing') {
+      // BUILD 26M-R3 — a song is playing. Switching now would move the entire residual to a pass
+      // that has not started, leaving the rest of the current song covered by nothing. 409 rather
+      // than 400: the request is well-formed, the account state simply forbids it right now.
+      return NextResponse.json({ ok: false, error: 'song_playing' }, { status: 409, headers: NO_STORE });
+    }
     // switch_conflict: another session moved this account's passes first. Server truth wins;
     // the client refetches rather than retrying blindly into a changed world.
     return NextResponse.json({ ok: false, error: 'switch_conflict' }, { status: 409, headers: NO_STORE });
