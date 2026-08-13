@@ -85,6 +85,81 @@ async function snapshotFor(
   return getOwnerRoomSnapshot(admin, ownerUserId, eventId);
 }
 
+/**
+ * PUBLICATION RECEIPT RECOVERY (Slice 3.2Q-R1).
+ *
+ * THE MEASURED DEFECT. `publishDraft` writes the event, then the module snapshot, then the
+ * draft's `status`/`published_at` LAST — deliberately, so a failure before that leaves the
+ * draft editable rather than stranded. But if the FINAL stamp is the thing that fails, the
+ * event and its snapshot are already durable and nothing ever repairs the draft: the next
+ * click finds the winner by `source_draft_id`, returns `reused: true`, and leaves a live
+ * session sitting behind a row that still says `draft`. That mismatch was permanent.
+ *
+ * THE RECEIPT ALREADY EXISTS. `foundry_event_module.source_draft_id` is UNIQUE, and its row
+ * carries the event, the source draft and the module version. Publication completion is
+ * therefore already durable and already provable — this adds no column and no table, exactly
+ * as the Apply receipt reuses `programAdoptionV1` rather than inventing a second record.
+ *
+ * CLAIM-BOUND, NEVER "AN EVENT EXISTS". The reconciliation below proves the module row belongs
+ * to THIS draft (`source_draft_id`, exact), THIS version (`module_version`) and THIS owner (the
+ * event row is re-read owner-scoped). `program_id` is never consulted — v1 and v2 of this pilot
+ * share one Program root, and a shared root must never let one version's event stamp another
+ * version's draft.
+ *
+ * THE TIMESTAMP IS THE SERVER'S, NOT NOW. `foundry_event_module.created_at` is when the publish
+ * actually committed; using `new Date()` here would record the moment someone happened to retry,
+ * which can be days later and is simply not when the training went live.
+ */
+type PublishReconcileOutcome = "already_published" | "reconciled" | "unreconciled";
+
+async function reconcilePublicationReceipt(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  winner: { event_id: string; source_draft_id: string; module_version: number },
+): Promise<PublishReconcileOutcome> {
+  const draft = await getOwnerDraft(admin, ownerUserId, draftId);
+  if (!draft) return "unreconciled";
+  if (draft.status === "published" && draft.published_at) return "already_published";
+
+  // The claim: this module row is THIS draft, at THIS version. Both must hold.
+  if (winner.source_draft_id !== draftId) return "unreconciled";
+  if (winner.module_version !== draft.module_version) return "unreconciled";
+
+  /*
+    And the event itself must still exist AND belong to this owner. A module row whose event was
+    compensated away describes a publish that did not survive, and stamping a draft published on
+    the strength of it would be the same untruth in the opposite direction.
+  */
+  const { data: event } = await admin
+    .from("foundry_events")
+    .select("id, created_at")
+    .eq("id", winner.event_id)
+    .eq("owner_user_id", ownerUserId)
+    .maybeSingle<{ id: string; created_at: string }>();
+  if (!event) return "unreconciled";
+
+  const { data: moduleRow } = await admin
+    .from("foundry_event_module")
+    .select("created_at")
+    .eq("source_draft_id", draftId)
+    .maybeSingle<{ created_at: string }>();
+
+  const committedAt = moduleRow?.created_at ?? event.created_at;
+  const { error } = await admin
+    .from("foundry_module_drafts")
+    .update({
+      status: "published",
+      approved_at: draft.approved_at ?? committedAt,
+      published_at: draft.published_at ?? committedAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", draftId)
+    .eq("owner_user_id", ownerUserId)
+    .in("status", ["draft", "approved"]);
+  return error ? "unreconciled" : "reconciled";
+}
+
 type PdfAssetRow = {
   storage_bucket: string;
   storage_path: string;
@@ -189,8 +264,15 @@ export async function publishDraft(
   // Idempotency: this draft version already published → return the existing event.
   const already = await getPublishedEventBySourceDraft(admin, draftId);
   if (already) {
+    /*
+      RECONCILE BEFORE RETURNING (Slice 3.2Q-R1). A retry is the only moment anything can repair
+      a publish whose final draft stamp did not land, so it does that first — and says so if it
+      cannot, rather than reporting a healthy reuse over a draft that still says `draft`.
+    */
+    const reconciled = await reconcilePublicationReceipt(admin, ownerUserId, draftId, already);
+    if (reconciled === "unreconciled") return { ok: false, reason: "publish_receipt_unreconciled" };
     const snap = await snapshotFor(admin, ownerUserId, already.event_id);
-    if (!snap) return { ok: false, reason: "snapshot_failed" };
+    if (!snap) return { ok: false, reason: "session_created_view_unavailable" };
     const committed = await readCommittedParticipation(admin, already.event_id);
     return { ok: true, value: { snapshot: snap, reused: true, participation: committed } };
   }
@@ -365,8 +447,21 @@ export async function publishDraft(
     .eq("owner_user_id", ownerUserId)
     .in("status", ["draft", "approved"]);
 
+  /*
+    CREATION AND PRESENTATION ARE DIFFERENT FAILURES (Slice 3.2Q-R1).
+
+    Everything durable is committed by this line: the event, the immutable module snapshot, any
+    assignments, and the draft's publication stamp. `snapshotFor` is a READ that builds the
+    control-room view for the response. It used to return `snapshot_failed`, which the Builder
+    maps to "Couldn't create the session. Please try once more." — a sentence that is simply
+    false at this point, and one that invites a Host to retry a training that is already live.
+
+    So the two are now distinct reasons, and this one says what actually happened: the session
+    exists and could not be displayed. The retry is still safe — it lands on the idempotency
+    branch, reuses the same event and creates nothing.
+  */
   const snap = await snapshotFor(admin, ownerUserId, eventId);
-  if (!snap) return { ok: false, reason: "snapshot_failed" };
+  if (!snap) return { ok: false, reason: "session_created_view_unavailable" };
   // Authoritative committed state for the confirmation UI (reads DB, not the preview).
   const committed = await readCommittedParticipation(admin, eventId);
   return { ok: true, value: { snapshot: snap, reused: false, participation: committed } };

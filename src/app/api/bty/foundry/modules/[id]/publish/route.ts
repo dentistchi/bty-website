@@ -31,6 +31,12 @@ function statusForReason(reason: string): number {
   // server error and not a silent Everyone fallback.
   if (reason === "zero_recipients") return 409;
   if (reason === "not_a_host") return 403;
+  /*
+    Slice 3.2Q-R1 — two states where the SESSION EXISTS. Neither is a failed creation, and
+    neither may be reported as one. 409: the durable publish is there and something about it
+    could not be reconciled or displayed; the Host's action is to reopen, not to create again.
+  */
+  if (reason === "session_created_view_unavailable" || reason === "publish_receipt_unreconciled") return 409;
   if (reason === "assignment_write_failed") return 500;
   return 400;
 }

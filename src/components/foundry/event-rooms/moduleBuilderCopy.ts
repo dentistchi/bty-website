@@ -330,6 +330,8 @@ export type ModuleBuilderCopy = {
   publishTrust: string;
   publishing: string;
   publishError: string;
+  /** The session EXISTS and could not be shown (Slice 3.2Q-R1) — never a creation failure. */
+  publishErrSessionCreated: string;
   // Direction Copilot (Slice 2.4A)
   copilot: DirectionCopilotCopy;
   // Module-draft Copilot (Slice 2.4B)
@@ -542,6 +544,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
     publishing: "Creating session…",
     publishError: "Couldn’t create the session. Please try once more.",
+    publishErrSessionCreated: "Your session was created — we just couldn’t show it here. Reopen this training to see it. Do not create it again.",
     copilot: {
       entryPrompt: "Not sure how to turn this into training?",
       trigger: "Show me three possible directions",
@@ -829,6 +832,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
     publishing: "세션을 만드는 중…",
     publishError: "세션을 만들지 못했습니다. 다시 시도해 주세요.",
+    publishErrSessionCreated: "세션은 생성되었지만 여기에 표시하지 못했습니다. 이 트레이닝을 다시 열어 확인하세요. 다시 생성하지 마세요.",
     copilot: {
       entryPrompt: "이 문제를 어떤 교육으로 만들지 막막하신가요?",
       trigger: "가능한 교육 방향 3개 보기",

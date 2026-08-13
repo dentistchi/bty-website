@@ -1430,6 +1430,14 @@ function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
       return t.publishErrNotHost;
     case "assignment_write_failed":
       return t.publishErrAssignment;
+    /*
+      Slice 3.2Q-R1 — THE SESSION EXISTS in both of these. Telling the Host creation failed
+      would be false, and would invite them to press a button that cannot help. Both are
+      "reopen this training", never "create it a second time".
+    */
+    case "session_created_view_unavailable":
+    case "publish_receipt_unreconciled":
+      return t.publishErrSessionCreated;
     // Slice 3.2L-R1.1 — the two program-generation refusals are DIFFERENT actions for the
     // Host: one is a wait, the other is a retry. Collapsing them into the generic publish
     // error would tell them neither.
