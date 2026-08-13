@@ -13,10 +13,15 @@ import {
   verifyAppleSignedTransaction,
   signedTransactionDigest,
   APPLE_LEAF_PURPOSE_OID,
+  APPLE_INTERMEDIATE_PURPOSE_OID,
+  APPLE_X5C_LENGTH,
   MAX_SIGNED_TRANSACTION_BYTES,
 } from './apple-iap.server';
 import { APPLE_ROOT_CA_G3_PEM, APPLE_ROOT_CA_G3_SHA256, APPLE_TRUSTED_ROOTS } from './apple-root-ca';
-import { buildTestPki, signTransaction, transactionPayload, type TestPki } from './apple-test-pki.fixture';
+import {
+  buildTestPki, signTransaction, transactionPayload,
+  INTERMEDIATE_PURPOSE_OID, type TestPki,
+} from './apple-test-pki.fixture';
 
 let pki: TestPki;
 const roots = () => [pki.rootPem];
@@ -96,14 +101,21 @@ describe('BUILD 26P — chain trust cannot be self-supplied', () => {
     expect(out.ok === false && out.code).toBe('untrusted_certificate_chain');
   });
 
-  it('REJECTS a leaf the intermediate did not sign', async () => {
-    const forged = await buildTestPki({ leafSignedByRoot: true });
-    // Present the forged leaf with OUR intermediate/root, so only the leaf link is broken.
-    const jws = await signTransaction(forged, transactionPayload(), {
-      x5c: [forged.x5c[0], pki.x5c[1], pki.x5c[2]],
-    });
-    const out = await verify(jws);
+  it('REJECTS a leaf the intermediate did not sign (correct DN, wrong signing key)', async () => {
+    // Issuer DN is the intermediate's subject, so the linkage check PASSES and only the signature
+    // check can reject it. This keeps the signature path covered now that linkage exists.
+    const forged = await buildTestPki({ leafSignedByWrongKey: true });
+    const jws = await signTransaction(forged, transactionPayload());
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [forged.rootPem] });
     expect(out.ok === false && out.code).toBe('untrusted_certificate_chain');
+  });
+
+  it('REJECTS a leaf issued by the ROOT rather than the intermediate', async () => {
+    // Here the issuer DN itself is wrong, so linkage rejects it first — a distinct, earlier failure.
+    const forged = await buildTestPki({ leafSignedByRoot: true });
+    const jws = await signTransaction(forged, transactionPayload());
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [forged.rootPem] });
+    expect(out.ok === false && out.code).toBe('certificate_issuer_mismatch');
   });
 
   it('REJECTS an intermediate that is not a CA', async () => {
@@ -120,37 +132,89 @@ describe('BUILD 26P — chain trust cannot be self-supplied', () => {
     expect(out.ok === false && out.code).toBe('leaf_missing_apple_purpose');
     expect(APPLE_LEAF_PURPOSE_OID).toBe('1.2.840.113635.100.6.11.1');
   });
+
+  // R1.1 — Apple requires the INTERMEDIATE marker too. R1 enforced only the leaf, so a chain
+  // whose every signature was valid but whose intermediate was issued for a different Apple
+  // purpose would have been accepted.
+  it('REJECTS an intermediate without Apple\'s WWDR purpose OID', async () => {
+    const noOid = await buildTestPki({ intermediateWithoutPurposeOid: true });
+    const jws = await signTransaction(noOid, transactionPayload());
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [noOid.rootPem] });
+    expect(out.ok === false && out.code).toBe('intermediate_missing_apple_purpose');
+    expect(APPLE_INTERMEDIATE_PURPOSE_OID).toBe('1.2.840.113635.100.6.2.1');
+    expect(INTERMEDIATE_PURPOSE_OID).toBe(APPLE_INTERMEDIATE_PURPOSE_OID);
+  });
 });
 
-describe('BUILD 26P — certificate validity uses an explicit effective date', () => {
-  it('REJECTS an expired leaf', async () => {
-    // +150d is deliberately INSIDE the test root (365d) and intermediate (200d) windows but
-    // OUTSIDE the leaf's (100d), so this isolates leaf expiry. At +400d the root itself would be
-    // expired and anchoring would fail first with untrusted_certificate_chain — correct, but a
-    // different assertion; the next test pins that ordering explicitly.
-    const jws = await signTransaction(pki, transactionPayload());
-    const out = await verify(jws, { at: new Date(Date.now() + 150 * 86_400_000) });
-    expect(out.ok === false && out.code).toBe('certificate_expired');
-  });
-
-  it('REJECTS everything once the trust ANCHOR itself has expired', async () => {
-    // An expired root must stop anchoring the chain at all — it must not fall through to a
-    // leaf-level complaint that implies the anchor was still doing its job.
-    const jws = await signTransaction(pki, transactionPayload());
-    const out = await verify(jws, { at: new Date(Date.now() + 400 * 86_400_000) });
+describe('BUILD 26P-R1.1 — issuer/subject linkage, not just signature maths', () => {
+  // Both fixtures below are signed by the CORRECT private keys, so every signature verifies.
+  // Only the semantic DN linkage can reject them.
+  it('REJECTS an intermediate whose issuer is not the trusted root\'s subject', async () => {
+    const bad = await buildTestPki({ intermediateWrongIssuerName: true });
+    const jws = await signTransaction(bad, transactionPayload());
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [bad.rootPem] });
+    expect(out.ok).toBe(false);
     expect(out.ok === false && out.code).toBe('untrusted_certificate_chain');
   });
 
-  it('REJECTS a not-yet-valid leaf', async () => {
+  it('REJECTS a leaf whose issuer is not the intermediate\'s subject', async () => {
+    const bad = await buildTestPki({ leafWrongIssuerName: true });
+    const jws = await signTransaction(bad, transactionPayload());
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [bad.rootPem] });
+    expect(out.ok).toBe(false);
+    expect(out.ok === false && out.code).toBe('certificate_issuer_mismatch');
+  });
+});
+
+describe('BUILD 26P — certificate validity uses an explicit effective date', () => {
+  it('REJECTS a leaf expired AT ITS OWN signedDate', async () => {
+    // +150d is INSIDE the root (365d) and intermediate (200d) windows but OUTSIDE the leaf's
+    // (100d), isolating leaf expiry.
+    const jws = await signTransaction(pki, transactionPayload({ signedDate: Date.now() + 150 * 86_400_000 }));
+    const out = await verify(jws);
+    expect(out.ok === false && out.code).toBe('certificate_expired');
+  });
+
+  it('REJECTS a leaf not yet valid at signedDate', async () => {
     const future = await buildTestPki({ leafNotBeforeDays: 10, leafNotAfterDays: 100 });
-    const jws = await signTransaction(future, transactionPayload());
+    const jws = await signTransaction(future, transactionPayload({ signedDate: Date.now() }));
     const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [future.rootPem] });
     expect(out.ok === false && out.code).toBe('certificate_expired');
   });
 
-  it('accepts a leaf inside its window', async () => {
-    const jws = await signTransaction(pki, transactionPayload());
-    expect((await verify(jws, { at: new Date() })).ok).toBe(true);
+  it('REJECTS everything once the trust ANCHOR is invalid at signedDate', async () => {
+    const jws = await signTransaction(pki, transactionPayload({ signedDate: Date.now() + 400 * 86_400_000 }));
+    const out = await verify(jws);
+    expect(out.ok === false && out.code).toBe('untrusted_certificate_chain');
+  });
+
+  it('ACCEPTS a certificate valid at signedDate even though it is expired TODAY', async () => {
+    // This is the whole reason Apple's offline mode dates the chain by signedDate: a genuine old
+    // transaction must stay verifiable after its signing certificate has rotated out. Leaf window
+    // is [-1d, +2d]; signedDate sits inside it; "now" for the test is far past it.
+    const shortLived = await buildTestPki({ leafNotBeforeDays: -1, leafNotAfterDays: 2 });
+    const signedDate = Date.now() + 1 * 86_400_000;   // inside the leaf window
+    const jws = await signTransaction(shortLived, transactionPayload({ signedDate }));
+    const out = await verifyAppleSignedTransaction(jws, { trustedRootsPem: [shortLived.rootPem] });
+    expect(out.ok).toBe(true);
+    // ... and the SAME transaction evaluated at a later instant is rejected, proving the date
+    // used above was signedDate rather than the clock.
+    const later = await verifyAppleSignedTransaction(jws, {
+      trustedRootsPem: [shortLived.rootPem], at: new Date(Date.now() + 30 * 86_400_000),
+    });
+    expect(later.ok === false && later.code).toBe('certificate_expired');
+  });
+
+  it('REJECTS a transaction with no signedDate — offline mode has no other effective date', async () => {
+    const jws = await signTransaction(pki, transactionPayload({ signedDate: undefined }));
+    const out = await verify(jws);
+    expect(out.ok === false && out.code).toBe('missing_signed_date');
+  });
+
+  it('REJECTS a non-numeric signedDate', async () => {
+    const jws = await signTransaction(pki, transactionPayload({ signedDate: '2026-08-13' }));
+    const out = await verify(jws);
+    expect(out.ok === false && out.code).toBe('missing_signed_date');
   });
 });
 
@@ -213,22 +277,34 @@ describe('BUILD 26P — malformed input never reaches the crypto', () => {
     expect(out.ok === false && out.code).toBe('missing_certificate_chain');
   });
 
-  it('REJECTS a one-certificate chain (no intermediate to anchor)', async () => {
+  // R1.1 — Apple requires EXACTLY three. R1 accepted 2..4, which was looser than Apple.
+  it('REJECTS a one-certificate chain', async () => {
     const jws = await signTransaction(pki, transactionPayload(), { x5c: [pki.x5c[0]] });
     const out = await verify(jws);
-    expect(out.ok === false && out.code).toBe('missing_certificate_chain');
+    expect(out.ok === false && out.code).toBe('malformed_certificate_chain');
   });
 
-  it('REJECTS an over-long chain', async () => {
+  it('REJECTS a TWO-certificate chain (R1 accepted this)', async () => {
+    const jws = await signTransaction(pki, transactionPayload(), { x5c: [pki.x5c[0], pki.x5c[1]] });
+    const out = await verify(jws);
+    expect(out.ok === false && out.code).toBe('malformed_certificate_chain');
+  });
+
+  it('ACCEPTS exactly three', async () => {
+    const jws = await signTransaction(pki, transactionPayload(), { x5c: pki.x5c });
+    expect((await verify(jws)).ok).toBe(true);
+  });
+
+  it('REJECTS a FOUR-certificate chain (R1 accepted this)', async () => {
     const jws = await signTransaction(pki, transactionPayload(), {
-      x5c: [pki.x5c[0], pki.x5c[1], pki.x5c[2], pki.x5c[2], pki.x5c[2]],
+      x5c: [pki.x5c[0], pki.x5c[1], pki.x5c[2], pki.x5c[2]],
     });
     const out = await verify(jws);
     expect(out.ok === false && out.code).toBe('malformed_certificate_chain');
   });
 
   it('REJECTS garbage certificates in x5c', async () => {
-    const jws = await signTransaction(pki, transactionPayload(), { x5c: ['not-a-cert', 'also-not'] });
+    const jws = await signTransaction(pki, transactionPayload(), { x5c: ['not-a-cert', 'also-not', 'nope'] });
     const out = await verify(jws);
     expect(out.ok === false && out.code).toBe('malformed_certificate_chain');
   });

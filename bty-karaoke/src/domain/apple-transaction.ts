@@ -95,10 +95,23 @@ function isoFromAppleDate(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** UUID comparison that cannot be fooled by case or surrounding whitespace. */
-const normalizeUuid = (v: string) => v.trim().toLowerCase();
+/**
+ * Canonical UUID form, or null if the input is not syntactically a UUID.
+ *
+ * BUILD 26P-R1.1 REMOVED the `.trim()` R1 had here. Apple defines `appAccountToken` as a UUID, so
+ * `" <uuid>"` is not a UUID with some whitespace — it is not a UUID. Trimming an uncontrolled
+ * string before validating it means the thing we checked is not the thing we received, and it
+ * quietly widens what counts as a match on a security-relevant identifier.
+ *
+ * Case is different in kind: hexadecimal `A` and `a` are the SAME UUID value, so canonicalising
+ * case is parsing, not normalising away input we were given. Anything else — whitespace, braces,
+ * urn: prefixes, missing hyphens — is rejected outright.
+ */
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function parseUuid(value: string): string | null {
+  return UUID_RE.test(value) ? value.toLowerCase() : null;
+}
 
 /**
  * Validate the claims of an already-cryptographically-verified transaction.
@@ -143,14 +156,17 @@ export function validateAppleTransaction(args: ValidateTransactionArgs): AppleTr
   // ---- account binding ---------------------------------------------------------------------
   // BUILD 26P requires it: there are ZERO legacy Apple purchases, so there is no population for a
   // bypass to serve, and adding one would only create a way to land a payment on the wrong account.
-  if (!isNonEmptyString(claims.appAccountToken)) {
+  if (typeof claims.appAccountToken !== 'string' || claims.appAccountToken.length === 0) {
     return { ok: false, code: 'missing_app_account_token' };
   }
-  const token = normalizeUuid(claims.appAccountToken);
-  if (!UUID_RE.test(token)) return { ok: false, code: 'missing_app_account_token' };
-  if (token !== normalizeUuid(expectedAppAccountToken)) {
-    return { ok: false, code: 'account_binding_mismatch' };
-  }
+  // Parsed exactly as received — no trim, no rewriting. Whitespace makes it not a UUID.
+  const token = parseUuid(claims.appAccountToken);
+  if (!token) return { ok: false, code: 'missing_app_account_token' };
+  // The expected side comes from our own database column, but it is parsed by the same rule so
+  // the comparison is UUID-to-UUID rather than string-to-string.
+  const expected = parseUuid(expectedAppAccountToken);
+  if (!expected) return { ok: false, code: 'account_binding_mismatch' };
+  if (token !== expected) return { ok: false, code: 'account_binding_mismatch' };
 
   // ---- revocation: classified, never a reason to grant --------------------------------------
   const revocationDate = isoFromAppleDate(claims.revocationDate);

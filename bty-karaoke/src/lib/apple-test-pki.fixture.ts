@@ -20,6 +20,8 @@ const DAY = 86_400_000;
 
 /** Apple's signed-data leaf marker; the production verifier requires it. */
 export const LEAF_PURPOSE_OID = '1.2.840.113635.100.6.11.1';
+/** Apple's WWDR intermediate marker; R1.1 requires it too. */
+export const INTERMEDIATE_PURPOSE_OID = '1.2.840.113635.100.6.2.1';
 
 export interface TestPki {
   rootPem: string;
@@ -37,11 +39,25 @@ export interface PkiOptions {
   intermediateNotCa?: boolean;
   /** Omit Apple's purpose OID from the leaf. */
   leafWithoutPurposeOid?: boolean;
+  /** Omit Apple's purpose OID from the intermediate. */
+  intermediateWithoutPurposeOid?: boolean;
+  /** Issue the intermediate under a DN that is NOT the root's subject (linkage attack). */
+  intermediateWrongIssuerName?: boolean;
+  /** Issue the leaf under a DN that is NOT the intermediate's subject (linkage attack). */
+  leafWrongIssuerName?: boolean;
+  /** Root validity window offsets, in days. */
+  rootNotBeforeDays?: number;
+  rootNotAfterDays?: number;
   /** Leaf validity window offsets, in days, relative to now. */
   leafNotBeforeDays?: number;
   leafNotAfterDays?: number;
   /** Sign the leaf with the ROOT key instead of the intermediate (breaks the chain). */
   leafSignedByRoot?: boolean;
+  /**
+   * Keep the leaf's issuer DN correct (the intermediate's subject) but sign it with the ROOT key.
+   * Linkage passes; only the SIGNATURE check can reject it — the mirror of the DN-only attack.
+   */
+  leafSignedByWrongKey?: boolean;
 }
 
 const genKey = () => crypto.subtle.generateKey(KEY, true, ['sign', 'verify']) as Promise<CryptoKeyPair>;
@@ -58,8 +74,8 @@ export async function buildTestPki(options: PkiOptions = {}): Promise<TestPki> {
   const root = await x509.X509CertificateGenerator.createSelfSigned({
     serialNumber: '01',
     name: 'CN=BTY Test Root CA',
-    notBefore: new Date(now - DAY),
-    notAfter: new Date(now + 365 * DAY),
+    notBefore: new Date(now + (options.rootNotBeforeDays ?? -1) * DAY),
+    notAfter: new Date(now + (options.rootNotAfterDays ?? 365) * DAY),
     signingAlgorithm: SIG,
     keys: rootKey,
     extensions: [
@@ -74,7 +90,9 @@ export async function buildTestPki(options: PkiOptions = {}): Promise<TestPki> {
   const intermediate = await x509.X509CertificateGenerator.create({
     serialNumber: '02',
     subject: 'CN=BTY Test Intermediate',
-    issuer: root.subject,
+    // A wrong issuer NAME with the root's real signing key: signature maths still passes, so only
+    // the DN linkage check can catch it.
+    issuer: options.intermediateWrongIssuerName ? 'CN=Not The Root' : root.subject,
     notBefore: new Date(now - DAY),
     notAfter: new Date(now + 200 * DAY),
     signingAlgorithm: SIG,
@@ -83,6 +101,9 @@ export async function buildTestPki(options: PkiOptions = {}): Promise<TestPki> {
     extensions: [
       new x509.BasicConstraintsExtension(!options.intermediateNotCa, 1, true),
       new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign, true),
+      ...(options.intermediateWithoutPurposeOid
+        ? []
+        : [new x509.Extension(INTERMEDIATE_PURPOSE_OID, true, new Uint8Array([5, 0]))]),
     ],
   });
 
@@ -96,12 +117,19 @@ export async function buildTestPki(options: PkiOptions = {}): Promise<TestPki> {
   const leaf = await x509.X509CertificateGenerator.create({
     serialNumber: '03',
     subject: 'CN=BTY Test Leaf',
-    issuer: options.leafSignedByRoot ? root.subject : intermediate.subject,
+    issuer: options.leafWrongIssuerName
+      ? 'CN=Not The Intermediate'
+      : options.leafSignedByRoot
+        ? root.subject
+        : intermediate.subject,
     notBefore: new Date(now + (options.leafNotBeforeDays ?? -1) * DAY),
     notAfter: new Date(now + (options.leafNotAfterDays ?? 100) * DAY),
     signingAlgorithm: SIG,
     publicKey: leafKey.publicKey,
-    signingKey: options.leafSignedByRoot ? rootKey.privateKey : intermediateKey.privateKey,
+    signingKey:
+      options.leafSignedByRoot || options.leafSignedByWrongKey
+        ? rootKey.privateKey
+        : intermediateKey.privateKey,
     extensions: leafExtensions,
   });
 

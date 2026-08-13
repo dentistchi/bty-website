@@ -97,8 +97,27 @@ describe('BUILD 26P domain — account binding is mandatory', () => {
     expect(run({ appAccountToken: OWNER }).ok).toBe(true);
   });
 
-  it('matches case-insensitively and ignores surrounding whitespace', () => {
-    expect(run({ appAccountToken: `  ${OWNER.toUpperCase()}  ` }).ok).toBe(true);
+  // R1.1 — R1 trimmed the token before validating it. Apple defines appAccountToken as a UUID,
+  // so " <uuid>" is not a UUID with some whitespace; it is not a UUID. Trimming an uncontrolled
+  // string before checking it means the value we validated is not the value we received.
+  it('accepts an uppercase UUID — same semantic value, parsed not normalised', () => {
+    expect(run({ appAccountToken: OWNER.toUpperCase() }).ok).toBe(true);
+  });
+
+  it.each([
+    ['leading space', ` ${OWNER}`],
+    ['trailing space', `${OWNER} `],
+    ['surrounding spaces', `  ${OWNER}  `],
+    ['trailing newline', `${OWNER}\n`],
+    ['embedded space', OWNER.replace('-', ' ')],
+    ['tab', `\t${OWNER}`],
+    ['braced', `{${OWNER}}`],
+    ['urn prefix', `urn:uuid:${OWNER}`],
+    ['no hyphens', OWNER.replace(/-/g, '')],
+  ])('REJECTS %s — no trimming, no rewriting', (_label, token) => {
+    const out = run({ appAccountToken: token });
+    expect(out.ok).toBe(false);
+    expect(out.ok === false && out.code).toBe('missing_app_account_token');
   });
 
   it('REJECTS a missing appAccountToken — there is NO legacy bypass', () => {

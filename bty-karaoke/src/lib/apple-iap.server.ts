@@ -12,19 +12,33 @@
 // with WebCrypto-native libraries, deliberately NOT weakened into "the JWS signature verified,
 // therefore trusted".
 //
+// PARITY TARGET (BUILD 26P-R1.1): Apple's `SignedDataVerifier` with **enableOnlineChecks = false**,
+// for transaction JWS. Offline is a deliberate choice, not an omission — see §"OFFLINE" below.
+//
 // WHAT IS ENFORCED, in order — every step can reject, and none is skippable:
 //   A  compact JWS structure (exactly three parts, decodable header)
 //   B  algorithm PINNED to ES256 — never `none`, never a substituted alg
-//   C  x5c present, structurally valid, plausible length
-//   D  chain shape: leaf → intermediate → root
-//   E  leaf signed by the intermediate
-//   F  intermediate signed by a root WE supply
-//   G  a root offered inside x5c can never become a trust anchor
-//   H  validity windows checked at an explicit effective date
-//   I  intermediate must actually be a CA (basicConstraints)
-//   J  Apple's signed-data purpose OID required on the leaf
-//   K  JWS signature verified with the leaf's public key
-//   L+ bundle / environment / claims — validated by domain/apple-transaction.ts AFTER all of this
+//   C  x5c present and EXACTLY THREE entries (Apple's requirement)
+//   D  chain shape: x5c[0] leaf, x5c[1] intermediate, x5c[2] supplied root material
+//   E  effective date taken from the transaction's `signedDate` (Apple's offline semantics)
+//   F  intermediate signed by a root WE supply, and issuer/subject linkage to it
+//   G  a root offered inside x5c[2] can NEVER become a trust anchor — it is never read as one
+//   H  leaf signed by the intermediate, and leaf.issuer == intermediate.subject
+//   I  validity windows for leaf, intermediate AND root, all at the effective date
+//   J  intermediate must actually be a CA (basicConstraints)
+//   K  Apple purpose OIDs required on BOTH the leaf (.6.11.1) and the intermediate (.6.2.1)
+//   L  JWS signature verified with the leaf's public key
+//   M+ bundle / environment / claims — validated by domain/apple-transaction.ts AFTER all of this
+//
+// OFFLINE. `enableOnlineChecks = false` means no OCSP and no App Store Server API call. That is
+// why this deployment needs no Apple private key, issuer id or key id. In that mode Apple uses the
+// transaction's own `signedDate` as the effective date for certificate validity, so a genuine
+// transaction stays verifiable after its signing certificate has rotated out. We do the same.
+//
+// Reading `signedDate` before the signature is verified is not a trust leak: the payload it comes
+// from must still pass the JWS signature under a leaf that chains to Apple's root, so an attacker
+// cannot move the effective date without Apple's key. It is used ONLY to date the chain, and NO
+// decoded claim reaches domain processing until step L succeeds.
 //
 // VERIFICATION IS NOT FULFILMENT. A success here means the transaction is genuine. It does not
 // grant entitlement and is not a signal for a future native client to call Transaction.finish().
@@ -37,8 +51,19 @@ import type { AppleEnvironment, AppleTransactionClaims } from '@/domain/apple-tr
 
 x509.cryptoProvider.set(crypto);
 
-/** Apple's "signed data" leaf marker. Apple's own verifier requires it; so do we. */
+/** Apple's "signed data" LEAF marker. Apple's own verifier requires it; so do we. */
 export const APPLE_LEAF_PURPOSE_OID = '1.2.840.113635.100.6.11.1';
+
+/**
+ * Apple's WWDR INTERMEDIATE marker. Apple's verifier requires this too, and R1 did not — a
+ * certificate issued by Apple for some other purpose could otherwise stand in the intermediate
+ * slot. Requiring it is what keeps "Apple signed something" from becoming "Apple authorised THIS
+ * chain to sign App Store data".
+ */
+export const APPLE_INTERMEDIATE_PURPOSE_OID = '1.2.840.113635.100.6.2.1';
+
+/** Apple requires exactly three: leaf, intermediate, and the chain's own root material. */
+export const APPLE_X5C_LENGTH = 3;
 
 /** Longest JWS we will even attempt to parse — a cheap guard before any crypto work. */
 export const MAX_SIGNED_TRANSACTION_BYTES = 16 * 1024;
@@ -50,9 +75,12 @@ export type AppleJwsRejection =
   | 'missing_certificate_chain'
   | 'malformed_certificate_chain'
   | 'untrusted_certificate_chain'
+  | 'certificate_issuer_mismatch'
   | 'certificate_expired'
   | 'intermediate_not_ca'
   | 'leaf_missing_apple_purpose'
+  | 'intermediate_missing_apple_purpose'
+  | 'missing_signed_date'
   | 'invalid_apple_signature';
 
 export type AppleJwsResult =
@@ -60,10 +88,30 @@ export type AppleJwsResult =
   | { ok: false; code: AppleJwsRejection };
 
 interface VerifyOptions {
-  /** Effective date for certificate validity. Injectable so expiry is testable without waiting. */
+  /**
+   * OVERRIDE for the effective date. Apple's offline semantics use the transaction's own
+   * `signedDate`, which is the default; this exists only so tests can pin "what if it were
+   * evaluated now / at some other instant" without forging a payload.
+   */
   at?: Date;
   /** Trust anchors. Defaults to Apple's published roots; tests pass their own controlled root. */
   trustedRootsPem?: readonly string[];
+}
+
+/**
+ * Byte-exact comparison of two Distinguished Names.
+ *
+ * Compares the DER serialization of the ASN.1 Name rather than a formatted string. String
+ * comparison would depend on the library's rendering of attribute order, escaping and OID
+ * spelling — differences that are cosmetic to a human and decisive to a verifier.
+ */
+function sameDistinguishedName(a: x509.Name, b: x509.Name): boolean {
+  const x = new Uint8Array(a.toArrayBuffer());
+  const y = new Uint8Array(b.toArrayBuffer());
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i += 1) diff |= x[i] ^ y[i];
+  return diff === 0;
 }
 
 function decodeBase64UrlJson(segment: string): unknown {
@@ -85,7 +133,6 @@ export async function verifyAppleSignedTransaction(
   signedTransaction: string,
   options: VerifyOptions = {},
 ): Promise<AppleJwsResult> {
-  const at = options.at ?? new Date();
   const roots = options.trustedRootsPem ?? APPLE_TRUSTED_ROOTS;
 
   // ---- A. structure ------------------------------------------------------------------------
@@ -116,28 +163,58 @@ export async function verifyAppleSignedTransaction(
   // "signature". Apple signs StoreKit data with ES256; nothing else is accepted.
   if (header.alg !== 'ES256') return { ok: false, code: 'unsupported_algorithm' };
 
-  // ---- C. x5c present and plausible --------------------------------------------------------
-  if (!Array.isArray(header.x5c) || header.x5c.length < 2) {
+  // ---- C. x5c present and EXACTLY three ------------------------------------------------------
+  // Apple's verifier requires exactly three. R1 accepted 2–4, which is looser than Apple and
+  // would admit chain shapes Apple never produces.
+  if (!Array.isArray(header.x5c) || header.x5c.length === 0) {
     return { ok: false, code: 'missing_certificate_chain' };
   }
-  if (header.x5c.length > 4 || !header.x5c.every((c) => typeof c === 'string' && c.length > 0)) {
+  if (
+    header.x5c.length !== APPLE_X5C_LENGTH ||
+    !header.x5c.every((c) => typeof c === 'string' && c.length > 0)
+  ) {
     return { ok: false, code: 'malformed_certificate_chain' };
   }
 
   let leaf: x509.X509Certificate;
   let intermediate: x509.X509Certificate;
   try {
-    // ---- D. chain shape: leaf first, intermediate second (Apple's ordering) ------------------
+    // ---- D. chain shape: leaf first, intermediate second (Apple's ordering).
+    // x5c[2] is the chain's own root material. It is parsed by NOBODY and read as a trust anchor
+    // by NOBODY — deliberately never even constructed, so it cannot be used by accident.
     leaf = new x509.X509Certificate(header.x5c[0] as string);
     intermediate = new x509.X509Certificate(header.x5c[1] as string);
   } catch {
     return { ok: false, code: 'malformed_certificate_chain' };
   }
 
-  // ---- E/F/G. anchor to OUR root, never to one the JWS supplied ----------------------------
-  // Any third element of x5c is IGNORED. That is the whole point: a chain does not become
-  // trusted because it shipped its own root. The loop below only ever tries roots from
-  // APPLE_TRUSTED_ROOTS (or a test's explicit anchor).
+  // ---- E. the effective date, Apple's offline way --------------------------------------------
+  // Apple dates the chain by the transaction's own `signedDate` when online checks are disabled.
+  // Parsed from the UNVERIFIED payload, which is safe because the payload must still survive the
+  // JWS signature check in step L: an attacker cannot move this date without Apple's key.
+  let unverifiedPayload: { signedDate?: unknown };
+  try {
+    unverifiedPayload = decodeBase64UrlJson(parts[1]) as { signedDate?: unknown };
+  } catch {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+  const signedDate = unverifiedPayload?.signedDate;
+  if (options.at === undefined) {
+    if (typeof signedDate !== 'number' || !Number.isFinite(signedDate)) {
+      return { ok: false, code: 'missing_signed_date' };
+    }
+  }
+  const at =
+    options.at ??
+    (() => {
+      const d = new Date(signedDate as number);
+      return Number.isNaN(d.getTime()) ? null : d;
+    })();
+  if (!at) return { ok: false, code: 'missing_signed_date' };
+
+  // ---- F/G. anchor to OUR root, never to one the JWS supplied ------------------------------
+  // The loop only ever tries roots from APPLE_TRUSTED_ROOTS (or a test's explicit anchor), and
+  // requires BOTH the signature and the issuer/subject linkage.
   let anchored = false;
   for (const rootPem of roots) {
     let root: x509.X509Certificate;
@@ -146,6 +223,9 @@ export async function verifyAppleSignedTransaction(
     } catch {
       continue; // a malformed pinned root must not make the chain trusted by accident
     }
+    // Semantic linkage, not just signature mathematics.
+    if (!sameDistinguishedName(intermediate.issuerName, root.subjectName)) continue;
+
     let intermediateSignedByRoot = false;
     try {
       intermediateSignedByRoot = await intermediate.verify({
@@ -157,14 +237,17 @@ export async function verifyAppleSignedTransaction(
     }
     if (!intermediateSignedByRoot) continue;
 
-    // H. the root's own validity window still has to hold at the effective date.
+    // I. the root's own validity window at the effective date.
     if (at < root.notBefore || at > root.notAfter) continue;
     anchored = true;
     break;
   }
   if (!anchored) return { ok: false, code: 'untrusted_certificate_chain' };
 
-  // ---- E. leaf signed by that intermediate --------------------------------------------------
+  // ---- H. leaf issued BY that intermediate ---------------------------------------------------
+  if (!sameDistinguishedName(leaf.issuerName, intermediate.subjectName)) {
+    return { ok: false, code: 'certificate_issuer_mismatch' };
+  }
   let leafSigned = false;
   try {
     leafSigned = await leaf.verify({
@@ -176,23 +259,26 @@ export async function verifyAppleSignedTransaction(
   }
   if (!leafSigned) return { ok: false, code: 'untrusted_certificate_chain' };
 
-  // ---- H. validity windows -------------------------------------------------------------------
+  // ---- I. validity windows for leaf and intermediate, at the effective date -------------------
   for (const cert of [leaf, intermediate]) {
     if (at < cert.notBefore || at > cert.notAfter) return { ok: false, code: 'certificate_expired' };
   }
 
-  // ---- I. the intermediate must actually be a CA ---------------------------------------------
+  // ---- J. the intermediate must actually be a CA ---------------------------------------------
   // Without this, a LEAF certificate could be presented in the intermediate slot and be used to
   // sign another leaf — issuing certificates it was never authorised to issue.
   const basicConstraints = intermediate.getExtension(x509.BasicConstraintsExtension);
   if (!basicConstraints?.ca) return { ok: false, code: 'intermediate_not_ca' };
 
-  // ---- J. Apple's signed-data purpose OID on the leaf ------------------------------------------
+  // ---- K. Apple's purpose OIDs on BOTH certificates -------------------------------------------
   // A certificate that chains to Apple's root but was issued for some OTHER Apple purpose must not
-  // be able to sign transactions. This is the check that keeps "Apple signed something" from
-  // becoming "Apple signed THIS KIND of thing".
+  // be able to sign transactions. These are the checks that keep "Apple signed something" from
+  // becoming "Apple authorised THIS chain to sign App Store data".
   if (!leaf.getExtension(APPLE_LEAF_PURPOSE_OID)) {
     return { ok: false, code: 'leaf_missing_apple_purpose' };
+  }
+  if (!intermediate.getExtension(APPLE_INTERMEDIATE_PURPOSE_OID)) {
+    return { ok: false, code: 'intermediate_missing_apple_purpose' };
   }
 
   // ---- K. the JWS signature itself, under the now-trusted leaf key ---------------------------
