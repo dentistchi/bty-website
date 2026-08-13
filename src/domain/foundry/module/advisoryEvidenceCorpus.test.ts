@@ -62,39 +62,28 @@ const UNSAFE: [string, string][] = [
   // PROOF
   ["The follow-up confirms sustained adoption.", "proof"],
   ["This demonstrates improvement in how items are closed.", "proof"],
+  // CLOSED BY A4-R3 — recorded here as false negatives, now refused
+  ["Manager reinforcement will create consistent follow-through.", "outcome"],
+  ["This training will reduce missed handoffs.", "outcome"],
+  ["Participants will consistently assign an owner.", "habit"],
+  ["Mastering Accountability in Every Meeting", "readiness"],
   // TITLES AND ASSUMPTIONS THAT CARRY A CLAIM
   ["Participants are equipped to apply the standard afterwards.", "assumption-readiness"],
   ["The team consistently performs the agreed follow-up.", "assumption-habit"],
 ];
 
 /**
- * FOUND BY THIS CORPUS, DELIBERATELY NOT FIXED HERE.
+ * CLOSED IN SLICE 3.2P-A4-R3.
  *
- * These four are over-claims by meaning and the validator does not refuse them. Each escapes
- * for a specific, boring lexical reason:
+ * A4-R2 recorded these four as measured false negatives — over-claims by meaning that the
+ * production predicate did not refuse — and left them, because that slice's authorized defect
+ * was the prompt and a validator widening needs its own false-positive audit. It got one:
+ * measured over 68 labelled sentences, recall moved 0.533 → 1.000 with precision held at 1.000,
+ * and "create", "reduce", "assign" and "mastering" remain ordinary words in honest prose.
  *
- *   "create" is not in CAUSAL_VERB · "missed handoffs" is not in OUTCOME_OBJECTS ("being
- *   missed" is) · "assign" is not in PERFORMANCE_VERB · competence_claim matches "mastered"
- *   and "mastery", not "Mastering".
- *
- * A4-R2's authorized defect is the PROMPT, and §10 says the validator does not move in this
- * slice. Widening these patterns is a separate decision that needs its own false-positive
- * audit — "reduce" pointed at anything, or "assign" under a regularity adverb, is exactly the
- * kind of widening that starts refusing honest sentences. So the gap is asserted as a known
- * state, the way A3-R2 recorded the moment floor's recall gap, rather than quietly patched or
- * quietly dropped from the corpus.
- *
- * WORTH SAYING: the PROMPT does cover all four in words — the outcome-noun list, the
- * regularity line and the "mastered" line all speak to these — so the instruction the model
- * reads is broader than the regex that judges it. That is the safe direction for the two to
- * differ, and it is the whole argument for fixing this slice in the prompt.
+ * They now live in UNSAFE above, which is what the marker asked for.
  */
-const KNOWN_UNCAUGHT: [string, string][] = [
-  ["Manager reinforcement will create consistent follow-through.", "outcome — 'create' is not a causal verb in the policy"],
-  ["This training will reduce missed handoffs.", "outcome — 'missed handoffs' is not in the outcome-noun set"],
-  ["Participants will consistently assign an owner.", "habit — 'assign' is not a performance verb in the policy"],
-  ["Mastering Accountability in Every Meeting", "readiness — the rule matches 'mastered'/'mastery', not 'Mastering'"],
-];
+const KNOWN_UNCAUGHT: [string, string][] = [];
 
 describe("[3.2P-A4-R2] the advisory corpus, under the production predicate", () => {
   it("every honest limitation, condition and neutral assumption stays authorable", () => {
@@ -116,15 +105,9 @@ describe("[3.2P-A4-R2] the advisory corpus, under the production predicate", () 
     expect(missed.map(([t]) => t)).toEqual([]);
   });
 
-  it("and the four the validator does NOT catch stay recorded, not quietly dropped", () => {
-    const caught = KNOWN_UNCAUGHT.filter(([t]) => assertsOverclaimByPolicy(t) !== null);
-    for (const [t, why] of KNOWN_UNCAUGHT) console.log(`  UNCAUGHT ${JSON.stringify(t)} — ${why}`);
-    /*
-      If a later slice widens the policy, this fails — which is the point. It is a marker for a
-      decision that has not been taken, not a permanent exemption. Do not delete it to make the
-      suite green; move the sentence into UNSAFE.
-    */
-    expect(caught.map(([t]) => t), "the policy now catches one of these — move it to UNSAFE").toEqual([]);
+  it("nothing is parked as a known blind spot any more", () => {
+    // The marker A4-R2 left. A4-R3 emptied it by closing the floor, not by deleting the list.
+    expect(KNOWN_UNCAUGHT).toEqual([]);
   });
 
   it("F — the four named families are each represented in the refusals", () => {
@@ -204,7 +187,7 @@ describe("[3.2P-A4-R2] one policy, three consumers — validator, brief, repair"
   });
 
   it("I — the semantic contract moved; the wire and repair shapes did not", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v19");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
     expect(repairPatchContract(repairLicenseFor("scenario_without_pressure", "scenario"))!.name)
       .toBe("bty_guided_program_repair_scenario_pressure_v1");

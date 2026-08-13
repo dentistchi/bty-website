@@ -119,7 +119,7 @@ describe("[3.2P-A4-R2] the advisory commission asks for a condition, not a cure"
 
 describe("[3.2P-A4-R2] what did NOT change", () => {
   it("I — the semantic contract moved; the wire shape did not", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v19");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 

@@ -117,7 +117,7 @@ describe("[3.2P-A2-R2] what did NOT change", () => {
   });
 
   it("the wire shape and the repair identities are untouched", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v19");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 });

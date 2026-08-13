@@ -305,7 +305,7 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v19");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
   });
 

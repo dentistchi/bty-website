@@ -4,11 +4,11 @@ import {
   assertsOverclaimByPolicy,
   evidencePolicyMatrix,
   evidencePolicyPromptLines,
-  OUTCOME_OBJECTS,
   OUTCOME_OBJECT_WORDS,
 } from "./evidence-policy";
 import {
   evidenceClaimBrief,
+  outcomeObjectStems,
   isSemanticRepairableCode,
   requiredProgramKinds,
   semanticRepairInstruction,
@@ -55,9 +55,13 @@ describe("[3.2L-R11.4I] one policy, two consumers", () => {
   });
 
   it("every outcome the validator refuses is named in words the model can act on", () => {
-    const stems = OUTCOME_OBJECTS.map((a) =>
-      a.replace(/s\?$/, "").replace(/\\w\*/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").trim(),
-    );
+    /*
+      Uses the production helper rather than a copy of it (Slice 3.2P-A4-R3). This test carried
+      its own transcription of the stem rule, so when the policy gained a `\w+` form the copy
+      silently produced "missed w+" and the coverage claim became about a string that is in
+      neither list. A test that duplicates the logic it checks can agree with itself.
+    */
+    const stems = outcomeObjectStems();
     const said = OUTCOME_OBJECT_WORDS.join(" ").toLowerCase();
     expect(stems.filter((s) => !said.includes(s.toLowerCase()))).toEqual([]);
   });

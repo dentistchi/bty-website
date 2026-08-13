@@ -25,8 +25,18 @@
  * `prospective` — additionally, "review WHETHER the standard was used" is the shape a
  * follow-up is supposed to have. Only rules that can legitimately appear inside a question
  * carry it; a causal-outcome promise cannot, so it does not.
+ *
+ * `negation-either-side` — Slice 3.2P-A4-R3, and used by exactly one rule. Every other rule
+ * matches a VERB, and the denial of a verb always precedes it: "does not ensure consistency".
+ * A mastery claim matches a NOUN or a gerund, which is routinely the SUBJECT of its own denial
+ * — "Mastery is not established by this training", "Mastering the scheduling software is not
+ * required" — where the negator can only ever appear afterwards.
+ *
+ * It is scoped to that one rule ON PURPOSE. Applied to a causal rule it would exempt "This
+ * ensures consistency, not confusion", turning an assertion into a pass; a guard that creates
+ * false negatives is worse than the false positive it was meant to fix.
  */
-export type EvidenceGuard = "negation" | "negation+prospective";
+export type EvidenceGuard = "negation" | "negation+prospective" | "negation-either-side";
 
 /**
  * WHERE THE POLICY BITES (Slice 3.2P-A4-R2).
@@ -73,8 +83,18 @@ export type EvidenceRule = {
   readonly pattern: RegExp;
 };
 
+/**
+ * `creat\w*` added in Slice 3.2P-A4-R3, and it is a VERB gap, not a shape gap — proven by
+ * single-variable swap: "will create consistent follow-through" passed while "will improve
+ * consistent follow-through" was refused, same sentence otherwise.
+ *
+ * It stays safe because the rule is a RELATION: a causal verb must be pointed at an
+ * organisational outcome within the same clause. "Create a checklist", "participants create an
+ * action note" and "create a shared handoff record" — the prompt's own allowed phrasing — name
+ * artifacts, not outcomes, and are unaffected.
+ */
 const CAUSAL_VERB =
-  "ensur\\w*|prevent\\w*|improv\\w*|increas\\w*|boost\\w*|driv\\w*|support\\w*|strengthen\\w*|eliminat\\w*|reduc\\w*|enhanc\\w*|guarantee\\w*|maximi[sz]\\w*|minimi[sz]\\w*|optimi[sz]\\w*|foster\\w*|promot\\w*|achiev\\w*|deliver\\w*|lead(?:s|ing)? to|result(?:s|ing)? in|make(?:s)? sure|so that";
+  "ensur\\w*|prevent\\w*|improv\\w*|increas\\w*|boost\\w*|driv\\w*|support\\w*|strengthen\\w*|eliminat\\w*|reduc\\w*|enhanc\\w*|creat\\w*|guarantee\\w*|maximi[sz]\\w*|minimi[sz]\\w*|optimi[sz]\\w*|foster\\w*|promot\\w*|achiev\\w*|deliver\\w*|lead(?:s|ing)? to|result(?:s|ing)? in|make(?:s)? sure|so that";
 
 /** The organisational outcomes a causal verb may not be pointed at. */
 export const OUTCOME_OBJECTS = [
@@ -83,6 +103,18 @@ export const OUTCOME_OBJECTS = [
   "results?", "clarity", "responsibilit\\w*", "communicat\\w*", "accountabilit\\w*", "consisten\\w*",
   "adoption", "engagement", "alignment", "throughput", "error\\w*", "mistakes?", "delays?", "risks?",
   "rework", "falling through the cracks", "slipping through", "being missed", "getting missed",
+  /*
+    Slice 3.2P-A4-R3 — a NOUN gap, not a verb gap. "reduce" was already a causal verb and
+    "reduce errors" was already refused; "reduce missed handoffs" and "reduce unfinished
+    actions" passed only because the work that did not happen had no name here. The set knew
+    "being missed" and "getting missed" and not the far more ordinary attributive form.
+
+    An attributive-only form was tried first and rejected on measurement: `missed \w+` also
+    matches "missed AT handover", so it separated nothing while costing a stem the prompt has
+    to render. The overlap it was meant to dodge is real and belongs elsewhere — see
+    `guarantee_claim`'s sample.
+  */
+  "missed", "unfinished", "reliab\\w*",
 ] as const;
 
 /** The same set as a person says it — used in the prompt, checked against the regexes by test. */
@@ -92,7 +124,7 @@ export const OUTCOME_OBJECT_WORDS = [
   "responsibilities", "communication", "accountability", "consistency", "adoption", "engagement",
   "alignment", "throughput", "errors", "mistakes", "delays", "risks", "rework",
   "things falling through the cracks", "things slipping through", "work being missed",
-  "anything getting missed",
+  "anything getting missed", "missed work or handoffs", "unfinished actions", "reliability",
 ] as const;
 
 const OUTCOME_OBJECT = OUTCOME_OBJECTS.join("|");
@@ -101,9 +133,15 @@ const OUTCOME_OBJECT = OUTCOME_OBJECTS.join("|");
  * Deliberately excludes "do"/"does": it collides with "does not", the exact negation this
  * policy exists to keep legal — "this does not mean the team consistently performs…" was
  * matched at "does" and refused as an assertion.
+ *
+ * `assign\w*` added in Slice 3.2P-A4-R3 — again a verb gap proven by swap: "consistently
+ * follow the standard" was refused while "consistently assign an owner" passed. This is NOT a
+ * ban on the word. The rule still needs a REGULARITY marker in the same clause, so "practice
+ * how to assign an owner", "ask participants to assign an owner" and "leaders have the
+ * authority to assign owners" are untouched — assigning is a thing people do here.
  */
 const PERFORMANCE_VERB =
-  "perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|carr(?:y|ies|ied)\\s+out|conduct\\w*";
+  "perform\\w*|follow\\w*|appl(?:y|ies|ied)|us(?:e|es|ed|ing)|execut\\w*|carr(?:y|ies|ied)\\s+out|conduct\\w*|assign\\w*";
 const REGULARITY = "consistently|reliably|routinely|habitually|regularly|always|every time|each time";
 const PROOF_VERB = "demonstrat\\w*|prov(?:e|es|ed|en)|confirm\\w*|verif\\w*|validat\\w*|establish(?:es|ed)";
 const HIGH_RUNG =
@@ -178,6 +216,34 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
     pattern: /\bnow competent\b|\bfully (?:understand|understood|understands)\b|\bmastered\b/i,
   },
   {
+    /*
+      SLICE 3.2P-A4-R3 — MORPHOLOGY, MEASURED.
+
+      `competence_claim` matched the past participle and nothing else, so "the skill was
+      mastered" was refused while "Mastering Accountability in Every Meeting" — a TITLE, the
+      most visible sentence in the program — passed. "mastery" was reachable only through
+      `proof_of_high_rung`, which needs a verb of demonstration in front of it, so "builds
+      mastery of the standard" passed too.
+
+      Same family, same meaning, one more rule rather than a new concept: the readiness family
+      already owns "this person can now do it".
+
+      The bare form is deliberately NOT matched on its own. "Use the master checklist" is a
+      noun; the claim lives under a modal or an infinitive — "will master", "to master" — which
+      is what this matches instead of banning a word.
+    */
+    id: "mastery_claim",
+    family: "readiness",
+    meaning: "Presenting the training as mastery — in a title, as a promise, or as something it builds.",
+    appliesTo: EVIDENCE_SCOPE,
+    promptLine:
+      'Never present the training as mastery — not "Mastering …" in a title, not "will master", not "builds mastery of". People practise here; nothing shows anyone has mastered anything. Name the capability or the practice instead.',
+    forbiddenSample: "Mastering Consistent Handoffs",
+    legalRewrite: "Practising a Consistent Handover",
+    guard: "negation-either-side",
+    pattern: /\bmaster(?:ing|y|ies)\b|\b(?:will|to|can|could|would|should|may|might|now)\s+master\b/i,
+  },
+  {
     id: "permanence_claim",
     family: "habit",
     meaning: "Asserting the change is permanent or sustained.",
@@ -229,7 +295,15 @@ export const EVIDENCE_POLICY: readonly EvidenceRule[] = [
     meaning: "Guaranteeing an outcome.",
     appliesTo: EVIDENCE_SCOPE,
     promptLine: "Never guarantee anything.",
-    forbiddenSample: "This guarantees nothing is missed at handover.",
+    /*
+      SAMPLE REPLACED IN SLICE 3.2P-A4-R3, and not to make a test pass.
+      "This guarantees nothing is missed at handover" asserts TWO things — a guarantee, and a
+      causal verb pointed at work not happening — and once "missed" became an outcome noun the
+      earlier, more general rule claimed it first. The sentence was always ambiguous; it just
+      could not show it before. A representative sample has one job, and this family's contrast
+      is rendered to the model, so it now illustrates a guarantee and nothing else.
+    */
+    forbiddenSample: "Completing this guarantees the standard is followed.",
     legalRewrite: "This asks each person to name what is still open at handover.",
     guard: "negation",
     pattern: /\bguarantees?\b/i,
@@ -270,6 +344,13 @@ export function assertsOverclaimByPolicy(text: string): EvidenceRule | null {
     const m = rule.pattern.exec(text);
     if (!m) continue;
     if (NEGATOR.test(text.slice(Math.max(0, m.index - NEGATION_WINDOW), m.index))) continue;
+    // A noun-headed claim carries its denial after it — see `EvidenceGuard`. One rule only.
+    if (
+      rule.guard === "negation-either-side" &&
+      NEGATOR.test(text.slice(m.index + m[0].length, m.index + m[0].length + NEGATION_WINDOW))
+    ) {
+      continue;
+    }
     if (
       rule.guard === "negation+prospective" &&
       PROSPECTIVE_FRAME.test(text.slice(Math.max(0, m.index - PROSPECTIVE_WINDOW), m.index))

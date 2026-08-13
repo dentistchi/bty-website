@@ -138,6 +138,23 @@ import {
 
 
 
+ * v19 → v20 (Slice 3.2P-A4-R3) closes four measured false negatives in the evidence floor, and
+ * this one MOVES ACCEPTANCE — a proposal valid under v19 can be refused under v20, which is
+ * exactly what this constant exists to record.
+ *
+ * A4-R2's corpus found them and left them, because that slice's defect was the prompt. Each was
+ * a lexical gap proven by single-variable swap, not a shape fault: `create` was missing from the
+ * causal verbs while `improve` was there; `reduce` was already a causal verb and the work that
+ * did not happen had no noun; `assign` was missing from the performance verbs while `follow` was
+ * there; and mastery was matched only as `mastered`, so "Mastering …" in a TITLE — the most
+ * visible sentence in a program — passed.
+ *
+ * Measured over 68 labelled sentences: recall 0.533 → 1.000, precision 1.000 → 1.000. No
+ * ceiling moved, no rung was redefined, no guard was relaxed. The one guard ADDED —
+ * `negation-either-side` — is scoped to the single noun-headed rule whose denial can only
+ * follow it, because applying it to a causal rule would exempt "This ensures consistency, not
+ * confusion" and turn a refusal into a pass.
+ *
  * v18 → v19 (Slice 3.2P-A4-R2) tells the model where the evidence ceiling reaches. Every rule
  * has always declared `appliesTo` — "plus assumptions, warnings and the title" — and none of it
  * was ever rendered; the prompt then closed by asking for "participant-facing text", which
@@ -219,7 +236,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v19";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v20";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -2346,7 +2363,9 @@ export function availableEvidenceLevels(answers: BuilderAnswers | undefined): Ev
 /** The validator's outcome set, as bare stems — the ground truth the prompt must cover. */
 export function outcomeObjectStems(): string[] {
   return OUTCOME_OBJECTS.map((alt) =>
-    alt.replace(/s\?$/, "").replace(/\\w\*/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").trim(),
+    // `\w*` and `\w+` both stand for "the rest of the word / the noun it qualifies" — neither
+    // belongs in a stem the prompt has to name (Slice 3.2P-A4-R3 added the `+` form).
+    alt.replace(/s\?$/, "").replace(/\\w[*+]/g, "").replace(/\\/g, "").replace(/[()?:]/g, "").trim(),
   ).filter((w) => w.length > 0);
 }
 
