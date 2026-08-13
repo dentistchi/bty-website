@@ -828,6 +828,14 @@ export async function generateProgram(
               field: CONTRACT_FIELD_STORAGE[validated.contract.field],
               reason: validated.contract.reason,
             },
+        /*
+          A5-R2 — the exact subtype behind an umbrella refusal, taken from the SAME validated
+          result that decided the refusal. Never re-derived from `refusal_code`, the offending
+          path, or the text: a second derivation is a second opinion, and the ledger is supposed
+          to record what actually happened.
+        */
+        scenarioReason: validated.ok ? null : (validated.scenario?.reason ?? null),
+        evidenceRule: validated.ok ? null : (validated.evidenceRule ?? null),
         // R6.1 — closed-vocabulary dependency facts, null for every other outcome.
         dependency: validated.ok || !validated.dependency
           ? null

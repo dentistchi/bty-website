@@ -374,6 +374,23 @@ export function evidencePolicyPromptLines(): string[] {
  * The scope, as the model is told it (Slice 3.2P-A4-R2). Built from `EVIDENCE_SCOPE`, which is
  * also every rule's `appliesTo`, so the sentence cannot claim a reach the rules do not have.
  */
+/**
+ * EVERY RULE ID, AS DURABLE VOCABULARY (Slice 3.2P-A5-R2).
+ *
+ * The ledger now stores which rule refused a program, so these ids stop being internal labels
+ * and become historical values in a database. Two consequences, both deliberate:
+ *
+ *   1. Every id names the CLAIM it refuses — `readiness_claim`, `habitual_performance` — never
+ *      the pattern that catches it. Any regex here can be rewritten without making a stored
+ *      row a lie.
+ *   2. Adding a rule widens this set, so the live CHECK must be widened BEFORE the recorder
+ *      may write the new id. `storableEvidenceRule` writes NULL for anything the database
+ *      would refuse, so an insert can never fail on a value the schema has not learned yet.
+ */
+export function evidencePolicyRuleIds(): string[] {
+  return EVIDENCE_POLICY.map((r) => r.id);
+}
+
 export function evidenceScopeLine(): string {
   return `THIS APPLIES TO THE WHOLE PROGRAM — ${EVIDENCE_SCOPE}. A title, an assumption or a warning is NOT an exception; they are checked by exactly the same rules.`;
 }

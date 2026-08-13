@@ -65,6 +65,63 @@ function storableContractReason(reason: string | undefined): string | null {
 }
 
 /**
+ * Live schema support for the two SEMANTIC SUBTYPE columns (migration 20260821000000).
+ *
+ * FALSE until the Founder executes it. Same discipline as its four predecessors, and for the
+ * same measured reason: writing a column that does not exist fails the whole update and loses
+ * every other diagnostic on the row — strictly worse than recording nothing. While this is
+ * false the update payload is byte-identical to the pre-migration one.
+ *
+ * WHY THE COLUMNS EXIST. Twice now a forensic slice has been unable to answer its own central
+ * question because a deterministic classification was computed and dropped one line later:
+ *
+ *   A5 (`d8be3e40`)  scenario_without_pressure — five defect reasons share that code, and only
+ *                    one of them is the pressure floor. Whether the floor missed real
+ *                    difficulty or the model wrote none is not recoverable.
+ *   A1 (`6f93f7f4`)  evidence_overclaim — `assertsOverclaimByPolicy` returns the exact rule and
+ *   A4 (`8a7f2f6a`)  `assertsOverclaim` discarded it, so the family is permanently unknown.
+ *
+ * Neither column can hold model prose; both are BTY's own closed vocabularies. R7 unchanged.
+ */
+export const SEMANTIC_REASON_DIAGNOSTICS_ENABLED = false;
+
+/**
+ * The scenario vocabulary the LIVE CHECK accepts — deliberately NOT derived from
+ * `SCENARIO_DEFECT_REASONS`.
+ *
+ * The domain can add a reason in the same commit that a database three deploys behind has
+ * never heard of; deriving this from the domain would re-create exactly the failure the
+ * withhold-then-widen discipline exists to prevent. It records what the SCHEMA accepts, and a
+ * test compares the two sets mechanically rather than by eye.
+ */
+const LIVE_SCENARIO_REASONS: readonly string[] = [
+  "missing", "too_long", "generic", "restates_action", "no_pressure", "independent_moment",
+];
+
+/** The evidence-policy vocabulary the LIVE CHECK accepts. Same rule, same reason. */
+const LIVE_EVIDENCE_RULES: readonly string[] = [
+  "organisational_outcome", "habitual_performance", "proof_of_high_rung", "readiness_claim",
+  "competence_claim", "mastery_claim", "permanence_claim", "verification_claim",
+  "relationship_repair_claim", "dependency_removed_claim", "guarantee_claim", "improvement_claim",
+];
+
+export function storableScenarioReason(reason: string | undefined): string | null {
+  if (!reason) return null;
+  return LIVE_SCENARIO_REASONS.includes(reason) ? reason : null;
+}
+
+export function storableEvidenceRule(rule: string | undefined): string | null {
+  if (!rule) return null;
+  return LIVE_EVIDENCE_RULES.includes(rule) ? rule : null;
+}
+
+/** Exported for the parity test only — the runtime's view of what the database will accept. */
+export const LIVE_SEMANTIC_REASON_VOCABULARY = {
+  scenario: LIVE_SCENARIO_REASONS,
+  evidence: LIVE_EVIDENCE_RULES,
+} as const;
+
+/**
  * Live schema support for the two child refusal columns (migration 20260815000000).
  *
  * TRUE since the Founder executed that migration (Slice 3.2P-R0.2): both columns exist and
@@ -230,6 +287,13 @@ export type FinalizeProgramCallInput = {
    * `non_observable_standard`. Closed vocabulary only — the rejected phrase is never passed.
    */
   behaviorContract?: { field: string; reason: string } | null;
+  /**
+   * The exact semantic subtype behind an umbrella refusal (Slice 3.2P-A5-R2). Closed
+   * vocabularies only — the rejected pressure phrase and the rejected advisory sentence are
+   * never passed here, and there is no field on this type that could carry them.
+   */
+  scenarioReason?: string | null;
+  evidenceRule?: string | null;
   /**
    * Did THIS call's licensed repair stay inside its envelope? (Slice 3.2P-R0.3)
    *
@@ -432,6 +496,20 @@ export async function finalizeProgramCall(admin: SupabaseClient, input: Finalize
             dependency_branch: input.dependency?.branch ?? null,
             dependency_construct_kind: input.dependency?.constructKind ?? null,
             dependency_counterpart_kind: input.dependency?.counterpartKind ?? null,
+          }
+        : {}),
+      /**
+       * THE SUBTYPE BEHIND THE UMBRELLA (Slice 3.2P-A5-R2). Written only for the refusal that
+       * produced it — a scenario refusal leaves the evidence rule NULL and vice versa, and
+       * every other outcome leaves both NULL, which is the honest value.
+       *
+       * Each passes through a `storable…` filter, so a reason the live CHECK has not learned
+       * yet is stored as NULL rather than failing the whole update.
+       */
+      ...(SEMANTIC_REASON_DIAGNOSTICS_ENABLED
+        ? {
+            scenario_contract_reason: storableScenarioReason(input.scenarioReason ?? undefined),
+            evidence_policy_rule: storableEvidenceRule(input.evidenceRule ?? undefined),
           }
         : {}),
       /**

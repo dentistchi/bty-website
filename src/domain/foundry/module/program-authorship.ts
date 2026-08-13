@@ -77,6 +77,7 @@ import {
   type DependencyDefect,
   type ProgramSection,
   type ScenarioContract,
+  type ScenarioDefect,
 } from "./program-coherence";
 import {
   assertsOverclaimByPolicy,
@@ -618,6 +619,23 @@ export type ProgramValidation =
       dependency?: DependencyDefect;
       /** Present only for `non_observable_standard` — closed vocabulary, never prose. */
       contract?: ContractDefect;
+      /**
+       * WHICH SCENARIO FAULT (Slice 3.2P-A5-R2). Present only for a scenario-contract refusal.
+       *
+       * `scenario_without_pressure` is an UMBRELLA: five distinct defect reasons collapse into
+       * it, and A5-R1 could not answer its own central question — did the pressure floor miss
+       * real difficulty, or did the model write none — because the discriminator was computed
+       * and dropped one line later. Closed vocabulary, never the rejected phrase.
+       */
+      scenario?: ScenarioDefect;
+      /**
+       * WHICH EVIDENCE RULE (Slice 3.2P-A5-R2). Present only for `evidence_overclaim`.
+       *
+       * `assertsOverclaimByPolicy` already returns the exact rule; `assertsOverclaim` threw it
+       * away, so A1's and A4's family are permanently unknowable. A policy id — BTY's own
+       * classification — never a sentence.
+       */
+      evidenceRule?: string;
     };
 
 // ---------------------------------------------------------------------------
@@ -1656,6 +1674,20 @@ export function repairInstruction(d: StructuralDiagnosis): string {
 
 const REJECT = (code: ProgramRejectCode, kind?: JourneyElementKind): ProgramValidation => ({ ok: false, code, kind });
 
+/**
+ * WHAT THE SAFETY BATTERY FOUND (Slice 3.2P-A5-R2).
+ *
+ * `unsafe()` used to return a bare code, so the exact evidence rule — which
+ * `assertsOverclaimByPolicy` had just computed — was discarded at the boundary. Carrying it in
+ * the return value keeps the ledger's answer and the runtime's decision the SAME evaluation
+ * rather than a re-derivation from text later, which could disagree.
+ */
+type UnsafeFinding = { code: ProgramRejectCode; evidenceRule?: string };
+
+/** Refuse on a safety finding, preserving whichever policy id produced it. */
+const REJECT_UNSAFE = (found: UnsafeFinding, kind?: JourneyElementKind): ProgramValidation =>
+  ({ ok: false, code: found.code, kind, evidenceRule: found.evidenceRule });
+
 /** Refuse with an exact path + received type, so the repair call can be targeted. */
 const REJECT_AT = (
   code: ProgramRejectCode,
@@ -1720,18 +1752,23 @@ export function validateProgramProposal(
    * advisory field cannot bypass a safety rule merely because it is not written into the
    * draft — the Host still reads it, and it still justifies the program.
    */
-  const unsafe = (text: string): ProgramRejectCode | null => {
-    if (assertsOverclaim(text)) return "evidence_overclaim";
-    if (MATERIAL_EXISTS.some((re) => re.test(text))) return "material_fabrication";
+  const unsafe = (text: string): UnsafeFinding | null => {
+    /*
+      The rule id travels with the code (Slice 3.2P-A5-R2). Same call, same result — the
+      ledger records what actually refused the text, not a second opinion formed later.
+    */
+    const overclaim = assertsOverclaimByPolicy(text);
+    if (overclaim) return { code: "evidence_overclaim", evidenceRule: overclaim.id };
+    if (MATERIAL_EXISTS.some((re) => re.test(text))) return { code: "material_fabrication" };
     // Speaking for a material nobody read (Slice 3.2L-R11.4G) — a content claim, not an
     // existence claim, so the grounding corpus cannot and must not rescue it.
-    if (claimsMaterialContent(text)) return "material_fabrication";
+    if (claimsMaterialContent(text)) return { code: "material_fabrication" };
     // Invented specifics first: "section 4.2 of the policy" is BOTH, and the more precise
     // diagnosis is the more useful one to record and to show.
-    if (INVENTED_SPECIFICS.some((re) => re.test(text))) return "invented_specifics";
-    if (ungroundedArtifact(text, corpus) !== null) return "material_fabrication";
-    if (PERSON_EVALUATION.some((re) => re.test(text))) return "person_evaluation";
-    if (INTERNAL_JARGON.some((re) => re.test(text))) return "internal_jargon";
+    if (INVENTED_SPECIFICS.some((re) => re.test(text))) return { code: "invented_specifics" };
+    if (ungroundedArtifact(text, corpus) !== null) return { code: "material_fabrication" };
+    if (PERSON_EVALUATION.some((re) => re.test(text))) return { code: "person_evaluation" };
+    if (INTERNAL_JARGON.some((re) => re.test(text))) return { code: "internal_jargon" };
     return null;
   };
   const allowed = new Set<JourneyElementKind>([...required, "evidence", "reflection"]);
@@ -1768,7 +1805,7 @@ export function validateProgramProposal(
     // Rendered into participant-facing text, so it carries the same honesty rules as any other
     // content — a fabricated template cannot enter through it.
     const bad = unsafe(v);
-    if (bad) return REJECT(bad, "observable_standard");
+    if (bad) return REJECT_UNSAFE(bad, "observable_standard");
   }
   if (actionVerbDefect(rawVerb as string) !== null) {
     /*
@@ -1867,7 +1904,7 @@ export function validateProgramProposal(
       }
       // Rendered into participant-facing text, so it carries the same honesty rules.
       const bad = unsafe(v);
-      if (bad) return REJECT(bad, "scenario");
+      if (bad) return REJECT_UNSAFE(bad, "scenario");
     }
     const sc = validateScenarioContract(rawScenario, contract);
     /*
@@ -1877,10 +1914,19 @@ export function validateProgramProposal(
       refusal reason that is simply untrue about their program (Slice 3.2L-R8.1).
     */
     if (!sc.ok) {
-      return REJECT(
-        sc.defect.reason === "independent_moment" ? "scenario_independent_moment" : "scenario_without_pressure",
-        "scenario",
-      );
+      /*
+        The DEFECT travels with the code (Slice 3.2P-A5-R2). Five reasons share
+        `scenario_without_pressure`, and A5 could not be classified because only the umbrella
+        survived. One evaluation, two representations: the product refusal the Host sees, and
+        the exact reason the validator computed.
+      */
+      return {
+        ...REJECT(
+          sc.defect.reason === "independent_moment" ? "scenario_independent_moment" : "scenario_without_pressure",
+          "scenario",
+        ),
+        scenario: sc.defect,
+      } as ProgramValidation;
     }
     scenarioContract = sc.value;
   }
@@ -2051,13 +2097,13 @@ export function validateProgramProposal(
     */
     const discarded = c === content.value ? null : content.value;
     const discardedUnsafe = discarded === null ? null : unsafe(discarded);
-    const contentUnsafe = unsafe(c) ?? (discardedUnsafe === "evidence_overclaim" ? null : discardedUnsafe);
-    if (contentUnsafe) return REJECT(contentUnsafe, kind);
+    const contentUnsafe = unsafe(c) ?? (discardedUnsafe?.code === "evidence_overclaim" ? null : discardedUnsafe);
+    if (contentUnsafe) return REJECT_UNSAFE(contentUnsafe, kind);
     // Safety still applies to a rationale whenever one is PRESENT — advisory does not
     // mean unchecked; it only means absence is tolerated.
     if (rationale.value.length > 0) {
       const rationaleUnsafe = unsafe(rationale.value);
-      if (rationaleUnsafe) return REJECT(rationaleUnsafe, kind);
+      if (rationaleUnsafe) return REJECT_UNSAFE(rationaleUnsafe, kind);
     }
 
     // --- per-kind meaning ------------------------------------------------
@@ -2129,7 +2175,7 @@ export function validateProgramProposal(
 
   // Derived text cannot be unsafe, but the check stays: it is cheap and it is a guarantee.
   const ceilingUnsafe = unsafe(evidenceLanguage.value);
-  if (ceilingUnsafe) return REJECT(ceilingUnsafe);
+  if (ceilingUnsafe) return REJECT_UNSAFE(ceilingUnsafe);
 
   const assumptions = cleanList(p.assumptions, LIMITS.assumption, "invalid_assumptions");
   if (!assumptions.ok) return REJECT_AT(assumptions.code, "program.assumptions", "an array of strings, or omitted", jsonTypeOf(p.assumptions));
@@ -2142,7 +2188,7 @@ export function validateProgramProposal(
   // the WHOLE proposal rather than dropping one advisory line.
   for (const text of [...assumptions.value, ...warnings.value, title.value]) {
     const bad = unsafe(text);
-    if (bad) return REJECT(bad);
+    if (bad) return REJECT_UNSAFE(bad);
   }
 
   // Canonical order, never the model's order.

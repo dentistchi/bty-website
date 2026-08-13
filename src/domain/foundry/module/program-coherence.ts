@@ -1008,9 +1008,38 @@ const SCENARIO_FIELD_MIN = 8;
 
 export type ScenarioField = keyof ScenarioContract;
 
+/**
+ * THE CLOSED SCENARIO VOCABULARY (named in Slice 3.2P-A5-R2; the values themselves are older).
+ *
+ * It was an inline union, which is fine for a compiler and useless to a ledger: nothing could
+ * enumerate it, so nothing could check that the database's CHECK constraint says the same
+ * thing. It is now an array for the same reason `CONTRACT_DEFECT_REASONS` is one.
+ *
+ * NEVER SHRINK IT. Once a reason has been written to a row it is historical vocabulary, and
+ * removing it makes an existing row unreadable.
+ *
+ * Every name here describes the FAULT, not the check that found it — `no_pressure`, not
+ * `namesRealPressure_false` — so the regex behind any of them can be rewritten without
+ * invalidating a single stored row.
+ */
+export const SCENARIO_DEFECT_REASONS = [
+  /** Absent, or shorter than the field minimum — the same fault at two magnitudes. */
+  "missing",
+  /** Longer than the field limit. */
+  "too_long",
+  /** Names difficulty without naming any: "it is hard", "a busy day". */
+  "generic",
+  /** The pressure restates the trained action, so it describes no obstacle to it. */
+  "restates_action",
+  /** No family of real constraint is recognisable in the pressure. */
+  "no_pressure",
+  /** A field named an occasion of its own — the scenario moved somewhere else. */
+  "independent_moment",
+] as const;
+
 export type ScenarioDefect = {
   field: ScenarioField;
-  reason: "missing" | "too_long" | "generic" | "restates_action" | "no_pressure" | "independent_moment";
+  reason: (typeof SCENARIO_DEFECT_REASONS)[number];
 };
 
 /** Occasions — the kind of noun that names an event someone could be told to attend. */
