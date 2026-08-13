@@ -67,10 +67,19 @@ function storableContractReason(reason: string | undefined): string | null {
 /**
  * Live schema support for the two SEMANTIC SUBTYPE columns (migration 20260821000000).
  *
- * FALSE until the Founder executes it. Same discipline as its four predecessors, and for the
- * same measured reason: writing a column that does not exist fails the whole update and loses
- * every other diagnostic on the row — strictly worse than recording nothing. While this is
- * false the update payload is byte-identical to the pre-migration one.
+ * TRUE since the Founder executed that migration (Slice 3.2P-A5-R2A). Verified live before this
+ * flag was flipped, and by probe rather than by reading the migration text back to itself:
+ * both columns resolve through a direct projection; the live CHECKs accept all six scenario
+ * reasons, all twelve evidence rules and NULL, and refuse invented values — `banana`,
+ * `missing_v2`, `NO_PRESSURE` and `organisational_outcome_v2` were each named by the CHECK
+ * itself. Every probe carried an `attempt_id` that does not exist, so the constraint answered
+ * before the foreign key and no row was ever written. All 45 historical rows hold NULL.
+ *
+ * It was false through the preceding deploy for the same reason as its four predecessors:
+ * writing a column that does not exist fails the whole update and loses every other diagnostic
+ * on the row — strictly worse than recording nothing. Measured while it was false: the subtype
+ * read back as NULL and the umbrella refusal recorded normally, which is exactly what the gate
+ * is for.
  *
  * WHY THE COLUMNS EXIST. Twice now a forensic slice has been unable to answer its own central
  * question because a deterministic classification was computed and dropped one line later:
@@ -83,7 +92,7 @@ function storableContractReason(reason: string | undefined): string | null {
  *
  * Neither column can hold model prose; both are BTY's own closed vocabularies. R7 unchanged.
  */
-export const SEMANTIC_REASON_DIAGNOSTICS_ENABLED = false;
+export const SEMANTIC_REASON_DIAGNOSTICS_ENABLED = true;
 
 /**
  * The scenario vocabulary the LIVE CHECK accepts — deliberately NOT derived from

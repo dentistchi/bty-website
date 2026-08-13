@@ -92,13 +92,17 @@ describe("[3.2P-A5-R2] the migration is additive and touches nothing else", () =
 });
 
 describe("[3.2P-A5-R2] deploy order — nothing can fail on a column that does not exist", () => {
-  it("persistence is withheld until the Founder runs the DDL", () => {
+  it("persistence is active, and was withheld until the DDL existed", () => {
     /*
-      Measured live before this was written: both columns are ABSENT from the staging schema and
-      the table holds 45 child rows. While this flag is false the update payload is
-      byte-identical to the pre-migration one, so the code below can ship first.
+      A5-R2 shipped this false and MEASURED the consequence live: the umbrella refusal recorded
+      normally while the subtype read back NULL. A5-R2A flipped it only after probing the live
+      CHECKs — 6/6 scenario reasons, 12/12 evidence rules and NULL accepted, four invented
+      values refused by the constraint itself, zero rows written by any probe.
+
+      `scripts/verify-semantic-reason-diagnostics.ts` is the live proof and is deliberately NOT
+      part of this suite: CI must never write to staging.
     */
-    expect(SEMANTIC_REASON_DIAGNOSTICS_ENABLED).toBe(false);
+    expect(SEMANTIC_REASON_DIAGNOSTICS_ENABLED).toBe(true);
   });
 
   it("and a value the live CHECK has not learned is stored as NULL, never written blind", () => {
