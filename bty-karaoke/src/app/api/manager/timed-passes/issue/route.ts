@@ -68,6 +68,12 @@ export async function POST(req: NextRequest) {
       // Honest, non-actionable: a PRO account is already unlimited and cannot consume a pass.
       return NextResponse.json({ ok: false, error: 'account_is_pro' }, { status: 409, headers: NO_STORE });
     }
+    if (outcome.error === 'idempotency_conflict') {
+      // BUILD 26O-R1 — this key is already spent on a different account or a different pass type.
+      // 409 (conflict), and the body says only that: naming the grant that owns the key would
+      // disclose another account's entitlement to whoever guessed the key.
+      return NextResponse.json({ ok: false, error: 'idempotency_conflict' }, { status: 409, headers: NO_STORE });
+    }
     if (outcome.error === 'issuance_provenance_required') {
       // The route always sends provenance, so reaching this is a SERVER fault, not a bad request.
       // 500 keeps it out of the 4xx bucket where it would read as the caller's mistake — and no

@@ -63,6 +63,62 @@ describe('BUILD 26O — provenance is mandatory', () => {
   });
 });
 
+describe('BUILD 26O-R1 — the idempotency replay boundary', () => {
+  // `timed_pass_issue_idem_idx` is UNIQUE on (issue_idempotency_key) ALONE — global, not
+  // account-scoped — and the key is CALLER-supplied. The pre-R1 read therefore returned another
+  // account's grant as a success, and accepted a different pass_type as the same request.
+
+  it('replays ONLY for the same account AND the same pass type', () => {
+    expect(fn).toMatch(/v_existing\.account_id = p_account_id\s+and\s+v_existing\.pass_type = p_pass_type/);
+  });
+
+  it('fails closed with idempotency_conflict otherwise', () => {
+    expect(fn).toContain("'idempotency_conflict'");
+  });
+
+  it('the conflict response leaks nothing about the row that owns the key', () => {
+    // Find the conflict return and prove it carries no identity of the other grant.
+    const idx = fn.indexOf("'idempotency_conflict'");
+    const stmt = fn.slice(fn.lastIndexOf('return', idx), fn.indexOf(';', idx));
+    for (const leak of ['v_existing.id', 'v_existing.status', 'v_existing.pass_type', 'v_existing.account_id', 'passGrantId']) {
+      expect(stmt).not.toContain(leak);
+    }
+  });
+
+  it('still returns reused:true on a genuine replay', () => {
+    expect(fn).toContain("'reused', true");
+    const replay = fn.slice(fn.indexOf('if v_existing.account_id = p_account_id'), fn.indexOf("'idempotency_conflict'"));
+    expect(replay).toContain('v_existing.id');
+  });
+
+  it('keeps the lookup GLOBAL so a collision is detected rather than hidden', () => {
+    // Narrowing the SELECT to the account would make the cross-account case look like a fresh
+    // issue, and the global unique index would then surface it as a raw 23505.
+    expect(fn).toMatch(/where issue_idempotency_key = v_key/);
+    expect(fn).not.toMatch(/where issue_idempotency_key = v_key\s+and account_id/);
+  });
+
+  it('converts a CONCURRENT unique collision into the same typed conflict', () => {
+    // The advisory lock is keyed by ACCOUNT, so it cannot serialize two accounts sharing a key.
+    expect(fn).toMatch(/exception when unique_violation then/);
+    const handler = fn.slice(fn.indexOf('exception when unique_violation then'));
+    expect(handler).toContain("'idempotency_conflict'");
+    // It must RETURN A FAILURE, never swallow into a success or a null.
+    expect(handler.slice(0, handler.indexOf('end;'))).not.toMatch(/null;\s*$/);
+    expect(handler.slice(0, handler.indexOf('end;'))).not.toContain("'ok', true");
+  });
+
+  it('catches ONLY unique_violation — never a blanket handler', () => {
+    expect(fn).not.toMatch(/exception\s+when\s+others/i);
+  });
+
+  it('leaves the audit insert OUTSIDE the handler, so attribution failure still aborts', () => {
+    const handlerEnd = fn.indexOf('exception when unique_violation then');
+    const auditInsert = fn.indexOf('insert into public.timed_access_pass_audit');
+    expect(auditInsert).toBeGreaterThan(handlerEnd);
+  });
+});
+
 describe('BUILD 26O — one actor context, two rows, one transaction', () => {
   it('the audit ISSUED row persists the provenance document in metadata', () => {
     const auditInsert = fn.slice(fn.indexOf('insert into public.timed_access_pass_audit'));
@@ -85,9 +141,23 @@ describe('BUILD 26O — one actor context, two rows, one transaction', () => {
     const auditInsert = fn.indexOf('insert into public.timed_access_pass_audit');
     expect(grantInsert).toBeGreaterThan(0);
     expect(auditInsert).toBeGreaterThan(grantInsert);
-    // No commit/rollback/subtransaction between them — a partial outcome must be impossible.
+
+    // Nothing may split the two inserts into independently-committable units.
     const between = fn.slice(grantInsert, auditInsert);
-    expect(between).not.toMatch(/\bcommit\b|\brollback\b|\bexception\b/i);
+    expect(between).not.toMatch(/\bcommit\b/i);
+    expect(between).not.toMatch(/\brollback\b/i);
+
+    // R1 NOTE — this assertion originally forbade `exception` outright, and R1's narrow
+    // unique_violation handler correctly tripped it. The handler is PERMITTED and the intent is
+    // preserved, because it guards the GRANT insert alone and RETURNS: if it fires there is no
+    // grant at all, and if it does not, execution reaches the audit insert in the same
+    // transaction. What must stay forbidden is a handler that could let execution CONTINUE past
+    // a failure — that is how a grant outlives its attribution.
+    const handlers = between.match(/exception\s+when\s+([a-z_]+)/gi) ?? [];
+    expect(handlers).toEqual(['exception when unique_violation']);
+    const handlerBody = between.slice(between.indexOf('exception when unique_violation'));
+    expect(handlerBody).toMatch(/return jsonb_build_object\('ok', false/);
+    expect(handlerBody).not.toMatch(/\bnull\s*;/);
   });
 
   it('never updates metadata after the fact', () => {

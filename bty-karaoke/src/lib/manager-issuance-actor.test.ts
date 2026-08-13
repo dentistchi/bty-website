@@ -3,7 +3,9 @@
 // The manager session is deliberately anonymous: `signManagerSession` mints `{ m: 1, e: expiry }`
 // and `managerAuthorized` returns a boolean. There is no account, no email, no operator row, and
 // no session record anywhere in this path. So the ONLY honest attribution is "a valid shared
-// manager credential was presented", plus enough to tell one session from another.
+// manager credential was presented", plus a fingerprint that tells one TOKEN VALUE from another.
+// Not one person from another, and not one physical login session from another — the credential
+// is shared, so one token may be held by many and one person may mint many.
 //
 // These tests exist to stop that honesty eroding in either direction: by recording too little
 // (an unattributed grant) or by recording a person the server never authenticated.
@@ -49,18 +51,28 @@ describe('managerIssuanceActor', () => {
     expect(a!.actor_id).toBe('bty_mgr');
   });
 
-  it('carries a session fingerprint that distinguishes two sessions', async () => {
-    const one = await managerIssuanceActor(reqWithCookie('session-one'), 'manager_issue');
-    const two = await managerIssuanceActor(reqWithCookie('session-two'), 'manager_issue');
+  it('correlates by TOKEN VALUE — different tokens give different fingerprints', async () => {
+    const one = await managerIssuanceActor(reqWithCookie('token-one'), 'manager_issue');
+    const two = await managerIssuanceActor(reqWithCookie('token-two'), 'manager_issue');
     expect(one!.session_fp).not.toBe(two!.session_fp);
   });
 
-  it('is stable within one session, so a burst of issues is provably ONE session', async () => {
-    // This is the exact question BUILD 26M could not answer about 15 grants in 11 seconds.
+  it('is stable for one token value, so a burst is traceable to ONE TOKEN (not one person)', async () => {
+    // BUILD 26M could not tell whether 15 grants in 11 seconds shared an origin at all. This
+    // narrows that to the token — deliberately NOT to a human or a physical login session: the
+    // credential is shared, so one token may be held by many people and one person may mint many
+    // tokens. The unique human operator remains unknown.
     const burst = await Promise.all(
-      Array.from({ length: 5 }, () => managerIssuanceActor(reqWithCookie('same-session'), 'manager_issue')),
+      Array.from({ length: 5 }, () => managerIssuanceActor(reqWithCookie('same-token'), 'manager_issue')),
     );
     expect(new Set(burst.map((b) => b!.session_fp)).size).toBe(1);
+  });
+
+  it('claims no human identity through the fingerprint either', async () => {
+    // A matching fingerprint is evidence of a common TOKEN, never of a common operator.
+    const a = await managerIssuanceActor(reqWithCookie('shared-token'), 'manager_issue');
+    expect(a!.actor_kind).toBe('shared_manager_credential');
+    expect(a!.actor_id).toBe('bty_mgr');
   });
 
   it('the fingerprint is a truncated SHA-256 of the token — never the token itself', async () => {

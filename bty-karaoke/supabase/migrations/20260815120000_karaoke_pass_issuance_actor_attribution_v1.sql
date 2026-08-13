@@ -121,11 +121,32 @@ begin
   -- Replay: the same issue key returns its grant unchanged. A retry does NOT re-attribute an
   -- existing grant — the provenance of a pass is the provenance of the issuance that created it,
   -- and a second caller replaying the key did not create it.
+  --
+  -- R1 — THE REPLAY BOUNDARY. `timed_pass_issue_idem_idx` is UNIQUE on
+  -- (issue_idempotency_key) ALONE — global, never account-scoped — and the key is chosen by the
+  -- CALLER, not the server. So a key already spent on account A, presented again for account B,
+  -- found A's row and this function returned `ok:true` with A's passGrantId, passType and
+  -- status: a success B never received, and a disclosure of another account's grant. The unique
+  -- index prevented a duplicate GRANT; nothing prevented the false REPORT. The same read also
+  -- accepted a different pass_type as "the same request", replaying a ONE_HOUR grant to a caller
+  -- who asked for FOUR_HOURS.
+  --
+  -- The lookup stays GLOBAL on purpose — narrowing it to the account would hide the collision
+  -- rather than detect it, and the unique index would then surface it as a raw 23505.
+  --
+  -- Authority for the shape: `create_additional_karaoke_room` already ratified it — "SAME key +
+  -- SAME payload replays the existing Room (replayed:true); a DIFFERENT payload →
+  -- 'idempotency_conflict'". A different account, or a different product, is a different payload.
   select * into v_existing
     from public.timed_access_pass_grants where issue_idempotency_key = v_key limit 1;
   if found then
-    return jsonb_build_object('ok', true, 'passGrantId', v_existing.id,
-      'passType', v_existing.pass_type, 'status', v_existing.status, 'reused', true);
+    if v_existing.account_id = p_account_id and v_existing.pass_type = p_pass_type then
+      return jsonb_build_object('ok', true, 'passGrantId', v_existing.id,
+        'passType', v_existing.pass_type, 'status', v_existing.status, 'reused', true);
+    end if;
+    -- Fail closed, and say NOTHING about the row that owns the key: no id, no status, no type,
+    -- no account. The caller learns only that this key is not theirs to reuse.
+    return jsonb_build_object('ok', false, 'error', 'idempotency_conflict');
   end if;
 
   -- A PRO base account cannot consume a pass — block issuance (never a silent no-op).
@@ -138,10 +159,21 @@ begin
   -- Both rows below take their actor from the SAME v_actor, extracted from the SAME document.
   -- The grant's `issued_by_manager` and the audit's `actor_ref` therefore cannot disagree about
   -- who issued a pass, which two independently-passed parameters could.
-  insert into public.timed_access_pass_grants
-    (account_id, pass_type, duration_seconds, issued_by_manager, issue_reason, issue_idempotency_key)
-  values (p_account_id, p_pass_type, v_dur, v_actor, v_reason, v_key)
-  returning id into v_new_id;
+  -- R1 — the read above cannot serialize a CONCURRENT collision: the advisory lock is keyed by
+  -- ACCOUNT, so two issuances of one key to two different accounts take different locks and
+  -- never exclude each other. The global unique index is what actually stops the duplicate, and
+  -- catching it here turns the same logical situation into the same typed answer instead of a
+  -- raw 23505 the caller has to interpret. Deliberately narrow: `unique_violation` ONLY, and it
+  -- RETURNS A FAILURE — it never swallows an error into a success, and the audit insert below
+  -- stays outside it so a failed attribution still aborts the whole issuance.
+  begin
+    insert into public.timed_access_pass_grants
+      (account_id, pass_type, duration_seconds, issued_by_manager, issue_reason, issue_idempotency_key)
+    values (p_account_id, p_pass_type, v_dur, v_actor, v_reason, v_key)
+    returning id into v_new_id;
+  exception when unique_violation then
+    return jsonb_build_object('ok', false, 'error', 'idempotency_conflict');
+  end;
 
   -- One statement writes the ISSUED event and its provenance together. There is no window in
   -- which the grant exists and the attribution does not: both inserts are in this function's

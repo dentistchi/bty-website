@@ -76,6 +76,12 @@ describe('issueTimedPass', () => {
       .toEqual({ ok: false, error: 'issuance_provenance_required' });
   });
 
+  it('maps idempotency_conflict to a typed rejection (no throw)', async () => {
+    rpc.mockResolvedValue({ data: { ok: false, error: 'idempotency_conflict' }, error: null });
+    expect(await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'shared', issuance: ISSUANCE }))
+      .toEqual({ ok: false, error: 'idempotency_conflict' });
+  });
+
   it('returns reused=true on an idempotent replay', async () => {
     rpc.mockResolvedValue({ data: { ok: true, passGrantId: 'g1', passType: 'ONE_HOUR', status: 'AVAILABLE', reused: true }, error: null });
     const out = await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'k1', issuance: ISSUANCE });

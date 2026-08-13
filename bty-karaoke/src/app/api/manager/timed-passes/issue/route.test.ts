@@ -139,6 +139,21 @@ describe('POST /api/manager/timed-passes/issue', () => {
     expect(issueTimedPass).not.toHaveBeenCalled();
   });
 
+  it('26O-R1: an idempotency conflict is a 409 and discloses nothing about the other grant', async () => {
+    state.ok = true;
+    issueTimedPass.mockResolvedValue({ ok: false, error: 'idempotency_conflict' });
+    const res = await POST(req({ accountId: '11111111-1111-1111-1111-111111111111', passType: 'ONE_HOUR', idempotencyKey: 'shared' }));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body).toEqual({ ok: false, error: 'idempotency_conflict' });
+    // Naming the grant that owns the key would disclose another account's entitlement to
+    // whoever guessed the key.
+    expect(body).not.toHaveProperty('passGrantId');
+    expect(body).not.toHaveProperty('status');
+    expect(body).not.toHaveProperty('passType');
+    expect(body).not.toHaveProperty('accountId');
+  });
+
   it('26O: an unattributed RPC refusal is a 500, not a client error, and issues nothing', async () => {
     state.ok = true;
     issueTimedPass.mockResolvedValue({ ok: false, error: 'issuance_provenance_required' });

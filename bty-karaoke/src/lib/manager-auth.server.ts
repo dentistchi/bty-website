@@ -152,14 +152,24 @@ export type IssuanceActor = {
   /** The operator label. Shared, and therefore not a unique identity. */
   actor_id: string;
   /**
-   * Non-reversible fingerprint of the presented session token, truncated.
+   * Non-reversible fingerprint of the presented manager TOKEN VALUE, truncated.
    *
-   * This is the field that answers the question BUILD 26M could not: whether N grants issued
-   * seconds apart came from ONE authenticated session or N of them. It stores no credential —
-   * the token is HMAC output and this is a SHA-256 prefix of it, matching the existing
-   * `token_hash: await sha256Hex(token)` convention in host-auth.server.ts. It is truncated
-   * because it is a correlation fingerprint, never a lookup key, and it must never be mistaken
-   * for one.
+   * WHAT IT PROVES — and the boundary matters, because overstating it would rebuild the very
+   * problem BUILD 26M documented:
+   *   - two issuances carrying the SAME fingerprint were made with the SAME token value;
+   *   - two issuances carrying DIFFERENT fingerprints were made with DIFFERENT token values.
+   *
+   * WHAT IT DOES NOT PROVE. It does not identify a human, and it does not establish distinct
+   * physical login sessions. The credential is SHARED: any number of people may hold one token,
+   * and one person may mint any number of tokens. So a matching fingerprint is evidence of a
+   * common token, never of a common operator, and a differing one is evidence of two tokens,
+   * never of two people. The unique human operator remains UNKNOWN, and the credential remains
+   * `bty_mgr`.
+   *
+   * It stores no credential: the token is HMAC output and this is a SHA-256 prefix of it,
+   * matching the existing `token_hash: await sha256Hex(token)` convention in host-auth.server.ts.
+   * Truncated because it is a correlation fingerprint, never a lookup key, and must never be
+   * mistaken for one.
    */
   session_fp: string;
 };

@@ -137,7 +137,11 @@ export type IssueTimedPassError =
   | 'account_is_pro'
   // BUILD 26O — the RPC refused because no server-derived provenance reached it. It is a
   // refusal, not a partial success: nothing is written, so no unattributed grant exists.
-  | 'issuance_provenance_required';
+  | 'issuance_provenance_required'
+  // BUILD 26O-R1 — the idempotency key is already spent on a DIFFERENT account or a DIFFERENT
+  // pass type. Never a replay: a different payload is a different request. Carries no detail
+  // about the row that owns the key.
+  | 'idempotency_conflict';
 export type IssueTimedPassOutcome =
   | { ok: true; passGrantId: string; passType: PassType; status: PassStatus; reused: boolean }
   | { ok: false; error: IssueTimedPassError };

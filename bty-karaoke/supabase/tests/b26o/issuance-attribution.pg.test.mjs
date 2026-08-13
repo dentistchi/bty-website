@@ -79,7 +79,7 @@ await reset();
   ok(audit.metadata?.actor_id === 'bty_mgr', 'metadata records the shared operator label');
   ok(audit.metadata?.source === 'manager_issue', 'metadata records the server-side source route');
   ok(audit.metadata?.version === 1, 'metadata is versioned');
-  ok(audit.metadata?.session_fp === ISSUANCE.session_fp, 'metadata carries the session fingerprint');
+  ok(audit.metadata?.session_fp === ISSUANCE.session_fp, 'metadata carries the token fingerprint');
   ok(grant.issued_by_manager === 'bty_mgr' && audit.actor_ref === 'bty_mgr',
      'grant.issued_by_manager and audit.actor_ref agree — one document, one actor');
 
@@ -93,18 +93,24 @@ await reset();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
-console.log('\n-- the session fingerprint answers the BUILD 26M question --');
+console.log('\n-- the token fingerprint narrows the BUILD 26M question --');
 await reset();
 {
   const acct = await seedAccount();
-  // Fifteen grants seconds apart: ONE session, or fifteen? Before 26O this was unanswerable.
+  // Fifteen grants seconds apart: did they share an origin at all? Before 26O, unanswerable.
+  // After 26O the answer is scoped to the TOKEN VALUE — not to a human and not to a physical
+  // login session, because the credential is shared in both directions.
   for (let i = 0; i < 5; i++) await issue(acct, 'ONE_HOUR', null, `burst-a-${i}`, { ...ISSUANCE, session_fp: 'aaaaaaaaaaaaaaaa' });
   for (let i = 0; i < 3; i++) await issue(acct, 'ONE_HOUR', null, `burst-b-${i}`, { ...ISSUANCE, session_fp: 'bbbbbbbbbbbbbbbb' });
   const groups = await q(
     `select metadata->>'session_fp' fp, count(*)::int n from timed_access_pass_audit
       where action='ISSUED' group by 1 order by n desc`);
-  ok(groups.length === 2, `two distinct sessions are distinguishable (found ${groups.length})`);
-  ok(groups[0].n === 5 && groups[1].n === 3, 'and each session\'s issuance count is exact (5 / 3)');
+  ok(groups.length === 2, `two distinct TOKEN VALUES are distinguishable (found ${groups.length})`);
+  ok(groups[0].n === 5 && groups[1].n === 3, "and each token's issuance count is exact (5 / 3)");
+  // Stated as the limit, not the claim: this does not identify operators.
+  const kinds = await q(`select distinct metadata->>'actor_kind' k, metadata->>'actor_id' a from timed_access_pass_audit where action='ISSUED'`);
+  ok(kinds.length === 1 && kinds[0].k === 'shared_manager_credential' && kinds[0].a === 'bty_mgr',
+     'both token groups still resolve to the SAME shared credential — the human stays unknown');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
@@ -216,6 +222,99 @@ await reset();
   const rows = await q(`select metadata from timed_access_pass_audit where action='ISSUED' order by created_at`);
   ok(rows.length === 2 && rows[0].metadata === null && rows[1].metadata !== null,
      'old row unattributed, new row attributed — no backfill, no fabrication');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+console.log('\n-- R1: the idempotency replay boundary --');
+//
+// `timed_pass_issue_idem_idx` is UNIQUE on (issue_idempotency_key) ALONE — global, not
+// account-scoped — and the key is chosen by the CALLER. So a key already used for account A,
+// presented again for account B, finds A's row. The unique index stops a duplicate grant; it
+// does NOT stop the function reporting someone else's grant as a success for B.
+//
+// The repository already ratified the correct shape for this in create_additional_karaoke_room:
+// "SAME key + SAME payload replays the existing Room (replayed:true); a DIFFERENT payload →
+// 'idempotency_conflict'". A different ACCOUNT or a different PASS TYPE is a different payload.
+await reset();
+{
+  const a = await seedAccount();
+  const b = await seedAccount();
+
+  const first = (await issue(a, 'ONE_HOUR', null, 'shared-key')).r;
+  ok(first.ok === true && first.reused === false, 'A: first issuance succeeds');
+
+  // ---- A. same key, DIFFERENT ACCOUNT ------------------------------------------------
+  const cross = (await issue(b, 'ONE_HOUR', null, 'shared-key')).r;
+  ok(cross.ok === false, 'A: a key already used by another account does NOT report success');
+  ok(cross.error === 'idempotency_conflict', `A: it fails closed as idempotency_conflict (got ${cross.error ?? 'ok:true'})`);
+  ok(cross.passGrantId === undefined, "A: the conflict does not leak the other account's passGrantId");
+  ok(cross.status === undefined && cross.passType === undefined,
+     "A: the conflict leaks no other-account status or pass type either");
+
+  const bGrants = await one(`select count(*)::int n from timed_access_pass_grants where account_id=$1`, [b]);
+  ok(bGrants.n === 0, 'A: account B received no grant');
+  const total = await counts();
+  ok(total.g === 1, 'A: no second grant was created anywhere');
+
+  // ---- B. same key + same account, DIFFERENT PASS TYPE --------------------------------
+  const wrongType = (await issue(a, 'FOUR_HOURS', null, 'shared-key')).r;
+  ok(wrongType.ok === false, 'B: the same key for a DIFFERENT pass type does not replay');
+  ok(wrongType.error === 'idempotency_conflict', `B: it fails closed as idempotency_conflict (got ${wrongType.error ?? 'ok:true'})`);
+  const aGrants = await q(`select pass_type, duration_seconds from timed_access_pass_grants where account_id=$1`, [a]);
+  ok(aGrants.length === 1 && aGrants[0].pass_type === 'ONE_HOUR',
+     'B: the original ONE_HOUR grant is untouched and no FOUR_HOURS grant appeared');
+
+  // ---- the TRUE replay still replays --------------------------------------------------
+  const trueReplay = (await issue(a, 'ONE_HOUR', null, 'shared-key')).r;
+  ok(trueReplay.ok === true && trueReplay.reused === true && trueReplay.passGrantId === first.passGrantId,
+     'same account + same pass type + same key still replays the SAME grant');
+
+  const auditRows = await one(`select count(*)::int n from timed_access_pass_audit where action='ISSUED'`);
+  ok(auditRows.n === 1, 'a conflict writes no ISSUED audit row');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+console.log('\n-- R1: the CONCURRENT collision reaches the same verdict --');
+//
+// The sequential cases above never reach the unique_violation handler: the read catches them
+// first. A mutation test proved that gap was real — a handler rewritten to return
+// `{ok:true, reused:true}` SURVIVED the whole suite. Only a genuine race exercises it.
+//
+// The advisory lock is keyed by ACCOUNT, so two accounts sharing one key take DIFFERENT locks
+// and cannot exclude each other. The global unique index is the only thing standing between
+// them, and this proves what the function does when it fires.
+await reset();
+{
+  const a = await seedAccount();
+  const b = await seedAccount();
+
+  const other = new pg.Client(CONN); await other.connect();
+  // Client 1 inserts and HOLDS the transaction open, so client 2's read cannot see the row.
+  await other.query('begin');
+  const first = (await other.query(
+    `select public.issue_timed_access_pass($1,'ONE_HOUR',null,'race-key',$2) as r`,
+    [a, JSON.stringify(ISSUANCE)])).rows[0].r;
+  ok(first.ok === true, 'racer 1 issues inside an open transaction');
+
+  // Client 2 finds nothing, attempts the insert, and blocks on the unique index.
+  const racer2 = db.query(
+    `select public.issue_timed_access_pass($1,'ONE_HOUR',null,'race-key',$2) as r`,
+    [b, JSON.stringify(ISSUANCE)]);
+  await new Promise(r => setTimeout(r, 250));   // let it reach the index and block
+  await other.query('commit');
+  await other.end();
+
+  const second = (await racer2).rows[0].r;
+  ok(second.ok === false, 'the losing racer does NOT report success');
+  ok(second.error === 'idempotency_conflict',
+     `the index collision surfaces as the SAME typed conflict (got ${second.error ?? 'ok:true'})`);
+  ok(second.passGrantId === undefined, 'and still leaks no grant id');
+
+  const total = await counts();
+  ok(total.g === 1, 'exactly one grant exists after the race');
+  const owner = await one(`select account_id from timed_access_pass_grants where issue_idempotency_key='race-key'`);
+  ok(owner.account_id === a, 'and it belongs to the racer that actually won');
+  ok(total.a === 1, 'exactly one ISSUED audit row — the loser wrote nothing');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
