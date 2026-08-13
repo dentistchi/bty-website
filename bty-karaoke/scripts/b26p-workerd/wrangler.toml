@@ -1,0 +1,6 @@
+# BUILD 26P Worker-runtime proof. Mirrors the PRODUCTION Worker's compatibility settings exactly
+# (see bty-karaoke/wrangler.toml) so a pass here means the real runtime, not Node-with-a-hat.
+name = "b26p-workerd-proof"
+main = "worker.ts"
+compatibility_date = "2026-04-26"
+compatibility_flags = ["nodejs_compat"]

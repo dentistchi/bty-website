@@ -280,3 +280,16 @@ export const DeleteAccountSchema = z.object({
   // client). Single-use, exchanged server-side only, never logged, never echoed back.
   appleAuthorizationCode: z.string().trim().min(1).max(2048).optional(),
 });
+
+// Apple StoreKit transaction verification (BUILD 26P, Track B Slice 3).
+//
+// The ONLY accepted input is the signed transaction itself. `.strict()` rejects every other key,
+// which is what makes the trust boundary structural rather than a matter of care: there is no
+// accountId, purchaseOwnerRef, appAccountToken, transactionId, productId, environment or bundleId
+// to prefer over the verified payload, because none of them is accepted at all. The account comes
+// from the session; every Apple fact comes from the JWS after its chain is verified.
+export const VerifyAppleTransactionSchema = z
+  .object({
+    signedTransaction: z.string().trim().min(1).max(16384),
+  })
+  .strict();
