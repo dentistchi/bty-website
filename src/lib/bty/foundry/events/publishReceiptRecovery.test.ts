@@ -295,3 +295,30 @@ describe("[3.2Q-R1] §8A–D — nothing before the final stamp writes a draft",
     expect(tables.foundry_module_drafts[0].status).toBe("draft");
   });
 });
+
+describe("[3.2Q-R1] §7 — the concurrent loser reconciles too", () => {
+  it("the UNIQUE collision returns the winner, reconciles this draft, and leaves one event", async () => {
+    /*
+      FOUND BY GREP, NOT BY THIS SUITE. The first version of this repair fixed the retry path
+      and left the concurrent-loser branch returning `snapshot_failed` over a winner whose
+      session exists — the same falsehood, one branch over. Both paths now reconcile and both
+      report existence rather than failure.
+    */
+    const tables: Tables = {
+      foundry_module_drafts: [draft()],
+      // The winner landed first: its module row is already there, its final stamp is not.
+      foundry_event_module: [{ event_id: "ev-winner", source_draft_id: V2, module_version: 2, module_snapshot: {}, created_at: "2026-08-13T00:00:00.000Z" }],
+      foundry_events: [{ id: "ev-winner", owner_user_id: OWNER, created_at: "2026-08-13T00:00:00.000Z" }],
+    };
+    const admin = makeFakeAdmin(tables, { table: "foundry_event_module", op: "insert" });
+    const r = await publishDraft(admin, OWNER, V2, "en");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value.reused).toBe(true);
+    // Exactly one event survives, and it is the winner's.
+    expect(tables.foundry_event_module).toHaveLength(1);
+    expect(tables.foundry_event_module[0].event_id).toBe("ev-winner");
+    expect(tables.foundry_module_drafts[0].status).toBe("published");
+    expect(tables.foundry_module_drafts[0].published_at).toBe("2026-08-13T00:00:00.000Z");
+  });
+});

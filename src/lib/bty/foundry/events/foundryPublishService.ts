@@ -416,8 +416,17 @@ export async function publishDraft(
     await admin.from("foundry_events").delete().eq("id", eventId).eq("owner_user_id", ownerUserId);
     const winner = await getPublishedEventBySourceDraft(admin, draftId);
     if (winner) {
+      /*
+        THE CONCURRENT LOSER (Slice 3.2Q-R1). The UNIQUE on `source_draft_id` chose the other
+        request; its event is durable and this one just deleted its own. The winner may have
+        raced ahead of its own final stamp, so this path reconciles too — and, like the retry
+        path, a failed READ here means the winner's session EXISTS and could not be shown,
+        which is not a creation failure.
+      */
+      const reconciled = await reconcilePublicationReceipt(admin, ownerUserId, draftId, winner);
+      if (reconciled === "unreconciled") return { ok: false, reason: "publish_receipt_unreconciled" };
       const snap = await snapshotFor(admin, ownerUserId, winner.event_id);
-      if (!snap) return { ok: false, reason: "snapshot_failed" };
+      if (!snap) return { ok: false, reason: "session_created_view_unavailable" };
       const committed = await readCommittedParticipation(admin, winner.event_id);
       return { ok: true, value: { snapshot: snap, reused: true, participation: committed } };
     }
