@@ -45,8 +45,11 @@ describe('BUILD 26P — the trust anchor', () => {
     expect(hex).toBe(APPLE_ROOT_CA_G3_SHA256);
   });
 
-  it('ships exactly one trusted root, and it is Apple G3', () => {
-    expect(APPLE_TRUSTED_ROOTS).toHaveLength(1);
+  it('ships Apple\'s DOCUMENTED root set, G3 first', () => {
+    // R1.2: three roots, per Apple's App Store Server Library README. G3 leads because it is the
+    // anchor the real chain uses today; order is efficiency only — see apple-real-chain.test.ts,
+    // which proves a wider set does not widen what is accepted.
+    expect(APPLE_TRUSTED_ROOTS).toHaveLength(3);
     expect(APPLE_TRUSTED_ROOTS[0]).toBe(APPLE_ROOT_CA_G3_PEM);
   });
 

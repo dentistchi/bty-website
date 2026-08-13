@@ -99,11 +99,31 @@ interface VerifyOptions {
 }
 
 /**
- * Byte-exact comparison of two Distinguished Names.
+ * DER-exact comparison of two Distinguished Names. **Deliberately STRICTER than Apple's.**
  *
- * Compares the DER serialization of the ASN.1 Name rather than a formatted string. String
- * comparison would depend on the library's rendering of attribute order, escaping and OID
- * spelling — differences that are cosmetic to a human and decisive to a verifier.
+ * MEASURED, R1.2 — not assumed:
+ *
+ *   Apple (Node)  `intermediate.issuer === root.subject` — string equality over Node's FORMATTED
+ *                 DN (jws_verification.ts:279,284). Text-level, so it is insensitive to the ASN.1
+ *                 string type an attribute was encoded with.
+ *   RFC 5280      name matching allows more still: case-insensitive matching for several string
+ *                 types, and PrintableString/UTF8String are comparable when the text agrees.
+ *   BTY           byte equality over the DER serialization of the ASN.1 Name.
+ *
+ * So two RFC-EQUIVALENT DNs CAN differ in DER — same text encoded as PrintableString in one
+ * certificate and UTF8String in the other would match for Apple and for RFC 5280, and would be
+ * REJECTED here. That is a real difference and it is recorded rather than glossed: it can only
+ * ever cause a false REJECTION, never a false acceptance, so it fails closed.
+ *
+ * It is kept for 26P because the REAL Apple chain passes it — proven in apple-real-chain.test.ts
+ * against Apple's own published leaf/intermediate/root — and because @peculiar/x509 exposes no
+ * RFC-aware name comparator (`AsnData.equal` is itself ASN.1 byte equality; there is no
+ * caseIgnore/RFC-4518 canonicalisation anywhere in the package). Hand-writing a DN canonicaliser
+ * to close a documentation gap would add a subtle new attack surface to remove a difference that
+ * currently costs nothing. Predictable failure beats a cosmetic parity claim.
+ *
+ * If Apple ever re-encodes a DN mid-chain, this rejects genuine transactions and the fix is to
+ * adopt a reviewed comparator — not to loosen this into a string compare.
  */
 function sameDistinguishedName(a: x509.Name, b: x509.Name): boolean {
   const x = new Uint8Array(a.toArrayBuffer());
@@ -122,95 +142,35 @@ function decodeBase64UrlJson(segment: string): unknown {
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+export type AppleChainResult =
+  | { ok: true; leaf: x509.X509Certificate; intermediate: x509.X509Certificate }
+  | { ok: false; code: AppleJwsRejection };
+
 /**
- * Verify an Apple-signed compact JWS and return its payload claims.
+ * Verify an Apple certificate chain: leaf -> intermediate -> a root WE supply.
  *
- * The returned `environment` is the verifier's OWN reading of the payload, produced only after
- * the signature chained to a trusted root. The caller compares it against the payload again in
- * the domain validator, so an unverified hint can never cause the check to be skipped.
+ * Exported so the REAL Apple chain can be proved without a JWS. `verifyAppleSignedTransaction` is
+ * the only caller in the application, so this is the production path rather than a test-only echo.
+ *
+ * `x5c[2]` — the chain's own root material — is NEVER parsed here and never becomes an anchor.
  */
-export async function verifyAppleSignedTransaction(
-  signedTransaction: string,
-  options: VerifyOptions = {},
-): Promise<AppleJwsResult> {
-  const roots = options.trustedRootsPem ?? APPLE_TRUSTED_ROOTS;
+export async function verifyAppleCertificateChain(
+  x5c: readonly string[],
+  options: { at: Date; trustedRootsPem: readonly string[] },
+): Promise<AppleChainResult> {
+  const { at, trustedRootsPem: roots } = options;
 
-  // ---- A. structure ------------------------------------------------------------------------
-  if (typeof signedTransaction !== 'string' || signedTransaction.length === 0) {
-    return { ok: false, code: 'malformed_signed_transaction' };
-  }
-  if (signedTransaction.length > MAX_SIGNED_TRANSACTION_BYTES) {
-    return { ok: false, code: 'signed_transaction_too_large' };
-  }
-  const parts = signedTransaction.split('.');
-  if (parts.length !== 3 || parts.some((p) => p.length === 0)) {
-    return { ok: false, code: 'malformed_signed_transaction' };
-  }
-
-  let header: { alg?: unknown; x5c?: unknown };
-  try {
-    header = decodeBase64UrlJson(parts[0]) as { alg?: unknown; x5c?: unknown };
-  } catch {
-    return { ok: false, code: 'malformed_signed_transaction' };
-  }
-  if (typeof header !== 'object' || header === null) {
-    return { ok: false, code: 'malformed_signed_transaction' };
-  }
-
-  // ---- B. algorithm pinned -----------------------------------------------------------------
-  // Reading the token's own `alg` and trusting it is the classic forgery: `none` accepts an empty
-  // signature, and a substituted symmetric alg lets the verifier's own key material be the
-  // "signature". Apple signs StoreKit data with ES256; nothing else is accepted.
-  if (header.alg !== 'ES256') return { ok: false, code: 'unsupported_algorithm' };
-
-  // ---- C. x5c present and EXACTLY three ------------------------------------------------------
-  // Apple's verifier requires exactly three. R1 accepted 2–4, which is looser than Apple and
-  // would admit chain shapes Apple never produces.
-  if (!Array.isArray(header.x5c) || header.x5c.length === 0) {
-    return { ok: false, code: 'missing_certificate_chain' };
-  }
-  if (
-    header.x5c.length !== APPLE_X5C_LENGTH ||
-    !header.x5c.every((c) => typeof c === 'string' && c.length > 0)
-  ) {
-    return { ok: false, code: 'malformed_certificate_chain' };
-  }
+  if (x5c.length !== APPLE_X5C_LENGTH) return { ok: false, code: 'malformed_certificate_chain' };
 
   let leaf: x509.X509Certificate;
   let intermediate: x509.X509Certificate;
   try {
-    // ---- D. chain shape: leaf first, intermediate second (Apple's ordering).
-    // x5c[2] is the chain's own root material. It is parsed by NOBODY and read as a trust anchor
-    // by NOBODY — deliberately never even constructed, so it cannot be used by accident.
-    leaf = new x509.X509Certificate(header.x5c[0] as string);
-    intermediate = new x509.X509Certificate(header.x5c[1] as string);
+    // D. chain shape: leaf first, intermediate second (Apple's ordering).
+    leaf = new x509.X509Certificate(x5c[0]);
+    intermediate = new x509.X509Certificate(x5c[1]);
   } catch {
     return { ok: false, code: 'malformed_certificate_chain' };
   }
-
-  // ---- E. the effective date, Apple's offline way --------------------------------------------
-  // Apple dates the chain by the transaction's own `signedDate` when online checks are disabled.
-  // Parsed from the UNVERIFIED payload, which is safe because the payload must still survive the
-  // JWS signature check in step L: an attacker cannot move this date without Apple's key.
-  let unverifiedPayload: { signedDate?: unknown };
-  try {
-    unverifiedPayload = decodeBase64UrlJson(parts[1]) as { signedDate?: unknown };
-  } catch {
-    return { ok: false, code: 'malformed_signed_transaction' };
-  }
-  const signedDate = unverifiedPayload?.signedDate;
-  if (options.at === undefined) {
-    if (typeof signedDate !== 'number' || !Number.isFinite(signedDate)) {
-      return { ok: false, code: 'missing_signed_date' };
-    }
-  }
-  const at =
-    options.at ??
-    (() => {
-      const d = new Date(signedDate as number);
-      return Number.isNaN(d.getTime()) ? null : d;
-    })();
-  if (!at) return { ok: false, code: 'missing_signed_date' };
 
   // ---- F/G. anchor to OUR root, never to one the JWS supplied ------------------------------
   // The loop only ever tries roots from APPLE_TRUSTED_ROOTS (or a test's explicit anchor), and
@@ -280,6 +240,95 @@ export async function verifyAppleSignedTransaction(
   if (!intermediate.getExtension(APPLE_INTERMEDIATE_PURPOSE_OID)) {
     return { ok: false, code: 'intermediate_missing_apple_purpose' };
   }
+
+  return { ok: true, leaf, intermediate };
+}
+
+/**
+ * Verify an Apple-signed compact JWS and return its payload claims.
+ *
+ * The returned `environment` is the verifier's OWN reading of the payload, produced only after
+ * the signature chained to a trusted root. The caller compares it against the payload again in
+ * the domain validator, so an unverified hint can never cause the check to be skipped.
+ */
+export async function verifyAppleSignedTransaction(
+  signedTransaction: string,
+  options: VerifyOptions = {},
+): Promise<AppleJwsResult> {
+  const roots = options.trustedRootsPem ?? APPLE_TRUSTED_ROOTS;
+
+  // ---- A. structure ------------------------------------------------------------------------
+  if (typeof signedTransaction !== 'string' || signedTransaction.length === 0) {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+  if (signedTransaction.length > MAX_SIGNED_TRANSACTION_BYTES) {
+    return { ok: false, code: 'signed_transaction_too_large' };
+  }
+  const parts = signedTransaction.split('.');
+  if (parts.length !== 3 || parts.some((p) => p.length === 0)) {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+
+  let header: { alg?: unknown; x5c?: unknown };
+  try {
+    header = decodeBase64UrlJson(parts[0]) as { alg?: unknown; x5c?: unknown };
+  } catch {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+  if (typeof header !== 'object' || header === null) {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+
+  // ---- B. algorithm pinned -----------------------------------------------------------------
+  // Reading the token's own `alg` and trusting it is the classic forgery: `none` accepts an empty
+  // signature, and a substituted symmetric alg lets the verifier's own key material be the
+  // "signature". Apple signs StoreKit data with ES256; nothing else is accepted.
+  if (header.alg !== 'ES256') return { ok: false, code: 'unsupported_algorithm' };
+
+  // ---- C. x5c present and EXACTLY three ------------------------------------------------------
+  // Apple's verifier requires exactly three. R1 accepted 2–4, which is looser than Apple and
+  // would admit chain shapes Apple never produces.
+  if (!Array.isArray(header.x5c) || header.x5c.length === 0) {
+    return { ok: false, code: 'missing_certificate_chain' };
+  }
+  if (
+    header.x5c.length !== APPLE_X5C_LENGTH ||
+    !header.x5c.every((c) => typeof c === 'string' && c.length > 0)
+  ) {
+    return { ok: false, code: 'malformed_certificate_chain' };
+  }
+
+  // ---- E. the effective date, Apple's offline way --------------------------------------------
+  // Apple dates the chain by the transaction's own `signedDate` when online checks are disabled.
+  // Parsed from the UNVERIFIED payload, which is safe because the payload must still survive the
+  // JWS signature check in step L: an attacker cannot move this date without Apple's key.
+  let unverifiedPayload: { signedDate?: unknown };
+  try {
+    unverifiedPayload = decodeBase64UrlJson(parts[1]) as { signedDate?: unknown };
+  } catch {
+    return { ok: false, code: 'malformed_signed_transaction' };
+  }
+  const signedDate = unverifiedPayload?.signedDate;
+  if (options.at === undefined) {
+    if (typeof signedDate !== 'number' || !Number.isFinite(signedDate)) {
+      return { ok: false, code: 'missing_signed_date' };
+    }
+  }
+  const at =
+    options.at ??
+    (() => {
+      const d = new Date(signedDate as number);
+      return Number.isNaN(d.getTime()) ? null : d;
+    })();
+  if (!at) return { ok: false, code: 'missing_signed_date' };
+
+  // ---- F..K. the certificate chain, extracted so it is independently testable ---------------
+  // Split out in R1.2 so the REAL Apple chain can be proved on its own: we hold no Apple private
+  // key, so a genuine Apple leaf can never be paired with a genuine JWS signature in a test — the
+  // chain half has to stand by itself. This is the production path, not a parallel copy.
+  const chain = await verifyAppleCertificateChain(header.x5c as string[], { at, trustedRootsPem: roots });
+  if (!chain.ok) return { ok: false, code: chain.code };
+  const leaf = chain.leaf;
 
   // ---- K. the JWS signature itself, under the now-trusted leaf key ---------------------------
   let claims: AppleTransactionClaims;

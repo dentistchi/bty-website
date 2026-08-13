@@ -9,7 +9,13 @@ import {
   verifyAppleSignedTransaction,
   signedTransactionDigest,
 } from '../../src/lib/apple-iap.server';
-import { APPLE_TRUSTED_ROOTS } from '../../src/lib/apple-root-ca';
+import {
+  APPLE_TRUSTED_ROOTS, APPLE_ROOT_CA_G1_PEM, APPLE_ROOT_CA_G2_PEM,
+} from '../../src/lib/apple-root-ca';
+import { verifyAppleCertificateChain } from '../../src/lib/apple-iap.server';
+import {
+  REAL_APPLE_X5C, REAL_APPLE_CHAIN_EFFECTIVE_DATE_MS,
+} from '../../src/lib/apple-real-chain.fixture';
 import { buildTestPki, signTransaction, transactionPayload } from '../../src/lib/apple-test-pki.fixture';
 import { validateAppleTransaction } from '../../src/domain/apple-transaction';
 
@@ -121,7 +127,37 @@ export default {
     record('apple_root_parses_and_rejects_test_chain',
       realRootRejectsTestChain.ok === false && realRootRejectsTestChain.code === 'untrusted_certificate_chain');
 
-    // 8. SHA-256 digest helper.
+    // 8. R1.2 — the REAL Apple chain must PASS, under workerd, not just Node.
+    const realAt = new Date(REAL_APPLE_CHAIN_EFFECTIVE_DATE_MS);
+    const tReal = Date.now();
+    const realChain = await verifyAppleCertificateChain(REAL_APPLE_X5C, {
+      at: realAt, trustedRootsPem: APPLE_TRUSTED_ROOTS,
+    });
+    const realMs = Date.now() - tReal;
+    record('REAL_apple_chain_passes', realChain.ok === true,
+      realChain.ok
+        ? { leaf: realChain.leaf.subject, intermediate: realChain.intermediate.subject, ms: realMs }
+        : realChain);
+
+    // 8b. multi-root trust set loads and all three parse under workerd.
+    record('three_apple_roots_loaded', APPLE_TRUSTED_ROOTS.length === 3, { count: APPLE_TRUSTED_ROOTS.length });
+
+    // 8c. the real chain WITHOUT G3 must fail — it anchors because a root of OURS validated the
+    // intermediate, not because the names look Apple-like.
+    const withoutG3 = await verifyAppleCertificateChain(REAL_APPLE_X5C, {
+      at: realAt, trustedRootsPem: [APPLE_ROOT_CA_G1_PEM, APPLE_ROOT_CA_G2_PEM],
+    });
+    record('real_chain_without_G3_rejected',
+      withoutG3.ok === false && withoutG3.code === 'untrusted_certificate_chain', withoutG3);
+
+    // 8d. an attacker hierarchy still fails with ALL Apple roots loaded.
+    const attackerAllRoots = await verifyAppleCertificateChain(attacker.x5c, {
+      at: new Date(), trustedRootsPem: APPLE_TRUSTED_ROOTS,
+    });
+    record('attacker_chain_rejected_with_all_apple_roots',
+      attackerAllRoots.ok === false && attackerAllRoots.code === 'untrusted_certificate_chain', attackerAllRoots);
+
+    // 9. SHA-256 digest helper.
     const digest = await signedTransactionDigest('aaa.bbb.ccc');
     record('digest_works', /^[0-9a-f]{64}$/.test(digest));
 

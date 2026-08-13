@@ -32,6 +32,14 @@ beforeAll(async () => { pki = await buildTestPki(); });
 const OWNER = '11111111-2222-4333-8444-555555555555';
 
 describe('PARITY: SignedDataVerifier(enableOnlineChecks = false)', () => {
+  it('the trusted root set is Apple\'s DOCUMENTED set, not an algorithm-derived guess', () => {
+    // R1.2 corrected R1.1 here. The JWS algorithm constrains the LEAF KEY, not the algorithms
+    // used along the certification path, so "ES256 implies an ECC root" was wrong. Apple's
+    // library README directs callers to load the Apple Root Certificates section; that is three
+    // roots, and Apple's verifier does not filter them by JWS algorithm either.
+    expect(APPLE_TRUSTED_ROOTS).toHaveLength(3);
+  });
+
   it('x5c must be EXACTLY 3 — Apple requires three', async () => {
     expect(APPLE_X5C_LENGTH).toBe(3);
     for (const n of [1, 2, 4]) {
@@ -155,9 +163,9 @@ describe('PARITY: deliberate deviations, stated not buried', () => {
   });
 
   it('no Apple credential of any kind is required or present', () => {
-    // Offline verification needs only Apple's PUBLIC root. This is why the deployment holds no
+    // Offline verification needs only Apple's PUBLIC roots. This is why the deployment holds no
     // issuer id, key id or private key — the same property apple-auth.server.ts documents.
-    expect(APPLE_TRUSTED_ROOTS).toHaveLength(1);
+    expect(APPLE_TRUSTED_ROOTS).toHaveLength(3);
     const src = String(verifyAppleSignedTransaction);
     expect(src).not.toMatch(/issuerId|keyId|privateKey|Bearer/);
   });
