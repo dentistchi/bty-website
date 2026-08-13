@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateProgramProposal, requiredProgramKinds, PROGRAM_AUTHORSHIP_VERSION, PROGRAM_SCHEMA_NAME } from "./program-authorship";
-import { SCENARIO_DEFECT_REASONS, SCENARIO_FIELD_LIMIT } from "./program-coherence";
+import { SCENARIO_DEFECT_REASONS } from "./program-coherence";
 import { EVIDENCE_POLICY, evidencePolicyRuleIds } from "./evidence-policy";
 import type { BuilderAnswers } from "./module-builder";
 
@@ -51,18 +51,13 @@ function baseline() {
       assumptions: ["Participants are able to attend the session."],
       warnings: ["Training alone cannot settle a staffing shortage."],
       behavior_contract: { action_verb: "confirm", action_detail: "the owner and the deadline for every agreed item" },
-      scenario_contract: { pressure_condition: "only two minutes remain", pressure_detail: null },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     },
   } as Record<string, unknown>;
 }
-type Program = { scenario_contract: { pressure_condition: string; pressure_detail: string | null }; display_title: string; warnings: string[] };
-const withScenario = (pressure_condition: string, pressure_detail: string | null = null) => {
-  const c = baseline();
-  (c.program as Program).scenario_contract = { pressure_condition, pressure_detail };
-  return c;
-};
+type Program = { scenario_contract: { pressure_frame: string }; display_title: string; warnings: string[] };
 const validate = (candidate: Record<string, unknown>) => validateProgramProposal(candidate, ANSWERS, []);
 
 describe("[3.2P-A5-R2] the baseline is genuinely valid", () => {
@@ -72,35 +67,42 @@ describe("[3.2P-A5-R2] the baseline is genuinely valid", () => {
   });
 });
 
-describe("[3.2P-A5-R2] every scenario reason survives to the refusal", () => {
-  /**
-   * A5's whole problem in one table. All five of the first column's rows carry the SAME
-   * `refusal_code`; only the second column tells them apart.
-   */
-  const CASES: [string, Record<string, unknown>, string, string][] = [
-    ["missing", withScenario("short"), "scenario_without_pressure", "missing"],
-    ["too_long", withScenario(`only two minutes remain ${"and the queue is waiting ".repeat(8)}`.slice(0, SCENARIO_FIELD_LIMIT + 20)), "scenario_without_pressure", "too_long"],
-    ["generic", withScenario("it is difficult"), "scenario_without_pressure", "generic"],
-    ["restates_action", withScenario("confirm the owner and the deadline for every agreed item"), "scenario_without_pressure", "restates_action"],
-    ["no_pressure", withScenario("the agenda is on the screen"), "scenario_without_pressure", "no_pressure"],
-    ["independent_moment", withScenario("after the huddle ends"), "scenario_independent_moment", "independent_moment"],
-  ];
+describe("[3.2P-A5-R2] the scenario subtype, and what v22 did to it", () => {
+  /*
+    THIS BLOCK USED TO DRIVE ALL SIX REASONS through the real validator — `missing`, `too_long`,
+    `generic`, `restates_action`, `no_pressure`, `independent_moment` — because five of them
+    shared one umbrella code and A5 could not be classified without the discriminator.
 
-  for (const [label, candidate, code, reason] of CASES) {
-    it(`${label} → ${code} + ${reason}`, () => {
-      const v = validate(candidate);
-      expect(v.ok).toBe(false);
-      if (v.ok) return;
-      console.log(`  SCENARIO ${String(v.code).padEnd(28)} reason=${v.scenario?.reason ?? "—"}  field=${v.scenario?.field ?? "—"}`);
-      expect(v.code).toBe(code);
-      expect(v.scenario?.reason).toBe(reason);
-      // The subtype is never invented for an unrelated refusal.
-      expect(v.evidenceRule).toBeUndefined();
-    });
-  }
+    3.2P-A7-R2 removed the free-text pressure fields, so four of those six are unreachable by
+    construction: there is no prose to be generic, to restate the action, to name no difficulty,
+    or to name a second occasion. `missing` is the only reason a v22 proposal can still produce,
+    and it now means "not one of the twelve frames".
 
-  it("covers the whole closed vocabulary — a new reason fails here first", () => {
-    expect(CASES.map(([, , , r]) => r).sort()).toEqual([...SCENARIO_DEFECT_REASONS].sort());
+    The diagnostic itself is unchanged and still load-bearing — the ledger holds A6's and A7's
+    rows, and the vocabulary deliberately did not shrink.
+  */
+  it("an unknown frame is a SHAPE fault, so it carries no semantic subtype at all", () => {
+    const c = baseline();
+    (c.program as Program).scenario_contract = { pressure_frame: "after the meeting ends" };
+    const v = validate(c);
+    expect(v.ok).toBe(false);
+    if (v.ok) return;
+    expect(v.diagnosis?.path).toBe("program.scenario_contract.pressure_frame");
+    expect(v.scenario).toBeUndefined();
+    expect(v.evidenceRule).toBeUndefined();
+  });
+
+  it("and a valid frame produces no subtype either, because there is no defect", () => {
+    const v = validate(baseline());
+    expect(v.ok).toBe(true);
+    if (!v.ok) return;
+    expect("scenario" in v).toBe(false);
+  });
+
+  it("the closed vocabulary still holds all six — history stays readable", () => {
+    expect([...SCENARIO_DEFECT_REASONS].sort()).toEqual(
+      ["generic", "independent_moment", "missing", "no_pressure", "restates_action", "too_long"],
+    );
   });
 });
 
@@ -140,12 +142,8 @@ describe("[3.2P-A5-R2] every evidence rule survives to the refusal", () => {
 });
 
 describe("[3.2P-A5-R2] what did NOT change", () => {
-  it("no proposal becomes valid or invalid — this slice adds observability only", () => {
+  it("no proposal becomes valid or invalid — that slice added observability only", () => {
     expect(validate(baseline()).ok).toBe(true);
-    // The umbrella codes are exactly what they were before the subtype existed.
-    const v = validate(withScenario("the agenda is on the screen"));
-    expect(v.ok).toBe(false);
-    if (!v.ok) expect(v.code).toBe("scenario_without_pressure");
   });
 
   it("and the authorship version does NOT move for a diagnostic", () => {
@@ -154,8 +152,8 @@ describe("[3.2P-A5-R2] what did NOT change", () => {
       changed? Observability cannot change it, and moving the version would strand valid
       cached work for nothing. Deploy identity is the commit sha; that moves, and this does not.
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
   it("a successful proposal carries neither subtype", () => {

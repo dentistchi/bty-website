@@ -126,26 +126,19 @@ export const DETAIL_FIELDS: Partial<Record<JourneyElementKind, DetailField[]>> =
      */
     behaviourField("action", "What would you see or hear them do?", "observableAction"),
   ],
-  scenario: [
-    {
-      id: "pressure",
-      label: "What makes this moment hard?",
-      get: (c) => c.scenario?.pressureCondition ?? "",
-      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureCondition: v } } : c),
-    },
-    /*
-      NOT "where and when does it happen?" any more. That control is what let a Host give
-      the practice situation an occasion of its own, and the program then required the
-      behaviour at two different moments. When it happens is THE STANDARD's "When is it
-      required?", and there is only one of those.
-    */
-    {
-      id: "pressure-detail",
-      label: "Anything else making it hard? (optional)",
-      get: (c) => c.scenario?.pressureDetail ?? "",
-      set: (c, v) => (c.scenario ? { ...c, scenario: { ...c.scenario, pressureDetail: v } } : c),
-    },
-  ],
+  /*
+    NO SCENARIO CONTROLS ANY MORE (Slice 3.2P-A7-R2).
+
+    These were two free-text boxes over `pressureCondition` and `pressureDetail`. Those fields
+    no longer exist: the model selects a pressure FRAME and the server writes the clause, because
+    A7 proved a free-text pressure field will hold an occasion however clearly it is forbidden.
+
+    A PRODUCT CONSEQUENCE, STATED RATHER THAN HIDDEN: a Host can no longer hand-edit the
+    difficulty wording here. They still own the moment, the behaviour and the completion
+    evidence, and the scenario sentence is now derived the way WHY THIS MATTERS and THE STANDARD
+    already are. If Hosts turn out to need a say in WHICH difficulty, the right control is a
+    choice among the twelve frames — never a text box, which is the thing that failed.
+  */
   /*
     NO first-moment control any more (Slice 3.2L-R10-A). "When is it required?" and "when
     do they first do it for real?" were never two decisions — the second is a deterministic

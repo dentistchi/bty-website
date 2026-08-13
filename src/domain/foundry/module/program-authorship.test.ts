@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { renderPressureFrame } from "./program-coherence";
 import {
   requiredProgramKinds,
   missingProgramKinds,
@@ -89,10 +90,7 @@ function goodProposal(over: Record<string, unknown> = {}) {
       },
       // R5: IN CONTEXT is rendered from BOTH contracts. The model supplies only the
       // difficulty and the setting; relevance comes from the derivation.
-      scenario_contract: {
-        pressure_condition: "two people are already waiting to ask you questions and the shift ran late",
-        pressure_detail: null,
-      },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
       ...over,
@@ -340,14 +338,27 @@ describe("[3.2L] the validator fails closed", () => {
     if (r.ok) {
       const scenario = r.value.proposal.elements.find((e) => e.kind === "scenario")!;
       expect(scenario.content).not.toContain("courier");
-      expect(scenario.content).toContain("the shift ran late");
+      // v22: the clause is the SERVER'S, chosen by frame — stronger than "the model's prose is
+      // discarded", because there is no prose to discard.
+      expect(scenario.content).toContain(renderPressureFrame("time_is_short"));
     }
   });
 
-  it("refuses a scenario whose pressure is not a difficulty", () => {
-    reject((p) => {
-      p.program.scenario_contract = { pressure_condition: "it is difficult", pressure_detail: null };
-    }, "scenario_without_pressure");
+  it("a scenario with no difficulty cannot be expressed at all", () => {
+    /*
+      This used to hand the validator a pressure that named no difficulty and assert
+      `scenario_without_pressure`. v22 (3.2P-A7-R2) replaced the prose with one id from a closed
+      set, so the refusal became an impossibility — the same treatment the generic completion
+      question got at v4, two tests below.
+    */
+    const p = goodProposal();
+    p.program.scenario_contract = { pressure_frame: "the room is quiet and nothing is hard" };
+    const r = validateProgramProposal(p, CANONICAL);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.code).not.toBe("scenario_without_pressure");
+      expect(r.diagnosis?.path).toBe("program.scenario_contract.pressure_frame");
+    }
   });
 
   it("a generic completion question cannot be expressed at all", () => {

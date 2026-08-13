@@ -135,7 +135,7 @@ const proposeFields = (fields: { action_verb: string; action_detail: string }, h
       elements: kinds.map((k) => ({ kind: k, content: c[k], rationale: "grounded in the host's own answers" })),
       assumptions: ["the team meets regularly"], warnings: ["a meeting nobody attends is an attendance problem"],
       behavior_contract: fields,
-      scenario_contract: { pressure_condition: "the group is running late and people are already standing to leave", pressure_detail: null },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     },
@@ -332,8 +332,8 @@ describe("[3.2P-R3.7] R/V/W — authority is unchanged where it should be", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
     for (const spent of ["v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17"].map((v) => `program_authorship_${v}`)) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });
     }

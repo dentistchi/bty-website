@@ -63,10 +63,7 @@ export const V7_LIVE = {
     /** v11: the Host's evidence, carried by the server. Same string as `PREVIEW_ANSWERS`. */
     completion: { criterion: "Handoff record" },
   },
-  scenario: {
-    pressureCondition: "a tight deadline is approaching and teammates are waiting for information",
-    pressureDetail: "",
-  },
+  scenario: { frame: "time_is_short" },
   /*
     NO application moment (Slice 3.2L-R10-A). v8's live window died refusing the model's own
     first moment; v9 derives it from the trigger, so the fixture carries none and the

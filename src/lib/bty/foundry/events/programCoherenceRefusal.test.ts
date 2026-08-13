@@ -262,7 +262,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     const scenario = program.properties.scenario_contract;
     expect(scenario.type).toEqual(["object", "null"]);
     expect(scenario.additionalProperties).toBe(false);
-    expect([...scenario.required]).toEqual(["pressure_condition", "pressure_detail"]);
+    // v22 (3.2P-A7-R2): one enum, no prose. The model's only scenario contribution is WHICH kind.
+    expect([...scenario.required]).toEqual(["pressure_frame"]);
     // R6: the three downstream instructional authorities, all nullable for designs that
     // do not require those sections.
     for (const key of [ "completion_contract", "follow_up_contract"] as const) {
@@ -305,8 +306,8 @@ describe("[3.2L-R4] G12 — the transport carries the exact strict schema", () =
     // authorised to design. Reconciliation needs to tell those two apart.
     // R8 moves BOTH: the wire contract changed (completion restructured, evidence_language
     // and evidence_or_confirmation removed), so the schema name moves with it.
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
   it("a provider that cannot honour the schema fails CLOSED, never downgraded", async () => {

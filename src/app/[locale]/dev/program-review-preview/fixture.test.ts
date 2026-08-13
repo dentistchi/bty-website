@@ -32,6 +32,7 @@ import { resolveRefusalCopy } from "@/components/foundry/event-rooms/programRefu
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING } from "@/components/foundry/event-rooms/programReviewFields";
 import {
   namesIndependentMoment,
+  renderPressureFrame,
   validateScenarioContract,
   deriveFirstApplicationMoment,
 } from "@/domain/foundry/module/program-coherence";
@@ -255,7 +256,7 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
         "Completion evidence: Handoff record.",
     );
     expect(derived("scenario")).toBe(
-      "At each handoff point, even when a tight deadline is approaching and teammates are waiting for information, " +
+      "At each handoff point, even when time is running short, " +
         "team members must state each unfinished item and identify its next owner. " +
         "Completion evidence: Handoff record.",
     );
@@ -280,20 +281,24 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
       expect(derived(kind), kind).toContain(PREVIEW_ANSWERS.successEvidence!);
     }
     expect(derived("field_application")).toContain("You will know it happened by this: Handoff record.");
-    expect(namesIndependentMoment(PREVIEW_CONTRACTS.scenario!.pressureCondition)).toBe(false);
+    // v12: the pressure clause is server-written from the frame, so there is no field to check.
+    expect(namesIndependentMoment(renderPressureFrame(PREVIEW_CONTRACTS.scenario!.frame))).toBe(false);
     // v9: the first instance is DERIVED from the trigger, so alignment is not checked — it
     // is guaranteed by construction (Slice 3.2L-R10-A).
     expect(deriveFirstApplicationMoment(PREVIEW_CONTRACTS.behavior.trigger)).toEqual({ ok: true, value: "Next handoff point" });
     expect(derived("scenario")!.startsWith("At each handoff point, even when")).toBe(true);
   });
 
-  it("a smuggled second moment is still refused with its own code", () => {
-    const r = validateScenarioContract(
-      { pressure_condition: "during the next team meeting nobody is listening", pressure_detail: null },
-      PREVIEW_CONTRACTS.behavior,
-    );
+  it("a second moment can no longer be smuggled in — but its refusal copy stays readable", () => {
+    /*
+      v22 (Slice 3.2P-A7-R2): `pressure_frame` takes one of twelve server ids, so there is no
+      field to smuggle an occasion into. The CODE and its Host-facing copy stay, because the
+      ledger holds attempts that carry them — A3, A6 and A7 — and a Host reading a historical
+      refusal should still see a sentence that explains it.
+    */
+    const r = validateScenarioContract({ pressure_frame: "after the handoff ends" }, PREVIEW_CONTRACTS.behavior);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect.reason).toBe("independent_moment");
+    if (!r.ok) expect(r.defect.reason).toBe("missing");
     expect(PROGRAM_REJECT_CODES).toContain("scenario_independent_moment");
     expect(resolveRefusalCopy("validation_refused", "scenario_independent_moment").headline).toMatch(/different moment/i);
   });
@@ -345,8 +350,8 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
   it("no string from a retired fixture survives", () => {

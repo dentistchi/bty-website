@@ -88,7 +88,7 @@ const program = (over: Record<string, unknown> = {}, content = CONTENT) => ({
     assumptions: ["the team holds a morning huddle"],
     warnings: ["a huddle nobody attends is an attendance problem, not a training one"],
     behavior_contract: CONTRACT,
-    scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     ...over,
@@ -100,9 +100,17 @@ const respond = (body: unknown) => ({
   usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
 });
 
-/** W2's exact first refusal: a scenario naming nothing the floor recognises. */
-const NO_PRESSURE = program({
-  scenario_contract: { pressure_condition: "the team works hard every day", pressure_detail: null },
+/*
+  RE-BASED AT v22 (Slice 3.2P-A7-R2). This suite drove the freeze through a SCENARIO-pressure
+  repair — W2's exact chain. There is no scenario repair any more: the pressure fields left the
+  wire, so both scenario codes are unreachable and nothing licenses that surface.
+
+  The freeze machinery is unchanged, so the suite is re-based onto a family that still exists —
+  `evidence_overclaim` on the narrative surface, which is the one A1 and A4 actually hit. Every
+  property below is the same property; only the refusal that triggers it moved.
+*/
+const OVERCLAIMING = program({
+  warnings: ["A workflow change will improve communication."],
 });
 /**
  * SINCE 3.2P-A1-R3 A REPAIR RETURNS ITS LICENCE, NOT A PROGRAM.
@@ -111,18 +119,20 @@ const NO_PRESSURE = program({
  * never shown, and judged on exact serialisation. The retry now answers a patch schema — here,
  * the two scenario-pressure fields — and the server merges it into a baseline it kept.
  */
-const pressurePatch = (pressure_condition: string, pressure_detail: string | null = null) => ({
-  pressure_condition, pressure_detail,
+const narrativePatch = (warnings: string[]) => ({
+  display_title: "Naming an Owner for Every Agreed Action",
+  assumptions: ["Participants are able to attend the session."],
+  warnings,
 });
 /**
  * A patch carrying a field its licence does not name. The schema makes this impossible at the
  * provider; the merge refuses it anyway, so a server-side mistake cannot slip through.
  */
-const OUT_OF_LICENCE = { ...pressurePatch("a queue is building at the desk"), elements: [] };
-/** A patch that stays inside its licence and still names no real pressure. */
-const STILL_NO_PRESSURE = pressurePatch("the team is focused and everything moves along");
+const OUT_OF_LICENCE = { ...narrativePatch(["Training alone cannot settle a staffing shortage."]), elements: [] };
+/** A patch that stays inside its licence and still over-claims. */
+const STILL_OVERCLAIMING = narrativePatch(["Manager reinforcement will improve accountability."]);
 /** A patch that fixes exactly the licensed field. */
-const REPAIRED = pressurePatch("a queue is building at the desk and two people are waiting");
+const REPAIRED = narrativePatch(["Training alone cannot settle a staffing shortage."]);
 /** A whole valid program — what the FIRST call answers, and only the first. */
 const VALID_PROGRAM = program();
 
@@ -168,7 +178,7 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   });
 
   it("B — a licensed retry that stays inside its envelope stores FALSE", async () => {
-    chatCreate.mockResolvedValueOnce(respond(NO_PRESSURE)).mockResolvedValueOnce(respond(STILL_NO_PRESSURE));
+    chatCreate.mockResolvedValueOnce(respond(OVERCLAIMING)).mockResolvedValueOnce(respond(STILL_OVERCLAIMING));
     const r = await run();
     expect(r.ok).toBe(false);
     const c = calls();
@@ -176,11 +186,11 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
     expect(c[0].repairFreezeViolated).toBeNull();
     expect(c[1].repairFreezeViolated, "evaluated and held").toBe(false);
     // …and it failed on its own merits, which is now distinguishable from a discard.
-    expect(c[1].refusal?.code).toBe("scenario_without_pressure");
+    expect(c[1].refusal?.code).toBe("evidence_overclaim");
   });
 
   it("C — a retry that leaves its envelope stores TRUE", async () => {
-    chatCreate.mockResolvedValueOnce(respond(NO_PRESSURE)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
+    chatCreate.mockResolvedValueOnce(respond(OVERCLAIMING)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
     await run();
     const c = calls();
     expect(c).toHaveLength(2);
@@ -188,12 +198,12 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   });
 
   it("D — a violation still preserves the ORIGINAL refusal on the row", async () => {
-    chatCreate.mockResolvedValueOnce(respond(NO_PRESSURE)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
+    chatCreate.mockResolvedValueOnce(respond(OVERCLAIMING)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
     await run();
     const c = calls();
     // The discarded repair's own fault would have been `missing_required_kind/follow_up`.
     // What is stored is call 1's refusal — truth preservation, unchanged by this slice.
-    expect(c[1].refusal).toEqual({ code: "scenario_without_pressure", kind: "scenario" });
+    expect(c[1].refusal).toEqual({ code: "evidence_overclaim", kind: null });
     expect(c[1].refusal?.code).not.toBe("missing_required_kind");
     // Which is exactly why the boolean has to exist: the codes alone cannot tell B from C.
     expect(c[1].refusal).toEqual(c[0].refusal);
@@ -201,7 +211,7 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   });
 
   it("E — a violation stays bounded: no child 3", async () => {
-    chatCreate.mockResolvedValueOnce(respond(NO_PRESSURE)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
+    chatCreate.mockResolvedValueOnce(respond(OVERCLAIMING)).mockResolvedValueOnce(respond(OUT_OF_LICENCE));
     await run();
     expect(chatCreate).toHaveBeenCalledTimes(2);
     expect(spies.startProgramCall).toHaveBeenCalledTimes(2);
@@ -209,7 +219,7 @@ describe("[3.2P-R0.3] the freeze verdict is durable, and three-valued", () => {
   });
 
   it("G — a SUCCESSFUL licensed repair stores FALSE and still succeeds", async () => {
-    chatCreate.mockResolvedValueOnce(respond(NO_PRESSURE)).mockResolvedValueOnce(respond(REPAIRED));
+    chatCreate.mockResolvedValueOnce(respond(OVERCLAIMING)).mockResolvedValueOnce(respond(REPAIRED));
     const r = await run();
     expect(r.ok, "the repair is accepted").toBe(true);
     const c = calls();

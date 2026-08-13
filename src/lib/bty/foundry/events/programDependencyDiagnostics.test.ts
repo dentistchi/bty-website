@@ -72,34 +72,34 @@ describe("[3.2L-R6.1] G11 — a dependency refusal carries branch, construct and
    * changes nothing, because that content is discarded. The remaining — and realistic —
    * route is a FREE-TEXT CONTRACT FIELD smuggling in a construct nothing defined.
    */
-  it("used_before_defined names the section and the construct, with no counterpart", () => {
-    const p = program({
-      scenario_contract: {
-        pressure_condition: "two people are already waiting and the agreed escalation process has stalled",
-        pressure_detail: null,
-      },
-    });
-    p.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));
+  it("a scenario can no longer stage this inversion — its sentence is entirely derived", () => {
+    /*
+      THIS TEST LOST ITS STAGING, NOT ITS SUBJECT (Slice 3.2P-A7-R2).
+
+      It used to smuggle an undefined construct into the scenario's PRESSURE prose and assert
+      `used_before_defined` with `kind: "scenario"`. At v22 the scenario sentence is composed
+      from the Host's moment, a server-written pressure clause and the Host's action — there is
+      no model prose left in it to smuggle anything through, so the inversion cannot be built
+      this way at all.
+
+      The BRANCH itself is unchanged and still covered, in `program-coherence.test.ts`,
+      `programGeneratorContract.test.ts` and `childRefusalDiagnostics.test.ts`. What is asserted
+      here is the new fact: this route is closed.
+    */
+    const p = program({ scenario_contract: { pressure_frame: "time_is_short" } });
+    p.program.elements.splice(2, 0, el("scenario", "The agreed escalation process is already running late."));
     const r = validateProgramProposal(p, PRACTICE_ANSWERS);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.code).toBe("dependency_inversion");
-      expect(r.dependency).toEqual({
-        kind: "scenario",
-        construct: "process",
-        branch: "used_before_defined",
-        counterpartKind: null,
-      });
+    expect(r.ok, r.ok ? "" : `${r.code}`).toBe(true);
+    if (r.ok) {
+      const scenario = r.value.proposal.elements.find((e) => e.kind === "scenario");
+      expect(scenario?.content).not.toContain("escalation process");
     }
   });
 
   it("G13 — the payload carries a closed-vocabulary noun, never the generated label", () => {
     const p = program();
     const p2 = program({
-      scenario_contract: {
-        pressure_condition: "two people are already waiting and the agreed escalation process has stalled",
-        pressure_detail: null,
-      },
+      scenario_contract: { pressure_frame: "time_is_short" },
     });
     p2.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));
     const r = validateProgramProposal(p2, PRACTICE_ANSWERS);
@@ -114,12 +114,13 @@ describe("[3.2L-R6.1] G11 — a dependency refusal carries branch, construct and
   it("the canonical construct is defined, so a reference to IT is fine", () => {
     expect(deriveOperationalConstruct({ observableBehavior: ANSWERS.observableBehavior })?.noun).toBe("standard");
     const p = program({
-      scenario_contract: {
-        pressure_condition: "two people are already waiting and the shared handoff standard is being skipped",
-        pressure_detail: null,
-      },
+      scenario_contract: { pressure_frame: "time_is_short" },
     });
     p.program.elements.splice(2, 0, el("scenario", "placeholder — derived"));
+    // The scenario's own sentence is fully derived at v22, so the inversion is staged where
+    // model prose still survives: the reflection question.
+    const refl = p.program.elements.find((e: { kind: string }) => e.kind === "reflection");
+    if (refl) refl.content = "How do you use the agreed escalation process today?";
     const r = validateProgramProposal(p, { ...PRACTICE_ANSWERS, observableBehavior: "Create a shared handoff standard." });
     expect(r.ok, r.ok ? "" : `${r.code}`).toBe(true);
   });

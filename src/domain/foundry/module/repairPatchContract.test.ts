@@ -48,7 +48,7 @@ const candidate = (over: { assumptions?: string[]; warnings?: string[]; title?: 
     assumptions: over.assumptions ?? ["the team holds a morning huddle"],
     warnings: over.warnings ?? ["a huddle nobody attends is an attendance problem"],
     behavior_contract: { action_verb: "state", action_detail: "the owner, action, and deadline for each agreed item" },
-    scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
   },
@@ -189,7 +189,7 @@ describe("[3.2P-A1-R3] §12 L — a corrupted merge is caught by the defensive i
 describe("[3.2P-A1-R3] §11 — every licence has a patch contract", () => {
   it("all four surfaces, each naming only its own fields", () => {
     const surfaces = [
-      [repairLicenseFor("scenario_without_pressure", "scenario"), "bty_guided_program_repair_scenario_pressure_v1", ["pressure_condition", "pressure_detail"]],
+      [repairLicenseFor("scenario_without_pressure", "scenario"), "bty_guided_program_repair_scenario_pressure_v1", ["pressure_frame"]],
       [repairLicenseFor("evidence_overclaim", undefined), "bty_guided_program_repair_narrative_v1", ["display_title", "assumptions", "warnings"]],
       [repairLicenseFor("evidence_overclaim", "reflection"), "bty_guided_program_repair_element_v1", ["content", "rationale"]],
       [repairLicenseFor("evidence_overclaim", "observable_standard"), "bty_guided_program_repair_behavior_contract_v1", ["content", "rationale", "contract"]],
@@ -217,7 +217,7 @@ describe("[3.2P-A1-R3] §11 — every licence has a patch contract", () => {
       expect(repairFreezeViolated({ code: "evidence_overclaim", kind: "reflection", before: baseline, after: m1.merged })).toBe(false);
     }
     const sp = repairLicenseFor("scenario_without_pressure", "scenario");
-    const m2 = applyRepairPatch({ baseline, license: sp, patch: { pressure_condition: "a senior colleague has already changed the subject", pressure_detail: null } });
+    const m2 = applyRepairPatch({ baseline, license: sp, patch: { pressure_frame: "time_is_short" } });
     expect(m2.ok).toBe(true);
     if (m2.ok) {
       expect(repairFreezeViolated({ code: "scenario_without_pressure", kind: "scenario", before: baseline, after: m2.merged })).toBe(false);
@@ -229,7 +229,7 @@ describe("[3.2P-A1-R3] §11 — every licence has a patch contract", () => {
 
 describe("[3.2P-A1-R3] the initial wire contract did NOT change", () => {
   it("repair schemas carry their own identity, and the authority version moves", () => {
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
     expect(Object.keys(PROGRAM_JSON_SCHEMA.properties.program.properties.behavior_contract.properties))
       .toEqual(["action_verb", "action_detail"]);
     /*
@@ -237,6 +237,6 @@ describe("[3.2P-A1-R3] the initial wire contract did NOT change", () => {
       not. The INITIAL wire shape is untouched, so its name stays — pretending it changed would
       be less truthful than giving the repair schemas their own names, which is what they have.
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
   });
 });

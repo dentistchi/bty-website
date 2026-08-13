@@ -5,7 +5,7 @@ import {
   evidenceClaimBrief, requiredProgramKinds,
 } from "@/domain/foundry/module/program-authorship";
 import { EVIDENCE_POLICY, EVIDENCE_SCOPE, evidenceFamilyContrasts } from "@/domain/foundry/module/evidence-policy";
-import { SCENARIO_PRESSURE_POLICY } from "@/domain/foundry/module/program-coherence";
+import { PRESSURE_FRAMES } from "@/domain/foundry/module/program-coherence";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
@@ -119,8 +119,8 @@ describe("[3.2P-A4-R2] the advisory commission asks for a condition, not a cure"
 
 describe("[3.2P-A4-R2] what did NOT change", () => {
   it("I — the semantic contract moved; the wire shape did not", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
   it("the reflection contract is untouched (v17), and still not deterministically validated", () => {
@@ -129,7 +129,8 @@ describe("[3.2P-A4-R2] what did NOT change", () => {
     expect(PROMPT).not.toMatch(/reflection_presupposes|presupposition_check/);
   });
 
-  it("the scenario pressure policy is untouched (v18) and still reaches the prompt", () => {
-    for (const f of SCENARIO_PRESSURE_POLICY) expect(PROMPT, f.id).toContain(f.promptLine);
+  it("the scenario section now offers FRAMES, not difficulty prose (v22)", () => {
+    // A7-R2 replaced the seventeen detector families in the prompt with twelve product frames.
+    for (const f of PRESSURE_FRAMES) expect(PROMPT, f.id).toContain(`- ${f.id}: ${f.meaning}`);
   });
 });

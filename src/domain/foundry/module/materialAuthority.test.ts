@@ -175,10 +175,7 @@ describe("[3.2L-R11.4G] a complete self-contained program validates (Part 6)", (
         action_verb: "state", action_detail: "each open item aloud to the person taking over",
         completion: { confirmed_by: "the person taking over", confirmation_action: "repeat the open items back" },
       },
-      scenario_contract: {
-        pressure_condition: "two people are already waiting to ask you questions and the shift ran late",
-        pressure_detail: null,
-      },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     },

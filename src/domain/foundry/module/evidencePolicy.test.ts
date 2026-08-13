@@ -136,8 +136,14 @@ describe("[3.2L-R11.4I] bounded semantic repair", () => {
     */
     expect(isSemanticRepairableCode("evidence_overclaim")).toBe(true);
     expect(isSemanticRepairableCode("material_fabrication")).toBe(true);
-    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
-    expect(isSemanticRepairableCode("scenario_independent_moment")).toBe(true);
+    /*
+      AND BOTH LEFT AGAIN AT v22 (Slice 3.2P-A7-R2). A7 proved the bounded scenario repair could
+      not win, so the FIELD went instead of the correction: `scenario_contract` is one id from a
+      closed server-owned set, and neither scenario code is reachable by a new proposal. They
+      stay in the vocabulary because the ledger holds rows that carry them.
+    */
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(false);
+    expect(isSemanticRepairableCode("scenario_independent_moment")).toBe(false);
     for (const terminal of [
       "non_observable_standard", "dependency_inversion",
       "person_evaluation", "scenario_unrelated", "application_moment_unrelated",
@@ -203,7 +209,7 @@ describe("[3.2L-R11.4I] multiple different 7-section proposals validate", () => 
         actor: v.actor, trigger: v.trigger, ...splitAction(v.action),
         completion: { confirmed_by: v.confirmedBy, confirmation_action: v.confirmation },
       },
-      scenario_contract: { pressure_condition: v.pressure, pressure_detail: null },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "name_the_moment" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     },

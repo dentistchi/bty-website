@@ -87,7 +87,7 @@ const proposal = (contract: Record<string, unknown>, over: Record<string, unknow
     assumptions: ["the team holds a morning huddle"],
     warnings: ["a huddle nobody attends is an attendance problem, not a training one"],
     behavior_contract: contract,
-    scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     ...over,
@@ -185,11 +185,17 @@ describe("[R3.2-R1] J–P — everything else is unchanged", () => {
     expect(verdict(GROUNDED)).toBe("PASS");
   });
 
-  it("L — scenario pressure still works and is still repairable", () => {
-    const r = run(GROUNDED, { scenario_contract: { pressure_condition: "the team works hard every day", pressure_detail: null } });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.code).toBe("scenario_without_pressure");
-    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
+  it("L — a valid pressure frame passes, and a bad one can no longer be written", () => {
+    /*
+      REWRITTEN AT v22 (Slice 3.2P-A7-R2). This asserted that a weak pressure refuses
+      `scenario_without_pressure` and that the refusal is repairable. Neither is reachable now:
+      the model returns ONE id from a closed server-owned set, so there is no prose to be weak
+      and nothing to repair. The property that survives is the one that mattered — the scenario
+      cannot contradict the audience authority.
+    */
+    const r = run(GROUNDED, { scenario_contract: { pressure_frame: "time_is_short" } });
+    expect(r.ok).toBe(true);
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(false);
   });
 
   it("M — the interrogative floor is unchanged", () => {

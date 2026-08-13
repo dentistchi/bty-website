@@ -4,7 +4,7 @@ import {
   programSourceBlocker, recurringMomentFrom, PROGRAM_JSON_SCHEMA, PROGRAM_AUTHORSHIP_VERSION,
   PROGRAM_SCHEMA_NAME, repairLicenseFor, isSemanticRepairableCode,
 } from "./program-authorship";
-import { CANONICAL_ACTOR, deriveFirstApplicationMoment } from "./program-coherence";
+import { CANONICAL_ACTOR, deriveFirstApplicationMoment , renderPressureFrame } from "./program-coherence";
 import { decideAdoptionReceipt } from "./adoption-authority";
 import {
   stepBlocker, validateDraftPatch, BUILDER_STEP_MAX, BUILDER_STEP_MIN, LEGACY_STEP_GRAPH_MAX,
@@ -65,7 +65,7 @@ const proposal = (contractOver: Record<string, unknown> = {}) => ({
       action_verb: "name", action_detail: "one owner and one deadline for every agreed action and write them in the huddle note",
       ...contractOver,
     },
-    scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
   },
@@ -224,27 +224,34 @@ describe("[3.2P-R3.6-R1] L/N/O/P — the one occasion, and what may still move i
     expect(s.observable_standard).toContain("During morning huddles");
     expect(s.observable_standard).toContain(`, ${CANONICAL_ACTOR} must `);
     expect(s.observable_standard).toContain("Completion evidence: The huddle note records");
-    // The scenario sits at the SAME occasion, with the model's pressure inside it.
+    // The scenario sits at the SAME occasion, with the SERVER'S pressure clause inside it
+    // (v22 — the model chooses the frame, BTY writes the words).
     expect(s.scenario).toContain("morning huddles");
-    expect(s.scenario).toContain("running late");
+    expect(s.scenario).toContain(renderPressureFrame("time_is_short"));
   });
 
-  it("N/O — the pressure is still the model's, and still cannot relocate the action", () => {
+  it("N/O — the pressure choice is the model's, and it can no longer relocate anything", () => {
+    /*
+      REWRITTEN AT v22 (Slice 3.2P-A7-R2). This used to hand the validator a pressure naming its
+      own occasion and assert `scenario_independent_moment`. That candidate cannot be
+      constructed any more: `pressure_frame` takes one id from a closed set, and an occasion is
+      not one of them. The refusal was replaced by an impossibility, which is the whole point.
+    */
     const relocated = run({}, HOST);
     expect(relocated.ok).toBe(true);
-    // A pressure that names its own occasion is refused, exactly as before.
     const moved = validateProgramProposal(
       {
         ...proposal(),
-        program: {
-          ...proposal().program,
-          scenario_contract: { pressure_condition: "during the weekly review the manager is waiting", pressure_detail: null },
-        },
+        program: { ...proposal().program, scenario_contract: { pressure_frame: "after the meeting ends" } },
       },
       HOST, ["education.pdf"],
     );
+    // Not a semantic refusal any more — an unknown id is a SHAPE fault.
     expect(moved.ok).toBe(false);
-    if (!moved.ok) expect(moved.code).toBe("scenario_independent_moment");
+    if (!moved.ok) {
+      expect(moved.code).not.toBe("scenario_independent_moment");
+      expect(moved.diagnosis?.path).toBe("program.scenario_contract.pressure_frame");
+    }
   });
 
   it("P — no repair licence can reach the Host's moment, the criterion or the actor", () => {
@@ -253,10 +260,14 @@ describe("[3.2P-R3.6-R1] L/N/O/P — the one occasion, and what may still move i
       and none of the three server-owned roles exists in the provider response at all — so there
       is no field for a retry to return, whatever it is licensed to change.
     */
-    expect(repairLicenseFor("scenario_without_pressure", "scenario")).toEqual({ surface: "scenario_pressure" });
     const wire = JSON.stringify(PROGRAM_JSON_SCHEMA);
     for (const role of ["trigger", "actor", "completion"]) expect(wire).not.toContain(`"${role}"`);
-    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
+    /*
+      STRONGER AT v22 (Slice 3.2P-A7-R2): there is no scenario repair at all, because there is
+      no scenario prose. The Host's moment was already unreachable; now so is every route to it.
+    */
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(false);
+    expect(isSemanticRepairableCode("scenario_independent_moment")).toBe(false);
   });
 });
 
@@ -275,8 +286,8 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
   it("Y — the step graph grew by exactly one, and the old one is still named", () => {

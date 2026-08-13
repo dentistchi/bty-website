@@ -67,6 +67,9 @@ import {
   validateBehaviorContract,
   validateProgramDependencies,
   validateScenarioContract,
+  pressureFrameIds,
+  renderPressureFrame,
+  type PressureFrame,
   scenarioPressurePromptLines,
   type ApplicationContract,
   type BehaviorContract,
@@ -139,6 +142,30 @@ import {
 
 
 
+ * v21 → v22 (Slice 3.2P-A7-R2) takes WHEN away from the model entirely, and the WIRE moves with
+ * it — `PROGRAM_SCHEMA_NAME` advances to `bty_guided_program_v12`, the third time both have
+ * moved together.
+ *
+ * A7 is the whole argument. Its first call named an occasion of its own. Its licensed repair —
+ * narrow surface, freeze clean, merged, fully revalidated — was told in its opening sentence
+ * that it had put the situation at a different time, was handed all seventeen difficulty
+ * families, and returned 32 tokens naming ANOTHER occasion. Explicit prompt, correct validator,
+ * sound repair, same defect twice in one attempt. v21 gave that defect a fair correction and
+ * the correction lost.
+ *
+ * So `pressure_condition` and `pressure_detail` are gone. The model returns `pressure_frame`,
+ * one id from twelve the server defined, and the server writes the clause. "later that
+ * afternoon" is not refused any more — there is nowhere to put it.
+ *
+ * Measured before building it: all 49 labelled legitimate pressures across the A3-R2 and A5-R1
+ * corpora map to one of the twelve, every frame is used, and none of the fourteen non-pressures
+ * or eight relocations maps to any. Two of the old seventeen detector families — `named_pressure`
+ * and `korean_markers` — are deliberately NOT frames: they read free text, which no longer exists.
+ *
+ * Acceptance moves in both directions, which is what this constant tracks: a proposal that would
+ * have been refused for its pressure prose cannot be written at all, and a frame the old floor
+ * would have missed is now simply valid.
+ *
  * v20 → v21 (Slice 3.2P-A6-R2) makes a relocated occasion repairable, which changes what a
  * generation can OUTCOME to: a proposal that was terminally refused under v20 can now be
  * corrected and succeed under v21. The validator did not move — the same phrase refuses for the
@@ -253,7 +280,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v21";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v22";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1047,7 +1074,7 @@ function overlapRatio(a: string, b: string): number {
  * `PROGRAM_AUTHORSHIP_VERSION`, which moves whenever ACCEPTANCE does. v8 → v9 because v11
  * removed `behavior_contract.completion` from the response (Slice 3.2P-R3.4-R1).
  */
-export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v11";
+export const PROGRAM_SCHEMA_NAME = "bty_guided_program_v12";
 
 /**
  * The shape the provider must return, enforced by the transport rather than hoped for in
@@ -1139,10 +1166,16 @@ export const PROGRAM_JSON_SCHEMA = {
         scenario_contract: {
           type: ["object", "null"],
           additionalProperties: false,
-          required: ["pressure_condition", "pressure_detail"],
+          /*
+            NO FREE PRESSURE PROSE (Slice 3.2P-A7-R2). The model selects WHICH KIND of
+            difficulty; the server writes the sentence. A7 proved that a field able to hold a
+            time will eventually hold one, however explicitly the prompt forbids it — twice in
+            one attempt, the second time inside a repair whose opening sentence named the
+            defect. "later that afternoon" now has nowhere to be written.
+          */
+          required: ["pressure_frame"],
           properties: {
-            pressure_condition: { type: "string" },
-            pressure_detail: { type: ["string", "null"] },
+            pressure_frame: { type: "string", enum: pressureFrameIds() },
           },
         },
         /**
@@ -1271,42 +1304,17 @@ const SEMANTIC_REPAIRABLE_CODES: readonly ProgramRejectCode[] = [
   "evidence_overclaim",
   "material_fabrication",
   /*
-    ADDED IN SLICE 3.2O-R4, and only after isolation was proven.
-    `no_pressure` is the LAST check in `validateScenarioContract` and is applied to
-    `pressure_condition` ALONE. So when this code fires, everything else about the scenario
-    has already passed: the detail is well-formed, neither field named a second occasion, and
-    the condition does not restate the trained action. The single field that has to change is
-    known before the repair call is written, which is what makes a bounded repair safe here
-    and not for its sibling `scenario_independent_moment` — a second occasion can mean the
-    scenario was built around the wrong moment, which is not one phrase away from right.
-    The repair is additionally frozen deterministically; see `scenarioRepairFreezeViolated`.
+    BOTH SCENARIO CODES RETIRED FROM THIS SET (Slice 3.2P-A7-R2), and not because they stopped
+    mattering — because no v22 proposal can produce them. `scenario_contract` is one id from a
+    closed server-owned set, so "no real difficulty", "generic", "restates the action" and "a
+    second occasion" are shape faults or nothing at all. A malformed id is handled by the
+    structural retry that already exists.
+
+    `scenario_without_pressure` was repairable from 3.2O-R4 and `scenario_independent_moment`
+    for exactly one slice, A6-R2 — long enough for A7 to prove the repair could not win, which
+    is what justified removing the field instead. Both codes stay in `ProgramRejectCode` and in
+    the ledger vocabulary: A3, A5, A6 and A7 carry them, and history has to stay readable.
   */
-  "scenario_without_pressure",
-  /*
-    ADDED IN SLICE 3.2P-A6-R2, and it REVERSES the note above about its sibling.
-
-    That note — "a second occasion can mean the scenario was built around the wrong moment,
-    which is not one phrase away from right" — was written when a retry regenerated the whole
-    program. It was correct then: the model could move the trigger, the actor and the action
-    while claiming to fix the pressure, so a relocated scenario really might have been wrong
-    at the root and nothing bounded the correction.
-
-    Three architectural changes have since made that rationale stale, and all three are
-    measured rather than assumed:
-
-      1. The trigger IS the host's `recurringMoment` and the actor is server-written. The
-         model has no field for either — `behavior_contract` is `{action_verb, action_detail}`.
-      2. `namesIndependentMoment` is called in exactly ONE place, over `pressureCondition` and
-         `pressureDetail` alone. A second occasion has nowhere else to come from.
-      3. A1-R3 replaced whole-program regeneration with a licensed PATCH the server merges
-         into a baseline the model never receives.
-
-    So "the scenario was built around the wrong moment" is no longer a state the model can
-    reach. What A6 actually produced was two free-text fields naming an occasion, next to a
-    trigger it never touched — which is one phrase away from right, and is now given the same
-    single bounded correction its sibling has had since R4.
-  */
-  "scenario_independent_moment",
 ];
 
 export function isSemanticRepairableCode(code: ProgramRejectCode): boolean {
@@ -1500,13 +1508,17 @@ export function repairPatchContract(license: RepairLicense): RepairPatchContract
         name: "bty_guided_program_repair_element_v1",
         schema: strictObject({ content: { type: "string" }, rationale: { type: "string" } }),
       };
+    /*
+      RETAINED, UNREACHABLE (Slice 3.2P-A7-R2). No v22 proposal can produce a semantic scenario
+      refusal, so nothing licenses this surface any more. It stays because the ledger holds
+      attempts that used it — A3, A5 and A7 — and a reader of those rows should be able to find
+      what the contract was. Its shape moves to the frame so it cannot describe a wire that no
+      longer exists.
+    */
     case "scenario_pressure":
       return {
         name: "bty_guided_program_repair_scenario_pressure_v1",
-        schema: strictObject({
-          pressure_condition: { type: "string" },
-          pressure_detail: { type: ["string", "null"] },
-        }),
+        schema: strictObject({ pressure_frame: { type: "string", enum: pressureFrameIds() } }),
       };
     case "element_and_contract":
       return {
@@ -1517,10 +1529,7 @@ export function repairPatchContract(license: RepairLicense): RepairPatchContract
           contract:
             license.contract === "behavior_contract"
               ? strictObject({ action_verb: { type: "string" }, action_detail: { type: "string" } })
-              : strictObject({
-                  pressure_condition: { type: "string" },
-                  pressure_detail: { type: ["string", "null"] },
-                }),
+              : strictObject({ pressure_frame: { type: "string", enum: pressureFrameIds() } }),
         }),
       };
   }
@@ -1558,7 +1567,7 @@ export function licensedRepairContext(candidate: unknown, license: RepairLicense
     case "scenario_pressure": {
       const sc = p.scenario_contract;
       return isPlainObject(sc)
-        ? { pressure_condition: (sc as Record<string, unknown>).pressure_condition, pressure_detail: (sc as Record<string, unknown>).pressure_detail }
+        ? { pressure_frame: (sc as Record<string, unknown>).pressure_frame }
         : null;
     }
     case "element_and_contract": {
@@ -1623,8 +1632,7 @@ export function applyRepairPatch(input: {
     case "scenario_pressure": {
       const sc = program.scenario_contract;
       if (!isPlainObject(sc)) return { ok: false, reason: "surface_missing" };
-      (sc as Record<string, unknown>).pressure_condition = pv.pressure_condition;
-      (sc as Record<string, unknown>).pressure_detail = pv.pressure_detail;
+      (sc as Record<string, unknown>).pressure_frame = pv.pressure_frame;
       return { ok: true, merged };
     }
     case "element_and_contract": {
@@ -1672,7 +1680,7 @@ function applyLicense(program: Record<string, unknown>, license: RepairLicense):
   };
   switch (license.surface) {
     case "scenario_pressure":
-      blankObject("scenario_contract", ["pressure_condition", "pressure_detail"]);
+      blankObject("scenario_contract", ["pressure_frame"]);
       return;
     case "element":
       blankElement(license.kind);
@@ -1949,24 +1957,27 @@ export function validateProgramProposal(
   let scenarioContract: ScenarioContract | null = null;
   if (scenarioRequired) {
     if (rawScenario === undefined || rawScenario === null) {
-      return REJECT_AT("missing_field", "program.scenario_contract", "an object with pressure_condition and pressure_detail", jsonTypeOf(rawScenario), "scenario");
+      return REJECT_AT("missing_field", "program.scenario_contract", "an object with pressure_frame", jsonTypeOf(rawScenario), "scenario");
     }
     if (!isPlainObject(rawScenario)) {
       return REJECT_AT("field_type", "program.scenario_contract", "an object", jsonTypeOf(rawScenario), "scenario");
     }
-    for (const key of ["pressure_condition", "pressure_detail"] as const) {
-      const v = (rawScenario as Record<string, unknown>)[key];
-      // `pressure_detail` is genuinely optional; only its type is enforced here.
-      if (v === null || v === undefined) {
-        if (key === "pressure_detail") continue;
-        return REJECT_AT("missing_field", `program.scenario_contract.${key}`, `a non-empty string of at most ${SCENARIO_FIELD_LIMIT} characters`, jsonTypeOf(v), "scenario");
-      }
-      if (typeof v !== "string") {
-        return REJECT_AT("field_type", `program.scenario_contract.${key}`, `a non-empty string of at most ${SCENARIO_FIELD_LIMIT} characters`, jsonTypeOf(v), "scenario");
-      }
-      // Rendered into participant-facing text, so it carries the same honesty rules.
-      const bad = unsafe(v);
-      if (bad) return REJECT_UNSAFE(bad, "scenario");
+    /*
+      ONE FIELD, AND IT IS AN ID (Slice 3.2P-A7-R2). There is no prose here to sweep for
+      honesty rules: the participant-facing clause is written by the server from
+      `PRESSURE_FRAMES`, so it cannot fabricate a material, evaluate a person or over-claim.
+      An unknown id is a SHAPE fault the structural retry can fix, not a meaning fault.
+    */
+    const rawFrame = (rawScenario as Record<string, unknown>).pressure_frame;
+    /*
+      AN UNKNOWN ID IS A SHAPE FAULT, and it has to be reported as one. Left to fall through,
+      `validateScenarioContract` returns `missing`, which maps to the umbrella
+      `scenario_without_pressure` — a MEANING fault that v22 deliberately made non-repairable,
+      so a model that simply mistyped an enum value would end the attempt with no retry. Caught
+      by the recurring-moment suite, which fed it a frame that does not exist.
+    */
+    if (typeof rawFrame !== "string" || !pressureFrameIds().includes(rawFrame as PressureFrame)) {
+      return REJECT_AT("field_type", "program.scenario_contract.pressure_frame", "one of the offered pressure frames", jsonTypeOf(rawFrame), "scenario");
     }
     const sc = validateScenarioContract(rawScenario, contract);
     /*
@@ -2731,10 +2742,7 @@ export function validateEditedReview(
 
   if (required.includes("scenario")) {
     if (!c.scenario) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };
-    const sc = validateScenarioContract(
-      { pressure_condition: c.scenario.pressureCondition, pressure_detail: c.scenario.pressureDetail },
-      c.behavior,
-    );
+    const sc = validateScenarioContract({ pressure_frame: c.scenario.frame }, c.behavior);
     if (!sc.ok) return { ok: false, reason: "scenario_incomplete", kind: "scenario" };
   }
 

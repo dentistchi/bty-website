@@ -996,17 +996,86 @@ export function isMetaStandardText(text: string): boolean {
  * the scenario may only say what makes holding the behaviour hard AT that moment. It cannot
  * relocate the action, because it has nowhere to relocate it to.
  */
+/**
+ * THE PRESSURE FRAMES — the model chooses the difficulty, the server writes it
+ * (Slice 3.2P-A7-R2).
+ *
+ * WHAT FORCED THIS. A7 (`309c2bb1`) is the complete experiment. Its first call named an
+ * occasion of its own; the licensed patch — narrow, freeze-clean, merged, revalidated — was
+ * told in its own opening sentence that it had put the situation at a different time, was
+ * given all seventeen difficulty families, and returned 32 tokens naming ANOTHER occasion.
+ * Explicit prompt, correct validator, sound repair, same defect twice in one attempt.
+ *
+ * Detection was never the problem: `namesIndependentMoment` caught both. The problem is that a
+ * free-text field can hold a time at all, and no amount of instruction removes that.
+ *
+ * So WHEN stops being something the model can express. It selects a KIND of difficulty from
+ * this closed set and the server writes the sentence — the same move that made a subject
+ * unrepresentable in R3.7-R2 by splitting `action_verb` from `action_detail`.
+ *
+ * DERIVED FROM MEASUREMENT, not from a tidy taxonomy. The 49 labelled legitimate pressures
+ * across the A3-R2 and A5-R1 corpora all map to one of these twelve, every frame is used by at
+ * least one, and none of the fourteen labelled non-pressures or eight relocations maps to any.
+ *
+ * TWO OF THE OLD SEVENTEEN FAMILIES ARE DELIBERATELY ABSENT. `named_pressure` matches the word
+ * "pressure" itself and `korean_markers` is a locale lexicon — both are DETECTOR machinery for
+ * reading free text, not kinds of workplace difficulty. A provider enum is durable product
+ * vocabulary and must not inherit implementation shapes.
+ *
+ * THE CLAUSE IS THE PRODUCT. It is participant-facing, so it carries every rule the rest of the
+ * program does: no occasion, no restatement of the trained action, no completion, no evidence
+ * claim, and nothing invented about the Host's workplace — "time is running short", never "a
+ * patient has been waiting for 37 minutes".
+ */
+export const PRESSURE_FRAMES = [
+  { id: "time_is_short", meaning: "Too little time remains, or the occasion is overrunning and people want to finish.", clause: "time is running short" },
+  { id: "others_are_waiting", meaning: "Someone or something else is queued behind this.", clause: "someone else is already waiting" },
+  { id: "interruptions", meaning: "Something keeps cutting across before anything is settled.", clause: "the conversation keeps being interrupted" },
+  { id: "attention_is_elsewhere", meaning: "Attention is divided — messages, the clock, another task pulling at people.", clause: "attention is somewhere else" },
+  { id: "too_much_at_once", meaning: "More is happening or unresolved than can be handled at once.", clause: "several things need attention at once" },
+  { id: "pushback", meaning: "Someone resists, disagrees or argues.", clause: "someone pushes back" },
+  { id: "fatigue", meaning: "People are tired, worn down, or running out of attention.", clause: "everyone is tired" },
+  { id: "someone_is_missing", meaning: "The person who would normally carry it is absent, or cover is thin.", clause: "the person you would usually rely on is not there" },
+  { id: "unclear_information", meaning: "Something needed is missing, unknown or unsettled.", clause: "something important is still unclear" },
+  { id: "unclear_ownership", meaning: "It is not obvious who is responsible — each person assumes another is.", clause: "it is not obvious who should take it" },
+  { id: "being_watched", meaning: "It is exposed — someone senior is present, or it is a first time.", clause: "other people are watching" },
+  { id: "nobody_steps_up", meaning: "People hesitate, go quiet, or avoid being the one.", clause: "nobody offers to take it" },
+] as const;
+
+export type PressureFrame = (typeof PRESSURE_FRAMES)[number]["id"];
+
+/** Every frame id, for the provider enum, the validator and the tests — one source. */
+export function pressureFrameIds(): PressureFrame[] {
+  return PRESSURE_FRAMES.map((f) => f.id);
+}
+
+/**
+ * THE ONE PLACE PRESSURE BECOMES WORDS. The model never sends this string and cannot influence
+ * it; a frame the server does not know renders nothing rather than guessing.
+ */
+export function renderPressureFrame(frame: PressureFrame): string {
+  return PRESSURE_FRAMES.find((f) => f.id === frame)?.clause ?? "";
+}
+
+/** What the model is told it may choose from — derived from the frames, never a second list. */
+export function pressureFramePromptLines(): string[] {
+  return PRESSURE_FRAMES.map((f) => `  - ${f.id}: ${f.meaning}`);
+}
+
 export type ScenarioContract = {
-  /** What competes with doing it properly at the canonical trigger. Never its own occasion. */
-  pressureCondition: string;
-  /** Optional second circumstance, same rule. Empty when the condition is enough. */
-  pressureDetail: string;
+  /** WHICH KIND of difficulty. The only thing the model contributes to the scenario. */
+  frame: PressureFrame;
 };
 
 export const SCENARIO_FIELD_LIMIT = 120;
 const SCENARIO_FIELD_MIN = 8;
 
-export type ScenarioField = keyof ScenarioContract;
+/**
+ * HISTORICAL BREADTH, KEPT ON PURPOSE (Slice 3.2P-A7-R2). `pressureCondition` and
+ * `pressureDetail` no longer exist in the contract, and the ledger holds rows that named them.
+ * A stored diagnostic must stay readable forever, so the vocabulary does not shrink.
+ */
+export type ScenarioField = "frame" | "pressureCondition" | "pressureDetail";
 
 /**
  * THE CLOSED SCENARIO VOCABULARY (named in Slice 3.2P-A5-R2; the values themselves are older).
@@ -1290,48 +1359,31 @@ export function validateScenarioContract(
   raw: unknown,
   behavior: BehaviorContract,
 ): { ok: true; value: ScenarioContract } | { ok: false; defect: ScenarioDefect } {
+  void behavior;
+  /*
+    WHAT IS LEFT TO VALIDATE (Slice 3.2P-A7-R2). Almost nothing, and that is the point.
+
+    The five semantic checks this function used to run — generic prose, a second occasion in
+    either field, a restatement of the trained action, and no recognisable difficulty — all
+    existed to police free text. There is no free text. A frame is either one of twelve ids the
+    server itself defined or it is not a frame at all, so `generic`, `restates_action`,
+    `no_pressure` and `independent_moment` are now unreachable rather than merely rare.
+
+    They stay in `SCENARIO_DEFECT_REASONS` because the ledger holds rows that carry them —
+    A6 and A7 among them — and a vocabulary that shrinks makes history unreadable.
+
+    An unknown or absent frame is a SHAPE fault, reported as `missing`, and repairable by the
+    structural retry that already exists for a malformed response.
+  */
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "missing" } };
+    return { ok: false, defect: { field: "frame", reason: "missing" } };
   }
   const r = raw as Record<string, unknown>;
-  const value: ScenarioContract = {
-    pressureCondition: trimField(r.pressure_condition ?? r.pressureCondition),
-    pressureDetail: trimField(r.pressure_detail ?? r.pressureDetail),
-  };
-
-  if (value.pressureCondition.length < SCENARIO_FIELD_MIN) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "missing" } };
+  const frame = trimField(r.pressure_frame ?? r.frame);
+  if (!pressureFrameIds().includes(frame as PressureFrame)) {
+    return { ok: false, defect: { field: "frame", reason: "missing" } };
   }
-  for (const f of ["pressureCondition", "pressureDetail"] as const) {
-    if (value[f].length > SCENARIO_FIELD_LIMIT) return { ok: false, defect: { field: f, reason: "too_long" } };
-  }
-  // The detail is optional — but a supplied one that says nothing is a defect, not a blank.
-  if (value.pressureDetail.length > 0 && value.pressureDetail.length < SCENARIO_FIELD_MIN) {
-    return { ok: false, defect: { field: "pressureDetail", reason: "missing" } };
-  }
-
-  if (GENERIC_PRESSURE.some((re) => re.test(value.pressureCondition))) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "generic" } };
-  }
-  if (GENERIC_CONTEXT.some((re) => re.test(value.pressureCondition))) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "generic" } };
-  }
-  /**
-   * THE SECOND-MOMENT REFUSAL. Neither field may name an occasion of its own — that is the
-   * whole reason the live scenario and the live trigger were different events.
-   */
-  for (const f of ["pressureCondition", "pressureDetail"] as const) {
-    if (value[f].length > 0 && namesIndependentMoment(value[f])) {
-      return { ok: false, defect: { field: f, reason: "independent_moment" } };
-    }
-  }
-  // A pressure that restates the required action describes no obstacle to it.
-  if (saysTheSameThing(value.pressureCondition, behavior.observableAction)) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "restates_action" } };
-  }
-  if (!namesRealPressure(value.pressureCondition)) {
-    return { ok: false, defect: { field: "pressureCondition", reason: "no_pressure" } };
-  }
+  const value: ScenarioContract = { frame: frame as PressureFrame };
 
   return { ok: true, value };
 }
@@ -1344,10 +1396,13 @@ export function validateScenarioContract(
 export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
   const actor = stripTrailingStop(b.actor.trim());
   const action = baseActionPhrase(b.observableAction);
-  const condition = lowerFirst(stripTrailingStop(s.pressureCondition.trim()));
-  const extra = s.pressureDetail.trim().length > 0
-    ? ` and ${lowerFirst(stripTrailingStop(s.pressureDetail.trim()))}`
-    : "";
+  /*
+    SERVER-WRITTEN PRESSURE (Slice 3.2P-A7-R2). The clause comes from `PRESSURE_FRAMES`, not
+    from the response, so the sentence between the Host's moment and the Host's action is now
+    entirely BTY's. There is no second circumstance to append: one scenario needs one
+    difficulty, and a catalogue of them is not a harder situation, only a longer one.
+  */
+  const condition = renderPressureFrame(s.frame);
   /**
    * ONE MOMENT, SUBORDINATE PRESSURE. The sentence OPENS on the canonical trigger and the
    * pressure arrives inside it as a concessive clause. There is no leading context moment
@@ -1361,7 +1416,7 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
     grammar-check the host's own words; it needs to repeat them.
   */
   return (
-    `${upperFirst(stripTrailingStop(b.trigger.trim()))}, even when ${condition}${extra}, ` +
+    `${upperFirst(stripTrailingStop(b.trigger.trim()))}, even when ${condition}, ` +
     `${lowerFirst(actor)} must ${action}. ` +
     renderCompletionEvidence(b.completion, COMPLETION_LEAD.standard)
   ).trimEnd();

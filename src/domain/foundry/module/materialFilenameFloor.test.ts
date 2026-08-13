@@ -194,7 +194,7 @@ describe("[3.2P-R3.1] through the real validator, on the real pilot answers", ()
         action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
         completion: { confirmed_by: "the named owner", confirmation_action: "repeat back the action and the deadline" },
       },
-      scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+      scenario_contract: { pressure_frame: "time_is_short" },
       completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
       follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
       ...over,
@@ -236,7 +236,8 @@ describe("[3.2P-R3.1] through the real validator, on the real pilot answers", ()
   it("the repair policy is untouched — material_fabrication was already repairable", () => {
     expect(isSemanticRepairableCode("material_fabrication")).toBe(true);
     expect(isSemanticRepairableCode("evidence_overclaim")).toBe(true);
-    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
+    // v22 retired both scenario codes from the repairable set — see 3.2P-A7-R2.
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(false);
     expect(isSemanticRepairableCode("non_observable_standard")).toBe(false);
   });
 });

@@ -31,7 +31,7 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import {
   CONTRACT_FIELD_STORAGE,
   deriveOperationalConstruct,
-  scenarioPressurePromptLines,
+  pressureFramePromptLines,
   type OperationalConstruct,
 } from "@/domain/foundry/module/program-coherence";
 import { audienceAuthorityFor, audiencePromptLines } from "@/domain/foundry/module/audience-authority";
@@ -265,37 +265,20 @@ export function systemPrompt(
     "- Write observable_action in BASE form, as it would follow 'must': 'state each unfinished item and identify its next owner', not 'states … and identifies …'.",
     "- There is ONE definition of completion and the host already wrote it. Do not restate it, improve it, or give the application step a second way of knowing it happened.",
     "",
+    /*
+      THE MODEL CHOOSES THE DIFFICULTY; BTY WRITES IT (Slice 3.2P-A7-R2).
+
+      What used to be here was seven lines of prohibition — one moment, both fields, forbidden
+      phrasings, a worked example of the trap. A7 obeyed none of it twice: its first call named
+      an occasion, and its licensed repair, told in its opening sentence exactly what it had
+      done wrong, named another one. So the prohibition is gone along with the fields it was
+      protecting. There is nothing left to forbid.
+    */
     "THE PRACTICE SITUATION — scenario_contract:",
-    "- Return scenario_contract with pressure_condition (what competes with doing it properly) and pressure_detail (a second circumstance, or null when one is enough).",
-    "- The situation is built FROM the behavior contract, so do not invent a different actor, trigger or action for it, and do not describe how completion is recognised.",
-    "- THE SITUATION HAPPENS AT THE HOST'S MOMENT. There is ONE moment in the program and the host already named it. Do NOT give the situation an occasion of its own.",
-    /*
-      BOTH FIELDS, NOT ONE (Slice 3.2O-R1). The rule was stated for pressure_condition only,
-      while the validator has always applied it to pressure_detail too — and pressure_detail
-      was introduced as "a second circumstance", which invites exactly the phrasing that is
-      refused. A live pilot was refused for it.
-    */
-    "- THIS APPLIES TO BOTH pressure_condition AND pressure_detail. Neither may name an occasion of its own.",
-    "- Forbidden in EITHER field: 'during a team meeting', 'at the next handover', 'before the deadline', 'at the end of each project', 'during the call', 'before the appointment', 'at the end of the day' — any phrase that anchors a second time or event.",
-    /*
-      THE OCCASION COLLISION. The trigger's own noun — call, appointment, handover, shift,
-      round — is exactly the vocabulary the refusal watches for, so a scenario about the very
-      thing being trained is the easiest one to fail. The model is the only party that knows
-      which noun it chose, so the rule is written to be self-applied rather than parsed here.
-    */
-    `- In particular: do NOT restate the host's occasion in either pressure field. If the moment is "before each confirmation call", then "during the call" is a second moment and will be refused — describe only what makes it hard.`,
-    /*
-      DERIVED, NOT HAND-WRITTEN (Slice 3.2O-R2). The R1 version of this line was written from
-      product intuition and named two categories — "workload" and "operational constraint" —
-      that the pressure floor recognises nothing of. A window was then refused
-      `scenario_without_pressure` against a prompt that had just recommended them. These
-      lines now come from SCENARIO_PRESSURE_POLICY, the same array the validator matches on,
-      so the two cannot disagree again.
-    */
-    "- A real difficulty is one of these, and none of them is an occasion:",
-    ...scenarioPressurePromptLines(),
+    "- Return scenario_contract with pressure_frame: ONE id from the list below. You do not write the situation — BTY does, from the host's moment and the frame you choose.",
+    "- Choose the difficulty most plausible for the problem the host described, and the one that would actually make this behaviour hard to do well.",
+    ...pressureFramePromptLines(),
     "- 'A queue is building at the desk' is fine; 'during the call the patient is distracted' is not.",
-    "- pressure_condition must name a real difficulty — someone is waiting, the shift ran late, the other person has already left, a senior disagrees. Not 'it is difficult' and not a restatement of the required action.",
     "",
     "THE REST OF THE PROGRAM — completion_contract, follow_up_contract:",
     "- YOUR DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT are BUILT from these. Do not write them as free sentences and expect them to be used.",
@@ -330,7 +313,7 @@ export function systemPrompt(
     `Write ALL participant-facing text in ${isKo ? "Korean" : "English"}.`,
     "",
     "Output ONLY a compact JSON object — no markdown, no fences, no commentary. EXACT shape:",
-    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"action_verb":string,"action_detail":string},"scenario_contract":{"pressure_condition":string,"pressure_detail":string|null}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
+    '{"program":{"display_title":string,"elements":[{"kind":string,"content":string,"rationale":string}],"assumptions":string[],"warnings":string[],"behavior_contract":{"action_verb":string,"action_detail":string},"scenario_contract":{"pressure_frame":string}|null,"completion_contract":{"verification_target":"the_behaviour"|"the_application_plan"|"the_confirmation_step","response_mode":"name_the_moment"|"state_what_you_will_say"|"name_what_could_stop_you"}|null,"follow_up_contract":{"review_focus":"what_you_said"|"what_happened_next"|"the_confirmation","confirmer":"self_report"|"the_host"}|null}}',
   ].join("\n");
 }
 

@@ -6,6 +6,7 @@ import {
   validateProgramDependencies,
   validateScenarioContract,
   renderScenarioSentence,
+  renderPressureFrame,
   deriveOperationalConstruct,
   isNarrativeKind,
   isInstructionalKind,
@@ -416,14 +417,17 @@ describe("[3.2L-R4] G4–G7 — the program is an ordered dependency graph", () 
  * v7 shape (Slice 3.2L-R8.1): pressure only. The scenario has no moment of its own — the
  * one moment in a program is the behaviour trigger.
  */
-const GOOD_SCENARIO: ScenarioContract = {
-  pressureCondition: "two people are already waiting to ask you something else and the shift ran late",
-  pressureDetail: "",
-};
+/*
+  v12 shape (Slice 3.2P-A7-R2): ONE frame id. The pressure prose these tests were written
+  around does not exist any more — the server writes the clause — so the cases below that
+  probed free-text faults (generic, restatement, second occasion) are unreachable by
+  construction rather than refused. They are kept as historical narrative where they still
+  describe a real rule, and removed where they described a field.
+*/
+const GOOD_SCENARIO: ScenarioContract = { frame: "others_are_waiting" };
 
 const rawScenario = (c: Partial<Record<string, unknown>> = {}) => ({
-  pressure_condition: GOOD_SCENARIO.pressureCondition,
-  pressure_detail: GOOD_SCENARIO.pressureDetail,
+  pressure_frame: GOOD_SCENARIO.frame,
   ...c,
 });
 
@@ -447,50 +451,38 @@ describe("[3.2L-R5] G1 — the exact live false negative cannot recur", () => {
   });
 });
 
-describe("[3.2L-R5] G2/G3 — the situation must contain a real difficulty", () => {
-  it("G3: a pressure that merely restates the required action is refused", () => {
-    const r = validateScenarioContract(
-      rawScenario({ pressure_condition: "states each unfinished task out loud to the person taking over" }),
-      GOOD,
-    );
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect).toEqual({ field: "pressureCondition", reason: "restates_action" });
-  });
+describe("[3.2P-A7-R2] G2/G3 — the situation contains a real difficulty BY CONSTRUCTION", () => {
+  /*
+    WHAT THIS BLOCK USED TO DO. It fed `validateScenarioContract` prose that was generic ("it is
+    difficult"), empty, over-long, a restatement of the required action, or simply not a
+    difficulty at all — and asserted each was refused. Those were the G2/G3 floors, and they
+    were correct for a contract whose pressure was free text.
 
-  it("G3: a generic difficulty is refused", () => {
-    for (const generic of ["it is difficult", "There is pressure.", "time pressure", "a busy day"]) {
-      const r = validateScenarioContract(rawScenario({ pressure_condition: generic }), GOOD);
-      expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
+    A7 (`309c2bb1`) ended free-text pressure: the field now takes one of twelve server-defined
+    frame ids. Every case above is unrepresentable rather than refused, and the clause a learner
+    reads is written by BTY. So the floors are asserted the only way that is still true — as
+    impossibilities — and the phrasings live on in `pressureFrameArchitecture.test.ts`.
+  */
+  it("only a known frame is accepted; everything the old floors caught is now unsendable", () => {
+    expect(validateScenarioContract(rawScenario(), GOOD).ok).toBe(true);
+    for (const unsendable of ["", "   ", "it is difficult", "at work", "the room is painted a pleasant shade of blue",
+      "states each unfinished task out loud to the person taking over", "after the meeting ends", "x".repeat(200)]) {
+      const r = validateScenarioContract(rawScenario({ pressure_frame: unsendable }), GOOD);
+      expect(r.ok, unsendable).toBe(false);
+      if (!r.ok) expect(r.defect.reason).toBe("missing");
     }
   });
 
-  it("G2: a pressure that names nothing actual is refused", () => {
-    for (const generic of ["at work", "in the workplace", "the team", "day-to-day work"]) {
-      const r = validateScenarioContract(rawScenario({ pressure_condition: generic }), GOOD);
-      expect(r.ok, `expected refusal for: ${generic}`).toBe(false);
-      if (!r.ok) expect(r.defect.field).toBe("pressureCondition");
-    }
-  });
-
-  it("a pressure with no constraint in it at all is refused", () => {
-    const r = validateScenarioContract(
-      rawScenario({ pressure_condition: "the room is painted a pleasant shade of blue" }),
-      GOOD,
-    );
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.defect.reason).toBe("no_pressure");
-  });
-
-  it("empty and over-long fields are bounded", () => {
-    expect(validateScenarioContract(rawScenario({ pressure_condition: "" }), GOOD).ok).toBe(false);
-    expect(validateScenarioContract(rawScenario({ pressure_condition: "x".repeat(400) }), GOOD).ok).toBe(false);
+  it("and the frame the model picks is the only thing it contributes", () => {
+    const r = validateScenarioContract(rawScenario({ pressure_frame: "fatigue" }), GOOD);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.value).toEqual({ frame: "fatigue" });
   });
 });
-
 describe("[3.2L-R5] G4 — the displayed scenario cannot drift from its grounding", () => {
   it("every rendered clause comes from one of the two contracts", () => {
     const derived = renderScenarioSentence(GOOD, GOOD_SCENARIO);
-    expect(derived).toContain(GOOD_SCENARIO.pressureCondition);
+    expect(derived).toContain(renderPressureFrame(GOOD_SCENARIO.frame));
     // The MOMENT is the trigger's, never the scenario's (Slice 3.2L-R8.1).
     expect(derived.toLowerCase()).toContain(GOOD.trigger.toLowerCase().replace(/^at\s+/, ""));
     expect(derived).toContain(GOOD.completion.criterion);
@@ -536,16 +528,23 @@ describe("[3.2L-R5] G7 — the derived scenario enters the dependency graph", ()
     expect(d).toMatchObject({ kind: "completion_check", branch: "defined_after_use" });
   });
 
-  it("a scenario contract that smuggles in an undefined construct is caught", () => {
+  it("a scenario can no longer smuggle in an undefined construct — it has no words of its own", () => {
+    /*
+      This fed a pressure naming a construct ("the agreed escalation process") that no earlier
+      element defined, and asserted the dependency graph caught it. At v22 the scenario clause
+      comes from `PRESSURE_FRAMES`, which name only generic workplace difficulty — no construct,
+      no artifact, nothing to define. The smuggling route is closed rather than policed, and the
+      graph correctly finds nothing.
+    */
     const d = validateProgramDependencies(
       [
         S("observable_standard", renderStandardSentence(GOOD)),
-        S("scenario", renderScenarioSentence(GOOD, { ...GOOD_SCENARIO, pressureCondition: "the agreed escalation process is already running late" })),
+        S("scenario", renderScenarioSentence(GOOD, { frame: "time_is_short" })),
       ],
       GOOD,
       null,
     );
-    expect(d).toMatchObject({ kind: "scenario", branch: "used_before_defined" });
+    expect(d).toBeNull();
   });
 });
 

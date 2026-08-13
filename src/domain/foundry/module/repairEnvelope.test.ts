@@ -50,7 +50,7 @@ const proposal = (over: { reflection?: string; elements?: unknown; program?: Rec
       action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions",
       completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" },
     },
-    scenario_contract: { pressure_condition: "a queue is building at the desk", pressure_detail: "the phone list is out of date" },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     ...over.program,
@@ -84,15 +84,19 @@ describe("[3.2P-R0] licenses are derived from the refusal, not from the model's 
   it("a refusal with no element licenses the narrative prose only", () => {
     expect(repairLicenseFor("evidence_overclaim", undefined)).toEqual({ surface: "narrative" });
   });
-  it("the repairable set is exactly four — the fourth added by 3.2P-A6-R2", () => {
+  it("the repairable set is exactly two again — v22 removed the scenario field, not just its repair", () => {
     /*
-      `scenario_independent_moment` joined the set when A6 proved a first-call relocation gets
-      no correction at all under a rule written for whole-program retries. It takes the SAME
-      narrow `scenario_pressure` licence as its sibling, so the envelope this file tests is
-      unchanged: everything outside the two pressure fields must still survive byte-identical.
+      A6-R2 made `scenario_independent_moment` repairable; A7 then spent a full window proving
+      the correction could not win. So 3.2P-A7-R2 took the free-text pressure fields out of the
+      wire, which makes BOTH scenario codes unreachable — a repair for a defect that cannot be
+      expressed is not a repair. The envelope this file tests is unchanged for the two honesty
+      families that remain.
     */
-    for (const ok of ["evidence_overclaim", "material_fabrication", "scenario_without_pressure", "scenario_independent_moment"] as const) {
+    for (const ok of ["evidence_overclaim", "material_fabrication"] as const) {
       expect(isSemanticRepairableCode(ok), ok).toBe(true);
+    }
+    for (const retired of ["scenario_without_pressure", "scenario_independent_moment"] as const) {
+      expect(isSemanticRepairableCode(retired), retired).toBe(false);
     }
     for (const no of ["dependency_inversion","missing_required_kind","non_observable_standard","generic_completion"] as const) {
       expect(isSemanticRepairableCode(no), no).toBe(false);
@@ -147,7 +151,8 @@ describe("[3.2P-R0] WINDOW 4 REPLAY — a reflection repair may not delete follo
       it("E — repair mutates a contract outside its license → freeze FAIL", () => {
         for (const program of [
           { behavior_contract: { actor: "Someone else", trigger: "before each scheduled appointment", action_verb: "make", action_detail: "a confirmation call and follow the checklist of required questions", completion: { confirmed_by: "the supervisor", confirmation_action: "review the completed checklist" } } },
-          { scenario_contract: { pressure_condition: "something else entirely", pressure_detail: "the phone list is out of date" } },
+          // A DIFFERENT frame from the baseline — an identical one is not a mutation.
+          { scenario_contract: { pressure_frame: "pushback" } },
           { completion_contract: { verification_target: "the_confirmation_step", response_mode: "name_the_moment" } },
           { follow_up_contract: { review_focus: "the_confirmation", confirmer: "the_host" } },
         ]) {
@@ -211,10 +216,16 @@ describe("[3.2P-R0] instruction ↔ license parity", () => {
 });
 
 describe("[3.2P-R0] the R4 entry point still behaves exactly as before", () => {
-  it("scenario pressure freeze is unchanged", () => {
-    const before = proposal({ program: { scenario_contract: { pressure_condition: "the workload is heavy", pressure_detail: "" } } });
-    const ok = proposal({ program: { scenario_contract: { pressure_condition: "a queue is building at the desk", pressure_detail: "" } } });
-    const bad = proposal({ program: { scenario_contract: { pressure_condition: "a queue is building at the desk", pressure_detail: "" }, display_title: "changed" } });
+  it("scenario freeze is unchanged — now over one frame id instead of two prose fields", () => {
+    /*
+      The R4 freeze still works; what it guards is smaller. v22 (3.2P-A7-R2) left the scenario
+      with one enum, so "the repair changed something outside its licence" is now a change to
+      the title, an element, or a contract — never a rewritten pressure sentence, because there
+      is none. Nothing licenses a scenario repair any more, so this is a historical guarantee.
+    */
+    const before = proposal({ program: { scenario_contract: { pressure_frame: "time_is_short" } } });
+    const ok = proposal({ program: { scenario_contract: { pressure_frame: "time_is_short" } } });
+    const bad = proposal({ program: { scenario_contract: { pressure_frame: "time_is_short" }, display_title: "changed" } });
     expect(scenarioRepairFreezeViolated(before, ok)).toBe(false);
     expect(scenarioRepairFreezeViolated(before, bad)).toBe(true);
   });

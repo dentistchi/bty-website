@@ -58,7 +58,7 @@ const proposal = (over: Record<string, unknown> = {}) => ({
       trigger: "at each morning huddle, before the group leaves",
       action_verb: "name", action_detail: "one owner and one deadline for every agreed action and writes them in the huddle note",
     },
-    scenario_contract: { pressure_condition: "the huddle is running late and people are already standing to leave", pressure_detail: null },
+    scenario_contract: { pressure_frame: "time_is_short" },
     completion_contract: { verification_target: "the_behaviour", response_mode: "state_what_you_will_say" },
     follow_up_contract: { review_focus: "what_you_said", confirmer: "self_report" },
     ...over,
@@ -175,13 +175,16 @@ describe("[3.2P-R3.4-R1] P — no repair can touch the criterion", () => {
       names two fields and neither is completion; and the criterion is not part of what the model
       returns at all, so there is no field for ANY licence to unfreeze.
     */
-    expect(repairLicenseFor("scenario_without_pressure", "scenario")).toEqual({ surface: "scenario_pressure" });
     const contract = PROGRAM_JSON_SCHEMA.properties.program.properties.behavior_contract;
     expect("completion" in contract.properties).toBe(false);
-    // The repairable set is unchanged and none of its members is about completion.
-    for (const code of ["evidence_overclaim", "material_fabrication", "scenario_without_pressure"] as const) {
+    /*
+      The second reason is now the only one, and it is stronger than the first ever was: v22
+      removed the scenario prose entirely, so there is no scenario licence left to check.
+    */
+    for (const code of ["evidence_overclaim", "material_fabrication"] as const) {
       expect(isSemanticRepairableCode(code)).toBe(true);
     }
+    expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(false);
   });
 
   it("and a retry cannot change what the Host wrote, because the Host is the only author", () => {
@@ -240,9 +243,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
-    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
+    expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 });
