@@ -165,13 +165,68 @@ describe('BUILD 26O — one actor context, two rows, one transaction', () => {
   });
 });
 
-describe('BUILD 26O — the unattributed path is retired, not left beside the new one', () => {
-  it('drops the legacy 5-text signature', () => {
-    expect(sql).toMatch(
-      /drop function if exists public\.issue_timed_access_pass\(uuid, text, text, text, text\)/,
-    );
+describe('BUILD 26O-R2 — the legacy signature is a wrapper, not a bypass', () => {
+  // R1 DROPPED this signature, which was correct for R1 and unshippable: the deployed Worker
+  // calls it, so removing it breaks issuance the instant the migration lands, and deploying the
+  // Worker first breaks it the other way. R2 replaces it in place instead.
+
+  const wrapper = (() => {
+    const marker = 'p_manager_actor   text default \'bty_mgr\'';
+    const start = sql.lastIndexOf('create or replace function public.issue_timed_access_pass', sql.indexOf(marker));
+    expect(start).toBeGreaterThanOrEqual(0);
+    return sql.slice(start, sql.indexOf('revoke all on function public.issue_timed_access_pass(uuid, text, text, text, text)', start));
+  })();
+
+  it('does NOT drop the legacy signature (that is the rollout gap)', () => {
+    expect(sql).not.toMatch(/drop function if exists public\.issue_timed_access_pass\(uuid, text, text, text, text\)/);
   });
 
+  it('re-declares it with the EXACT deployed parameter list, so the old call still resolves', () => {
+    expect(wrapper).toMatch(/p_account_id\s+uuid/);
+    expect(wrapper).toMatch(/p_pass_type\s+text/);
+    expect(wrapper).toMatch(/p_reason\s+text/);
+    expect(wrapper).toMatch(/p_idempotency_key text/);
+    expect(wrapper).toMatch(/p_manager_actor\s+text default 'bty_mgr'/);
+  });
+
+  it('DELEGATES to the canonical function and inserts nothing itself', () => {
+    expect(wrapper).toMatch(/return public\.issue_timed_access_pass\(/);
+    expect(wrapper).not.toMatch(/insert\s+into/i);
+  });
+
+  it('stamps its own truthful legacy provenance', () => {
+    expect(wrapper).toContain("'manager_issue_legacy_compat'");
+    expect(wrapper).toContain("'shared_manager_credential'");
+    expect(wrapper).toContain("'actor_id',   'bty_mgr'");
+    expect(wrapper).toContain("'version',    1");
+  });
+
+  it('NEVER fabricates a token fingerprint — the legacy call has none', () => {
+    expect(wrapper).not.toContain('session_fp');
+  });
+
+  it('refuses a non-shared actor rather than relabelling it', () => {
+    expect(wrapper).toContain("'legacy_actor_not_supported'");
+    expect(wrapper).toMatch(/v_actor <> 'bty_mgr'/);
+  });
+
+  it('claims no human identity anywhere', () => {
+    for (const human of ['authenticated_human', 'email', 'operator_name', 'person']) {
+      expect(wrapper).not.toContain(human);
+    }
+  });
+
+  it('keeps the legacy signature service_role-only', () => {
+    expect(sql).toMatch(
+      /revoke all on function public\.issue_timed_access_pass\(uuid, text, text, text, text\) from public, anon, authenticated/,
+    );
+    expect(sql).toMatch(
+      /grant execute on function public\.issue_timed_access_pass\(uuid, text, text, text, text\) to service_role/,
+    );
+  });
+});
+
+describe('BUILD 26O — the canonical function carries no legacy actor parameter', () => {
   it('does not reintroduce a hardcoded actor default', () => {
     expect(fn).not.toMatch(/default\s+'bty_mgr'/);
     expect(fn).not.toMatch(/p_manager_actor/);
@@ -202,7 +257,12 @@ describe('BUILD 26O — structural floor, and NO backfill', () => {
 
   it('is idempotent — re-applying adds no duplicate constraint', () => {
     expect(sql).toMatch(/if not exists \(select 1 from pg_constraint where conname = 'timed_pass_issue_attribution_chk'\)/);
-    expect(sql).toMatch(/drop function if exists/);
+    // R2 — idempotency for the functions is now `create or replace` on BOTH signatures rather
+    // than a drop. That is not merely equivalent: replacing in place is what leaves no instant
+    // in which the deployed Worker's function is missing. Both must be replaceable, so both are
+    // pinned. (Proven behaviourally: the harness applies this migration three times.)
+    const replaces = sql.match(/create or replace function public\.issue_timed_access_pass/g) ?? [];
+    expect(replaces).toHaveLength(2);
   });
 
   it('BACKFILLS NOTHING — no UPDATE or DELETE against any pass table', () => {

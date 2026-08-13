@@ -52,19 +52,7 @@ begin
   end if;
 end $$;
 
--- 2. Retire the unattributed signature ------------------------------------------------------
---
--- The old function is DROPPED rather than left beside the new one. `create or replace` would not
--- have replaced it — the new parameter list has a different type signature, so both would exist
--- and the 5-text overload would remain a live, callable path that issues grants with no
--- provenance at all. A bypass that still works is not retired.
---
--- Safe to drop: it is revoked from public/anon/authenticated and executable only by service_role,
--- and the sole caller in the repository (src/lib/timed-pass.server.ts) is updated in the same
--- commit.
-drop function if exists public.issue_timed_access_pass(uuid, text, text, text, text);
-
--- 3. Issuance with mandatory, server-derived provenance --------------------------------------
+-- 2. Issuance with mandatory, server-derived provenance --------------------------------------
 --
 -- `p_issuance` has NO DEFAULT. A caller that omits it fails to resolve the function at all,
 -- rather than quietly issuing an unattributed pass — the failure lands at the call, not in the
@@ -190,6 +178,87 @@ end;
 $$;
 revoke all on function public.issue_timed_access_pass(uuid, text, text, text, jsonb) from public, anon, authenticated;
 grant execute on function public.issue_timed_access_pass(uuid, text, text, text, jsonb) to service_role;
+
+-- 3. R2 — the legacy signature becomes a COMPATIBILITY WRAPPER -------------------------------
+--
+-- THE ROLLOUT GAP THIS CLOSES. R1 dropped the 5-text signature outright, which left no safe
+-- order to ship in: apply the migration first and the CURRENTLY DEPLOYED Worker — which calls
+-- `p_manager_actor` — loses the ability to issue at all; deploy the Worker first and it calls a
+-- `p_issuance` function that does not exist yet. Either order has a window in which issuance is
+-- broken in production. A migration whose only safe rollout order is "both at once" does not
+-- have one.
+--
+-- So the old signature is REPLACED IN PLACE rather than dropped. `create or replace` works here
+-- precisely because the parameter list is byte-identical to the deployed one — same names, same
+-- types, same order, same return type — so the deployed Worker's call keeps resolving, and keeps
+-- resolving to *this*, which now delegates. There is no moment where the function is absent, and
+-- no moment where it can issue without provenance.
+--
+-- PostgREST picks an overload by the SET OF ARGUMENT NAMES in the JSON body. The two signatures
+-- differ in their fifth name — `p_manager_actor` vs `p_issuance` — so an old Worker's body
+-- selects the wrapper and a new Worker's body selects the canonical function, unambiguously.
+--
+-- WHAT THE LEGACY CALL HONESTLY KNOWS. The pre-26O route never passed `managerActor`, so the
+-- deployed server sends the literal 'bty_mgr' every time — server-constructed, never
+-- body-controlled (the Zod schema has no such field and strips unknown keys). That is the whole
+-- of the legacy call's identity evidence:
+--
+--     shared credential        KNOWN     -> actor_kind + actor_id
+--     token fingerprint        UNAVAILABLE -> session_fp is OMITTED, never invented
+--     unique human operator    UNKNOWN   -> nothing here claims one
+--
+-- `session_fp` is deliberately ABSENT rather than null-or-placeholder. The legacy call has no
+-- token fingerprint to give, and a fabricated or empty one would be indistinguishable from a
+-- real correlation in a later forensic join — the precise class of mistake BUILD 26M was written
+-- to stop. `source` names the compatibility path, so a legacy-era issuance is identifiable as
+-- such forever.
+--
+-- A non-'bty_mgr' actor is REFUSED rather than normalized. Repository evidence proves the
+-- deployed path cannot produce one, so refusing costs nothing real and makes an unexpected
+-- caller loud instead of silently relabelling whatever it sent as the shared credential.
+create or replace function public.issue_timed_access_pass(
+  p_account_id      uuid,
+  p_pass_type       text,
+  p_reason          text,
+  p_idempotency_key text,
+  p_manager_actor   text default 'bty_mgr'
+) returns jsonb
+language plpgsql set search_path = public, pg_temp as $$
+declare
+  -- Omitted/blank reproduces the pre-26O default exactly; anything else is not a value this
+  -- wrapper is willing to vouch for.
+  v_actor text := coalesce(nullif(btrim(coalesce(p_manager_actor, '')), ''), 'bty_mgr');
+begin
+  if v_actor <> 'bty_mgr' then
+    return jsonb_build_object('ok', false, 'error', 'legacy_actor_not_supported');
+  end if;
+
+  -- Delegates to the canonical implementation, so the legacy path inherits — rather than
+  -- re-implements — the provenance requirement, the R1 replay boundary, the advisory lock, the
+  -- PRO block and the single-transaction write. Two implementations of issuance is how the two
+  -- paths would drift apart. The jsonb argument type selects the canonical overload; there is no
+  -- implicit jsonb->text cast in PostgreSQL, so this cannot resolve back to itself.
+  return public.issue_timed_access_pass(
+    p_account_id,
+    p_pass_type,
+    p_reason,
+    p_idempotency_key,
+    jsonb_build_object(
+      'version',    1,
+      'source',     'manager_issue_legacy_compat',
+      'actor_kind', 'shared_manager_credential',
+      'actor_id',   'bty_mgr'
+    )
+  );
+end;
+$$;
+revoke all on function public.issue_timed_access_pass(uuid, text, text, text, text) from public, anon, authenticated;
+grant execute on function public.issue_timed_access_pass(uuid, text, text, text, text) to service_role;
+
+comment on function public.issue_timed_access_pass(uuid, text, text, text, text) is
+  'BUILD 26O-R2 rollout compatibility ONLY. Delegates to the canonical (…, jsonb) implementation '
+  'with truthful legacy provenance: shared credential known, token fingerprint unavailable, '
+  'unique human unknown. Remove only after the 26O Worker is deployed and live parity is proven.';
 
 comment on constraint timed_pass_issue_attribution_chk on public.timed_access_pass_audit is
   'BUILD 26O: a NEW ISSUED audit row must carry server-derived issuance provenance. NOT VALID on '
