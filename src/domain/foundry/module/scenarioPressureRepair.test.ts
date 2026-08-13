@@ -73,13 +73,22 @@ const verdict = (p: unknown) => {
 const BEFORE = proposal("the workload is heavy and staff are managing many tasks");
 
 describe("[3.2O-R4] the fault is isolated to ONE field", () => {
-  it("the repairable set is exactly the three authorised codes", () => {
+  it("the repairable set is exactly the four authorised codes", () => {
     expect(isSemanticRepairableCode("evidence_overclaim")).toBe(true);
     expect(isSemanticRepairableCode("material_fabrication")).toBe(true);
     expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
-    // Everything else stays terminal — especially the sibling scenario refusal.
+    /*
+      THE SIBLING JOINED IT (Slice 3.2P-A6-R2). R4 excluded `scenario_independent_moment` here
+      because, under a whole-program retry, a relocated scenario could mean the scenario was
+      built around the wrong moment. That state is now unreachable: the host owns the trigger,
+      the model has no field for it, and the licensed patch writes only the two pressure fields
+      — the same surface this file already proves is isolated. A6 was the cost of keeping the
+      old rule: a first-call relocation, no correction, one window spent.
+    */
+    expect(isSemanticRepairableCode("scenario_independent_moment")).toBe(true);
+    // Everything else stays terminal.
     for (const code of [
-      "scenario_independent_moment", "dependency_inversion", "scenario_unrelated",
+      "dependency_inversion", "scenario_unrelated",
       "application_moment_unrelated", "non_observable_standard", "field_type",
       "generic_completion", "complaint_replay", "trigger_not_recurring",
     ] as const) {

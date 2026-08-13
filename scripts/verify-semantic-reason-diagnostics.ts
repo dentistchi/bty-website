@@ -30,7 +30,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 
-import { validateProgramProposal, requiredProgramKinds } from "../src/domain/foundry/module/program-authorship";
+import { validateProgramProposal, requiredProgramKinds, PROGRAM_AUTHORSHIP_VERSION } from "../src/domain/foundry/module/program-authorship";
 import { SCENARIO_DEFECT_REASONS } from "../src/domain/foundry/module/program-coherence";
 import { EVIDENCE_POLICY } from "../src/domain/foundry/module/evidence-policy";
 import { finalizeProgramCall, LIVE_SEMANTIC_REASON_VOCABULARY } from "../src/lib/bty/foundry/events/programGenerationRecorder";
@@ -165,7 +165,7 @@ async function createProbeAttempt(draftId: string, ownerId: string): Promise<str
       owner_user_id: ownerId,
       submission_intent_id: randomUUID(),
       context_fingerprint: FINGERPRINT,
-      proposal_version: "program_authorship_v20",
+      proposal_version: PROGRAM_AUTHORSHIP_VERSION,
       locale: "en",
       // The column is CHECK-constrained to a 40-hex sha, so the fingerprint cannot live here;
       // `context_fingerprint` is free text and is what cleanup enumerates by.

@@ -122,14 +122,24 @@ describe("[3.2L-R11.4I] bounded semantic repair", () => {
       `scenario_without_pressure`, on proof that every defect carrying that code lives in the
       two scenario pressure fields and touches neither the behaviour, the trigger nor the
       trained action — and only alongside a deterministic freeze that discards any repair
-      which moves anything else. The property this test protects is unchanged: the set is
-      exactly the authorised codes, and every other code ends the attempt.
+      which moves anything else.
+
+      Slice 3.2P-A6-R2 added a FOURTH, `scenario_independent_moment`, and it is the first time
+      a code moved from terminal to repairable. Its exclusion was reasoned from an architecture
+      that no longer exists — a retry that regenerated the whole program, where a relocated
+      scenario might mean the scenario was built around the wrong moment. The model now has no
+      field for the actor, the trigger or the host's moment, `namesIndependentMoment` reads only
+      the two pressure fields, and the licensed patch cannot write anything else.
+
+      The property this test protects is unchanged: the set is exactly the authorised codes, and
+      every other code ends the attempt.
     */
     expect(isSemanticRepairableCode("evidence_overclaim")).toBe(true);
     expect(isSemanticRepairableCode("material_fabrication")).toBe(true);
     expect(isSemanticRepairableCode("scenario_without_pressure")).toBe(true);
+    expect(isSemanticRepairableCode("scenario_independent_moment")).toBe(true);
     for (const terminal of [
-      "scenario_independent_moment", "non_observable_standard", "dependency_inversion",
+      "non_observable_standard", "dependency_inversion",
       "person_evaluation", "scenario_unrelated", "application_moment_unrelated",
       "generic_completion", "trigger_not_recurring", "complaint_replay",
     ] as const) {

@@ -206,6 +206,6 @@ describe("[3.2P-A3-R2] O/P — the repair instructions describe the contract tha
     expect(Object.keys(repairPatchContract({ surface: "narrative" })!.schema.properties as object))
       .toEqual(["display_title", "assumptions", "warnings"]);
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
   });
 });

@@ -332,7 +332,7 @@ describe("[3.2P-R3.7] R/V/W — authority is unchanged where it should be", () =
       draftId: "d", currentFingerprint: "f", currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
       latestSuccessfulAttemptId: "a", adoptedJourneyDigest: "g",
     });
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v11");
     for (const spent of ["v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17"].map((v) => `program_authorship_${v}`)) {
       expect(decideAdoptionReceipt(claim(spent)), spent).toEqual({ ok: false, reason: "proposal_no_longer_valid" });

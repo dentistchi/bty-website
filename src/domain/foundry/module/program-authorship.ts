@@ -139,6 +139,22 @@ import {
 
 
 
+ * v20 → v21 (Slice 3.2P-A6-R2) makes a relocated occasion repairable, which changes what a
+ * generation can OUTCOME to: a proposal that was terminally refused under v20 can now be
+ * corrected and succeed under v21. The validator did not move — the same phrase refuses for the
+ * same reason — but the acceptance of an ATTEMPT did, and that is what this constant tracks.
+ *
+ * A6 (`772a15e2`) was refused on its first call with `scenario_independent_moment` and given no
+ * retry, under a rule written when a repair regenerated the whole program. Measured: the model
+ * has no field for the actor, the trigger or the moment; `namesIndependentMoment` is called in
+ * exactly one place, over the two pressure fields; and the licensed patch cannot reach anything
+ * else. So the fault it was protecting against — a scenario rebuilt around the wrong moment —
+ * is no longer reachable, while the fault A6 actually committed is two fields wide.
+ *
+ * `repairLicenseFor` gives it the NARROW `scenario_pressure` licence rather than the wider
+ * `element_and_contract` its kind would otherwise select. No other code became repairable, no
+ * third call exists — `MAX_ATTEMPTS` is still 2 — and the moment floor is byte-identical.
+ *
  * v19 → v20 (Slice 3.2P-A4-R3) closes four measured false negatives in the evidence floor, and
  * this one MOVES ACCEPTANCE — a proposal valid under v19 can be refused under v20, which is
  * exactly what this constant exists to record.
@@ -237,7 +253,7 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v20";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v21";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1266,6 +1282,31 @@ const SEMANTIC_REPAIRABLE_CODES: readonly ProgramRejectCode[] = [
     The repair is additionally frozen deterministically; see `scenarioRepairFreezeViolated`.
   */
   "scenario_without_pressure",
+  /*
+    ADDED IN SLICE 3.2P-A6-R2, and it REVERSES the note above about its sibling.
+
+    That note — "a second occasion can mean the scenario was built around the wrong moment,
+    which is not one phrase away from right" — was written when a retry regenerated the whole
+    program. It was correct then: the model could move the trigger, the actor and the action
+    while claiming to fix the pressure, so a relocated scenario really might have been wrong
+    at the root and nothing bounded the correction.
+
+    Three architectural changes have since made that rationale stale, and all three are
+    measured rather than assumed:
+
+      1. The trigger IS the host's `recurringMoment` and the actor is server-written. The
+         model has no field for either — `behavior_contract` is `{action_verb, action_detail}`.
+      2. `namesIndependentMoment` is called in exactly ONE place, over `pressureCondition` and
+         `pressureDetail` alone. A second occasion has nowhere else to come from.
+      3. A1-R3 replaced whole-program regeneration with a licensed PATCH the server merges
+         into a baseline the model never receives.
+
+    So "the scenario was built around the wrong moment" is no longer a state the model can
+    reach. What A6 actually produced was two free-text fields naming an occasion, next to a
+    trigger it never touched — which is one phrase away from right, and is now given the same
+    single bounded correction its sibling has had since R4.
+  */
+  "scenario_independent_moment",
 ];
 
 export function isSemanticRepairableCode(code: ProgramRejectCode): boolean {
@@ -1297,9 +1338,21 @@ export function semanticRepairInstruction(
    */
   const patchOnly =
     "You are given the current value of every field you may change, and the response shape contains those fields and nothing else. Return ONLY those fields, corrected. Do not describe, repeat or recreate any other part of the program — BTY keeps it exactly as it is.";
-  if (code === "scenario_without_pressure") {
+  if (code === "scenario_without_pressure" || code === "scenario_independent_moment") {
+    /*
+      ONE BODY, TWO DIAGNOSES (Slice 3.2P-A6-R2). Everything after the first line already says
+      exactly what an independent-moment repair needs — the moment is fixed, the pressure makes
+      THAT moment harder, no second occasion, patch fields only — so nothing is added.
+      Measured on the composed instruction, not assumed.
+
+      Only the opening sentence differs, and it has to: telling a model its pressure "named
+      nothing that competes" when the actual fault was a relocated occasion describes a defect
+      it did not commit, and the first thing it would do is add difficulty it already had.
+    */
     return [
-      "Your previous response gave the practice situation no real difficulty — the pressure field named nothing that competes with doing the behaviour properly.",
+      code === "scenario_without_pressure"
+        ? "Your previous response gave the practice situation no real difficulty — the pressure field named nothing that competes with doing the behaviour properly."
+        : "Your previous response put the practice situation at a different time or event from the behaviour itself — a pressure field named an occasion of its own.",
       "The situation still happens at the host's own moment, which is fixed. Your pressure makes THAT moment harder — it never moves the learner to a different one.",
       "Replace the pressure with a real difficulty of one of these kinds:",
       ...scenarioPressurePromptLines(),
@@ -1372,7 +1425,16 @@ export type RepairLicense =
  * validator itself reported — never from the model's claim about what it fixed.
  */
 export function repairLicenseFor(code: ProgramRejectCode, kind: JourneyElementKind | undefined): RepairLicense {
-  if (code === "scenario_without_pressure") return { surface: "scenario_pressure" };
+  /*
+    BOTH scenario faults take the NARROW licence (Slice 3.2P-A6-R2). Falling through to the
+    `kind === "scenario"` branch below would hand an independent-moment repair
+    `element_and_contract` — the model's scenario prose plus the contract — which is wider than
+    the defect and wider than it needs. The prose is discarded and re-rendered from the contract
+    anyway, so the only writable surface that matters is the two pressure fields.
+  */
+  if (code === "scenario_without_pressure" || code === "scenario_independent_moment") {
+    return { surface: "scenario_pressure" };
+  }
   if (kind === undefined) return { surface: "narrative" };
   if (kind === "observable_standard") return { surface: "element_and_contract", kind, contract: "behavior_contract" };
   if (kind === "scenario") return { surface: "element_and_contract", kind, contract: "scenario_contract" };

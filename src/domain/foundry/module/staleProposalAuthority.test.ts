@@ -93,10 +93,10 @@ describe("[3.2P-W4-R1] E/H/I — the adoption gate", () => {
 
 describe("[3.2P-W4-R1] the acceptance contract version", () => {
   it("moved, because acceptance moved", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v20");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v21");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe(OLD_AUTHORITY);
     // Every version this pilot generated under is now stale: W2/W3 v9, W4 v10, W5 v11.
-    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15", "program_authorship_v16", "program_authorship_v17", "program_authorship_v18", "program_authorship_v19"]) {
+    for (const spent of ["program_authorship_v9", "program_authorship_v10", "program_authorship_v11", "program_authorship_v12", "program_authorship_v13", "program_authorship_v14", "program_authorship_v15", "program_authorship_v16", "program_authorship_v17", "program_authorship_v18", "program_authorship_v19", "program_authorship_v20"]) {
       expect(PROGRAM_AUTHORSHIP_VERSION).not.toBe(spent);
     }
   });

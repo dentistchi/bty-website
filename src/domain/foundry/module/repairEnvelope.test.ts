@@ -84,11 +84,17 @@ describe("[3.2P-R0] licenses are derived from the refusal, not from the model's 
   it("a refusal with no element licenses the narrative prose only", () => {
     expect(repairLicenseFor("evidence_overclaim", undefined)).toEqual({ surface: "narrative" });
   });
-  it("the repairable set is unchanged — exactly three", () => {
-    for (const ok of ["evidence_overclaim", "material_fabrication", "scenario_without_pressure"] as const) {
+  it("the repairable set is exactly four — the fourth added by 3.2P-A6-R2", () => {
+    /*
+      `scenario_independent_moment` joined the set when A6 proved a first-call relocation gets
+      no correction at all under a rule written for whole-program retries. It takes the SAME
+      narrow `scenario_pressure` licence as its sibling, so the envelope this file tests is
+      unchanged: everything outside the two pressure fields must still survive byte-identical.
+    */
+    for (const ok of ["evidence_overclaim", "material_fabrication", "scenario_without_pressure", "scenario_independent_moment"] as const) {
       expect(isSemanticRepairableCode(ok), ok).toBe(true);
     }
-    for (const no of ["scenario_independent_moment","dependency_inversion","missing_required_kind","non_observable_standard","generic_completion"] as const) {
+    for (const no of ["dependency_inversion","missing_required_kind","non_observable_standard","generic_completion"] as const) {
       expect(isSemanticRepairableCode(no), no).toBe(false);
     }
   });
