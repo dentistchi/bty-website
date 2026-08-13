@@ -165,12 +165,28 @@ export async function createOrResumeRevision(
   // Create exactly one new revision draft (existing createDraft revision branch:
   // parent_module_id lineage + nextModuleVersion + inherited program_id) with the
   // parent's answers copied for prefill.
+  /*
+    THE NEW VERSION HAS NOT BEEN REVIEWED (Slice 3.2R-R3).
+
+    Answers copy verbatim, and `materialReviewV1` lives among them — so without this the
+    confirmation would ride into the revision alongside the cloned attachment, and a Host would
+    inherit both the wrong document AND the record of having approved it. That is precisely how
+    the pilot's v2 came to serve v1's unrelated PDF.
+
+    Same content, new version, fresh look. The confirmation binds to a draft AND to exact bytes;
+    a matching hash across versions is not evidence that anyone looked at this one.
+  */
+  const parentAnswers = latestPub.answers
+    ? (JSON.parse(JSON.stringify(latestPub.answers)) as ModuleDraftAnswers & { materialReviewV1?: unknown })
+    : latestPub.answers;
+  if (parentAnswers && typeof parentAnswers === "object") delete (parentAnswers as { materialReviewV1?: unknown }).materialReviewV1;
+
   const created = await createDraft(admin, ownerUserId, {
     parentDraftId: latestPub.id,
     // Deep copy so the revision draft's answers are independent of the parent's
     // (Postgres jsonb already stores a copy; this makes the intent explicit and
     // guarantees editing V2 can never touch V1 answers). answers is JSON-shaped.
-    answers: latestPub.answers ? (JSON.parse(JSON.stringify(latestPub.answers)) as ModuleDraftAnswers) : latestPub.answers,
+    answers: parentAnswers,
   });
   if (!created.ok) return { ok: false, reason: "revision_unavailable" };
 

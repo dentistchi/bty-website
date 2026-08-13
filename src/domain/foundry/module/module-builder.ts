@@ -184,6 +184,22 @@ export type BuilderAnswers = ModuleDraftAnswers & {
    */
   programAdoptionV1?: { attemptId: string };
   /**
+   * THE HOST LOOKED AT THE MATERIAL (Slice 3.2R-R3).
+   *
+   * BTY can verify that a PDF exists, that it belongs to this draft and how many pages it has.
+   * It cannot read the document and cannot know whether it is about this training. The pilot's
+   * first live learner proved what that gap costs: a training about naming owners in huddles
+   * served a document about patient communication, and every automated check passed.
+   *
+   * So the one thing the server CAN require is that a human looked. This records that, and
+   * only that — never that BTY verified the contents, never that the material is any good.
+   *
+   * BOUND TO THE EXACT BYTES. `contentHash` is the asset's SHA-256, so replacing the document
+   * invalidates the confirmation by construction rather than by a cleanup rule someone has to
+   * remember. A matching filename proves nothing and is deliberately not used.
+   */
+  materialReviewV1?: { contentHash: string; confirmedAt: string };
+  /**
    * Adaptive Clarification (Slice 2.4C) — the resumable pre-draft Q&A state. Assistive
    * scratch, NOT a canonical published field: it is deliberately excluded from
    * `SNAPSHOT_ANSWER_KEYS`, never overwrites a canonical Builder field, and survives
@@ -484,6 +500,20 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
         const id = isPlainObject(v) ? v.attemptId : undefined;
         if (typeof id === "string" && UUID_RE.test(id)) clean.programAdoptionV1 = { attemptId: id };
         else errors.push("program_adoption_invalid");
+      }
+      /*
+        Same whitelist discipline as every other answer: a malformed value is DROPPED, never
+        stored, so a bad client cannot make the server believe a Host reviewed anything.
+      */
+      if (a.materialReviewV1 !== undefined) {
+        const v = a.materialReviewV1 as { contentHash?: unknown; confirmedAt?: unknown } | null;
+        const hash = isPlainObject(v) ? v.contentHash : undefined;
+        const at = isPlainObject(v) ? v.confirmedAt : undefined;
+        if (typeof hash === "string" && /^[0-9a-f]{64}$/.test(hash) && typeof at === "string" && at.length >= 20 && at.length <= 40) {
+          clean.materialReviewV1 = { contentHash: hash, confirmedAt: at };
+        } else {
+          errors.push("material_review_invalid");
+        }
       }
       if (a.realityGroundedJourneyV1 !== undefined) {
         if (validateJourney(a.realityGroundedJourneyV1).length === 0) {

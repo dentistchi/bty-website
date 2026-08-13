@@ -49,10 +49,23 @@ export type DraftAssetRow = {
   created_at: string;
 };
 
-/** The client-safe asset projection — NO bucket, path, hash, or owner. */
+/**
+ * The client-safe asset projection — NO bucket, path, or owner.
+ *
+ * `content_hash` IS exposed since Slice 3.2R-R3, and the omission it replaces was deliberate,
+ * so the reason is recorded. A Host material confirmation binds to the exact bytes attached,
+ * which is the only binding that makes replacing the document invalidate it by construction.
+ * The Review surface therefore has to know whether the confirmation names the file that is
+ * attached right now. A SHA-256 of a file its owner may already download is not a capability:
+ * it grants no read, names no location, and identifies no person.
+ *
+ * The bucket and path stay server-only. Bytes are reached ONLY through a short-lived signed
+ * URL from the owner-scoped file route.
+ */
 export type ClientAsset = {
   id: string;
   filename: string;
+  content_hash: string;
   file_kind: FileKind;
   mime_type: string;
   byte_size: number;
@@ -69,6 +82,7 @@ export function toClientAsset(row: DraftAssetRow): ClientAsset {
   return {
     id: row.id,
     filename: row.original_filename,
+    content_hash: row.content_hash,
     file_kind: row.file_kind,
     mime_type: row.mime_type,
     byte_size: row.byte_size,

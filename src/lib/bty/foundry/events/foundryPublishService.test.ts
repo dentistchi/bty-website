@@ -308,6 +308,11 @@ describe("publishDraft — PDF (durable-reference reuse)", () => {
             materialIntent: "pdf",
             followUpDays: 0,
             completionPrompt: "What will you double-check next shift?",
+            /*
+              Slice 3.2R-R3: a PDF training is publishable only once the Host has confirmed the
+              exact attached document. Bound by content hash, so this fixture names the asset's.
+            */
+            materialReviewV1: { contentHash: "deadbeef", confirmedAt: "2026-08-13T10:00:00.000Z" },
           },
         }),
       ],

@@ -46,6 +46,8 @@ function makeFakeAdmin(tables: Tables, fail: { table: string; op: "insert" | "up
       eq(this: { _filters: { c: string; v: unknown }[] }, c: string, v: unknown) { this._filters.push({ c, v }); return this; },
       in(this: { _ins: { c: string; arr: unknown[] }[] }, c: string, arr: unknown[]) { this._ins.push({ c, arr }); return this; },
       order() { return this; }, limit() { return this; },
+      // `.returns<T>()` is a supabase-js type-only helper that returns the builder itself.
+      returns(this: unknown) { return this; },
       _match(this: { _filters: { c: string; v: unknown }[]; _ins: { c: string; arr: unknown[] }[] }, r: Row) {
         return this._filters.every((f) => r[f.c] === f.v) && this._ins.every((f) => f.arr.includes(r[f.c]));
       },
@@ -320,5 +322,73 @@ describe("[3.2Q-R1] §7 — the concurrent loser reconciles too", () => {
     expect(tables.foundry_event_module[0].event_id).toBe("ev-winner");
     expect(tables.foundry_module_drafts[0].status).toBe("published");
     expect(tables.foundry_module_drafts[0].published_at).toBe("2026-08-13T00:00:00.000Z");
+  });
+});
+
+describe("[3.2R-R3] publish refuses a PDF the Host has not looked at", () => {
+  /*
+    THE GATE THAT DID NOT EXIST. The pilot's v2 published a document about patient communication
+    under a training about huddles, because the only material check was "a PDF exists". These
+    prove the server — not the browser — now requires a confirmation bound to the exact bytes.
+  */
+  const pdfDraft = (over: Row = {}): Row => ({
+    id: V2, owner_user_id: OWNER, status: "draft", module_version: 2,
+    approved_at: null, published_at: null, program_id: "prog-shared",
+    answers: {
+      problem: "Read the safety manual.", audienceType: "everyone",
+      recurringMoment: "at each handoff point",
+      observableBehavior: "Staff follow the lockout steps in order.",
+      successEvidence: "Observed correct lockout on the floor.", evidenceType: "seen",
+      learningNeeds: ["know"], materialIntent: "pdf", followUpDays: 0,
+      completionPrompt: "What will you double-check next shift?",
+      ...(over.answers as Record<string, unknown> ?? {}),
+    },
+  });
+  const asset = (hash: string) => ({
+    id: "asset-1", draft_id: V2, file_kind: "pdf", storage_bucket: "foundry-docs",
+    storage_path: "owner-1/uuid.pdf", original_filename: "safety.pdf", byte_size: 1000,
+    page_count: 8, page_count_verified: true, content_hash: hash, created_at: "t",
+  });
+
+  it("no confirmation → material_review_required, and nothing is created", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft()],
+      foundry_module_draft_assets: [asset("hash-a")],
+      foundry_event_module: [], foundry_events: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("material_review_required");
+    expect(tables.foundry_events).toHaveLength(0);
+    expect(tables.foundry_event_module).toHaveLength(0);
+    expect(tables.foundry_module_drafts[0].status).toBe("draft");
+  });
+
+  it("a confirmation for DIFFERENT bytes does not satisfy it — replacing the file re-arms the gate", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft({ answers: { materialReviewV1: { contentHash: "hash-OLD", confirmedAt: "2026-08-13T10:00:00.000Z" } } })],
+      foundry_module_draft_assets: [asset("hash-a")],
+      foundry_event_module: [], foundry_events: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("material_review_required");
+  });
+
+  it("a confirmation naming the attached bytes publishes normally", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft({ answers: { materialReviewV1: { contentHash: "hash-a", confirmedAt: "2026-08-13T10:00:00.000Z" } } })],
+      foundry_module_draft_assets: [asset("hash-a")],
+      foundry_event_module: [], foundry_events: [],
+      foundry_event_document_content: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+  });
+
+  it("a YouTube training is untouched by the material-review rule", async () => {
+    const tables: Tables = { foundry_module_drafts: [draft()], foundry_event_module: [], foundry_events: [] };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok).toBe(true);
   });
 });

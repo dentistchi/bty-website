@@ -54,6 +54,33 @@ export async function listDraftAssets(
 }
 
 /**
+ * ONE asset, resolved for its owner (Slice 3.2R-R3).
+ *
+ * The draft is resolved by (draft id + authenticated owner) FIRST — the asset table has no
+ * owner column — and only then is the asset scoped to that confirmed draft. So a Host cannot
+ * read another Host's material by knowing an asset id, and a wrong id and a wrong owner are
+ * indistinguishable to the caller.
+ *
+ * Returns the storage coordinates for signing; the caller never hands them to a browser.
+ */
+export async function resolveDraftAssetForOwner(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  draftId: string,
+  assetId: string,
+): Promise<DraftAssetRow | null> {
+  const draft = await getOwnerDraft(admin, ownerUserId, draftId);
+  if (!draft) return null;
+  const { data } = await admin
+    .from("foundry_module_draft_assets")
+    .select(ASSET_COLS)
+    .eq("id", assetId)
+    .eq("draft_id", draftId)
+    .maybeSingle<DraftAssetRow>();
+  return data ?? null;
+}
+
+/**
  * Attach ONE file to a draft (the client uploads each selected file in its own
  * request). Validates the bytes, enforces per-draft count + total-size limits,
  * uploads privately, then records the asset — compensating storage if the DB

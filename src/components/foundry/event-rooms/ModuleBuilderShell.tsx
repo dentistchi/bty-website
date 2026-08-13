@@ -675,8 +675,24 @@ export function ModuleBuilderShell({
   // The SINGLE readiness source the Review screen consults — the exact gate that the
   // server re-enforces at publish, plus the PDF-asset gate the client can see locally.
   // Every entry maps to a visible, highlightable Review row (Slice 2.4A.3).
-  const pdfMissing = answers.materialIntent === "pdf" && assets.filter((x) => x.file_kind === "pdf").length === 0;
-  const reviewMissing = reviewMissingSections(answers, pdfMissing ? ["material_pdf_required"] : []);
+  const pdfAssets = assets.filter((x) => x.file_kind === "pdf");
+  const pdfMissing = answers.materialIntent === "pdf" && pdfAssets.length === 0;
+  /*
+    THE MATERIAL BLOCKER, MIRRORED (Slice 3.2R-R3). The server is the authority — publish
+    refuses `material_review_required` on its own — and this mirrors it so the Host sees the
+    blocker in Review instead of discovering it by pressing a button that fails.
+
+    The single-asset rule matches the server's: one confirmation records one content hash, so a
+    draft carrying several PDFs cannot be satisfied by confirming one. Fails CLOSED either way.
+  */
+  const materialReviewNeeded =
+    answers.materialIntent === "pdf" &&
+    pdfAssets.length === 1 &&
+    answers.materialReviewV1?.contentHash !== pdfAssets[0]?.content_hash;
+  const reviewMissing = reviewMissingSections(answers, [
+    ...(pdfMissing ? ["material_pdf_required"] : []),
+    ...(materialReviewNeeded ? ["material_review_required"] : []),
+  ]);
   const filesNode = (
     <FilesAndDocuments
       draftId={draftId}
@@ -790,6 +806,16 @@ export function ModuleBuilderShell({
               {t.journeyStart} →
             </button>
           )}
+          <MaterialReviewPanel
+            draftId={draftId}
+            assets={pdfAssets}
+            confirmedHash={answers.materialReviewV1?.contentHash ?? null}
+            needed={materialReviewNeeded}
+            onConfirm={(contentHash: string) =>
+              patchAnswers({ materialReviewV1: { contentHash, confirmedAt: new Date().toISOString() } }, true)
+            }
+            t={t}
+          />
           <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
           <ParticipationModeChooser
             mode={participationMode}
@@ -1550,6 +1576,119 @@ function PublishAction({
  * training, not a form. Anything still MISSING forces the section open — a blocker must
  * never be hidden behind a collapsed panel.
  */
+/**
+ * THE MATERIAL, AS SOMETHING A HOST CAN ACTUALLY SEE (Slice 3.2R-R3).
+ *
+ * The pilot's first live learner was shown a document about patient communication by a
+ * training about naming owners in huddles. Review had rendered the material as one line —
+ * `education.pdf · Attached` — with no preview and no way to open it, so nobody had a visible
+ * signal that the file was wrong. The last gate before a learner could only check that a file
+ * existed.
+ *
+ * BTY cannot read the document, so it cannot judge relevance; what it can require is that a
+ * human looked. This opens the real bytes, and the confirmation records that — nothing more.
+ */
+function MaterialReviewPanel({
+  draftId,
+  assets,
+  confirmedHash,
+  needed,
+  onConfirm,
+  t,
+}: {
+  draftId: string;
+  assets: ClientAsset[];
+  confirmedHash: string | null;
+  needed: boolean;
+  onConfirm: (contentHash: string) => void;
+  t: ModuleBuilderCopy;
+}) {
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [viewerError, setViewerError] = useState<string | null>(null);
+
+  if (assets.length === 0) return null;
+
+  const open = async (assetId: string) => {
+    setViewerError(null);
+    setOpeningId(assetId);
+    try {
+      const res = await fetch(`/api/bty/foundry/modules/${draftId}/assets/${assetId}/file`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; url?: string };
+      /*
+        A viewer that cannot open the document must SAY so — never fall back to filename-only
+        confidence, which is the exact confidence that failed here.
+      */
+      if (!res.ok || !data.ok || !data.url) {
+        setViewerError(t.viewDocumentError);
+        return;
+      }
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      setViewerError(t.viewDocumentError);
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  return (
+    <div
+      data-testid="material-review-panel"
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4"
+    >
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold text-white/85">{t.materialReviewTitle}</span>
+        <span className="text-xs leading-5 text-white/55">{t.materialReviewBody}</span>
+      </div>
+
+      {assets.map((a) => (
+        <div key={a.id} className="flex flex-wrap items-center gap-3">
+          <span className="text-sm text-white/80">{a.filename}</span>
+          <button
+            type="button"
+            data-testid={`view-document-${a.id}`}
+            onClick={() => void open(a.id)}
+            disabled={openingId === a.id}
+            className="rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-4 py-2 text-sm font-semibold text-[#C9A66B] disabled:opacity-50"
+          >
+            {t.viewDocument}
+          </button>
+        </div>
+      ))}
+
+      {viewerError ? (
+        <p data-testid="view-document-error" className="text-xs leading-5 text-[#E4A2A2]">
+          {viewerError}
+        </p>
+      ) : null}
+
+      {/*
+        ONE asset only. A confirmation records ONE content hash, so a draft carrying several
+        PDFs cannot be satisfied by confirming one of them — the server refuses it the same
+        way, and both sides fail CLOSED rather than waving the Host through.
+      */}
+      {assets.length === 1 ? (
+        needed ? (
+          <button
+            type="button"
+            data-testid="material-review-confirm"
+            onClick={() => onConfirm(assets[0].content_hash)}
+            className="self-start rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white/85"
+          >
+            {t.materialReviewConfirm}
+          </button>
+        ) : confirmedHash ? (
+          <p data-testid="material-review-confirmed" className="text-xs text-white/55">
+            ✓ {t.materialReviewConfirmed}
+          </p>
+        ) : null
+      ) : null}
+    </div>
+  );
+}
+
 function AllTrainingDetails({
   answers,
   assets,

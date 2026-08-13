@@ -264,6 +264,13 @@ export type ModuleBuilderCopy = {
   pagesLabel: (n: number) => string;
   // files & documents (multi-format assets)
   matFiles: string;
+  /** Slice 3.2R-R3 — open the REAL attached document before publishing it. */
+  viewDocument: string;
+  viewDocumentError: string;
+  materialReviewTitle: string;
+  materialReviewBody: string;
+  materialReviewConfirm: string;
+  materialReviewConfirmed: string;
   filesHeader: string;
   filesLead: string;
   attachFiles: string;
@@ -484,6 +491,13 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pdfReadyBadge: "Ready",
     pagesLabel: (n) => (n === 1 ? "1 page" : `${n} pages`),
     matFiles: "Files and documents",
+    viewDocument: "View document",
+    viewDocumentError: "We couldn’t open this document. Check it before you create the session.",
+    materialReviewTitle: "Check the document",
+    materialReviewBody:
+      "BTY can’t read this file, so it can’t tell whether it matches this training. Open it and check it is the right document for what you wrote.",
+    materialReviewConfirm: "I reviewed this document for this training",
+    materialReviewConfirmed: "You reviewed this document",
     filesHeader: "FILES AND DOCUMENTS",
     filesLead: "Add the material your team will use.",
     attachFiles: "Attach files",
@@ -772,6 +786,13 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pdfReadyBadge: "준비됨",
     pagesLabel: (n) => `${n}페이지`,
     matFiles: "파일 및 문서",
+    viewDocument: "문서 보기",
+    viewDocumentError: "문서를 열지 못했습니다. 세션을 만들기 전에 확인해 주세요.",
+    materialReviewTitle: "문서를 확인하세요",
+    materialReviewBody:
+      "BTY는 이 파일을 읽을 수 없어 이 트레이닝과 맞는지 판단할 수 없습니다. 직접 열어 작성한 내용에 맞는 문서인지 확인하세요.",
+    materialReviewConfirm: "이 트레이닝을 위해 이 문서를 확인했습니다",
+    materialReviewConfirmed: "이 문서를 확인했습니다",
     filesHeader: "파일 및 문서",
     filesLead: "팀이 사용할 자료를 추가하세요.",
     attachFiles: "파일 첨부",

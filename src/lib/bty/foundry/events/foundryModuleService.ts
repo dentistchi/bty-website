@@ -255,6 +255,30 @@ export async function countPublishablePdfAssets(
 }
 
 /**
+ * Does the Host's confirmation name the document that is actually attached right now?
+ *
+ * Deliberately strict about the SINGLE-asset case only: a confirmation records one content
+ * hash, so a draft carrying several PDFs cannot be satisfied by confirming one of them. That
+ * is a real limitation and it fails CLOSED — the Host is asked to review, never waved through.
+ */
+async function materialReviewSatisfied(
+  admin: SupabaseClient,
+  draftId: string,
+  answers: BuilderAnswers | undefined,
+): Promise<boolean> {
+  const confirmed = (answers ?? {}).materialReviewV1?.contentHash;
+  if (typeof confirmed !== "string" || confirmed.length === 0) return false;
+  const { data } = await admin
+    .from("foundry_module_draft_assets")
+    .select("content_hash")
+    .eq("draft_id", draftId)
+    .eq("file_kind", "pdf")
+    .returns<{ content_hash: string }[]>();
+  const hashes = (data ?? []).map((r) => r.content_hash);
+  return hashes.length === 1 && hashes[0] === confirmed;
+}
+
+/**
  * Approval/publish readiness for a builder draft: the builder's own per-step
  * completeness (domain) PLUS the one gate only the DB can answer — a PDF material
  * must have a stored `pdf` asset. Returns the blocking reason codes (empty = ready).
@@ -268,6 +292,21 @@ export async function draftReadinessErrors(
   if ((answers ?? {}).materialIntent === "pdf") {
     const pdfs = await countPublishablePdfAssets(admin, draftId);
     if (pdfs < 1) errors.push("material_pdf_required");
+    /*
+      THE HOST MUST HAVE LOOKED (Slice 3.2R-R3), and the SERVER decides it.
+
+      "A PDF exists" was the entire material gate, and it passed for a document about patient
+      communication attached to a training about huddles. Existence is not relevance, and BTY
+      cannot judge relevance — so the requirement is the one thing a server can honestly check:
+      a Host confirmation bound to the exact bytes currently attached.
+
+      Bound BY CONTENT HASH, so replacing the document invalidates the confirmation with no
+      cleanup rule to forget. Enforced here rather than in the browser because publish is the
+      irreversible side, and a client that could skip this could publish anything.
+    */
+    else if (!(await materialReviewSatisfied(admin, draftId, answers))) {
+      errors.push("material_review_required");
+    }
   }
   return errors;
 }

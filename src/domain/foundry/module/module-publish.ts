@@ -91,6 +91,11 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
   material_intent_required: { section: "material", step: 7 },
   material_youtube_url_required: { section: "material", step: 7 },
   material_pdf_required: { section: "material", step: 7 },
+  /*
+    Slice 3.2R-R3 — a server-only code, like `material_pdf_required` beside it. It must map to
+    a visible Review row, because a blocker the Host cannot see is a blocker they cannot clear.
+  */
+  material_review_required: { section: "material", step: 7 },
   follow_up_required: { section: "followUp", step: 8 },
 };
 
