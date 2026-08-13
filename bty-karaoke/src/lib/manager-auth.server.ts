@@ -6,7 +6,7 @@
 // never a bearer and never leaves the server; only the HMAC output travels.
 
 import type { NextRequest } from 'next/server';
-import { timingSafeEqual } from './dj-auth.server';
+import { timingSafeEqual, sha256Hex } from './dj-auth.server';
 import { optionalEnv, karaokeEnv } from './env.server';
 
 // A manager session lasts one long event night. Re-enter the passcode after.
@@ -120,4 +120,71 @@ export async function verifyManagerSession(
 /** Route guard: true iff the request carries a valid manager session cookie. */
 export async function managerAuthorized(req: NextRequest): Promise<boolean> {
   return verifyManagerSession(req.cookies.get(MANAGER_COOKIE)?.value);
+}
+
+// ---------------------------------------------------------------------------------------------
+// BUILD 26O — issuance actor provenance
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The operator label persisted as the issuing actor. It is the SAME literal the pass RPC has
+ * always written into `issued_by_manager`, so BUILD 26O changes what is RECORDED ALONGSIDE the
+ * actor, never the actor value itself — pre- and post-26O grants stay comparable.
+ */
+export const MANAGER_ACTOR_ID = 'bty_mgr';
+
+/**
+ * What the server can prove about who issued a pass.
+ *
+ * READ THIS BEFORE ADDING A FIELD: this shape is deliberately small because the manager session
+ * is deliberately anonymous. `signManagerSession` mints `{ m: 1, e: <expiry> }` — no account, no
+ * email, no operator id, no session row — and `managerAuthorized` returns a BOOLEAN. There is no
+ * authenticated human anywhere in this path to record. Inventing one here is the specific failure
+ * BUILD 26M's §11 warns about, so `actor_kind` names the credential class and stops there.
+ */
+export type IssuanceActor = {
+  /** Provenance document version, so a later shape change stays readable. */
+  version: number;
+  /** Server-side route/action that created the grant. Never client-supplied. */
+  source: string;
+  /** The class of credential proven — NOT a person. */
+  actor_kind: 'shared_manager_credential';
+  /** The operator label. Shared, and therefore not a unique identity. */
+  actor_id: string;
+  /**
+   * Non-reversible fingerprint of the presented session token, truncated.
+   *
+   * This is the field that answers the question BUILD 26M could not: whether N grants issued
+   * seconds apart came from ONE authenticated session or N of them. It stores no credential —
+   * the token is HMAC output and this is a SHA-256 prefix of it, matching the existing
+   * `token_hash: await sha256Hex(token)` convention in host-auth.server.ts. It is truncated
+   * because it is a correlation fingerprint, never a lookup key, and it must never be mistaken
+   * for one.
+   */
+  session_fp: string;
+};
+
+/**
+ * Build the issuance provenance for an authorized manager request.
+ *
+ * Derived ONLY from the session cookie. The request body is not read here and is not a parameter,
+ * so a forged `issued_by` / `actor_id` in the payload has nothing to influence: attribution is
+ * constructed from what authentication established, not from what the caller claimed.
+ *
+ * Returns null when no session cookie is present — the caller MUST fail the issuance rather than
+ * proceed unattributed.
+ */
+export async function managerIssuanceActor(
+  req: NextRequest,
+  source: string,
+): Promise<IssuanceActor | null> {
+  const token = req.cookies.get(MANAGER_COOKIE)?.value;
+  if (!token) return null;
+  return {
+    version: 1,
+    source,
+    actor_kind: 'shared_manager_credential',
+    actor_id: MANAGER_ACTOR_ID,
+    session_fp: (await sha256Hex(token)).slice(0, 16),
+  };
 }

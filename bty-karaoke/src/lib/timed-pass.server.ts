@@ -16,6 +16,7 @@
 // billing id. Manager labels are derived from Room names (or a masked id) by the caller.
 
 import { karaokeDb } from './supabase.server';
+import type { IssuanceActor } from './manager-auth.server';
 import { parseTimedPassState, type PassType, type PassStatus, type TimedPassState } from '@/domain/timed-pass';
 
 // ── State read (effective entitlement + active/selected projection) ──────────
@@ -133,25 +134,37 @@ export type IssueTimedPassError =
   | 'invalid_pass_type'
   | 'idempotency_key_required'
   | 'account_not_found'
-  | 'account_is_pro';
+  | 'account_is_pro'
+  // BUILD 26O — the RPC refused because no server-derived provenance reached it. It is a
+  // refusal, not a partial success: nothing is written, so no unattributed grant exists.
+  | 'issuance_provenance_required';
 export type IssueTimedPassOutcome =
   | { ok: true; passGrantId: string; passType: PassType; status: PassStatus; reused: boolean }
   | { ok: false; error: IssueTimedPassError };
 
-/** Manager issues a fixed-duration pass to a canonical account. Never changes the plan. */
+/**
+ * Manager issues a fixed-duration pass to a canonical account. Never changes the plan.
+ *
+ * BUILD 26O — `issuance` is REQUIRED and has no default. The previous signature took an optional
+ * `managerActor` that fell back to the literal 'bty_mgr', which meant every caller — including a
+ * future one that had established nothing — produced an identical, uninformative actor string and
+ * an audit row with NULL metadata. The provenance document must now be constructed by the caller
+ * from authenticated context (`managerIssuanceActor`), and the RPC refuses without it, so an
+ * unattributed issuance cannot be expressed in this type or accepted by the database.
+ */
 export async function issueTimedPass(input: {
   accountId: string;
   passType: PassType;
   reason: string | null;
   idempotencyKey: string;
-  managerActor?: string;
+  issuance: IssuanceActor;
 }): Promise<IssueTimedPassOutcome> {
   const { data, error } = await karaokeDb().rpc('issue_timed_access_pass', {
     p_account_id: input.accountId,
     p_pass_type: input.passType,
     p_reason: input.reason,
     p_idempotency_key: input.idempotencyKey,
-    p_manager_actor: input.managerActor ?? 'bty_mgr',
+    p_issuance: input.issuance,
   });
   if (error) throw error;
   const row = (data ?? {}) as Record<string, unknown>;

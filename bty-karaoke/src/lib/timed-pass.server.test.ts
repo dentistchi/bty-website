@@ -35,25 +35,50 @@ beforeEach(() => {
   for (const k of Object.keys(datasets)) delete datasets[k];
 });
 
+// BUILD 26O — every issuance now carries a provenance document. This is the shape a real
+// authorized request produces (see managerIssuanceActor); the tests below pass it explicitly
+// because the service layer no longer has a default to fall back on.
+const ISSUANCE = {
+  version: 1,
+  source: 'manager_issue',
+  actor_kind: 'shared_manager_credential' as const,
+  actor_id: 'bty_mgr',
+  session_fp: '0123456789abcdef',
+};
+
 describe('issueTimedPass', () => {
   it('forwards params and normalizes a new grant', async () => {
     rpc.mockResolvedValue({ data: { ok: true, passGrantId: 'g1', passType: 'ONE_HOUR', status: 'AVAILABLE', reused: false }, error: null });
-    const out = await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: 'gate A', idempotencyKey: 'k1' });
+    const out = await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: 'gate A', idempotencyKey: 'k1', issuance: ISSUANCE });
+    // BUILD 26O: p_manager_actor is GONE. The actor now travels inside p_issuance, so the grant's
+    // issued_by_manager and the audit's actor_ref are derived from one document and cannot drift.
     expect(rpc).toHaveBeenCalledWith('issue_timed_access_pass', {
-      p_account_id: 'a', p_pass_type: 'ONE_HOUR', p_reason: 'gate A', p_idempotency_key: 'k1', p_manager_actor: 'bty_mgr',
+      p_account_id: 'a', p_pass_type: 'ONE_HOUR', p_reason: 'gate A', p_idempotency_key: 'k1', p_issuance: ISSUANCE,
     });
     expect(out).toEqual({ ok: true, passGrantId: 'g1', passType: 'ONE_HOUR', status: 'AVAILABLE', reused: false });
   });
 
+  it('sends no legacy p_manager_actor parameter', async () => {
+    rpc.mockResolvedValue({ data: { ok: true, passGrantId: 'g1', passType: 'ONE_HOUR', status: 'AVAILABLE', reused: false }, error: null });
+    await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'k1', issuance: ISSUANCE });
+    expect(rpc.mock.calls[0][1]).not.toHaveProperty('p_manager_actor');
+  });
+
   it('maps account_is_pro to a typed rejection (no throw)', async () => {
     rpc.mockResolvedValue({ data: { ok: false, error: 'account_is_pro' }, error: null });
-    expect(await issueTimedPass({ accountId: 'a', passType: 'FOUR_HOURS', reason: null, idempotencyKey: 'k' }))
+    expect(await issueTimedPass({ accountId: 'a', passType: 'FOUR_HOURS', reason: null, idempotencyKey: 'k', issuance: ISSUANCE }))
       .toEqual({ ok: false, error: 'account_is_pro' });
+  });
+
+  it('maps issuance_provenance_required to a typed rejection (no throw)', async () => {
+    rpc.mockResolvedValue({ data: { ok: false, error: 'issuance_provenance_required' }, error: null });
+    expect(await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'k', issuance: ISSUANCE }))
+      .toEqual({ ok: false, error: 'issuance_provenance_required' });
   });
 
   it('returns reused=true on an idempotent replay', async () => {
     rpc.mockResolvedValue({ data: { ok: true, passGrantId: 'g1', passType: 'ONE_HOUR', status: 'AVAILABLE', reused: true }, error: null });
-    const out = await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'k1' });
+    const out = await issueTimedPass({ accountId: 'a', passType: 'ONE_HOUR', reason: null, idempotencyKey: 'k1', issuance: ISSUANCE });
     expect(out.ok && out.reused).toBe(true);
   });
 });
