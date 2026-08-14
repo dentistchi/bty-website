@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { submitIntegrity } from "@/lib/bty/foundry/integritySubmitService";
 
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   let body: { text?: string | null; choiceId?: string | null; scenarioId?: string | null };
   try {

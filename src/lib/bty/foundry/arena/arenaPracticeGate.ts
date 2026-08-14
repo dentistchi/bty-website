@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 
 /**
  * Access context for the published-practice routes.
@@ -34,4 +35,30 @@ export async function requireArenaAccess(): Promise<
     return { ok: false, response: NextResponse.json({ error: "ADMIN_CLIENT_UNAVAILABLE" }, { status: 503 }) };
   }
   return { ok: true, access: { userId: user.id, admin, isApprovedMember: membership.approved } };
+}
+
+/**
+ * The same access context, additionally requiring CURRENT consent (Slice 3.2R-R9B.2).
+ *
+ * Both actors this gate serves — an approved Arena learner and a practice's own creator — are
+ * CONSUMING learner-facing training here: these routes start, play and complete a practice and
+ * write the resulting progress. That is learner Class C for either of them, so a creator testing
+ * their own work is held to the same agreement as anyone else playing it.
+ *
+ * It returns the identical discriminated union, so callers keep `if (!gate.ok) return gate.response`
+ * exactly as written and no route learns a new control flow. The refusal is produced BEFORE any
+ * practice row is read, because the caller returns it before touching `gate.access`.
+ *
+ * `requireArenaAccess` is left in place beside this, authentication-only, so a future non-learner
+ * caller cannot be swept under the learner agreement by an edit to one shared helper.
+ */
+export async function requireConsentedArenaAccess(): Promise<
+  { ok: true; access: ArenaAccess } | { ok: false; response: NextResponse }
+> {
+  const gate = await requireArenaAccess();
+  if (!gate.ok) return gate;
+  if (!(await isConsentCurrent(gate.access.admin, gate.access.userId))) {
+    return { ok: false, response: consentRequiredResponse() };
+  }
+  return gate;
 }

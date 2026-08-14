@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 /**
@@ -16,6 +17,7 @@ export async function GET() {
       { status: 401 },
     );
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data: row, error } = await supabase
     .from("weekly_xp")

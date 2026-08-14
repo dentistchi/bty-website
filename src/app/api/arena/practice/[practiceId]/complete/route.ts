@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import { requireConsentedArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import { completePracticeRun } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * sets complete_verified — the canonical Arena machinery is untouched.
  */
 export async function POST(req: Request, ctx: { params: Promise<{ practiceId: string }> }) {
-  const gate = await requireArenaAccess();
+  const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate.response;
   const { userId, admin } = gate.access;
   const { practiceId } = await ctx.params;

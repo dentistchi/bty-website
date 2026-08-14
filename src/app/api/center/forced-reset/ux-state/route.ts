@@ -3,6 +3,7 @@
  * @returns 200 { lockout_start, locked, current_stage, reset_due_at }
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getLeadershipEngineState } from "@/lib/bty/leadership-engine/state-service";
 import { getResetDueAt } from "@/domain/leadership-engine/forced-reset";
@@ -17,6 +18,7 @@ export async function GET(_req: NextRequest) {
     if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const s = await getLeadershipEngineState(supabase, user.id);
     const now = new Date();

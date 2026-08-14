@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 export const runtime = "nodejs";
@@ -8,6 +9,7 @@ export async function GET() {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data, error } = await supabase
     .from("user_conversation_preferences")
@@ -30,6 +32,7 @@ export async function PATCH(req: Request) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   let body: { rememberChat?: boolean; rememberMentor?: boolean; personalizeTodayFromReflections?: boolean } = {};
   try {

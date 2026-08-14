@@ -4,7 +4,8 @@
  * Errors: 401 { error: "UNAUTHENTICATED" 등 }, 400 { error }, 500 { error, detail? }. See AssessmentSubmitErrorResponse.
  */
 import { NextResponse } from "next/server";
-import { getLetterAuth, submitAssessment } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, submitAssessment } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 import questionsKo from "@/content/assessment/questions.ko.json";
 import questionsEn from "@/content/assessment/questions.en.json";
@@ -35,13 +36,14 @@ export async function POST(request: Request): Promise<
   NextResponse<AssessmentSubmitPostResponse | AssessmentSubmitErrorResponse>
 > {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json(
         { error: "UNAUTHENTICATED" } satisfies AssessmentSubmitErrorResponse,
         { status: 401 }
       );
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     let body: { answers?: Record<string, number>; locale?: string };
     try {

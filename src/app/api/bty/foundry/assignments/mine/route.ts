@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { listMyAssignments } from "@/lib/bty/foundry/events/foundryLearnerAssignmentService";
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     data: { user },
   } = await supa.auth.getUser();
   if (!user) return jsonNoStore({ ok: false, error: "unauthenticated" }, 401);
+  if (!(await isConsentCurrent(supa, user.id))) return consentRequiredResponse();
 
   const items = await listMyAssignments(admin, user.id);
   const origin = req.headers.get("origin") ?? req.nextUrl.origin;

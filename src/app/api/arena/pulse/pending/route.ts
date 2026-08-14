@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import {
   computePendingPulseRun,
@@ -18,6 +19,7 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data: doneRows, error: runErr } = await supabase
     .from("arena_runs")

@@ -4,15 +4,17 @@
  * Errors: 401 { error: "UNAUTHENTICATED" }; 500 { error: string }.
  */
 import { NextResponse } from "next/server";
-import { getLetterAuth, getLetterCalendar } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, getLetterCalendar } from "@/lib/bty/center";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const auth = await getLetterAuth();
+  const auth = await getConsentedLetterAuth();
   if (!auth) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!auth.consentCurrent) return consentRequiredResponse();
 
   const result = await getLetterCalendar(auth.supabase, auth.userId);
 

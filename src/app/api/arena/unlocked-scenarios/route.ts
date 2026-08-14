@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getEffectiveTrack } from "@/lib/bty/arena/program";
 import { loadProgramConfig } from "@/lib/bty/arena/program";
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data: membershipRequest } = await supabase
     .from("arena_membership_requests")

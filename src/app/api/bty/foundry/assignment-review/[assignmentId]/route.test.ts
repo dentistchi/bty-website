@@ -10,6 +10,17 @@ const getSupabaseAdmin = vi.fn();
 const getSupabaseServerClient = vi.fn();
 const getMyCompletionReview = vi.fn();
 
+/*
+  R9B.2: these routes now require CURRENT consent. This suite is about the route's own behaviour,
+  and its subject has always been an ordinary consented learner — so the consent primitive says so
+  explicitly. The consent VERDICT itself is proven by `requireConsentedUser.test.ts` and
+  `learnerConsentGuard.route.test.ts`, which do not mock it.
+*/
+vi.mock("@/lib/legal/activeConsent", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/legal/activeConsent")>()),
+  isConsentCurrent: async () => true,
+}));
+
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => getSupabaseAdmin() }));
 vi.mock("@/lib/bty/arena/supabaseServer", () => ({ getSupabaseServerClient: () => getSupabaseServerClient() }));
 vi.mock("@/lib/bty/foundry/events/foundryCompletionReviewService", () => ({

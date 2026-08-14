@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getUnlockedDayFromCompletions } from "@/lib/trainProgress";
@@ -49,6 +50,7 @@ export async function GET() {
       )
     );
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const admin = getSupabaseAdmin();
   if (!admin) {

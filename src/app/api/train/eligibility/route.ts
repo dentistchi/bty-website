@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getUnlockedDayCount } from "@/lib/trainProgress";
 
 export const runtime = "nodejs";
@@ -15,6 +17,8 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ ok: false });
   }
+  const __admin = getSupabaseAdmin();
+  if (!__admin || !(await isConsentCurrent(__admin, user.id))) return consentRequiredResponse();
 
   const unlocked = getUnlockedDayCount(new Date());
   return NextResponse.json({ ok: true, next: `/train/day/${unlocked}` });

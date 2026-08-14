@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import type { DojoSubmissionRow, DojoSubmissionsResponse } from "@/lib/bty/foundry/dojoSubmitService";
 
@@ -14,6 +15,7 @@ export async function GET(): Promise<NextResponse<DojoSubmissionsResponse | { er
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data, error } = await supabase
     .from("dojo_submissions")

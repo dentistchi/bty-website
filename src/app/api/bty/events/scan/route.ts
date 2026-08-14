@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyEventQrToken } from "@/lib/bty/event-qr/event-qr-token";
@@ -37,6 +38,7 @@ async function handleScan(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   // Participant authorization (Slice 3.2D-EVENT-R3): a valid Event QR is the participation
   // invitation capability. Recording participation requires ONLY an authenticated server session

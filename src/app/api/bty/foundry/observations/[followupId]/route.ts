@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getObservationRequest } from "@/lib/bty/foundry/events/foundryObservationService";
@@ -40,6 +41,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ followupId
     data: { user },
   } = await supa.auth.getUser();
   if (!user) return priv({ ok: false, error: "unauthenticated" }, 401);
+  if (!(await isConsentCurrent(supa, user.id))) return consentRequiredResponse();
 
   const { followupId } = await ctx.params;
   const res = await getObservationRequest(admin, user.id, followupId);

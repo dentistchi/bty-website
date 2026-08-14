@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { claimDocumentXp } from "@/lib/bty/foundry/events/foundryDocumentService";
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     data: { user },
   } = await supa.auth.getUser();
   if (!user) return jsonNoStore({ ok: false, error: "unauthenticated" }, 401);
+  if (!(await isConsentCurrent(supa, user.id))) return consentRequiredResponse();
 
   const { token } = await ctx.params;
   const session = readParticipantSession(req, token);

@@ -9,6 +9,7 @@
  * - **250:** 플랜 문구 POST는 오타; 본 라우트는 **GET**만.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getResilienceEntries, parsePeriodDays } from "@/lib/bty/center";
 
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
     if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const periodRaw = req.nextUrl.searchParams.get("period");
     let periodDays: number | undefined;

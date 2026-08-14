@@ -6,15 +6,17 @@
  * **200:** `{ saved: true, reply }`. **500:** `{ error: string }` (submit 실패 또는 catch).
  */
 import { NextResponse } from "next/server";
-import { getLetterAuth, submitCenterLetter } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, submitCenterLetter } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 
 export async function POST(request: Request) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     const body = (await request.json()) as {
       body?: string;

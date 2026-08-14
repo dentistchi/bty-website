@@ -7,6 +7,18 @@ import { GET } from "./route";
 
 const mockGetAuthUserFromRequest = vi.fn();
 const mockBuildCompletionPackFromLesson = vi.fn();
+vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => ({ from: () => ({}) }) }));
+
+/*
+  R9B.2: these Bearer/session routes now require CURRENT consent. This suite covers the route's own
+  behaviour for an ordinary consented learner; the consent verdict itself is proven by
+  `requireConsentedUser.test.ts` and `r9b2ConsentSeams.route.test.ts`, which do not mock it.
+*/
+vi.mock("@/lib/legal/activeConsent", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/legal/activeConsent")>()),
+  isConsentCurrent: async () => true,
+}));
+
 vi.mock("@/lib/auth-server", () => ({
   getAuthUserFromRequest: (...args: unknown[]) => mockGetAuthUserFromRequest(...args),
 }));

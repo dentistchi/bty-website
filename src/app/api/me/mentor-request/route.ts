@@ -17,6 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getIsEliteTop5 } from "@/lib/bty/arena/eliteStatus";
 import {
@@ -84,6 +85,7 @@ export async function GET(): Promise<
       { status: 401 }
     );
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data: rows } = await supabase
     .from("elite_mentor_requests")
@@ -128,6 +130,7 @@ export async function POST(
       { status: 401 }
     );
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const isElite = await getIsEliteTop5(supabase, user.id);
   const { data: existing } = await supabase

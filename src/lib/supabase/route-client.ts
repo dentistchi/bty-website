@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { consentSatisfied } from "@/domain/legal/consent-document";
+import { isConsentCurrent } from "@/lib/legal/activeConsent";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { authCookieSecureForRequest } from "@/lib/bty/cookies/authCookies";
@@ -166,18 +166,7 @@ export async function requireConsentedUser(req: NextRequest) {
   const gate = await requireUser(req);
   if (!gate.user) return { ...gate, consentDenied: null as NextResponse | null };
 
-  let satisfied = false;
-  try {
-    const { data, error } = await gate.supabase
-      .from("arena_profiles")
-      .select("consent_version")
-      .eq("user_id", gate.user.id)
-      .maybeSingle<{ consent_version: string | null }>();
-    // An error, or no row at all, means consent is not established — never that it is.
-    satisfied = !error && consentSatisfied(data?.consent_version);
-  } catch {
-    satisfied = false;
-  }
+  const satisfied = await isConsentCurrent(gate.supabase, gate.user.id);
 
   if (satisfied) return { ...gate, consentDenied: null as NextResponse | null };
   return { ...gate, consentDenied: consentRequired(req, gate.base) };

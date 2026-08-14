@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import { requireConsentedArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import {
 
   resolvePracticeAccess,
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * 404 if missing/retired.
  */
 export async function POST(_req: Request, ctx: { params: Promise<{ practiceId: string }> }) {
-  const gate = await requireArenaAccess();
+  const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate.response;
   const { userId, admin, isApprovedMember } = gate.access;
   const { practiceId } = await ctx.params;

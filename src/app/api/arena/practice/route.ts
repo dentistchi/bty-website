@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import { requireConsentedArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import { listAvailablePractices } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  * sees their own work without needing a separate approved-member role.
  */
 export async function GET() {
-  const gate = await requireArenaAccess();
+  const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate.response;
   const { userId, admin, isApprovedMember } = gate.access;
   const practices = await listAvailablePractices(admin, userId, isApprovedMember);

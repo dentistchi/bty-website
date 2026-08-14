@@ -8,6 +8,7 @@
  * DATES only) for the nested This Week view. One endpoint — no second weekly route.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { loadWeeklyActivity, loadWeeklyActivityDetail } from "@/lib/bty/daily/weeklyActivity.server";
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED", summary: null }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: true, summary: null }, { status: 200 }));

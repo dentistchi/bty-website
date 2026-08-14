@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import type { NextRequest } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
       { status: 401 }
     );
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data: membership, error: memErr } = await supabase
     .from("memberships")

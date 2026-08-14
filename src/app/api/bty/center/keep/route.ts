@@ -12,17 +12,19 @@
  * getLetterAuth (same pattern as the other Center letter/reflection routes).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getLetterAuth, saveCenterKeep, getTodayCenterKeep } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, saveCenterKeep, getTodayCenterKeep } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ line: null, keptToday: false }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
     const tz = req.nextUrl.searchParams.get("tz");
     const keep = await getTodayCenterKeep(auth.supabase, auth.userId, tz);
     return NextResponse.json(keep);
@@ -35,10 +37,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     let body: { line?: unknown; locale?: string };
     try {

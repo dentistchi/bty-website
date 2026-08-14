@@ -15,6 +15,7 @@
  * The commitment POST is untouched and fast.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getTodayCommitmentRef } from "@/lib/bty/daily/todayRelationshipCommitment.server";
@@ -54,6 +55,7 @@ export async function GET(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED" }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: false, code: "UNAVAILABLE" }, { status: 503 }));
@@ -74,6 +76,7 @@ export async function POST(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED" }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: false, code: "UNAVAILABLE" }, { status: 503 }));

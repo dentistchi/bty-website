@@ -8,6 +8,7 @@
  * consent flag needed to render. private, no-store. AI can never add/remove/reprioritize a reminder.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED", brief: null, reminders: [] }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: true, consent: false, brief: null, reminders: [] }, { status: 200 }));

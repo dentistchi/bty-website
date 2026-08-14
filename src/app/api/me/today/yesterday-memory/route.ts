@@ -8,6 +8,7 @@
  * Fail-soft everywhere → { memory: null } so Today's arrival never breaks. English-only (V1 scope).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { loadYesterdayMemory } from "@/lib/bty/daily/yesterdayMemory.server";
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED", memory: null }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: true, memory: null }, { status: 200 }));

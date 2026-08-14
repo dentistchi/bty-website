@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { arenaRunIdFromUnknown } from "@/domain/arena/scenarios";
 import { ensureActionContractForArenaRun } from "@/lib/bty/action-contract/ensureActionContractForArenaRun";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   let body: unknown;
   try {

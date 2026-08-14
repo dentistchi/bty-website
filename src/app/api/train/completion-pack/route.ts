@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import type { NextRequest } from "next/server";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { buildCompletionPackFromLesson } from "@/lib/train/completion-pack";
 
 // ✅ 레슨 데이터(영어 베이스) import
@@ -23,6 +25,8 @@ function noStore(res: NextResponse) {
 export async function GET(req: NextRequest) {
   const user = await getAuthUserFromRequest(req as unknown as Request);
   if (!user) return noStore(NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 }));
+  const __admin = getSupabaseAdmin();
+  if (!__admin || !(await isConsentCurrent(__admin, user.id))) return consentRequiredResponse();
 
   const { searchParams } = new URL(req.url);
   const day = Number(searchParams.get("day") ?? "0");

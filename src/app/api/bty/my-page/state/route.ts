@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getMyPageIdentityState } from "@/lib/bty/identity";
 import type { Locale } from "@/lib/i18n";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const localeParam = req.nextUrl.searchParams.get("locale");
   const locale: Locale = localeParam === "ko" ? "ko" : "en";

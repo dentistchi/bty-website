@@ -13,6 +13,7 @@
  * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-4
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { createServerClient } from "@supabase/ssr";
 import { authCookieSecureForRequest, writeSupabaseAuthCookies } from "@/lib/bty/cookies/authCookies";
 import { mergeAuthCookiesFromResponse } from "@/lib/supabase/route-client";
@@ -97,6 +98,7 @@ export async function GET(req: NextRequest) {
     mergeAuthCookiesFromResponse(tmp, out, req);
     return out;
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const db = admin ?? supabase;
 

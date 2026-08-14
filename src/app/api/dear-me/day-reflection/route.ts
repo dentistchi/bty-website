@@ -9,8 +9,9 @@
  * does NOT touch markTodayComplete / train completion (기록 ≠ 완료).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
 import {
-  getLetterAuth,
+  getConsentedLetterAuth,
   submitDayReflection,
   getDayReflection,
   type DayReflectionResponses,
@@ -26,10 +27,11 @@ export const runtime = "nodejs";
  */
 export async function GET(req: NextRequest) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
     const day = Number(req.nextUrl.searchParams.get("day"));
     const result = await getDayReflection(auth.supabase, {
       userId: auth.userId,
@@ -48,10 +50,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     let body: { day?: unknown; locale?: string; responses?: unknown };
     try {

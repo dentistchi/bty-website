@@ -9,6 +9,7 @@
  * so a Today mount is never blocked. No auth/session-restore behavior is touched (read-only getUser).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { ensureUserDay } from "@/lib/bty/daily/userDay";
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ ok: false }, { status: 200 });
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const body = (await req.json().catch(() => null)) as { tz?: unknown } | null;
     const deviceTz = typeof body?.tz === "string" ? body.tz : null;

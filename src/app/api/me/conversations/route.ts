@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 
 export const runtime = "nodejs";
@@ -13,6 +14,7 @@ export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const channel = req.nextUrl.searchParams.get("channel");
   if (channel !== "chat" && channel !== "mentor") {
@@ -76,6 +78,7 @@ export async function POST(req: Request) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   let body: { channel?: string; sessionId?: string; topic?: string; role?: string; content?: string } = {};
   try {
@@ -118,6 +121,7 @@ export async function DELETE(req: NextRequest) {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const channel = req.nextUrl.searchParams.get("channel");
   const q = supabase.from("conversation_sessions").delete().eq("user_id", user.id);

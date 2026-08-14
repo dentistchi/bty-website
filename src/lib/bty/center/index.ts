@@ -9,6 +9,7 @@ export {
 
 export {
   getLetterAuth,
+  getConsentedLetterAuth,
   type LetterAuth,
 } from "./letterAuth";
 

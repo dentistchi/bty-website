@@ -3,6 +3,7 @@
  * `center-return.flow` · `stage_4_completion` 전이.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import {
   applyStageTransition,
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
     if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     let body: { allRequiredDiagnosticsPassed?: boolean };
     try {

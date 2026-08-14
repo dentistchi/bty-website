@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getIsEliteTop5 } from "@/lib/bty/arena/eliteStatus";
 import { getEliteBadgeGrants } from "@/lib/bty/arena/eliteBadge";
@@ -34,6 +35,7 @@ export async function GET(): Promise<
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "UNAUTHENTICATED" } satisfies EliteErrorResponse, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const isElite = await getIsEliteTop5(supabase, user.id);
   const badges = getEliteBadgeGrants(isElite);

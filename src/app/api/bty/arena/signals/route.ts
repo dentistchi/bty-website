@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { saveArenaSignalWithSeed, parseArenaSignalBody } from "@/lib/bty/identity";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
 
@@ -16,6 +17,7 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   let raw: unknown;
   try {

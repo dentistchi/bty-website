@@ -8,6 +8,7 @@
  * Fail-soft → { reflection: null } so Today never breaks.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { loadYesterdayReflection } from "@/lib/bty/daily/yesterdayReflection.server";
@@ -25,6 +26,7 @@ export async function GET(req: NextRequest) {
     const supabase = await getSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return noStore(NextResponse.json({ ok: false, code: "UNAUTHENTICATED", reflection: null }, { status: 401 }));
+    if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
     const admin = getSupabaseAdmin();
     if (!admin) return noStore(NextResponse.json({ ok: true, reflection: null }, { status: 200 }));

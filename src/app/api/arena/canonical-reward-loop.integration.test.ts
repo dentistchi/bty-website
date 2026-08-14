@@ -2,6 +2,17 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { signArenaActionLoopToken } from "@/lib/bty/leadership-engine/qr/arena-action-loop-token";
 
+/*
+  R9B.2: these routes now require CURRENT consent. This suite is about the route's own behaviour,
+  and its subject has always been an ordinary consented learner — so the consent primitive says so
+  explicitly. The consent VERDICT itself is proven by `requireConsentedUser.test.ts` and
+  `learnerConsentGuard.route.test.ts`, which do not mock it.
+*/
+vi.mock("@/lib/legal/activeConsent", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/legal/activeConsent")>()),
+  isConsentCurrent: async () => true,
+}));
+
 vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve({ getAll: () => [] }),
 }));

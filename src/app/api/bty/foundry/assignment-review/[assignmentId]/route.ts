@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getMyCompletionReview } from "@/lib/bty/foundry/events/foundryCompletionReviewService";
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ assignmentI
     data: { user },
   } = await supa.auth.getUser();
   if (!user) return jsonNoStore({ ok: false, error: "unauthenticated" }, 401);
+  if (!(await isConsentCurrent(supa, user.id))) return consentRequiredResponse();
 
   const { assignmentId } = await ctx.params;
   const review = await getMyCompletionReview(admin, user.id, assignmentId);

@@ -4,17 +4,19 @@
  * Errors: 401 { error: "Unauthorized" }; 400 validation (missing_text, text_too_long, body_too_long, etc.); 500 { error: "Something went wrong" } (catch/JSON parse failure).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getLetterAuth, submitLetter } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, submitLetter } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     let body: {
       letterText?: unknown;

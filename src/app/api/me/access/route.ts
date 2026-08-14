@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import type { NextRequest } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase.auth.getUser();
   const user = data?.user;
   if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: "Server not configured" }, { status: 503 });

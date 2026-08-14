@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { seedRowToClientSeed, type BtyReflectionSeedRow } from "@/lib/bty/identity";
 import { createSupabaseRouteClient } from "@/lib/supabase/server";
 
@@ -16,6 +17,7 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
   }
+  if (!(await isConsentCurrent(supabase, user.id))) return consentRequiredResponse();
 
   const { data, error } = await supabase
     .from("bty_reflection_seeds")

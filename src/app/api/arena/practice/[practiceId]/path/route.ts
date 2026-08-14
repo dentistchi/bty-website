@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
+import { requireConsentedArenaAccess } from "@/lib/bty/foundry/arena/arenaPracticeGate";
 import { recordSelectedPath } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
  * Returns the canonical stored path.
  */
 export async function POST(req: Request, ctx: { params: Promise<{ practiceId: string }> }) {
-  const gate = await requireArenaAccess();
+  const gate = await requireConsentedArenaAccess();
   if (!gate.ok) return gate.response;
   const { userId, admin } = gate.access;
   const { practiceId } = await ctx.params;

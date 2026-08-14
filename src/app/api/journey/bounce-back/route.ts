@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { consentRequiredResponse, isConsentCurrent } from "@/lib/legal/activeConsent";
 import { getAuthUserFromRequest } from "@/lib/auth-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -19,7 +20,6 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   const db = getSupabaseAdmin();
   if (!db) {
     return NextResponse.json(
@@ -27,6 +27,13 @@ export async function POST(request: Request) {
       { status: 503 }
     );
   }
+  /*
+    Consent is checked AFTER the infrastructure check, deliberately (Slice 3.2R-R9B.2). An absent
+    admin client is a 503 — the database is not configured — and reporting it as `consent_required`
+    would blame the learner for an outage and hide a real fault. Both paths refuse, so nothing is
+    read either way; only the reason differs, and it should be the true one.
+  */
+  if (!(await isConsentCurrent(db, user.id))) return consentRequiredResponse();
 
   const { data: profile } = await db
     .from("bty_profiles")

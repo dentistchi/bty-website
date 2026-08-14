@@ -4,7 +4,8 @@
  * Errors: 401 { error: "UNAUTHENTICATED" }; 500 { error: string }.
  */
 import { NextResponse } from "next/server";
-import { getLetterAuth, getAssessmentHistory } from "@/lib/bty/center";
+import { consentRequiredResponse } from "@/lib/legal/activeConsent";
+import { getConsentedLetterAuth, getAssessmentHistory } from "@/lib/bty/center";
 import { logApiError } from "@/lib/log-api-error";
 
 export const runtime = "nodejs";
@@ -31,13 +32,14 @@ export async function GET(): Promise<
   NextResponse<AssessmentSubmissionsGetResponse | AssessmentSubmissionsErrorResponse>
 > {
   try {
-    const auth = await getLetterAuth();
+    const auth = await getConsentedLetterAuth();
     if (!auth) {
       return NextResponse.json(
         { error: "UNAUTHENTICATED" } satisfies AssessmentSubmissionsErrorResponse,
         { status: 401 }
       );
     }
+    if (!auth.consentCurrent) return consentRequiredResponse();
 
     const result = await getAssessmentHistory(auth.supabase, auth.userId);
 
