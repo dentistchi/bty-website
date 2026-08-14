@@ -12,10 +12,12 @@ import {
   type TrainingProgressMarkers,
   FOUNDRY_TRAINING_XP,
   resolveDecisionResponse,
+  requiredLearnerReflection,
+  resolveReflectionResponse,
 } from "@/domain/foundry/events/foundry-training";
 import { parseYoutubeVideoId, youtubeThumbnailUrl } from "@/domain/foundry/youtube";
 import { programIdForNewRun, programErrorReason, type ProgramLineage } from "./foundryProgramService";
-import { journeyActionDecision, toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
+import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import {
   resolveYoutubeEmbeddable,
   embedCheckAllowsCreate,
@@ -282,6 +284,13 @@ export type PublicTrainingSnapshot = {
    *  player falls back to the existing video/PDF + completion-question experience. */
   journey?: PublicJourney | null;
   /**
+   * This event asks a DISTINCT reflection question, so the learner owes an answer to it before
+   * completing (Slice 3.2R-R8B). Server-derived from the frozen event — the UI renders the
+   * control from this flag and never decides for itself which questions an event asks. The
+   * document path carries the identical field; one contract, both content types.
+   */
+  reflection_required?: boolean;
+  /**
    * The practice built from THIS training, when one is published (Slice 3.2M-2).
    *
    * Title and id only — the doorway, not the content. The Arena route re-authorises on
@@ -416,6 +425,19 @@ function buildPublicSnapshot(
     xp_status,
     // Journey shown alongside the content (same visibility gate as the video).
     journey: showVideo ? (journey ?? null) : null,
+    /*
+      Derived from the SAME projection the learner is shown (Slice 3.2R-R8B): if the reflection
+      block is not on their screen, no answer to it can be owed. `requiredLearnerReflection` then
+      applies the distinctness rule against the questions this event actually publishes.
+    */
+    reflection_required: Boolean(
+      showVideo &&
+        requiredLearnerReflection(
+          journey?.elements.find((e) => e.kind === "reflection")?.content,
+          content?.completion_prompt,
+          content?.shared_question,
+        ),
+    ),
     /*
       The doorway to this training's own practice — offered only once the training is
       finished. Before that it would be an invitation to skip the thing they came for.
@@ -645,6 +667,7 @@ export async function completeTraining(
   rawSharedResponse?: unknown,
   deviceTz?: string | null,
   rawDecisionResponse?: unknown,
+  rawReflectionResponse?: unknown,
 ): Promise<ProgressResult> {
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
@@ -658,7 +681,11 @@ export async function completeTraining(
   if (r.event.status === "closed") return { ok: false, reason: "event_closed" };
   if (!prog.video_completed_at) return { ok: false, reason: "video_not_complete" };
 
-  // response_text = PRIVATE Reflection (unchanged, never Host-visible). Still required today.
+  /*
+    response_text = the answer to the COMPLETION CHECK (Slice 3.2R-R8B corrected what this was
+    called). Private, never Host-visible, and still required by every event — including every
+    legacy one, whose completion payload is unchanged in every respect.
+  */
   const response = validateResponse(rawResponse);
   if (!response.ok) return { ok: false, reason: response.reason };
 
@@ -666,11 +693,27 @@ export async function completeTraining(
   // Written to a SEPARATE column with a NOT_REVIEWED status; never conflated with response_text.
   const { data: content } = await admin
     .from("foundry_event_training_content")
-    .select("shared_question")
+    .select("shared_question, completion_prompt")
     .eq("event_id", r.event.id)
-    .maybeSingle<{ shared_question: string | null }>();
+    .maybeSingle<{ shared_question: string | null; completion_prompt: string | null }>();
   const shared = resolveSharedResponse(content?.shared_question ?? null, rawSharedResponse);
   if (!shared.ok) return { ok: false, reason: shared.reason };
+
+  /*
+    THE LEARNER'S OWN REFLECTION (Slice 3.2R-R8B).
+
+    Read from the FROZEN published event, exactly like the decision below it, and by the SAME
+    domain gate the document path uses. REFLECTED is one learner-evidence authority, so it may
+    not come to mean two things depending on whether the material was a video or a PDF.
+  */
+  const journey = await readEventJourney(admin, r.event.id);
+  const reflectionQuestion = requiredLearnerReflection(
+    journeyReflection(journey),
+    content?.completion_prompt,
+    content?.shared_question,
+  );
+  const reflection = resolveReflectionResponse(reflectionQuestion, rawReflectionResponse);
+  if (!reflection.ok) return { ok: false, reason: reflection.reason };
 
   /*
     THE LEARNER'S OWN DECISION (Slice 3.2M-1).
@@ -679,7 +722,7 @@ export async function completeTraining(
     actually shown contains a grounded `action_decision`, a decision of their own is required to
     complete. A training without one behaves exactly as before.
   */
-  const actionDecision = journeyActionDecision(await readEventJourney(admin, r.event.id));
+  const actionDecision = journeyActionDecision(journey);
   const decision = resolveDecisionResponse(actionDecision, rawDecisionResponse);
   if (!decision.ok) return { ok: false, reason: decision.reason };
 
@@ -692,9 +735,14 @@ export async function completeTraining(
   const decisionWrite = decision.value
     ? { decision_response_text: decision.value, decision_submitted_at: now }
     : {};
+  // Same rule, same update: the reflection is part of the completion or it does not exist. A
+  // refusal above returns before this line, so a failed completion leaves no partial evidence.
+  const reflectionWrite = reflection.value
+    ? { learner_reflection_text: reflection.value, learner_reflection_submitted_at: now }
+    : {};
   const { data: updated } = await admin
     .from("foundry_event_training_progress")
-    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite, ...decisionWrite })
+    .update({ response_text: response.value, completed_at: now, updated_at: now, ...sharedWrite, ...decisionWrite, ...reflectionWrite })
     .eq("id", prog.id)
     .is("completed_at", null)
     .select(PROGRESS_COLS)

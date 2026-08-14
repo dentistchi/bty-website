@@ -36,6 +36,8 @@ type Snapshot = {
   practice?: { id: string; title: string } | null;
   /** Reality-Grounded Journey V1 (Slice 3.2C-B3A). null = legacy Run → video/PDF + completion fallback. */
   journey?: Journey;
+  /** This event asks a distinct REFLECT question — server-derived (Slice 3.2R-R8B). */
+  reflection_required?: boolean;
 };
 
 
@@ -52,6 +54,8 @@ type Copy = {
   playerErrorHint: string;
   carryForward: string;
   responsePlaceholder: string;
+  reflectPlaceholder: string;
+  reflectError: string;
   sharedHeading: string;
   sharedDisclosure: string;
   sharedPlaceholder: string;
@@ -116,6 +120,8 @@ const COPY: Record<Locale, Copy> = {
     playerErrorHint: "Please let the host know.",
     carryForward: "ONE THING TO CARRY FORWARD",
     responsePlaceholder: "Write one thing you will carry forward…",
+    reflectPlaceholder: "Write what usually happens…",
+    reflectError: "Please answer the reflect question to complete.",
     sharedHeading: "Show what you understood",
     sharedDisclosure: "Your response will be shared with the training host.",
     sharedPlaceholder: "Answer the question above…",
@@ -178,6 +184,8 @@ const COPY: Record<Locale, Copy> = {
     playerErrorHint: "호스트에게 알려주세요.",
     carryForward: "오늘 가지고 갈 한 가지",
     responsePlaceholder: "오늘 가지고 갈 한 가지를 적어주세요…",
+    reflectPlaceholder: "평소 어떤 일이 일어나는지 적어 주세요…",
+    reflectError: "완료하려면 성찰 질문에 답해 주세요.",
     sharedHeading: "배운 내용을 설명해 주세요",
     sharedDisclosure: "이 답변은 교육 담당자에게 공유됩니다.",
     decisionHeading: "당신의 결정",
@@ -295,6 +303,9 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   // Shared Understanding answer (Slice 3.1B-3G) — SEPARATE from the private `response`.
   const [sharedResponse, setSharedResponse] = useState("");
   const [decisionResponse, setDecisionResponse] = useState("");
+  // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
+  const [reflectResponse, setReflectResponse] = useState("");
+  const [reflectError, setReflectError] = useState(false);
   const [decisionError, setDecisionError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
@@ -362,16 +373,25 @@ export default function FoundryJoinClient({ token }: { token: string }) {
 
   const applyResult = useCallback((data: unknown) => {
     const d = data as
-      | { ok?: boolean; event?: Snapshot["event"]; participant?: Snapshot["participant"]; training?: Snapshot["training"]; stage?: Stage; xp_status?: Snapshot["xp_status"]; assignmentClaim?: string }
+      | (Partial<Snapshot> & { ok?: boolean; stage?: Stage; assignmentClaim?: string })
       | null;
     if (d?.ok && d.stage) {
-      setSnapshot({
+      /*
+        MERGE, NEVER REBUILD — the same defect R8A-R1 found on the document client (3.2R-R8B).
+        This rebuilt the snapshot field by field and never named `journey`, so any POST result
+        that came back through here silently deleted the published program from a YouTube
+        learner's screen. It was not reported, but it is the identical shape, and `journey` has
+        been in this type since 3.2C. A partial payload must never remove what is on screen.
+      */
+      setSnapshot((prev) => ({
         event: d.event ?? null,
         participant: d.participant ?? null,
         training: d.training ?? null,
-        stage: d.stage,
+        journey: d.journey ?? prev?.journey ?? null,
+        reflection_required: d.reflection_required ?? prev?.reflection_required ?? false,
+        stage: d.stage!,
         xp_status: d.xp_status ?? "none",
-      });
+      }));
       // Slice 3.1B-3D: show the narrow connection message ONLY on a fresh claim of the
       // learner's OWN assignment. Every other outcome (no match / conflict) is silent — no
       // alarm, no disclosure of another assignee.
@@ -427,6 +447,12 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   */
   const actionDecisionContext =
     snapshot?.journey?.elements.find((e) => e.kind === "action_decision")?.content ?? null;
+  /*
+    WHETHER A REFLECT ANSWER IS OWED IS THE SERVER'S ANSWER, NOT THIS COMPONENT'S (3.2R-R8B).
+    The same flag, the same domain gate and the same column as the document learner: REFLECTED
+    is one evidence authority and must not come to mean two things per content type.
+  */
+  const reflectRequired = Boolean(snapshot?.reflection_required);
   const onComplete = useCallback(async () => {
     if (busyRef.current) return;
     if (response.trim().length < 1) return setResponseError(true);
@@ -435,6 +461,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     // The program asked them to decide something — completing without one would make the record
     // claim a decision that was never made. The server enforces this too.
     if (actionDecisionContext && decisionResponse.trim().length < 1) return setDecisionError(true);
+    if (reflectRequired && reflectResponse.trim().length < 1) return setReflectError(true);
     busyRef.current = true;
     setBusy(true);
     setResponseError(false);
@@ -443,6 +470,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     try {
       const { ok, data } = await post("/progress/complete", {
         response_text: response.trim(),
+        ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
         ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
         tz: deviceTz(),
@@ -451,13 +479,14 @@ export default function FoundryJoinClient({ token }: { token: string }) {
       if (ok) applyResult(data);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long") setSharedError(true);
+      else if (d?.error === "reflection_required") setReflectError(true);
       else if (d?.error === "decision_required" || d?.error === "response_too_long") setDecisionError(true);
       else await load();
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, decisionResponse, actionDecisionContext, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, decisionResponse, actionDecisionContext, reflectRequired, reflectResponse, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -769,7 +798,24 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             <h1 className="text-xl font-semibold leading-snug text-white">{title}</h1>
             {/* Reality-Grounded Journey (Slice 3.2C-B3A): the Host-approved structured
                 context the learner reads before/around the material. Absent → legacy. */}
-            <JourneyReading journey={snapshot.journey ?? null} locale={locale} />
+            <JourneyReading
+              journey={snapshot.journey ?? null}
+              locale={locale}
+              reflection={
+                reflectRequired
+                  ? {
+                      value: reflectResponse,
+                      onChange: (v) => {
+                        setReflectResponse(v);
+                        setReflectError(false);
+                      },
+                      error: reflectError,
+                      placeholder: t.reflectPlaceholder,
+                      errorText: t.reflectError,
+                    }
+                  : null
+              }
+            />
           </div>
           <YouTubePlayer
             videoId={videoId}

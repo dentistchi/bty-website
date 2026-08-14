@@ -107,6 +107,72 @@ export function resolveDecisionResponse(
 }
 
 /**
+ * THE LEARNER'S OWN REFLECTION, AND WHICH PUBLISHED EVENTS ASK FOR ONE (Slice 3.2R-R8B).
+ *
+ * A published journey's `reflection` element asks the learner to examine what ALREADY happens
+ * ("What usually happens when an action needs an owner after a huddle?"). Its `completion_check`
+ * asks what they WILL say. Since 3.2R-R8A the first question is delivered and visible, and until
+ * now the only answer a learner could give was the second one — stored in `response_text` under
+ * a label that said REFLECTION. One answer cannot mean both acts, and REFLECTED was being
+ * established by a commitment.
+ *
+ * THE ACTIVATION AUTHORITY IS DISTINCTNESS, MEASURED FROM THE FROZEN EVENT.
+ *
+ * The obvious rule — "the journey has a reflection ⇒ require an answer" — is wrong, and the live
+ * data says so. Of the three published journey events on staging, v1 (`07c9623e`) froze a
+ * reflection element whose content is EXACTLY its shared question. Under the naive rule that
+ * event would acquire a second control asking a question the learner is already answering, and
+ * its one completed participant would sit under a contract it never met. Under this rule it
+ * simply does not qualify.
+ *
+ * So the question is only asked when it is genuinely a THIRD question: a grounded frozen
+ * reflection whose content differs from both the completion prompt and the shared question the
+ * event actually publishes. Every input is frozen at publish, so an event's contract is a
+ * property of what was published to it — never of an id, a title, a program, or a date.
+ *
+ * Comparison is on trimmed, case-folded, whitespace-collapsed text. Two questions that differ
+ * only by a stray space are the same question to the person reading them.
+ */
+function sameQuestion(a: string, b: string | null | undefined): boolean {
+  return a.toLowerCase().replace(/\s+/g, " ") === (b ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function requiredLearnerReflection(
+  journeyReflection: string | null | undefined,
+  completionPrompt: string | null | undefined,
+  sharedQuestion: string | null | undefined,
+): string | null {
+  const q = (journeyReflection ?? "").trim();
+  if (q.length < 1) return null;
+  if (sameQuestion(q, completionPrompt)) return null;
+  if (sameQuestion(q, sharedQuestion)) return null;
+  return q;
+}
+
+/** The learner's reflection answer. Same shape as the others, its own reason namespace. */
+export function validateReflectionResponse(raw: unknown): ValidationResult<string> {
+  const base = validateResponse(raw);
+  if (base.ok) return base;
+  return { ok: false, reason: base.reason === "response_required" ? "reflection_required" : base.reason };
+}
+
+/**
+ * Resolve the reflection at completion. Pure gate:
+ *   - the event does not ask a distinct reflection → value null (nothing stored, input ignored).
+ *   - it does                                      → a non-empty reflection is REQUIRED.
+ *
+ * `reflectionQuestion` is the output of `requiredLearnerReflection` over the FROZEN event, so a
+ * legacy event keeps its exact old completion payload contract and no client can opt in or out.
+ */
+export function resolveReflectionResponse(
+  reflectionQuestion: string | null | undefined,
+  raw: unknown,
+): ValidationResult<string | null> {
+  if (!reflectionQuestion || reflectionQuestion.trim().length < 1) return { ok: true, value: null };
+  return validateReflectionResponse(raw);
+}
+
+/**
  * The completion response. Newlines are allowed (it's a reflection), so we keep
  * \n and \r but still strip other control chars. Length is measured post-trim.
  */

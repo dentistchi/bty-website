@@ -33,7 +33,33 @@ const JOURNEY_KIND_LABEL: Record<JourneyElementKind, { en: string; ko: string }>
   follow_up: { en: "WHAT HAPPENS NEXT", ko: "다음에 일어날 일" },
 };
 
-export function JourneyReading({ journey, locale }: { journey: Journey; locale: string }) {
+/**
+ * The learner's answer to the REFLECT question (Slice 3.2R-R8B).
+ *
+ * It lives HERE, beneath the question it answers, rather than on the completion surface. The
+ * alternative — repeating the question further down next to a second box — is how a learner ends
+ * up reading "What usually happens…" twice and answering it once, and the whole point of this
+ * slice is that examining current practice and committing to a sentence are different acts with
+ * different questions. One question, one control, in one place.
+ */
+export type ReflectionAnswer = {
+  value: string;
+  onChange: (next: string) => void;
+  error: boolean;
+  placeholder: string;
+  errorText: string;
+  disabled?: boolean;
+};
+
+export function JourneyReading({
+  journey,
+  locale,
+  reflection,
+}: {
+  journey: Journey;
+  locale: string;
+  reflection?: ReflectionAnswer | null;
+}) {
   if (!journey || journey.elements.length === 0) return null;
   const lang = locale === "ko" ? "ko" : "en";
   // The completion_check is delivered by the existing completion step, not the reading list.
@@ -47,6 +73,25 @@ export function JourneyReading({ journey, locale }: { journey: Journey; locale: 
             {JOURNEY_KIND_LABEL[el.kind as JourneyElementKind][lang]}
           </span>
           <p className="text-base leading-7 text-white/85">{el.content}</p>
+          {el.kind === "reflection" && reflection ? (
+            <div className="mt-2 flex flex-col gap-1">
+              <textarea
+                data-testid="journey-reflection-input"
+                value={reflection.value}
+                onChange={(e) => reflection.onChange(e.target.value)}
+                placeholder={reflection.placeholder}
+                disabled={reflection.disabled}
+                rows={3}
+                maxLength={1000}
+                className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-base leading-6 text-white/90 outline-none placeholder:text-white/30 focus:border-[#C9A66B]/50 disabled:opacity-50"
+              />
+              {reflection.error ? (
+                <span className="text-xs text-red-300/90" data-testid="journey-reflection-error">
+                  {reflection.errorText}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ))}
     </section>

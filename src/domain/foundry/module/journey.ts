@@ -199,6 +199,20 @@ export function journeyActionDecision(j: RealityGroundedJourneyV1 | undefined): 
 }
 
 /**
+ * The approved `reflection` content, or null (Slice 3.2R-R8B).
+ *
+ * What the learner is asked to EXAMINE about their current practice — never what they are asked
+ * to commit to, which is `completion_check`. Grounded elements only, the same rule
+ * `toPublicJourney` uses, so the gate can never demand an answer to a section the learner was
+ * never shown.
+ */
+export function journeyReflection(j: RealityGroundedJourneyV1 | undefined): string | null {
+  const el = j?.elements.find((e) => e.kind === "reflection" && e.confirmationStatus === "grounded");
+  const v = (el?.content ?? "").trim();
+  return v.length > 0 ? v : null;
+}
+
+/**
  * The approved `field_application` content, or null (Slice 3.2M-3).
  *
  * What the learner was asked to do in REAL WORK — the thing a follow-up should ask about.

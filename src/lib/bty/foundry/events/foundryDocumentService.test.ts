@@ -527,6 +527,172 @@ describe("completion + XP — same canonical path as YouTube", () => {
   });
 });
 
+/**
+ * SLICE 3.2R-R8B — THE REFLECT ANSWER IS A THIRD ANSWER.
+ *
+ * Until now a document learner gave exactly one answer, to the completion check, and it was
+ * stored in `response_text` under a label that said REFLECTION. The published journey's REFLECT
+ * question — visible since R8A — had nowhere to go, so REFLECTED was being established by a
+ * commitment sentence.
+ *
+ * These drive the REAL completion path against a frozen module snapshot, because the requirement
+ * is derived from the published event and nothing else. The client cannot opt in, opt out, or
+ * name which column its text lands in.
+ */
+const R8B_REFLECT = "What usually happens when an action needs an owner after a huddle?";
+const R8B_FINISH = "What exactly will you say when you state the owner, action, and deadline?";
+const R8B_SHARED = "In your own words, what is the most important standard from this training?";
+
+/** Freeze a published journey onto an event, exactly as publish does. */
+function freezeJourney(tables: Record<string, Row[]>, eventId: string, reflection: string | null, status = "grounded") {
+  const elements = [
+    { id: "el_why_it_matters", kind: "why_it_matters", content: "Nobody owns the next step.", grounding: [], confirmationStatus: "grounded" },
+    { id: "el_completion_check", kind: "completion_check", content: R8B_FINISH, grounding: [], confirmationStatus: "grounded" },
+  ];
+  if (reflection) elements.splice(1, 0, { id: "el_reflection", kind: "reflection", content: reflection, grounding: [], confirmationStatus: status });
+  (tables.foundry_event_module ??= []).push({
+    id: `mod-${eventId}`,
+    event_id: eventId,
+    module_version: 3,
+    module_snapshot: { realityGroundedJourneyV1: { version: 1, displayTitle: "Building Accountability in Huddles", displayTitleStatus: "grounded", elements } },
+  });
+}
+
+/** Put an event under the new contract: a frozen distinct reflection + the questions it differs from. */
+async function setupNewContract(reflection: string | null = R8B_REFLECT, shared: string | null = R8B_SHARED) {
+  const ctx = await setupJoined(2);
+  const content = ctx.tables.foundry_event_document_content.find((c) => c.event_id === ctx.eventId)!;
+  content.completion_prompt = R8B_FINISH;
+  content.shared_question = shared;
+  freezeJourney(ctx.tables, ctx.eventId, reflection);
+  await meetReadingGate(ctx.admin, ctx.token, ctx.session, 2);
+  return ctx;
+}
+
+function progressRow(tables: Record<string, Row[]>, eventId: unknown) {
+  return tables.foundry_event_training_progress.find((r) => r.event_id === eventId)!;
+}
+
+describe("[3.2R-R8B] the learner's own reflection", () => {
+  it("B/G — a new-contract event REFUSES completion without the reflection", async () => {
+    const { admin, token, session, tables, eventId } = await setupNewContract();
+    const r = await completeDocumentTraining(admin, token, session, "I will name an owner.", null, "The standard.", null, undefined);
+    expect(r).toEqual({ ok: false, reason: "reflection_required" });
+    // AND NOTHING WAS WRITTEN. A refused completion must not leave partial evidence behind.
+    const row = progressRow(tables, eventId);
+    expect(row.completed_at).toBeNull();
+    expect(row.response_text ?? null).toBeNull();
+    expect(row.learner_reflection_text ?? null).toBeNull();
+    expect(row.shared_understanding_response ?? null).toBeNull();
+  });
+
+  it("F/M — all three answers land in three different columns, in one write", async () => {
+    const { admin, token, session, tables, eventId } = await setupNewContract();
+    const done = await completeDocumentTraining(
+      admin, token, session,
+      "I will say: Mina owns it, by Friday.",   // the completion check
+      null,
+      "Name an owner and a date for every item.", // shared understanding
+      null,
+      undefined,
+      "Usually it just drifts and someone picks it up days later.", // the REFLECT answer
+    );
+    expect(done.ok).toBe(true);
+    const row = progressRow(tables, eventId);
+    expect(row.learner_reflection_text).toBe("Usually it just drifts and someone picks it up days later.");
+    expect(row.response_text, "M — response_text is still the completion-check answer").toBe("I will say: Mina owns it, by Friday.");
+    expect(row.shared_understanding_response).toBe("Name an owner and a date for every item.");
+    // Atomic: one completion, one timestamp for the reflection that belongs to it.
+    expect(row.learner_reflection_submitted_at).toBe(row.completed_at);
+  });
+
+  it("U — an event whose reflection IS its shared question keeps the OLD contract", async () => {
+    /*
+      LIVE v1 (`07c9623e`). Under a naive "has a reflection" rule this learner would be asked the
+      same question twice. The distinctness rule means the event never enters the new contract.
+    */
+    const { admin, token, session, tables, eventId } = await setupNewContract(R8B_SHARED, R8B_SHARED);
+    const done = await completeDocumentTraining(admin, token, session, "I will name an owner.", null, "The standard.");
+    expect(done.ok, "no reflection is owed, so completion succeeds without one").toBe(true);
+    expect(progressRow(tables, eventId).learner_reflection_text ?? null).toBeNull();
+  });
+
+  it("H/J — a legacy event with no journey completes on its old payload, untouched", async () => {
+    const { admin, token, session, tables, eventId } = await setupJoined(2);
+    await meetReadingGate(admin, token, session, 2);
+    const done = await completeDocumentTraining(admin, token, session, "One thing I'll apply.", null);
+    expect(done.ok).toBe(true);
+    const row = progressRow(tables, eventId);
+    expect(row.response_text).toBe("One thing I'll apply.");
+    expect(row.learner_reflection_text ?? null, "J — nothing is backfilled").toBeNull();
+    expect(row.learner_reflection_submitted_at ?? null).toBeNull();
+  });
+
+  it("a reflection that was never grounded is never demanded", async () => {
+    const ctx = await setupJoined(2);
+    const content = ctx.tables.foundry_event_document_content.find((c) => c.event_id === ctx.eventId)!;
+    content.completion_prompt = R8B_FINISH;
+    freezeJourney(ctx.tables, ctx.eventId, R8B_REFLECT, "needs_confirmation");
+    await meetReadingGate(ctx.admin, ctx.token, ctx.session, 2);
+    expect((await completeDocumentTraining(ctx.admin, ctx.token, ctx.session, "Done.", null)).ok).toBe(true);
+  });
+
+  it("I — an already-completed row stays complete and is never re-judged", async () => {
+    // Completed under the OLD contract, then the same learner calls complete again.
+    const ctx = await setupJoined(2);
+    await meetReadingGate(ctx.admin, ctx.token, ctx.session, 2);
+    await completeDocumentTraining(ctx.admin, ctx.token, ctx.session, "Legacy answer.", null);
+    const content = ctx.tables.foundry_event_document_content.find((c) => c.event_id === ctx.eventId)!;
+    content.completion_prompt = R8B_FINISH;
+    freezeJourney(ctx.tables, ctx.eventId, R8B_REFLECT);
+    const again = await completeDocumentTraining(ctx.admin, ctx.token, ctx.session, "x", null);
+    expect(again.ok, "idempotent — never invalidated by a contract it predates").toBe(true);
+    const row = progressRow(ctx.tables, ctx.eventId);
+    expect(row.response_text, "K — the historical answer is not rewritten").toBe("Legacy answer.");
+    expect(row.learner_reflection_text ?? null).toBeNull();
+  });
+
+  it("the snapshot tells the client whether an answer is owed — the client never decides", async () => {
+    const { admin, token, session } = await setupNewContract();
+    expect((await getPublicDocumentSnapshot(admin, token, session)).reflection_required).toBe(true);
+    const legacy = await setupJoined(2);
+    await meetReadingGate(legacy.admin, legacy.token, legacy.session, 2);
+    expect((await getPublicDocumentSnapshot(legacy.admin, legacy.token, legacy.session)).reflection_required).toBe(false);
+  });
+
+  it("O/P — XP and the follow-up still belong to COMPLETION, never to the reflection", async () => {
+    const { admin, token, session, tables } = await setupNewContract();
+    // A refused completion carries a reflection in the payload and must award nothing.
+    await completeDocumentTraining(admin, token, session, "  ", AUTH, "shared", null, undefined, "my reflection");
+    expect(awardSpy).not.toHaveBeenCalled();
+    expect(tables.core_xp_ledger).toHaveLength(0);
+
+    const done = await completeDocumentTraining(admin, token, session, "I will name an owner.", AUTH, "The standard.", null, undefined, "It drifts.");
+    expect(done.ok).toBe(true);
+    expect(awardSpy).toHaveBeenCalledTimes(1);
+    expect(tables.core_xp_ledger).toHaveLength(1);
+  });
+
+  it("K — no Host-facing projection anywhere names the private reflection column", async () => {
+    /*
+      Checked against the SOURCE, not a payload: a Host surface leaks by adding a column to a
+      select list, and only the source can prove none of them did. Every projection here is an
+      explicit list — none is `select("*")` — so absence of the name is absence of the data.
+    */
+    const fs = await import("node:fs/promises");
+    for (const f of [
+      "src/lib/bty/foundry/events/foundryHostHistoryService.ts",
+      "src/lib/bty/foundry/events/hostAttentionService.ts",
+      "src/lib/bty/foundry/events/foundrySharedReviewService.ts",
+      "src/lib/bty/foundry/events/foundryHistoryService.ts",
+    ]) {
+      const src = await fs.readFile(f, "utf8");
+      expect(src.includes("learner_reflection_text"), f).toBe(false);
+      expect(src.includes('select("*"'), `${f} must not select everything`).toBe(false);
+    }
+  });
+});
+
 describe("participant isolation + close + privacy", () => {
   it("a different participant cannot read or mutate another participant's progress", async () => {
     const { admin, token, session } = await setupJoined(2);

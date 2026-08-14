@@ -49,6 +49,8 @@ type Snapshot = {
   document: DocInfo | null;
   /** The published program, from the frozen event snapshot (Slice 3.2R-R8A). */
   journey?: Journey;
+  /** This event asks a distinct REFLECT question — server-derived (Slice 3.2R-R8B). */
+  reflection_required?: boolean;
   stage: Stage;
   xp_status: XpStatus;
 };
@@ -64,8 +66,10 @@ type Copy = {
   pagesProgress: (viewed: number, total: number) => string;
   keepReading: string;
   readingDone: string;
-  reflection: string;
+  beforeYouFinish: string;
   responsePlaceholder: string;
+  reflectPlaceholder: string;
+  reflectError: string;
   sharedHeading: string;
   sharedDisclosure: string;
   sharedPlaceholder: string;
@@ -112,8 +116,10 @@ const COPY: Record<Locale, Copy> = {
     pagesProgress: (v, t) => `${v} of ${t} pages read`,
     keepReading: "Read every page to continue.",
     readingDone: "You’ve read the document.",
-    reflection: "REFLECTION",
-    responsePlaceholder: "Write your reflection…",
+    beforeYouFinish: "BEFORE YOU FINISH",
+    responsePlaceholder: "Write what you will say…",
+    reflectPlaceholder: "Write what usually happens…",
+    reflectError: "Please answer the reflect question to complete.",
     sharedHeading: "Show what you understood",
     sharedDisclosure: "Your response will be shared with the training host.",
     sharedPlaceholder: "Answer the question above…",
@@ -137,7 +143,7 @@ const COPY: Record<Locale, Copy> = {
     removed: "Your access to this event has ended.",
     inactive: "This invitation is no longer active.",
     nameError: "Please enter your name.",
-    responseError: "Please write your reflection to complete.",
+    responseError: "Please answer this to complete.",
     pdfLoading: "Loading…",
     pdfUnavailable: "The document could not be loaded.",
     pdfUnavailableHint: "Reload the page, or ask the host to check the event.",
@@ -158,8 +164,10 @@ const COPY: Record<Locale, Copy> = {
     pagesProgress: (v, t) => `${t}쪽 중 ${v}쪽 읽음`,
     keepReading: "모든 페이지를 읽으면 계속됩니다.",
     readingDone: "문서를 모두 읽었습니다.",
-    reflection: "성찰",
-    responsePlaceholder: "성찰을 적어 주세요…",
+    beforeYouFinish: "마치기 전에",
+    responsePlaceholder: "무엇을 말할지 적어 주세요…",
+    reflectPlaceholder: "평소 어떤 일이 일어나는지 적어 주세요…",
+    reflectError: "완료하려면 성찰 질문에 답해 주세요.",
     sharedHeading: "배운 내용을 설명해 주세요",
     sharedDisclosure: "이 답변은 교육 담당자에게 공유됩니다.",
     sharedPlaceholder: "위 질문에 답해 주세요…",
@@ -183,7 +191,7 @@ const COPY: Record<Locale, Copy> = {
     removed: "이 이벤트에 대한 접근이 종료되었습니다.",
     inactive: "더 이상 유효하지 않은 초대입니다.",
     nameError: "이름을 입력해 주세요.",
-    responseError: "완료하려면 성찰을 작성해 주세요.",
+    responseError: "완료하려면 답변을 작성해 주세요.",
     pdfLoading: "불러오는 중…",
     pdfUnavailable: "문서를 불러오지 못했습니다.",
     pdfUnavailableHint: "다시 시도하거나 호스트에게 문의하세요.",
@@ -267,6 +275,9 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
+  // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
+  const [reflectResponse, setReflectResponse] = useState("");
+  const [reflectError, setReflectError] = useState(false);
   const [sharedError, setSharedError] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState(false);
@@ -346,6 +357,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
         participant: d.participant ?? null,
         document: d.document ?? null,
         journey: d.journey ?? prev?.journey ?? null,
+        reflection_required: d.reflection_required ?? prev?.reflection_required ?? false,
         stage: d.stage!,
         xp_status: d.xp_status ?? "none",
       }));
@@ -415,8 +427,15 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   );
 
   const sharedQuestion = snapshot?.document?.shared_question ?? null;
+  /*
+    WHETHER A REFLECT ANSWER IS OWED IS THE SERVER'S ANSWER, NOT THIS COMPONENT'S (3.2R-R8B).
+    The client renders the control the snapshot tells it to and sends what it collected; the
+    server re-derives the requirement from the frozen event and refuses if it disagrees.
+  */
+  const reflectRequired = Boolean(snapshot?.reflection_required);
   const onComplete = useCallback(async () => {
     if (busyRef.current) return;
+    if (reflectRequired && reflectResponse.trim().length < 1) return setReflectError(true);
     if (response.trim().length < 1) return setResponseError(true);
     // A configured shared question requires a non-empty shared answer BEFORE completion.
     if (sharedQuestion && sharedResponse.trim().length < 1) return setSharedError(true);
@@ -424,14 +443,17 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     setBusy(true);
     setResponseError(false);
     setSharedError(false);
+    setReflectError(false);
     try {
       const { ok, data } = await post("/complete", {
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
+        ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
         tz: deviceTz(),
       });
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
+      else if (d?.error === "reflection_required") setReflectError(true);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long" || d?.error === "response_too_long")
         setSharedError(true);
@@ -440,7 +462,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, reflectRequired, reflectResponse, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -638,12 +660,31 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
         had since 3.2C, where the journey precedes the video.
 
         `completion_check` is excluded by `JourneyReading` itself: it already has its own
-        surface at the end. DELIVERY ONLY — see the header of `JourneyReading` and the note in
-        `documentJourneyDelivery.test.tsx`: what the learner ANSWERS, and what that answer
-        establishes, are a separate authority this slice deliberately does not touch.
+        surface at the end, now correctly labelled BEFORE YOU FINISH.
+
+        The REFLECT answer control is attached to the REFLECT block inside `JourneyReading`
+        (Slice 3.2R-R8B), so the question the learner answers is the one they are reading.
       */}
       <div className="mt-5">
-        <JourneyReading journey={snapshot.journey ?? null} locale={locale} />
+        <JourneyReading
+          journey={snapshot.journey ?? null}
+          locale={locale}
+          reflection={
+            reflectRequired
+              ? {
+                  value: reflectResponse,
+                  onChange: (v) => {
+                    setReflectResponse(v);
+                    setReflectError(false);
+                  },
+                  error: reflectError,
+                  placeholder: t.reflectPlaceholder,
+                  errorText: t.reflectError,
+                  disabled: busy,
+                }
+              : null
+          }
+        />
       </div>
 
       <div className="mt-4">
@@ -684,7 +725,9 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
 
       {readingComplete && (
         <div className="mt-6" ref={reflectionRef}>
-          <Eyebrow>{t.reflection}</Eyebrow>
+          {/* The completion check — what the learner will SAY. Never the REFLECT question,
+              which is answered above beside the section that asks it (Slice 3.2R-R8B). */}
+          <Eyebrow>{t.beforeYouFinish}</Eyebrow>
           {doc?.completion_prompt && (
             <p className="mt-2 text-sm text-white/85">{doc.completion_prompt}</p>
           )}

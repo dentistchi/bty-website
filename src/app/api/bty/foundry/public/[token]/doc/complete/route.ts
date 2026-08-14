@@ -34,9 +34,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   }
 
   const body = await req.json().catch(() => ({}));
-  // shared_response = Host-visible Shared Understanding (Slice 3.1B-3G); required only when the
-  // module has a shared_question. Distinct from the private response_text.
-  const r = await completeDocumentTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response);
+  /*
+    Three distinct answers, three distinct meanings (Slice 3.2R-R8B):
+      response_text      the completion check — what the learner will say. Private.
+      shared_response    Host-visible Shared Understanding (3.1B-3G), when configured.
+      reflection_response the journey's REFLECT question — what already happens. Private.
+    Which of them are REQUIRED is decided by the server from the frozen event, never here and
+    never by the client. Every field is passed straight through unvalidated on purpose.
+  */
+  const r = await completeDocumentTraining(admin, token, session, body?.response_text, authUserId, body?.shared_response, body?.tz, body?.decision_response, body?.reflection_response);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
   return jsonNoStore({ ok: true, ...r.snapshot });
 }

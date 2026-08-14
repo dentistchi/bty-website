@@ -39,7 +39,11 @@ import { EVIDENCE_LADDER, type EvidenceLevel } from "@/domain/foundry/module/pro
 export type LearnerEvidenceFacts = {
   /** The training was finished — the material was read or watched to the end. */
   readonly completed: boolean;
-  /** A private reflection exists. */
+  /**
+   * A private reflection exists — the OUTPUT of `reflectionEstablished`, never a column read
+   * directly. Which column carries the reflection depends on what the event asked, and that
+   * boundary belongs in one place (Slice 3.2R-R8B).
+   */
   readonly reflection: boolean;
   /** The learner recorded their own decision (never BTY's proposed sentence). */
   readonly decision: boolean;
@@ -63,6 +67,37 @@ export type LearnerEvidenceFacts = {
    */
   readonly sustained: boolean;
 };
+
+/**
+ * WHICH ANSWER ESTABLISHES REFLECTED, AND WHEN IT CHANGED (Slice 3.2R-R8B).
+ *
+ * This is the whole temporal boundary, in one function, deliberately: it is the kind of rule
+ * that gets re-derived slightly differently at each call site until two surfaces disagree about
+ * what a learner did.
+ *
+ * BEFORE. Every room asked exactly one question and stored the answer in `response_text`. That
+ * answer meant whatever the room asked, and it is the honest evidence of reflection for every
+ * row that predates the split — 30 rows across 24 events on staging, only one of which belongs
+ * to an event whose published journey carried a reflection element at all.
+ *
+ * AFTER. An event that publishes a DISTINCT reflection question asks two things, and the
+ * commitment answer no longer stands in for the examination. On those rows, and only those,
+ * REFLECTED comes from `learner_reflection_text`.
+ *
+ * NOTHING IS REWRITTEN AND NOTHING IS BACKFILLED. `newReflectionContract` is derived per event
+ * from its own frozen snapshot (see `requiredLearnerReflection`), so a historical row is read
+ * under the contract it was actually completed under, forever.
+ */
+export function reflectionEstablished(row: {
+  /** The published event asks a reflection question distinct from its other two. */
+  readonly newReflectionContract: boolean;
+  /** `learner_reflection_text` is present. */
+  readonly learnerReflection: boolean;
+  /** `response_text` is present — the completion-check answer on a new-contract row. */
+  readonly completionResponse: boolean;
+}): boolean {
+  return row.newReflectionContract ? row.learnerReflection : row.completionResponse;
+}
 
 /** The rungs this record legitimately supports, lowest first. Never above OBSERVED. */
 export function establishedEvidence(facts: LearnerEvidenceFacts): EvidenceLevel[] {

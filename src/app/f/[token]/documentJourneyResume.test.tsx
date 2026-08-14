@@ -56,6 +56,7 @@ const RESUMED = {
     shared_question: "In your own words, what is the most important standard from this training?",
   },
   journey: JOURNEY,
+  reflection_required: true,
   stage: "response",
   xp_status: "none",
 };
@@ -118,14 +119,38 @@ describe("[3.2R-R8A-R1] a resumed, read-complete learner still sees the program"
     expect(screen.getByText("What usually happens when an action needs an owner after a huddle?")).toBeTruthy();
   });
 
-  it("the completion surface stays exactly as it was — R8B owns that correction", () => {
+  it("R/S — the two questions have two controls, and neither wears the other's label", async () => {
+    /*
+      SLICE 3.2R-R8B. The device showed REFLECT above the PDF and, below it, the completion
+      question under a label that said REFLECTION — two different questions, one answer, and
+      REFLECTED established by a commitment. The answer control now sits with the question it
+      answers, and the lower surface says what it actually is.
+    */
     mockFetch(RESUMED, { ok: true, ...RESUMED });
     render(<FoundryDocumentClient token="btyroom.a.b" />);
-    return waitFor(() => {
-      // Still the completion prompt, still under its current label. Unchanged on purpose.
-      expect(screen.getByText("What exactly will you say when you state the owner, action, and deadline for each agreed item?")).toBeTruthy();
-      // And it is NOT part of the journey reading list.
-      expect(screen.queryByTestId("journey-el-completion_check")).toBeNull();
-    });
+    await waitFor(() => expect(screen.getByTestId("journey-el-reflection")).toBeTruthy());
+
+    // R — the REFLECT answer box is inside the REFLECT block, beside its own question.
+    const reflect = screen.getByTestId("journey-el-reflection");
+    expect(reflect.querySelector('[data-testid="journey-reflection-input"]')).toBeTruthy();
+    expect(reflect.textContent).toContain("What usually happens when an action needs an owner after a huddle?");
+
+    // S — the completion surface carries the completion check, under BEFORE YOU FINISH.
+    expect(screen.getByText("BEFORE YOU FINISH")).toBeTruthy();
+    expect(screen.queryByText("REFLECTION"), "the false label is gone").toBeNull();
+    expect(screen.getByText("What exactly will you say when you state the owner, action, and deadline for each agreed item?")).toBeTruthy();
+
+    // The REFLECT question appears exactly ONCE on the whole page.
+    expect(screen.getAllByText("What usually happens when an action needs an owner after a huddle?")).toHaveLength(1);
+    // And completion_check is still not part of the reading list.
+    expect(screen.queryByTestId("journey-el-completion_check")).toBeNull();
+  });
+
+  it("a legacy event asks for no reflection answer at all", async () => {
+    // reflection_required false ⇒ the block still READS, but there is nothing to fill in.
+    mockFetch({ ...RESUMED, reflection_required: false }, { ok: true, ...RESUMED, reflection_required: false });
+    render(<FoundryDocumentClient token="btyroom.a.b" />);
+    await waitFor(() => expect(screen.getByTestId("journey-el-reflection")).toBeTruthy());
+    expect(screen.queryByTestId("journey-reflection-input")).toBeNull();
   });
 });
