@@ -132,6 +132,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Deliberately WITHOUT `purchaseId`. A refusal must not hand back a durable row identifier: the
+  // revoked and inactive branches below spread this, and addressability is granted only to a
+  // caller whose transaction was accepted. See the 200 at the bottom of this function.
   const base = {
     verified: true,
     recorded: true,
@@ -161,6 +164,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Verified, recorded, and the product is operationally enabled. Still no entitlement in 26P.
-  return NextResponse.json({ ok: true, ...base }, { headers: NO_STORE });
+  // Verified, recorded, and the product is operationally enabled. Still no entitlement.
+  //
+  // BUILD 26T-R1A-R1 — `purchaseId` is the durable `karaoke_apple_purchases.id` this call just
+  // wrote, or, on a replay, the id of the row that already existed. It is ADDITIVE: every field
+  // above keeps its name, its type and its meaning, and no status code moves.
+  //
+  // WHY IT IS HERE NOW. BUILD 26P defined VERIFY + RECORD and withheld the id, which was correct
+  // then — there was no caller that needed to address the row, and an identifier nobody uses is
+  // surface with no purpose. BUILD 26T built the production settlement pipeline, and `/fulfil`
+  // and `/fulfilment` both take exactly this UUID. Without it a genuine paid transaction is
+  // recorded and then unreachable. This is a NEW addressability requirement, not a correction.
+  //
+  // IT IS STILL NOT FULFILMENT. The response grants nothing, issues nothing and authorizes no
+  // `Transaction.finish()`. `/fulfil` re-authorizes the caller against the row for itself; being
+  // told the id is not being told it is yours to settle.
+  //
+  // The value is the row's own `gen_random_uuid()` primary key — never the Apple transaction id,
+  // the original transaction id, the appAccountToken or the product. It is opaque, and it is the
+  // only internal field this endpoint discloses.
+  return NextResponse.json(
+    { ok: true, ...base, purchaseId: outcome.purchaseId },
+    { headers: NO_STORE },
+  );
 }

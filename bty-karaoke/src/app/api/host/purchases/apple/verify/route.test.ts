@@ -295,3 +295,123 @@ describe('BUILD 26P grants NOTHING, on every path', () => {
     expect(src).toMatch(/NO RESPONSE HERE AUTHORIZES `Transaction\.finish\(\)`/);
   });
 });
+
+// BUILD 26T-R1A-R1 — production fulfil addressability.
+//
+// A verified purchase that cannot be named cannot be settled. `/fulfil` and `/fulfilment` both
+// take the durable `karaoke_apple_purchases.id`, and until now `/verify` computed it and threw it
+// away. These tests pin the additive disclosure AND its boundary: accepted transactions become
+// addressable, refused ones do not.
+describe('BUILD 26T-R1A-R1 — the accepted purchase is addressable', () => {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const ROW = '28ab7288-ed3b-43b6-acef-484d1f635032';
+
+  it('a first successful verification returns the durable row id', async () => {
+    state.product = { productCode: 'PASS_1H', isActive: true };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+    const res = await POST(req(GOOD));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.purchaseId).toBe(ROW);
+    expect(body.purchaseId).toMatch(UUID_RE);
+    // Additive: every BUILD 26P field keeps its name and meaning.
+    expect(body).toMatchObject({
+      ok: true, verified: true, recorded: true, entitlementIssued: false,
+      replayed: false, productCode: 'PASS_1H',
+    });
+  });
+
+  it('a replay returns the IDENTICAL id — the second call addresses the first row', async () => {
+    state.product = { productCode: 'PASS_1H', isActive: true };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+    const first = await (await POST(req(GOOD))).json();
+    // What the ledger reports on a conflict: the durable winner, flagged as a replay.
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: true };
+    const second = await (await POST(req(GOOD))).json();
+    expect(second.replayed).toBe(true);
+    expect(second.purchaseId).toBe(first.purchaseId);
+  });
+
+  it('it is the ledger row id, never anything derived from Apple', async () => {
+    // C.5: the identifier must not be the transaction id, the original transaction id, the
+    // appAccountToken or the product — those are Apple's values and are not ours to hand back as
+    // an address.
+    state.product = { productCode: 'PASS_1H', isActive: true };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+    const body = await (await POST(req(GOOD))).json();
+    expect(body.purchaseId).not.toBe('2000000900000001');
+    expect(body.purchaseId).not.toBe(OWNER);
+    expect(body.purchaseId).not.toBe('com.btydaily.norebang.pass.1hour');
+    // And exactly one internal field is disclosed — no account id, no row internals.
+    expect(Object.keys(body).sort()).toEqual(
+      ['entitlementIssued', 'ok', 'productCode', 'purchaseId', 'recorded', 'replayed', 'verified']);
+  });
+
+  it('NO refusal discloses a purchase id', async () => {
+    // C.8. Each case is a refusal the endpoint already had; none of them gains addressability.
+    const cases: Array<[string, () => void]> = [
+      ['unverifiable JWS', () => { state.verify = { ok: false, code: 'invalid_apple_signature' }; }],
+      ['wrong appAccountToken', () => {
+        state.verify = { ok: true, claims: claims({ appAccountToken: '99999999-2222-4333-8444-555555555555' }), environment: 'Sandbox' };
+      }],
+      ['missing appAccountToken', () => {
+        state.verify = { ok: true, claims: claims({ appAccountToken: undefined }), environment: 'Sandbox' };
+      }],
+      ['environment mismatch', () => {
+        state.verify = { ok: true, claims: claims({ environment: 'Production' }), environment: 'Sandbox' };
+      }],
+      ['unknown product', () => { state.product = null; }],
+      ['revoked transaction', () => {
+        state.product = { productCode: 'PASS_1H', isActive: true };
+        state.verify = { ok: true, claims: claims({ revocationDate: 1_760_000_500_000, revocationReason: 1 }), environment: 'Sandbox' };
+      }],
+      ['claimed by another account', () => { state.record = { ok: false, code: 'transaction_already_claimed' }; }],
+      ['ledger invariant conflict', () => { state.record = { ok: false, code: 'ledger_invariant_conflict' }; }],
+    ];
+    for (const [name, set] of cases) {
+      state.account = { id: 'acct-1' };
+      state.ownerRef = OWNER;
+      state.verify = { ok: true, claims: claims(), environment: 'Sandbox' };
+      state.product = { productCode: 'PASS_1H', isActive: true };
+      state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+      set();
+      const res = await POST(req(GOOD));
+      const body = await res.json();
+      expect(res.status, name).not.toBe(200);
+      expect(body.ok, name).toBe(false);
+      expect(body.purchaseId, name).toBeUndefined();
+      expect(JSON.stringify(body), name).not.toContain(ROW);
+    }
+  });
+
+  it('an INACTIVE product is refused exactly as before, and stays unaddressable', async () => {
+    // R1A-R1 does NOT touch the activation TOCTOU. The 409 keeps its status, its error string and
+    // its recorded:true, and it deliberately does not become addressable — making an inactive
+    // refusal settleable is BUILD 26T-R1A-R2's decision to take, not this slice's.
+    state.product = { productCode: 'PASS_1H', isActive: false };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+    const res = await POST(req(GOOD));
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      ok: false, error: 'product_inactive', verified: true, recorded: true,
+      entitlementIssued: false, replayed: false,
+    });
+    expect(body.purchaseId).toBeUndefined();
+  });
+
+  it('addressability is not fulfilment — the route still grants nothing', async () => {
+    state.product = { productCode: 'PASS_1H', isActive: true };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+    const body = await (await POST(req(GOOD))).json();
+    expect(body.entitlementIssued).toBe(false);
+    expect(JSON.stringify(body)).not.toMatch(/passGrantId|grantedSeconds|fulfil/i);
+    // Structural: this endpoint calls no fulfilment path and no pass issuer.
+    const src = await import('node:fs').then((fs) =>
+      fs.readFileSync(`${process.cwd()}/src/app/api/host/purchases/apple/verify/route.ts`, 'utf8'));
+    expect(src).not.toMatch(/fulfilApplePurchase|fulfil_apple_purchase|readApplePurchaseFulfilment/);
+    // And it reads the id it already had — no second query invented to produce one.
+    expect(src).toMatch(/purchaseId: outcome\.purchaseId/);
+    expect(src.match(/recordVerifiedApplePurchase\(/g) ?? []).toHaveLength(1);
+  });
+});
