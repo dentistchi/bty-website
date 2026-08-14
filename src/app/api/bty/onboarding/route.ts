@@ -10,7 +10,7 @@ import {
   type OnboardingStepNumber,
 } from "@/engine/integration/onboarding-flow.service";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -19,8 +19,9 @@ function isStep(n: number): n is OnboardingStepNumber {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const supabase = await getSupabaseServerClient();
@@ -37,8 +38,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

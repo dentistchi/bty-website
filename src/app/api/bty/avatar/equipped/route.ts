@@ -3,7 +3,7 @@
  * Slot-based equipped state from `user_equipped_assets` (see {@link getEquippedState} engine).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   equippedIdsCompact,
@@ -13,8 +13,9 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!userId) {

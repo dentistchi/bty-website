@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitScenarioSessionChoice } from "@/lib/bty/arena/scenarioSessionChoice.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import type { ScenarioSubmitPayload } from "@/lib/bty/scenario/types";
 
 export const runtime = "nodejs";
@@ -9,8 +9,9 @@ export const runtime = "nodejs";
  * POST /api/arena/session/choice — body `{ scenarioId, choiceId, locale? }` → engine + optional {@link handleChoiceConfirmed}.
  */
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: { scenarioId?: unknown; choiceId?: unknown; locale?: unknown };
   try {

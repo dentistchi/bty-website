@@ -7,13 +7,14 @@ import { getRecommendations } from "@/engine/foundry/program-recommender.service
 import { injectExamplesIntoContext } from "@/engine/mentor/mentor-example-bank.service";
 import { buildMentorContext, mentorContextToSystemPromptPrefix } from "@/engine/rag/mentor-context.service";
 import { getLastChoiceFlagType } from "@/engine/scenario/scenario-stats.service";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const lang = req.nextUrl.searchParams.get("lang") === "en" ? "en" : "ko";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
@@ -9,8 +9,9 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
  * Response (200): { tii, avg_air, avg_mwd, tsp } (number | null). Errors: 401 { error: "UNAUTHENTICATED" }; 500 on DB failure (TBD).
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   const league = await getActiveLeague(supabase, admin);

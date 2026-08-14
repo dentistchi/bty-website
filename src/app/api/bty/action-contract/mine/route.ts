@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { listMyFieldActions } from "@/lib/bty/action-contract/myFieldActions.server";
 
 export const runtime = "nodejs";
@@ -19,8 +19,9 @@ export const dynamic = "force-dynamic";
  * an empty inventory). 401 unauth; 500 when the admin client or the query is unavailable.
  */
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   if (!admin) {

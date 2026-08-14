@@ -8,14 +8,15 @@ import {
   invalidateIntegrityDashboardCache,
 } from "@/engine/integrity/integrity-dashboard.service";
 import { getActiveLeague } from "@/lib/bty/arena/activeLeague";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   const league = await getActiveLeague(supabase, admin);

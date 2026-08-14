@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,8 +32,9 @@ type PendingContractRow = {
 };
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { data, error } = await supabase
     .from("bty_action_contracts")

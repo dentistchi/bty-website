@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arenaRunIdFromUnknown } from "@/domain/arena/scenarios";
 import { resolveContractFollowupTrigger } from "@/lib/bty/action-contract/contractFollowupEligibility";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -18,8 +18,9 @@ type ContractRow = {
  * **Not used by `/bty-arena` UI** — Arena has no Action Contract surfaces; other clients may poll this.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const sessionIdRaw = req.nextUrl.searchParams.get("sessionId") ?? "";
   const currentSessionId = arenaRunIdFromUnknown(sessionIdRaw.trim());

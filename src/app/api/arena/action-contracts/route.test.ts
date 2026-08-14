@@ -8,6 +8,7 @@ const mockCopyCookiesAndDebug = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
+  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
   unauthenticated: (...args: unknown[]) => mockUnauthenticated(...args),
   copyCookiesAndDebug: (...args: unknown[]) => mockCopyCookiesAndDebug(...args),
 }));

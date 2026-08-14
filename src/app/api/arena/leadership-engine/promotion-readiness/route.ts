@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getPromotionReadiness } from "@/engine/integrity/promotion-readiness.service";
 
 export const runtime = "nodejs";
@@ -8,8 +8,9 @@ export const runtime = "nodejs";
  * GET /api/arena/leadership-engine/promotion-readiness — LRI-based readiness snapshot (Elite Spec gate).
  */
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const pr = await getPromotionReadiness(user.id);
   const res = NextResponse.json({

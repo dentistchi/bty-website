@@ -7,15 +7,16 @@
  * - **404:** `{ error: "ACT_NOT_FOUND" }` — actId가 1·2·3이 아님(문자·범위 밖).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { AWAKENING_ACT_NAMES, isValidHealingAwakeningActId, type AwakeningActId } from "@/domain/healing";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ actId: string }> }
 ) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { actId: raw } = await params;
   const n = parseInt(String(raw), 10);

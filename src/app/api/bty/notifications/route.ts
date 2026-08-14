@@ -4,13 +4,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUnreadNotifications } from "@/engine/integration/notification-router.service";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const supabase = await getSupabaseServerClient();

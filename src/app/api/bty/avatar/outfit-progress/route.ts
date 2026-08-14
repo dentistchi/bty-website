@@ -3,7 +3,7 @@
  * {@link getOutfitUnlockProgress} + equipped / unlocked ids for {@link OutfitUnlockPanel}.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getOutfitTintByAssetId, getUnlockedAssets } from "@/engine/avatar/avatar-assets.service";
 import { getAvatarState } from "@/engine/avatar/avatar-state.service";
@@ -12,8 +12,9 @@ import { getOutfitUnlockProgress } from "@/engine/avatar/avatar-outfit-unlock.se
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!userId) {

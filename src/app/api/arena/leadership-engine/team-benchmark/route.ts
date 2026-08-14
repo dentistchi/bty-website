@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTeamBenchmark } from "@/engine/integrity/team-air-benchmark.service";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 /**
  * GET /api/arena/leadership-engine/team-benchmark?teamId=
  * Team benchmark (rolling weeks, risk); peer percentile for the caller only.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const teamId = req.nextUrl.searchParams.get("teamId")?.trim() ?? "";
   if (!teamId) {

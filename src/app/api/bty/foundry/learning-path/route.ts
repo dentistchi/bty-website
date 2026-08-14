@@ -10,7 +10,7 @@ import {
   type LearningPathName,
 } from "@/engine/foundry/learning-path.service";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -19,8 +19,9 @@ function isPathName(x: string): x is LearningPathName {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const requested = req.nextUrl.searchParams.get("userId")?.trim();
   if (requested && requested !== user.id) {
@@ -44,8 +45,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

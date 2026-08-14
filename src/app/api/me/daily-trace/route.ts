@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { projectDailyTrace } from "@/lib/bty/daily/dailyTrace.server";
 import type { DailyTrace } from "@/domain/daily/dailyTrace";
 
@@ -16,8 +16,9 @@ export const dynamic = "force-dynamic";
  * than 500. This route is NOT yet wired into WeeklyOrb (the meWeeklyRhythm flip is STEP 1C).
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let out: NextResponse;
   try {

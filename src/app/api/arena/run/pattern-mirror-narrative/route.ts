@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arenaRunIdFromUnknown } from "@/domain/arena/scenarios";
 import { buildElitePatternMirrorNarrativeV2 } from "@/lib/bty/pattern-engine/elitePatternMirrorNarrativeV2";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -11,8 +11,9 @@ export const runtime = "nodejs";
  * Does not use legacy AIR / stance / reinforcement / micro-victory lines.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const runIdParam = req.nextUrl.searchParams.get("runId");
   const runId = arenaRunIdFromUnknown(runIdParam ?? "");

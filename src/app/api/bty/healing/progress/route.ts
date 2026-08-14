@@ -21,7 +21,7 @@
  * - **429:** 미적용 — 레이트 리밋 없음(향후 도입 시 계약 별도 갱신).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   completeHealingAwakeningAct,
   getHealingAwakeningProgress,
@@ -30,8 +30,9 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const result = await getHealingAwakeningProgress(supabase, user.id);
   if ("ok" in result && result.ok) {
@@ -50,8 +51,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: { actId?: unknown };
   try {

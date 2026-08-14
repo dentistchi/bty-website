@@ -3,7 +3,7 @@
  * POST — advance to next phase when `canAdvance` (domain diagnostics for current phase passed).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   advanceHealingPhase,
   getHealingPhaseTrackerState,
@@ -11,8 +11,9 @@ import {
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const state = await getHealingPhaseTrackerState(supabase, user.id);
   if ("error" in state) {
@@ -36,8 +37,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const result = await advanceHealingPhase(supabase, user.id);
   if (!result.ok) {

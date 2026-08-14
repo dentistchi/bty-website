@@ -9,7 +9,7 @@
  * - **500:** `{ error: "INTERNAL_ERROR", detail?: string }` — `btyErrorResponse`.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   AWAKENING_ACT_NAMES,
   AWAKENING_TRIGGER_DAY,
@@ -20,8 +20,9 @@ import { getUserCompletedAwakeningActs } from "@/lib/bty/healing/getUserComplete
 import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const progress = await getUserCompletedAwakeningActs(supabase, user.id);

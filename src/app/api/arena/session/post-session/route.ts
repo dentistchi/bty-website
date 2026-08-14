@@ -4,7 +4,7 @@ import {
   type SessionOutcome,
 } from "@/engine/integration/post-session-router";
 import { ScenarioSelectionError } from "@/engine/scenario/scenario-selector.service";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
 
 export const runtime = "nodejs";
@@ -31,8 +31,9 @@ function parseSessionOutcome(body: unknown): SessionOutcome | null {
  * POST /api/arena/session/post-session — body matches {@link SessionOutcome} → {@link routePostSession}.
  */
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

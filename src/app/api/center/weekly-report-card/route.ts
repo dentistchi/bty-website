@@ -17,14 +17,15 @@ import {
   type HealingPhase,
 } from "@/engine/healing/healing-phase.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   try {
-    const { user, base } = await requireUser(req);
+    const { user, base, consentDenied } = await requireConsentedUser(req);
     if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
     let userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
     if (!userId) userId = user.id;

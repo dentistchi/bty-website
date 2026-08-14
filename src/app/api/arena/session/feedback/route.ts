@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncBehaviorPatterns } from "@/engine/integrity/behavior-pattern.service";
 import { submitFeedback } from "@/engine/scenario/scenario-feedback.service";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -9,8 +9,9 @@ export const runtime = "nodejs";
  * POST /api/arena/session/feedback — persist reflection text; refreshes {@link syncBehaviorPatterns}.
  */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

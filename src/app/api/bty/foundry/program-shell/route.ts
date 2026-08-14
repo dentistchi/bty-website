@@ -10,7 +10,7 @@ import {
 } from "@/engine/foundry/program-completion.service";
 import { getScenarioStats } from "@/engine/scenario/scenario-stats.service";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -31,8 +31,9 @@ function parseModules(raw: unknown): string[] {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const programId = req.nextUrl.searchParams.get("programId")?.trim() ?? "";
   const lang = req.nextUrl.searchParams.get("lang") === "en" ? "en" : "ko";

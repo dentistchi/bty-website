@@ -8,14 +8,15 @@
  * - **249:** emotional-stats·second-awakening과 구분 — 액트 메타는 본 경로·`[actId]` 조합.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { AWAKENING_ACT_NAMES, type AwakeningActId } from "@/domain/healing";
 
 const ORDER: AwakeningActId[] = [1, 2, 3];
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const acts = ORDER.map((actId) => ({
     actId,

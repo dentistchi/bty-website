@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 /**
@@ -14,8 +14,9 @@ import { getSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
  * **액트 완료 기록:** `POST /api/bty/healing/progress`.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const result = await getSecondAwakening(supabase, user.id);

@@ -7,14 +7,15 @@
  * 403 TIER_25_REQUIRED | ALREADY_RENAMED_IN_THIS_CODE | ELITE_TOP_5_PERCENT_REQUIRED; 404 NOT_FOUND; 500 { error: string }.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { weeklyRankFromCounts } from "@/domain/rules/leaderboard";
 import { tierFromCoreXp, codeIndexFromTier } from "@/lib/bty/arena/codes";
 import { arenaScenarioOutcomesFromUnknown, arenaSubNameFromUnknown } from "@/domain/arena/scenarios";
 
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: { subName?: unknown; scenarioOutcomes?: unknown };
   try {

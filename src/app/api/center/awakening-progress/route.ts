@@ -9,13 +9,14 @@ import {
   describeMilestoneCondition,
   getAwakeningProgress,
 } from "@/engine/healing/awakening-phase.service";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const userId = req.nextUrl.searchParams.get("userId")?.trim() ?? user.id;
   if (userId !== user.id) {

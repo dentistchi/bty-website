@@ -9,7 +9,7 @@ import {
   supabaseProjectRefFromEnvForLogs,
 } from "@/lib/bty/action-contract/actionContractRouteDebug";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import { resolvePatternFamilyForContractTrigger } from "@/lib/bty/pattern-engine/resolvePatternFamilyForContractTrigger";
 import { syncPatternStatesForUser } from "@/lib/bty/pattern-engine/syncPatternStates";
 
@@ -43,8 +43,9 @@ function jsonBodyForDraftFailure(result: Extract<EnsureDraftActionContractResult
 }
 
 export async function POST(req: NextRequest) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   console.info(LOG_PREFIX, "request", {
     supabaseProjectRef: supabaseProjectRefFromEnvForLogs(),

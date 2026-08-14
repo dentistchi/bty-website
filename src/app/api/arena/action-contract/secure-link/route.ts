@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import {
   ARENA_ACTION_LOOP_TOKEN_MAX_AGE_MS,
   signArenaActionLoopToken,
@@ -24,8 +24,9 @@ type ContractRow = {
  * Mints the same signed token as the QR route; the my-page commit flow handles both.
  */
 export async function POST(req: NextRequest) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

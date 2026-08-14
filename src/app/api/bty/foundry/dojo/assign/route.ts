@@ -6,7 +6,7 @@ import {
   assignDojoAssessmentAsUser,
   type DojoSkillArea,
 } from "@/engine/foundry/dojo-assessment.service";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -20,8 +20,9 @@ const SKILLS: readonly DojoSkillArea[] = [
 ];
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const lang = req.nextUrl.searchParams.get("lang") === "en" ? "en" : "ko";

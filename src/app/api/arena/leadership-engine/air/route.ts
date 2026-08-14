@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { computeAIRSnapshot, airToBand } from "@/domain/leadership-engine/air";
 import type { ActivationRecord } from "@/domain/leadership-engine/air";
 import { runForcedResetAfterAirIfStage3 } from "@/lib/bty/leadership-engine/forced-reset-runtime.server";
@@ -17,8 +17,9 @@ import { runForcedResetAfterAirIfStage3 } from "@/lib/bty/leadership-engine/forc
  * Errors: 401 { error: "UNAUTHENTICATED" }; unhandled DB errors → 500.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { data: rows } = await supabase
     .from("le_activation_log")

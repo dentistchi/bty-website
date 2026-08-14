@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { arenaRunIdFromUnknown } from "@/domain/arena/scenarios";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -9,8 +9,9 @@ export const runtime = "nodejs";
  * Own-row snapshot for Execution Gate (Step 7) and polling.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const sessionIdRaw = req.nextUrl.searchParams.get("sessionId") ?? "";
   const sessionId = arenaRunIdFromUnknown(sessionIdRaw.trim());

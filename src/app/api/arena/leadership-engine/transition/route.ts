@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { applyStageTransition } from "@/lib/bty/leadership-engine/state-service";
 import type { StageTransitionContext } from "@/domain/leadership-engine";
 
@@ -18,8 +18,9 @@ const VALID_CONTEXTS: StageTransitionContext[] = [
  * Response (200): { applied: boolean, currentStage, stageName }. Error: 401, 400 INVALID_JSON/INVALID_CONTEXT, 500.
  */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: { context?: string };
   try {

@@ -42,6 +42,7 @@ vi.mock("@supabase/supabase-js", () => ({
 const mockRequireUser = vi.fn().mockResolvedValue({ user: null });
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
+  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
 }));
 
 describe("POST /api/arena/leadership-engine/qr/validate", () => {

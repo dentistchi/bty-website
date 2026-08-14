@@ -12,7 +12,7 @@
  * Related: weekly ranking = GET /api/arena/leaderboard only (core XP ≠ weekly rank).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { BEGINNER_CORE_XP_THRESHOLD } from "@/domain/constants";
 import type { CoreXpGetResponse } from "@/lib/bty/arena/coreXpApi";
 import {
@@ -31,8 +31,9 @@ import { getAvatarCharacter } from "@/lib/bty/arena/avatarCharacters";
 import { isPostLoginOnboardingWizardEnabled } from "@/lib/bty/arena/postLoginEliteEntry";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const fullSelect =
     "user_id, core_xp_total, code_index, sub_name, sub_name_renamed_in_code, sub_name_renamed_at_code_index, display_name_changed_at_code_index, code_hidden, avatar_url, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, l4_access";

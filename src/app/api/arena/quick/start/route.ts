@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 import { selectAndRecordQuickScenario } from "@/lib/bty/arena/quickModeService";
 import type { ScenarioLocalePreference } from "@/engine/scenario/scenario-selector.service";
@@ -8,8 +8,9 @@ export const runtime = "nodejs";
 
 /** POST /api/arena/quick/start — select a scenario and record the quick intent. */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   // S2 Arena-entry gate (Quick mode serves a scenario without a run → gate here).
   const gate = await requireApprovedMembership(supabase, user.id);

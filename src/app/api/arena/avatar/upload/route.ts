@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   ARENA_AVATAR_UPLOAD_MAX_BYTES,
   ARENA_AVATAR_UPLOAD_ALLOWED_MIME_TYPES,
@@ -16,8 +16,9 @@ const EXT_MAP: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const base = NextResponse.json({ ok: true }, { status: 200 });
-  const { user, supabase } = await requireUser(req);
+  const { user, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let formData: FormData;
   try {

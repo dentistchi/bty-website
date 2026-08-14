@@ -9,6 +9,7 @@ const mockRequireUser = vi.fn();
 const mockGetSecondAwakening = vi.fn();
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
+  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
   unauthenticated: vi.fn((_req: NextRequest, _base: Response) =>
     new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 })
   ),

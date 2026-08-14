@@ -11,7 +11,7 @@ import {
 import { markRecoveryComplete } from "@/engine/integrity/slip-recovery.service";
 import { getDearMePromptTextKo } from "@/lib/bty/center/dearMePromptKo";
 import { getLetterHistory, submitLetter } from "@/lib/bty/center/letterService";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -27,8 +27,9 @@ function letterTitle(body: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const prompt = await getDearMePrompt(user.id, supabase);
@@ -70,8 +71,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const body = (await req.json().catch(() => ({}))) as {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { handleEliteSpecNomination } from "@/engine/integration/elite-spec-flow";
 
 export const runtime = "nodejs";
@@ -8,8 +8,9 @@ export const runtime = "nodejs";
  * POST /api/arena/leadership-engine/elite-spec/nominate — runs {@link handleEliteSpecNomination} for the session user.
  */
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const result = await handleEliteSpecNomination(user.id);
   const status = result.ok ? 200 : 500;

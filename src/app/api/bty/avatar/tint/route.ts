@@ -3,7 +3,7 @@
  * Body: `{ assetId: string; tintColor: string }` — persists `#RRGGBB` to `user_avatar_assets.tint_color` for outfit assets.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getUnlockedAssets } from "@/engine/avatar/avatar-assets.service";
 import { OUTFIT_TINT_SWATCHES } from "@/engine/avatar/avatar-manifest.service";
@@ -15,8 +15,9 @@ export const runtime = "nodejs";
 const ALLOWED_HEX = new Set(OUTFIT_TINT_SWATCHES.map((s) => s.hex.toLowerCase()));
 
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   if (!admin) {

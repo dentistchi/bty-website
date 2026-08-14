@@ -2,7 +2,7 @@
  * POST — log one animation play; GET — history + 30d stats for activity feed / integrity signals.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   AVATAR_ANIMATION_PRESETS,
@@ -19,8 +19,9 @@ function isPreset(s: string): s is AvatarAnimationPresetId {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   if (!admin) {
@@ -52,8 +53,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!userId) userId = user.id;

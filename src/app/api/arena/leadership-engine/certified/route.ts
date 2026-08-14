@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getCertifiedStatus } from "@/lib/bty/leadership-engine/certified-lri-service";
 import type { CertifiedInputs } from "@/domain/leadership-engine/certified";
 import { computeAIRSnapshot } from "@/domain/leadership-engine/air";
@@ -11,8 +11,9 @@ import type { ActivationRecord } from "@/domain/leadership-engine/air";
  * Response (200): { current, reasons_met, reasons_missing }. Errors: 401 { error: "UNAUTHENTICATED" }; 500 on DB failure (TBD).
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { data: rows } = await supabase
     .from("le_activation_log")

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { ADVANCED_STATS, CORE_STATS, type CoreStatId } from "@/lib/bty/emotional-stats/coreStats";
 import { getUnlockedAdvancedStats } from "@/lib/bty/emotional-stats/unlock";
 import type { UserCoreValues } from "@/lib/bty/emotional-stats/unlock";
@@ -11,8 +11,9 @@ import type { UserCoreValues } from "@/lib/bty/emotional-stats/unlock";
  * Error: 401 { error: "UNAUTHENTICATED" }
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const phrases: string[] = [];
   let phase: "II" | null = null;

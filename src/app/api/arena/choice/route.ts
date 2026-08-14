@@ -14,7 +14,7 @@ import { accrueNoChangeRisk } from "@/lib/bty/arena/noChangeRisk.server";
 import { getScenarioByDbId, getScenarioById } from "@/data/scenario";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { ARENA_SESSION_MODE } from "@/lib/bty/arena/arenaRuntimeSnapshot.types";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -298,8 +298,9 @@ async function syncRunProgressAndXp(
  * - **Action decision (`binding_phase: action_decision`):** third meaningful choice; `xp` **0**; contract snapshot only after this phase.
  */
 export async function POST(req: NextRequest) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: Record<string, unknown>;
   try {

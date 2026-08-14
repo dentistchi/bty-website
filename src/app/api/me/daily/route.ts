@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { evaluateDailyGate, type DailyGateSnapshot } from "@/lib/bty/daily/dailyGateCheck";
 
 export const runtime = "nodejs";
@@ -14,8 +14,9 @@ export const dynamic = "force-dynamic";
  * the daily entry). Triggers no write.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let out: NextResponse;
   try {

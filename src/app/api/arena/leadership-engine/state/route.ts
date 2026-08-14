@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   getLeadershipEngineState,
   ensureLeadershipEngineState,
@@ -17,8 +17,9 @@ import {
  * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-10
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   await ensureLeadershipEngineState(supabase, user.id);
   const state = await getLeadershipEngineState(supabase, user.id);

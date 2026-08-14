@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseScenarioReader, loadArenaScenarioPayloadFromDb } from "@/lib/bty/arena/scenarioPayloadFromDb";
 import { isEliteCanonicalRuntimeScenarioId } from "@/lib/bty/arena/eliteCanonicalRuntimeTruth";
 import { eliteScenarioToScenario, getEliteScenarioById } from "@/lib/bty/arena/eliteScenariosCanonical.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -11,8 +11,9 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ scenarioId: string }> },
 ) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { scenarioId: rawId } = await context.params;
   const scenarioId = decodeURIComponent(typeof rawId === "string" ? rawId.trim() : "");

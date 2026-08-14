@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { consentSatisfied } from "@/domain/legal/consent-document";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { authCookieSecureForRequest } from "@/lib/bty/cookies/authCookies";
@@ -127,6 +128,72 @@ export async function requireUser(req: NextRequest) {
 
 export function unauthenticated(req: NextRequest, base: NextResponse) {
   const out = NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 });
+  copyCookiesAndDebug(base, out, req, false);
+  return out;
+}
+
+/**
+ * AUTHENTICATED **AND** CURRENTLY CONSENTED (Slice 3.2R-R9B.1).
+ *
+ * R9A made the PAGE gate require exact consent-version equality, but the middleware matcher
+ * excludes `/api/*`, so a signed-in learner whose consent was null, outdated or invented could
+ * still call the product APIs directly — measured across five distinct auth seams, none of which
+ * checked consent at all. Pages said no; the API said yes.
+ *
+ * WHY THIS IS A SEPARATE HELPER AND NOT A CHANGE TO `requireUser`. `requireManager` composes
+ * `requireUser`, so teaching `requireUser` about consent would silently place every Host and admin
+ * under the LEARNER agreement — a legal question the Founder has explicitly reserved. `requireUser`
+ * therefore stays authentication-only, forever, and learner routes opt in here by name.
+ *
+ * CONSENT IS SERVER-DERIVED. The version is read from `arena_profiles` for the authenticated user
+ * and judged by R9A's `consentSatisfied`; nothing in the request body, headers or query can
+ * influence it, and there is no second copy of the active version anywhere.
+ *
+ * FAILS CLOSED. A missing profile, an unreadable profile and a thrown query all refuse — "we could
+ * not establish consent" is never allowed to read as "consented".
+ *
+ * SHAPE. Additive on purpose: the returned object is exactly `requireUser`'s plus `consentDenied`,
+ * so a route keeps its existing 401 handling and adds one line:
+ *
+ *     const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
+ *     if (!user) return unauthenticated(req, base);
+ *     if (consentDenied) return consentDenied;
+ *
+ * The refusal is returned BEFORE the route does any protected work, which is the point: no
+ * protected payload is assembled and no mutation runs for an unconsented caller.
+ */
+export async function requireConsentedUser(req: NextRequest) {
+  const gate = await requireUser(req);
+  if (!gate.user) return { ...gate, consentDenied: null as NextResponse | null };
+
+  let satisfied = false;
+  try {
+    const { data, error } = await gate.supabase
+      .from("arena_profiles")
+      .select("consent_version")
+      .eq("user_id", gate.user.id)
+      .maybeSingle<{ consent_version: string | null }>();
+    // An error, or no row at all, means consent is not established — never that it is.
+    satisfied = !error && consentSatisfied(data?.consent_version);
+  } catch {
+    satisfied = false;
+  }
+
+  if (satisfied) return { ...gate, consentDenied: null as NextResponse | null };
+  return { ...gate, consentDenied: consentRequired(req, gate.base) };
+}
+
+/**
+ * 403, not 401 and not 409 (Slice 3.2R-R9B.1).
+ *
+ * 401 means "we do not know who you are" and clients route it to login — an authenticated learner
+ * would be bounced into a login loop. 409 is already spoken for by R9A's `consent_document_stale`.
+ * 403 with a machine code matches the measured convention on this API (`practice_forbidden`,
+ * `contract_user_mismatch`), so a client can recognise it and send the learner to the consent
+ * screen without guessing.
+ */
+export function consentRequired(req: NextRequest, base: NextResponse) {
+  const out = NextResponse.json({ error: "consent_required" }, { status: 403 });
   copyCookiesAndDebug(base, out, req, false);
   return out;
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   copyCookiesAndDebug,
-  requireUser,
+  requireConsentedUser,
   unauthenticated,
 } from "@/lib/supabase/route-client";
 
@@ -48,8 +48,9 @@ async function computeActorDeviceFingerprintHash(
 }
 
 export async function POST(request: NextRequest) {
-  const { user, supabase, base } = await requireUser(request);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(request);
   if (!user) return unauthenticated(request, base);
+  if (consentDenied) return consentDenied;
 
   const body = await request.json().catch(() => null);
 

@@ -10,7 +10,7 @@
  * @see domain/leadership-engine/le-stage.ts LEStageSummary
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   getLeadershipEngineState,
   ensureLeadershipEngineState,
@@ -47,8 +47,9 @@ function buildStageSummaryResponse(
 }
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   await ensureLeadershipEngineState(supabase, user.id);
   const state = await getLeadershipEngineState(supabase, user.id);

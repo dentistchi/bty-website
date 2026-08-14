@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getTeamTIISnapshot } from "@/engine/integrity/tii-calculator.service";
 
 /**
@@ -11,8 +11,9 @@ import { getTeamTIISnapshot } from "@/engine/integrity/tii-calculator.service";
  * Null metrics when no snapshot yet. Errors: 400 MISSING_TEAM_ID · 401 · 403 FORBIDDEN · 503 ADMIN_UNAVAILABLE · 500.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const teamId = req.nextUrl.searchParams.get("teamId")?.trim() ?? "";
   if (!teamId) {

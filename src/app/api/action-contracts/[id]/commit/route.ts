@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logActionContractLifecycle } from "@/lib/bty/action-contract/actionContractLifecycle.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -21,8 +21,9 @@ function fieldsComplete(row: {
  * POST /api/action-contracts/:id/commit — validate Step 6 fields; set status = committed.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { id: contractId } = await ctx.params;
   if (!contractId || contractId.trim() === "") {

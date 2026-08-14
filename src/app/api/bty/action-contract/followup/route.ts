@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -11,8 +11,9 @@ const NO_DELTAS = { trust_delta: 0, courage_delta: 0, self_narrative_delta: 0 };
  * Body: { contractId: uuid, startedConversation: boolean, first30Seconds?: string }
  */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

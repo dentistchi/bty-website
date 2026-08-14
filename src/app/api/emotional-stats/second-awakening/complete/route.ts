@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSecondAwakening, completeSecondAwakening } from "@/lib/bty/emotional-stats/secondAwakening";
 
 /** POST: Enter Next Phase — mark Second Awakening complete and grant starter unlock if applicable. */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const result = await getSecondAwakening(supabase, user.id);
   if (!result.eligible || result.completed) {

@@ -47,6 +47,7 @@ const mockSupabaseFrom = vi.fn((table: string) => {
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...a: unknown[]) => mockRequireUser(...a),
+  requireConsentedUser: async (...a: unknown[]) => ({ ...(await mockRequireUser(...a)), consentDenied: null }),
   unauthenticated: vi.fn(() => NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401 })),
   copyCookiesAndDebug: vi.fn(),
 }));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveArenaScenarioForUser } from "@/lib/bty/arena/arenaScenarioResolve.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -9,8 +9,9 @@ export const runtime = "nodejs";
  * Query: `scenarioId` (required), `locale` (optional, `ko` | default `en`).
  */
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const scenarioId = req.nextUrl.searchParams.get("scenarioId")?.trim() ?? "";
   if (!scenarioId) {

@@ -3,13 +3,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getDojoAssessmentById, submitDojoResultAsUser } from "@/engine/foundry/dojo-assessment.service";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const body = (await req.json().catch(() => ({}))) as {

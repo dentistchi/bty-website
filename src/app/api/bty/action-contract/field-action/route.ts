@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { ensureFieldActionDraft, loadFieldActionContract } from "@/lib/bty/action-contract/fieldActionProducer.server";
 
@@ -15,8 +15,9 @@ export const dynamic = "force-dynamic";
  * Ownership is ALWAYS the server session — the client never supplies user_id. No arena run created.
  */
 export async function POST(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: Record<string, unknown> = {};
   try {
@@ -53,8 +54,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const contractId = req.nextUrl.searchParams.get("contractId")?.trim() ?? "";
   if (!contractId) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runArenaSessionNextCore } from "@/lib/bty/arena/arenaSessionNextCore";
 import { getArenaPipelineDefault } from "@/lib/bty/arena/arenaPipelineConfig";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import { requireApprovedMembership } from "@/lib/bty/arena/requireApprovedMembership";
 
 export const runtime = "nodejs";
@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   // S2 Arena-entry gate (Pipeline N scenario acquisition — the active default path).
   const gate = await requireApprovedMembership(supabase, user.id);

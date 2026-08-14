@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logActionContractActorTrace } from "@/lib/bty/action-contract/arenaRunActor.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { evaluateActionContractPayload } from "@/lib/bty/validator/runActionContractValidation";
 import type { ValidationEvaluationResult } from "@/lib/bty/validator/runActionContractValidation";
@@ -37,8 +37,9 @@ type Body = {
  * Response: `{ outcome, layer1_errors? }` only — no evaluation rationale (VALIDATOR_ARCHITECTURE_V1 §5).
  */
 export async function POST(req: NextRequest) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: Body;
   try {

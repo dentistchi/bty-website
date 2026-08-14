@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { tierFromCoreXp } from "@/lib/bty/arena/codes";
 import {
   tierToDisplayLevelId,
@@ -21,8 +21,9 @@ const AVATAR_SELECT =
   "user_id, core_xp_total, avatar_character_id, avatar_character_locked, avatar_outfit_theme, avatar_selected_outfit_id, avatar_accessory_ids";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   await supabase.rpc("ensure_arena_profile");
 
@@ -116,8 +117,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: PatchAvatarRequest;
   try {

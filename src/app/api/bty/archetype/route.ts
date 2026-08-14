@@ -7,15 +7,16 @@
  * - **500:** `{ error: "INTERNAL_ERROR", detail?: string }`
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { resolveArchetypeForUser, buildFingerprintInput } from "@/lib/bty/archetype";
 import { fetchSignalsAndReflections } from "@/lib/bty/identity/fetchIdentityRows";
 import { fetchUserPatternSignaturesForMyPage } from "@/lib/bty/arena/fetchUserPatternSignatures.server";
 import { btyErrorResponse } from "../errors";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const [signalBundle, sigBundle] = await Promise.all([

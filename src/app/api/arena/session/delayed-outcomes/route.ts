@@ -4,14 +4,15 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getDueOutcomes } from "@/engine/scenario/delayed-outcome-trigger.service";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const locale = req.nextUrl.searchParams.get("locale") === "en" ? "en" : "ko";
   const admin = getSupabaseAdmin();

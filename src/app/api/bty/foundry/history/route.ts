@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { listUserFoundryHistory, toThreadRecords } from "@/lib/bty/foundry/events/foundryHistoryService";
 import { restoreLivingThread } from "@/lib/bty/foundry/events/livingThreadService";
 import { THREAD_STATUS_COPY } from "@/lib/bty/foundry/events/livingThreadExpression";
@@ -19,8 +19,9 @@ export const runtime = "nodejs";
  * history and never surfaces an error to the employee.
  */
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const admin = getSupabaseAdmin();
   if (!admin) {

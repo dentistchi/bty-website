@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildArenaContext } from "@/engine/integration/arena-context.injector";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -8,8 +8,9 @@ export const runtime = "nodejs";
  * GET /api/arena/session/context — {@link buildArenaContext} for pattern banner + pending outcomes.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const ctx = await buildArenaContext(user.id, supabase);

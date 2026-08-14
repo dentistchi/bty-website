@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { projectRelationshipPulse, type RelationshipPulse } from "@/lib/bty/daily/relationshipPulse";
 
 export const runtime = "nodejs";
@@ -17,8 +17,9 @@ export const dynamic = "force-dynamic";
  * slice MAY consolidate both into one /api/me/today round-trip; not assumed here.
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let out: NextResponse;
   try {

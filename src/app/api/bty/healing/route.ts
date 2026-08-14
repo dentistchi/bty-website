@@ -10,7 +10,7 @@
  * @see `src/app/api/bty/errors.ts` BtyApiErrorResponse
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   AWAKENING_ACT_NAMES,
   HEALING_PHASE_I_LABEL,
@@ -25,8 +25,9 @@ import { getUserCompletedAwakeningActs } from "@/lib/bty/healing/getUserComplete
 import { btyErrorResponse } from "../errors";
 
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   try {
     const actsRes = await getUserCompletedAwakeningActs(supabase, user.id);

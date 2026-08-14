@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadContractForUser, logActionContractLifecycle } from "@/lib/bty/action-contract/actionContractLifecycle.server";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -18,8 +18,9 @@ export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const { user, base, supabase } = await requireUser(req);
+  const { user, base, supabase, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const { id: contractId } = await ctx.params;
   if (!contractId || contractId.trim() === "") {

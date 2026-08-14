@@ -8,7 +8,7 @@ import {
   AIR_TREND_WARNING_BROADCAST_EVENT,
 } from "@/lib/bty/arena/air-trend-realtime";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 function buildWarningPayload(userId: string, trend: Awaited<ReturnType<typeof getAIRTrend>>): AIRTrendWarningPayload {
   const lastIdx = trend.rolling7DayAverage.length - 1;
@@ -59,8 +59,9 @@ function broadcastAirTrendWarning(admin: SupabaseClient, payload: AIRTrendWarnin
  * 30-day AIR trend (engine), Certified Leader status, optional Realtime `air_trend_warning` broadcast when warning applies.
  */
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const trend = await getAIRTrend(user.id);
   const certified = await getCertifiedStatus(user.id);

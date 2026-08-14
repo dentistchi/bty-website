@@ -10,6 +10,7 @@ const mockSelectAndRecordQuickScenario = vi.fn();
 
 vi.mock("@/lib/supabase/route-client", () => ({
   requireUser: (...args: unknown[]) => mockRequireUser(...args),
+  requireConsentedUser: async (...args: unknown[]) => ({ ...(await mockRequireUser(...args)), consentDenied: null }),
   unauthenticated: vi.fn(
     () => new Response(JSON.stringify({ error: "UNAUTHENTICATED" }), { status: 401 }),
   ),

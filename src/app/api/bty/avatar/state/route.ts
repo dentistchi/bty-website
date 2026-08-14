@@ -3,7 +3,7 @@
  * `getAvatarState` + `getUnlockedAssets` + profile Core XP + {@link getCoreXPBreakdown} (ledger buckets).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getUnlockedAssets } from "@/engine/avatar/avatar-assets.service";
 import {
@@ -15,8 +15,9 @@ import { getCoreXPBreakdown } from "@/engine/xp/core-xp-history.service";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!userId) {

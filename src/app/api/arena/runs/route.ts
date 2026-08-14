@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import {
   decodeRunsCursor,
   encodeRunsCursor,
@@ -24,7 +24,7 @@ import { isArenaRunsCursorOverMax } from "@/domain/rules/arenaRunsCursorMaxLengt
  * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-1
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) {
     const out = NextResponse.json(
       {
@@ -39,6 +39,13 @@ export async function GET(req: NextRequest) {
     copyCookiesAndDebug(base, out, req, false);
     return out;
   }
+  /*
+    The anonymous branch above is a DOCUMENTED contract (`401 아님`) and is deliberately left alone:
+    it discloses nothing. This route's real payload is the learner's own run history, so an
+    authenticated caller without current consent is refused here — after identity, before any
+    history is read (Slice 3.2R-R9B.1).
+  */
+  if (consentDenied) return consentDenied;
 
   const url = new URL(req.url);
   const limitRaw = url.searchParams.get("limit");

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SessionFlagBadgeVariant } from "@/domain/arena/sessionSummary";
 import { enqueueFeedbackPrompt } from "@/engine/scenario/scenario-feedback.service";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 
@@ -14,8 +14,9 @@ function parseBadge(v: unknown): SessionFlagBadgeVariant | null {
  * POST /api/arena/session/feedback-queue — after {@link SessionSummaryOverlay} dismiss for trap/slip.
  */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: unknown;
   try {

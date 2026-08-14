@@ -5,14 +5,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIntegrityScoreCard } from "@/engine/integration/integrity-score-card.service";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { copyCookiesAndDebug, requireUser, unauthenticated } from "@/lib/supabase/route-client";
+import { copyCookiesAndDebug, requireConsentedUser, unauthenticated } from "@/lib/supabase/route-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { user, base } = await requireUser(req);
+  const { user, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let userId = req.nextUrl.searchParams.get("userId")?.trim() ?? "";
   if (!userId) userId = user.id;

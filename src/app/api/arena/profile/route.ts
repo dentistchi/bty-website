@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 
 /**
  * GET/PATCH `/api/arena/profile` — Arena **`arena_profiles`** 조회·부분 갱신(아바타·display_name).
@@ -22,8 +22,9 @@ import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabas
  * @see docs/spec/ARENA_DOMAIN_SPEC.md §4-5·§4-6
  */
 export async function GET(req: NextRequest) {
-  const { user, supabase: routeSupabase, base } = await requireUser(req);
+  const { user, supabase: routeSupabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
   const supabase = routeSupabase;
 
   await supabase.rpc("ensure_arena_profile");
@@ -51,8 +52,9 @@ export async function GET(req: NextRequest) {
 
 /** @see 파일 상단 GET/PATCH @contract */
 export async function PATCH(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: {
     avatarUrl?: string | null;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import type { EmotionalEventId } from "@/lib/bty/emotional-stats/coreStats";
 import { EVENT_IDS } from "@/lib/bty/emotional-stats/coreStats";
 import { recordEmotionalEventServer } from "@/lib/bty/emotional-stats/recordEmotionalEventServer";
@@ -9,8 +9,9 @@ function isValidEventId(id: string): id is EmotionalEventId {
 }
 
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   let body: { event_id?: string; session_id?: string };
   try {

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
+import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { completeQuickAction } from "@/lib/bty/arena/quickModeService";
 
 export const runtime = "nodejs";
 
 /** POST /api/arena/quick/complete — record action completion and award XP. */
 export async function POST(req: NextRequest) {
-  const { user, supabase, base } = await requireUser(req);
+  const { user, supabase, base, consentDenied } = await requireConsentedUser(req);
   if (!user) return unauthenticated(req, base);
+  if (consentDenied) return consentDenied;
 
   const body = await req.json().catch(() => ({}));
   const scenarioId = typeof body?.scenarioId === "string" ? body.scenarioId.trim() : "";
