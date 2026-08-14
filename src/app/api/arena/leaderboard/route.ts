@@ -71,55 +71,24 @@ export async function GET(req: NextRequest) {
 
   const admin = getSupabaseAdmin();
 
-  if (!user && scope === "overall" && admin) {
-    const { rows: weeklyRows, error: weeklyErr } = await fetchWeeklyXpRows(
-      admin,
-      null,
-      500,
-    );
-    if (!weeklyErr) {
-      const rows = (weeklyRows ?? []).filter((r) => !!r.user_id);
-      const userIds = rows.map((r) => r.user_id);
-      const profileMap =
-        userIds.length > 0 ? await fetchProfileMap(admin, admin, userIds) : new Map();
-      const leaderboard = buildLeaderboardRows(rows, profileMap);
-      const top10 = leaderboard.slice(0, 10);
-      const champions = leaderboard.slice(0, 3);
-      const weekBoundary = getLeaderboardWeekBoundary();
-      const league = await getActiveLeague(admin, admin);
-      const out = NextResponse.json(
-        {
-          leaderboard,
-          nearMe: top10.length ? top10 : leaderboard,
-          top10,
-          champions,
-          myRank: null,
-          myXp: 0,
-          gapToAbove: null,
-          count: leaderboard.length,
-          scope,
-          scopeLabel: null,
-          scopeUnavailable: false,
-          week_end: weekBoundary.week_end,
-          reset_at: weekBoundary.reset_at,
-          season: league
-            ? {
-                league_id: league.league_id,
-                start_at: league.start_at,
-                end_at: league.end_at,
-                name: league.name ?? null,
-              }
-            : null,
-          viewerAnonymous: true,
-        },
-        { status: 200 },
-      );
-      tmp.headers.forEach((v, k) => out.headers.set(k, v));
-      mergeAuthCookiesFromResponse(tmp, out, req);
-      return out;
-    }
-  }
+  /*
+    NO ANONYMOUS ROSTER (Slice 3.2R-R9C).
 
+    A branch here answered unauthenticated callers with the full leaderboard — every ranked
+    learner's real display name, user UUID, XP and avatar — whenever a service role was
+    configured. That condition is true in exactly one environment: production.
+
+    It was never authorised. `docs/spec/ARENA_DOMAIN_SPEC.md` §4-4 documents this route's
+    signed-out behaviour as `401 UNAUTHENTICATED`; no document anywhere mentions
+    `viewerAnonymous` for the leaderboard; the `/[locale]/bty/leaderboard` page is
+    middleware-protected and 307s to login when signed out, so no product surface could reach it;
+    and the sibling anonymous convention on `/api/arena/runs` deliberately returns an EMPTY list.
+
+    The existing suite asserted the 401 and passed, because it mocks the service role to null and
+    the branch was skipped — the test could only ever describe the environment it was not run in.
+
+    Signing in is the whole requirement, so the fall-through below is the entire rule.
+  */
   if (!user) {
     const out = NextResponse.json(
       { error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" },
