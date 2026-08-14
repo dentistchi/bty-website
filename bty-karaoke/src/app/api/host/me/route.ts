@@ -42,10 +42,20 @@ export async function GET(req: NextRequest) {
   // client has no use for. `serverNow` is the freshness marker: a purchase surface must
   // be able to prove this read is current rather than a cached profile, which is the
   // exact failure mode that would credit a purchase to a stale canonical account.
+  // BUILD 26R-R2 — `purchaseOwnerRef` is the account's EXISTING
+  // `karaoke_accounts.purchase_owner_ref` (BUILD 26E), the value Apple's `appAccountToken` must
+  // equal for a payment to bind to this account. Nothing is generated, rotated or derived here:
+  // this is a read of a durable column, scoped to the account the session already resolved to.
+  //
+  // It sits beside `account` rather than inside `publicAccount()` on purpose — see that helper.
+  // The native client binds it into `Product.purchase(options: [.appAccountToken(…)])`, and the
+  // verification route re-reads the SAME column server-side and compares, so this response is a
+  // convenience for the client and never an authority the server will trust back.
   return NextResponse.json(
     {
       ok: true,
       account: publicAccount(account),
+      purchaseOwnerRef: account.purchase_owner_ref,
       rooms,
       linkedProviders: identities.map((i) => i.provider).sort(),
       accountDeleted: account.deleted_at != null,

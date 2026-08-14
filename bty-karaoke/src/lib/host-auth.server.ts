@@ -27,11 +27,25 @@ export interface HostAccount {
   created_at: string;
   /** BUILD 26E tombstone marker. Non-null means the account is permanently deleted. */
   deleted_at: string | null;
+  /**
+   * BUILD 26R-R2 — the account's durable Apple `appAccountToken` carrier (BUILD 26E created it,
+   * BUILD 26L §11 designated it). Loaded here so the ONE authenticated read that needs it does
+   * not have to issue a second query; it is deliberately NOT part of `publicAccount()`.
+   */
+  purchase_owner_ref: string;
 }
 
-const ACCOUNT_COLS = 'id, provider, provider_subject, email, display_name, created_at, deleted_at';
+const ACCOUNT_COLS =
+  'id, provider, provider_subject, email, display_name, created_at, deleted_at, purchase_owner_ref';
 
-/** The privacy-appropriate projection the app may show. Never the provider subject. */
+/**
+ * The privacy-appropriate projection the app may show. Never the provider subject.
+ *
+ * BUILD 26R-R2 deliberately did NOT add `purchaseOwnerRef` here. This helper is serialized by
+ * `/host/auth/apple`, `/host/auth/google` and the web `HostEntryScreen`; widening it would push a
+ * payment-binding identifier into three surfaces that have no use for it. Only `/api/host/me`
+ * returns it, as a sibling field.
+ */
 export function publicAccount(a: HostAccount) {
   return { id: a.id, email: a.email, displayName: a.display_name };
 }
