@@ -19,13 +19,24 @@ type ProgressRow = {
   event_id: string;
   completed_at: string;
   response_text: string | null;
+  learner_reflection_text: string | null;
   shared_understanding_response: string | null;
   reflection: unknown;
   completion_state: string | null;
 };
 
+/*
+  OWNER-ONLY ALLOW-LIST. Every column here reaches the caller, and the query below is scoped
+  `linked_user_id = userId` — that scope is what makes it safe to carry private text at all.
+
+  `learner_reflection_text` joins it in Slice 3.2R-R8D-R1. It was written by R8B and read by
+  nothing, so the learner could write a reflection and never see it again; Center is the surface
+  that exists to show a learner their own private writing. The HOST projections are separate
+  queries with their own allow-lists and are deliberately untouched — widening this one cannot
+  widen those.
+*/
 const HISTORY_COLS =
-  "id, event_id, completed_at, response_text, shared_understanding_response, reflection, completion_state";
+  "id, event_id, completed_at, response_text, learner_reflection_text, shared_understanding_response, reflection, completion_state";
 
 export type FoundryHistoryItem = {
   /** Stable owner-scoped record id (the progress row id) — the Center deep-link entry (Slice 3.1B-3I). */
@@ -37,8 +48,20 @@ export type FoundryHistoryItem = {
   /** The learner's OWN Shared Understanding answer (Foundry surface). null when the module had none. */
   sharedUnderstanding: string | null;
   completedAt: string;
-  /** The user's own final reflection (owner-only) — full text for the detail view. */
+  /**
+   * The learner's answer to the COMPLETION CHECK — what they said they will do (owner-only).
+   *
+   * Named `responseText` since long before the split and kept that way on purpose: renaming it
+   * would touch the thread engine, My Learning and Center at once for no behavioural gain. What
+   * it MEANS is `response_text`, which post-R8B is the BEFORE YOU FINISH answer.
+   */
   responseText: string;
+  /**
+   * The learner's answer to the journey's REFLECT question — what already happens (owner-only,
+   * Slice 3.2R-R8D-R1). null on every entry whose event never asked one, which is every entry
+   * completed before R8B. NEVER the AI `aiReflection`, and never Host-visible.
+   */
+  learnerReflection: string | null;
   /** Short excerpt for the list surface. */
   responseExcerpt: string;
   /** The full stored AI Living Reflection, or null if none was produced. */
@@ -85,6 +108,7 @@ export async function listUserFoundryHistory(
     const stored = validateLivingReflection(r.reflection);
     const aiReflection = stored.ok ? stored.value : null;
     const responseText = (r.response_text ?? "").trim();
+    const learnerReflection = (r.learner_reflection_text ?? "").trim();
     const ev = metaById.get(r.event_id);
     const sharedUnderstanding = (r.shared_understanding_response ?? "").trim();
     return {
@@ -96,6 +120,7 @@ export async function listUserFoundryHistory(
       completedAt: r.completed_at,
       responseText,
       responseExcerpt: excerptOf(responseText),
+      learnerReflection: learnerReflection.length > 0 ? learnerReflection : null,
       aiReflection,
       aiReflectionLine: aiReflection?.livingSentence ?? null,
       completionState: parseCompletionMeaning(r.completion_state),

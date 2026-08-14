@@ -19,12 +19,20 @@ type Entry = {
   contentType: "youtube" | "document";
   completedAt: string;
   responseText: string;
+  /**
+   * The learner's answer to the journey's REFLECT question (Slice 3.2R-R8D-R1) — what already
+   * happens. null on every entry whose event never asked one. NEVER the same thing as
+   * `responseText`, which is what they said they WILL do.
+   */
+  learnerReflection: string | null;
 };
 
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
   privacy: string;
+  reflectLabel: string;
+  beforeYouFinishLabel: string;
   consentLabel: string;
   consentHelp: string;
   consentPrivacy: string;
@@ -42,6 +50,8 @@ const COPY: Record<Locale, {
     title: "CENTER",
     subtitle: "A place to see yourself clearly.",
     privacy: "Your reflections are private. Only you can see them.",
+    reflectLabel: "REFLECT",
+    beforeYouFinishLabel: "BEFORE YOU FINISH",
     consentLabel: "Today personalization",
     consentHelp: "Use yesterday's private reflections for a short Today brief.",
     consentPrivacy: "Your reflection remains private and is never shown to the training Host.",
@@ -59,6 +69,8 @@ const COPY: Record<Locale, {
     title: "CENTER",
     subtitle: "나를 선명하게 바라보는 공간.",
     privacy: "나의 성찰은 비공개이며 본인만 볼 수 있습니다.",
+    reflectLabel: "성찰",
+    beforeYouFinishLabel: "마치기 전에",
     consentLabel: "Today 개인화",
     consentHelp: "어제의 비공개 성찰을 바탕으로 짧은 Today 안내를 만듭니다.",
     consentPrivacy: "성찰 원문은 비공개이며 교육 담당자에게 공개되지 않습니다.",
@@ -111,7 +123,34 @@ function EntryCard({ it, t, loc, focused, refCb }: { it: Entry; t: (typeof COPY)
         </span>
       </div>
       <span className="text-xs text-white/45">{t.completedOn} · {formatDate(it.completedAt, loc)}</span>
-      <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/85">{it.responseText}</p>
+      {/*
+        ONE BLOCK OR TWO, DECIDED BY WHAT THE EVENT ACTUALLY ASKED (Slice 3.2R-R8D-R1).
+
+        An R8B event asks two private questions — what already happens (REFLECT) and what the
+        learner will say (BEFORE YOU FINISH) — and both answers are the learner's own. Showing
+        them under one heading, or worse showing only the second as this card did, tells the
+        learner they wrote one thing when they wrote two.
+
+        A legacy entry asked ONE question, so it keeps exactly the presentation it has always
+        had: the bare text, unlabelled. Labels appear only when there is something to tell
+        apart, which is also why no historical answer is relabelled as a REFLECT it never was.
+      */}
+      {it.learnerReflection ? (
+        <>
+          <div className="mt-1 flex flex-col gap-1" data-testid="center-entry-reflect">
+            <span className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[#C9A66B]/85">{t.reflectLabel}</span>
+            <p className="whitespace-pre-wrap text-sm leading-6 text-white/85">{it.learnerReflection}</p>
+          </div>
+          {it.responseText ? (
+            <div className="mt-2 flex flex-col gap-1" data-testid="center-entry-before-you-finish">
+              <span className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[#C9A66B]/85">{t.beforeYouFinishLabel}</span>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-white/85">{it.responseText}</p>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-white/85" data-testid="center-entry-legacy">{it.responseText}</p>
+      )}
     </li>
   );
 }
@@ -128,7 +167,7 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
     try {
       const res = await fetch("/api/bty/foundry/history", { credentials: "include", cache: "no-store" });
       if (!res.ok) return setItems([]);
-      const data = (await res.json()) as { history?: Array<{ entryId?: string; eventTitle?: string; contentType?: string; completedAt?: string; responseText?: string }> };
+      const data = (await res.json()) as { history?: Array<{ entryId?: string; eventTitle?: string; contentType?: string; completedAt?: string; responseText?: string; learnerReflection?: string | null }> };
       setItems(
         (data?.history ?? [])
           .map((h): Entry => ({
@@ -137,8 +176,17 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
             contentType: h.contentType === "document" ? "document" : "youtube",
             completedAt: String(h.completedAt ?? ""),
             responseText: String(h.responseText ?? ""),
+            learnerReflection: h.learnerReflection ? String(h.learnerReflection) : null,
           }))
-          .filter((e) => e.responseText.length > 0),
+          /*
+            ELIGIBLE = the learner wrote at least one private answer Center may show.
+
+            This was `responseText.length > 0`, which was correct while that was the only private
+            answer there was. After R8B an entry can carry a REFLECT answer and no completion
+            text, and that entry would have vanished from the one surface built to show it. Still
+            deliberately narrow: an entry with neither is nothing to read and stays out.
+          */
+          .filter((e) => e.responseText.length > 0 || (e.learnerReflection?.length ?? 0) > 0),
       );
     } catch {
       setItems([]);

@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { useEffect } from "react";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 /*
   pdfjs needs DOMMatrix, which jsdom lacks. The stub also FIRES a heartbeat on mount, because
@@ -18,7 +19,17 @@ vi.mock("./PdfReader", () => ({
     copy: { continueAfterReading: string };
     readingComplete: boolean;
   }) => {
-    setTimeout(() => onHeartbeat({ lastPage: 4, viewedPages: [1, 2, 3, 4], activeMsDelta: 5000 }), 0);
+    /*
+      CLEARED ON UNMOUNT. Without this the timer outlives the test: it fires after
+      `vi.unstubAllGlobals`, the client calls the REAL fetch with a relative URL, and jsdom
+      throws "Invalid URL" as an unhandled error. In isolation that only prints; under full-suite
+      load it fails the file. The heartbeat is the point of this stub, so it stays — it just has
+      to belong to the mounted component.
+    */
+    useEffect(() => {
+      const id = setTimeout(() => onHeartbeat({ lastPage: 4, viewedPages: [1, 2, 3, 4], activeMsDelta: 5000 }), 0);
+      return () => clearTimeout(id);
+    }, [onHeartbeat]);
     // The real reader shows this control on the last page once the server confirms reading.
     // Rendering it from the SAME props lets the post-read CTA be asserted for what it says.
     return readingComplete ? (
@@ -173,8 +184,14 @@ describe("[3.2R-R8A-R1] a resumed, read-complete learner still sees the program"
     render(<FoundryDocumentClient token="btyroom.a.b" />);
     await waitFor(() => expect(screen.getByTestId("journey-el-reflection")).toBeTruthy());
 
+    /*
+      AWAIT THE BUTTON, NOT A PROXY. It lives in the reader, which mounts only after the signed
+      file url resolves — one async tick behind the journey and the completion surface. Anchoring
+      on either of those and then reading the button synchronously is a race that passes on a
+      quiet machine and fails under full-suite load, which is exactly how it first failed.
+    */
+    const cta = await screen.findByRole("button", { name: "Continue" });
     expect(screen.queryByRole("button", { name: "Continue to reflection" })).toBeNull();
-    const cta = screen.getByRole("button", { name: "Continue" });
 
     // B — it leads DOWN to the completion surface, which is already on the page.
     const target = screen.getByText("BEFORE YOU FINISH").closest("div")!;
@@ -192,8 +209,8 @@ describe("[3.2R-R8A-R1] a resumed, read-complete learner still sees the program"
     // "Continue" is contract-neutral on purpose: it needs no per-event derivation to stay true.
     mockFetch({ ...RESUMED, reflection_required: false }, { ok: true, ...RESUMED, reflection_required: false });
     render(<FoundryDocumentClient token="btyroom.a.b" />);
-    await waitFor(() => expect(screen.getByText("BEFORE YOU FINISH")).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Continue" })).toBeTruthy();
+    expect(screen.getByText("BEFORE YOU FINISH")).toBeTruthy();
     expect(screen.queryByTestId("journey-reflection-input")).toBeNull();
   });
 

@@ -58,6 +58,9 @@ export async function GET(req: NextRequest) {
       completedAt: it.completedAt,
       responseText: it.responseText,
       responseExcerpt: it.responseExcerpt,
+      // The learner's own REFLECT answer (Slice 3.2R-R8D-R1). This route is authenticated and
+      // owner-scoped; it is the only surface allowed to carry it, and Center is what renders it.
+      learnerReflection: it.learnerReflection,
       aiReflection: it.aiReflection,
       aiReflectionLine: it.aiReflectionLine,
       completionState: it.completionState,

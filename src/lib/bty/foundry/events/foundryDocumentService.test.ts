@@ -684,7 +684,12 @@ describe("[3.2R-R8B] the learner's own reflection", () => {
       "src/lib/bty/foundry/events/foundryHostHistoryService.ts",
       "src/lib/bty/foundry/events/hostAttentionService.ts",
       "src/lib/bty/foundry/events/foundrySharedReviewService.ts",
-      "src/lib/bty/foundry/events/foundryHistoryService.ts",
+      /*
+        `foundryHistoryService` was in this list and is now removed (Slice 3.2R-R8D-R1): it is
+        the LEARNER's own history, scoped `linked_user_id = caller`, and listing it here as a
+        Host surface was a mislabel. It legitimately projects the reflection now so its owner
+        can read it. The Host services above still must not, and that is what this checks.
+      */
     ]) {
       const src = await fs.readFile(f, "utf8");
       expect(src.includes("learner_reflection_text"), f).toBe(false);

@@ -136,29 +136,35 @@ describe("[3.2R-R8C-R1] A/B — the claimed completion promises only what My Lea
     }
   });
 
-  it("I/J — no projection was touched: the reflection is still written and read by nothing", () => {
+  it("I/J — exactly one owner-scoped surface reads the private reflection", () => {
     /*
-      The honest boundary of this slice, asserted on the actual leak surface rather than on
-      whether a file mentions the name. A first version compared the list of files containing
-      the string and failed on my own comment in these two clients — a comment cannot read a
-      column. What CAN is a projection, and every projection in this codebase is an explicit
-      `select("a, b, c")` list, so that is what this checks.
-    */
-    const { execSync } = require("node:child_process") as typeof import("node:child_process");
-    const inSelect = execSync(
-      `grep -rn 'select(.*learner_reflection_text' src --include=*.ts --include=*.tsx | grep -v '\\.test\\.' || true`,
-      { encoding: "utf8" },
-    ).trim();
-    expect(inSelect, "no query anywhere may project the private reflection").toBe("");
+      REWRITTEN IN 3.2R-R8D-R1, and the reason matters more than the change.
 
-    // And the learner-facing read surfaces do not name it at all — the gap this slice defers.
+      When written, this grepped for `select(.*learner_reflection_text` and asserted no match,
+      described as covering "the actual leak surface". It did not: `foundryHistoryService`
+      hoists its allow-list into a `HISTORY_COLS` const, so the column name and the `select(`
+      call are on different lines and a line-oriented grep could never see it. The assertion
+      would have passed while that service projected the column — it was checking a narrower
+      thing than it claimed.
+
+      This checks membership instead, which does not care how a query is spelled: the learner's
+      own owner-scoped history MUST carry it, and every Host surface MUST NOT mention it at all.
+    */
     const fs = require("node:fs") as typeof import("node:fs");
+    const has = (f: string) => fs.readFileSync(f, "utf8").includes("learner_reflection_text");
+
+    // The one read path, added deliberately so a learner can see their own writing in Center.
+    expect(has("src/lib/bty/foundry/events/foundryHistoryService.ts")).toBe(true);
+
     for (const f of [
-      "src/lib/bty/foundry/events/foundryHistoryService.ts",
+      "src/lib/bty/foundry/events/foundryHostHistoryService.ts",
+      "src/lib/bty/foundry/events/hostAttentionService.ts",
+      "src/lib/bty/foundry/events/foundrySharedReviewService.ts",
       "src/lib/bty/foundry/events/foundryCompletionReviewService.ts",
+      // My Learning still renders no private answer of any kind — it links to Center instead.
       "src/components/foundry/event-rooms/FoundryMyLearning.tsx",
     ]) {
-      expect(fs.readFileSync(f, "utf8").includes("learner_reflection_text"), f).toBe(false);
+      expect(has(f), `${f} must never name the private reflection`).toBe(false);
     }
   });
 });
