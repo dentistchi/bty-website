@@ -2,6 +2,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { AcceptClient } from "./AcceptClient";
+import { ACTIVE_CONSENT_VERSION, activeConsentDocument } from "@/domain/legal/consent-document";
+import { consentDocumentFingerprint } from "@/domain/legal/consent-fingerprint";
+
+/** The real active document identity — the same values the server page hands the client. */
+const ACTIVE_EN_FINGERPRINT = consentDocumentFingerprint(activeConsentDocument("en-US")!);
 import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 
 /**
@@ -58,7 +63,13 @@ describe("[3.2R-R8E] A/B/C — the destination survives consent", () => {
     // @ts-expect-error test shim
     global.fetch = fetchMock;
 
-    render(<AcceptClient locale="en" returnUrl={DEEP_LINK} />);
+    render(<AcceptClient
+        locale="en"
+        returnUrl={DEEP_LINK}
+        consentVersion={ACTIVE_CONSENT_VERSION}
+        consentLocale="en-US"
+        documentFingerprint={ACTIVE_EN_FINGERPRINT}
+      />);
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button"));
 
@@ -80,7 +91,13 @@ describe("[3.2R-R8E] A/B/C — the destination survives consent", () => {
     // @ts-expect-error test shim
     global.fetch = fetchMock;
 
-    render(<AcceptClient locale="en" returnUrl={DEEP_LINK} />);
+    render(<AcceptClient
+        locale="en"
+        returnUrl={DEEP_LINK}
+        consentVersion={ACTIVE_CONSENT_VERSION}
+        consentLocale="en-US"
+        documentFingerprint={ACTIVE_EN_FINGERPRINT}
+      />);
     fireEvent.click(screen.getByRole("checkbox"));
     const submit = screen.getByRole("button");
     fireEvent.click(submit);
@@ -99,7 +116,13 @@ describe("[3.2R-R8E] A/B/C — the destination survives consent", () => {
     const nav = captureNavigation();
     // @ts-expect-error test shim
     global.fetch = vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: "boom" }) }));
-    render(<AcceptClient locale="en" returnUrl={DEEP_LINK} />);
+    render(<AcceptClient
+        locale="en"
+        returnUrl={DEEP_LINK}
+        consentVersion={ACTIVE_CONSENT_VERSION}
+        consentLocale="en-US"
+        documentFingerprint={ACTIVE_EN_FINGERPRINT}
+      />);
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button"));
     await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());

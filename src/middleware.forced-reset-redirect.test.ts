@@ -12,6 +12,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { ACTIVE_CONSENT_VERSION } from "@/domain/legal/consent-document";
 
 const mockForcedReset = vi.fn();
 const mockBlockingContract = vi.fn();
@@ -52,8 +53,8 @@ vi.mock("@supabase/ssr", () => ({
       select: () => ({
         eq: () => ({
           maybeSingle: async () =>
-            /** Consent gate satisfied (arena_profiles.consent_version set); other tables return null. */
-            ({ data: { consent_version: "v1" }, error: null }),
+            /** Consent gate satisfied — the ACTIVE version, since the gate is exact equality (3.2R-R9A). */
+            ({ data: { consent_version: ACTIVE_CONSENT_VERSION }, error: null }),
         }),
       }),
     }),

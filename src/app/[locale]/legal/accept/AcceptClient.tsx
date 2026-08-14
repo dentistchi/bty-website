@@ -2,11 +2,33 @@
 
 import { useState, useTransition } from "react";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { localeToBcp47 } from "@/lib/i18n/bcp47";
 
-const CONSENT_VERSION = "2026-05-v1";
-
-export function AcceptClient({ locale, returnUrl }: { locale: Locale; returnUrl: string }) {
+/**
+ * WHAT THIS COMPONENT NO LONGER DECIDES (Slice 3.2R-R9A).
+ *
+ * `const CONSENT_VERSION = "2026-05-v1"` used to live here — a browser constant was the only
+ * statement anywhere of which agreement was in force, and the API stored whatever it sent. The
+ * version now arrives as a prop, from the server, alongside the fingerprint of the document this
+ * page actually rendered.
+ *
+ * These three fields are EVIDENCE OF WHAT WAS DISPLAYED, never authority over what may be
+ * accepted. The server re-derives its own active document and refuses anything that does not
+ * match — which is what stops a tab left open across a deploy from silently accepting a newer
+ * agreement its reader never saw.
+ */
+export function AcceptClient({
+  locale,
+  returnUrl,
+  consentVersion,
+  consentLocale,
+  documentFingerprint,
+}: {
+  locale: Locale;
+  returnUrl: string;
+  consentVersion: string;
+  consentLocale: string;
+  documentFingerprint: string;
+}) {
   const m = getMessages(locale);
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,14 +47,25 @@ export function AcceptClient({ locale, returnUrl }: { locale: Locale; returnUrl:
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            consent_version: CONSENT_VERSION,
-            consent_locale: localeToBcp47(locale),
+            consent_version: consentVersion,
+            consent_locale: consentLocale,
+            document_fingerprint: documentFingerprint,
           }),
         });
 
         if (!res.ok) {
           if (res.status === 429) {
             setError(m.legal.accept.error_rate_limit);
+          } else if (res.status === 409) {
+            /*
+              THE DOCUMENT MOVED WHILE THIS TAB WAS OPEN (Slice 3.2R-R9A).
+
+              The server refused because what this page rendered is no longer what it requires.
+              Reloading is the whole remedy and the only honest one: it fetches the current
+              agreement so the learner reads it before accepting. Converting their old click into
+              acceptance of new text is exactly what must never happen.
+            */
+            window.location.reload();
           } else {
             setError(m.legal.accept.error_server);
           }

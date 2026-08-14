@@ -10,6 +10,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { ACTIVE_CONSENT_VERSION } from "@/domain/legal/consent-document";
 
 const getUserMock = vi.fn();
 
@@ -42,7 +43,7 @@ vi.mock("@supabase/ssr", () => ({
     auth: { getUser: async () => getUserMock() },
     from: () => ({
       select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: { consent_version: "v1" }, error: null }) }),
+        eq: () => ({ maybeSingle: async () => ({ data: { consent_version: ACTIVE_CONSENT_VERSION }, error: null }) }),
       }),
     }),
   }),

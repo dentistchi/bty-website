@@ -10,6 +10,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { ACTIVE_CONSENT_VERSION } from "@/domain/legal/consent-document";
 
 const mockMembershipRow = vi.fn();
 
@@ -43,7 +44,7 @@ vi.mock("@supabase/ssr", () => ({
         eq: () => ({
           maybeSingle: async () => {
             // arena_profiles → consent satisfied; arena_membership_requests → per-test.
-            if (table === "arena_profiles") return { data: { consent_version: "v1" }, error: null };
+            if (table === "arena_profiles") return { data: { consent_version: ACTIVE_CONSENT_VERSION }, error: null };
             if (table === "arena_membership_requests") return mockMembershipRow();
             return { data: null, error: null };
           },
