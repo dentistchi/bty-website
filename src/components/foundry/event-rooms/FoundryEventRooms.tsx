@@ -306,20 +306,32 @@ export default function FoundryEventRooms({
 
   const backHome = useCallback(() => setView({ kind: "home" }), []);
 
-  // Two-door first-time entry (Slice 3.2C-B3A.1): "My learning" scrolls to the
-  // required-training section on this same surface; "Create training" (creators
-  // only) opens the builder. No mode switch — both live in one shell.
-  const openLearning = useCallback(() => {
-    if (typeof document !== "undefined") {
-      document.getElementById("learn-required")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, []);
+  /*
+    "Open my learning →" OPENS MY LEARNING (Slice 3.2R-R8D-R2).
+
+    It used to call `scrollIntoView("#learn-required")` — correct in 3.2C-B3A.1, when "my
+    learning" meant the required-training section further down THIS surface. B3A.2C then made My
+    Learning its own view, removed the duplicate pill from Required Learning, and recorded that
+    "the LearnDoors door owns the entry" — but the door kept the scroll. Worse, `#learn-required`
+    renders directly beneath the doors, so on a phone it is usually already on screen and a
+    smooth scroll to it produces no visible change at all. The button worked perfectly and did
+    nothing, which is why it read as dead.
+
+    `onOpenMyLearning` is the shell's single authority for this destination — the same callback
+    behind the Me row and the Learn header, and the in-shell equivalent of the `?view=my-learning`
+    URL the post-claim "Continue to BTY" anchor uses. It was already threaded into this component
+    and passed straight through to a child that no longer used it.
+  */
+  const openLearning = onOpenMyLearning;
   const learnDoors = (
     <LearnDoors locale={loc} canCreate={access === "host"} onOpenLearning={openLearning} onCreate={startNewDraft} onOpenEvent={onOpenEvent} onOpenMyEvents={onOpenMyEvents} />
   );
   const requiredLearning = (
     <div id="learn-required">
-      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} onOpenMyLearning={onOpenMyLearning} />
+      {/* No `onOpenMyLearning` here: B3A.2C removed this child's My-Learning pill and the prop
+          has been unused since. Passing it advertised a second plausible owner of the entry,
+          which is how the door above kept a stale handler through that refactor. */}
+      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} />
     </div>
   );
 

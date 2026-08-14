@@ -96,11 +96,9 @@ function fmtDate(iso: string | null, locale: Locale): string {
 export default function FoundryRequiredLearning({
   locale,
   onOpenReview = () => {},
-  onOpenMyLearning = () => {},
 }: {
   locale: string;
   /** Open the learner's own My Learning / private reflection history (Slice 3.1B-3H). */
-  onOpenMyLearning?: () => void;
   /** Open the authenticated read-only review for a COMPLETED assignment (never the Room). */
   onOpenReview?: (assignmentId: string) => void;
 }) {
