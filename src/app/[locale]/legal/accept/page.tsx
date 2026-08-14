@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { type Locale } from "@/lib/i18n";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { AcceptClient } from "./AcceptClient";
+import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,18 @@ export default async function LegalAcceptPage({
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const safeReturn = returnUrl && returnUrl.startsWith("/") ? returnUrl : `/${locale}/bty`;
+  /*
+    OPEN REDIRECT (Slice 3.2R-R8E). This was `returnUrl.startsWith("/")`, which accepts
+    `//evil.com` — a protocol-relative URL that starts with "/" and navigates straight off
+    origin. `?return=//evil.com` on a consent link was an open redirect through the one screen
+    every authenticated user is forced through.
+
+    `sanitizeNextForRedirect` is the repository's existing single source of truth for exactly
+    this: it blocks `//`, backslashes, `://` and login loops, and falls back to `/{locale}/bty`
+    — the same fallback this line already used. Two safe-return utilities existed and this page
+    used neither.
+  */
+  const safeReturn = sanitizeNextForRedirect(returnUrl, { locale: locale === "ko" ? "ko" : "en" });
 
   if (prof?.consent_version) {
     redirect(safeReturn);

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { localeToBcp47 } from "@/lib/i18n/bcp47";
@@ -12,7 +11,6 @@ export function AcceptClient({ locale, returnUrl }: { locale: Locale; returnUrl:
   const [checked, setChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
 
   const handleSubmit = () => {
     if (!checked) {
@@ -41,8 +39,23 @@ export function AcceptClient({ locale, returnUrl }: { locale: Locale; returnUrl:
           return;
         }
 
-        router.push(returnUrl);
-        router.refresh();
+        /*
+          ONE HARD NAVIGATION, NOT push()+refresh() (Slice 3.2R-R8E).
+
+          The app shell consumes a deep link ONCE on mount and then ERASES it from the URL with
+          `history.replaceState`. `router.push` began that client-side transition and
+          `router.refresh` immediately re-fetched the route still rendered underneath it — the
+          consent page, which now sees consent present and server-redirects to the same
+          destination. Two navigations to one URL, with the shell stripping the query between
+          them: whichever arrived second landed on a bare `/{locale}/app` and fell back to the
+          default surface. That is why accepting consent from the Center deep link dropped the
+          learner on My Learning instead of their reflection.
+
+          A full-page assign goes through middleware exactly once (consent is now satisfied),
+          hands the untouched URL to a single fresh shell mount, and needs no refresh because
+          nothing stale survives it. `returnUrl` is already sanitized server-side.
+        */
+        window.location.assign(returnUrl);
       } catch {
         setError(m.legal.accept.error_network);
       }
