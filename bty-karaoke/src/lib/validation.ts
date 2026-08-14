@@ -293,3 +293,17 @@ export const VerifyAppleTransactionSchema = z
     signedTransaction: z.string().trim().min(1).max(16384),
   })
   .strict();
+
+// BUILD 26S-R1 — Apple paid fulfilment input.
+//
+// The ONLY accepted input is which durable purchase to settle. `.strict()` is doing the same job
+// it does above, and here it matters more: this endpoint creates ENTITLEMENT. There is no
+// accountId, durationSeconds, passType, productCode, sourceType, isPaid, grantStatus,
+// passGrantId, actorType or Apple transaction identity to accept, because every one of those is
+// derived inside the fulfilment transaction from rows the client cannot write. A caller can name
+// a purchase; it can never describe what that purchase is worth.
+export const FulfilApplePurchaseSchema = z
+  .object({
+    purchaseId: z.string().uuid(),
+  })
+  .strict();
