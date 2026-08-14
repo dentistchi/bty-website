@@ -45,7 +45,10 @@ describe("FoundryJoinClient — open-link → BTY handoff", () => {
     const cont = screen.getByTestId("continue-to-bty") as HTMLAnchorElement;
     expect(cont.getAttribute("href")).toBe("/en/app?tab=foundry&view=my-learning");
     expect(screen.getByText("Saved to your BTY")).toBeTruthy();
-    expect(screen.getByText("Your reflection is private and available in My Learning.")).toBeTruthy();
+    // Slice 3.2R-R8C-R1: this asserted "Your reflection is private and available in My Learning."
+    // Live forensics proved no read path returns the learner's reflection, so the panel now
+    // promises the training record — which is exactly what the anchor below it delivers.
+    expect(screen.getByText("Your training is saved in My Learning.")).toBeTruthy();
   });
 
   it("the Continue-to-BTY control is a non-mutating anchor (no claim/completion POST on click)", async () => {

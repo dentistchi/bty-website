@@ -81,6 +81,19 @@ type Copy = {
   xpClaimable: string;
   saveXp: string;
   savedTitle: string;
+  /*
+    SHOWN ONLY AFTER A SUCCESSFUL AUTHENTICATED CLAIM (xp === "awarded", open-link entry).
+
+    It used to say "Your reflection is private and available in My Learning." Slice 3.2R-R8C
+    measured that live and it was not true: My Learning returns this completed training, but no
+    read path in the product returns `learner_reflection_text` at all, and `response_text` is
+    fetched there and deliberately not rendered. So the screen was naming the REFLECT answer the
+    learner had just written and pointing them somewhere it does not exist.
+
+    It now promises exactly what the button delivers — the training record, in My Learning.
+    Reading the reflection back is real product work with its own home (likely Center, where
+    private answers already live); it is deferred, and the copy no longer front-runs it.
+  */
   savedBody: string;
   continueToBty: string;
   saving: string;
@@ -131,7 +144,7 @@ const COPY: Record<Locale, Copy> = {
     xpClaimable: "10 Core XP is ready to save.",
     saveXp: "Save XP to BTY",
     savedTitle: "Saved to your BTY",
-    savedBody: "Your reflection is private and available in My Learning.",
+    savedBody: "Your training is saved in My Learning.",
     continueToBty: "Continue to BTY",
     saving: "Saving…",
     xpDailyLimit: "Today’s Core XP is already saved. Come back tomorrow.",
@@ -179,7 +192,7 @@ const COPY: Record<Locale, Copy> = {
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
     saveXp: "BTY에 XP 저장",
     savedTitle: "BTY에 저장되었습니다",
-    savedBody: "이 성찰은 비공개이며 내 학습에서 다시 볼 수 있습니다.",
+    savedBody: "이 교육은 내 학습에 저장되었습니다.",
     continueToBty: "BTY로 계속하기",
     saving: "저장 중…",
     xpDailyLimit: "오늘의 Core XP는 이미 저장되었습니다. 내일 다시 오세요.",
