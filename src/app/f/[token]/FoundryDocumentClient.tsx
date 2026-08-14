@@ -327,14 +327,28 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const applyResult = useCallback((data: unknown) => {
     const d = data as (Partial<Snapshot> & { ok?: boolean }) | null;
     if (d?.ok && d.stage) {
-      setSnapshot({
+      /*
+        MERGE, NEVER REBUILD (Slice 3.2R-R8A-R1).
+
+        This reconstructed the snapshot field by field, so any key it did not name was silently
+        dropped. R8A added `journey` to the server response and the device still showed no
+        program: `load()` fetched it correctly, then the reader's FIRST heartbeat came back
+        through here and replaced the snapshot with an object that had no journey. It rendered
+        and disappeared within a second — which reads exactly like "it was never deployed".
+
+        Now the previous value survives a response that does not carry the key, so a partial
+        payload can never delete a field the learner is looking at. A field-by-field rebuild is
+        the shape of this bug; preserving `prev` is the fix.
+      */
+      setSnapshot((prev) => ({
         content_type: "document",
         event: d.event ?? null,
         participant: d.participant ?? null,
         document: d.document ?? null,
-        stage: d.stage,
+        journey: d.journey ?? prev?.journey ?? null,
+        stage: d.stage!,
         xp_status: d.xp_status ?? "none",
-      });
+      }));
       return true;
     }
     return false;
