@@ -18,6 +18,11 @@
 // The account is ALWAYS derived server-side from the session, and every Apple fact comes from the
 // VERIFIED payload. The body carries exactly one field (`.strict()`), so there is no accountId,
 // appAccountToken, transactionId, productId, environment or bundleId for a caller to forge.
+//
+// BUILD 26T-R1A-R2 — THE MONEY BOUNDARY. This endpoint no longer refuses a genuine transaction
+// because its product is currently inactive. `is_active` authorizes STARTING a charge, not
+// settling one that already happened; see step 6 for the full statement and for what was
+// deliberately NOT weakened. Every other refusal on this route is unchanged.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { bearerFromHeader } from '@/lib/dj-auth.server';
@@ -153,18 +158,39 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ---- 6. operational authorization ------------------------------------------------------------
-  // BUILD 26L §5: is_active = false means the server is NOT authorized to turn a NEW paid
-  // transaction into entitlement processing. The purchase is recorded and preserved; the product
-  // is not activated and nothing is granted.
-  if (!product.isActive) {
-    return NextResponse.json(
-      { ok: false, error: 'product_inactive', ...base },
-      { status: 409, headers: NO_STORE },
-    );
-  }
+  // ---- 6. the money boundary (BUILD 26T-R1A-R2) -------------------------------------------------
+  // THERE IS NO `is_active` CHECK HERE ANY MORE, AND ITS ABSENCE IS THE CONTRACT.
+  //
+  // `karaoke_product_catalog.is_active` is the authority to START a new Apple charge. By the time
+  // a signed transaction reaches this endpoint that decision is already spent: Apple has taken the
+  // customer's money. Refusing to settle at this point does not undo the charge — it strands it,
+  // and the customer's only re-presentable evidence sits unfinished on their device while our
+  // ledger declines to converge. An operator toggling a switch must never be able to do that to
+  // someone who has already paid.
+  //
+  // So activation is now formally defined at the money boundary:
+  //
+  //   BEFORE a charge   is_active authorizes initiation. Enforced by the pre-purchase catalog read
+  //                     (BUILD 26T-R1A) and, decisively, by the just-in-time authority taken
+  //                     immediately before the app's single `product.purchase` call (R1A-R2).
+  //   AFTER a charge    is_active is silent. Settlement converges on the strength of the Apple
+  //                     signature, the bindings and the durable ledger — never on a switch.
+  //
+  // NOTHING ELSE WAS WEAKENED. The signature, the bundle identity, the environment, the product
+  // IDENTITY (step 3 — an unknown product is still refused, and an inactive product was never an
+  // unknown one), the owner binding, the appAccountToken binding, the replay identity and the
+  // revocation branch above all stand exactly as they were.
+  //
+  // HISTORICAL NOTE. BUILD 26L §5, 26P, 26R-R2 and 26S recorded `product_inactive` here, and under
+  // the contract of those milestones that was correct — there was no shipping purchase path, so
+  // the only thing this gate could refuse was a transaction we had no way to have originated.
+  // BUILD 26T is the first production commerce path, and it made the distinction load-bearing.
+  // This is contract evolution; that evidence remains true of the contract it was written against.
+  //
+  // `product.isActive` is still READ (step 3 resolves it) and is deliberately not consulted, so a
+  // future reader can see that the omission is a decision rather than an oversight.
 
-  // Verified, recorded, and the product is operationally enabled. Still no entitlement.
+  // Verified, recorded, and settleable. Still no entitlement — that is `/fulfil`'s job.
   //
   // BUILD 26T-R1A-R1 — `purchaseId` is the durable `karaoke_apple_purchases.id` this call just
   // wrote, or, on a replay, the id of the row that already existed. It is ADDITIVE: every field

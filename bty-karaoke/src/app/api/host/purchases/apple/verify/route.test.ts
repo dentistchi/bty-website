@@ -192,15 +192,17 @@ describe('catalog authority', () => {
     expect(recordVerifiedApplePurchase).not.toHaveBeenCalled();
   });
 
-  it('INACTIVE product -> 409 product_inactive, but the purchase IS recorded', async () => {
-    // Apple already charged the customer. Discarding a genuine transaction because our product is
-    // switched off would lose their money silently, so it is recorded and preserved.
+  // EVOLVED by BUILD 26T-R1A-R2. This test previously asserted `409 product_inactive`, and under
+  // the contract of BUILD 26L/26P/26R/26S that was correct: there was no shipping purchase path,
+  // so the gate could only ever refuse a transaction we had no way to have originated. BUILD 26T
+  // shipped that path, and the same refusal became a post-charge veto — it stranded money Apple
+  // had already taken. `is_active` is now the authority to START a charge, not to settle one.
+  it('INACTIVE product -> 200: the money was already taken, so it settles', async () => {
     state.product = { productCode: 'PASS_1H', isActive: false };
     const res = await POST(req(GOOD));
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
-      ok: false, error: 'product_inactive', verified: true, recorded: true,
-      entitlementIssued: false, replayed: false,
+      ok: true, verified: true, recorded: true, entitlementIssued: false, replayed: false,
     });
     expect(recordVerifiedApplePurchase).toHaveBeenCalledTimes(1);
   });
@@ -224,11 +226,14 @@ describe('ledger outcomes', () => {
     expect(await res.json()).toMatchObject({ ok: true, replayed: true, entitlementIssued: false });
   });
 
-  it('inactive-product replay -> 409 with replayed:true', async () => {
+  // EVOLVED by BUILD 26T-R1A-R2 — see the note above. A replay of a genuine transaction whose
+  // product is now switched off converges rather than being refused; this is the exact shape the
+  // existing Sandbox transaction takes on production, where PASS_1H is inactive.
+  it('inactive-product replay -> 200 with replayed:true', async () => {
     state.record = { ok: true, purchaseId: 'p-1', productCode: 'PASS_1H', replayed: true };
     const res = await POST(req(GOOD));
-    expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ ok: false, error: 'product_inactive', recorded: true, replayed: true });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, recorded: true, replayed: true, purchaseId: 'p-1' });
   });
 
   it('another account already owns the transaction -> 409, no disclosure', async () => {
@@ -384,20 +389,21 @@ describe('BUILD 26T-R1A-R1 — the accepted purchase is addressable', () => {
     }
   });
 
-  it('an INACTIVE product is refused exactly as before, and stays unaddressable', async () => {
-    // R1A-R1 does NOT touch the activation TOCTOU. The 409 keeps its status, its error string and
-    // its recorded:true, and it deliberately does not become addressable — making an inactive
-    // refusal settleable is BUILD 26T-R1A-R2's decision to take, not this slice's.
+  // EVOLVED by BUILD 26T-R1A-R2. R1A-R1 deliberately left the inactive branch alone and recorded
+  // that making it addressable was R1A-R2's decision to take. R1A-R2 took it: an inactive product
+  // no longer vetoes settlement, so the transaction is accepted and therefore addressable — which
+  // is precisely what lets the existing production Sandbox transaction be used as evidence while
+  // PASS_1H stays inactive.
+  it('an INACTIVE product is now settleable, and therefore addressable', async () => {
     state.product = { productCode: 'PASS_1H', isActive: false };
     state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
     const res = await POST(req(GOOD));
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({
-      ok: false, error: 'product_inactive', verified: true, recorded: true,
-      entitlementIssued: false, replayed: false,
+      ok: true, verified: true, recorded: true, entitlementIssued: false, replayed: false,
     });
-    expect(body.purchaseId).toBeUndefined();
+    expect(body.purchaseId).toBe(ROW);
   });
 
   it('addressability is not fulfilment — the route still grants nothing', async () => {
@@ -413,5 +419,116 @@ describe('BUILD 26T-R1A-R1 — the accepted purchase is addressable', () => {
     // And it reads the id it already had — no second query invented to produce one.
     expect(src).toMatch(/purchaseId: outcome\.purchaseId/);
     expect(src.match(/recordVerifiedApplePurchase\(/g) ?? []).toHaveLength(1);
+  });
+});
+
+// BUILD 26T-R1A-R2 — the money boundary.
+//
+// `is_active` authorizes STARTING a new Apple charge. Once Apple has charged the customer that
+// decision is spent, and a switch must not be able to strand their money. These tests pin the
+// evolved contract AND, just as importantly, that nothing else moved with it: every other refusal
+// on this route must still refuse an inactive product exactly as it refuses an active one.
+describe('BUILD 26T-R1A-R2 — is_active is not a post-charge veto', () => {
+  const ROW = '28ab7288-ed3b-43b6-acef-484d1f635032';
+
+  function inactive() {
+    state.product = { productCode: 'PASS_1H', isActive: false };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: false };
+  }
+
+  it('the TOCTOU order settles: active at T0, deactivated by the time /verify runs', async () => {
+    // T0 the client's just-in-time read said active, so the charge was authorized.
+    state.product = { productCode: 'PASS_1H', isActive: true };
+    const authorizedAtStart = await (await POST(req(GOOD))).json();
+    expect(authorizedAtStart.ok).toBe(true);
+
+    // T1 Apple charges. T2 an operator deactivates the product. T3/T4 the SAME transaction is
+    // verified — and must still converge, because the money has already moved.
+    state.product = { productCode: 'PASS_1H', isActive: false };
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: true };
+    const res = await POST(req(GOOD));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ ok: true, verified: true, recorded: true, replayed: true });
+    expect(body.purchaseId).toBe(ROW);
+    expect(body.error).toBeUndefined();
+  });
+
+  it('no response says product_inactive any more, on any inactive path', async () => {
+    for (const replayed of [false, true]) {
+      inactive();
+      state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed };
+      const body = await (await POST(req(GOOD))).json();
+      expect(JSON.stringify(body)).not.toContain('product_inactive');
+    }
+  });
+
+  it('a replay while inactive returns the identical purchaseId', async () => {
+    inactive();
+    const first = await (await POST(req(GOOD))).json();
+    state.record = { ok: true, purchaseId: ROW, productCode: 'PASS_1H', replayed: true };
+    const second = await (await POST(req(GOOD))).json();
+    expect(second.replayed).toBe(true);
+    expect(second.purchaseId).toBe(first.purchaseId);
+  });
+
+  it('settlement is still NOT granted here — /verify remains VERIFY + RECORD', async () => {
+    inactive();
+    const body = await (await POST(req(GOOD))).json();
+    expect(body.entitlementIssued).toBe(false);
+    expect(JSON.stringify(body)).not.toMatch(/passGrantId|grantedSeconds/);
+  });
+
+  // ---- what did NOT change: every other refusal, measured against an INACTIVE product ----------
+  it('an UNKNOWN product is still refused — identity is not activation', async () => {
+    // The distinction the whole slice rests on: a known product that is switched off is still a
+    // known product, and an unknown one is still unknown. Only the second is a refusal.
+    inactive();
+    state.product = null;
+    const res = await POST(req(GOOD));
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toBe('unknown_product');
+    expect(recordVerifiedApplePurchase).not.toHaveBeenCalled();
+  });
+
+  it('every non-activation refusal still fires while the product is inactive', async () => {
+    const cases: Array<[string, number, string, () => void]> = [
+      ['invalid JWS', 422, 'invalid_apple_signature',
+        () => { state.verify = { ok: false, code: 'invalid_apple_signature' }; }],
+      ['owner/appAccountToken mismatch', 403, 'account_binding_mismatch',
+        () => { state.verify = { ok: true, claims: claims({ appAccountToken: '99999999-2222-4333-8444-555555555555' }), environment: 'Sandbox' }; }],
+      ['environment mismatch', 422, 'environment_mismatch',
+        () => { state.verify = { ok: true, claims: claims({ environment: 'Production' }), environment: 'Sandbox' }; }],
+      ['claimed by another account', 409, 'transaction_already_claimed',
+        () => { state.record = { ok: false, code: 'transaction_already_claimed' }; }],
+      ['revoked transaction', 422, 'revoked_transaction',
+        () => { state.verify = { ok: true, claims: claims({ revocationDate: 1_760_000_500_000, revocationReason: 1 }), environment: 'Sandbox' }; }],
+    ];
+    for (const [name, status, error, set] of cases) {
+      state.account = { id: 'acct-1' };
+      state.ownerRef = OWNER;
+      state.verify = { ok: true, claims: claims(), environment: 'Sandbox' };
+      inactive();
+      set();
+      const res = await POST(req(GOOD));
+      const body = await res.json();
+      expect(res.status, name).toBe(status);
+      expect(body.ok, name).toBe(false);
+      if (error !== 'environment_mismatch') expect(body.error, name).toBe(error);
+      // And a refusal still discloses no durable address.
+      expect(body.purchaseId, name).toBeUndefined();
+    }
+  });
+
+  it('the veto is gone from the source, and its absence is documented', async () => {
+    const src = await import('node:fs').then((fs) =>
+      fs.readFileSync(`${process.cwd()}/src/app/api/host/purchases/apple/verify/route.ts`, 'utf8'));
+    // No branch may refuse on the current activation flag.
+    expect(src).not.toMatch(/if \(!product\.isActive\)/);
+    expect(src).not.toMatch(/'product_inactive'/);
+    // Identity resolution stays — an unknown product is still refused.
+    expect(src).toMatch(/unknown_product/);
+    // And the omission is stated, so it cannot be "tidied" back in by a future reader.
+    expect(src).toMatch(/THERE IS NO `is_active` CHECK HERE ANY MORE, AND ITS ABSENCE IS THE CONTRACT/);
   });
 });
