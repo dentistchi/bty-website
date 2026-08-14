@@ -5,8 +5,7 @@
  * - **Query `scope`:** omit/empty → `overall`. Else **`overall`|`role`|`office`** only (trim). 잘못된 값 → **400** `{ error: "INVALID_SCOPE", message }`.
  * - **Query `week`:** omit, empty, or **`current`** → 라이브 주간. Else **`YYYY-MM-DD`** = **이번 주 월요일 UTC**만 허용; 그 외 형식·과거·미래 주 → **400** `{ error: "INVALID_WEEK", message }`.
  * - **200:** `leaderboard`·`count`·`nearMe`·`myRank` 등. 빈 주간 → `leaderboard: []`, `count: 0`.
- * - **200 (무세션·overall):** service role 가능 시 상위 랭크 공개; `viewerAnonymous: true`.
- * - **401:** `{ error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" }` — `scope=role|office` 미로그인, 또는 overall 공개(service role) 폴백 불가 시.
+ * - **401:** `{ error: "UNAUTHENTICATED", message: "Sign in to see leaderboard" }` — **모든 미로그인 요청**(scope 무관). 리더보드는 인증 표면이다 (Slice 3.2R-R9C; ARENA_DOMAIN_SPEC §4-4). 이전의 `viewerAnonymous` 무세션 공개 분기는 제거되었다.
  * - **250:** 401 응답 **키는 `error`·`message`만**(문자열).
  * - **500:** `{ error: "WEEKLY_XP_QUERY_FAILED", detail }`.
  * - **캐시:** `Cache-Control: no-store`.
