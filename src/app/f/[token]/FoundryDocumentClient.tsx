@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
+import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 
 /**
@@ -46,6 +47,8 @@ type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
   participant: { display_name: string } | null;
   document: DocInfo | null;
+  /** The published program, from the frozen event snapshot (Slice 3.2R-R8A). */
+  journey?: Journey;
   stage: Stage;
   xp_status: XpStatus;
 };
@@ -610,6 +613,23 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
         <h1 className="mt-2 text-lg font-semibold leading-tight">{snapshot.event?.title}</h1>
         {doc?.intro && <p className="mt-2 whitespace-pre-line text-sm text-white/70">{doc.intro}</p>}
         <p className="mt-1 text-xs text-white/50">{t.progressSaved}</p>
+      </div>
+
+      {/*
+        THE AUTHORED PROGRAM, BEFORE THE DOCUMENT (Slice 3.2R-R8A).
+
+        The frozen event snapshot has always carried the whole journey; this path never read it,
+        so a PDF learner met a seven-part program as one question. It renders ABOVE the reader
+        because the program is what the reading is FOR — the same order the YouTube learner has
+        had since 3.2C, where the journey precedes the video.
+
+        `completion_check` is excluded by `JourneyReading` itself: it already has its own
+        surface at the end. DELIVERY ONLY — see the header of `JourneyReading` and the note in
+        `documentJourneyDelivery.test.tsx`: what the learner ANSWERS, and what that answer
+        establishes, are a separate authority this slice deliberately does not touch.
+      */}
+      <div className="mt-5">
+        <JourneyReading journey={snapshot.journey ?? null} locale={locale} />
       </div>
 
       <div className="mt-4">

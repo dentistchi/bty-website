@@ -43,7 +43,7 @@ import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { linkLearnerIdentity, readEventJourney } from "./foundryTrainingService";
-import { journeyActionDecision } from "@/domain/foundry/module/journey";
+import { journeyActionDecision, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
 /**
  * Foundry PDF Study Room — service layer (the DOCUMENT content type).
@@ -447,6 +447,15 @@ export type PublicDocumentSnapshot = {
     /** Shared Understanding question (Slice 3.1B-3G). null = none OR not yet unlocked. */
     shared_question: string | null;
   } | null;
+  /**
+   * The authored program the Host published, delivered to the learner (Slice 3.2R-R8A).
+   *
+   * The frozen module snapshot has always carried the whole journey; the document path simply
+   * never read it, so a PDF learner met the training as one question under a label that said
+   * REFLECTION. The YouTube path has rendered it since 3.2C. Same projection, same source, same
+   * component — this closes a delivery gap, not a schema one.
+   */
+  journey?: PublicJourney | null;
   stage: PublicTrainingStage;
   xp_status: PublicXpStatus;
 };
@@ -458,6 +467,7 @@ function buildDocumentSnapshot(
   content: DocContentRow | null,
   tokenVersionCurrent: boolean,
   xpOverride?: PublicXpStatus,
+  journey?: PublicJourney | null,
 ): PublicDocumentSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -511,6 +521,13 @@ function buildDocumentSnapshot(
     event: { title: event.title, status: event.status },
     participant: participant ? { display_name: participant.display_name } : null,
     document,
+    /*
+      Delivered ONLY from the frozen event module snapshot (Slice 3.2R-R8A) — never from the
+      draft, which the Host may still be editing. `toPublicJourney` is the same projection the
+      training path uses: grounded elements only, id/kind/content, no provenance, no
+      confirmation status, no storage anything.
+    */
+    journey: journey ?? null,
     stage,
     xp_status,
   };
@@ -524,7 +541,8 @@ async function docSnapshotFor(
 ): Promise<PublicDocumentSnapshot> {
   const progress = await getDocProgress(admin, event.id, participant.id);
   const content = await getDocContent(admin, event.id);
-  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride);
+  const journey = toPublicJourney(await readEventJourney(admin, event.id));
+  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride, journey);
 }
 
 /** The unified public snapshot for a DOCUMENT room (pre-join and every stage). */
@@ -550,7 +568,12 @@ export async function getPublicDocumentSnapshot(
       .then(() => undefined, () => undefined);
   }
 
-  return buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version);
+  /*
+    The journey is read only for a JOINED participant, mirroring `content` above: someone who
+    has not joined sees the door, not the program.
+  */
+  const journey = participant ? toPublicJourney(await readEventJourney(admin, event.id)) : null;
+  return buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey);
 }
 
 /** Resolve + verify the caller is a joined participant, then mint a signed read url. */
