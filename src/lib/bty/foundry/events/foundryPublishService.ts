@@ -196,8 +196,24 @@ async function createDocumentEventFromDraftAsset(
 
   if (!asset) return { ok: false, reason: "material_pdf_required" };
 
-  const pageCountCheck = validatePageCount(asset.page_count ?? 1);
-  const pageCount = pageCountCheck.ok ? pageCountCheck.value : 1;
+  /*
+    UNKNOWN IS NOT ONE (Slice 3.2R-R6).
+
+    This read `asset.page_count ?? 1` and fell back to 1 again when validation failed. For a
+    four-page PDF whose count could not be derived, that published a one-page reading gate: the
+    learner's room says "1 / 1", `isReadingRequirementMet` is satisfied after page one, and
+    `document_read_completed_at` — the EXPOSED authority — is written for a quarter of the
+    document. A real one-page PDF and an unknown count are different facts and must not share a
+    value.
+
+    So an unverified count now REFUSES publication. Nothing downstream has to distinguish them,
+    because an unverified count never reaches a snapshot.
+  */
+  const pageCountCheck = validatePageCount(asset.page_count ?? 0);
+  if (asset.page_count === null || !pageCountCheck.ok) {
+    return { ok: false, reason: "material_page_count_unverified" };
+  }
+  const pageCount = pageCountCheck.value;
   const minReadSeconds = computeMinReadSeconds(pageCount);
 
   const programId = await programIdForNewRun(admin, ownerUserId, title, lineage);

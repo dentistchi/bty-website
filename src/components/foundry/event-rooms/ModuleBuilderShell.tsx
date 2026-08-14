@@ -1461,6 +1461,8 @@ function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
       would be false, and would invite them to press a button that cannot help. Both are
       "reopen this training", never "create it a second time".
     */
+    case "material_page_count_unverified":
+      return t.publishErrPageCount;
     case "session_created_view_unavailable":
     case "publish_receipt_unreconciled":
       return t.publishErrSessionCreated;

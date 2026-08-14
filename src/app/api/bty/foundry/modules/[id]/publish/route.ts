@@ -31,6 +31,9 @@ function statusForReason(reason: string): number {
   // server error and not a silent Everyone fallback.
   if (reason === "zero_recipients") return 409;
   if (reason === "not_a_host") return 403;
+  // Slice 3.2R-R6 — the document is attached but BTY could not read how long it is. The Host
+  // resolves it by reopening or replacing the file; nothing was published.
+  if (reason === "material_page_count_unverified") return 400;
   /*
     Slice 3.2Q-R1 — two states where the SESSION EXISTS. Neither is a failed creation, and
     neither may be reported as one. 409: the durable publish is there and something about it

@@ -5,6 +5,7 @@ import { inspectAsset, MAX_ASSETS_PER_DRAFT, MAX_DRAFT_TOTAL_BYTES } from "@/dom
 import { FOUNDRY_DOC_BUCKET, deleteFoundryDocument } from "./documentStorage";
 import { getOwnerDraft, type ServiceResult } from "./foundryModuleService";
 import { toClientAsset, type ClientAsset, type DraftAssetRow } from "./moduleClient";
+import { derivePdfPageCountDeep } from "./pdfPageCountDeep";
 
 /**
  * Foundry Guided Module Builder — draft assets (Slice 2.1.2).
@@ -113,7 +114,18 @@ export async function attachAsset(
   const totalBefore = rows.reduce((s, r) => s + (Number(r.byte_size) || 0), 0);
   if (totalBefore + bytes.byteLength > MAX_DRAFT_TOTAL_BYTES) return { ok: false, reason: "draft_asset_quota" };
 
-  const { ext, fileKind, mime, pageCount, pageCountVerified, width, height } = inspected.value;
+  const { ext, fileKind, mime, width, height } = inspected.value;
+  /*
+    DEEP PAGE COUNT (Slice 3.2R-R6). The pure inspector scans raw bytes and honestly reports
+    `null` for a PDF whose page tree lives in compressed object streams — which is what
+    `SafetyToolkit_Huddles.pdf` is. Publish then turned that `null` into 1, and would have told
+    a learner a four-page document was fully read after page one. The deep pass inflates those
+    streams and applies the SAME counting rules; when it still cannot tell, `null` survives and
+    publish refuses rather than inventing a number.
+  */
+  const derivedDeep = fileKind === "pdf" ? await derivePdfPageCountDeep(bytes) : null;
+  const pageCount = fileKind === "pdf" ? derivedDeep!.count : inspected.value.pageCount;
+  const pageCountVerified = fileKind === "pdf" ? derivedDeep!.count !== null : inspected.value.pageCountVerified;
   const path = `${ownerUserId}/${crypto.randomUUID()}.${ext}`;
   const contentHash = sha256Hex(bytes);
 

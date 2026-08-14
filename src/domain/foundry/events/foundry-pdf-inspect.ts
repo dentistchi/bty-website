@@ -42,7 +42,8 @@ export type PdfPageCountResult = {
   /** Server-derived page count, or null when the bytes were undeterminable. */
   count: number | null;
   /** How it was derived — for observability + the verified flag. */
-  method: "page_tree_count" | "type_page_objects" | "undeterminable";
+  /** `object_stream_count` = found only after inflating compressed object streams (3.2R-R6). */
+  method: "page_tree_count" | "type_page_objects" | "object_stream_count" | "undeterminable";
 };
 
 /**
@@ -58,9 +59,19 @@ export type PdfPageCountResult = {
  */
 export function derivePdfPageCount(bytes: Uint8Array): PdfPageCountResult {
   if (!bytes || bytes.length === 0) return { count: null, method: "undeterminable" };
-
   // latin1 keeps every byte 1:1 so byte-offset regexes are stable.
-  const text = new TextDecoder("latin1").decode(bytes);
+  return countPagesInPdfText(new TextDecoder("latin1").decode(bytes));
+}
+
+/**
+ * The same counting rules, over ANY latin1 view of PDF syntax — the raw file, or the inflated
+ * contents of its object streams (Slice 3.2R-R6).
+ *
+ * Extracted so the deep pass can reuse the exact rules rather than reimplementing them beside
+ * a decompressor. The rules are the authority; where the bytes came from is the caller's
+ * problem, and the codec stays out of the domain.
+ */
+export function countPagesInPdfText(text: string): PdfPageCountResult {
 
   // Primary: the largest /Count in the page tree (root node's total).
   let maxCount = 0;

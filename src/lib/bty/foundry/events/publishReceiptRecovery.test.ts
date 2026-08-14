@@ -392,3 +392,71 @@ describe("[3.2R-R3] publish refuses a PDF the Host has not looked at", () => {
     expect(r.ok).toBe(true);
   });
 });
+
+describe("[3.2R-R6] publish refuses a document whose length it cannot read", () => {
+  /*
+    A four-page PDF with an underivable page count would have published as ONE page, because the
+    publish path read `asset.page_count ?? 1`. The learner's room would have said "1 / 1" and
+    `document_read_completed_at` — the EXPOSED authority — would have been written for a quarter
+    of the document. A real one-page PDF and an unknown length are different facts.
+  */
+  const pdfDraft = (): Row => ({
+    id: V2, owner_user_id: OWNER, status: "draft", module_version: 2,
+    approved_at: null, published_at: null, program_id: "prog-shared",
+    answers: {
+      problem: "Read the safety manual.", audienceType: "everyone",
+      recurringMoment: "at each handoff point",
+      observableBehavior: "Staff follow the lockout steps in order.",
+      successEvidence: "Observed correct lockout on the floor.", evidenceType: "seen",
+      learningNeeds: ["know"], materialIntent: "pdf", followUpDays: 0,
+      completionPrompt: "What will you double-check next shift?",
+      materialReviewV1: { contentHash: "hash-a", confirmedAt: "2026-08-13T10:00:00.000Z" },
+    },
+  });
+  const asset = (page_count: number | null, verified: boolean) => ({
+    id: "asset-1", draft_id: V2, file_kind: "pdf", storage_bucket: "foundry-docs",
+    storage_path: "owner-1/uuid.pdf", original_filename: "safety.pdf", byte_size: 1000,
+    page_count, page_count_verified: verified, content_hash: "hash-a", created_at: "t",
+  });
+
+  it("an unverified page count refuses, and creates nothing", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft()],
+      foundry_module_draft_assets: [asset(null, false)],
+      foundry_event_module: [], foundry_events: [], foundry_event_document_content: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("material_page_count_unverified");
+    expect(tables.foundry_events).toHaveLength(0);
+    expect(tables.foundry_event_module).toHaveLength(0);
+    expect(tables.foundry_module_drafts[0].status).toBe("draft");
+  });
+
+  it("a GENUINE one-page PDF still publishes — unknown and 1 are not the same fact", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft()],
+      foundry_module_draft_assets: [asset(1, true)],
+      foundry_event_module: [], foundry_events: [], foundry_event_document_content: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+    const content = tables.foundry_event_document_content[0];
+    expect(content.page_count).toBe(1);
+    expect(content.min_read_seconds).toBe(15);
+  });
+
+  it("a four-page PDF freezes FOUR pages and a reading time derived from four", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [pdfDraft()],
+      foundry_module_draft_assets: [asset(4, true)],
+      foundry_event_module: [], foundry_events: [], foundry_event_document_content: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, V2, "en");
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+    const content = tables.foundry_event_document_content[0];
+    expect(content.page_count).toBe(4);
+    // The formula is unchanged (3.2R-R6 changed the INPUT, never the policy).
+    expect(content.min_read_seconds).toBeGreaterThanOrEqual(15);
+  });
+});

@@ -266,6 +266,8 @@ export type ModuleBuilderCopy = {
   matFiles: string;
   /** Slice 3.2R-R3 — open the REAL attached document before publishing it. */
   viewDocument: string;
+  /** Slice 3.2R-R6 — an unverified page count blocks publish; it is never defaulted to 1. */
+  publishErrPageCount: string;
   viewDocumentError: string;
   materialReviewTitle: string;
   materialReviewBody: string;
@@ -492,6 +494,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pagesLabel: (n) => (n === 1 ? "1 page" : `${n} pages`),
     matFiles: "Files and documents",
     viewDocument: "View document",
+    publishErrPageCount: "We couldn’t read how many pages this document has. Open it, or replace the file, before you create the session.",
     viewDocumentError: "We couldn’t open this document. Check it before you create the session.",
     materialReviewTitle: "Check the document",
     materialReviewBody:
@@ -787,6 +790,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pagesLabel: (n) => `${n}페이지`,
     matFiles: "파일 및 문서",
     viewDocument: "문서 보기",
+    publishErrPageCount: "이 문서의 페이지 수를 확인하지 못했습니다. 세션을 만들기 전에 문서를 열어 보거나 파일을 교체해 주세요.",
     viewDocumentError: "문서를 열지 못했습니다. 세션을 만들기 전에 확인해 주세요.",
     materialReviewTitle: "문서를 확인하세요",
     materialReviewBody:
