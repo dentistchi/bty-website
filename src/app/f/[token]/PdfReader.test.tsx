@@ -33,7 +33,7 @@ const copy: PdfReaderCopy = {
   pageOf: (p, t) => `${p} / ${t}`,
   prev: "Back",
   nextPage: "Next page",
-  continueToReflection: "Continue to reflection",
+  continueAfterReading: "Continue",
 };
 
 function renderReader(over: Partial<React.ComponentProps<typeof PdfReader>> = {}) {
@@ -84,14 +84,14 @@ describe("PdfReader — Next progression (2.3A.2)", () => {
     await screen.findByText("2 / 2");
     const btn = screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
-    expect(screen.queryByRole("button", { name: "Continue to reflection" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
 
-  it("on the last page, once reading is complete, it becomes an enabled 'Continue to reflection' → onContinue", async () => {
+  it("on the last page, once reading is complete, it becomes an enabled continue action → onContinue", async () => {
     const onContinue = vi.fn();
     renderReader({ initialPage: 2, readingComplete: true, onContinue });
     await screen.findByText("2 / 2");
-    const btn = screen.getByRole("button", { name: "Continue to reflection" }) as HTMLButtonElement;
+    const btn = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
     fireEvent.click(btn);
     expect(onContinue).toHaveBeenCalledTimes(1);

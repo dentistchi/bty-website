@@ -100,7 +100,7 @@ type Copy = {
   pageOf: (page: number, total: number) => string;
   prev: string;
   nextPage: string;
-  continueToReflection: string;
+  continueAfterReading: string;
   docLoadError: string;
 };
 
@@ -150,7 +150,7 @@ const COPY: Record<Locale, Copy> = {
     pageOf: (p, t) => `${p} / ${t}`,
     prev: "Back",
     nextPage: "Next page",
-    continueToReflection: "Continue to reflection",
+    continueAfterReading: "Continue",
     docLoadError: "This document is not available. Ask the host to check the event.",
   },
   ko: {
@@ -198,7 +198,7 @@ const COPY: Record<Locale, Copy> = {
     pageOf: (p, t) => `${p} / ${t}`,
     prev: "이전",
     nextPage: "다음 페이지",
-    continueToReflection: "성찰로 계속",
+    continueAfterReading: "계속하기",
     docLoadError: "문서를 사용할 수 없습니다. 호스트에게 확인을 요청하세요.",
   },
 };
@@ -296,9 +296,23 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
 
   const t = COPY[locale];
 
-  // "Continue to reflection" (final page, reading requirement met) reveals the
-  // already-rendered, server-unlocked reflection form. It never fakes completion —
-  // the reflection only exists in the DOM when the server marked reading_complete.
+  /*
+    The post-reading continue action (final page, reading requirement met) scrolls to the
+    already-rendered, server-unlocked completion surface. It never fakes completion — that
+    surface only exists in the DOM when the server marked reading_complete.
+
+    IT USED TO SAY "Continue to reflection" (Slice 3.2R-R8B-R2). That was true when the only
+    question a document learner ever answered lived below the PDF. After R8B the REFLECT
+    question and its answer box are ABOVE the document, and this button leads DOWN to BEFORE YOU
+    FINISH and SHOW WHAT YOU UNDERSTOOD — so the label was naming a section the learner had
+    already passed, and pointing away from it.
+
+    "Continue" / "계속하기" is the phrase the sibling learner client already uses for exactly
+    this move (`checkpointContinue`). It is also contract-NEUTRAL, which is why it needs no
+    derivation: a legacy document event, whose single question really does sit after the PDF,
+    is served just as truthfully as a new-contract one. A label naming a destination would have
+    had to be derived per event; this one is simply true in both.
+  */
   const onContinue = useCallback(() => {
     reflectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
@@ -706,7 +720,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
               pageOf: t.pageOf,
               prev: t.prev,
               nextPage: t.nextPage,
-              continueToReflection: t.continueToReflection,
+              continueAfterReading: t.continueAfterReading,
             }}
           />
         ) : (

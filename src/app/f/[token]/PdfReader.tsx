@@ -49,7 +49,7 @@ export type PdfReaderCopy = {
   /** Non-final page: advance to the next PDF page. */
   nextPage: string;
   /** Final page, once the server-gated reading requirement is met. */
-  continueToReflection: string;
+  continueAfterReading: string;
 };
 
 export function PdfReader({
@@ -211,11 +211,19 @@ export function PdfReader({
         {(() => {
           const loading = numPages === 0;
           const isLastPage = numPages > 0 && page >= numPages;
-          // On the last page the control becomes "Continue to reflection" ONLY when
-          // the server has confirmed the reading requirement (readingComplete). Until
-          // then it is a visibly-disabled "Next page" (never an enabled no-op tap).
+          /*
+            On the last page the control becomes the continue action ONLY when the server has
+            confirmed the reading requirement (readingComplete). Until then it is a
+            visibly-disabled "Next page" — never an enabled no-op tap.
+
+            It used to say "Continue to reflection", and after Slice 3.2R-R8B that was false: the
+            REFLECT question and its answer box are ABOVE the document, and this button leads
+            DOWN to the completion surface. The copy is supplied by the caller and named for
+            WHERE it sits rather than what it leads to, so the reader never re-acquires an
+            opinion about the flow's content.
+          */
           const canContinue = isLastPage && readingComplete;
-          const label = canContinue ? copy.continueToReflection : copy.nextPage;
+          const label = canContinue ? copy.continueAfterReading : copy.nextPage;
           const disabled = loading || (isLastPage && !canContinue);
           return (
             <button

@@ -1,15 +1,31 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 /*
   pdfjs needs DOMMatrix, which jsdom lacks. The stub also FIRES a heartbeat on mount, because
   that is the whole point: the live defect was the POST result coming back through `applyResult`
   and deleting the journey. A stub that renders nothing would never reproduce it.
 */
 vi.mock("./PdfReader", () => ({
-  PdfReader: ({ onHeartbeat }: { onHeartbeat: (b: { lastPage: number; viewedPages: number[]; activeMsDelta: number }) => void }) => {
+  PdfReader: ({
+    onHeartbeat,
+    onContinue,
+    copy,
+    readingComplete,
+  }: {
+    onHeartbeat: (b: { lastPage: number; viewedPages: number[]; activeMsDelta: number }) => void;
+    onContinue: () => void;
+    copy: { continueAfterReading: string };
+    readingComplete: boolean;
+  }) => {
     setTimeout(() => onHeartbeat({ lastPage: 4, viewedPages: [1, 2, 3, 4], activeMsDelta: 5000 }), 0);
-    return null;
+    // The real reader shows this control on the last page once the server confirms reading.
+    // Rendering it from the SAME props lets the post-read CTA be asserted for what it says.
+    return readingComplete ? (
+      <button type="button" onClick={onContinue}>
+        {copy.continueAfterReading}
+      </button>
+    ) : null;
   },
 }));
 import FoundryDocumentClient from "./FoundryDocumentClient";
@@ -144,6 +160,41 @@ describe("[3.2R-R8A-R1] a resumed, read-complete learner still sees the program"
     expect(screen.getAllByText("What usually happens when an action needs an owner after a huddle?")).toHaveLength(1);
     // And completion_check is still not part of the reading list.
     expect(screen.queryByTestId("journey-el-completion_check")).toBeNull();
+  });
+
+  it("A/B — the post-read button no longer points back at REFLECT", async () => {
+    /*
+      SLICE 3.2R-R8B-R2. On the device this still said "Continue to reflection" after the last
+      page. That was true when the only question a document learner answered lived below the
+      PDF; after R8B the REFLECT question and its answer box are ABOVE it, so the label named a
+      section the learner had already passed and pointed away from where it actually goes.
+    */
+    mockFetch(RESUMED, { ok: true, ...RESUMED });
+    render(<FoundryDocumentClient token="btyroom.a.b" />);
+    await waitFor(() => expect(screen.getByTestId("journey-el-reflection")).toBeTruthy());
+
+    expect(screen.queryByRole("button", { name: "Continue to reflection" })).toBeNull();
+    const cta = screen.getByRole("button", { name: "Continue" });
+
+    // B — it leads DOWN to the completion surface, which is already on the page.
+    const target = screen.getByText("BEFORE YOU FINISH").closest("div")!;
+    target.scrollIntoView = vi.fn();
+    fireEvent.click(cta);
+    expect(screen.getByText("BEFORE YOU FINISH")).toBeTruthy();
+    expect(screen.getByText("What exactly will you say when you state the owner, action, and deadline for each agreed item?")).toBeTruthy();
+
+    // D/E/F — clicking navigates only. Every answer control is still there, still separate.
+    expect(screen.getByTestId("journey-reflection-input")).toBeTruthy();
+    expect(screen.getAllByRole("textbox").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("C — a legacy document event, whose only question IS after the PDF, reads just as truthfully", async () => {
+    // "Continue" is contract-neutral on purpose: it needs no per-event derivation to stay true.
+    mockFetch({ ...RESUMED, reflection_required: false }, { ok: true, ...RESUMED, reflection_required: false });
+    render(<FoundryDocumentClient token="btyroom.a.b" />);
+    await waitFor(() => expect(screen.getByText("BEFORE YOU FINISH")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+    expect(screen.queryByTestId("journey-reflection-input")).toBeNull();
   });
 
   it("a legacy event asks for no reflection answer at all", async () => {
