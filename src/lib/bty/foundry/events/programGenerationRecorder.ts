@@ -388,15 +388,17 @@ export async function readAdoptionFacts(
     proposalDigest: string | null;
     /** The acceptance contract it was generated under (Slice 3.2P-W4-R1). */
     proposalVersion: string | null;
+    /** Whether the adoption receipt is already on the ledger (Slice 3.2R-R8F). */
+    receiptAlreadyStamped: boolean;
   } | null;
   latestSuccessfulAttemptId: string | null;
 }> {
   const { data: row } = await admin
     .from(ATTEMPTS)
-    .select(PROPOSAL_DIGEST_ENABLED ? "id,draft_id,outcome,context_fingerprint,proposal_version,proposal_digest" : "id,draft_id,outcome,context_fingerprint,proposal_version")
+    .select(PROPOSAL_DIGEST_ENABLED ? "id,draft_id,outcome,context_fingerprint,proposal_version,proposal_digest,applied_at" : "id,draft_id,outcome,context_fingerprint,proposal_version,applied_at")
     .eq("id", input.attemptId)
     .eq("owner_user_id", input.ownerUserId)
-    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string; proposal_version?: string | null; proposal_digest?: string | null }>();
+    .maybeSingle<{ id: string; draft_id: string; outcome: string; context_fingerprint: string; proposal_version?: string | null; proposal_digest?: string | null; applied_at?: string | null }>();
 
   const { data: latest } = await admin
     .from(ATTEMPTS)
@@ -418,6 +420,7 @@ export async function readAdoptionFacts(
           contextFingerprint: row.context_fingerprint,
           proposalDigest: row.proposal_digest ?? null,
           proposalVersion: row.proposal_version ?? null,
+          receiptAlreadyStamped: row.applied_at != null,
         }
       : null,
     latestSuccessfulAttemptId: latest?.id ?? null,

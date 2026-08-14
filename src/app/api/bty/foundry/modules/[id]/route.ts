@@ -210,6 +210,12 @@ async function proveAdoption(
       before any write — identity is not validity (Slice 3.2P-W4-R1).
     */
     currentAuthorityVersion: PROGRAM_AUTHORSHIP_VERSION,
+    /*
+      Read from the LEDGER, never from the marker (Slice 3.2R-R8F). An adoption whose receipt is
+      already stamped is a completed fact, and a recovery must re-read it as adopted rather than
+      re-judge it against a floor that moved afterwards.
+    */
+    receiptAlreadyStamped: facts.attempt?.receiptAlreadyStamped === true,
     latestSuccessfulAttemptId: facts.latestSuccessfulAttemptId,
     /*
       Recomputed from the journey being proved — the one in this patch for an initial claim,

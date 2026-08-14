@@ -192,6 +192,38 @@ describe("createOrResumeRevision — version lineage (B) + prefill (C) + no Prog
     expect(Object.keys(tables)).not.toContain("foundry_events");
   });
 
+  /*
+    THE NEW VERSION HAS ADOPTED NOTHING (Slice 3.2R-R8F).
+
+    MEASURED on the pilot: draft `843bbe80` (module_version 3) durably carried
+    `programAdoptionV1 = {attemptId: 765f612f…}` while owning ZERO generation attempts of its
+    own, and that attempt was applied 11.5 hours BEFORE the draft was created. The marker could
+    only have been inherited. `materialReviewV1` was already stripped here for the same reason;
+    the adoption marker is the same kind of record — an act performed by a DIFFERENT draft — and
+    was missed.
+  */
+  it("V3 does not inherit the parent's adoption marker (it has adopted nothing)", async () => {
+    const seed = guidedSeed();
+    seed.drafts[0].answers = {
+      problem: "P",
+      audienceType: "everyone",
+      realityGroundedJourneyV1: { elements: [{ kind: "scenario" }] },
+      programAdoptionV1: { attemptId: "11111111-2222-3333-4444-555555555555" },
+    };
+    const { admin, tables } = makeAdmin(seed);
+    await createOrResumeRevision(admin, OWNER, "E1");
+    const v2 = tables.foundry_module_drafts.find((d) => d.id !== "v1")!;
+    const a = v2.answers as Row;
+    // The false first-person claim must not ride into the new version…
+    expect(a.programAdoptionV1).toBeUndefined();
+    // …while the content it produced is still legitimately inherited as prefill.
+    expect(a.problem).toBe("P");
+    expect(a.realityGroundedJourneyV1).toEqual({ elements: [{ kind: "scenario" }] });
+    // And the parent keeps its own truthful receipt — provenance is preserved, not erased.
+    const v1 = tables.foundry_module_drafts.find((d) => d.id === "v1")!;
+    expect((v1.answers as Row).programAdoptionV1).toEqual({ attemptId: "11111111-2222-3333-4444-555555555555" });
+  });
+
   it("editing V2 answers never mutates V1 answers (independent rows)", async () => {
     const { admin, tables } = makeAdmin(guidedSeed());
     await createOrResumeRevision(admin, OWNER, "E1");

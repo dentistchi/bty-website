@@ -175,11 +175,29 @@ export async function createOrResumeRevision(
 
     Same content, new version, fresh look. The confirmation binds to a draft AND to exact bytes;
     a matching hash across versions is not evidence that anyone looked at this one.
+
+    THE NEW VERSION HAS ADOPTED NOTHING EITHER (Slice 3.2R-R8F).
+
+    `programAdoptionV1` is the same kind of record and was missed. It names the generation attempt
+    THIS draft adopted, and an attempt belongs to exactly one draft — so copying it makes the new
+    version claim, in the first person, an act performed by its parent. MEASURED on the pilot:
+    draft `843bbe80` (module_version 3) carried `{attemptId: 765f612f…}` while owning zero
+    generation attempts, and that attempt was applied 11.5 hours before the draft existed.
+
+    Stripping it loses no history. The parent keeps its own marker, the attempt keeps its
+    `applied_at` receipt, and where this version's content came from is recorded by
+    `parent_module_id` — which is lineage, and the right authority for that question.
   */
   const parentAnswers = latestPub.answers
-    ? (JSON.parse(JSON.stringify(latestPub.answers)) as ModuleDraftAnswers & { materialReviewV1?: unknown })
+    ? (JSON.parse(JSON.stringify(latestPub.answers)) as ModuleDraftAnswers & {
+        materialReviewV1?: unknown;
+        programAdoptionV1?: unknown;
+      })
     : latestPub.answers;
-  if (parentAnswers && typeof parentAnswers === "object") delete (parentAnswers as { materialReviewV1?: unknown }).materialReviewV1;
+  if (parentAnswers && typeof parentAnswers === "object") {
+    delete (parentAnswers as { materialReviewV1?: unknown }).materialReviewV1;
+    delete (parentAnswers as { programAdoptionV1?: unknown }).programAdoptionV1;
+  }
 
   const created = await createDraft(admin, ownerUserId, {
     parentDraftId: latestPub.id,

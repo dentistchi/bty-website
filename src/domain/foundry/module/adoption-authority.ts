@@ -95,6 +95,14 @@ export type AdoptionClaim = {
   adoptedJourneyDigest: string | null;
   /** The acceptance contract in force NOW, from `PROGRAM_AUTHORSHIP_VERSION`. */
   currentAuthorityVersion: string;
+  /**
+   * Does this attempt ALREADY carry its `applied_at` receipt (Slice 3.2R-R8F)? Only a `recovery`
+   * consults it, and only to stop re-deciding an adoption that is already complete.
+   *
+   * OPTIONAL, AND ABSENT MEANS "NO". A caller that cannot see the ledger gets the strict answer,
+   * so the lenient branch is never reached by omission.
+   */
+  receiptAlreadyStamped?: boolean;
 };
 
 export type AdoptionDecision = { ok: true } | { ok: false; reason: AdoptionRefusal };
@@ -146,7 +154,23 @@ export function decideAdoptionReceipt(claim: AdoptionClaim): AdoptionDecision {
     distinct from `proposal_mismatch`: nothing about this proposal changed. The rules did.
   */
   if (claim.attempt.proposalVersion !== claim.currentAuthorityVersion) {
-    return { ok: false, reason: "proposal_no_longer_valid" };
+    /*
+      EXCEPT WHERE THERE IS NOTHING LEFT TO DECIDE (Slice 3.2R-R8F).
+
+      The gate above asks "may this be adopted today?". A RECOVERY whose attempt already carries
+      its `applied_at` receipt is not asking that. The adoption happened, the ledger recorded it,
+      and a floor that moved afterwards cannot un-happen it — MEASURED on `093b0361`/`764411ae`,
+      adopted under v9 with a byte-exact digest, which every later save re-judged against v22 and
+      reported as refused.
+
+      Deliberately the narrowest possible carve-out: recovery mode only, stamped receipt only, and
+      strictly AFTER every identity check — so a receipt can never launder a marker that names
+      another draft, another owner or another journey. An unstamped old proposal is still refused,
+      and an initial claim can never reach here at all.
+    */
+    if (!(claim.mode === "recovery" && claim.receiptAlreadyStamped === true)) {
+      return { ok: false, reason: "proposal_no_longer_valid" };
+    }
   }
   return { ok: true };
 }
