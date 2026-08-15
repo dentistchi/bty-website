@@ -25,7 +25,8 @@ App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exis
 IAP review screenshots (×3)           PREPARED      Founder-approved capture, alpha stripped (§7)
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
 App Review demo credentials           AUTHORIZED — account not yet created (§8.3)
-App Review P1–P5 proof                HALTED at §8.6 — needs approval for 2 production writes
+W1 room + W2 event                    AUTHORIZED 2026-08-15 — Founder-executed on the device
+P6 reviewer-route gate                DERIVED (§8.8) · HALTED on W3, the device-session mint
 release mode → Manual                 READY_TO_ENTER
 build 100                             NOT UPLOADED (unchanged, deliberate)
 PASS_1H                               INACTIVE (no write issued this session)
@@ -709,6 +710,88 @@ account identity       the review account's ADDRESS may appear in this doc if th
 P5's screenshot is expected to be the §7 surface again, and while the catalog stays inactive it
 will read `Passes are not on sale right now.` — that still proves *reachability*, which is what
 P5 asserts. It does not prove purchasability, and §7.4 already says so.
+
+### 8.8 P6 — the reviewer's real route, derived before it is observed
+
+> **FOUNDER AUTHORIZATION 2026-08-15 — W1 and W2 APPROVED** (exactly one room, exactly one event,
+> both through the normal shipping onboarding flow, because they are the writes a normal new user
+> performs). Not authorized: additional rooms, manager/passcode assignment, entitlement or pass
+> grant, catalog activation, Apple purchase, fulfilment, allowlist/admin access, or any hidden
+> reviewer bypass. **New gate P6:** after P5, sign out and sign back in with the same account and
+> measure the route an Apple reviewer will actually experience — because W1 has changed the
+> account's durable state. Read/observation only until another write is required.
+
+**The premise of P6 is correct, and my §8.5 notes are wrong for the second run.** After W1 the
+account owns a room, so the first-run screen is gone forever. Below is what the shipping code says
+will happen, written **before** the observation so the Founder's evidence can contradict it.
+
+#### Derived route — three facts from the shipping sources
+
+```
+1  signOut() does NOT end an active Event          AppSession.swift:818 — stated in the code,
+                                                    and it clears local credentials only
+2  route after re-sign-in is decided by ONE test   me.rooms.isEmpty ? .signedInNoRoom : .myNorebang
+                                                    (AppSession.swift:347/461/508/654/731)
+                                                    → the account owns 1 room → .myNorebang
+3  an Event ends ONLY by an explicit call          /dj/end-event or the admin end route. There is
+                                                    no TTL, no expiry, no sweeper — status leaves
+                                                    'active' only when somebody ends it
+```
+
+#### Prediction — falsifiable, and the point of writing it down
+
+```
+P6a  after sign-out + sign-in, the app lands on MY NOREBANG, not "Create Your First Norebang"
+P6b  the single room card reads LIVE / 진행 중, because W2's event is still active (fact 1 + 3)
+P6c  tapping "Enter Norebang" → hostRoomDeviceToken → restore → hasActiveEvent == true
+       → straight to .connected / QueueScreen, and startNewEvent is NEVER called
+P6d  the access-status chip → "Access Status" → "Buy a pass" is then reachable with no further write
+```
+
+**If P6b comes back IDLE instead of LIVE, the prediction is wrong and P6c changes** — entry would
+call `startNewEvent`, which is a second event start and therefore outside the W2 authorization.
+That is precisely why this is written as a prediction rather than an assumption.
+
+#### The consequence that matters for App Review
+
+Because an event persists until explicitly ended, the review account's session will still be
+active weeks from now. **The Apple reviewer will not have to create a norebang and will not have to
+start a session** — they sign in, land on My Norebang, tap the room card, and are in the queue.
+The final Review Notes must describe *that* route, which is not the route §8.5 currently describes.
+
+#### HALT — the one write P6 needs, reported before it happens
+
+```
+W3  device-session mint    POST /api/host/rooms/{slug}/device  →  createDeviceSession()
+                           inserts a Room-scoped device credential row, stamped with account_id
+```
+
+`enterRoomAndStart` calls this **unconditionally**, before it ever looks at the event — so *any*
+room entry mints one, and P1's sign-out cleared the local copy from W2. Reaching the commerce
+surface after P6 is therefore impossible without it.
+
+What W3 is, stated exactly so the decision is easy:
+
+```
+same endpoint already exercised inside the authorized W2 — not a new kind of write
+NOT an event start · NOT a room · NOT an entitlement or pass · NOT a catalog write
+NOT an allowlist or admin grant · NOT a purchase · NOT a bypass
+subordinate by construction: revoking the account's membership kills it on the next request
+```
+
+**Awaiting approval for W3.** P6a and P6b need no write at all and can be observed the moment the
+Founder signs back in; only P6c/P6d are held.
+
+#### The Review Notes are NOT finalized here
+
+Per the Founder's instruction, the final notes are written only after P6 is observed. §8.5 stands
+as the *first-run* description and is already known to be wrong for the reviewer. The change it
+will need, once P6 confirms the route:
+
+```
+step 2  "Create Your First Norebang" / "Create Norebang"   →  "My Norebang", tap the room card
+step 3  merges into step 2 — no separate session start, because the session is already live
+```
 
 ---
 
