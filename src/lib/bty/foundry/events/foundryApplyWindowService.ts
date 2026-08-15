@@ -82,22 +82,29 @@ export async function materializeApplyWindow(
       .maybeSingle<{ module_snapshot: { realityGroundedJourneyV1?: RealityGroundedJourneyV1 } | null }>();
     if (!journeyActionDecision(mod?.module_snapshot?.realityGroundedJourneyV1)) return "skipped";
 
-    // Title snapshot — non-learner-authored context so the row still says what it came from after
-    // its FKs are nulled. The same field, for the same reason, as the follow-up obligation.
+    /*
+      Title snapshot — non-learner-authored context so the row still says what it came from after
+      its FKs are nulled. The same field, for the same reason, as the follow-up obligation.
+
+      `foundry_events` HAS NO `organization_id` (Slice 3.2R-R2.6). Selecting one returned 42703 for
+      the whole statement, so `ev` was null, the title silently became the "Foundry training"
+      fallback, and the org was lost — on a fail-soft path that reports neither. The organization
+      is carried by the ASSIGNMENT, which is where the follow-up sibling has always read it from.
+    */
     const { data: ev } = await admin
       .from("foundry_events")
-      .select("title, organization_id")
+      .select("title")
       .eq("id", eventId)
-      .maybeSingle<{ title: string | null; organization_id: string | null }>();
+      .maybeSingle<{ title: string | null }>();
 
     // Assignment lineage when the learner reached this training through one. Optional by measured
     // precedent: only 4 of 7 live follow-up rows carry it.
     const { data: assignment } = await admin
       .from("foundry_event_assignments")
-      .select("id")
+      .select("id, organization_id")
       .eq("event_id", eventId)
       .eq("user_id_snapshot", authUserId)
-      .maybeSingle<{ id: string }>();
+      .maybeSingle<{ id: string; organization_id: string | null }>();
 
     /*
       THE WINDOW OPENS ON THE COMPLETION DAY, NOT TODAY.
@@ -115,9 +122,10 @@ export async function materializeApplyWindow(
       p_event_id: eventId,
       p_progress_id: progressId,
       p_assignment_id: assignment?.id ?? null,
-      p_organization_id: ev?.organization_id ?? null,
+      p_organization_id: assignment?.organization_id ?? null,
       p_user_id_snapshot: authUserId,
-      p_source_training_title: (ev?.title ?? "Foundry training").slice(0, 300),
+      // Never empty — the CHECK domain requires a value, and an untitled event is not a data error.
+      p_source_training_title: (ev?.title ?? "").trim().slice(0, 300) || "Foundry training",
       p_apply_days: APPLY_WINDOW_DAYS,
       p_completed_at: completedAtIso,
       p_timezone_snapshot: tz.timezone,

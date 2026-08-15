@@ -18,6 +18,15 @@ export type TodayItem = {
   title: string;
   /** Existing canonical in-shell destination. */
   deepLink: string;
+  /**
+   * Secondary, NON-PRIVATE provenance for the item — which training this came from
+   * (Slice 3.2R-R2.6). Carried verbatim from the canonical source projection; never derived
+   * here, never AI-authored, and never learner-private text. Absent for sources that have none.
+   *
+   * It exists because two APPLY_DUE items are two sentences the learner wrote themselves, and
+   * nothing in the sentence says where it came from.
+   */
+  context?: string | null;
 };
 
 export const TODAY_TOP_N = 3;

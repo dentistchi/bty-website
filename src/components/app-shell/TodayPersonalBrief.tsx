@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { applyStateLabel, applyStateTone } from "@/components/app-shell/applyWindowCopy";
 
 /**
  * Today — Personal Daily Brief (Slice 3.1B-3J). Deterministic reminders + an OPTIONAL, consent-gated
@@ -333,9 +334,8 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
     neutral tone while every other category is untouched.
   */
   const stateLabel = (s: Reminder["state"], c?: Reminder["category"]) => {
-    if (c === "APPLY_DUE") {
-      return s === "overdue" ? t.applyClosed : s === "due_today" ? t.applyLastDay : t.applyThisWeek;
-    }
+    // ONE authority for the Apply chip, shared with the mounted surface (Slice 3.2R-R2.6).
+    if (c === "APPLY_DUE") return applyStateLabel(s, loc);
     return s === "overdue" ? t.overdue
       : s === "needs_revision" ? t.needsRevision
         : s === "due_today" ? t.dueToday
@@ -352,7 +352,7 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   // needs_revision is amber (actionable, not punitive) — NEVER the red overdue tone.
   const stateTone = (s: Reminder["state"], c?: Reminder["category"]) =>
     // An Apply Window is NEVER red, in any state. See stateLabel.
-    c === "APPLY_DUE" ? (s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35" : "text-white/50 border-white/12")
+    c === "APPLY_DUE" ? applyStateTone(s)
     : s === "overdue" ? "text-red-300/80 border-red-400/30"
       : s === "needs_revision" ? "text-[#E5B769] border-[#C9A66B]/45"
         : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35"

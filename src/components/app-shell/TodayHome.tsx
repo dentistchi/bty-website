@@ -9,6 +9,7 @@ import {
   type PrimaryActionResult,
 } from "@/domain/daily/todayPrimaryAction";
 import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
+import { applyStateLabel, applyStateTone } from "@/components/app-shell/applyWindowCopy";
 
 /**
  * Today — simplified hierarchy (App Shell + Today Simplification V1, Phases 3–4 + empty-state patch).
@@ -39,6 +40,8 @@ type Reminder = {
   title: string;
   state: PrimaryActionCandidate["state"];
   canonicalDeepLink: string;
+  /** APPLY_DUE → the source training title. ACTION_REVISION → the Host's note (not rendered here). */
+  note?: string | null;
 };
 type HostAttentionCategory = "FOLLOW_UP_OVERDUE" | "FOLLOW_UP_NEEDED" | "SHARED_REVIEW_DUE";
 type FollowUpCategory = "FOLLOW_UP_OVERDUE" | "FOLLOW_UP_NEEDED";
@@ -293,8 +296,21 @@ export default function TodayHome({
   // required learning / needs revision / verification pending / follow-up). Host
   // "reviews" (creator reviewing others) are NOT reminders, so they stay a compact
   // separate row (never duplicated into the list).
+  /*
+    `note` MUST be carried (Slice 3.2R-R2.6). The server has always sent the source training title
+    for APPLY_DUE; this map narrowed it away, so the card showed a decision sentence with no idea
+    which training it came from — and with two apply items, no way to tell them apart. The same
+    fetched-but-narrowed shape that lost the FOLLOW_UP rows in 3.2G.
+  */
   const todayItems = normalizeTodayItems(
-    reminders.map((r) => ({ stableId: r.stableId, category: r.category, state: r.state, title: r.title, deepLink: r.canonicalDeepLink })),
+    reminders.map((r) => ({
+      stableId: r.stableId,
+      category: r.category,
+      state: r.state,
+      title: r.title,
+      deepLink: r.canonicalDeepLink,
+      context: r.category === "APPLY_DUE" ? r.note ?? null : null,
+    })),
   );
   const { visible: todayVisibleItems, hasMore: todayHasMore } = todayVisible(todayItems, expanded);
   const reviews =
@@ -359,20 +375,49 @@ export default function TodayHome({
           </button>
         ) : (
           <>
-            {todayVisibleItems.map((it) => (
-              <a
-                key={it.stableId}
-                href={it.deepLink}
-                data-testid="today-item"
-                data-category={it.category}
-                className="flex flex-col gap-0.5 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-4 py-3"
-              >
-                <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
-                  {t.catEyebrow[it.category as PrimaryActionCandidate["category"]] ?? it.category}
-                </span>
-                <span className="text-[0.95rem] font-medium leading-6 text-white/90">{it.title}</span>
-              </a>
-            ))}
+            {todayVisibleItems.map((it) => {
+              /*
+                APPLY THIS WEEK card hierarchy (Slice 3.2R-R2.6):
+
+                  eyebrow   APPLY THIS WEEK
+                  title     the learner's OWN decision sentence — always primary
+                  context   which training it came from — quiet provenance
+                  chip      "This week" — quiet timing
+
+                Scoped to APPLY_DUE on purpose: every other category renders exactly as before.
+                Nothing here is a task. No checkbox, no Done, no XP, no percent, no streak, and
+                never red — and following the link only reads the learner's own record.
+              */
+              const isApply = it.category === "APPLY_DUE";
+              const context = isApply && typeof it.context === "string" && it.context.trim() !== "" ? it.context.trim() : null;
+              return (
+                <a
+                  key={it.stableId}
+                  href={it.deepLink}
+                  data-testid="today-item"
+                  data-category={it.category}
+                  className="flex flex-col gap-0.5 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-4 py-3"
+                >
+                  <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">
+                    {t.catEyebrow[it.category as PrimaryActionCandidate["category"]] ?? it.category}
+                  </span>
+                  <span className="text-[0.95rem] font-medium leading-6 text-white/90">{it.title}</span>
+                  {context ? (
+                    <span data-testid="today-item-context" className="text-[0.72rem] leading-5 text-white/45">
+                      {context}
+                    </span>
+                  ) : null}
+                  {isApply ? (
+                    <span
+                      data-testid="today-item-timing"
+                      className={"mt-1 self-start rounded-md border px-2 py-0.5 text-[0.66rem] " + applyStateTone(it.state)}
+                    >
+                      {applyStateLabel(it.state, loc)}
+                    </span>
+                  ) : null}
+                </a>
+              );
+            })}
             {todayHasMore ? (
               <button
                 type="button"

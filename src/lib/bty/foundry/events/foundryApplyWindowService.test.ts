@@ -20,6 +20,24 @@ vi.mock("@/lib/bty/daily/userDay", () => ({
   resolveUserTzContext: async () => ({ timezone: LA }),
 }));
 
+/*
+  THE REAL COLUMN SETS, as `information_schema` reports them on staging (Slice 3.2R-R2.6).
+
+  This exists because the previous fixture invented `foundry_events.organization_id`, the fake
+  `select()` ignored the column list, and the service shipped a read that live PostgREST answers
+  with 42703 — failing the WHOLE statement, so the title silently became the "Foundry training"
+  fallback and the organization was lost. A mock that accepts any column can only ever prove the
+  code runs, never that it asked for something real.
+
+  `foundry_events` genuinely has no organization; the ASSIGNMENT carries it.
+*/
+const SCHEMA: Record<string, readonly string[]> = {
+  foundry_events: ["id", "owner_user_id", "title", "status", "join_version", "created_at", "closed_at", "content_type", "program_id"],
+  foundry_event_assignments: ["id", "event_id", "organization_id", "membership_id", "user_id", "membership_id_snapshot", "user_id_snapshot", "status", "assigned_at", "assigned_by", "assigned_by_snapshot", "participant_id", "claimed_at", "completed_at", "revoked_at", "updated_at"],
+  foundry_event_training_progress: ["id", "event_id", "participant_id", "linked_user_id", "completed_at", "decision_response_text", "response_text", "learner_reflection_text", "xp_awarded_at", "updated_at"],
+  foundry_event_module: ["event_id", "module_snapshot"],
+};
+
 /** Fake PostgREST + an RPC that enforces the REAL unique(progress_id) idempotency. */
 function makeFakeAdmin(tables: Tables, opts: { rpcError?: boolean; missingTable?: boolean } = {}) {
   const created: Row[] = [];
@@ -30,7 +48,15 @@ function makeFakeAdmin(tables: Tables, opts: { rpcError?: boolean; missingTable?
     }
     const q: Record<string, unknown> = {
       _rows: (tables[table] ?? []).slice(),
-      select() { return this; },
+      /** 42703 is a STATEMENT error: one unknown column and the whole read returns no data. */
+      select(this: { _rows: Row[] }, cols?: string) {
+        const known = SCHEMA[table];
+        if (known && typeof cols === "string" && cols !== "*") {
+          const unknown = cols.split(",").map((c) => c.trim()).filter((c) => c && !known.includes(c));
+          if (unknown.length > 0) this._rows = [];
+        }
+        return this;
+      },
       returns() { return this; },
       order() { return this; },
       eq(this: { _rows: Row[] }, c: string, v: unknown) { this._rows = this._rows.filter((r) => r[c] === v); return this; },
@@ -104,8 +130,10 @@ function seed(o: { completed?: boolean; decision?: boolean; grounded?: boolean; 
     foundry_event_module: [
       { event_id: EVENT, module_snapshot: { realityGroundedJourneyV1: journey(o.grounded ?? true) } },
     ],
-    foundry_events: [{ id: EVENT, title: "Huddle ownership", organization_id: "org-1" }],
-    foundry_event_assignments: o.assignment ? [{ id: "as-1", event_id: EVENT, user_id_snapshot: USER }] : [],
+    foundry_events: [{ id: EVENT, title: "Huddle ownership" }],
+    foundry_event_assignments: o.assignment
+      ? [{ id: "as-1", event_id: EVENT, user_id_snapshot: USER, organization_id: "org-1" }]
+      : [],
   };
 }
 
@@ -265,5 +293,61 @@ describe("R2 owner-scoped read", () => {
   it("a read failure is fail-soft", async () => {
     const broken = { from: () => { throw new Error("x"); }, rpc: async () => { throw new Error("x"); } } as unknown as SupabaseClient;
     expect(await listMyApplyWindows(broken, USER, new Date(), LA)).toEqual([]);
+  });
+});
+
+describe("R2.6 — the title snapshot survives the read", () => {
+  /*
+    MEASURED on the live row: window `6435c742` stored `source_training_title = "Foundry training"`
+    while the follow-up row materialized one second earlier — same completion, same event — stored
+    "Establishing Action Ownership in Huddles". One statement asked for a column that does not
+    exist, and a fail-soft path turned that into a wrong title and a null organization instead of
+    an error anyone could see.
+  */
+  it("stores the REAL event title, never the fallback", async () => {
+    const { admin, created } = makeFakeAdmin(seed({ assignment: true }));
+    expect(await call(admin)).toBe("created");
+    expect(created[0]!.p_source_training_title).toBe("Huddle ownership");
+    expect(created[0]!.p_source_training_title).not.toBe("Foundry training");
+  });
+
+  it("reads ONLY columns that exist on foundry_events", async () => {
+    /* The fixture now answers an unknown column the way PostgREST does: with nothing at all. */
+    const { admin } = makeFakeAdmin(seed({ assignment: true }));
+    const asked: string[] = [];
+    const spied = {
+      ...admin,
+      from: (t: string) => {
+        const q = (admin as unknown as { from: (t: string) => Record<string, unknown> }).from(t);
+        const sel = q.select as (c?: string) => unknown;
+        q.select = function (c?: string) { if (t === "foundry_events" && c) asked.push(c); return sel.call(this, c); };
+        return q;
+      },
+    } as unknown as SupabaseClient;
+    await materializeApplyWindow(spied, { eventId: EVENT, progressId: PROGRESS, authUserId: USER });
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).not.toContain("organization_id");
+  });
+
+  it("the organization comes from the ASSIGNMENT — the only row that has one", async () => {
+    const { admin, created } = makeFakeAdmin(seed({ assignment: true }));
+    await call(admin);
+    expect(created[0]!.p_organization_id).toBe("org-1");
+  });
+
+  it("open-link learning has no assignment, so no organization — and still a real title", async () => {
+    const { admin, created } = makeFakeAdmin(seed({ assignment: false }));
+    await call(admin);
+    expect(created[0]!.p_organization_id).toBeNull();
+    expect(created[0]!.p_assignment_id).toBeNull();
+    expect(created[0]!.p_source_training_title).toBe("Huddle ownership");
+  });
+
+  it("an untitled event still satisfies the CHECK domain", async () => {
+    const t = seed({ assignment: true });
+    t.foundry_events = [{ id: EVENT, title: "   " }];
+    const { admin, created } = makeFakeAdmin(t);
+    await call(admin);
+    expect(created[0]!.p_source_training_title).toBe("Foundry training");
   });
 });
