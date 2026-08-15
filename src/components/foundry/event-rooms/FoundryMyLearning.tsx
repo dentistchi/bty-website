@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
+import { EVIDENCE_DISPLAY_ORDER, LEARNER_RUNG_LABEL } from "./evidenceLadderCopy";
 
 /**
  * Foundry → My Learning (Slice 3.1B-3I re-placement).
@@ -40,9 +42,17 @@ type ReviewedPlanCard = {
   reviewedAt: string | null;
 };
 
+/**
+ * What this training has established since (Slice 3.2R-R1). Rungs are decided server-side by the
+ * canonical `projectEvidence`; this component renders names and never derives one.
+ */
+type EvidenceEntry = { entryId: string; established: EvidenceLevel[] };
+
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
+  evidenceLabel: string;
+  evidenceHint: string;
   sharedLabel: string;
   noShared: string;
   viewInCenter: string;
@@ -65,6 +75,10 @@ const COPY: Record<Locale, {
   en: {
     title: "My Learning",
     subtitle: "What you understood, in your own words.",
+    evidenceLabel: "Since this training",
+    // Deliberately does NOT say "nothing here is overdue": naming the anxiety in order to deny it
+    // is what plants it. States what the strip is, and lets the absence of urgency speak.
+    evidenceHint: "This fills in over time, as things happen at work.",
     sharedLabel: "What I understood",
     noShared: "No shared understanding was recorded for this training.",
     viewInCenter: "View my private reflection in Center",
@@ -90,6 +104,8 @@ const COPY: Record<Locale, {
   ko: {
     title: "내 학습",
     subtitle: "내가 이해한 내용을 나의 말로.",
+    evidenceLabel: "이 교육 이후",
+    evidenceHint: "시간이 지나면서 실제 현장에서 일어난 일들이 하나씩 채워집니다.",
     sharedLabel: "내가 이해한 것",
     noShared: "이 교육에는 공유 이해 답변이 없습니다.",
     viewInCenter: "Center에서 나의 비공개 성찰 보기",
@@ -139,6 +155,9 @@ export default function FoundryMyLearning({
   const backText = `← ${backLabel ?? t.backDefault}`;
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
   const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
+  // entryId → established rungs. Absent = not loaded / unavailable → the strip simply does not
+  // render for that row. Evidence is secondary; its absence must never blank a completion.
+  const [evidence, setEvidence] = useState<Map<string, EvidenceLevel[]>>(new Map());
 
   const load = useCallback(async () => {
     try {
@@ -162,6 +181,36 @@ export default function FoundryMyLearning({
       setItems(mapped);
     } catch {
       setItems([]);
+    }
+  }, []);
+
+  /*
+    Evidence rungs (Slice 3.2R-R1) — a SEPARATE owner-scoped fetch, for the same reason the
+    reviewed plans below are: this list must render the learner's completions even if evidence
+    assembly is slow or unavailable. A failed load leaves the map empty and the strip hidden;
+    it never blanks a row and never shows an error, because "not established" and "not loaded"
+    must not look different to someone reading their own history.
+  */
+  const loadEvidence = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bty/foundry/evidence/mine", { credentials: "include", cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: Array<{ entryId?: string; established?: string[] }> };
+      const next = new Map<string, EvidenceLevel[]>();
+      for (const it of Array.isArray(data?.items) ? data.items : []) {
+        const id = String(it.entryId ?? "");
+        if (!id) continue;
+        // Filter against the canonical order so an unknown value can never render as a rung.
+        next.set(
+          id,
+          (Array.isArray(it.established) ? it.established : []).filter((v): v is EvidenceLevel =>
+            (EVIDENCE_DISPLAY_ORDER as readonly string[]).includes(v),
+          ),
+        );
+      }
+      setEvidence(next);
+    } catch {
+      /* evidence is additive — never surface a failure on this surface */
     }
   }, []);
 
@@ -197,15 +246,18 @@ export default function FoundryMyLearning({
   useEffect(() => {
     void load();
     void loadReviewedPlans();
+    void loadEvidence();
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         void load();
         void loadReviewedPlans();
+        void loadEvidence();
       }
     };
     const onFocus = () => {
       void load();
       void loadReviewedPlans();
+      void loadEvidence();
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
@@ -213,7 +265,7 @@ export default function FoundryMyLearning({
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [load, loadReviewedPlans]);
+  }, [load, loadReviewedPlans, loadEvidence]);
 
   return (
     <section data-testid="foundry-my-learning" className="flex flex-col gap-4 px-4 py-4">
@@ -269,6 +321,42 @@ export default function FoundryMyLearning({
                   <p className="mt-1.5 text-sm leading-6 text-white/40">{t.noShared}</p>
                 )}
               </div>
+              {/*
+                SINCE THIS TRAINING (Slice 3.2R-R1) — secondary to the completion above it.
+
+                ESTABLISHED RUNGS ONLY. The first draft rendered all seven with the unearned ones
+                dimmed, and that is the mistake 3.2N already named: a training that published no
+                observable standard can NEVER reach OBSERVED, so greying it tells the learner they
+                failed to be seen when in fact nobody was ever given the standing to look. The
+                same is true of PRACTICED with no published practice, and APPLIED with no
+                follow-up window. A dimmed rung is a claim about applicability that this component
+                has no authority to make.
+
+                So it states what happened, and the hint line carries the rest. Nothing is greyed,
+                so there is nothing to feel behind on — no count, no fraction, no bar, no red.
+              */}
+              {(evidence.get(it.entryId)?.length ?? 0) > 0 ? (
+                <div data-testid="my-learning-evidence" className="mt-1">
+                  <span className="text-[0.66rem] font-medium uppercase tracking-[0.14em] text-white/35">
+                    {t.evidenceLabel}
+                  </span>
+                  <ul className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                    {EVIDENCE_DISPLAY_ORDER.filter((level) => (evidence.get(it.entryId) ?? []).includes(level)).map(
+                      (level) => (
+                        <li
+                          key={level}
+                          data-testid={`evidence-rung-${level}`}
+                          className="flex items-center gap-1.5 rounded-full bg-[#C9A66B]/12 px-2 py-0.5 text-[0.72rem] text-[#C9A66B]/95"
+                        >
+                          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A66B]/80" />
+                          {LEARNER_RUNG_LABEL[loc][level]}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                  <p className="mt-1.5 text-[0.68rem] leading-4 text-white/30">{t.evidenceHint}</p>
+                </div>
+              ) : null}
               {/* Private Reflection is NOT shown here — it lives in Center. Deep-link to the exact entry. */}
               <a
                 href={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(it.entryId)}`}

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hasCompletedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
+import type { EvidenceProjection } from "@/domain/foundry/events/learner-evidence";
+import { projectEvidenceByProgressId } from "./learnerEvidenceService";
 
 /**
  * Foundry Shared Understanding — Host educational review (Slice 3.1B-3G).
@@ -38,6 +40,20 @@ export type SharedUnderstandingResponse = {
    * run can belong to them. Saying "not practised yet" would be a claim the data cannot make.
    */
   practice: "practised" | "not_practised" | "unattributable";
+  /**
+   * Slice 3.2R-R1 — HOW FAR HAS EVIDENCE PROGRESSED, and nothing else.
+   *
+   * Rung NAMES only, from the canonical `projectEvidence`. This field cannot carry text: its
+   * type has no string field, and the assembly that produces it reduces every private column to
+   * a boolean before returning. So the Host learns that a reflection EXISTS and still cannot
+   * read a word of it — which is the whole point of showing it.
+   *
+   * NOT A SCORE. There is no total, no percentage, no ranking and no comparison between
+   * learners. An empty array is a legitimate answer and means "nothing established yet", never
+   * "failed" — and it says nothing about whether the training itself was completed, which is
+   * `completed` above and remains a separate fact.
+   */
+  evidence: EvidenceProjection;
   reviewStatus: HostReviewStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
@@ -157,6 +173,17 @@ export async function getSharedUnderstandingForOwner(
     }
   }
 
+  /*
+    Evidence rungs (Slice 3.2R-R1), from the ONE canonical projection. Assembled in a single
+    batched pass for the whole roster rather than per row, and read-only: it adds no column to
+    the allow-list above and returns no text of any kind.
+  */
+  const evidenceByProgress = await projectEvidenceByProgressId(
+    admin,
+    progress.map((p) => ({ progressId: p.id, eventId, userId: p.linked_user_id })),
+  );
+  const noEvidence: EvidenceProjection = { established: [], highestEstablished: null };
+
   const responses: SharedUnderstandingResponse[] = progress.map((p) => ({
     participantId: p.participant_id,
     progressId: p.id,
@@ -168,6 +195,7 @@ export async function getSharedUnderstandingForOwner(
     decisionResponse: p.decision_response_text,
     decisionSubmittedAt: p.decision_submitted_at,
     practice: !p.linked_user_id ? "unattributable" : practiced.has(p.linked_user_id) ? "practised" : "not_practised",
+    evidence: evidenceByProgress.get(p.id) ?? noEvidence,
     reviewStatus: p.host_review_status ?? "NOT_REVIEWED",
     reviewNote: p.host_review_note,
     reviewedAt: p.host_reviewed_at,

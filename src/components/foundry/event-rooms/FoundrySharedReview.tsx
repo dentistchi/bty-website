@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
+import { EVIDENCE_DISPLAY_ORDER, HOST_RUNG_LABEL } from "./evidenceLadderCopy";
 
 /**
  * Host Shared Understanding review (Slice 3.1B-3G, CHECKPOINT 4).
@@ -26,6 +28,11 @@ type Response = {
   decisionSubmittedAt: string | null;
   /** Slice 3.2M-2 — did they rehearse it? `unattributable` = anonymous, so nobody can say. */
   practice?: "practised" | "not_practised" | "unattributable";
+  /**
+   * Slice 3.2R-R1 — how far evidence has progressed. Rung NAMES only; the API cannot return
+   * learner text on this field, and the Host cannot reach the private reflection through it.
+   */
+  evidence?: { established?: EvidenceLevel[]; highestEstablished?: EvidenceLevel | null };
   reviewStatus: ReviewStatus;
   reviewNote: string | null;
   reviewedAt: string | null;
@@ -41,6 +48,8 @@ const COPY: Record<Locale, {
   practised: string;
   notPractised: string;
   practiceUnattributable: string;
+  evidenceHeading: string;
+  evidenceFraming: string;
   save: string;
   saving: string;
   notePlaceholder: string;
@@ -54,6 +63,8 @@ const COPY: Record<Locale, {
     practised: "Practised",
     notPractised: "Not practised yet",
     practiceUnattributable: "Joined without an account — practice can't be matched to them",
+    evidenceHeading: "Evidence so far",
+    evidenceFraming: "How far evidence has progressed — not a rating of this person. Private reflections are never shown here.",
     save: "Save review",
     saving: "Saving…",
     notePlaceholder: "Optional educational note…",
@@ -72,6 +83,8 @@ const COPY: Record<Locale, {
     practised: "연습함",
     notPractised: "아직 연습하지 않음",
     practiceUnattributable: "계정 없이 참여 — 연습 기록을 이 사람과 연결할 수 없습니다",
+    evidenceHeading: "지금까지의 근거",
+    evidenceFraming: "근거가 어디까지 진행되었는지를 보여줍니다 — 이 사람에 대한 평가가 아닙니다. 비공개 성찰은 여기에 표시되지 않습니다.",
     save: "검토 저장",
     saving: "저장 중…",
     notePlaceholder: "선택 교육 메모…",
@@ -206,6 +219,39 @@ export default function FoundrySharedReview({
             ) : null}
             {(r.sharedResponse ?? "").trim().length > 0 ? (
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white/85">{r.sharedResponse}</p>
+            ) : null}
+            {/*
+              EVIDENCE SO FAR (Slice 3.2R-R1). Rung names only — this block has no access to any
+              learner text and renders none.
+
+              ESTABLISHED RUNGS ONLY, for the same reason as the learner surface and on the
+              authority of 3.2N: a training that published no observable standard has no
+              observation path, so rendering a dim "Independently observed" would tell the Host
+              this person was not seen, when nobody was ever authorised to look. The Host's
+              question — how far has evidence progressed — is answered by what IS established.
+            */}
+            {(r.evidence?.established?.length ?? 0) > 0 ? (
+              <div className="mt-3" data-testid="host-evidence">
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/40">
+                  {t.evidenceHeading}
+                </span>
+                <ul className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  {EVIDENCE_DISPLAY_ORDER.filter((level) => (r.evidence?.established ?? []).includes(level)).map(
+                    (level) => (
+                      <li
+                        key={level}
+                        data-testid={`host-evidence-rung-${level}`}
+                        className="rounded-full bg-[#C9A66B]/12 px-2 py-0.5 text-[11px] text-[#C9A66B]/95"
+                      >
+                        {HOST_RUNG_LABEL[loc][level]}
+                      </li>
+                    ),
+                  )}
+                </ul>
+                <p className="mt-1.5 text-[10px] leading-4 text-white/35" data-testid="host-evidence-framing">
+                  {t.evidenceFraming}
+                </p>
+              </div>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               {REVIEWABLE.map((s) => (

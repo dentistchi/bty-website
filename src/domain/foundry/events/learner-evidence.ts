@@ -135,3 +135,38 @@ export function highestEstablished(facts: LearnerEvidenceFacts): EvidenceLevel |
   }
   return null;
 }
+
+/**
+ * THE ONE PUBLIC SHAPE EVERY SURFACE READS (Slice 3.2R-R1).
+ *
+ * The ladder above was written, tested and then read by nothing for three slices. Wiring it to
+ * two surfaces at once is exactly the moment each of them would otherwise grow its own slightly
+ * different assembly — one calling `establishedEvidence`, the other re-deriving "highest" from
+ * the array, and the two disagreeing the first time a rung is added.
+ *
+ * So there is one projection, it COMPOSES the two functions above rather than reimplementing
+ * either, and `EvidenceLevel` is reused verbatim. No parallel enum exists, and none may be
+ * introduced: a surface that wants different words renders different words from these values.
+ *
+ * NOTHING IS STORED. This is a shape, not a record. It is computed per read, from facts, every
+ * time — the same rule the rungs themselves are under.
+ *
+ * IT DOES NOT SPEAK ABOUT COMPLETION. `completed` is an INPUT here, never an output: training
+ * completion is its own durable state with its own meaning, and a record can be truthfully
+ * complete while establishing `exposed` and nothing else. A caller that wants completion reads
+ * `completed_at`, which this projection never touches.
+ */
+export type EvidenceProjection = {
+  /** The rungs this record legitimately supports, lowest first. Empty is a valid, honest answer. */
+  readonly established: EvidenceLevel[];
+  /** The highest of them, or null when none is established. Never inferred from `established.length`. */
+  readonly highestEstablished: EvidenceLevel | null;
+};
+
+/** The canonical projection for one learner's record. Pure; the only shape surfaces may render. */
+export function projectEvidence(facts: LearnerEvidenceFacts): EvidenceProjection {
+  return {
+    established: establishedEvidence(facts),
+    highestEstablished: highestEstablished(facts),
+  };
+}
