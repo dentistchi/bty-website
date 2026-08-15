@@ -177,6 +177,23 @@ export function ModuleBuilderShell({
           if (body?.adoption && body.adoption.ok === false) {
             setAdoptionRefusal(body.adoption.reason ?? "refused");
           }
+        } else {
+          /*
+            A REFUSAL IS NOT A DROPPED CONNECTION (Slice 3.2R-R2.4).
+
+            This branch did not exist: the adoption body was parsed only under `res.ok`, so a
+            409 `proposal_no_longer_valid` — the zero-write refusal R2.3-R3 introduced — set no
+            reason at all, and the Host was told "Your connection dropped before it saved."
+            That is factually wrong and, worse, unactionable: the one thing they needed to know
+            is that the program must be drafted again, and the copy sent them to retry the exact
+            action that cannot succeed.
+
+            The status carries the meaning, so it is read here and surfaced with its own code.
+          */
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          if (typeof body?.error === "string" && body.error.length > 0) {
+            setAdoptionRefusal(body.error);
+          }
         }
         return res.ok;
       } catch {
@@ -609,10 +626,23 @@ export function ModuleBuilderShell({
         realityGroundedJourneyV1: next,
         ...(attemptId ? { programAdoptionV1: { attemptId } } : {}),
       };
+      /*
+        OPTIMISTIC LOCALLY, ROLLED BACK ON REFUSAL (Slice 3.2R-R2.4).
+
+        The journey and the adoption marker were written into client state BEFORE the save and
+        never withdrawn if the server refused. On a zero-write 409 that left the Builder holding
+        a journey the database does not have — which is how a Host comes to believe a program was
+        added, confirms its sections, and reaches for "Approve & create session" over nothing.
+      */
+      const previous = answersRef.current;
       answersRef.current = merged;
       setAnswers(merged);
       const saved = await saver.flush({ answers: merged, currentStep: stepRef.current });
-      if (!saved) return { status: "save_failed" };
+      if (!saved) {
+        answersRef.current = previous;
+        setAnswers(previous);
+        return { status: "save_failed" };
+      }
       // Read back through the declared type: assigning null above narrows the ref, and the
       // value we care about is written by the save that just ran.
       const adoption = adoptionResultRef.current as AdoptionResult | null;

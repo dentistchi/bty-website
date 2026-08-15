@@ -649,6 +649,7 @@ describe("[3.2L-R11] the Apply boundary", () => {
 describe("[3.2L-R11.3A] the surface never claims an adoption the server refused", () => {
   it("G10: an authority refusal replaces the added confirmation", async () => {
     const onGenerate = vi.fn(async () => ok);
+    const applied = vi.fn(async () => ({ status: "adopted" as const }));
     const { rerender } = render(
       <ProgramAuthorship
         draftId="d-1"
@@ -656,7 +657,7 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
         journey={undefined}
         ready
         onGenerate={onGenerate}
-        onApply={vi.fn()}
+        onApply={applied}
         currentContextFingerprint={FP}
       />,
     );
@@ -664,7 +665,15 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
     await act(async () => {
       fireEvent.click(screen.getByTestId("program-apply"));
     });
-    // Optimistically "added" — that is the existing UX and it stays.
+    /*
+      Slice 3.2R-R2.4 — the mock now returns what the REAL handler returns. It previously
+      returned `undefined`, and the surface defaulted that to "adopted"; this test was therefore
+      exercising an accidental optimism that contradicted its own neighbour, R11.3B ("the surface
+      waits for the server before saying added"). `applyProgram` always resolves to a status
+      object, so a missing one is now treated as a failure and modelling it is the honest fixture.
+
+      The guarantee under test is unchanged: a refusal REPLACES the added confirmation.
+    */
     expect(screen.getByTestId("program-applied")).toBeTruthy();
 
     // …until the save comes back carrying the server's refusal.
@@ -675,7 +684,7 @@ describe("[3.2L-R11.3A] the surface never claims an adoption the server refused"
         journey={undefined}
         ready
         onGenerate={onGenerate}
-        onApply={vi.fn()}
+        onApply={applied}
         currentContextFingerprint={FP}
         adoptionRefusal="context_moved"
       />,

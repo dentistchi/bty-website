@@ -393,13 +393,37 @@ export function ProgramAuthorship({
       is provable, and until it answers the honest state is "adding", not "added".
     */
     setPhase("applying");
-    const outcome = await onApply(
-      applyProgramProposal(journey, proposal, choices, { titleDecision, editedTitle: titleEdit }),
-      attemptId,
-    );
-    setApplyOutcome(outcome ?? { status: "adopted" });
-    // The work is finished — nothing left to resume (Slice 3.2L-R11.4K).
-    clearCachedProposal(draftId);
+    /*
+      NOTHING IS ASSUMED AND NOTHING IS THROWN AWAY UNLESS IT WORKED (Slice 3.2R-R2.4).
+
+      Three faults sat in these five lines, and together they are how a Host ends up believing a
+      program was added when the database never received it:
+
+        * `outcome ?? { status: "adopted" }` defaulted a MISSING answer to success, in the very
+          function whose comment says "NO OPTIMISTIC 'ADDED'".
+        * `clearCachedProposal` ran unconditionally, so a refused Apply destroyed the reviewed
+          work the Host would need in order to retry — the continuity cache R11.4K exists to keep.
+        * there was no `catch`, so a throw left the surface stuck on "applying" forever with no
+          error and no way back.
+
+      Now: a missing outcome is a failure, the cache survives anything but a real adoption, and a
+      thrown error becomes a visible, retryable state.
+    */
+    let outcome: ProgramApplyOutcome;
+    try {
+      outcome =
+        (await onApply(
+          applyProgramProposal(journey, proposal, choices, { titleDecision, editedTitle: titleEdit }),
+          attemptId,
+        )) ?? { status: "save_failed" };
+    } catch {
+      outcome = { status: "save_failed" };
+    }
+    setApplyOutcome(outcome);
+    // Only a real adoption finishes the work. Anything else keeps it resumable.
+    if (outcome.status === "adopted" || outcome.status === "adopted_receipt_pending") {
+      clearCachedProposal(draftId);
+    }
     setPhase("applied");
   }, [proposal, journey, titleDecision, titleEdit, attemptId, onApply, reviewBlock, proposalIsStale, sectionText, sectionAdjusted, decisions, draftId]);
 
@@ -549,7 +573,9 @@ export function ProgramAuthorship({
       return (
         <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-save-failed">
           <p className="text-sm font-medium text-amber-100/90">This program wasn’t added.</p>
-          <p className="mt-1 text-sm leading-6 text-amber-100/75">Your connection dropped before it saved. Try adding it again.</p>
+          <p className="mt-1 text-sm leading-6 text-amber-100/75">
+            Nothing was saved, and your draft is unchanged. Your review is still here — try adding it again.
+          </p>
         </section>
       );
     }
@@ -568,8 +594,9 @@ export function ProgramAuthorship({
             This program wasn’t added. Your other changes were saved.
           </p>
           <p className="mt-1 text-sm leading-6 text-amber-100/75">
-            Your training moved on since BTY wrote this draft. Draft the program again so it matches what your
-            training says now.
+            {adoptionRefusal === "proposal_no_longer_valid"
+              ? "BTY’s rules for writing programs changed after this one was drafted, so it can’t be added as it stands. Draft the program again — your training answers are unchanged."
+              : "Your training moved on since BTY wrote this draft. Draft the program again so it matches what your training says now."}
           </p>
         </section>
       );
