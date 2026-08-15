@@ -106,6 +106,10 @@ const COPY: Record<Locale, {
       ACTION_DUE: "Action due",
       REQUIRED_LEARNING: "Required learning",
       PRACTICE_DUE: "Practice due",
+      // Slice 3.2R-R2. Not "Action due" — that is the Arena contract above, and this is the
+      // learner's own sentence coming back to them. Not a deadline word, because the window is
+      // not a deadline: nothing fails when it closes.
+      APPLY_DUE: "Apply this week",
       FOLLOW_UP_DUE: "Follow-up due",
     },
     fallbackHeader: "Your next step",
@@ -138,6 +142,7 @@ const COPY: Record<Locale, {
       ACTION_DUE: "행동 마감",
       REQUIRED_LEARNING: "필수 학습",
       PRACTICE_DUE: "연습 예정",
+      APPLY_DUE: "이번 주에 적용하기",
       FOLLOW_UP_DUE: "후속 확인",
     },
     fallbackHeader: "오늘의 다음 단계",

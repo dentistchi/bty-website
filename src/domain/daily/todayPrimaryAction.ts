@@ -23,19 +23,21 @@
  * No urgency or completion is fabricated — fallbacks 6/7 fire only when their measured signal is true.
  */
 
-export type PrimaryActionCategory =
-  | "REQUIRED_LEARNING"
-  | "ACTION_DUE"
-  | "ACTION_REVISION"
-  | "PRACTICE_DUE"
-  | "FOLLOW_UP_DUE";
+import type { ReminderCategory, ReminderState } from "./todayReminders";
 
-export type PrimaryActionState =
-  | "overdue"
-  | "needs_revision"
-  | "due_today"
-  | "incomplete_required"
-  | "upcoming";
+/*
+  DERIVED FROM THE CANONICAL REMINDER UNIONS, NOT RESTATED (Slice 3.2R-R2).
+
+  These were two hand-copied duplicates of `ReminderCategory` and `ReminderState`, and the
+  duplication is exactly what broke: adding APPLY_DUE / `active` to the reminder domain left this
+  file silently describing a smaller world, while `TodayHome` maps EVERY reminder into a candidate
+  — so an APPLY_DUE item would have indexed `CATEGORY_RANK` as `undefined` and sorted on NaN.
+
+  Aliasing makes that class of drift impossible: a new category or state now fails to compile here
+  until it is ranked, which is the failure mode we want.
+*/
+export type PrimaryActionCategory = ReminderCategory;
+export type PrimaryActionState = ReminderState;
 
 export type PrimaryActionCandidate = {
   stableId: string;
@@ -67,6 +69,20 @@ const CATEGORY_RANK: Record<PrimaryActionCategory, number> = {
   REQUIRED_LEARNING: 2,
   PRACTICE_DUE: 3,
   FOLLOW_UP_DUE: 4,
+  /*
+    APPLY_DUE is LAST on purpose (Slice 3.2R-R2), and that placement is what makes adding it safe.
+
+    A strictly-lowest-priority category can never displace an existing winner: it is selected only
+    when every candidate is an APPLY_DUE item. So no learner's primary action changes because this
+    category now exists — proven in `todayPrimaryAction.applyDue.test.ts`.
+
+    It is included rather than filtered out because the alternative is worse in the case that
+    matters: a learner whose only live obligation is their own decision would otherwise fall
+    through to a generic "find a program" fallback while a real, personal commitment sat in the
+    list below it. Whether Apply should ever outrank the categories above is a product decision
+    nobody has made, so it takes the humblest position that is still honest.
+  */
+  APPLY_DUE: 5,
 };
 
 /** Lower rank = more urgent. Reuses the canonical reminder STATE_RANK ordering. */
@@ -74,8 +90,9 @@ const STATE_RANK: Record<PrimaryActionState, number> = {
   overdue: 0,
   needs_revision: 1,
   due_today: 2,
-  incomplete_required: 3,
-  upcoming: 4,
+  active: 3,
+  incomplete_required: 4,
+  upcoming: 5,
 };
 
 const NO_FALLBACK: PrimaryActionFallbackContext = {

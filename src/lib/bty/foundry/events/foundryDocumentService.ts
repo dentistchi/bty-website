@@ -44,6 +44,7 @@ import {
 import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
+import { materializeApplyWindow } from "./foundryApplyWindowService";
 import { linkLearnerIdentity, readEventJourney } from "./foundryTrainingService";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
@@ -799,6 +800,22 @@ export async function completeDocumentTraining(
       completedAtIso: now,
       deviceTz,
     });
+    /*
+      Apply Window (Slice 3.2R-R2) — the learner's own decision becomes live in real work.
+
+      Materialized in the SAME authenticated branch and with the SAME fail-soft contract as the
+      follow-up above it: the service re-derives every precondition from the frozen journey and
+      the durable row, returns `skipped` when the training asked for no decision (which is every
+      training on staging today), and can never block a truthful completion. Creating this row
+      establishes DECIDED-adjacent context only — never APPLIED.
+    */
+    await materializeApplyWindow(admin, {
+      eventId: r.event.id,
+      progressId,
+      authUserId,
+      completedAtIso: now,
+      deviceTz,
+    });
   }
 
   return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride) };
@@ -825,6 +842,20 @@ export async function claimDocumentXp(
   // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE at the authenticated claim (mirrors the
   // YouTube claim), BEFORE the XP early-return, idempotently. This is the anonymous→owned path.
   await materializeFollowupObligation(admin, {
+    eventId: r.event.id,
+    progressId: prog.id,
+    authUserId,
+    completedAtIso: prog.completed_at,
+    deviceTz,
+  });
+
+  /*
+    Apply Window at CLAIM (Slice 3.2R-R2). An anonymous completion first gains a durable identity
+    here, so this is where its window is created — using the FROZEN `prog.completed_at`, never the
+    claim instant. A learner who claims a week late gets the window they earned on the day they
+    decided, not a fresh seven days. Idempotent (unique progress_id), so a repeated claim is a no-op.
+  */
+  await materializeApplyWindow(admin, {
     eventId: r.event.id,
     progressId: prog.id,
     authUserId,

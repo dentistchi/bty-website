@@ -18,11 +18,14 @@ type Locale = "en" | "ko";
 
 type Reminder = {
   stableId: string;
-  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "ACTION_REVISION" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
+  category: "REQUIRED_LEARNING" | "ACTION_DUE" | "ACTION_REVISION" | "PRACTICE_DUE" | "APPLY_DUE" | "FOLLOW_UP_DUE";
   title: string;
-  state: "overdue" | "needs_revision" | "due_today" | "incomplete_required" | "upcoming";
+  state: "overdue" | "needs_revision" | "due_today" | "active" | "incomplete_required" | "upcoming";
   canonicalDeepLink: string;
-  /** Host revision note for an ACTION_REVISION item (learner-facing); null/absent otherwise. */
+  /**
+   * ACTION_REVISION → the Host's revision note. APPLY_DUE → the source training title (Slice
+   * 3.2R-R2), so the learner can see which training their sentence came from. Absent otherwise.
+   */
   note?: string | null;
 };
 type Brief = { yesterdayObservation: string; todaySuggestion: string };
@@ -87,6 +90,11 @@ const COPY: Record<Locale, {
   required: string;
   action: string;
   practice: string;
+  /* Slice 3.2R-R2 — Apply Window. Deliberately free of deadline/failure vocabulary. */
+  apply: string;
+  applyThisWeek: string;
+  applyLastDay: string;
+  applyClosed: string;
   leadershipTitle: string;
   leadershipSub: string;
   showAll: (n: number) => string;
@@ -113,6 +121,14 @@ const COPY: Record<Locale, {
     today: "Today",
     dontMiss: "DON'T MISS TODAY",
     overdue: "Overdue",
+    apply: "Apply this week",
+    applyThisWeek: "This week",
+    applyLastDay: "Last day",
+    // NOT "Overdue". The window closing is not a failure and the learner did not miss a deadline
+    // — the period their decision was live has simply ended, and the follow-up is what asks how
+    // it went. Rendering red "Overdue" on someone's own commitment is the compliance-dashboard
+    // tone this surface exists to avoid.
+    applyClosed: "Window closed",
     needsRevision: "Needs revision",
     dueToday: "Due today",
     incomplete: "Incomplete",
@@ -163,6 +179,10 @@ const COPY: Record<Locale, {
     today: "오늘의 제안",
     dontMiss: "오늘 놓치지 말 것",
     overdue: "기한 지남",
+    apply: "이번 주에 적용하기",
+    applyThisWeek: "이번 주",
+    applyLastDay: "마지막 날",
+    applyClosed: "적용 기간 종료",
     needsRevision: "수정이 필요합니다",
     dueToday: "오늘 마감",
     incomplete: "미완료",
@@ -305,20 +325,35 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
   )
     return null;
 
-  const stateLabel = (s: Reminder["state"]) =>
-    s === "overdue" ? t.overdue
+  /*
+    Slice 3.2R-R2 — the state chip is CATEGORY-AWARE, for one reason: an Apply Window that has
+    closed is not an overdue task. The learner committed to something and the period ended; they
+    have not failed, and nothing was missed. Sharing the generic red "Overdue" chip would make
+    their own sentence read like a compliance breach, so APPLY_DUE gets calm vocabulary and a
+    neutral tone while every other category is untouched.
+  */
+  const stateLabel = (s: Reminder["state"], c?: Reminder["category"]) => {
+    if (c === "APPLY_DUE") {
+      return s === "overdue" ? t.applyClosed : s === "due_today" ? t.applyLastDay : t.applyThisWeek;
+    }
+    return s === "overdue" ? t.overdue
       : s === "needs_revision" ? t.needsRevision
         : s === "due_today" ? t.dueToday
-          : s === "incomplete_required" ? t.incomplete
-            : t.upcoming;
+          : s === "active" ? t.applyThisWeek
+            : s === "incomplete_required" ? t.incomplete
+              : t.upcoming;
+  };
   const catLabel = (c: Reminder["category"]) =>
     c === "REQUIRED_LEARNING" ? t.required
       : c === "ACTION_DUE" || c === "ACTION_REVISION" ? t.action
         : c === "PRACTICE_DUE" ? t.practice
-          : ""; // FOLLOW_UP_DUE carries its own eyebrow in the title
+          : c === "APPLY_DUE" ? t.apply
+            : ""; // FOLLOW_UP_DUE carries its own eyebrow in the title
   // needs_revision is amber (actionable, not punitive) — NEVER the red overdue tone.
-  const stateTone = (s: Reminder["state"]) =>
-    s === "overdue" ? "text-red-300/80 border-red-400/30"
+  const stateTone = (s: Reminder["state"], c?: Reminder["category"]) =>
+    // An Apply Window is NEVER red, in any state. See stateLabel.
+    c === "APPLY_DUE" ? (s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35" : "text-white/50 border-white/12")
+    : s === "overdue" ? "text-red-300/80 border-red-400/30"
       : s === "needs_revision" ? "text-[#E5B769] border-[#C9A66B]/45"
         : s === "due_today" ? "text-[#E5B769] border-[#C9A66B]/35"
           : "text-white/50 border-white/12";
@@ -361,6 +396,11 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                 r.category === "ACTION_REVISION" && typeof r.note === "string" && r.note.trim() !== ""
                   ? r.note.trim()
                   : null;
+              // Slice 3.2R-R2 — which training this decision came from. Quiet context, not a note.
+              const applySource =
+                r.category === "APPLY_DUE" && typeof r.note === "string" && r.note.trim() !== ""
+                  ? r.note.trim()
+                  : null;
               return (
                 <li key={r.stableId} data-testid="brief-reminder" data-category={r.category} data-state={r.state}>
                   <a href={r.canonicalDeepLink} className="flex flex-col gap-1 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
@@ -369,8 +409,13 @@ export default function TodayPersonalBrief({ locale }: { locale: string }) {
                         {catLabel(r.category) ? <span className="text-white/40">{catLabel(r.category)} · </span> : null}
                         {r.title}
                       </span>
-                      <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state)}>{stateLabel(r.state)}</span>
+                      <span className={"shrink-0 rounded-md border px-2 py-0.5 text-[0.68rem] " + stateTone(r.state, r.category)}>{stateLabel(r.state, r.category)}</span>
                     </div>
+                    {applySource ? (
+                      <span data-testid="brief-apply-source" className="text-[0.66rem] text-white/35">
+                        {applySource}
+                      </span>
+                    ) : null}
                     {revisionNote ? (
                       <div data-testid="brief-reminder-revision-note" className="flex flex-col gap-0.5 rounded-md border border-[#C9A66B]/25 bg-[#C9A66B]/[0.06] px-2.5 py-1.5">
                         <span className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[#E5B769]/80">{t.revisionNoteLabel}</span>

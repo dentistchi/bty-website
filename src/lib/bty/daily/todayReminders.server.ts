@@ -5,6 +5,11 @@
  *   REQUIRED_LEARNING — bty_foundry_list_my_assignments (status='assigned' = incomplete; NO due date)
  *   ACTION_DUE        — bty_action_contracts.deadline_at (open contracts; due/overdue/upcoming)
  *   PRACTICE_DUE      — arena_pending_outcomes.scheduled_for (pending re-exposure; due/overdue/upcoming)
+ *   APPLY_DUE         — foundry_participant_apply_windows (Slice 3.2R-R2; the learner's OWN recorded
+ *                       Action Decision, live for its 7-day window. Visible from the FIRST day —
+ *                       it deliberately does NOT copy FOLLOW_UP_DUE's V1 "no upcoming" filter,
+ *                       because a commitment nobody can see until its deadline is not a commitment.
+ *                       Suppressed once the matching follow-up is asking; never deleted.)
  *   FOLLOW_UP_DUE     — foundry_participant_followups.due_at (Slice 3.1B-3K; PENDING obligations; the
  *                       deadline was materialized ONCE at creation and is only READ here — never
  *                       recomputed. V1 emits due_today / overdue only, no upcoming.)
@@ -19,6 +24,8 @@ import {
   type TodayReminder,
 } from "@/domain/daily/todayReminders";
 import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
+import { suppressApplyWindow } from "@/domain/foundry/apply-window/applyWindow";
+import { listMyApplyWindows } from "@/lib/bty/foundry/events/foundryApplyWindowService";
 import {
   classifyActionContract,
   sortActionStatus,
@@ -214,6 +221,119 @@ async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz:
   }
 }
 
+
+/**
+ * APPLY_DUE (Slice 3.2R-R2) — the learner's own Action Decision, live in real work.
+ *
+ * THREE THINGS THIS DELIBERATELY DOES NOT DO:
+ *   * It does not filter out non-due items. FOLLOW_UP_DUE drops everything but due/overdue, which
+ *     is right for a checkpoint and wrong for a window: the whole point is that the decision is
+ *     visible from the day it is made.
+ *   * It does not mark anything done. There is no completion write on this path and no state the
+ *     learner can set. APPLIED belongs to the follow-up.
+ *   * It does not read private text. The decision sentence is joined from the owner-scoped
+ *     progress row, which already carries it Host-visibly by settled 3.2M-1 design; no reflection
+ *     column is selected here, ever.
+ *
+ * SUPPRESSION. Once the matching follow-up for the SAME progress row is asking (due today or
+ * overdue) or has been answered, the follow-up is the item that can record something, so the
+ * window steps aside. That is a read-time rule — the row is never deleted.
+ */
+async function applyDue(
+  admin: SupabaseClient,
+  userId: string,
+  now: Date,
+  tz: string,
+  locale: string,
+): Promise<TodayReminder[]> {
+  try {
+    const windows = await listMyApplyWindows(admin, userId, now, tz);
+    if (windows.length === 0) return [];
+
+    // The follow-up state for these same progress rows — the suppression input.
+    const progressIds = windows.map((w) => w.progressId).filter((v): v is string => Boolean(v));
+    const asking = new Set<string>();
+    const responded = new Set<string>();
+    if (progressIds.length > 0) {
+      const { data } = await admin
+        .from("foundry_participant_followups")
+        .select("progress_id, status, due_at")
+        .eq("user_id_snapshot", userId)
+        .in("progress_id", progressIds);
+      for (const f of (data ?? []) as Array<{ progress_id: string | null; status: string; due_at: string }>) {
+        if (!f.progress_id) continue;
+        if (f.status === "RESPONDED") responded.add(f.progress_id);
+        else {
+          const due = classifyFollowUpDue(f.due_at, now, tz);
+          if (due === "overdue" || due === "due_today") asking.add(f.progress_id);
+        }
+      }
+    }
+
+    // The learner's own decision sentence, owner-scoped. Explicit allow-list: the two private
+    // columns are not named in this select and cannot reach Today.
+    const decisionByProgress = new Map<string, string>();
+    if (progressIds.length > 0) {
+      const { data } = await admin
+        .from("foundry_event_training_progress")
+        .select("id, decision_response_text")
+        .eq("linked_user_id", userId)
+        .in("id", progressIds);
+      for (const p of (data ?? []) as Array<{ id: string; decision_response_text: string | null }>) {
+        const d = (p.decision_response_text ?? "").trim();
+        if (d) decisionByProgress.set(p.id, d);
+      }
+    }
+
+    const out: TodayReminder[] = [];
+    for (const w of windows) {
+      if (w.state === "pending") continue; // not open yet — unreachable in V1, honest anyway
+      /*
+        A CLOSED WINDOW LEAVES TODAY (Slice 3.2R-R2).
+
+        `overdue` is the truthful classification, and it is deliberately NOT projected. Two
+        measured reasons, both of which would have shipped as defects:
+
+          1. `sortReminders` ranks by STATE, not category, so an overdue window would sit at rank 0
+             — above genuinely urgent work — while rendering the calm "Window closed" chip. Today
+             would be shouting and whispering at the same time.
+          2. It would never leave. Suppression is driven by the FOLLOW-UP, so a training with
+             followUpDays = 0 has nothing to hand off to, and a training with a 30-day checkpoint
+             leaves a three-week gap. Either way the card stays forever, which is precisely the
+             outcome this slice was told not to produce.
+
+        So Today shows the window while it is LIVE (`active`, `due_today`) and stops. The row is
+        never deleted, the decision stays permanently in My Learning with its DECIDED chip, and the
+        follow-up still asks what happened. What a closed-but-unanswered window should do when no
+        follow-up is configured is a real product question, reported rather than invented here.
+      */
+      if (w.state === "overdue") continue;
+      const pid = w.progressId;
+      if (pid && suppressApplyWindow({ followUpIsAsking: asking.has(pid), followUpResponded: responded.has(pid) })) {
+        continue;
+      }
+      // The learner's own sentence IS the title — that is the whole product idea. Without it there
+      // is nothing to carry into the day, so a window whose decision cannot be read is not shown.
+      const decision = pid ? decisionByProgress.get(pid) : undefined;
+      if (!decision) continue;
+      out.push({
+        stableId: `apply:${w.id}`,
+        category: "APPLY_DUE",
+        title: decision.slice(0, 200),
+        state: w.state, // active | due_today | overdue — never invented, always day-granular
+        sourceTimestamp: w.dueAtIso,
+        roleContext: "learner",
+        // Back to the learner's own record of the decision, in-shell. Never Arena.
+        canonicalDeepLink: `/${locale}/app?tab=me&view=my-learning&entry=${encodeURIComponent(pid ?? "")}`,
+        note: w.sourceTrainingTitle,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The authenticated caller's deterministic Today reminders, priority-ordered. `suppressStableIds`
  * removes anything already shown as the primary Today path (dedup vs Today Intelligence). Upcoming
@@ -228,11 +348,12 @@ export async function buildTodayReminders(
   suppressStableIds: ReadonlySet<string> = new Set(),
 ): Promise<TodayReminder[]> {
   if (!userId) return [];
-  const [req, action, practice, followUp] = await Promise.all([
+  const [req, action, practice, apply, followUp] = await Promise.all([
     requiredLearning(admin, userId, locale),
     actionDue(admin, userId, now, tz, locale),
     practiceDue(admin, userId, now, tz, locale),
+    applyDue(admin, userId, now, tz, locale),
     followUpDue(admin, userId, now, tz, locale),
   ]);
-  return sortReminders(dedupeReminders([...req, ...action, ...practice, ...followUp], suppressStableIds));
+  return sortReminders(dedupeReminders([...req, ...action, ...practice, ...apply, ...followUp], suppressStableIds));
 }

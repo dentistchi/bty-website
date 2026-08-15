@@ -10,9 +10,32 @@ import { userDayKey } from "./userDayKey";
 // ACTION_REVISION (Slice 3.1B-3M): a REJECTED Action Contract that needs correction/resubmit — an
 // actionable DON'T MISS TODAY item, but NOT plain "Overdue". (submitted/escalated are NOT reminders —
 // they render in the separate calm actionStatus section; see src/domain/daily/actionStatus.ts.)
-export type ReminderCategory = "REQUIRED_LEARNING" | "ACTION_DUE" | "ACTION_REVISION" | "PRACTICE_DUE" | "FOLLOW_UP_DUE";
-/** overdue > needs_revision > due_today > incomplete_required (no date) > upcoming (dated future). */
-export type ReminderState = "overdue" | "needs_revision" | "due_today" | "incomplete_required" | "upcoming";
+// APPLY_DUE (Slice 3.2R-R2): the learner's OWN recorded Action Decision, live in real work for
+// its application window. Not a task and not evidence — Today projects it, the follow-up asks
+// what happened, and nothing on this surface can establish APPLIED.
+export type ReminderCategory =
+  | "REQUIRED_LEARNING"
+  | "ACTION_DUE"
+  | "ACTION_REVISION"
+  | "PRACTICE_DUE"
+  | "APPLY_DUE"
+  | "FOLLOW_UP_DUE";
+/** overdue > needs_revision > due_today > active > incomplete_required (no date) > upcoming (dated future). */
+export type ReminderState =
+  | "overdue"
+  | "needs_revision"
+  | "due_today"
+  /**
+   * Slice 3.2R-R2 — inside an OPEN window: actionable now, but not the last day.
+   *
+   * Neither existing state could say this. `upcoming` means "a later BTY day" and would have
+   * hidden a commitment the learner is meant to act on today; `due_today` would have claimed a
+   * deadline that has not arrived. Only APPLY_DUE emits it, so inserting it here re-ranks nothing
+   * that already existed — the relative order of all five original states is unchanged.
+   */
+  | "active"
+  | "incomplete_required"
+  | "upcoming";
 
 export type TodayReminder = {
   /** Stable, source-derived id (never an array index). Used for dedup + React keys. */
@@ -36,8 +59,10 @@ const STATE_RANK: Record<ReminderState, number> = {
   overdue: 0,
   needs_revision: 1, // a rejected submission the learner must correct — urgent, just after overdue
   due_today: 2,
-  incomplete_required: 3,
-  upcoming: 4,
+  // Open and actionable, but with days left — below today's deadlines, above undated work.
+  active: 3,
+  incomplete_required: 4,
+  upcoming: 5,
 };
 
 /**
