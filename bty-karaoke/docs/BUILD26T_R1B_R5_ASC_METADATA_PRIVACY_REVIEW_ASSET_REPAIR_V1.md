@@ -24,9 +24,9 @@ copyright holder                      APPROVED      "2026 Hanbit Chi"
 App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exists (§6.1)
 IAP review screenshots (×3)           PREPARED      Founder-approved capture, alpha stripped (§7)
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
-App Review demo credentials           AUTHORIZED — account not yet created (§8.3)
-W1 room + W2 event                    AUTHORIZED 2026-08-15 — Founder-executed on the device
-P6 reviewer-route gate                DERIVED (§8.8) · HALTED on W3, the device-session mint
+App Review account gate P1–P6         **PASS** 2026-08-15 — returning route measured (§8.9)
+App Review Notes                      **FINAL** — written against that route (§8.5)
+App Review credentials → ASC          FOUNDER_INPUT_REQUIRED — typed straight into ASC, never here
 release mode → Manual                 READY_TO_ENTER
 build 100                             NOT UPLOADED (unchanged, deliberate)
 PASS_1H                               INACTIVE (no write issued this session)
@@ -580,40 +580,43 @@ Email          FOUNDER_INPUT_REQUIRED   ← ywamer2022@gmail.com is the PUBLISHE
                                           the Founder's call, not an inference
 ```
 
-### 8.5 Review Notes — READY_TO_ENTER
+### 8.5 Review Notes — FINAL (written against the measured returning-account route)
 
-Rewritten against the measured first-run routing (§8.6), because the earlier draft described the
-*returning*-host flow. A brand-new review account never sees "Start a new norebang" — it lands on
-`FirstRoomOnboardingView`. Notes that describe a screen the reviewer will not see are how a review
-fails for a reason that has nothing to do with the app.
+This is the third version, and the reason is worth keeping: the first draft described a returning
+host, the second described first-run onboarding, and **only the P6 measurement (§8.8) established
+which one an Apple reviewer actually meets**. The account now owns a room and a live event, so the
+reviewer's route is the returning one. Every screen name below is the shipping English string, not
+a paraphrase.
 
 ```
 BTY Norebang is a karaoke session app for private gatherings. The host opens a "norebang"
-(room), guests join by QR code and request songs, and everyone watches the same shared queue.
+(room), guests join by QR code and request songs, and everyone watches the same shared
+queue.
 
 SIGNING IN
 Sign in with Apple and Google Sign-In are the only login methods; there is no password
-login. The demo account above signs in with the "Continue with Google" button on the first
-screen. You may also use your own Apple ID via the Sign in with Apple button.
+login. The demo account above signs in with the "Continue with Google" button on the
+first screen. You may also use your own Apple ID via the Sign in with Apple button.
 
-FIRST RUN — the demo account starts with no norebang
+GETTING INTO THE APP
 1. Sign in with the demo account.
-2. You will land on "Create Your First Norebang". Enter any name (for example "Review")
-   and tap "Create Norebang". No passcode is required.
-3. On "My Norebang", tap the room card ("Enter Norebang"). This starts a session and
-   creates a guest QR code and an empty queue.
+2. You will land on "My Norebang". The demo account already has one norebang, and its
+   card shows "Live" — a session is already running.
+3. Tap the card ("Enter Norebang"). You are taken straight to the queue screen.
+   (If the card ever shows "No norebang running", tapping it simply starts a new
+   session — nothing else is needed.)
 
 ORDINARY FUNCTIONALITY
 4. Tap the QR code to display it. Scanning it on a second device opens the guest request
-   screen in a browser. Guest mode is also reachable inside this app without signing in.
+   screen in a browser. "Guest mode" is also reachable inside this app without signing in.
 5. Search for a song and submit a request; it appears in the shared queue.
 6. Playback is handed off to YouTube: tapping play opens the video in YouTube. The app
    does not embed, re-host or modify YouTube content, and it requests no access to any
    YouTube account.
 
 IN-APP PURCHASES — how to reach them
-7. On the queue screen, tap the access-status chip at the top (it reads, for example,
-   "FREE · 15m left").
+7. On the queue screen, tap the access-status chip at the top. It reads, for example,
+   "FREE · 15m left".
 8. The "Access Status" sheet opens. Scroll to "Buy a pass": the 1 hour, 4 hours and
    24 hours passes are listed there with their App Store prices.
 
@@ -621,14 +624,17 @@ Each account has a daily free allowance and the passes extend it. A pass does no
 when it is selected — it begins when the first song actually starts playing, and once
 started it runs on wall-clock time. The app states this before selection.
 
-ACCOUNT DELETION
-Account → "Delete Account" permanently deletes the account from inside the app.
+ACCOUNT
+"Sign-In Methods" shows the connected Apple/Google logins. "Delete Account" permanently
+deletes the account from inside the app.
 
 LANGUAGES
 Korean and English, following the device language.
 ```
 
-No secret appears in these notes.
+No secret appears in these notes. The one defensive line — the parenthetical in step 3 — exists
+because an event ends only by an explicit call (§8.8 fact 3), so the session should still be live
+at review time, but if anyone ends it in the meantime the reviewer must not be stranded.
 
 ### 8.6 HALT — reaching the commerce surface requires two production writes
 
@@ -782,16 +788,56 @@ subordinate by construction: revoking the account's membership kills it on the n
 **Awaiting approval for W3.** P6a and P6b need no write at all and can be observed the moment the
 Founder signs back in; only P6c/P6d are held.
 
-#### The Review Notes are NOT finalized here
+### 8.9 P1–P6 — PASS. The prediction held.
 
-Per the Founder's instruction, the final notes are written only after P6 is observed. §8.5 stands
-as the *first-run* description and is already known to be wrong for the reviewer. The change it
-will need, once P6 confirms the route:
+Founder-executed on the device, 2026-08-15. **App Review account gate: PASS.**
 
 ```
-step 2  "Create Your First Norebang" / "Create Norebang"   →  "My Norebang", tap the room card
-step 3  merges into step 2 — no separate session start, because the session is already live
+P1  sign out of the Release build                                    PASS
+P2  sign in with the dedicated Google review account                 PASS
+P3  valid session + first-run landing                                PASS
+W1  create first norebang            (authorized)                    PASS
+W2  enter / start its first event    (authorized)                    PASS
+P4  ordinary QueueScreen functionality                               PASS
+P5  Access Status → Buy a pass surface reachable                     PASS
+P6  sign out, sign back in, measure the RETURNING route              PASS
 ```
+
+**Measured returning-reviewer route:**
+
+```
+Google review-account sign-in → My Norebang → existing LIVE room
+  → normal device-session mint → QueueScreen → Access Status → Buy a pass
+```
+
+**The §8.8 prediction is confirmed on every point.** P6a landed on My Norebang, P6b's card read
+LIVE, P6c entered through the device-session mint with **no second event started**, and P6d reached
+the commerce surface. Had P6b returned IDLE, a second event start would have been required and this
+would be a HALT instead of a PASS — the prediction was worth writing down precisely because it
+could have failed.
+
+**Negative controls — what the run did NOT do**, which is what keeps this a clean gate:
+
+```
+second event started            NO
+special entitlement / pass      NOT granted
+catalog activation              NONE — PASS_1H still inactive
+Apple purchase                  NONE
+fulfilment                      NONE
+allowlist / admin access        NONE
+reviewer bypass                 NONE — the reviewer uses the same shipping path as any user
+```
+
+Writes performed, in total: **W1 (one room), W2 (one event), and the device-session mints**
+inherent to entering a room. Nothing else.
+
+The Google password appears nowhere in this repository, this document, the commit history, any
+screenshot, or any terminal output — it existed only in the device sign-in sheet.
+
+#### The Review Notes are now final
+
+Written in §8.5 against this measured route. "Create Your First Norebang" is **not** described,
+because after W1 no reviewer will ever see it.
 
 ---
 
@@ -895,16 +941,18 @@ asset requirement and nothing more — **do not submit any IAP**, per §7.4.
 ### 10.5 What still blocks a PASS
 
 ```
-1  dedicated App Review account          AUTHORIZED — Founder creates it            §8.3
-1b P1–P5 proof run                       HALTED — W1/W2 need approval               §8.6 / §8.7
-2  contact first/last/phone/email        Founder-supplied, never invented           §8.4
-3  App Store product-page screenshots    Founder-captured on the iPhone             §6.2
+1  App Review username / password        typed straight into ASC by the Founder      §8.3
+2  contact first/last/phone/email        Founder-supplied, never invented            §8.4
+3  App Store product-page screenshots    Founder-captured on the iPhone              §6.2
 4  the ASC writes themselves             Founder-performed; this session has no browser
 
-CLEARED since the first package:  timezone category (§3.7) · IP omission (§3.5) ·
-                                  copyright (§5.4) · policy amendment (§14, live) ·
-                                  IAP review screenshots ×3 (§7.3, prepared)
+CLEARED:  timezone category (§3.7) · IP omission (§3.5) · copyright (§5.4) ·
+          policy amendment (§14, live) · IAP review screenshots ×3 (§7.3) ·
+          App Review account gate P1–P6 (§8.9, PASS) · Review Notes (§8.5, final)
 ```
+
+**Screenshots are the last preparable artifact.** Everything else outstanding is either a value
+only the Founder holds (credentials, contact details) or the ASC data entry itself.
 
 **§6.2 note.** The §7 capture is the *pass surface*, approved for the IAP review fields only. It is
 not proposed as an App Store product-page screenshot: `Passes are not on sale right now.` is the
