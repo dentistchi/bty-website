@@ -148,3 +148,107 @@ paid-containment invariant is untouched.
 
 No production DB was touched. Nothing uploaded, nothing submitted, no IAP activated, ASC Content
 Rights untouched.
+
+---
+
+# CONTINUATION — local E1 execution (2026-08-15)
+
+**Status: LOCAL_E1_MIGRATION = HELD. The migration is written and applies cleanly, but local
+execution found a SECOND home for the 15-minute ceiling that the migration does not yet address.**
+
+## What passed
+
+```
+§A  local stack           bty-karaoke-gate-b23, ports 54421/54422, 45/45 migrations
+§A  md5 drift gate        live == ef281fd84a6e59726d94c37af70aa509   MATCH
+§B  migration written     supabase/migrations/20260817120000_karaoke_playback_integrity_e1_v1.sql
+                          authored by TRANSFORMING pg_get_functiondef output, not from memory
+§B  applies cleanly       CREATE FUNCTION (after one orphan `end if;` was found and fixed)
+```
+
+**Refusal inventory, measured before → after on the live definition:**
+
+```
+duration_unavailable   1 → 0      *** removed (incl. the >900 ceiling)
+pass_insufficient      1 → 0      *** removed
+upgrade_required       1 → 0      *** removed
+invalid_mode           1 → 1      room_retired            1 → 1
+ownership_state_invalid 1 → 1     not_found               1 → 1
+not_waiting            1 → 1      event_state_invalid     1 → 1
+already_playing        1 → 1      not_next                2 → 2
+not_ready              1 → 1      request_state_changed   2 → 2
+
+`v_dur > 900` occurrences: 0        `v_activate := true` occurrences: 0
+```
+
+Every security/structure refusal survives byte-identically; only the three quota refusals are gone,
+and a SELECTED pass can no longer be activated by playback.
+
+## THE FINDING — the ceiling has a second home, in a CHECK constraint
+
+Executing the matrix drove the segment INSERT into a constraint the function change cannot satisfy:
+
+```
+usage_seg_lease_consistency ON karaoke_event_usage_segments
+  CHECK ( (duration_seconds IS NULL AND lease_ends_at IS NULL AND lease_seconds IS NULL
+           AND charged_window_start IS NULL AND charged_window_end IS NULL)
+       OR (duration_seconds >= 1 AND duration_seconds <= 900        ← ***
+           AND lease_ends_at >= started_at
+           AND lease_seconds >= 0 AND lease_seconds <= duration_seconds
+           AND charged_window_start IS NOT NULL AND charged_window_end > charged_window_start) )
+```
+
+**Two defects follow, and neither is visible in the function's source:**
+
+1. **The 15-minute ceiling is still enforced — by the table.** A 16-minute song now passes the
+   function's authority and then **fails the INSERT**, aborting the start with a constraint
+   violation. That is strictly worse than the refusal it replaced: a 500 instead of a clean answer.
+   §2's requirement that `900` must not remain as a hidden duration gate is **not met** by the
+   function change alone.
+2. **Unknown duration violates the all-or-nothing arm.** My migration writes `duration_seconds =
+   NULL` while still setting `lease_ends_at` / `lease_seconds` / the window columns. The constraint
+   requires all five to be NULL together. This is a real defect in the migration as written, found
+   by the database rather than by reading.
+
+**The local matrix is what found both.** Source inspection had already "confirmed" the ceiling was
+gone — the refusal-count table above says exactly that, and it was true and insufficient.
+
+## What the completed E1 needs (not yet written)
+
+```
+1  relax usage_seg_lease_consistency: drop the `duration_seconds <= 900` arm, and allow
+   duration_seconds NULL while the row still records the window — or make the function write all
+   five lease columns NULL together when duration is unknown. Which of the two is correct is a
+   RECORD-SEMANTICS decision (what should a segment mean for an unpriceable song?), not a
+   mechanical one.
+2  re-check every other constraint on the lease/segment/grace/carryover tables for further
+   duration or quota assumptions. `timed_pass_expiry_math_chk` is already known to ABORT rather
+   than shorten, so it must be re-read under the no-activation change.
+3  then re-run the full §C matrix.
+```
+
+## §G cleanup
+
+```
+my containers remaining          0
+unrelated h1b stack              10 containers, untouched throughout
+fixture rows                     NONE persisted — the matrix ran inside a transaction that
+                                 ROLLED BACK, by construction
+artifacts kept in git            the migration + docs/evidence/e1_postgres_matrix.sql
+                                 + docs/evidence/karaoke_begin_song_v2.baseline.pre-E1.sql
+```
+
+## OUTPUT (§I)
+
+```
+PLAYBACK_INTEGRITY      HELD  — function repaired; table-level ceiling still enforced
+PRO_1_0                 HELD  — depends on the same completed migration
+15_MINUTE_CEILING       HELD  — removed from the FUNCTION, still live in a CHECK constraint
+ATTRIBUTION             HELD  — official brand asset not yet acquired
+RMF                     HELD  — not started this pass
+LOCAL_E1_MIGRATION      HELD  — applies, but incomplete against the schema
+PRODUCTION_MIGRATION    NOT_READY
+CONTENT_RIGHTS          HELD
+```
+
+No production DB touched. No build minted (no native change). Nothing uploaded or submitted.
