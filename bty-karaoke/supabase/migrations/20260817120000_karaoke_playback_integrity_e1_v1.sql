@@ -1,30 +1,35 @@
--- BUILD 26T-R1B-R6-R1A — E1: YouTube playback integrity.
+-- BUILD 26T-R1B-R6-R1A — E1: unmetered YouTube playback (App Store 1.0).
 --
--- WHY. BUILD 26T-R1B-R5-R4 measured that a paid pass was metered in seconds of YouTube video,
--- which collides with YouTube Developer Policies III.F.3 and III.G.1. R6 contained the PAID half
--- at the binary (build 104). This removes the remaining half: the FREE meter was the same
--- duration-based authorization minus the money, and Founder decision E1 retires it entirely.
+-- WHY. A paid pass was metered in seconds of YouTube video, colliding with YouTube Developer
+-- Policies III.F.3 / III.G.1 (26T-R1B-R5-R4). R6 contained the PAID half at the binary (build
+-- 104). This removes the remaining half: the FREE meter was the same duration-based authorization
+-- minus the money. Founder decision E1 retires playback metering entirely for 1.0.
 --
--- WHAT CHANGES. karaoke_begin_song_v2 no longer refuses a structurally valid queued song because
--- of the video's duration, the FREE remainder, a pass window, carryover, MAX_LEASE_SECONDS, or
--- the account's plan. PRO confers no playback privilege because there is no privilege left to
--- confer. A SELECTED pass is no longer activated by playback.
+-- THE RECORD SHAPE, and why it needs no schema change. A successful 1.0 start writes
+-- `metered = false` with ALL FIVE columns governed by usage_seg_lease_consistency NULL together.
+-- That is the constraint's EXISTING back-compat arm: BUILD 20M added those columns "nullable ->
+-- back-compat", so all-five-NULL already means "a started song carrying no lease semantics".
+-- The §A reader audit proved no reader treats it as not-started, corrupt or incomplete.
+-- usage_seg_lease_consistency is NOT amended and its `duration_seconds <= 900` bound remains an
+-- invariant over METERED rows — BUILD 20M's historical protection is preserved, not weakened.
 --
--- WHAT DOES NOT CHANGE. Every security/structure refusal is preserved byte-for-byte: invalid
--- mode, retired room, ownership_state_invalid, not_found, not_waiting, event_state_invalid,
--- already_playing, not_next, not_ready, request_state_changed. Advisory locks, the row-level
--- FOR UPDATE, and the write order are untouched. Lease, usage-segment, grant, audit and ledger
--- rows are preserved — historical records stay, they simply stop gating playback.
+-- WHAT DOES NOT CHANGE. Every security/structure refusal is preserved byte-for-byte: invalid_mode,
+-- room_retired, ownership_state_invalid, not_found, not_waiting, event_state_invalid,
+-- already_playing, not_next, not_ready, request_state_changed. Advisory locks, the row-level FOR
+-- UPDATE and the write order are untouched. No grant, pass, purchase, audit or historical segment
+-- row is modified — playback no longer mutates grant state at all.
 --
--- AUTHORED FROM THE CANONICAL DEFINITION, not from memory: the pre-repair
--- pg_get_functiondef md5 was verified as ef281fd84a6e59726d94c37af70aa509 before this was
--- written, and a production apply must re-verify that same md5 first (BUILD 26T-R1B-R6-R1A §H).
+-- AUTHORED BY TRANSFORMING pg_get_functiondef output, not handwritten. The canonical pre-repair
+-- md5 was re-verified as ef281fd84a6e59726d94c37af70aa509 immediately before this was generated,
+-- and a production apply must re-verify that same md5 first (§L).
 --
 -- Edits applied to the canonical body:
---   * duration gate removed (incl. >900)
---   * lease arithmetic NULL-safe
---   * SELECTED pass no longer activates
---   * pass_insufficient + upgrade_required refusals deleted
+--   * duration refusal + 900 ceiling removed
+--   * lease computation removed (no lease minted)
+--   * pass sweep + activation + both quota refusals removed
+--   * segment written unmetered: metered=false + five NULLs
+--   * grace ledger insert removed
+--   * response reports an unmetered start
 
 create or replace function public.karaoke_begin_song_v2(p_room_id uuid, p_request_id uuid, p_mode text)
  RETURNS jsonb
@@ -74,12 +79,10 @@ begin
     if v_first is distinct from p_request_id then return jsonb_build_object('outcome','not_next'); end if;
   end if;
 
-  -- BUILD 26T-R1B-R6-R1A (E1): duration is a RECORD, never an authority.
-  -- The 900-second ceiling and the unknown-duration refusal were BOTH duration-caused refusals,
-  -- and both are removed: a video's length can no longer decide whether it may be sung.
-  -- v_dur may now be NULL (unpriceable) and every use of it below is NULL-safe.
+  -- BUILD 26T-R1B-R6-R1A (E1): duration is INFORMATIONAL. It is still read so the response can
+  -- report it, but it authorizes nothing: neither the 900-second ceiling nor the
+  -- unknown-duration refusal survives, because both were duration-caused refusals.
   select duration_seconds into v_dur from public.karaoke_video_durations where video_id = v_video;
-  if v_dur is not null and v_dur < 1 then v_dur := null; end if;
 
   select count(*), max(plan_code) into v_plan_n, v_plan
     from public.karaoke_host_plan_assignments where account_id=v_account and status='active';
@@ -92,46 +95,24 @@ begin
   v_ws := ((v_anchor::timestamp     + make_interval(hours => v_reset_hour))) at time zone v_tz;
   v_we := (((v_anchor+1)::timestamp + make_interval(hours => v_reset_hour))) at time zone v_tz;
 
-  select max(lease_ends_at) into v_cur_end from public.karaoke_event_usage_segments
-    where account_id=v_account and lease_ends_at is not null and lease_ends_at > v_now;
-  v_active   := greatest(coalesce(v_cur_end, v_now), v_now);
-  v_song_end := v_now + make_interval(secs => coalesce(v_dur, 0));   -- E1: NULL-safe
-  v_new_end  := greatest(v_active, v_song_end);
-  v_charge   := ceil(extract(epoch from (v_new_end - v_active)))::int;
+  -- E1: NO LEASE IS COMPUTED OR MINTED. 1.0 playback carries no meter, so there is nothing to
+  -- charge, extend or protect. BUILD 20M's non-shrinkable lease remains intact for the historical
+  -- metered rows it was built for; it simply has no new rows to govern.
 
-  if v_plan <> 'PRO' then
-    with exp as (
-      update public.timed_access_pass_grants set status='EXPIRED', expired_at=v_now, updated_at=now()
-       where account_id=v_account and status='ACTIVE' and expires_at <= v_now returning id)
-    insert into public.timed_access_pass_audit (pass_grant_id, account_id, actor_type, action, from_status, to_status)
-    select id, v_account, 'SYSTEM', 'EXPIRED', 'ACTIVE', 'EXPIRED' from exp;
-
-    select id, expires_at into v_active_pass, v_active_expires from public.timed_access_pass_grants
-      where account_id=v_account and status='ACTIVE' and expires_at > v_now for update limit 1;
-    if v_active_pass is not null then
-      v_pass_covered := true; v_pass_grant := v_active_pass; v_pass_expires := v_active_expires;
-    -- BUILD 26T-R1B-R6-R1A (E1): a SELECTED pass is NO LONGER ACTIVATED by playback.
-    -- After E1 a pass confers no playback privilege, so starting its paid window when a song
-    -- begins would spend a customer's purchased time for nothing. The grant stays SELECTED,
-    -- untouched, and remains available for a future compliant paid product.
-    -- The ACTIVE-pass sweep above is retained: expiring an already-expired grant is truthful
-    -- housekeeping, not an authority decision.
-    end if;
-  end if;
-
-  -- BUILD 26T-R1B-R6-R1A (E1) -- THE REPAIR.
+  -- E1 -- THE REPAIR, in one place.
   --
-  -- Removed here, in one place: the pass_insufficient refusal (song end vs pass expiry, which
-  -- also carried the carryover comparison) and the FREE upgrade_required refusal (charge vs
-  -- remaining) together with the grace branch that existed only to soften it.
+  -- Deleted: the pass_insufficient refusal (song end vs pass expiry, carrying the carryover
+  -- comparison), the FREE upgrade_required refusal (charge vs remaining) and the grace branch that
+  -- existed only to soften it. Nothing about the video's duration, the FREE remainder, a pass
+  -- window, carryover or the account's plan can refuse a start any more.
   --
-  -- Nothing about the selected YouTube song's DURATION, the account's FREE remainder, its pass
-  -- window, its carryover or its plan can refuse a start any more. What still refuses is above:
-  -- mode, room retirement, ownership, request/event identity and state, already-playing, and
-  -- queue order.
+  -- Also deleted: the pass expiry SWEEP and the SELECTED-pass ACTIVATION. Playback must not mutate
+  -- grant state at all. Activating a pass that confers no privilege would spend a customer's
+  -- purchased window for nothing, and sweeping an expired grant would make playback rewrite grant
+  -- history. Grants are left exactly as they were found.
   --
-  -- v_grace therefore stays false and the grace ledger insert below never fires; the lease and
-  -- usage segment are still written, as RECORDS of what was played rather than as a gate.
+  -- What still refuses is entirely above this point: mode, room retirement, ownership, request and
+  -- event identity/state, already-playing, and queue order.
 
   update public.karaoke_requests set status='playing', started_at=v_now
     where id=p_request_id and room_id=p_room_id and status='waiting';
@@ -150,32 +131,38 @@ begin
             jsonb_build_object('requestId', p_request_id, 'roomId', p_room_id, 'eventId', v_event));
   end if;
 
+  -- E1 -- THE UNMETERED RECORD. `metered=false` and ALL FIVE columns governed by
+  -- usage_seg_lease_consistency are NULL together, which is that constraint's existing
+  -- back-compat arm: BUILD 20M added them nullable for exactly this shape — a started song
+  -- carrying no lease semantics. The CHECK is NOT amended; its `duration_seconds <= 900` bound
+  -- stays an invariant over METERED rows, so the historical protection is untouched.
+  --
+  -- The duration is deliberately NOT written even though it is known: populating a metering
+  -- structure for playback that is not metered would be a fabricated record.
   insert into public.karaoke_event_usage_segments
     (account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,timezone_snapshot,
      pass_grant_id,metering_paused_by_pass, duration_seconds, lease_ends_at, lease_seconds,
      charged_window_start, charged_window_end)
   values (v_account, v_event, p_room_id, p_request_id, v_plan,
-          (v_plan='FREE' and not v_pass_covered), v_now, v_tz,
-          v_pass_grant, v_pass_covered,
-          v_dur, v_new_end, (case when v_pass_covered then 0 when v_grace then v_charged else v_charge end),
-          v_ws, v_we)
+          false, v_now, v_tz,
+          null, false,
+          null, null, null,
+          null, null)
   returning id into v_seg_id;
 
-  if v_grace then
-    insert into public.karaoke_free_final_song_grace
-      (account_id, charged_window_start, charged_window_end, request_id, segment_id,
-       remaining_before_seconds, duration_seconds, charged_seconds, grace_seconds)
-    values (v_account, v_ws, v_we, p_request_id, v_seg_id,
-            v_remaining, v_dur, v_charged, v_grace_secs);
-  end if;
+  -- E1: no grace is minted; the FREE window is not consumed by playback.
 
-  return jsonb_build_object('outcome','ok','leaseEndsAt',v_new_end,
-    'chargeSeconds',(case when v_pass_covered then 0 when v_grace then v_charged else v_charge end),
-    'finalSongGraceApplied', v_grace,
-    'finalSongGraceSeconds', (case when v_grace then v_grace_secs else null end),
-    'finalSongChargedSeconds', (case when v_grace then v_charged else null end),
-    'remainingBeforeSeconds', (case when v_grace then v_remaining else null end),
-    'durationSeconds',v_dur,'chargedWindowStart',v_ws,'passActivated',v_activate,'passCovered',v_pass_covered,
-    'passGrantId',v_pass_grant,'passExpiresAt',v_pass_expires,
+  -- E1: the response reports an UNMETERED start. Lease/charge/grace/pass fields are reported as
+  -- null/false rather than omitted, so an older client reading them sees "nothing was metered"
+  -- instead of a missing key it might interpret as a parse failure.
+  return jsonb_build_object('outcome','ok','leaseEndsAt',null,
+    'chargeSeconds',null,
+    'finalSongGraceApplied', false,
+    'finalSongGraceSeconds', null,
+    'finalSongChargedSeconds', null,
+    'remainingBeforeSeconds', null,
+    'durationSeconds',v_dur,'chargedWindowStart',null,'passActivated',false,'passCovered',false,
+    'passGrantId',null,'passExpiresAt',null,
+    'metered', false,
     'entitlement', public.karaoke_free_minutes_entitlement_at_v2(v_account, v_now));
 end; $function$;

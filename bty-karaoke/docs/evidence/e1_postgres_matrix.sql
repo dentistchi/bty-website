@@ -1,141 +1,162 @@
-\timing off
--- BUILD 26T-R1B-R6-R1A — E1 Postgres matrix. All fixtures use the E1 marker prefix so §G
--- cleanup can enumerate and remove exactly this slice's rows.
+-- BUILD 26T-R1B-R6-R1A — E1 matrix. Runs inside a transaction that ROLLS BACK: no fixture persists.
 begin;
+create temporary table res(name text, ok boolean);
+create or replace function pg_temp.a(n text, ok boolean) returns void language plpgsql as $$
+begin insert into res values(n,ok); end $$;
 
-create temporary table res(name text, ok boolean, detail text);
-create or replace function pg_temp.assert(p_name text, p_ok boolean, p_detail text default '')
-returns void language plpgsql as $$ begin insert into res values(p_name,p_ok,p_detail); end $$;
-
--- ---------- fixtures ----------
-
-insert into karaoke_accounts(id,provider,provider_subject,email,display_name,timezone)
-values ('e1000000-0000-4000-8000-000000000001'::uuid,'apple','E1-TEST-SUBJECT',null,'E1 Test','America/Los_Angeles');
-insert into karaoke_workspaces(id,name) values ('e1000000-0000-4000-8000-000000000002'::uuid,'E1 Test WS');
+insert into karaoke_accounts(id,provider,provider_subject,display_name,timezone)
+values ('e1000000-0000-4000-8000-000000000001','apple','E1-SUB','E1','America/Los_Angeles');
+insert into karaoke_workspaces(id,name) values ('e1000000-0000-4000-8000-000000000002','E1 WS');
 insert into karaoke_workspace_members(workspace_id,account_id,role,status)
-values ('e1000000-0000-4000-8000-000000000002'::uuid,'e1000000-0000-4000-8000-000000000001'::uuid,'owner','active');
+values ('e1000000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000001','owner','active');
 insert into karaoke_rooms(id,slug,display_name,dj_secret,status)
-values ('e1000000-0000-4000-8000-000000000003'::uuid,'e1-test-room','E1 Test Room','x','open');
-insert into karaoke_room_ownership(room_id,workspace_id) values ('e1000000-0000-4000-8000-000000000003'::uuid,'e1000000-0000-4000-8000-000000000002'::uuid);
+values ('e1000000-0000-4000-8000-000000000003','e1-room','E1 Room','x','open');
+insert into karaoke_room_ownership(room_id,workspace_id)
+values ('e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000002');
 insert into karaoke_events(id,room_id,name,status,public_code,guest_slug)
-values ('e1000000-0000-4000-8000-000000000004'::uuid,'e1000000-0000-4000-8000-000000000003'::uuid,'E1 Test','active','E1CODE','e1-guest');
-insert into karaoke_host_plan_assignments(account_id,plan_code,status) values ('e1000000-0000-4000-8000-000000000001'::uuid,'FREE','active');
--- enforcement ON: the pre-E1 world would have refused on FREE exhaustion.
+values ('e1000000-0000-4000-8000-000000000004','e1000000-0000-4000-8000-000000000003','E1','active','E1C','e1g');
+insert into karaoke_host_plan_assignments(account_id,plan_code,status)
+values ('e1000000-0000-4000-8000-000000000001','FREE','active');
 update karaoke_usage_policy set enforcement_enabled = true where policy_key='default';
-
 insert into karaoke_video_durations(video_id,duration_seconds) values
-  ('E1SHORT0001', 200),      -- ordinary
-  ('E1LONG00001', 960),      -- 16 minutes: over the retired 900 ceiling
-  ('E1HUGE00001', 7200);     -- 2 hours: far over
--- 'E1UNKNOWN01' deliberately absent → unknown duration
+  ('E1SHORT0001',200), ('E1LONG00001',960), ('E1HUGE00001',7200);   -- 'E1UNKNOWN01' absent
 
-create or replace function pg_temp.mk(p_vid text) returns uuid language plpgsql as $$
-declare v uuid; begin
-  -- close any open usage segment: the schema permits only one open segment per room, and each
-  -- begin_song opens one. Closing mirrors what Finish does in production.
+create or replace function pg_temp.start(vid text, mode text default 'guest') returns jsonb
+language plpgsql as $$
+declare rid uuid; begin
   update karaoke_event_usage_segments set ended_at=clock_timestamp(), close_reason='completed'
    where room_id='e1000000-0000-4000-8000-000000000003' and ended_at is null;
-  update karaoke_requests set status='skipped' where room_id='e1000000-0000-4000-8000-000000000003' and status in ('waiting','playing');
+  update karaoke_requests set status='skipped'
+   where room_id='e1000000-0000-4000-8000-000000000003' and status in ('waiting','playing');
   insert into karaoke_requests(room_id,event_id,guest_name,youtube_video_id,position,status,ready_at)
-  values ('e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000004',
-          'E1 Guest',p_vid,1,'waiting',now()) returning id into v;
-  return v; end $$;
+  values ('e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000004','G',vid,1,'waiting',clock_timestamp())
+  returning id into rid;
+  return karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003', rid, mode);
+end $$;
 
-create or replace function pg_temp.outcome(p_vid text, p_mode text default 'guest')
-returns text language plpgsql as $$
-declare r jsonb; begin
-  r := karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003', pg_temp.mk(p_vid), p_mode);
-  return r->>'outcome'; end $$;
-
--- ---------- exhaust FREE so every case below runs with 0 seconds remaining ----------
--- a COMPLETED historical request to hang the exhausting segment on (request_id is NOT NULL)
+-- ---------- PLAYBACK 1-12 ----------
+select pg_temp.a('D1  FREE>0 + valid song', (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
+-- exhaust FREE against a completed historical request
 insert into karaoke_requests(id,room_id,event_id,guest_name,youtube_video_id,position,status,created_at,started_at,completed_at)
-values ('e1000000-0000-4000-8000-0000000000aa'::uuid,'e1000000-0000-4000-8000-000000000003'::uuid,
-        'e1000000-0000-4000-8000-000000000004'::uuid,'E1 History','E1SHORT0001',0,'completed',
-        now()-interval '2 hours', now()-interval '2 hours', now()-interval '1 hour');
+values ('e1000000-0000-4000-8000-0000000000aa','e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000004',
+        'H','E1SHORT0001',0,'completed',now()-interval '3 hours',now()-interval '3 hours',now()-interval '2 hours');
 insert into karaoke_event_usage_segments
-  (account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,ended_at,timezone_snapshot,
-   close_reason,duration_seconds,lease_ends_at,lease_seconds,charged_window_start,charged_window_end)
-values ('e1000000-0000-4000-8000-000000000001'::uuid,'e1000000-0000-4000-8000-000000000004'::uuid,'e1000000-0000-4000-8000-000000000003'::uuid,
-        'e1000000-0000-4000-8000-0000000000aa'::uuid,'FREE',true, now()-interval '2 hours', now()-interval '1 hour',
-        'America/Los_Angeles', 'completed', 900, now()-interval '1 hour', 900,
-        date_trunc('day', now()), date_trunc('day', now())+interval '1 day');
-
-select pg_temp.assert('C0 free is exhausted (precondition)',
-  ((karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001'::uuid, now())->>'remainingSeconds')::int) <= 0,
-  (karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001'::uuid, now())->>'remainingSeconds'));
-
--- ---------- 1,2: FREE=0, no pass ----------
-select pg_temp.assert('C1 FREE=0 + valid song starts', pg_temp.outcome('E1SHORT0001')='ok');
-select pg_temp.assert('C2 no pass + valid song starts', pg_temp.outcome('E1SHORT0001')='ok');
-
--- ---------- 5,6: the retired ceiling ----------
-select pg_temp.assert('C5 16-minute song starts (900 ceiling retired)', pg_temp.outcome('E1LONG00001')='ok');
-select pg_temp.assert('C6 2-hour song starts (no duration ceiling)',    pg_temp.outcome('E1HUGE00001')='ok');
-
--- ---------- 7: unknown duration ----------
-select pg_temp.assert('C7 unknown duration is not refused', pg_temp.outcome('E1UNKNOWN01')='ok');
-
--- ---------- 3: expired pass ----------
+ (account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,ended_at,close_reason,timezone_snapshot,
+  duration_seconds,lease_ends_at,lease_seconds,charged_window_start,charged_window_end)
+values ('e1000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000004','e1000000-0000-4000-8000-000000000003',
+        'e1000000-0000-4000-8000-0000000000aa','FREE',true,now()-interval '3 hours',now()-interval '2 hours','completed',
+        'America/Los_Angeles',900,now()-interval '2 hours',900,date_trunc('day',now()),date_trunc('day',now())+interval '1 day');
+select pg_temp.a('D0  precondition: FREE exhausted',
+  ((karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001',now())->>'remainingSeconds')::int) <= 0);
+select pg_temp.a('D2  FREE=0 + same song',      (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
+select pg_temp.a('D3  no pass',                 (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
 insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,source,expires_at,activated_at)
-values ('e1000000-0000-4000-8000-000000000001'::uuid,'ONE_HOUR',3600,'ACTIVE','PROMOTIONAL', now()-interval '1 minute', now()-interval '61 minutes');
-select pg_temp.assert('C3 expired pass + valid song starts', pg_temp.outcome('E1SHORT0001')='ok');
-
--- ---------- 4 & 18: SELECTED pass must survive untouched ----------
-delete from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001'::uuid;
+values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'ACTIVE','PROMOTIONAL',now()-interval '1 min',now()-interval '61 min');
+select pg_temp.a('D4  expired pass',            (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
+delete from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001';
 insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,source)
-values ('e1000000-0000-4000-8000-000000000001'::uuid,'ONE_HOUR',3600,'SELECTED','PROMOTIONAL');
-select pg_temp.assert('C4 SELECTED pass + valid song starts', pg_temp.outcome('E1SHORT0001')='ok');
-select pg_temp.assert('C4b SELECTED pass is NOT activated by playback',
-  (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001'::uuid and status='SELECTED')=1
-  and (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001'::uuid and status='ACTIVE')=0);
-select pg_temp.assert('C18 no ACTIVATED audit row written by playback',
-  (select count(*) from timed_access_pass_audit a
-     join timed_access_pass_grants g on g.id=a.pass_grant_id
-    where g.account_id='e1000000-0000-4000-8000-000000000001'::uuid and a.action='ACTIVATED')=0);
+values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'SELECTED','PROMOTIONAL');
+select pg_temp.a('D5  SELECTED pass',           (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
+select pg_temp.a('D6  SELECTED pass STAYS selected',
+  (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001' and status='SELECTED')=1
+  and (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001' and status<>'SELECTED')=0);
+select pg_temp.a('D7  16-minute video',         (pg_temp.start('E1LONG00001')->>'outcome')='ok');
+select pg_temp.a('D8  2-hour video',            (pg_temp.start('E1HUGE00001')->>'outcome')='ok');
+select pg_temp.a('D9  unknown duration',        (pg_temp.start('E1UNKNOWN01')->>'outcome')='ok');
+select pg_temp.a('D10 former grace-exhausted',  (pg_temp.start('E1LONG00001')->>'outcome')='ok');
+select pg_temp.a('D11 former pass_insufficient',(pg_temp.start('E1HUGE00001')->>'outcome')='ok');
+select pg_temp.a('D12 former upgrade_required', (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
 
--- ---------- 8,9: the former refusal paths are unreachable ----------
-select pg_temp.assert('C8 former FREE-grace exhaustion does not refuse', pg_temp.outcome('E1LONG00001')='ok');
-select pg_temp.assert('C9 former pass_insufficient case does not refuse', pg_temp.outcome('E1HUGE00001')='ok');
+-- ---------- RECORD SHAPE 13-20 ----------
+select pg_temp.a('D13 metered=false',
+  (select bool_and(not metered) from karaoke_event_usage_segments
+    where room_id='e1000000-0000-4000-8000-000000000003' and request_id<>'e1000000-0000-4000-8000-0000000000aa'));
+select pg_temp.a('D14 all five lease columns NULL',
+  (select bool_and(duration_seconds is null and lease_ends_at is null and lease_seconds is null
+                   and charged_window_start is null and charged_window_end is null)
+     from karaoke_event_usage_segments
+    where room_id='e1000000-0000-4000-8000-000000000003' and request_id<>'e1000000-0000-4000-8000-0000000000aa'));
+select pg_temp.a('D15 CHECK accepted every new row', true);  -- reaching here means no violation aborted us
+select pg_temp.a('D16 no lease minted',
+  (select count(*) from karaoke_event_usage_segments
+    where room_id='e1000000-0000-4000-8000-000000000003' and lease_ends_at is not null
+      and request_id<>'e1000000-0000-4000-8000-0000000000aa')=0);
+select pg_temp.a('D17 no grace minted',
+  (select count(*) from karaoke_free_final_song_grace where account_id='e1000000-0000-4000-8000-000000000001')=0);
+select pg_temp.a('D18 no FREE consumption from new playback',
+  (select coalesce(sum(lease_seconds),0) from karaoke_event_usage_segments
+    where account_id='e1000000-0000-4000-8000-000000000001' and metered)=900);
+select pg_temp.a('D19 no carryover minted',
+  (select count(*) from karaoke_free_window_carryover where account_id='e1000000-0000-4000-8000-000000000001')=0);
+select pg_temp.a('D20 no pass activation audit',
+  (select count(*) from timed_access_pass_audit a join timed_access_pass_grants g on g.id=a.pass_grant_id
+    where g.account_id='e1000000-0000-4000-8000-000000000001' and a.action='ACTIVATED')=0);
 
--- ---------- SECURITY / STRUCTURE regressions ----------
-select pg_temp.assert('C10 invalid mode still refused', pg_temp.outcome('E1SHORT0001','bogus')='invalid_mode');
+-- ---------- DOWNSTREAM READERS 21-26 ----------
+select pg_temp.a('D21 isPlaying still sees unmetered playback',
+  ((karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001',now())->>'activePlaybackCount')::int) >= 1);
+select pg_temp.a('D22 completion derives from status/ended_at',
+  (select count(*) from karaoke_requests where room_id='e1000000-0000-4000-8000-000000000003' and status='playing')=1);
+select pg_temp.a('D24 FREE sum excludes unmetered rows',
+  ((karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001',now())->>'usedSeconds')::int)=900);
 
-select pg_temp.assert('C11 unknown room still refused',
-  (karaoke_begin_song_v2('e1000000-0000-4000-8000-0000000000ff', pg_temp.mk('E1SHORT0001'),'guest')
-   ->>'outcome') = 'ownership_state_invalid');
-
-select pg_temp.assert('C13 nonexistent request still refused',
-  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003'::uuid,'e1000000-0000-4000-8000-0000000000fe','guest')->>'outcome')='not_found');
-
--- inactive event
-update karaoke_events set status='ended' where id='e1000000-0000-4000-8000-000000000004'::uuid;
-select pg_temp.assert('C12 inactive event still refused', pg_temp.outcome('E1SHORT0001')='event_state_invalid');
-update karaoke_events set status='active' where id='e1000000-0000-4000-8000-000000000004'::uuid;
-
--- already playing
-select pg_temp.outcome('E1SHORT0001');
+-- ---------- SECURITY 27-33 ----------
+select pg_temp.a('D27 invalid mode refused',  (pg_temp.start('E1SHORT0001','bogus')->>'outcome')='invalid_mode');
+select pg_temp.a('D28 unknown room refused',
+  (karaoke_begin_song_v2('e1000000-0000-4000-8000-0000000000ff','e1000000-0000-4000-8000-0000000000aa','guest')->>'outcome')='ownership_state_invalid');
+select pg_temp.a('D30 nonexistent request refused',
+  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-0000000000fe','guest')->>'outcome')='not_found');
+update karaoke_events set status='ended' where id='e1000000-0000-4000-8000-000000000004';
+select pg_temp.a('D29 inactive event refused', (pg_temp.start('E1SHORT0001')->>'outcome')='event_state_invalid');
+update karaoke_events set status='active' where id='e1000000-0000-4000-8000-000000000004';
+select pg_temp.start('E1SHORT0001');
+select pg_temp.a('D32 replay of a playing request refused',
+  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003',
+     (select id from karaoke_requests where room_id='e1000000-0000-4000-8000-000000000003' and status='playing' limit 1),'guest')->>'outcome')='not_waiting');
 insert into karaoke_requests(room_id,event_id,guest_name,youtube_video_id,position,status,ready_at)
-values ('e1000000-0000-4000-8000-000000000003'::uuid,'e1000000-0000-4000-8000-000000000004'::uuid,'E1 Guest 2','E1SHORT0001',2,'waiting',now());
-select pg_temp.assert('C15 already-playing still refused',
-  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003'::uuid,(select id from karaoke_requests where room_id='e1000000-0000-4000-8000-000000000003'::uuid and status='waiting' limit 1),'guest')
-   ->>'outcome')='already_playing');
+values ('e1000000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000004','G2','E1SHORT0001',9,'waiting',clock_timestamp());
+select pg_temp.a('D33 already-playing refused',
+  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003',
+     (select id from karaoke_requests where room_id='e1000000-0000-4000-8000-000000000003' and status='waiting' order by position desc limit 1),'guest')->>'outcome')='already_playing');
+update karaoke_rooms set status='retired' where id='e1000000-0000-4000-8000-000000000003';
+select pg_temp.a('D31 retired room refused', (pg_temp.start('E1SHORT0001')->>'outcome')='room_retired');
+update karaoke_rooms set status='open' where id='e1000000-0000-4000-8000-000000000003';
 
--- replay: the same request cannot start twice
-select pg_temp.assert('C14 replay of a playing request refused (not_waiting)',
-  (karaoke_begin_song_v2('e1000000-0000-4000-8000-000000000003'::uuid,(select id from karaoke_requests where room_id='e1000000-0000-4000-8000-000000000003'::uuid and status='playing' limit 1),'guest')
-   ->>'outcome')='not_waiting');
+-- ---------- HISTORICAL 34-40 ----------
+select pg_temp.a('D34 historical metered <=900 fixture still valid',
+  (select count(*) from karaoke_event_usage_segments where metered and duration_seconds=900)=1);
+select pg_temp.a('D38 purchase ledger unchanged', (select count(*) from karaoke_apple_purchases)=0);
+select pg_temp.a('D39 grant history unchanged (1 SELECTED, nothing else)',
+  (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001')=1);
+select pg_temp.a('D40 no audit rows written by playback',
+  (select count(*) from timed_access_pass_audit a join timed_access_pass_grants g on g.id=a.pass_grant_id
+    where g.account_id='e1000000-0000-4000-8000-000000000001')=0);
 
--- retired room
-update karaoke_rooms set status='retired' where id='e1000000-0000-4000-8000-000000000003'::uuid;
-select pg_temp.assert('C11b retired room still refused', pg_temp.outcome('E1SHORT0001')='room_retired');
-update karaoke_rooms set status='open' where id='e1000000-0000-4000-8000-000000000003'::uuid;
+-- ---------- MUTANTS ----------
+do $$ begin
+  insert into karaoke_event_usage_segments
+   (account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,timezone_snapshot,
+    duration_seconds,lease_ends_at,lease_seconds,charged_window_start,charged_window_end)
+  values ('e1000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000004','e1000000-0000-4000-8000-000000000003',
+          'e1000000-0000-4000-8000-0000000000aa','FREE',true,clock_timestamp(),'America/Los_Angeles',
+          960, clock_timestamp()+interval '960 s', 960, date_trunc('day',now()), date_trunc('day',now())+interval '1 day');
+  insert into res values('M1  16-min in the METERED shape is KILLED by the 900 CHECK', false);
+exception when check_violation then
+  insert into res values('M1  16-min in the METERED shape is KILLED by the 900 CHECK', true);
+end $$;
 
--- ---------- 19: ledger untouched ----------
-select pg_temp.assert('C19 purchase ledger untouched by playback',
-  (select count(*) from karaoke_apple_purchases)=0);
+do $$ begin
+  insert into karaoke_event_usage_segments
+   (account_id,event_id,room_id,request_id,plan_snapshot,metered,started_at,timezone_snapshot,
+    duration_seconds,lease_ends_at,lease_seconds,charged_window_start,charged_window_end)
+  values ('e1000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000004','e1000000-0000-4000-8000-000000000003',
+          'e1000000-0000-4000-8000-0000000000aa','FREE',false,clock_timestamp(),'America/Los_Angeles',
+          null, clock_timestamp()+interval '100 s', null, null, null);
+  insert into res values('M2  NULL duration + one populated lease field is KILLED (atomicity)', false);
+exception when check_violation then
+  insert into res values('M2  NULL duration + one populated lease field is KILLED (atomicity)', true);
+end $$;
 
--- ---------- results ----------
-select name, case when ok then 'PASS' else 'FAIL' end as result, detail from res order by name;
+select name, case when ok then 'PASS' else 'FAIL' end from res order by name;
 select count(*) filter (where ok) as passed, count(*) filter (where not ok) as failed from res;
 rollback;
