@@ -10,10 +10,12 @@ import {
   normalizeLearningNeeds,
   shouldProposeSharedQuestion,
   stepBlocker,
+  stepBlockers,
   persistableStep,
   draftIdentityStatement,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
+  TITLE_MAX,
   FOLLOW_UP_DAY_OPTIONS,
   type BuilderAnswers,
   type AudienceType,
@@ -289,7 +291,7 @@ export function ModuleBuilderShell({
 
   const goNext = useCallback(() => {
     const from = shownStepNow();
-    const b = stepBlocker(from, answersRef.current);
+    const b = stepBlockers(from, answersRef.current)[0] ?? null;
     if (b) return setBlocker(b);
     /*
       The answer is saved either way: `navigate` flushes the current step before it moves, so
@@ -702,8 +704,15 @@ export function ModuleBuilderShell({
       t={t}
     />
   );
-  // The assistive Direction Copilot lives under the problem step. It appears only once
-  // the problem meets the existing minimum validity, and never blocks manual progression.
+  /*
+    The assistive Direction Copilot lives under the problem step. It appears once the PROBLEM
+    meets the existing minimum validity, and never blocks manual progression.
+
+    `stepBlocker`, not `stepBlockers` (Slice 3.2R-R2.1): the Copilot reads the problem statement
+    and suggests a capability/behaviour/evidence direction from it. The training's NAME is not an
+    input to that, so an unnamed draft must still get help — gating it on the title would have
+    withheld assistance for a missing field the assistance has nothing to do with.
+  */
   const copilotNode = (
     <DirectionCopilot
       problemStatement={answers.problem ?? ""}
@@ -964,6 +973,29 @@ function StepFrame({ q, help, children }: { q: string; help?: string; children: 
   );
 }
 
+/**
+ * One labelled field inside a step (Slice 3.2R-R2.1).
+ *
+ * A real `<label>`, not an aria-label on a bare control: Step 1 now carries two inputs, and a
+ * sighted Host needs to see which is which just as much as a screen-reader user needs to hear it.
+ * Deliberately renders no heading — the step keeps exactly one h2, which `StepFrame` owns.
+ */
+function FieldBlock({
+  htmlFor, label, help, children,
+}: { htmlFor: string; label: string; help?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-0.5">
+        <label htmlFor={htmlFor} className="text-[0.95rem] font-medium leading-6 text-white/85">
+          {label}
+        </label>
+        {help ? <p className="text-[0.8rem] leading-5 text-white/45">{help}</p> : null}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function textArea(value: string, onChange: (v: string) => void, placeholder: string, label: string) {
   return (
     <textarea
@@ -1055,10 +1087,47 @@ function renderStep(
 ) {
   switch (step) {
     case 1:
+      /*
+        TWO CONCEPTS, TWO FIELDS (Slice 3.2R-R2.1).
+
+        This step used to render a single textarea under "What keeps going wrong?", while the
+        "Training focus" header above it echoed that textarea's first line back. A Host could not
+        tell where the training was named, or whether the problem sentence WAS the name — because
+        there was no title anywhere, and the header was that sentence wearing a title's clothes.
+
+        The step's one primary question (h2) is now "Define the training", and the two fields sit
+        beneath it under their own labels. Neither is derived from the other in the UI or in the
+        domain: `title` is the name, `problem` is the recurring condition, and editing either
+        leaves the other exactly as the Host left it.
+      */
       return (
-        <StepFrame q={t.s1Q} help={t.s1Help}>
-          {textArea(a.problem ?? "", (v) => patch({ problem: v }, false), t.s1Placeholder, t.s1Q)}
-          <BlockerLine show={blocker === "problem_required"} text={t.s1Blocker} />
+        <StepFrame q={t.s1Heading}>
+          <FieldBlock htmlFor="builder-title" label={t.s1TitleLabel} help={t.s1TitleHelp}>
+            <input
+              id="builder-title"
+              type="text"
+              value={a.title ?? ""}
+              onChange={(e) => patch({ title: e.target.value }, false)}
+              placeholder={t.s1TitlePlaceholder}
+              maxLength={TITLE_MAX}
+              data-testid="builder-title-input"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+            />
+            <BlockerLine show={blocker === "title_required"} text={t.s1TitleBlocker} />
+          </FieldBlock>
+
+          <FieldBlock htmlFor="builder-problem" label={t.s1ProblemLabel} help={t.s1Help}>
+            <textarea
+              id="builder-problem"
+              value={a.problem ?? ""}
+              onChange={(e) => patch({ problem: e.target.value }, false)}
+              placeholder={t.s1Placeholder}
+              rows={4}
+              data-testid="builder-problem-input"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3.5 text-base leading-7 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
+            />
+            <BlockerLine show={blocker === "problem_required"} text={t.s1Blocker} />
+          </FieldBlock>
           {copilotNode}
         </StepFrame>
       );
@@ -1292,6 +1361,8 @@ type ReviewRow = {
 /** Section → actionable, localized "what to do" reason (reuses the per-step blockers). */
 function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
   switch (section) {
+    case "title":
+      return t.s1TitleBlocker;
     case "problem":
       return t.s1Blocker;
     case "audience":
@@ -1314,6 +1385,8 @@ function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string 
 /** Section → its Review row label (for the "needs attention" summary list). */
 function sectionLabel(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
   switch (section) {
+    case "title":
+      return t.s1TitleLabel;
     case "problem":
       return t.reviewChange;
     case "audience":
@@ -1386,6 +1459,9 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
   const followChosen = (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1);
 
   return [
+    // Slice 3.2R-R2.1 — the NAME and the recurring condition, as two distinct Review rows. Showing
+    // one row for both is how Step 1 confused them in the first place.
+    { label: t.s1TitleLabel, value: a.title?.trim() ? a.title : null, step: 1, section: "title" },
     { label: t.reviewChange, value: a.problem?.trim() ? a.problem : null, step: 1, section: "problem" },
     { label: t.reviewWho, value: audience, step: 2, section: "audience" },
     { label: t.reviewWhenItHappens, value: a.recurringMoment?.trim() ? a.recurringMoment : null, step: 3, section: "recurringMoment" },

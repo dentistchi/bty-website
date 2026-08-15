@@ -24,6 +24,8 @@ afterEach(cleanup);
 
 /** The canonical draft, missing only the moment — the exact state the device gate ran against. */
 const CANONICAL: BuilderAnswers = {
+  // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+  title: "Read Back Before Sign-Off",
   problem: "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
   audienceType: "leaders",
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",

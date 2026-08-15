@@ -18,10 +18,21 @@ import { draftIdentityStatement } from "@/domain/foundry/module/module-builder";
 
 const CANONICAL_ID = "093b0361-7cc8-4688-9f93-396d60582501";
 const CANONICAL_PROBLEM = "Our handoffs are inconsistent.";
+const CANONICAL_TITLE = "Consistent Handoffs";
 const INCIDENT_ID = "35773b57-0000-4000-8000-000000000001";
 const INCIDENT_PROBLEM = "새로운 의사들의 교만이 문제야";
+const INCIDENT_TITLE = "새 의사 온보딩";
 
-const answersFor = (problem: string) => ({
+/*
+  Slice 3.2R-R2.1 — each draft now carries its own NAME, and the name is what identifies it. That
+  strengthens 3.2L-R1.2 rather than replacing it: the guarantee was always "two drafts must never
+  present identically", and a distinct title is a better distinguisher than a problem's first line.
+  A title is also required for completeness now, so without one the Review details panel would
+  auto-open (a blocker must never hide) and these fixtures would no longer be the settled drafts
+  they are meant to represent.
+*/
+const answersFor = (problem: string, title: string) => ({
+  title,
   problem,
   audienceType: "everyone",
   recurringMoment: "at each handoff point",
@@ -77,11 +88,11 @@ afterEach(() => {
 
 describe("[3.2L-R1.2] the open draft names itself", () => {
   it("G1 — the canonical draft shows its own statement at Step 8, without expanding anything", async () => {
-    const { seen } = mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
+    const { seen } = mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE) } });
     await open(CANONICAL_ID);
 
     // Visible identity …
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     // … and it came from THIS draft's payload, not a cached or inferred value.
     expect(seen).toEqual([CANONICAL_ID]);
     // The details disclosure is still collapsed — identity did not depend on it.
@@ -90,22 +101,22 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
   });
 
   it("G1b — the label is neutral, not an approved program title", async () => {
-    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE) } });
     await open(CANONICAL_ID);
     expect(screen.getByTestId("draft-identity").textContent).toContain("Training focus");
   });
 
   it("G2 — a different Step-8 draft shows ITS statement, and the previous one is gone", async () => {
     mockServer({
-      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) },
-      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM) },
+      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE) },
+      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM, INCIDENT_TITLE) },
     });
     await open(CANONICAL_ID);
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
 
     cleanup();
     await open(INCIDENT_ID);
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(INCIDENT_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(INCIDENT_TITLE);
     // The two screens must be unmistakably different before Generate is pressed.
     expect(screen.queryByText(CANONICAL_PROBLEM)).toBeNull();
   });
@@ -114,11 +125,11 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
     // The incident draft is deliberately the "newest" here. Opening the canonical draft
     // explicitly must still show the canonical statement — recency is not identity.
     const { seen } = mockServer({
-      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM) },
-      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) },
+      [INCIDENT_ID]: { current_step: 9, answers: answersFor(INCIDENT_PROBLEM, INCIDENT_TITLE) },
+      [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE) },
     });
     await open(CANONICAL_ID);
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     expect(seen).toEqual([CANONICAL_ID]);
     expect(screen.queryByText(INCIDENT_PROBLEM)).toBeNull();
   });
@@ -133,7 +144,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
         if (method === "GET") {
           return new Response(
             JSON.stringify({
-              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
+              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE), assets: [] },
               program_generation_active: false,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
@@ -151,7 +162,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       fireEvent.click(screen.getByTestId("program-target-confirm-action"));
     });
     expect(screen.getByTestId("program-working")).toBeTruthy();
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("publish-blocked-generation").textContent).toContain("BTY is writing your training program");
   });
@@ -167,7 +178,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
         if ((init?.method ?? "GET").toUpperCase() === "GET") {
           return new Response(
             JSON.stringify({
-              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM), assets: [] },
+              draft: { id: CANONICAL_ID, status: "draft", current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE), assets: [] },
               program_generation_active: false,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
@@ -185,7 +196,7 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
       fireEvent.click(screen.getByTestId("program-target-confirm-action"));
     });
     expect(screen.getByTestId("program-failure")).toBeTruthy();
-    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_PROBLEM);
+    expect(screen.getByTestId("draft-identity-statement").textContent).toBe(CANONICAL_TITLE);
     // …and publication is not left wedged by the refusal.
     expect((screen.getByTestId("publish-cta") as HTMLButtonElement).disabled).toBe(false);
   });
@@ -205,17 +216,23 @@ describe("[3.2L-R1.2] the open draft names itself", () => {
     expect(draftIdentityStatement({ problem: a })).not.toBe(draftIdentityStatement({ problem: b }));
     expect(draftIdentityStatement({ problem: a })).toBe(a);
 
-    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(a) } });
+    /*
+      Slice 3.2R-R2.1 — the rendered identity is now the TITLE, so the wrapping guarantee is
+      exercised with a long title. It still matters: a title may run to TITLE_MAX (120), far past
+      the 60-character card bound that would otherwise render two names identically.
+    */
+    const longTitle = "Consistent Handoffs at Shift Change, Especially on the Night Shift Rotation";
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(a, longTitle) } });
     await open(CANONICAL_ID);
     const el = screen.getByTestId("draft-identity-statement");
-    expect(el.textContent).toBe(a);
+    expect(el.textContent).toBe(longTitle);
     expect(el.className).toContain("break-words");
     expect(el.className).not.toContain("truncate");
     expect(el.className).not.toContain("whitespace-nowrap");
   });
 
   it("G8 — identity is a labelled region, read before the Review actions, without stealing the step heading", async () => {
-    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM) } });
+    mockServer({ [CANONICAL_ID]: { current_step: 9, answers: answersFor(CANONICAL_PROBLEM, CANONICAL_TITLE) } });
     const { container } = await open(CANONICAL_ID);
     const section = screen.getByTestId("draft-identity");
     // A NAMED region carries the semantics. It is deliberately not a heading: the Builder

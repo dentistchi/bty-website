@@ -96,6 +96,8 @@ function draft(over: Row = {}): Row {
     id: V2, owner_user_id: OWNER, status: "draft", module_version: 2,
     approved_at: null, published_at: null, program_id: "prog-shared",
     answers: {
+      // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+      title: "Read Back Before Sign-Off",
       problem: "Handoffs skip the double-check.", audienceType: "everyone",
       recurringMoment: "at each handoff point",
       observableBehavior: "The charge nurse reads back the dosage before sign-off.",
@@ -335,6 +337,8 @@ describe("[3.2R-R3] publish refuses a PDF the Host has not looked at", () => {
     id: V2, owner_user_id: OWNER, status: "draft", module_version: 2,
     approved_at: null, published_at: null, program_id: "prog-shared",
     answers: {
+      // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+      title: "Read Back Before Sign-Off",
       problem: "Read the safety manual.", audienceType: "everyone",
       recurringMoment: "at each handoff point",
       observableBehavior: "Staff follow the lockout steps in order.",
@@ -404,6 +408,8 @@ describe("[3.2R-R6] publish refuses a document whose length it cannot read", () 
     id: V2, owner_user_id: OWNER, status: "draft", module_version: 2,
     approved_at: null, published_at: null, program_id: "prog-shared",
     answers: {
+      // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+      title: "Read Back Before Sign-Off",
       problem: "Read the safety manual.", audienceType: "everyone",
       recurringMoment: "at each handoff point",
       observableBehavior: "Staff follow the lockout steps in order.",

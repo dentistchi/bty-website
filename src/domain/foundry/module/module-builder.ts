@@ -88,6 +88,14 @@ export function persistableStep(step: number): number {
 }
 
 // Field length bounds (generous — the builder is drafting, not publishing).
+/**
+ * A NAME, NOT A DESCRIPTION (Slice 3.2R-R2.1).
+ *
+ * Short on purpose: the title has to survive a draft card, the Learn list, the Today deep link
+ * and a Host roster row. 120 is generous for a name and far too small to retype the problem into,
+ * which is the confusion this field exists to end.
+ */
+export const TITLE_MAX = 120;
 export const PROBLEM_MAX = 2000;
 export const BEHAVIOR_MAX = 2000;
 export const EVIDENCE_MAX = 2000;
@@ -115,6 +123,26 @@ const MEANINGFUL_MIN = 3;
  * keys keep identical types), so it is assignable to the Slice-1 service.
  */
 export type BuilderAnswers = ModuleDraftAnswers & {
+  /**
+   * THE TRAINING'S NAME — Host-authored, and the ONE title authority (Slice 3.2R-R2.1).
+   *
+   * Measured before adding it: no title existed anywhere at draft stage. `draftTitleFrom` and
+   * `draftIdentityStatement` both returned the FIRST LINE OF `problem`, and the Builder rendered
+   * that under a "Training focus" heading directly above the only input on Step 1 — so the header
+   * silently echoed what the Host typed into "What keeps going wrong?". Two different product
+   * concepts, one field, one screen. That is the defect.
+   *
+   * A name and a recurring condition are not interchangeable. This answers "what is this training
+   * called?"; `problem` answers "what keeps going wrong?". Neither is derived from the other, and
+   * editing one never rewrites the other.
+   *
+   * NO MIGRATION: `foundry_module_drafts.answers` is `jsonb not null default '{}'`, deliberately
+   * progressive, and this key joins the existing whitelist the same way every other answer does.
+   *
+   * OPTIONAL, so every legacy draft stays valid and keeps its measured behaviour — the
+   * problem-derived fallbacks below still run when this is absent.
+   */
+  title?: string;
   problem?: string;
   audienceType?: AudienceType;
   audienceDetail?: string;
@@ -243,6 +271,13 @@ export function normalizeLearningNeeds(answers: BuilderAnswers | undefined): Lea
  * meaningful line, bounded). Returns null when there is nothing usable yet.
  */
 export function draftTitleFrom(answers: BuilderAnswers | undefined): string | null {
+  /*
+    The Host's own name wins whenever they have written one (Slice 3.2R-R2.1). The
+    problem-derived fallback below is preserved verbatim for every draft authored before the
+    title field existed, so no historical card or published title changes.
+  */
+  const authored = typeof answers?.title === "string" ? answers.title.trim() : "";
+  if (authored.length > 0) return authored.length > 60 ? `${authored.slice(0, 60).trimEnd()}…` : authored;
   const problem = answers?.problem;
   if (typeof problem !== "string") return null;
   const first = problem.split(/\r?\n/)[0].trim();
@@ -268,6 +303,16 @@ export function draftTitleFrom(answers: BuilderAnswers | undefined): string | nu
  * fallback rather than inventing a title.
  */
 export function draftIdentityStatement(answers: BuilderAnswers | undefined): string | null {
+  /*
+    Slice 3.2R-R2.1 — the TITLE is now the best thing to identify a draft by, so it wins when it
+    exists. This keeps exactly ONE editable title source (the Step 1 input) while the header
+    remains a read-only reflection of it, never a second place to type one.
+
+    The problem-first-line fallback is kept for drafts that predate the title field, preserving
+    the 3.2L-R1.2 protection it was written for: two drafts must never present identically.
+  */
+  const authored = typeof answers?.title === "string" ? answers.title.trim() : "";
+  if (authored.length > 0) return authored;
   const problem = answers?.problem;
   if (typeof problem !== "string") return null;
   const first = problem.split(/\r?\n/).map((l) => l.trim()).find((l) => l.length > 0);
@@ -371,6 +416,9 @@ export function validateDraftPatch(input: DraftPatchInput): DraftPatchResult {
     } else {
       const a = input.answers;
       const clean: BuilderAnswers = {};
+
+      const title = checkText(a.title, TITLE_MAX, "title_too_long", "title_invalid", errors);
+      if (title !== undefined) clean.title = title;
 
       const problem = checkText(a.problem, PROBLEM_MAX, "problem_too_long", "problem_invalid", errors);
       if (problem !== undefined) clean.problem = problem;
@@ -544,10 +592,54 @@ function meaningful(v: unknown): boolean {
  * (client shows calm inline guidance) or null. This never blocks SAVING — only the
  * forward move. The server does not enforce it.
  */
+/**
+ * EVERYTHING THE HOST MUST SUPPLY ON A STEP — source AND the training's name (Slice 3.2R-R2.1).
+ *
+ * TWO READINESS QUESTIONS, DELIBERATELY SEPARATE:
+ *
+ *   `stepBlocker`  — is the step's SOURCE present? Consumed by `programContext`, i.e. the
+ *                    generation boundary. A program is authored from the problem, audience,
+ *                    moment, behaviour and evidence; the training's NAME is not source material,
+ *                    so a nameless draft can still be designed.
+ *   `stepBlockers` — may the Host advance and approve? Source PLUS the name. This is what the
+ *                    Next-guard, `builderApprovalErrors` and the Review list consult.
+ *
+ * Collapsing these into one gate is exactly the mistake this comment exists to prevent: it makes
+ * an unnamed draft un-generatable, which no product rule asks for.
+ *
+ * Returns ALL unmet requirements, not just the first, because Step 1 has two and a Review list
+ * naming only one would send the Host back a second time for the other. Every other step has at
+ * most one, so it delegates and cannot change their behaviour.
+ */
+export function stepBlockers(step: number, answers: BuilderAnswers | undefined): string[] {
+  const a = answers ?? {};
+  if (step === 1) {
+    const out: string[] = [];
+    if (!meaningful(a.title)) out.push("title_required");
+    if (!meaningful(a.problem)) out.push("problem_required");
+    return out;
+  }
+  const one = stepBlocker(step, a);
+  return one ? [one] : [];
+}
+
 export function stepBlocker(step: number, answers: BuilderAnswers | undefined): string | null {
   const a = answers ?? {};
   switch (step) {
     case 1:
+      /*
+        SOURCE ONLY — the title is deliberately NOT checked here (Slice 3.2R-R2.1).
+
+        `programContext` reuses this function for steps 1–5 to decide whether a program can be
+        AUTHORED. A program is authored from the problem, the audience, the moment, the behaviour
+        and the evidence; its NAME is not source material. Requiring the title here made
+        `availableEvidenceLevels` collapse to ["exposed"] on a fully-designed draft that simply
+        had no name yet — measured, not hypothetical: it broke 44 tests across 9 files on the
+        first run, which is the generation boundary saying so.
+
+        The naming requirement lives in `stepBlockers` (plural) instead, which is what the
+        Next-guard and approval readiness consult.
+      */
       return meaningful(a.problem) ? null : "problem_required";
     case 2:
       if (!a.audienceType) return "audience_required";
@@ -583,5 +675,6 @@ export function stepBlocker(step: number, answers: BuilderAnswers | undefined): 
 }
 
 export function canAdvanceStep(step: number, answers: BuilderAnswers | undefined): boolean {
-  return stepBlocker(step, answers) === null;
+  // `stepBlockers`, not `stepBlocker`: advancing requires the name as well as the source.
+  return stepBlockers(step, answers).length === 0;
 }

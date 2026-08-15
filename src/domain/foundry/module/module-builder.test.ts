@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   validateDraftPatch,
   stepBlocker,
+  stepBlockers,
   canAdvanceStep,
   recommendArenaForNeed,
   recommendArenaForNeeds,
@@ -127,6 +128,9 @@ describe("validateDraftPatch — partial-save friendly", () => {
 
 describe("stepBlocker / canAdvanceStep — client Next-guard", () => {
   const full: BuilderAnswers = {
+    // Slice 3.2R-R2.1 — a full answer set now includes the training's NAME, distinct from the
+    // problem sentence below it.
+    title: "Read Back Before Sign-Off",
     problem: "handoffs keep missing the double-check",
     audienceType: "specific_role",
     audienceDetail: "charge nurse",
@@ -138,10 +142,39 @@ describe("stepBlocker / canAdvanceStep — client Next-guard", () => {
     followUpDays: 7,
   };
 
-  it("blocks step 1 until the problem is meaningful", () => {
+  it("blocks step 1 until the problem is meaningful (SOURCE readiness)", () => {
+    /*
+      Slice 3.2R-R2.1 — `stepBlocker` answers "is the SOURCE present?", which is what the
+      generation boundary consumes. A nameless draft is still designable, so the title is
+      deliberately absent from this gate.
+    */
     expect(stepBlocker(1, {})).toBe("problem_required");
     expect(stepBlocker(1, { problem: "ok" })).toBe("problem_required"); // too short
     expect(stepBlocker(1, { problem: full.problem })).toBeNull();
+    expect(stepBlocker(1, { problem: full.problem, title: undefined })).toBeNull();
+  });
+
+  it("stepBlockers additionally requires the NAME, and reports both gaps at once", () => {
+    expect(stepBlockers(1, {})).toEqual(["title_required", "problem_required"]);
+    expect(stepBlockers(1, { problem: full.problem })).toEqual(["title_required"]);
+    expect(stepBlockers(1, { title: full.title })).toEqual(["problem_required"]);
+    expect(stepBlockers(1, { title: full.title, problem: full.problem })).toEqual([]);
+  });
+
+  it("title and problem are independent — neither satisfies the other", () => {
+    expect(stepBlockers(1, { title: "A name" })).toEqual(["problem_required"]);
+    expect(stepBlockers(1, { problem: full.problem })).toEqual(["title_required"]);
+  });
+
+  it("a nameless but fully-designed draft can still ADVANCE nowhere, yet still GENERATE", () => {
+    /*
+      The split that 44 failing tests forced into the open: the Next-guard stops an unnamed draft,
+      and the generation boundary does not — because a program is authored from the problem, not
+      from its name.
+    */
+    const nameless = { ...full, title: undefined };
+    expect(canAdvanceStep(1, nameless)).toBe(false);
+    for (const step of [1, 2, 3, 4, 5]) expect(stepBlocker(step, nameless)).toBeNull();
   });
 
   it("blocks step 2 until audience (and detail when required) is set", () => {

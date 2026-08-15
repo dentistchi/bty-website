@@ -130,10 +130,21 @@ export function mapAnswersToJourney(answers: BuilderAnswers | undefined): Realit
     });
   }
 
+  /*
+    Slice 3.2R-R2.1 — seed the learner-facing title from the Host's OWN title when they have
+    written one. Before this, the seed was always the problem's first line, which is how a
+    recurring-condition sentence ended up presented to learners as the name of the training.
+
+    displayTitleStatus is deliberately UNCHANGED (`needs_confirmation`). The Review-step
+    confirmation gate is the human approval the Builder architecture already depends on, and this
+    slice does not remove approval steps — it only changes what is pre-filled for the Host to
+    approve. `answers.title` remains the single editable authority; this is a derived seed.
+  */
+  const authoredTitle = asText(a.title);
   const firstLine = asText(a.problem).split(/\r?\n/)[0]?.trim() ?? "";
   return {
     version: 1,
-    displayTitle: firstLine, // provisional — the Host reviews/edits before approval
+    displayTitle: authoredTitle.length > 0 ? authoredTitle : firstLine,
     displayTitleStatus: "needs_confirmation",
     elements,
   };

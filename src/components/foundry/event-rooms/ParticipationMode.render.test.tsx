@@ -23,6 +23,8 @@ function readyDraft(audienceType: string) {
     status: "draft",
     current_step: 9,
     answers: {
+      // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+      title: "Read Back Before Sign-Off",
       problem: "Handoffs skip the double-check.",
       audienceType,
       audienceDetail: null,

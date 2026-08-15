@@ -144,6 +144,8 @@ const OTHER = "owner-2";
 /** A builder-complete draft (YouTube material) — passes the builder approval gate. */
 function completeAnswers(): BuilderAnswers {
   return {
+    // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+    title: "Read Back Before Sign-Off",
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
     recurringMoment: "at each handoff point",

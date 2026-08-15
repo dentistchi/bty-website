@@ -13,6 +13,9 @@ import type { BuilderAnswers } from "./module-builder";
 
 function completeYoutube(): BuilderAnswers {
   return {
+    // Slice 3.2R-R2.1 — a COMPLETE draft now has a name as well as a problem. The two are
+    // deliberately different sentences here, so any test that confuses them fails.
+    title: "Read Back Before Sign-Off",
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
     recurringMoment: "at each handoff point",
@@ -36,7 +39,10 @@ describe("builderApprovalErrors", () => {
   it("an empty draft reports the first-step blocker(s)", () => {
     const errs = builderApprovalErrors({});
     expect(errs.length).toBeGreaterThan(0);
-    expect(errs).toContain("problem_required");
+    // Slice 3.2R-R2.1 — step 1 reports its first unmet field; the problem blocker follows once
+    // the training has a name.
+    expect(errs).toContain("title_required");
+    expect(builderApprovalErrors({ title: "A name" })).toContain("problem_required");
   });
 
   it("a YouTube material with no URL is blocked", () => {
@@ -93,7 +99,8 @@ describe("reviewMissingSections — canonical Review readiness (Slice 2.4A.3)", 
     const m = reviewMissingSections({ materialIntent: "pdf" });
     expect(m.map((x) => x.step)).toEqual([...m.map((x) => x.step)].sort((a, b) => a - b));
     // Slice 3.2P-R3.6-R1 — "When it happens" sits between the audience and the behaviour.
-    expect(m.map((x) => x.section)).toEqual(["problem", "audience", "recurringMoment", "behavior", "evidence", "learning", "followUp"]);
+    // Slice 3.2R-R2.1 — "title" leads, as its own Review row, ahead of the problem it is not.
+    expect(m.map((x) => x.section)).toEqual(["title", "problem", "audience", "recurringMoment", "behavior", "evidence", "learning", "followUp"]);
   });
 
   it("does NOT block on an empty (optional) capability candidate", () => {

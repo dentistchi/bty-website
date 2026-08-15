@@ -140,6 +140,8 @@ function youtubeDraft(over: Row = {}): Row {
     approved_at: null,
     published_at: null,
     answers: {
+      // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+      title: "Read Back Before Sign-Off",
       problem: "Handoffs skip the double-check.",
       audienceType: "everyone",
       recurringMoment: "at each handoff point",
@@ -298,6 +300,8 @@ describe("publishDraft — PDF (durable-reference reuse)", () => {
         youtubeDraft({
           id: "d-pdf",
           answers: {
+            // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+            title: "Read Back Before Sign-Off",
             problem: "Read the safety manual.",
             audienceType: "everyone",
             recurringMoment: "at each handoff point",

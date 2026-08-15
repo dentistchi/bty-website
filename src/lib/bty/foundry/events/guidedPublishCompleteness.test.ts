@@ -78,6 +78,8 @@ const OWNER = "owner-1";
 
 /** The live pilot's Host intent, verbatim. `decide` is absent — action_decision is NOT required. */
 const HOST_ANSWERS = {
+  // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+  title: "Read Back Before Sign-Off",
   problem: "During morning huddles, team members report problems but leave without naming who will act.",
   audienceType: "leaders",
   evidenceType: "confirmed",

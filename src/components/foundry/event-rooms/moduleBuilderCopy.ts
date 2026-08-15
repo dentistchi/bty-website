@@ -149,6 +149,13 @@ export type ModuleBuilderCopy = {
   restoreUnavailable: string;
   restoreGone: string;
   // step 1 problem
+  /* Slice 3.2R-R2.1 — Step 1 names the training AND describes the problem, as two fields. */
+  s1Heading: string;
+  s1TitleLabel: string;
+  s1TitleHelp: string;
+  s1TitlePlaceholder: string;
+  s1TitleBlocker: string;
+  s1ProblemLabel: string;
   s1Q: string;
   s1Help: string;
   s1Placeholder: string;
@@ -388,6 +395,12 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     restoreLoading: "Opening your draft…",
     restoreUnavailable: "Couldn’t open this draft. Please try again.",
     restoreGone: "This draft is no longer available.",
+    s1Heading: "Define the training",
+    s1TitleLabel: "Training title",
+    s1TitleHelp: "Give this training a short, clear name.",
+    s1TitlePlaceholder: "e.g. Close the Loop on One Commitment",
+    s1TitleBlocker: "Give this training a short name.",
+    s1ProblemLabel: "What keeps going wrong?",
     s1Q: "What keeps going wrong?",
     s1Help: "Describe a specific situation that repeats — not a general topic.",
     s1Placeholder: "e.g. Handoffs at shift change keep missing the double-check step.",
@@ -687,8 +700,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     restoreLoading: "초안을 여는 중…",
     restoreUnavailable: "이 초안을 열지 못했습니다. 다시 시도해 주세요.",
     restoreGone: "이 초안은 더 이상 사용할 수 없습니다.",
+    s1Heading: "교육 정의",
+    s1TitleLabel: "교육 제목",
+    s1TitleHelp: "이 교육을 짧고 분명하게 표현하는 이름을 적어주세요.",
+    s1TitlePlaceholder: "예: 약속 하나를 끝까지 매듭짓기",
+    s1TitleBlocker: "이 교육의 짧은 이름을 적어주세요.",
+    s1ProblemLabel: "무엇이 반복해서 잘못되고 있나요?",
     s1Q: "무엇이 계속 잘못되나요?",
-    s1Help: "일반적인 주제가 아니라 반복되는 구체적인 상황을 설명하세요.",
+    s1Help: "일반적인 주제가 아니라 반복되는 구체적인 상황을 적어주세요.",
     s1Placeholder: "예: 교대 인수인계에서 이중 확인 단계가 계속 누락됩니다.",
     s1Blocker: "무엇이 반복되는지 한 문장으로 적어 주세요.",
     s2Q: "누가 다르게 행동해야 하나요?",

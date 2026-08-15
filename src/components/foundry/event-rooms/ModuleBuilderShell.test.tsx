@@ -169,6 +169,8 @@ describe("ModuleBuilderShell — restore + navigation", () => {
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What keeps going wrong?");
 
+    // Slice 3.2R-R2.1 — Step 1 asks two things now, so advancing needs both.
+    fireEvent.change(screen.getByTestId("builder-title-input"), { target: { value: "Read Back Before Sign-Off" } });
     const ta = screen.getByLabelText("What keeps going wrong?") as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "handoffs keep missing the double-check" } });
 
@@ -189,6 +191,8 @@ describe("ModuleBuilderShell — restore + navigation", () => {
     const srv = mockDraftServer({ current_step: 1 });
     const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What keeps going wrong?");
+    // Slice 3.2R-R2.1 — both Step 1 fields are required to advance.
+    fireEvent.change(screen.getByTestId("builder-title-input"), { target: { value: "Read Back Before Sign-Off" } });
     const ta = screen.getByLabelText("What keeps going wrong?") as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "a real recurring problem here" } });
     fireEvent.click(screen.getByText("Next"));
@@ -214,6 +218,8 @@ describe("ModuleBuilderShell — restore + navigation", () => {
 
 describe("ModuleBuilderShell — review + material intent", () => {
   const fullAnswers = {
+    // Slice 3.2R-R2.1 — a complete draft now carries a NAME as well as a problem.
+    title: "Read Back Before Sign-Off",
     problem: "handoffs miss the double-check",
     audienceType: "specific_role",
     audienceDetail: "charge nurse",
@@ -311,7 +317,7 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
   it("review begins near the top (no viewport spacer) and shows the explicit missing summary", async () => {
     mockDraftServer({
       current_step: 9,
-      answers: { problem: "x", observableBehavior: "show leadership", materialIntent: "youtube" },
+      answers: { title: "Read Back Before Sign-Off", problem: "x", observableBehavior: "show leadership", materialIntent: "youtube" },
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     // review lead sits right under the header — no min-h spacer block precedes it.
@@ -390,7 +396,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   it("review lists attached files and does NOT flag the material section when a file is present", async () => {
     mockDraftServer({
       current_step: 9,
-      answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
+      answers: { title: "Read Back Before Sign-Off", problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
       assets: [mkAsset({ id: "a1", filename: "Care.pdf", file_kind: "pdf", participant_delivery_ready: true })],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -403,7 +409,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
   it("review highlights the material section (Required) when no PDF file is attached", async () => {
     mockDraftServer({
       current_step: 9,
-      answers: { problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
+      answers: { title: "Read Back Before Sign-Off", problem: "x", observableBehavior: "reads back the dosage at handoff", materialIntent: "pdf" },
       assets: [],
     });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -426,6 +432,7 @@ describe("ModuleBuilderShell — Files and documents (2.1.2)", () => {
 
 describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   const completeYoutube = {
+    title: "Read Back Before Sign-Off",
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
     recurringMoment: "at each handoff point",
@@ -465,7 +472,7 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
   });
 
   it("disables publish for an incomplete draft and names the missing sections", async () => {
-    mockDraftServer({ current_step: 9, answers: { problem: "only this" } });
+    mockDraftServer({ current_step: 9, answers: { title: "Read Back Before Sign-Off", problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     const btn = await screen.findByText("Approve & create session");
     expect((btn as HTMLButtonElement).disabled).toBe(true);
@@ -493,7 +500,7 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
 
   it("applying a direction writes capability/behavior/evidence via the canonical PATCH, preserves the problem, and restores after reload", async () => {
     const srv = mockDraftServer(
-      { current_step: 1, answers: { problem: "Handoffs miss the double-check." } },
+      { current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } },
       { directions: { suggestions: SUGGESTIONS } },
     );
     const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -531,7 +538,7 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
   });
 
   it("shows the discoverable assistive block on the first step, above the footer Next, and hides it for short input", async () => {
-    mockDraftServer({ current_step: 1, answers: { problem: "Handoffs miss the double-check." } });
+    mockDraftServer({ current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } });
     const { unmount } = render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What keeps going wrong?");
 
@@ -544,7 +551,7 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
 
     // A too-short problem exposes no active generation action.
     unmount();
-    mockDraftServer({ current_step: 1, answers: { problem: "x" } });
+    mockDraftServer({ current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "x" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What keeps going wrong?");
     expect(screen.queryByTestId("direction-copilot")).toBeNull();
@@ -553,7 +560,7 @@ describe("ModuleBuilderShell — Direction Copilot integration (Slice 2.4A)", ()
 
   it("a generation failure keeps the problem and the manual path intact", async () => {
     const srv = mockDraftServer(
-      { current_step: 1, answers: { problem: "Handoffs miss the double-check." } },
+      { current_step: 1, answers: { title: "Read Back Before Sign-Off", problem: "Handoffs miss the double-check." } },
       { directions: { status: 502 } },
     );
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
@@ -574,6 +581,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
   // Every visible section populated EXCEPT follow-up (which previously masqueraded as
   // "No follow-up" and blocked approval with nothing highlighted — the Commander bug).
   const nearCompleteNoFollow = {
+    title: "Read Back Before Sign-Off",
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone" as const,
     recurringMoment: "at each handoff point",
@@ -658,6 +666,7 @@ describe("ModuleBuilderShell — Review completion-gate reconciliation (Slice 2.
 
 describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)", () => {
   const CONTEXT = {
+    title: "Read Back Before Sign-Off",
     problem: "Handoffs skip the double-check.",
     audienceType: "everyone",
     recurringMoment: "at each handoff point",
@@ -681,7 +690,7 @@ describe("ModuleBuilderShell — Module-draft Copilot integration (Slice 2.4B)",
   };
 
   it("entry is absent on step 5 until the canonical minimum context is complete", async () => {
-    mockDraftServer({ current_step: 6, answers: { problem: "only this" } });
+    mockDraftServer({ current_step: 6, answers: { title: "Read Back Before Sign-Off", problem: "only this" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What does this training need to include?");
     expect(screen.queryByTestId("module-draft-copilot")).toBeNull();

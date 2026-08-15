@@ -30,6 +30,9 @@ import { reviewMissingSections, ALL_BLOCKING_CODES } from "./module-publish";
  * What the model authors is now exactly one thing: what the learner is seen doing.
  */
 const HOST: BuilderAnswers = {
+  // Slice 3.2R-R2.1 — a COMPLETE draft carries a name as well as a problem, and this fixture's
+  // whole point is to be complete except for the one field under test.
+  title: "End Every Huddle With an Owner",
   problem: "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
   audienceType: "leaders",
   recurringMoment: "During morning huddles",

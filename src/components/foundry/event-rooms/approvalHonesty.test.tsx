@@ -24,6 +24,8 @@ const DRAFT_ID = "d0000000-0000-4000-8000-000000000001";
 
 /** The canonical shape: 7 required kinds, a 4-element host-authored seed journey. */
 const ANSWERS = {
+  // Slice 3.2R-R2.1 — a complete draft carries a NAME distinct from its problem.
+  title: "Read Back Before Sign-Off",
   problem: "Our handoffs are inconsistent.",
   audienceType: "everyone",
   recurringMoment: "at each handoff point",

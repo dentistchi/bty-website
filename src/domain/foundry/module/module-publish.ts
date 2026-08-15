@@ -15,7 +15,7 @@
  * and publish consult.
  */
 
-import { stepBlocker, type BuilderAnswers } from "./module-builder";
+import { stepBlockers, type BuilderAnswers } from "./module-builder";
 
 // ---------------------------------------------------------------------------
 // Approval readiness (builder's real fields)
@@ -35,8 +35,9 @@ export function builderApprovalErrors(answers: BuilderAnswers | undefined): stri
   const a = answers ?? {};
   const errors: string[] = [];
   for (const step of APPROVAL_STEPS) {
-    const blocker = stepBlocker(step, a);
-    if (blocker) errors.push(blocker);
+    // ALL of a step's unmet requirements (Slice 3.2R-R2.1) — Step 1 has two, and a Review list
+    // that named only the first would send the Host back a second time for the second.
+    errors.push(...stepBlockers(step, a));
   }
   if (a.materialIntent === "youtube" && !(a.materialText ?? "").trim()) {
     errors.push("material_youtube_url_required");
@@ -60,6 +61,8 @@ export function isBuilderApprovable(answers: BuilderAnswers | undefined): boolea
  * approval without a visible, highlightable Review row. (Slice 2.4A.3.)
  */
 export type ReviewSectionKey =
+  /** Slice 3.2R-R2.1 — the training's NAME. Its own section, because it is its own concept. */
+  | "title"
   | "problem"
   | "audience"
   /** "When it happens" — the Host's recurring moment (Slice 3.2P-R3.6-R1). */
@@ -74,6 +77,14 @@ export type ReviewMissingSection = { section: ReviewSectionKey; step: number };
 
 /** Blocking-code → Review section + editable Builder step. The exhaustive map. */
 const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
+  /*
+    Slice 3.2R-R2.1. Registered here the moment `stepBlocker` began emitting it — an unmapped
+    blocking code is exactly the failure this map exists to prevent, and the invariant test caught
+    it on the first run. Step 1, like `problem_required`, but its OWN section: the Review screen
+    must show the name and the recurring condition as two rows, or it reproduces on Review the
+    same conflation this slice removed from Step 1.
+  */
+  title_required: { section: "title", step: 1 },
   problem_required: { section: "problem", step: 1 },
   audience_required: { section: "audience", step: 2 },
   audience_detail_required: { section: "audience", step: 2 },
@@ -101,6 +112,7 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
 
 /** Every blocking code the readiness gates can emit — used to prove the map is total. */
 export const ALL_BLOCKING_CODES: readonly string[] = [
+  "title_required",
   "problem_required",
   "audience_required",
   "audience_detail_required",
@@ -180,6 +192,9 @@ export function deriveEventMaterial(answers: BuilderAnswers | undefined): Publis
  * deprecated answer keys are dropped.
  */
 export const SNAPSHOT_ANSWER_KEYS: readonly (keyof BuilderAnswers)[] = [
+  // Slice 3.2R-R2.1 — the Host-authored name, frozen INDEPENDENTLY of `problem`. Both travel
+  // into the immutable snapshot; neither is reconstructed from the other at any later read.
+  "title",
   "problem",
   "audienceType",
   "audienceDetail",
