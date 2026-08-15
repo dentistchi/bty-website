@@ -194,7 +194,7 @@ export function ProgramAuthorship({
       // one is still an explicit, changeable choice.
       setDecisions(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
       setEdits(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, e.content])));
-      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null);
+      const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null, answers);
       setContracts(c);
       setBaseContracts(c);
       setOpenDetails(null);

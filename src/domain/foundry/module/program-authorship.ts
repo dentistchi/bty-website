@@ -2656,10 +2656,50 @@ export function contractsFromProposal(
   followUpDays: number,
   problemStatement = "",
   completionPrompt: string | null = null,
+  /**
+   * The Host's own answers. When supplied, the operational construct is RE-DERIVED from them
+   * rather than replayed from the proposal — see below.
+   */
+  constructSource?: Pick<BuilderAnswers, "observableBehavior" | "capabilityCandidate" | "successEvidence" | "problem">,
+  verifiedArtifacts: readonly string[] = [],
 ): ProgramContracts | null {
   // A proposal without a behaviour contract cannot derive anything. Only reachable from a
   // pre-v4 shape; returning null keeps the review surface honest rather than crashing.
   if (!proposal.behaviorContract) return null;
+  /*
+    THE CONSTRUCT IS DERIVED, NOT REPLAYED (Slice 3.2R-R2.3-R2).
+
+    `operationalConstruct` is computed at GENERATION time and stored on the proposal, and every
+    later render — including Apply, which writes the currently rendered sentence into the frozen
+    journey — replayed it. So a construct extracted by an older code version outlived the fix to
+    that version.
+
+    Measured, not theorised: draft `ee79e3b3` has exactly ONE attempt, `d36c5309`, generated under
+    `deploy_version 64e559ac` (R2.1). After the R2.3 deploy the Founder saw YOUR DECISION and
+    BEFORE YOU FINISH correct — both re-derive from the contracts — while APPLY IT still read
+    "This is the sometimes end with agreement in practice.", because that clause renders from the
+    STORED construct. The repaired extractor was running; it was being handed a value it would
+    never produce. Applying would have frozen that sentence into a published journey.
+
+    The construct is a pure function of the Host's own answers, so replaying it buys nothing and
+    costs exactly this. Re-deriving also means editing an answer moves the construct with it, the
+    same way editing the trigger already moves YOUR DECISION and APPLY IT.
+
+    `verifiedArtifacts` is optional here: it can only raise a construct's authority mode to
+    `verified_resource`, and no rendered sentence reads the mode — `constructPhrase` uses the
+    label alone. Omitting it therefore cannot change a single participant-facing character.
+  */
+  const construct = constructSource
+    ? deriveOperationalConstruct(
+        {
+          observableBehavior: constructSource.observableBehavior,
+          capabilityCandidate: constructSource.capabilityCandidate,
+          successEvidence: constructSource.successEvidence,
+          problem: constructSource.problem,
+        },
+        verifiedArtifacts,
+      )
+    : proposal.operationalConstruct;
   return {
     problemStatement,
     behavior: proposal.behaviorContract,
@@ -2667,7 +2707,7 @@ export function contractsFromProposal(
     application: proposal.applicationContract,
     completion: proposal.completionContract,
     followUp: proposal.followUpContract,
-    construct: proposal.operationalConstruct,
+    construct,
     followUpDays,
     completionPrompt,
   };
