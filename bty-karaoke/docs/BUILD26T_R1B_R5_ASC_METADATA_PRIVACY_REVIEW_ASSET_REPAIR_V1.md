@@ -24,7 +24,8 @@ copyright holder                      APPROVED      "2026 Hanbit Chi"
 App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exists (§6.1)
 IAP review screenshots (×3)           PREPARED      Founder-approved capture, alpha stripped (§7)
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
-App Review demo credentials           AUTHORIZED — not yet created or proven (§8.3)
+App Review demo credentials           AUTHORIZED — account not yet created (§8.3)
+App Review P1–P5 proof                HALTED at §8.6 — needs approval for 2 production writes
 release mode → Manual                 READY_TO_ENTER
 build 100                             NOT UPLOADED (unchanged, deliberate)
 PASS_1H                               INACTIVE (no write issued this session)
@@ -580,41 +581,134 @@ Email          FOUNDER_INPUT_REQUIRED   ← ywamer2022@gmail.com is the PUBLISHE
 
 ### 8.5 Review Notes — READY_TO_ENTER
 
+Rewritten against the measured first-run routing (§8.6), because the earlier draft described the
+*returning*-host flow. A brand-new review account never sees "Start a new norebang" — it lands on
+`FirstRoomOnboardingView`. Notes that describe a screen the reviewer will not see are how a review
+fails for a reason that has nothing to do with the app.
+
 ```
 BTY Norebang is a karaoke session app for private gatherings. The host opens a "norebang"
 (room), guests join by QR code and request songs, and everyone watches the same shared queue.
 
 SIGNING IN
-Sign in with Apple and Google Sign-In are the only login methods; there is no password login.
-The supplied demo account signs in with the "Google로 계속하기" (Continue with Google) button.
-You may also use your own Apple ID via the Sign in with Apple button.
+Sign in with Apple and Google Sign-In are the only login methods; there is no password
+login. The demo account above signs in with the "Continue with Google" button on the first
+screen. You may also use your own Apple ID via the Sign in with Apple button.
 
-GETTING TO THE MAIN EXPERIENCE
-1. Sign in on the first screen.
-2. Tap "새 노래방 시작" (Start a new norebang) to create a room and begin a session. A guest
-   QR code and an empty queue are created.
-3. Tap the QR code to display it; scanning it on a second device opens the guest request
-   screen. Guest mode is also reachable inside this app without signing in.
-4. Search for a song and submit a request; it appears in the shared queue.
+FIRST RUN — the demo account starts with no norebang
+1. Sign in with the demo account.
+2. You will land on "Create Your First Norebang". Enter any name (for example "Review")
+   and tap "Create Norebang". No passcode is required.
+3. On "My Norebang", tap the room card ("Enter Norebang"). This starts a session and
+   creates a guest QR code and an empty queue.
 
-PLAYBACK
-Playback is handed off to YouTube: tapping play opens the video in YouTube. The app does not
-embed, re-host, or modify YouTube content, and it requests no access to a YouTube account.
+ORDINARY FUNCTIONALITY
+4. Tap the QR code to display it. Scanning it on a second device opens the guest request
+   screen in a browser. Guest mode is also reachable inside this app without signing in.
+5. Search for a song and submit a request; it appears in the shared queue.
+6. Playback is handed off to YouTube: tapping play opens the video in YouTube. The app
+   does not embed, re-host or modify YouTube content, and it requests no access to any
+   YouTube account.
 
-TIMED PASSES (in-app purchases)
-Each account has a daily free allowance. The 1-hour / 4-hour / 24-hour passes extend it and
-are reachable from the pass card on the main host screen. A pass does not begin when it is
-selected — it begins when the first song actually starts playing, and once started it runs on
-wall-clock time. This is stated in the app before selection.
+IN-APP PURCHASES — how to reach them
+7. On the queue screen, tap the access-status chip at the top (it reads, for example,
+   "FREE · 15m left").
+8. The "Access Status" sheet opens. Scroll to "Buy a pass": the 1 hour, 4 hours and
+   24 hours passes are listed there with their App Store prices.
+
+Each account has a daily free allowance and the passes extend it. A pass does not begin
+when it is selected — it begins when the first song actually starts playing, and once
+started it runs on wall-clock time. The app states this before selection.
 
 ACCOUNT DELETION
-Account → "계정 삭제" (Delete Account) permanently deletes the account from inside the app.
+Account → "Delete Account" permanently deletes the account from inside the app.
 
 LANGUAGES
 Korean and English, following the device language.
 ```
 
 No secret appears in these notes.
+
+### 8.6 HALT — reaching the commerce surface requires two production writes
+
+Traced through the shipping Release routing (`RootView.swift`), not assumed. The commerce surface
+is **inside `QueueScreen`**, which the app only renders in the `.connected` state:
+
+```
+sign in (Google)                    → .signedInNoRoom          a NEW account owns no room
+FirstRoomOnboardingView             → POST /api/host/rooms/create        ← WRITE W1
+MyNorebangView → "Enter Norebang"   → enterRoomAndStart:
+                                        room device-token exchange
+                                        + start event                     ← WRITE W2
+.connected → QueueScreen            → tap the access-status chip
+  └ entitlementSheet (RootView:476) → UsageBannerView · TimedPassCardView
+                                    → TimedPassStoreView   ← "Buy a pass", the IAP surface
+```
+
+**Per the standing HALT condition, this is reported before either write is performed.**
+
+```
+W1  create ONE production room     POST /api/host/rooms/create
+                                   owner derived from the session · NO manager passcode ·
+                                   atomic + idempotent (account-level has_room guard, so a
+                                   retry returns the same room, never a second) · creates
+                                   ZERO events · no allowlist / invite / admin gate exists
+W2  start ONE production event     account-bound device-token exchange, then start event
+```
+
+**Exactly what is NOT required** — each of these was checked against the Founder's HALT list and
+none of them applies:
+
+```
+manager / passcode assignment      NOT required — the passcode path is for CLAIMING an existing
+                                   room; first-room creation has no passcode field at all
+special entitlement or pass grant  NOT required — see the finding below
+production authorization change    NOT required
+karaoke_product_catalog write      NOT required — and not permitted
+```
+
+**A finding that removes a fear rather than adding one.** `hidesPassControls` is
+`timedPass?.isBasePro ?? (usage?.plan == "PRO")` — it hides the pass and commerce controls **only
+for a PRO account**. A brand-new FREE review account with zero passes therefore still renders
+`TimedPassStoreView`. **The reviewer does not need a granted pass to see the purchase surface**, so
+no entitlement grant is needed and none should be made.
+
+**The requirement in one sentence, for the Founder's decision:** the review account must create its
+own norebang and start its own session — the same two taps any real new user performs through the
+shipping onboarding UI — and no admin action, grant, or authorization change is involved.
+
+Awaiting approval before W1/W2.
+
+### 8.7 The P1–P5 proof protocol — prepared, not executed
+
+Steps 1 and 2 are physically the Founder's: this session cannot type a Google password into the
+device's sign-in sheet, and `devicectl` offers no UI automation (`copy`/`info`/`install`/
+`notification`/`orientation`/`process`/`reboot`/`sysdiagnose`/`uninstall` — §6.1).
+
+```
+P1  sign out of the Release build                     Account → Sign out
+P2  sign in with the dedicated Google account         "Continue with Google"
+P3  the resulting BTY session is valid                lands on "Create Your First Norebang",
+                                                      NOT on the sign-in screen
+P4  ordinary app functionality is reachable           W1 + W2 → queue screen with a guest QR
+P5  the Timed Pass / commerce surface is reachable    access-status chip → "Access Status" →
+                                                      "Buy a pass" with all three products
+```
+
+**Evidence rules — the password must not exist outside the device sign-in sheet.**
+
+```
+capture                screenshots of the RESULT screens only (P3, P4, P5)
+never captured         the Google sign-in sheet, the password field, any autofill overlay
+never recorded         the password or the account's password anywhere in terminal output,
+                       source, git, documentation, screenshots or closure reports
+account identity       the review account's ADDRESS may appear in this doc if the Founder
+                       wants it recorded; the password never may
+```
+
+P5's screenshot is expected to be the §7 surface again, and while the catalog stays inactive it
+will read `Passes are not on sale right now.` — that still proves *reachability*, which is what
+P5 asserts. It does not prove purchasability, and §7.4 already says so.
 
 ---
 
@@ -718,7 +812,8 @@ asset requirement and nothing more — **do not submit any IAP**, per §7.4.
 ### 10.5 What still blocks a PASS
 
 ```
-1  dedicated App Review account          AUTHORIZED — create, then prove P1/P2/P3   §8.3
+1  dedicated App Review account          AUTHORIZED — Founder creates it            §8.3
+1b P1–P5 proof run                       HALTED — W1/W2 need approval               §8.6 / §8.7
 2  contact first/last/phone/email        Founder-supplied, never invented           §8.4
 3  App Store product-page screenshots    Founder-captured on the iPhone             §6.2
 4  the ASC writes themselves             Founder-performed; this session has no browser
