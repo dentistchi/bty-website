@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
       // The learner's own REFLECT answer (Slice 3.2R-R8D-R1). This route is authenticated and
       // owner-scoped; it is the only surface allowed to carry it, and Center is what renders it.
       learnerReflection: it.learnerReflection,
+      // Slice 3.2R-R1.1 — what they decided to do. Host-visible by settled 3.2M-1 design, so this
+      // owner-scoped route carrying it widens nothing; it exists so the DECIDED chip can be opened.
+      decisionResponse: it.decisionResponse,
       aiReflection: it.aiReflection,
       aiReflectionLine: it.aiReflectionLine,
       completionState: it.completionState,

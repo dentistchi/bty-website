@@ -24,6 +24,11 @@ type MyLearningItem = {
   contentType: "youtube" | "document";
   completedAt: string;
   sharedUnderstanding: string | null;
+  /**
+   * What the learner decided to DO (Slice 3.2R-R1.1). null when the published journey asked for
+   * no decision — then the section is ABSENT, never an empty box. Never BTY's proposed sentence.
+   */
+  decisionResponse: string | null;
 };
 
 /**
@@ -42,15 +47,10 @@ type ReviewedPlanCard = {
   reviewedAt: string | null;
 };
 
-/**
- * What this training has established since (Slice 3.2R-R1). Rungs are decided server-side by the
- * canonical `projectEvidence`; this component renders names and never derives one.
- */
-type EvidenceEntry = { entryId: string; established: EvidenceLevel[] };
-
 const COPY: Record<Locale, {
   title: string;
   subtitle: string;
+  decisionLabel: string;
   evidenceLabel: string;
   evidenceHint: string;
   sharedLabel: string;
@@ -75,6 +75,7 @@ const COPY: Record<Locale, {
   en: {
     title: "My Learning",
     subtitle: "What you understood, in your own words.",
+    decisionLabel: "What I decided",
     evidenceLabel: "Since this training",
     // Deliberately does NOT say "nothing here is overdue": naming the anxiety in order to deny it
     // is what plants it. States what the strip is, and lets the absence of urgency speak.
@@ -104,6 +105,7 @@ const COPY: Record<Locale, {
   ko: {
     title: "내 학습",
     subtitle: "내가 이해한 내용을 나의 말로.",
+    decisionLabel: "내가 결정한 것",
     evidenceLabel: "이 교육 이후",
     evidenceHint: "시간이 지나면서 실제 현장에서 일어난 일들이 하나씩 채워집니다.",
     sharedLabel: "내가 이해한 것",
@@ -167,7 +169,7 @@ export default function FoundryMyLearning({
         return;
       }
       const data = (await res.json()) as {
-        history?: Array<{ entryId?: string; eventId?: string; eventTitle?: string; contentType?: string; completedAt?: string; sharedUnderstanding?: string | null }>;
+        history?: Array<{ entryId?: string; eventId?: string; eventTitle?: string; contentType?: string; completedAt?: string; sharedUnderstanding?: string | null; decisionResponse?: string | null }>;
       };
       // Allow-list mapping — responseText (Private Reflection) is intentionally NOT read here.
       const mapped: MyLearningItem[] = (data?.history ?? []).map((h) => ({
@@ -177,6 +179,7 @@ export default function FoundryMyLearning({
         contentType: h.contentType === "document" ? "document" : "youtube",
         completedAt: String(h.completedAt ?? ""),
         sharedUnderstanding: h.sharedUnderstanding ? String(h.sharedUnderstanding) : null,
+        decisionResponse: h.decisionResponse ? String(h.decisionResponse) : null,
       }));
       setItems(mapped);
     } catch {
@@ -321,6 +324,27 @@ export default function FoundryMyLearning({
                   <p className="mt-1.5 text-sm leading-6 text-white/40">{t.noShared}</p>
                 )}
               </div>
+              {/*
+                WHAT I DECIDED (Slice 3.2R-R1.1) — rendered ONLY when a decision was actually
+                recorded, so a training that never asked for one shows no section rather than an
+                empty heading. This is the sentence behind the DECIDED chip below: R1 shipped the
+                chip with nothing to open, which is the same gap R8D-R1 closed for the reflection.
+
+                Distinct from "What I understood" above it by SOURCE and by MEANING — that is the
+                Shared Understanding answer to the Host's question, this is what the learner
+                committed to do next. Neither is a fallback for the other; if a training records
+                only one, only one renders.
+              */}
+              {it.decisionResponse ? (
+                <div data-testid="my-learning-decision" className="mt-1 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                  <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#C9A66B]/80">
+                    {t.decisionLabel}
+                  </span>
+                  <p data-testid="my-learning-decision-text" className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-white/85">
+                    {it.decisionResponse}
+                  </p>
+                </div>
+              ) : null}
               {/*
                 SINCE THIS TRAINING (Slice 3.2R-R1) — secondary to the completion above it.
 

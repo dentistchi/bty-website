@@ -1901,8 +1901,26 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               <MeWeeklyTrace locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               <nav className="flex flex-col gap-2" aria-label={locale === "ko" ? "나의 기록" : "My records"}>
                 {[
+                  /*
+                    ONE ROW, ONE DESTINATION (Slice 3.2R-R1.1).
+
+                    "What I learned" and "What I achieved" were two rows with different labels and
+                    the IDENTICAL handler — both `setMeView("my-learning")`. Tapping either opened
+                    the same screen, so the product appeared to hold two records and showed one
+                    twice. Found on the Founder device gate for R1; introduced in 3.2C-B3A.2D, long
+                    before it.
+
+                    "What I achieved" is REMOVED rather than repointed, because there is nothing for
+                    it to point AT. Measured across the whole shell: no achievement surface, table,
+                    projection or route exists; `MeEntries.tsx` (the only other Me-row component)
+                    offers My Learning / Recovery / My Experiences and is itself never rendered.
+                    Achievement in this product is the EVIDENCE LADDER, and the ladder already
+                    renders inside My Learning as "Since this training".
+
+                    A second row here would have to mean something the system can actually establish.
+                    Until it does, one honest row beats two that lie about being different.
+                  */
                   { id: "me-row-learned", label: locale === "ko" ? "내가 배운 것" : "What I learned", go: () => setMeView("my-learning") },
-                  { id: "me-row-achieved", label: locale === "ko" ? "내가 이룬 것" : "What I achieved", go: () => setMeView("my-learning") },
                   { id: "me-row-center", label: locale === "ko" ? "센터" : "Center", go: () => setMeView("center") },
                   { id: "me-account-row", label: locale === "ko" ? "계정" : "Account", go: () => setMeView("account") },
                 ].map((r) => (

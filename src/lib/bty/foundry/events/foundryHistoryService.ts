@@ -21,6 +21,7 @@ type ProgressRow = {
   response_text: string | null;
   learner_reflection_text: string | null;
   shared_understanding_response: string | null;
+  decision_response_text: string | null;
   reflection: unknown;
   completion_state: string | null;
 };
@@ -34,9 +35,17 @@ type ProgressRow = {
   that exists to show a learner their own private writing. The HOST projections are separate
   queries with their own allow-lists and are deliberately untouched — widening this one cannot
   widen those.
+
+  `decision_response_text` joins in Slice 3.2R-R1.1. R1 gave the learner a DECIDED chip and no way
+  to see WHAT they decided — the same shape of gap R8D-R1 closed for `learner_reflection_text`,
+  which R8B wrote and nothing read. A rung the learner cannot open is a claim, not a record.
+
+  It is already Host-visible by settled 3.2M-1 design, so carrying it on this OWNER-SCOPED read
+  widens nothing: this query is `linked_user_id = <session user>`, and the Host projection is a
+  separate query with its own allow-list that this cannot reach.
 */
 const HISTORY_COLS =
-  "id, event_id, completed_at, response_text, learner_reflection_text, shared_understanding_response, reflection, completion_state";
+  "id, event_id, completed_at, response_text, learner_reflection_text, shared_understanding_response, decision_response_text, reflection, completion_state";
 
 export type FoundryHistoryItem = {
   /** Stable owner-scoped record id (the progress row id) — the Center deep-link entry (Slice 3.1B-3I). */
@@ -62,6 +71,12 @@ export type FoundryHistoryItem = {
    * completed before R8B. NEVER the AI `aiReflection`, and never Host-visible.
    */
   learnerReflection: string | null;
+  /**
+   * What the learner decided to DO, in their own words (Slice 3.2R-R1.1). null when the
+   * published journey asked for no decision — which is every entry on staging today, and must
+   * render as absence rather than as an empty box. Never BTY's proposed sentence.
+   */
+  decisionResponse: string | null;
   /** Short excerpt for the list surface. */
   responseExcerpt: string;
   /** The full stored AI Living Reflection, or null if none was produced. */
@@ -111,6 +126,7 @@ export async function listUserFoundryHistory(
     const learnerReflection = (r.learner_reflection_text ?? "").trim();
     const ev = metaById.get(r.event_id);
     const sharedUnderstanding = (r.shared_understanding_response ?? "").trim();
+    const decisionResponse = (r.decision_response_text ?? "").trim();
     return {
       entryId: r.id,
       eventId: r.event_id,
@@ -121,6 +137,7 @@ export async function listUserFoundryHistory(
       responseText,
       responseExcerpt: excerptOf(responseText),
       learnerReflection: learnerReflection.length > 0 ? learnerReflection : null,
+      decisionResponse: decisionResponse.length > 0 ? decisionResponse : null,
       aiReflection,
       aiReflectionLine: aiReflection?.livingSentence ?? null,
       completionState: parseCompletionMeaning(r.completion_state),
