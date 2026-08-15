@@ -75,7 +75,7 @@ const card = async () => {
 };
 
 describe("the Apply card carries its provenance and its timing", () => {
-  it("renders the hierarchy: eyebrow → decision → training title → This week", async () => {
+  it("renders exactly three lines: eyebrow → decision → training title", async () => {
     stub([applyItem()]);
     render(<TodayHome locale="en" />);
     const c = await card();
@@ -84,7 +84,24 @@ describe("the Apply card carries its provenance and its timing", () => {
     expect(text.indexOf("Apply this week")).toBeLessThan(text.indexOf(DECISION_A));
     expect(text.indexOf(DECISION_A)).toBeLessThan(text.indexOf(TITLE_A));
     expect(within(c).getByTestId("today-item-context").textContent).toBe(TITLE_A);
-    expect(within(c).getByTestId("today-item-timing").textContent).toBe("This week");
+    // R2.6-R1: and NOTHING after it while the window is open.
+    expect(within(c).queryByTestId("today-item-timing")).toBeNull();
+  });
+
+  it("an open window carries NO timing chip — the eyebrow already says it", async () => {
+    /*
+      Founder decision after seeing the first live card: "This week" under APPLY THIS WEEK repeats
+      itself, and a status pill on a commitment is what makes Today read like a task manager.
+    */
+    for (const locale of ["en", "ko"]) {
+      cleanup();
+      stub([applyItem({ state: "active" })]);
+      render(<TodayHome locale={locale} />);
+      const c = await card();
+      expect(within(c).queryByTestId("today-item-timing"), locale).toBeNull();
+      // The words must not reappear anywhere else on the card either.
+      expect((c.textContent ?? "").match(locale === "ko" ? /이번 주/g : /[Tt]his week/g), locale).toHaveLength(1);
+    }
   });
 
   it("the decision sentence is rendered EXACTLY, never truncated or reworded", async () => {
@@ -93,18 +110,20 @@ describe("the Apply card carries its provenance and its timing", () => {
     expect(await screen.findByText(DECISION_A)).toBeTruthy();
   });
 
-  it("Korean renders the Korean chip", async () => {
-    stub([applyItem()]);
+  it("Korean renders the Korean eyebrow and the Korean Last-day chip", async () => {
+    stub([applyItem({ state: "due_today" })]);
     render(<TodayHome locale="ko" />);
-    expect(within(await card()).getByTestId("today-item-timing").textContent).toBe("이번 주");
+    const c = await card();
+    expect(c.textContent).toContain("이번 주에 적용하기");
+    expect(within(c).getByTestId("today-item-timing").textContent).toBe("마지막 날");
   });
 
-  it("a window with no title snapshot renders no context line, and still shows the chip", async () => {
+  it("a window with no title snapshot renders no context line, and still no chip", async () => {
     stub([applyItem({ note: null })]);
     render(<TodayHome locale="en" />);
     const c = await card();
     expect(within(c).queryByTestId("today-item-context")).toBeNull();
-    expect(within(c).getByTestId("today-item-timing")).toBeTruthy();
+    expect(within(c).queryByTestId("today-item-timing")).toBeNull();
   });
 });
 
@@ -160,30 +179,59 @@ describe("PART 4 — two apply items stay distinguishable", () => {
 });
 
 describe("PART 5 — timing copy", () => {
-  it("an open window says This week, on every day of it", async () => {
+  it("an open window shows no timing at all, on every day of it", async () => {
     stub([applyItem({ state: "active" })]);
     render(<TodayHome locale="en" />);
-    expect(within(await card()).getByTestId("today-item-timing").textContent).toBe("This week");
+    expect(within(await card()).queryByTestId("today-item-timing")).toBeNull();
   });
 
   it("Last day exists ONLY for due_today — the no-follow-up case, unchanged", async () => {
     /*
       With a 7-day follow-up, day 7 is the day the follow-up becomes due and the server suppresses
-      the Apply item entirely, so this label is unreachable there. It stays for followUpDays = 0.
+      the Apply item entirely, so this label is unreachable there. It stays for followUpDays = 0
+      and for longer follow-ups, where it says something the eyebrow does not.
     */
     stub([applyItem({ state: "due_today" })]);
     render(<TodayHome locale="en" />);
     expect(within(await card()).getByTestId("today-item-timing").textContent).toBe("Last day");
   });
 
-  it("the chip is never the red overdue tone, in any state", async () => {
-    for (const state of ["active", "due_today", "overdue"]) {
+  it("a chip, when it appears, is never the red overdue tone", async () => {
+    for (const state of ["due_today", "overdue"]) {
       cleanup();
       stub([applyItem({ state })]);
       render(<TodayHome locale="en" />);
       const chip = within(await card()).getByTestId("today-item-timing");
       expect(chip.className, state).not.toMatch(/red/);
+      expect(chip.textContent, state).not.toMatch(/overdue/i);
     }
+  });
+});
+
+describe("PART 3D — day 7 with a 7-day follow-up", () => {
+  /*
+    The server owns this: `applyDue()` drops the window once its follow-up is due today or overdue,
+    and the FOLLOW_UP_DUE item takes its place. Pinned end-to-end in `todayApplyDue.test.ts`; this
+    asserts the shell renders that handoff without inventing an Apply card of its own.
+  */
+  const followUp = {
+    stableId: "followup:c034bbf0",
+    category: "FOLLOW_UP_DUE",
+    title: "What actually happened after Establishing Action Ownership in Huddles?",
+    state: "due_today",
+    sourceTimestamp: "2026-08-22T05:00:00-07:00",
+    roleContext: "learner",
+    canonicalDeepLink: `/en/app?tab=me&view=my-learning&entry=${PROGRESS_A}`,
+  };
+
+  it("the Apply card is gone and the follow-up is shown — with no 'Last day' anywhere", async () => {
+    stub([followUp]);
+    render(<TodayHome locale="en" />);
+    const items = await screen.findAllByTestId("today-item");
+    expect(items.some((n) => n.getAttribute("data-category") === "APPLY_DUE")).toBe(false);
+    expect(items.some((n) => n.getAttribute("data-category") === "FOLLOW_UP_DUE")).toBe(true);
+    expect(document.body.textContent).not.toContain("Last day");
+    expect(screen.queryByTestId("today-item-timing")).toBeNull();
   });
 });
 
@@ -215,6 +263,28 @@ describe("PART 3 — the card is not a task manager", () => {
   });
 });
 
+describe("PART 3G — private reflection cannot reach the card", () => {
+  it("the shell renders ONLY the mapped fields, so stray payload text never appears", async () => {
+    /*
+      The server guarantee is the real one — `applyDue()` names `decision_response_text` and no
+      other column, pinned over the serialized payload in `todayApplyDue.test.ts`. This is the
+      second line: even handed private text, the card has nowhere to put it.
+    */
+    const PRIVATE = "I was too nervous to speak up and I felt like a fraud.";
+    stub([
+      applyItem({
+        response_text: PRIVATE,
+        learner_reflection_text: PRIVATE,
+        reflection: PRIVATE,
+      }),
+    ]);
+    render(<TodayHome locale="en" />);
+    await card();
+    expect(document.body.textContent).not.toContain(PRIVATE);
+    expect(document.body.textContent).not.toContain("fraud");
+  });
+});
+
 describe("PART 6K — other Today categories are untouched", () => {
   const other = {
     stableId: "REQUIRED_LEARNING:xyz",
@@ -242,7 +312,7 @@ describe("PART 6K — other Today categories are untouched", () => {
     render(<TodayHome locale="en" />);
     await screen.findByText(DECISION_A);
     expect(screen.getAllByTestId("today-item")).toHaveLength(2);
-    expect(screen.getAllByTestId("today-item-timing")).toHaveLength(1);
     expect(screen.getAllByTestId("today-item-context")).toHaveLength(1);
+    expect(screen.queryAllByTestId("today-item-timing")).toHaveLength(0);
   });
 });

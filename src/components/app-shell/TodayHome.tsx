@@ -9,7 +9,7 @@ import {
   type PrimaryActionResult,
 } from "@/domain/daily/todayPrimaryAction";
 import { parseHostDeepLink, type HostFocusSection } from "@/components/app-shell/hostDeepLink";
-import { applyStateLabel, applyStateTone } from "@/components/app-shell/applyWindowCopy";
+import { applyStateTone, applyTimingChip } from "@/components/app-shell/applyWindowCopy";
 
 /**
  * Today — simplified hierarchy (App Shell + Today Simplification V1, Phases 3–4 + empty-state patch).
@@ -382,14 +382,19 @@ export default function TodayHome({
                   eyebrow   APPLY THIS WEEK
                   title     the learner's OWN decision sentence — always primary
                   context   which training it came from — quiet provenance
-                  chip      "This week" — quiet timing
+
+                and NOTHING ELSE while the window is open (R2.6-R1). A "This week" chip under an
+                eyebrow that already says APPLY THIS WEEK repeats itself, and a status pill on a
+                commitment is exactly what makes Today read like a task manager. Timing appears
+                only when it adds something: "Last day", on the no-follow-up path.
 
                 Scoped to APPLY_DUE on purpose: every other category renders exactly as before.
-                Nothing here is a task. No checkbox, no Done, no XP, no percent, no streak, and
-                never red — and following the link only reads the learner's own record.
+                No checkbox, no Done, no XP, no percent, no streak, and never red — and following
+                the link only reads the learner's own record.
               */
               const isApply = it.category === "APPLY_DUE";
               const context = isApply && typeof it.context === "string" && it.context.trim() !== "" ? it.context.trim() : null;
+              const timing = isApply ? applyTimingChip(it.state, loc) : null;
               return (
                 <a
                   key={it.stableId}
@@ -407,12 +412,12 @@ export default function TodayHome({
                       {context}
                     </span>
                   ) : null}
-                  {isApply ? (
+                  {timing ? (
                     <span
                       data-testid="today-item-timing"
                       className={"mt-1 self-start rounded-md border px-2 py-0.5 text-[0.66rem] " + applyStateTone(it.state)}
                     >
-                      {applyStateLabel(it.state, loc)}
+                      {timing}
                     </span>
                   ) : null}
                 </a>

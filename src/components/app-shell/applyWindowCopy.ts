@@ -25,10 +25,27 @@ const LABEL: Record<string, { en: string; ko: string }> = {
   overdue: { en: "Window closed", ko: "적용 기간 종료" },
 };
 
-/** The Apply Window's timing chip. Unknown states fall back to the open-window label. */
+/** The Apply Window's timing label. Unknown states fall back to the open-window label. */
 export function applyStateLabel(state: ReminderState | string, locale: string): string {
   const entry = LABEL[state] ?? LABEL.active!;
   return locale === "ko" ? entry.ko : entry.en;
+}
+
+/**
+ * The timing chip AS RENDERED on a card that already carries an APPLY THIS WEEK eyebrow
+ * (Slice 3.2R-R2.6-R1) — `null` when the chip would only repeat it.
+ *
+ * Founder decision, from the first live card: "This week" under an eyebrow that already says
+ * APPLY THIS WEEK is noise, and stacking a status pill onto a commitment makes Today read like a
+ * task manager. Timing earns its place only when it says something the eyebrow does not — which
+ * is the last day of a window, and the window having closed.
+ *
+ * `due_today` is reachable only where no 7-day follow-up takes over on day 7; that path is
+ * unchanged and still says "Last day".
+ */
+export function applyTimingChip(state: ReminderState | string, locale: string): string | null {
+  if (state === "active") return null;
+  return applyStateLabel(state, locale);
 }
 
 /**
