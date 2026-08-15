@@ -76,6 +76,17 @@ type Copy = {
   sharedError: string;
   complete: string;
   completing: string;
+  /*
+    YOUR DECISION (Slice 3.2R-R2.5). 3.2M-1 added the decision to the YouTube learner and the
+    document SERVICE, and never to this client — so a document training whose journey asks for a
+    decision could not be completed at all: the server refused `decision_required` for an answer
+    the learner was never shown a field for.
+  */
+  decisionHeading: string;
+  decisionAsk: string;
+  decisionDisclosure: string;
+  decisionPlaceholder: string;
+  decisionError: string;
   trainingComplete: string;
   xpAwarded: string;
   xpClaimable: string;
@@ -139,6 +150,11 @@ const COPY: Record<Locale, Copy> = {
     sharedError: "Please answer the shared question to complete.",
     complete: "Complete training",
     completing: "Saving…",
+    decisionHeading: "Your decision",
+    decisionAsk: "What will you do?",
+    decisionDisclosure: "In your own words. This is shared with the training host.",
+    decisionPlaceholder: "Next time I will…",
+    decisionError: "Please say what you will do to complete.",
     trainingComplete: "TRAINING COMPLETE",
     xpAwarded: "+10 Core XP",
     xpClaimable: "10 Core XP is ready to save.",
@@ -187,6 +203,11 @@ const COPY: Record<Locale, Copy> = {
     sharedError: "완료하려면 공유 질문에 답해 주세요.",
     complete: "훈련 완료",
     completing: "저장 중…",
+    decisionHeading: "당신의 결정",
+    decisionAsk: "무엇을 하시겠습니까?",
+    decisionDisclosure: "직접 작성해 주세요. 이 답변은 교육 담당자에게 공유됩니다.",
+    decisionPlaceholder: "다음에는 …",
+    decisionError: "완료하려면 무엇을 할지 적어 주세요.",
     trainingComplete: "훈련 완료",
     xpAwarded: "+10 Core XP",
     xpClaimable: "10 Core XP를 저장할 수 있습니다.",
@@ -291,6 +312,8 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
   const [reflectResponse, setReflectResponse] = useState("");
   const [reflectError, setReflectError] = useState(false);
+  const [decisionResponse, setDecisionResponse] = useState("");
+  const [decisionError, setDecisionError] = useState(false);
   const [sharedError, setSharedError] = useState(false);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState(false);
@@ -460,10 +483,21 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     server re-derives the requirement from the frozen event and refuses if it disagrees.
   */
   const reflectRequired = Boolean(snapshot?.reflection_required);
+  /*
+    WHAT BTY PROPOSED vs WHAT THE LEARNER DECIDES (Slice 3.2R-R2.5, porting 3.2M-1).
+
+    Read from the SAME frozen journey the snapshot already carries and the SAME element the
+    server's `journeyActionDecision` gate reads, so the field is shown exactly when an answer is
+    owed. BTY's sentence is CONTEXT above the field and is never prefilled: a decision someone
+    read is not a decision they made.
+  */
+  const actionDecisionContext =
+    snapshot?.journey?.elements.find((e) => e.kind === "action_decision")?.content ?? null;
   const onComplete = useCallback(async () => {
     if (busyRef.current) return;
     if (reflectRequired && reflectResponse.trim().length < 1) return setReflectError(true);
     if (response.trim().length < 1) return setResponseError(true);
+    if (actionDecisionContext && decisionResponse.trim().length < 1) return setDecisionError(true);
     // A configured shared question requires a non-empty shared answer BEFORE completion.
     if (sharedQuestion && sharedResponse.trim().length < 1) return setSharedError(true);
     busyRef.current = true;
@@ -471,16 +505,25 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     setResponseError(false);
     setSharedError(false);
     setReflectError(false);
+    setDecisionError(false);
     try {
       const { ok, data } = await post("/complete", {
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
         ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
+        ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
         tz: deviceTz(),
       });
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
       else if (d?.error === "reflection_required") setReflectError(true);
+      /*
+        A REFUSAL THE LEARNER CAN ACT ON (Slice 3.2R-R2.5). Without this branch a
+        `decision_required` fell through to `await load()`: the snapshot silently reloaded and
+        the screen did not change, which is exactly what "Complete training cannot be pressed"
+        looks like from the outside.
+      */
+      else if (d?.error === "decision_required") setDecisionError(true);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long" || d?.error === "response_too_long")
         setSharedError(true);
@@ -489,7 +532,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [response, sharedResponse, sharedQuestion, reflectRequired, reflectResponse, post, applyResult, load]);
+  }, [response, sharedResponse, sharedQuestion, reflectRequired, reflectResponse, actionDecisionContext, decisionResponse, post, applyResult, load]);
 
   const onClaim = useCallback(
     async (silent: boolean) => {
@@ -777,6 +820,34 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
               className="w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
             />
             {responseError && <p className="mt-2 text-xs text-red-300">{t.responseError}</p>}
+
+            {actionDecisionContext && (
+              /* YOUR DECISION (Slice 3.2R-R2.5, porting 3.2M-1 to the document room). BTY's
+                 proposed decision is CONTEXT above the field; the answer is the learner's own,
+                 never prefilled, and required to complete — the same contract the server
+                 already enforced and this client never offered. */
+              <div className="mt-6 rounded-xl border border-[#C9A66B]/40 bg-[#C9A66B]/[0.06] p-4" data-testid="decision-section">
+                <Eyebrow>{t.decisionHeading}</Eyebrow>
+                <p className="mt-2 text-sm leading-6 text-white/70" data-testid="decision-context">{actionDecisionContext}</p>
+                <p className="mt-3 text-sm font-medium leading-6 text-white/90">{t.decisionAsk}</p>
+                <p className="mt-1 text-xs text-[#C9A66B]/90" data-testid="decision-disclosure">{t.decisionDisclosure}</p>
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  value={decisionResponse}
+                  onChange={(e) => {
+                    setDecisionResponse(e.target.value);
+                    if (decisionError) setDecisionError(false);
+                  }}
+                  placeholder={t.decisionPlaceholder}
+                  aria-label={t.decisionAsk}
+                  aria-invalid={decisionError}
+                  data-testid="decision-input"
+                  className="mt-3 w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
+                />
+                {decisionError && <p className="mt-2 text-xs text-red-300" data-testid="decision-error">{t.decisionError}</p>}
+              </div>
+            )}
 
             {sharedQuestion && (
               /* Shared Understanding — VISUALLY + semantically separate from the private reflection
