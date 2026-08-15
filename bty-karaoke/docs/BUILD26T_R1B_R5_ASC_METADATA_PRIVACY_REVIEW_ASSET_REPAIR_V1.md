@@ -21,7 +21,7 @@ privacy policy amendment              SHIPPED       §4a live in production, pro
 privacy / support URL live            PROVEN        HTTP 200 both, measured this session
 Korean version metadata               READY_TO_ENTER  description · keywords · support URL
 copyright holder                      APPROVED      "2026 Hanbit Chi"
-App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exists (§6.1)
+App Store screenshots (×3)            PREPARED      Founder-approved build-103 captures (§6.2)
 IAP review screenshots (×3)           PREPARED      Founder-approved capture, alpha stripped (§7)
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
 App Review account gate P1–P6         **PASS** 2026-08-15 — returning route measured (§8.9)
@@ -392,7 +392,60 @@ configuration file — which would be fabricated UI, forbidden by §F and §G. S
 route is the Founder's device, and this is reported as a measured limit rather than presented as if
 it had been solved.
 
-### 6.2 What the Founder captures — FOUNDER_CAPTURE_REQUIRED
+### 6.2 The approved set — PREPARED (build 103)
+
+> **FOUNDER APPROVAL 2026-08-15** — three Release captures from **build 103**, in this order,
+> as the public product-page set. Originals from the Mac/iPhone, never a resized copy.
+
+They tell the shipping flow in the order a person lives it: find a karaoke song → request it and
+watch your turn → the host sees a ready queue and starts playback.
+
+```
+1  01-host-dj-queue.png       HOST / DJ queue          ← IMG_2360.PNG
+2  02-guest-song-search.png   GUEST song search        ← Screenshot 2026-08-15 at 8.38.47 AM.png
+3  03-guest-turn-ready.png    GUEST turn status        ← IMG_2359.PNG
+```
+
+**Verification — every file, measured:**
+
+```
+all three          1320 × 2868  = native iPhone 17 Pro Max, an accepted 6.9" size
+EXIF               ImageDescription "Screenshot" · NO GPS · no Make/Model/Software
+private data       NONE — the only name shown is the review account's own "Guest"
+DEBUG / internal   NONE — no gate text, no overlay, no console output
+provenance         native size + EXIF; a resized re-upload could not pass this
+```
+
+**Format normalization — needed for exactly one file.** #1 and #3 arrived as RGB and were copied
+**byte-identical** (source and deliverable share a SHA-256). #2 arrived RGBA, which ASC rejects:
+
+```
+02  non-opaque pixels        184 of 3,785,760 — 46 per corner, the rounded display arcs
+    composited over black    opaque pixels altered = 0   ← the claim, measured not assumed
+    result                   colortype 2 (RGB), hasAlpha=no, 1320 × 2868
+```
+
+**Checksums:**
+
+```
+release-assets/appstore/1.0/screenshots/
+  01-host-dj-queue.png       179,502 B  61332c908921dbcb527e0a262fdd51021186698508d71463f8d64206a84a8974
+  02-guest-song-search.png   602,557 B  3227db886ac93f0ace84da3245fd7b7ce46425cda37e2a42d3774b9fe427ca88
+  03-guest-turn-ready.png    890,278 B  bfea3ae5cf1cec0a62beefb873e654fb69be38c0eb4221838a5ae86c4521c55b
+  source/
+    01-…-original.png        179,502 B  61332c90…  (identical to the deliverable)
+    02-…-original.png        904,048 B  3d97bbbc7acade8443a56926fa3d7ef63d9bad6b4b43780592c37e5dda9454dd
+    03-…-original.png        890,278 B  bfea3ae5…  (identical to the deliverable)
+```
+
+Untouched sources are committed beside the deliverables, so the chain from device to ASC stays
+auditable and #2's normalization can be re-derived and re-checked by anyone.
+
+**These captures also carry the R5-R1 and R5-R2 repairs on their face**, which is worth recording:
+the queue row in #1 is attributed to **Guest** (the name-authority fix), and #2/#3 open on
+**✓ Karaoke** (the default fix). The pre-repair captures were discarded rather than retouched.
+
+### 6.3 The earlier capture route — measured limit, retained for the record
 
 Release build (build 100 is already installed on the connected iPhone 17 Pro Max), Side button +
 Volume Up. A native screenshot is already **1320 × 2868**, an accepted 6.9" size — do not crop or
@@ -869,7 +922,7 @@ Connect.
 | Marketing URL | leave blank | READY_TO_ENTER |
 | Promotional Text | leave blank | READY_TO_ENTER |
 | Copyright | `2026 Hanbit Chi` | READY_TO_ENTER (Founder-approved, §5.4) |
-| iPhone 6.9" screenshots | `release-assets/appstore/1.0/screenshots/6.9-0{1,2,3}-*.png` | FOUNDER_CAPTURE_REQUIRED (§6.2) |
+| iPhone 6.9" screenshots | `screenshots/01-host-dj-queue.png`, `02-guest-song-search.png`, `03-guest-turn-ready.png` — in that order | **READY_TO_ENTER** (§6.2) |
 | Version Release | **Manually release this version** | READY_TO_ENTER |
 | Build | **do not attach — out of scope (§L)** | — |
 
@@ -943,7 +996,7 @@ asset requirement and nothing more — **do not submit any IAP**, per §7.4.
 ```
 1  App Review username / password        typed straight into ASC by the Founder      §8.3
 2  contact first/last/phone/email        Founder-supplied, never invented            §8.4
-3  App Store product-page screenshots    Founder-captured on the iPhone              §6.2
+3  (cleared) App Store product-page screenshots — prepared, build 103           §6.2
 4  the ASC writes themselves             Founder-performed; this session has no browser
 
 CLEARED:  timezone category (§3.7) · IP omission (§3.5) · copyright (§5.4) ·
@@ -951,8 +1004,8 @@ CLEARED:  timezone category (§3.7) · IP omission (§3.5) · copyright (§5.4) 
           App Review account gate P1–P6 (§8.9, PASS) · Review Notes (§8.5, final)
 ```
 
-**Screenshots are the last preparable artifact.** Everything else outstanding is either a value
-only the Founder holds (credentials, contact details) or the ASC data entry itself.
+**Every preparable artifact is now prepared.** What remains is a value only the Founder holds
+(review credentials, contact details) or the ASC data entry itself.
 
 **§6.2 note.** The §7 capture is the *pass surface*, approved for the IAP review fields only. It is
 not proposed as an App Store product-page screenshot: `Passes are not on sale right now.` is the
