@@ -679,7 +679,9 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
       The host's phrase is now stated verbatim in THE STANDARD and IN CONTEXT above; these
       sections point at the next one, which needs no grammar and works in any language.
     */
-    expect(d.startsWith("the next time this happens, I will ")).toBe(true);
+    // Slice 3.2R-R2.3 — capitalized, like every sibling renderer. G7 below already expected the
+    // capitalized form for APPLY IT; YOUR DECISION was the lone outlier.
+    expect(d.startsWith("The next time this happens, I will ")).toBe(true);
     expect(d).not.toContain("your");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
@@ -818,7 +820,7 @@ describe("[3.2L-R6.2] perspective never collides", () => {
     */
     for (const moment of ["during the Monday huddle", "before closing the case", "next shift change", "아침 허들 때마다"]) {
       const d = renderDecisionSentence(GOOD, { ...APP2, applicationMoment: moment });
-      expect(d.startsWith("the next time this happens, I will "), `${moment} → ${d}`).toBe(true);
+      expect(d.startsWith("The next time this happens, I will "), `${moment} → ${d}`).toBe(true);
       expect(d, "the host's phrase is not echoed, edited or re-cased here").not.toContain(moment);
     }
   });
@@ -956,7 +958,9 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
 
   it("G6: perspective stays separated", () => {
     const c = contexts("Say it blunt");
-    expect(c.decision).toBe("the next time this happens, I will say it blunt.");
+    // Slice 3.2R-R2.3 — sentence-initial, so capitalized. The perspective split below is the
+    // property this test protects and is unchanged.
+    expect(c.decision).toBe("The next time this happens, I will say it blunt.");
     expect(c.application.startsWith("The next time this happens, doctors must say it blunt.")).toBe(true);
     expect(c.decision).not.toMatch(/\byour\b/);
     expect(c.application).not.toMatch(/\bmy\b/);

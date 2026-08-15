@@ -1572,7 +1572,71 @@ export type OperationalConstruct = {
   authorityMode: ConstructAuthorityMode;
 };
 
-const CONSTRUCT_PHRASE = new RegExp(`\\b((?:[\\w'-]+\\s+){0,3}(${CONSTRUCT_ALT}))\\b`, "i");
+/**
+ * A CONSTRUCT IS A THING SOMEONE CAN POINT AT (Slice 3.2R-R2.3).
+ *
+ * Was `\b((?:[\w'-]+\s+){0,3}(NOUN))\b` — up to three ARBITRARY tokens before a construct
+ * noun, with nothing checking they form a noun phrase. On the first live decide-program the
+ * Host's problem read "Team huddles sometimes end with agreement, but no one clearly owns the
+ * next action", `agreement` is in the construct vocabulary, and the pattern captured
+ * `sometimes end with agreement` as the construct's LABEL. APPLY IT then rendered:
+ *
+ *     "This is the sometimes end with agreement in practice."
+ *
+ * An adverb, a verb and a preposition spliced into a noun phrase and shown to a learner.
+ *
+ * THE FIX IS STRUCTURAL, NOT A STOP-LIST FOR THAT PHRASE. English marks a nameable thing with a
+ * determiner or a modifier: "a shared handoff standard", "the weekly cadence", "shared
+ * standards". A bare mass noun governed by a preposition — "end WITH agreement", "agree ON a
+ * process" — is not a named artifact, it is the abstract sense of the word. So the head noun is
+ * matched on its own and the phrase is built by walking BACKWARD over modifier-eligible tokens
+ * only, stopping at the first token that cannot modify a noun. If nothing modifier-like precedes
+ * the noun and no determiner introduces it, this source names no construct and the derivation
+ * moves on — which is the truthful outcome for the live problem above: APPLY IT simply omits the
+ * "This is … in practice." clause rather than inventing a construct the Host never named.
+ */
+const CONSTRUCT_HEAD = new RegExp(`\\b(${CONSTRUCT_ALT})\\b`, "gi");
+
+/** Determiners that introduce a noun phrase. Their presence alone makes the noun nameable. */
+const CONSTRUCT_DETERMINER = /^(?:a|an|the|our|your|its|their|this|that|these|those|one|each|every)$/i;
+
+/**
+ * Tokens that can never sit inside a noun phrase's modifier run. Closed and bounded: prepositions
+ * and conjunctions (which mark the noun as an object, not a name), frequency adverbs, and the
+ * handful of light verbs that appear next to these nouns in ordinary problem statements. Anything
+ * NOT listed is allowed through as a modifier, so the rule narrows the old pattern and never
+ * widens it.
+ */
+const CONSTRUCT_NON_MODIFIER = new RegExp(
+  "^(?:with|without|to|from|for|of|in|on|at|by|into|onto|about|after|before|during|through|" +
+    "and|or|but|nor|so|yet|because|if|when|while|than|that|as|" +
+    "sometimes|often|rarely|seldom|always|never|usually|occasionally|frequently|still|just|only|" +
+    "is|are|was|were|be|been|being|has|have|had|do|does|did|" +
+    "end|ends|ended|ending|start|starts|started|finish|finishes|finished|reach|reaches|reached|" +
+    "follow|follows|followed|following|keep|keeps|kept|need|needs|needed|make|makes|made|" +
+    "get|gets|got|use|uses|used|leave|leaves|left|come|comes|came|go|goes|went)$",
+  "i",
+);
+
+/**
+ * The construct phrase around a head noun: the noun plus up to three preceding modifier tokens.
+ * Returns null when the noun is not introduced as a nameable thing.
+ */
+function constructPhraseAt(source: string, headIndex: number, head: string): string | null {
+  const before = source.slice(0, headIndex).trim();
+  const tokens = before.length > 0 ? before.split(/\s+/) : [];
+  const mods: string[] = [];
+  for (let i = tokens.length - 1; i >= 0 && mods.length < 3; i -= 1) {
+    const raw = tokens[i]!.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    if (raw.length === 0) break;
+    if (CONSTRUCT_DETERMINER.test(raw)) { mods.unshift(raw); break; } // a determiner closes the phrase
+    if (CONSTRUCT_NON_MODIFIER.test(raw)) break;
+    mods.unshift(raw);
+  }
+  // A nameable construct is introduced by a determiner or carries at least one modifier.
+  const introduced = mods.length > 0;
+  return introduced ? `${mods.join(" ")} ${head}` : null;
+}
 
 /** Determiners and existence adjectives are not part of the construct's identity. */
 const LABEL_NOISE = /^(?:a|an|the|our|your|its|their|this|that|these|those|new|existing|available|current|established|approved|official|supplied|provided)\s+/i;
@@ -1614,19 +1678,26 @@ export function deriveOperationalConstruct(
   const sources = [fields.observableBehavior, fields.capabilityCandidate, fields.successEvidence, fields.problem];
   for (const source of sources) {
     if (typeof source !== "string" || source.trim().length === 0) continue;
-    const m = CONSTRUCT_PHRASE.exec(source);
-    if (!m) continue;
-    const label = normalizeLabel(m[1]);
+    CONSTRUCT_HEAD.lastIndex = 0;
+    let phrase: string | null = null;
+    let head = "";
+    let matchEnd = 0;
+    for (let m = CONSTRUCT_HEAD.exec(source); m !== null; m = CONSTRUCT_HEAD.exec(source)) {
+      const candidate = constructPhraseAt(source, m.index, m[1]!);
+      if (candidate !== null) { phrase = candidate; head = m[1]!; matchEnd = m.index + m[0].length; break; }
+    }
+    if (phrase === null) continue;
+    const label = normalizeLabel(phrase);
     if (label.length === 0) continue;
-    const noun = nounStem(m[2]);
+    const noun = nounStem(head);
 
     // A verified upload naming this kind of thing is the strongest authority available.
     const verified = verifiedArtifacts.some((a) => a.toLowerCase().includes(noun));
     if (verified) return { label, noun, authorityMode: "verified_resource" };
 
     // The Host framed it as something to create → a proposal, and only a proposal.
-    const before = source.slice(0, m.index + m[0].length);
-    if (CREATION_FRAME.test(before) && !EXISTENCE_ADJECTIVE.test(m[0])) {
+    const before = source.slice(0, matchEnd);
+    if (CREATION_FRAME.test(before) && !EXISTENCE_ADJECTIVE.test(phrase)) {
       return { label, noun, authorityMode: "proposed" };
     }
     // The Host referred to it as a thing that exists. They are authoritative about their
@@ -2042,9 +2113,16 @@ function reduceInflection(lower: string): string {
 
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
   const action = baseActionPhrase(b.observableAction);
-  // First person, same pointer — the commitment is to the next occurrence, not to a rewritten
-  // version of the host's phrase (Slice 3.2P-R3.7).
-  return `${lowerFirst(NEXT_OCCURRENCE)}, I will ${action}.`;
+  /*
+    First person, same pointer — the commitment is to the next occurrence, not to a rewritten
+    version of the host's phrase (Slice 3.2P-R3.7).
+
+    NEXT_OCCURRENCE is used AS WRITTEN (Slice 3.2R-R2.3). It was passed through `lowerFirst`,
+    which is right for a phrase that follows something and wrong for one that opens a sentence —
+    the first live decide-program showed a learner "the next time this happens, I will …".
+    Every sibling renderer already interpolates the constant directly.
+  */
+  return `${NEXT_OCCURRENCE}, I will ${action}.`;
 }
 
 /**

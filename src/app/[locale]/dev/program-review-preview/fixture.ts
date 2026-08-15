@@ -114,6 +114,9 @@ export const PREVIEW_ANSWERS: BuilderAnswers = {
  */
 export const PREVIEW_CONTRACTS: ProgramContracts = {
   problemStatement: V7_LIVE.problemStatement,
+  // Slice 3.2R-R2.3 — this fixture reproduces a v7 window whose Host authored no completion
+  // question, so BEFORE YOU FINISH stays the governed derivation, exactly as it rendered live.
+  completionPrompt: null,
   behavior: {
     actor: V7_LIVE.behavior.actor,
     trigger: V7_LIVE.behavior.trigger,

@@ -2095,7 +2095,13 @@ export function validateProgramProposal(
     if (kind === "scenario" && scenarioContract) return renderScenarioSentence(contract, scenarioContract);
     if (kind === "action_decision" && applicationContract) return renderDecisionSentence(contract, applicationContract);
     if (kind === "field_application" && applicationContract) return renderApplicationSentence(contract, applicationContract, operationalConstruct);
-    if (kind === "completion_check" && completionContract) return renderCompletionQuestion(contract, completionContract);
+    // The Host's own question outranks the derivation (Slice 3.2R-R2.3).
+    if (kind === "completion_check") {
+      return resolveCompletionCheck(
+        ctx?.completionPrompt,
+        completionContract ? renderCompletionQuestion(contract, completionContract) : null,
+      );
+    }
     if (kind === "follow_up" && followUpContract) return renderFollowUpSentence(contract, followUpContract, ctx?.followUpDays ?? 0);
     return null;
   };
@@ -2235,8 +2241,36 @@ export function validateProgramProposal(
    * sections — use the standard at the next handoff, then ask at the end what the standard
    * should contain. Nothing that reads one section at a time can see that.
    */
+  /*
+    THE GRAPH GRADES AUTHORSHIP IT IS ENTITLED TO GRADE (Slice 3.2R-R2.3).
+
+    The dependency graph exists to catch the MODEL inverting the program's internal logic — "use
+    the standard, then ask what the standard should contain". Once the Host's own completion
+    question became canonical, their sentence started flowing into this check, and a perfectly
+    reasonable Host question that happens to name a construct — "What should the shared handoff
+    standard contain?" — refused the whole generation as `dependency_inversion`. Measured, not
+    hypothesised: two of three sample Host prompts refused.
+
+    That is the failure this file already warned about one screen up — BTY's graph refusing BTY's
+    own sentence and the model being blamed for a line it never wrote — arriving from the other
+    direction, with the Host as author. A Host is authoritative about their own words, and
+    refusing their paid generation is the wrong instrument for disagreeing with them.
+
+    So the graph sees the DERIVED question in that slot. The Host's sentence is still what the
+    learner reads and what publish freezes; it is simply not graded as model output, because it
+    is not model output. Every other section, including a model-authored completion_check when
+    the Host wrote none, is checked exactly as before.
+  */
+  const hostAuthoredCheck = (ctx?.completionPrompt ?? "").trim().length > 0;
+  const derivedCheck = completionContract ? renderCompletionQuestion(contract, completionContract) : null;
   const dependency = validateProgramDependencies(
-    elements.map((e): ProgramSection => ({ kind: e.kind, content: e.content })),
+    elements.map((e): ProgramSection => ({
+      kind: e.kind,
+      content:
+        e.kind === "completion_check" && hostAuthoredCheck && derivedCheck !== null
+          ? derivedCheck
+          : e.content,
+    })),
     contract,
     operationalConstruct,
   );
@@ -2569,6 +2603,32 @@ export function deriveEvidenceCeiling(answers: BuilderAnswers | undefined): stri
  * every dependent sentence, so the program cannot disagree with itself by construction.
  * The initial Guided Builder stays conversational; this exists only inside review.
  */
+/**
+ * WHOSE QUESTION IS "BEFORE YOU FINISH"? (Slice 3.2R-R2.3)
+ *
+ * The Host authors a completion question in the Builder, reviews it, and sees it labelled
+ * COMPLETION QUESTION. On the first live decide-program that value —
+ * "What two things should be clear before a huddle ends?" — never reached the learner: every
+ * INSTRUCTIONAL kind is rendered from the contracts, so `completion_check` became
+ * "The next time this happens, what exactly will you do?", and publish froze THAT.
+ *
+ * Two harms, and the second is the serious one. It replaced explicitly approved Host text
+ * behind their back; and the replacement asks about INTENTION, which is what YOUR DECISION
+ * already asks — so the program put the same question to the learner twice and lost the
+ * understanding check entirely.
+ *
+ * So the Host's prompt wins whenever they wrote one. The governed derivation is not removed —
+ * it remains the answer when the Host supplied nothing, which is the case it was built for.
+ * Suggestion where there is silence; never rewriting where there is a decision.
+ */
+export function resolveCompletionCheck(
+  hostCompletionPrompt: string | null | undefined,
+  derived: string | null,
+): string | null {
+  const authored = (hostCompletionPrompt ?? "").trim();
+  return authored.length > 0 ? authored : derived;
+}
+
 export type ProgramContracts = {
   /**
    * The Host's own problem, verbatim. WHY THIS MATTERS is rendered from it (Slice
@@ -2582,6 +2642,12 @@ export type ProgramContracts = {
   followUp: FollowUpContract | null;
   construct: OperationalConstruct | null;
   followUpDays: number;
+  /**
+   * The Host's own completion question (Slice 3.2R-R2.3). Carried so the review surface and the
+   * validator resolve BEFORE YOU FINISH identically — the review screen must show the sentence
+   * that will actually be published.
+   */
+  completionPrompt: string | null;
 };
 
 /** The contracts a proposal was generated with, as the starting point for review. */
@@ -2589,6 +2655,7 @@ export function contractsFromProposal(
   proposal: ProgramProposal,
   followUpDays: number,
   problemStatement = "",
+  completionPrompt: string | null = null,
 ): ProgramContracts | null {
   // A proposal without a behaviour contract cannot derive anything. Only reachable from a
   // pre-v4 shape; returning null keeps the review surface honest rather than crashing.
@@ -2602,6 +2669,7 @@ export function contractsFromProposal(
     followUp: proposal.followUpContract,
     construct: proposal.operationalConstruct,
     followUpDays,
+    completionPrompt,
   };
 }
 
@@ -2678,7 +2746,9 @@ export function deriveInstructionalContent(kind: JourneyElementKind, c: ProgramC
       ? renderDecisionSentence(c.behavior, a)
       : renderApplicationSentence(c.behavior, a, c.construct);
   }
-  if (kind === "completion_check" && c.completion) return renderCompletionQuestion(c.behavior, c.completion);
+  if (kind === "completion_check") {
+    return resolveCompletionCheck(c.completionPrompt, c.completion ? renderCompletionQuestion(c.behavior, c.completion) : null);
+  }
   if (kind === "follow_up" && c.followUp) return renderFollowUpSentence(c.behavior, c.followUp, c.followUpDays);
   return null;
 }

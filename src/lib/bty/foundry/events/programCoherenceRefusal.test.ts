@@ -197,9 +197,18 @@ describe("[3.2L-R4] G11 — a semantic refusal costs exactly one call", () => {
     expect(calls).toHaveLength(1);
     if (r.ok) {
       const check = r.value.proposal.elements.find((e) => e.kind === "completion_check")!;
-      // The defining question is gone: the closing question is rendered from an enum.
+      /*
+        The MODEL's defining question is gone — that is what this test protects, and it still
+        holds: the model wrote "What specific elements will you include in the shared handoff
+        standard…" and none of it reaches the Host.
+
+        What the Host sees is now their OWN reviewed completion question (Slice 3.2R-R2.3). The
+        inversion the model tried to express is unrepresentable either way; the difference is that
+        BTY no longer overwrites a question the Host explicitly approved.
+      */
       expect(check.content).not.toMatch(/what specific elements/i);
-      expect(check.content).not.toMatch(/will you include/i);
+      expect(check.content).not.toMatch(/shared handoff standard/i);
+      expect(check.content).toBe(ANSWERS.completionPrompt);
     }
   });
 

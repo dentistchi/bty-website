@@ -264,7 +264,7 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
     // shipped "During the next morning huddles" in W6, so the commitment now points at the next
     // occurrence and the host's moment stays where it renders correctly, two sections above.
     expect(derived("action_decision")).toBe(
-      "the next time this happens, I will state each unfinished item and identify its next owner.",
+      "The next time this happens, I will state each unfinished item and identify its next owner.",
     );
     expect(derived("field_application")).toContain(
       "The next time this happens, team members must state each unfinished item and identify its next owner.",
@@ -479,7 +479,7 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
       "아침 허들 때마다",
     ]) {
       const c = withTrigger(trigger);
-      expect(derived("action_decision", c)?.startsWith("the next time this happens, I will "), trigger).toBe(true);
+      expect(derived("action_decision", c)?.startsWith("The next time this happens, I will "), trigger).toBe(true);
       expect(derived("field_application", c)?.startsWith("The next time this happens, "), trigger).toBe(true);
       for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
         expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
@@ -547,7 +547,7 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
     // its next occurrence. Editing the trigger still moves all four, and nothing else can.
     expect(derived("observable_standard", moved)).toContain("At each morning huddle");
     expect(derived("scenario", moved)).toContain("At each morning huddle");
-    expect(derived("action_decision", moved)).toContain("the next time this happens");
+    expect(derived("action_decision", moved)).toContain("The next time this happens");
     expect(derived("field_application", moved)).toContain("The next time this happens");
     // No control anywhere still edits a first moment.
     const ids = Object.values(DETAIL_FIELDS).flat().map((f) => f?.id);
@@ -589,7 +589,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
       moment at all, so the property is stronger — there is only ever ONE occasion in the
       program, and it is the host's, stated where it renders correctly.
     */
-    expect(derived("action_decision", broken)).toContain("the next time this happens");
+    expect(derived("action_decision", broken)).toContain("The next time this happens");
     expect(derived("field_application", broken)).toContain("The next time this happens");
     expect(derived("action_decision", broken)).not.toContain("leaving the floor");
     // …and they are still BTY's sections, so the surface knows to go quiet rather than
@@ -610,7 +610,7 @@ describe("[3.2L-R10-A.1] fail-closed review coherence", () => {
   it("G6: editing the trigger keeps both sections coherent", () => {
     const fixed = withTrigger("at each morning huddle");
     expect(derived("observable_standard", fixed)).toContain("At each morning huddle");
-    expect(derived("action_decision", fixed)).toContain("the next time this happens");
+    expect(derived("action_decision", fixed)).toContain("The next time this happens");
     expect(derived("field_application", fixed)).toContain("The next time this happens");
     expect(validateEditedReview(fixed, REQUIRED, {}, PREVIEW_ANSWERS)).toEqual({ ok: true });
   });
@@ -826,7 +826,7 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     const out = applied();
     const text = (k: string) => out.elements.find((e) => e.kind === k)!.content;
     expect(text("observable_standard")).toContain("At each handoff point");
-    expect(text("action_decision")).toContain("the next time this happens");
+    expect(text("action_decision")).toContain("The next time this happens");
     expect(text("field_application")).toContain("The next time this happens");
     expect(text("completion_check")).toContain("The next time this happens");
     for (const k of ["observable_standard", "scenario", "field_application"]) {
