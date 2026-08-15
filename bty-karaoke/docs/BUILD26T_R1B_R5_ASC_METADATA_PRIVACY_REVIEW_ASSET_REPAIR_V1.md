@@ -14,20 +14,24 @@ census (§C) rather than in assumption.
 ## 1. Verdict
 
 ```
-BUILD 26T-R1B-R5                      HELD          preparation complete, 3 Founder gates open
-App Privacy forensic census           COMPLETE      7 declarable types, 1 named uncertainty
+BUILD 26T-R1B-R5                      HELD          preparation complete, Founder gates open
+App Privacy forensic census           COMPLETE      8 declarable types (timezone resolved §3.7)
 privacy policy consistency            NO CONTRADICTION FOUND · 1 disclosure gap (§4.3)
+privacy policy amendment              SHIPPED       §4a live in production, proven 200 (§14)
 privacy / support URL live            PROVEN        HTTP 200 both, measured this session
 Korean version metadata               READY_TO_ENTER  description · keywords · support URL
-copyright holder                      FOUNDER_INPUT_REQUIRED  proposed, needs confirmation
+copyright holder                      APPROVED      "2026 Hanbit Chi"
 App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exists (§6.1)
 IAP review screenshots (×3)           FOUNDER_CAPTURE_REQUIRED  one honest source shot serves all 3
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
-App Review demo credentials           HALTED — authorization requested (§8)
+App Review demo credentials           AUTHORIZED — not yet created or proven (§8.3)
 release mode → Manual                 READY_TO_ENTER
 build 100                             NOT UPLOADED (unchanged, deliberate)
 PASS_1H                               INACTIVE (no write issued this session)
 ```
+
+**Founder decisions of 2026-08-14 are recorded inline** at §3.5, §3.7, §4.3, §5.4 and §8.3.
+The only production change made under them is the policy-only repair in §14.
 
 **R1B-R5 is HELD, not PASS.** §M forbids faking a PASS when Founder input is the remaining item,
 and here Founder input is three items, not one.
@@ -170,6 +174,11 @@ The raw IP that Cloudflare processes to deliver the request is inherent to any n
 is disclosed as such in the privacy policy §9. **This is a judgement, and it is recorded here so
 the Founder can overrule it rather than discover it.**
 
+> **FOUNDER DECISION 2026-08-14 — omission APPROVED**, on the measured architecture above: raw IP
+> never persisted, transformed for rate limiting only, short-lived HMAC token alone retained.
+> Directed: disclose the short-lived pseudonymous anti-abuse identifier in the policy amendment,
+> and **do not classify it as Coarse Location**. Both done — §14.
+
 ### 3.6 Account deletion and export
 
 Deletion is in-app (Account → Delete Account), server-authoritative (BUILD 26E/26I), and erases
@@ -192,9 +201,15 @@ candidate B   Location → Coarse Location          (an IANA zone names a city, 
 candidate C   not declared                        (defensible; also the riskiest error)
 ```
 
-Per the §C instruction this is **HALTED, not guessed**. Recommendation: **A**, with purpose App
+Per the §C instruction this was **HALTED, not guessed**. Recommendation was **A**, with purpose App
 Functionality, Linked YES, Tracking NO — over-declaring here costs nothing, under-declaring is the
-error that matters. One Founder decision resolves it.
+error that matters.
+
+> **FOUNDER DECISION 2026-08-14 — RESOLVED as A.**
+> `Other Data → Other Data Types` · Purpose **App Functionality** · Linked to user **YES** ·
+> Used for tracking **NO**. The declarable set is therefore **8 types**, not 7. The policy
+> amendment states in both languages that the time zone is not location data and is not derived
+> from location services, matching this classification (§14).
 
 ### 3.8 Everything measured as NOT collected
 
@@ -270,10 +285,12 @@ Founder is about to publish will declare **Email Address, Name, User ID and Purc
 a policy whose collection sections do not mention them is a weak spot a reviewer or a regulator can
 see.
 
-**Recommendation (NOT performed — §D forbids rewriting the policy in this slice): add one short
-"Host account information" subsection to §3/§4 covering email address, display name, time zone,
-saved songs, and Apple purchase records, before publishing App Privacy.** This is a separate
-authorized slice, not a blocker for preparing the package.
+**Recommendation (NOT performed at the time — §D forbids rewriting the policy in this slice): add
+one short "Host account information" subsection to §3/§4 covering email address, display name, time
+zone, saved songs, and Apple purchase records, before publishing App Privacy.**
+
+> **FOUNDER DECISION 2026-08-14 — one minimal production policy amendment AUTHORIZED**, to be
+> deployed and proven 200 before the ASC App Privacy disclosure is published. Performed: **§14**.
 
 ---
 
@@ -335,19 +352,18 @@ already in the app name, no repetition, no misleading claim.
 https://norebang.btydaily.com/support        proven HTTP 200 this session
 ```
 
-### 5.4 Copyright — FOUNDER_INPUT_REQUIRED
+### 5.4 Copyright — APPROVED
 
 ```
-proposed:  2026 Hanbit Chi
+2026 Hanbit Chi        FOUNDER-APPROVED 2026-08-14
 ```
 
 Measured basis: the Apple Developer team resolved during R1B-R3 distribution is **`Hanbit Chi`**,
 team `CS92W2HFCH`, and the distribution certificate common name is `Apple Distribution: Hanbit Chi
 (CS92W2HFCH)` — an individual, not a company. The privacy policy's operator string is *"BTY (Better
 Than Yesterday), operated by Dr. Chi"*, which reads as a trade name over the same individual rather
-than a separate legal entity. **The ASC copyright field must name the seller of record, so the
-Founder must confirm that the legal entity is the individual and not a registered company** before
-this is entered. It is not guessed here.
+than a separate legal entity. The Founder has confirmed the legal entity, so the value is entered
+as approved rather than inferred.
 
 ### 5.5 Deliberately left blank
 
@@ -458,22 +474,35 @@ credential to give:
   to exist**, and no customer's credentials may be disclosed or recovered — §B forbids it, and
   password hashes are not ours to hold in any case (Apple and Google hold them).
 
-### 8.3 HALT — authorization requested
+### 8.3 AUTHORIZED — created and proven by the Founder, not by this session
 
-Per §H this gate halts rather than inventing anything.
+> **FOUNDER DECISION 2026-08-14 — a dedicated Google SSO review/demo account is AUTHORIZED.**
+> Explicitly *not* authorized: a password-auth path in the app. Credentials must never enter code,
+> git, documentation, terminal output or a closure doc — the Founder types them straight into ASC.
 
-> **Founder authorization requested: create ONE dedicated Google account for App Review.**
-> Requirements that make it usable by a reviewer in a foreign country on an unfamiliar device:
-> no two-factor authentication, no recovery-phone challenge, no "verify it's you" device trust,
-> and a password that does not expire. The account then signs into BTY Norebang through the
-> existing Google Sign-In path — no code change, no new auth path, no shipping-surface change.
-> After creation the Founder types the credential **directly into ASC**; it is never written into
-> this repository, this document, or any log.
+Account requirements, so a reviewer in another country on an unfamiliar device is not locked out:
+no two-factor authentication, no recovery-phone challenge, no "verify it's you" device trust, and a
+non-expiring password. It signs in through the **existing** Google Sign-In path — no code change,
+no new auth path, no shipping-surface change.
 
-Secondary option, for the Founder to weigh: note in Review Notes that Sign in with Apple is
-available and the reviewer may use their own Apple ID. This is real and often accepted, but it does
-not satisfy ASC's required username/password fields on its own, so it is a supplement rather than a
-substitute.
+**Before submission the account must be PHYSICALLY proven to do three things** (Founder-run on the
+device; this is a gate, not a formality — a demo account that cannot reach the purchase surface
+fails review exactly as a missing one would):
+
+```
+P1  sign in to the Release build with Google Sign-In
+P2  reach the required room/app functionality (create or open a norebang, start a session, queue)
+P3  reach the timed-pass commerce surface (1시간 / 4시간 / 24시간 with App Store prices)
+```
+
+**HALT CONDITION, standing.** If P2 or P3 turns out to need a *separate production room or
+passcode grant* for this account, stop and request authorization before creating it. Provisioning
+production data for a review account is a production write, and it is not covered by the account
+authorization above.
+
+Supplement, not substitute: Review Notes also tell the reviewer that Sign in with Apple is
+available with their own Apple ID (§8.5). That is true and often accepted, but it does not fill
+ASC's required username/password fields on its own.
 
 ### 8.4 Contact fields — FOUNDER_INPUT_REQUIRED, not guessed
 
@@ -553,7 +582,7 @@ Connect.
 | Support URL | `https://norebang.btydaily.com/support` | READY_TO_ENTER |
 | Marketing URL | leave blank | READY_TO_ENTER |
 | Promotional Text | leave blank | READY_TO_ENTER |
-| Copyright | `2026 Hanbit Chi` | FOUNDER_INPUT_REQUIRED (confirm legal entity, §5.4) |
+| Copyright | `2026 Hanbit Chi` | READY_TO_ENTER (Founder-approved, §5.4) |
 | iPhone 6.9" screenshots | `release-assets/appstore/1.0/screenshots/6.9-0{1,2,3}-*.png` | FOUNDER_CAPTURE_REQUIRED (§6.2) |
 | Version Release | **Manually release this version** | READY_TO_ENTER |
 | Build | **do not attach — out of scope (§L)** | — |
@@ -571,17 +600,42 @@ Connect.
 | Search History | App Functionality · Linked **YES** · Tracking **NO** | READY_TO_ENTER |
 | Other User Content | App Functionality · Linked **YES** · Tracking **NO** | READY_TO_ENTER |
 | Product Interaction | App Functionality · Linked **YES** · Tracking **NO** | READY_TO_ENTER |
-| Timezone → category | Other Data (recommended) / Coarse Location / omit | **BLOCKED_ON_UNCERTAINTY** (§3.7) |
-| Every other data type | **not collected** — §3.8 | READY_TO_ENTER |
-| **Publish** | **safe once the timezone decision is made** — the seven types above are source- and schema-grounded (§3.2). Consider the §4.3 policy amendment first. | conditional |
+| Other Data Types (time zone) | App Functionality · Linked **YES** · Tracking **NO** | READY_TO_ENTER (Founder-resolved, §3.7) |
+| Every other data type | **not collected** — §3.8, and IP omission Founder-approved (§3.5) | READY_TO_ENTER |
+| **Publish** | **safe** — all 8 types are source- and schema-grounded (§3.2), and the policy now discloses each of them in its collection copy (§14, live). **STOP for Founder before pressing Publish.** | READY_TO_ENTER |
+
+The complete ASC App Privacy entry matrix, in the order the questionnaire asks:
+
+```
+"Do you or your third-party partners collect data from this app?"   →  Yes, we collect data
+
+DATA TYPE                     PURPOSE            LINKED   TRACKING
+Contact Info → Email Address  App Functionality   YES      NO
+Contact Info → Name           App Functionality   YES      NO
+Identifiers  → User ID        App Functionality   YES      NO
+Purchases    → Purchase History  App Functionality YES     NO
+Search History                App Functionality   YES      NO
+User Content → Other User Content  App Functionality YES   NO
+Usage Data   → Product Interaction App Functionality YES   NO
+Other Data   → Other Data Types (time zone)  App Functionality  YES  NO
+
+NOT SELECTED, every one measured (§3.8):
+  Health & Fitness · Financial Info · Location (Precise AND Coarse) · Sensitive Info ·
+  Contacts · Browsing History · Photos or Videos · Audio Data · Gameplay Content ·
+  Customer Support · Emails or Text Messages · Advertising Data · Device ID ·
+  Crash Data · Performance Data · Other Diagnostic Data
+
+Tracking, every type:  NO — no ATT prompt, no IDFA, no ad/analytics SDK, no data broker.
+Privacy Policy URL:    https://norebang.btydaily.com/privacy
+```
 
 ### 10.3 App Review Information
 
 | Field | Value | Class |
 |---|---|---|
 | Sign-in required | **Yes** (truthful — §8.1) | READY_TO_ENTER |
-| User name | dedicated Google review account | **HALTED — authorization requested (§8.3)** |
-| Password | same account | **HALTED — authorization requested (§8.3)** |
+| User name | dedicated Google review account — **authorized, not yet created**; Founder types it directly into ASC | FOUNDER_INPUT_REQUIRED (§8.3, incl. P1–P3 proof) |
+| Password | same account — never written to code, git, docs or logs | FOUNDER_INPUT_REQUIRED (§8.3) |
 | First name / Last name | — | FOUNDER_INPUT_REQUIRED |
 | Phone | — | FOUNDER_INPUT_REQUIRED |
 | Email | — | FOUNDER_INPUT_REQUIRED |
@@ -597,13 +651,23 @@ Connect.
 
 Review Notes for the IAPs stay blank (optional). **Do not submit any IAP** — §7's warning applies.
 
-### 10.5 The three things that block a PASS
+### 10.5 What still blocks a PASS
 
 ```
-1  dedicated App Review account          authorization requested            §8.3
-2  contact first/last/phone/email        Founder-supplied                   §8.4
-3  screenshots (app ×1–3, IAP ×1 source) Founder-captured on the iPhone     §6.2 / §7
-   (+ copyright legal-entity confirmation and the timezone category decision)
+1  dedicated App Review account          AUTHORIZED — create, then prove P1/P2/P3   §8.3
+2  contact first/last/phone/email        Founder-supplied, never invented           §8.4
+3  screenshots (app ×1–3, IAP ×1 source) Founder-captured on the iPhone             §6.2 / §7
+4  the ASC writes themselves             Founder-performed; this session has no browser
+
+CLEARED since the first package:  timezone category (§3.7) · IP omission (§3.5) ·
+                                  copyright (§5.4) · policy amendment (§14, live)
+```
+
+Two standing stops, both requested by the Founder and both honoured here:
+
+```
+STOP before publishing App Privacy
+STOP before any action needing a new production review-account grant (room / passcode)
 ```
 
 ---
@@ -622,16 +686,96 @@ archived · cloud distribution signed · App Store validation PASSED · NOT UPLO
 not uploaded · not attached · not selected · not submitted — by this session or any other
 ```
 
-## 13. Repository state
+## 14. The policy amendment — SHIPPED under Founder authorization
+
+Scope was one thing: make the **collection** copy say what the app already does, so the ASC
+disclosure and the public policy describe the same service. No practice changed, and nothing about
+the app changed.
+
+### 14.1 What was added
+
+A new **§4a "Host account information" / "4a. 호스트 계정 정보"** in both languages, immediately
+after §4, covering exactly the measured set — email address, display name, account identifiers,
+time zone, saved songs, song requests and playback records, purchase and pass records, and the
+short-lived pseudonymous anti-abuse identifier — each with its measured purpose.
+
+Three sentences carry the weight, because they are the ones that could be got wrong:
+
+```
+"We never receive or store your card, bank or payment details — Apple handles payment."
+"The IP address itself is never stored in our database or logs."   (+ expires within an hour,
+                                                                    not used to determine location)
+"[time zone] is not location data and is not derived from location services."
+```
+
+The closing paragraph states the absences — no location, camera, microphone, photo, contact, health
+or advertising data, and no analytics, advertising, attribution or crash-reporting software — which
+is the §3.8 measurement written where a user can read it.
+
+Per the Founder's direction, nothing that does not exist was added, and the existing deletion
+language (§11, §12, §12a) was left **byte-identical**.
+
+### 14.2 The consent version was deliberately NOT bumped
+
+```
+LEGAL_EFFECTIVE_DATE   2026-07-19 → 2026-08-14      moved (policy §15 promises this)
+LEGAL_VERSION          2026-07-19 → unchanged        NOT bumped
+```
+
+`LEGAL_VERSION` drives `GuestConsentGate` — bumping it re-prompts **every guest** to accept the
+policy again. Nothing a guest consents to changed: §4a discloses host-account collection that was
+already happening, and its practice-level content is unchanged. Re-prompting guests mid-event for
+that would be a real production behaviour change dressed up as a policy-only repair. The reasoning
+is recorded in `src/lib/legal.ts` beside the constant, where the next person to touch it will see
+it. **Founder can overrule by bumping the one constant.**
+
+### 14.3 Verification — measured, in this order
+
+```
+tsc --noEmit                          clean
+vitest                                239 files · 2894 tests · 0 failures
+new pinned test                       legal.render.test.tsx — asserts every §4a data type in BOTH
+                                      languages, the "IP never stored" claim, the "not location"
+                                      claim, and the absences
+cf:build                              OpenNext bundle OK
+wrangler versions upload              8436ee23-9c49-4638-8029-e999cbf0e0c9
+preview readback                      /privacy 200 · §4a present in en AND ko · date 2026-08-14
+wrangler versions deploy @100%        SUCCESS
+```
+
+Preview was read **before** promotion, not after — a version that has not been checked has no
+business taking production traffic.
+
+### 14.4 Production proof
+
+```
+https://norebang.btydaily.com/privacy   HTTP 200   §4a present, en + ko, effective 2026-08-14
+https://norebang.btydaily.com/support   HTTP 200   untouched by this change
+```
+
+Polled repeatedly rather than once:
+
+```
+round 1, immediately after deploy   6 polls   5 NEW · 1 OLD  (poll 4 served the pre-amendment body)
+round 2, over the next 3 minutes   12 polls  12 NEW · 0 OLD
+round 3, confirmation               3 polls   3 NEW · 0 OLD
+```
+
+That single OLD is the known BUILD 26G behaviour — a rollout mixes versions across colos for
+minutes — and it is exactly why one 200 proves nothing. A lone first-poll check would have been
+just as likely to record the OLD body and call the deployment failed.
+
+## 15. Repository state
 
 ```
 native  /Users/hanbit/Dev/bty-norebang-admin-ios   HEAD e7724c6 == origin/main, 0 ahead / 0 behind
         working tree: the pre-existing .xcscheme Founder edit ONLY — untouched
-server  /Users/hanbit/Dev/btytrainingcenter        R1B-R4 closure fb9f972b pushed
-        this slice adds documentation + an empty release-asset convention; no source change
+server  /Users/hanbit/Dev/btytrainingcenter        R1B-R4 fb9f972b · R1B-R5 6068b684 pushed
+        this slice: documentation, the release-asset convention, and the §14 policy-only repair
+        (privacy page + legal constant + one render test). No engine, API, schema or app change.
 ```
 
 ---
 
-**BUILD 26T-R1B-R5 — HELD.** Preparation complete; three Founder gates open (§10.5).
-Nothing uploaded, nothing submitted, `PASS_1H` inactive.
+**BUILD 26T-R1B-R5 — HELD.** Policy amendment live and proven; Founder gates in §10.5 remain open.
+Nothing uploaded, nothing submitted, App Privacy not published, `PASS_1H` inactive.

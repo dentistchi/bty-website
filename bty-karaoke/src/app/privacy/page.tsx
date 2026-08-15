@@ -67,6 +67,47 @@ export default function PrivacyPage() {
           personal information.
         </p>
 
+        <h2>4a. Host account information</h2>
+        <p>
+          Sections 3 and 4 describe what a guest provides at an event. If you sign in as a host —
+          in the BTY Norebang iOS app or on the web — we also collect and store the following. Each
+          item is used to operate your account and the service, never for advertising, and none of
+          it is sold.
+        </p>
+        <ul>
+          <li><strong>Email address</strong> — from your Apple or Google sign-in, verified on our
+            server. Used to identify your account and to contact you about it. If you use Apple’s
+            Hide My Email, we receive only Apple’s relay address.</li>
+          <li><strong>Display name</strong> — the name shown on your account and to guests in your
+            norebang. Optional; Apple supplies it only on your first sign-in.</li>
+          <li><strong>Account identifiers</strong> — an internal account ID, sign-in session tokens,
+            and an opaque purchase reference. Used to keep you signed in and to link your norebangs,
+            passes and purchases to your account.</li>
+          <li><strong>Time zone</strong> — your device’s time zone (for example “Asia/Seoul”),
+            captured once. Used only to decide when your daily free allowance resets, so it matches
+            your local day. It is not location data and is not derived from location services.</li>
+          <li><strong>Saved songs</strong> — the songs you save to My Songs, with the video ID and a
+            title, artist and thumbnail snapshot taken when you saved it. Used to show your library.</li>
+          <li><strong>Song requests and playback records</strong> — the requests made in your
+            norebang (as described in section 4) and when each song starts and finishes. Used to run
+            the queue and to account for free time and pass time.</li>
+          <li><strong>Purchase and pass records</strong> — for a purchase made through the App Store:
+            Apple’s transaction identifiers, which product was purchased, whether it was a sandbox or
+            production purchase, and the pass that resulted. Used to deliver what you bought, to
+            support refunds, and for accounting. <strong>We never receive or store your card, bank
+            or payment details</strong> — Apple handles payment.</li>
+          <li><strong>A short-lived pseudonymous anti-abuse identifier</strong> — to rate-limit
+            sign-in and request endpoints and prevent abuse, your IP address is converted by a
+            one-way keyed hash into a pseudonymous value. <strong>The IP address itself is never
+            stored in our database or logs.</strong> The pseudonymous value is held only in a
+            temporary cache that expires within an hour. It is not used to identify you, to build a
+            profile, or to determine your location.</li>
+        </ul>
+        <p>
+          We do not collect location, camera, microphone, photo, contact, health or advertising data,
+          and the app contains no analytics, advertising, attribution or crash-reporting software.
+        </p>
+
         <h2>5. YouTube API Services data</h2>
         <p>
           {PRODUCT_NAME} uses <Ext href={LEGAL_LINKS.youtubeApiTerms}>YouTube API Services</Ext>. When
@@ -265,6 +306,43 @@ export default function PrivacyPage() {
           <li>방·이벤트 범위의 신청 식별자(요청 ID).</li>
         </ul>
         <p>분석·광고·제3자 추적 도구를 사용하지 않으며, 개인정보를 판매하지 않습니다.</p>
+
+        <h2>4a. 호스트 계정 정보</h2>
+        <p>
+          3·4항은 행사 참가자가 제공하는 정보입니다. BTY Norebang iOS 앱 또는 웹에서 호스트로
+          로그인하는 경우 아래 정보를 추가로 수집·저장합니다. 각 항목은 계정과 서비스 운영을 위해서만
+          이용하며, 광고 목적으로 이용하거나 판매하지 않습니다.
+        </p>
+        <ul>
+          <li><strong>이메일 주소</strong> — Apple 또는 Google 로그인에서 받아 서버에서 검증합니다.
+            계정 식별과 계정 관련 안내에 이용합니다. Apple의 “이메일 주소 가리기”를 사용하면 Apple의
+            중계 주소만 전달받습니다.</li>
+          <li><strong>표시 이름</strong> — 계정과 노래방에서 참가자에게 보이는 이름입니다. 선택
+            사항이며, Apple은 최초 로그인 시에만 이름을 제공합니다.</li>
+          <li><strong>계정 식별자</strong> — 내부 계정 ID, 로그인 세션 토큰, 그리고 결제용 불투명
+            참조값입니다. 로그인 상태 유지와 내 노래방·이용권·구매 내역을 계정에 연결하는 데
+            이용합니다.</li>
+          <li><strong>시간대</strong> — 기기의 시간대(예: “Asia/Seoul”)를 1회 저장합니다. 매일 무료
+            이용 시간이 초기화되는 기준을 이용자의 하루에 맞추기 위해서만 이용합니다. 위치 정보가
+            아니며, 위치 서비스에서 얻은 값도 아닙니다.</li>
+          <li><strong>저장한 노래</strong> — ‘내 노래’에 저장한 곡의 영상 ID와 저장 시점의 제목·아티스트
+            ·썸네일 정보입니다. 보관함 표시에 이용합니다.</li>
+          <li><strong>신청곡·재생 기록</strong> — 내 노래방의 신청곡(4항)과 각 곡의 시작·종료 시각입니다.
+            대기열 운영과 무료 시간·이용권 시간 정산에 이용합니다.</li>
+          <li><strong>구매·이용권 기록</strong> — App Store를 통한 구매의 경우 Apple의 거래 식별자,
+            구매한 상품, 샌드박스/프로덕션 구분, 그리고 그 결과로 지급된 이용권입니다. 구매한 내용의
+            제공, 환불 지원, 정산에 이용합니다. <strong>카드·계좌 등 결제 수단 정보는 전달받지도,
+            저장하지도 않습니다</strong> — 결제는 Apple이 처리합니다.</li>
+          <li><strong>단기 가명 남용 방지 식별자</strong> — 로그인·신청 엔드포인트의 요청 수를 제한하고
+            남용을 막기 위해, IP 주소를 단방향 키 해시로 가명 값으로 변환합니다.{' '}
+            <strong>IP 주소 자체는 데이터베이스나 로그에 저장하지 않습니다.</strong> 가명 값은 1시간
+            이내에 만료되는 임시 캐시에만 보관합니다. 이용자를 식별하거나 프로파일을 만들거나 위치를
+            판단하는 데 이용하지 않습니다.</li>
+        </ul>
+        <p>
+          위치·카메라·마이크·사진·연락처·건강·광고 정보를 수집하지 않으며, 앱에는 분석·광고·성과 측정·
+          충돌 보고 도구가 포함되어 있지 않습니다.
+        </p>
 
         <h2>5. YouTube API 서비스 데이터</h2>
         <p>

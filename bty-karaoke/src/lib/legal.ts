@@ -24,11 +24,18 @@ export const CONTACT_EMAIL = 'ywamer2022@gmail.com';
 export const SUPPORT_RESPONSE_TARGET = '2 business days';
 
 /** Effective date shown on the pages = the deployment date of this version. */
-export const LEGAL_EFFECTIVE_DATE = '2026-07-19';
+export const LEGAL_EFFECTIVE_DATE = '2026-08-14';
 /**
  * Consent version. Bump ONLY when the policy MATERIALLY changes so guests are asked
  * to accept again. Stored (not a bare boolean) in localStorage so a material change
  * re-prompts while cosmetic edits do not.
+ *
+ * BUILD 26T-R1B-R5 deliberately did NOT bump this while adding privacy §4a (host account
+ * information). No practice changed — §4a discloses collection that was already happening,
+ * and all of it concerns HOST ACCOUNTS, while this gate is the GUEST consent prompt. Bumping
+ * would re-prompt every guest mid-event for a disclosure that does not change what a guest
+ * consents to. The effective date above did move, which is what /privacy §15 promises for a
+ * non-material update.
  */
 export const LEGAL_VERSION = '2026-07-19';
 

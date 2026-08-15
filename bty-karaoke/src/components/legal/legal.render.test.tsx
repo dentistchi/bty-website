@@ -69,6 +69,47 @@ describe('Privacy page — public, bilingual, YouTube + retention + contact', ()
     expect(text).toMatch(/BTY Norebang iOS 앱/);
   });
 
+  // BUILD 26T-R1B-R5. The App Privacy disclosure filed with Apple declares Email Address, Name,
+  // User ID, Purchase History, Search History, Other User Content and Product Interaction. Before
+  // this section existed, the policy's COLLECTION sections described the guest web flow only, and
+  // host-account data appeared solely in §12a (deletion) — it said what is erased without ever
+  // saying what is collected. Pinning §4a keeps the two documents from drifting apart again.
+  it('discloses host-account collection, not only host-account deletion — both languages', () => {
+    const { container } = render(<PrivacyPage />);
+    const text = container.textContent ?? '';
+
+    // Every data type the ASC disclosure names must be findable in the COLLECTION copy.
+    expect(text).toMatch(/Host account information/);
+    expect(text).toMatch(/호스트 계정 정보/);
+    expect(text).toMatch(/Email address.{0,80}Apple or Google sign-in/s);
+    expect(text).toMatch(/이메일 주소.{0,60}Apple 또는 Google 로그인/s);
+    expect(text).toMatch(/Display name/);
+    expect(text).toMatch(/Account identifiers/);
+    expect(text).toMatch(/Time zone/);
+    expect(text).toMatch(/시간대/);
+    expect(text).toMatch(/Saved songs/);
+    expect(text).toMatch(/Purchase and pass records/);
+    expect(text).toMatch(/구매·이용권 기록/);
+
+    // Payment data is measured as NEVER reaching us — Apple handles it. Stated, not implied.
+    expect(text).toMatch(/never receive or store your card, bank\s+or payment details/s);
+    expect(text).toMatch(/결제 수단 정보는 전달받지도,\s+저장하지도 않습니다/s);
+
+    // The anti-abuse identifier: the claim that matters is that the RAW IP is not retained.
+    expect(text).toMatch(/pseudonymous anti-abuse identifier/);
+    expect(text).toMatch(/IP address itself is never\s+stored in our database or logs/s);
+    expect(text).toMatch(/IP 주소 자체는 데이터베이스나 로그에 저장하지 않습니다/);
+
+    // …and it must NOT be dressed up as location, which is the misreading it invites.
+    expect(text).toMatch(/not.{0,40}used to identify you, to build a\s+profile, or to determine your location/s);
+    expect(text).toMatch(/It is not location data and is not derived from location services/);
+    expect(text).toMatch(/위치 정보가\s+아니며/s);
+
+    // Absences that must stay true: declaring any of these would contradict the measured app.
+    expect(text).toMatch(/do not collect location, camera, microphone, photo, contact, health or advertising data/);
+    expect(text).toMatch(/위치·카메라·마이크·사진·연락처·건강·광고 정보를 수집하지 않으며/);
+  });
+
   it('links to Google Privacy Policy, YouTube Terms, and BTY Terms — with safe attrs', () => {
     const { container } = render(<PrivacyPage />);
     const gp = container.querySelector('a[href="https://policies.google.com/privacy"]');
