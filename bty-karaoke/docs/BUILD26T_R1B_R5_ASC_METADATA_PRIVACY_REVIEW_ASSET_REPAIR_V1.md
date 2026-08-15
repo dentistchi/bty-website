@@ -1,6 +1,10 @@
 # BUILD 26T-R1B-R5 — ASC Metadata / Privacy / Review-Asset Repair
 
-**Status: HELD — 2026-08-14. Preparation complete; three gates await Founder action.**
+**Status: HELD — 2026-08-15. Every preparable artifact is prepared; the remainder is Founder-held
+values and the ASC data entry itself.**
+
+**Three shipping defects were found while preparing assets and repaired under separate Founder
+authorization — R5-R1, R5-R2 and R5-R3 (§16). Native build 100 → 103.**
 
 **No build uploaded. No build attached or selected. Nothing added for review. Nothing submitted.
 No ASC field written by this session. No catalog write. `PASS_1H` inactive.**
@@ -35,8 +39,9 @@ PASS_1H                               INACTIVE (no write issued this session)
 **Founder decisions of 2026-08-14 are recorded inline** at §3.5, §3.7, §4.3, §5.4 and §8.3.
 The only production change made under them is the policy-only repair in §14.
 
-**R1B-R5 is HELD, not PASS.** §M forbids faking a PASS when Founder input is the remaining item,
-and here Founder input is three items, not one.
+**R1B-R5 is HELD, not PASS.** §M forbids faking a PASS when Founder input is the remaining item.
+What is outstanding is the App Review credentials, the four contact fields, and the ASC data entry
+itself — none of which this session can supply or perform.
 
 ---
 
@@ -49,10 +54,14 @@ IAP submission                        NOT PERFORMED
 ASC field writes                      NONE  (no browser, no ASC API key — see R1B memory)
 karaoke_product_catalog write         NONE
 Apple purchase                        NONE
-production reviewer account creation  NOT PERFORMED — authorization requested instead
-code changes                          NONE — no shipping defect was found
+production writes                     ONLY the authorized W1 (one room) + W2 (one event) + the
+                                      device-session mints inherent to entering a room (§8.9)
+code changes                          THREE authorized native repairs — §16. The original "no code
+                                      changes unless a shipping defect is discovered" clause held:
+                                      defects were discovered, HALTED on, and repaired only after
+                                      the Founder authorized each one.
 .xcscheme Founder edit                UNTOUCHED
-Localizable.xcstrings                 UNTOUCHED
+Localizable.xcstrings                 UNTOUCHED at HEAD (an Xcode build rewrites it — §16.4)
 TRACK_B0                              UNTOUCHED
 ```
 
@@ -1128,3 +1137,59 @@ server  /Users/hanbit/Dev/btytrainingcenter        R1B-R4 fb9f972b · R1B-R5 606
 
 **BUILD 26T-R1B-R5 — HELD.** Policy amendment live and proven; Founder gates in §10.5 remain open.
 Nothing uploaded, nothing submitted, App Privacy not published, `PASS_1H` inactive.
+
+
+---
+
+## 16. Native repairs found while preparing the assets
+
+Preparing an honest screenshot meant running the real app, and running the real app surfaced three
+shipping defects. None was worked around for the camera: each was traced read-only, HALTED on,
+authorized by the Founder, repaired at the smallest safe point, regression-tested, mutation-checked
+and proven on a physical Release build.
+
+```
+R5-R1  c1fa68d  build 101   guest display-name request authority
+R5-R2  d8fd575  build 102   guest search default MR → Karaoke
+R5-R3  50c3b27  build 103   resolved history must not bury the active request
+```
+
+### 16.1 R5-R1 — the field was not the authority
+
+The visible Name field lives in the search card's own local `@State` (deliberately: keystrokes must
+not invalidate the Now Playing / queue subtree), while `vm.guestName` was written ONLY at
+search-commit time. Editing the name with results already on screen and tapping Request therefore
+sent the PREVIOUS name. **Re-running the search made it correct, which is exactly why it survived —
+the happy path hid it.**
+
+Repaired with a pure `resolveRequestGuestName(field:committed:)` in `GuestMode.swift`, because the
+standalone harness compiles that file and not the SwiftUI layer; the field reports edits through a
+**non-`@Published`** property, so the fix does not undo the performance property it depends on.
+Server, payload, DB and host queue were traced and are all faithful — there was no second defect.
+
+### 16.2 R5-R2 — a karaoke product opened on MR
+
+One hardcoded literal with no persistence behind it at all. Moved to `GuestSearchStyle` with a
+`resolve()` that also stops an unknown key reaching the search API. Explicit choices and their
+lifetime are unchanged.
+
+### 16.3 R5-R3 — and it amended a ratified contract
+
+BUILD 25 raised 신청 결과 to the top of the Guest screen for a ratified reason ("an explanation
+nobody scrolls to is still silence"), but the section was unbounded, so history pushed the Guest's
+own ACTIVE request off the first screen. Both contracts now hold: newest outcome always visible,
+the rest one tap away, bounded even expanded, true total in the header, nothing deleted. Placement
+is mounted per participation state, which resolves the structural conflict — BUILD 25 needed it
+OUTSIDE the participation branch, "below the active request" needs it INSIDE.
+
+**Six BUILD 25 assertions were amended, not deleted**, and rewritten at equal strength. That is
+recorded here rather than buried in a commit, because reversing a ratified decision should be
+visible to whoever reads this next.
+
+### 16.4 A build-hygiene gotcha worth keeping
+
+**An Xcode build rewrites `BTYNorebangAdmin/Localizable.xcstrings`** — roughly 5,076 insertions and
+5,040 deletions, a full normalization — and that reformatting alone breaks three catalog contract
+tests (`26F-1`, `26F-2`, `26F-16b`) with misleading "missing en/ko" and "orphaned key" output. It
+looks like a localization regression and is not one. Revert the file after building and before
+testing or committing.
