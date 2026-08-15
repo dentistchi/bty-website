@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { badgeForVideo } from '@/domain/video-kind';
+import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
 
 interface Props {
   /** Adds the chosen song to the queue (server appends at the tail). */
@@ -170,6 +171,14 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
         )}
 
         <div className="dj-add-results">
+          {/* J3 — this is a HOST surface that runs its own /api/youtube/search call, so the API has
+              a presence here exactly as it does on the guest surface. Rendered only when results
+              exist, for the same reason. */}
+          {results.length > 0 && (
+            <div className="dwyt-row">
+              <DevelopedWithYouTube height={18} />
+            </div>
+          )}
           {results.map((item) => {
             const badge = badgeForVideo(item.title, item.channelTitle);
             return (

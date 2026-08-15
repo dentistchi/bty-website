@@ -4284,3 +4284,14 @@ main[data-theme='warm_stage'] {
   display: inline-flex;
   align-items: center;
 }
+
+/* BUILD 26T-R1B-R6-R1A-J3 — "developed with YouTube" attribution row.
+   Spacing here is ORDINARY BTY LAYOUT DESIGN, explicitly NOT an official YouTube clear-space
+   measurement: no numeric minimum-size or clear-space rule is published for this lockup. */
+.dwyt-row {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 10px;
+  opacity: 0.9;   /* subordinate to BTY's own headings — never the dominant element */
+}
+.dwyt img { width: auto; }   /* preserves the official 700x250 ratio; no filter, no tint */

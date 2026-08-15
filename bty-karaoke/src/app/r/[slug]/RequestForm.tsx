@@ -27,6 +27,7 @@ import {
 } from '@/domain/guest-requests';
 import RequestResultCard from './RequestResultCard';
 import GuestDiagnosticPanel from './GuestDiagnosticPanel';
+import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
 import MyRequestsDock from './MyRequestsDock';
 import RecentlySungSection from './RecentlySungSection';
 import AppInvitationCard from './AppInvitationCard';
@@ -679,6 +680,13 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
 
         {ranked.top.length > 0 && (
           <div className="result-group" style={{ marginTop: 12 }}>
+            {/* J3 — the mark sits at the head of the list the YouTube Data API populated, so the
+                attribution is adjacent to the API's presence rather than floating in a footer.
+                It renders only when there are results, because with none there is no API
+                presence on screen to attribute. */}
+            <div className="dwyt-row">
+              <DevelopedWithYouTube height={18} />
+            </div>
             {ranked.top.map((r) => (
               <RequestResultCard
                 key={r.videoId}
