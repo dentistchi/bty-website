@@ -3980,35 +3980,52 @@ main[data-theme='warm_stage'] {
   position: relative;
   flex: 1;
   display: flex;
-  align-items: center;
+  /* BUILD 26T-R1B-R6-R1A-J3 — RMF SIZE FIX, at the ancestor that actually owned the bug.
+     MEASURED CAUSE: the IFrame API PRESERVES the mount node's class, so `.player-frame`'s
+     height:100% does apply to the replaced <iframe> — but `align-items: center` stops the flex
+     item stretching on the cross axis, the percentage height fails to resolve, and the iframe
+     falls back to its intrinsic 150px. The wrap itself was a healthy 644x764 the whole time.
+     `stretch` lets the item fill the resolved container, which is why this fixes height without
+     hardcoding one that would break narrow devices. */
+  align-items: stretch;
   justify-content: center;
   background: #000;
+  /* The RMF hard gate, pinned on the persistent wrapper rather than on a node the API replaces. */
+  min-width: 200px;
+  min-height: 200px;
 }
 /* The IFrame API replaces .player-frame with the managed <iframe>. */
+.player-frame-wrap.is-replaced {
+  /* §H — fallback state: the live player is removed from layout entirely, so its rect is zero and
+     nothing can be "in front of" it. */
+  display: none;
+}
 .player-frame,
 .player-frame iframe {
   width: 100%;
-  height: 100%;
+  /* MEASURED: `height:100%` does NOT resolve here — the wrap's height comes from `flex:1`, which
+     is not a definite containing-block height for percentage purposes, so the iframe fell back to
+     its intrinsic 150px and (after the min-height guard) sat at exactly 200. Letting the flex
+     algorithm size it via `align-self: stretch` uses the container's REAL resolved height instead,
+     which is what makes the player fill the stage rather than merely clear the gate. */
+  height: auto;
+  align-self: stretch;
+  /* Belt and braces: even if a future ancestor change breaks stretch, the live iframe cannot
+     drop under the RMF gate. */
+  min-width: 200px;
+  min-height: 200px;
   border: 0;
   display: block;
 }
-.player-note {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #9aa;
-  font-size: 1.1rem;
-  pointer-events: none;
+/* J3 — RMF. Both were absolutely positioned INSIDE the player wrap; .player-gesture sat across
+   YouTube's control band and was MEASURED intersecting the live iframe at every breakpoint. They
+   now live in the sibling .player-status strip, laid out in normal flow. */
+.player-status {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; min-height: 44px; padding: 6px 12px;
 }
-.player-gesture {
-  position: absolute;
-  bottom: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-}
+.player-note { color: #9aa; font-size: 1.05rem; }
+.player-fallback-slot { display: contents; }
 .player-fallback {
   position: absolute;
   left: 0;

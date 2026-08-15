@@ -95,7 +95,9 @@ export default function PlayerClient({ slug, roomName, eventId, initialVideoId }
       if (cancelled || playerRef.current || !mountRef.current || !window.YT) return;
       playerRef.current = new window.YT.Player(mountRef.current, {
         videoId: pendingRef.current ?? undefined,
-        playerVars: { autoplay: 1, playsinline: 1, rel: 0, modestbranding: 1 },
+        // J3 — `modestbranding` REMOVED: deprecated and inert, so keeping it implied a guarantee
+        // it cannot give. MEASURED still present in the live embed URL until this line changed.
+        playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
         events: {
           onReady: () => {
             setReady(true);
@@ -223,22 +225,31 @@ export default function PlayerClient({ slug, roomName, eventId, initialVideoId }
         <span className="player-tag">BTY Player</span>
       </header>
 
-      <div className="player-frame-wrap">
+      {/* §H — the fallback REPLACES the player; it must never sit over a live one. When the video
+          is unplayable the wrap is display:none'd, so the iframe's rectangle collapses to zero and
+          cannot be overlaid. The player instance is kept alive so a later playable song loads
+          without recreating it. MEASURED: without this, .player-fallback intersected a live iframe
+          by 48,944px² on desktop. */}
+      <div className={fallbackUrl ? 'player-frame-wrap is-replaced' : 'player-frame-wrap'}>
         {/* The IFrame API replaces this node with the <iframe> it manages. */}
         <div ref={mountRef} className="player-frame" />
 
-        {!ready && <div className="player-note">플레이어를 불러오는 중…</div>}
 
-        {ready && !nowVideoId && (
-          <div className="player-note">다음 곡을 기다리는 중이에요.</div>
-        )}
+      </div>
 
+      {/* J3 — RMF: BTY status/controls live OUTSIDE the player rectangle. MEASURED: `.player-gesture`
+          intersected the live iframe at every breakpoint while it sat inside the wrap. */}
+      <div className="player-status">
+        {!ready && <span className="player-note">플레이어를 불러오는 중…</span>}
+        {ready && !nowVideoId && <span className="player-note">다음 곡을 기다리는 중이에요.</span>}
         {needsGesture && nowVideoId && !fallbackUrl && (
-          <button type="button" className="primary lg player-gesture" onClick={manualPlay}>
+          <button type="button" className="primary player-gesture" onClick={manualPlay}>
             ▶ 재생
           </button>
         )}
+      </div>
 
+      <div className="player-fallback-slot">
         {fallbackUrl && (
           <div className="player-fallback" role="alert">
             <span className="muted">이 영상은 여기에서 재생할 수 없어요.</span>
