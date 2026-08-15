@@ -31,7 +31,7 @@ const DIGEST = "program_proposal_digest_v1:9d2234db361481d7cb810b1836e94d49b0e62
 /** What the canonical Apply was generated under. */
 const ADOPTED_UNDER = "program_authorship_v9";
 /** What acceptance requires today. */
-const TODAY = "program_authorship_v22";
+const TODAY = "program_authorship_v23";
 
 const claim = (over: Partial<AdoptionClaim> = {}): AdoptionClaim => ({
   mode: "recovery",

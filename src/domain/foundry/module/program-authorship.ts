@@ -280,7 +280,33 @@ import {
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v9. That split is the whole
  * reason the two names are separate.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v22";
+/*
+ * v22 → v23 (Slices 3.2R-R2.3 and R2.3-R2). THREE OF THE SIX REQUIRED SECTIONS NOW RENDER
+ * DIFFERENT BYTES FOR IDENTICAL HOST INPUT, so the acceptance contract moved and this must move
+ * with it. R2.3 shipped the behaviour changes and did NOT bump this — the omission this fixes.
+ *
+ *   completion_check   the Host's own `completionPrompt` is now canonical when they wrote one,
+ *                      where the derivation previously overwrote it.
+ *   field_application  the operational construct is re-derived from the Host's answers instead
+ *                      of replayed from the proposal, so a construct an older extractor produced
+ *                      no longer renders.
+ *   action_decision    sentence-initial capitalization.
+ *
+ * WHY THIS IS THE CORRECT INSTRUMENT, measured. Draft `ee79e3b3`'s only attempt, `d36c5309`, was
+ * generated under `deploy_version 64e559ac` (R2.1) and still carries `v22`. Every identity check
+ * passes for it — same draft, success, fingerprint unchanged, newest attempt — so only this
+ * comparison can refuse it, and without the bump it was reaching `proposal_mismatch` instead:
+ * the receipt was correctly withheld, but the re-derived journey was still WRITTEN to the draft,
+ * carrying content no digest attests to. `proposal_no_longer_valid` refuses with ZERO writes,
+ * which is the honest outcome for "the rules changed after you generated this".
+ *
+ * Historical attempts are untouched and stay truthful at v22: they were generated under v22.
+ * Nothing is backfilled, no digest is recomputed, and no `deploy_version` is rewritten.
+ *
+ * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v12 — the same split the R7
+ * bump used, and the whole reason the two names are separate.
+ */
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v23";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence

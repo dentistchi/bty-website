@@ -230,7 +230,7 @@ describe("[3.2P-A7-R2] §11/§12 — what became historical", () => {
   });
 
   it("the wire moved with the contract", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v22");
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 });
