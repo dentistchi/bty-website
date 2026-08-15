@@ -252,3 +252,102 @@ CONTENT_RIGHTS          HELD
 ```
 
 No production DB touched. No build minted (no native change). Nothing uploaded or submitted.
+
+---
+
+# §A READER TRACE — UNMETERED_SEGMENT_SEMANTICS = **PASS (safe)**
+
+**No SQL was edited in this pass, as §A requires.** The question was whether the existing
+all-five-NULL arm can truthfully represent 1.0 unmetered playback. It can, and the reason is
+stronger than "the CHECK permits it".
+
+## The five columns
+
+```
+duration_seconds · lease_ends_at · lease_seconds · charged_window_start · charged_window_end
+```
+
+## Why the all-NULL arm exists historically
+
+BUILD 20M (`20260803120000`) **added these five columns as nullable, explicitly for back-compat**:
+
+```
+-- ── A. LEASE + CHARGED-WINDOW COLUMNS (nullable → back-compat) ──
+```
+
+So the NULL arm's original meaning is *"a segment recorded before lease metering existed"* — a
+**started song carrying no lease semantics**. That is not an approximation of the 1.0 meaning; it
+is the same meaning. The constraint is also `NOT VALID`, consistent with a back-compat arm rather
+than an invariant asserted over all history.
+
+## Every reader, and what all-NULL means to it
+
+| # | Reader | Reads | All-NULL means | Verdict |
+|---|---|---|---|---|
+| 1 | `usage_seg_lease_consistency` | all five | permitted (back-compat arm) | safe |
+| 2 | `karaoke_free_minutes_entitlement_at_v2` — usage sum | `lease_seconds` | **excluded by an explicit predicate**: `where metered and lease_seconds is not null`, wrapped in `coalesce(sum(...),0)` | safe, by design |
+| 3 | same function — `v_active` / `isPlaying` | **none of the five** | counts open segments joined to a `playing` request in a live event | **unmetered playback stays observable** (§E-12) |
+| 4 | `shouldReadV2` (`metering.server.ts:196`) | `lease_seconds IS NOT NULL` | account has no lease-written segment → reads **v1** entitlement | behavioural only, not corrupting (§below) |
+| 5 | lease enrichment (`rooms.server.ts:1044`) | `lease_ends_at`, `duration_seconds` | explicitly *"best-effort … degrade to no lease detail"* → omits the fields | safe |
+| 6 | `karaoke_begin_song_v2` itself | `max(lease_ends_at) … where lease_ends_at is not null` | unmetered rows ignored when computing an existing lease | safe |
+
+## The four §A questions, answered
+
+```
+Can a successfully-started song have all five NULL?
+    YES — that is exactly what every pre-BUILD-20M row is.
+
+Does any reader interpret NULL as not-started / corrupt / incomplete / expired / zero-duration?
+    NO. Reader 2 excludes it by predicate, reader 5 calls it "no lease detail" by design,
+    reader 6 skips it, and reader 3 never looks at these columns at all.
+
+Does any accounting/audit logic require duration_seconds for every started song?
+    NO. The FREE sum is gated on `metered AND lease_seconds IS NOT NULL`, so an unmetered row
+    contributes nothing and is never expected to.
+
+Does downstream code derive event/song completion from these fields?
+    NO. Completion comes from `ended_at` plus `karaoke_requests.status`. The five columns
+    describe CHARGE, never lifecycle.
+```
+
+## One consequence to record rather than discover later
+
+Reader 4 (`shouldReadV2`) flips an account to the **v1** entitlement projection once it has no
+lease-written segments. For an account whose only playback is 1.0-unmetered, entitlement therefore
+reports through the older model. That is harmless **because entitlement no longer gates playback**
+after E1 — but it is a real behavioural change and it should not be met with surprise later. It is
+not a reason to populate metering fields.
+
+## Verdict
+
+```
+UNMETERED_SEGMENT_SEMANTICS   PASS — the existing NULL arm is the correct 1.0 representation
+usage_seg_lease_consistency   PRESERVE UNCHANGED, including `duration_seconds <= 900`,
+                              which stays an invariant over METERED rows only (§C satisfied:
+                              BUILD 20M's historical lease protection is not weakened)
+```
+
+The consequence for the migration is that my previous defect inverts into the fix: instead of
+writing `duration_seconds = NULL` beside populated lease columns, 1.0 playback must write **all
+five NULL together**, with `metered = false`, and mint no lease, no grace, no carryover and no
+pass activation.
+
+## Status of the remaining work
+
+```
+§D  function repair to the all-NULL shape      NOT YET WRITTEN (this pass was §A only)
+§E  20-case matrix + the two mutations         NOT YET RUN
+§G  attribution asset + RMF repair             NOT STARTED
+```
+
+```
+UNMETERED_SEGMENT_SEMANTICS  PASS
+PLAYBACK_INTEGRITY           HELD
+15_MINUTE_CEILING            HELD — the path to REMOVED_FROM_NEW_PLAYBACK is now proven safe
+PRO_1_0                      HELD
+LOCAL_E1_MIGRATION           HELD
+ATTRIBUTION                  HELD
+RMF                          HELD
+PRODUCTION_MIGRATION         NOT_READY
+CONTENT_RIGHTS               HELD
+```
