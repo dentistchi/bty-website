@@ -22,7 +22,7 @@ privacy / support URL live            PROVEN        HTTP 200 both, measured this
 Korean version metadata               READY_TO_ENTER  description · keywords · support URL
 copyright holder                      APPROVED      "2026 Hanbit Chi"
 App Store screenshots                 FOUNDER_CAPTURE_REQUIRED  no CLI path exists (§6.1)
-IAP review screenshots (×3)           FOUNDER_CAPTURE_REQUIRED  one honest source shot serves all 3
+IAP review screenshots (×3)           PREPARED      Founder-approved capture, alpha stripped (§7)
 App Review contact fields             FOUNDER_INPUT_REQUIRED  must not be guessed
 App Review demo credentials           AUTHORIZED — not yet created or proven (§8.3)
 release mode → Manual                 READY_TO_ENTER
@@ -430,16 +430,79 @@ its own App Store price, with `storekit offered=3`. A single capture of that sur
 each item, individually labelled and individually priced, which is exactly what the IAP review
 screenshot is for.
 
+> **FOUNDER DECISION 2026-08-14 — APPROVED, and the asset is now PREPARED.** One clean Release
+> screenshot showing Access Status · Buy a pass · 1 hour $1.99 · 4 hours $4.99 · 24 hours $9.99
+> serves all three IAP Review Screenshot fields, because all three products are individually and
+> unambiguously visible. Directed: use the **original iPhone Photos file at native 6.9-inch
+> resolution**, never a re-uploaded/resized copy. **This does not authorize activation.**
+
+### 7.1 The delivered asset
+
+Founder-captured on the connected iPhone 17 Pro Max, Release build. Provenance was checked rather
+than trusted — a resized copy could not survive this test:
+
 ```
-iap-1h.png    = the same source capture; the reviewer identifies the item by the "1시간" row + price
-iap-4h.png    = the same source capture; identified by the "4시간" row + price
-iap-24h.png   = the same source capture; identified by the "24시간" row + price
+native size            1320 × 2868   = the iPhone 17 Pro Max screen, an accepted 6.9" size
+EXIF ImageDescription  "Screenshot"          DateTimeOriginal 2026:08:14 22:37:05
+EXIF GPS IFD           ABSENT                no Make / Model / Software tag
+private data in frame  NONE — no guest name, no email, no customer identifier
+DEBUG gate / overlay   NONE · console output NONE · fabricated UI NONE
 ```
 
-Deliver to `bty-karaoke/release-assets/appstore/1.0/iap/`. If the Founder prefers per-product
-clarity, three crops of that same real screenshot are acceptable — a crop selects from real UI,
-whereas a re-render would invent it. **No product is activated to improve the screenshot, and no
-enabled Buy state is fabricated.** The optional 1024×1024 promotional IAP image is not created.
+### 7.2 The defect the file arrived with — an alpha channel
+
+App Store Connect **rejects screenshots containing an alpha channel**, and the original had one:
+
+```
+source PNG colortype   6 (RGBA), bitdepth 8
+non-opaque pixels      184 of 3,785,760  (0.0049%)
+their location         46 px in EACH of the four corners, nothing anywhere else
+                       = the device's rounded display-corner arcs
+```
+
+Composited over black — what the device physically shows at those corners — and then **proved** the
+UI was untouched rather than assumed:
+
+```
+fully-opaque source pixels   3,785,576
+  RGB preserved exactly      3,785,576
+  RGB altered                        0        ← the whole claim
+output colortype             2 (RGB), hasAlpha=no, 1320 × 2868
+```
+
+Only the 184 corner pixels changed, and only from transparent to black. Not one pixel of app UI
+moved. This is format normalization, not retouching.
+
+### 7.3 Files and checksums
+
+```
+release-assets/appstore/1.0/iap/
+  source/6.9-pass-surface-original.png    250,928 B  sha256 665fe9cffa36001c3ac507074837a0f2
+                                                            6eca973b1fe8676df406d9686ab2a9ca
+  iap-1h.png                              162,114 B  sha256 6288799eaac1d5ccc601b2ba97393ed9
+  iap-4h.png                              162,114 B          83d92f9cff80c79e863b84c8a63a479a
+  iap-24h.png                             162,114 B          (all three byte-identical, by design)
+```
+
+The untouched original is committed beside the deliverables so the chain from device to ASC stays
+auditable. **No product was activated to improve the screenshot, and no enabled Buy state was
+fabricated.** The optional 1024×1024 promotional IAP image is not created.
+
+### 7.4 Why the "not on sale" copy is the right thing to show
+
+The frame contains `Passes are not on sale right now.` and three disabled Buy buttons. That is not
+a flaw in the asset — it is the Release app telling the truth about a deliberately inactive
+production catalog, which is exactly the state BUILD 26T-R1A built the pre-purchase gate to
+produce. A screenshot showing an enabled Buy state today would be a fabrication of a condition that
+does not exist.
+
+**Founder-recorded, and it is the distinction this whole section turns on:**
+
+```
+the ASSET requirement            can be repaired NOW           ← done, §7.3
+actual IAP review SUBMISSION     remains BLOCKED until controlled activation makes the
+                                 products testable by App Review
+```
 
 **⚠ The one thing that must not be misread as an asset problem.** These screenshots satisfy the
 *asset* requirement. They do not make an IAP *pass review*. With the production catalog inactive,
@@ -645,23 +708,30 @@ Privacy Policy URL:    https://norebang.btydaily.com/privacy
 
 | Product | Asset | Class |
 |---|---|---|
-| `com.btydaily.norebang.pass.1hour` | `release-assets/appstore/1.0/iap/iap-1h.png` | FOUNDER_CAPTURE_REQUIRED (§7) |
-| `com.btydaily.norebang.pass.4hour` | `release-assets/appstore/1.0/iap/iap-4h.png` | FOUNDER_CAPTURE_REQUIRED (§7) |
-| `com.btydaily.norebang.pass.24hour` | `release-assets/appstore/1.0/iap/iap-24h.png` | FOUNDER_CAPTURE_REQUIRED (§7) |
+| `com.btydaily.norebang.pass.1hour` | `release-assets/appstore/1.0/iap/iap-1h.png` | **READY_TO_ENTER** (§7.3) |
+| `com.btydaily.norebang.pass.4hour` | `release-assets/appstore/1.0/iap/iap-4h.png` | **READY_TO_ENTER** (§7.3) |
+| `com.btydaily.norebang.pass.24hour` | `release-assets/appstore/1.0/iap/iap-24h.png` | **READY_TO_ENTER** (§7.3) |
 
-Review Notes for the IAPs stay blank (optional). **Do not submit any IAP** — §7's warning applies.
+Review Notes for the IAPs stay blank (optional). Attaching these three screenshots repairs the
+asset requirement and nothing more — **do not submit any IAP**, per §7.4.
 
 ### 10.5 What still blocks a PASS
 
 ```
 1  dedicated App Review account          AUTHORIZED — create, then prove P1/P2/P3   §8.3
 2  contact first/last/phone/email        Founder-supplied, never invented           §8.4
-3  screenshots (app ×1–3, IAP ×1 source) Founder-captured on the iPhone             §6.2 / §7
+3  App Store product-page screenshots    Founder-captured on the iPhone             §6.2
 4  the ASC writes themselves             Founder-performed; this session has no browser
 
 CLEARED since the first package:  timezone category (§3.7) · IP omission (§3.5) ·
-                                  copyright (§5.4) · policy amendment (§14, live)
+                                  copyright (§5.4) · policy amendment (§14, live) ·
+                                  IAP review screenshots ×3 (§7.3, prepared)
 ```
+
+**§6.2 note.** The §7 capture is the *pass surface*, approved for the IAP review fields only. It is
+not proposed as an App Store product-page screenshot: `Passes are not on sale right now.` is the
+right thing to show a reviewer and the wrong thing to show a shopper. The product-page set (queue,
+guest request, and a pass screen the Founder judges suitable) is still open.
 
 Two standing stops, both requested by the Founder and both honoured here:
 
