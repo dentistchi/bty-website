@@ -444,3 +444,98 @@ BUILD                        104_UNCHANGED
 PRODUCTION_MIGRATION         NOT_READY
 CONTENT_RIGHTS               HELD — API-data retention remains a separate R6-R1B closure
 ```
+
+---
+
+# §E/§F EXECUTION — **LOCAL_E1_MIGRATION = VALIDATED**
+
+## Baseline hygiene (§A) — now a standing rule
+
+```
+candidate migration held OUTSIDE supabase/migrations   →  supabase db reset  →  45/45 applied
+live md5 = ef281fd84a6e59726d94c37af70aa509               GATE: MATCH
+only then was the candidate introduced and applied
+```
+
+A candidate migration left inside the active directory contaminates its own baseline: the earlier
+`35062676…` reading was that, not drift. **Test-harness hygiene, not product behaviour.**
+
+## The constraint amendment (§B/§H) — recorded verbatim
+
+```
+BEFORE  CHECK ((metered = ((plan_snapshot = 'FREE'::text) AND (metering_paused_by_pass = false))))
+        convalidated = true
+
+AFTER   CHECK (((metered = ((plan_snapshot = 'FREE'::text) AND (metering_paused_by_pass = false)))
+            OR ((metered = false) AND (duration_seconds IS NULL) AND (lease_ends_at IS NULL)
+                AND (lease_seconds IS NULL) AND (charged_window_start IS NULL)
+                AND (charged_window_end IS NULL))))
+        convalidated = true      ← same name, same validation state
+```
+
+ARM 1 is the original predicate verbatim, so **no previously-invalid metered row becomes valid**.
+ARM 2 admits only `metered=false` **with all five NULL together** — an arbitrary `metered=false`
+row is still rejected. `plan_snapshot` keeps meaning the account's actual plan (§D); nothing
+falsifies `metering_paused_by_pass`, the pass state or the plan.
+
+## Matrix — 37 assertions, 37 PASS, 0 FAIL
+
+```
+PLAYBACK      D1 FREE>0 · D2 FREE=0 · D3 no pass · D4 expired pass · D5 SELECTED pass
+              D7 16-minute · D8 2-hour · D9 unknown duration
+              D10 former grace-exhausted · D11 former pass_insufficient · D12 former upgrade_required
+RECORD SHAPE  D13 metered=false · D14 all five NULL · D15 CHECK accepted · D16 no lease
+              D17 no grace · D18 no FREE consumption · D19 no carryover · D20 no activation audit
+              D6 SELECTED pass STAYS selected
+READERS       D21 isPlaying sees it · D22 completion from status/ended_at · D24 FREE sum excludes it
+SECURITY      D27 invalid mode · D28 unknown room · D29 inactive event · D30 nonexistent request
+              D31 retired room · D32 replay refused · D33 already-playing refused
+HISTORICAL    D34 metered ≤900 fixture still valid · D38 ledger unchanged · D39 grants unchanged
+              D40 no audit rows written by playback
+MUTANTS       M1 16-min in the METERED shape KILLED by the 900 CHECK
+              M2 NULL duration + one populated lease field KILLED (all-five-NULL is atomic)
+```
+
+## The function mutant, and a correction to how I first reported it
+
+Restoring the **pre-E1 function** (verified live: md5 back to `ef281fd8…`) was first reported by my
+own harness as *"tests killed: 0"*. That was a **broken measurement, not a result** — the mutant
+aborts the matrix before it can print a results table, and my `grep -c "| FAIL"` counted an empty
+output as zero failures. The same class of error as the earlier `nm -u` control, caught the same
+way: by disbelieving a control that did not fire.
+
+What the mutant actually does is sharper than a failed assertion:
+
+```
+ERROR: timed_access_pass_audit is append-only; DELETE is not permitted
+```
+
+The pre-E1 function's expiry **sweep writes an audit row during playback**, and the matrix cannot
+even reach its grant-history assertions because that row cannot be cleaned up. So the mutant is
+killed by an append-only trigger proving the very thing D40 asserts: **E1 playback writes no audit
+row at all, and the pre-E1 function did.**
+
+## §K cleanup
+
+```
+my containers   0        h1b-migration-validation   10, untouched
+fixtures        none persisted — the matrix runs inside a transaction that rolls back
+```
+
+## OUTPUT
+
+```
+UNMETERED_SEGMENT_SEMANTICS  PASS
+UNMETERED_PLAN_CONSTRAINT    PASS
+PLAYBACK_INTEGRITY           PASS (local)
+15_MINUTE_CEILING            REMOVED_FROM_NEW_PLAYBACK
+PRO_1_0                      HELD — SQL no longer grants PRO any playback privilege, but the
+                                    user-facing retirement (§J) is not done
+LOCAL_E1_MIGRATION           VALIDATED
+ATTRIBUTION                  HELD — §J gated on the SQL matrix, which only just went green
+RMF                          HELD — same gate
+BUILD                        104_UNCHANGED (no native code touched)
+PRODUCTION_MIGRATION         NOT_READY — production access, live md5 + constraint read-back,
+                                         parity and separate authorization all still required
+CONTENT_RIGHTS               HELD — API-data retention remains a separate R6-R1B closure
+```

@@ -166,3 +166,40 @@ begin
     'metered', false,
     'entitlement', public.karaoke_free_minutes_entitlement_at_v2(v_account, v_now));
 end; $function$;
+
+-- ─────────────────────────────────────────────────────────────────────────────────────────────
+-- BUILD 26T-R1B-R6-R1A — usage_seg_metered_matches_plan_v2: add the INTENTIONAL UNMETERED arm.
+--
+-- WHY. The all-five-NULL shape is already legal under usage_seg_lease_consistency (BUILD 20M's
+-- back-compat arm), but THIS constraint independently forces `metered = true` for any FREE-plan
+-- segment, so the truthful unmetered record was unreachable. The alternatives were all false
+-- records — a fake pass pause, a fake PRO plan, or keeping metered=true — and were rejected.
+--
+-- ARM 1 is the historical predicate, unchanged in substance: a METERED row is governed exactly as
+-- before, so nothing previously invalid becomes valid. ARM 2 admits ONLY the ratified shape:
+-- metered=false together with all five lease/meter columns NULL. An arbitrary `metered=false` row
+-- is still rejected, because the five-NULL requirement travels with it.
+--
+-- plan_snapshot keeps its meaning — the account's ACTUAL plan at the segment's start. It is not
+-- redefined as a metering mode, and metering_paused_by_pass stays false when no pass paused
+-- anything.
+--
+-- CHECK constraints cannot be altered in place. Dropped and re-added under the SAME NAME, and
+-- re-added VALIDATED because the original was `convalidated = true`; since ARM 1 is the original
+-- predicate, every existing row that satisfied it still does, so no historical row changes status.
+alter table public.karaoke_event_usage_segments
+  drop constraint if exists usage_seg_metered_matches_plan_v2;
+
+alter table public.karaoke_event_usage_segments
+  add constraint usage_seg_metered_matches_plan_v2 check (
+    -- ARM 1 — historical / metered (verbatim predicate)
+    (metered = ((plan_snapshot = 'FREE'::text) AND (metering_paused_by_pass = false)))
+    OR
+    -- ARM 2 — intentional unmetered (App Store 1.0)
+    (metered = false
+     AND duration_seconds     is null
+     AND lease_ends_at        is null
+     AND lease_seconds        is null
+     AND charged_window_start is null
+     AND charged_window_end   is null)
+  );

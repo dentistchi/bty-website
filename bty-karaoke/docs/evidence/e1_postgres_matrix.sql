@@ -50,12 +50,12 @@ select pg_temp.a('D0  precondition: FREE exhausted',
   ((karaoke_free_minutes_entitlement_at_v2('e1000000-0000-4000-8000-000000000001',now())->>'remainingSeconds')::int) <= 0);
 select pg_temp.a('D2  FREE=0 + same song',      (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
 select pg_temp.a('D3  no pass',                 (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
-insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,source,expires_at,activated_at)
-values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'ACTIVE','PROMOTIONAL',now()-interval '1 min',now()-interval '61 min');
+insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,issue_idempotency_key,source_type,is_paid,expires_at,activated_at)
+values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'ACTIVE','e1-expired','MANUAL_PROMOTIONAL',false,now()-interval '61 min' + make_interval(secs=>3600),now()-interval '61 min');
 select pg_temp.a('D4  expired pass',            (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
 delete from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001';
-insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,source)
-values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'SELECTED','PROMOTIONAL');
+insert into timed_access_pass_grants(account_id,pass_type,duration_seconds,status,issue_idempotency_key,source_type,is_paid,selected_at)
+values ('e1000000-0000-4000-8000-000000000001','ONE_HOUR',3600,'SELECTED','e1-selected','MANUAL_PROMOTIONAL',false,now());
 select pg_temp.a('D5  SELECTED pass',           (pg_temp.start('E1SHORT0001')->>'outcome')='ok');
 select pg_temp.a('D6  SELECTED pass STAYS selected',
   (select count(*) from timed_access_pass_grants where account_id='e1000000-0000-4000-8000-000000000001' and status='SELECTED')=1
