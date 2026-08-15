@@ -268,3 +268,60 @@ describe("PRIVACY — Today can never carry private learner text", () => {
     expect(JSON.stringify(r)).not.toContain(DECISION);
   });
 });
+
+describe("DAY 7 — what is actually observable, by follow-up configuration", () => {
+  /*
+    R2's device-gate prose claimed the learner would see a "Last day" Apply card on day 7. For the
+    common configuration that is FALSE, and this block is the correction.
+
+    A 7-day follow-up becomes due on the SAME BTY day the 7-day window closes, so suppression fires
+    on exactly that day and the Apply card is replaced by the Follow-up card. "Last day" is only
+    reachable when nothing supersedes it that day — no follow-up at all, or a 30-day checkpoint.
+
+    The implementation was already correct; only the instructions were wrong. These tests exist so
+    the instructions cannot drift from the behaviour again.
+  */
+  const followup = (days: number, dueAt: string, status = "PENDING"): Tables => ({
+    ...progressTables(),
+    foundry_participant_followups: [
+      { id: "fu-1", progress_id: "prog-1", user_id_snapshot: USER, status, due_at: dueAt, follow_up_days: days, source_training_title: "Huddle ownership" },
+    ],
+  });
+  // Window: completed 2026-08-14 → closes 2026-08-21. Day 7 = 2026-08-21.
+  const DAY7 = "2026-08-21T20:00:00Z";
+
+  it("7-day follow-up → on day 7 the Apply card is GONE and Follow-up is shown ('Last day' unobservable)", async () => {
+    const r = await build(followup(7, "2026-08-21T12:00:00.000Z"), [WINDOW], DAY7);
+    expect(r.some((x) => x.category === "APPLY_DUE")).toBe(false);
+    expect(r.some((x) => x.category === "FOLLOW_UP_DUE")).toBe(true);
+  });
+
+  it("7-day follow-up → day 6 still shows the Apply card as `active`", async () => {
+    const r = await build(followup(7, "2026-08-21T12:00:00.000Z"), [WINDOW], "2026-08-20T20:00:00Z");
+    const a = r.find((x) => x.category === "APPLY_DUE");
+    expect(a?.state).toBe("active");
+    expect(r.some((x) => x.category === "FOLLOW_UP_DUE")).toBe(false);
+  });
+
+  it("30-day follow-up → on day 7 'Last day' IS observable, and no Follow-up yet", async () => {
+    const r = await build(followup(30, "2026-09-13T12:00:00.000Z"), [WINDOW], DAY7);
+    expect(r.find((x) => x.category === "APPLY_DUE")?.state).toBe("due_today");
+    expect(r.some((x) => x.category === "FOLLOW_UP_DUE")).toBe(false);
+  });
+
+  it("NO follow-up configured → 'Last day' IS observable on day 7", async () => {
+    const r = await build(progressTables(), [WINDOW], DAY7);
+    expect(r.find((x) => x.category === "APPLY_DUE")?.state).toBe("due_today");
+  });
+
+  it("30-day follow-up → the gap after the window closes shows NEITHER card", async () => {
+    /*
+      Days 8..29: the window has closed (not projected) and the follow-up has not arrived. Today is
+      honestly quiet about this training. That gap is the reason the closed state is not projected —
+      an "overdue" Apply card would have sat at the top of Today for three weeks.
+    */
+    const r = await build(followup(30, "2026-09-13T12:00:00.000Z"), [WINDOW], "2026-08-30T20:00:00Z");
+    expect(r.some((x) => x.category === "APPLY_DUE")).toBe(false);
+    expect(r.some((x) => x.category === "FOLLOW_UP_DUE")).toBe(false);
+  });
+});
