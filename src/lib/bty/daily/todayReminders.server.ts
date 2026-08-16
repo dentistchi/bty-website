@@ -26,8 +26,10 @@ import {
 import {
   classifyFollowUpDue,
   classifyFollowUpTodayAttention,
+  isFollowUpEligibleForToday,
   type FollowUpStatus,
 } from "@/domain/foundry/followup/followUpObligation";
+import { listMyLearningRecordIds } from "@/lib/bty/foundry/events/learnerEvidenceService";
 import { suppressApplyWindow } from "@/domain/foundry/apply-window/applyWindow";
 import { listMyApplyWindows } from "@/lib/bty/foundry/events/foundryApplyWindowService";
 import {
@@ -215,24 +217,63 @@ function followUpCheckpointLabel(followUpDays: number, locale: string): string {
  *     day 5 still truthfully reports "overdue" and still sorts as overdue. The stale row leaves by
  *     ELIGIBILITY, not by being quietly ranked below everything else — a card that is still
  *     rendered but never seen is the same defect with better manners.
- *   * It does not strand the learner. My Learning carries the durable followup id onward with no
- *     expiry (`awaitsFirstResponse`), so the unanswered question is always one tap away.
+ *   * It does not strand the learner. That is not an aspiration here — it is a PRECONDITION Today
+ *     checks before letting go; see the reachability gate below.
+ *
+ * REACHABILITY OUTRANKS ATTENTION EXPIRATION (Slice 3.2R-R3-R2-R1).
+ *
+ * The paragraph above once ended "My Learning carries the durable followup id onward", stated as
+ * though it were always true. Measurement found it is not: follow-up `124f5430` is 19 days past due
+ * on a completion whose `linked_user_id` is NULL — an anonymous, unclaimed row that My Learning has
+ * never listed and cannot list. And there is no third door: the ONLY producers of a `?followup=`
+ * target in the product are this reminder and the two My Learning CTAs. Suppressing that row would
+ * have deleted the learner's last path to a durable unanswered obligation.
+ *
+ * So Today now proves the alternate route before it stops asking, by consulting the SAME rule that
+ * decides what My Learning renders (`listMyLearningRecordIds`) rather than inventing an identity
+ * test of its own — a second copy of "which records are mine" would eventually disagree with the
+ * surface it is predicting, and the failure would be silent. A stale obligation with no provable
+ * door stays here: noisy and honest beats quiet and lost, until the unclaimed-completion identity
+ * gap is closed in its own slice.
  */
 async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz: string, locale: string): Promise<TodayReminder[]> {
   try {
     const { data } = await admin
       .from("foundry_participant_followups")
-      .select("id, source_training_title, follow_up_days, due_at, status")
+      .select("id, progress_id, source_training_title, follow_up_days, due_at, status")
       .eq("user_id_snapshot", userId)
       .eq("status", "PENDING")
       .not("due_at", "is", null);
-    return (data ?? [])
+    const rows = (data ?? []) as Array<{
+      id: string;
+      progress_id: string | null;
+      source_training_title: string | null;
+      follow_up_days: number;
+      due_at: string;
+      status: FollowUpStatus;
+    }>;
+
+    /*
+      The reachability read happens ONLY if something is actually stale. In the ordinary case —
+      every obligation answered or inside its window — this costs nothing, which is what keeps the
+      amendment free for the learners it does not concern.
+    */
+    const attentionOf = new Map(rows.map((r) => [r.id, classifyFollowUpTodayAttention(r.status, r.due_at, now, tz)]));
+    const reachable = [...attentionOf.values()].some((a) => a === "stale")
+      ? await listMyLearningRecordIds(admin, userId)
+      : new Set<string>();
+
+    return rows
       .filter(
         // Filtered BEFORE projection: an ineligible obligation should never be built into a
-        // reminder at all, so no later edit can accidentally let one past the shape it was
-        // given. `upcoming` (V1 already hid it) and `stale` both fall out here.
-        (r: { due_at: string; status: FollowUpStatus }) =>
-          classifyFollowUpTodayAttention(r.status, r.due_at, now, tz) === "asking",
+        // reminder at all, so no later edit can accidentally let one past the shape it was given.
+        // A row with no `progress_id` can have no My Learning record, so it is unreachable and
+        // kept — the fail-safe direction, never an assumption of a door.
+        (r) =>
+          isFollowUpEligibleForToday(
+            attentionOf.get(r.id) ?? "upcoming",
+            r.progress_id !== null && reachable.has(r.progress_id),
+          ),
       )
       .map((r: { id: string; source_training_title: string | null; follow_up_days: number; due_at: string }): TodayReminder => ({
         stableId: `followup:${r.id}`,

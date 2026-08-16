@@ -427,6 +427,65 @@ export type MyEvidenceItem = {
  * also consumed by the Today brief, which must not pay for evidence assembly. Keeping them apart
  * means this slice adds no I/O to any existing path.
  */
+/**
+ * THE MY LEARNING RECORD RULE — one definition, two callers (Slice 3.2R-R3-R2-R1).
+ *
+ * Which completed trainings does My Learning render for this learner? Owner-scoped by
+ * `linked_user_id` and completed — that pair IS the rule, and an anonymous / unclaimed completion
+ * (`linked_user_id = NULL`) is therefore absent by design, not by accident.
+ *
+ * EXTRACTED RATHER THAN RESTATED. Today now has to know whether a stale obligation will still have
+ * a door in My Learning before it may stop asking about it. The one thing it must NOT do is invent
+ * its own identity rule: a second copy of "which records are mine" would drift, and the day it
+ * drifted, Today would suppress an obligation My Learning does not actually show. So the question
+ * is put to the same function that decides what My Learning renders, and both callers move
+ * together or neither does.
+ *
+ * THROWS ARE THE CALLER'S PROBLEM, ON PURPOSE. This does not swallow read failures, because the two
+ * callers need OPPOSITE fail-soft directions: `listMyEvidence` degrades to an empty list (a missing
+ * evidence strip), while Today must treat an unprovable door as NO door and keep asking. A shared
+ * `catch` here would have quietly given Today the wrong default.
+ */
+async function loadMyLearningRecords(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<Array<{ id: string; event_id: string; completed_at: string }>> {
+  const { data } = await admin
+    .from("foundry_event_training_progress")
+    .select("id, event_id, completed_at")
+    .eq("linked_user_id", userId)
+    .not("completed_at", "is", null)
+    .order("completed_at", { ascending: false })
+    .returns<Array<{ id: string; event_id: string; completed_at: string }>>();
+  return data ?? [];
+}
+
+/**
+ * The progress-row ids My Learning will render for this learner — i.e. the records that can carry a
+ * follow-up CTA (Slice 3.2R-R3-R2-R1).
+ *
+ * Today calls this to answer "if I stop asking about this stale obligation, can they still reach
+ * it?". Membership is NECESSARY AND SUFFICIENT for the door: `openFollowUp` is emitted per record
+ * from exactly this set, and its only further condition is `awaitsFirstResponse`, which is already
+ * true for every stale row by construction (`stale` is one of the two states it accepts). So for
+ * the question Today actually asks, presence in this set is the whole answer.
+ *
+ * ON FAILURE IT RETURNS THE EMPTY SET, WHICH MEANS "NO DOOR PROVEN" — and Today keeps the row. That
+ * is the direction that over-shows rather than the one that strands somebody.
+ *
+ * IDS ONLY. No titles, no text, no follow-up rows. Nothing here creates, claims or widens a record;
+ * an unlinked completion is absent from the result for the same reason it is absent from My
+ * Learning, and this function has no power to change that.
+ */
+export async function listMyLearningRecordIds(admin: SupabaseClient, userId: string): Promise<Set<string>> {
+  if (!userId) return new Set();
+  try {
+    return new Set((await loadMyLearningRecords(admin, userId)).map((r) => r.id));
+  } catch {
+    return new Set(); // unprovable → treated as unreachable → Today keeps asking
+  }
+}
+
 export async function listMyEvidence(
   admin: SupabaseClient,
   userId: string,
@@ -443,14 +502,8 @@ export async function listMyEvidence(
   if (!userId) return [];
   let rows: Array<{ id: string; event_id: string; completed_at: string }> = [];
   try {
-    const { data } = await admin
-      .from("foundry_event_training_progress")
-      .select("id, event_id, completed_at")
-      .eq("linked_user_id", userId)
-      .not("completed_at", "is", null)
-      .order("completed_at", { ascending: false })
-      .returns<Array<{ id: string; event_id: string; completed_at: string }>>();
-    rows = data ?? [];
+    // The SAME rule Today consults through `listMyLearningRecordIds` — see `loadMyLearningRecords`.
+    rows = await loadMyLearningRecords(admin, userId);
   } catch {
     return [];
   }

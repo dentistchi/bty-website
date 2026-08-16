@@ -6,6 +6,7 @@ import {
   classifyFollowUpDue,
   classifyFollowUpTodayAttention,
   daysBetweenDayKeys,
+  isFollowUpEligibleForToday,
   FOLLOW_UP_OUTCOMES,
   TODAY_ATTENTION_WINDOW_DAYS,
   type FollowUpStatus,
@@ -171,5 +172,68 @@ describe("PENDING and 'check in again' are disjoint — the semantics cannot be 
   it("APPLIED is terminal on both routes", () => {
     expect(canCheckInAgain("RESPONDED", "APPLIED")).toBe(false);
     expect(awaitsFirstResponse("RESPONDED", dueOn("2026-08-15"), NOW, TZ)).toBe(false);
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R2-R1 — the suppression gate.
+ *
+ * Staleness alone no longer removes a row from Today. It takes staleness AND proof the learner can
+ * still reach the obligation somewhere else, because R3-R2 as first written would have made one
+ * live 19-day-old follow-up unreachable from every learner surface.
+ */
+describe("isFollowUpEligibleForToday — reachability outranks attention expiration", () => {
+  it("the full truth table, both reachability values", () => {
+    // settled / upcoming are never shown; asking is always shown; only `stale` consults the door.
+    expect(isFollowUpEligibleForToday("settled", true)).toBe(false);
+    expect(isFollowUpEligibleForToday("settled", false)).toBe(false);
+    expect(isFollowUpEligibleForToday("upcoming", true)).toBe(false);
+    expect(isFollowUpEligibleForToday("upcoming", false)).toBe(false);
+    expect(isFollowUpEligibleForToday("asking", true)).toBe(true);
+    expect(isFollowUpEligibleForToday("asking", false)).toBe(true);
+    expect(isFollowUpEligibleForToday("stale", true)).toBe(false); // has a door → Today lets go
+    expect(isFollowUpEligibleForToday("stale", false)).toBe(true); // no door → Today keeps asking
+  });
+
+  it("reachability changes the answer for stale rows and NOTHING else", () => {
+    /*
+      The amendment must be surgical: the only cell in the table where the second argument matters
+      is `stale`. If a later edit lets reachability influence `asking` or `upcoming`, it has turned
+      an identity fact into a general visibility rule, and this fails.
+    */
+    for (const attention of ["settled", "upcoming", "asking"] as const) {
+      expect(isFollowUpEligibleForToday(attention, true), attention).toBe(
+        isFollowUpEligibleForToday(attention, false),
+      );
+    }
+    expect(isFollowUpEligibleForToday("stale", true)).not.toBe(isFollowUpEligibleForToday("stale", false));
+  });
+
+  it("composes with the time classification without redefining it", () => {
+    // A stale row kept for lack of a door is STILL stale, and still truthfully overdue.
+    const stale = dueOn("2026-07-16");
+    expect(classifyFollowUpTodayAttention("PENDING", stale, NOW, TZ)).toBe("stale");
+    expect(classifyFollowUpDue(stale, NOW, TZ)).toBe("overdue");
+    expect(isFollowUpEligibleForToday("stale", false)).toBe(true);
+  });
+
+  it("is pure — no clock, no I/O, same answer every time", () => {
+    for (let i = 0; i < 3; i++) expect(isFollowUpEligibleForToday("stale", false)).toBe(true);
+  });
+
+  it("an unanswered obligation is never suppressed AND unreachable at the same time", () => {
+    /*
+      THE INVARIANT THE WHOLE AMENDMENT EXISTS FOR, stated directly: for every PENDING obligation,
+      Today hiding it implies the learner has another way in. Swept over the full space rather than
+      argued in a comment.
+    */
+    for (const attention of ["upcoming", "asking", "stale"] as const) {
+      for (const reachable of [true, false]) {
+        const hiddenFromToday = !isFollowUpEligibleForToday(attention, reachable);
+        // `upcoming` is exempt: the checkpoint has not arrived, so there is nothing yet to reach.
+        if (attention === "upcoming") continue;
+        expect(hiddenFromToday && !reachable, `${attention}/${reachable}`).toBe(false);
+      }
+    }
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { projectEvidenceByProgressId, listMyEvidence } from "./learnerEvidenceService";
+import { projectEvidenceByProgressId, listMyEvidence, listMyLearningRecordIds } from "./learnerEvidenceService";
 
 /**
  * SLICE 3.2R-R1 — the evidence ladder, wired.
@@ -654,5 +654,109 @@ describe("R3-R2 openFollowUp — reaching an obligation with no answer yet", () 
     // The stored row is untouched: still PENDING, still no outcome, nothing appended.
     expect(JSON.stringify(tables.foundry_participant_followups)).toBe(before);
     expect(tables.foundry_participant_followups![0]).toMatchObject({ status: "PENDING", outcome: null });
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R2-R1 — one reachability authority, shared with Today.
+ *
+ * Today may only stop asking about a stale obligation once it can PROVE the learner still has a My
+ * Learning door. The one thing it must not do is invent its own identity rule — a second copy of
+ * "which records are mine" would drift, and the day it drifted Today would suppress an obligation
+ * My Learning does not actually show. So both consult this function, and what has to be proven here
+ * is that it agrees with `listMyEvidence` by construction and grants nothing to anyone.
+ */
+describe("R3-R2-R1 listMyLearningRecordIds — the shared My Learning record rule", () => {
+  it("returns exactly the records listMyEvidence renders — the two cannot disagree", async () => {
+    /*
+      Agreement is asserted, not assumed: the same fixture is put to both, across shapes that could
+      plausibly separate them (linked, unlinked, someone else's, incomplete).
+    */
+    const tables = seed({ followUpOutcome: null });
+    tables.foundry_event_training_progress!.push(
+      { id: "prog-other-user", event_id: EVENT, completed_at: "2026-08-02T02:00:00Z", response_text: null, learner_reflection_text: null, decision_response_text: null, linked_user_id: "user-2" },
+      { id: "prog-anon", event_id: EVENT, completed_at: "2026-08-02T02:00:00Z", response_text: null, learner_reflection_text: null, decision_response_text: null, linked_user_id: null },
+      { id: "prog-incomplete", event_id: EVENT, completed_at: null, response_text: null, learner_reflection_text: null, decision_response_text: null, linked_user_id: USER },
+    );
+    const admin = makeFakeAdmin(tables);
+    const ids = await listMyLearningRecordIds(admin, USER);
+    const rendered = new Set((await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ)).map((i) => i.entryId));
+    expect([...ids].sort()).toEqual([...rendered].sort());
+    expect(ids.has(PROGRESS)).toBe(true);
+  });
+
+  it("an anonymous unclaimed completion is NOT a record — the measured live gap", async () => {
+    // `linked_user_id = NULL` is the shape of live progress row `1ca75ade`. It has never been in
+    // My Learning, and nothing here puts it there.
+    const tables = seed({ followUpOutcome: null, userId: null });
+    const ids = await listMyLearningRecordIds(makeFakeAdmin(tables), USER);
+    expect(ids.size).toBe(0);
+    expect((await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ)).length).toBe(0);
+  });
+
+  it("another learner's completion is not this learner's record", async () => {
+    const tables = seed({ followUpOutcome: null, userId: "user-2" });
+    expect((await listMyLearningRecordIds(makeFakeAdmin(tables), USER)).size).toBe(0);
+  });
+
+  it("an unreadable table yields NO proven door — never a false positive", async () => {
+    /*
+      The fail-safe direction. Today reads an empty set as "unreachable" and keeps asking; the
+      opposite default would strand somebody on a failed read.
+    */
+    const admin = makeFakeAdmin(seed({ followUpOutcome: null }));
+    (admin as unknown as { from: (t: string) => unknown }).from = () => {
+      throw new Error("read failure");
+    };
+    expect((await listMyLearningRecordIds(admin, USER)).size).toBe(0);
+  });
+
+  it("an anonymous caller gets nothing, and no query is attempted", async () => {
+    const admin = makeFakeAdmin(seed({ followUpOutcome: null }));
+    let touched = false;
+    (admin as unknown as { from: (t: string) => unknown }).from = () => {
+      touched = true;
+      throw new Error("should not be reached");
+    };
+    expect((await listMyLearningRecordIds(admin, "")).size).toBe(0);
+    expect(touched).toBe(false);
+  });
+
+  it("carries IDS ONLY — no titles, no text, no follow-up data", async () => {
+    const ids = await listMyLearningRecordIds(makeFakeAdmin(seed({ followUpOutcome: null, decision: true, learnerReflection: true })), USER);
+    const raw = JSON.stringify([...ids]);
+    for (const secret of [SECRET_COMPLETION, SECRET_REFLECTION, DECISION_TEXT]) expect(raw).not.toContain(secret);
+    expect([...ids]).toEqual([PROGRESS]);
+  });
+
+  it("NO IDENTITY EXPANSION — reading it claims nothing and mutates nothing", async () => {
+    /*
+      Part E, asserted rather than described. The compatibility exception must not be implemented by
+      quietly attaching the unclaimed completion to somebody: the fake exposes no mutating verb, and
+      the row is unchanged field for field afterwards. The gap stays visibly unresolved.
+    */
+    const tables = seed({ followUpOutcome: null, userId: null });
+    const before = JSON.stringify(tables.foundry_event_training_progress);
+    await listMyLearningRecordIds(makeFakeAdmin(tables), USER);
+    await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ);
+    expect(JSON.stringify(tables.foundry_event_training_progress)).toBe(before);
+    expect(tables.foundry_event_training_progress![0]!.linked_user_id).toBeNull();
+  });
+
+  it("no door is never read as permission to create one", async () => {
+    // An unreachable record produces an empty set on EVERY call — it does not become reachable by
+    // being asked about repeatedly.
+    const tables = seed({ followUpOutcome: null, userId: null });
+    for (let i = 0; i < 3; i++) {
+      expect((await listMyLearningRecordIds(makeFakeAdmin(tables), USER)).size).toBe(0);
+    }
+    expect((await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ)).flatMap((e) => e.openFollowUp)).toEqual([]);
+  });
+
+  it("when a door DOES exist, the exact durable followup id is still what travels", async () => {
+    const tables = seed({ followUpOutcome: null });
+    expect((await listMyLearningRecordIds(makeFakeAdmin(tables), USER)).has(PROGRESS)).toBe(true);
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
+    expect(item.openFollowUp).toEqual([{ followupId: FOLLOWUP, followUpDays: 7 }]);
   });
 });

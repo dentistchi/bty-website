@@ -50,6 +50,7 @@ function filteringAdmin(tables: Record<string, Row[]>) {
         rows = rows.filter((r) => r[c] !== null && r[c] !== undefined);
         return q;
       },
+      returns: () => q,
       then: (res: (v: { data: Row[] }) => unknown) => Promise.resolve({ data: rows }).then(res),
     };
     return q;
@@ -93,6 +94,28 @@ function dueOn(dayKey: string): string {
   throw new Error(`no 05:00 local instant found for ${dayKey}`);
 }
 
+/*
+  THE MY LEARNING DOOR, MODELLED EXPLICITLY (Slice 3.2R-R3-R2-R1).
+
+  Today may only stop asking about a stale obligation if the learner can still reach it, and it
+  proves that through the canonical My Learning record rule: a completed
+  `foundry_event_training_progress` row whose `linked_user_id` is the caller. So the fixture has to
+  carry that row — and its ABSENCE is now a meaningful, testable state rather than an oversight.
+
+  `linkedProgress()` = the ordinary case (the record exists, the door exists).
+  `unlinkedProgress()` = the measured live case: an anonymous completion, `linked_user_id` NULL,
+  which My Learning has never listed and cannot list.
+*/
+const linkedProgress = (over: Row = {}): Row => ({
+  id: "prog-1",
+  event_id: "ev-1",
+  linked_user_id: "u1",
+  completed_at: "2026-08-01T02:00:00Z",
+  ...over,
+});
+
+const unlinkedProgress = (over: Row = {}): Row => linkedProgress({ linked_user_id: null, ...over });
+
 const followup = (over: Row = {}): Row => ({
   id: "fu-1",
   progress_id: "prog-1",
@@ -105,17 +128,22 @@ const followup = (over: Row = {}): Row => ({
   ...over,
 });
 
-const build = (rows: Row[], now: Date = NOW) =>
+/** Default: the learner HAS a My Learning record for this obligation, so the door exists. */
+const build = (rows: Row[], now: Date = NOW, progress: Row[] = [linkedProgress()]) =>
   buildTodayReminders(
-    filteringAdmin({ foundry_participant_followups: rows, foundry_participant_apply_windows: [] }),
+    filteringAdmin({
+      foundry_participant_followups: rows,
+      foundry_participant_apply_windows: [],
+      foundry_event_training_progress: progress,
+    }),
     "u1",
     now,
     TZ,
     "en",
   );
 
-const shown = async (rows: Row[], now?: Date) =>
-  (await build(rows, now)).some((r) => r.stableId === "followup:fu-1");
+const shown = async (rows: Row[], now?: Date, progress?: Row[]) =>
+  (await build(rows, now, progress)).some((r) => r.stableId === "followup:fu-1");
 
 describe("[3.2R-R3-R2] the Today attention window for an unanswered follow-up", () => {
   /*
@@ -266,5 +294,162 @@ describe("[3.2R-R3-R2] legacy same-day rows need no repair", () => {
     expect(await shown([sameDay])).toBe(false);
     const recentSameDay = followup({ due_at: dueOn("2026-08-11") }); // 4 days — still asking
     expect(await shown([recentSameDay])).toBe(true);
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R2-R1 — reachability outranks attention expiration.
+ *
+ * R3-R2 bounded how long Today asks, on the stated assumption that My Learning always carries the
+ * obligation onward. It does not: follow-up `124f5430` is 19 days past due on a completion whose
+ * `linked_user_id` is NULL — an anonymous, unclaimed row My Learning has never listed. And there is
+ * no third door: the only producers of a `?followup=` target in the product are this reminder and
+ * the two My Learning CTAs. Suppressing it would have deleted the learner's last path to a durable
+ * unanswered obligation.
+ *
+ * So Today must now PROVE the alternate route before it lets go. The fourth case below — stale and
+ * unreachable, therefore kept — is an explicit compatibility exception, not the desired end state.
+ */
+describe("[3.2R-R3-R2-R1] Today only lets go of what the learner can still reach", () => {
+  const STALE = dueOn("2026-07-16"); // due + 30
+  const LIVE = dueOn("2026-08-12"); // due + 3, inside the window
+
+  it("stale + a My Learning door → hidden from Today", async () => {
+    expect(await shown([followup({ due_at: STALE })], NOW, [linkedProgress()])).toBe(false);
+  });
+
+  it("stale + NO door → KEPT in Today, rather than made unreachable", async () => {
+    /*
+      The blocker, pinned. This is the live shape of `124f5430`: PENDING, weeks past due, on an
+      anonymous completion. Silence is an acceptable cost of attention expiry; disappearance is not.
+    */
+    expect(await shown([followup({ due_at: STALE })], NOW, [unlinkedProgress()])).toBe(true);
+  });
+
+  it("non-stale + a door → shown (the window, not reachability, is what decides here)", async () => {
+    expect(await shown([followup({ due_at: LIVE })], NOW, [linkedProgress()])).toBe(true);
+  });
+
+  it("non-stale + NO door → shown, and for the ordinary reason", async () => {
+    // Reachability must not become a second, quieter way to hide something still inside its window.
+    expect(await shown([followup({ due_at: LIVE })], NOW, [unlinkedProgress()])).toBe(true);
+  });
+
+  it("a RESPONDED obligation is hidden regardless of reachability", async () => {
+    for (const outcome of ["NOT_YET", "PARTLY_APPLIED", "BLOCKED", "APPLIED"]) {
+      for (const progress of [[linkedProgress()], [unlinkedProgress()], []]) {
+        const out = await build([followup({ due_at: STALE, status: "RESPONDED", outcome })], NOW, progress);
+        expect(out.find((r) => r.category === "FOLLOW_UP_DUE"), outcome).toBeUndefined();
+      }
+    }
+  });
+
+  it("an upcoming obligation stays hidden regardless of reachability", async () => {
+    const soon = dueOn("2026-08-20");
+    expect(await shown([followup({ due_at: soon })], NOW, [unlinkedProgress()])).toBe(false);
+    expect(await shown([followup({ due_at: soon })], NOW, [linkedProgress()])).toBe(false);
+  });
+
+  it("a record belonging to SOMEONE ELSE is not a door", async () => {
+    /*
+      The rule is `linked_user_id === the caller`, not "linked to somebody". A completion claimed by
+      another learner puts the record on THEIR My Learning, which is no route at all for this one —
+      and reading it as a door would both strand this learner and imply a cross-owner read.
+    */
+    expect(await shown([followup({ due_at: STALE })], NOW, [linkedProgress({ linked_user_id: "u2" })])).toBe(true);
+  });
+
+  it("an INCOMPLETE progress row is not a door — My Learning lists completions", async () => {
+    expect(await shown([followup({ due_at: STALE })], NOW, [linkedProgress({ completed_at: null })])).toBe(true);
+  });
+
+  it("a follow-up with no progress_id at all is unreachable, and is kept", async () => {
+    expect(await shown([followup({ due_at: STALE, progress_id: null })], NOW, [linkedProgress()])).toBe(true);
+  });
+
+  it("a MISSING progress row is unreachable, and is kept", async () => {
+    expect(await shown([followup({ due_at: STALE })], NOW, [])).toBe(true);
+  });
+
+  it("the door must match THIS obligation's own record, not merely exist somewhere", async () => {
+    /*
+      A learner with nine My Learning records and one unclaimed completion must still keep the
+      unclaimed one in Today. Reachability is per-obligation; "they have records" is not an answer.
+    */
+    const out = await build(
+      [
+        followup({ id: "fu-reachable", progress_id: "prog-1", due_at: STALE }),
+        followup({ id: "fu-orphan", progress_id: "prog-anon", due_at: STALE }),
+      ],
+      NOW,
+      [linkedProgress(), linkedProgress({ id: "prog-other" })],
+    );
+    expect(out.find((r) => r.stableId === "followup:fu-reachable")).toBeUndefined();
+    expect(out.find((r) => r.stableId === "followup:fu-orphan")).toBeTruthy();
+  });
+
+  it("a retained stale row keeps its durable id and its real deep link", async () => {
+    // Being kept for compatibility must not degrade it into a stub: it is the same reminder,
+    // opening the same obligation, that Today has always shown.
+    const out = await build([followup({ due_at: STALE })], NOW, [unlinkedProgress()]);
+    const row = out.find((r) => r.stableId === "followup:fu-1");
+    expect(row?.canonicalDeepLink).toBe("/en/app?tab=foundry&followup=fu-1");
+    expect(row?.state).toBe("overdue"); // still truthfully overdue — nothing was redefined
+  });
+
+  it("an unreadable record table is treated as NO door — the fail-safe direction", async () => {
+    /*
+      Unprovable reachability must never read as proven. The direction that over-shows is
+      recoverable; the one that strands somebody is not.
+    */
+    const tables = {
+      foundry_participant_followups: [followup({ due_at: STALE })],
+      foundry_participant_apply_windows: [],
+      foundry_event_training_progress: [linkedProgress()],
+    };
+    const admin = filteringAdmin(tables) as unknown as { from: (t: string) => unknown };
+    const realFrom = admin.from.bind(admin);
+    admin.from = (t: string) => {
+      if (t === "foundry_event_training_progress") throw new Error("read failure");
+      return realFrom(t);
+    };
+    const out = await buildTodayReminders(admin as never, "u1", NOW, TZ, "en");
+    expect(out.find((r) => r.stableId === "followup:fu-1")).toBeTruthy();
+  });
+
+  it("the reachability read does not run when nothing is stale", async () => {
+    /*
+      Cost discipline: the amendment must be free for every learner it does not concern. With only
+      in-window obligations, the record table is never touched.
+    */
+    const reads: string[] = [];
+    const tables = {
+      foundry_participant_followups: [followup({ due_at: LIVE })],
+      foundry_participant_apply_windows: [],
+      foundry_event_training_progress: [linkedProgress()],
+    };
+    const admin = filteringAdmin(tables) as unknown as { from: (t: string) => unknown };
+    const realFrom = admin.from.bind(admin);
+    admin.from = (t: string) => {
+      reads.push(t);
+      return realFrom(t);
+    };
+    await buildTodayReminders(admin as never, "u1", NOW, TZ, "en");
+    expect(reads).not.toContain("foundry_event_training_progress");
+  });
+
+  it("keeping an unreachable row writes NOTHING — not to the follow-up, not to the record", async () => {
+    /*
+      The compatibility exception must not be implemented by claiming the completion. The stub
+      exposes no mutating verb, and both rows are asserted unchanged field for field: no
+      `linked_user_id` is populated, no status moves, nothing is attached to My Learning.
+    */
+    const fu = followup({ due_at: STALE });
+    const prog = unlinkedProgress();
+    const before = JSON.stringify([fu, prog]);
+    expect(await shown([fu], NOW, [prog])).toBe(true);
+    expect(JSON.stringify([fu, prog])).toBe(before);
+    expect(prog.linked_user_id).toBeNull(); // still unclaimed — the gap stays visibly unresolved
+    expect(fu).toMatchObject({ status: "PENDING", outcome: null });
   });
 });

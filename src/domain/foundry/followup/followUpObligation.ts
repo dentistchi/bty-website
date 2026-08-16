@@ -167,6 +167,58 @@ export function awaitsFirstResponse(status: FollowUpStatus, dueAtIso: string, no
   return attention === "asking" || attention === "stale";
 }
 
+/**
+ * MAY TODAY DROP THIS OBLIGATION? (Slice 3.2R-R3-R2-R1)
+ *
+ * REACHABILITY OUTRANKS ATTENTION EXPIRATION — the Founder amendment, and the reason this function
+ * exists at all rather than the caller filtering on `attention === "asking"`.
+ *
+ * R3-R2 bounded how long Today asks, on the stated assumption that My Learning always carries the
+ * obligation onward. Measurement found that assumption is not universal: follow-up `124f5430` is 19
+ * days past due and its completion row has `linked_user_id = NULL` (an anonymous, unclaimed
+ * completion). My Learning lists by `linked_user_id`, so that record has no door — and there is no
+ * third learner surface, because the ONLY producers of a `?followup=` target in the whole product
+ * are the Today row and the two My Learning CTAs. Suppressing it would have made a durable
+ * unanswered obligation unreachable from every learner surface. Silence is an acceptable cost of
+ * attention expiry; disappearance is not.
+ *
+ * SO STALENESS ALONE NO LONGER SUPPRESSES. It takes staleness AND proof that the learner can still
+ * get there. Two genuinely different questions, deliberately kept as two arguments rather than
+ * folded into one classification: `attention` is a fact about TIME and is decided here in the
+ * domain; `reachableElsewhere` is a fact about this learner's IDENTITY BINDING, which only a
+ * service that can read their records can answer. A domain function that tried to answer both
+ * would have to reach for the database.
+ *
+ * THE FOURTH CASE IS A COMPATIBILITY EXCEPTION, NOT THE DESIRED END STATE. A stale-and-unreachable
+ * obligation stays in Today — noisy, honest, and reachable — until the unclaimed-completion
+ * identity gap is closed in its own slice. When that lands, `reachableElsewhere` becomes true for
+ * those rows and they leave Today by the ordinary rule, with nothing here to change.
+ *
+ * FAIL-SAFE DIRECTION. `reachableElsewhere` must be FALSE whenever the caller cannot PROVE a door
+ * — including when the read that would prove it failed. Unproven reachability keeps the row, which
+ * over-shows; the opposite default strands someone. This is not the caller's discretion: an
+ * argument named "reachable" that meant "probably reachable" is how a learner loses a path.
+ *
+ * NOT `canCheckInAgain`, AND NOT ITS BUSINESS. This decides only whether a PENDING obligation with
+ * no answer may leave Today. A RESPONDED row is `settled` and was already out of Today at every
+ * age (R3-R1); its later-check-in route is a separate question with a separate authority.
+ */
+export function isFollowUpEligibleForToday(
+  attention: FollowUpTodayAttention,
+  reachableElsewhere: boolean,
+): boolean {
+  switch (attention) {
+    case "settled": // answered — R3-R1, never returns to Today
+    case "upcoming": // the checkpoint has not arrived — V1, never shown early
+      return false;
+    case "asking": // inside the attention window — shown, reachability irrelevant
+      return true;
+    case "stale":
+      // Past the window. Today lets go ONLY if the learner has somewhere else to go.
+      return !reachableElsewhere;
+  }
+}
+
 export type FollowUpDueComputation = {
   /** BTY day the learner completed on (pre-05:00 counts as the previous day). */
   completionBtyDay: string;
