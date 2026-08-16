@@ -15,6 +15,8 @@ import type { PlaybackAuthorityWire } from '@/domain/playback-clock';
 /** karaoke_begin_song outcomes (superset; callers map to their own result types). */
 export type BeginOutcome =
   | 'ok'
+  /** R6 §E — the request's YouTube content was determined HARD_UNAVAILABLE and cleared. */
+  | 'youtube_unavailable'
   | 'invalid_mode'
   | 'ownership_state_invalid'
   | 'not_found'
@@ -104,6 +106,16 @@ export async function beginSong(
   requestId: string,
   mode: 'guest' | 'promote',
 ): Promise<BeginResult> {
+  // R6 §E — THE UNAVAILABLE AUTHORITY, checked before any lifecycle or metering work.
+  //
+  // A request whose YouTube content was determined HARD_UNAVAILABLE must not be startable merely
+  // because its historical status still says 'waiting'. The historical lifecycle facts are
+  // deliberately left alone — availability is a SEPARATE axis, and rewriting history to express it
+  // would make an old record lie about what happened. This is the single control point: all three
+  // start paths (host Start, guest self-start, promote) route through here.
+  if (await requestYoutubeUnavailable(roomId, requestId)) {
+    return { outcome: 'youtube_unavailable' };
+  }
   // BUILD 20M — versioned cutover. When the room owner's account is enabled for v2 lease
   // WRITES (karaoke_lease_write_enabled_for; 'off' for all ordinary traffic), resolve the
   // playback duration FIRST and fail closed if it is unavailable — never "open now, meter
@@ -347,4 +359,27 @@ export async function captureAccountTimezone(accountId: string, timezone: string
   });
   if (error) throw error;
   return { outcome: String(first(data).outcome ?? 'account_not_found') };
+}
+
+
+/**
+ * R6 §E — has this request's YouTube content been determined HARD_UNAVAILABLE?
+ *
+ * Reads the EXPLICIT marker, not a NULL test: `youtube_video_id IS NULL` alone would also be true
+ * for a legacy or incomplete row, and refusing to start those would be a different (and wrong)
+ * rule. Fails OPEN on a read error, because a database blip must not block an otherwise legitimate
+ * start — the row is still protected by every other gate.
+ */
+async function requestYoutubeUnavailable(roomId: string, requestId: string): Promise<boolean> {
+  try {
+    const { data } = await karaokeDb()
+      .from('karaoke_requests')
+      .select('youtube_metadata_unavailable_at')
+      .eq('id', requestId)
+      .eq('room_id', roomId)
+      .maybeSingle();
+    return (data as { youtube_metadata_unavailable_at: string | null } | null)?.youtube_metadata_unavailable_at != null;
+  } catch {
+    return false;
+  }
 }

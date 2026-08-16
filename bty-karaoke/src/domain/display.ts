@@ -21,7 +21,8 @@ export interface DisplayRequest {
   songTitle: string;
   /** V1.3: normalized artist (from a "Song - Artist" split or the channel), or null. */
   songArtist: string | null;
-  videoId: string;
+  /** NULL once a retention transition cleared it (R6). */
+  videoId: string | null;
   videoKind: VideoKind;
   thumbnailUrl: string | null;
   status: 'playing' | 'waiting';

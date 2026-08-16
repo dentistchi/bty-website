@@ -18,8 +18,10 @@ export interface LiveRow {
   guest_name: string;
   youtube_title: string | null;
   search_query: string | null;
-  youtube_video_id: string;
+  youtube_video_id: string | null;
   youtube_thumbnail_url: string | null;
+  /** R6 §E/§K — YouTube content determined HARD_UNAVAILABLE; a separate axis from status. */
+  youtube_unavailable?: boolean;
 }
 
 export interface NowPlayingSlot {

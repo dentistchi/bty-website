@@ -501,8 +501,11 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
   // own polls) and ONLY THEN navigate to the promoted song's YouTube. On a precise
   // failure we show the server's reason and never navigate. `nextVideoId` is the
   // READY TO PLAY card's subject — the deterministic ready-first promote target.
-  async function playNext(nextId: string, nextVideoId: string) {
+  async function playNext(nextId: string, nextVideoId: string | null) {
     if (!cred) return;
+    // R6 §K — an unavailable request has no identifier to hand off, and is not a playback
+    // candidate in the first place. Refuse here too rather than navigating nowhere.
+    if (!nextVideoId) return;
     // PLATFORM SPLIT (capability-detected, never user-agent):
     //  • NATIVE iPhone app → hand YouTube off to the external YouTube app (preserves Admin
     //    state + the app's TV/Cast link). Never opens the BTY Player, never posts a channel

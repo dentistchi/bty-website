@@ -55,10 +55,17 @@ export interface KaraokeRequest {
   room_id: string;
   guest_name: string;
   search_query: string | null;
-  youtube_video_id: string;
+  /** NULL after a retention transition cleared it (R6). Never a placeholder. */
+  youtube_video_id: string | null;
   youtube_title: string | null;
   youtube_channel_title: string | null;
   youtube_thumbnail_url: string | null;
+  /**
+   * R6 §E/§K — a factual retention refresh determined this item HARD_UNAVAILABLE and cleared its
+   * API Data. A SEPARATE axis from `status`: the lifecycle fact is untouched, because rewriting
+   * history to express availability would make an old record lie about what happened.
+   */
+  youtube_metadata_unavailable_at: string | null;
   position: number;
   status: RequestStatus;
   session_id: string | null;
@@ -816,7 +823,10 @@ export type StartOutcome =
   // BUILD 20M (v2 lease path): duration unresolved (fail closed, retryable) / a timed pass
   // cannot cover the whole video. Nothing was started in either case.
   | 'duration_unavailable'
-  | 'pass_insufficient';
+  | 'pass_insufficient'
+  // R6 §E — the request's YouTube content is HARD_UNAVAILABLE and its API Data was
+  // cleared. Terminal for playback: not retryable, and no lifecycle fact was changed.
+  | 'youtube_unavailable';
 
 export interface StartResult {
   outcome: StartOutcome;
@@ -971,6 +981,9 @@ function beginToStartOutcome(o: BeginOutcome, ctx: { roomId: string; requestId: 
     case 'duration_unavailable':
       // BUILD 20M v2: the playback duration could not be resolved → fail closed, retryable.
       return 'duration_unavailable';
+    case 'youtube_unavailable':
+      // R6 §E — NOT retryable and NOT an anomaly: the content is gone and the row was cleared.
+      return 'youtube_unavailable';
     case 'pass_insufficient':
       // BUILD 20M v2: the timed pass cannot cover the whole video → blocked, not started.
       return 'pass_insufficient';
@@ -1456,7 +1469,7 @@ export interface GuestPublicRequest {
   id: string;
   guest_name: string;
   search_query: string | null;
-  youtube_video_id: string;
+  youtube_video_id: string | null;
   youtube_title: string | null;
   youtube_channel_title: string | null;
   position: number;

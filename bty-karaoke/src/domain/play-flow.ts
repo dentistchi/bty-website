@@ -8,11 +8,38 @@ import { canonicalRank, type RequestStatus, type QueueOrderEntry } from './queue
 export interface StageEntry {
   id: string;
   status: RequestStatus;
+  /** R6 §K — see ReadyStageEntry. Absent means available, so existing callers are unaffected. */
+  youtube_unavailable?: boolean;
+  /** Raw-row form of the same fact; see isPlayable. */
+  youtube_metadata_unavailable_at?: string | null;
 }
 
 /** A request as far as the stage decision cares: order keys + the Ready signal. */
 export interface ReadyStageEntry extends QueueOrderEntry {
   ready_at: string | null;
+  /**
+   * R6 §E/§K — the request's YouTube content was determined HARD_UNAVAILABLE and its API Data was
+   * cleared. A SEPARATE axis from `status`: the historical lifecycle fact still says `waiting`,
+   * and rewriting it would make the record lie about what happened. Optional so every existing
+   * caller and fixture keeps compiling with the pre-R6 meaning (absent = available).
+   */
+  youtube_unavailable?: boolean;
+  /** Raw-row form of the same fact; see isPlayable. */
+  youtube_metadata_unavailable_at?: string | null;
+}
+
+/**
+ * R6 §K — an unavailable request can never be a playback target.
+ *
+ * Accepts EITHER shape on purpose: the raw request row carries the timestamp
+ * (`youtube_metadata_unavailable_at`) while projections carry the derived boolean. Reading both
+ * means no call site can silently forget to map one to the other — a missed adapter would
+ * otherwise reintroduce the dead Play button while every test still passed.
+ */
+export function isPlayable<
+  T extends { youtube_unavailable?: boolean; youtube_metadata_unavailable_at?: string | null },
+>(r: T): boolean {
+  return r.youtube_unavailable !== true && r.youtube_metadata_unavailable_at == null;
 }
 
 /**
@@ -37,7 +64,16 @@ export function resolveStageDecision<T extends ReadyStageEntry>(
 ): StageDecision<T> {
   const playing = active.find((r) => r.status === 'playing');
   if (playing) return { kind: 'busy', playing };
-  const waiting = active.filter((r) => r.status === 'waiting').slice().sort(canonicalRank);
+  // R6 §K — an unavailable song must NOT block the queue and must never be promoted. It is
+  // filtered out of the playable set entirely, so the next actually-playable request proceeds.
+  // It is NOT deleted and NOT skipped: the row keeps its history and stays visible, it simply
+  // stops being a playback candidate.
+  const waiting = active
+    .filter((r) => r.status === 'waiting' && isPlayable(r))
+    .slice()
+    .sort(canonicalRank);
+  // With every waiting song unavailable this is `empty` — truthfully "nothing playable", which is
+  // what the UI must say rather than offering a dead CTA.
   if (waiting.length === 0) return { kind: 'empty' };
   const ready = waiting.find((r) => r.ready_at != null);
   return ready ? { kind: 'promote', request: ready } : { kind: 'none_ready', firstWaiting: waiting[0] };
@@ -58,7 +94,10 @@ export function primaryPlayTarget<T extends StageEntry>(
   queue: readonly T[],
 ): T | null {
   if (current) return null;
-  return queue[0] ?? null;
+  // R6 §K — "Play First Song" targets the first PLAYABLE song, not merely the first song. An
+  // unavailable head-of-queue must not present a dead CTA; the action moves to the next playable
+  // item, and returns null (no CTA at all) when none exists.
+  return queue.find(isPlayable) ?? null;
 }
 
 export interface PlayOnTvEffects {

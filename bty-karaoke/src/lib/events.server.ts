@@ -513,6 +513,9 @@ function toLiveRow(r: KaraokeRequest): LiveRow {
     search_query: r.search_query,
     youtube_video_id: r.youtube_video_id,
     youtube_thumbnail_url: r.youtube_thumbnail_url,
+    // R6 §E/§K — a SEPARATE axis from `status`. The lifecycle fact is untouched; this says only
+    // whether the YouTube content behind the row can still be played.
+    youtube_unavailable: r.youtube_metadata_unavailable_at != null,
   };
 }
 

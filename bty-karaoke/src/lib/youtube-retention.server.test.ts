@@ -6,6 +6,8 @@ import {
   isOverRetentionMax,
   probeVideoSnapshots,
   decideRetention,
+  deferralStillPermitted,
+  HARD_TRANSITION_DAYS,
   sweepRetention,
   isActiveRequestStatus,
   PROHIBITED_WRITER,
@@ -232,20 +234,22 @@ describe('§C nothing else is ever HARD_UNAVAILABLE', () => {
 // =============================================================================
 describe('decideRetention — one outcome, one action', () => {
   it('M3: a transient error NEVER produces a clearing action', () => {
-    const a = decideRetention(reqRow(), { kind: 'TRANSIENT_ERROR', reason: 'network' });
+    const a = decideRetention(reqRow(), { kind: 'TRANSIENT_ERROR', reason: 'network' }, NOW);
     expect(a.kind).toBe('TRANSIENT_ERROR');
     expect(a.kind).not.toBe('MARK_UNAVAILABLE');
   });
 
   it('P13-P17: a historical row + HARD_UNAVAILABLE marks unavailable', () => {
-    expect(decideRetention(reqRow({ status: 'completed' }), { kind: 'HARD_UNAVAILABLE' }).kind).toBe(
+    expect(decideRetention(reqRow({ status: 'completed' }), { kind: 'HARD_UNAVAILABLE' }, NOW).kind).toBe(
       'MARK_UNAVAILABLE',
     );
   });
 
-  it('M4/P29: an ACTIVE queue row + HARD_UNAVAILABLE defers instead of clearing', () => {
+  it('M4/P29: an ACTIVE queue row INSIDE the deadline defers instead of clearing', () => {
+    // EVOLVED by R6 §A: deferral is now bounded, so this row must be inside the 29-day window.
+    // The historical R5 contract deferred at ANY age; that permanent exemption is retired.
     for (const status of ['waiting', 'playing']) {
-      const a = decideRetention(reqRow({ status }), { kind: 'HARD_UNAVAILABLE' });
+      const a = decideRetention(reqRow({ status, fetchedAt: ago(25) }), { kind: 'HARD_UNAVAILABLE' }, NOW);
       expect(a.kind, `status=${status}`).toBe('DEFER_ACTIVE');
       expect(a.kind).not.toBe('MARK_UNAVAILABLE');
     }
@@ -254,29 +258,34 @@ describe('decideRetention — one outcome, one action', () => {
   it('terminal statuses are not active — history is clearable', () => {
     for (const status of ['completed', 'skipped', 'removed']) {
       expect(isActiveRequestStatus(status), status).toBe(false);
-      expect(decideRetention(reqRow({ status }), { kind: 'HARD_UNAVAILABLE' }).kind).toBe('MARK_UNAVAILABLE');
+      expect(decideRetention(reqRow({ status }), { kind: 'HARD_UNAVAILABLE' }, NOW).kind).toBe('MARK_UNAVAILABLE');
     }
   });
 
   it('P28: an active row that REFRESHES successfully is safe to update', () => {
-    const a = decideRetention(reqRow({ status: 'playing' }), {
-      kind: 'REFRESHED',
-      snapshot: { videoId: 'VID00000001', title: 'T', channelTitle: 'C', thumbnailUrl: 'u' },
-      fetchedAt: NOW,
-    });
+    const a = decideRetention(
+      reqRow({ status: 'playing' }),
+      {
+        kind: 'REFRESHED',
+        snapshot: { videoId: 'VID00000001', title: 'T', channelTitle: 'C', thumbnailUrl: 'u' },
+        fetchedAt: NOW,
+      },
+      NOW,
+    );
     expect(a.kind).toBe('REFRESH');
   });
 
   it('a saved song is never "active" — there is no live queue to break', () => {
     const a = decideRetention(
-      { id: 's1', table: 'karaoke_user_saved_songs', videoId: 'VID00000001', fetchedAt: ago(40), status: 'waiting' },
+      { id: 's1', table: 'karaoke_user_saved_songs', videoId: 'VID00000001', fetchedAt: ago(25), status: 'waiting' },
       { kind: 'HARD_UNAVAILABLE' },
+      NOW,
     );
     expect(a.kind).toBe('MARK_UNAVAILABLE');
   });
 
   it('a missing probe outcome is ERROR, never a silent pass', () => {
-    expect(decideRetention(reqRow(), undefined).kind).toBe('ERROR');
+    expect(decideRetention(reqRow(), undefined, NOW).kind).toBe('ERROR');
   });
 });
 
@@ -288,7 +297,7 @@ describe('§L dry run', () => {
     reqRow({ id: 'fresh', fetchedAt: ago(5) }),
     reqRow({ id: 'refreshable', videoId: 'VID00000001', fetchedAt: ago(40) }),
     reqRow({ id: 'gone', videoId: 'GONE0000001', fetchedAt: ago(40) }),
-    reqRow({ id: 'active-gone', videoId: 'GONE0000002', fetchedAt: ago(40), status: 'playing' }),
+    reqRow({ id: 'active-gone', videoId: 'GONE0000002', fetchedAt: ago(25), status: 'playing' }),
     reqRow({ id: 'legacy', videoId: 'LEGACY00001', fetchedAt: null }),
   ];
   const fetchImpl: FetchLike = async () => ok([snippetItem('VID00000001'), snippetItem('LEGACY00001')]);
@@ -337,7 +346,7 @@ describe('§L dry run', () => {
   it('P30: DEFER_ACTIVE performs no destructive work even in a LIVE sweep', async () => {
     // The prohibiting writer proves it: a live sweep over only-deferred rows must still never
     // reach persistence.
-    const r = await sweepRetention([reqRow({ videoId: 'GONE0000002', status: 'waiting' })], {
+    const r = await sweepRetention([reqRow({ videoId: 'GONE0000002', status: 'waiting', fetchedAt: ago(25) })], {
       dryRun: false,
       now: NOW,
       fetchImpl,
@@ -479,5 +488,116 @@ describe('§K/§P44-45 the sweep has NO client-reachable surface', () => {
     const src = readFileSync(join(process.cwd(), 'src/lib/youtube-retention.server.ts'), 'utf8');
     // The only writes of the provenance column come from a probe's own fetchedAt.
     expect(src).not.toMatch(/youtube_metadata_fetched_at:\s*(body|input|parsed|req)/);
+  });
+});
+
+// =============================================================================
+// R6 §A/§B/§C/§D — the bounded deferral and the absolute deadline
+// =============================================================================
+describe('R6 §A the hard transition ends indefinite deferral', () => {
+  const active = (days: number | null, status = 'waiting') =>
+    decideRetention(
+      { id: 'q', table: 'karaoke_requests', videoId: 'GONE0000001', fetchedAt: days == null ? null : ago(days), status },
+      { kind: 'HARD_UNAVAILABLE' },
+      NOW,
+    );
+
+  it('the deadlines are 23 refresh / 29 BTY hard transition / 30 external maximum', () => {
+    expect(REFRESH_MARGIN_DAYS).toBe(23);
+    expect(HARD_TRANSITION_DAYS).toBe(29);
+    expect(RETENTION_MAX_DAYS).toBe(30);
+    // 29 is BTY's INTERNAL line, strictly inside the external maximum — a one-day safety buffer.
+    expect(HARD_TRANSITION_DAYS).toBeLessThan(RETENTION_MAX_DAYS);
+  });
+
+  it('M-1: an active waiting row at day 23 + hard unavailable DEFERS', () => {
+    expect(active(23).kind).toBe('DEFER_ACTIVE');
+  });
+
+  it('M-2: it keeps deferring right up to — but not including — day 29', () => {
+    expect(active(24).kind).toBe('DEFER_ACTIVE');
+    expect(active(28.99).kind).toBe('DEFER_ACTIVE');
+  });
+
+  it('M-3: at day 29 it transitions, even though the event is still LIVE', () => {
+    expect(active(29).kind).toBe('MARK_UNAVAILABLE');
+    expect(active(29).kind).not.toBe('DEFER_ACTIVE');
+  });
+
+  it('M-10: repeated deferral cannot push a row past the absolute deadline', () => {
+    // The decision is a PURE function of the row's own fetch instant, so there is no accumulator
+    // to reset. Ten consecutive passes over the same row across advancing clocks:
+    let deferred = 0;
+    for (let d = 23; d <= 33; d++) {
+      const a = active(d);
+      if (a.kind === 'DEFER_ACTIVE') deferred++;
+      if (d >= HARD_TRANSITION_DAYS) expect(a.kind, `day ${d}`).toBe('MARK_UNAVAILABLE');
+      // The load-bearing assertion: NOTHING is ever deferred at or beyond the external maximum.
+      if (d >= RETENTION_MAX_DAYS) expect(a.kind, `day ${d}`).not.toBe('DEFER_ACTIVE');
+    }
+    expect(deferred).toBe(6); // days 23..28 only
+  });
+
+  it('M-16: persisted API Data can never survive beyond the absolute deadline via deferral', () => {
+    for (const d of [30, 31, 60, 365]) expect(active(d).kind, `day ${d}`).toBe('MARK_UNAVAILABLE');
+  });
+
+  it('M-11/§D: UNKNOWN provenance gets NO fresh 29-day clock', () => {
+    // A NULL snapshot may ALREADY be older than the external maximum. Granting it a window would
+    // be manufacturing a clock out of ignorance.
+    expect(active(null).kind).toBe('MARK_UNAVAILABLE');
+    expect(deferralStillPermitted(null, NOW)).toBe(false);
+  });
+
+  it('M-13: a NULL-provenance active row does not defer forever', () => {
+    for (const status of ['waiting', 'playing']) expect(active(null, status).kind).toBe('MARK_UNAVAILABLE');
+  });
+
+  it('M-12: NULL + a successful refresh establishes a REAL T0 rather than a transition', async () => {
+    const spy: Array<Date> = [];
+    await sweepRetention([reqRow({ fetchedAt: null, videoId: 'VID00000001', status: 'waiting' })], {
+      dryRun: false,
+      now: NOW,
+      fetchImpl: async () => ok([snippetItem('VID00000001')]),
+      apiKey: KEY,
+      writer: {
+        async applyRefresh(_t, _i, _s, fetchedAt) {
+          spy.push(fetchedAt);
+        },
+        async applyUnavailable() {
+          throw new Error('a refreshable row must never be marked unavailable');
+        },
+        async deleteDuration() {},
+      },
+    });
+    expect(spy).toHaveLength(1);
+    expect(spy[0].toISOString()).toBe(NOW.toISOString());
+  });
+
+  it('M-14/§C: a CURRENTLY PLAYING row is deferred inside the window and cleared at the deadline', () => {
+    // Traced, not assumed. Clearing is safe during playback because:
+    //   - the player only calls loadVideo() when the id is VALID, so a NULL simply no-ops and the
+    //     already-loaded iframe keeps playing from ephemeral state;
+    //   - karaoke_end_song_v2 contains ZERO references to youtube_video_id, so settlement does
+    //     not re-read it;
+    //   - and a HARD_UNAVAILABLE video is one YouTube itself already refuses to serve.
+    expect(active(25, 'playing').kind).toBe('DEFER_ACTIVE');
+    expect(active(29, 'playing').kind).toBe('MARK_UNAVAILABLE');
+    expect(active(null, 'playing').kind).toBe('MARK_UNAVAILABLE');
+  });
+
+  it('a terminal row is never deferred at any age — history has no live event to protect', () => {
+    for (const d of [23, 25, 29]) {
+      expect(
+        decideRetention(reqRow({ status: 'completed', fetchedAt: ago(d) }), { kind: 'HARD_UNAVAILABLE' }, NOW).kind,
+      ).toBe('MARK_UNAVAILABLE');
+    }
+  });
+
+  it('a transient failure at day 29 still clears NOTHING', () => {
+    // The deadline governs deferral of an ESTABLISHED hard-unavailable verdict. It never turns an
+    // uncertain answer into a destructive one.
+    const a = decideRetention(reqRow({ status: 'waiting', fetchedAt: ago(29) }), { kind: 'TRANSIENT_ERROR', reason: 'network' }, NOW);
+    expect(a.kind).toBe('TRANSIENT_ERROR');
   });
 });

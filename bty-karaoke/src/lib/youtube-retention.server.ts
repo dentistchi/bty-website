@@ -20,6 +20,12 @@ import { optionalEnv } from './env.server';
 export const RETENTION_MAX_DAYS = 30;
 /** Refresh starts here, leaving 7 days of margin for transient failures and retries. */
 export const REFRESH_MARGIN_DAYS = 23;
+/**
+ * BTY's INTERNAL hard-transition deadline (R6 §A). At this age a HARD_UNAVAILABLE row stops being
+ * deferrable, even while its event is still live. This is BTY's own safety line, one day inside
+ * the external maximum — it is NOT a claim that YouTube publishes a 29-day rule.
+ */
+export const HARD_TRANSITION_DAYS = 29;
 
 const DAY_MS = 86_400_000;
 
@@ -371,6 +377,20 @@ export type RetentionAction =
   | { kind: 'ERROR'; reason: string };
 
 /**
+ * May an ACTIVE row still be deferred?
+ *
+ * UNKNOWN provenance (NULL) gets NO grace at all (§D). We do not know when that snapshot was
+ * fetched, so it may ALREADY be past the external maximum — granting it a fresh 29-day window
+ * would be manufacturing a clock out of ignorance, which is exactly the move the whole provenance
+ * chain exists to prevent.
+ */
+export function deferralStillPermitted(fetchedAt: Date | null | undefined, now: Date): boolean {
+  if (fetchedAt == null) return false;
+  const ageDays = (now.getTime() - fetchedAt.getTime()) / DAY_MS;
+  return ageDays < HARD_TRANSITION_DAYS;
+}
+
+/**
  * Turn one row plus its probe outcome into exactly one action. No I/O, so the whole taxonomy is
  * testable without a network or a database.
  *
@@ -379,7 +399,11 @@ export type RetentionAction =
  * no destructive change and reports the row for a bounded recheck. A successful refresh on an
  * active row is safe and proceeds normally — the metadata simply becomes current.
  */
-export function decideRetention(row: RetentionRow, outcome: RefreshOutcome | undefined): RetentionAction {
+export function decideRetention(
+  row: RetentionRow,
+  outcome: RefreshOutcome | undefined,
+  now: Date,
+): RetentionAction {
   if (!outcome) return { kind: 'ERROR', reason: 'no_probe_outcome' };
 
   switch (outcome.kind) {
@@ -389,7 +413,14 @@ export function decideRetention(row: RetentionRow, outcome: RefreshOutcome | und
 
     case 'HARD_UNAVAILABLE':
       if (row.table === 'karaoke_requests' && isActiveRequestStatus(row.status)) {
-        return { kind: 'DEFER_ACTIVE' };
+        // R6 §A/§B — DEFER_ACTIVE is TEMPORARY operational protection, never an exemption. It is
+        // available only while the row is still inside BTY's internal hard-transition deadline.
+        //
+        // Because the decision is a pure function of the row's own fetch instant, repeatedly
+        // deferring cannot extend it: every pass recomputes the same age from the same T0, so
+        // there is no accumulator a caller could keep resetting (§M-10).
+        if (deferralStillPermitted(row.fetchedAt, now)) return { kind: 'DEFER_ACTIVE' };
+        return { kind: 'MARK_UNAVAILABLE' };
       }
       return { kind: 'MARK_UNAVAILABLE' };
 
@@ -499,7 +530,11 @@ export async function sweepRetention(rows: readonly RetentionRow[], opts: SweepO
   report.apiCallsSucceeded = probe.apiCallsSucceeded;
 
   for (const row of due) {
-    const action = decideRetention(row, row.videoId ? probe.outcomes.get(row.videoId) : { kind: 'ERROR', reason: 'no_video_id' });
+    const action = decideRetention(
+      row,
+      row.videoId ? probe.outcomes.get(row.videoId) : { kind: 'ERROR', reason: 'no_video_id' },
+      opts.now,
+    );
     switch (action.kind) {
       case 'REFRESH':
         if (opts.dryRun) {

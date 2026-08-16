@@ -1,8 +1,10 @@
 # BUILD 17 — Timed Access Pass Foundation V1
 
-**Status:** server + web + Host-API + tests IMPLEMENTED & COMMITTED. Migration NOT yet
-applied to production; Worker NOT yet deployed. Native SwiftUI Admin UI + Commander device
-Gates A–H PENDING (handoff). No PASS/CLOSED yet.
+**Status:** server + web + Host-API + tests IMPLEMENTED, COMMITTED (`e7c1cab4`), migration
+`20260728120000` APPLIED remotely, Worker DEPLOYED (Version `88712fff-6493-4dea-9061-94aa97f50514`).
+Post-migration verification + production integrity reconciliation PASS; no test-account data
+mutation. Native SwiftUI Admin UI + Commander device Gates A–H PENDING (handoff). Not
+PASS/CLOSED until the device gates pass.
 
 ## What this build does
 

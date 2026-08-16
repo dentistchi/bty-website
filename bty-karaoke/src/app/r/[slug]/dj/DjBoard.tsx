@@ -219,7 +219,9 @@ interface Props {
    * song's YouTube. `nextId`/`nextVideoId` identify the READY TO PLAY card's subject
    * (the deterministic ready-first promote target).
    */
-  onPlayNext: (nextId: string, nextVideoId: string) => void | Promise<void>;
+  // R6 — the id is nullable once a retention transition clears it. The CTA is already
+  // disabled for a falsy id, so this widening changes no behaviour.
+  onPlayNext: (nextId: string, nextVideoId: string | null) => void | Promise<void>;
 }
 
 export default function DjBoard({
