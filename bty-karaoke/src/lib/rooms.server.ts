@@ -482,6 +482,9 @@ export interface AddRequestArgs {
    *  When present the insert is replay-safe (partial unique index on
    *  room+event+key). Null/undefined = legacy insert, no dedup. */
   idempotencyKey?: string | null;
+  /** BUILD 26T-R1B-R6-R1B-R3 — the VERIFIER-returned sealed instant, or null. Callers must pass
+   *  the result of `verifyYouTubeProvenance`, never a client-supplied timestamp. */
+  youtubeMetadataFetchedAt?: Date | null;
 }
 
 /**
@@ -532,6 +535,11 @@ export async function addRequest(args: AddRequestArgs): Promise<AddRequestResult
       youtube_title: args.youtubeTitle ?? null,
       youtube_channel_title: args.youtubeChannelTitle ?? null,
       youtube_thumbnail_url: args.youtubeThumbnailUrl ?? null,
+      // Only ever the verifier's sealed instant. There is deliberately no `?? new Date()` and no
+      // client-value fallback here: an unverifiable snapshot must record NULL, not "now".
+      youtube_metadata_fetched_at: args.youtubeMetadataFetchedAt
+        ? args.youtubeMetadataFetchedAt.toISOString()
+        : null,
       position,
       status: 'waiting',
       session_id: args.sessionId ?? null,

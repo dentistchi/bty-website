@@ -15,6 +15,7 @@ import { authorizeHost } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { SaveSongSchema } from '@/lib/validation';
 import { saveSavedSong, listSavedSongs } from '@/lib/saved-songs.server';
+import { verifyYouTubeProvenance } from '@/lib/youtube-provenance.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,6 +48,14 @@ export async function POST(req: NextRequest) {
     title: parsed.data.title,
     artist: parsed.data.artist ?? null,
     thumbnailUrl: parsed.data.thumbnailUrl ?? null,
+    // BUILD 26T-R1B-R6-R1B-R3 — verifier-sealed instant only. Built from the SAME values persisted
+    // above, so a client cannot have one snapshot checked and another stored.
+    youtubeMetadataFetchedAt: await verifyYouTubeProvenance(parsed.data.youtubeProvenance, {
+      videoId: parsed.data.videoId,
+      title: parsed.data.title,
+      channelTitle: parsed.data.artist ?? null,
+      thumbnailUrl: parsed.data.thumbnailUrl ?? null,
+    }),
   });
   return NextResponse.json({ savedSong }, { headers: NO_STORE });
 }

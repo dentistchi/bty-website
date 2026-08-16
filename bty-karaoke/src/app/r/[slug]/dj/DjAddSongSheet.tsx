@@ -85,6 +85,9 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
       youtubeTitle: item.title,
       youtubeChannelTitle: item.channelTitle,
       ...(item.thumbnailUrl ? { youtubeThumbnailUrl: item.thumbnailUrl } : {}),
+      // R3 — this Host path DOES persist a YouTube snapshot into karaoke_requests, so it carries
+      // provenance exactly as the guest path does. Verbatim, per item, never regenerated.
+      ...(item.youtubeProvenance ? { youtubeProvenance: item.youtubeProvenance } : {}),
     });
     setAddingId(null);
     if (r === 'ok') {

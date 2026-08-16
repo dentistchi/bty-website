@@ -83,7 +83,11 @@ describe('POST /api/host/saved-songs', () => {
   it('(4c) a clean body forwards the SESSION account id, not anything client-supplied', async () => {
     saveSavedSong.mockResolvedValue({ videoId: VALID.videoId, title: VALID.title, artist: VALID.artist, thumbnailUrl: VALID.thumbnailUrl, createdAt: 't', updatedAt: 't' });
     await POST(post(VALID));
-    expect(saveSavedSong).toHaveBeenCalledWith('acct-1', { videoId: VALID.videoId, title: VALID.title, artist: VALID.artist, thumbnailUrl: VALID.thumbnailUrl });
+    // BUILD 26T-R1B-R6-R1B-R3 — EVOLVED, not loosened. The route now also forwards the
+    // verifier-sealed instant, and for a body carrying no provenance that value is NULL. Asserting
+    // it explicitly is the point: if a future change ever made an unsealed save forward `now()`,
+    // this line would fail rather than a wildcard quietly accepting it.
+    expect(saveSavedSong).toHaveBeenCalledWith('acct-1', { videoId: VALID.videoId, title: VALID.title, artist: VALID.artist, thumbnailUrl: VALID.thumbnailUrl, youtubeMetadataFetchedAt: null });
   });
 
   it('(5) too-short videoId → 400', async () => {
@@ -119,7 +123,7 @@ describe('POST /api/host/saved-songs', () => {
     saveSavedSong.mockResolvedValue({ videoId: VALID.videoId, title: VALID.title, artist: null, thumbnailUrl: null, createdAt: 't', updatedAt: 't' });
     const res = await POST(post({ videoId: VALID.videoId, title: VALID.title }));
     expect(res.status).toBe(200);
-    expect(saveSavedSong).toHaveBeenCalledWith('acct-1', { videoId: VALID.videoId, title: VALID.title, artist: null, thumbnailUrl: null });
+    expect(saveSavedSong).toHaveBeenCalledWith('acct-1', { videoId: VALID.videoId, title: VALID.title, artist: null, thumbnailUrl: null, youtubeMetadataFetchedAt: null });
   });
 
   it('(13/14) a repeated save returns success + the canonical item (idempotent at the API)', async () => {

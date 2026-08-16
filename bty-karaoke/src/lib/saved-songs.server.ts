@@ -50,6 +50,8 @@ function project(r: SavedSongRow): SavedSong {
 }
 
 export interface SaveSongInput {
+  /** VERIFIER-returned sealed instant, or null. Never a client-supplied timestamp. */
+  youtubeMetadataFetchedAt?: Date | null;
   videoId: string;
   title: string;
   artist?: string | null;
@@ -77,6 +79,18 @@ export async function saveSavedSong(accountId: string, input: SaveSongInput): Pr
         // only timestamp updated. created_at is deliberately NOT written, so a conflict
         // preserves it.
         updated_at: now,
+        // BUILD 26T-R1B-R6-R1B-R3 — freshness follows the METADATA, not the row.
+        //
+        // This upsert REPLACES title/artist/thumbnail on every call, so §J's preserve-on-unrelated
+        // -update case cannot arise here: there is no path through this function that leaves the
+        // snapshot untouched. What can arise is the opposite hazard — replacing the metadata while
+        // keeping an older timestamp, which would leave that timestamp describing metadata it never
+        // saw. So an unverifiable save writes NULL rather than inheriting the previous instant.
+        //
+        // Only the verifier's sealed value is ever written; there is no client-timestamp fallback.
+        youtube_metadata_fetched_at: input.youtubeMetadataFetchedAt
+          ? input.youtubeMetadataFetchedAt.toISOString()
+          : null,
       },
       { onConflict: 'account_id,video_id' },
     )

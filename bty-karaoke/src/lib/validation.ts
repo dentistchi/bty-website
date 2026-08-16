@@ -21,6 +21,15 @@ export const CreateRequestSchema = z
     // it (replay-safe); when absent behaviour is exactly the legacy insert. Optional so
     // every existing caller keeps working.
     idempotencyKey: z.string().trim().min(1).max(128).optional(),
+    // BUILD 26T-R1B-R6-R1B-R3 — server-issued YouTube provenance, carried verbatim by the client.
+    // OPTIONAL so every existing/old client and every pre-R3 durable intent still validates; a
+    // request without it is fully functional and simply records NULL freshness.
+    //
+    // `youtubeFetchedAt` is TRANSPORT ONLY and has NO persistence authority (§A/§K): the route
+    // never writes it. It is accepted so a durable intent can round-trip the original payload and
+    // so tests can show T0 did not drift. The seal is the only thing the write path trusts.
+    youtubeFetchedAt: z.string().trim().max(40).optional(),
+    youtubeProvenance: z.string().trim().max(2048).optional(),
   })
   .refine((v) => Boolean(v.youtubeVideoId || v.youtubeInput), {
     message: 'Select a song or paste a YouTube link',
@@ -48,6 +57,10 @@ export const SaveSongSchema = z
       .max(600)
       .refine((u) => u.startsWith('https://'), 'Thumbnail must be https')
       .nullish(),
+    // BUILD 26T-R1B-R6-R1B-R3 — additive, optional: an old client omits it and the save still
+    // succeeds with NULL freshness. Transport only; the route trusts the verifier, not this.
+    youtubeFetchedAt: z.string().trim().max(40).optional(),
+    youtubeProvenance: z.string().trim().max(2048).optional(),
   })
   .strict();
 export type SaveSongInput = z.infer<typeof SaveSongSchema>;

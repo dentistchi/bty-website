@@ -507,6 +507,11 @@ export default function RequestForm({ slug, roomOpen, eventId = null, onSubmitte
         youtubeTitle: item.title,
         youtubeChannelTitle: item.channelTitle,
         ...(item.thumbnailUrl ? { youtubeThumbnailUrl: item.thumbnailUrl } : {}),
+        // R3 — THIS item's own seal, carried verbatim. Never regenerated, never taken from another
+        // result, and never accompanied by a client-chosen timestamp: the server derives the
+        // instant from the seal alone. Absent for a legacy cache entry, which simply yields NULL
+        // freshness rather than a guess.
+        ...(item.youtubeProvenance ? { youtubeProvenance: item.youtubeProvenance } : {}),
       },
       item.title,
       item.channelTitle,

@@ -62,6 +62,16 @@ export interface YoutubeSearchItem {
   // read, which is why every API response still carries a verdict even on a cache hit.
   /** RAW provider length in seconds. Null/absent = not established (never render as 0:00). */
   durationSeconds?: number | null;
+  /**
+   * BUILD 26T-R1B-R6-R1B-R3 — the server's opaque provenance seal for THIS item, attesting when
+   * its metadata was actually fetched from YouTube. OPTIONAL for the same reason `durationSeconds`
+   * is: a legacy KV cache entry has no provenance, and those entries must keep type-checking and
+   * working until the 1h TTL retires them.
+   *
+   * The client treats it as opaque transport: never generated, modified, or regenerated
+   * client-side, and carried verbatim into the request/save payload.
+   */
+  youtubeProvenance?: string | null;
   /** Tri-state verdict. Absent is read as 'unknown' — NEVER as 'too_long'. */
   durationAdmission?: DurationAdmission;
 }

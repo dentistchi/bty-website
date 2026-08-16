@@ -23,6 +23,7 @@ import { toGuestPlaybackAuthority } from '@/domain/playback-clock';
 import { requestAcceptance } from '@/lib/sessions.server';
 import { resolveEventAccess, getCanonicalEvent, getLatestEndedEvent } from '@/lib/events.server';
 import { signCancelCapability } from '@/lib/capability.server';
+import { verifyYouTubeProvenance } from '@/lib/youtube-provenance.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -190,6 +191,19 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     youtubeTitle: parsed.data.youtubeTitle,
     youtubeChannelTitle: parsed.data.youtubeChannelTitle,
     youtubeThumbnailUrl: parsed.data.youtubeThumbnailUrl,
+    // BUILD 26T-R1B-R6-R1B-R3 — THE DB FRESHNESS AUTHORITY.
+    //
+    // The snapshot verified here is built from the SAME values persisted immediately below, so a
+    // client cannot have one set checked and a different set stored. `parsed.data.youtubeFetchedAt`
+    // is deliberately NOT consulted: a valid seal for T0 accompanied by a body claiming T1 stores
+    // T0, because the verifier's sealed instant is the only value permitted to reach the column.
+    // Missing or invalid seal → null → retention treats the row fail-safe.
+    youtubeMetadataFetchedAt: await verifyYouTubeProvenance(parsed.data.youtubeProvenance, {
+      videoId,
+      title: parsed.data.youtubeTitle,
+      channelTitle: parsed.data.youtubeChannelTitle,
+      thumbnailUrl: parsed.data.youtubeThumbnailUrl,
+    }),
     sessionId: acceptance.sessionId,
     // V7.1: permanently tag this request with its Event (access.event is the live
     // event here — an ended one would have been refused above). Null for legacy.
