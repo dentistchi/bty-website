@@ -199,7 +199,7 @@ describe("submitFollowupOutcome", () => {
       rpc: { bty_foundry_submit_followup: { data: [{ result: "responded", status: "RESPONDED", outcome: "APPLIED" }] } },
     });
     const res = await submitFollowupOutcome(admin, "u1", "f1", "APPLIED");
-    expect(res).toEqual({ result: "responded", status: "RESPONDED", outcome: "APPLIED" });
+    expect(res).toEqual({ result: "responded", status: "RESPONDED", outcome: "APPLIED", canCheckInAgain: false });
   });
 
   it("test 37 — a conflicting second outcome does NOT overwrite (already_responded + settled state)", async () => {
@@ -207,7 +207,7 @@ describe("submitFollowupOutcome", () => {
       rpc: { bty_foundry_submit_followup: { data: [{ result: "already_responded", status: "RESPONDED", outcome: "APPLIED" }] } },
     });
     const res = await submitFollowupOutcome(admin, "u1", "f1", "BLOCKED");
-    expect(res).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED" });
+    expect(res).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED", canCheckInAgain: false });
   });
 
   it("test 38 — an identical resubmission is idempotent (unchanged)", async () => {

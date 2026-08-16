@@ -11,6 +11,7 @@ import { listObservations, type StoredObservation } from "./foundryObservationSe
 import { learnersWithAnEligibleObserver } from "./observationOpportunityService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import {
+  canCheckInAgain,
   classifyFollowUpDue,
   computeFollowUpDue,
   isFollowUpDays,
@@ -134,6 +135,15 @@ export type LearnerFollowupView = {
   respondedAt: string | null;
   /** Canonical expected-behavior text (module completion prompt) ONLY when one exists. */
   expectedBehavior: string | null;
+  /**
+   * Slice 3.2R-R3-R1 — SERVER-DECIDED. May this settled obligation take a later check-in?
+   *
+   * The surface renders this; it never derives it. The rule lives in `canCheckInAgain`, which
+   * asks the same domain authority the write path asks, so a button can never be offered for a
+   * transition `submitFollowupOutcome` would refuse. False for PENDING (the first-response path
+   * owns that) and false once APPLIED is recorded.
+   */
+  canCheckInAgain: boolean;
 };
 
 /**
@@ -211,13 +221,35 @@ export async function getMyFollowupView(
     outcome: row.outcome,
     respondedAt: row.responded_at,
     expectedBehavior,
+    canCheckInAgain: canCheckInAgain(row.status, row.outcome),
   };
 }
 
+/**
+ * Slice 3.2R-R3-R1 — every settled result carries `canCheckInAgain`, decided by the SAME domain
+ * authority the read path uses. Without it the surface would have to re-derive "is this terminal
+ * now?" from the outcome it just submitted, which is the outcome policy living in React — and the
+ * one place it would first drift is the moment that matters, straight after a write.
+ */
+export type SettledSubmit = {
+  status: FollowUpStatus;
+  outcome: FollowUpOutcome;
+  canCheckInAgain: boolean;
+};
+
 export type SubmitFollowupResult =
-  | { result: "responded" | "unchanged"; status: FollowUpStatus; outcome: FollowUpOutcome }
-  | { result: "already_responded"; status: FollowUpStatus; outcome: FollowUpOutcome }
+  | ({ result: "responded" | "unchanged" } & SettledSubmit)
+  | ({ result: "already_responded" } & SettledSubmit)
   | { result: "invalid_outcome" | "not_found" | "not_owner" | "error" };
+
+/** One place builds a settled result, so no branch can forget the authority field. */
+function settled(
+  result: "responded" | "unchanged" | "already_responded",
+  status: FollowUpStatus,
+  outcome: FollowUpOutcome,
+): SubmitFollowupResult {
+  return { result, status, outcome, canCheckInAgain: canCheckInAgain(status, outcome) };
+}
 
 /**
  * A later check-in against an already-answered obligation, or null when this is the first
@@ -258,9 +290,9 @@ async function submitLaterCheckIn(
 
   const kind = classifyFollowUpSubmission(row.outcome, outcome).kind;
   // The same answer again is a double tap, not a second check-in: no history row.
-  if (kind === "repeat") return { result: "unchanged", status: row.status, outcome: row.outcome };
+  if (kind === "repeat") return settled("unchanged", row.status, row.outcome);
   // Applied is terminal. Nothing downgrades or replaces it.
-  if (kind === "terminal_locked") return { result: "already_responded", status: row.status, outcome: row.outcome };
+  if (kind === "terminal_locked") return settled("already_responded", row.status, row.outcome);
 
   const now = new Date().toISOString();
   const { data: updated } = await admin
@@ -279,11 +311,7 @@ async function submitLaterCheckIn(
       .select("status, outcome")
       .eq("id", followupId)
       .maybeSingle<{ status: FollowUpStatus; outcome: FollowUpOutcome | null }>();
-    return {
-      result: "already_responded",
-      status: fresh?.status ?? "RESPONDED",
-      outcome: fresh?.outcome ?? row.outcome,
-    };
+    return settled("already_responded", fresh?.status ?? "RESPONDED", fresh?.outcome ?? row.outcome);
   }
 
   // The earlier report is NOT erased — it stays in the append-only audit trail, and this one
@@ -299,7 +327,7 @@ async function submitLaterCheckIn(
     actor_user_id: authUserId,
   });
 
-  return { result: "responded", status: "RESPONDED", outcome };
+  return settled("responded", "RESPONDED", outcome);
 }
 
 /**
@@ -339,11 +367,11 @@ export async function submitFollowupOutcome(
     | undefined;
   const r = row?.result;
   if (r === "responded" || r === "unchanged" || r === "already_responded") {
-    return {
-      result: r,
-      status: (row?.status as FollowUpStatus) ?? "RESPONDED",
-      outcome: (row?.outcome as FollowUpOutcome) ?? (outcome as FollowUpOutcome),
-    };
+    return settled(
+      r,
+      (row?.status as FollowUpStatus) ?? "RESPONDED",
+      (row?.outcome as FollowUpOutcome) ?? (outcome as FollowUpOutcome),
+    );
   }
   if (r === "invalid_outcome" || r === "not_found" || r === "not_owner") return { result: r };
   return { result: "error" };

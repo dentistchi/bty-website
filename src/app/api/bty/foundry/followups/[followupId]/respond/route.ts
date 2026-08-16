@@ -37,13 +37,30 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ followupId
   const body = await req.json().catch(() => ({}));
   const res = await submitFollowupOutcome(admin, user.id, followupId, body?.outcome);
 
+  /*
+    `canCheckInAgain` is carried by the SERVICE result (Slice 3.2R-R3-R1) and only forwarded here.
+    The handler decides nothing about it — the surface must not have to re-derive, from the outcome
+    it just submitted, whether another check-in is still possible.
+  */
   if (res.result === "responded" || res.result === "unchanged") {
-    return priv({ ok: true, result: res.result, status: res.status, outcome: res.outcome });
+    return priv({
+      ok: true,
+      result: res.result,
+      status: res.status,
+      outcome: res.outcome,
+      canCheckInAgain: res.canCheckInAgain,
+    });
   }
   if (res.result === "already_responded") {
     // The first outcome stands; return it read-only (never silently overwritten).
     return priv(
-      { ok: false, error: "already_responded", status: res.status, outcome: res.outcome },
+      {
+        ok: false,
+        error: "already_responded",
+        status: res.status,
+        outcome: res.outcome,
+        canCheckInAgain: res.canCheckInAgain,
+      },
       409,
     );
   }

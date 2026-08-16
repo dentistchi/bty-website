@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   FOLLOW_UP_OUTCOMES,
   TERMINAL_FOLLOW_UP_OUTCOME,
+  canCheckInAgain,
   classifyFollowUpSubmission,
   reportsApplication,
 } from "./followUpObligation";
@@ -49,6 +50,53 @@ describe("[3.2M-3] follow-up progression", () => {
     expect(reportsApplication("APPLIED")).toBe(true);
     for (const o of [...NON_TERMINAL, null]) {
       expect(reportsApplication(o), String(o)).toBe(false);
+    }
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R1 — the authority every surface asks before offering a way back.
+ *
+ * 3.2M-3's later check-in existed in the service and was unreachable in the product for three
+ * slices. This predicate is what makes it reachable, so it is pinned exhaustively: it must agree
+ * with `classifyFollowUpSubmission` on every state, because a surface that offers a transition
+ * the write path refuses is the same defect wearing a different hat.
+ */
+describe("[3.2R-R3-R1] canCheckInAgain", () => {
+  const NON_TERMINAL_OUTCOMES = FOLLOW_UP_OUTCOMES.filter((o) => o !== TERMINAL_FOLLOW_UP_OUTCOME);
+
+  it("a settled non-terminal answer can take a later check-in", () => {
+    for (const o of NON_TERMINAL_OUTCOMES) {
+      expect(canCheckInAgain("RESPONDED", o), o).toBe(true);
+    }
+  });
+
+  it("APPLIED is terminal — nothing may be offered after it", () => {
+    expect(canCheckInAgain("RESPONDED", TERMINAL_FOLLOW_UP_OUTCOME)).toBe(false);
+  });
+
+  it("PENDING is false, because the FIRST response is a different path and is unchanged", () => {
+    for (const o of [...FOLLOW_UP_OUTCOMES, null]) {
+      expect(canCheckInAgain("PENDING", o), String(o)).toBe(false);
+    }
+  });
+
+  it("a RESPONDED row with no outcome is not a check-in target (a shape that cannot exist in the DB)", () => {
+    expect(canCheckInAgain("RESPONDED", null)).toBe(false);
+  });
+
+  it("it never disagrees with the write path — true iff some outcome would be accepted as progress", () => {
+    for (const current of [...FOLLOW_UP_OUTCOMES, null]) {
+      const writeWouldAccept = FOLLOW_UP_OUTCOMES.some(
+        (next) => classifyFollowUpSubmission(current, next).kind === "progress",
+      );
+      expect(canCheckInAgain("RESPONDED", current), String(current)).toBe(writeWouldAccept);
+    }
+  });
+
+  it("reporting an application still requires APPLIED — a reachable check-in establishes nothing", () => {
+    for (const o of NON_TERMINAL_OUTCOMES) {
+      expect(canCheckInAgain("RESPONDED", o) && reportsApplication(o), o).toBe(false);
     }
   });
 });

@@ -115,6 +115,10 @@ function seed(o: SeedOpts = {}): Tables {
             event_id: EVENT,
             user_id_snapshot: USER,
             follow_up_days: o.followUpDays ?? 7,
+            // Slice 3.2R-R3-R1 — the real column pair. `canCheckInAgain` is a question about
+            // (status, outcome), and a fixture that carried only the outcome could not tell a
+            // settled answer from a pending one.
+            status: o.followUpOutcome ? "RESPONDED" : "PENDING",
             outcome: o.followUpOutcome ?? null,
           },
         ]
@@ -399,5 +403,92 @@ describe("R1 FAIL-SOFT — a broken read removes rungs, it never invents one", (
     };
     const map = await projectEvidenceByProgressId(admin, [{ progressId: PROGRESS, eventId: EVENT, userId: USER }]);
     expect(map.get(PROGRESS)).toEqual({ established: [], highestEstablished: null });
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R1 — the return route, on the learner's own record.
+ *
+ * 3.2M-3 gave the service a later check-in and no surface could reach it. `listMyEvidence` is
+ * where My Learning learns that a way back exists, so what has to be proven here is that it is
+ * offered on exactly the settled non-terminal rows, carries the DURABLE obligation id, and is a
+ * navigation target that establishes nothing.
+ */
+describe("R3-R1 checkInAgain — which follow-ups can still take a later report", () => {
+  const listFor = async (o: SeedOpts = {}) =>
+    (await listMyEvidence(makeFakeAdmin(seed(o)), USER))[0]!;
+
+  it("every non-terminal settled answer offers a way back, carrying the durable followup id", async () => {
+    for (const outcome of ["PARTLY_APPLIED", "NOT_YET", "BLOCKED"]) {
+      const item = await listFor({ followUpOutcome: outcome });
+      expect(item.checkInAgain, outcome).toEqual([
+        { followupId: FOLLOWUP, followUpDays: 7, outcome },
+      ]);
+    }
+  });
+
+  it("APPLIED is terminal — the record offers no way back", async () => {
+    const item = await listFor({ followUpOutcome: "APPLIED" });
+    expect(item.checkInAgain).toEqual([]);
+    // ...and the rung it established is untouched by that absence.
+    expect(item.evidence.established).toContain("applied");
+  });
+
+  it("a PENDING obligation is not a later check-in — the first-response path owns it", async () => {
+    const item = await listFor({ followUpOutcome: null });
+    expect(item.checkInAgain).toEqual([]);
+  });
+
+  it("a record with no follow-up at all offers nothing, and is not an error", async () => {
+    const item = await listFor();
+    expect(item.checkInAgain).toEqual([]);
+    expect(item.evidence.established).toContain("exposed");
+  });
+
+  it("the target is a NAVIGATION address only — it carries no learner text", async () => {
+    const item = await listFor({ followUpOutcome: "NOT_YET", decision: true, learnerReflection: true });
+    const raw = JSON.stringify(item.checkInAgain);
+    expect(raw).not.toContain(SECRET_COMPLETION);
+    expect(raw).not.toContain(SECRET_REFLECTION);
+    expect(raw).not.toContain(DECISION_TEXT);
+  });
+
+  it("two checkpoints on one record stay two distinct obligations, ordered by checkpoint", async () => {
+    /*
+      Identity is the whole point: a 7- and a 30-day follow-up are two different questions with
+      two different answers, and matching one by event or title would open the wrong one.
+    */
+    const tables = seed({ followUpOutcome: "NOT_YET" });
+    tables.foundry_participant_followups = [
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "BLOCKED" },
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "NOT_YET" },
+    ];
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER))[0]!;
+    expect(item.checkInAgain).toEqual([
+      { followupId: "fu-7", followUpDays: 7, outcome: "NOT_YET" },
+      { followupId: "fu-30", followUpDays: 30, outcome: "BLOCKED" },
+    ]);
+  });
+
+  it("an APPLIED checkpoint alongside a non-terminal one offers only the one still open", async () => {
+    const tables = seed({ followUpOutcome: "APPLIED" });
+    tables.foundry_participant_followups = [
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "APPLIED" },
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "NOT_YET" },
+    ];
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER))[0]!;
+    expect(item.checkInAgain).toEqual([{ followupId: "fu-30", followUpDays: 30, outcome: "NOT_YET" }]);
+    expect(item.evidence.established).toContain("applied"); // the APPLIED report still stands
+  });
+
+  it("an unreadable obligation table hides the CTA — it can never invent one", async () => {
+    const admin = makeFakeAdmin(seed({ followUpOutcome: "NOT_YET" }));
+    const realFrom = admin.from.bind(admin) as (t: string) => unknown;
+    (admin as unknown as { from: (t: string) => unknown }).from = (t: string) => {
+      if (t === "foundry_participant_followups") throw new Error("read failure");
+      return realFrom(t);
+    };
+    const item = (await listMyEvidence(admin, USER))[0]!;
+    expect(item.checkInAgain).toEqual([]);
   });
 });

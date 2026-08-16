@@ -1254,6 +1254,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // Follow-up response surface (Slice 3.1B-3K): `?tab=foundry&followup=<id>` opens the focused
   // learner follow-up outcome surface inside the Foundry tab (from the Today FOLLOW_UP_DUE reminder).
   const [followupId, setFollowupId] = useState<string | null>(null);
+  /*
+    Where Back goes from the follow-up surface (Slice 3.2R-R3-R1). The Today deep link and the
+    Learn→My Learning entry both leave `foundryView` where it was, so clearing `followupId` already
+    returns them correctly and they carry no origin. Only the ME-tab origin needs one: the surface
+    renders under Learn, so without this a learner who opened it from Me→My Learning would be
+    returned to Learn — the same origin-blindness 3.2G-R1 had to repair for the Host rows.
+  */
+  const [followupReturn, setFollowupReturn] = useState<"me-my-learning" | null>(null);
   // Center is ONE canonical Personal Reality Feed (Slice 3.1B-3J) — no subview. `centerFocusEntry`
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
@@ -1768,7 +1776,15 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             <FoundryFollowUpResponse
               followupId={followupId}
               locale={locale}
-              onBack={() => setFollowupId(null)}
+              onBack={() => {
+                setFollowupId(null);
+                // Origin-aware return (3.2R-R3-R1): only the Me origin carries one; every other
+                // entry keeps the existing behaviour of simply revealing what was underneath.
+                if (followupReturn === "me-my-learning") {
+                  setFollowupReturn(null);
+                  setTab("me");
+                }
+              }}
             />
           ) : reviewId ? (
             <FoundryCompletionReview
@@ -1777,7 +1793,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               onBack={() => setReviewId(null)}
             />
           ) : foundryView === "my-learning" ? (
-            <FoundryMyLearning locale={locale} onBack={() => setFoundryView("rooms")} />
+            <FoundryMyLearning
+              locale={locale}
+              onBack={() => setFoundryView("rooms")}
+              /* Learn origin: `foundryView` stays "my-learning" underneath, so clearing the
+                 follow-up id alone returns here. No origin token needed. */
+              onOpenFollowUp={(id) => setFollowupId(id)}
+            />
           ) : foundryView === "event-create" ? (
             // In-shell Reality Event create (Slice 3.2D-EVENT-R1): the same EventCreateClient,
             // rendered inside the app webview so a Host authoring action never opens Safari.
@@ -1871,6 +1893,13 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
               locale={locale}
               onBack={() => setMeView("home")}
               backLabel={locale === "ko" ? "나" : "Me"}
+              /* Me origin: the follow-up surface lives under Learn, so the tab moves and an
+                 explicit origin token brings Back to Me → My Learning (meView is left intact). */
+              onOpenFollowUp={(id) => {
+                setFollowupId(id);
+                setFollowupReturn("me-my-learning");
+                setTab("learn");
+              }}
             />
           ) : meView === "account" ? (
             // Account detail (B3A.2C-R1): the canonical account-management surface — current

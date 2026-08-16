@@ -32,6 +32,19 @@ type MyLearningItem = {
 };
 
 /**
+ * A follow-up on this record that can still take a later check-in (Slice 3.2R-R3-R1).
+ *
+ * THE ID IS CARRIED, NOT RECONSTRUCTED. A record may hold both a 7- and a 30-day obligation, and
+ * matching one by event, title or checkpoint would eventually open the wrong question. The server
+ * sends the durable `followupId` and this surface passes exactly that back.
+ */
+type CheckInAgainTarget = {
+  followupId: string;
+  followUpDays: number;
+  outcome: string;
+};
+
+/**
  * Reviewed Action Plan card (Slice 3.1B-3N-5D.1). An approved Field Action = a reviewer
  * reviewed & ACCEPTED the learner's submitted PLAN. Deliberately carries NO reviewer identity,
  * NO audit internals, NO private reflection — and the copy never implies Applied/Observed.
@@ -71,6 +84,9 @@ const COPY: Record<Locale, {
   labelWhen: string;
   reviewedOn: string;
   moduleVersion: (v: number) => string;
+  /** Slice 3.2R-R3-R1 — the return route to a follow-up that can still take a later report. */
+  checkInAgain: string;
+  checkInAgainAt: (days: number) => string;
 }> = {
   en: {
     title: "My Learning",
@@ -101,6 +117,9 @@ const COPY: Record<Locale, {
     labelWhen: "When",
     reviewedOn: "Reviewed",
     moduleVersion: (v) => `Module v${v}`,
+    checkInAgain: "Check in again",
+    // Only used when a record carries more than one checkpoint, so the two CTAs are tellable apart.
+    checkInAgainAt: (days) => `Check in again · ${days}-day follow-up`,
   },
   ko: {
     title: "내 학습",
@@ -126,6 +145,8 @@ const COPY: Record<Locale, {
     labelWhen: "언제",
     reviewedOn: "검토됨",
     moduleVersion: (v) => `모듈 v${v}`,
+    checkInAgain: "다시 확인하기",
+    checkInAgainAt: (days) => `다시 확인하기 · ${days}일 후 확인`,
   },
 };
 
@@ -145,12 +166,20 @@ export default function FoundryMyLearning({
   locale,
   onBack,
   backLabel,
+  onOpenFollowUp,
 }: {
   locale: string;
   onBack: () => void;
   /** Origin-aware parent name (B3A.2D-R1). Me-origin passes "Me"; Learn-origin omits it → the
    *  measured "Required learning" default. Explicit per call — never inferred from tab/history. */
   backLabel?: string;
+  /**
+   * Slice 3.2R-R3-R1 — open THIS follow-up's response surface IN-SHELL. A button + callback, never
+   * an `<a href>`: a row already inside the app is an app-shell command, and the raw-href form is
+   * what 3.2G-R2 had to replace after the cold first tap was swallowed by the WKWebView navigation
+   * policy. Absent → the CTA does not render at all, rather than rendering a dead control.
+   */
+  onOpenFollowUp?: (followupId: string) => void;
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
@@ -160,6 +189,9 @@ export default function FoundryMyLearning({
   // entryId → established rungs. Absent = not loaded / unavailable → the strip simply does not
   // render for that row. Evidence is secondary; its absence must never blank a completion.
   const [evidence, setEvidence] = useState<Map<string, EvidenceLevel[]>>(new Map());
+  // entryId → follow-ups the SERVER says can still take a later check-in (Slice 3.2R-R3-R1).
+  // Absent/empty = no CTA. This surface never decides eligibility; it renders what it was told.
+  const [checkInAgain, setCheckInAgain] = useState<Map<string, CheckInAgainTarget[]>>(new Map());
 
   const load = useCallback(async () => {
     try {
@@ -198,8 +230,15 @@ export default function FoundryMyLearning({
     try {
       const res = await fetch("/api/bty/foundry/evidence/mine", { credentials: "include", cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { items?: Array<{ entryId?: string; established?: string[] }> };
+      const data = (await res.json()) as {
+        items?: Array<{
+          entryId?: string;
+          established?: string[];
+          checkInAgain?: Array<{ followupId?: string; followUpDays?: number; outcome?: string }>;
+        }>;
+      };
       const next = new Map<string, EvidenceLevel[]>();
+      const nextCheckIn = new Map<string, CheckInAgainTarget[]>();
       for (const it of Array.isArray(data?.items) ? data.items : []) {
         const id = String(it.entryId ?? "");
         if (!id) continue;
@@ -210,8 +249,19 @@ export default function FoundryMyLearning({
             (EVIDENCE_DISPLAY_ORDER as readonly string[]).includes(v),
           ),
         );
+        // Carried verbatim, identity first: a target with no durable id is dropped rather than
+        // reconstructed from anything else on the row.
+        const targets = (Array.isArray(it.checkInAgain) ? it.checkInAgain : [])
+          .map((c) => ({
+            followupId: String(c.followupId ?? ""),
+            followUpDays: typeof c.followUpDays === "number" ? c.followUpDays : 0,
+            outcome: String(c.outcome ?? ""),
+          }))
+          .filter((c) => c.followupId !== "");
+        if (targets.length > 0) nextCheckIn.set(id, targets);
       }
       setEvidence(next);
+      setCheckInAgain(nextCheckIn);
     } catch {
       /* evidence is additive — never surface a failure on this surface */
     }
@@ -381,6 +431,34 @@ export default function FoundryMyLearning({
                   <p className="mt-1.5 text-[0.68rem] leading-4 text-white/30">{t.evidenceHint}</p>
                 </div>
               ) : null}
+              {/*
+                CHECK IN AGAIN (Slice 3.2R-R3-R1) — the required return route.
+
+                This is the ONLY way back to a follow-up the learner has already answered
+                non-terminally: Today drops RESPONDED rows by design, and D2 is explicit that a
+                non-terminal answer must not drag the card back into Today. So the way back lives
+                where the learner's own record lives.
+
+                IT IS NOT A TASK. One quiet control at the bottom of a record, rendered only when
+                the SERVER says this exact obligation can still take a report — no count, no
+                badge, no due date, no red. A record with nothing open shows nothing, which is the
+                same rule the evidence strip above it follows.
+              */}
+              {onOpenFollowUp
+                ? (checkInAgain.get(it.entryId) ?? []).map((target, _i, all) => (
+                    <button
+                      key={target.followupId}
+                      type="button"
+                      data-testid="my-learning-check-in-again"
+                      data-followup-id={target.followupId}
+                      onClick={() => onOpenFollowUp(target.followupId)}
+                      className="self-start rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-3 py-1.5 text-xs font-medium text-[#E5B769]"
+                    >
+                      {/* The checkpoint is named only when there is more than one to tell apart. */}
+                      {all.length > 1 ? t.checkInAgainAt(target.followUpDays) : t.checkInAgain}
+                    </button>
+                  ))
+                : null}
               {/* Private Reflection is NOT shown here — it lives in Center. Deep-link to the exact entry. */}
               <a
                 href={`/${loc}/app?tab=center&view=reflections&entry=${encodeURIComponent(it.entryId)}`}

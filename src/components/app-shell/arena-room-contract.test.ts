@@ -109,7 +109,10 @@ describe("BtyDailyAppShell — four visible tabs (App Shell + Today Simplificati
     expect(src).toMatch(/tab === "learn" &&/);
     expect(src).toMatch(/<FoundryEventRooms[\s\S]*?onOpenReview={setReviewId}/);
     expect(src).toMatch(/onOpenMyLearning={\(\) => setFoundryView\("my-learning"\)}/);
-    expect(src).toMatch(/<FoundryMyLearning locale={locale}/);
+    // Whitespace-tolerant, like the <FoundryEventRooms assertion above: the contract is that Learn
+    // renders My Learning with the locale, not that the JSX fits on one line (3.2R-R3-R1 added an
+    // `onOpenFollowUp` prop to this call site and the formatter wrapped it).
+    expect(src).toMatch(/<FoundryMyLearning[\s\S]*?locale={locale}/);
     expect(src).toMatch(/<FoundryCompletionReview/);
     // Learn identity header sits above the default Foundry surface.
     expect(src).toMatch(/<LearnHeader/);

@@ -85,7 +85,15 @@ describe("GET /api/bty/foundry/evidence/mine", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.items).toEqual([
-      { entryId: "prog-1", eventId: "ev-1", established: ["exposed", "reflected"], highestEstablished: "reflected" },
+      {
+        entryId: "prog-1",
+        eventId: "ev-1",
+        established: ["exposed", "reflected"],
+        highestEstablished: "reflected",
+        // Slice 3.2R-R3-R1 — present and empty, never absent: a record with nothing open still
+        // states so, so the surface never has to tell "no follow-up" apart from "field missing".
+        checkInAgain: [],
+      },
     ]);
   });
 

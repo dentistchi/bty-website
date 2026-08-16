@@ -43,6 +43,17 @@ export async function GET(req: NextRequest) {
       eventId: it.eventId,
       established: it.evidence.established,
       highestEstablished: it.evidence.highestEstablished,
+      /*
+        Slice 3.2R-R3-R1 — the return route to a follow-up that can still take a later check-in.
+        Re-projected field by field like everything else here, so the "carries no text" property
+        of this route survives: an id, a checkpoint number, and a settled enum the learner and
+        Host can both already see. Never a sentence.
+      */
+      checkInAgain: (it.checkInAgain ?? []).map((c) => ({
+        followupId: c.followupId,
+        followUpDays: c.followUpDays,
+        outcome: c.outcome,
+      })),
     })),
   });
   // Private learner data (which rungs one person has established) — never shared-cacheable.

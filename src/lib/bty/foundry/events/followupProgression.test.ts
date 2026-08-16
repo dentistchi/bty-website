@@ -64,7 +64,7 @@ describe("[3.2M-3] later check-ins", () => {
       updated: { id: ID, outcome: "APPLIED", status: "RESPONDED" },
     });
     const r = await submitFollowupOutcome(admin, USER, ID, "APPLIED");
-    expect(r).toEqual({ result: "responded", status: "RESPONDED", outcome: "APPLIED" });
+    expect(r).toEqual({ result: "responded", status: "RESPONDED", outcome: "APPLIED", canCheckInAgain: false });
     expect(updates[0]).toMatchObject({ outcome: "APPLIED" });
     // History gained a row; nothing was deleted.
     expect(audits).toHaveLength(1);
@@ -87,7 +87,7 @@ describe("[3.2M-3] later check-ins", () => {
     for (const to of ["NOT_YET", "PARTLY_APPLIED", "BLOCKED"]) {
       const { admin, audits, updates } = makeAdmin({ row: responded("APPLIED") });
       const r = await submitFollowupOutcome(admin, USER, ID, to);
-      expect(r, to).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED" });
+      expect(r, to).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED", canCheckInAgain: false });
       expect(updates, to).toHaveLength(0);
       expect(audits, to).toHaveLength(0);
     }
@@ -97,7 +97,7 @@ describe("[3.2M-3] later check-ins", () => {
     for (const same of ["APPLIED", "NOT_YET"]) {
       const { admin, audits, updates } = makeAdmin({ row: responded(same) });
       const r = await submitFollowupOutcome(admin, USER, ID, same);
-      expect(r, same).toEqual({ result: "unchanged", status: "RESPONDED", outcome: same });
+      expect(r, same).toEqual({ result: "unchanged", status: "RESPONDED", outcome: same, canCheckInAgain: same !== "APPLIED" });
       expect(updates, same).toHaveLength(0);
       expect(audits, same).toHaveLength(0);
     }
@@ -110,7 +110,7 @@ describe("[3.2M-3] later check-ins", () => {
       fresh: { status: "RESPONDED", outcome: "APPLIED" }, // the other device won
     });
     const r = await submitFollowupOutcome(admin, USER, ID, "BLOCKED");
-    expect(r).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED" });
+    expect(r).toEqual({ result: "already_responded", status: "RESPONDED", outcome: "APPLIED", canCheckInAgain: false });
     expect(audits, "a failed write must not leave history behind").toHaveLength(0);
   });
 
@@ -134,7 +134,7 @@ describe("[3.2M-3] later check-ins", () => {
       rpc: [{ result: "responded", status: "RESPONDED", outcome: "NOT_YET" }],
     });
     const r = await submitFollowupOutcome(admin, USER, ID, "NOT_YET");
-    expect(r).toEqual({ result: "responded", status: "RESPONDED", outcome: "NOT_YET" });
+    expect(r).toEqual({ result: "responded", status: "RESPONDED", outcome: "NOT_YET", canCheckInAgain: true });
     expect(updates, "the RPC does the first write, not us").toHaveLength(0);
     expect(audits, "and the RPC writes its own audit row").toHaveLength(0);
   });

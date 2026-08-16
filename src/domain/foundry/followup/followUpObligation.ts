@@ -144,3 +144,28 @@ export function classifyFollowUpSubmission(
 export function reportsApplication(outcome: FollowUpOutcome | null): boolean {
   return outcome === TERMINAL_FOLLOW_UP_OUTCOME;
 }
+
+/**
+ * MAY THIS SETTLED OBLIGATION TAKE A LATER CHECK-IN? (Slice 3.2R-R3-R1)
+ *
+ * 3.2M-3 gave the service the ability to accept a genuinely later report, and no surface could
+ * reach it: the learner surface treated every RESPONDED row as read-only, Today drops RESPONDED
+ * rows, and the only `?followup=` link in the product is the Today row it just dropped. So the
+ * capability existed and was, in production, dead. This is the single authority that decides
+ * whether a surface may offer the way back.
+ *
+ * IT ASKS THE WRITE PATH'S OWN RULE RATHER THAN RESTATING IT. A second copy of "APPLIED is
+ * terminal" is exactly how a surface eventually offers a button the server then refuses. So the
+ * question is put to `classifyFollowUpSubmission`: is there ANY outcome that would count as
+ * `progress` from here? For APPLIED every candidate answers `repeat` or `terminal_locked`, so
+ * the answer is false without this file ever naming APPLIED.
+ *
+ * "AGAIN" IS LOAD-BEARING, AND IT IS WHY THIS IS FALSE FOR PENDING. A PENDING obligation can
+ * obviously be answered — through the FIRST-response path, which is unchanged and is not this.
+ * Naming it `canCheckIn` would have made `false` read as "you may not answer this", which is the
+ * opposite of the truth for the only rows Today actually shows.
+ */
+export function canCheckInAgain(status: FollowUpStatus, outcome: FollowUpOutcome | null): boolean {
+  if (status !== "RESPONDED" || outcome === null) return false;
+  return FOLLOW_UP_OUTCOMES.some((next) => classifyFollowUpSubmission(outcome, next).kind === "progress");
+}

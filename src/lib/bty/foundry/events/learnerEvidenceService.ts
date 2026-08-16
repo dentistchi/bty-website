@@ -11,7 +11,12 @@ import {
   journeyReflection,
   type RealityGroundedJourneyV1,
 } from "@/domain/foundry/module/journey";
-import { reportsApplication, type FollowUpOutcome } from "@/domain/foundry/followup/followUpObligation";
+import {
+  canCheckInAgain,
+  reportsApplication,
+  type FollowUpOutcome,
+  type FollowUpStatus,
+} from "@/domain/foundry/followup/followUpObligation";
 import { observationEstablished } from "@/domain/foundry/observation/behaviorObservation";
 import { deriveSustainedEvidence } from "@/domain/foundry/observation/sustainedEvidence";
 import { hasCompletedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
@@ -61,6 +66,9 @@ export type EvidenceRecordKey = {
 
 /** The empty projection — what an unknown/failed record honestly establishes. */
 const NOTHING_ESTABLISHED: EvidenceProjection = { established: [], highestEstablished: null };
+
+/** No obligations read. A failed/absent read can only ever HIDE a CTA, never invent one. */
+const NO_CHECK_IN_ROWS: FollowupRow[] = [];
 
 type ProgressFacts = {
   eventId: string | null;
@@ -191,27 +199,41 @@ type FollowupRow = {
   id: string;
   progressId: string;
   followUpDays: number;
+  status: FollowUpStatus;
   outcome: FollowUpOutcome | null;
 };
 
-/** Every follow-up obligation belonging to these progress rows (7- and 30-day alike). */
+/**
+ * Every follow-up obligation belonging to these progress rows (7- and 30-day alike).
+ *
+ * `status` is selected as well as `outcome` (Slice 3.2R-R3-R1) because `canCheckInAgain` is a
+ * question about the pair, not about the outcome alone — a null outcome means two different
+ * things depending on whether the row has settled.
+ */
 async function loadFollowups(admin: SupabaseClient, progressIds: string[]): Promise<Map<string, FollowupRow[]>> {
   const out = new Map<string, FollowupRow[]>();
   if (progressIds.length === 0) return out;
   try {
     const { data } = await admin
       .from("foundry_participant_followups")
-      .select("id, progress_id, follow_up_days, outcome")
+      .select("id, progress_id, follow_up_days, status, outcome")
       .in("progress_id", progressIds);
     for (const r of (data ?? []) as Array<{
       id: string;
       progress_id: string | null;
       follow_up_days: number;
+      status: FollowUpStatus;
       outcome: FollowUpOutcome | null;
     }>) {
       if (!r.progress_id) continue;
       const list = out.get(r.progress_id) ?? [];
-      list.push({ id: r.id, progressId: r.progress_id, followUpDays: r.follow_up_days, outcome: r.outcome });
+      list.push({
+        id: r.id,
+        progressId: r.progress_id,
+        followUpDays: r.follow_up_days,
+        status: r.status,
+        outcome: r.outcome,
+      });
       out.set(r.progress_id, list);
     }
   } catch {
@@ -329,12 +351,35 @@ export async function projectEvidenceByProgressId(
   return out;
 }
 
+/**
+ * A follow-up on this record that can still take a later check-in (Slice 3.2R-R3-R1).
+ *
+ * IDENTITY IS THE WHOLE POINT. The surface must open the EXACT obligation, so the durable
+ * `followupId` travels — never the event, never the title, never the checkpoint used as a key. A
+ * record may carry both a 7- and a 30-day obligation, and they are two different questions with
+ * two different answers.
+ *
+ * NO TEXT. An id, a checkpoint number and a settled enum. Nothing the learner wrote.
+ */
+export type CheckInAgainTarget = {
+  readonly followupId: string;
+  readonly followUpDays: number;
+  /** The answer already on record — what the learner is checking in AGAINST, never erased. */
+  readonly outcome: FollowUpOutcome;
+};
+
 /** One learner's completed training with what it has actually established since. */
 export type MyEvidenceItem = {
   /** The progress-row id — the SAME `entryId` the owner-scoped history surface already uses. */
   readonly entryId: string;
   readonly eventId: string;
   readonly evidence: EvidenceProjection;
+  /**
+   * Slice 3.2R-R3-R1 — the return route. Empty for every record whose follow-ups are pending,
+   * absent, or settled at APPLIED. It is a NAVIGATION target only: nothing here establishes a
+   * rung, and `evidence` above is computed from the same rows without consulting it.
+   */
+  readonly checkInAgain: readonly CheckInAgainTarget[];
 };
 
 /**
@@ -362,13 +407,41 @@ export async function listMyEvidence(admin: SupabaseClient, userId: string): Pro
   }
   if (rows.length === 0) return [];
 
-  const byProgress = await projectEvidenceByProgressId(
-    admin,
-    rows.map((r) => ({ progressId: r.id, eventId: r.event_id, userId })),
-  );
+  const progressIds = rows.map((r) => r.id);
+  const [byProgress, followupsByProgress] = await Promise.all([
+    projectEvidenceByProgressId(
+      admin,
+      rows.map((r) => ({ progressId: r.id, eventId: r.event_id, userId })),
+    ),
+    /*
+      A SECOND READ OF THE SAME TABLE, ON PURPOSE (Slice 3.2R-R3-R1).
+
+      `projectEvidenceByProgressId` already loads these rows — and it is also what the HOST
+      control room calls. Threading a learner-only navigation target back out of it would widen a
+      shared projection so that one caller could use a field the other must never see. The rung
+      derivation stays exactly as it was, this read belongs to the learner path alone, and the
+      cost is one indexed select over the caller's own completions.
+    */
+    loadFollowups(admin, progressIds),
+  ]);
+
   return rows.map((r) => ({
     entryId: r.id,
     eventId: r.event_id,
     evidence: byProgress.get(r.id) ?? NOTHING_ESTABLISHED,
+    /*
+      The domain decides which obligations are still open to a later report — this layer only
+      filters by it. Ordered by checkpoint so a record carrying both a 7- and a 30-day follow-up
+      renders them in a stable, meaningful order rather than whatever the database returned.
+    */
+    checkInAgain: (followupsByProgress.get(r.id) ?? NO_CHECK_IN_ROWS)
+      .filter((f) => canCheckInAgain(f.status, f.outcome))
+      .sort((a, b) => a.followUpDays - b.followUpDays)
+      .map((f) => ({
+        followupId: f.id,
+        followUpDays: f.followUpDays,
+        // canCheckInAgain is false for a null outcome, so anything surviving the filter has one.
+        outcome: f.outcome as FollowUpOutcome,
+      })),
   }));
 }
