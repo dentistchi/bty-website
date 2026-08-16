@@ -539,3 +539,81 @@ PRODUCTION_MIGRATION         NOT_READY — production access, live md5 + constra
                                          parity and separate authorization all still required
 CONTENT_RIGHTS               HELD — API-data retention remains a separate R6-R1B closure
 ```
+
+## §E PROVENANCE — E1 migration file hash, anchored to the validated commit
+
+Recorded by BUILD 26T-R1B-R6-R1B-R15-R1 (documentation only). This subsection adds a hash that did
+not previously exist in this file. It **corrects nothing above it and erases nothing above it.**
+
+```
+E1 migration          20260817120000_karaoke_playback_integrity_e1_v1.sql
+repo path             bty-karaoke/supabase/migrations/20260817120000_karaoke_playback_integrity_e1_v1.sql
+validation anchor     ca363015048fd34e012e6e461670be0bf0853448  (short: ca363015)
+anchor subject        feat(karaoke): BUILD 26T-R1B-R6-R1A — E1 VALIDATED locally, 37/37 with mutants
+anchor date           Sat Aug 15 10:47:30 2026 -0700
+validation state      E1 VALIDATED locally, 37/37 with mutants
+
+SHA-256 at ca363015   e9e0f71319976ed82a12d0977a9fda562e2f6684c4e7821ea4e02d99cafbabba
+SHA-256 current       e9e0f71319976ed82a12d0977a9fda562e2f6684c4e7821ea4e02d99cafbabba
+match                 EXACT
+size                  13149 bytes at ca363015, 13149 bytes current
+continuity            byte-identical from ca363015 through current HEAD
+```
+
+### Independently reproducible measurement
+
+Run from `bty-karaoke/`. The `./` prefix is required: this file lives in a monorepo subdirectory, so
+a bare `supabase/…` argument to `git show` would resolve against the repository root and miss.
+
+```
+git show ca363015:./supabase/migrations/20260817120000_karaoke_playback_integrity_e1_v1.sql | shasum -a 256
+shasum -a 256 supabase/migrations/20260817120000_karaoke_playback_integrity_e1_v1.sql
+git diff --exit-code ca363015 HEAD -- ./supabase/migrations/20260817120000_karaoke_playback_integrity_e1_v1.sql
+```
+
+Both hashes printed `e9e0f713…`; the `git diff` exited `0` with empty output. A second, independent
+proof of the same fact — Git's own content address, which does not depend on `shasum` at all:
+
+```
+blob oid @ ca363015   634d58b8b7ef8ccafe53bf76b1373e3c7474f5c4
+blob oid @ HEAD       634d58b8b7ef8ccafe53bf76b1373e3c7474f5c4
+blob oid @ index      634d58b8b7ef8ccafe53bf76b1373e3c7474f5c4
+```
+
+Three identical object ids means the working tree, the index and both commits hold the same bytes,
+established without recomputing a digest.
+
+### What each hash in this document measures — they are not interchangeable
+
+`ef281fd84a6e59726d94c37af70aa509` is **not** the migration file's hash and must never be compared
+against one. It is the **pre-E1 `pg_get_functiondef` MD5 drift baseline** — a digest of a function
+definition read back out of a live database, used by the §A drift gate above to decide whether
+production has drifted before any apply is attempted. It measures live database state.
+
+`e9e0f71319976ed82a12d0977a9fda562e2f6684c4e7821ea4e02d99cafbabba` is the SHA-256 of the migration
+**file's bytes**, taken directly from the validated `ca363015` Git blob. It measures the artifact on
+disk. The two answer different questions and neither substitutes for the other: the MD5 gate can
+pass while the file is wrong, and the SHA-256 can match while production has drifted.
+
+The distinction was already stated above for the human-readable baseline copy — "compare the md5 of
+`pg_get_functiondef`, not the file", where the file hashed `bc76491d…` — and this record restates it
+because a file-level SHA-256 now exists alongside it.
+
+### Provenance conditions
+
+```
+derivation            SHA-256 taken from the ca363015 Git blob, not inferred from the current file
+migration bytes       UNCHANGED — no migration file was edited to create this record
+migration files chg   0
+production writes     0
+retention remediation 0
+supabase db push      NOT RUN (neither real nor --dry-run)
+scope                 documentation only
+```
+
+```
+E1_HASH_PROVENANCE           ESTABLISHED
+PRODUCTION_MIGRATION         NOT_READY — unchanged by this record; a file hash is provenance,
+                                         not authorization. §A drift gate, constraint read-back,
+                                         parity and separate authorization all still required.
+```
