@@ -79,7 +79,7 @@ describe("[R4-R1A] the global web locale header does not follow the observer ont
 });
 
 describe("[R4-R1A] the observer page's own top controls", () => {
-  it("puts Back and the language switch in ONE region, below the safe area", async () => {
+  it("keeps its top-control region below the safe area, with Back reachable", async () => {
     stub();
     render(<ObserverClient followupId="fu-1" locale="en" />);
 
@@ -87,13 +87,32 @@ describe("[R4-R1A] the observer page's own top controls", () => {
     const controls = await findByTestId("observe-top-controls");
     // Back stays reachable — the native WKWebView has no browser chrome to fall back on.
     expect(within(controls).getByTestId("observe-back")).toBeDefined();
-    // The language switch belongs to the same region rather than floating over the OS.
-    expect(controls.textContent).toContain("EN");
-    expect(controls.textContent).toContain("KO");
 
     const main = controls.closest("main");
     expect(main?.className ?? "").toContain("env(safe-area-inset-top)");
     expect(main?.className ?? "").toContain("env(safe-area-inset-bottom)");
+  });
+
+  /*
+    Slice R4-R1B REVERSES the R4-R1A placement. R4-R1A moved the switch off the global fixed
+    header and into this row; language ownership for the whole authenticated app now sits in Me,
+    so the Observer page carries none — the same as Today, Learn and Practice.
+  */
+  it("carries NO language control — that lives in Me for the whole app", async () => {
+    stub();
+    const { findByTestId, container } = render(<ObserverClient followupId="fu-1" locale="en" />);
+    await findByTestId("observe-top-controls");
+    expect(container.textContent).not.toContain("EN");
+    expect(container.textContent).not.toContain("KO");
+    expect(container.querySelector('a[href^="/ko/"]')).toBeNull();
+    expect(container.querySelector('a[href^="/en/"]')).toBeNull();
+  });
+
+  it("carries none on the unavailable surface either", async () => {
+    stub(404, { ok: false, error: "not_found" });
+    const { findByTestId, container } = render(<ObserverClient followupId="fu-1" locale="en" />);
+    await findByTestId("observe-unavailable");
+    expect(container.querySelector('a[href^="/ko/"]')).toBeNull();
   });
 
   it("clears the safe area even when there is nothing to answer — never a bare dead end", async () => {

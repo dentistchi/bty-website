@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import AppTabBar, { type AppTabKey } from "@/components/app-shell/AppTabBar";
+import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
@@ -1922,6 +1923,28 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
             // lift / dead space), then compact nav rows ending with Account. Nothing is
             // absolute/fixed; safe-area padding keeps content clear of the bottom dock.
             <div className="flex flex-col gap-4 pb-6" data-testid="me-home">
+              {/*
+                LANGUAGE LIVES IN ME (Slice R4-R1B).
+
+                `LocaleLayoutHeader` has said so since the app shell shipped — it returns null on
+                `/{locale}/app` because "the web locale header would collide with the iOS status
+                bar", and left a note that app-level language treatment belongs inside the shell.
+                This is that treatment, and it is the ONLY language control in the authenticated
+                app: Today, Learn, Practice and the Observer page all carry none.
+
+                The same shared `LangSwitch` — no second switcher, no second state. Locale is the
+                path prefix and nothing else, so changing it here carries through every in-app
+                navigation, all of which build their destination from the current locale.
+
+                `tab=me` is passed because the shell scrubs `?tab=` from the URL on mount by
+                design; without it the switch would faithfully preserve an empty query and drop
+                the reader on Today in the other language.
+              */}
+              <div className="flex justify-end" data-testid="me-language">
+                <Suspense fallback={<span className="px-2 py-1 text-xs text-white/30">…</span>}>
+                  <LangSwitch ensureParams={{ tab: "me" }} />
+                </Suspense>
+              </div>
               <MeThisWeek locale={locale} weeklyRhythm={weeklyRhythm} refreshKey={weeklyRefreshKey} />
               {/* The Me Orb is the LIVING seven-light weekly trace (WeeklyOrb) — NOT the startup entry
                   Orb. R1 (ORB-WEEKLY-ATTENDANCE): the Orb owns ONE interaction — tap to reveal the

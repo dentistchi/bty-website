@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LangSwitch } from "@/components/LangSwitch";
 import type { Locale } from "@/components/foundry/event-rooms/copy";
 
 /**
@@ -133,10 +132,11 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
     already did `/app`), and the page owns its own controls instead — Back on the left, language
     on the right, in ONE region that starts below the safe area.
 
-    The switch stays rather than disappearing with the web header: this page can be opened
-    directly from a link, and every word on it is localized, so a colleague who reads the other
-    language needs a way across. It is the same `LangSwitch` the rest of the product uses — no
-    second switcher was invented — and `useSearchParams` inside it still needs its Suspense.
+    LANGUAGE IS NOT HERE (Slice R4-R1B). R4-R1A put the switch in this row; language ownership
+    for the whole authenticated app now sits in Me, and this page carries none — the same as
+    Today, Learn and Practice. A reviewer who arrives in the wrong language changes it once in
+    Me and every in-app destination follows, because locale is the path prefix and every
+    navigation here is built from it.
   */
   /*
     Slice R4-R1A — the page draws under the iOS status bar (`viewportFit: "cover"`), so the
@@ -147,7 +147,7 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
     "pt-[max(2.5rem,calc(env(safe-area-inset-top)_+_0.75rem))] pb-[max(2.5rem,env(safe-area-inset-bottom))]";
 
   const topControls = (
-    <div className="flex items-center justify-between gap-3" data-testid="observe-top-controls">
+    <div className="flex items-center gap-3" data-testid="observe-top-controls">
       <button
         type="button"
         onClick={() => router.push(`/${locale}/app?tab=practice`)}
@@ -156,9 +156,6 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
       >
         ← {t.back}
       </button>
-      <Suspense fallback={<span className="px-2 py-1 text-xs text-white/30">…</span>}>
-        <LangSwitch />
-      </Suspense>
     </div>
   );
   const [req, setReq] = useState<ObservationRequest | null>(null);
