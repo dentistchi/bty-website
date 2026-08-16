@@ -18,6 +18,7 @@
 
 import type { ModuleDraftAnswers } from "./module-draft";
 import { isLearningType, observableBehaviorWarning } from "./module-draft";
+import { isObservableStandardShape } from "./observableStandardShape";
 import { validateJourney, type RealityGroundedJourneyV1 } from "./journey";
 
 // ---------------------------------------------------------------------------
@@ -618,6 +619,27 @@ export function stepBlockers(step: number, answers: BuilderAnswers | undefined):
     if (!meaningful(a.title)) out.push("title_required");
     if (!meaningful(a.problem)) out.push("problem_required");
     return out;
+  }
+  /*
+    STEP 4 — THE BEHAVIOUR MUST BE A BEHAVIOUR (Slice R4-R1A).
+
+    `stepBlocker` (singular) checks presence only, and `observableBehaviorWarning` is advisory by
+    design. Measured on the live pilot: a Host typed a question here, nothing warned, the draft
+    was approved and published, and the observation surface later asked a colleague whether they
+    had personally seen or heard it. Step 4 is where a person is looking at the sentence and can
+    still fix it, so it is where this is caught.
+
+    It lives in `stepBlockers` (plural) and NOT in the singular, deliberately. The singular is
+    reused by `programContext` to decide whether a program can be AUTHORED from steps 1–5, and
+    that is a different question about source material; the plural is what the Builder's Next
+    guard and `module-publish`'s readiness check consult, which is exactly the authoring boundary
+    a bad standard must not cross.
+
+    Shape only — the same narrow floor 3.2P applies to the model's action, now applied to the
+    Host's. Vagueness stays a warning: a loosely-written standard is still a real one.
+  */
+  if (step === 4 && meaningful(a.observableBehavior) && !isObservableStandardShape(a.observableBehavior as string)) {
+    return ["behavior_is_a_question"];
   }
   const one = stepBlocker(step, a);
   return one ? [one] : [];

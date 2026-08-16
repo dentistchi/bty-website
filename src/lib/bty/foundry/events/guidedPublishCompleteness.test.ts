@@ -92,7 +92,14 @@ const HOST_ANSWERS = {
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the owner and deadline?",
   recurringMoment: "During morning huddles",
-  observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
+  /*
+    Slice R4-R1A — a VALID behaviour. This fixture previously carried the live pilot's
+    question, inherited as context rather than as the contract under test: these cases are
+    about SECTION COMPLETENESS (`program_sections_missing`), and since R4-R1A a question is
+    refused earlier, at step 4, which would mask every one of them. The question itself is
+    still exercised — see the R4-R1A case at the end of this file.
+  */
+  observableBehavior: "Before the huddle ends, name one owner and one deadline for each open action item.",
   capabilityCandidate: "Accountability",
 };
 
@@ -258,5 +265,43 @@ describe("[3.2P-R2.1] A/G — grandfathering, and no way round the gate", () => 
     const r = await publishDraft(makeFakeAdmin(tables), OWNER, "d-1", "en");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("program_sections_missing");
+  });
+});
+
+/**
+ * SLICE R4-R1A — A QUESTION CANNOT BE PUBLISHED AS A BEHAVIOUR.
+ *
+ * The live pilot's stored `observableBehavior` is a question, and until R4-R1A the Guided
+ * Builder had presence-only validation on that field: nothing warned, the draft published, and
+ * the observation surface then asked a colleague whether they had personally seen or heard it.
+ * `stepBlockers` is what `module-publish` consults, so the refusal lands at publish too.
+ */
+describe("[R4-R1A] the publish gate refuses a question as the observable behaviour", () => {
+  const LIVE_QUESTION =
+    "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?";
+
+  it("REFUSES a draft whose behaviour is the live pilot's question", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [
+        draft({ ...HOST_ANSWERS, observableBehavior: LIVE_QUESTION, realityGroundedJourneyV1: COMPLETE_SEVEN }),
+      ],
+      foundry_event_module: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, "d-1", "en");
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toBe("behavior_is_a_question");
+    // Nothing published: a bad standard must never become observation authority.
+    expect(createTrainingEvent).not.toHaveBeenCalled();
+    expect(tables.foundry_event_module).toHaveLength(0);
+  });
+
+  it("ACCEPTS the good control — the gate is shape, not strictness", async () => {
+    const tables: Tables = {
+      foundry_module_drafts: [draft({ ...HOST_ANSWERS, realityGroundedJourneyV1: COMPLETE_SEVEN })],
+      foundry_event_module: [],
+    };
+    const r = await publishDraft(makeFakeAdmin(tables), OWNER, "d-1", "en");
+    expect(r.ok).toBe(true);
   });
 });

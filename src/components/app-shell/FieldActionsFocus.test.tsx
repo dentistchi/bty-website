@@ -349,3 +349,33 @@ describe("FieldActionsFocus — behaviour observation discovery", () => {
     }
   });
 });
+
+/**
+ * SLICE R4-R1A — the card must survive a real observable standard.
+ *
+ * Founder device review: the live standard is a full sentence, and `line-clamp-2` ended it at
+ * "…that need follow-th…" — before the verb. A reviewer could not tell what kind of behaviour
+ * they were being asked about without opening the page.
+ */
+describe("[R4-R1A] behaviour observation card — long standards stay legible", () => {
+  const LONG =
+    "At the end of a team huddle when there are open action items that need follow-through, you must name " +
+    "one owner and one deadline for each open action item before the huddle ends.";
+
+  it("renders the standard in full in the DOM, clamped visually rather than cut in the data", async () => {
+    stub({ opps: [opp({ behavior: LONG })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const card = await screen.findByTestId("fa-observation-item");
+    // The card never paraphrases or summarises the frozen standard.
+    expect(card.textContent).toContain(LONG);
+  });
+
+  it("allows four lines, not two — enough to reach the behaviour itself", async () => {
+    stub({ opps: [opp({ behavior: LONG })] });
+    render(<FieldActionsFocus locale="en" onBack={() => {}} />);
+    const card = await screen.findByTestId("fa-observation-item");
+    const behaviorEl = Array.from(card.querySelectorAll("span")).find((e) => e.textContent === LONG);
+    expect(behaviorEl?.className).toContain("line-clamp-4");
+    expect(behaviorEl?.className).not.toContain("line-clamp-2");
+  });
+});

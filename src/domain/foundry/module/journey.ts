@@ -18,6 +18,7 @@
  */
 
 import type { BuilderAnswers } from "./module-builder";
+import { isObservableStandardShape } from "./observableStandardShape";
 
 export type JourneyElementKind =
   | "why_it_matters"
@@ -245,7 +246,30 @@ export function journeyFieldApplication(j: RealityGroundedJourneyV1 | undefined)
 export function journeyObservableStandard(j: RealityGroundedJourneyV1 | undefined): string | null {
   const el = j?.elements.find((e) => e.kind === "observable_standard" && e.confirmationStatus === "grounded");
   const v = (el?.content ?? "").trim();
-  return v.length > 0 ? v : null;
+  if (v.length === 0) return null;
+  /*
+    A QUESTION IS NOT SOMETHING ANYONE CAN HAVE SEEN (Slice R4-R1A).
+
+    This is the ONE place the observation system asks "what behaviour is there to observe?" —
+    the observer page, the discovery card, the Host line and the learner's evidence rungs all
+    read it and nothing else. So it is where the answer has to be honest.
+
+    Measured live: a Host typed "At the next huddle, what exact words will you use to confirm the
+    owner, action, and deadline?" into `observableBehavior`, the deterministic mapper copied it
+    faithfully, and a colleague was then asked whether they had personally seen or heard a
+    question. There is no truthful answer to that, and whatever they pressed would have been
+    recorded as evidence of the behaviour.
+
+    Refusing here rather than in the UI is deliberate: the surfaces consume canonical truth and
+    must never become semantic validators of their own. `null` already means "no observation path
+    for this training" everywhere — every caller handles it, and the Host surface says so out
+    loud rather than showing a learner as unobserved.
+
+    NOT A REWRITE. The published snapshot is untouched and the learner still reads their Journey
+    exactly as approved (`toPublicJourney`). Only the claim that this sentence can carry
+    OBSERVATION AUTHORITY is withdrawn.
+  */
+  return isObservableStandardShape(v) ? v : null;
 }
 
 /** The approved participant completion question (completion_check content), or null. */

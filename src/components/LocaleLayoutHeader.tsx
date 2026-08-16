@@ -22,9 +22,30 @@ export function LocaleLayoutHeader() {
   const isLandingPage = /^\/(en|ko)\/?$/.test(pathname);
   const isTodayArea = /^\/(en|ko)\/today(\/|$)/.test(pathname);
   const isDailyAppArea = /^\/(en|ko)\/app(\/|$)/.test(pathname);
-  if (isArenaArea || isCenterArea || isMyPageArea || isAdminArea || isLandingPage || isTodayArea || isDailyAppArea) return null;
+  /*
+    Slice R4-R1A — `/{locale}/observe/{id}` is an APP-SHELL DESTINATION, not a web page. It is
+    pushed from Practice → Field Actions and its own Back returns to `/{locale}/app?tab=practice`,
+    so it belongs with `/app` above: the page owns its top controls, and a second fixed switch
+    floating over them is the double-switch the admin exclusion already exists to prevent.
+  */
+  const isObserveArea = /^\/(en|ko)\/observe(\/|$)/.test(pathname);
+  if (
+    isArenaArea || isCenterArea || isMyPageArea || isAdminArea ||
+    isLandingPage || isTodayArea || isDailyAppArea || isObserveArea
+  ) {
+    return null;
+  }
   return (
-    <div className="fixed top-2 right-2 z-[9998]">
+    /*
+      BELOW THE STATUS BAR, ALWAYS (Slice R4-R1A).
+
+      The root layout sets `viewportFit: "cover"`, which is what makes `env(safe-area-inset-*)`
+      resolve to non-zero — and which also lets the WebView draw UNDER the iOS status bar. With a
+      bare `top-2` this switch sat 8px from the physical top of the screen, i.e. inside the clock
+      and battery. `max()` keeps the existing 0.5rem on every surface where the inset is 0
+      (desktop, Android without a cutout), so nothing outside iOS moves.
+    */
+    <div className="fixed right-2 z-[9998] top-[max(0.5rem,calc(env(safe-area-inset-top)_+_0.25rem))]">
       <Suspense fallback={<span className="px-2 py-1 text-sm text-gray-400">…</span>}>
         <LangSwitch />
       </Suspense>

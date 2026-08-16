@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LangSwitch } from "@/components/LangSwitch";
 import type { Locale } from "@/components/foundry/event-rooms/copy";
 
 /**
@@ -124,15 +125,41 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
    * browser's is a dead end there. Returns to Practice, which is where the reviewer surface that
    * now links here lives; harmless for someone who arrived by URL.
    */
-  const back = (
-    <button
-      type="button"
-      onClick={() => router.push(`/${locale}/app?tab=practice`)}
-      data-testid="observe-back"
-      className="self-start text-xs text-white/45"
-    >
-      ← {t.back}
-    </button>
+  /*
+    THE TOP CONTROL ROW (Slice R4-R1A).
+
+    Founder device review: the global web locale switch was floating over the iOS clock and
+    battery. It is gone from this route (`LocaleLayoutHeader` now excludes `/observe`, as it
+    already did `/app`), and the page owns its own controls instead — Back on the left, language
+    on the right, in ONE region that starts below the safe area.
+
+    The switch stays rather than disappearing with the web header: this page can be opened
+    directly from a link, and every word on it is localized, so a colleague who reads the other
+    language needs a way across. It is the same `LangSwitch` the rest of the product uses — no
+    second switcher was invented — and `useSearchParams` inside it still needs its Suspense.
+  */
+  /*
+    Slice R4-R1A — the page draws under the iOS status bar (`viewportFit: "cover"`), so the
+    top padding has to clear the inset itself. `max()` keeps the existing 2.5rem everywhere the
+    inset is 0, so desktop and Android are unchanged.
+  */
+  const SHELL =
+    "pt-[max(2.5rem,calc(env(safe-area-inset-top)_+_0.75rem))] pb-[max(2.5rem,env(safe-area-inset-bottom))]";
+
+  const topControls = (
+    <div className="flex items-center justify-between gap-3" data-testid="observe-top-controls">
+      <button
+        type="button"
+        onClick={() => router.push(`/${locale}/app?tab=practice`)}
+        data-testid="observe-back"
+        className="text-xs text-white/45"
+      >
+        ← {t.back}
+      </button>
+      <Suspense fallback={<span className="px-2 py-1 text-xs text-white/30">…</span>}>
+        <LangSwitch />
+      </Suspense>
+    </div>
   );
   const [req, setReq] = useState<ObservationRequest | null>(null);
   const [phase, setPhase] = useState<"loading" | "ready" | "unavailable" | "error">("loading");
@@ -199,13 +226,13 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
   }
 
   if (phase === "loading") {
-    return <main className="min-h-screen bg-[#0B1220] px-5 py-10 text-sm text-white/50">…</main>;
+    return <main className={`min-h-screen bg-[#0B1220] px-5 text-sm text-white/50 ${SHELL}`}>…</main>;
   }
   if (phase === "unavailable" || phase === "error") {
     return (
-      <main className="min-h-screen bg-[#0B1220] px-5 py-10">
+      <main className={`min-h-screen bg-[#0B1220] px-5 ${SHELL}`}>
         <div className="mx-auto flex max-w-md flex-col gap-4">
-          {back}
+          {topControls}
           <p className="text-sm text-white/55" data-testid="observe-unavailable">
             {phase === "unavailable" ? t.unavailable : t.loadError}
           </p>
@@ -216,9 +243,9 @@ export default function ObserverClient({ followupId, locale }: { followupId: str
 
   const r = req!;
   return (
-    <main className="min-h-screen bg-[#0B1220] px-5 py-10 text-white">
+    <main className={`min-h-screen bg-[#0B1220] px-5 text-white ${SHELL}`}>
       <div className="mx-auto flex max-w-md flex-col gap-6">
-        {back}
+        {topControls}
         <h1 className="text-lg font-medium text-white/90">{t.heading}</h1>
 
         <section className="flex flex-col gap-1">

@@ -3,7 +3,16 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
 /** Slice 3.2N — the page now offers an explicit way back (there is no browser chrome in the app). */
 const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+/*
+ * Slice R4-R1A — the page's top-control row now carries the shared `LangSwitch`, which reads
+ * `usePathname` and `useSearchParams`. Mocked here rather than stubbing the switch away, so the
+ * real control renders and the placement assertions below are about the real thing.
+ */
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => "/en/observe/fu-1",
+  useSearchParams: () => new URLSearchParams(""),
+}));
 
 import ObserverClient from "./ObserverClient";
 

@@ -490,7 +490,19 @@ export default function FieldActionsFocus({
                     onClick={() => router.push(`/${loc}/observe/${encodeURIComponent(o.followupId)}`)}
                   >
                     <span className="min-w-0 truncate text-sm font-medium text-white/85">{o.learnerLabel}</span>
-                    <span className="line-clamp-2 text-xs leading-5 text-[#C9A66B]/80">{o.behavior}</span>
+                    {/*
+                      Slice R4-R1A — two lines cut the behaviour in half on a phone. The live
+                      standard reads "At the end of a team huddle when there are open action items
+                      that need follow-through, you must name one owner and one deadline…", and
+                      `line-clamp-2` ended it at "follow-th…" — before the verb, so the card asked
+                      the reviewer to open a page to learn what the work even was.
+
+                      Four lines, not unbounded: the card must still answer "do I understand what
+                      kind of behaviour this is?" while staying a list item. The detail page
+                      remains the authority, and nothing here paraphrases or summarises the frozen
+                      standard — it is the same sentence, shown further.
+                    */}
+                    <span className="line-clamp-4 text-xs leading-5 text-[#C9A66B]/80">{o.behavior}</span>
                     <span className="text-[0.7rem] text-white/40">
                       {t.obsState[o.state]}
                       {seen && o.positiveDates > 1 ? ` · ${t.obsDays(o.positiveDates)}` : ""}

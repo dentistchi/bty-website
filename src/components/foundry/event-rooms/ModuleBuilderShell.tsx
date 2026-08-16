@@ -1240,6 +1240,12 @@ function renderStep(
           {textArea(a.observableBehavior ?? "", (v) => patch({ observableBehavior: v }, false), t.s3Placeholder, t.s3Q)}
           {vague ? <p className="text-xs leading-5 text-white/45">{t.s3VagueGuidance}</p> : null}
           <BlockerLine show={blocker === "behavior_required"} text={t.s3Blocker} />
+          {/*
+            Slice R4-R1A — a question cannot be observed. Its own line, not folded into
+            `s3Blocker`: "you left this empty" and "what you wrote is a question" are different
+            problems and the second one needs an example to be actionable.
+          */}
+          <BlockerLine show={blocker === "behavior_is_a_question"} text={t.s3QuestionBlocker} />
         </StepFrame>
       );
     }

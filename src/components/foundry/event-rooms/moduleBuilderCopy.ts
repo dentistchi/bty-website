@@ -218,6 +218,8 @@ export type ModuleBuilderCopy = {
   s3Help: string;
   s3Placeholder: string;
   s3Blocker: string;
+  /** Slice R4-R1A — the answer is a question, so nobody could ever have SEEN it. */
+  s3QuestionBlocker: string;
   s3VagueGuidance: string;
   // step 3 capability (optional; applied by the Direction Copilot, editable here)
   s3CapabilityLabel: string;
@@ -459,6 +461,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s3Help: "Describe something another person could see or hear.",
     s3Placeholder: "e.g. The charge nurse reads the dosage back at every handoff before signing off.",
     s3Blocker: "Describe the new action.",
+    s3QuestionBlocker:
+      "That is a question, so nobody could say they saw it happen. Write what the person does \u2014 for example, \u201cBefore the huddle ends, name one owner and one deadline for each open action item.\u201d",
     s3VagueGuidance: "This sounds general. Try naming something someone could actually see or hear.",
     s3CapabilityLabel: "Capability (optional)",
     s3CapabilityHelp: "The ability this training builds. You can fill this from a suggested direction, or write your own.",
@@ -761,6 +765,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s3Help: "다른 사람이 보거나 들을 수 있는 것을 설명하세요.",
     s3Placeholder: "예: 담당 간호사가 인수인계마다 서명 전 투약량을 복창합니다.",
     s3Blocker: "새로운 행동을 설명해 주세요.",
+    s3QuestionBlocker:
+      "질문 형태라서 누군가가 그것을 보았다고 말할 수 없습니다. 그 사람이 무엇을 하는지를 써 주세요 — 예: “허들이 끝나기 전에 각 안건의 담당자 한 명과 기한 하나를 말한다.”",
     s3VagueGuidance: "다소 일반적입니다. 누군가 실제로 보거나 들을 수 있는 것을 적어 보세요.",
     s3CapabilityLabel: "역량 (선택)",
     s3CapabilityHelp: "이 훈련이 길러 주는 능력입니다. 제안된 방향에서 채우거나 직접 작성할 수 있습니다.",
