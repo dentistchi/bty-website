@@ -11,6 +11,7 @@ import { normalizeStyle } from '@/domain/performance-style';
 import { SearchQuerySchema } from '@/lib/validation';
 import { searchYoutube } from '@/lib/youtube.server';
 import { enrichItemsWithDuration } from '@/lib/youtube-duration.server';
+import { signYouTubeProvenance } from '@/lib/youtube-provenance.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,35 @@ export async function GET(req: NextRequest) {
   // full duration-cache hit costs zero. It never fails the response — an unresolved item comes
   // back `unknown` and stays selectable, so a duration outage can never block requesting.
   const items = await enrichItemsWithDuration(result.items);
+
+  // BUILD 26T-R1B-R6-R1B-R1 — attach server provenance.
+  //
+  // ONE factual `fetchedAt` for the whole response (§D): every item came from a single YouTube
+  // response, so per-item timestamps would be three ways of saying the same thing. But the SEAL is
+  // per item, because the client persists exactly one result and the proof must bind THAT
+  // snapshot — a response-level seal would let a fresh proof be attached to a different row.
+  //
+  // No seal is issued when provenance is unknown (legacy cache value, gated/degraded response).
+  // An unsealed item is still fully requestable; its write simply records NULL freshness, which
+  // retention handles fail-safe. Manufacturing a timestamp here is the one thing we must not do.
+  const fetchedAt = result.fetchedAt ?? null;
+  const sealed = fetchedAt
+    ? await Promise.all(
+        items.map(async (it) => ({
+          ...it,
+          youtubeProvenance: await signYouTubeProvenance(
+            {
+              videoId: it.videoId,
+              title: it.title,
+              channelTitle: it.channelTitle,
+              thumbnailUrl: it.thumbnailUrl,
+            },
+            Date.parse(fetchedAt),
+          ),
+        })),
+      )
+    : items;
+
   // result never contains the API key.
-  return NextResponse.json({ ...result, items });
+  return NextResponse.json({ ...result, items: sealed, youtubeFetchedAt: fetchedAt });
 }

@@ -33,6 +33,15 @@ export interface YoutubeSearchResponse {
    *  RESOURCE_EXHAUSTED / 403 quotaExceeded). Distinct from generic `degraded`. */
   quotaExceeded: boolean;
   items: YoutubeSearchItem[];
+  /**
+   * BUILD 26T-R1B-R6-R1B-R1 — the FACTUAL instant the server received this YouTube response,
+   * ISO-8601. Carried through a cache hit unchanged, because a cache hit is not a fetch.
+   *
+   * `undefined`/absent means the provenance is UNKNOWN — a legacy bare-array cache value, a gated
+   * or degraded response, or any path where no live response was observed. It is never populated
+   * from `now()` on a cache hit, and a downstream write records NULL rather than guessing.
+   */
+  fetchedAt?: string | null;
   /** the user's original (normalized) query, preserved for display. */
   query: string;
   /** biased query actually sent to YouTube / used for the fallback link. */
@@ -53,6 +62,36 @@ function apiKey(): string | null {
 
 function cacheKeyFor(biasedQuery: string): string {
   return `ytq:${biasedQuery}`;
+}
+
+/** BUILD 26T-R1B-R6-R1B-R1 — versioned search-cache envelope carrying factual fetch provenance. */
+export const SEARCH_CACHE_VERSION = 1 as const;
+
+export interface SearchCacheEnvelope {
+  version: typeof SEARCH_CACHE_VERSION;
+  /** ISO instant the server actually received the YouTube response. */
+  fetchedAt: string;
+  items: YoutubeSearchItem[];
+}
+
+/**
+ * Read either shape. A v1 envelope yields its factual `fetchedAt`; a LEGACY bare array yields
+ * `fetchedAt: null` — unknown, never invented. Anything unrecognised is treated as a miss so a
+ * corrupt value cannot masquerade as fresh data.
+ *
+ * Exported for tests: the legacy path is the one that must never gain a timestamp.
+ */
+export function readSearchCacheEnvelope(
+  raw: unknown,
+): { items: YoutubeSearchItem[]; fetchedAt: string | null } | null {
+  if (Array.isArray(raw)) return { items: raw as YoutubeSearchItem[], fetchedAt: null };
+  if (raw && typeof raw === 'object') {
+    const e = raw as Partial<SearchCacheEnvelope>;
+    if (e.version === SEARCH_CACHE_VERSION && Array.isArray(e.items) && typeof e.fetchedAt === 'string') {
+      return { items: e.items, fetchedAt: e.fetchedAt };
+    }
+  }
+  return null;
 }
 
 /** Typed upstream error so callers can distinguish a daily-quota 429 from other
@@ -155,9 +194,24 @@ export async function searchYoutubeWithCache(
     // Already-cached successful results are always served, even while the quota
     // circuit breaker is open.
     try {
-      const cached = (await kv.get(cacheKey, 'json')) as YoutubeSearchItem[] | null;
-      if (cached && cached.length) {
-        return { ok: true, gated: false, degraded: false, quotaExceeded: false, ...base, items: cached };
+      // BUILD 26T-R1B-R6-R1B-R1 — the cache now carries the FACTUAL YouTube fetch instant.
+      //
+      // A cache hit is NOT a YouTube fetch: it may be served up to an hour after the response it
+      // holds, so returning `now()` would manufacture freshness the server never observed. The
+      // envelope's own `fetchedAt` is returned unchanged.
+      //
+      // LEGACY BARE ARRAYS (written before this envelope existed) carry no fetch instant. They are
+      // returned with `fetchedAt` UNKNOWN rather than stamped — a downstream write then records
+      // NULL provenance, which retention treats fail-safe. They also self-heal: the existing 1h
+      // TTL retires the whole legacy population without a migration or extra quota.
+      const raw = (await kv.get(cacheKey, 'json')) as unknown;
+      const envelope = readSearchCacheEnvelope(raw);
+      if (envelope && envelope.items.length) {
+        return {
+          ok: true, gated: false, degraded: false, quotaExceeded: false, ...base,
+          items: envelope.items,
+          fetchedAt: envelope.fetchedAt,   // null for a legacy value — never invented
+        };
       }
     } catch {
       // cache read failure is non-fatal — fall through
@@ -175,14 +229,25 @@ export async function searchYoutubeWithCache(
 
   try {
     const items = await fetchItemsFromApi(biasedQuery, key);
+    const fetchedAtMs = Date.now();   // factual: the response is in hand
     if (kv && items.length) {
       try {
-        await kv.put(cacheKey, JSON.stringify(items), { expirationTtl: SEARCH_CACHE_TTL_SECONDS });
+        // The ONE place a factual fetch instant is minted: we have just received a live YouTube
+        // response, so this is the only moment `now()` is the truth.
+        const envelope: SearchCacheEnvelope = {
+          version: SEARCH_CACHE_VERSION,
+          fetchedAt: new Date(fetchedAtMs).toISOString(),
+          items,
+        };
+        await kv.put(cacheKey, JSON.stringify(envelope), { expirationTtl: SEARCH_CACHE_TTL_SECONDS });
       } catch {
         // cache write failure is non-fatal
       }
     }
-    return { ok: true, gated: false, degraded: false, quotaExceeded: false, ...base, items };
+    return {
+      ok: true, gated: false, degraded: false, quotaExceeded: false, ...base, items,
+      fetchedAt: new Date(fetchedAtMs).toISOString(),
+    };
   } catch (e) {
     const status = e instanceof YoutubeApiError ? e.status : undefined;
     const reason = e instanceof YoutubeApiError ? e.reason : '';
