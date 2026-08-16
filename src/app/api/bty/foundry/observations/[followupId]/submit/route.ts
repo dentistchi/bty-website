@@ -47,10 +47,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ followupId
 
   if (res.ok) return priv({ ok: true, outcome: res.outcome, observedOn: res.observedOn, created: res.created });
 
+  /*
+    `subject_identity_unresolved` joins `no_observable_standard` at 409 (Slice R4-R1): the
+    obligation is real and the caller is authorised, but the request could not be presented — so
+    nothing was written. It is mapped identically in the read route, so a client cannot see one
+    surface refuse and the other accept.
+  */
   const status =
     res.reason === "invalid_outcome" || res.reason === "invalid_date" || res.reason === "future_date"
       ? 400
-      : res.reason === "no_observable_standard"
+      : res.reason === "no_observable_standard" || res.reason === "subject_identity_unresolved"
         ? 409
         : res.reason === "error"
           ? 500

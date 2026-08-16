@@ -76,14 +76,22 @@ const seed = (over: Partial<Tables> = {}): Tables => ({
     },
   ],
   foundry_participant_followups: [
-    { id: "fu-1", event_id: "ev-1", user_id_snapshot: LEARNER, follow_up_days: 7 },
+    { id: "fu-1", event_id: "ev-1", progress_id: "prog-1", user_id_snapshot: LEARNER, follow_up_days: 7 },
   ],
   foundry_event_module: [{
     event_id: "ev-1",
     module_snapshot: { realityGroundedJourneyV1: { version: 1, displayTitle: "T", displayTitleStatus: "grounded",
       elements: [el("observable_standard", STANDARD)] } },
   }],
-  foundry_event_participants: [{ event_id: "ev-1", display_name: "Yoon Learner" }],
+  /*
+    Slice R4-R1 — the obligation's OWN lineage to a participant record. Before this slice the
+    fixture had no progress row at all and the card's name came from the event, which is exactly
+    why a multi-participant event could be mislabelled without a single test noticing.
+  */
+  foundry_event_training_progress: [
+    { id: "prog-1", event_id: "ev-1", participant_id: "p-1", linked_user_id: LEARNER },
+  ],
+  foundry_event_participants: [{ id: "p-1", event_id: "ev-1", display_name: "Yoon Learner" }],
   foundry_behavior_observations: [],
   ...over,
 });
@@ -215,9 +223,14 @@ describe("[3.2N] the card describes MY record, never a colleague's", () => {
 describe("[3.2N] privacy of the card", () => {
   it("carries only what the observation page carries — and no learner evidence", async () => {
     const t = seed({ foundry_behavior_observations: [obs()] });
-    // Private facts live on the progress row; this path never selects it.
+    /*
+      Private facts live on the progress row. Since Slice R4-R1 this path DOES read that row — for
+      three columns, to name the learner — so the assertion below is now a real one rather than a
+      statement about a row nobody selected.
+    */
     t.foundry_event_training_progress = [{
-      id: "p-1", event_id: "ev-1", response_text: "PRIVATE REFLECTION",
+      id: "prog-1", event_id: "ev-1", participant_id: "p-1", linked_user_id: LEARNER,
+      response_text: "PRIVATE REFLECTION",
       decision_response_text: "MY DECISION", shared_understanding_response: "SHARED ANSWER",
     }];
     const items = await listMyObservationOpportunities(makeAdmin(t), REVIEWER);
@@ -235,7 +248,7 @@ describe("[3.2N] privacy of the card", () => {
 
   it("the learner label comes from the SAME source as the observation page", async () => {
     // foundry_event_participants.display_name — so the card and the page it opens agree.
-    const t = seed({ foundry_event_participants: [{ event_id: "ev-1", display_name: "Room Name" }] });
+    const t = seed({ foundry_event_participants: [{ id: "p-1", event_id: "ev-1", display_name: "Room Name" }] });
     // An arena_profiles nickname must NOT be preferred, even when one exists.
     t.arena_profiles = [{ user_id: LEARNER, display_name: "Arena Nickname", sub_name: "sub" }];
     expect((await listMyObservationOpportunities(makeAdmin(t), REVIEWER))[0].learnerLabel).toBe("Room Name");

@@ -9,6 +9,7 @@ import {
   type OpportunityState,
 } from "@/domain/foundry/observation/observationOpportunity";
 import { resolveEdgeAuthority } from "@/lib/bty/arena/actionReviewAuthorityResolver.server";
+import { resolveObservationSubjects } from "./observationSubject";
 
 /**
  * WHAT REVIEW WORK IS AVAILABLE TO ME (Slice 3.2N).
@@ -95,6 +96,8 @@ async function reachableLearnerUserIds(admin: SupabaseClient, actorUserId: strin
 type ObligationRow = {
   id: string;
   event_id: string | null;
+  /** Slice R4-R1 — the lineage that names the learner. Without it there is no card to show. */
+  progress_id: string | null;
   user_id_snapshot: string;
   follow_up_days: number;
 };
@@ -122,7 +125,7 @@ export async function listMyObservationOpportunities(
   // 1. Their obligations. The obligation is the canonical parent: it binds learner + event.
   const { data: obligationRows } = await admin
     .from("foundry_participant_followups")
-    .select("id, event_id, user_id_snapshot, follow_up_days")
+    .select("id, event_id, progress_id, user_id_snapshot, follow_up_days")
     .in("user_id_snapshot", learnerIds)
     .limit(OBSERVATION_OPPORTUNITY_MAX + 1);
   const obligations = ((obligationRows ?? []) as ObligationRow[]).filter((o) => o.event_id);
@@ -207,18 +210,35 @@ export async function listMyObservationOpportunities(
     byFollowup.set(r.followup_id, list);
   }
 
-  // 5. Learner labels from the SAME source the observation page uses, so the card and the page
-  //    it opens never show one person under two different names (Slice 3.2N).
-  const { data: parts } = await admin
-    .from("foundry_event_participants")
-    .select("event_id, display_name")
-    .in("event_id", eventIds);
-  const labelByEvent = new Map<string, string>();
-  for (const p of (parts ?? []) as Array<{ event_id: string; display_name: string | null }>) {
-    if (!labelByEvent.has(p.event_id)) labelByEvent.set(p.event_id, (p.display_name ?? "").trim());
-  }
+  /*
+    5. WHO EACH CARD IS ABOUT (Slice R4-R1).
 
-  const cards: ObservationOpportunity[] = authorized.map((o) => {
+    Keyed by the OBLIGATION, never by the event. The previous read built a label per EVENT from
+    whichever participant row came back first, so every learner in a multi-participant training
+    was shown under one — arbitrary — name, and the card could name a different person from the
+    page it opened.
+
+    Same resolver as `getObservationRequest`, so the required invariant
+
+        card label == observer page label == the obligation's actual learner
+
+    holds because both sides ask ONE function, not because two implementations happen to agree.
+    An obligation whose subject cannot be resolved yields no entry, and its card is dropped below
+    — a reviewer is never offered work whose subject BTY cannot name.
+  */
+  const subjectByFollowup = await resolveObservationSubjects(
+    admin,
+    authorized.map((o) => ({
+      followupId: o.id,
+      eventId: o.event_id,
+      progressId: o.progress_id,
+      learnerUserId: o.user_id_snapshot,
+    })),
+  );
+  const named = authorized.filter((o) => subjectByFollowup.has(o.id));
+  if (named.length === 0) return [];
+
+  const cards: ObservationOpportunity[] = named.map((o) => {
     const eventId = o.event_id as string;
     const behavior = standardByEvent.get(eventId) as string;
     const evidence = deriveSustainedEvidence(byFollowup.get(o.id) ?? [], {
@@ -229,7 +249,8 @@ export async function listMyObservationOpportunities(
     const view = observationOpportunityView(evidence);
     return {
       followupId: o.id,
-      learnerLabel: labelByEvent.get(eventId) ?? "",
+      // Non-empty by construction — `named` kept only obligations the resolver could name.
+      learnerLabel: subjectByFollowup.get(o.id)!.displayName,
       behavior,
       state: view.state,
       firstObservedOn: view.firstObservedOn,
@@ -242,11 +263,14 @@ export async function listMyObservationOpportunities(
     Belt-and-braces: the pure predicate runs over the assembled facts, so a card can only ship
     if the domain also agrees it is one. Everything above narrows; this decides.
   */
+  // Indexed against `named` — the list `cards` was actually built from. Indexing `authorized`
+  // here would read a different obligation's authority once any card is dropped for an
+  // unresolvable subject (Slice R4-R1).
   const kept = cards.filter((c, i) =>
     isObservationOpportunity({
-      authorityAllowed: allowedLearner.get(authorized[i]!.user_id_snapshot) === true,
+      authorityAllowed: allowedLearner.get(named[i]!.user_id_snapshot) === true,
       obligationExists: true,
-      learnerUserId: authorized[i]!.user_id_snapshot,
+      learnerUserId: named[i]!.user_id_snapshot,
       observableStandard: c.behavior,
     }),
   );

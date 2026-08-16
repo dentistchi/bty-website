@@ -46,9 +46,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ followupId
   const { followupId } = await ctx.params;
   const res = await getObservationRequest(admin, user.id, followupId);
   if (!res.ok) {
-    // `not_authorized` is answered exactly like `not_found` on purpose.
-    const status = res.reason === "no_observable_standard" ? 409 : 404;
-    return priv({ ok: false, error: res.reason === "no_observable_standard" ? res.reason : "not_found" }, status);
+    /*
+      Two refusals are disclosed as themselves, and only to a caller who already passed the
+      authority check: `no_observable_standard` (nothing to watch for) and, since Slice R4-R1,
+      `subject_identity_unresolved` (nobody we can honestly name). Everything else — including
+      `not_authorized` — is answered exactly like `not_found`, so the existence of a request
+      cannot be probed by someone with no standing to see it.
+    */
+    const disclosable = res.reason === "no_observable_standard" || res.reason === "subject_identity_unresolved";
+    return priv({ ok: false, error: disclosable ? res.reason : "not_found" }, disclosable ? 409 : 404);
   }
   return priv({ ok: true, request: res.value });
 }

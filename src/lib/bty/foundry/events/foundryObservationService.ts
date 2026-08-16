@@ -14,6 +14,7 @@ import {
 import { userDayKey } from "@/domain/daily/userDayKey";
 import { isValidIanaTz } from "@/lib/bty/daily/userDay";
 import { resolveEdgeAuthority } from "@/lib/bty/arena/actionReviewAuthorityResolver.server";
+import { resolveObservationSubject } from "./observationSubject";
 
 /**
  * INDEPENDENT OBSERVATION OF A GUIDED BEHAVIOUR (Slice 3.2M-4).
@@ -54,7 +55,14 @@ export type ObservationRequest = {
 export type ObservationUnavailable =
   | "not_found"
   | "not_authorized"
-  | "no_observable_standard";
+  | "no_observable_standard"
+  /**
+   * The obligation exists and the caller is authorised, but BTY cannot say WHO they would be
+   * attesting about (Slice R4-R1). Distinct from `no_observable_standard`, which is "there is no
+   * behaviour to watch for": this one is "there is no person we can honestly name". Both are
+   * refusals to present a request at all — never a request with a placeholder in it.
+   */
+  | "subject_identity_unresolved";
 
 export type SubmitObservationResult =
   | { ok: true; outcome: ObservationOutcome; observedOn: string; created: boolean }
@@ -63,6 +71,8 @@ export type SubmitObservationResult =
 type ObligationRow = {
   id: string;
   event_id: string | null;
+  /** Slice R4-R1 — the lineage that reaches the participant record, and therefore the name. */
+  progress_id: string | null;
   user_id_snapshot: string;
   follow_up_days: number;
   timezone_snapshot: string | null;
@@ -72,7 +82,7 @@ async function loadObligation(admin: SupabaseClient, followupId: string): Promis
   if (!followupId) return null;
   const { data } = await admin
     .from("foundry_participant_followups")
-    .select("id, event_id, user_id_snapshot, follow_up_days, timezone_snapshot")
+    .select("id, event_id, progress_id, user_id_snapshot, follow_up_days, timezone_snapshot")
     .eq("id", followupId)
     .maybeSingle<ObligationRow>();
   return data ?? null;
@@ -214,12 +224,25 @@ export async function getObservationRequest(
   const standard = await loadObservableStandard(admin, ob.event_id);
   if (!standard) return { ok: false, reason: "no_observable_standard" };
 
-  const { data: learner } = await admin
-    .from("foundry_event_participants")
-    .select("display_name")
-    .eq("event_id", ob.event_id)
-    .limit(1)
-    .maybeSingle<{ display_name: string }>();
+  /*
+    WHO THEY ARE BEING ASKED ABOUT (Slice R4-R1).
+
+    Resolved through the OBLIGATION'S OWN LINEAGE — progress_id → participant_id → display_name —
+    so the human named on this screen is the same human `learner_user_id_snapshot` will record.
+    The previous read took the first participant of the EVENT, which on a multi-participant event
+    named somebody else entirely.
+
+    FAIL CLOSED. If the chain is broken or contradicts itself the request is refused outright: an
+    observer who cannot be told who they are attesting about cannot give meaningful evidence, and
+    a blank or guessed name would produce exactly the false attestation this slice removes.
+  */
+  const subject = await resolveObservationSubject(admin, {
+    followupId: ob.id,
+    eventId: ob.event_id,
+    progressId: ob.progress_id,
+    learnerUserId: ob.user_id_snapshot,
+  });
+  if (!subject) return { ok: false, reason: "subject_identity_unresolved" };
 
   const mine = (await listObservations(admin, followupId)).filter((o) => o.observerUserId === observerUserId);
 
@@ -227,7 +250,7 @@ export async function getObservationRequest(
     ok: true,
     value: {
       followupId: ob.id,
-      learnerDisplayName: learner?.display_name ?? "",
+      learnerDisplayName: subject.displayName,
       observableStandard: standard,
       maxObservedOn: latestReportableDay(ob, now),
       myObservations: mine.map((o) => ({

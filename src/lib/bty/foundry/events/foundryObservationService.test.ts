@@ -82,7 +82,15 @@ const el = (kind: string, content: string, status = "grounded") => ({
 
 const seed = (over: Partial<Tables> = {}): Tables => ({
   foundry_participant_followups: [
-    { id: FOLLOWUP, event_id: "ev-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "UTC" },
+    { id: FOLLOWUP, event_id: "ev-1", progress_id: "prog-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "UTC" },
+  ],
+  /*
+    Slice R4-R1 — the lineage that names the learner: obligation → progress → participant. The
+    pre-R4-R1 fixture had none, because the service reached the name through the EVENT instead,
+    which is the defect this slice removes.
+  */
+  foundry_event_training_progress: [
+    { id: "prog-1", event_id: "ev-1", participant_id: "p-1", linked_user_id: LEARNER },
   ],
   foundry_event_module: [{
     event_id: "ev-1",
@@ -277,7 +285,7 @@ describe("[3.2M-5] the occurrence date, and the idempotency boundary that depend
     const late = new Date("2026-08-20T20:00:00Z");
     const t = seed({
       foundry_participant_followups: [
-        { id: FOLLOWUP, event_id: "ev-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "Pacific/Auckland" },
+        { id: FOLLOWUP, event_id: "ev-1", progress_id: "prog-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "Pacific/Auckland" },
       ],
     });
     const { admin } = makeAdmin(t);
@@ -297,7 +305,7 @@ describe("[3.2M-5] the occurrence date, and the idempotency boundary that depend
   it("a missing or invalid stored timezone falls back to UTC rather than failing", async () => {
     const t = seed({
       foundry_participant_followups: [
-        { id: FOLLOWUP, event_id: "ev-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "Mars/Olympus" },
+        { id: FOLLOWUP, event_id: "ev-1", progress_id: "prog-1", user_id_snapshot: LEARNER, follow_up_days: 7, timezone_snapshot: "Mars/Olympus" },
       ],
     });
     const { admin } = makeAdmin(t);
@@ -393,9 +401,14 @@ describe("[3.2M-5] SUSTAINED, assembled from the obligation's own identity", () 
 describe("[3.2M-4] the observer sees only what they need", () => {
   it("no private learner evidence reaches the observer payload", async () => {
     const t = seed();
-    // Private facts live on the progress row; the observer path never selects it.
+    /*
+      Private facts live on the progress row. Since Slice R4-R1 the observer path DOES read that
+      row — for three columns, to name the learner — so this assertion is no longer vacuous: the
+      private text is now genuinely present in a row the code touches, and still must not appear.
+    */
     t.foundry_event_training_progress = [{
-      id: "p-1", event_id: "ev-1", response_text: "PRIVATE REFLECTION",
+      id: "prog-1", event_id: "ev-1", participant_id: "p-1", linked_user_id: LEARNER,
+      response_text: "PRIVATE REFLECTION",
       decision_response_text: "MY DECISION", shared_understanding_response: "SHARED ANSWER",
     }];
     const { admin } = makeAdmin(t);
