@@ -1,69 +1,87 @@
-# App Store product-page screenshots — FINAL, Release build 106
+# App Store 1.0 — Public Screenshot Provenance
 
-**`PUBLIC_SCREENSHOTS = FINAL_RECAPTURED_NOT_UPLOADED` — 2026-08-15. Not uploaded to ASC.**
+**Current deliverables: Release build 109**, Founder-approved after physical inspection
+(`PHYSICAL_109_VISUAL = PASS`, BUILD 26T-R1B-R6-R1B-R13). **Not uploaded to App Store Connect.**
 
-Captured on the physical iPhone from **Release build 106**, the build whose UI passed the physical
-gate: FREE/PRO/store surface retired, `Waiting` rendering horizontally, and the official
-*developed with YouTube* mark legible above live search results.
+---
 
-## The set
+## Why build-106 assets were replaced
 
-| Deliverable | Source | Captured | Content |
+Builds 107 and 108 changed the visible Host and Guest compositions, and 107/108 also carried a
+real Guest status-bar occlusion defect found by physical inspection — not by any test. The
+build-106 captures were therefore no longer truthful product screenshots of the shipping binary.
+They are preserved, not deleted, under `historical/build-106/`.
+
+---
+
+## Deliverables
+
+The originals are RGB with **no alpha channel**, so no normalization, compositing, cropping,
+resizing, retouching or re-encoding was performed. Each deliverable is a **byte-for-byte copy** of
+its source, verified with `cmp`.
+
+| Deliverable | Source | Dimensions | Format | Normalized | SHA-256 (source **and** deliverable) |
+|---|---|---|---|---|---|
+| `01-host-dj-queue.png` | `IMG_2422.PNG` | 1320×2868 | PNG, RGB, no alpha | NO | `032a9349a49df16a793c6ac56ba912c7fa971d07bebc06fb3b3978c5834f304d` |
+| `02-guest-song-search.png` | `IMG_2423.PNG` | 1320×2868 | PNG, RGB, no alpha | NO | `bedf454dc825ad5dcd236bd8fe3d790ed7ed2ef1dfab122ec1d0f40fee781520` |
+| `03-guest-turn-ready.png` | `IMG_2421.PNG` | 1320×2868 | PNG, RGB, no alpha | NO | `c427e58afdd541d5f69fe682be2be4d5fbeac807d846686a69380f1a52b443a4` |
+
+**source == deliverable: YES** for all three (identical SHA-256; `cmp` reports no difference).
+
+Untouched originals: `source/build-109/`.
+
+### These are the ORIGINAL iPhone captures
+The ChatGPT-uploaded copies (942×2048 RGBA) were **not** used and are not present in this tree.
+Native dimensions 1320×2868 confirm these came off the device.
+
+---
+
+## Metadata review
+
+Every file carries `sRGB`, `eXIf` (250 B), `pHYs` and `iTXt` (931 B) chunks. Both metadata-bearing
+chunks were decoded rather than assumed:
+
+- **eXIf IFD0 tags:** `ImageDescription = "Screenshot"`, `Orientation = 1`, `XResolution`,
+  `YResolution`, `ResolutionUnit`, `DateTime`, `ExifIFDPointer`.
+- **GPS IFD (0x8825): ABSENT** in all three. Spotlight also reports null latitude/longitude.
+- **iTXt:** Adobe XMP containing only `exif:UserComment = "Screenshot"`, `xmp:ModifyDate` and
+  `tiff:Orientation`.
+
+No location, device serial, owner name, or account identifier is present. The only timestamp is
+the capture time, which already matches the visible status-bar clock.
+
+---
+
+## Content verification (each image inspected, not inferred)
+
+| Check | 01 Host | 02 Guest search | 03 Guest turn ready |
 |---|---|---|---|
-| `01-host-dj-queue.png` | `IMG_2408.PNG` | 12:36 | Host tab · BTY Demo Room · Ready *Amazing Grace* · Play First Song |
-| `02-guest-song-search.png` | `IMG_2409.PNG` | 12:38 | Guest tab · LIVE · 0 songs waiting · Karaoke · **mark above results** |
-| `03-guest-turn-ready.png` | `IMG_2407.PNG` | 12:35 | Guest tab · Your turn is coming up · Ready · **mark above live results** |
+| Status bar clean, no occlusion | ✅ 8:36 | ✅ 8:37 | ✅ 8:36 |
+| Header below the safe area (the R12 repair, at rest) | ✅ | ✅ | ✅ |
+| "Developed with YouTube" | absent — **correct**, this is not a live-API surface | ✅ present | ✅ present |
+| FREE / PRO / Access Status / Buy Pass / store UI | ✅ none | ✅ none | ✅ none |
+| DEBUG / internal text | ✅ none | ✅ none | ✅ none |
+| Private user information | ✅ none (guest name is literally "Guest") | ✅ none | ✅ none |
+| Prior-app return indicator | ✅ none | ✅ none | ✅ none |
 
-## Verification — every file
+Composition matches the Founder-approved description for each slot: Host queue with
+*No song is playing* / *Amazing Grace · Traditional · Guest* / Ready / Play First Song;
+Guest clean search with *Pick your song for today* / Karaoke selected / live results;
+Guest turn-ready with *Your turn is coming up* / Ready / *You're up very soon*.
 
-```
-dimensions        1320 × 2868   native iPhone 17 Pro Max, an accepted 6.9" size
-PNG colortype     2 (RGB, NO alpha)  →  ASC's alpha prohibition satisfied at source
-normalization     NOT REQUIRED — unlike the earlier IAP asset, these arrived alpha-free
-deliverable       BYTE-IDENTICAL to its source (same SHA-256), so "unmodified" is provable
-                  rather than asserted
-EXIF              ImageDescription/Orientation/DateTime only — NO GPS IFD, no Make/Model/Software
-```
+---
 
-```
-01-host-dj-queue.png      source == deliverable
-  dc8b21f626afdd30cd20e81433d2b8f17f35b97d5dbad48144e94e69d30d1eb2
-02-guest-song-search.png  source == deliverable
-  e7daf2138ba6d83c3497996e2a276fb832812a0e1b4a7395df323c26351e7f15
-03-guest-turn-ready.png   source == deliverable
-  6149c244cbdbab81e523e3a8361b1eeac857faed81558839f98a1a8d81fb8c16
-```
+## Historical
 
-## Content checks — each image inspected, not assumed
+- `historical/build-106/` — the superseded build-106 deliverables and their originals.
+  `01` `dc8b21f6…`, `02` `e7daf213…`, `03` `6149c244…`
+- `historical/build-103/` — earlier assets, retained.
 
-```
-prior-app return indicator   ABSENT — no "◀ btyARENA"; this is what disqualified the first attempt
-top safe-area layout         normal on all three; none scrolled under the status bar
-DEBUG / internal text        none
-retired quota / pass UI      none — no FREE 15m, no PRO, no Access Status, no Buy a pass,
-                             no product cards, no "not on sale", no 15-minute ceiling
-private data                 none — the only name shown is the review account's own "Guest"
-developed with YouTube       PRESENT on 02 and 03, above the live YouTube API results.
-                             ABSENT on 01, correctly: the host queue renders BTY's stored
-                             request snapshots, not live API data.
-```
+Superseded, never deleted: each remains the evidence of what a given build actually looked like.
 
-That last line is the census (`J3 §A`) showing up in the artifacts: the mark appears exactly where
-the API has a presence and nowhere else, and the screenshots are consistent with the code.
+---
 
-## Historical assets preserved, not overwritten
+## Holds
 
-```
-historical/build-103/          the earlier approved set + its untouched sources
-historical/build-103/source/
-```
-
-Build-103 captures predate the retirement and the attribution mark, so they could not be reused —
-but they are evidence of an approved state and were moved, never deleted or overwritten in place.
-The build-105 physical captures were rejected as product-page assets (return indicator, scrolled
-safe area) and remain the Founder's own device evidence rather than repo artifacts.
-
-## Not uploaded
-
-Correct order remains: apply E1 to production under its own authorization, then the ASC metadata,
-notes and screenshots. Until E1 is applied the shipped binary and the server contract disagree.
+Not uploaded to App Store Connect. Build 109 not uploaded. No ASC metadata written, no Content
+Rights interaction, no IAP activation, no Add for Review, no submission.
