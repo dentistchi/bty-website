@@ -54,10 +54,13 @@ import { POST } from './route';
 const call = (body: unknown) =>
   POST({ json: async () => body } as never, { params: Promise.resolve({ slug: 'bty-home' }) });
 
+// This fixture stands in for the PROJECTION's output, so it must carry every field the real
+// projection emits — R6 §D added `youtubeUnavailable`. Omitting it here would make the allowlist
+// assertion below pass against a shape the server never actually returns.
 const resolvedRow = (requestId: string, over: Record<string, unknown> = {}) => ({
   requestId, videoId: 'v1', title: 'T', channelTitle: null, thumbnailUrl: null,
   status: 'removed', resolutionCode: 'host_removed', resolvedAt: '2026-08-08T10:00:00.000Z',
-  eventId: 'evt-1', ...over,
+  eventId: 'evt-1', youtubeUnavailable: false, ...over,
 });
 
 beforeEach(() => {

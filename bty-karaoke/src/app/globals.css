@@ -4312,3 +4312,12 @@ main[data-theme='warm_stage'] {
   opacity: 0.9;   /* subordinate to BTY's own headings — never the dominant element */
 }
 .dwyt img { width: auto; }   /* preserves the official 700x250 ratio; no filter, no tint */
+
+/* BUILD 26T-R1B-R6-R1B-R7 — the queue row's unavailable explanation. Muted, because it is an
+   explanation of an absence, not a second title competing with the guest's name. */
+.q-unavailable {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  opacity: 0.72;
+}

@@ -111,7 +111,9 @@ describe('V8.1 Admin UI — ONE player surface, TV QUEUE PREP gone', () => {
   });
 
   it('the player subject is the earliest READY song (ready-first, reused)', () => {
-    expect(djBoard).toContain('const firstReady = displayQueue.find((r) => r.ready_at != null)');
+    // EVOLVED by R6 §E. Ready-first is unchanged — that is what this has always protected.
+    // A second condition now joins it so an unavailable song is never the play subject.
+    expect(djBoard).toContain('const firstReady = displayQueue.find((r) => r.ready_at != null && isPlayable(r))');
   });
 
   it('State A (nobody Ready) shows the waiting message and NO button', () => {

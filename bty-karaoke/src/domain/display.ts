@@ -36,6 +36,14 @@ export interface DisplayRequest {
    * SINGING: a song change swaps the whole `playing` object atomically.
    */
   lyrics?: LyricsView;
+  /**
+   * R6 §D/§E — a factual retention refresh determined this item HARD_UNAVAILABLE and cleared its
+   * API Data. Renderers use THIS, never a null test on `videoId`: null also means legacy or
+   * incomplete, and refusing to play those would be a different and wrong rule.
+   */
+  youtubeUnavailable?: boolean;
+  /** Approved explanatory copy, where the layout supports body text. */
+  unavailableBody?: string;
 }
 
 /**

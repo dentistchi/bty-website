@@ -246,6 +246,11 @@ describe('BUILD 25 — projection allowlist', () => {
       'resolutionCode',
       'resolvedAt',
       'eventId',
+      // EVOLVED by R6 §D. This allowlist exists so a field reaches a Guest only deliberately —
+      // so the correct response to a new field is to ADD it here on purpose, never to loosen the
+      // assertion. `youtubeUnavailable` is a boolean about YouTube content, carrying no customer
+      // data and no private BTY state.
+      'youtubeUnavailable',
     ]);
   });
 

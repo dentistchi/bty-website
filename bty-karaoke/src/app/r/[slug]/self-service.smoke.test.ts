@@ -175,7 +175,10 @@ describe('Admin console is the SINGLE "next song" player (V9.0)', () => {
   });
 
   it('the player subject is the earliest READY song (ready-first, reused)', () => {
-    expect(dj).toContain('const firstReady = displayQueue.find((r) => r.ready_at != null)');
+    // EVOLVED by R6 §E. The historical contract was `ready_at != null` alone; a second
+    // condition now joins it, because an unavailable song must not be the play subject.
+    // Ready-first is UNCHANGED — that is what this assertion has always protected.
+    expect(dj).toContain('const firstReady = displayQueue.find((r) => r.ready_at != null && isPlayable(r))');
     expect(dj).toContain('READY TO PLAY');
   });
 

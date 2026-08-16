@@ -112,6 +112,12 @@ export interface ResolvedRequestView {
   resolutionCode: DisplayResolution;
   resolvedAt: string | null;
   eventId: string | null;
+  /**
+   * R6 §D — the YouTube content behind this historical request is HARD_UNAVAILABLE. A SEPARATE
+   * axis from `status`/`resolutionCode`: a skipped request stays skipped and a completed one stays
+   * completed. Unavailability never retroactively rewrites what happened to the request.
+   */
+  youtubeUnavailable?: boolean;
 }
 
 /** The allowlist, as data — the contract test asserts a response has exactly these keys. */
@@ -125,6 +131,7 @@ export const RESOLVED_VIEW_KEYS: readonly (keyof ResolvedRequestView)[] = [
   'resolutionCode',
   'resolvedAt',
   'eventId',
+  'youtubeUnavailable',
 ];
 
 /** How many resolved rows one owner-only call may return. Bounded so a caller cannot */

@@ -31,6 +31,7 @@ import { type NoPromoteReason } from '@/domain/queue-assist';
 import { requestDisplayTitle } from '@/domain/request-view';
 import { displaySong } from '@/domain/song-title';
 import { displayStatsFrom, type DisplayRequest, type DisplayState } from '@/domain/display';
+import { unavailableCopy } from '@/domain/youtube-unavailable';
 import { lyricsViewFor, sanitizeLyrics } from '@/domain/lyrics';
 import type { StatRequest } from '@/domain/event-stats';
 
@@ -1509,19 +1510,26 @@ export function toGuestPublicRequest(r: KaraokeRequest): GuestPublicRequest {
 // credential — only what is already visible in the room (name, singer names,
 // public YouTube ids, queue order).
 
-function toDisplayRequest(r: KaraokeRequest, opts?: { withLyrics?: boolean }): DisplayRequest {
+function toDisplayRequest(r: KaraokeRequest, opts?: { withLyrics?: boolean; locale?: string | null }): DisplayRequest {
   // V1.3: normalize the song/artist for the human-first Display (strip karaoke / MR /
   // official-video noise). Falls back to the plain label when nothing usable survives.
   const norm = displaySong(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title);
   const base: DisplayRequest = {
     id: r.id,
     guestName: r.guest_name,
-    title: requestDisplayTitle(r),
+    title: requestDisplayTitle(r, opts?.locale),
     artist: r.youtube_channel_title,
-    songTitle: norm.song || requestDisplayTitle(r),
+    songTitle: norm.song || requestDisplayTitle(r, opts?.locale),
     songArtist: norm.artist,
     videoId: r.youtube_video_id,
     videoKind: classifyVideo(r.youtube_title ?? r.search_query ?? '', r.youtube_channel_title ?? ''),
+    // R6 §D/§E — the explicit state travels with the row so a renderer never has to infer it.
+    // The stale-metadata question does not arise: the DB CHECK makes a marker coexisting with
+    // any surviving title/channel/thumbnail/id unrepresentable, so an unavailable row HAS none.
+    youtubeUnavailable: r.youtube_metadata_unavailable_at != null,
+    ...(r.youtube_metadata_unavailable_at != null
+      ? { unavailableBody: unavailableCopy(opts?.locale).body }
+      : {}),
     thumbnailUrl: r.youtube_thumbnail_url,
     status: r.status === 'playing' ? 'playing' : 'waiting',
     ready: r.ready_at != null,

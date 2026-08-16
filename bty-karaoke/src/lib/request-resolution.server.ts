@@ -52,7 +52,7 @@ export async function verifyOwnedClaims(
  *  table later cannot silently start reaching Guests. */
 const RESOLVED_COLUMNS =
   'id, youtube_video_id, youtube_title, youtube_channel_title, youtube_thumbnail_url, ' +
-  'status, resolution_code, resolved_at, event_id';
+  'status, resolution_code, resolved_at, event_id, youtube_metadata_unavailable_at';
 
 interface ResolvedRow {
   id: string;
@@ -64,6 +64,7 @@ interface ResolvedRow {
   resolution_code: string | null;
   resolved_at: string | null;
   event_id: string | null;
+  youtube_metadata_unavailable_at: string | null;
 }
 
 /**
@@ -80,6 +81,11 @@ function toView(r: ResolvedRow): ResolvedRequestView {
     title: r.youtube_title ?? null,
     channelTitle: r.youtube_channel_title ?? null,
     thumbnailUrl: r.youtube_thumbnail_url ?? null,
+    // R6 §D — the YouTube availability axis, added key by key like every other field here. It
+    // does NOT touch `status` or `resolutionCode`: a request that was skipped stays skipped, and
+    // a completed one stays completed. Unavailability is about the content, never about what
+    // historically happened to the request.
+    youtubeUnavailable: r.youtube_metadata_unavailable_at != null,
     // Narrowed by the query itself (`resolution_code is not null` implies a non-normal terminal
     // status via the DB CHECK), so this cast cannot smuggle 'waiting'/'playing'/'completed'.
     status: r.status === 'skipped' ? 'skipped' : 'removed',

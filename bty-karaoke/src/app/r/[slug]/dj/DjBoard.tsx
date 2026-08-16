@@ -32,6 +32,8 @@ import {
   type DragRowRect,
 } from '@/domain/reorder';
 import { requestDisplayTitle } from '@/domain/request-view';
+import { isPlayable } from '@/domain/play-flow';
+import { unavailableCopy } from '@/domain/youtube-unavailable';
 import { displaySong } from '@/domain/song-title';
 import { formatEventDuration } from '@/domain/live-presence';
 import { badgeForVideo } from '@/domain/video-kind';
@@ -58,7 +60,10 @@ function VideoKindBadge({ title, channel }: { title: string; channel: string | n
 // so the overlay is a pixel-identical copy of the card being dragged.
 function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: number; isNew: boolean }) {
   const d = displaySong(r.youtube_title ?? '', r.youtube_channel_title);
-  const song = d.song || requestDisplayTitle(r);
+  // R6 §E — the DJ console is a Korean-facing surface, so the approved KO copy is what a host
+  // reads here. The wording comes from the one shared source; it is never re-typed per surface.
+  const unavailable = !isPlayable(r);
+  const song = d.song || requestDisplayTitle(r, unavailable ? 'ko' : undefined);
   return (
     <>
       <span className="q-pos">{String(index + 1).padStart(2, '0')}</span>
@@ -68,8 +73,17 @@ function QueueCardContent({ r, index, isNew }: { r: KaraokeRequest; index: numbe
           {r.guest_name}
         </div>
         <div className="q-song">{song}</div>
-        {d.artist && <div className="q-artist">{d.artist}</div>}
-        <VideoKindBadge title={r.youtube_title ?? ''} channel={r.youtube_channel_title} />
+        {/* An unavailable row keeps its guest and its place in the queue — the BTY record stays
+            visible and explained. Only the YouTube identity is gone, and the badge that classifies
+            a video from its title would be classifying nothing. */}
+        {unavailable ? (
+          <div className="q-unavailable">{unavailableCopy('ko').body}</div>
+        ) : (
+          <>
+            {d.artist && <div className="q-artist">{d.artist}</div>}
+            <VideoKindBadge title={r.youtube_title ?? ''} channel={r.youtube_channel_title} />
+          </>
+        )}
       </div>
     </>
   );
@@ -496,7 +510,11 @@ export default function DjBoard({
   // `firstReady` = the earliest-position waiting song whose guest is Ready — the song
   // the "▶ 다음 곡 재생" button plays next (an un-ready song ahead never blocks it).
   // null → nobody is ready → State A (no button). The Display owns "who is singing now".
-  const firstReady = displayQueue.find((r) => r.ready_at != null) ?? null;
+  // R6 §E — the play target must be the earliest Ready song that is actually PLAYABLE. An
+  // unavailable row is skipped here rather than hidden: it stays visible in the queue with its
+  // BTY history intact, it simply stops being what the button plays. `isPlayable` reads the raw
+  // backend state directly, so no adapter sits between the database fact and this decision.
+  const firstReady = displayQueue.find((r) => r.ready_at != null && isPlayable(r)) ?? null;
 
   async function showGuestQr() {
     setLoadingQr(true);
