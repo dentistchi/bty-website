@@ -45,6 +45,23 @@ type CheckInAgainTarget = {
 };
 
 /**
+ * A follow-up on this record that has NO answer yet (Slice 3.2R-R3-R2).
+ *
+ * A SEPARATE LIST, NOT A FLAG ON THE ONE ABOVE. Today now stops asking about an unanswered
+ * follow-up after its 7-day attention window, so this is the route that keeps it reachable — and
+ * it must never borrow the other CTA's words. "Check in again" and "You reported earlier" are
+ * both false for someone who has not reported at all. Keeping them as two typed lists means this
+ * component cannot conflate them even by accident: there is no status string here to branch on.
+ *
+ * The SERVER decides membership (it owns the clock, the reader timezone and the BTY-day frame).
+ * This surface renders what it was handed and infers nothing.
+ */
+type OpenFollowUpTarget = {
+  followupId: string;
+  followUpDays: number;
+};
+
+/**
  * Reviewed Action Plan card (Slice 3.1B-3N-5D.1). An approved Field Action = a reviewer
  * reviewed & ACCEPTED the learner's submitted PLAN. Deliberately carries NO reviewer identity,
  * NO audit internals, NO private reflection — and the copy never implies Applied/Observed.
@@ -87,6 +104,9 @@ const COPY: Record<Locale, {
   /** Slice 3.2R-R3-R1 — the return route to a follow-up that can still take a later report. */
   checkInAgain: string;
   checkInAgainAt: (days: number) => string;
+  /** Slice 3.2R-R3-R2 — the return route to a follow-up with no answer yet. Never "again". */
+  followUp: string;
+  followUpAt: (days: number) => string;
 }> = {
   en: {
     title: "My Learning",
@@ -120,6 +140,11 @@ const COPY: Record<Locale, {
     checkInAgain: "Check in again",
     // Only used when a record carries more than one checkpoint, so the two CTAs are tellable apart.
     checkInAgainAt: (days) => `Check in again · ${days}-day follow-up`,
+    // No "again", no "still", no "overdue". There is no earlier answer to refer back to and no
+    // deadline to press on: the checkpoint arrived, and this is the way in — whenever the learner
+    // gets to it. The parallel "· N-day follow-up" suffix is the shipped multi-checkpoint pattern.
+    followUp: "Follow up",
+    followUpAt: (days) => `Follow up · ${days}-day follow-up`,
   },
   ko: {
     title: "내 학습",
@@ -147,6 +172,9 @@ const COPY: Record<Locale, {
     moduleVersion: (v) => `모듈 v${v}`,
     checkInAgain: "다시 확인하기",
     checkInAgainAt: (days) => `다시 확인하기 · ${days}일 후 확인`,
+    // "다시"(again) is deliberately absent — there is no earlier answer.
+    followUp: "확인하기",
+    followUpAt: (days) => `확인하기 · ${days}일 후 확인`,
   },
 };
 
@@ -192,6 +220,9 @@ export default function FoundryMyLearning({
   // entryId → follow-ups the SERVER says can still take a later check-in (Slice 3.2R-R3-R1).
   // Absent/empty = no CTA. This surface never decides eligibility; it renders what it was told.
   const [checkInAgain, setCheckInAgain] = useState<Map<string, CheckInAgainTarget[]>>(new Map());
+  // entryId → follow-ups the SERVER says are still awaiting a FIRST answer (Slice 3.2R-R3-R2).
+  // Kept apart from the map above so the two CTAs can never be rendered with each other's words.
+  const [openFollowUp, setOpenFollowUp] = useState<Map<string, OpenFollowUpTarget[]>>(new Map());
 
   const load = useCallback(async () => {
     try {
@@ -235,10 +266,12 @@ export default function FoundryMyLearning({
           entryId?: string;
           established?: string[];
           checkInAgain?: Array<{ followupId?: string; followUpDays?: number; outcome?: string }>;
+          openFollowUp?: Array<{ followupId?: string; followUpDays?: number }>;
         }>;
       };
       const next = new Map<string, EvidenceLevel[]>();
       const nextCheckIn = new Map<string, CheckInAgainTarget[]>();
+      const nextOpen = new Map<string, OpenFollowUpTarget[]>();
       for (const it of Array.isArray(data?.items) ? data.items : []) {
         const id = String(it.entryId ?? "");
         if (!id) continue;
@@ -259,9 +292,18 @@ export default function FoundryMyLearning({
           }))
           .filter((c) => c.followupId !== "");
         if (targets.length > 0) nextCheckIn.set(id, targets);
+        // Identity first, same as above: no durable id → no door, rather than a door to a guess.
+        const open = (Array.isArray(it.openFollowUp) ? it.openFollowUp : [])
+          .map((c) => ({
+            followupId: String(c.followupId ?? ""),
+            followUpDays: typeof c.followUpDays === "number" ? c.followUpDays : 0,
+          }))
+          .filter((c) => c.followupId !== "");
+        if (open.length > 0) nextOpen.set(id, open);
       }
       setEvidence(next);
       setCheckInAgain(nextCheckIn);
+      setOpenFollowUp(nextOpen);
     } catch {
       /* evidence is additive — never surface a failure on this surface */
     }
@@ -444,6 +486,37 @@ export default function FoundryMyLearning({
                 badge, no due date, no red. A record with nothing open shows nothing, which is the
                 same rule the evidence strip above it follows.
               */}
+              {/*
+                FOLLOW UP (Slice 3.2R-R3-R2) — the door for a question with no answer yet.
+
+                Today now stops asking after the 7-day attention window, and without this the bound
+                would quietly become "you can no longer answer" for the three live obligations that
+                are already past it. So the durable obligation gets a durable door, here, where the
+                learner's own record lives and nothing expires.
+
+                IT SAYS "FOLLOW UP", NOT "CHECK IN AGAIN". Nothing was reported, so there is no
+                "again" and nothing to have reported "earlier". It opens the SAME first-response
+                surface the Today card opened, with the same durable followup id — the experience
+                on the other side is unchanged, only the way in is new.
+
+                NO DATE, NO BADGE, NO RED — including for a row nineteen days past its checkpoint.
+                An obligation that outlived Today's attention is not thereby a failure, and this
+                surface has no authority to score one.
+              */}
+              {onOpenFollowUp
+                ? (openFollowUp.get(it.entryId) ?? []).map((target, _i, all) => (
+                    <button
+                      key={target.followupId}
+                      type="button"
+                      data-testid="my-learning-open-follow-up"
+                      data-followup-id={target.followupId}
+                      onClick={() => onOpenFollowUp(target.followupId)}
+                      className="self-start rounded-lg border border-[#C9A66B]/40 bg-[#C9A66B]/[0.08] px-3 py-1.5 text-xs font-medium text-[#E5B769]"
+                    >
+                      {all.length > 1 ? t.followUpAt(target.followUpDays) : t.followUp}
+                    </button>
+                  ))
+                : null}
               {onOpenFollowUp
                 ? (checkInAgain.get(it.entryId) ?? []).map((target, _i, all) => (
                     <button

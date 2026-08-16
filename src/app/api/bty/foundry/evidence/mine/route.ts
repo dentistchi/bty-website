@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { requireConsentedUser, unauthenticated, copyCookiesAndDebug } from "@/lib/supabase/route-client";
 import { listMyEvidence } from "@/lib/bty/foundry/events/learnerEvidenceService";
+import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,19 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  const items = await listMyEvidence(admin, user.id);
+  /*
+    READER FRAME, RESOLVED READ-ONLY (Slice 3.2R-R3-R2).
+
+    `openFollowUp` is a "has this checkpoint arrived?" question, so it needs the same BTY-day frame
+    Today uses — and it must reuse the SAME authority rather than introduce a second one.
+
+    `deviceTz` is deliberately passed as null. The resolver's middle rung CAPTURES a device tz to
+    the profile with an UPDATE, and rendering My Learning must write nothing at all; with no device
+    tz that rung cannot be reached, so this resolves profile-tz → "UTC" and touches no row. The
+    same call shape `foundryTrainingService` already uses for a read path.
+  */
+  const { timezone } = await resolveUserTzContext(admin, user.id, null);
+  const items = await listMyEvidence(admin, user.id, new Date(), timezone);
 
   const res = NextResponse.json({
     ok: true,
@@ -53,6 +66,17 @@ export async function GET(req: NextRequest) {
         followupId: c.followupId,
         followUpDays: c.followUpDays,
         outcome: c.outcome,
+      })),
+      /*
+        Slice 3.2R-R3-R2 — the return route to an obligation that has NO answer yet. Two separate
+        fields rather than one list with a status discriminator, because the two CTAs say different
+        sentences and a client that had to branch on a status string is a client that would
+        eventually offer "Check in again" for a question nobody answered. Same allow-list
+        discipline: an id and a checkpoint number, never a sentence and never a date.
+      */
+      openFollowUp: (it.openFollowUp ?? []).map((c) => ({
+        followupId: c.followupId,
+        followUpDays: c.followUpDays,
       })),
     })),
   });

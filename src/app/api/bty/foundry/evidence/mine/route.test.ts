@@ -13,10 +13,14 @@ import { NextRequest, NextResponse } from "next/server";
 const getSupabaseAdmin = vi.fn();
 const listMyEvidence = vi.fn();
 const requireConsentedUser = vi.fn();
+const resolveUserTzContext = vi.fn();
 
 vi.mock("@/lib/supabase-admin", () => ({ getSupabaseAdmin: () => getSupabaseAdmin() }));
 vi.mock("@/lib/bty/foundry/events/learnerEvidenceService", () => ({
   listMyEvidence: (...a: unknown[]) => listMyEvidence(...a),
+}));
+vi.mock("@/lib/bty/daily/userDay", () => ({
+  resolveUserTzContext: (...a: unknown[]) => resolveUserTzContext(...a),
 }));
 vi.mock("@/lib/supabase/route-client", () => ({
   requireConsentedUser: (...a: unknown[]) => requireConsentedUser(...a),
@@ -27,6 +31,7 @@ vi.mock("@/lib/supabase/route-client", () => ({
 let GET: typeof import("./route").GET;
 beforeEach(async () => {
   vi.clearAllMocks();
+  resolveUserTzContext.mockResolvedValue({ timezone: "America/Los_Angeles", tzFallback: false });
   ({ GET } = await import("./route"));
 });
 
@@ -93,6 +98,8 @@ describe("GET /api/bty/foundry/evidence/mine", () => {
         // Slice 3.2R-R3-R1 — present and empty, never absent: a record with nothing open still
         // states so, so the surface never has to tell "no follow-up" apart from "field missing".
         checkInAgain: [],
+        // Slice 3.2R-R3-R2 — same rule for the unanswered route: present and empty, never absent.
+        openFollowUp: [],
       },
     ]);
   });
@@ -128,5 +135,61 @@ describe("GET /api/bty/foundry/evidence/mine", () => {
     const res = await GET(req());
     expect(res.status).toBe(200);
     expect((await res.json()).items).toEqual([]);
+  });
+
+  /**
+   * SLICE 3.2R-R3-R2 — the reader frame, and the fact that resolving it writes nothing.
+   */
+  it("passes the resolved clock and reader timezone to the service", async () => {
+    /*
+      `openFollowUp` is a "has this checkpoint arrived?" question, so the service cannot answer it
+      without both. The route is where they enter, and they must come from the SAME tz authority
+      Today uses — not a second one, and not the client.
+    */
+    getSupabaseAdmin.mockReturnValue({});
+    session("user-1");
+    listMyEvidence.mockResolvedValue([]);
+    await GET(req());
+    const [, userId, now, tz] = listMyEvidence.mock.calls[0]!;
+    expect(userId).toBe("user-1");
+    expect(now).toBeInstanceOf(Date);
+    expect(tz).toBe("America/Los_Angeles");
+  });
+
+  it("resolves the timezone with NO device tz — the rung that would WRITE is unreachable", async () => {
+    /*
+      NO-WRITE, PROVEN AT THE CALL SITE. `resolveUserTzContext`'s middle rung captures a device tz
+      to `arena_profiles` with an UPDATE. Rendering My Learning must write nothing at all, so the
+      route passes null and that rung cannot be entered. If a later edit threads a device tz
+      through "for accuracy", this fails.
+    */
+    getSupabaseAdmin.mockReturnValue({});
+    session("user-1");
+    listMyEvidence.mockResolvedValue([]);
+    await GET(req("?tz=America/New_York"));
+    expect(resolveUserTzContext).toHaveBeenCalledTimes(1);
+    expect(resolveUserTzContext.mock.calls[0]![2]).toBeNull();
+  });
+
+  it("re-projects openFollowUp field by field — no extra key can reach the wire", async () => {
+    getSupabaseAdmin.mockReturnValue({});
+    session("user-1");
+    listMyEvidence.mockResolvedValue([
+      {
+        entryId: "prog-1",
+        eventId: "ev-1",
+        evidence: { established: ["exposed"], highestEstablished: "exposed" },
+        openFollowUp: [
+          { followupId: "fu-7", followUpDays: 7, dueAt: "2026-08-02T12:00:00Z", secretNote: "LEAKED" },
+        ],
+      },
+    ]);
+    const res = await GET(req());
+    const body = await res.json();
+    expect(body.items[0].openFollowUp).toEqual([{ followupId: "fu-7", followUpDays: 7 }]);
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("LEAKED");
+    // No date on the wire: the surface must not be able to render an age or a deadline.
+    expect(raw).not.toContain("dueAt");
   });
 });

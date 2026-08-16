@@ -49,14 +49,25 @@ function filteringAdmin(tables: Record<string, Row[]>) {
 const NOW = new Date("2026-08-15T12:00:00Z");
 const TZ = "UTC";
 
-/** One obligation, long past its due day — the state that would shout loudest if it leaked. */
+/**
+ * One obligation, overdue but still INSIDE Today's attention window — the state that would shout
+ * loudest if an answered row leaked.
+ *
+ * THE DUE DAY MOVED IN 3.2R-R3-R2, AND THAT IS THE POINT OF THE SLICE. It used to be 2026-08-01:
+ * fourteen BTY days before NOW, which is now `stale` and correctly hidden from Today. Left alone,
+ * this file's two presence assertions would have failed for the RIGHT reason and the question they
+ * ask — "does an ANSWERED obligation stay out?" — would have gone untested, because an absence
+ * proves nothing once the control can no longer produce a presence. So the fixture is pulled to
+ * due − 5 days, still overdue and still the loudest thing on the surface. The window contract
+ * itself is proven separately in `todayFollowUpStaleWindow.test.ts`.
+ */
 const followup = (over: Row = {}): Row => ({
   id: "fu-1",
   progress_id: "prog-1",
   user_id_snapshot: "u1",
   source_training_title: "Huddle ownership",
   follow_up_days: 7,
-  due_at: "2026-08-01T05:00:00Z",
+  due_at: "2026-08-10T05:00:00Z",
   status: "PENDING",
   outcome: null,
   ...over,

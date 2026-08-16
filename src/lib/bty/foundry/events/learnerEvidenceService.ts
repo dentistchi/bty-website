@@ -12,6 +12,7 @@ import {
   type RealityGroundedJourneyV1,
 } from "@/domain/foundry/module/journey";
 import {
+  awaitsFirstResponse,
   canCheckInAgain,
   reportsApplication,
   type FollowUpOutcome,
@@ -201,6 +202,8 @@ type FollowupRow = {
   followUpDays: number;
   status: FollowUpStatus;
   outcome: FollowUpOutcome | null;
+  /** The materialized deadline instant. Read, never recomputed — the Today engine's own rule. */
+  dueAtIso: string | null;
 };
 
 /**
@@ -208,7 +211,9 @@ type FollowupRow = {
  *
  * `status` is selected as well as `outcome` (Slice 3.2R-R3-R1) because `canCheckInAgain` is a
  * question about the pair, not about the outcome alone — a null outcome means two different
- * things depending on whether the row has settled.
+ * things depending on whether the row has settled. `due_at` joins them (Slice 3.2R-R3-R2) because
+ * the OTHER return route — the one for an obligation with no answer at all — is a question about
+ * whether the checkpoint has arrived, and only the stored deadline can answer that.
  */
 async function loadFollowups(admin: SupabaseClient, progressIds: string[]): Promise<Map<string, FollowupRow[]>> {
   const out = new Map<string, FollowupRow[]>();
@@ -216,7 +221,7 @@ async function loadFollowups(admin: SupabaseClient, progressIds: string[]): Prom
   try {
     const { data } = await admin
       .from("foundry_participant_followups")
-      .select("id, progress_id, follow_up_days, status, outcome")
+      .select("id, progress_id, follow_up_days, status, outcome, due_at")
       .in("progress_id", progressIds);
     for (const r of (data ?? []) as Array<{
       id: string;
@@ -224,6 +229,7 @@ async function loadFollowups(admin: SupabaseClient, progressIds: string[]): Prom
       follow_up_days: number;
       status: FollowUpStatus;
       outcome: FollowUpOutcome | null;
+      due_at: string | null;
     }>) {
       if (!r.progress_id) continue;
       const list = out.get(r.progress_id) ?? [];
@@ -233,6 +239,7 @@ async function loadFollowups(admin: SupabaseClient, progressIds: string[]): Prom
         followUpDays: r.follow_up_days,
         status: r.status,
         outcome: r.outcome,
+        dueAtIso: r.due_at,
       });
       out.set(r.progress_id, list);
     }
@@ -368,6 +375,28 @@ export type CheckInAgainTarget = {
   readonly outcome: FollowUpOutcome;
 };
 
+/**
+ * An obligation on this record that has NO answer yet and can still receive its first one
+ * (Slice 3.2R-R3-R2).
+ *
+ * WHY THIS EXISTS AT ALL. R3-R2 bounds how long Today keeps asking. Without a second route the
+ * bound would silently convert "we stop asking" into "you can no longer answer", which is exactly
+ * the dead end 3.2M-3 spent a slice removing. So the durable obligation gets a durable door, and
+ * it is here — in the learner's own record — because that is the one place with no expiry.
+ *
+ * DISJOINT FROM {@link CheckInAgainTarget}, BY CONSTRUCTION. That one requires RESPONDED and
+ * carries the outcome already on record; this one requires PENDING and has no outcome to carry.
+ * No obligation can appear in both lists, which is what keeps "Check in again" and "You reported
+ * earlier" off a question nobody has answered.
+ *
+ * NO TEXT, AND NO DUE DATE. An id and a checkpoint number. The surface renders one quiet control,
+ * not a countdown — the whole point of the slice is to stop dating an obligation at the learner.
+ */
+export type OpenFollowUpTarget = {
+  readonly followupId: string;
+  readonly followUpDays: number;
+};
+
 /** One learner's completed training with what it has actually established since. */
 export type MyEvidenceItem = {
   /** The progress-row id — the SAME `entryId` the owner-scoped history surface already uses. */
@@ -380,6 +409,14 @@ export type MyEvidenceItem = {
    * rung, and `evidence` above is computed from the same rows without consulting it.
    */
   readonly checkInAgain: readonly CheckInAgainTarget[];
+  /**
+   * Slice 3.2R-R3-R2 — the return route for an obligation with no answer yet, whose checkpoint has
+   * arrived. Unbounded in time on purpose: Today stops asking after 7 days, this never does.
+   * Empty while the checkpoint is still upcoming, and empty once the row has been answered (the
+   * settled case is `checkInAgain` above, if it is open at all). Navigation only — nothing here
+   * establishes a rung.
+   */
+  readonly openFollowUp: readonly OpenFollowUpTarget[];
 };
 
 /**
@@ -390,7 +427,19 @@ export type MyEvidenceItem = {
  * also consumed by the Today brief, which must not pay for evidence assembly. Keeping them apart
  * means this slice adds no I/O to any existing path.
  */
-export async function listMyEvidence(admin: SupabaseClient, userId: string): Promise<MyEvidenceItem[]> {
+export async function listMyEvidence(
+  admin: SupabaseClient,
+  userId: string,
+  /*
+    Slice 3.2R-R3-R2 — the clock and the reader frame arrive as ARGUMENTS, never read in here.
+    `openFollowUp` is a "has the checkpoint arrived?" question, which needs both, and a service
+    that called `new Date()` itself could not be tested against a due+7/due+8 boundary at all.
+    Same shape the Today engine already uses (`buildTodayReminders(admin, userId, now, tz, …)`),
+    and the same reader-tz authority resolves both — never a second one.
+  */
+  now: Date,
+  tz: string,
+): Promise<MyEvidenceItem[]> {
   if (!userId) return [];
   let rows: Array<{ id: string; event_id: string; completed_at: string }> = [];
   try {
@@ -443,5 +492,16 @@ export async function listMyEvidence(admin: SupabaseClient, userId: string): Pro
         // canCheckInAgain is false for a null outcome, so anything surviving the filter has one.
         outcome: f.outcome as FollowUpOutcome,
       })),
+    /*
+      THE UNANSWERED DOOR (Slice 3.2R-R3-R2). Same shape, same sort, same durable-id discipline as
+      `checkInAgain` above — and the same division of labour: the DOMAIN decides whether the
+      checkpoint has arrived, this layer only filters by it. A row with no stored deadline is
+      dropped rather than assumed due; the deadline is materialized once at creation and is never
+      reconstructed at read time.
+    */
+    openFollowUp: (followupsByProgress.get(r.id) ?? NO_CHECK_IN_ROWS)
+      .filter((f) => f.dueAtIso !== null && awaitsFirstResponse(f.status, f.dueAtIso, now, tz))
+      .sort((a, b) => a.followUpDays - b.followUpDays)
+      .map((f) => ({ followupId: f.id, followUpDays: f.followUpDays })),
   }));
 }

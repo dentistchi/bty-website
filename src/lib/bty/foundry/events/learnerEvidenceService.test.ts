@@ -43,6 +43,16 @@ const USER = "user-1";
 const PROGRESS = "prog-1";
 const FOLLOWUP = "fu-1";
 
+/*
+  DETERMINISTIC CLOCK + READER FRAME (Slice 3.2R-R3-R2). `listMyEvidence` now answers a
+  "has this checkpoint arrived?" question, so every call needs a fixed instant and tz — never
+  `Date.now()`. NOW is 13:00 PDT on BTY day 2026-08-15; DUE_TODAY is that day's 05:00-local start,
+  which is exactly the instant `computeFollowUpDue` materializes.
+*/
+const TZ = "America/Los_Angeles";
+const NOW = new Date("2026-08-15T20:00:00Z");
+const DUE_TODAY = "2026-08-15T12:00:00Z";
+
 const SECRET_COMPLETION = "SECRET COMPLETION CHECK ANSWER";
 const SECRET_REFLECTION = "SECRET PRIVATE REFLECTION BODY";
 const DECISION_TEXT = "Next time I will state the owner out loud before we leave the huddle.";
@@ -74,6 +84,8 @@ type SeedOpts = {
   observations?: Array<{ outcome: string; observer: string; on: string }>;
   observableStandard?: boolean;
   followUpDays?: number;
+  /** The materialized deadline. Defaults to "the checkpoint arrived today"; null = column absent. */
+  followUpDueAt?: string | null;
   userId?: string | null;
 };
 
@@ -120,6 +132,9 @@ function seed(o: SeedOpts = {}): Tables {
             // settled answer from a pending one.
             status: o.followUpOutcome ? "RESPONDED" : "PENDING",
             outcome: o.followUpOutcome ?? null,
+            // Slice 3.2R-R3-R2 — the real deadline column. `openFollowUp` asks whether the
+            // checkpoint has arrived, and a fixture without it could not pose that question.
+            due_at: o.followUpDueAt === undefined ? DUE_TODAY : o.followUpDueAt,
           },
         ]
       : [],
@@ -372,7 +387,7 @@ describe("R1 PRIVACY — the assembly reads private text and cannot return it", 
       decision_response_text: null,
       linked_user_id: "user-2",
     });
-    const items = await listMyEvidence(makeFakeAdmin(tables), USER);
+    const items = await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ);
     expect(items.map((i) => i.entryId)).toEqual([PROGRESS]); // never another learner's row
     const json = JSON.stringify(items);
     expect(json).not.toContain("SOMEONE ELSE'S PRIVATE ANSWER");
@@ -416,7 +431,7 @@ describe("R1 FAIL-SOFT — a broken read removes rungs, it never invents one", (
  */
 describe("R3-R1 checkInAgain — which follow-ups can still take a later report", () => {
   const listFor = async (o: SeedOpts = {}) =>
-    (await listMyEvidence(makeFakeAdmin(seed(o)), USER))[0]!;
+    (await listMyEvidence(makeFakeAdmin(seed(o)), USER, NOW, TZ))[0]!;
 
   it("every non-terminal settled answer offers a way back, carrying the durable followup id", async () => {
     for (const outcome of ["PARTLY_APPLIED", "NOT_YET", "BLOCKED"]) {
@@ -460,10 +475,10 @@ describe("R3-R1 checkInAgain — which follow-ups can still take a later report"
     */
     const tables = seed({ followUpOutcome: "NOT_YET" });
     tables.foundry_participant_followups = [
-      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "BLOCKED" },
-      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "NOT_YET" },
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "BLOCKED", due_at: DUE_TODAY },
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "NOT_YET", due_at: DUE_TODAY },
     ];
-    const item = (await listMyEvidence(makeFakeAdmin(tables), USER))[0]!;
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
     expect(item.checkInAgain).toEqual([
       { followupId: "fu-7", followUpDays: 7, outcome: "NOT_YET" },
       { followupId: "fu-30", followUpDays: 30, outcome: "BLOCKED" },
@@ -473,10 +488,10 @@ describe("R3-R1 checkInAgain — which follow-ups can still take a later report"
   it("an APPLIED checkpoint alongside a non-terminal one offers only the one still open", async () => {
     const tables = seed({ followUpOutcome: "APPLIED" });
     tables.foundry_participant_followups = [
-      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "APPLIED" },
-      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "NOT_YET" },
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "APPLIED", due_at: DUE_TODAY },
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "RESPONDED", outcome: "NOT_YET", due_at: DUE_TODAY },
     ];
-    const item = (await listMyEvidence(makeFakeAdmin(tables), USER))[0]!;
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
     expect(item.checkInAgain).toEqual([{ followupId: "fu-30", followUpDays: 30, outcome: "NOT_YET" }]);
     expect(item.evidence.established).toContain("applied"); // the APPLIED report still stands
   });
@@ -488,7 +503,156 @@ describe("R3-R1 checkInAgain — which follow-ups can still take a later report"
       if (t === "foundry_participant_followups") throw new Error("read failure");
       return realFrom(t);
     };
-    const item = (await listMyEvidence(admin, USER))[0]!;
+    const item = (await listMyEvidence(admin, USER, NOW, TZ))[0]!;
     expect(item.checkInAgain).toEqual([]);
+  });
+});
+
+/**
+ * SLICE 3.2R-R3-R2 — the door Today expiry must not close.
+ *
+ * R3-R2 bounds how long Today asks about an unanswered follow-up. On its own that bound would
+ * convert "we stop asking" into "you can no longer answer" — the exact dead end 3.2M-3 spent a
+ * slice removing. `openFollowUp` is the compensating route, and what has to be proven here is that
+ * it survives staleness, carries the DURABLE obligation id, and can never be confused with the
+ * later-check-in route that sits beside it.
+ */
+describe("R3-R2 openFollowUp — reaching an obligation with no answer yet", () => {
+  /** Days RELATIVE to NOW's BTY day (2026-08-15), expressed as the stored 05:00-local instant. */
+  const dueDaysAgo = (n: number) => {
+    const [y, mo, d] = [2026, 8, 15];
+    const key = new Date(Date.UTC(y, mo - 1, d) - n * 86_400_000).toISOString().slice(0, 10);
+    for (const c of [`${key}T12:00:00Z`, `${key}T13:00:00Z`]) {
+      const dt = new Date(c);
+      const p = new Intl.DateTimeFormat("en-US", {
+        timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
+      }).formatToParts(dt);
+      const g = (t: string) => p.find((x) => x.type === t)!.value;
+      if (`${g("year")}-${g("month")}-${g("day")}` === key && g("hour") === "05") return dt.toISOString();
+    }
+    throw new Error(`no 05:00 local instant for ${key}`);
+  };
+
+  const listFor = async (o: SeedOpts = {}) =>
+    (await listMyEvidence(makeFakeAdmin(seed(o)), USER, NOW, TZ))[0]!;
+
+  it("an obligation due today is reachable, carrying the durable followup id", async () => {
+    const item = await listFor({ followUpOutcome: null });
+    expect(item.openFollowUp).toEqual([{ followupId: FOLLOWUP, followUpDays: 7 }]);
+  });
+
+  it("STAYS reachable once Today has stopped asking — 8, 30 and 19 days past due", async () => {
+    /*
+      The load-bearing assertion of the slice. 19 days is the real age of the oldest live PENDING
+      obligation measured in production before R3-R2; 8 is the first day Today drops it.
+    */
+    for (const days of [8, 19, 30, 365]) {
+      const item = await listFor({ followUpOutcome: null, followUpDueAt: dueDaysAgo(days) });
+      expect(item.openFollowUp, `${days} days past due`).toEqual([{ followupId: FOLLOWUP, followUpDays: 7 }]);
+    }
+  });
+
+  it("is NOT offered before the checkpoint arrives", async () => {
+    const item = await listFor({ followUpOutcome: null, followUpDueAt: dueDaysAgo(-3) });
+    expect(item.openFollowUp).toEqual([]);
+  });
+
+  it("is NOT offered once the obligation has been answered, at any outcome", async () => {
+    for (const outcome of ["NOT_YET", "PARTLY_APPLIED", "BLOCKED", "APPLIED"]) {
+      const item = await listFor({ followUpOutcome: outcome, followUpDueAt: dueDaysAgo(30) });
+      expect(item.openFollowUp, outcome).toEqual([]);
+    }
+  });
+
+  it("the two routes are mutually exclusive on every row this service emits", async () => {
+    // Structural proof that My Learning can never render "Check in again" over an unanswered row.
+    for (const outcome of [null, "NOT_YET", "PARTLY_APPLIED", "BLOCKED", "APPLIED"]) {
+      for (const days of [-3, 0, 7, 8, 30]) {
+        const item = await listFor({ followUpOutcome: outcome, followUpDueAt: dueDaysAgo(days) });
+        const overlap = item.openFollowUp.filter((o) =>
+          item.checkInAgain.some((c) => c.followupId === o.followupId),
+        );
+        expect(overlap, `${outcome} @ ${days}`).toEqual([]);
+      }
+    }
+  });
+
+  it("two checkpoints stay two distinct obligations — no identity collision", async () => {
+    /*
+      A record may carry a 7- and a 30-day follow-up. They are two different questions, and the
+      surface must open the exact one tapped — never a match by event, title or checkpoint.
+    */
+    const tables = seed({ followUpOutcome: null });
+    tables.foundry_participant_followups = [
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "PENDING", outcome: null, due_at: dueDaysAgo(30) },
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "PENDING", outcome: null, due_at: dueDaysAgo(9) },
+    ];
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
+    expect(item.openFollowUp).toEqual([
+      { followupId: "fu-7", followUpDays: 7 },
+      { followupId: "fu-30", followUpDays: 30 },
+    ]);
+  });
+
+  it("one answered and one unanswered checkpoint each take their OWN route", async () => {
+    const tables = seed({ followUpOutcome: null });
+    tables.foundry_participant_followups = [
+      { id: "fu-7", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 7, status: "RESPONDED", outcome: "NOT_YET", due_at: dueDaysAgo(30) },
+      { id: "fu-30", progress_id: PROGRESS, event_id: EVENT, user_id_snapshot: USER, follow_up_days: 30, status: "PENDING", outcome: null, due_at: dueDaysAgo(9) },
+    ];
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
+    expect(item.openFollowUp).toEqual([{ followupId: "fu-30", followUpDays: 30 }]);
+    expect(item.checkInAgain).toEqual([{ followupId: "fu-7", followUpDays: 7, outcome: "NOT_YET" }]);
+  });
+
+  it("a record with no follow-up at all offers nothing — D3 stays untouched", async () => {
+    /*
+      `follow_up_days = 0` is a valid no-follow-up configuration. Nothing here may invent an
+      obligation so that My Learning has something to show.
+    */
+    const item = await listFor();
+    expect(item.openFollowUp).toEqual([]);
+    expect(item.checkInAgain).toEqual([]);
+    expect(item.evidence.established).toContain("exposed");
+  });
+
+  it("a row with no stored deadline is dropped, never assumed due", async () => {
+    const item = await listFor({ followUpOutcome: null, followUpDueAt: null });
+    expect(item.openFollowUp).toEqual([]);
+  });
+
+  it("carries NO learner text and no date — an id and a checkpoint number", async () => {
+    const item = await listFor({ followUpOutcome: null, decision: true, learnerReflection: true });
+    const raw = JSON.stringify(item.openFollowUp);
+    expect(raw).not.toContain(SECRET_COMPLETION);
+    expect(raw).not.toContain(SECRET_REFLECTION);
+    expect(raw).not.toContain(DECISION_TEXT);
+    for (const t of item.openFollowUp) expect(Object.keys(t).sort()).toEqual(["followUpDays", "followupId"]);
+  });
+
+  it("an unreadable obligation table hides the door — it can never invent one", async () => {
+    const admin = makeFakeAdmin(seed({ followUpOutcome: null }));
+    const realFrom = admin.from.bind(admin) as (t: string) => unknown;
+    (admin as unknown as { from: (t: string) => unknown }).from = (t: string) => {
+      if (t === "foundry_participant_followups") throw new Error("read failure");
+      return realFrom(t);
+    };
+    const item = (await listMyEvidence(admin, USER, NOW, TZ))[0]!;
+    expect(item.openFollowUp).toEqual([]);
+  });
+
+  it("reading My Learning writes nothing — the fake exposes no mutating verb", async () => {
+    /*
+      Same structural argument the Today projection uses: `makeFakeAdmin` offers select/eq/in/order
+      only, so an insert/update/upsert/delete on this path would throw rather than pass quietly.
+      Asserted for the STALE row, since that is the transition a future slice might try to record.
+    */
+    const tables = seed({ followUpOutcome: null, followUpDueAt: dueDaysAgo(19) });
+    const before = JSON.stringify(tables.foundry_participant_followups);
+    const item = (await listMyEvidence(makeFakeAdmin(tables), USER, NOW, TZ))[0]!;
+    expect(item.openFollowUp).toHaveLength(1);
+    // The stored row is untouched: still PENDING, still no outcome, nothing appended.
+    expect(JSON.stringify(tables.foundry_participant_followups)).toBe(before);
+    expect(tables.foundry_participant_followups![0]).toMatchObject({ status: "PENDING", outcome: null });
   });
 });

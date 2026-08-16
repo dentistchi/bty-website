@@ -56,6 +56,22 @@ export function addDaysToDayKey(dayKey: string, days: number): string {
 }
 
 /**
+ * Difference in CALENDAR days between two "YYYY-MM-DD" BTY day keys (`to - from`). Positive when
+ * `to` is later. The inverse of {@link addDaysToDayKey} and the same UTC-anchored technique: both
+ * keys are read as plain calendar dates, so no wall clock, no offset and no DST transition can
+ * enter the arithmetic. This is precisely why the attention window below is expressed in day keys
+ * rather than elapsed hours — across a DST boundary "7 days later" and "168 hours later" are two
+ * different instants, and only the first one is what a learner means by a week.
+ */
+export function daysBetweenDayKeys(fromDayKey: string, toDayKey: string): number {
+  const asUtc = (key: string): number => {
+    const [y, mo, d] = key.split("-").map(Number);
+    return Date.UTC(y, mo - 1, d);
+  };
+  return Math.round((asUtc(toDayKey) - asUtc(fromDayKey)) / 86_400_000);
+}
+
+/**
  * Classify a follow-up obligation for Today, by BTY DAY (not instant). A follow-up is a day-granular
  * obligation: the whole due BTY day reads "due_today", the days after read "overdue", the days before
  * "upcoming" — using the CURRENT reader tz (a traveled learner is judged in their current frame; the
@@ -76,6 +92,79 @@ export function classifyFollowUpDue(
   if (dueKey < todayKey) return "overdue";
   if (dueKey === todayKey) return "due_today";
   return "upcoming";
+}
+
+/**
+ * How many BTY days Today keeps asking about an unanswered follow-up, counted from the due day
+ * INCLUSIVE (Slice 3.2R-R3-R2, Founder-ratified). Due day + 7 is the last day it appears; due day
+ * + 8 is the first day it does not.
+ */
+export const TODAY_ATTENTION_WINDOW_DAYS = 7;
+
+/**
+ * MAY TODAY STILL ASK? (Slice 3.2R-R3-R2)
+ *
+ * A follow-up obligation is a DURABLE unanswered fact; Today is a TIME-BOUNDED attention surface.
+ * Before this, those two were the same thing, so four live PENDING rows sat at STATE_RANK 0
+ * forever — Today shouting a question it had already asked twenty times. The Founder decision is
+ * not that the question stops mattering, only that Today stops being the one asking.
+ *
+ * SO THIS DOES NOT REDEFINE "OVERDUE", AND DELIBERATELY DOES NOT LIVE INSIDE
+ * `classifyFollowUpDue`. A nineteen-day-old unanswered follow-up is still truthfully overdue, and
+ * the Host attention surface, the learner follow-up view and the due chip all still say so. This
+ * is a SEPARATE question layered on top of that unchanged classification — which is why it calls
+ * it rather than restating it. There is one authority for upcoming/due_today/overdue, and it is
+ * still that function.
+ *
+ * FOUR OUTCOMES, ONE FUNCTION, ON PURPOSE. A pair of booleans (`todayEligible`, `stillAskable`)
+ * would let two surfaces drift into disagreeing about the same row. The states are exhaustive:
+ *
+ *   settled  — RESPONDED. Not Today's business at any age (R3-R1); the later check-in route
+ *              belongs to My Learning and is decided by `canCheckInAgain`, not by this.
+ *   upcoming — the checkpoint has not arrived. Never shown, exactly as V1 already behaved.
+ *   asking   — PENDING, due today or up to TODAY_ATTENTION_WINDOW_DAYS BTY days past. Today shows it.
+ *   stale    — PENDING and beyond the window. Today does NOT show it, and NOTHING is written:
+ *              status stays PENDING, outcome stays null, nothing is marked missed. Only the
+ *              projection changes. The obligation stays reachable from My Learning, which is what
+ *              `stale` is for — it is not a synonym for "gone".
+ *
+ * An unparseable due instant classifies as `upcoming` (via `classifyFollowUpDue`) and is therefore
+ * hidden rather than shown at rank 0 — the direction that can only ever ask less.
+ */
+export type FollowUpTodayAttention = "settled" | "upcoming" | "asking" | "stale";
+
+export function classifyFollowUpTodayAttention(
+  status: FollowUpStatus,
+  dueAtIso: string,
+  now: Date,
+  tz: string,
+): FollowUpTodayAttention {
+  if (status !== "PENDING") return "settled";
+  const dueState = classifyFollowUpDue(dueAtIso, now, tz);
+  if (dueState === "upcoming") return "upcoming";
+  if (dueState === "due_today") return "asking";
+  // Overdue: how far past, in the SAME day-key frame that just called it overdue.
+  const daysPastDue = daysBetweenDayKeys(userDayKey(new Date(dueAtIso), tz, 5), userDayKey(now, tz, 5));
+  return daysPastDue <= TODAY_ATTENTION_WINDOW_DAYS ? "asking" : "stale";
+}
+
+/**
+ * MAY A SURFACE OFFER THE FIRST RESPONSE? (Slice 3.2R-R3-R2)
+ *
+ * The answer Today expiration must NOT change. `stale` counts here and does not count above, and
+ * that difference IS the slice: an unanswered obligation stops occupying Today and stays reachable
+ * from My Learning forever. `upcoming` is excluded because the checkpoint has genuinely not
+ * arrived yet — asking early is a different defect from asking forever.
+ *
+ * NOT `canCheckInAgain`, AND THE TWO MUST NEVER MERGE. That one is about a SETTLED obligation
+ * taking a LATER report, and its surface says "Check in again" / "You reported earlier". This one
+ * is about an obligation with no answer at all, where both of those sentences would be lies. They
+ * are disjoint by construction — this requires PENDING, that requires RESPONDED — so no row can
+ * ever satisfy both.
+ */
+export function awaitsFirstResponse(status: FollowUpStatus, dueAtIso: string, now: Date, tz: string): boolean {
+  const attention = classifyFollowUpTodayAttention(status, dueAtIso, now, tz);
+  return attention === "asking" || attention === "stale";
 }
 
 export type FollowUpDueComputation = {

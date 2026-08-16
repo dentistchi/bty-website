@@ -23,7 +23,11 @@ import {
   sortReminders,
   type TodayReminder,
 } from "@/domain/daily/todayReminders";
-import { classifyFollowUpDue } from "@/domain/foundry/followup/followUpObligation";
+import {
+  classifyFollowUpDue,
+  classifyFollowUpTodayAttention,
+  type FollowUpStatus,
+} from "@/domain/foundry/followup/followUpObligation";
 import { suppressApplyWindow } from "@/domain/foundry/apply-window/applyWindow";
 import { listMyApplyWindows } from "@/lib/bty/foundry/events/foundryApplyWindowService";
 import {
@@ -191,11 +195,28 @@ function followUpCheckpointLabel(followUpDays: number, locale: string): string {
 }
 
 /**
- * FOLLOW_UP_DUE (Slice 3.1B-3K) — pending per-participant follow-up obligations whose materialized
- * due_at is due_today or overdue. Reads the owner's rows directly (service-role, owner-scoped by
- * user_id_snapshot), classifies against the CURRENT reader tz (like Action/Practice), and DROPS
- * anything upcoming (V1 shows no future follow-up). The title carries the localized checkpoint +
- * the source training title; the deep link opens the focused follow-up response surface.
+ * FOLLOW_UP_DUE (Slice 3.1B-3K) — pending per-participant follow-up obligations Today is still
+ * asking about. Reads the owner's rows directly (service-role, owner-scoped by user_id_snapshot),
+ * classifies against the CURRENT reader tz (like Action/Practice). The title carries the localized
+ * checkpoint + the source training title; the deep link opens the focused follow-up response surface.
+ *
+ * TODAY IS NOT A PERMANENT UNRESOLVED-RECORD INBOX (Slice 3.2R-R3-R2).
+ *
+ * V1 showed every PENDING row that was due_today or overdue, with no upper bound — so four live
+ * obligations had been sitting at STATE_RANK 0 for up to nineteen days, above genuinely urgent
+ * work, asking a question the learner had already declined to answer twenty times. The Founder
+ * decision bounds the ASKING, not the obligation: due day through due day + 7, inclusive.
+ *
+ * THREE THINGS THIS DELIBERATELY DOES NOT DO:
+ *   * It does not write. Becoming stale is a read-time projection change and nothing else — no
+ *     status change, no NOT_YET, no "missed", no updated_at touch. The row is still PENDING with a
+ *     null outcome the instant after it leaves Today, and would come back if the window changed.
+ *   * It does not redefine `state`. That is still `classifyFollowUpDue`, so a row that survives at
+ *     day 5 still truthfully reports "overdue" and still sorts as overdue. The stale row leaves by
+ *     ELIGIBILITY, not by being quietly ranked below everything else — a card that is still
+ *     rendered but never seen is the same defect with better manners.
+ *   * It does not strand the learner. My Learning carries the durable followup id onward with no
+ *     expiry (`awaitsFirstResponse`), so the unanswered question is always one tap away.
  */
 async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz: string, locale: string): Promise<TodayReminder[]> {
   try {
@@ -206,6 +227,13 @@ async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz:
       .eq("status", "PENDING")
       .not("due_at", "is", null);
     return (data ?? [])
+      .filter(
+        // Filtered BEFORE projection: an ineligible obligation should never be built into a
+        // reminder at all, so no later edit can accidentally let one past the shape it was
+        // given. `upcoming` (V1 already hid it) and `stale` both fall out here.
+        (r: { due_at: string; status: FollowUpStatus }) =>
+          classifyFollowUpTodayAttention(r.status, r.due_at, now, tz) === "asking",
+      )
       .map((r: { id: string; source_training_title: string | null; follow_up_days: number; due_at: string }): TodayReminder => ({
         stableId: `followup:${r.id}`,
         category: "FOLLOW_UP_DUE",
@@ -214,8 +242,7 @@ async function followUpDue(admin: SupabaseClient, userId: string, now: Date, tz:
         sourceTimestamp: r.due_at,
         roleContext: "learner",
         canonicalDeepLink: `/${locale}/app?tab=foundry&followup=${r.id}`,
-      }))
-      .filter((r: TodayReminder) => r.state === "overdue" || r.state === "due_today"); // V1: no upcoming
+      }));
   } catch {
     return [];
   }
