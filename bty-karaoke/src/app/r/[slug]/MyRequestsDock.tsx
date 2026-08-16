@@ -21,6 +21,7 @@ import {
   type ResolvedRequestView,
 } from '@/domain/request-resolution';
 import { songDisplay } from '@/domain/song-title';
+import { unavailableCopy } from '@/domain/youtube-unavailable';
 import { resolvePerfStage } from '@/domain/self-service';
 import type { OwnStatusRow } from '@/domain/recently-sung';
 import type { RecordInput } from './recently-sung.hooks';
@@ -770,8 +771,17 @@ export default function MyRequestsDock({
                 <div className="dock-resolved-title">{t('guest.dock.resolved_title')}</div>
                 <ul className="dock-resolved-list" aria-label={t('guest.dock.resolved_title')}>
                   {resolvedViews.map((v) => {
-                    const song = songDisplay(v.title ?? '', v.channelTitle ?? '');
-                    const shown = song.title || v.title || t('guest.dock.requested_song');
+                    // R9 §I — an unavailable row shows the approved copy in place of the YouTube
+                    // identity we no longer have. Its RESOLUTION is untouched below: a request
+                    // that was cancelled still reads as cancelled. Unavailability describes the
+                    // content, never what historically happened to the request.
+                    const gone = v.youtubeUnavailable === true;
+                    const song = gone
+                      ? { title: '', artist: null as string | null }
+                      : songDisplay(v.title ?? '', v.channelTitle ?? '');
+                    const shown = gone
+                      ? unavailableCopy(locale).title
+                      : song.title || v.title || t('guest.dock.requested_song');
                     return (
                       <li
                         className="resolved-row"
@@ -780,7 +790,11 @@ export default function MyRequestsDock({
                         aria-label={resolutionAccessibilityLabel(locale, shown, v.resolutionCode)}
                       >
                         <div className="resolved-row-song">{shown}</div>
-                        {song.artist && <div className="resolved-row-artist">{song.artist}</div>}
+                        {gone ? (
+                          <div className="resolved-row-artist">{unavailableCopy(locale).body}</div>
+                        ) : (
+                          song.artist && <div className="resolved-row-artist">{song.artist}</div>
+                        )}
                         {/* aria-hidden: the <li> label already reads this sentence, so exposing
                             it again would make VoiceOver announce the reason twice. */}
                         <div className="resolved-row-reason" aria-hidden="true">

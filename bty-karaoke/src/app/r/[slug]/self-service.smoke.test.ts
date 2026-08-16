@@ -86,7 +86,26 @@ describe('MyRequestsDock — self-service performance card', () => {
   });
 
   it('V6: the guest never opens YouTube or connects the TV', () => {
-    expect(dockCode).not.toMatch(/safeYoutubeWatchUrl|location\.assign|youtube/i);
+    // EVOLVED by R9 §I, INTENT PRESERVED. What this has always protected is that the Guest dock
+    // holds no YouTube NAVIGATION capability — no watch URL, no window handoff, no TV connect.
+    // Those bans are unchanged and absolute.
+    expect(dockCode).not.toMatch(/safeYoutubeWatchUrl|location\.assign|window\.open|youtube\.com|iframe_api/i);
+    // The dock now renders the approved unavailable copy, which arrives from a module whose PATH
+    // contains "youtube". So rather than drop the blunt substring check, pin it: the only
+    // permitted occurrence is that one import, and any other reintroduction still fails.
+    // Counted against COMMENT-STRIPPED source, so prose explaining the feature cannot satisfy —
+    // or trip — a check about what the code can actually do.
+    const executable = dockCode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    // The blunt substring ban was always a PROXY for "no navigation capability". It is replaced
+    // by the explicit capability regex above, which states the real rule directly — plus an
+    // allowlist, so any NEW kind of YouTube reference still has to be justified here.
+    const mentions = executable.match(/.*youtube.*/gi) ?? [];
+    const allowed = mentions.filter(
+      (line) => /from '@\/domain\/youtube-unavailable'/.test(line) || /youtubeUnavailable/.test(line),
+    );
+    expect(allowed.length, `unexpected YouTube reference in the dock: ${mentions.filter((m) => !allowed.includes(m))}`)
+      .toBe(mentions.length);
+    expect(mentions.length).toBeGreaterThan(0); // the allowlist must cover something real
     expect(rendersKey(dock, 'guest.stage.singing_note')).toBe(true); // playing card: the host runs the stage
     expect(guestT('ko', 'guest.stage.singing_note')).toContain('Admin이 다음 차례로 넘깁니다');
     // The English sentence must carry the SAME fact — the host, not the guest, moves on.
