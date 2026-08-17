@@ -1074,39 +1074,42 @@ async function activeLeaseForRequest(requestId: string): Promise<AdmissionDetail
     return {
       leaseEndsAt: typeof lease === 'string' && lease.length > 0 ? lease : undefined,
       durationSeconds: typeof dur === 'number' && Number.isFinite(dur) ? dur : undefined,
-      // R4 — recover the grace metadata for this already-admitted request, so a response-loss
-      // retry reports the SAME grace facts instead of silently losing them.
-      ...(await graceForRequest(requestId)),
     };
   } catch {
     return {};
   }
 }
 
-/**
- * BUILD 20M-R4 — the durable grace record for an already-admitted request. Pure READ of the
- * once-per-window ledger; it grants nothing and consumes nothing. Returns {} when this request
- * was not admitted by grace, so ordinary starts are entirely unaffected.
+/*
+ * BUILD 26T-R1B-R6-R1B-R17 — `graceForRequest` REMOVED. Read this before reinstating it.
+ *
+ * It was a pure READ of `karaoke_free_final_song_grace` that returned `finalSongGraceApplied:
+ * true` for ANY row it found, with no predicate on when the row was written. Under BUILD 20M-R4
+ * that was correct: the same contract that minted grace also reported it, so a response-loss
+ * retry recovered the SAME facts instead of losing them.
+ *
+ * E1 retired that contract. `karaoke_begin_song_v2` no longer mints grace and no longer consumes
+ * the FREE window — it hardcodes `'finalSongGraceApplied', false` and returns `metered: false`.
+ * But E1 changed only the MINTER. This reader sat on the `already_active` branch, which never
+ * calls the begin RPC at all, so it survived untouched and kept synthesizing `true` from rows the
+ * current contract can no longer produce.
+ *
+ * The consequence was not cosmetic. A `true` here reaches the wire via
+ * `publishAdmissionFields`, and native Release 109 renders `admission.final_song_grace` —
+ * "오늘 남은 무료 시간은 모두 사용돼요" — announcing a FREE daily quota that V1.0 does not have.
+ * A single surviving pre-E1 row plus a stale open segment was enough to show it to a reviewer.
+ *
+ * So the repair is at the reporting authority, not the data: the ledger is PRESERVED (it is
+ * deliberately exempt from account deletion) and simply no longer consulted by the playback
+ * admission path. Historical row existence must never re-enable retired FREE-quota semantics.
+ *
+ * `finalSongGraceApplied` still exists on the wire contract and is still passed through verbatim
+ * from the begin RPC by `metering.server.ts` — that pass-through is honest and stays. Under E1
+ * the authority always answers `false`, and `publishAdmissionFields` emits the key only on a
+ * literal `true`, so nothing is published. Do not re-add a second, authority-free source.
+ *
+ * Pinned by `rooms.final-song-grace-retirement.server.test.ts`.
  */
-async function graceForRequest(requestId: string): Promise<AdmissionDetail> {
-  try {
-    const { data, error } = await karaokeDb()
-      .from('karaoke_free_final_song_grace')
-      .select('grace_seconds, charged_seconds, remaining_before_seconds')
-      .eq('request_id', requestId)
-      .maybeSingle();
-    if (error || !data) return {};
-    const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
-    return {
-      finalSongGraceApplied: true,
-      finalSongGraceSeconds: n(data.grace_seconds),
-      finalSongChargedSeconds: n(data.charged_seconds),
-      remainingBeforeSeconds: n(data.remaining_before_seconds),
-    };
-  } catch {
-    return {};
-  }
-}
 
 // B1 metering: the waiting→playing flip + its usage segment are opened in ONE atomic
 // RPC (karaoke_begin_song, promote mode). No app-level 'playing' write remains here;
