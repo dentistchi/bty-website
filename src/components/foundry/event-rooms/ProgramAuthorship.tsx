@@ -9,6 +9,8 @@ import {
   contractsFromProposal,
   deriveInstructionalContent,
   derivesFrom,
+  initialSectionDecisions,
+  isPreservableHostSection,
   missingProgramKinds,
   validateEditedReview,
   type ProgramContracts,
@@ -164,6 +166,12 @@ export function ProgramAuthorship({
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
 
+  /** The journey as it stands, by kind — what a `keep` would preserve (Slice R4-R2A-R1). */
+  const currentByKind = useMemo(
+    () => new Map((journey?.elements ?? []).map((el) => [el.kind, el])),
+    [journey],
+  );
+
   // Opening the confirmation binds the target to THIS draft's loaded payload and calls
   // nothing. Zero parents, zero provider calls, zero draft writes.
   const openConfirmation = useCallback(() => {
@@ -190,9 +198,13 @@ export function ProgramAuthorship({
       setCeiling(entry.evidenceCeiling);
       setAttemptId(entry.attemptId);
       setProposalFingerprint(entry.contextFingerprint);
-      // Default every section to the proposal — the Host asked BTY to draft it — but each
-      // one is still an explicit, changeable choice.
-      setDecisions(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, "use" as SectionDecision])));
+      /*
+        Default a section to the proposal ONLY where the Host has not already settled it in
+        their own words (Slice R4-R2A-R1). A grounded `host_statement` / `host_edited` element
+        starts on `keep`, so BTY fills the gaps it was asked to fill and never silently
+        overwrites a sentence the Host authored. Every section remains a changeable choice.
+      */
+      setDecisions(initialSectionDecisions(journey, entry.proposal));
       setEdits(Object.fromEntries(entry.proposal.elements.map((e) => [e.kind, e.content])));
       const c = contractsFromProposal(entry.proposal, answers.followUpDays ?? 0, answers.problem ?? "", answers.completionPrompt ?? null, answers);
       setContracts(c);
@@ -202,7 +214,9 @@ export function ProgramAuthorship({
       setTitleEdit(entry.proposal.displayTitle);
       setPhase("review");
     },
-    [answers.followUpDays, answers.problem],
+    // `journey` decides which sections open on `keep`, so the review must be built from the
+    // journey as it stands when the proposal is shown (Slice R4-R2A-R1).
+    [answers.followUpDays, answers.problem, journey],
   );
 
   /**
@@ -378,9 +392,18 @@ export function ProgramAuthorship({
   const apply = useCallback(async () => {
     if (!proposal || reviewBlock || proposalIsStale) return;
     const choices: SectionChoice[] = proposal.elements.map((e) => {
+      /*
+        KEEP OUTRANKS EVERYTHING (Slice R4-R2A-R1). A Host who chose to keep their own
+        sentence is not asking for a rendered one, so a contract adjustment — which changes
+        the DERIVED text this section would otherwise have shown — must not quietly promote
+        the choice back to `edit` and overwrite them. Switching to "Use BTY draft" is the
+        explicit way back, and it is one tap.
+      */
+      const chosen = decisions[e.kind];
+      if (chosen === "keep") return { kind: e.kind, decision: "keep" };
       // Provenance follows what the HOST actually touched. A derived section they never
       // adjusted is still BTY's work, even though Apply re-reads its rendered text.
-      const touched = sectionAdjusted(e.kind) || decisions[e.kind] === "edit";
+      const touched = sectionAdjusted(e.kind) || chosen === "edit";
       return {
         kind: e.kind,
         decision: touched ? "edit" : "use",
@@ -644,6 +667,14 @@ export function ProgramAuthorship({
         const unavailable = isDerived && derived === null;
         const wasAdjusted = sectionAdjusted(e.kind);
         const open = openDetails === e.kind;
+        /*
+          THE HOST'S OWN SETTLED SENTENCE, IF THERE IS ONE (Slice R4-R2A-R1). Only a grounded
+          host-authored element earns a preservation choice; everything else has nothing to
+          preserve and keeps the plain "BTY drafted this" surface it always had.
+        */
+        const existing = currentByKind.get(e.kind);
+        const preservable = isPreservableHostSection(existing);
+        const isKeep = preservable && decisions[e.kind] === "keep";
         return (
           <div key={e.kind} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
             <div className="flex items-center justify-between gap-3">
@@ -660,10 +691,61 @@ export function ProgramAuthorship({
               */}
               {unavailable ? null : (
                 <span className="rounded-md bg-[#C9A66B]/15 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90">
-                  {wasAdjusted || (!isDerived && decisions[e.kind] === "edit") ? "Adjusted by you" : "Drafted by BTY"}
+                  {/* A kept section is the Host's own earlier statement — neither BTY's draft
+                      nor an adjustment made in this review (Slice R4-R2A-R1). */}
+                  {isKeep
+                    ? "Your wording"
+                    : wasAdjusted || (!isDerived && decisions[e.kind] === "edit")
+                      ? "Adjusted by you"
+                      : "Drafted by BTY"}
                 </span>
               )}
             </div>
+
+            {/*
+              PRESERVATION CHOICE (Slice R4-R2A-R1). Both versions are on screen together,
+              because a Host cannot consent to a replacement they cannot read. The choice is
+              explicit in BOTH directions — there is no silent winner.
+            */}
+            {preservable ? (
+              <div
+                className="flex flex-col gap-2 rounded-lg border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-3 py-2.5"
+                data-testid={`program-keep-choice-${e.kind}`}
+              >
+                <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#C9A66B]/75">
+                  Your wording
+                </span>
+                <p
+                  className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+                  data-testid={`program-current-${e.kind}`}
+                >
+                  {existing?.content}
+                </p>
+                <div className="flex flex-wrap gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    aria-pressed={isKeep}
+                    onClick={() => setDecisions((s) => ({ ...s, [e.kind]: "keep" }))}
+                    data-testid={`program-keep-${e.kind}`}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${isKeep ? "bg-[#C9A66B] text-[#0B1F3A]" : "border border-white/15 text-white/65 hover:bg-white/[0.06]"}`}
+                  >
+                    Keep current
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={!isKeep}
+                    onClick={() => setDecisions((s) => ({ ...s, [e.kind]: "use" }))}
+                    data-testid={`program-use-${e.kind}`}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${!isKeep ? "bg-[#C9A66B] text-[#0B1F3A]" : "border border-white/15 text-white/65 hover:bg-white/[0.06]"}`}
+                  >
+                    Use BTY draft
+                  </button>
+                </div>
+                <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  BTY’s draft
+                </span>
+              </div>
+            ) : null}
 
             {isDerived ? (
               <>
@@ -830,7 +912,12 @@ export function ProgramAuthorship({
           onClick={() => {
             setContracts(baseContracts);
             setEdits(Object.fromEntries(p.elements.map((el) => [el.kind, el.content])));
-            setDecisions(Object.fromEntries(p.elements.map((el) => [el.kind, "use" as SectionDecision])));
+            /*
+              Reset restores the review AS IT OPENED, not "everything BTY" (Slice R4-R2A-R1).
+              Discarding the Host's own settled sentences is not an undo of their edits, and a
+              Host who genuinely wants BTY's version everywhere has a per-section control.
+            */
+            setDecisions(initialSectionDecisions(journey, p));
             setTitleEdit(p.displayTitle);
             setTitleDecision("use");
             setOpenDetails(null);

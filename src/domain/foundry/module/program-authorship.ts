@@ -2355,6 +2355,56 @@ export function validateProgramProposal(
 /** What the Host decided for one section. */
 export type SectionDecision = "use" | "keep" | "edit";
 
+/**
+ * MAY THIS SECTION'S EXISTING SENTENCE BE PRESERVED THROUGH ADOPTION? (Slice R4-R2A-R1)
+ *
+ * MEASURED, on the first canonical OBSERVED seed. A Host wrote an observable standard, the
+ * deterministic mapper grounded it as `host_statement`, and program adoption then replaced it
+ * with the AI composite — because every section defaulted to `use` and no control emitted
+ * `keep`. The Host was never asked. `applyProgramProposal` has always been able to preserve an
+ * element; nothing upstream ever chose to.
+ *
+ * The rule is deliberately about PROVENANCE, not about kind. "The Host already said this in
+ * their own words, and it is settled" is the same fact whether it is THE STANDARD, the
+ * reflection or the completion check — so one predicate answers it for all of them and no
+ * per-kind list can drift out of step with the journey.
+ *
+ * ALL FOUR CONDITIONS ARE REQUIRED. A `needs_confirmation` element is unsettled and is exactly
+ * what a proposal is for; an empty one has nothing to preserve; and `ai_proposed` or
+ * `deterministic_derived` content is not the Host's statement, so keeping it would protect
+ * BTY's own earlier draft from BTY's newer one — a choice nobody asked for.
+ */
+export function isPreservableHostSection(
+  el: { content?: string; confirmationStatus?: string; grounding?: { sourceType?: unknown }[] } | undefined | null,
+): boolean {
+  if (!el) return false;
+  if (el.confirmationStatus !== "grounded") return false;
+  if ((el.content ?? "").trim().length === 0) return false;
+  const source = readProvenance(el);
+  return source === "host_statement" || source === "host_edited";
+}
+
+/**
+ * The decision each section STARTS on when the review opens (Slice R4-R2A-R1).
+ *
+ * `keep` where the Host already has a settled sentence of their own, `use` everywhere else —
+ * which is every kind the journey does not yet contain, so a program still fills the gaps it
+ * was asked to fill. Consent is the whole point: replacing the Host's own words must be
+ * something they chose, and adopting BTY's draft for a section they never wrote is not a
+ * replacement at all.
+ */
+export function initialSectionDecisions(
+  current: RealityGroundedJourneyV1 | undefined,
+  proposal: { elements: readonly { kind: JourneyElementKind }[] },
+): Record<string, SectionDecision> {
+  const existing = new Map((current?.elements ?? []).map((e) => [e.kind, e]));
+  const out: Record<string, SectionDecision> = {};
+  for (const e of proposal.elements) {
+    out[e.kind] = isPreservableHostSection(existing.get(e.kind)) ? "keep" : "use";
+  }
+  return out;
+}
+
 export type SectionChoice = {
   kind: JourneyElementKind;
   decision: SectionDecision;
