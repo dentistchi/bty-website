@@ -23,7 +23,7 @@ import { isMetaStandardText } from "@/domain/foundry/module/program-coherence";
 import { draftIdentityStatement, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
-import { resolveRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
+import { resolveRefusalCopy, resolveAdoptionRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
 import { EDITABLE_CHIP, EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
 
@@ -108,8 +108,19 @@ export function ProgramAuthorship({
    * fails CLOSED rather than showing a program that may already have been adopted.
    */
   onCheckResume?: (attemptId: string) => Promise<boolean>;
-  /** Persist the whole approved journey in ONE save. */
-  onApply: (next: RealityGroundedJourneyV1, attemptId: string | null) => Promise<ProgramApplyOutcome> | void;
+  /**
+   * Persist the whole approved journey in ONE save.
+   *
+   * `reference` is the proposal this journey was built from (Slice R4-R2E-R1). It travels so the
+   * SERVER can tell a preserved Host section from a substituted one — a distinction it cannot
+   * otherwise make, because the proposal body is not stored anywhere. It is proved against the
+   * attempt's durable digest before it is believed.
+   */
+  onApply: (
+    next: RealityGroundedJourneyV1,
+    attemptId: string | null,
+    reference?: { displayTitle: string; elements: { kind: string; content: string }[] },
+  ) => Promise<ProgramApplyOutcome> | void;
   /**
    * The Host-input authority as it is RIGHT NOW. Compared against the fingerprint the
    * proposal was written from, so a proposal cannot silently overwrite answers the Host
@@ -466,6 +477,13 @@ export function ProgramAuthorship({
         (await onApply(
           applyProgramProposal(journey, proposal, choices, { titleDecision, editedTitle: titleEdit }),
           attemptId,
+          /*
+            The proposal EXACTLY as it was generated — never the edited or kept text, and never a
+            digest (Slice R4-R2E-R1). The server hashes this and compares it with the attempt's
+            durable digest, so sending anything other than the untouched proposal simply fails
+            the check and falls back to the strict rule.
+          */
+          { displayTitle: proposal.displayTitle, elements: proposal.elements.map((e) => ({ kind: e.kind, content: e.content })) },
         )) ?? { status: "save_failed" };
     } catch {
       outcome = { status: "save_failed" };
@@ -639,15 +657,20 @@ export function ProgramAuthorship({
       );
     }
     if (applyOutcome?.status === "refused" || adoptionRefusal) {
+      /*
+        ONE SENTENCE PER REASON (Slice R4-R2E-R1). This used to be a two-way ternary over eight
+        closed reasons, so `proposal_mismatch` was reported as "Your training moved on since BTY
+        wrote this draft" — measured false on production draft `d04d48e1`, whose fingerprint was
+        byte-identical. An unrecognised reason gets the honest fallback rather than a guess.
+      */
+      const copy = resolveAdoptionRefusalCopy(adoptionRefusal ?? null);
       return (
         <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-refused">
-          <p className="text-sm font-medium text-amber-100/90">
-            This program wasn’t added. Your other changes were saved.
+          <p className="text-sm font-medium text-amber-100/90" data-testid="program-refused-headline">
+            {copy.headline} Your other changes were saved.
           </p>
-          <p className="mt-1 text-sm leading-6 text-amber-100/75">
-            {adoptionRefusal === "proposal_no_longer_valid"
-              ? "BTY’s rules for writing programs changed after this one was drafted, so it can’t be added as it stands. Draft the program again — your training answers are unchanged."
-              : "Your training moved on since BTY wrote this draft. Draft the program again so it matches what your training says now."}
+          <p className="mt-1 text-sm leading-6 text-amber-100/75" data-testid="program-refused-explanation">
+            {copy.explanation}
           </p>
         </section>
       );

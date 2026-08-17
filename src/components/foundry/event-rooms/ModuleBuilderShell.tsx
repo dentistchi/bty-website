@@ -62,7 +62,20 @@ import {
  * hands off to its control room. Persistence engine is regression-protected.
  */
 
-type Snapshot = { answers: BuilderAnswers; currentStep: number };
+type Snapshot = {
+  answers: BuilderAnswers;
+  currentStep: number;
+  /**
+   * The proposal this save claims to have adopted (Slice R4-R2E-R1). Rides ONLY the adoption
+   * flush — an ordinary autosave has no adoption to reference and sends none. The server proves
+   * it against the attempt's durable digest before reading it, so this is evidence to be
+   * checked, never an assertion to be believed.
+   */
+  adoptionReference?: AdoptionReference;
+};
+
+/** The proposal's participant-facing content, as the digest sees it. */
+export type AdoptionReference = { displayTitle: string; elements: { kind: string; content: string }[] };
 
 /** What the draft PATCH reports about an adoption claim it carried (Slice 3.2L-R11.3B). */
 type AdoptionResult = { ok?: boolean; reason?: string; receipt?: "recorded" | "pending" };
@@ -163,7 +176,11 @@ export function ModuleBuilderShell({
             widened the CHECK to the ninth screen, and kept for the next one: while the two
             bounds disagree, a host loses a click rather than the answer they just typed.
           */
-          body: JSON.stringify({ answers: snap.answers, current_step: persistableStep(snap.currentStep) }),
+          body: JSON.stringify({
+            answers: snap.answers,
+            current_step: persistableStep(snap.currentStep),
+            ...(snap.adoptionReference ? { adoption_reference: snap.adoptionReference } : {}),
+          }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
           // it never settled, so `inFlight` never cleared and every later flush hung.
           // Aborting turns that into an ordinary retryable failure.
@@ -621,7 +638,11 @@ export function ModuleBuilderShell({
   }, [answers]);
 
   const applyProgram = useCallback(
-    async (next: RealityGroundedJourneyV1, attemptId: string | null): Promise<ProgramApplyOutcome> => {
+    async (
+      next: RealityGroundedJourneyV1,
+      attemptId: string | null,
+      reference?: AdoptionReference,
+    ): Promise<ProgramApplyOutcome> => {
       /*
         ONE row update carries the adopted journey AND the record of which proposal was
         adopted, and Apply now AWAITS it: the surface may not say "added" before the server
@@ -646,7 +667,7 @@ export function ModuleBuilderShell({
       const previous = answersRef.current;
       answersRef.current = merged;
       setAnswers(merged);
-      const saved = await saver.flush({ answers: merged, currentStep: stepRef.current });
+      const saved = await saver.flush({ answers: merged, currentStep: stepRef.current, adoptionReference: reference });
       if (!saved) {
         answersRef.current = previous;
         setAnswers(previous);

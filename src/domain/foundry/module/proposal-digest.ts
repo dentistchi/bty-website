@@ -58,13 +58,33 @@ function digestOf(payload: string): ProposalDigest {
 }
 
 /**
+ * The same digest, over sections given directly rather than read off a proposal or a journey
+ * (Slice R4-R2E-R1). The mixed-authorship authority needs to hash a set of sections it did not
+ * get from either shape — the reference supplied with an adoption request — and it must hash it
+ * through EXACTLY this path, or "the reference matches the durable digest" would be comparing
+ * two different functions.
+ *
+ * Both `proposalDigest` and `journeyDigest` now delegate here, so there is one implementation
+ * and the three callers cannot drift.
+ */
+export function sectionDigest(
+  displayTitle: string,
+  contentByKind: Readonly<Record<string, string>>,
+  requiredKinds: readonly JourneyElementKind[],
+): ProposalDigest {
+  const byKind = new Map<JourneyElementKind, string>();
+  for (const [kind, content] of Object.entries(contentByKind)) byKind.set(kind as JourneyElementKind, content);
+  return digestOf(canonicalPayload(displayTitle, byKind, requiredKinds));
+}
+
+/**
  * The identity of the proposal BTY generated, computed server-side from the validated
  * proposal that is returned for review. A client-supplied digest is never evidence.
  */
 export function proposalDigest(proposal: ProgramProposal, requiredKinds: readonly JourneyElementKind[]): ProposalDigest {
-  const byKind = new Map<JourneyElementKind, string>();
-  for (const el of proposal.elements) byKind.set(el.kind, el.content);
-  return digestOf(canonicalPayload(proposal.displayTitle, byKind, requiredKinds));
+  const byKind: Record<string, string> = {};
+  for (const el of proposal.elements) byKind[el.kind] = el.content;
+  return sectionDigest(proposal.displayTitle, byKind, requiredKinds);
 }
 
 /**
@@ -76,9 +96,9 @@ export function proposalDigest(proposal: ProgramProposal, requiredKinds: readonl
  * claiming otherwise is exactly the false receipt this closes.
  */
 export function journeyDigest(journey: RealityGroundedJourneyV1, requiredKinds: readonly JourneyElementKind[]): ProposalDigest {
-  const byKind = new Map<JourneyElementKind, string>();
-  for (const el of journey.elements) byKind.set(el.kind, el.content);
-  return digestOf(canonicalPayload(journey.displayTitle, byKind, requiredKinds));
+  const byKind: Record<string, string> = {};
+  for (const el of journey.elements) byKind[el.kind] = el.content;
+  return sectionDigest(journey.displayTitle, byKind, requiredKinds);
 }
 
 /** `true` only for a well-formed digest of the CURRENT version. */

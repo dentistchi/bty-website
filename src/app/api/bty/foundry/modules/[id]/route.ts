@@ -14,7 +14,7 @@ import {
 } from "@/lib/bty/foundry/events/programGenerationRecorder";
 import { journeyDigest } from "@/domain/foundry/module/proposal-digest";
 import { decideAdoptionReceipt } from "@/domain/foundry/module/adoption-authority";
-import { programContext, programContextFingerprint, requiredProgramKinds, PROGRAM_AUTHORSHIP_VERSION } from "@/domain/foundry/module/program-authorship";
+import { programContext, programContextFingerprint, requiredProgramKinds, isPreservableHostSection, PROGRAM_AUTHORSHIP_VERSION } from "@/domain/foundry/module/program-authorship";
 import { toClientDraft } from "@/lib/bty/foundry/events/moduleClient";
 import { validateDraftPatch, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
@@ -106,6 +106,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       answers: merged,
       journeyInSamePatch: patchAnswers.realityGroundedJourneyV1 !== undefined,
       journey: patchAnswers.realityGroundedJourneyV1,
+      /*
+        MIXED AUTHORSHIP (Slice R4-R2E-R1). Everything the section-by-section rule needs, and it
+        is gathered HERE because this is the only moment both states exist at once: `before` is
+        the durable pre-adoption row, `patchAnswers` is the journey being written. One request
+        later, the pre-adoption content is gone.
+
+        `adoption_reference` is the ONLY client-supplied part, and the authority hashes it against
+        the attempt's durable digest before reading a value from it.
+      */
+      preAdoptionJourney: (before?.answers as BuilderAnswers | undefined)?.realityGroundedJourneyV1,
+      reference: readAdoptionReference(body?.adoption_reference),
     });
     if (!decision.ok) {
       /*
@@ -173,6 +184,35 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 /**
+ * The adoption reference, narrowed from an untrusted request body (Slice R4-R2E-R1).
+ *
+ * Shape only. This says nothing about whether the reference is the real proposal — that is
+ * settled by the digest inside the authority, and a well-formed lie is refused exactly like a
+ * malformed one. Anything unexpected becomes `null`, which restores the strict single-digest
+ * rule rather than skipping it.
+ */
+function readAdoptionReference(raw: unknown): { displayTitle: string; contentByKind: Record<string, string> } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { displayTitle?: unknown; elements?: unknown };
+  if (typeof r.displayTitle !== "string" || !Array.isArray(r.elements)) return null;
+  const contentByKind: Record<string, string> = {};
+  for (const el of r.elements) {
+    if (!el || typeof el !== "object") return null;
+    const e = el as { kind?: unknown; content?: unknown };
+    if (typeof e.kind !== "string" || typeof e.content !== "string") return null;
+    contentByKind[e.kind] = e.content;
+  }
+  return { displayTitle: r.displayTitle, contentByKind };
+}
+
+/** Element content by kind, for one journey — the shape the mixed-authorship rule compares. */
+function contentByKind(journey: BuilderAnswers["realityGroundedJourneyV1"]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const el of journey?.elements ?? []) out[el.kind] = el.content;
+  return out;
+}
+
+/**
  * Gather the durable facts and decide. Kept beside the route because it is the only caller,
  * and kept OUT of the domain because it reads the database.
  */
@@ -186,6 +226,9 @@ async function proveAdoption(
     answers: BuilderAnswers;
     journeyInSamePatch: boolean;
     journey: BuilderAnswers["realityGroundedJourneyV1"];
+    /** The draft's journey BEFORE this write. Absent in recovery — see below. */
+    preAdoptionJourney?: BuilderAnswers["realityGroundedJourneyV1"];
+    reference?: { displayTitle: string; contentByKind: Record<string, string> } | null;
   },
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const ctx = programContext(input.answers);
@@ -225,6 +268,29 @@ async function proveAdoption(
       PROPOSAL_DIGEST_ENABLED && input.journey
         ? journeyDigest(input.journey, requiredProgramKinds(input.answers))
         : null,
+    /*
+      MIXED-AUTHORSHIP EVIDENCE (Slice R4-R2E-R1), offered only when there is a pre-adoption
+      journey to compare against — which is an INITIAL claim. A recovery re-proves durable state
+      long after the pre-adoption content is gone, so it cannot answer "was this section
+      preserved unchanged?" and does not pretend to: no evidence, strict rule, fail closed.
+
+      `preservableKinds` is computed from the DURABLE row's own provenance. That is the whole
+      reason KEEP cannot be asserted by a caller: the server decides which sections were ever
+      the Host's to preserve.
+    */
+    mixedAuthorship: input.preAdoptionJourney
+      ? {
+          requiredKinds: requiredProgramKinds(input.answers),
+          adoptedTitle: input.journey?.displayTitle ?? "",
+          adoptedByKind: contentByKind(input.journey),
+          preAdoptionTitle: input.preAdoptionJourney.displayTitle ?? null,
+          preAdoptionByKind: contentByKind(input.preAdoptionJourney),
+          preservableKinds: input.preAdoptionJourney.elements
+            .filter((el) => isPreservableHostSection(el))
+            .map((el) => el.kind),
+          reference: input.reference ?? null,
+        }
+      : undefined,
   });
 }
 

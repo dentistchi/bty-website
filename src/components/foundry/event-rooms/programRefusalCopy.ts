@@ -1,6 +1,7 @@
 import type { ProgramRejectCode } from "@/domain/foundry/module/program-authorship";
 import type { ProgramGenerateErrorCode } from "@/lib/bty/foundry/events/programAuthorshipService";
 import type { DependencyBranch } from "@/domain/foundry/module/program-coherence";
+import type { AdoptionRefusal } from "@/domain/foundry/module/adoption-authority";
 
 /**
  * Host-facing copy for EVERY reachable program refusal (Slice 3.2L-R5).
@@ -361,3 +362,69 @@ export const PROGRAM_RETRY_POLICY = {
   /** No code, under any circumstance, may start a generation directly from the refusal. */
   immediateRetryAllowed: false as const,
 };
+
+/**
+ * WHY AN ADOPTION WAS REFUSED, IN WORDS THAT ARE TRUE (Slice R4-R2E-R1).
+ *
+ * The surface had exactly two sentences for eight closed reasons: the `proposal_no_longer_valid`
+ * one, and "Your training moved on since BTY wrote this draft" for everything else. Measured on
+ * production draft `d04d48e1`, that fallback was shown for `proposal_mismatch` while the context
+ * fingerprint was byte-identical — the training had not moved at all, and the Host was sent to
+ * re-answer questions that were never the problem.
+ *
+ * "Your training moved on" now belongs to `context_moved` ALONE, which is the one reason that
+ * fact is true of. Every other reason says what actually happened and what to do about it.
+ *
+ * EXHAUSTIVE over `AdoptionRefusal`: adding a reason without a sentence is a compile error.
+ */
+export const ADOPTION_REFUSAL_COPY: Record<AdoptionRefusal, { headline: string; explanation: string }> = {
+  proposal_no_longer_valid: {
+    headline: "This program wasn’t added.",
+    explanation:
+      "BTY’s rules for writing programs changed after this one was drafted, so it can’t be added as it stands. Draft the program again — your training answers are unchanged.",
+  },
+  context_moved: {
+    headline: "This program wasn’t added.",
+    explanation:
+      "Your training moved on since BTY wrote this draft. Draft the program again so it matches what your training says now.",
+  },
+  proposal_mismatch: {
+    headline: "This program wasn’t added.",
+    explanation:
+      "What was about to be saved doesn’t match the program BTY drafted, so the record couldn’t be made. Your training answers are unchanged — draft the program again and add it without rewriting the sections.",
+  },
+  superseded_attempt: {
+    headline: "This program wasn’t added.",
+    explanation:
+      "A newer program has since been drafted for this training, so this older one can no longer be added. Draft the program again to review the current one.",
+  },
+  attempt_not_found: {
+    headline: "This program wasn’t added.",
+    explanation: "BTY can no longer find the draft this refers to. Draft the program again — your training answers are unchanged.",
+  },
+  attempt_other_draft: {
+    headline: "This program wasn’t added.",
+    explanation: "This program was drafted for a different training. Draft the program again from this one.",
+  },
+  attempt_not_successful: {
+    headline: "This program wasn’t added.",
+    explanation: "The draft this refers to never finished, so there is nothing to add. Draft the program again.",
+  },
+  no_journey_in_same_patch: {
+    headline: "This program wasn’t added.",
+    explanation: "The program didn’t arrive complete, so nothing was recorded. Draft the program again.",
+  },
+};
+
+/** The honest fallback for a reason this build does not recognise — never a guess at why. */
+export const ADOPTION_REFUSAL_UNKNOWN = {
+  headline: "This program wasn’t added.",
+  explanation: "Your other changes were saved. Draft the program again — your training answers are unchanged.",
+};
+
+export function resolveAdoptionRefusalCopy(reason: string | null | undefined): { headline: string; explanation: string } {
+  if (typeof reason === "string" && reason in ADOPTION_REFUSAL_COPY) {
+    return ADOPTION_REFUSAL_COPY[reason as AdoptionRefusal];
+  }
+  return ADOPTION_REFUSAL_UNKNOWN;
+}

@@ -14,6 +14,9 @@
  * and no trust in the client beyond the id it names.
  */
 
+import { sectionDigest } from "./proposal-digest";
+import type { JourneyElementKind } from "./journey";
+
 /** Why a claimed adoption may not be stamped. Closed vocabulary, never prose. */
 export type AdoptionRefusal =
   /**
@@ -103,9 +106,97 @@ export type AdoptionClaim = {
    * so the lenient branch is never reached by omission.
    */
   receiptAlreadyStamped?: boolean;
+  /**
+   * EVIDENCE FOR A MIXED-AUTHORSHIP ADOPTION (Slice R4-R2E-R1). Absent means the claim is
+   * judged by exact identity alone, exactly as before — this is additive and fails closed.
+   */
+  mixedAuthorship?: MixedAuthorshipEvidence;
+};
+
+/**
+ * What a mixed-authorship claim has to be judged from. Every field is SERVER-DERIVED except
+ * `reference`, which is proved before it is read.
+ */
+export type MixedAuthorshipEvidence = {
+  /** The kinds this draft's own learning design asks for — the digest's scope. */
+  requiredKinds: readonly JourneyElementKind[];
+  /** The journey being adopted, as written in this patch. */
+  adoptedTitle: string;
+  adoptedByKind: Readonly<Record<string, string>>;
+  /** The draft's DURABLE state before this write — read from the row, never from the client. */
+  preAdoptionTitle: string | null;
+  preAdoptionByKind: Readonly<Record<string, string>>;
+  /**
+   * The kinds whose durable pre-adoption element was a grounded Host-authored sentence, and so
+   * may legitimately be KEPT (`isPreservableHostSection`, applied to the row's own provenance).
+   * A kind absent from this set can only be satisfied by matching the proposal.
+   */
+  preservableKinds: readonly JourneyElementKind[];
+  /**
+   * The proposal the request claims to have adopted. UNTRUSTED INPUT: it is hashed and compared
+   * against the attempt's durable `proposalDigest` before a single value is read from it.
+   */
+  reference: { displayTitle: string; contentByKind: Readonly<Record<string, string>> } | null;
 };
 
 export type AdoptionDecision = { ok: true } | { ok: false; reason: AdoptionRefusal };
+
+/**
+ * IS THIS A HONEST MIXED-AUTHORSHIP ADOPTION? (Slice R4-R2E-R1)
+ *
+ * Reached only when exact identity has already FAILED — so the question is no longer "is this
+ * the proposal?" but the narrower one the Founder settled: "is every required section either the
+ * proposal's, or a Host sentence that was explicitly preserved unchanged?"
+ *
+ * THE PROPOSAL IS AN INPUT BECAUSE IT IS NOWHERE ELSE. Measured on production: the attempts row
+ * stores `proposal_digest` and no content; the calls row stores `response_sha256` and
+ * `response_bytes`. Per-section comparison cannot be done from stored state, so the reference
+ * travels with the request — and is PROVED here, against the durable digest, before use. That
+ * hash is the whole security argument: a caller who does not already hold the real proposal
+ * cannot produce a reference that matches it, so supplying one grants no power that holding the
+ * proposal did not already grant.
+ *
+ * KEEP is decided from DURABLE PROVENANCE, never from the client and never from content alone:
+ * `preservableKinds` comes from `isPreservableHostSection` applied to the row's own elements. A
+ * section whose pre-adoption element was BTY's cannot be "preserved" into something else.
+ *
+ * Trimmed on the KEEP side because `applyProgramProposal` writes `existing.content.trim()` — the
+ * comparison must ask the question the writer actually answers, or an untouched preservation
+ * with incidental whitespace would read as a forgery.
+ */
+function isProvenMixedAuthorship(claim: AdoptionClaim): boolean {
+  const m = claim.mixedAuthorship;
+  if (!m || !m.reference) return false;
+  const durableDigest = claim.attempt?.proposalDigest;
+  if (!durableDigest) return false;
+
+  // THE GATE. An unproven reference is not evidence, and there is no partial credit.
+  const referenceDigest = sectionDigest(m.reference.displayTitle, m.reference.contentByKind, m.requiredKinds);
+  if (referenceDigest !== durableDigest) return false;
+
+  const preservable = new Set(m.preservableKinds);
+  for (const kind of m.requiredKinds) {
+    const adopted = m.adoptedByKind[kind] ?? "";
+    // REPLACE — this section is the proposal's, unchanged.
+    if (adopted === (m.reference.contentByKind[kind] ?? "")) continue;
+    // KEEP — only for a section the Host durably owned, and only at its exact durable value.
+    if (!preservable.has(kind)) return false;
+    const durable = (m.preAdoptionByKind[kind] ?? "").trim();
+    if (durable.length === 0 || adopted !== durable) return false;
+  }
+
+  /*
+    THE TITLE IS CONTENT TOO. It is inside the digest, so leaving it unchecked here would let an
+    arbitrary title ride in on an otherwise honest adoption. Two sources are legitimate — the
+    proposal's title, and the Host's own durable one — and nothing else, which is the same
+    "no third, unaccounted-for content" rule applied one level up.
+  */
+  const preTitle = (m.preAdoptionTitle ?? "").trim();
+  if (m.adoptedTitle !== m.reference.displayTitle && !(preTitle.length > 0 && m.adoptedTitle === preTitle)) {
+    return false;
+  }
+  return true;
+}
 
 export function decideAdoptionReceipt(claim: AdoptionClaim): AdoptionDecision {
   /*
@@ -136,7 +227,19 @@ export function decideAdoptionReceipt(claim: AdoptionClaim): AdoptionDecision {
   */
   if (claim.adoptedJourneyDigest !== null) {
     if (claim.attempt.proposalDigest === null) return { ok: false, reason: "proposal_mismatch" };
-    if (claim.attempt.proposalDigest !== claim.adoptedJourneyDigest) return { ok: false, reason: "proposal_mismatch" };
+    /*
+      EXACT IDENTITY FIRST — an unedited, fully-adopted proposal is still proved by one hash
+      comparison and never reaches the section-by-section path (Slice R4-R2E-R1).
+
+      When it does not match, the journey is not the proposal — but that is no longer the same
+      thing as "not an adoption". R4-R2A-R1 opens every preservable Host section on KEEP, so the
+      DEFAULT adoption of a draft that already carries Host wording can never digest-match, and
+      production measured the consequence exactly: zero successful adoptions after that default
+      shipped. The narrower claim is checked here, and refused if it cannot be proved.
+    */
+    if (claim.attempt.proposalDigest !== claim.adoptedJourneyDigest && !isProvenMixedAuthorship(claim)) {
+      return { ok: false, reason: "proposal_mismatch" };
+    }
   }
 
   /*
