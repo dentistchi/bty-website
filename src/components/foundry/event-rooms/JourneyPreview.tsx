@@ -10,6 +10,7 @@ import {
   type JourneyElementKind,
 } from "@/domain/foundry/module/journey";
 import { attributionKind } from "@/domain/foundry/module/program-authorship";
+import { EDITABLE_CHIP, EDITABLE_FIELD } from "./reviewSurfaceStyles";
 
 /**
  * Host Learner Preview + Approval gate (Slice 3.2C-B3A).
@@ -77,11 +78,22 @@ export function JourneyPreview({
   answers,
   onPatch,
   onApprovableChange,
+  handoffSignal = 0,
 }: {
   answers: BuilderAnswers;
   /** Persist a partial answers update (merged + saved) — same seam the Builder uses. */
   onPatch: (partial: BuilderAnswers, immediate: boolean) => void;
   onApprovableChange: (approvable: boolean) => void;
+  /**
+   * ADOPTION LANDS HERE (Slice R4-R2E). A counter the parent increments when a BTY program
+   * actually became part of the draft. Each increment brings this section into view, gives it a
+   * brief emphasis and moves keyboard focus to it — the answer to "the draft is adopted, now
+   * where do I change it?".
+   *
+   * A COUNTER, not a boolean: two adoptions in one sitting are two handoffs, and a boolean that
+   * is already `true` announces nothing the second time.
+   */
+  handoffSignal?: number;
 }) {
   // Derive once from the raw reality if no Host-owned Journey exists yet; otherwise
   // the persisted (possibly edited) Journey is authoritative.
@@ -157,6 +169,56 @@ export function JourneyPreview({
     onApprovableChange(isJourneyApprovable(journey));
   }, [journey, onApprovableChange]);
 
+  /*
+    THE ADOPTION HANDOFF (Slice R4-R2E).
+
+    Measured before this: adopting a BTY program showed a short green panel where the long review
+    had been, and left the Host looking at a screen that had just changed shape underneath them.
+    The adopted words were now in the editable preview below — with nothing saying so, and often
+    off screen entirely. G4 is exactly that gap.
+
+    Three things happen, and each is the smallest version of itself:
+
+      SCROLL, only when the section is not already comfortably in view, because scrolling a Host
+      who is already looking at the destination is disorientation, not orientation. Smooth unless
+      the platform says reduced motion, in which case it jumps.
+
+      EMPHASIS, a ring for a few seconds. A ring, not an animation: the purpose is to say "here",
+      and a moving thing says "look at me" over and over.
+
+      FOCUS, onto the SECTION, not into a text box. Focusing a textarea would raise the iOS
+      keyboard over the very content the Host was just brought to see, and would drop them into
+      the middle of a form with no idea what is above. The section is `tabIndex={-1}`, so it takes
+      programmatic focus, is announced with its heading, and the next Tab continues into the first
+      field — reachable, never trapped.
+
+    Guarded on `> 0` so a fresh mount at 0 announces nothing, and this component is mounted by the
+    adoption itself in the common case (a draft becomes Journey-enabled when the program lands).
+  */
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [handoffLit, setHandoffLit] = useState(false);
+  useEffect(() => {
+    if (handoffSignal <= 0) return;
+    const el = sectionRef.current;
+    setHandoffLit(true);
+    if (el) {
+      const box = el.getBoundingClientRect?.();
+      const viewH = typeof window !== "undefined" ? window.innerHeight : 0;
+      // "Reasonably visible" = its top edge is on screen and not jammed against the bottom.
+      const alreadyVisible = !!box && viewH > 0 && box.top >= 0 && box.top < viewH * 0.6;
+      if (!alreadyVisible) {
+        const reduced =
+          typeof window !== "undefined" && typeof window.matchMedia === "function"
+            ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            : false;
+        el.scrollIntoView?.({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      }
+      el.focus?.({ preventScroll: true });
+    }
+    const timer = setTimeout(() => setHandoffLit(false), 4000);
+    return () => clearTimeout(timer);
+  }, [handoffSignal]);
+
   const persist = useCallback(
     (next: RealityGroundedJourneyV1) => {
       setJourney(next);
@@ -192,20 +254,46 @@ export function JourneyPreview({
   }, [journey, persist, titleDraft]);
 
   return (
-    <section className="flex flex-col gap-5" data-testid="journey-preview">
+    <section
+      ref={sectionRef}
+      tabIndex={-1}
+      aria-labelledby="journey-preview-heading"
+      data-testid="journey-preview"
+      data-handoff={handoffLit ? "lit" : undefined}
+      className={`flex flex-col gap-5 rounded-2xl p-1 outline-none transition-shadow duration-500 ${
+        handoffLit ? "ring-2 ring-[#C9A66B]/70" : "ring-0"
+      }`}
+    >
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">Learner preview</span>
-        <p className="text-sm leading-6 text-white/55">This is exactly what your team will experience. Everything below comes from what you wrote.</p>
+        <span className="flex flex-wrap items-center gap-2">
+          <span id="journey-preview-heading" className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">Learner preview</span>
+          {/* The one cue that answers "what can I change?" before any field is read (R4-R2E). */}
+          <span className={EDITABLE_CHIP} data-testid="journey-editable-chip" aria-hidden>Yours to edit</span>
+        </span>
+        <p className="text-sm leading-6 text-white/55">This is exactly what your team will experience. Every gold box below is text you can rewrite.</p>
+        {handoffLit ? (
+          <p className="text-sm leading-6 text-[#C9A66B]" data-testid="journey-handoff-note" role="status">
+            BTY’s draft is now here. Change any line below to make it yours.
+          </p>
+        ) : null}
       </div>
 
       {/* Participant title — must be Host-approved (never silently the raw problem line). */}
       <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="journey-title">
-        <span className="text-xs uppercase tracking-[0.12em] text-white/40">Learner title</span>
+        {/* Chip beside the label, never inside it — see the same note in ProgramAuthorship. */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="journey-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
+            Learner title
+          </label>
+          <span className={EDITABLE_CHIP} aria-hidden>Editable</span>
+        </div>
         <input
+          id="journey-title-input"
           value={titleDraft}
           onChange={(e) => setTitleDraft(e.target.value)}
           data-testid="journey-title-input"
-          className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-base text-white/90"
+          data-surface="editable"
+          className={`${EDITABLE_FIELD} text-base`}
         />
         {journey.displayTitleStatus === "needs_confirmation" || titleDraft.trim() !== journey.displayTitle ? (
           <button
@@ -242,8 +330,10 @@ export function JourneyPreview({
               onChange={(e) => editElement(el.id, e.target.value)}
               rows={2}
               placeholder={needs ? "Add this in your own words — BTY will not invent it." : ""}
+              aria-label={`${KIND_LABEL[el.kind]} — the learner reads this`}
               data-testid={`journey-edit-${el.kind}`}
-              className="resize-none rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+              data-surface="editable"
+              className={`resize-none ${EDITABLE_FIELD} text-sm leading-6`}
             />
           </div>
         );

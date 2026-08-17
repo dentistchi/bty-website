@@ -139,6 +139,14 @@ export function ModuleBuilderShell({
 
   /** Set when the server refused an adoption claim carried by a save (Slice 3.2L-R11.3A). */
   const [adoptionRefusal, setAdoptionRefusal] = useState<string | null>(null);
+  /**
+   * Adoptions that actually landed, counted (Slice R4-R2E). The Learner Preview is the place the
+   * adopted words become editable, and it is a SIBLING of the surface that adopted them — so the
+   * handoff has to be announced through the parent that owns both. Raised by `ProgramAuthorship`
+   * from an effect, after its own collapse has committed, so the destination is not moved the
+   * instant after it is brought into view.
+   */
+  const [adoptionHandoff, setAdoptionHandoff] = useState(0);
   /** The adoption result the last save carried, read by Apply rather than assumed. */
   const adoptionResultRef = useRef<AdoptionResult | null>(null);
   const saverRef = useRef<ReturnType<typeof createSerializedSaver<Snapshot>> | null>(null);
@@ -833,9 +841,15 @@ export function ModuleBuilderShell({
             adoptionRefusal={adoptionRefusal}
             onApply={applyProgram}
             onPendingChange={setGenerationPending}
+            onAdopted={() => setAdoptionHandoff((n) => n + 1)}
           />
           {journeyEnabled ? (
-            <JourneyPreview answers={answers} onPatch={patchAnswers} onApprovableChange={setJourneyApprovable} />
+            <JourneyPreview
+              answers={answers}
+              onPatch={patchAnswers}
+              onApprovableChange={setJourneyApprovable}
+              handoffSignal={adoptionHandoff}
+            />
           ) : (
             <button
               type="button"

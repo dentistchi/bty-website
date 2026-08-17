@@ -25,6 +25,7 @@ import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
+import { EDITABLE_CHIP, EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -93,6 +94,7 @@ export function ProgramAuthorship({
   currentContextFingerprint,
   adoptionRefusal,
   onPendingChange,
+  onAdopted,
 }: {
   /** The exact loaded draft this surface is bound to. */
   draftId: string;
@@ -124,6 +126,15 @@ export function ProgramAuthorship({
    * publication — a generation and a publication must never overlap on one draft.
    */
   onPendingChange?: (pending: boolean) => void;
+  /**
+   * A program actually became part of the draft (Slice R4-R2E). Raised ONCE, from an effect,
+   * so it fires AFTER this surface has collapsed to its confirmation panel — the parent uses
+   * it to take the Host to where the adopted words can now be edited, and that destination
+   * would otherwise be moved by the collapse the instant after it was brought into view.
+   *
+   * Never raised for a refusal or a save failure: nothing was added, so there is nowhere to go.
+   */
+  onAdopted?: () => void;
 }) {
   // `confirm` sits between the button and the provider. Two controlled windows were
   // spent generating against the wrong training, so the PAID action gets its own target
@@ -303,6 +314,23 @@ export function ProgramAuthorship({
   useEffect(() => {
     if (phase === "confirm") requestAnimationFrame(() => confirmButtonRef.current?.focus());
   }, [phase]);
+
+  /**
+   * THE HANDOFF (Slice R4-R2E). Announced from an EFFECT, not from `apply`, and that ordering is
+   * the whole point: by the time this runs, React has already committed the collapse of the long
+   * review down to the short confirmation panel. Announcing it inside `apply` would hand the
+   * parent a destination and then move it by several hundred pixels in the very next commit.
+   *
+   * Once only — `phase` stays "applied", and a second announcement would re-take focus from a
+   * Host who had already started typing.
+   */
+  const adoptedAnnouncedRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "applied" || adoptedAnnouncedRef.current) return;
+    if (applyOutcome?.status !== "adopted" && applyOutcome?.status !== "adopted_receipt_pending") return;
+    adoptedAnnouncedRef.current = true;
+    onAdopted?.();
+  }, [phase, applyOutcome, onAdopted]);
 
   /**
    * EDITED-CONTENT AUTHORITY (Slice 3.2L-R4).
@@ -640,18 +668,37 @@ export function ProgramAuthorship({
         <p className="text-sm leading-6 text-white/55">
           Nothing is approved or published yet. Keep, use or rewrite each section — you decide what your team sees.
         </p>
+        {/*
+          The grammar, named once in words (Slice R4-R2E). The shapes below carry it on their own;
+          this is for the Host who has not yet learned to read them.
+        */}
+        <p className="text-xs leading-5 text-white/40" data-testid="program-review-grammar">
+          A gold box is yours to type in. Plain text with a line beside it is BTY’s wording, shown here to read.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="program-title">
-        <span className="text-xs uppercase tracking-[0.12em] text-white/40">Program title</span>
+        {/*
+          The chip sits BESIDE the label, not inside it: folded into the label element it would
+          become part of the field's accessible name ("Program title Editable"). It is a visual
+          cue for a fact the control's own role already carries for assistive technology.
+        */}
+        <div className="flex items-center gap-2">
+          <label htmlFor="program-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
+            Program title
+          </label>
+          <span className={EDITABLE_CHIP} aria-hidden>Editable</span>
+        </div>
         <input
+          id="program-title-input"
           value={titleEdit}
           onChange={(e) => {
             setTitleEdit(e.target.value);
             setTitleDecision("edit");
           }}
           data-testid="program-title-input"
-          className="rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-base text-white/90"
+          data-surface="editable"
+          className={`${EDITABLE_FIELD} text-base`}
         />
       </div>
 
@@ -715,8 +762,10 @@ export function ProgramAuthorship({
                 <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-[#C9A66B]/75">
                   Your wording
                 </span>
+                {/* Already settled, and not changed from here — read-only grammar (R4-R2E). */}
                 <p
-                  className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+                  className={READONLY_TEXT}
+                  data-surface="readonly"
                   data-testid={`program-current-${e.kind}`}
                 >
                   {existing?.content}
@@ -760,11 +809,16 @@ export function ProgramAuthorship({
                     explanation already sits once at the bottom of the review, and repeating
                     it in every affected section would read as the program itself.
                   */
-                  <p className="rounded-lg border border-dashed border-white/15 px-3 py-2 text-sm leading-6 text-white/45" data-testid={`program-unavailable-${e.kind}`}>
+                  <p className="border-l-2 border-dashed border-white/15 pl-3 text-sm leading-6 text-white/45" data-surface="readonly" data-testid={`program-unavailable-${e.kind}`}>
                     Waiting on a moment that comes round again, in “When should they do it?” above.
                   </p>
                 ) : (
-                  <p className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85" data-testid={`program-derived-${e.kind}`}>
+                  /*
+                    NOT A FIELD (Slice R4-R2E). This sentence is written by BTY from the shared
+                    contract; the way to change it is "Edit details" below, which opens the values
+                    it is rendered from. It used to wear the editable textarea's exact class string.
+                  */
+                  <p className={READONLY_TEXT} data-surface="readonly" data-testid={`program-derived-${e.kind}`}>
                     {derived}
                   </p>
                 )}
@@ -814,7 +868,8 @@ export function ProgramAuthorship({
                               setContracts((c) => (c ? f.set(c, ev.target.value) : c));
                             }}
                             data-testid={`program-field-${f.id}`}
-                            className="rounded-lg border border-white/15 bg-[#0B1F3A] px-3 py-2 text-sm text-white/85"
+                            data-surface="editable"
+                            className={`${EDITABLE_FIELD_FRAME} bg-[#0B1F3A] text-sm`}
                           >
                             {f.options.map((o) => (
                               <option key={o.value} value={o.value}>{o.label}</option>
@@ -828,7 +883,8 @@ export function ProgramAuthorship({
                             }}
                             rows={2}
                             data-testid={`program-field-${f.id}`}
-                            className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
+                            data-surface="editable"
+                            className={`${EDITABLE_FIELD} text-sm leading-6`}
                           />
                         )}
                       </label>
@@ -844,16 +900,21 @@ export function ProgramAuthorship({
               </>
             ) : (
               /* NARRATIVE — the Host owns these words directly; they instruct nobody. */
-              <AutoTextarea
-                value={edits[e.kind] ?? e.content}
-                onChange={(next) => {
-                  setEdits((s) => ({ ...s, [e.kind]: next }));
-                  setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
-                }}
-                rows={3}
-                data-testid={`program-edit-${e.kind}`}
-                className="rounded-lg border border-white/12 bg-white/[0.03] px-3 py-2 text-sm leading-6 text-white/85"
-              />
+              <div className="flex flex-col gap-1.5">
+                <span className={`self-start ${EDITABLE_CHIP}`} aria-hidden>Editable</span>
+                <AutoTextarea
+                  value={edits[e.kind] ?? e.content}
+                  onChange={(next) => {
+                    setEdits((s) => ({ ...s, [e.kind]: next }));
+                    setDecisions((s) => ({ ...s, [e.kind]: "edit" }));
+                  }}
+                  rows={3}
+                  aria-label={KIND_LABEL[e.kind]}
+                  data-testid={`program-edit-${e.kind}`}
+                  data-surface="editable"
+                  className={`${EDITABLE_FIELD} text-sm leading-6`}
+                />
+              </div>
             )}
             <p className="text-xs leading-5 text-white/40">{e.rationale}</p>
           </div>
