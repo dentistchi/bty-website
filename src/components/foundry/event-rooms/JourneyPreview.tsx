@@ -5,6 +5,7 @@ import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import {
   mapAnswersToJourney,
   isJourneyApprovable,
+  sameJourney,
   type RealityGroundedJourneyV1,
   type JourneyElementKind,
 } from "@/domain/foundry/module/journey";
@@ -101,6 +102,56 @@ export function JourneyPreview({
     if (answers.realityGroundedJourneyV1 === undefined) onPatch({ realityGroundedJourneyV1: initial }, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /*
+    THE DRAFT'S JOURNEY CAN CHANGE WHILE THIS IS OPEN (Slice R4-R2D).
+
+    This component held a copy captured at mount and never looked again. It is rendered as a
+    SIBLING of ProgramAuthorship, so adopting a program replaced the journey in the Builder's
+    answers while the preview kept the pre-adoption one — and the next edit wrote that stale copy
+    back over the adopted journey. Silently: no error, no refusal, nothing on screen to notice.
+    Not a cosmetic loss either, because `realityGroundedJourneyV1` is frozen into the published
+    snapshot and is where `journeyObservableStandard` reads the sentence an observer is later
+    asked to attest they saw.
+
+    TWO QUESTIONS, ASKED IN ORDER, AND THE ORDER IS THE WHOLE RULE.
+
+    1. DID UPSTREAM MOVE? Compared by reference against the last value we looked at. The Builder
+       owns `answers` and replaces the object whenever it writes, so an unchanged reference means
+       nothing happened up there — and we must not touch local state on a render we caused
+       ourselves. Without this, a parent that does not merge our patch back (a test harness, or
+       any future caller) would see the Host's own typing reverted on the next render. That is
+       the naive "sync props to state" bug, and it is worse than the one being fixed because it
+       fires constantly.
+
+    2. IS THE NEW UPSTREAM VALUE OURS? Compared by VALUE. Our own `onPatch` comes straight back
+       through the parent's merge, so upstream moving is not by itself evidence of anyone else.
+       If it equals what we hold, there is nothing to adopt and nothing may move.
+
+    Otherwise someone else wrote it, and they are authoritative: this surface owns a working
+    copy, never the draft. In practice that is `applyProgram` — adopting a program, or ROLLING
+    BACK a refused one, where taking the older journey is exactly right (3.2R-R2.4: the Builder
+    must never hold a journey the database does not have).
+
+    NO SERVER ECHO EXISTS, and that is why this rule is enough rather than a version negotiation.
+    Measured, not assumed: the autosave "NEVER applies the server response back onto local state"
+    (`moduleAutosave.ts`), and `setAnswers` has exactly four call sites — the initial load, this
+    patch seam, `applyProgram`'s adoption and `applyProgram`'s rollback. A stale response cannot
+    reach here, so there is nothing to order against and no version field is invented for one.
+
+    THE TITLE DRAFT FOLLOWS. It is uncommitted local text belonging to the journey being replaced;
+    leaving it would let a later Confirm stamp the OLD title, grounded, onto the NEW journey.
+  */
+  const upstream = answers.realityGroundedJourneyV1;
+  const seenUpstreamRef = useRef(upstream);
+  useEffect(() => {
+    if (upstream === seenUpstreamRef.current) return;
+    seenUpstreamRef.current = upstream;
+    if (!upstream) return;
+    if (sameJourney(upstream, journey)) return;
+    setJourney(upstream);
+    setTitleDraft(upstream.displayTitle);
+  }, [upstream, journey]);
 
   useEffect(() => {
     onApprovableChange(isJourneyApprovable(journey));

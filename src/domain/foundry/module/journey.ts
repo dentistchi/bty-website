@@ -191,6 +191,46 @@ export function isJourneyApprovable(j: RealityGroundedJourneyV1 | undefined): bo
   return j.elements.every((e) => e.confirmationStatus === "grounded");
 }
 
+/**
+ * ARE THESE THE SAME JOURNEY? (Slice R4-R2D)
+ *
+ * A value comparison over every field the Host can change, so a surface holding a working copy
+ * can tell "the draft's journey moved underneath me" from "that is my own edit coming back".
+ *
+ * WHY VALUE AND NOT REFERENCE. Reference identity answers the common case and would be wrong at
+ * the one moment that matters: a caller that rebuilds an equivalent object would read as a
+ * replacement and reset a Host mid-sentence. `===` is kept only as a fast path.
+ *
+ * EVERY MEANINGFUL FIELD, INCLUDING PROVENANCE. `confirmationStatus` and `grounding` decide
+ * whether the journey is approvable and how its authorship is labelled, so two journeys with
+ * identical text and different provenance are NOT the same journey — R4-R2A-R1 was exactly a
+ * case of provenance changing while text stayed put.
+ *
+ * Order matters: `elements` is rendered in sequence and compared in sequence.
+ */
+export function sameJourney(
+  a: RealityGroundedJourneyV1 | undefined,
+  b: RealityGroundedJourneyV1 | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.version !== b.version) return false;
+  if (a.displayTitle !== b.displayTitle) return false;
+  if (a.displayTitleStatus !== b.displayTitleStatus) return false;
+  if (a.elements.length !== b.elements.length) return false;
+  return a.elements.every((ea, i) => {
+    const eb = b.elements[i]!;
+    if (ea.id !== eb.id || ea.kind !== eb.kind) return false;
+    if (ea.content !== eb.content) return false;
+    if (ea.confirmationStatus !== eb.confirmationStatus) return false;
+    if (ea.grounding.length !== eb.grounding.length) return false;
+    return ea.grounding.every((ga, gi) => {
+      const gb = eb.grounding[gi]!;
+      return ga.sourceType === gb.sourceType && ga.field === gb.field;
+    });
+  });
+}
+
 /** Element kinds still needing Host confirmation (drives the approval gate UI). */
 export function unresolvedJourneyElements(j: RealityGroundedJourneyV1 | undefined): JourneyElementKind[] {
   if (!j) return [];
