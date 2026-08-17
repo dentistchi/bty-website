@@ -46,9 +46,11 @@ export function isFollowUpDays(n: unknown): n is FollowUpDays {
  *
  * WHAT EACH ANSWER CLAIMS, EXACTLY:
  *
- *   NO_FOLLOW_UP        DEFINITE. No obligation will be materialized, therefore no independent
- *                       observation can be requested for this run. Nothing else is needed to know
- *                       this, which is why it is safe to say out loud on the review screen.
+ *   NO_FOLLOW_UP        A DELIBERATE HOST CHOICE, and a positive product statement: they were
+ *                       offered 0 / 7 / 30 and picked 0. No obligation will be materialized,
+ *                       therefore no independent observation can be requested for this run.
+ *                       Nothing else is needed to know this, which is why it is the one answer
+ *                       safe to say out loud on the review screen.
  *
  *   FOLLOW_UP_SCHEDULED NECESSARY, NOT SUFFICIENT. An obligation will materialize on an
  *                       authenticated completion. Whether an observation is then possible ALSO
@@ -56,13 +58,47 @@ export function isFollowUpDays(n: unknown): n is FollowUpDays {
  *                       authority — neither of which is a fact about this number, and neither of
  *                       which this function may be read as promising.
  *
+ *   UNRESOLVED          BTY CANNOT STATE THE HOST'S CHOICE. Absent (an ordinary draft that has
+ *                       not reached the question yet) or not one of the three offered values.
+ *                       Callers must fall through to their existing missing/invalid handling —
+ *                       never to a sentence about what the Host decided.
+ *
+ * WHY UNRESOLVED EXISTS AT ALL (Slice R4-R2C-R1). R4-R2C shipped this as a two-way answer, so
+ * everything that was not 7 or 30 — `null`, `undefined`, `5`, `"7"`, `{}` — came back
+ * NO_FOLLOW_UP. That is not a safe default, because NO_FOLLOW_UP is not the absence of a claim:
+ * it ASSERTS that a Host weighed the options and accepted a lower evidence ceiling. Turning a
+ * corrupt or absent value into that assertion manufactures a decision nobody made, which is the
+ * same class of untruth the slice was written to remove.
+ *
+ * Nothing invalid could reach a Host through the product today — `validateDraftPatch` refuses to
+ * PERSIST a value outside the option set, and the review screen guarded the call separately. But
+ * the draft read path re-validates nothing, so the protection lived entirely in a rule restated
+ * outside the domain, one forgetful caller away from a false sentence.
+ *
+ * THE PARAMETER STAYS `unknown` ON PURPOSE. Narrowing it would only move the lie: the values that
+ * matter arrive as JSON from a stored draft and are asserted into `BuilderAnswers` without a
+ * runtime check, so a compile-time type would claim a guarantee no one is enforcing. The
+ * three-valued RESULT is the guarantee, and it holds at runtime where the risk actually is.
+ *
+ * VALID SEMANTICS ARE UNCHANGED: 0 → NO_FOLLOW_UP, 7 and 30 → FOLLOW_UP_SCHEDULED.
+ *
  * It decides nothing about DECIDED / APPLIED / OBSERVED / SUSTAINED, awards nothing, and stores
- * nothing. It names a choice the Host already made.
+ * nothing. It names a choice the Host already made, or refuses to.
  */
-export type FollowUpEvidencePlan = "NO_FOLLOW_UP" | "FOLLOW_UP_SCHEDULED";
+export type FollowUpEvidencePlan = "NO_FOLLOW_UP" | "FOLLOW_UP_SCHEDULED" | "UNRESOLVED";
+
+/**
+ * The one value that means "the Host declined a checkpoint". Not `FOLLOW_UP_DAY_OPTIONS`, which is
+ * the Builder's offer list and belongs to the module domain; this file only needs to recognise the
+ * decline, and `isFollowUpDays` already owns the other side.
+ */
+const NO_FOLLOW_UP_CHOICE = 0;
 
 export function classifyFollowUpEvidencePlan(followUpDays: unknown): FollowUpEvidencePlan {
-  return isFollowUpDays(followUpDays) ? "FOLLOW_UP_SCHEDULED" : "NO_FOLLOW_UP";
+  if (isFollowUpDays(followUpDays)) return "FOLLOW_UP_SCHEDULED";
+  // Strict identity, so `"0"`, `-0`-shaped strings, `false` and `null` cannot pass as the choice.
+  if (followUpDays === NO_FOLLOW_UP_CHOICE) return "NO_FOLLOW_UP";
+  return "UNRESOLVED";
 }
 
 /** Learner-reported application outcome. Self-reported — NEVER "verified" behavior. */

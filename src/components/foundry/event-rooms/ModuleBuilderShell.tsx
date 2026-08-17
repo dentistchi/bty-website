@@ -1511,14 +1511,17 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     standard, because `observable_standard` is required regardless of follow-up.
 
     The MEANING is asked of the domain rather than branched on `=== 0` here, so this screen and
-    `materializeFollowupObligation` read the same rule. Only shown once the Host has actually
-    answered: an UNSET value is a missing section, and explaining the consequences of a choice
-    nobody has made yet would be describing something that is not true.
+    `materializeFollowupObligation` read the same rule.
+
+    THE DOMAIN IS THE ONLY GATE (Slice R4-R2C-R1). This used to also require `followChosen`,
+    which meant the rule protecting the sentence — "an unanswered or corrupt value is not a
+    decision" — lived HERE, restated outside the domain. `UNRESOLVED` now carries it, so an
+    absent or malformed persisted value falls through to the existing missing-section handling
+    instead of being described as a choice the Host made. `followChosen` still decides the row's
+    VALUE, which is a different question and is unchanged.
   */
   const followMeaning =
-    followChosen && classifyFollowUpEvidencePlan(a.followUpDays) === "NO_FOLLOW_UP"
-      ? t.reviewFollowNoneMeaning
-      : undefined;
+    classifyFollowUpEvidencePlan(a.followUpDays) === "NO_FOLLOW_UP" ? t.reviewFollowNoneMeaning : undefined;
 
   return [
     // Slice 3.2R-R2.1 — the NAME and the recurring condition, as two distinct Review rows. Showing

@@ -146,6 +146,35 @@ describe("[R4-R2C] the Review screen tells the truth about No follow-up", () => 
     expect(meaning).toContain("제3자 관찰");
   });
 
+  it("an UNANSWERED follow-up gets no meaning — and the existing missing behaviour is untouched", async () => {
+    /*
+      SLICE R4-R2C-R1, gates I and J. An ordinary draft that has not reached the question yet must
+      not be told what "No follow-up" means: nobody chose it. The row falls through to exactly the
+      behaviour it had before either slice — empty value, Required badge, named in the
+      needs-attention list — which is what makes this a fall-through and not a new state.
+    */
+    const row = await renderReview(undefined as unknown as number);
+    expect(within(row).queryByTestId("review-row-meaning")).toBeNull();
+
+    expect(row.getAttribute("data-missing")).toBe("true");
+    expect(within(row).getByTestId("required-badge")).toBeTruthy();
+    expect(screen.getAllByTestId("review-missing-item-followUp").length).toBeGreaterThan(0);
+    expect(row.textContent).toContain("Not added yet");
+  });
+
+  it("a CORRUPT persisted value gets no meaning — an unreadable value is not a decision", async () => {
+    /*
+      The R2C-R1 regression itself. `validateDraftPatch` refuses to persist a 5, but the draft READ
+      path re-validates nothing, so a value written out-of-band arrives here intact. Before the
+      repair it would have been reported to the Host as their own deliberate choice to skip
+      follow-up. It is now indistinguishable from unanswered, which is the truth about it.
+    */
+    const row = await renderReview(5);
+    expect(within(row).queryByTestId("review-row-meaning")).toBeNull();
+    expect(row.getAttribute("data-missing")).toBe("true");
+    expect(row.textContent).not.toContain("No follow-up");
+  });
+
   it("says nothing about the OTHER rows — the disclosure is scoped to the follow-up choice", async () => {
     /*
       A training with no follow-up still teaches, still freezes its standard and still records a
