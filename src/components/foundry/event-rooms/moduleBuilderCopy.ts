@@ -327,6 +327,11 @@ export type ModuleBuilderCopy = {
   reviewMaterial: string;
   reviewArena: string;
   reviewFollow: string;
+  /**
+   * Slice R4-R2C — what "No follow-up" MEANS, said on the review screen before publish.
+   * A valid choice with a lower evidence ceiling, never an error and never a blocker.
+   */
+  reviewFollowNoneMeaning: string;
   reviewEmpty: string;
   arenaYes: string;
   arenaNo: string;
@@ -560,6 +565,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewMaterial: "Material",
     reviewArena: "Practice in Arena",
     reviewFollow: "Follow-up",
+    reviewFollowNoneMeaning:
+      "No follow-up will be created, and no independent observation will be requested for this training.",
     reviewEmpty: "Not added yet",
     arenaYes: "Recommended",
     arenaNo: "Not recommended",
@@ -864,6 +871,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     reviewMaterial: "자료",
     reviewArena: "Arena 연습",
     reviewFollow: "후속 확인",
+    reviewFollowNoneMeaning: "이 트레이닝에는 후속 확인이 생성되지 않으며, 제3자 관찰도 요청되지 않습니다.",
     reviewEmpty: "아직 추가되지 않음",
     arenaYes: "권장됨",
     arenaNo: "권장되지 않음",

@@ -24,6 +24,7 @@ import {
   type FollowUpDays,
 } from "@/domain/foundry/module/module-builder";
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
+import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUpObligation";
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
@@ -1391,6 +1392,13 @@ type ReviewRow = {
   section?: ReviewSectionKey;
   /** Non-blocking soft guidance (e.g. a present-but-vague behavior). Never counts as missing. */
   note?: { title: string; hint?: string };
+  /**
+   * Slice R4-R2C — what an ANSWERED choice means downstream. Deliberately a separate channel
+   * from `note`: `note` renders amber because it is asking the Host to reconsider, and this
+   * one must not. A valid answer with a lower evidence ceiling is not a warning, so it renders
+   * in the neutral secondary colour and never affects the missing set or the approve gate.
+   */
+  meaning?: string;
   lines?: string[];
 };
 
@@ -1494,6 +1502,24 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
   // mask an unset value as "No follow-up" (that made a required-missing row look done).
   const followChosen = (FOLLOW_UP_DAY_OPTIONS as readonly number[]).includes(a.followUpDays ?? -1);
 
+  /*
+    ALLOW IT, BUT NEVER HIDE WHAT IT MEANS (Slice R4-R2C).
+
+    "No follow-up" stays a valid choice. What changed is that the Host is told, on the last screen
+    before publish, what it costs: no obligation is materialized at completion, so no colleague is
+    ever asked to confirm the behaviour — even though this program still froze a real observable
+    standard, because `observable_standard` is required regardless of follow-up.
+
+    The MEANING is asked of the domain rather than branched on `=== 0` here, so this screen and
+    `materializeFollowupObligation` read the same rule. Only shown once the Host has actually
+    answered: an UNSET value is a missing section, and explaining the consequences of a choice
+    nobody has made yet would be describing something that is not true.
+  */
+  const followMeaning =
+    followChosen && classifyFollowUpEvidencePlan(a.followUpDays) === "NO_FOLLOW_UP"
+      ? t.reviewFollowNoneMeaning
+      : undefined;
+
   return [
     // Slice 3.2R-R2.1 — the NAME and the recurring condition, as two distinct Review rows. Showing
     // one row for both is how Step 1 confused them in the first place.
@@ -1508,7 +1534,7 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     { label: t.reviewMaterials, value: material, step: 7, section: "material", lines: materialLines },
     { label: t.reviewCompletion, value: a.completionPrompt?.trim() ? a.completionPrompt : null, step: 7 },
     { label: t.reviewArena, value: arenaChosen ? t.arenaYes : t.arenaNo, step: 8 },
-    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 8, section: "followUp" },
+    { label: t.reviewFollow, value: followChosen ? arenaFollowLabel(a.followUpDays, t.followNone, t.follow7, t.follow30) : null, step: 8, section: "followUp", meaning: followMeaning },
   ];
 }
 
@@ -1899,6 +1925,13 @@ function ReviewBody({
                   <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
                     {r.note.title}
                     {r.note.hint ? ` · ${r.note.hint}` : ""}
+                  </span>
+                ) : null}
+                {/* Slice R4-R2C — neutral, never amber: a valid answer is not a warning. Rendered
+                    beside a MISSING reason too, though no row can currently be both. */}
+                {r.meaning ? (
+                  <span className="mt-0.5 text-xs leading-5 text-white/45" data-testid="review-row-meaning">
+                    {r.meaning}
                   </span>
                 ) : null}
               </div>

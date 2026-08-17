@@ -26,6 +26,45 @@ export function isFollowUpDays(n: unknown): n is FollowUpDays {
   return n === 7 || n === 30;
 }
 
+/**
+ * WHAT THE HOST'S FOLLOW-UP CHOICE MEANS FOR EVIDENCE (Slice R4-R2C).
+ *
+ * "No follow-up" is a VALID product choice and stays one. BTY does not require every training to
+ * climb the whole evidence ladder, and forcing a checkpoint onto learning that does not need one
+ * would be a worse lie than the silence this replaces.
+ *
+ * THE DEFECT WAS THE SILENCE. A Host could choose 0, author and freeze a real observable standard
+ * — `observable_standard` is required for every program regardless of follow-up — publish, and be
+ * told nothing. At completion `materializeFollowupObligation` asks `isFollowUpDays` and returns
+ * "skipped", so no obligation row exists; and the obligation is the parent of EVERY observation
+ * path (`getObservationRequest` loads it first, `listMyObservationOpportunities` starts from it).
+ * No obligation, no observation — for anyone, forever, unannounced.
+ *
+ * ONE RULE, TWO READERS. This calls `isFollowUpDays` rather than restating `n === 7 || n === 30`,
+ * so the sentence the Host reads before publish and the branch the service takes at completion
+ * cannot drift into disagreeing about the same number.
+ *
+ * WHAT EACH ANSWER CLAIMS, EXACTLY:
+ *
+ *   NO_FOLLOW_UP        DEFINITE. No obligation will be materialized, therefore no independent
+ *                       observation can be requested for this run. Nothing else is needed to know
+ *                       this, which is why it is safe to say out loud on the review screen.
+ *
+ *   FOLLOW_UP_SCHEDULED NECESSARY, NOT SUFFICIENT. An obligation will materialize on an
+ *                       authenticated completion. Whether an observation is then possible ALSO
+ *                       depends on a grounded observable standard and on someone holding reviewer
+ *                       authority — neither of which is a fact about this number, and neither of
+ *                       which this function may be read as promising.
+ *
+ * It decides nothing about DECIDED / APPLIED / OBSERVED / SUSTAINED, awards nothing, and stores
+ * nothing. It names a choice the Host already made.
+ */
+export type FollowUpEvidencePlan = "NO_FOLLOW_UP" | "FOLLOW_UP_SCHEDULED";
+
+export function classifyFollowUpEvidencePlan(followUpDays: unknown): FollowUpEvidencePlan {
+  return isFollowUpDays(followUpDays) ? "FOLLOW_UP_SCHEDULED" : "NO_FOLLOW_UP";
+}
+
 /** Learner-reported application outcome. Self-reported — NEVER "verified" behavior. */
 export type FollowUpOutcome = "APPLIED" | "PARTLY_APPLIED" | "NOT_YET" | "BLOCKED";
 
