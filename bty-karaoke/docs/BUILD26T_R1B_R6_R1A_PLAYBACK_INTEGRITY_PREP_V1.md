@@ -617,3 +617,12 @@ PRODUCTION_MIGRATION         NOT_READY — unchanged by this record; a file hash
                                          not authorization. §A drift gate, constraint read-back,
                                          parity and separate authorization all still required.
 ```
+
+> **SUPERSEDED 2026-08-16 — E1 IS APPLIED TO PRODUCTION.** Every `PRODUCTION_MIGRATION NOT_READY`
+> and `CONTENT_RIGHTS HELD` line in this document, including the one directly above, was true when
+> written and is now stale. See `BUILD26T_R1B_R6_R1B_R16_PRODUCTION_RETENTION_CLOSURE_V1.md`.
+>
+> One trap in particular: the §A drift gate `ef281fd84a6e59726d94c37af70aa509` is **spent**. It was
+> the pre-apply gate proving production had not drifted under the reviewed migration. Production now
+> runs the post-E1 function, fingerprint **`cb7c7ac6281be1fb3e2cd7e6afee2134`**. Re-asserting the old
+> value as a live expectation would report a correctly-migrated production as drifted.
