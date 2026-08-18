@@ -10,7 +10,7 @@ import {
   type JourneyElementKind,
 } from "@/domain/foundry/module/journey";
 import { attributionKind } from "@/domain/foundry/module/program-authorship";
-import { EDITABLE_CHIP, EDITABLE_FIELD } from "./reviewSurfaceStyles";
+import { EDITABLE_FIELD } from "./reviewSurfaceStyles";
 
 /**
  * Host Learner Preview + Approval gate (Slice 3.2C-B3A).
@@ -68,7 +68,15 @@ function ProvenanceLabel({
           ? "From your setup"
           : `From your: ${field ? (FIELD_LABEL[field] ?? field) : "input"}`;
   return (
-    <span className="text-[0.66rem] text-white/35" data-testid={`journey-grounded-${kind}`} data-provenance={attribution ?? "unknown"}>
+    /*
+      QUIETER BY POSITION, NOT BY FADING (Slice R4-R2E-R3). Measured in real pixels before this
+      change: 3.14:1 — already under WCAG AA. "Make provenance quieter" by lowering its colour
+      would have pushed a sub-AA element further down, so the recession is achieved by moving it
+      OUT of the header row (where it competed with the section name) to a footnote under the
+      field, and the colour is RAISED to clear AA. Dominance is relative: the learner's text gets
+      bigger and brighter, the metadata stops competing for the same line.
+    */
+    <span className="text-[0.66rem] leading-4 text-white/55" data-testid={`journey-grounded-${kind}`} data-provenance={attribution ?? "unknown"}>
       {text}
     </span>
   );
@@ -265,11 +273,15 @@ export function JourneyPreview({
       }`}
     >
       <div className="flex flex-col gap-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span id="journey-preview-heading" className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">Learner preview</span>
-          {/* The one cue that answers "what can I change?" before any field is read (R4-R2E). */}
-          <span className={EDITABLE_CHIP} data-testid="journey-editable-chip" aria-hidden>Yours to edit</span>
-        </span>
+        {/*
+          ONE EDIT EXPLANATION (Slice R4-R2E-R3). This carried an eyebrow, a "Yours to edit" chip,
+          a sentence, and an "Editable" chip on the title — four ways of saying the same thing
+          above a field whose gold treatment already says it. The sentence is kept because it is
+          the one that explains; every chip is gone. Measured first: all four chips were
+          `aria-hidden`, so nothing left the accessible tree — the names come from `htmlFor` and
+          `aria-label`, which are untouched.
+        */}
+        <span id="journey-preview-heading" className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">Learner preview</span>
         <p className="text-sm leading-6 text-white/55">This is exactly what your team will experience. Every gold box below is text you can rewrite.</p>
         {handoffLit ? (
           <p className="text-sm leading-6 text-[#C9A66B]" data-testid="journey-handoff-note" role="status">
@@ -281,12 +293,9 @@ export function JourneyPreview({
       {/* Participant title — must be Host-approved (never silently the raw problem line). */}
       <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="journey-title">
         {/* Chip beside the label, never inside it — see the same note in ProgramAuthorship. */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="journey-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
-            Learner title
-          </label>
-          <span className={EDITABLE_CHIP} aria-hidden>Editable</span>
-        </div>
+        <label htmlFor="journey-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
+          Learner title
+        </label>
         <input
           id="journey-title-input"
           value={titleDraft}
@@ -317,13 +326,12 @@ export function JourneyPreview({
           <div key={el.id} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`journey-preview-el-${el.kind}`}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[el.kind]}</span>
+              {/* "Needs confirmation" STAYS in the header: it is a thing to do, not metadata. */}
               {needs ? (
                 <span className="rounded-md bg-amber-400/15 px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-amber-200/90" data-testid={`journey-needs-${el.kind}`}>
                   Needs confirmation
                 </span>
-              ) : (
-                <ProvenanceLabel kind={el.kind} attribution={attributionKind(el)} field={field} />
-              )}
+              ) : null}
             </div>
             <textarea
               value={el.content}
@@ -333,8 +341,10 @@ export function JourneyPreview({
               aria-label={`${KIND_LABEL[el.kind]} — the learner reads this`}
               data-testid={`journey-edit-${el.kind}`}
               data-surface="editable"
-              className={`resize-none ${EDITABLE_FIELD} text-sm leading-6`}
+              className={`resize-none ${EDITABLE_FIELD} text-[0.95rem] leading-6`}
             />
+            {/* The footnote position: present, readable, and no longer competing with the name. */}
+            {needs ? null : <ProvenanceLabel kind={el.kind} attribution={attributionKind(el)} field={field} />}
           </div>
         );
       })}

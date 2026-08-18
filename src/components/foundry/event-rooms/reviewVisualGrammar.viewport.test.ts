@@ -223,6 +223,7 @@ async function open() {
 }
 
 const EDITABLE = '[data-testid="journey-edit-observable_standard"]';
+const PROVENANCE = '[data-testid="journey-grounded-observable_standard"]';
 const READONLY = '[data-testid="program-derived-observable_standard"]';
 
 beforeAll(() => { if (chromium) { dir = join(ROOT, "src/components/foundry/event-rooms/.grammar-harness"); mkdirSync(dir, { recursive: true }); } }, 60_000);
@@ -272,6 +273,30 @@ describe.runIf(Boolean(chromium) && existsSync(join(process.cwd(), "tailwind.con
         */
         const shapeOf = (m: Measured) => `${m.borderWidth > 0 ? "boxed" : "open"}/${/rgba\(0, 0, 0, 0\)|transparent/.test(m.ownBg) ? "unfilled" : "filled"}`;
         expect(shapeOf(editable)).not.toBe(shapeOf(readOnly));
+      } finally {
+        await browser.close();
+      }
+    }, 240_000);
+
+    it("[R4-R2E-R3] provenance recedes without becoming unreadable, and the content dominates", async () => {
+      /*
+        Measured BEFORE the density slice: provenance rendered at 3.14:1 — already under WCAG AA.
+        "Make it quieter" as a colour change would have deepened an existing defect, so the
+        recession is positional (out of the header row, into a footnote) and the colour was raised
+        instead. This pins both halves: still legible, and still smaller than the learner's text.
+      */
+      const { browser, measure } = await open();
+      try {
+        const prov = await measure(PROVENANCE);
+        const content = await measure(EDITABLE);
+        expect(prov.present, "provenance disappeared").toBe(true);
+        expect(prov.visible).toBe(true);
+        expect(
+          prov.contrast,
+          `provenance contrast ${prov.contrast.toFixed(2)}:1 (${prov.color} on ${prov.bg})`,
+        ).toBeGreaterThanOrEqual(MIN_CONTRAST);
+        // G3, in pixels: the learner's words are the taller, larger thing on the card.
+        expect(content.height).toBeGreaterThan(prov.height);
       } finally {
         await browser.close();
       }

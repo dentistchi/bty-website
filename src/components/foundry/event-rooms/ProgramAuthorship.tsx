@@ -25,7 +25,7 @@ import { Modal } from "@/components/ui/Modal";
 import { AutoTextarea } from "@/components/bty/ui/AutoTextarea";
 import { resolveRefusalCopy, resolveAdoptionRefusalCopy, RECOVERY_NOTE, type RefusalCopy } from "./programRefusalCopy";
 import { DETAIL_FIELDS, FIELD_GROUP_HEADING, REVIEW_BLOCK_COPY } from "./programReviewFields";
-import { EDITABLE_CHIP, EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
+import { EDITABLE_FIELD, EDITABLE_FIELD_FRAME, READONLY_TEXT } from "./reviewSurfaceStyles";
 
 /**
  * Guided Program Authorship — the one place BTY says "here is the training I drafted for
@@ -650,9 +650,9 @@ export function ProgramAuthorship({
   if (phase === "applied") {
     if (applyOutcome?.status === "save_failed") {
       return (
-        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-save-failed">
+        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3.5 py-2.5" data-testid="program-apply-save-failed">
           <p className="text-sm font-medium text-amber-100/90">This program wasn’t added.</p>
-          <p className="mt-1 text-sm leading-6 text-amber-100/75">
+          <p className="mt-0.5 text-sm leading-5 text-amber-100/75">
             Nothing was saved, and your draft is unchanged. Your review is still here — try adding it again.
           </p>
         </section>
@@ -660,9 +660,8 @@ export function ProgramAuthorship({
     }
     if (applyOutcome?.status === "adopted_receipt_pending") {
       return (
-        <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4" data-testid="program-applied-pending">
-          <p className="text-sm font-medium text-emerald-200/90">Added to your training — every section is still editable below.</p>
-          <p className="mt-1 text-sm leading-6 text-emerald-100/70">Finishing the record…</p>
+        <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied-pending">
+          <p className="text-sm font-medium text-emerald-200/90">Added to your training. Finishing the record…</p>
         </section>
       );
     }
@@ -675,19 +674,26 @@ export function ProgramAuthorship({
       */
       const copy = resolveAdoptionRefusalCopy(adoptionRefusal ?? null);
       return (
-        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-4 py-4" data-testid="program-apply-refused">
+        /*
+          COMPACT, NEVER QUIET (Slice R4-R2E-R3). A failure keeps BOTH sentences and its amber
+          frame — the height came down, the warning did not. Only the success panel loses a line,
+          because that line duplicated the handoff note the Learner Preview raises anyway.
+        */
+        <section className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] px-3.5 py-2.5" data-testid="program-apply-refused">
           <p className="text-sm font-medium text-amber-100/90" data-testid="program-refused-headline">
             {copy.headline} Your other changes were saved.
           </p>
-          <p className="mt-1 text-sm leading-6 text-amber-100/75" data-testid="program-refused-explanation">
+          <p className="mt-0.5 text-sm leading-5 text-amber-100/75" data-testid="program-refused-explanation">
             {copy.explanation}
           </p>
         </section>
       );
     }
     return (
-      <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-4 py-4" data-testid="program-applied">
-        <p className="text-sm font-medium text-emerald-200/90">Added to your training — every section is still editable below.</p>
+      <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied">
+        {/* The tail "every section is still editable below" is dropped: the handoff below says
+            exactly that, on the surface it is talking about (Slice R4-R2E-R3). */}
+        <p className="text-sm font-medium text-emerald-200/90">Added to your training.</p>
       </section>
     );
   }
@@ -712,16 +718,13 @@ export function ProgramAuthorship({
 
       <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid="program-title">
         {/*
-          The chip sits BESIDE the label, not inside it: folded into the label element it would
-          become part of the field's accessible name ("Program title Editable"). It is a visual
-          cue for a fact the control's own role already carries for assistive technology.
+          The "Editable" chip is gone (Slice R4-R2E-R3). It was `aria-hidden`, so it carried no
+          accessible name — the `htmlFor` label does, and is untouched. The gold field treatment
+          says "you can type here" on its own; the chip only repeated it.
         */}
-        <div className="flex items-center gap-2">
-          <label htmlFor="program-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
-            Program title
-          </label>
-          <span className={EDITABLE_CHIP} aria-hidden>Editable</span>
-        </div>
+        <label htmlFor="program-title-input" className="text-xs uppercase tracking-[0.12em] text-white/40">
+          Program title
+        </label>
         <input
           id="program-title-input"
           value={titleEdit}
@@ -934,7 +937,6 @@ export function ProgramAuthorship({
             ) : (
               /* NARRATIVE — the Host owns these words directly; they instruct nobody. */
               <div className="flex flex-col gap-1.5">
-                <span className={`self-start ${EDITABLE_CHIP}`} aria-hidden>Editable</span>
                 <AutoTextarea
                   value={edits[e.kind] ?? e.content}
                   onChange={(next) => {

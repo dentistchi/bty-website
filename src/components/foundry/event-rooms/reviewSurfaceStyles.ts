@@ -54,10 +54,14 @@ export const EDITABLE_FIELD = `${EDITABLE_FIELD_FRAME} bg-white/[0.07]`;
 export const READONLY_TEXT =
   "border-l-2 border-white/15 pl-3 text-sm leading-6 text-white/75";
 
-/** The chip that names an area's grammar in words, for anyone the shape alone does not reach. */
-export const EDITABLE_CHIP =
-  "rounded-md border border-[#C9A66B]/40 bg-[#C9A66B]/[0.10] px-2 py-0.5 " +
-  "text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[#C9A66B]/90";
+/*
+  THE "EDITABLE" CHIP IS GONE (Slice R4-R2E-R3). R4-R2E shipped it as a words-based cue beside
+  the shape-based one. On the device the two together read as clutter: an eyebrow, a chip, a
+  sentence and a per-field badge, all saying what the gold field already says. The section-level
+  sentence is kept — it is the one that explains — and the constant is deleted rather than left
+  unused, so nothing invites the repetition back. Nothing was lost from the accessible tree:
+  every chip was `aria-hidden`, and the names come from `htmlFor` / `aria-label`.
+*/
 
 /**
  * Stable hooks for the two grammars, so tests and future surfaces name the INTENT rather than
