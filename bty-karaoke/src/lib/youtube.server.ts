@@ -15,6 +15,11 @@ import {
 } from '@/domain/youtube-search';
 import { biasStyleQuery, normalizeStyle, type PerformanceStyle } from '@/domain/performance-style';
 import { optionalEnv } from './env.server';
+import {
+  classifySearchCallOutcome,
+  recordOutboundSearchCall,
+  recordSearchServe,
+} from './youtube-search-telemetry.server';
 
 export const SEARCH_CACHE_TTL_SECONDS = 3600; // 1 hour
 /** Short global circuit-breaker window after a proven daily-quota 429, so a quota
@@ -176,6 +181,46 @@ function resolveStyle(opts?: { bias?: boolean; style?: PerformanceStyle }): Perf
   return opts?.style ? normalizeStyle(opts.style) : opts?.bias === false ? 'original' : 'karaoke';
 }
 
+/**
+ * Every telemetry call in this module goes through one of these two wrappers, and NEITHER can
+ * throw. That is not defensive habit — it is the requirement: a telemetry fault must never change
+ * what a guest search does. Without it, a throw at the cache-hit branch would be caught by the
+ * surrounding cache-read `catch` and fall through to a real `search.list` request, so a database
+ * problem would start SPENDING QUOTA. The sinks already swallow their own errors; this makes the
+ * guarantee structural rather than dependent on their internals staying that way.
+ */
+async function safeServe(disposition: Parameters<typeof recordSearchServe>[0]): Promise<void> {
+  try {
+    await recordSearchServe(disposition);
+  } catch {
+    /* telemetry must never alter search behaviour */
+  }
+}
+
+/**
+ * The ONE place an upstream call is recorded: the disposition counter and the durable quota row
+ * are written together, so a serve counted as UPSTREAM and a row in the call table can never
+ * disagree. Both sinks are best-effort; `Promise.all` keeps them off the critical path serially,
+ * and neither can reject (each swallows its own failure).
+ */
+async function recordUpstreamCall(
+  callId: string,
+  outcome: Parameters<typeof recordOutboundSearchCall>[0]['outcome'],
+  httpStatus: number | null,
+  upstreamReason: string | null,
+  latencyMs: number,
+  style: PerformanceStyle,
+): Promise<void> {
+  try {
+    await Promise.all([
+      recordSearchServe('UPSTREAM'),
+      recordOutboundSearchCall({ callId, outcome, httpStatus, upstreamReason, latencyMs, style }),
+    ]);
+  } catch {
+    /* telemetry must never alter search behaviour — see safeServe */
+  }
+}
+
 export async function searchYoutubeWithCache(
   query: string,
   kv: SearchKv | null,
@@ -187,12 +232,17 @@ export async function searchYoutubeWithCache(
   const base = { query, biasedQuery, fallbackUrl, items: [] as YoutubeSearchItem[] };
 
   const key = apiKey();
-  if (!key) return { ok: false, gated: true, degraded: false, quotaExceeded: false, ...base };
+  if (!key) {
+    // GATED — no credential, so nothing was ever asked of YouTube. Zero quota.
+    await safeServe('GATED');
+    return { ok: false, gated: true, degraded: false, quotaExceeded: false, ...base };
+  }
 
   const cacheKey = cacheKeyFor(biasedQuery);
   if (kv) {
     // Already-cached successful results are always served, even while the quota
     // circuit breaker is open.
+    let hit: { items: YoutubeSearchItem[]; fetchedAt: string | null } | null = null;
     try {
       // BUILD 26T-R1B-R6-R1B-R1 — the cache now carries the FACTUAL YouTube fetch instant.
       //
@@ -207,29 +257,46 @@ export async function searchYoutubeWithCache(
       const raw = (await kv.get(cacheKey, 'json')) as unknown;
       const envelope = readSearchCacheEnvelope(raw);
       if (envelope && envelope.items.length) {
-        return {
-          ok: true, gated: false, degraded: false, quotaExceeded: false, ...base,
-          items: envelope.items,
-          fetchedAt: envelope.fetchedAt,   // null for a legacy value — never invented
-        };
+        hit = { items: envelope.items, fetchedAt: envelope.fetchedAt };
       }
     } catch {
       // cache read failure is non-fatal — fall through
     }
+    if (hit) {
+      // CACHE_HIT — served entirely from KV. A hit is not a fetch, so it costs ZERO quota and
+      // must never produce a row in karaoke_youtube_search_calls.
+      await safeServe('CACHE_HIT');
+      return {
+        ok: true, gated: false, degraded: false, quotaExceeded: false, ...base,
+        items: hit.items,
+        fetchedAt: hit.fetchedAt,   // null for a legacy value — never invented
+      };
+    }
     // Circuit breaker: after a proven daily-quota 429, skip googleapis entirely for
     // a short window so we don't burn a request per guest search on a dead quota.
+    let breakerOpen = false;
     try {
-      if (await kv.get(QUOTA_MARKER_KEY, 'json')) {
-        return { ok: false, gated: false, degraded: true, quotaExceeded: true, ...base };
-      }
+      breakerOpen = Boolean(await kv.get(QUOTA_MARKER_KEY, 'json'));
     } catch {
       // breaker read failure is non-fatal — proceed to the API
     }
+    if (breakerOpen) {
+      // BREAKER_OPEN — googleapis is deliberately skipped, so no request is issued. Zero quota.
+      await safeServe('BREAKER_OPEN');
+      return { ok: false, gated: false, degraded: true, quotaExceeded: true, ...base };
+    }
   }
 
+  // UPSTREAM — from here on, a real `search.list` HTTP request is issued and ONE unit of the
+  // 1,000/day Search Queries allocation is spent. The call_id is minted BEFORE the fetch so the
+  // durable write is idempotent: a retried WRITE cannot become a second quota row, while a
+  // genuinely second request would mint its own id and count twice, which is correct.
+  const callId = crypto.randomUUID();
+  const startedAtMs = Date.now();
   try {
     const items = await fetchItemsFromApi(biasedQuery, key);
     const fetchedAtMs = Date.now();   // factual: the response is in hand
+    await recordUpstreamCall(callId, 'OK', null, null, Date.now() - startedAtMs, style);
     if (kv && items.length) {
       try {
         // The ONE place a factual fetch instant is minted: we have just received a live YouTube
@@ -252,6 +319,16 @@ export async function searchYoutubeWithCache(
     const status = e instanceof YoutubeApiError ? e.status : undefined;
     const reason = e instanceof YoutubeApiError ? e.reason : '';
     const quotaExceeded = isQuotaExhausted(status, reason);
+    // The request WAS issued — a failure still spent the unit (and a lost response may have spent
+    // it too), so it is recorded exactly like a success, with its classified outcome.
+    await recordUpstreamCall(
+      callId,
+      classifySearchCallOutcome(status, quotaExceeded),
+      status ?? null,
+      reason || null,
+      Date.now() - startedAtMs,
+      style,
+    );
     if (quotaExceeded) {
       logSearchFailure('youtube_search_quota_exceeded', status);
       // Trip the global breaker (short TTL) so a recovery/increase applies quickly.
