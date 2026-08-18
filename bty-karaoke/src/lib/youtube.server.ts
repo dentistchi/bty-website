@@ -295,8 +295,19 @@ export async function searchYoutubeCachedOnly(
   const kv = await resolveSearchKv();
   if (!kv) return base;
   try {
-    const cached = (await kv.get(cacheKeyFor(biasedQuery), 'json')) as YoutubeSearchItem[] | null;
-    if (cached && cached.length) return { ...base, items: cached };
+    // The cache value is read by the ONE canonical reader, exactly as the primary search path
+    // reads it. This path previously cast the value to a bare array of its own accord; when the
+    // v1 envelope shipped, an object has no `.length`, so every recommendation seed silently
+    // missed a cache that was in fact populated. A second parser is what made that possible, so
+    // there is deliberately only one.
+    //
+    // `readSearchCacheEnvelope` accepts both shapes: a v1 envelope and a LEGACY bare array (still
+    // present for up to one TTL after a deploy). Anything unrecognised is treated as a miss.
+    //
+    // Provenance is deliberately NOT propagated here — this path has never returned a
+    // `fetchedAt`, and a recommendation carries no seal. Only the items are read.
+    const envelope = readSearchCacheEnvelope(await kv.get(cacheKeyFor(biasedQuery), 'json'));
+    if (envelope && envelope.items.length) return { ...base, items: envelope.items };
   } catch {
     /* cache read failure — return empty (never calls the API) */
   }
