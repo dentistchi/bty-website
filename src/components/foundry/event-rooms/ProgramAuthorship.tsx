@@ -191,6 +191,13 @@ export function ProgramAuthorship({
    */
   const [openDetails, setOpenDetails] = useState<string | null>(null);
   const [titleDecision, setTitleDecision] = useState<SectionDecision>("use");
+  /**
+   * Is the adopted BTY draft open for reference? (Slice R4-R2E-R3-R1)
+   *
+   * Closed by default: once the program is part of the training, the Learner Preview below is
+   * the thing that matters, and this must not push it down the screen again.
+   */
+  const [adoptedDraftOpen, setAdoptedDraftOpen] = useState(false);
   const [titleEdit, setTitleEdit] = useState("");
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
@@ -690,10 +697,66 @@ export function ProgramAuthorship({
       );
     }
     return (
-      <section className="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied">
-        {/* The tail "every section is still editable below" is dropped: the handoff below says
-            exactly that, on the surface it is talking about (Slice R4-R2E-R3). */}
-        <p className="text-sm font-medium text-emerald-200/90">Added to your training.</p>
+      /*
+        THE COMPACT ROW, AND THE WAY BACK (Slice R4-R2E-R3-R1).
+
+        MEASURED FIRST, at 390x844: the long program review is 1859px tall and Learner Preview
+        starts at y=1875 — but only BEFORE adoption. A successful adoption already replaced all of
+        it with this 42px panel, putting Learner Preview at y=58. The collapse the brief asked for
+        was already the behaviour.
+
+        What the measurement DID expose is the other half: the BTY draft became unreachable. There
+        was no way back to what BTY had written, which is exactly the Founder's G2. So this row
+        gains a disclosure — closed by default, so the compact screen stays compact.
+
+        DELIBERATELY READ-ONLY. The program is adopted; this is for reading what BTY wrote, not
+        for adopting it again. No Apply, no Reset, no Discard, no editable field — reopening a
+        live review over a finished adoption would invite a second claim on a spent attempt.
+
+        Offered only while the proposal is still in memory. After a remount there is nothing to
+        show — the continuity cache is cleared on success — and a button that opens an empty panel
+        would be a worse answer than no button.
+      */
+      <section className="flex flex-col rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3.5 py-2.5" data-testid="program-applied">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-emerald-200/90">✓ Added to your training.</p>
+          {proposal ? (
+            <button
+              type="button"
+              onClick={() => setAdoptedDraftOpen((open) => !open)}
+              aria-expanded={adoptedDraftOpen}
+              aria-controls="program-adopted-draft"
+              data-testid="program-applied-toggle"
+              /* 44px: this is the control G2 depends on, and it is tapped with a thumb. Measured
+                 at 24px on the first pass, which is below the target size used everywhere else
+                 in this Builder. `-my-*` keeps the collapsed row compact while the hit area is
+                 full size — the tappable box grows, the visual row does not. */
+              className="-my-2 flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-xs font-medium text-emerald-100/80 hover:bg-emerald-400/10"
+            >
+              {adoptedDraftOpen ? "Hide BTY draft ▴" : "Review BTY draft ▾"}
+            </button>
+          ) : null}
+        </div>
+        {adoptedDraftOpen && proposal ? (
+          <div
+            id="program-adopted-draft"
+            data-testid="program-applied-draft"
+            className="mt-2.5 flex flex-col gap-3 border-t border-emerald-400/20 pt-2.5"
+          >
+            <p className="text-xs leading-5 text-emerald-100/60">
+              What BTY drafted, for reference. Your training already has the version you approved — edit it in the
+              learner preview below.
+            </p>
+            {proposal.elements.map((e) => (
+              <div key={e.kind} className="flex flex-col gap-1" data-testid={`program-adopted-section-${e.kind}`}>
+                <span className="text-[0.66rem] font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/75">
+                  {KIND_LABEL[e.kind]}
+                </span>
+                <p className={READONLY_TEXT} data-surface="readonly">{e.content}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
     );
   }

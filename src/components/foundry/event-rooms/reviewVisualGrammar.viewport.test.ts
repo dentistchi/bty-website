@@ -111,7 +111,7 @@ function build(): void {
            currentContextFingerprint: FINGERPRINT,
            onGenerate: async () => ({ ok: false, code: "provider_unavailable" }),
            onCheckResume: async () => true,
-           onApply: () => {},
+           onApply: async () => ({ status: "adopted" }),
          }),
          React.createElement(JourneyPreview, {
            answers: { ...ANSWERS, realityGroundedJourneyV1: JOURNEY },
@@ -309,6 +309,18 @@ describe.runIf(Boolean(chromium) && existsSync(join(process.cwd(), "tailwind.con
         expect(editable.height, "editable field below the 44px touch target").toBeGreaterThanOrEqual(44);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
         expect(overflow, "horizontal overflow at 390px").toBe(false);
+
+        /*
+          R4-R2E-R3-R1 — the post-adoption "Review BTY draft" disclosure is the control G2 rests
+          on, and it is tapped with a thumb. Measured at 24px on the first pass; pinned here so a
+          later tidy cannot shrink it back under the target size.
+        */
+        await page.click('[data-testid="program-apply"]');
+        await page.waitForSelector('[data-testid="program-applied-toggle"]');
+        const toggle = await measure('[data-testid="program-applied-toggle"]');
+        expect(toggle.height, "post-adoption draft toggle below the 44px touch target").toBeGreaterThanOrEqual(44);
+        const after = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+        expect(after, "horizontal overflow after adoption").toBe(false);
       } finally {
         await browser.close();
       }
