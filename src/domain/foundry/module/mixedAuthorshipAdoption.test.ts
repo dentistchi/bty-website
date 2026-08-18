@@ -140,10 +140,20 @@ describe("[R4-R2E-R1] B — a mixed-authorship adoption is valid", () => {
     expect(decideAdoptionReceipt(claim({ adopted: mixedAdopted() }))).toEqual({ ok: true });
   });
 
-  it("the title may be the proposal's or the Host's own durable one, and nothing else", () => {
+  it("the proposal's title and the Host's own durable title are both accepted", () => {
+    /*
+      SUPERSEDED IN PART BY R4-R2E-R2, and recorded rather than quietly dropped. R1 also asserted
+      that a THIRD title was refused, as part of "no third, unaccounted-for content". The Founder
+      has since decided that a rewrite made deliberately in Review is a valid final state, and
+      renaming the program is the most ordinary such rewrite. The title carries no authorship
+      field, so a new one cannot become a false claim about who wrote it — the restriction was
+      protecting an attribution that does not exist for the title.
+
+      The refusal case now lives in `reviewRewriteIntegrity.test.ts` as an ACCEPTANCE case. What
+      R1 established and R2 leaves fully intact is asserted here.
+    */
     expect(decideAdoptionReceipt(claim({ adopted: mixedAdopted(), adoptedTitle: PROPOSAL_TITLE }))).toEqual({ ok: true });
-    const d = decideAdoptionReceipt(claim({ adopted: mixedAdopted(), adoptedTitle: "A title nobody wrote" }));
-    expect(d).toEqual({ ok: false, reason: "proposal_mismatch" });
+    expect(decideAdoptionReceipt(claim({ adopted: mixedAdopted(), adoptedTitle: "Making Confirmation Calls" }))).toEqual({ ok: true });
   });
 });
 

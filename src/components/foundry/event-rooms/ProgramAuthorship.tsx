@@ -120,6 +120,13 @@ export function ProgramAuthorship({
     next: RealityGroundedJourneyV1,
     attemptId: string | null,
     reference?: { displayTitle: string; elements: { kind: string; content: string }[] },
+    /**
+     * What the Host did with each section — `keep` | `use` | `edit` (Slice R4-R2E-R2). A
+     * DECLARATION the server checks, not evidence it trusts: a `keep` that does not keep, or a
+     * `use` that is not BTY's words, is refused. `edit` is the Founder's third legitimate
+     * outcome and is accepted as the Host's own authorship, never as BTY's.
+     */
+    decisions?: Record<string, string>,
   ) => Promise<ProgramApplyOutcome> | void;
   /**
    * The Host-input authority as it is RIGHT NOW. Compared against the fingerprint the
@@ -484,6 +491,9 @@ export function ProgramAuthorship({
             the check and falls back to the strict rule.
           */
           { displayTitle: proposal.displayTitle, elements: proposal.elements.map((e) => ({ kind: e.kind, content: e.content })) },
+          // The same `choices` the journey was built from — one source, so the declaration and
+          // the content can never describe different decisions.
+          Object.fromEntries(choices.map((c) => [c.kind, c.decision])),
         )) ?? { status: "save_failed" };
     } catch {
       outcome = { status: "save_failed" };

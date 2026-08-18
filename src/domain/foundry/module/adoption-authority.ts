@@ -123,6 +123,26 @@ export type MixedAuthorshipEvidence = {
   /** The journey being adopted, as written in this patch. */
   adoptedTitle: string;
   adoptedByKind: Readonly<Record<string, string>>;
+  /**
+   * The authorship each adopted section CLAIMS, from its own `grounding[0].sourceType`
+   * (Slice R4-R2E-R2). Checked, never taken on trust: content that is not the proposal's may
+   * not wear a machine provenance.
+   */
+  adoptedProvenanceByKind?: Readonly<Record<string, string>>;
+  /**
+   * What the Host said they did with each section in Review — `keep` | `use` | `edit`
+   * (Slice R4-R2E-R2).
+   *
+   * A DECLARATION, not durable evidence: measured, `SectionDecision` is transient client state
+   * that reaches no persisted field. It is honoured because a client that says "keep" and sends
+   * something else has a bug worth refusing — but it is not, and is not claimed to be, a
+   * boundary against a hostile caller, which would simply declare `edit` and receive the
+   * Founder's third legitimate outcome. The rule that binds every caller is the attribution
+   * one below.
+   *
+   * Absent ⇒ the strict two-source rule of R4-R2E-R1 governs, unchanged.
+   */
+  declarations?: Readonly<Record<string, string>>;
   /** The draft's DURABLE state before this write — read from the row, never from the client. */
   preAdoptionTitle: string | null;
   preAdoptionByKind: Readonly<Record<string, string>>;
@@ -177,24 +197,58 @@ function isProvenMixedAuthorship(claim: AdoptionClaim): boolean {
   const preservable = new Set(m.preservableKinds);
   for (const kind of m.requiredKinds) {
     const adopted = m.adoptedByKind[kind] ?? "";
-    // REPLACE — this section is the proposal's, unchanged.
-    if (adopted === (m.reference.contentByKind[kind] ?? "")) continue;
-    // KEEP — only for a section the Host durably owned, and only at its exact durable value.
-    if (!preservable.has(kind)) return false;
+    const fromProposal = m.reference.contentByKind[kind] ?? "";
     const durable = (m.preAdoptionByKind[kind] ?? "").trim();
+    const declared = m.declarations?.[kind];
+
+    /*
+      THE ATTRIBUTION RULE (Slice R4-R2E-R2), applied to EVERY section before anything else and
+      regardless of what was declared. This is the one guarantee no caller can talk its way past.
+
+      The receipt exists because "any schema-valid journey could take that attempt's receipt"
+      (R11.2). The thing being forged in that sentence is BTY's authorship — and the request is
+      already authenticated as the owner Host acting on their own draft, so "did a Host write
+      this?" has no other possible answer. What must never happen is that words BTY did not write
+      end up recorded as BTY's.
+
+      Under-claiming is harmless and allowed: a section that DOES match the proposal may carry a
+      host-authored label, because the Host may genuinely have written the same words or kept
+      their own that happened to coincide.
+    */
+    if (adopted !== fromProposal) {
+      const provenance = m.adoptedProvenanceByKind?.[kind];
+      if (provenance !== undefined && provenance !== "host_statement" && provenance !== "host_edited") return false;
+    }
+
+    // USE BTY — declared or derived, it must be the proposal's words exactly.
+    if (adopted === fromProposal) {
+      if (declared === "keep" && !(durable.length > 0 && adopted === durable)) return false;
+      continue;
+    }
+
+    /*
+      REWRITE — the Host's own new words, entered in Review (Slice R4-R2E-R2). The UI invites
+      exactly this ("Every gold box below is text you can rewrite"), so refusing it made the
+      product contradict itself. It needs no proof of origin: it is the authenticated owner
+      writing into their own draft. It needed, and now has, correct attribution.
+    */
+    if (declared === "edit") continue;
+
+    // A declaration of USE BTY that is not the proposal's words is a broken claim.
+    if (declared === "use") return false;
+
+    // KEEP — only where the DURABLE row says the section was the Host's, and only at its value.
+    if (!preservable.has(kind)) return false;
     if (durable.length === 0 || adopted !== durable) return false;
   }
 
   /*
-    THE TITLE IS CONTENT TOO. It is inside the digest, so leaving it unchecked here would let an
-    arbitrary title ride in on an otherwise honest adoption. Two sources are legitimate — the
-    proposal's title, and the Host's own durable one — and nothing else, which is the same
-    "no third, unaccounted-for content" rule applied one level up.
+    THE TITLE. Any title is accepted from here on (Slice R4-R2E-R2): renaming the program is the
+    most ordinary rewrite a Host performs in Review, and the title carries no authorship field,
+    so a new one cannot become a false claim about who wrote it. R4-R2E-R1 restricted it to two
+    sources as part of "no third, unaccounted-for content" — that restriction was about
+    ATTRIBUTION, and for the title there is none to get wrong.
   */
-  const preTitle = (m.preAdoptionTitle ?? "").trim();
-  if (m.adoptedTitle !== m.reference.displayTitle && !(preTitle.length > 0 && m.adoptedTitle === preTitle)) {
-    return false;
-  }
   return true;
 }
 

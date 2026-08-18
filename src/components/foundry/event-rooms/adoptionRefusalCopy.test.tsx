@@ -85,7 +85,13 @@ describe("[R4-R2E-R1] G — every refusal reason has its own true sentence", () 
     const explanation = (await screen.findByTestId("program-refused-explanation")).textContent ?? "";
     // The measured falsehood, pinned so it cannot come back.
     expect(explanation).not.toMatch(/training moved on/i);
-    expect(explanation).toMatch(/doesn’t match the program BTY drafted/i);
+    expect(explanation).toMatch(/isn’t the program that record refers to/i);
+    /*
+      R4-R2E-R2 — the refusal may never tell the Host to stop rewriting. Rewriting is invited by
+      the Learner Preview and is now a valid final program state, so the old sentence ("add it
+      without rewriting the sections") contradicted the product and is pinned out.
+    */
+    expect(explanation).not.toMatch(/without rewriting/i);
   });
 
   it("context_moved is the ONE reason allowed to say the training moved on", async () => {

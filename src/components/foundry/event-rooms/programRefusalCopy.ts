@@ -391,7 +391,15 @@ export const ADOPTION_REFUSAL_COPY: Record<AdoptionRefusal, { headline: string; 
   proposal_mismatch: {
     headline: "This program wasn’t added.",
     explanation:
-      "What was about to be saved doesn’t match the program BTY drafted, so the record couldn’t be made. Your training answers are unchanged — draft the program again and add it without rewriting the sections.",
+      /*
+        NEVER "without rewriting the sections" AGAIN (Slice R4-R2E-R2). Rewriting is invited two
+        panels below — "Every gold box below is text you can rewrite" — and is now a valid final
+        program state. Telling the Host to stop doing the thing the product asked them to do was
+        the contradiction the Founder hit on device. Rewrites no longer reach this refusal at all,
+        so the sentence describes what is actually left: the program on screen is not the one this
+        record refers to.
+      */
+      "This isn’t the program that record refers to, so it couldn’t be filed. Your training answers and your wording are unchanged — draft the program again to get a fresh record.",
   },
   superseded_attempt: {
     headline: "This program wasn’t added.",

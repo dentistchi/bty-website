@@ -117,6 +117,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       */
       preAdoptionJourney: (before?.answers as BuilderAnswers | undefined)?.realityGroundedJourneyV1,
       reference: readAdoptionReference(body?.adoption_reference),
+      decisions: readAdoptionDecisions(body?.adoption_decisions),
     });
     if (!decision.ok) {
       /*
@@ -213,6 +214,34 @@ function contentByKind(journey: BuilderAnswers["realityGroundedJourneyV1"]): Rec
 }
 
 /**
+ * The authorship each adopted element CLAIMS for itself (Slice R4-R2E-R2). Read straight off the
+ * journey being written, and handed to the authority to be checked — content that is not the
+ * proposal's may not claim a machine provenance.
+ */
+function provenanceByKind(journey: BuilderAnswers["realityGroundedJourneyV1"]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const el of journey?.elements ?? []) {
+    const source = el.grounding?.[0]?.sourceType;
+    if (typeof source === "string") out[el.kind] = source;
+  }
+  return out;
+}
+
+/**
+ * What the Host said they did with each section, narrowed from an untrusted body
+ * (Slice R4-R2E-R2). Only the three known outcomes survive; anything else is dropped, which
+ * returns that section to the strict two-source rule rather than granting it freedom.
+ */
+function readAdoptionDecisions(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [kind, decision] of Object.entries(raw as Record<string, unknown>)) {
+    if (decision === "keep" || decision === "use" || decision === "edit") out[kind] = decision;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * Gather the durable facts and decide. Kept beside the route because it is the only caller,
  * and kept OUT of the domain because it reads the database.
  */
@@ -229,6 +258,8 @@ async function proveAdoption(
     /** The draft's journey BEFORE this write. Absent in recovery — see below. */
     preAdoptionJourney?: BuilderAnswers["realityGroundedJourneyV1"];
     reference?: { displayTitle: string; contentByKind: Record<string, string> } | null;
+    /** The Host's own keep/use/rewrite declarations for this adoption (Slice R4-R2E-R2). */
+    decisions?: Record<string, string>;
   },
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const ctx = programContext(input.answers);
@@ -283,6 +314,8 @@ async function proveAdoption(
           requiredKinds: requiredProgramKinds(input.answers),
           adoptedTitle: input.journey?.displayTitle ?? "",
           adoptedByKind: contentByKind(input.journey),
+          adoptedProvenanceByKind: provenanceByKind(input.journey),
+          declarations: input.decisions,
           preAdoptionTitle: input.preAdoptionJourney.displayTitle ?? null,
           preAdoptionByKind: contentByKind(input.preAdoptionJourney),
           preservableKinds: input.preAdoptionJourney.elements

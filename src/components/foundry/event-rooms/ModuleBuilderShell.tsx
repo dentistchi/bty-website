@@ -72,6 +72,8 @@ type Snapshot = {
    * checked, never an assertion to be believed.
    */
   adoptionReference?: AdoptionReference;
+  /** The Host's keep/use/rewrite declarations for that adoption (Slice R4-R2E-R2). */
+  adoptionDecisions?: Record<string, string>;
 };
 
 /** The proposal's participant-facing content, as the digest sees it. */
@@ -180,6 +182,7 @@ export function ModuleBuilderShell({
             answers: snap.answers,
             current_step: persistableStep(snap.currentStep),
             ...(snap.adoptionReference ? { adoption_reference: snap.adoptionReference } : {}),
+            ...(snap.adoptionDecisions ? { adoption_decisions: snap.adoptionDecisions } : {}),
           }),
           // R2E — a request with no deadline is what wedged the saver on a real device:
           // it never settled, so `inFlight` never cleared and every later flush hung.
@@ -642,6 +645,7 @@ export function ModuleBuilderShell({
       next: RealityGroundedJourneyV1,
       attemptId: string | null,
       reference?: AdoptionReference,
+      decisions?: Record<string, string>,
     ): Promise<ProgramApplyOutcome> => {
       /*
         ONE row update carries the adopted journey AND the record of which proposal was
@@ -667,7 +671,12 @@ export function ModuleBuilderShell({
       const previous = answersRef.current;
       answersRef.current = merged;
       setAnswers(merged);
-      const saved = await saver.flush({ answers: merged, currentStep: stepRef.current, adoptionReference: reference });
+      const saved = await saver.flush({
+        answers: merged,
+        currentStep: stepRef.current,
+        adoptionReference: reference,
+        adoptionDecisions: decisions,
+      });
       if (!saved) {
         answersRef.current = previous;
         setAnswers(previous);

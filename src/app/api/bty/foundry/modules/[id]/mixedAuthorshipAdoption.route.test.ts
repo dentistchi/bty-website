@@ -138,7 +138,7 @@ function draftRow(answers: Record<string, unknown>) {
   };
 }
 
-async function patchWith(journey: ReturnType<typeof mixedJourney>, reference: unknown, preAdoption = PRE_ADOPTION_JOURNEY) {
+async function patchWith(journey: ReturnType<typeof mixedJourney>, reference: unknown, preAdoption = PRE_ADOPTION_JOURNEY, decisions?: unknown) {
   const answers = { ...ANSWERS, realityGroundedJourneyV1: journey, programAdoptionV1: { attemptId: ATTEMPT } };
   // The DURABLE row before this write — it already carries the Host's own sections.
   getOwnerDraft.mockResolvedValue(draftRow({ ...ANSWERS, realityGroundedJourneyV1: preAdoption } as never));
@@ -147,7 +147,11 @@ async function patchWith(journey: ReturnType<typeof mixedJourney>, reference: un
   }));
   const req = new NextRequest(`http://localhost/api/bty/foundry/modules/${DRAFT}`, {
     method: "PATCH",
-    body: JSON.stringify({ answers, current_step: 9, ...(reference === undefined ? {} : { adoption_reference: reference }) }),
+    body: JSON.stringify({
+      answers, current_step: 9,
+      ...(reference === undefined ? {} : { adoption_reference: reference }),
+      ...(decisions === undefined ? {} : { adoption_decisions: decisions }),
+    }),
     headers: { "Content-Type": "application/json" },
   });
   const res = await PATCH(req, { params: Promise.resolve({ id: DRAFT }) });
@@ -225,6 +229,76 @@ describe("[R4-R2E-R1] F — mixed-authorship adoption through the real route", (
   it("a malformed reference cannot crash the route — it falls back to the strict rule", async () => {
     for (const junk of [42, "nope", { displayTitle: 1 }, { displayTitle: "t", elements: [{ kind: 5 }] }, { elements: [] }]) {
       const { res, body } = await patchWith(mixedJourney(), junk);
+      expect(res.status).toBe(200);
+      expect(body.adoption?.ok).toBe(false);
+      expect(body.adoption?.reason).toBe("proposal_mismatch");
+    }
+  });
+});
+
+
+/** The declarations the real client sends alongside a default keep/use adoption. */
+const DECLARATIONS = Object.fromEntries(REQUIRED.map((k) => [k, k in HOST_KEPT ? "keep" : "use"]));
+
+describe("[R4-R2E-R2] H — a rewritten section survives the route as the Host's own", () => {
+  it("KEEP + USE BTY + REWRITE stamps exactly one receipt and persists the rewritten journey", async () => {
+    const REWRITE = "At your next booking, call the patient before you do anything else.";
+    const journey = mixedJourney();
+    journey.elements = journey.elements.map((e) =>
+      e.kind === "field_application" ? el(e.kind, REWRITE, "host_statement") : e,
+    );
+    const decisions = { ...DECLARATIONS, field_application: "edit" };
+
+    const { body, patched } = await patchWith(journey, REFERENCE, PRE_ADOPTION_JOURNEY, decisions);
+
+    expect(body.adoption?.ok, JSON.stringify(body.adoption)).toBe(true);
+    expect(body.adoption?.receipt).toBe("recorded");
+    expect(markApplied).toHaveBeenCalledTimes(1);
+    expect(patched!.answers.programAdoptionV1).toEqual({ attemptId: ATTEMPT });
+
+    // The Host's new words are what is durable — not replaced, not reverted to the proposal.
+    const written = patched!.answers.realityGroundedJourneyV1 as { elements: { kind: string; content: string; grounding: { sourceType: string }[] }[] };
+    const rewritten = written.elements.find((e) => e.kind === "field_application")!;
+    expect(rewritten.content).toBe(REWRITE);
+    // …and they are recorded as the HOST's, never as BTY's.
+    expect(rewritten.grounding[0].sourceType).toBe("host_statement");
+    // The kept and the BTY-taken sections are untouched beside it.
+    expect(written.elements.find((e) => e.kind === "why_it_matters")!.content).toBe(HOST_KEPT.why_it_matters);
+    expect(written.elements.find((e) => e.kind === "scenario")!.content).toBe(PROPOSAL_CONTENT.scenario);
+  });
+
+  it("the same rewrite labelled `ai_proposed` is REFUSED by the route", async () => {
+    const journey = mixedJourney();
+    journey.elements = journey.elements.map((e) =>
+      e.kind === "field_application" ? el(e.kind, "Words BTY never wrote.", "ai_proposed") : e,
+    );
+    const decisions = { ...DECLARATIONS, field_application: "edit" };
+
+    const { body, patched } = await patchWith(journey, REFERENCE, PRE_ADOPTION_JOURNEY, decisions);
+
+    expect(body.adoption?.ok).toBe(false);
+    expect(body.adoption?.reason).toBe("proposal_mismatch");
+    expect(patched!.answers.programAdoptionV1).toBeUndefined();
+    expect(markApplied).not.toHaveBeenCalled();
+  });
+
+  it("a declared KEEP that does not keep is refused through the route", async () => {
+    const journey = mixedJourney();
+    journey.elements = journey.elements.map((e) =>
+      e.kind === "why_it_matters" ? el(e.kind, "Not what the row held.", "host_statement") : e,
+    );
+    const { body } = await patchWith(journey, REFERENCE, PRE_ADOPTION_JOURNEY, DECLARATIONS);
+    expect(body.adoption?.ok).toBe(false);
+    expect(body.adoption?.reason).toBe("proposal_mismatch");
+  });
+
+  it("junk declarations are dropped, returning that section to the strict rule", async () => {
+    const journey = mixedJourney();
+    journey.elements = journey.elements.map((e) =>
+      e.kind === "field_application" ? el(e.kind, "Words BTY never wrote.", "host_statement") : e,
+    );
+    for (const junk of [{ field_application: "whatever" }, { field_application: 7 }, "nope", 42, null]) {
+      const { res, body } = await patchWith(journey, REFERENCE, PRE_ADOPTION_JOURNEY, junk);
       expect(res.status).toBe(200);
       expect(body.adoption?.ok).toBe(false);
       expect(body.adoption?.reason).toBe("proposal_mismatch");
