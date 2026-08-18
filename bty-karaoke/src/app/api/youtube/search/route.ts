@@ -6,12 +6,17 @@
 // a standard YouTube search. Explicit search only — no per-keystroke calls here.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeSearchQuery } from '@/domain/youtube-search';
-import { normalizeStyle } from '@/domain/performance-style';
+import { normalizeSearchQuery, youtubeSearchUrl } from '@/domain/youtube-search';
+import { biasStyleQuery, normalizeStyle } from '@/domain/performance-style';
+
+/** The bias `searchYoutube` applies when no explicit style is given (its legacy `bias: true`). */
+const DEFAULT_BIAS_STYLE = 'karaoke' as const;
 import { SearchQuerySchema } from '@/lib/validation';
 import { searchYoutube } from '@/lib/youtube.server';
 import { enrichItemsWithDuration } from '@/lib/youtube-duration.server';
 import { signYouTubeProvenance } from '@/lib/youtube-provenance.server';
+import { checkSearchRateLimit, cloudflareClientIp } from '@/lib/youtube-search-guard.server';
+import { recordSearchServe } from '@/lib/youtube-search-telemetry.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,6 +38,39 @@ export async function GET(req: NextRequest) {
   const styleParam = req.nextUrl.searchParams.get('style');
   const original = req.nextUrl.searchParams.get('original') === '1';
   const style = styleParam ? normalizeStyle(styleParam) : original ? 'original' : undefined;
+
+  // BUILD R2.5 — PER-IP CONTAINMENT. This endpoint is public, anonymous and cookieless, and the
+  // KV cache only defends against REPEATED queries: unique cold queries miss it every time, so one
+  // client could drain the daily grant. The limit is deliberately generous — a singer picking songs
+  // all evening never approaches it — and it lives HERE rather than in the service because this is
+  // the only layer that sees the edge client IP.
+  //
+  // A refusal returns 200 with the ordinary `degraded` shape and the YouTube fallback link, rather
+  // than a 4xx: every existing client (web and the shipped native build) already renders that as
+  // "search is busy, here is the fallback", so containment needs no client release to be usable.
+  // `rateLimited` is carried explicitly for future clients and for the admin surface.
+  const rate = await checkSearchRateLimit(cloudflareClientIp(req.headers));
+  if (!rate.allowed) {
+    // Counted as BLOCKED, never as a visible search — and no outbound call is made, so no quota
+    // row can exist for it.
+    await recordSearchServe('RATE_LIMITED').catch(() => {});
+    // The fallback link is biased exactly as a served search would have been, so the guest lands
+    // on the search they actually asked for rather than a raw-title one.
+    const biasedQuery = biasStyleQuery(parsed.data.q, style ?? DEFAULT_BIAS_STYLE);
+    return NextResponse.json({
+      ok: false,
+      gated: false,
+      degraded: true,
+      quotaExceeded: false,
+      rateLimited: true,
+      items: [],
+      query: parsed.data.q,
+      biasedQuery,
+      fallbackUrl: youtubeSearchUrl(biasedQuery),
+      youtubeFetchedAt: null,
+    });
+  }
+
   const result = style
     ? await searchYoutube(parsed.data.q, { style })
     : await searchYoutube(parsed.data.q, { bias: true });

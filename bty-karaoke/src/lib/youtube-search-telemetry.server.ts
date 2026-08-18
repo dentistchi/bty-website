@@ -25,8 +25,24 @@
 
 import type { PerformanceStyle } from '@/domain/performance-style';
 
-/** How one VISIBLE search was served. Exactly one applies per `searchYoutubeWithCache` call. */
-export type SearchServeDisposition = 'UPSTREAM' | 'CACHE_HIT' | 'BREAKER_OPEN' | 'GATED';
+/**
+ * How one search REQUEST was resolved.
+ *
+ * The first four are VISIBLE SEARCHES — a guest asked and got an answer of some kind. They are the
+ * efficiency denominator, and BUILD R2.5 does not touch that definition.
+ *
+ * The last two are BLOCKED — refused by US before any outbound call, by the per-IP limiter or the
+ * daily budget guard. They are counted separately and deliberately excluded from
+ * `visible_searches`, so `cache_hit_rate` and `calls_per_visible_search` stay comparable across
+ * the containment change. A blocked request spends ZERO quota and can never produce a call row.
+ */
+export type SearchServeDisposition =
+  | 'UPSTREAM'
+  | 'CACHE_HIT'
+  | 'BREAKER_OPEN'
+  | 'GATED'
+  | 'RATE_LIMITED'
+  | 'BUDGET_GUARDED';
 
 /** Outcome of one real outbound request. Mirrors the table's closed CHECK. */
 export type SearchCallOutcome =

@@ -20,6 +20,7 @@ import {
   recordOutboundSearchCall,
   recordSearchServe,
 } from './youtube-search-telemetry.server';
+import { reserveSearchBudget } from './youtube-search-guard.server';
 
 export const SEARCH_CACHE_TTL_SECONDS = 3600; // 1 hour
 /** Short global circuit-breaker window after a proven daily-quota 429, so a quota
@@ -285,6 +286,25 @@ export async function searchYoutubeWithCache(
       await safeServe('BREAKER_OPEN');
       return { ok: false, gated: false, degraded: true, quotaExceeded: true, ...base };
     }
+  }
+
+  // BUILD R2.5 — DAILY BUDGET GUARD. The last gate before we spend a unit, and deliberately the
+  // LAST one: it sits after the cache and breaker checks so a cached answer is still served
+  // normally while the guard is active. A cache hit costs nothing, so refusing it would punish
+  // guests for an attack without protecting anything.
+  //
+  // A refusal here is OURS, not Google's. It reports `degraded` with the usual fallback link and
+  // must NEVER set `quotaExceeded` or trip the Google circuit breaker — those two say "Google
+  // refused us", and claiming that when we refused ourselves would corrupt the one signal the
+  // whole quota programme is built on.
+  // Wrapped, for the same reason `safeServe` is: a guard that can throw is a guard that can take
+  // search down. The module catches its own failures, but the CALL SITE must not depend on that
+  // staying true — and the safe direction on an unknown reservation is to allow the search, since
+  // Google's own 429 and the existing breaker remain behind it.
+  const budget = await reserveSearchBudget().catch(() => ({ granted: true, reserved: null }));
+  if (!budget.granted) {
+    await safeServe('BUDGET_GUARDED');
+    return { ok: false, gated: false, degraded: true, quotaExceeded: false, ...base };
   }
 
   // UPSTREAM — from here on, a real `search.list` HTTP request is issued and ONE unit of the

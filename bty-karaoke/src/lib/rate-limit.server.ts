@@ -66,6 +66,15 @@ async function resolveKv(): Promise<RateLimitKv | null> {
   }
 }
 
+/**
+ * BUILD R2.5 — the SAME pseudonymization, exported for limiters that are not the PIN/auth shape.
+ * A raw IP is never stored anywhere; this is the one construction that turns one into a key.
+ * Additive: the enrollment limiter above is unchanged and still calls the private function.
+ */
+export async function pseudonymizeIp(secret: string, scope: string, ip: string): Promise<string> {
+  return ipPseudonym(secret, scope, ip);
+}
+
 export interface Limiter {
   roomId: string;
   ipHash: string;
