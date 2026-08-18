@@ -10,6 +10,7 @@
  * BTY day key equals the day before today's. Fail-soft: any degraded read yields null (no card).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FoundryContentType } from "@/domain/foundry/events/content-type";
 import { userDayKey } from "@/domain/daily/userDayKey";
 import { resolveUserTzContext } from "./userDay";
 import { listUserFoundryHistory } from "@/lib/bty/foundry/events/foundryHistoryService";
@@ -20,7 +21,8 @@ export type YesterdayReflection = {
   /** Stable owner-scoped record id → the exact Center deep-link entry. */
   entryId: string;
   eventTitle: string;
-  contentType: "youtube" | "document";
+  /** R4-R2G — all four types; null = unknown stored discriminator, never shown as YouTube. */
+  contentType: FoundryContentType | null;
   completedAt: string;
   /** The learner's OWN private reflection body (owner-only; client collapses it until tapped). */
   responseText: string;

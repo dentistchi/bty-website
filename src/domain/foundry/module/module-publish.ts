@@ -16,6 +16,7 @@
  */
 
 import { stepBlockers, type BuilderAnswers } from "./module-builder";
+import { MATERIAL_INTENT_CONTENT_TYPE, type GuidanceContentType } from "../events/content-type";
 
 // ---------------------------------------------------------------------------
 // Approval readiness (builder's real fields)
@@ -41,6 +42,23 @@ export function builderApprovalErrors(answers: BuilderAnswers | undefined): stri
   }
   if (a.materialIntent === "youtube" && !(a.materialText ?? "").trim()) {
     errors.push("material_youtube_url_required");
+  }
+  /*
+    R4-R2G — THE SAME GATE THE URL HAS, FOR THE SAME REASON.
+
+    A written-guidance material whose text is empty publishes a learner surface with nothing on
+    it, and a live-discussion material with no topic asks a team to discuss nothing. Both are the
+    exact failure `material_youtube_url_required` exists to prevent, so both get the same
+    treatment: a blocking code that maps to the material Review row and to a specific sentence.
+
+    Deliberately NOT folded into one code with the URL. The Host is told what to add, and "add
+    the YouTube link" is not what a written-guidance draft is missing.
+  */
+  if (a.materialIntent === "written" && !(a.materialText ?? "").trim()) {
+    errors.push("material_written_guidance_required");
+  }
+  if (a.materialIntent === "live_discussion" && !(a.materialText ?? "").trim()) {
+    errors.push("material_live_discussion_required");
   }
   return errors;
 }
@@ -103,6 +121,14 @@ const CODE_TO_SECTION: Readonly<Record<string, ReviewMissingSection>> = {
   material_youtube_url_required: { section: "material", step: 7 },
   material_pdf_required: { section: "material", step: 7 },
   /*
+    R4-R2G — registered here in the SAME edit that made `builderApprovalErrors` emit them. The
+    measurement that opened this slice found that an unmapped material code lets Review report a
+    draft as ready while publish refuses it, and the totality test below is what proves it cannot
+    happen again.
+  */
+  material_written_guidance_required: { section: "material", step: 7 },
+  material_live_discussion_required: { section: "material", step: 7 },
+  /*
     Slice 3.2R-R3 — a server-only code, like `material_pdf_required` beside it. It must map to
     a visible Review row, because a blocker the Host cannot see is a blocker they cannot clear.
   */
@@ -123,6 +149,8 @@ export const ALL_BLOCKING_CODES: readonly string[] = [
   "material_intent_required",
   "material_youtube_url_required",
   "material_pdf_required",
+  "material_written_guidance_required",
+  "material_live_discussion_required",
   "follow_up_required",
 ];
 
@@ -161,23 +189,143 @@ export function reviewMissingSections(
 export type PublishMaterial =
   | { kind: "youtube"; url: string }
   | { kind: "pdf" }
+  /**
+   * R4-R2G — the Host's own text. `contentType` is carried rather than re-derived downstream,
+   * so the service never repeats the intent→discriminator decision and cannot disagree with it.
+   */
+  | { kind: "guidance"; contentType: GuidanceContentType; text: string }
   | { kind: "unsupported"; reason: string };
 
 /**
- * What participant-delivery content this draft publishes to. The builder UI only
- * offers `youtube` and `pdf`; any other intent (or none) is `unsupported` so the
- * service refuses to publish rather than fabricate a delivery surface. The PDF
- * asset itself is resolved in the service (domain can't see storage).
+ * What participant-delivery content this draft publishes to. All FOUR approved V1 material
+ * types are handled explicitly; an absent or unrecognised intent is `unsupported`, so the
+ * service refuses to publish rather than fabricate a delivery surface. The PDF asset itself is
+ * resolved in the service (domain can't see storage).
+ *
+ * R4-R2G — EXHAUSTIVE BY CONSTRUCTION. The switch is over `MaterialIntent` with a `never`
+ * assertion in the default arm, so adding a fifth intent to the union is a COMPILE ERROR here
+ * rather than a training that silently refuses to publish. That is the whole point: the
+ * measurement that opened this slice found `written` and `live_discussion` already legal in the
+ * union and silently unsupported at exactly this line, with nothing anywhere to notice.
  */
 export function deriveEventMaterial(answers: BuilderAnswers | undefined): PublishMaterial {
   const a = answers ?? {};
-  if (a.materialIntent === "youtube") {
-    const url = (a.materialText ?? "").trim();
-    if (!url) return { kind: "unsupported", reason: "material_youtube_url_required" };
-    return { kind: "youtube", url };
+  const intent = a.materialIntent;
+  if (intent === undefined) return { kind: "unsupported", reason: "material_intent_unsupported" };
+  switch (intent) {
+    case "youtube": {
+      const url = (a.materialText ?? "").trim();
+      if (!url) return { kind: "unsupported", reason: "material_youtube_url_required" };
+      return { kind: "youtube", url };
+    }
+    case "pdf":
+      return { kind: "pdf" };
+    case "written": {
+      const text = (a.materialText ?? "").trim();
+      if (!text) return { kind: "unsupported", reason: "material_written_guidance_required" };
+      return { kind: "guidance", contentType: MATERIAL_INTENT_CONTENT_TYPE.written, text };
+    }
+    case "live_discussion": {
+      const text = (a.materialText ?? "").trim();
+      if (!text) return { kind: "unsupported", reason: "material_live_discussion_required" };
+      return { kind: "guidance", contentType: MATERIAL_INTENT_CONTENT_TYPE.live_discussion, text };
+    }
+    default: {
+      const exhaustive: never = intent;
+      void exhaustive;
+      return { kind: "unsupported", reason: "material_intent_unsupported" };
+    }
   }
-  if (a.materialIntent === "pdf") return { kind: "pdf" };
-  return { kind: "unsupported", reason: "material_intent_unsupported" };
+}
+
+// ---------------------------------------------------------------------------
+// Published guidance content (Slice R4-R2G)
+// ---------------------------------------------------------------------------
+
+/**
+ * THE PARTICIPANT-FACING CONTENT OF A GUIDANCE EVENT, frozen at publish.
+ *
+ * Written guidance and live discussion have NO content table — that was the Founder's explicit
+ * boundary for this slice, and the measurement agreed with it: the two existing content tables
+ * (`foundry_event_training_content`, `foundry_event_document_content`) both demand a stored
+ * artifact (an 11-character video id, a storage object with a verified page count) that neither
+ * of these types has. So their content rides the immutable module snapshot, alongside the
+ * approved Journey, as ONE namespaced versioned contract — the same shape `realityGroundedJourneyV1`
+ * already uses in that jsonb.
+ *
+ * WHY THE RESOLVED VALUES AND NOT THE RAW ANSWERS. `buildModuleSnapshot` is a whitelist over
+ * DRAFT ANSWERS, and the completion prompt the learner is actually asked is not always the one
+ * in `answers`: a journey-enabled publish takes it from the journey's `completion_check`, and a
+ * blank one falls back to a locale default. Freezing the raw answer would mean the learner's
+ * screen and the frozen record could disagree, and for a guidance event the frozen record is the
+ * ONLY copy. So publish computes the prompt exactly once and freezes what it computed.
+ *
+ * `sharedQuestion` is here for the same reason: it is not in the snapshot whitelist, and for
+ * youtube/document it lives on the content row this type does not have.
+ */
+export type PublishedGuidanceV1 = {
+  version: 1;
+  contentType: GuidanceContentType;
+  /** The Host's guidance text, or the discussion topic/instruction. Never empty. */
+  materialText: string;
+  /** The completion check the learner is asked. Never empty. */
+  completionPrompt: string;
+  /** The Shared Understanding question, or null when this training asks none. */
+  sharedQuestion: string | null;
+};
+
+/** The snapshot key this contract is stored under. One namespaced key, like the Journey. */
+export const PUBLISHED_GUIDANCE_KEY = "publishedGuidanceV1" as const;
+
+/**
+ * Freeze a guidance event's participant-facing content. Pure and total: every field is
+ * required to be non-empty except the optional shared question, and a blank material or
+ * prompt returns null so the caller refuses the publish rather than creating an event whose
+ * learner surface is empty and whose completion could never be reached honestly.
+ */
+export function buildPublishedGuidance(input: {
+  contentType: GuidanceContentType;
+  materialText: string;
+  completionPrompt: string;
+  sharedQuestion: string | null;
+}): PublishedGuidanceV1 | null {
+  const materialText = (input.materialText ?? "").trim();
+  const completionPrompt = (input.completionPrompt ?? "").trim();
+  if (!materialText || !completionPrompt) return null;
+  const sharedQuestion = (input.sharedQuestion ?? "").trim();
+  return {
+    version: 1,
+    contentType: input.contentType,
+    materialText,
+    completionPrompt,
+    sharedQuestion: sharedQuestion.length > 0 ? sharedQuestion : null,
+  };
+}
+
+/**
+ * Read the frozen guidance contract out of a stored module snapshot, or null when this event
+ * has none. Fail closed on shape: a snapshot whose contract is malformed, mis-versioned, or
+ * carries a content type this build does not know yields null, and the caller shows the learner
+ * an honest "cannot be opened" rather than a half-rendered training.
+ */
+export function readPublishedGuidance(snapshot: unknown): PublishedGuidanceV1 | null {
+  if (!snapshot || typeof snapshot !== "object") return null;
+  const raw = (snapshot as Record<string, unknown>)[PUBLISHED_GUIDANCE_KEY];
+  if (!raw || typeof raw !== "object") return null;
+  const g = raw as Record<string, unknown>;
+  if (g.version !== 1) return null;
+  if (g.contentType !== "written_guidance" && g.contentType !== "live_discussion") return null;
+  const materialText = typeof g.materialText === "string" ? g.materialText.trim() : "";
+  const completionPrompt = typeof g.completionPrompt === "string" ? g.completionPrompt.trim() : "";
+  if (!materialText || !completionPrompt) return null;
+  const sharedQuestion = typeof g.sharedQuestion === "string" ? g.sharedQuestion.trim() : "";
+  return {
+    version: 1,
+    contentType: g.contentType,
+    materialText,
+    completionPrompt,
+    sharedQuestion: sharedQuestion.length > 0 ? sharedQuestion : null,
+  };
 }
 
 // ---------------------------------------------------------------------------

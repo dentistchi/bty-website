@@ -14,7 +14,14 @@
  * XP internals, storage/signed URLs, or DB terminology.
  */
 
-export type FoundryInvitationContentType = "youtube" | "document";
+import { isFoundryContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
+
+/**
+ * R4-R2G — all four approved V1 material types. This used to be `"youtube" | "document"` and
+ * the instruction builder's `else` branch meant "watch the training video", so a written-guidance
+ * room would have invited the team to watch a video that does not exist.
+ */
+export type FoundryInvitationContentType = FoundryContentType;
 export type InvitationLocale = "en" | "ko";
 
 export type BuildInvitationInput = {
@@ -40,7 +47,7 @@ export type BuildInvitationInput = {
 export const TEAMS_MESSAGE_MAX = 200;
 
 type Strings = {
-  instruction: (ct: FoundryInvitationContentType) => string;
+  instruction: Readonly<Record<FoundryInvitationContentType, string>>;
   progressSavedLine: string;
   openRoom: string;
   aboutMinutes: (m: number) => string;
@@ -50,10 +57,17 @@ type Strings = {
 
 const STR: Record<InvitationLocale, Strings> = {
   en: {
-    instruction: (ct) =>
-      ct === "document"
-        ? "Read the document and complete the reflection."
-        : "Watch the training video and complete the reflection.",
+    /*
+      A TOTAL MAP, not a ternary (Slice R4-R2G). Every content type states what the learner is
+      actually being asked to do, and the live-discussion line says "with your team" without
+      claiming BTY will know whether it happened.
+    */
+    instruction: {
+      youtube: "Watch the training video and complete the reflection.",
+      document: "Read the document and complete the reflection.",
+      written_guidance: "Read the guidance and complete the reflection.",
+      live_discussion: "Take part in the team discussion, then complete the reflection.",
+    },
     progressSavedLine: "Your reading progress will be saved.",
     openRoom: "Open the Foundry room:",
     aboutMinutes: (m) => `About ${m} minutes`,
@@ -61,10 +75,12 @@ const STR: Record<InvitationLocale, Strings> = {
     teamsPlease: "Please complete this Foundry room.",
   },
   ko: {
-    instruction: (ct) =>
-      ct === "document"
-        ? "문서를 읽고 성찰을 완료해 주세요."
-        : "훈련 영상을 보고 성찰을 완료해 주세요.",
+    instruction: {
+      youtube: "훈련 영상을 보고 성찰을 완료해 주세요.",
+      document: "문서를 읽고 성찰을 완료해 주세요.",
+      written_guidance: "가이드를 읽고 성찰을 완료해 주세요.",
+      live_discussion: "팀 논의에 참여한 뒤 성찰을 완료해 주세요.",
+    },
     progressSavedLine: "읽은 위치는 저장됩니다.",
     openRoom: "Foundry 방 열기:",
     aboutMinutes: (m) => `약 ${m}분`,
@@ -96,8 +112,18 @@ export function buildFoundryInvitation(input: BuildInvitationInput): string {
   const title = cleanMultiline(String(input.title ?? "")).trim();
   const url = String(input.participantUrl ?? "").trim();
 
+  /*
+    The saved-progress line is TRUE ONLY FOR THE PDF ROOM, which is the one content type that
+    stores a reading position. It stays attached to `document` alone rather than to "anything
+    you read", so no invitation promises a behaviour its room does not have.
+  */
+  const contentType: FoundryInvitationContentType = isFoundryContentType(input.contentType)
+    ? input.contentType
+    : "youtube";
   const instructionBlock =
-    input.contentType === "document" ? `${s.instruction("document")}\n${s.progressSavedLine}` : s.instruction("youtube");
+    contentType === "document"
+      ? `${s.instruction.document}\n${s.progressSavedLine}`
+      : s.instruction[contentType];
 
   const intro = input.intro != null ? cleanMultiline(String(input.intro)) : "";
 

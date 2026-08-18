@@ -62,6 +62,13 @@ export const PUBLIC_REASON_STATUS: Record<string, number> = {
   qr_rotated: 410,
   inactive: 410,
   document_unavailable: 404,
+  /*
+    R4-R2G. `guidance_not_declared` is 409 for the same reason `reading_not_complete` is: the
+    request is well-formed and the room is fine, but the learner has not yet made the exposure
+    declaration this content type completes through.
+  */
+  guidance_not_declared: 409,
+  guidance_unavailable: 404,
   award_failed: 500,
   progress_failed: 500,
   join_failed: 500,

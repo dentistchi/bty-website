@@ -5,9 +5,12 @@ import { missingProgramKinds } from "@/domain/foundry/module/program-authorship"
 import {
   deriveEventMaterial,
   buildModuleSnapshot,
+  buildPublishedGuidance,
   completionPromptOrNull,
   sharedQuestionOrNull,
+  PUBLISHED_GUIDANCE_KEY,
 } from "@/domain/foundry/module/module-publish";
+import type { GuidanceContentType } from "@/domain/foundry/events/content-type";
 import { validateCompletionPrompt, validateSharedQuestionOptional } from "@/domain/foundry/events/foundry-training";
 import { computeMinReadSeconds, validatePageCount } from "@/domain/foundry/events/foundry-document";
 import {
@@ -26,6 +29,7 @@ import {
 } from "./foundryAssignmentPublishService";
 import { createTrainingEvent, type ManagerTrainingSnapshot } from "./foundryTrainingService";
 import { getOwnerRoomSnapshot, type ManagerDocumentSnapshot } from "./foundryDocumentService";
+import type { ManagerGuidanceSnapshot } from "./foundryGuidanceService";
 import { programIdForNewRun, type ProgramLineage } from "./foundryProgramService";
 import { resolveProgramGenerationAuthority } from "./programGenerationRecorder";
 
@@ -62,7 +66,7 @@ const DEFAULT_COMPLETION_PROMPT: Record<Locale, string> = {
   ko: "이 훈련에서 이번 주에 적용할 한 가지는 무엇인가요?",
 };
 
-export type ManagerRoomSnapshot = ManagerTrainingSnapshot | ManagerDocumentSnapshot;
+export type ManagerRoomSnapshot = ManagerTrainingSnapshot | ManagerDocumentSnapshot | ManagerGuidanceSnapshot;
 
 export type PublishResult = {
   snapshot: ManagerRoomSnapshot;
@@ -251,6 +255,36 @@ async function createDocumentEventFromDraftAsset(
 }
 
 /**
+ * Create a GUIDANCE event — written guidance or live discussion (Slice R4-R2G).
+ *
+ * NO CONTENT ROW IS WRITTEN, and that is the design, not an omission: neither type has a
+ * content table, and inventing one would have been the "new production DB table" the Founder's
+ * stop condition named. The participant-facing content is frozen into the immutable module
+ * snapshot by the caller, in the SAME insert that freezes the Journey — one write, one record,
+ * nothing to keep in step with anything else.
+ *
+ * Compensation is therefore simpler than the document path's: there is no shared storage object
+ * to protect and no second row to unwind. If the snapshot insert fails, the caller deletes the
+ * event exactly as it already does for the other types.
+ */
+async function createGuidanceEvent(
+  admin: SupabaseClient,
+  ownerUserId: string,
+  contentType: GuidanceContentType,
+  title: string,
+  lineage?: ProgramLineage,
+): Promise<ServiceResult<string>> {
+  const programId = await programIdForNewRun(admin, ownerUserId, title, lineage);
+  const { data: event, error } = await admin
+    .from("foundry_events")
+    .insert({ owner_user_id: ownerUserId, title, content_type: contentType, program_id: programId })
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !event) return { ok: false, reason: error?.message ?? "event_insert_failed" };
+  return { ok: true, value: event.id };
+}
+
+/**
  * Publish an owned builder draft into a live Foundry event. Approve-on-publish:
  * a `draft` (or already-`approved`) row that passes the readiness gate is created
  * as an event, snapshotted immutably, and transitioned to `published` LAST (so a
@@ -403,27 +437,80 @@ export async function publishDraft(
   // Program identity EXACTLY (including null = draft with no recorded lineage). Never
   // re-resolved here, so a Guided publish can never cross organizations or fork identity.
   const lineage = { programId: draft.program_id };
+  /*
+    R4-R2G — the guidance contract is built BEFORE any event exists.
+
+    For written guidance and live discussion the module snapshot is the ONLY copy of the
+    learner's content, so a contract that cannot be built is a training whose learner surface
+    would be empty and whose completion could never be reached honestly. Refusing here means
+    nothing is created; refusing after the insert would leave a live event nobody can finish.
+  */
+  const publishedGuidance =
+    material.kind === "guidance"
+      ? buildPublishedGuidance({
+          contentType: material.contentType,
+          materialText: material.text,
+          completionPrompt,
+          sharedQuestion,
+        })
+      : null;
+  if (material.kind === "guidance" && !publishedGuidance) {
+    return { ok: false, reason: "material_guidance_content_required" };
+  }
+
+  /*
+    EXHAUSTIVE OVER THE MATERIAL KIND (Slice R4-R2G). This used to be `if (youtube) … else …`,
+    where `else` LITERALLY MEANT "document" — so any material kind that was not YouTube would
+    have attempted to publish a PDF study room. `unsupported` has already returned above; the
+    `never` arm makes a future kind a compile error here rather than a mis-published event.
+  */
   let eventId: string;
-  if (material.kind === "youtube") {
-    const res = await createTrainingEvent(admin, ownerUserId, {
-      title,
-      youtube_url: material.url,
-      completion_prompt: completionPrompt,
-      shared_question: sharedQuestion,
-    }, lineage);
-    if (!res.ok) return { ok: false, reason: res.reason };
-    eventId = res.value.event.id;
-  } else {
-    const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt, sharedQuestion, lineage);
-    if (!res.ok) return { ok: false, reason: res.reason };
-    eventId = res.value;
+  switch (material.kind) {
+    case "youtube": {
+      const res = await createTrainingEvent(admin, ownerUserId, {
+        title,
+        youtube_url: material.url,
+        completion_prompt: completionPrompt,
+        shared_question: sharedQuestion,
+      }, lineage);
+      if (!res.ok) return { ok: false, reason: res.reason };
+      eventId = res.value.event.id;
+      break;
+    }
+    case "pdf": {
+      const res = await createDocumentEventFromDraftAsset(admin, ownerUserId, draftId, title, completionPrompt, sharedQuestion, lineage);
+      if (!res.ok) return { ok: false, reason: res.reason };
+      eventId = res.value;
+      break;
+    }
+    case "guidance": {
+      const res = await createGuidanceEvent(admin, ownerUserId, material.contentType, title, lineage);
+      if (!res.ok) return { ok: false, reason: res.reason };
+      eventId = res.value;
+      break;
+    }
+    default: {
+      const exhaustive: never = material;
+      void exhaustive;
+      return { ok: false, reason: "material_intent_unsupported" };
+    }
   }
 
   // 2. Freeze the immutable module snapshot (source_draft_id UNIQUE = idempotency boundary).
+  /*
+    R4-R2G — for a guidance event the snapshot carries the learner's content too, as ONE
+    namespaced versioned key beside the Journey's. The answer whitelist is untouched: this is a
+    server-computed publication record, not a cloned draft field, which is why it is spread on
+    top rather than added to `SNAPSHOT_ANSWER_KEYS`. YouTube and PDF snapshots are byte-identical
+    to what they were before this slice.
+  */
+  const moduleSnapshot = publishedGuidance
+    ? { ...buildModuleSnapshot(answers), [PUBLISHED_GUIDANCE_KEY]: publishedGuidance }
+    : buildModuleSnapshot(answers);
   const { error: modErr } = await admin.from("foundry_event_module").insert({
     event_id: eventId,
     source_draft_id: draftId,
-    module_snapshot: buildModuleSnapshot(answers),
+    module_snapshot: moduleSnapshot,
     module_version: draft.module_version,
   });
   if (modErr) {

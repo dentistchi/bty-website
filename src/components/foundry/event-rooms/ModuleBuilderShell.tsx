@@ -22,6 +22,7 @@ import {
   type EvidenceObservation,
   type LearningNeed,
   type FollowUpDays,
+  type MaterialIntent,
 } from "@/domain/foundry/module/module-builder";
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUpObligation";
@@ -1368,16 +1369,61 @@ function renderStep(
       );
     }
     case 7: {
-      const opt = (m: "youtube" | "pdf", label: string) => (
-        <OptionButton active={a.materialIntent === m} label={label} onClick={() => patch({ materialIntent: m }, true)} />
+      /*
+        FOUR CHOICES SINCE R4-R2G, and the chooser is typed on the domain union rather than on a
+        hand-written pair — so a fifth approved type cannot be added to `MaterialIntent` and
+        quietly not appear here.
+
+        SWITCHING TYPE CLEARS THE TEXT. `materialText` is shared by three of the four types and
+        means something different in each (a URL, a block of guidance, a discussion topic), so
+        carrying it across a switch would leave a YouTube link sitting in the guidance the team
+        is about to read. The PDF asset is deliberately NOT deleted — it is a durable uploaded
+        object with its own lifecycle, and a Host who taps the wrong option for a second should
+        not lose a file.
+      */
+      const opt = (m: MaterialIntent, label: string) => (
+        <OptionButton
+          active={a.materialIntent === m}
+          label={label}
+          onClick={() => patch(a.materialIntent === m ? { materialIntent: m } : { materialIntent: m, materialText: "" }, true)}
+        />
       );
       const ytEmpty = !a.materialText?.trim();
+      const guidanceEmpty = !a.materialText?.trim();
+      /** The two guidance types share one text field; only their words differ. */
+      const guidanceCopy =
+        a.materialIntent === "written"
+          ? { lead: t.matWrittenDesc, placeholder: t.matWrittenPlaceholder, label: t.matWritten, missing: t.matWrittenMissing }
+          : { lead: t.matLiveDiscussionDesc, placeholder: t.matLiveDiscussionPlaceholder, label: t.matLiveDiscussion, missing: t.matLiveDiscussionMissing };
       return (
         <StepFrame q={t.s6Q}>
           <div className="flex flex-col gap-2.5">
             {opt("youtube", t.matYoutube)}
             {opt("pdf", t.matFiles)}
+            {opt("written", t.matWritten)}
+            {opt("live_discussion", t.matLiveDiscussion)}
           </div>
+          {a.materialIntent === "written" || a.materialIntent === "live_discussion" ? (
+            <div className="flex flex-col gap-2" data-testid="builder-guidance-material">
+              <p className="text-xs leading-5 text-white/45">{guidanceCopy.lead}</p>
+              {textArea(a.materialText ?? "", (v) => patch({ materialText: v }, false), guidanceCopy.placeholder, guidanceCopy.label)}
+              {guidanceEmpty ? (
+                <p className="text-xs leading-5 text-amber-300/70">
+                  {guidanceCopy.missing} · {t.requiredBeforeApproval}
+                </p>
+              ) : null}
+              {/*
+                SAID ONCE, WHERE THE CHOICE IS MADE (Slice R4-R2G). A Host choosing a live
+                discussion is choosing something BTY cannot observe, and they are told so before
+                they build the training around it — not after a learner completes it.
+              */}
+              {a.materialIntent === "live_discussion" ? (
+                <p className="text-xs leading-5 text-white/45" data-testid="builder-live-discussion-honesty">
+                  {t.matLiveDiscussionHonesty}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {a.materialIntent === "youtube" ? (
             <div className="flex flex-col gap-2">
               <input
@@ -1465,8 +1511,16 @@ type ReviewRow = {
   lines?: string[];
 };
 
-/** Section → actionable, localized "what to do" reason (reuses the per-step blockers). */
-function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string {
+/**
+ * Section → actionable, localized "what to do" reason (reuses the per-step blockers).
+ *
+ * R4-R2G — the MATERIAL row now answers with the sentence for the material the Host actually
+ * chose. It used to return "Choose what people will learn from." even when a type WAS chosen and
+ * only its content was missing, which is the R4-R2F failure exactly: a row blocked for one reason
+ * while the copy names another. With four types the mismatch would have been worse, so the row
+ * asks `answers` which requirement is unmet rather than assuming it is the choice itself.
+ */
+function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy, a: BuilderAnswers): string {
   switch (section) {
     case "title":
       return t.s1TitleBlocker;
@@ -1483,6 +1537,9 @@ function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string 
     case "learning":
       return t.s5Blocker;
     case "material":
+      if (a.materialIntent === "youtube" && !(a.materialText ?? "").trim()) return t.ytMissingTitle;
+      if (a.materialIntent === "written" && !(a.materialText ?? "").trim()) return t.s6WrittenBlocker;
+      if (a.materialIntent === "live_discussion" && !(a.materialText ?? "").trim()) return t.s6LiveDiscussionBlocker;
       return t.s6Blocker;
     case "followUp":
       return t.s7Blocker;
@@ -1586,6 +1643,22 @@ function buildReviewRows(a: BuilderAnswers, assets: ClientAsset[], t: ModuleBuil
     }
   } else if (a.materialIntent === "youtube") {
     material = a.materialText?.trim() ? t.matYoutube : null;
+  } else if (a.materialIntent === "written" || a.materialIntent === "live_discussion") {
+    /*
+      R4-R2G — Review can tell the four types apart at a glance, and each row is HONEST about
+      completeness in the same way the other two already were: the type name appears only once
+      the material is actually there, so an empty guidance still reads "Not added yet" and is
+      highlighted, rather than looking finished because a type was picked.
+
+      The Host's own first line rides along as the value line, so Review shows WHICH guidance,
+      not merely that guidance exists — the same job `materialLines` does for an attached PDF.
+    */
+    const text = (a.materialText ?? "").trim();
+    if (text) {
+      material = a.materialIntent === "written" ? t.reviewMatWritten : t.reviewMatLiveDiscussion;
+      const firstLine = text.split("\n").map((l) => l.trim()).find((l) => l.length > 0) ?? text;
+      materialLines = [firstLine.length > 120 ? `${firstLine.slice(0, 119)}…` : firstLine];
+    }
   }
 
   const arenaChosen = a.arenaRecommended ?? recommendArenaForNeeds(needs);
@@ -1684,6 +1757,18 @@ function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
       return t.publishErrYoutube;
     case "material_pdf_required":
       return t.publishErrPdf;
+    /*
+      R4-R2G — each names the thing to add. The measurement that opened this slice found these
+      three reasons would otherwise fall to `default` and tell the Host "Couldn't create the
+      session. Please try once more." — a false sentence, and one that invites a retry that
+      cannot possibly succeed.
+    */
+    case "material_written_guidance_required":
+      return t.s6WrittenBlocker;
+    case "material_live_discussion_required":
+      return t.s6LiveDiscussionBlocker;
+    case "material_guidance_content_required":
+      return t.s6WrittenBlocker;
     case "not_a_host":
       return t.publishErrNotHost;
     case "assignment_write_failed":
@@ -2014,7 +2099,7 @@ function ReviewBody({
                   </span>
                 ))}
                 {isMissing && r.section ? (
-                  <span className="mt-0.5 text-xs leading-5 text-[#C9A66B]/90">{sectionReason(r.section, t)}</span>
+                  <span className="mt-0.5 text-xs leading-5 text-[#C9A66B]/90">{sectionReason(r.section, t, answers)}</span>
                 ) : r.note ? (
                   <span className="mt-0.5 text-xs leading-5 text-amber-300/75">
                     {r.note.title}

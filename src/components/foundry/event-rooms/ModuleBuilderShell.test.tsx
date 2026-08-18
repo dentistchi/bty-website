@@ -297,14 +297,27 @@ describe("ModuleBuilderShell — Slice 2.1 corrections", () => {
     expect(decision.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("Step 6 offers only YouTube + PDF; Written guidance and Live discussion are gone", async () => {
+  /*
+    SUPERSEDED BY FOUNDER DECISION, NOT DELETED (Slice R4-R2G).
+
+    This test asserted that Written guidance and Live discussion were ABSENT from the material
+    step. That was a true and deliberate statement of the product at the time: the domain union
+    carried all four types, the copy table carried all four labels, and the chooser deliberately
+    offered two.
+
+    R4-R2G reversed that. The BTY Learning OS product architecture approves four V1 material
+    types and the Founder ruled the missing two in, with completion semantics for both (D1/D2/D3).
+    So the assertion is inverted rather than removed — the fact this test guards (which options
+    Step 6 offers) is still worth guarding, and the record of what changed stays readable.
+  */
+  it("Step 6 offers all FOUR approved material types", async () => {
     mockDraftServer({ current_step: 7, answers: {} });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     await screen.findByText("What will people learn from?");
     expect(screen.getByText("YouTube video")).toBeTruthy();
     expect(screen.getByText("Files and documents")).toBeTruthy();
-    expect(screen.queryByText("Written guidance")).toBeNull();
-    expect(screen.queryByText("Live discussion")).toBeNull();
+    expect(screen.getByText("Written guidance")).toBeTruthy();
+    expect(screen.getByText("Live discussion")).toBeTruthy();
   });
 
   it("Step 6 YouTube without a URL shows the missing-link state", async () => {

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 import { validateLivingReflection, type LivingReflection } from "@/domain/foundry/living-reflection";
 import { excerptOf, type CompletionMeaning, type FoundryHistoryRecord } from "@/domain/foundry/living-thread";
 
@@ -52,8 +53,12 @@ export type FoundryHistoryItem = {
   entryId: string;
   eventId: string;
   eventTitle: string;
-  /** Source content type for the learner's My Learning surface (Slice 3.1B-3H). */
-  contentType: "youtube" | "document";
+  /**
+   * Source content type for the learner's My Learning surface (Slice 3.1B-3H).
+   * R4-R2G — all four types, and `null` when the stored discriminator is unknown. Never
+   * silently reported as YouTube.
+   */
+  contentType: FoundryContentType | null;
   /** The learner's OWN Shared Understanding answer (Foundry surface). null when the module had none. */
   sharedUnderstanding: string | null;
   completedAt: string;
@@ -131,7 +136,7 @@ export async function listUserFoundryHistory(
       entryId: r.id,
       eventId: r.event_id,
       eventTitle: ev?.title ?? "Foundry training",
-      contentType: ev?.content_type === "document" ? "document" : "youtube",
+      contentType: readContentType(ev?.content_type),
       sharedUnderstanding: sharedUnderstanding.length > 0 ? sharedUnderstanding : null,
       completedAt: r.completed_at,
       responseText,

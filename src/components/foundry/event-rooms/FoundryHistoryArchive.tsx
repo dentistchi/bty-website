@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { FoundryContentType } from "@/domain/foundry/events/content-type";
 import type { Locale, HistoryCopy } from "./historyCopy";
 import { HISTORY_COPY } from "./historyCopy";
 
@@ -27,7 +28,7 @@ type HistoryListItem = {
   eventId: string;
   title: string;
   status: "closed";
-  contentType: "youtube" | "document";
+  contentType: FoundryContentType | null;
   createdAt: string;
   endedAt: string | null;
   participantCount: number;
@@ -37,6 +38,10 @@ type HistoryListItem = {
 type HistoryMaterial =
   | { kind: "youtube"; title: string | null; videoId: string; completionPrompt: string }
   | { kind: "document"; fileName: string | null; pageCount: number; sourceType: string; completionPrompt: string }
+  /** R4-R2G — the Host's own text, frozen in the immutable module snapshot. */
+  | { kind: "written_guidance"; guidance: string; completionPrompt: string }
+  | { kind: "live_discussion"; discussion: string; completionPrompt: string }
+  | { kind: "unknown" }
   | { kind: "none" };
 
 type HistoryParticipant = {
@@ -50,7 +55,7 @@ type HistoryDetail = {
   eventId: string;
   title: string;
   status: "closed";
-  contentType: "youtube" | "document";
+  contentType: FoundryContentType | null;
   createdAt: string;
   endedAt: string | null;
   participantCount: number;
@@ -332,6 +337,27 @@ function HistoryDetailView({
 function MaterialBlock({ material, t }: { material: HistoryMaterial; t: HistoryCopy }) {
   if (material.kind === "none") {
     return <p className="text-sm text-white/45">{t.materialNone}</p>;
+  }
+  /*
+    R4-R2G — this function used to end with an UNGUARDED YouTube block, so any material kind it
+    did not recognise rendered as a video with `material.title`/`material.videoId` undefined.
+    Both new kinds are explicit, and an unknown one says so.
+  */
+  if (material.kind === "unknown") {
+    return <p className="text-sm text-white/45">{t.materialUnknown}</p>;
+  }
+  if (material.kind === "written_guidance" || material.kind === "live_discussion") {
+    const body = material.kind === "written_guidance" ? material.guidance : material.discussion;
+    const label = material.kind === "written_guidance" ? t.materialWrittenGuidance : t.materialLiveDiscussion;
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="shrink-0 text-xs text-white/45">{label}</span>
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-white/85">{body}</p>
+        <PromptLine label={t.reflectionQuestion} value={material.completionPrompt} />
+      </div>
+    );
   }
   if (material.kind === "document") {
     return (

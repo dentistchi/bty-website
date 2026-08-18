@@ -255,7 +255,7 @@ export type ModuleBuilderCopy = {
   needSharedDesc: string;
   s5ArenaHint: string;
   s5Blocker: string;
-  // step 6 material intent (YouTube / PDF only)
+  // step 6 material intent — all FOUR approved V1 types since R4-R2G
   s6Q: string;
   matYoutube: string;
   matPdf: string;
@@ -264,6 +264,9 @@ export type ModuleBuilderCopy = {
   requiredBeforeApproval: string;
   pdfMissingLead: string;
   s6Blocker: string;
+  /** R4-R2G — the specific "what to add" sentences, mapped from the two new blocking codes. */
+  s6WrittenBlocker: string;
+  s6LiveDiscussionBlocker: string;
   // pdf attachment
   pdfAttachLead: string;
   attachPdf: string;
@@ -277,6 +280,27 @@ export type ModuleBuilderCopy = {
   pagesLabel: (n: number) => string;
   // files & documents (multi-format assets)
   matFiles: string;
+  /*
+    R4-R2G — the two material types the Builder never offered. The labels name the thing a Host
+    already understands ("Written guidance", "Live discussion"); the one-line descriptions say
+    what the LEARNER will do, because that is the difference a Host is actually choosing between.
+  */
+  matWritten: string;
+  matWrittenDesc: string;
+  matWrittenPlaceholder: string;
+  matWrittenMissing: string;
+  matLiveDiscussion: string;
+  matLiveDiscussionDesc: string;
+  matLiveDiscussionPlaceholder: string;
+  matLiveDiscussionMissing: string;
+  /**
+   * The one thing a Host must not be allowed to believe: choosing "Live discussion" does not
+   * make BTY a witness to it. Stated once, on the screen where the choice is made.
+   */
+  matLiveDiscussionHonesty: string;
+  /** The two Review row values for the new types. */
+  reviewMatWritten: string;
+  reviewMatLiveDiscussion: string;
   /** Slice 3.2R-R3 — open the REAL attached document before publishing it. */
   viewDocument: string;
   /** Slice 3.2R-R6 — an unverified page count blocks publish; it is never defaulted to 1. */
@@ -509,6 +533,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     requiredBeforeApproval: "Required before approval",
     pdfMissingLead: "You’ll add the PDF before approval.",
     s6Blocker: "Choose what people will learn from.",
+    s6WrittenBlocker: "Write the guidance your team will read.",
+    s6LiveDiscussionBlocker: "Add what the team should discuss.",
     pdfAttachLead: "Attach a PDF your team will read.",
     attachPdf: "Attach PDF",
     replacePdf: "Replace PDF",
@@ -520,6 +546,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pdfReadyBadge: "Ready",
     pagesLabel: (n) => (n === 1 ? "1 page" : `${n} pages`),
     matFiles: "Files and documents",
+    matWritten: "Written guidance",
+    matWrittenDesc: "Your team reads what you write, here in BTY.",
+    matWrittenPlaceholder: "Write the guidance your team should read.",
+    matWrittenMissing: "Guidance not written yet",
+    matLiveDiscussion: "Live discussion",
+    matLiveDiscussionDesc: "Your team talks it through together, led by you or a facilitator.",
+    matLiveDiscussionPlaceholder: "What should the team discuss? A topic, a question, or a short agenda.",
+    matLiveDiscussionMissing: "Discussion topic not added yet",
+    matLiveDiscussionHonesty:
+      "BTY shows your team what to discuss. It can’t see the discussion, so it will only ever record that someone said they took part.",
+    reviewMatWritten: "Written guidance",
+    reviewMatLiveDiscussion: "Live discussion",
     viewDocument: "View document",
     publishErrPageCount: "We couldn’t read how many pages this document has. Open it, or replace the file, before you create the session.",
     viewDocumentError: "We couldn’t open this document. Check it before you create the session.",
@@ -817,6 +855,8 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     requiredBeforeApproval: "승인 전 필요",
     pdfMissingLead: "승인 전에 PDF를 추가하게 됩니다.",
     s6Blocker: "사람들이 무엇으로 배울지 선택하세요.",
+    s6WrittenBlocker: "팀이 읽을 가이드를 작성하세요.",
+    s6LiveDiscussionBlocker: "팀이 논의할 내용을 추가하세요.",
     pdfAttachLead: "팀이 읽을 PDF를 첨부하세요.",
     attachPdf: "PDF 첨부",
     replacePdf: "PDF 교체",
@@ -828,6 +868,18 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     pdfReadyBadge: "준비됨",
     pagesLabel: (n) => `${n}페이지`,
     matFiles: "파일 및 문서",
+    matWritten: "문서 가이드",
+    matWrittenDesc: "작성한 내용을 팀이 BTY 안에서 읽습니다.",
+    matWrittenPlaceholder: "팀이 읽어야 할 가이드를 작성하세요.",
+    matWrittenMissing: "가이드가 아직 작성되지 않았습니다",
+    matLiveDiscussion: "라이브 논의",
+    matLiveDiscussionDesc: "본인이나 진행자가 이끄는 자리에서 팀이 함께 이야기합니다.",
+    matLiveDiscussionPlaceholder: "팀이 무엇을 논의해야 하나요? 주제, 질문 또는 짧은 진행 순서.",
+    matLiveDiscussionMissing: "논의 주제가 아직 없습니다",
+    matLiveDiscussionHonesty:
+      "BTY는 팀에게 무엇을 논의할지 보여 줍니다. 논의 자체는 볼 수 없으므로, 참여했다는 본인의 진술만 기록됩니다.",
+    reviewMatWritten: "문서 가이드",
+    reviewMatLiveDiscussion: "라이브 논의",
     viewDocument: "문서 보기",
     publishErrPageCount: "이 문서의 페이지 수를 확인하지 못했습니다. 세션을 만들기 전에 문서를 열어 보거나 파일을 교체해 주세요.",
     viewDocumentError: "문서를 열지 못했습니다. 세션을 만들기 전에 확인해 주세요.",

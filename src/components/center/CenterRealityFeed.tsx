@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
+import { contentTypeLabel } from "@/components/foundry/event-rooms/contentTypeLabel";
 import { userDayKey } from "@/domain/daily/userDayKey";
 
 /**
@@ -16,7 +18,8 @@ type Locale = "en" | "ko";
 type Entry = {
   entryId: string;
   eventTitle: string;
-  contentType: "youtube" | "document";
+  /** R4-R2G — all four types; null = unknown stored discriminator (rendered as a neutral dash). */
+  contentType: FoundryContentType | null;
   completedAt: string;
   responseText: string;
   /**
@@ -119,7 +122,7 @@ function EntryCard({ it, t, loc, focused, refCb }: { it: Entry; t: (typeof COPY)
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
         <span className="shrink-0 rounded-md bg-white/[0.06] px-2 py-0.5 text-[0.7rem] uppercase tracking-wide text-white/55">
-          {it.contentType === "document" ? t.document : t.video}
+          {contentTypeLabel(it.contentType, loc)}
         </span>
       </div>
       <span className="text-xs text-white/45">{t.completedOn} · {formatDate(it.completedAt, loc)}</span>
@@ -173,7 +176,7 @@ export default function CenterRealityFeed({ locale, focusEntryId = null }: { loc
           .map((h): Entry => ({
             entryId: String(h.entryId ?? ""),
             eventTitle: String(h.eventTitle ?? "Foundry training"),
-            contentType: h.contentType === "document" ? "document" : "youtube",
+            contentType: readContentType(h.contentType),
             completedAt: String(h.completedAt ?? ""),
             responseText: String(h.responseText ?? ""),
             learnerReflection: h.learnerReflection ? String(h.learnerReflection) : null,

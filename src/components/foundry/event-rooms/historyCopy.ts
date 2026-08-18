@@ -30,6 +30,11 @@ export type HistoryCopy = {
   incompleteLabel: string;
   materialVideo: string;
   materialDocument: string;
+  /** R4-R2G — the two guidance types name themselves; no enum name ever reaches the Host. */
+  materialWrittenGuidance: string;
+  materialLiveDiscussion: string;
+  /** The stored discriminator is one this build does not know. Honest, never a guess. */
+  materialUnknown: string;
   materialNone: string;
   pagesLabel: (n: number) => string;
   reflectionQuestion: string;
@@ -72,6 +77,9 @@ export const HISTORY_COPY: Record<Locale, HistoryCopy> = {
     incompleteLabel: "Not completed",
     materialVideo: "Video",
     materialDocument: "Document",
+    materialWrittenGuidance: "Written guidance",
+    materialLiveDiscussion: "Live discussion",
+    materialUnknown: "This material can't be shown in this version.",
     materialNone: "No training material recorded.",
     pagesLabel: (n) => `${n} ${n === 1 ? "page" : "pages"}`,
     reflectionQuestion: "Completion question",
@@ -109,6 +117,9 @@ export const HISTORY_COPY: Record<Locale, HistoryCopy> = {
     incompleteLabel: "미완료",
     materialVideo: "영상",
     materialDocument: "문서",
+    materialWrittenGuidance: "문서 가이드",
+    materialLiveDiscussion: "라이브 논의",
+    materialUnknown: "이 버전에서는 이 자료를 표시할 수 없습니다.",
     materialNone: "기록된 훈련 자료가 없습니다.",
     pagesLabel: (n) => `${n}페이지`,
     reflectionQuestion: "완료 질문",

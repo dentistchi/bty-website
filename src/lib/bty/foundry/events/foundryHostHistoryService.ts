@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readContentType, isGuidanceContentType, type FoundryContentType, type GuidanceContentType } from "@/domain/foundry/events/content-type";
+import { readGuidanceContent } from "./foundryGuidanceService";
 import {
   projectManagerRosterStatus,
   type ManagerRosterStatus,
@@ -37,14 +39,19 @@ import {
 // Shapes (normalized view models — never raw rows)
 // ---------------------------------------------------------------------------
 
-export type HostHistoryContentType = "youtube" | "document";
+/**
+ * R4-R2G: the Host's history speaks the canonical four-type vocabulary, and `null` means the
+ * stored discriminator is one this build does not know. It is NOT rendered as YouTube.
+ */
+export type HostHistoryContentType = FoundryContentType;
 
 export type HostHistoryListItem = {
   eventId: string;
   title: string;
   /** Terminal status — `closed` in V1. */
   status: "closed";
-  contentType: HostHistoryContentType;
+  /** null = unrecognised stored discriminator (fail closed — never silently YouTube). */
+  contentType: HostHistoryContentType | null;
   createdAt: string;
   /** The ended (terminal) timestamp — `closed_at`. Null only on legacy rows. */
   endedAt: string | null;
@@ -71,13 +78,19 @@ export type HostHistoryMaterial =
       sourceType: string;
       completionPrompt: string;
     }
+  /** R4-R2G — the Host's own text, read from the immutable module snapshot (no content table). */
+  | { kind: "written_guidance"; guidance: string; completionPrompt: string }
+  | { kind: "live_discussion"; discussion: string; completionPrompt: string }
+  /** The stored discriminator is not one this build knows. Never rendered as another type. */
+  | { kind: "unknown" }
   | { kind: "none" };
 
 export type HostHistoryDetail = {
   eventId: string;
   title: string;
   status: "closed";
-  contentType: HostHistoryContentType;
+  /** null = unrecognised stored discriminator (fail closed — never silently YouTube). */
+  contentType: HostHistoryContentType | null;
   createdAt: string;
   endedAt: string | null;
   participantCount: number;
@@ -109,15 +122,22 @@ type ProgressMarkerRow = {
   document_last_page: number | null;
   document_active_read_ms: number | null;
   document_read_completed_at: string | null;
+  /** R4-R2G — the two learner-declared exposure stamps. */
+  written_guidance_read_at: string | null;
+  discussion_self_reported_at: string | null;
 };
 
 const HISTORY_EVENT_COLS = "id, title, status, content_type, created_at, closed_at";
 const PROGRESS_MARKER_COLS =
-  "participant_id, video_started_at, video_completed_at, completed_at, xp_awarded_at, document_last_page, document_active_read_ms, document_read_completed_at";
+  "participant_id, video_started_at, video_completed_at, completed_at, xp_awarded_at, document_last_page, document_active_read_ms, document_read_completed_at, written_guidance_read_at, discussion_self_reported_at";
 
-function normalizeContentType(raw: string | null | undefined): HostHistoryContentType {
-  // Legacy rows created before the content_type migration are YouTube.
-  return raw === "document" ? "document" : "youtube";
+/**
+ * R4-R2G — was `raw === "document" ? "document" : "youtube"`, which turned every value it did
+ * not recognise into YouTube. The authority distinguishes an absent FIELD (legacy read shape →
+ * the column default) from an unrecognised VALUE (→ null, fail closed).
+ */
+function normalizeContentType(raw: string | null | undefined): HostHistoryContentType | null {
+  return readContentType(raw);
 }
 
 function toMarkers(row: ProgressMarkerRow): TrainingProgressMarkers {
@@ -128,6 +148,8 @@ function toMarkers(row: ProgressMarkerRow): TrainingProgressMarkers {
     xp_awarded_at: row.xp_awarded_at,
     document_read_started:
       row.document_last_page != null || (row.document_active_read_ms ?? 0) > 0,
+    written_guidance_read_at: row.written_guidance_read_at,
+    discussion_self_reported_at: row.discussion_self_reported_at,
     document_read_completed_at: row.document_read_completed_at,
   };
 }
@@ -212,11 +234,34 @@ export async function listHostHistory(
 // Detail
 // ---------------------------------------------------------------------------
 
+/**
+ * R4-R2G — a guidance event's material is the Host's own text, read from the immutable module
+ * snapshot. There is no content table to query, by design.
+ */
+async function loadGuidanceMaterial(
+  admin: SupabaseClient,
+  eventId: string,
+  contentType: GuidanceContentType,
+): Promise<HostHistoryMaterial> {
+  const content = await readGuidanceContent(admin, eventId);
+  if (!content || content.contentType !== contentType) return { kind: "none" };
+  return contentType === "written_guidance"
+    ? { kind: "written_guidance", guidance: content.materialText, completionPrompt: content.completionPrompt }
+    : { kind: "live_discussion", discussion: content.materialText, completionPrompt: content.completionPrompt };
+}
+
 async function loadMaterial(
   admin: SupabaseClient,
   eventId: string,
-  contentType: HostHistoryContentType,
+  contentType: HostHistoryContentType | null,
 ): Promise<HostHistoryMaterial> {
+  /*
+    R4-R2G — EXHAUSTIVE, and the unknown case is first. This function used to end with an
+    unguarded YouTube read, so any non-`document` value fetched the video content table and
+    reported `kind: "youtube"` for a training that has no video.
+  */
+  if (contentType === null) return { kind: "unknown" };
+  if (isGuidanceContentType(contentType)) return loadGuidanceMaterial(admin, eventId, contentType);
   if (contentType === "document") {
     const { data } = await admin
       .from("foundry_event_document_content")

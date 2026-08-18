@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readContentType } from "@/domain/foundry/events/content-type";
 import type { Locale, EventRoomsCopy } from "./copy";
 import type { ManagerEvent } from "./types";
 import { isNative } from "@/lib/native/isNative";
@@ -42,7 +43,12 @@ export function FoundryShareControls({
 
   useEffect(() => setNative(isNative()), []);
 
-  const contentType = event.content_type === "document" ? "document" : "youtube";
+  /*
+    R4-R2G — the invitation is built from the event's REAL type. The old ternary made every
+    non-document room say "watch the training video". An unknown type falls back to the
+    invitation's own safe default rather than being asserted here.
+  */
+  const contentType = readContentType(event.content_type) ?? "youtube";
   const invitation = buildFoundryInvitation({
     locale,
     title: event.title,

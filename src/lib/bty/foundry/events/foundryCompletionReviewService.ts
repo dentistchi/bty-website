@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 
 export type CompletionReflection = {
   whatEmerged: string | null;
@@ -26,7 +27,8 @@ export type CompletionReview = {
   assignmentId: string;
   eventId: string;
   title: string;
-  contentType: "youtube" | "document";
+  /** R4-R2G — all four types; null = unknown stored discriminator (never reported as YouTube). */
+  contentType: FoundryContentType | null;
   completedAt: string | null;
   completionState: "pass" | "review" | "incomplete" | null;
   /** The learner's own free-text reflection (the only learner-authored content). */
@@ -100,7 +102,7 @@ export async function getMyCompletionReview(
       completed_at: string | null;
     }>();
 
-  const contentType = ev?.content_type === "document" ? "document" : "youtube";
+  const contentType = readContentType(ev?.content_type);
   const completionState =
     prog?.completion_state === "pass" || prog?.completion_state === "review" || prog?.completion_state === "incomplete"
       ? prog.completion_state

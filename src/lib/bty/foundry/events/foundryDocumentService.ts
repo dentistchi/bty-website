@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readContentType, isGuidanceContentType } from "@/domain/foundry/events/content-type";
+import { getOwnerGuidanceSnapshot, type ManagerGuidanceSnapshot } from "./foundryGuidanceService";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
 import { programIdForNewRun, programErrorReason } from "./foundryProgramService";
 import {
@@ -340,7 +342,7 @@ export async function getOwnerRoomSnapshot(
   admin: SupabaseClient,
   ownerUserId: string,
   eventId: string,
-): Promise<ManagerTrainingSnapshot | ManagerDocumentSnapshot | null> {
+): Promise<ManagerTrainingSnapshot | ManagerDocumentSnapshot | ManagerGuidanceSnapshot | null> {
   const { data } = await admin
     .from("foundry_events")
     .select("content_type")
@@ -348,7 +350,16 @@ export async function getOwnerRoomSnapshot(
     .eq("owner_user_id", ownerUserId)
     .maybeSingle<{ content_type: string | null }>();
   if (!data) return null;
-  if (data.content_type === "document") return getOwnerDocumentSnapshot(admin, ownerUserId, eventId);
+  /*
+    R4-R2G — EXHAUSTIVE. This used to end with an unguarded `return getOwnerTrainingSnapshot(…)`,
+    so any discriminator that was not `document` produced a YouTube control room. An unknown one
+    now returns null, which every caller already renders as "this session cannot be shown" —
+    recoverable, unlike being shown the wrong room.
+  */
+  const contentType = readContentType(data.content_type);
+  if (contentType === null) return null;
+  if (contentType === "document") return getOwnerDocumentSnapshot(admin, ownerUserId, eventId);
+  if (isGuidanceContentType(contentType)) return getOwnerGuidanceSnapshot(admin, ownerUserId, eventId, contentType);
   return getOwnerTrainingSnapshot(admin, ownerUserId, eventId);
 }
 

@@ -193,8 +193,16 @@ export function validateResponse(raw: unknown): ValidationResult<string> {
   return { ok: true, value: cleaned };
 }
 
-/** The room's content type. YouTube is the original loop; document is the PDF room. */
-export type FoundryContentType = "youtube" | "document";
+/**
+ * The room's content type.
+ *
+ * R4-R2G — THIS USED TO BE A SECOND, NARROWER DEFINITION of the same concept, listing only
+ * `youtube | document` while the discriminator column and nine call sites carried their own
+ * ideas of the same thing. It is now a re-export of the single authority in `./content-type`,
+ * so widening the set can never leave one of the two definitions behind.
+ */
+export type { FoundryContentType } from "./content-type";
+import type { FoundryContentType } from "./content-type";
 
 /** Progress timestamps the projections read (all nullable, server-owned). */
 export type TrainingProgressMarkers = {
@@ -206,11 +214,37 @@ export type TrainingProgressMarkers = {
   // progress at all; `document_read_completed_at` is the reading-gate met marker.
   document_read_started?: boolean;
   document_read_completed_at?: string | null;
+  /*
+    R4-R2G — the two guidance stamps. Both are LEARNER-DECLARED, and the names say so.
+
+    `written_guidance_read_at` is set when the learner acknowledges having read the guidance
+    that was on their screen: exposure/read evidence, never understanding.
+
+    `discussion_self_reported_at` is set when the learner says they took part in the discussion.
+    It is participant-reported and nothing else — not attendance, not verification, not
+    observation. No Host or device input reaches it.
+  */
+  written_guidance_read_at?: string | null;
+  discussion_self_reported_at?: string | null;
 };
 
-/** The evidence-completed marker for either content type (video OR reading gate). */
+/**
+ * The evidence-completed marker for ANY content type — the one place that answers "has this
+ * participant engaged the content?" (Slice R4-R2G extended it from two shapes to four).
+ *
+ * EXPOSURE ONLY, for all four. A video reaching its end, a document's pages being visited, a
+ * learner saying they read the guidance and a learner saying they joined the discussion are all
+ * the SAME rung of the evidence ladder — access/exposure. None of them is understanding, and
+ * none of them is applied behaviour. This function is what unlocks the response step; it is not
+ * a claim about what the participant learned or did.
+ */
 function engagementCompleted(progress: TrainingProgressMarkers): boolean {
-  return Boolean(progress.video_completed_at) || Boolean(progress.document_read_completed_at);
+  return (
+    Boolean(progress.video_completed_at) ||
+    Boolean(progress.document_read_completed_at) ||
+    Boolean(progress.written_guidance_read_at) ||
+    Boolean(progress.discussion_self_reported_at)
+  );
 }
 
 export type ManagerRosterStatus =
@@ -225,13 +259,26 @@ export type ManagerRosterStatus =
 export function projectManagerRosterStatus(
   participantStatus: FoundryParticipantStatus,
   progress: TrainingProgressMarkers | null,
-  contentType: FoundryContentType = "youtube",
+  /**
+   * R4-R2G — `null` means the stored discriminator is one this build does not know. It is NOT
+   * treated as YouTube: an unknown room reports the type-agnostic states only (complete /
+   * response_pending / joined) and never claims the participant is watching or reading.
+   */
+  contentType: FoundryContentType | null = "youtube",
 ): ManagerRosterStatus {
   if (participantStatus === "removed") return "removed";
   if (!progress) return "joined";
   if (progress.completed_at) return "complete";
   if (engagementCompleted(progress)) return "response_pending";
   if (contentType === "document") return progress.document_read_started ? "reading" : "joined";
+  /*
+    R4-R2G — a guidance room has no mid-progress signal to report, and inventing one would be
+    the dishonest move. There is no "is reading" for a block of text and emphatically no "is
+    attending" for a discussion BTY cannot see. The Host's roster therefore shows `joined` until
+    the learner declares, and `response_pending` the moment they do.
+  */
+  if (contentType === "written_guidance" || contentType === "live_discussion") return "joined";
+  if (contentType === null) return "joined";
   if (progress.video_started_at) return "watching";
   return "joined";
 }
@@ -240,6 +287,12 @@ export type PublicTrainingStage =
   | "pre_join" // not yet a participant, event open + current QR
   | "watch" // joined, video not yet completed (YouTube)
   | "read" // joined, reading gate not yet met (DOCUMENT)
+  /**
+   * R4-R2G — joined, the learner has not yet declared their exposure. Covers BOTH guidance
+   * types: the guidance has not been acknowledged, or the discussion has not been self-reported.
+   * Named for what the learner still owes (a declaration), not for what BTY thinks they did.
+   */
+  | "declare"
   | "response" // engagement completed, response not yet submitted
   | "completed_awarded" // completed + Core XP awarded/claimed
   | "completed_claimable" // completed anonymously, XP not yet claimed
@@ -254,7 +307,8 @@ export function projectPublicTrainingStage(args: {
   eventStatus: FoundryEventStatus;
   progress: TrainingProgressMarkers | null;
   hasParticipant: boolean;
-  contentType?: FoundryContentType;
+  /** R4-R2G — `null` = unknown stored discriminator. Never resolved to a known type. */
+  contentType?: FoundryContentType | null;
 }): PublicTrainingStage {
   const { participantStatus, eventStatus, progress, hasParticipant, contentType = "youtube" } = args;
 
@@ -272,7 +326,20 @@ export function projectPublicTrainingStage(args: {
   // Joined but not completed.
   if (eventStatus === "closed") return "closed_incomplete";
   if (progress && engagementCompleted(progress)) return "response";
-  return contentType === "document" ? "read" : "watch";
+  /*
+    R4-R2G — EXHAUSTIVE, and the old form was `contentType === "document" ? "read" : "watch"`,
+    where `watch` was the fallback for everything. A guidance learner would have been told to
+    watch a video that does not exist.
+  */
+  if (contentType === "document") return "read";
+  if (contentType === "written_guidance" || contentType === "live_discussion") return "declare";
+  /*
+    An unknown discriminator has no learner experience this build can render. `inactive` is the
+    existing "this room cannot be opened" state, and it is the honest answer — far better than
+    handing the learner the video room, which is what the old `: "watch"` fallback did.
+  */
+  if (contentType === null) return "inactive";
+  return "watch";
 }
 
 /**

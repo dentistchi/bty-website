@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
+import { contentTypeLabel } from "./contentTypeLabel";
 import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
 import { EVIDENCE_DISPLAY_ORDER, LEARNER_RUNG_LABEL } from "./evidenceLadderCopy";
 
@@ -21,7 +23,8 @@ type MyLearningItem = {
   entryId: string;
   eventId: string;
   eventTitle: string;
-  contentType: "youtube" | "document";
+  /** R4-R2G — all four types; null = unknown stored discriminator (rendered as a neutral dash). */
+  contentType: FoundryContentType | null;
   completedAt: string;
   sharedUnderstanding: string | null;
   /**
@@ -239,7 +242,7 @@ export default function FoundryMyLearning({
         entryId: String(h.entryId ?? ""),
         eventId: String(h.eventId ?? ""),
         eventTitle: String(h.eventTitle ?? "Foundry training"),
-        contentType: h.contentType === "document" ? "document" : "youtube",
+        contentType: readContentType(h.contentType),
         completedAt: String(h.completedAt ?? ""),
         sharedUnderstanding: h.sharedUnderstanding ? String(h.sharedUnderstanding) : null,
         decisionResponse: h.decisionResponse ? String(h.decisionResponse) : null,
@@ -397,7 +400,7 @@ export default function FoundryMyLearning({
               <div className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
                 <span className="shrink-0 rounded-md bg-white/[0.06] px-2 py-0.5 text-[0.7rem] uppercase tracking-wide text-white/55">
-                  {it.contentType === "document" ? t.document : t.video}
+                  {contentTypeLabel(it.contentType, loc)}
                 </span>
               </div>
               <span className="text-xs text-emerald-300/70">
