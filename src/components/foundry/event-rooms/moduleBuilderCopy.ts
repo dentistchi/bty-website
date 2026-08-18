@@ -17,6 +17,8 @@ export type DirectionCopilotCopy = {
   hideDetails: string;
   labelTitle: string;
   labelCapability: string;
+  /** Why Apply is unavailable while the capability is empty (Slice R4-R2F). */
+  capabilityBlocker: string;
   labelWhy: string;
   labelBehavior: string;
   labelEvidence: string;
@@ -155,6 +157,8 @@ export type ModuleBuilderCopy = {
   s1TitleHelp: string;
   s1TitlePlaceholder: string;
   s1TitleBlocker: string;
+  /** Why Back / Next / Save are unavailable while a file is still uploading (Slice R4-R2F). */
+  docBusyBlocker: string;
   s1ProblemLabel: string;
   s1Q: string;
   s1Help: string;
@@ -407,6 +411,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s1TitleHelp: "Give this training a short, clear name.",
     s1TitlePlaceholder: "e.g. Close the Loop on One Commitment",
     s1TitleBlocker: "Give this training a short name.",
+    docBusyBlocker: "Your file is still uploading — this will unlock when it finishes.",
     s1ProblemLabel: "What keeps going wrong?",
     s1Q: "What keeps going wrong?",
     s1Help: "Describe a specific situation that repeats — not a general topic.",
@@ -597,6 +602,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       hideDetails: "Hide details",
       labelTitle: "Direction",
       labelCapability: "Capability",
+      capabilityBlocker: "Name the capability before you apply this.",
       labelWhy: "Why it fits",
       labelBehavior: "Draft behavior",
       labelEvidence: "Evidence to look for",
@@ -716,6 +722,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     s1TitleHelp: "이 교육을 짧고 분명하게 표현하는 이름을 적어주세요.",
     s1TitlePlaceholder: "예: 약속 하나를 끝까지 매듭짓기",
     s1TitleBlocker: "이 교육의 짧은 이름을 적어주세요.",
+    docBusyBlocker: "파일 업로드가 끝나면 다시 사용할 수 있어요.",
     s1ProblemLabel: "무엇이 반복해서 잘못되고 있나요?",
     s1Q: "무엇이 계속 잘못되나요?",
     s1Help: "일반적인 주제가 아니라 반복되는 구체적인 상황을 적어주세요.",
@@ -902,6 +909,7 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
       hideDetails: "접기",
       labelTitle: "방향",
       labelCapability: "역량",
+      capabilityBlocker: "적용하기 전에 역량 이름을 입력해 주세요.",
       labelWhy: "적합한 이유",
       labelBehavior: "행동 초안",
       labelEvidence: "확인할 증거",

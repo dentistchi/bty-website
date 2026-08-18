@@ -88,6 +88,7 @@ export function ProgramAuthorship({
   answers,
   journey,
   ready,
+  notReadyReason,
   onGenerate,
   onCheckResume,
   onApply,
@@ -101,6 +102,14 @@ export function ProgramAuthorship({
   answers: BuilderAnswers;
   journey: RealityGroundedJourneyV1 | undefined;
   ready: boolean;
+  /**
+   * The NEXT thing the Host needs to provide, in the Builder's own words (Slice R4-R2F).
+   *
+   * Derived by the caller from the SAME computation that produced `ready`, so this can never
+   * describe a different requirement than the one holding the button. Absent means the caller
+   * could not name one, and the general sentence stands.
+   */
+  notReadyReason?: string;
   onGenerate: () => Promise<ProgramGenerateOutcome>;
   /**
    * May a browser-held proposal from this attempt still be offered? (Slice 3.2L-R11.4K-R1)
@@ -573,8 +582,15 @@ export function ProgramAuthorship({
             Draft my training program
           </button>
         )}
+        {/*
+          THE NEXT THING, NOT A CHECKLIST (Slice R4-R2F). This used to name four requirements from
+          memory while the predicate checked five — the recurring moment was missing from the
+          sentence, which is the one most production drafts actually lack.
+        */}
         {!ready ? (
-          <p className="text-xs text-white/40">Add the problem, who it’s for, the behaviour and the evidence first.</p>
+          <p className="text-xs text-white/40" data-testid="program-not-ready-reason">
+            {notReadyReason ?? "Add the problem, who it’s for, the behaviour and the evidence first."}
+          </p>
         ) : null}
       </section>
   );

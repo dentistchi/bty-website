@@ -28,7 +28,7 @@ import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUp
 import { JourneyPreview } from "./JourneyPreview";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
-import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker } from "@/domain/foundry/module/program-authorship";
+import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -864,7 +864,15 @@ export function ModuleBuilderShell({
             draftId={draftId}
             answers={answers}
             journey={answers.realityGroundedJourneyV1}
-            ready={programContext(answers) !== null}
+            /*
+              ONE RESULT, BOTH CONSUMERS (Slice R4-R2F). `ready` and the sentence explaining why
+              it is not ready are derived from the SAME call, so the button cannot be disabled
+              for one reason while the copy names another. Previously the predicate asked
+              `programContext(answers) !== null` — steps 1–5 — while the component printed a
+              hand-written list of four, omitting the recurring moment entirely.
+            */
+            ready={programSourceMissing(answers).length === 0}
+            notReadyReason={programSourceReason(programSourceMissing(answers)[0], t)}
             onGenerate={generateProgram}
             onCheckResume={checkProgramResume}
             currentContextFingerprint={programFingerprint}
@@ -971,6 +979,17 @@ export function ModuleBuilderShell({
           ) : null}
         </div>
       </div>
+      {/*
+        NAVIGATION GOES DEAD DURING AN UPLOAD, AND SAID NOTHING (Slice R4-R2F). Back, Save and
+        Next are all disabled on `docBusy` — a real rule, and the right one — but the Host met
+        three greyed controls with no explanation anywhere. Read from the same flag that
+        disables them.
+      */}
+      {docBusy ? (
+        <p className="pt-1 text-right text-xs leading-5 text-white/45" data-testid="builder-doc-busy-blocker">
+          {t.docBusyBlocker}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1467,6 +1486,34 @@ function sectionReason(section: ReviewSectionKey, t: ModuleBuilderCopy): string 
       return t.s6Blocker;
     case "followUp":
       return t.s7Blocker;
+  }
+}
+
+/**
+ * A step blocker code → the Builder's OWN approved sentence for it (Slice R4-R2F).
+ *
+ * Deliberately reuses the copy each step already shows inline, rather than writing a second set
+ * of words for the same requirement: the Host reads the same sentence wherever they meet it, and
+ * there is no second place for the wording to drift. Every code `programSourceMissing` can return
+ * has an entry; anything unknown falls back to the previous general sentence rather than
+ * inventing a specific claim about what is wrong.
+ */
+function programSourceReason(code: string | undefined, t: ModuleBuilderCopy): string | undefined {
+  switch (code) {
+    case "problem_required":
+      return t.s1Blocker;
+    case "audience_required":
+      return t.s2Blocker;
+    case "audience_detail_required":
+      return t.s2DetailBlocker;
+    case "recurring_moment_required":
+      return t.sMomentBlocker;
+    case "behavior_required":
+      return t.s3Blocker;
+    case "evidence_required":
+      return t.s4Blocker;
+    default:
+      return undefined;
   }
 }
 

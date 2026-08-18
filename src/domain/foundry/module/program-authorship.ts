@@ -420,6 +420,32 @@ export type ProgramContext = {
  * consider the draft unready. Reuses the EXACT step gates 1–4 so a program can never be
  * authored from an incomplete intent.
  */
+/**
+ * WHAT IS STILL MISSING BEFORE A PROGRAM CAN BE AUTHORED (Slice R4-R2F).
+ *
+ * ONE SOURCE, TWO CONSUMERS. `programContext` returns null when this is non-empty, so the button
+ * that says "Draft my training program" and the sentence explaining why it is unavailable are
+ * now reading the same list. They could not agree before: the predicate consulted steps 1–5 and
+ * the copy named four things, silently omitting the recurring moment (step 3) and the audience
+ * detail (step 2). Measured in R4-R2D's own ledger, 36 of 40 production drafts lack a recurring
+ * moment — so most Hosts were being told to add four things they had already written.
+ *
+ * Codes, not sentences: this is the domain, and the Host's language lives in the Builder's
+ * approved copy, which already has a line for every one of these.
+ *
+ * ORDERED BY STEP, so the caller can take the FIRST entry and name the next thing to do rather
+ * than presenting a checklist.
+ */
+export function programSourceMissing(answers: BuilderAnswers | undefined): string[] {
+  const a = answers ?? {};
+  const out: string[] = [];
+  for (const step of [1, 2, 3, 4, 5]) {
+    const blocker = stepBlocker(step, a);
+    if (blocker) out.push(blocker);
+  }
+  return out;
+}
+
 export function programContext(answers: BuilderAnswers | undefined): ProgramContext | null {
   const a = answers ?? {};
   /*
@@ -428,9 +454,7 @@ export function programContext(answers: BuilderAnswers | undefined): ProgramCont
     reuses the EXACT Builder gates rather than restating them, so the Host's screen and the
     generation boundary can never disagree about what "ready" means.
   */
-  for (const step of [1, 2, 3, 4, 5]) {
-    if (stepBlocker(step, a)) return null;
-  }
+  if (programSourceMissing(a).length > 0) return null;
   const audienceType = a.audienceType as AudienceType;
   const needsDetail = (AUDIENCE_TYPES_NEEDING_DETAIL as readonly string[]).includes(audienceType);
   const needs = normalizeLearningNeeds(a);

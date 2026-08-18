@@ -240,6 +240,18 @@ export function DirectionCopilot({
           </p>
         ) : null}
 
+        {/*
+          A DISABLED BUTTON MUST SAY WHY (Slice R4-R2F). `stale` already had its sentence above;
+          the empty-capability half of the same predicate had NOTHING, so the Host met a dead
+          control with no explanation anywhere near it. Read from the predicate itself, so it
+          cannot describe a different blocker than the one in force.
+        */}
+        {!stale && review.capability.trim().length === 0 ? (
+          <p className="text-xs leading-5 text-white/45" data-testid="direction-copilot-capability-blocker">
+            {t.capabilityBlocker}
+          </p>
+        ) : null}
+
         <div className="flex items-center justify-between gap-3 pt-1">
           <button type="button" onClick={() => setPhase("results")} className="text-sm text-white/60">
             {t.backToDirections}
