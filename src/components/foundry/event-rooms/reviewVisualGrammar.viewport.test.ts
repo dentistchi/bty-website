@@ -149,6 +149,13 @@ async function open() {
   await page.goto(`file://${join(dir, "index.html")}`);
   await page.waitForSelector('[data-testid="program-review"]');
   await page.waitForSelector('[data-testid="journey-preview"]');
+  /*
+    R4-R2E-R4 — the program sections are a disclosure now, closed by default, so the read-only
+    grammar has to be OPENED before it can be measured. Expanding here rather than relaxing the
+    assertion: the question "is BTY's sentence legible and not shaped like a field" is still
+    exactly the right one, it is just one tap further in.
+  */
+  await page.click('[data-testid="program-section-toggle-observable_standard"]');
   await page.waitForTimeout(300);
 
   const measure = async (selector: string): Promise<Measured> => {

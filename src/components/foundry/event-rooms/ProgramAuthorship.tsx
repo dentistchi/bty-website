@@ -198,6 +198,18 @@ export function ProgramAuthorship({
    * the thing that matters, and this must not push it down the screen again.
    */
   const [adoptedDraftOpen, setAdoptedDraftOpen] = useState(false);
+  /**
+   * WHICH SECTION IS OPEN FOR EDITING (Slice R4-R2E-R4). One at a time, and none by default.
+   *
+   * Measured at 390x844 before this: the pre-adoption review was 2332px and "Add this program to
+   * my training" sat at y=2240 — 2.7 screens of scrolling to reach the primary action, with the
+   * six section bodies accounting for 1866px, 80% of it. The Host was made to read the whole
+   * document to approve a draft they mostly agreed with.
+   *
+   * Nothing about the DECISIONS changes: the defaults R4-R2A-R1 computed are still authoritative
+   * and still applied. Only the reading of them is folded away until asked for.
+   */
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const [titleEdit, setTitleEdit] = useState("");
 
   const missing = useMemo(() => missingProgramKinds(answers, journey), [answers, journey]);
@@ -812,7 +824,7 @@ export function ProgramAuthorship({
         const isDerived = contracts !== null && derivesFrom(e.kind, contracts);
         const unavailable = isDerived && derived === null;
         const wasAdjusted = sectionAdjusted(e.kind);
-        const open = openDetails === e.kind;
+        const detailsOpen = openDetails === e.kind;
         /*
           THE HOST'S OWN SETTLED SENTENCE, IF THERE IS ONE (Slice R4-R2A-R1). Only a grounded
           host-authored element earns a preservation choice; everything else has nothing to
@@ -821,10 +833,77 @@ export function ProgramAuthorship({
         const existing = currentByKind.get(e.kind);
         const preservable = isPreservableHostSection(existing);
         const isKeep = preservable && decisions[e.kind] === "keep";
+        const sectionOpen = openSection === e.kind;
+        /*
+          THE STATE, IN TWO WORDS (Slice R4-R2E-R4). The collapsed row has to answer "what is
+          going to happen to this section?" without opening it, or folding the detail away would
+          just hide the decision. Derived from exactly the same values the badge below uses, so
+          the summary and the detail can never disagree.
+        */
+        const stateLabel = unavailable
+          ? "Needs a repeating moment"
+          : isKeep
+            ? "Keep yours"
+            : wasAdjusted || (!isDerived && decisions[e.kind] === "edit")
+              ? "Edited"
+              : "Use BTY";
+        /*
+          One line of what the section will ACTUALLY say — which is not the same question as
+          "what does this section render". A KEEP applies the Host's existing sentence and never
+          reaches `sectionText`, exactly as `apply()` builds its choices; previewing the derived
+          text there would have put "Keep yours" beside BTY's words. Caught by its own test.
+        */
+        const preview = unavailable ? "" : isKeep ? (existing?.content ?? "") : sectionText(e.kind, e.content);
         return (
-          <div key={e.kind} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
+          <div key={e.kind} className="flex flex-col rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3" data-testid={`program-section-${e.kind}`}>
+            {/*
+              THE SUMMARY ROW IS THE CONTROL. A whole-row button, so the tap target is the row
+              rather than a chevron, and `aria-expanded` / `aria-controls` make it a real
+              disclosure for a screen reader rather than a div that happens to react to clicks.
+            */}
+            <button
+              type="button"
+              onClick={() => setOpenSection(sectionOpen ? null : e.kind)}
+              aria-expanded={sectionOpen}
+              aria-controls={`program-section-body-${e.kind}`}
+              data-testid={`program-section-toggle-${e.kind}`}
+              className="-mx-1 flex min-h-[44px] w-full items-center gap-3 rounded-lg px-1 text-left hover:bg-white/[0.03]"
+            >
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[e.kind]}</span>
+                {preview ? (
+                  <span className="truncate text-xs leading-5 text-white/55" data-testid={`program-section-preview-${e.kind}`}>
+                    {preview}
+                  </span>
+                ) : null}
+              </span>
+              <span className="ml-auto flex shrink-0 items-center gap-2">
+                <span
+                  data-testid={`program-section-state-${e.kind}`}
+                  className={`rounded-md px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] ${
+                    unavailable ? "bg-amber-400/15 text-amber-200/90" : "bg-[#C9A66B]/15 text-[#C9A66B]/90"
+                  }`}
+                >
+                  {stateLabel}
+                </span>
+                <span aria-hidden className="text-xs text-white/40">{sectionOpen ? "▴" : "▾"}</span>
+              </span>
+            </button>
+
+            {/*
+              THE FULL SECTION, UNCHANGED, ONE TAP AWAY. Nothing was removed — the comparison, the
+              Keep/Use choice, the contract fields and the rationale are all still here, and still
+              the same elements. Hidden with a `display:none` UTILITY rather than the `hidden`
+              attribute on purpose: this wrapper carries `flex`, and Tailwind's `[hidden]` rule
+              loses to a display utility of equal specificity depending on stylesheet order.
+            */}
+            <div
+              id={`program-section-body-${e.kind}`}
+              data-testid={`program-section-body-${e.kind}`}
+              className={sectionOpen ? "mt-3 flex flex-col gap-2" : "hidden"}
+            >
             <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C9A66B]/85">{KIND_LABEL[e.kind]}</span>
+              <span className="sr-only">{KIND_LABEL[e.kind]}</span>
               {/*
                 "Adjusted by you", not "Your rewrite": for a derived section the sentence is
                 still deterministically rendered by BTY — from values the Host changed. Calling
@@ -933,15 +1012,15 @@ export function ProgramAuthorship({
                 ) : (
                 <button
                   type="button"
-                  onClick={() => setOpenDetails(open ? null : e.kind)}
-                  aria-expanded={open}
+                  onClick={() => setOpenDetails(detailsOpen ? null : e.kind)}
+                  aria-expanded={detailsOpen}
                   data-testid={`program-details-toggle-${e.kind}`}
                   className="self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-white/60 hover:bg-white/[0.06]"
                 >
-                  {open ? "Done" : "Edit details"}
+                  {detailsOpen ? "Done" : "Edit details"}
                 </button>
                 )}
-                {open ? (
+                {detailsOpen ? (
                   <div className="flex flex-col gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-3" data-testid={`program-details-${e.kind}`}>
                     {DETAIL_FIELDS[e.kind]?.map((f, i, all) => (
                       <div key={f.id} className="flex flex-col gap-1">
@@ -1015,6 +1094,7 @@ export function ProgramAuthorship({
               </div>
             )}
             <p className="text-xs leading-5 text-white/40">{e.rationale}</p>
+            </div>
           </div>
         );
       })}
