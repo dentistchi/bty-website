@@ -51,6 +51,46 @@ export type UserTzContext = { timezone: string; tzFallback: boolean };
  *   2. else the request's device tz if valid IANA → use it AND capture it to the profile.
  *   3. else → "UTC" with tzFallback=true; leave the profile tz null so capture is retried later.
  */
+/**
+ * The SAME precedence as {@link resolveUserTzContext}, with the write removed.
+ *
+ * WHY A SECOND FUNCTION RATHER THAN A FLAG (Slice R4-R3A). `resolveUserTzContext` best-effort
+ * PERSISTS a newly resolved device tz into `arena_profiles.timezone`. That is correct and
+ * deliberate everywhere it is used today: those are surfaces a learner is actively working in,
+ * and capturing their zone once makes every later BTY day-key right.
+ *
+ * It is not correct for a READ-ONLY Host surface. Opening a panel to look at an outcome must not
+ * mutate the Host's profile — a screen that answers "did anything change?" should not itself be a
+ * thing that changes. So this is a twin, not a mode: the writing resolver is untouched, every
+ * existing caller keeps its behaviour, and read-only callers get a function whose name says what
+ * it does.
+ *
+ * Precedence is identical and deliberately so — stored profile tz, then a valid device hint, then
+ * UTC — so the two never disagree about which zone a given (user, hint) resolves to. The only
+ * difference is that this one does not remember.
+ */
+export async function readUserTzContext(
+  admin: SupabaseClient,
+  userId: string,
+  deviceTz: string | null | undefined,
+): Promise<UserTzContext> {
+  let profileTz: string | null = null;
+  try {
+    const { data } = await admin
+      .from("arena_profiles")
+      .select("timezone")
+      .eq("user_id", userId)
+      .maybeSingle();
+    profileTz = (data as { timezone?: string | null } | null)?.timezone ?? null;
+  } catch {
+    profileTz = null; // e.g. column not yet migrated → treat as unresolved
+  }
+
+  if (isValidIanaTz(profileTz)) return { timezone: profileTz, tzFallback: false };
+  if (isValidIanaTz(deviceTz)) return { timezone: deviceTz, tzFallback: false };
+  return { timezone: "UTC", tzFallback: true };
+}
+
 export async function resolveUserTzContext(
   admin: SupabaseClient,
   userId: string,

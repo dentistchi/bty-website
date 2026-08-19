@@ -100,6 +100,37 @@ export type EventRoomsCopy = {
   remove: string;
   removeConfirm: string;
   rosterEmpty: string;
+  /*
+    TRAINING OUTCOME (Slice R4-R3A). Ordinary manager language: a Host should be able to read this
+    without knowing what an Evidence Ladder is. The three groups stay separately labelled because
+    completion, a learner's own report, and someone else's confirmation are three different facts —
+    collapsing them into one number would state something nobody measured.
+  */
+  outcomeHeading: string;
+  outcomeQuestion: string;
+  outcomeCompleted: string;
+  outcomeCompletedOf: (done: number, total: number) => string;
+  outcomeAfterHeading: string;
+  outcomeApplied: string;
+  outcomePartly: string;
+  outcomeNotYet: string;
+  outcomeBlocked: string;
+  outcomeWaiting: string;
+  outcomeOverdue: string;
+  outcomeObservedHeading: string;
+  outcomeConfirmed: string;
+  outcomeNotEstablished: string;
+  outcomeCouldntTell: string;
+  /** The one-line reading. Each says what we KNOW, never how anyone performed. */
+  outcomeReadingNothingYet: string;
+  outcomeReadingUnknown: (waiting: number, overdue: number) => string;
+  outcomeReadingReportedOnly: string;
+  outcomeReadingConfirmed: string;
+  /** All three no-downstream states share one honest sentence — none blames the learner. */
+  outcomeNoDownstream: string;
+  /** Why downstream evidence can be thin even when people finished. */
+  outcomeUnclaimedNote: (n: number) => string;
+  outcomeDecisionsToggle: (n: number) => string;
   closedNotice: string;
   qrError: string;
   loadError: string;
@@ -192,6 +223,41 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     remove: "Remove",
     removeConfirm: "Remove this participant?",
     rosterEmpty: "No one has joined yet.",
+    outcomeHeading: "Training outcome",
+    outcomeQuestion: "Did anything change?",
+    outcomeCompleted: "Completed",
+    outcomeCompletedOf: (done, total) => `${done} of ${total}`,
+    outcomeAfterHeading: "After the training",
+    outcomeApplied: "Applied",
+    outcomePartly: "Partly applied",
+    outcomeNotYet: "Not yet",
+    outcomeBlocked: "Blocked",
+    outcomeWaiting: "Waiting",
+    outcomeOverdue: "Overdue",
+    outcomeObservedHeading: "Observed by someone else",
+    outcomeConfirmed: "Confirmed",
+    outcomeNotEstablished: "Not established",
+    outcomeCouldntTell: "Couldn’t tell",
+    outcomeReadingNothingYet: "Nothing to report yet.",
+    /*
+      Pluralised the way this file already does it (see `joinedCount`): a ternary on n === 1.
+      "1 haven’t answered" is not English, and this is a first-viewport outcome number.
+    */
+    outcomeReadingUnknown: (waiting, overdue) => {
+      const n = waiting + overdue;
+      const who = n === 1 ? "1 person hasn’t answered" : `${n} people haven’t answered`;
+      if (overdue === 0) return `We don’t know yet — ${who}.`;
+      const late = overdue === 1 ? "1 is overdue" : `${overdue} are overdue`;
+      return `We don’t know yet — ${who}, and ${late}.`;
+    },
+    outcomeReadingReportedOnly: "People told us what happened. No one else has confirmed it yet.",
+    outcomeReadingConfirmed: "Someone else confirmed this happened at work.",
+    outcomeNoDownstream: "This training ends at completion. No follow-up was set up for it.",
+    outcomeUnclaimedNote: (n) =>
+      n === 1
+        ? "1 person finished without signing in, so we can’t follow up with them."
+        : `${n} people finished without signing in, so we can’t follow up with them.`,
+    outcomeDecisionsToggle: (n) => `What people decided to do (${n})`,
     closedNotice: "This event is closed. New participants can no longer join.",
     qrError: "The QR could not be shown. Try Share link.",
     loadError: "Could not load. Pull to retry.",
@@ -282,6 +348,33 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     remove: "내보내기",
     removeConfirm: "이 참가자를 내보낼까요?",
     rosterEmpty: "아직 아무도 입장하지 않았습니다.",
+    outcomeHeading: "훈련 결과",
+    outcomeQuestion: "무엇이 달라졌나요?",
+    outcomeCompleted: "완료",
+    outcomeCompletedOf: (done, total) => `${total}명 중 ${done}명`,
+    outcomeAfterHeading: "훈련 이후",
+    outcomeApplied: "적용함",
+    outcomePartly: "일부 적용함",
+    outcomeNotYet: "아직 안 함",
+    outcomeBlocked: "막힘",
+    outcomeWaiting: "대기 중",
+    outcomeOverdue: "기한 지남",
+    outcomeObservedHeading: "다른 사람이 본 것",
+    outcomeConfirmed: "확인됨",
+    outcomeNotEstablished: "확인되지 않음",
+    outcomeCouldntTell: "판단할 수 없었음",
+    outcomeReadingNothingYet: "아직 보고된 것이 없습니다.",
+    /* Korean needs no singular/plural inflection here — the counter 명 is correct for every n. */
+    outcomeReadingUnknown: (waiting, overdue) => {
+      const n = waiting + overdue;
+      if (overdue === 0) return `아직 알 수 없습니다 — ${n}명이 답하지 않았습니다.`;
+      return `아직 알 수 없습니다 — ${n}명이 답하지 않았고, ${overdue}명은 기한이 지났습니다.`;
+    },
+    outcomeReadingReportedOnly: "본인이 무엇을 했는지 알려 주었습니다. 아직 다른 사람이 확인하지는 않았습니다.",
+    outcomeReadingConfirmed: "다른 사람이 실제 업무에서 확인했습니다.",
+    outcomeNoDownstream: "이 훈련은 완료에서 끝납니다. 후속 확인이 설정되지 않았습니다.",
+    outcomeUnclaimedNote: (n) => `${n}명이 로그인하지 않고 완료해서 후속 확인을 할 수 없습니다.`,
+    outcomeDecisionsToggle: (n) => `사람들이 하기로 한 것 (${n})`,
     closedNotice: "종료된 이벤트입니다. 더 이상 새로 입장할 수 없습니다.",
     qrError: "QR을 표시하지 못했습니다. 링크 공유를 사용하세요.",
     loadError: "불러오지 못했습니다. 다시 시도해 주세요.",

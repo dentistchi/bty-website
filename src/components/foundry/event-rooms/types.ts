@@ -45,6 +45,25 @@ export type ManagerEvent = {
   document?: ManagerDocument | null;
 };
 
+/**
+ * TRAINING OUTCOME (Slice R4-R3A) — mirrors the server aggregate exactly. Read-only.
+ * Deliberately contains NO learner identifier and no private learner text: the decisions are an
+ * unattributed list, and `response_text` / `learner_reflection_text` / `reflection` are never
+ * selected by the service that builds this.
+ */
+export type ManagerOutcome = {
+  participation: { joined: number; completed: number; linkedCompletions: number; unclaimedCompletions: number };
+  followUp: {
+    applied: number; partlyApplied: number; notYet: number; blocked: number;
+    waiting: number; overdue: number; total: number; answered: number;
+  };
+  observation: { confirmed: number; notEstablished: number; couldntTell: number; total: number };
+  downstream: "no_module" | "no_journey" | "no_decision" | "configured";
+  decisionCount: number;
+  reading: "no_downstream" | "nothing_yet" | "unknown_yet" | "reported_only" | "confirmed";
+  decisions: string[];
+};
+
 export type ManagerSnapshot = {
   event: ManagerEvent;
   participants: ManagerParticipant[];

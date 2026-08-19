@@ -7,6 +7,7 @@ import type { ManagerSnapshot } from "./types";
 import { useEventSnapshot } from "./useEventSnapshot";
 import { FoundryEventQr } from "./FoundryEventQr";
 import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
+import { FoundryTrainingOutcome } from "./FoundryTrainingOutcome";
 import FoundrySharedReview from "./FoundrySharedReview";
 import FoundryFollowupStatus from "./FoundryFollowupStatus";
 import { FoundryShareControls } from "./FoundryShareControls";
@@ -225,6 +226,14 @@ export function FoundryEventControlRoom({
               {t.closedNotice}
             </p>
           )}
+
+          {/*
+            TRAINING OUTCOME (Slice R4-R3A) — placed ABOVE the roster on purpose. The roster
+            answers "who is here"; this answers "did anything change", which is the question a
+            Host actually opened the room with. Self-gating: absent when the server could not
+            assemble it, so the room never depends on it.
+          */}
+          <FoundryTrainingOutcome eventId={eventId} t={t} />
 
           <section className="flex flex-col gap-3">
             <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">
