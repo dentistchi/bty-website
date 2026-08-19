@@ -700,7 +700,21 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
+        /*
+          R4-R2J — the last unbounded request in this client. It is already caught, so it could
+          never throw; but with no bound a stalled session read left `account` on "loading"
+          forever, and the terminal render gates BOTH the claim control and the sign-in button
+          behind that. The learner reached TRAINING COMPLETE and could do nothing with their XP.
+
+          One line, and no new state or copy is needed: the existing catch sets `account = null`,
+          which is exactly the signed-out branch — "Sign in to save". A timeout now degrades to
+          the correct actionable path instead of an indefinite wait.
+        */
+        const res = await fetch("/api/auth/session", {
+          credentials: "include",
+          cache: "no-store",
+          signal: timeoutSignal(),
+        });
         const data = (await res.json().catch(() => ({}))) as { user?: { email?: string | null } | null };
         if (!cancelled) setAccount(data.user ? { email: data.user.email ?? null } : null);
       } catch {

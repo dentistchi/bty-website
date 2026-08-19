@@ -71,6 +71,12 @@ type Copy = {
   join: string;
   joining: string;
   nameError: string;
+  /**
+   * R4-R2J — shown ONLY after a reconcile confirmed the learner is not in the room. Joining is
+   * server-idempotent (a still-joined session is reused, never duplicated), so asking is free
+   * and this never accuses the server of a failure we merely stopped waiting for.
+   */
+  joinDidNotGoThrough: string;
   /** The heading over the Host's own text. */
   materialHeading: (t: GuidanceType) => string;
   /** What the learner is being asked to do with it, stated without overclaiming. */
@@ -131,6 +137,7 @@ const COPY: Record<Locale, Copy> = {
     join: "Continue",
     joining: "Opening…",
     nameError: "Add your name to continue.",
+    joinDidNotGoThrough: "We couldn’t join the training. Tap again to try.",
     materialHeading: (t) => (t === "written_guidance" ? "Read this" : "Discuss this with your team"),
     materialLead: (t) =>
       t === "written_guidance"
@@ -190,6 +197,7 @@ const COPY: Record<Locale, Copy> = {
     join: "계속하기",
     joining: "여는 중…",
     nameError: "계속하려면 이름을 입력하세요.",
+    joinDidNotGoThrough: "훈련에 참여하지 못했습니다. 다시 눌러 주세요.",
     materialHeading: (t) => (t === "written_guidance" ? "이 내용을 읽어 주세요" : "팀과 함께 논의해 주세요"),
     materialLead: (t) =>
       t === "written_guidance" ? "호스트가 직접 작성한 내용입니다." : "호스트가 팀이 함께 이야기하도록 정리한 내용입니다.",
@@ -336,6 +344,7 @@ export default function FoundryGuidanceClient({
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState(false);
+  const [joinError, setJoinError] = useState(false);
   const [response, setResponse] = useState("");
   const [responseError, setResponseError] = useState(false);
   const [sharedResponse, setSharedResponse] = useState("");
@@ -444,18 +453,47 @@ export default function FoundryGuidanceClient({
     busyRef.current = true;
     setBusy(true);
     setNameError(false);
+    setJoinError(false);
     try {
-      // Join reuses the content-agnostic public join route.
-      const res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: name.trim() }),
-      });
+      /*
+        THE LAST UNBOUNDED REQUEST IN THIS CLIENT (Slice R4-R2J).
+
+        R4-R2G bounded `load()` and `post()` here and left this raw fetch behind — the audit
+        found it. It held `busyRef`, which every handler checks first, so a stalled join pinned
+        the room's interaction lock and the button read "Opening…" indefinitely; a rejected one
+        propagated past the missing catch as an unhandled rejection and left the form silently
+        unchanged.
+
+        Retrying is safe without any new logic: `joinEvent` reuses a still-joined session and
+        creates no second participant, so the honest move on an uncertain outcome is to ASK
+        whether the learner is already in the room.
+      */
+      let res: Response | null = null;
+      try {
+        res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ display_name: name.trim() }),
+          signal: timeoutSignal(),
+        });
+      } catch {
+        res = null;
+      }
+      if (!res) {
+        const reconciled = await load();
+        if (!reconciled?.participant) setJoinError(true);
+        return;
+      }
       const d = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok && (d?.error === "name_required" || d?.error === "name_too_long")) setNameError(true);
-      await load();
+      // The name rules are the SERVER's answer, so they apply only when the server actually replied.
+      if (!res.ok && (d?.error === "name_required" || d?.error === "name_too_long")) {
+        setNameError(true);
+        return;
+      }
+      const reconciled = await load();
+      if (!res.ok && !reconciled?.participant) setJoinError(true);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -631,6 +669,11 @@ export default function FoundryGuidanceClient({
               className="w-full rounded-xl bg-white/10 px-4 py-3 text-center text-white placeholder-white/40 outline-none focus:bg-white/15"
             />
             {nameError && <p className="mt-2 text-xs text-red-300">{t.nameError}</p>}
+            {joinError && (
+              <p className="mt-2 text-xs text-red-300" data-testid="guidance-join-error">
+                {t.joinDidNotGoThrough}
+              </p>
+            )}
             <button
               type="submit"
               disabled={busy}
