@@ -29,6 +29,12 @@ vi.mock('@/lib/events.server', () => ({
     expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
   })),
   listEventSummaries: vi.fn(async () => []),
+  // BUILD R4E-R1 — the list route now reads the classified console projection.
+  listEventConsole: vi.fn(async () => ({
+    events: [],
+    totals: { active: 0, stale: 0, recent: 0, ended: 0, test: 0, deleted: 0, all: 0 },
+    window: { limit: 50, returned: 0 },
+  })),
   publicEvent: (e: typeof fakeEvent) => ({
     id: e.id,
     name: e.name,
@@ -60,7 +66,7 @@ function makeReq({ authorization, body }: FakeReqInit) {
   return {
     headers: { get: (k: string) => (k.toLowerCase() === 'authorization' ? authorization ?? null : null) },
     json: async () => body,
-    nextUrl: { origin: 'https://x.test' },
+    nextUrl: { origin: 'https://x.test', searchParams: new URLSearchParams() },
   } as unknown as Parameters<typeof POST>[0];
 }
 
@@ -118,5 +124,8 @@ describe('GET /api/admin/events', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data.events)).toBe(true);
+    // R4E-R1: the list now carries operator totals and its management window.
+    expect(data.totals).toBeTruthy();
+    expect(data.window).toEqual({ limit: 50, returned: 0 });
   });
 });

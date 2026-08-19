@@ -24,10 +24,55 @@ interface DjConnection {
   label: string | null;
   lastUsedAt: string | null;
 }
+type EventClass = 'ACTIVE' | 'STALE' | 'RECENT' | 'ENDED' | 'TEST' | 'DELETED_ARCHIVED';
+
+const CLASS_LABEL: Record<EventClass, string> = {
+  ACTIVE: 'Active',
+  STALE: 'Needs Attention',
+  RECENT: 'Ended',
+  ENDED: 'Ended',
+  TEST: 'Test',
+  DELETED_ARCHIVED: 'Archived',
+};
+
+function idleDaysOf(lastActivityAt: string | null | undefined): number | null {
+  if (!lastActivityAt) return null;
+  const ms = Date.parse(lastActivityAt);
+  if (!Number.isFinite(ms)) return null;
+  return Math.floor((Date.now() - ms) / 86400000);
+}
+
+function shortDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return '';
+  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+type ListView = 'active' | 'needs-attention' | 'recent' | 'ended' | 'test' | 'deleted' | 'all';
+
+const LIST_VIEW_LABEL: Record<ListView, string> = {
+  active: 'Active',
+  'needs-attention': 'Needs Attention',
+  recent: 'Recent',
+  ended: 'Ended',
+  test: 'Test',
+  deleted: 'Deleted / Archived',
+  all: 'All',
+};
+
+interface EventTotals {
+  active: number; stale: number; recent: number; ended: number;
+  test: number; deleted: number; all: number;
+}
+
 interface Summary {
   event: EventView;
   stats: EventStats;
   dj: DjConnection;
+  /** The ONLY signal the list may badge — room-level `dj.connected` is not event-scoped. */
+  djLive?: boolean;
+  eventClass?: EventClass;
+  lastActivityAt?: string | null;
 }
 interface CreatedEvent {
   event: EventView;
@@ -63,6 +108,9 @@ export default function ManagerConsole() {
 
   const [view, setView] = useState<View>('list');
   const [events, setEvents] = useState<Summary[]>([]);
+  const [totals, setTotals] = useState<EventTotals | null>(null);
+  // BUILD R4E-R1 — the default answers "what is active NOW". The other 40 rows are one click away.
+  const [listView, setListView] = useState<ListView>('active');
   const [created, setCreated] = useState<CreatedEvent | null>(null);
   const [detail, setDetail] = useState<DetailView | null>(null);
   const [qr, setQr] = useState<QrModal>(null);
@@ -74,13 +122,14 @@ export default function ManagerConsole() {
   const [name, setName] = useState('');
   const [host, setHost] = useState('');
 
-  const loadList = useCallback(async (): Promise<'ok' | 'unauth' | 'err'> => {
+  const loadList = useCallback(async (v: ListView = 'active'): Promise<'ok' | 'unauth' | 'err'> => {
     try {
-      const res = await fetch('/api/admin/events', { cache: 'no-store', credentials: 'same-origin' });
+      const res = await fetch(`/api/admin/events?view=${v}`, { cache: 'no-store', credentials: 'same-origin' });
       if (res.status === 401) return 'unauth';
       if (!res.ok) return 'err';
       const data = await res.json();
       setEvents(data.events ?? []);
+      setTotals(data.totals ?? null);
       return 'ok';
     } catch {
       return 'err';
@@ -89,10 +138,16 @@ export default function ManagerConsole() {
 
   useEffect(() => {
     (async () => {
-      const r = await loadList();
+      const r = await loadList('active');
       setPhase(r === 'ok' ? 'ready' : 'need-login');
     })();
   }, [loadList]);
+
+  // Re-read when the operator switches tab (never on a timer — no background load).
+  useEffect(() => {
+    if (phase !== 'ready' || view !== 'list') return;
+    void loadList(listView);
+  }, [listView, phase, view, loadList]);
 
   // Ticking clock only while a DJ QR (with a countdown) is open.
   useEffect(() => {
@@ -121,7 +176,7 @@ export default function ManagerConsole() {
         return;
       }
       setPasscode('');
-      await loadList();
+      await loadList(listView);
       setPhase('ready');
       setView('list');
     } catch {
@@ -161,7 +216,7 @@ export default function ManagerConsole() {
       setName('');
       setHost('');
       setView('success');
-      void loadList();
+      void loadList(listView);
     } finally {
       setBusy(false);
     }
@@ -193,7 +248,7 @@ export default function ManagerConsole() {
       if (res.ok) {
         setConfirmEnd(false);
         await openDetail(id); // re-render detail in its ended state (read-only)
-        void loadList();
+        void loadList(listView);
       }
     } finally {
       setBusy(false);
@@ -274,7 +329,7 @@ export default function ManagerConsole() {
         <div className="card hero glow">
           <div className="eyebrow">Manager</div>
           <div className="display-sm" style={{ marginTop: 6 }}>
-            Tonight’s Events
+            Events
           </div>
           <p className="lead">Enter the manager passcode to create and run events.</p>
           <form onSubmit={login} style={{ marginTop: 12 }}>
@@ -304,39 +359,83 @@ export default function ManagerConsole() {
       {view === 'list' && (
         <>
           <div className="row between" style={{ marginBottom: 12 }}>
-            <div className="display-sm">Tonight’s Events</div>
+            <div className="display-sm">Events</div>
             <button className="primary" onClick={() => { setError(null); setView('create'); }}>
               + New Event
             </button>
           </div>
 
+          {/* Summary — computed over the whole window, so it never changes with the open tab. */}
+          {totals && (
+            <>
+              <div className="event-stat-grid" style={{ marginTop: 0 }}>
+                <div className="event-stat"><div className="n">{totals.active}</div><div className="k">Active Events</div></div>
+                <div className="event-stat"><div className="n">{totals.recent}</div><div className="k">Recently Ended</div></div>
+                <div className="event-stat"><div className="n">{totals.stale}</div><div className="k">Needs Attention</div></div>
+                <div className="event-stat"><div className="n">{totals.deleted}</div><div className="k">Deleted / Archived</div></div>
+              </div>
+              <p className="muted" style={{ fontSize: '0.82rem', marginTop: -6 }}>
+                Ended {totals.ended} · Test {totals.test} · showing the most recent {totals.all} events
+                (current management window, not all history)
+              </p>
+            </>
+          )}
+
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 12 }} role="group" aria-label="Event view filter">
+            {(['active', 'needs-attention', 'recent', 'ended', 'test', 'deleted', 'all'] as ListView[]).map((v) => (
+              <button
+                key={v}
+                className={listView === v ? 'primary' : 'ghost'}
+                onClick={() => setListView(v)}
+                aria-pressed={listView === v}
+              >
+                {LIST_VIEW_LABEL[v]}
+              </button>
+            ))}
+          </div>
+
           {events.length === 0 ? (
             <div className="card hero">
-              <p className="lead">No events yet. Tap “+ New Event” to create your first one.</p>
+              <p className="lead">
+                {listView === 'active'
+                  ? 'No events are active right now.'
+                  : 'No events in this view.'}
+              </p>
             </div>
           ) : (
             <div className="stack">
-              {events.map((s) => (
-                <button key={s.event.id} className="event-row" onClick={() => openDetail(s.event.id)}>
-                  <div className="row between">
-                    <strong className="d-name">{s.event.name}</strong>
-                    <span className={`pill ${s.event.status === 'active' ? 'live' : ''}`}>
-                      {s.event.status === 'active' ? (
-                        <>
-                          <span className="live-dot" aria-hidden /> Active
-                        </>
-                      ) : (
-                        s.event.status === 'ended' ? 'Ended' : s.event.status
-                      )}
-                    </span>
-                  </div>
-                  <div className="d-meta">
-                    {s.stats.uniqueGuests} {s.stats.uniqueGuests === 1 ? 'guest' : 'guests'} ·{' '}
-                    {s.stats.totalRequests} {s.stats.totalRequests === 1 ? 'song' : 'songs'}
-                    {s.dj.connected ? ' · DJ connected' : ''}
-                  </div>
-                </button>
-              ))}
+              {events.map((s) => {
+                const cls = s.eventClass ?? (s.event.status === 'active' ? 'ACTIVE' : 'ENDED');
+                const stale = cls === 'STALE';
+                const historical = cls === 'ENDED' || cls === 'RECENT' || cls === 'DELETED_ARCHIVED';
+                const idle = idleDaysOf(s.lastActivityAt);
+                return (
+                  <button key={s.event.id} className="event-row" onClick={() => openDetail(s.event.id)}>
+                    <div className="row between">
+                      <strong className="d-name">{s.event.name}</strong>
+                      <span className={`pill ${cls === 'ACTIVE' ? 'live' : ''}`}>
+                        {cls === 'ACTIVE' ? (<><span className="live-dot" aria-hidden /> Active</>) : CLASS_LABEL[cls]}
+                      </span>
+                    </div>
+                    <div className="d-meta">
+                      {s.stats.uniqueGuests} {s.stats.uniqueGuests === 1 ? 'guest' : 'guests'} ·{' '}
+                      {s.stats.totalRequests} {s.stats.totalRequests === 1 ? 'song' : 'songs'}
+                      {/* `djLive` — never the raw room-level flag. A device enrolled in a room says
+                          nothing about an event that ended a month ago. */}
+                      {s.djLive ? ' · DJ connected' : ''}
+                    </div>
+                    {stale && idle != null && (
+                      <div className="d-meta">Needs Attention · inactive {idle} {idle === 1 ? 'day' : 'days'}</div>
+                    )}
+                    {historical && s.event.endedAt && (
+                      <div className="d-meta">Ended {shortDate(s.event.endedAt)}</div>
+                    )}
+                    {cls === 'DELETED_ARCHIVED' && (
+                      <div className="d-meta">Deleted account · history retained</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -440,14 +539,14 @@ export default function ManagerConsole() {
                 const id = created.event.id;
                 setCreated(null);
                 setView('list');
-                void loadList();
+                void loadList(listView);
                 void openDetail(id); // straight to detail: stats, QRs, End Event
               }}
             >
               Manage event
             </button>
             <div className="row" style={{ justifyContent: 'center' }}>
-              <button className="linkish" onClick={() => { setCreated(null); setView('list'); void loadList(); }}>
+              <button className="linkish" onClick={() => { setCreated(null); setView('list'); void loadList(listView); }}>
                 Done
               </button>
             </div>

@@ -15,6 +15,14 @@ import {
   eventRoomSlug,
 } from '@/domain/event-code';
 import { computeEventStats, type EventStats, type StatRequest } from '@/domain/event-stats';
+import {
+  classifyEvent,
+  compareForView,
+  matchesView,
+  showDjConnected,
+  type EventClass,
+  type EventView,
+} from '@/domain/event-console';
 import { selectLivePresence, type GuestLivePresence, type LiveRow } from '@/domain/live-presence';
 import { decideEventAccess } from '@/domain/event-access';
 
@@ -66,6 +74,30 @@ export interface EventSummary {
   event: KaraokeEvent;
   stats: EventStats;
   dj: DjConnection;
+  /**
+   * BUILD R4E-R1 — read-only operator projection. Absent on the single-event detail path, which
+   * has no cross-event context to classify against.
+   */
+  lastActivityAt?: string | null;
+  eventClass?: EventClass;
+  /** Whether the list may show a DJ badge for THIS event (see `showDjConnected`). */
+  djLive?: boolean;
+}
+
+export interface EventListResult {
+  events: EventSummary[];
+  /** Computed over the whole window BEFORE any view filter, so the summary describes production. */
+  totals: {
+    active: number;
+    stale: number;
+    recent: number;
+    ended: number;
+    test: number;
+    deleted: number;
+    all: number;
+  };
+  /** The service's current management window — the page never claims to be all history. */
+  window: { limit: number; returned: number };
 }
 
 const CODE_RETRY = 6;
@@ -405,8 +437,8 @@ export async function eventDjConnection(event: KaraokeEvent): Promise<DjConnecti
 }
 
 /**
- * The manager "tonight's events" list: newest first, each with stats + DJ status,
- * computed in a bounded number of queries (events + one requests + one devices).
+ * The manager events list: each event with stats + DJ status, computed in a bounded number of
+ * queries (events + one requests + one devices).
  */
 export async function listEventSummaries(limit = 50): Promise<EventSummary[]> {
   const { data, error } = await karaokeDb()
@@ -428,6 +460,128 @@ export async function listEventSummaries(limit = 50): Promise<EventSummary[]> {
     stats: computeEventStats(stats.get(event.id) ?? []),
     dj: dj.get(event.room_id) ?? { connected: false, label: null, lastUsedAt: null },
   }));
+}
+
+/** Latest request instant per event — the strongest available "meaningful activity" signal. */
+async function lastActivityByEvent(eventIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!eventIds.length) return out;
+  const { data, error } = await karaokeDb()
+    .from('karaoke_requests')
+    .select('event_id, created_at')
+    .in('event_id', eventIds);
+  if (error) throw error;
+  for (const r of (data ?? []) as Array<{ event_id: string; created_at: string }>) {
+    const cur = out.get(r.event_id);
+    if (!cur || r.created_at > cur) out.set(r.event_id, r.created_at);
+  }
+  return out;
+}
+
+/**
+ * Rooms that are RETIRED, and rooms with NO owning account.
+ *
+ * Both are provenance facts the audit established and neither can be read off an event row:
+ *   - retired  → BUILD 26E froze this room when its owner's account was deleted, so its events are
+ *                deletion history, not live or defective rows.
+ *   - ownerless → the room was created through the manager console before Host accounts existed,
+ *                which is the only STRUCTURAL evidence of founder/engineering provenance. A name
+ *                containing "Test" or "테스트" is not evidence and is never used here.
+ */
+async function roomProvenance(): Promise<{ retired: Set<string>; ownerless: Set<string> }> {
+  const db = karaokeDb();
+  const [rooms, ownership, members] = await Promise.all([
+    db.from('karaoke_rooms').select('id, status'),
+    db.from('karaoke_room_ownership').select('room_id, workspace_id'),
+    db.from('karaoke_workspace_members').select('workspace_id, status'),
+  ]);
+  if (rooms.error) throw rooms.error;
+  const retired = new Set<string>();
+  for (const r of (rooms.data ?? []) as Array<{ id: string; status: string }>) {
+    if (r.status === 'retired') retired.add(r.id);
+  }
+  const ownedWorkspaces = new Set(
+    ((members.data ?? []) as Array<{ workspace_id: string; status: string }>)
+      .filter((m) => m.status === 'active')
+      .map((m) => m.workspace_id),
+  );
+  const owned = new Set(
+    ((ownership.data ?? []) as Array<{ room_id: string; workspace_id: string }>)
+      .filter((o) => ownedWorkspaces.has(o.workspace_id))
+      .map((o) => o.room_id),
+  );
+  const ownerless = new Set<string>();
+  for (const r of (rooms.data ?? []) as Array<{ id: string }>) {
+    if (!owned.has(r.id)) ownerless.add(r.id);
+  }
+  return { retired, ownerless };
+}
+
+/**
+ * BUILD R4E-R1 — the operator list: classified, counted and ordered, still strictly read-only.
+ *
+ * `nowMs` is a parameter so the classification is deterministic under test; production passes the
+ * real clock. Totals are computed over the whole window BEFORE the view filter, so the summary
+ * always describes production rather than whatever tab is open.
+ */
+export async function listEventConsole(
+  params: { view?: EventView; limit?: number; nowMs?: number } = {},
+): Promise<EventListResult> {
+  const limit = params.limit ?? 50;
+  const nowMs = params.nowMs ?? Date.now();
+  const base = await listEventSummaries(limit);
+  const [activity, prov] = await Promise.all([
+    lastActivityByEvent(base.map((s) => s.event.id)),
+    roomProvenance(),
+  ]);
+
+  const rows = base.map((s) => {
+    // Strongest signal first: a real request. Falling back to the event's own start/creation means
+    // a never-used event is measured from when it was made, which is exactly the age an operator
+    // needs to see for a month-old empty "active" event.
+    const lastActivityAt =
+      activity.get(s.event.id) ?? s.event.starts_at ?? s.event.created_at ?? null;
+    const eventClass = classifyEvent(
+      {
+        status: s.event.status,
+        lastActivityAt,
+        endedAt: s.event.ended_at,
+        roomRetired: prov.retired.has(s.event.room_id),
+        provenTest: prov.ownerless.has(s.event.room_id),
+      },
+      nowMs,
+    );
+    return {
+      ...s,
+      lastActivityAt,
+      eventClass,
+      djLive: showDjConnected(eventClass, s.dj.connected, s.dj.lastUsedAt, nowMs),
+    };
+  });
+
+  const count = (c: EventClass) => rows.filter((r) => r.eventClass === c).length;
+  const totals = {
+    active: count('ACTIVE'),
+    stale: count('STALE'),
+    recent: count('RECENT'),
+    ended: count('ENDED'),
+    test: count('TEST'),
+    deleted: count('DELETED_ARCHIVED'),
+    all: rows.length,
+  };
+
+  const view: EventView = params.view ?? 'active';
+  const events = rows
+    .filter((r) => matchesView(view, r.eventClass))
+    .sort((a, b) =>
+      compareForView(
+        view,
+        { cls: a.eventClass, lastActivityAt: a.lastActivityAt, endedAt: a.event.ended_at, createdAt: a.event.created_at },
+        { cls: b.eventClass, lastActivityAt: b.lastActivityAt, endedAt: b.event.ended_at, createdAt: b.event.created_at },
+      ),
+    );
+
+  return { events, totals, window: { limit, returned: rows.length } };
 }
 
 /** Full summary for one event (detail screen). */

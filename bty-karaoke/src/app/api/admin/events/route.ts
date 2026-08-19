@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CreateEventSchema } from '@/lib/validation';
 import { managerEnabled, managerAuthorized } from '@/lib/manager-auth.server';
-import { createEvent, listEventSummaries, mintDjEnrollment, publicEvent } from '@/lib/events.server';
+import { createEvent, listEventConsole, mintDjEnrollment, publicEvent } from '@/lib/events.server';
 import { guestQrFor, djEnrollQrFor } from '@/lib/event-links.server';
 import { canonicalGuestOrigin } from '@/domain/guest-origin';
 import { pairingSecondsRemaining } from '@/domain/pairing';
@@ -23,13 +23,22 @@ export async function GET(req: NextRequest) {
   if (!managerEnabled()) return unavailable();
   if (!(await managerAuthorized(req))) return unauthorized();
 
-  const summaries = await listEventSummaries();
-  const events = summaries.map((s) => ({
+  // BUILD R4E-R1 — classified, counted and ordered server-side. Still one read path, still no
+  // write: opening this page changes nothing.
+  const viewRaw = req.nextUrl.searchParams.get('view');
+  const view = (['active', 'needs-attention', 'recent', 'ended', 'test', 'deleted', 'all'] as const)
+    .find((v) => v === viewRaw);
+  const { events: rows, totals, window } = await listEventConsole({ view });
+  const events = rows.map((s) => ({
     event: publicEvent(s.event),
     stats: s.stats,
+    // `dj` keeps its shape for the detail sheet; `djLive` is the ONLY thing the list may badge.
     dj: s.dj,
+    djLive: s.djLive ?? false,
+    eventClass: s.eventClass,
+    lastActivityAt: s.lastActivityAt ?? null,
   }));
-  return NextResponse.json({ events });
+  return NextResponse.json({ events, totals, window });
 }
 
 export async function POST(req: NextRequest) {
