@@ -348,6 +348,13 @@ export default function ManagerConsole() {
             </a>
           </div>
 
+          {/* BUILD R3 — read-only YouTube Search quota console. Viewing it spends no quota. */}
+          <div className="row" style={{ justifyContent: 'center', marginTop: 10 }}>
+            <a className="linkish" href="/admin/youtube-usage">
+              YouTube API Usage →
+            </a>
+          </div>
+
           <div className="row" style={{ justifyContent: 'center', marginTop: 12 }}>
             <button className="linkish" onClick={signOut}>
               Sign out
