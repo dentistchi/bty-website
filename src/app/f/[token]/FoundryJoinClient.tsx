@@ -11,6 +11,32 @@ import type { JourneyElementKind } from "@/domain/foundry/module/journey";
 
 type Locale = "en" | "ko";
 
+/**
+ * HOW LONG A LEARNER WAITS BEFORE WE STOP WAITING AND GO AND ASK (Slice R4-R2I).
+ *
+ * The same bound R4-R2G measured and R4-R2H reused. Twenty seconds is far beyond the handful of
+ * sequential round-trips any of these calls performs, so a healthy request is never cut short.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
+ * `AbortController` + `setTimeout` rather than `AbortSignal.timeout`, because this room opens
+ * inside the native shell's WKWebView on whatever iOS the learner happens to carry.
+ */
+function timeoutSignal(): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), REQUEST_TIMEOUT_MS);
+  return c.signal;
+}
+
+/** `settled` = we heard back. `false` means we do NOT know what the server did. */
+type PostResult = { ok: boolean; status: number; data: unknown; settled: boolean };
+
+/** Has this learner's training actually finished, according to the server? */
+function isCompletedStage(s: { stage?: string } | null): boolean {
+  return s?.stage === "completed_awarded" || s?.stage === "completed_claimable";
+}
+
 type Stage =
   | "pre_join"
   | "watch"
@@ -109,6 +135,16 @@ type Copy = {
   inactive: string;
   nameError: string;
   responseError: string;
+  /*
+    R4-R2I — each shown ONLY after a reconcile failed to find the server in the state the
+    learner was trying to reach. None claims the server failed while we merely stopped listening.
+  */
+  joinDidNotGoThrough: string;
+  videoNotRecorded: string;
+  videoRetry: string;
+  completionDidNotGoThrough: string;
+  reflectionFailed: string;
+  reflectionRetry: string;
   checkpointEyebrow: string;
   checkpointContinue: string;
   reflectionEyebrow: string;
@@ -175,6 +211,12 @@ const COPY: Record<Locale, Copy> = {
     inactive: "This invitation is no longer active.",
     nameError: "Please enter your name.",
     responseError: "Please write one line to complete.",
+    joinDidNotGoThrough: "We couldn’t join the training. Tap again to try.",
+    videoNotRecorded: "We couldn’t record that the video finished.",
+    videoRetry: "Save again",
+    completionDidNotGoThrough: "That didn’t go through. Tap again to try.",
+    reflectionFailed: "We couldn’t prepare your reflection.",
+    reflectionRetry: "Show it again",
     checkpointEyebrow: "A MOMENT",
     checkpointContinue: "Continue",
     reflectionEyebrow: "A LIVING REFLECTION",
@@ -238,6 +280,12 @@ const COPY: Record<Locale, Copy> = {
     removed: "이 이벤트에 대한 접근이 종료되었습니다.",
     inactive: "이 초대는 더 이상 유효하지 않습니다.",
     nameError: "이름을 입력해 주세요.",
+    joinDidNotGoThrough: "훈련에 참여하지 못했습니다. 다시 눌러 주세요.",
+    videoNotRecorded: "영상을 끝까지 봤다는 기록을 저장하지 못했습니다.",
+    videoRetry: "다시 시도",
+    completionDidNotGoThrough: "전송되지 않았습니다. 다시 눌러 주세요.",
+    reflectionFailed: "성찰을 준비하지 못했습니다.",
+    reflectionRetry: "다시 보기",
     responseError: "완료하려면 한 줄을 적어주세요.",
     checkpointEyebrow: "잠깐",
     checkpointContinue: "계속하기",
@@ -344,6 +392,12 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [checkpoint, setCheckpoint] = useState<{ index: number; resume: () => void } | null>(null);
   const [reflection, setReflection] = useState<LivingReflection | null>(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
+  /** Shown only after a reconcile confirmed the state the learner wanted was NOT reached. */
+  const [joinError, setJoinError] = useState(false);
+  const [videoEvidenceError, setVideoEvidenceError] = useState(false);
+  const [videoRetrying, setVideoRetrying] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
+  const [reflectionError, setReflectionError] = useState(false);
   const busyRef = useRef(false);
   const autoClaimedRef = useRef(false);
   const completionStateRef = useRef<CompletionState | null>(null);
@@ -354,12 +408,17 @@ export default function FoundryJoinClient({ token }: { token: string }) {
 
   useEffect(() => setLocale(resolveLocale()), []);
 
-  const load = useCallback(async () => {
+  /** Refresh and RETURN what the server said, so a caller can reconcile against it. */
+  const load = useCallback(async (): Promise<Snapshot | null> => {
     try {
-      const res = await fetch(api(token), { credentials: "include", cache: "no-store" });
-      setSnapshot((await res.json()) as Snapshot);
+      const res = await fetch(api(token), { credentials: "include", cache: "no-store", signal: timeoutSignal() });
+      const next = (await res.json()) as Snapshot;
+      setSnapshot(next);
+      return next;
     } catch {
-      setSnapshot({ event: null, participant: null, training: null, stage: "inactive", xp_status: "none" });
+      /* PRESERVE the live room: one refresh that did not answer is not an inactive event. */
+      setSnapshot((prev) => prev ?? { event: null, participant: null, training: null, stage: "inactive", xp_status: "none" });
+      return null;
     } finally {
       setLoaded(true);
     }
@@ -370,16 +429,26 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   }, [load]);
 
   const post = useCallback(
-    async (path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown }> => {
-      const res = await fetch(api(token, path), {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const data = await res.json().catch(() => null);
-      return { ok: res.ok, status: res.status, data };
+    async (path: string, body?: unknown): Promise<PostResult> => {
+      try {
+        const res = await fetch(api(token, path), {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: timeoutSignal(),
+        });
+        const data = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, data, settled: true };
+      } catch {
+        /*
+          We stopped waiting, or the connection never came back. NOT a failure — the server may
+          well have acted. Every caller that cares must go and ask rather than guess. Catching
+          here also removes the unhandled rejection the fire-and-forget callers used to produce.
+        */
+        return { ok: false, status: 0, data: null, settled: false };
+      }
     },
     [token],
   );
@@ -429,12 +498,24 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     busyRef.current = true;
     setBusy(true);
     setNameError(false);
+    setJoinError(false);
     try {
-      const { ok, data } = await post("/join", { display_name: name.trim() });
+      const { ok, data, settled } = await post("/join", { display_name: name.trim() });
       const d = data as { error?: string } | null;
-      if (ok) await load();
-      else if (d?.error === "name_required" || d?.error === "name_too_long") setNameError(true);
-      else await load();
+      if (ok) {
+        await load();
+      } else if (settled && (d?.error === "name_required" || d?.error === "name_too_long")) {
+        setNameError(true);
+      } else {
+        /*
+          Either an unrecognised refusal or we stopped waiting. Joining is idempotent from the
+          learner's side — the participant session cookie identifies them — so ASK whether they
+          are in the room before accusing anything, and never create a second participant by
+          retrying blind.
+        */
+        const reconciled = await load();
+        if (!reconciled?.participant) setJoinError(true);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -442,13 +523,63 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   }, [name, post, load]);
 
   const onVideoStarted = useCallback(() => {
+    /*
+      DELIBERATELY SILENT, AND MEASURED BEFORE BEING LEFT THAT WAY (Slice R4-R2I).
+
+      `video_started_at` is written once (`.is("video_started_at", null)`) and is read by exactly
+      one thing: the HOST's roster label "watching". It gates NO learner transition — the public
+      stage projection reads `engagementCompleted`, which is `video_completed_at`. And
+      `videoComplete` writes `video_started_at: prog.video_started_at ?? now`, so a lost start is
+      BACKFILLED by the very next durable write.
+
+      So losing this can never block the learner, and telling them about it would be noise about
+      something that repairs itself. `post` now catches internally, which removes the unhandled
+      rejection this used to produce; that was the only real defect here.
+    */
     void post("/progress/start");
   }, [post]);
 
-  const onVideoEnded = useCallback(async () => {
-    const { data } = await post("/progress/video-complete");
-    if (!applyResult(data)) await load();
+  /**
+   * THE EXPOSURE GATE, AND IT ONLY FIRES ONCE (Slice R4-R2I).
+   *
+   * The player calls this when the video ends. Unlike the PDF room's heartbeats there is no
+   * second chance: if this write is lost, the learner has watched the whole video and the room
+   * simply never advances — no spinner, no message, nothing to press. That was the measured
+   * silent dead end.
+   *
+   * The server write is idempotent (`if (!prog.video_completed_at)` plus
+   * `.is("video_completed_at", null)`), so asking again is free. What we must NOT do is decide
+   * client-side that the video finished: the evidence stays the server's to record.
+   */
+  const submitVideoComplete = useCallback(async () => {
+    const { data, settled, ok } = await post("/progress/video-complete");
+    if (settled && ok && applyResult(data)) {
+      setVideoEvidenceError(false);
+      return;
+    }
+    // Uncertain or refused → ask the server what it actually holds.
+    const reconciled = await load();
+    if (reconciled && reconciled.stage !== "watch") {
+      setVideoEvidenceError(false);
+      return;
+    }
+    setVideoEvidenceError(true);
   }, [post, applyResult, load]);
+
+  const onVideoEnded = useCallback(async () => {
+    await submitVideoComplete();
+  }, [submitVideoComplete]);
+
+  /** The learner's own retry of the exposure write. Re-requests; never asserts. */
+  const onRetryVideoComplete = useCallback(async () => {
+    if (videoRetrying) return;
+    setVideoRetrying(true);
+    try {
+      await submitVideoComplete();
+    } finally {
+      setVideoRetrying(false);
+    }
+  }, [submitVideoComplete, videoRetrying]);
 
   const sharedQuestion = snapshot?.training?.shared_question ?? null;
   /*
@@ -480,21 +611,39 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     setResponseError(false);
     setSharedError(false);
     setDecisionError(false);
+    setSubmitError(false);
     try {
-      const { ok, data } = await post("/progress/complete", {
+      const { ok, data, settled } = await post("/progress/complete", {
         response_text: response.trim(),
         ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
         ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
         tz: deviceTz(),
       });
+      /*
+        THE RECONCILE (Slice R4-R2I, the rule R4-R2G measured and R4-R2H reused).
+
+        A completion that does not answer in time has NOT necessarily failed. Server completion
+        is idempotent — an early return once `completed_at` is set, plus `.is("completed_at",
+        null)` on the update and `.is("xp_awarded_at", null)` on the award — so asking again is
+        free and can neither double-complete nor double-award. We ask, and we believe the answer.
+      */
+      if (!settled) {
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+        return;
+      }
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long") setSharedError(true);
       else if (d?.error === "reflection_required") setReflectError(true);
       else if (d?.error === "decision_required" || d?.error === "response_too_long") setDecisionError(true);
-      else await load();
+      else {
+        // An unrecognised refusal: reconcile before saying anything, then say only what is true.
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -503,23 +652,42 @@ export default function FoundryJoinClient({ token }: { token: string }) {
 
   const onClaim = useCallback(
     async (silent: boolean) => {
+      /*
+        A SILENT CLAIM MUST NEVER TAKE THE INTERACTION LOCK (Slice R4-R2I, the R4-R2H rule).
+
+        `busyRef` was acquired regardless of `silent`, and every handler opens with
+        `if (busyRef.current) return`. The assignment-reconcile claim that fires on
+        `completed_awarded` is silent, so a stalled one disabled every control in the room while
+        `setBusy` was deliberately skipped — no spinner, nothing on screen to explain it.
+
+        The lock now belongs to the VISIBLE interaction only. `reconciledRef` still fires the
+        silent path once per mount and the server claim is idempotent, so nothing was traded away.
+      */
+      if (silent) {
+        const { ok, data } = await post("/progress/claim-xp", { tz: deviceTz() });
+        if (ok) applyResult(data);
+        return;
+      }
       if (busyRef.current) return;
       busyRef.current = true;
-      if (!silent) setBusy(true);
+      setBusy(true);
       try {
-        const { ok, status, data } = await post("/progress/claim-xp", { tz: deviceTz() });
+        const { ok, status, settled, data } = await post("/progress/claim-xp", { tz: deviceTz() });
         if (ok) applyResult(data);
-        else if (status === 401 && !silent) {
+        else if (status === 401) {
           // Need to sign in first — return here afterward.
           const next = encodeURIComponent(`/f/${token}`);
           window.location.href = `/${locale}/bty/login?next=${next}`;
+        } else if (!settled) {
+          // Never a false failure over a claim that may have landed — ask instead.
+          await load();
         }
       } finally {
         busyRef.current = false;
         setBusy(false);
       }
     },
-    [post, applyResult, token, locale],
+    [post, applyResult, load, token, locale],
   );
 
   // 3.1B-3D fix: do NOT auto-claim. When the learner reaches the claimable state, load the
@@ -587,6 +755,37 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   // Once the training is complete, ask for the Living Reflection (once). The
   // client-computed CompletionState (ephemeral) is sent as meaning; the server
   // grounds and persists. Idempotent — a returning visitor gets the stored one.
+  /**
+   * LIVING REFLECTION, BOUNDED AND RETRYABLE (Slice R4-R2I).
+   *
+   * MEASURED before touching it: `reflectionLoading` already cleared in its `finally`, so it
+   * could not hang — but the request was unbounded and `post` rethrew, so a rejected one became
+   * an UNHANDLED REJECTION, and `reflectionRequestedRef` was set BEFORE the call so it could
+   * never be retried. The learner's reflection simply never appeared, silently and permanently.
+   *
+   * Nothing about what a reflection IS changes here: same endpoint, same payload, same
+   * completion-state input, same gate (a journey-enabled Run still does not ask for one). Only
+   * the failure has a shape now.
+   */
+  const requestReflection = useCallback(async () => {
+    setReflectionLoading(true);
+    setReflectionError(false);
+    try {
+      const { data, settled, ok } = await post("/reflection", {
+        completion_state: completionStateRef.current,
+        locale,
+      });
+      const d = data as { ok?: boolean; reflection?: LivingReflection } | null;
+      if (settled && ok && d?.ok && d.reflection) {
+        setReflection(d.reflection);
+        return;
+      }
+      setReflectionError(true);
+    } finally {
+      setReflectionLoading(false);
+    }
+  }, [post, locale]);
+
   const completedStage = snapshot?.stage === "completed_awarded" || snapshot?.stage === "completed_claimable";
   useEffect(() => {
     // Living Reflection boundary (Slice 3.2C-B3A): a Journey-enabled Run must NOT
@@ -595,17 +794,8 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     // in the reading sequence. Legacy Runs keep the existing runtime reflection.
     if (!completedStage || reflectionRequestedRef.current || snapshot?.journey) return;
     reflectionRequestedRef.current = true;
-    setReflectionLoading(true);
-    void (async () => {
-      try {
-        const { data } = await post("/reflection", { completion_state: completionStateRef.current, locale });
-        const d = data as { ok?: boolean; reflection?: LivingReflection } | null;
-        if (d?.ok && d.reflection) setReflection(d.reflection);
-      } finally {
-        setReflectionLoading(false);
-      }
-    })();
-  }, [completedStage, post, locale]);
+    void requestReflection();
+  }, [completedStage, snapshot?.journey, requestReflection]);
 
   const onContinueCheckpoint = useCallback(() => {
     checkpoint?.resume();
@@ -663,6 +853,18 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             </section>
           ) : reflectionLoading ? (
             <p className="text-sm leading-6 text-white/45">{t.reflectionLoading}</p>
+          ) : reflectionError ? (
+            <div className="flex items-center justify-between gap-3" data-testid="reflection-error">
+              <span className="text-sm leading-6 text-white/45">{t.reflectionFailed}</span>
+              <button
+                type="button"
+                onClick={() => void requestReflection()}
+                data-testid="reflection-retry"
+                className="shrink-0 rounded-lg border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80"
+              >
+                {t.reflectionRetry}
+              </button>
+            </div>
           ) : null}
 
           <div className="flex flex-col gap-4">
@@ -841,6 +1043,27 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             onPlayingChange={setIsPlaying}
             onCheckpoint={(index, resume) => setCheckpoint({ index, resume })}
           />
+          {/*
+            THE ONE-SHOT GATE, MADE RECOVERABLE (Slice R4-R2I). Shown only after the write was
+            attempted AND a reconcile found the server still holding no exposure. A learner who
+            has watched the whole video is never left with nothing to press.
+          */}
+          {videoEvidenceError && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.06] px-3 py-2">
+              <span className="text-xs leading-5 text-amber-200/90" data-testid="video-not-recorded">
+                {t.videoNotRecorded}
+              </span>
+              <button
+                type="button"
+                onClick={() => void onRetryVideoComplete()}
+                disabled={videoRetrying}
+                data-testid="video-retry"
+                className="shrink-0 rounded-lg border border-amber-300/40 px-3 py-1.5 text-xs font-medium text-amber-100 disabled:opacity-60"
+              >
+                {t.videoRetry}
+              </button>
+            </div>
+          )}
           <p
             className="text-sm leading-6 text-white/55 transition-opacity duration-500"
             style={{ opacity: isPlaying ? 0 : 1 }}
@@ -900,6 +1123,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             className="w-full resize-none rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-base leading-6 text-white placeholder:text-white/30 outline-none focus:border-[#C9A66B]/60"
           />
           {responseError ? <p className="text-xs text-white/50">{t.responseError}</p> : null}
+          {submitError ? (
+            <p className="text-xs text-red-300" data-testid="submit-error">
+              {t.completionDidNotGoThrough}
+            </p>
+          ) : null}
 
           {actionDecisionContext ? (
             /* YOUR DECISION (Slice 3.2M-1). BTY's proposed decision is CONTEXT above the field;
@@ -997,6 +1225,11 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3.5 text-base text-white placeholder:text-white/35 outline-none focus:border-[#C9A66B]/60"
           />
           {nameError ? <p className="text-xs text-white/50">{t.nameError}</p> : null}
+          {joinError ? (
+            <p className="text-xs text-red-300" data-testid="join-error">
+              {t.joinDidNotGoThrough}
+            </p>
+          ) : null}
           <button
             type="submit"
             disabled={busy}
