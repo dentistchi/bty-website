@@ -114,9 +114,14 @@ describe('HostPlansConsole', () => {
   it('(28/29) renders summary counts and a FREE badge for the Host row', async () => {
     render(<HostPlansConsole />);
     expect(await screen.findByText('btyNorebang')).toBeTruthy();
-    // summary metric labels
-    expect(screen.getByText('accounts')).toBeTruthy();
-    expect(screen.getByText('anomalies')).toBeTruthy();
+    // BUILD R4-R1 — the summary now describes ACTIVE operational Hosts. "accounts" and
+    // "anomalies" were retired precisely because they counted deletion tombstones as Hosts and
+    // their correctly-ended assignments as faults.
+    expect(screen.getByText('Active Hosts')).toBeTruthy();
+    // Appears twice by design: the summary metric and the filter chip.
+    expect(screen.getAllByText('Needs Attention').length).toBeGreaterThan(0);
+    expect(screen.queryByText('accounts')).toBeNull();
+    expect(screen.queryByText('anomalies')).toBeNull();
     // FREE badge present (row + filter button both say "Free"; at least one)
     expect(screen.getAllByText('Free').length).toBeGreaterThan(0);
   });

@@ -17,12 +17,15 @@ import type { PlanCode, PlanSource, Capabilities } from '@/domain/host-plan';
 import {
   providerSummary,
   detectAnomalies,
+  actionableAnomalies,
+  normalizeAccountStatus,
   maskId,
   maskIdempotencyKey,
   changedByRef,
   isUnknownPlanCode,
   type ProviderSummary,
   type AnomalyFlag,
+  type AccountStatus,
 } from '@/domain/host-plan-console';
 
 const MAX_LIMIT = 100;
@@ -80,10 +83,30 @@ export interface HostPlanSummary {
   providers: ProviderSummary;
   historyCount: number;
   auditCount: number;
+  /** Every observed integrity flag — the raw observation, never narrowed. */
   anomalies: AnomalyFlag[];
+  /** BUILD R4-R1 — lifecycle state of the account row. Absent/unknown ⇒ 'active'. */
+  accountStatus: AccountStatus;
+  /** The subset of `anomalies` an operator can act on (see `actionableAnomalies`). */
+  actionable: AnomalyFlag[];
+  /** True iff this row genuinely wants operator attention. */
+  needsAttention: boolean;
 }
 export interface HostPlanListResult {
-  totals: { accounts: number; free: number; pro: number; anomalies: number };
+  totals: {
+    /** WHOLE-SET counts, unchanged since V1 so nothing that reads them shifts meaning. */
+    accounts: number;
+    free: number;
+    pro: number;
+    anomalies: number;
+    /** BUILD R4-R1 — the OPERATOR-facing counts: active accounts only. */
+    activeHosts: number;
+    activeFree: number;
+    activePro: number;
+    needsAttention: number;
+    noRoom: number;
+    deleted: number;
+  };
   page: { limit: number; offset: number; count: number; total: number };
   hosts: HostPlanSummary[];
 }
@@ -126,12 +149,21 @@ export interface HostPlanDetail {
   anomalies: AnomalyFlag[];
 }
 
+/**
+ * BUILD R4-R1 — which slice of the whole set to return. `active` is the DEFAULT because 12 of the
+ * 25 production rows are account-deletion tombstones, and an operator screen whose first job is to
+ * show live Hosts should not open on a list that is half gravestones. Nothing is removed from the
+ * data: every view is reachable, and `all` still returns every row.
+ */
+export type ConsoleView = 'active' | 'needs-attention' | 'no-room' | 'deleted' | 'all';
+
 export interface ListParams {
   limit?: number;
   offset?: number;
   plan?: 'ALL' | 'FREE' | 'PRO';
   anomalyOnly?: boolean;
   q?: string;
+  view?: ConsoleView;
 }
 
 // ---- shared bulk loaders ----------------------------------------------------
@@ -152,6 +184,7 @@ interface AccountBundle {
   auditsByAccount: Map<string, AuditRow[]>;
   roomsByAccount: Map<string, OwnedRoomView[]>;
   accountCreatedAt: Map<string, string>;
+  accountStatus: Map<string, AccountStatus>;
 }
 
 function groupBy<T>(rows: T[], key: (r: T) => string): Map<string, T[]> {
@@ -167,7 +200,7 @@ function groupBy<T>(rows: T[], key: (r: T) => string): Map<string, T[]> {
 
 async function loadBundle(): Promise<AccountBundle> {
   const [accounts, identities, assignments, audits, members, ownership, rooms, events] = await Promise.all([
-    sel<{ id: string; created_at: string }>('karaoke_accounts|id, created_at'),
+    sel<{ id: string; created_at: string; account_status?: string }>('karaoke_accounts|id, created_at, account_status'),
     sel<{ account_id: string; provider: string }>('karaoke_account_identities|account_id, provider'),
     sel<AssignmentRow>('karaoke_host_plan_assignments|id, account_id, plan_code, source, status, started_at, ended_at'),
     sel<AuditRow>(
@@ -181,6 +214,7 @@ async function loadBundle(): Promise<AccountBundle> {
 
   const accountIds = new Set(accounts.map((a) => a.id));
   const accountCreatedAt = new Map(accounts.map((a) => [a.id, a.created_at]));
+  const accountStatus = new Map(accounts.map((a) => [a.id, normalizeAccountStatus(a.account_status)]));
 
   const providersByAccount = new Map<string, string[]>();
   for (const [acct, rows] of groupBy(identities, (i) => i.account_id)) {
@@ -219,7 +253,7 @@ async function loadBundle(): Promise<AccountBundle> {
     roomsByAccount.set(acct, list);
   }
 
-  return { accountIds, providersByAccount, assignmentsByAccount, assignmentIds, auditsByAccount, roomsByAccount, accountCreatedAt };
+  return { accountIds, providersByAccount, assignmentsByAccount, assignmentIds, auditsByAccount, roomsByAccount, accountCreatedAt, accountStatus };
 }
 
 // ---- per-account assembly ---------------------------------------------------
@@ -255,6 +289,10 @@ function summarize(accountId: string, b: AccountBundle): HostPlanSummary {
     allPlanCodes: assignments.map((a) => a.plan_code),
     auditLinkIssues: auditLinkIssues(audits, b.assignmentIds),
   });
+  // An id seen only on an assignment/audit has no account row and therefore no status. It stays
+  // 'active' so its orphan anomaly remains visible rather than being filed away under Deleted.
+  const accountStatus = b.accountStatus.get(accountId) ?? 'active';
+  const actionable = actionableAnomalies(accountStatus, anomalies);
 
   return {
     accountId,
@@ -270,6 +308,9 @@ function summarize(accountId: string, b: AccountBundle): HostPlanSummary {
     historyCount: assignments.length,
     auditCount: audits.length,
     anomalies,
+    accountStatus,
+    actionable,
+    needsAttention: actionable.length > 0,
   };
 }
 
@@ -291,17 +332,33 @@ export async function listHostPlanConsole(params: ListParams = {}): Promise<Host
     return a.label.localeCompare(b2.label);
   });
 
+  // Totals are computed over the WHOLE set, before any view/plan/search filter, so the summary
+  // always describes production rather than the current filter.
+  const activeRows = all.filter((h) => h.accountStatus === 'active');
   const totals = {
     accounts: all.length,
     free: all.filter((h) => h.plan.code === 'FREE').length,
     pro: all.filter((h) => h.plan.code === 'PRO').length,
     anomalies: all.filter((h) => h.anomalies.length > 0).length,
+    activeHosts: activeRows.length,
+    activeFree: activeRows.filter((h) => h.plan.code === 'FREE').length,
+    activePro: activeRows.filter((h) => h.plan.code === 'PRO').length,
+    // Scoped to ACTIVE accounts: a tombstone with a residual integrity flag is history, not a task.
+    needsAttention: activeRows.filter((h) => h.needsAttention).length,
+    noRoom: activeRows.filter((h) => !h.hasOwnedRoom).length,
+    deleted: all.filter((h) => h.accountStatus === 'deleted').length,
   };
 
   // Filters (server-side).
+  const view: ConsoleView = params.view ?? (params.anomalyOnly ? 'needs-attention' : 'active');
+  if (view === 'active') all = all.filter((h) => h.accountStatus === 'active');
+  else if (view === 'deleted') all = all.filter((h) => h.accountStatus === 'deleted');
+  else if (view === 'needs-attention') all = all.filter((h) => h.accountStatus === 'active' && h.needsAttention);
+  else if (view === 'no-room') all = all.filter((h) => h.accountStatus === 'active' && !h.hasOwnedRoom);
+  // 'all' keeps every row, tombstones included — nothing is ever unreachable.
+
   const plan = params.plan ?? 'ALL';
   if (plan !== 'ALL') all = all.filter((h) => h.plan.code === plan);
-  if (params.anomalyOnly) all = all.filter((h) => h.anomalies.length > 0);
   const q = params.q?.trim().toLowerCase();
   if (q) {
     all = all.filter(

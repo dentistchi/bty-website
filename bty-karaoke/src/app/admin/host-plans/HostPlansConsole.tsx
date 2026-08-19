@@ -37,9 +37,33 @@ interface Summary {
   historyCount: number;
   auditCount: number;
   anomalies: AnomalyFlag[];
+  accountStatus?: 'active' | 'deleted';
+  actionable?: AnomalyFlag[];
+  needsAttention?: boolean;
 }
+type ViewFilter = 'active' | 'needs-attention' | 'no-room' | 'deleted' | 'all';
+
+const VIEW_LABEL: Record<ViewFilter, string> = {
+  active: 'Active',
+  'needs-attention': 'Needs Attention',
+  'no-room': 'No Room',
+  deleted: 'Deleted / Archived',
+  all: 'All',
+};
+
 interface ListResult {
-  totals: { accounts: number; free: number; pro: number; anomalies: number };
+  totals: {
+    accounts?: number;
+    free?: number;
+    pro?: number;
+    anomalies?: number;
+    activeHosts?: number;
+    activeFree?: number;
+    activePro?: number;
+    needsAttention?: number;
+    noRoom?: number;
+    deleted?: number;
+  };
   page: { limit: number; offset: number; count: number; total: number };
   hosts: Summary[];
 }
@@ -122,7 +146,10 @@ export default function HostPlansConsole() {
 
   const [data, setData] = useState<ListResult | null>(null);
   const [plan, setPlan] = useState<PlanFilter>('ALL');
-  const [anomalyOnly, setAnomalyOnly] = useState(false);
+  // BUILD R4-R1 — the DEFAULT is Active: 12 of the 25 production rows are deletion tombstones,
+  // and an operator screen should not open on a list that is half gravestones. Nothing is lost —
+  // every tombstone stays one click away under Deleted / Archived.
+  const [view, setView] = useState<ViewFilter>('active');
   const [q, setQ] = useState('');
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -144,11 +171,11 @@ export default function HostPlansConsole() {
   } | null>(null);
 
   const loadList = useCallback(
-    async (f: { plan: PlanFilter; anomalyOnly: boolean; q: string }): Promise<'ok' | 'unauth' | 'err'> => {
+    async (f: { plan: PlanFilter; view: ViewFilter; q: string }): Promise<'ok' | 'unauth' | 'err'> => {
       try {
         const sp = new URLSearchParams();
         if (f.plan !== 'ALL') sp.set('plan', f.plan);
-        if (f.anomalyOnly) sp.set('anomaly', '1');
+        sp.set('view', f.view);
         if (f.q.trim()) sp.set('q', f.q.trim());
         const res = await fetch(`/api/manager/host-plans?${sp.toString()}`, {
           cache: 'no-store',
@@ -168,7 +195,7 @@ export default function HostPlansConsole() {
   // Initial load.
   useEffect(() => {
     (async () => {
-      const r = await loadList({ plan: 'ALL', anomalyOnly: false, q: '' });
+      const r = await loadList({ plan: 'ALL', view: 'active', q: '' });
       setPhase(r === 'ok' ? 'ready' : r === 'unauth' ? 'need-login' : 'error');
     })();
   }, [loadList]);
@@ -177,10 +204,10 @@ export default function HostPlansConsole() {
   useEffect(() => {
     if (phase !== 'ready') return;
     const t = setTimeout(() => {
-      void loadList({ plan, anomalyOnly, q });
+      void loadList({ plan, view, q });
     }, 200);
     return () => clearTimeout(t);
-  }, [plan, anomalyOnly, q, phase, loadList]);
+  }, [plan, view, q, phase, loadList]);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -201,7 +228,7 @@ export default function HostPlansConsole() {
         return;
       }
       setPasscode('');
-      const r = await loadList({ plan, anomalyOnly, q });
+      const r = await loadList({ plan, view, q });
       setPhase(r === 'ok' ? 'ready' : 'error');
     } catch {
       setLoginError('Network error. Try again.');
@@ -298,7 +325,7 @@ export default function HostPlansConsole() {
         // Privacy-clean, cause-specific — never surface server/SQL/RPC detail.
         if (res.status === 404) {
           setChangeError('That account could not be found. Refreshing the list…');
-          void loadList({ plan, anomalyOnly, q });
+          void loadList({ plan, view, q });
         } else if (res.status === 400) {
           setChangeError('That change was rejected. Check the reason and try again.');
         } else if (res.status === 503) {
@@ -312,7 +339,7 @@ export default function HostPlansConsole() {
       // Success path — NEVER trust the local plan; refetch canonical list + detail so
       // the screen shows server truth (current plan + new history/audit rows).
       const changed = body.changed === true;
-      await Promise.all([loadList({ plan, anomalyOnly, q }), loadDetail(detail.accountId)]);
+      await Promise.all([loadList({ plan, view, q }), loadDetail(detail.accountId)]);
       setChangeOpen(false);
       setChangeResult({ changed, from, to, reason });
     } catch {
@@ -388,7 +415,17 @@ export default function HostPlansConsole() {
     );
   }
 
-  const totals = data?.totals ?? { accounts: 0, free: 0, pro: 0, anomalies: 0 };
+  const raw = data?.totals;
+  // Same cross-build tolerance as the rows: if the operator-facing totals are absent (a payload
+  // from before BUILD R4-R1), fall back to the whole-set counts rather than rendering blanks.
+  const totals = {
+    activeHosts: raw?.activeHosts ?? raw?.accounts ?? 0,
+    activeFree: raw?.activeFree ?? raw?.free ?? 0,
+    activePro: raw?.activePro ?? raw?.pro ?? 0,
+    needsAttention: raw?.needsAttention ?? raw?.anomalies ?? 0,
+    noRoom: raw?.noRoom ?? 0,
+    deleted: raw?.deleted ?? 0,
+  };
   const hosts = data?.hosts ?? [];
 
   return (
@@ -402,25 +439,30 @@ export default function HostPlansConsole() {
         </a>
       </div>
 
-      {/* Summary counts */}
-      <div className="metric-row" style={{ marginBottom: 12 }}>
+      {/* Summary — describes ACTIVE operational Hosts. The old "25 accounts / 13 anomalies"
+          pairing counted deletion tombstones as Hosts and their correctly-ended assignments as
+          anomalies, so it read as a broken system when nothing was wrong. */}
+      <div className="metric-row" style={{ marginBottom: 6 }}>
         <div className="metric">
-          <div className="n">{totals.accounts}</div>
-          <div className="k">accounts</div>
+          <div className="n">{totals.activeHosts}</div>
+          <div className="k">Active Hosts</div>
         </div>
         <div className="metric">
-          <div className="n">{totals.free}</div>
-          <div className="k">free</div>
+          <div className="n">{totals.activeFree}</div>
+          <div className="k">Free</div>
         </div>
         <div className="metric">
-          <div className="n">{totals.pro}</div>
-          <div className="k">pro</div>
+          <div className="n">{totals.activePro}</div>
+          <div className="k">Pro</div>
         </div>
         <div className="metric">
-          <div className="n">{totals.anomalies}</div>
-          <div className="k">anomalies</div>
+          <div className="n">{totals.needsAttention}</div>
+          <div className="k">Needs Attention</div>
         </div>
       </div>
+      <p className="muted" style={{ fontSize: '0.82rem', marginTop: 0, marginBottom: 12 }}>
+        No Room {totals.noRoom} · Deleted / Archived {totals.deleted}
+      </p>
 
       {/* Filters */}
       <div className="stack" style={{ marginBottom: 12 }}>
@@ -442,13 +484,18 @@ export default function HostPlansConsole() {
               {p === 'ALL' ? 'All' : p === 'FREE' ? 'Free' : 'Pro'}
             </button>
           ))}
-          <button
-            className={anomalyOnly ? 'primary' : 'ghost'}
-            onClick={() => setAnomalyOnly((v) => !v)}
-            aria-pressed={anomalyOnly}
-          >
-            Anomalies only
-          </button>
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }} role="group" aria-label="Host view filter">
+          {(['active', 'needs-attention', 'no-room', 'deleted', 'all'] as ViewFilter[]).map((v) => (
+            <button
+              key={v}
+              className={view === v ? 'primary' : 'ghost'}
+              onClick={() => setView(v)}
+              aria-pressed={view === v}
+            >
+              {VIEW_LABEL[v]}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -458,7 +505,14 @@ export default function HostPlansConsole() {
         </div>
       ) : (
         <div className="stack">
-          {hosts.map((h) => (
+          {hosts.map((h) => {
+            // Tolerate a payload from a DIFFERENT build than this bundle — a cached page meeting a
+            // newly deployed Worker, or the reverse. Missing fields fall back to the pre-R4-R1
+            // meaning (every anomaly actionable, account active) so the console degrades to the
+            // old behaviour instead of throwing and rendering nothing at all.
+            const actionable = h.actionable ?? h.anomalies ?? [];
+            const accountStatus = h.accountStatus ?? 'active';
+            return (
             <button key={h.accountId} className="event-row" onClick={() => openDetail(h.accountId)}>
               <div className="row between" style={{ gap: 8 }}>
                 <strong className="d-name">{h.label}</strong>
@@ -469,22 +523,29 @@ export default function HostPlansConsole() {
                 {h.ownedRoomCount} {h.ownedRoomCount === 1 ? 'room' : 'rooms'} · {PROVIDER_LABEL[h.providers]} ·{' '}
                 {SOURCE_LABEL[h.plan.source] ?? h.plan.source}
               </div>
-              <div className="d-meta">
-                {h.persistedActive.present ? planLabel(h.plan) : 'Free · Fallback — persisted assignment missing'} ·{' '}
-                {h.historyCount} history · {h.auditCount} audit
-              </div>
-              {(h.anomalies.length > 0 || !h.hasOwnedRoom) && (
+              {/* Persisted-assignment state, history and audit counts are implementation facts an
+                  operator cannot act on from a list. They live in the detail sheet, which shows
+                  them in full. Only an ACTIONABLE flag earns a badge here. */}
+              {accountStatus === 'deleted' && (
+                <div className="d-meta">Deleted account · retained for history</div>
+              )}
+              {actionable.length > 0 && (
                 <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                  {h.anomalies.map((a) => (
+                  {actionable.map((a) => (
                     <span key={a} className="pill" style={{ borderColor: 'rgba(255,92,124,0.5)', color: '#ff9db0' }}>
                       ⚠ {ANOMALY_LABEL[a]}
                     </span>
                   ))}
-                  {!h.hasOwnedRoom && <span className="pill">No Room yet</span>}
                 </div>
               )}
+              {accountStatus === 'active' && !h.hasOwnedRoom && (
+                /* Neutral copy, deliberately NOT a badge beside anomalies: a Host who has not made
+                   a Room yet is an ordinary state, not a problem to be fixed. */
+                <div className="d-meta">No Room yet</div>
+              )}
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 

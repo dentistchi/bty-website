@@ -33,8 +33,17 @@ export async function GET(req: NextRequest) {
   const planRaw = (sp.get('plan') ?? 'ALL').toUpperCase();
   const plan = planRaw === 'FREE' || planRaw === 'PRO' ? planRaw : 'ALL';
 
+  // BUILD R4-R1 — `view` selects the operator slice; an unrecognised value falls back to the
+  // service default rather than erroring, so a stale client can never be locked out of the page.
+  const viewRaw = sp.get('view');
+  const view = (['active', 'needs-attention', 'no-room', 'deleted', 'all'] as const).find(
+    (v) => v === viewRaw,
+  );
+
   const result = await listHostPlanConsole({
     plan,
+    view,
+    // Legacy param, still honoured: it maps onto the equivalent view.
     anomalyOnly: sp.get('anomaly') === '1' || sp.get('anomalyOnly') === 'true',
     q: sp.get('q') ?? undefined,
     limit: intParam(sp.get('limit'), 50),

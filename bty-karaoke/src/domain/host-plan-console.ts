@@ -91,6 +91,40 @@ export function detectAnomalies(input: AccountIntegrityInput): AnomalyFlag[] {
   return flags;
 }
 
+/**
+ * BUILD R4-R1 — the lifecycle state of the canonical account row.
+ *
+ * An UNKNOWN or ABSENT value normalizes to `active`, deliberately. The console's job is to show
+ * an operator every account that might need them; defaulting an unreadable status to `deleted`
+ * would HIDE a row, and a hidden row is the one failure mode this surface must not have.
+ */
+export type AccountStatus = 'active' | 'deleted';
+
+export function normalizeAccountStatus(raw: unknown): AccountStatus {
+  return raw === 'deleted' ? 'deleted' : 'active';
+}
+
+/**
+ * Narrow the observed anomalies to the ones an operator can actually ACT on.
+ *
+ * `no_active_assignment` on a DELETED account is not a defect — it is the deletion contract
+ * working: BUILD 26E ends the active assignment when it tombstones the account. Counting it as an
+ * anomaly is what made production report "13 anomalies" when 12 of them were correct behaviour,
+ * and a number that cries wolf twelve times out of thirteen trains an operator to ignore it.
+ *
+ * EVERY OTHER FLAG SURVIVES DELETION, because each is a genuine integrity fault that a tombstone
+ * does not explain: two active assignments, a plan code outside the allowlist, an assignment with
+ * no account row, an audit row pointing at an assignment that does not exist. Those stay visible
+ * on a deleted row too — this function removes an expected state, never an actionable one.
+ */
+export function actionableAnomalies(
+  status: AccountStatus,
+  anomalies: readonly AnomalyFlag[],
+): AnomalyFlag[] {
+  if (status !== 'deleted') return [...anomalies];
+  return anomalies.filter((a) => a !== 'no_active_assignment');
+}
+
 /** Human-facing anomaly labels (English admin surface). */
 export const ANOMALY_LABEL: Record<AnomalyFlag, string> = {
   no_active_assignment: 'No persisted active assignment',

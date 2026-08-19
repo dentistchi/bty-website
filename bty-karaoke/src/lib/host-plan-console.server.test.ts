@@ -109,7 +109,21 @@ describe('listHostPlanConsole', () => {
 
   it('(1/2) totals match the baseline: 3 accounts, 3 FREE, 0 PRO, 0 anomalies', async () => {
     const r = await listHostPlanConsole();
-    expect(r.totals).toEqual({ accounts: 3, free: 3, pro: 0, anomalies: 0 });
+    // The V1 whole-set counts are unchanged by BUILD R4-R1 — that is the point of keeping them.
+    expect(r.totals).toMatchObject({ accounts: 3, free: 3, pro: 0, anomalies: 0 });
+  });
+
+  it('R4-R1: adds operator-facing totals without disturbing the whole-set ones', async () => {
+    const r = await listHostPlanConsole();
+    // These fixture accounts carry no account_status, which normalizes to active.
+    expect(r.totals).toMatchObject({
+      activeHosts: 3,
+      activeFree: 3,
+      activePro: 0,
+      needsAttention: 0,
+      noRoom: 1, // account B owns no Room
+      deleted: 0,
+    });
   });
 
   it('(11/12) summaries carry no email / provider subject / credential', async () => {
