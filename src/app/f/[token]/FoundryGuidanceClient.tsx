@@ -85,6 +85,12 @@ type Copy = {
   beforeYouFinish: string;
   responsePlaceholder: string;
   responseError: string;
+  /**
+   * Shown ONLY after we stopped waiting AND asked the server whether it acted, and it had not.
+   * Never shown on a timeout alone — a learner whose training is finished must not be told it
+   * failed.
+   */
+  didNotGoThrough: string;
   reflectPlaceholder: string;
   reflectError: string;
   sharedHeading: string;
@@ -145,6 +151,7 @@ const COPY: Record<Locale, Copy> = {
     beforeYouFinish: "Before you finish",
     responsePlaceholder: "Write your answer.",
     responseError: "Write your answer to finish.",
+    didNotGoThrough: "That didn’t go through. Tap again to try.",
     reflectPlaceholder: "Write what already happens.",
     reflectError: "Answer this to finish.",
     sharedHeading: "Show what you understood",
@@ -193,6 +200,7 @@ const COPY: Record<Locale, Copy> = {
     beforeYouFinish: "마치기 전에",
     responsePlaceholder: "답을 작성하세요.",
     responseError: "마치려면 답을 작성하세요.",
+    didNotGoThrough: "전송되지 않았습니다. 다시 눌러 주세요.",
     reflectPlaceholder: "지금 실제로 어떤 일이 일어나는지 적어 주세요.",
     reflectError: "마치려면 답해 주세요.",
     sharedHeading: "이해한 내용을 보여 주세요",
@@ -270,6 +278,40 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-1 flex-col items-center justify-center text-center">{children}</div>;
 }
 
+/**
+ * HOW LONG A LEARNER WAITS BEFORE WE STOP WAITING AND GO AND ASK (Slice R4-R2G-R1).
+ *
+ * MEASURED, not guessed. On the first production written-guidance completion the durable write
+ * landed at 18:37:38.61 — seconds after the tap — and the learner sat on "Completing…" until
+ * ~18:49. The training was finished in the database for twelve minutes while the screen said it
+ * was still going, because the UI's only notion of "done" was the HTTP response arriving, and
+ * nothing bounded that wait. There is no retry or backoff anywhere in this client; it was one
+ * request with no ceiling.
+ *
+ * Twenty seconds is far beyond the handful of sequential round-trips a completion performs, so a
+ * healthy request is never cut short — and a stalled one stops being invisible.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
+ * `AbortController` + `setTimeout` rather than `AbortSignal.timeout`, because this room is opened
+ * inside the native shell's WKWebView on whatever iOS the learner happens to carry, and the older
+ * form is the one that is universally present.
+ */
+function timeoutSignal(): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), REQUEST_TIMEOUT_MS);
+  return c.signal;
+}
+
+/** `settled` = we heard back. `false` means we do NOT know what the server did. */
+type PostResult = { ok: boolean; status: number; data: unknown; settled: boolean };
+
+/** Has this learner's training actually finished, according to the server? */
+function isCompletedStage(s: Snapshot | null): boolean {
+  return s?.stage === "completed_awarded" || s?.stage === "completed_claimable";
+}
+
 const guidanceApi = (token: string, path = "") =>
   `/api/bty/foundry/public/${encodeURIComponent(token)}/guidance${path}`;
 
@@ -302,6 +344,7 @@ export default function FoundryGuidanceClient({
   const [decisionError, setDecisionError] = useState(false);
   const [reflectResponse, setReflectResponse] = useState("");
   const [reflectError, setReflectError] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [claimed, setClaimed] = useState(false);
@@ -310,20 +353,30 @@ export default function FoundryGuidanceClient({
 
   useEffect(() => setLocale(resolveLocale()), []);
 
-  const load = useCallback(async () => {
+  /** Refresh from the server and RETURN what it said, so a caller can reconcile against it. */
+  const load = useCallback(async (): Promise<Snapshot | null> => {
     try {
-      const res = await fetch(guidanceApi(token, "/snapshot"), { credentials: "include", cache: "no-store" });
-      setSnapshot((await res.json()) as Snapshot);
-    } catch {
-      setSnapshot({
-        content_type: contentType,
-        event: null,
-        participant: null,
-        guidance: null,
-        declared: false,
-        stage: "inactive",
-        xp_status: "none",
+      const res = await fetch(guidanceApi(token, "/snapshot"), {
+        credentials: "include",
+        cache: "no-store",
+        signal: timeoutSignal(),
       });
+      const next = (await res.json()) as Snapshot;
+      setSnapshot(next);
+      return next;
+    } catch {
+      setSnapshot((prev) =>
+        prev ?? {
+          content_type: contentType,
+          event: null,
+          participant: null,
+          guidance: null,
+          declared: false,
+          stage: "inactive",
+          xp_status: "none",
+        },
+      );
+      return null;
     } finally {
       setLoaded(true);
     }
@@ -334,16 +387,26 @@ export default function FoundryGuidanceClient({
   }, [load]);
 
   const post = useCallback(
-    async (path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown }> => {
-      const res = await fetch(guidanceApi(token, path), {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const data = await res.json().catch(() => null);
-      return { ok: res.ok, status: res.status, data };
+    async (path: string, body?: unknown): Promise<PostResult> => {
+      try {
+        const res = await fetch(guidanceApi(token, path), {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: timeoutSignal(),
+        });
+        const data = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, data, settled: true };
+      } catch {
+        /*
+          We stopped waiting, or the connection never came back. THIS IS NOT A FAILURE — the
+          server may well have acted, and on the completion path it demonstrably did. So this
+          reports only that we do not know, and the caller must go and ask.
+        */
+        return { ok: false, status: 0, data: null, settled: false };
+      }
     },
     [token],
   );
@@ -404,9 +467,16 @@ export default function FoundryGuidanceClient({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setSubmitError(false);
     try {
       const r = await post("/declare");
-      if (!applyResult(r.data)) await load();
+      if (r.settled) {
+        if (!applyResult(r.data)) await load();
+        return;
+      }
+      // Stopped waiting: the stamp is write-once, so ASK whether it landed.
+      const reconciled = await load();
+      if (!reconciled?.declared) setSubmitError(true);
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -418,6 +488,7 @@ export default function FoundryGuidanceClient({
     if (response.trim().length < 1) return setResponseError(true);
     busyRef.current = true;
     setBusy(true);
+    setSubmitError(false);
     try {
       const r = await post("/complete", {
         response_text: response.trim(),
@@ -426,12 +497,34 @@ export default function FoundryGuidanceClient({
         reflection_response: reflectResponse.trim() || undefined,
         tz: deviceTz(),
       });
+
+      /*
+        THE RECONCILE, and the reason this repair exists (Slice R4-R2G-R1).
+
+        A completion that does not answer in time has NOT necessarily failed. In production it had
+        already succeeded — the row was written seconds after the tap — and the only thing missing
+        was the response. Server-side completion is idempotent (`.is("completed_at", null)` plus an
+        early return once complete), so asking again is free and cannot double-award.
+
+        So we ask, and we believe the answer: finished ⇒ the learner sees their finished training;
+        not finished ⇒ one honest, retryable sentence. Never an indefinite "Completing…", and never
+        a failure message over a training that is done.
+      */
+      if (!r.settled) {
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+        return;
+      }
+
       const err = (r.data as { error?: string } | null)?.error;
       if (err === "shared_response_required") setSharedError(true);
       else if (err === "decision_required") setDecisionError(true);
       else if (err === "reflection_required") setReflectError(true);
       else if (err === "response_required" || err === "response_too_long") setResponseError(true);
-      else if (!applyResult(r.data)) await load();
+      else if (!applyResult(r.data)) {
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -444,6 +537,10 @@ export default function FoundryGuidanceClient({
     setBusy(true);
     try {
       const r = await post("/claim-xp", { tz: deviceTz() });
+      if (!r.settled) {
+        await load();
+        return;
+      }
       if (r.status === 401) {
         window.location.href = `/bty/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         return;
@@ -671,6 +768,11 @@ export default function FoundryGuidanceClient({
             {busy ? t.declaring : t.declare(contentType)}
           </button>
         )}
+        {submitError && !declared && (
+          <p className="mt-2 text-xs text-red-300" data-testid="guidance-declare-error">
+            {t.didNotGoThrough}
+          </p>
+        )}
         {contentType === "live_discussion" && (
           <p className="mt-2 text-xs leading-5 text-white/50" data-testid="guidance-discussion-honesty">
             {t.discussionHonesty}
@@ -762,6 +864,11 @@ export default function FoundryGuidanceClient({
             >
               {busy ? t.completing : t.complete}
             </button>
+            {submitError && (
+              <p className="mt-2 text-xs text-red-300" data-testid="guidance-submit-error">
+                {t.didNotGoThrough}
+              </p>
+            )}
           </form>
         </div>
       )}
