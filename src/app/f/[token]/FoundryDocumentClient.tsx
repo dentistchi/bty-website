@@ -118,6 +118,15 @@ type Copy = {
   inactive: string;
   nameError: string;
   responseError: string;
+  /*
+    R4-R2H — three sentences, each stating only what is known, and each shown ONLY after a
+    reconcile has failed to find the server in the state the learner was trying to reach. None
+    of them claims the server failed while we merely stopped listening.
+  */
+  completionDidNotGoThrough: string;
+  readingNotRecorded: string;
+  readingRetry: string;
+  joinDidNotGoThrough: string;
   pdfLoading: string;
   pdfUnavailable: string;
   pdfUnavailableHint: string;
@@ -173,6 +182,10 @@ const COPY: Record<Locale, Copy> = {
     inactive: "This invitation is no longer active.",
     nameError: "Please enter your name.",
     responseError: "Please answer this to complete.",
+    completionDidNotGoThrough: "That didn’t go through. Tap again to try.",
+    readingNotRecorded: "We couldn’t record that you finished reading.",
+    readingRetry: "Save again",
+    joinDidNotGoThrough: "We couldn’t join the training. Tap again to try.",
     pdfLoading: "Loading…",
     pdfUnavailable: "The document could not be loaded.",
     pdfUnavailableHint: "Reload the page, or ask the host to check the event.",
@@ -226,6 +239,10 @@ const COPY: Record<Locale, Copy> = {
     inactive: "더 이상 유효하지 않은 초대입니다.",
     nameError: "이름을 입력해 주세요.",
     responseError: "완료하려면 답변을 작성해 주세요.",
+    completionDidNotGoThrough: "전송되지 않았습니다. 다시 눌러 주세요.",
+    readingNotRecorded: "읽기를 마쳤다는 기록을 저장하지 못했습니다.",
+    readingRetry: "다시 시도",
+    joinDidNotGoThrough: "훈련에 참여하지 못했습니다. 다시 시도해 주세요.",
     pdfLoading: "불러오는 중…",
     pdfUnavailable: "문서를 불러오지 못했습니다.",
     pdfUnavailableHint: "다시 시도하거나 호스트에게 문의하세요.",
@@ -286,6 +303,34 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-1 flex-col items-center justify-center text-center">{children}</div>;
 }
 
+/**
+ * HOW LONG A LEARNER WAITS BEFORE WE STOP WAITING AND GO AND ASK (Slice R4-R2H).
+ *
+ * The same bound R4-R2G proved on the guidance room, for the same measured reason: a completion
+ * whose durable write had already landed left the screen saying "Completing…" because the UI's
+ * only notion of "done" was the response arriving. Twenty seconds is far beyond the handful of
+ * sequential round-trips any of these calls performs, so a healthy request is never cut short.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
+ * `AbortController` + `setTimeout` rather than `AbortSignal.timeout`, because this room opens
+ * inside the native shell's WKWebView on whatever iOS the learner happens to carry.
+ */
+function timeoutSignal(): AbortSignal {
+  const c = new AbortController();
+  setTimeout(() => c.abort(), REQUEST_TIMEOUT_MS);
+  return c.signal;
+}
+
+/** `settled` = we heard back. `false` means we do NOT know what the server did. */
+type PostResult = { ok: boolean; status: number; data: unknown; settled: boolean };
+
+/** Has this learner's training actually finished, according to the server? */
+function isCompletedStage(s: Snapshot | null): boolean {
+  return s?.stage === "completed_awarded" || s?.stage === "completed_claimable";
+}
+
 const docApi = (token: string, path = "") =>
   `/api/bty/foundry/public/${encodeURIComponent(token)}/doc${path}`;
 
@@ -309,6 +354,28 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const [busy, setBusy] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [responseError, setResponseError] = useState(false);
+  /** Shown only after a reconcile confirmed the server did NOT complete (Slice R4-R2H). */
+  const [submitError, setSubmitError] = useState(false);
+  /** Shown only after a join reconcile found no participant (Slice R4-R2H). */
+  const [joinError, setJoinError] = useState(false);
+  /*
+    READING EVIDENCE, AND WHEN TO SAY SO (Slice R4-R2H).
+
+    A heartbeat is a background write and a lost one is usually harmless: the next beat carries
+    the learner forward, and the server unions page coverage. So a failure is REMEMBERED, not
+    announced — `readingEvidenceLost` is cleared by the very next beat that lands, which is why
+    a transient blip never reaches the learner.
+
+    It only becomes the learner's problem at the transition: they have been through every page
+    of the document locally, the server still does not say reading is complete, and we know a
+    write was lost. Then, and only then, there is something honest and actionable to show.
+  */
+  const [readingEvidenceLost, setReadingEvidenceLost] = useState(false);
+  const [readingRetrying, setReadingRetrying] = useState(false);
+  /** Pages this client has actually displayed — client truth, independent of the server. */
+  const localViewedRef = useRef<number[]>([]);
+  const lastBeatRef = useRef<ReadingHeartbeat | null>(null);
+  const [localViewedCount, setLocalViewedCount] = useState(0);
   // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
   const [reflectResponse, setReflectResponse] = useState("");
   const [reflectError, setReflectError] = useState(false);
@@ -355,12 +422,30 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
 
   useEffect(() => setLocale(resolveLocale()), []);
 
-  const load = useCallback(async () => {
+  /**
+   * Refresh from the server and RETURN what it said, so a caller can reconcile against it.
+   * Bounded for the same reason the writes are: an unbounded reconcile would reintroduce
+   * exactly the hang it exists to end.
+   */
+  const load = useCallback(async (): Promise<Snapshot | null> => {
     try {
-      const res = await fetch(docApi(token, "/snapshot"), { credentials: "include", cache: "no-store" });
-      setSnapshot((await res.json()) as Snapshot);
+      const res = await fetch(docApi(token, "/snapshot"), {
+        credentials: "include",
+        cache: "no-store",
+        signal: timeoutSignal(),
+      });
+      const next = (await res.json()) as Snapshot;
+      setSnapshot(next);
+      return next;
     } catch {
-      setSnapshot({ content_type: "document", event: null, participant: null, document: null, stage: "inactive", xp_status: "none" });
+      /*
+        PRESERVE what the learner is already looking at. Replacing a live snapshot with
+        `inactive` because one refresh did not answer would erase a room that is fine.
+      */
+      setSnapshot((prev) =>
+        prev ?? { content_type: "document", event: null, participant: null, document: null, stage: "inactive", xp_status: "none" },
+      );
+      return null;
     } finally {
       setLoaded(true);
     }
@@ -371,16 +456,26 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   }, [load]);
 
   const post = useCallback(
-    async (path: string, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown }> => {
-      const res = await fetch(docApi(token, path), {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const data = await res.json().catch(() => null);
-      return { ok: res.ok, status: res.status, data };
+    async (path: string, body?: unknown): Promise<PostResult> => {
+      try {
+        const res = await fetch(docApi(token, path), {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: body ? { "Content-Type": "application/json" } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: timeoutSignal(),
+        });
+        const data = await res.json().catch(() => null);
+        return { ok: res.ok, status: res.status, data, settled: true };
+      } catch {
+        /*
+          We stopped waiting, or the connection never came back. THIS IS NOT A FAILURE — the
+          server may well have acted. It reports only that we do not know, and the caller must
+          go and ask rather than guess.
+        */
+        return { ok: false, status: 0, data: null, settled: false };
+      }
     },
     [token],
   );
@@ -425,7 +520,11 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     fileRequestedRef.current = true;
     (async () => {
       try {
-        const res = await fetch(docApi(token, "/file"), { credentials: "include", cache: "no-store" });
+        const res = await fetch(docApi(token, "/file"), {
+          credentials: "include",
+          cache: "no-store",
+          signal: timeoutSignal(),
+        });
         const d = (await res.json()) as { ok?: boolean; url?: string };
         if (d?.ok && d.url) setFileUrl(d.url);
         else setFileError(true);
@@ -442,19 +541,35 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     busyRef.current = true;
     setBusy(true);
     setNameError(false);
+    setJoinError(false);
     try {
-      // Join reuses the content-agnostic public join route.
-      const res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: name.trim() }),
-      });
+      // Join reuses the content-agnostic public join route. Bounded like every other write, and
+      // reconciled the same way: joining twice is harmless, so we ask before we accuse.
+      let res: Response | null = null;
+      try {
+        res = await fetch(`/api/bty/foundry/public/${encodeURIComponent(token)}/join`, {
+          method: "POST",
+          credentials: "include",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ display_name: name.trim() }),
+          signal: timeoutSignal(),
+        });
+      } catch {
+        res = null;
+      }
+      if (!res) {
+        const reconciled = await load();
+        if (!reconciled?.participant) setJoinError(true);
+        return;
+      }
       const d = (await res.json().catch(() => null)) as { error?: string } | null;
       if (res.ok) await load();
       else if (d?.error === "name_required" || d?.error === "name_too_long") setNameError(true);
-      else await load();
+      else {
+        const reconciled = await load();
+        if (!reconciled?.participant) setJoinError(true);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -463,18 +578,61 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
 
   const onHeartbeat = useCallback(
     (beat: ReadingHeartbeat) => {
-      // Fire-and-forget; apply the returned snapshot so reading_complete unlocks
-      // the reflection without a hard stage switch.
+      // Client-side page coverage, kept whether or not the write lands.
+      const merged = Array.from(new Set([...localViewedRef.current, ...(beat.viewedPages ?? [])]));
+      localViewedRef.current = merged;
+      setLocalViewedCount(merged.length);
+      lastBeatRef.current = beat;
+
+      // Background write: applied when it lands, remembered when it does not, never announced.
       void post("/reading", {
         last_page: beat.lastPage,
         viewed_pages: beat.viewedPages,
         active_ms_delta: beat.activeMsDelta,
-      }).then(({ data }) => {
-        applyResult(data);
+      }).then(({ settled, ok, data }) => {
+        if (settled && ok) {
+          applyResult(data);
+          setReadingEvidenceLost(false);
+          return;
+        }
+        setReadingEvidenceLost(true);
       });
     },
     [post, applyResult],
   );
+
+  /**
+   * Re-assert reading evidence after a lost heartbeat, WITHOUT inflating it.
+   *
+   * `active_ms_delta: 0` is deliberate and load-bearing. Re-sending a delta whose original may
+   * in fact have been applied would count the same reading time twice, and reading time is half
+   * of the server's gate — that would WEAKEN the evidence threshold, which this slice may not
+   * do. Page coverage is a set union and is therefore safe to re-send; the time the learner has
+   * genuinely spent keeps accumulating through ordinary beats.
+   *
+   * So this re-asserts what is idempotent, then asks the server to re-evaluate its own gate. If
+   * the gate is met, the learner advances. If it is not, the ordinary "keep reading" state is
+   * the truth and the error clears, because the write is no longer the thing standing in the way.
+   */
+  const onRetryReading = useCallback(async () => {
+    if (readingRetrying) return;
+    setReadingRetrying(true);
+    try {
+      const { settled, ok, data } = await post("/reading", {
+        last_page: lastBeatRef.current?.lastPage ?? 1,
+        viewed_pages: localViewedRef.current,
+        active_ms_delta: 0,
+      });
+      if (settled && ok) {
+        applyResult(data);
+        setReadingEvidenceLost(false);
+        return;
+      }
+      await load();
+    } finally {
+      setReadingRetrying(false);
+    }
+  }, [post, applyResult, load, readingRetrying]);
 
   const sharedQuestion = snapshot?.document?.shared_question ?? null;
   /*
@@ -506,14 +664,29 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     setSharedError(false);
     setReflectError(false);
     setDecisionError(false);
+    setSubmitError(false);
     try {
-      const { ok, data } = await post("/complete", {
+      const { ok, data, settled } = await post("/complete", {
         response_text: response.trim(),
         ...(sharedQuestion ? { shared_response: sharedResponse.trim() } : {}),
         ...(reflectRequired ? { reflection_response: reflectResponse.trim() } : {}),
         ...(actionDecisionContext ? { decision_response: decisionResponse.trim() } : {}),
         tz: deviceTz(),
       });
+      /*
+        THE RECONCILE (Slice R4-R2H, the rule R4-R2G proved).
+
+        A completion that does not answer in time has NOT necessarily failed — in the measured
+        production case the row was already written. Server completion is idempotent (an early
+        return once `completed_at` is set, plus `.is("completed_at", null)` on the update), so
+        asking again is free and cannot double-complete or double-award. We ask, and we believe
+        the answer.
+      */
+      if (!settled) {
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+        return;
+      }
       const d = data as { error?: string } | null;
       if (ok) applyResult(data);
       else if (d?.error === "reflection_required") setReflectError(true);
@@ -527,7 +700,11 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
       else if (d?.error === "response_required" || d?.error === "response_too_long") setResponseError(true);
       else if (d?.error === "shared_response_required" || d?.error === "shared_response_too_long" || d?.error === "response_too_long")
         setSharedError(true);
-      else await load();
+      else {
+        // An unrecognised refusal: reconcile before saying anything, then say only what is true.
+        const reconciled = await load();
+        if (!isCompletedStage(reconciled)) setSubmitError(true);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -536,22 +713,43 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
 
   const onClaim = useCallback(
     async (silent: boolean) => {
+      /*
+        A SILENT CLAIM MUST NEVER TAKE THE INTERACTION LOCK (Slice R4-R2H).
+
+        MEASURED: `busyRef` was acquired regardless of `silent`, and every handler opens with
+        `if (busyRef.current) return`. The auto-claim that fires on reaching either terminal
+        stage is silent, so a stalled one locked every control in the room while `setBusy` was
+        deliberately skipped — no spinner, no message, taps doing nothing at all. That is worse
+        than an honest spinner, because nothing on screen suggests waiting.
+
+        The lock now belongs to the VISIBLE interaction only. The silent path still cannot run
+        twice (`autoClaimedRef` fires once per mount) and the server claim is idempotent, so
+        dropping the lock here costs no safety.
+      */
+      if (silent) {
+        const { ok, data } = await post("/claim-xp", { tz: deviceTz() });
+        if (ok) applyResult(data);
+        return;
+      }
       if (busyRef.current) return;
       busyRef.current = true;
-      if (!silent) setBusy(true);
+      setBusy(true);
       try {
-        const { ok, status, data } = await post("/claim-xp", { tz: deviceTz() });
+        const { ok, status, settled, data } = await post("/claim-xp", { tz: deviceTz() });
         if (ok) applyResult(data);
-        else if (status === 401 && !silent) {
+        else if (status === 401) {
           const next = encodeURIComponent(`/f/${token}`);
           window.location.href = `/${locale}/bty/login?next=${next}`;
+        } else if (!settled) {
+          // Never a false failure over a claim that may have landed — ask instead.
+          await load();
         }
       } finally {
         busyRef.current = false;
         setBusy(false);
       }
     },
-    [post, applyResult, token, locale],
+    [post, applyResult, load, token, locale],
   );
 
   // One silent claim-xp on EITHER terminal completion stage so the assignment connects
@@ -644,6 +842,11 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
             className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
           />
           {nameError && <p className="mt-2 text-xs text-red-300">{t.nameError}</p>}
+          {joinError && (
+            <p className="mt-2 text-xs text-red-300" data-testid="doc-join-error">
+              {t.joinDidNotGoThrough}
+            </p>
+          )}
           <button
             type="submit"
             disabled={busy}
@@ -712,6 +915,9 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   // read / response — reader always visible; reflection unlocks when reading is done.
   const doc = snapshot.document;
   const readingComplete = Boolean(doc?.reading_complete);
+  /* All three conditions, or the learner is told nothing (Slice R4-R2H). */
+  const readingRetryNeeded =
+    readingEvidenceLost && !readingComplete && doc != null && localViewedCount >= doc.page_count;
   return (
     <Frame>
       <div className="pt-2">
@@ -791,6 +997,28 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
           <span>{doc ? t.pagesProgress(doc.distinct_pages_viewed, doc.page_count) : ""}</span>
           <span>{readingComplete ? t.readingDone : t.keepReading}</span>
         </div>
+        {/*
+          THE BLOCKED TRANSITION, and nothing before it (Slice R4-R2H). Shown only when all
+          three are true: a write was lost, the server still does not consider the reading done,
+          and this client has actually displayed every page. A learner who is simply still
+          reading never sees it.
+        */}
+        {readingRetryNeeded && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-300/30 bg-amber-300/[0.06] px-3 py-2">
+            <span className="text-xs leading-5 text-amber-200/90" data-testid="doc-reading-not-recorded">
+              {t.readingNotRecorded}
+            </span>
+            <button
+              type="button"
+              onClick={() => void onRetryReading()}
+              disabled={readingRetrying}
+              data-testid="doc-reading-retry"
+              className="shrink-0 rounded-lg border border-amber-300/40 px-3 py-1.5 text-xs font-medium text-amber-100 disabled:opacity-60"
+            >
+              {t.readingRetry}
+            </button>
+          </div>
+        )}
       </div>
 
       {readingComplete && (
@@ -820,6 +1048,11 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
               className="w-full resize-none rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:bg-white/15"
             />
             {responseError && <p className="mt-2 text-xs text-red-300">{t.responseError}</p>}
+            {submitError && (
+              <p className="mt-2 text-xs text-red-300" data-testid="doc-submit-error">
+                {t.completionDidNotGoThrough}
+              </p>
+            )}
 
             {actionDecisionContext && (
               /* YOUR DECISION (Slice 3.2R-R2.5, porting 3.2M-1 to the document room). BTY's
