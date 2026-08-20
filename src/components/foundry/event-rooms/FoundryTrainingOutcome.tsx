@@ -101,12 +101,27 @@ export function TrainingOutcomeBody({
   const { participation: p, followUp: f, observation: o } = outcome;
 
   /*
-    NO DOWNSTREAM — one honest sentence for all three measured states (no module row, no Journey,
-    no grounded decision). The Host is told the training was never set up to continue, and the
-    follow-up table is not rendered at all: an empty table here reads as learner failure, and
-    nobody failed.
+    WHY THE EVIDENCE STOPS — and it is now decided by the field that actually gates it (R4-R3A-R1).
+
+    R4-R3A asked the Journey and printed "no follow-up was set up for it". Measured against
+    production, that sentence was wrong on 17 of the 31 events that have completions: every one of
+    them HAD a 7- or 30-day checkpoint, and the real reason no obligation existed was that the
+    people who finished never signed in. The Host was being told they had forgotten to configure
+    something they had configured, and the identity gap was invisible.
+
+    Three distinct states now, and only the first one ends the training:
+
+      not configured        → "ends at completion" (the honest original sentence, correctly scoped)
+      configured, 0 rows    → the checkpoint exists; say why it produced nothing
+      configured, rows      → render the evidence, exactly as before
+
+    The tables stay hidden whenever there are no obligations to show, because a table of zeros
+    reads as learner failure and nobody failed. But they are NEVER hidden merely because some
+    completions were anonymous: real rows are rendered, and the unclaimed ones are explained
+    beside them.
   */
-  const noDownstream = outcome.downstream !== "configured";
+  const endsAtCompletion = !f.configured;
+  const hasFollowUpEvidence = f.total > 0;
 
   return (
     <section className="flex flex-col gap-3" data-testid="training-outcome">
@@ -121,16 +136,31 @@ export function TrainingOutcomeBody({
               {t.outcomeCompletedOf(p.completed, p.joined)}
             </span>
           </div>
-          {p.unclaimedCompletions > 0 && (
+          {/*
+            Said once, in the place that says it best. When the checkpoint produced nothing at all,
+            the sentence below names the configuration AND the count, so repeating the generic note
+            here would state the same fact twice in one panel.
+          */}
+          {p.unclaimedCompletions > 0 && outcome.reading !== "awaiting_identity" && (
             <p className="mt-1.5 text-xs leading-5 text-white/40" data-testid="outcome-unclaimed">
               {t.outcomeUnclaimedNote(p.unclaimedCompletions)}
             </p>
           )}
         </div>
 
-        {noDownstream ? (
-          <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-no-downstream">
-            {t.outcomeNoDownstream}
+        {endsAtCompletion ? (
+          <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-ends-at-completion">
+            {t.outcomeEndsAtCompletion}
+          </p>
+        ) : !hasFollowUpEvidence ? (
+          /*
+            The checkpoint IS set and produced no obligation. Either nobody who finished signed in
+            — which is the identity gap, named as such — or nobody has finished yet.
+          */
+          <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-reading">
+            {outcome.reading === "awaiting_identity" && f.days !== null
+              ? t.outcomeAwaitingIdentity(f.days, p.unclaimedCompletions)
+              : t.outcomeReadingNothingYet}
           </p>
         ) : (
           <>

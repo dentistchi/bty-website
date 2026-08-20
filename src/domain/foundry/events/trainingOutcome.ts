@@ -1,4 +1,4 @@
-import { classifyFollowUpDue, type FollowUpOutcome } from "../followup/followUpObligation";
+import { classifyFollowUpDue, type FollowUpDays, type FollowUpOutcome } from "../followup/followUpObligation";
 import { observationEstablished, type ObservationOutcome } from "../observation/behaviorObservation";
 
 /**
@@ -23,16 +23,29 @@ import { observationEstablished, type ObservationOutcome } from "../observation/
  * things, and a Host who is shown one "success rate" has been told something nobody measured.
  */
 
-/** Whether this training was ever set up to continue past completion — and if not, why not. */
-export type TrainingDownstreamState =
-  /** No module row at all: a legacy training created before the Builder. */
-  | "no_module"
-  /** A module, but no approved Journey — built before/without the Journey contract. */
-  | "no_journey"
-  /** A Journey, but no grounded action decision: it ends at completion by the Host's own design. */
-  | "no_decision"
-  /** It asks for a decision, so follow-up and observation are meaningful here. */
-  | "configured";
+/**
+ * TWO CONTRACTS, NEVER ONE (Slice R4-R3A-R1).
+ *
+ * R4-R3A carried a single `downstream` field and derived it from the Journey. That was measurably
+ * false: `materializeFollowupObligation` never reads the Journey. It asks `isFollowUpDays` about
+ * the frozen `module_snapshot.followUpDays`, and nothing else. Reading one thing and writing on
+ * another meant the Host was told "no follow-up was set up for it" on 17 of the 31 production
+ * events that have completions — every one of which HAD a 7- or 30-day checkpoint configured.
+ *
+ * The two capabilities are now carried separately and must stay that way. They gate different
+ * obligations and they fail for different reasons, so one word cannot name both without lying
+ * about one of them.
+ */
+
+/**
+ * Whether this training can produce an APPLY WINDOW — a separate obligation with a separate gate
+ * (`materializeApplyWindow`: grounded `action_decision` + a written decision + identity).
+ *
+ * `none` covers both "no module row" and "a module with no Journey": for the application journey
+ * those are the same fact — there is no journey — and R4-R3A's extra split existed only to explain
+ * a follow-up state this field no longer speaks for.
+ */
+export type ApplicationJourneyState = "none" | "journey_no_decision" | "action_decision";
 
 export type FollowUpFact = {
   readonly status: "PENDING" | "RESPONDED";
@@ -60,7 +73,13 @@ export type TrainingOutcomeFacts = {
   readonly decisionCount: number;
   readonly followUps: readonly FollowUpFact[];
   readonly observations: readonly ObservationFactLite[];
-  readonly downstream: TrainingDownstreamState;
+  /**
+   * The frozen `module_snapshot.followUpDays`, already validated by `isFollowUpDays` — the SAME
+   * predicate the write path asks. Null means the Host set no checkpoint (0, absent, or no module
+   * row at all), which is the only state in which this training truly ends at completion.
+   */
+  readonly followUpDays: FollowUpDays | null;
+  readonly applicationJourney: ApplicationJourneyState;
 };
 
 export type TrainingOutcome = {
@@ -75,6 +94,12 @@ export type TrainingOutcome = {
     unclaimedCompletions: number;
   };
   followUp: {
+    /**
+     * Did the Host ask for a checkpoint? This — and ONLY this — decides whether the training ends
+     * at completion. It is deliberately not inferable from anything about the Journey.
+     */
+    configured: boolean;
+    days: FollowUpDays | null;
     applied: number;
     partlyApplied: number;
     notYet: number;
@@ -101,14 +126,30 @@ export type TrainingOutcome = {
     /** Number of distinct targets anyone reported on. */
     total: number;
   };
-  downstream: TrainingDownstreamState;
+  /**
+   * Apply-window capability, carried for correctness of the payload rather than for display. This
+   * repair adds NO Journey UI — its whole purpose is to stop the Journey being used as the answer
+   * to a follow-up question.
+   */
+  applicationJourney: ApplicationJourneyState;
   /** How many learners recorded a decision. The texts themselves are fetched separately. */
   decisionCount: number;
   /**
    * The one-line reading of the above. `unknown_yet` is the honest default whenever answers are
    * still outstanding — it is a statement about our knowledge, never about the learners.
+   *
+   * `ends_at_completion` replaces R4-R3A's `no_downstream` and is now reachable ONLY when no
+   * checkpoint was configured. `awaiting_identity` is the state that sentence used to swallow:
+   * the checkpoint EXISTS, and the people who finished cannot be reached because they never
+   * signed in. Naming the wrong cause is not a smaller error than saying nothing.
    */
-  reading: "no_downstream" | "nothing_yet" | "unknown_yet" | "reported_only" | "confirmed";
+  reading:
+    | "ends_at_completion"
+    | "awaiting_identity"
+    | "nothing_yet"
+    | "unknown_yet"
+    | "reported_only"
+    | "confirmed";
 };
 
 export function summariseTrainingOutcome(
@@ -160,15 +201,25 @@ export function summariseTrainingOutcome(
     performance. `confirmed` is the only one that claims something happened, and it requires an
     independent OBSERVED — a learner's own report can never reach it.
   */
-  const reading: TrainingOutcome["reading"] =
-    facts.downstream !== "configured"
-      ? "no_downstream"
-      : o.confirmed > 0
-        ? "confirmed"
-        : outstanding > 0
-          ? "unknown_yet"
-          : answered > 0
-            ? "reported_only"
+  const configured = facts.followUpDays !== null;
+  const unclaimed = Math.max(0, facts.completed - facts.linkedCompletions);
+  const reading: TrainingOutcome["reading"] = !configured
+    ? "ends_at_completion"
+    : o.confirmed > 0
+      ? "confirmed"
+      : outstanding > 0
+        ? "unknown_yet"
+        : answered > 0
+          ? "reported_only"
+          : /*
+              A checkpoint EXISTS and produced not one obligation, while people did finish without
+              signing in. That is the identity gap, and it is the reason — not an absent
+              configuration and not anything the learners did. Ordered AFTER the evidence branches
+              on purpose: a training with real follow-up rows reports its evidence, and the
+              unclaimed completions are explained separately alongside it.
+            */
+            facts.followUps.length === 0 && unclaimed > 0
+            ? "awaiting_identity"
             : "nothing_yet";
 
   return {
@@ -178,9 +229,15 @@ export function summariseTrainingOutcome(
       linkedCompletions: facts.linkedCompletions,
       unclaimedCompletions: Math.max(0, facts.completed - facts.linkedCompletions),
     },
-    followUp: { ...f, total: facts.followUps.length, answered },
+    followUp: {
+      configured,
+      days: facts.followUpDays,
+      ...f,
+      total: facts.followUps.length,
+      answered,
+    },
     observation: { ...o, total: byTarget.size },
-    downstream: facts.downstream,
+    applicationJourney: facts.applicationJourney,
     decisionCount: facts.decisionCount,
     reading,
   };

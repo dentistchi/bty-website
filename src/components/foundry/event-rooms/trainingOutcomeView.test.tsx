@@ -23,12 +23,19 @@ function Body({ outcome, t: copy }: { outcome: ManagerOutcome; t: typeof t }) {
   return <TrainingOutcomeBody outcome={outcome} t={copy} openDecisions={open} setOpenDecisions={setOpen} />;
 }
 
+/** The configured-but-empty follow-up shape every fixture starts from. */
+const BASE_FOLLOWUP = {
+  configured: true as const,
+  days: 7 as const,
+  applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 0, overdue: 0, total: 0, answered: 0,
+};
+
 function outcome(over: Partial<ManagerOutcome> = {}): ManagerOutcome {
   return {
     participation: { joined: 18, completed: 12, linkedCompletions: 12, unclaimedCompletions: 0 },
-    followUp: { applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 0, overdue: 0, total: 0, answered: 0 },
+    followUp: { ...BASE_FOLLOWUP },
     observation: { confirmed: 0, notEstablished: 0, couldntTell: 0, total: 0 },
-    downstream: "configured",
+    applicationJourney: "action_decision",
     decisionCount: 0,
     reading: "nothing_yet",
     decisions: [],
@@ -49,7 +56,7 @@ describe("R4-R3A · A · the first viewport answers the question in ordinary lan
     render(
       <Body
         outcome={outcome({
-          followUp: { applied: 1, partlyApplied: 0, notYet: 1, blocked: 0, waiting: 5, overdue: 2, total: 9, answered: 2 },
+          followUp: { configured: true, days: 7, applied: 1, partlyApplied: 0, notYet: 1, blocked: 0, waiting: 5, overdue: 2, total: 9, answered: 2 },
           observation: { confirmed: 0, notEstablished: 0, couldntTell: 1, total: 1 },
           reading: "unknown_yet",
         })}
@@ -77,7 +84,7 @@ describe("R4-R3A · 4 · APPLIED is presented as the learner's report, not as ob
     render(
       <Body
         outcome={outcome({
-          followUp: { applied: 3, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 0, overdue: 0, total: 3, answered: 3 },
+          followUp: { configured: true, days: 7, applied: 3, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 0, overdue: 0, total: 3, answered: 3 },
           reading: "reported_only",
         })}
         t={t}
@@ -98,7 +105,7 @@ describe("R4-R3A · 5/8/9 · observation language never blames and never over-cl
       <Body
         outcome={outcome({
           observation: { confirmed: 0, notEstablished: 0, couldntTell: 1, total: 1 },
-          followUp: { applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 1, overdue: 0, total: 1, answered: 0 },
+          followUp: { configured: true, days: 7, applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 1, overdue: 0, total: 1, answered: 0 },
           reading: "unknown_yet",
         })}
         t={t}
@@ -112,7 +119,12 @@ describe("R4-R3A · 5/8/9 · observation language never blames and never over-cl
   it("NOT_OBSERVED is shown neutrally — no failure or contradiction wording", () => {
     render(
       <Body
-        outcome={outcome({ observation: { confirmed: 0, notEstablished: 2, couldntTell: 0, total: 2 }, reading: "nothing_yet" })}
+        outcome={outcome({
+          // An observation FKs to a follow-up, so two observed targets means two obligations.
+          followUp: { ...BASE_FOLLOWUP, waiting: 2, total: 2 },
+          observation: { confirmed: 0, notEstablished: 2, couldntTell: 0, total: 2 },
+          reading: "nothing_yet",
+        })}
         t={t}
       />,
     );
@@ -127,7 +139,11 @@ describe("R4-R3A · 5/8/9 · observation language never blames and never over-cl
   it("a confirmed observation is the only thing that says it happened at work", () => {
     render(
       <Body
-        outcome={outcome({ observation: { confirmed: 1, notEstablished: 0, couldntTell: 0, total: 1 }, reading: "confirmed" })}
+        outcome={outcome({
+          followUp: { ...BASE_FOLLOWUP, applied: 1, total: 1, answered: 1 },
+          observation: { confirmed: 1, notEstablished: 0, couldntTell: 0, total: 1 },
+          reading: "confirmed",
+        })}
         t={t}
       />,
     );
@@ -140,7 +156,7 @@ describe("R4-R3A · 6 · overdue is surfaced distinctly from waiting", () => {
     render(
       <Body
         outcome={outcome({
-          followUp: { applied: 1, partlyApplied: 0, notYet: 1, blocked: 0, waiting: 5, overdue: 2, total: 9, answered: 2 },
+          followUp: { configured: true, days: 7, applied: 1, partlyApplied: 0, notYet: 1, blocked: 0, waiting: 5, overdue: 2, total: 9, answered: 2 },
           reading: "unknown_yet",
         })}
         t={t}
@@ -174,11 +190,21 @@ describe("R4-R3A · 10 · anonymous completions are explained, not hidden", () =
   });
 });
 
-describe("R4-R3A · 11 · a training with no downstream explains itself", () => {
-  for (const downstream of ["no_module", "no_journey", "no_decision"] as const) {
-    it(`${downstream}: says the training ends at completion, and shows NO follow-up table`, () => {
-      render(<Body outcome={outcome({ downstream, reading: "no_downstream" })} t={t} />);
-      expect(screen.getByTestId("outcome-no-downstream").textContent).toBe(
+/* R4-R3A-R1 — the sentence is unchanged; what may TRIGGER it is now the checkpoint, not the Journey. */
+describe("R4-R3A-R1 · 11 · only an unconfigured training says it ends at completion", () => {
+  for (const applicationJourney of ["none", "journey_no_decision"] as const) {
+    it(`no checkpoint (applicationJourney=${applicationJourney}): ends at completion, NO follow-up table`, () => {
+      render(
+        <Body
+          outcome={outcome({
+            applicationJourney,
+            followUp: { ...BASE_FOLLOWUP, configured: false, days: null },
+            reading: "ends_at_completion",
+          })}
+          t={t}
+        />,
+      );
+      expect(screen.getByTestId("outcome-ends-at-completion").textContent).toBe(
         "This training ends at completion. No follow-up was set up for it.",
       );
       /*
@@ -278,9 +304,9 @@ describe("R4-R3A · 3 · singular and plural are grammatical", () => {
 describe("R4-R3A · the panel fetches its own data and never blocks the room", () => {
   const aggregate: ManagerOutcome = {
     participation: { joined: 2, completed: 1, linkedCompletions: 1, unclaimedCompletions: 0 },
-    followUp: { applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 1, overdue: 0, total: 1, answered: 0 },
+    followUp: { configured: true, days: 7, applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 1, overdue: 0, total: 1, answered: 0 },
     observation: { confirmed: 0, notEstablished: 0, couldntTell: 1, total: 1 },
-    downstream: "configured",
+    applicationJourney: "action_decision",
     decisionCount: 1,
     reading: "unknown_yet",
     decisions: ["At my next huddle I will name one owner and one deadline."],

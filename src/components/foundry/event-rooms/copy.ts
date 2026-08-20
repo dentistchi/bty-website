@@ -126,8 +126,17 @@ export type EventRoomsCopy = {
   outcomeReadingUnknown: (waiting: number, overdue: number) => string;
   outcomeReadingReportedOnly: string;
   outcomeReadingConfirmed: string;
-  /** All three no-downstream states share one honest sentence — none blames the learner. */
-  outcomeNoDownstream: string;
+  /**
+   * R4-R3A-R1 — reachable ONLY when no checkpoint was configured. It used to be printed whenever
+   * the Journey was missing, which told 17 production Hosts they had forgotten something they had
+   * in fact set.
+   */
+  outcomeEndsAtCompletion: string;
+  /**
+   * The checkpoint EXISTS and produced nothing, because nobody who finished signed in. Names the
+   * configuration first so the Host is not read as having forgotten it.
+   */
+  outcomeAwaitingIdentity: (days: number, unclaimed: number) => string;
   /** Why downstream evidence can be thin even when people finished. */
   outcomeUnclaimedNote: (n: number) => string;
   outcomeDecisionsToggle: (n: number) => string;
@@ -252,7 +261,11 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     },
     outcomeReadingReportedOnly: "People told us what happened. No one else has confirmed it yet.",
     outcomeReadingConfirmed: "Someone else confirmed this happened at work.",
-    outcomeNoDownstream: "This training ends at completion. No follow-up was set up for it.",
+    outcomeEndsAtCompletion: "This training ends at completion. No follow-up was set up for it.",
+    outcomeAwaitingIdentity: (days, unclaimed) =>
+      unclaimed === 1
+        ? `Follow-up was set for ${days} days, but 1 person finished without signing in, so we can’t follow up with them.`
+        : `Follow-up was set for ${days} days, but ${unclaimed} people finished without signing in, so we can’t follow up with them.`,
     outcomeUnclaimedNote: (n) =>
       n === 1
         ? "1 person finished without signing in, so we can’t follow up with them."
@@ -372,7 +385,10 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     },
     outcomeReadingReportedOnly: "본인이 무엇을 했는지 알려 주었습니다. 아직 다른 사람이 확인하지는 않았습니다.",
     outcomeReadingConfirmed: "다른 사람이 실제 업무에서 확인했습니다.",
-    outcomeNoDownstream: "이 훈련은 완료에서 끝납니다. 후속 확인이 설정되지 않았습니다.",
+    outcomeEndsAtCompletion: "이 훈련은 완료에서 끝납니다. 후속 확인이 설정되지 않았습니다.",
+    /* 한국어는 수 구분이 필요 없어 단수/복수 분기가 없습니다. 설정을 먼저 말해, 호스트가 빠뜨린 것으로 읽히지 않게 합니다. */
+    outcomeAwaitingIdentity: (days, unclaimed) =>
+      `후속 확인은 ${days}일로 설정되어 있지만, ${unclaimed}명이 로그인하지 않고 완료해서 후속 확인을 할 수 없습니다.`,
     outcomeUnclaimedNote: (n) => `${n}명이 로그인하지 않고 완료해서 후속 확인을 할 수 없습니다.`,
     outcomeDecisionsToggle: (n) => `사람들이 하기로 한 것 (${n})`,
     closedNotice: "종료된 이벤트입니다. 더 이상 새로 입장할 수 없습니다.",

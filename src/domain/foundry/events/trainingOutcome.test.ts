@@ -24,7 +24,8 @@ function facts(over: Partial<TrainingOutcomeFacts> = {}): TrainingOutcomeFacts {
     decisionCount: 0,
     followUps: [],
     observations: [],
-    downstream: "configured",
+    followUpDays: 7,
+    applicationJourney: "action_decision",
     ...over,
   };
 }
@@ -149,27 +150,59 @@ describe("R4-R3A · 10 · anonymous completions are counted honestly", () => {
   });
 });
 
-describe("R4-R3A · 11 · a training with no downstream never blames the learner", () => {
-  for (const downstream of ["no_module", "no_journey", "no_decision"] as const) {
-    it(`${downstream} reads as 'no_downstream', not as missing learner follow-up`, () => {
-      const s = summariseTrainingOutcome(facts({ joined: 9, completed: 7, downstream }), NOW, TZ);
-      expect(s.reading).toBe("no_downstream");
-      expect(s.downstream).toBe(downstream);
-      // The completion facts still stand — only the downstream reading changes.
-      expect(s.participation.completed).toBe(7);
+/*
+  R4-R3A-R1 CORRECTED THIS BLOCK.
+
+  It previously asserted that `no_module` / `no_journey` / `no_decision` each read as
+  `no_downstream` — i.e. that the Journey decided whether a follow-up existed. That was the
+  defect, pinned as if it were the contract, and the assertions are inverted here rather than
+  deleted so the record of what changed survives (the R4-R2E-R2 precedent).
+
+  The follow-up gate is `followUpDays`, because that is what `materializeFollowupObligation` asks.
+*/
+describe("R4-R3A-R1 · 11 · only an absent checkpoint ends a training at completion", () => {
+  it("no checkpoint → ends_at_completion, and the learner is never blamed", () => {
+    const s = summariseTrainingOutcome(
+      facts({ joined: 9, completed: 7, followUpDays: null, applicationJourney: "none" }),
+      NOW,
+      TZ,
+    );
+    expect(s.reading).toBe("ends_at_completion");
+    expect(s.followUp.configured).toBe(false);
+    expect(s.followUp.days).toBeNull();
+    // The completion facts still stand — only the reading changes.
+    expect(s.participation.completed).toBe(7);
+  });
+
+  for (const applicationJourney of ["none", "journey_no_decision", "action_decision"] as const) {
+    it(`applicationJourney=${applicationJourney} does NOT decide the follow-up reading`, () => {
+      const s = summariseTrainingOutcome(
+        facts({ joined: 9, completed: 7, linkedCompletions: 7, followUpDays: 7, applicationJourney }),
+        NOW,
+        TZ,
+      );
+      // Configured is configured, whatever the Journey does or does not carry.
+      expect(s.followUp.configured).toBe(true);
+      expect(s.reading).not.toBe("ends_at_completion");
+      expect(s.applicationJourney).toBe(applicationJourney);
     });
   }
 
-  it("no_downstream wins even if stray follow-up rows exist", () => {
+  it("a configured checkpoint reports its real follow-up rows even with no Journey at all", () => {
     const s = summariseTrainingOutcome(
       facts({
-        downstream: "no_journey",
+        followUpDays: 7,
+        applicationJourney: "none",
+        linkedCompletions: 1,
+        completed: 1,
         followUps: [{ status: "PENDING", outcome: null, dueAtIso: "2026-08-01T05:00:00Z" }],
       }),
       NOW,
       TZ,
     );
-    expect(s.reading).toBe("no_downstream");
+    // Previously these rows were suppressed by `no_downstream`. They are real, and they are shown.
+    expect(s.reading).toBe("unknown_yet");
+    expect(s.followUp.total).toBe(1);
   });
 });
 
@@ -219,7 +252,7 @@ describe("R4-R3A · the three levels are never merged", () => {
     expect(s.observation.confirmed).toBe(0);
     // No field anywhere combines them.
     expect(Object.keys(s)).toEqual(
-      expect.arrayContaining(["participation", "followUp", "observation", "downstream", "decisionCount", "reading"]),
+      expect.arrayContaining(["participation", "followUp", "observation", "applicationJourney", "decisionCount", "reading"]),
     );
     expect(JSON.stringify(s)).not.toMatch(/successRate|score|percent/i);
   });

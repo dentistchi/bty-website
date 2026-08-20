@@ -54,13 +54,23 @@ export type ManagerEvent = {
 export type ManagerOutcome = {
   participation: { joined: number; completed: number; linkedCompletions: number; unclaimedCompletions: number };
   followUp: {
+    /** R4-R3A-R1 — the ONLY thing that decides whether this training ends at completion. */
+    configured: boolean;
+    days: 7 | 30 | null;
     applied: number; partlyApplied: number; notYet: number; blocked: number;
     waiting: number; overdue: number; total: number; answered: number;
   };
   observation: { confirmed: number; notEstablished: number; couldntTell: number; total: number };
-  downstream: "no_module" | "no_journey" | "no_decision" | "configured";
+  /** Apply-window capability — carried, never rendered. It does not speak for the follow-up. */
+  applicationJourney: "none" | "journey_no_decision" | "action_decision";
   decisionCount: number;
-  reading: "no_downstream" | "nothing_yet" | "unknown_yet" | "reported_only" | "confirmed";
+  reading:
+    | "ends_at_completion"
+    | "awaiting_identity"
+    | "nothing_yet"
+    | "unknown_yet"
+    | "reported_only"
+    | "confirmed";
   decisions: string[];
 };
 

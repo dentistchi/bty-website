@@ -2,11 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   summariseTrainingOutcome,
   type TrainingOutcome,
-  type TrainingDownstreamState,
+  type ApplicationJourneyState,
   type FollowUpFact,
   type ObservationFactLite,
 } from "@/domain/foundry/events/trainingOutcome";
-import { isFollowUpOutcome } from "@/domain/foundry/followup/followUpObligation";
+import { isFollowUpDays, isFollowUpOutcome, type FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { isObservationOutcome } from "@/domain/foundry/observation/behaviorObservation";
 
 /**
@@ -43,28 +43,48 @@ export type TrainingOutcomeView = TrainingOutcome & {
 };
 
 /**
- * Which of the three measured "this training has no downstream" states applies — or `configured`.
+ * THE TWO CAPABILITIES, READ FROM THE FIELDS THAT ACTUALLY GATE THEM (Slice R4-R3A-R1).
  *
- * Measured in production before this was written: of 32 module snapshots only 5 are
- * journey-enabled and only 2 ask for a decision, and 16 of 48 events have no module row at all.
- * A Host looking at any of those must be told the training was never set up to continue, NOT
- * shown an empty follow-up table that reads as learner failure.
+ * R4-R3A read the Journey and reported the answer as though it decided whether a follow-up
+ * existed. It does not, and never did: `materializeFollowupObligation` asks `isFollowUpDays` about
+ * the frozen `followUpDays` and never opens the Journey at all. Measured consequence in production
+ * before this repair — of 31 events with completions, 17 were shown "no follow-up was set up for
+ * it" while their own frozen snapshot carried a 7- or 30-day checkpoint.
+ *
+ * So the read now asks the SAME PREDICATE THE WRITER ASKS. `isFollowUpDays` is imported from the
+ * domain rather than re-expressed here, because a second copy of "which values count" is exactly
+ * how a read drifts from a write again.
+ *
+ * One query still serves both, because both live in the same frozen snapshot.
  */
-async function resolveDownstream(admin: SupabaseClient, eventId: string): Promise<TrainingDownstreamState> {
+async function resolveCapabilities(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<{ followUpDays: FollowUpDays | null; applicationJourney: ApplicationJourneyState }> {
   const { data } = await admin
     .from("foundry_event_module")
     .select("module_snapshot")
     .eq("event_id", eventId)
     .maybeSingle<{ module_snapshot: Record<string, unknown> | null }>();
-  if (!data) return "no_module";
-  const journey = (data.module_snapshot ?? {})["realityGroundedJourneyV1"] as
+  // No module row: no checkpoint and no journey. Both absent, for the same reason, reported apart.
+  if (!data) return { followUpDays: null, applicationJourney: "none" };
+
+  const snapshot = data.module_snapshot ?? {};
+  const raw = snapshot["followUpDays"];
+  const followUpDays = isFollowUpDays(raw) ? raw : null;
+
+  const journey = snapshot["realityGroundedJourneyV1"] as
     | { elements?: { kind?: string; confirmationStatus?: string }[] }
     | undefined;
-  if (!journey) return "no_journey";
-  const hasDecision = (journey.elements ?? []).some(
-    (e) => e?.kind === "action_decision" && e?.confirmationStatus === "grounded",
-  );
-  return hasDecision ? "configured" : "no_decision";
+  const applicationJourney: ApplicationJourneyState = !journey
+    ? "none"
+    : (journey.elements ?? []).some(
+          (e) => e?.kind === "action_decision" && e?.confirmationStatus === "grounded",
+        )
+      ? "action_decision"
+      : "journey_no_decision";
+
+  return { followUpDays, applicationJourney };
 }
 
 /**
@@ -149,7 +169,7 @@ export async function getTrainingOutcome(
       decisionCount: decisions.length,
       followUps,
       observations,
-      downstream: await resolveDownstream(admin, eventId),
+      ...(await resolveCapabilities(admin, eventId)),
     },
     now,
     tz,
