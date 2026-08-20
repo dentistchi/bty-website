@@ -51,6 +51,7 @@ type Stage =
 type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "none";
 
 import { JourneyReading, type Journey } from "./JourneyReading";
+import { terminalIdentityCopy } from "./terminalIdentityCopy";
 
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
@@ -64,6 +65,11 @@ type Snapshot = {
   journey?: Journey;
   /** This event asks a distinct REFLECT question — server-derived (Slice 3.2R-R8B). */
   reflection_required?: boolean;
+  /**
+   * R4-R3B1 — the frozen follow-up checkpoint (7 / 30 / null). Carried so the terminal state can
+   * say what signing in is FOR. `terminalIdentityCopy` decides what it means; this is raw.
+   */
+  follow_up_days?: 7 | 30 | null;
 };
 
 
@@ -405,6 +411,12 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const reflectionRequestedRef = useRef(false);
 
   const t = COPY[locale];
+  /*
+    R4-R3B1 — decided by the domain authority from the frozen snapshot, never by this component.
+    Read here (not inside the branch) so the same value is available wherever the terminal state
+    is rendered, and so a missing field degrades to "no follow-up promised" rather than throwing.
+  */
+  const identity = terminalIdentityCopy(snapshot?.follow_up_days, locale);
 
   useEffect(() => setLocale(resolveLocale()), []);
 
@@ -899,7 +911,26 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             </>
           ) : xp === "claimable" ? (
             <>
-              <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
+              {/*
+                R4-R3B1 — the reason to sign in, before the reward for signing in. `identity` is
+                built from the FROZEN `follow_up_days`; when the Host set no checkpoint it carries
+                no follow-up sentence and this block degrades to exactly the previous screen plus
+                one true line about the completion already being safe.
+              */}
+              <p className="text-sm leading-6 text-white/70" data-testid="terminal-completion-saved">
+                {identity.completionSaved}
+              </p>
+              {identity.followUp ? (
+                <div className="flex flex-col gap-1" data-testid="terminal-followup">
+                  <p className="text-base leading-6 text-white/85">{identity.followUp.meaning}</p>
+                  <p className="text-base leading-6 text-white/85">{identity.followUp.signInReason}</p>
+                  <p className="text-sm leading-6 text-white/50" data-testid="terminal-xp-secondary">
+                    {identity.followUp.xpSecondary}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-base leading-6 text-white/80">{t.xpClaimable}</p>
+              )}
               {/* 3.1B-3D fix: account is OBSERVABLE + chosen before claiming. */}
               {account === "loading" ? (
                 <p className="text-sm text-white/45" data-testid="claim-account-loading">{t.accountLoading}</p>

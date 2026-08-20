@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
+import { terminalIdentityCopy } from "./terminalIdentityCopy";
 
 /**
  * Foundry GUIDANCE room — participant experience for written guidance and live discussion
@@ -62,6 +63,11 @@ type Snapshot = {
   reflection_required?: boolean;
   stage: Stage;
   xp_status: XpStatus;
+  /**
+   * R4-R3B1 — the frozen follow-up checkpoint (7 / 30 / null). Carried so the terminal state can
+   * say what signing in is FOR. `terminalIdentityCopy` decides what it means; this is raw.
+   */
+  follow_up_days?: 7 | 30 | null;
 };
 
 type Copy = {
@@ -359,6 +365,8 @@ export default function FoundryGuidanceClient({
   const [claimed, setClaimed] = useState(false);
 
   const t = COPY[locale];
+  /* R4-R3B1 — decided by the domain authority from the frozen snapshot, never by this component. */
+  const identity = terminalIdentityCopy(snapshot?.follow_up_days, locale);
 
   useEffect(() => setLocale(resolveLocale()), []);
 
@@ -704,7 +712,25 @@ export default function FoundryGuidanceClient({
               <p className="mt-2 text-sm text-white/70">{t.xpOwner}</p>
             ) : (
               <>
-                <p className="mt-2 text-sm text-white/70">{t.xpClaimable}</p>
+                {/*
+                  R4-R3B1 — the reason to sign in, before the reward. Built from the FROZEN
+                  `follow_up_days`; a training with no checkpoint promises nothing and this
+                  degrades to the previous screen plus one true line about the completion.
+                */}
+                <p className="text-sm leading-6 text-white/70" data-testid="terminal-completion-saved">
+                  {identity.completionSaved}
+                </p>
+                {identity.followUp ? (
+                  <div className="mt-2 flex flex-col gap-1" data-testid="terminal-followup">
+                    <p className="text-sm leading-6 text-white/85">{identity.followUp.meaning}</p>
+                    <p className="text-sm leading-6 text-white/85">{identity.followUp.signInReason}</p>
+                    <p className="text-xs leading-5 text-white/50" data-testid="terminal-xp-secondary">
+                      {identity.followUp.xpSecondary}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-white/80">{t.xpClaimable}</p>
+                )}
                 <button
                   type="button"
                   onClick={() => void onClaim()}

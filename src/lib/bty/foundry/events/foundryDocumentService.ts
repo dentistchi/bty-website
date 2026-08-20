@@ -47,7 +47,8 @@ import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow } from "./foundryApplyWindowService";
-import { linkLearnerIdentity, readEventJourney } from "./foundryTrainingService";
+import { linkLearnerIdentity, readEventJourney, readEventFollowUpDays } from "./foundryTrainingService";
+import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
 /**
@@ -476,6 +477,8 @@ export type PublicDocumentSnapshot = {
    * control from this flag and never decides for itself which questions an event asks.
    */
   reflection_required?: boolean;
+  /** R4-R3B1 — the frozen follow-up checkpoint. Same field, same meaning, as the video room. */
+  follow_up_days?: FollowUpDays | null;
   stage: PublicTrainingStage;
   xp_status: PublicXpStatus;
 };
@@ -488,6 +491,7 @@ function buildDocumentSnapshot(
   tokenVersionCurrent: boolean,
   xpOverride?: PublicXpStatus,
   journey?: PublicJourney | null,
+  followUpDays?: FollowUpDays | null,
 ): PublicDocumentSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -560,6 +564,8 @@ function buildDocumentSnapshot(
         content?.shared_question,
       ),
     ),
+    /* R4-R3B1 — what signing in is FOR. Null when the Host asked for no checkpoint. */
+    follow_up_days: followUpDays ?? null,
     stage,
     xp_status,
   };
@@ -574,7 +580,8 @@ async function docSnapshotFor(
   const progress = await getDocProgress(admin, event.id, participant.id);
   const content = await getDocContent(admin, event.id);
   const journey = toPublicJourney(await readEventJourney(admin, event.id));
-  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride, journey);
+  const followUpDays = await readEventFollowUpDays(admin, event.id);
+  return buildDocumentSnapshot(event, participant, progress, content, true, xpOverride, journey, followUpDays);
 }
 
 /** The unified public snapshot for a DOCUMENT room (pre-join and every stage). */
@@ -605,7 +612,8 @@ export async function getPublicDocumentSnapshot(
     has not joined sees the door, not the program.
   */
   const journey = participant ? toPublicJourney(await readEventJourney(admin, event.id)) : null;
-  return buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey);
+  const followUpDays = participant ? await readEventFollowUpDays(admin, event.id) : null;
+  return buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, followUpDays);
 }
 
 /** Resolve + verify the caller is a joined participant, then mint a signed read url. */

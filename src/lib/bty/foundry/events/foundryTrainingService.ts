@@ -29,6 +29,7 @@ import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow } from "./foundryApplyWindowService";
 import { publishedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaPracticeRunService";
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
+import { isFollowUpDays, type FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
 import {
   getOwnerEventSnapshot,
@@ -299,6 +300,15 @@ export type PublicTrainingSnapshot = {
    * completion screen stays exactly as it was rather than offering a dead end.
    */
   practice?: { id: string; title: string } | null;
+  /**
+   * The frozen follow-up checkpoint (Slice R4-R3B1) — 7, 30, or null when the Host asked for none.
+   *
+   * Present so the terminal screen can tell an anonymous learner what signing in actually does.
+   * NOT private, NOT Host-only, and NOT an identity field: it is the Host's published intent about
+   * this training, which the Journey's own "WHAT HAPPENS NEXT" section already states in prose on
+   * the trainings that carry one. Read only once a participant is resolved, exactly like `journey`.
+   */
+  follow_up_days?: FollowUpDays | null;
 };
 
 async function getProgress(
@@ -358,6 +368,30 @@ export async function readEventJourney(
   return data?.module_snapshot?.realityGroundedJourneyV1;
 }
 
+/**
+ * The frozen follow-up checkpoint, as the LEARNER's terminal screen needs it (Slice R4-R3B1).
+ *
+ * Asks `isFollowUpDays` — the SAME predicate `materializeFollowupObligation` asks before creating
+ * an obligation — so the screen can never promise a check-in the writer would not create. R4-R3A-R1
+ * is the reason this is stated once and imported: the follow-up question is answered by
+ * `followUpDays` and by nothing else, and a second copy of that rule is how a read drifts from a
+ * write. Never inferred from the Journey.
+ *
+ * Returns null for 0, absent, out-of-domain, or no module row at all.
+ */
+export async function readEventFollowUpDays(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<FollowUpDays | null> {
+  const { data } = await admin
+    .from("foundry_event_module")
+    .select("module_snapshot")
+    .eq("event_id", eventId)
+    .maybeSingle<{ module_snapshot: { followUpDays?: unknown } | null }>();
+  const raw = data?.module_snapshot?.followUpDays;
+  return isFollowUpDays(raw) ? raw : null;
+}
+
 async function getEventJourney(admin: SupabaseClient, eventId: string): Promise<PublicJourney | null> {
   const { data } = await admin
     .from("foundry_event_module")
@@ -377,6 +411,7 @@ function buildPublicSnapshot(
   xpOverride?: PublicXpStatus,
   journey?: PublicJourney | null,
   practice?: { id: string; title: string } | null,
+  followUpDays?: FollowUpDays | null,
 ): PublicTrainingSnapshot {
   const hasParticipant = Boolean(participant);
   const stage = projectPublicTrainingStage({
@@ -444,6 +479,12 @@ function buildPublicSnapshot(
       finished. Before that it would be an invitation to skip the thing they came for.
     */
     practice: progress?.completed_at ? (practice ?? null) : null,
+    /*
+      R4-R3B1 — what signing in is FOR. Same visibility gate as the journey: a pre-join viewer
+      with a stale QR never reaches this line at all, and a resolved participant is the only
+      reader. `null` means the Host asked for no checkpoint, and the screen must promise nothing.
+    */
+    follow_up_days: followUpDays ?? null,
   };
 }
 
@@ -493,8 +534,9 @@ export async function getPublicTrainingSnapshot(
   }
 
   const journey = participant ? await getEventJourney(admin, event.id) : null;
+  const followUpDays = participant ? await readEventFollowUpDays(admin, event.id) : null;
   const practice = await publishedPracticeForEvent(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, practice);
+  return buildPublicSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, practice, followUpDays);
 }
 
 async function snapshotFor(
@@ -506,8 +548,9 @@ async function snapshotFor(
   const progress = await getProgress(admin, event.id, participant.id);
   const content = await getContent(admin, event.id);
   const journey = await getEventJourney(admin, event.id);
+  const followUpDays = await readEventFollowUpDays(admin, event.id);
   const practice = await publishedPracticeForEvent(admin, event.id);
-  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey, practice);
+  return buildPublicSnapshot(event, participant, progress, content, true, xpOverride, journey, practice, followUpDays);
 }
 
 /** Compute the caller's canonical BTY-day window [start, end) (05:00 user-local). */

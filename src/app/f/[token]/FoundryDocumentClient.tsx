@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
+import { terminalIdentityCopy } from "./terminalIdentityCopy";
 
 /**
  * Foundry PDF Study Room — participant experience.
@@ -53,6 +54,11 @@ type Snapshot = {
   reflection_required?: boolean;
   stage: Stage;
   xp_status: XpStatus;
+  /**
+   * R4-R3B1 — the frozen follow-up checkpoint (7 / 30 / null). Carried so the terminal state can
+   * say what signing in is FOR. `terminalIdentityCopy` decides what it means; this is raw.
+   */
+  follow_up_days?: 7 | 30 | null;
 };
 
 type Copy = {
@@ -398,6 +404,8 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const reflectionRef = useRef<HTMLDivElement | null>(null);
 
   const t = COPY[locale];
+  /* R4-R3B1 — decided by the domain authority from the frozen snapshot, never by this component. */
+  const identity = terminalIdentityCopy(snapshot?.follow_up_days, locale);
 
   /*
     The post-reading continue action (final page, reading requirement met) scrolls to the
@@ -874,7 +882,25 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
             )}
             {xp === "claimable" && (
               <>
-                <p className="text-sm text-white/80">{t.xpClaimable}</p>
+                {/*
+                  R4-R3B1 — the reason to sign in, before the reward. Built from the FROZEN
+                  `follow_up_days`; a training with no checkpoint promises nothing and this
+                  degrades to the previous screen plus one true line about the completion.
+                */}
+                <p className="text-sm leading-6 text-white/70" data-testid="terminal-completion-saved">
+                  {identity.completionSaved}
+                </p>
+                {identity.followUp ? (
+                  <div className="mt-2 flex flex-col gap-1" data-testid="terminal-followup">
+                    <p className="text-sm leading-6 text-white/85">{identity.followUp.meaning}</p>
+                    <p className="text-sm leading-6 text-white/85">{identity.followUp.signInReason}</p>
+                    <p className="text-xs leading-5 text-white/50" data-testid="terminal-xp-secondary">
+                      {identity.followUp.xpSecondary}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-white/80">{t.xpClaimable}</p>
+                )}
                 <button
                   type="button"
                   onClick={() => onClaim(false)}

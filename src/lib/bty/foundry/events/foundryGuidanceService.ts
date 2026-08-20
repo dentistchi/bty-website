@@ -27,11 +27,13 @@ import {
   outcomeToXpStatus,
   linkLearnerIdentity,
   readEventJourney,
+  readEventFollowUpDays,
   type PublicXpStatus,
 } from "./foundryTrainingService";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow } from "./foundryApplyWindowService";
+import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
 /**
@@ -297,6 +299,8 @@ export type PublicGuidanceSnapshot = {
   xp_status: PublicXpStatus;
   journey?: PublicJourney | null;
   reflection_required?: boolean;
+  /** R4-R3B1 — the frozen follow-up checkpoint. Same field, same meaning, as the video room. */
+  follow_up_days?: FollowUpDays | null;
 };
 
 const UNAVAILABLE = (contentType: GuidanceContentType): PublicGuidanceSnapshot => ({
@@ -318,6 +322,7 @@ function buildGuidanceSnapshot(
   tokenVersionCurrent: boolean,
   xpOverride?: PublicXpStatus,
   journey?: PublicJourney | null,
+  followUpDays?: FollowUpDays | null,
 ): PublicGuidanceSnapshot {
   const hasParticipant = Boolean(participant);
   const markers = guidanceMarkers(progress);
@@ -375,6 +380,8 @@ function buildGuidanceSnapshot(
           content?.sharedQuestion,
         ),
     ),
+    /* R4-R3B1 — what signing in is FOR. Null when the Host asked for no checkpoint. */
+    follow_up_days: followUpDays ?? null,
   };
 }
 
@@ -388,7 +395,8 @@ async function guidanceSnapshotFor(
   const progress = await getGuidanceProgress(admin, event.id, participant.id);
   const content = await readGuidanceContent(admin, event.id);
   const journey = toPublicJourney(await readEventJourney(admin, event.id));
-  return buildGuidanceSnapshot(event, contentType, participant, progress, content, true, xpOverride, journey);
+  const followUpDays = await readEventFollowUpDays(admin, event.id);
+  return buildGuidanceSnapshot(event, contentType, participant, progress, content, true, xpOverride, journey, followUpDays);
 }
 
 export async function getPublicGuidanceSnapshot(
@@ -414,6 +422,7 @@ export async function getPublicGuidanceSnapshot(
     tokenVersion === event.join_version,
     undefined,
     journey,
+    participant ? await readEventFollowUpDays(admin, event.id) : null,
   );
 }
 

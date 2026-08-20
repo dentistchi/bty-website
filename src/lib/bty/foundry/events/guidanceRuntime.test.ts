@@ -27,6 +27,13 @@ vi.mock("./foundryTrainingService", () => ({
   outcomeToXpStatus: (o: string) => (o === "awarded" ? "awarded" : "none"),
   linkLearnerIdentity: (...a: unknown[]) => linkLearnerIdentity(...a),
   readEventJourney: (...a: unknown[]) => readEventJourney(...a),
+  /*
+    R4-R3B1 — the guidance snapshot now also carries the frozen follow-up checkpoint, so this
+    partial module mock has to name it. Stubbed to null: these tests are about the exposure
+    declaration and completion gating, and a room with no checkpoint is the state they already
+    describe. The checkpoint's own behaviour is covered in `terminalFollowUpExposure.test.ts`.
+  */
+  readEventFollowUpDays: async () => null,
   createTrainingEvent: (...a: unknown[]) => createTrainingEvent(...a),
   getOwnerTrainingSnapshot: vi.fn(),
 }));
