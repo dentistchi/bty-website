@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { saveLocalePreference } from "@/lib/localePreference";
 
 /**
  * EN/KO 토글: pathname prefix만 /en <-> /ko 로 바꾸고 query 유지
@@ -17,6 +18,15 @@ import { usePathname, useSearchParams } from "next/navigation";
  * and this component is still the only thing that changes it. The caller is only saying where it
  * is, which the URL no longer says on its behalf. Default is empty, so every existing call site
  * behaves exactly as before.
+ *
+ * R4-R4B-R1N-R1 — IT NOW ALSO REMEMBERS. The path prefix held the choice perfectly while a tab was
+ * alive, and lost it the moment the WebView was destroyed: the native shell relaunches at the
+ * locale-neutral `/start`, so a person who chose Korean reopened the app in English. Selecting a
+ * language writes `NEXT_LOCALE` — the cookie `middleware.ts` already calls "the single entry
+ * resolver" and already prefers, and which until now had no writer anywhere in the repo.
+ *
+ * Written ONLY here, on an explicit click. It is never inferred from a route, so following a `/ko`
+ * link someone sent you cannot silently rewrite your preference.
  */
 export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, string> } = {}) {
   const pathname = usePathname() ?? "";
@@ -37,8 +47,15 @@ export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, str
 
   return (
     <div className="flex items-center gap-1 text-sm">
+      {/*
+        The cookie is written BEFORE navigation, on the same user gesture, so the preference is
+        durable even if the navigation that follows is interrupted. The links keep working exactly
+        as they did — this adds memory, it does not take over the navigation.
+      */}
       <a
         href={toEn}
+        onClick={() => saveLocalePreference("en")}
+        data-testid="lang-switch-en"
         className={`px-2 py-1 rounded ${isEn ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
       >
         EN
@@ -46,6 +63,8 @@ export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, str
       <span className="text-gray-300">|</span>
       <a
         href={toKo}
+        onClick={() => saveLocalePreference("ko")}
+        data-testid="lang-switch-ko"
         className={`px-2 py-1 rounded ${isKo ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
       >
         KO

@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
 import { isNative } from "@/lib/native/isNative";
 import { StartNavySurface, StartUnreachableSurface } from "./StartNavySurface";
+import { currentSavedLocale } from "@/lib/localePreference";
 
 /**
  * App Shell v0 — Threshold Door (Scope Lock §4 / spec §G). App Launch → Splash(0.5s) →
@@ -27,7 +28,22 @@ const SPLASH_MS = 500;
 const HOLD_MS = 3000; // §G deliberate hold — STEP 5.2b: ~3s hold-to-enter. Progress builds the
 // Orb enlargement + warm-golden entry light (OrbLiving); a brief tap stays a response (no nav).
 
+/**
+ * The locale this launch should open in (Slice R4-R4B-R1N-R1).
+ *
+ * `/start` is not under `[locale]`, so `SetLocale` — which decides from the pathname — always wrote
+ * `document.documentElement.lang = "en"` here. Reading it back meant every native cold launch
+ * routed to `/en/app`, discarding an explicit Korean choice. Device Korean PLUS product Korean
+ * still opened in English, which is what proved nothing was being read rather than the wrong thing
+ * winning.
+ *
+ * Order: the SAVED preference, then the existing document fallback, then the existing default.
+ * The document read is kept as the second step rather than replaced — on the web, where `/start`
+ * is reached from a locale-prefixed route, it is still the honest answer.
+ */
 function currentLocale(): string {
+  const saved = currentSavedLocale();
+  if (saved) return saved;
   return (typeof document !== "undefined" && document.documentElement.lang) || "ko";
 }
 
@@ -46,9 +62,14 @@ function logOrbLatency(phase: string): void {
 
 export default function StartShellClient() {
   const { user, loading, unreachable, refresh } = useAuth();
-  /* The launch door is device-locale, exactly like every other pre-auth surface. */
+  /*
+    The unreachable surface follows the SAME authority as the launch: an explicit BTY choice first,
+    the device only when none has been made. It read the device alone before, so a Korean speaker
+    on an English phone was told "Couldn't reach BTY" in English.
+  */
   const startLocale: "en" | "ko" =
-    typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko") ? "ko" : "en";
+    currentSavedLocale() ??
+    (typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko") ? "ko" : "en");
   const router = useRouter();
   const [phase, setPhase] = React.useState<Phase>("splash");
   const navigatedRef = React.useRef(false);
