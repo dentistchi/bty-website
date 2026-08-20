@@ -18,6 +18,13 @@
  * IT IS A PRESENTATION PREFERENCE AND NOTHING ELSE. The value is `"en"` or `"ko"` — no identity, no
  * session, no protected content — so it is deliberately NOT httpOnly: `/start` has to read it in
  * the browser before it decides where to send the launch.
+ *
+ * THIS MODULE ONLY READS (R4-R4B-R1N-R1-R1). A client-side writer lived here briefly and failed on
+ * device: a `document.cookie` write racing a full-page navigation is not the reliable direction for
+ * the hosted WKWebView, and WebKit flushes that store to disk asynchronously. `/api/locale/set` is
+ * now the single writer, setting the cookie and redirecting in one HTTP response. The writer was
+ * REMOVED rather than kept as a fallback — two writers for one preference is two things to reason
+ * about and two places for them to disagree.
  */
 
 export const LOCALE_COOKIE = "NEXT_LOCALE";
@@ -48,28 +55,6 @@ export function readSavedLocale(cookieString: string | null | undefined): SavedL
     return isSavedLocale(raw) ? raw : null;
   }
   return null;
-}
-
-/** The exact `document.cookie` assignment. Built here so the attributes are stated once. */
-export function localeCookieAssignment(locale: SavedLocale, secure: boolean): string {
-  const attrs = [
-    `${LOCALE_COOKIE}=${locale}`,
-    "path=/",
-    `max-age=${LOCALE_COOKIE_MAX_AGE_SECONDS}`,
-    "samesite=lax",
-  ];
-  if (secure) attrs.push("secure");
-  return attrs.join("; ");
-}
-
-/**
- * Persist an EXPLICIT choice. Called only from the language control — never inferred from a route,
- * so simply visiting a `/ko` link can never silently rewrite someone's preference.
- */
-export function saveLocalePreference(locale: SavedLocale): void {
-  if (typeof document === "undefined") return;
-  const secure = typeof location !== "undefined" && location.protocol === "https:";
-  document.cookie = localeCookieAssignment(locale, secure);
 }
 
 /** The saved preference, read from the live document. Null when none has been made. */

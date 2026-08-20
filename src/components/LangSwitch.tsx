@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { saveLocalePreference } from "@/lib/localePreference";
 
 /**
  * EN/KO 토글: pathname prefix만 /en <-> /ko 로 바꾸고 query 유지
@@ -19,14 +18,21 @@ import { saveLocalePreference } from "@/lib/localePreference";
  * is, which the URL no longer says on its behalf. Default is empty, so every existing call site
  * behaves exactly as before.
  *
- * R4-R4B-R1N-R1 — IT NOW ALSO REMEMBERS. The path prefix held the choice perfectly while a tab was
- * alive, and lost it the moment the WebView was destroyed: the native shell relaunches at the
- * locale-neutral `/start`, so a person who chose Korean reopened the app in English. Selecting a
- * language writes `NEXT_LOCALE` — the cookie `middleware.ts` already calls "the single entry
- * resolver" and already prefers, and which until now had no writer anywhere in the repo.
+ * R4-R4B-R1N-R1(-R1) — IT NOW ALSO REMEMBERS, AND THE SERVER DOES THE REMEMBERING.
  *
- * Written ONLY here, on an explicit click. It is never inferred from a route, so following a `/ko`
- * link someone sent you cannot silently rewrite your preference.
+ * The path prefix held the choice perfectly while a tab was alive and lost it the moment the
+ * WebView was destroyed: the native shell relaunches at the locale-neutral `/start`, so a person
+ * who chose Korean reopened the app in English.
+ *
+ * The first fix wrote `NEXT_LOCALE` here with `document.cookie` before navigating. It passed every
+ * test and failed on device, for a reason this repository had already measured twice: a JS-store
+ * cookie write is not the reliable direction for the hosted WKWebView, and WebKit flushes that
+ * store to disk asynchronously — so a write racing a document teardown, followed by a deliberate
+ * hard kill, can simply vanish.
+ *
+ * So the links now point at `/api/locale/set`, which sets the cookie and redirects in ONE response.
+ * There is no pre-navigation JS step left to lose. Locale is still the path prefix, and the
+ * preference is still written ONLY by an explicit click here — never inferred from visiting `/ko`.
  */
 export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, string> } = {}) {
   const pathname = usePathname() ?? "";
@@ -45,16 +51,19 @@ export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, str
   const toEn = `/en${rest}${q}`;
   const toKo = `/ko${rest}${q}`;
 
+  /** The one place a language choice becomes durable: server writes, server redirects. */
+  const prefHref = (locale: "en" | "ko", to: string) =>
+    `/api/locale/set?to=${locale}&next=${encodeURIComponent(to)}`;
+
   return (
     <div className="flex items-center gap-1 text-sm">
       {/*
-        The cookie is written BEFORE navigation, on the same user gesture, so the preference is
-        durable even if the navigation that follows is interrupted. The links keep working exactly
-        as they did — this adds memory, it does not take over the navigation.
+        The visible control is unchanged — still EN | KO, still two links. Only the target moved:
+        each now goes through the route that writes the preference and redirects to the same place
+        the link used to point at directly.
       */}
       <a
-        href={toEn}
-        onClick={() => saveLocalePreference("en")}
+        href={prefHref("en", toEn)}
         data-testid="lang-switch-en"
         className={`px-2 py-1 rounded ${isEn ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
       >
@@ -62,8 +71,7 @@ export function LangSwitch({ ensureParams }: { ensureParams?: Record<string, str
       </a>
       <span className="text-gray-300">|</span>
       <a
-        href={toKo}
-        onClick={() => saveLocalePreference("ko")}
+        href={prefHref("ko", toKo)}
         data-testid="lang-switch-ko"
         className={`px-2 py-1 rounded ${isKo ? "font-medium underline bg-black/5" : "text-gray-500 hover:text-gray-800"}`}
       >

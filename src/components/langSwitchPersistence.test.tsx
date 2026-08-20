@@ -33,57 +33,66 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("R4-R4B-R1N-R1 · 1/2 · an explicit choice is persisted", () => {
-  it("1 — selecting KO writes NEXT_LOCALE=ko", () => {
+/*
+  R4-R4B-R1N-R1-R1 REPLACED THESE ASSERTIONS.
+
+  They pinned a `document.cookie` write in the link's onClick — the implementation that passed
+  every test here and failed on the Founder's device. The control now navigates through
+  `/api/locale/set`, which sets the cookie and redirects in ONE response, so what belongs here is
+  the TARGET; the cookie shape is asserted against the real route in
+  `src/app/api/locale/set/route.test.ts`.
+*/
+describe("R4-R4B-R1N-R1-R1 · 9/10 · the control routes through the server writer", () => {
+  it("10 — KO points at the preference route, carrying the destination it used to link to", () => {
     render(<LangSwitch />);
-    fireEvent.click(screen.getByTestId("lang-switch-ko"));
-    expect(readSavedLocale(document.cookie)).toBe("ko");
+    expect(screen.getByTestId("lang-switch-ko").getAttribute("href")).toBe(
+      `/api/locale/set?to=ko&next=${encodeURIComponent("/ko/app")}`,
+    );
   });
 
-  it("2 — selecting EN writes NEXT_LOCALE=en", () => {
+  it("10 — EN does the same", () => {
     pathname = "/ko/app";
     render(<LangSwitch />);
-    fireEvent.click(screen.getByTestId("lang-switch-en"));
-    expect(readSavedLocale(document.cookie)).toBe("en");
+    expect(screen.getByTestId("lang-switch-en").getAttribute("href")).toBe(
+      `/api/locale/set?to=en&next=${encodeURIComponent("/en/app")}`,
+    );
   });
 
-  it("switching back and forth ends on the LAST explicit choice", () => {
+  it("9 — the control no longer writes document.cookie itself", () => {
     render(<LangSwitch />);
     fireEvent.click(screen.getByTestId("lang-switch-ko"));
-    fireEvent.click(screen.getByTestId("lang-switch-en"));
-    fireEvent.click(screen.getByTestId("lang-switch-ko"));
-    expect(readSavedLocale(document.cookie)).toBe("ko");
-  });
-});
-
-describe("R4-R4B-R1N-R1 · 6 · nothing is written without a choice", () => {
-  it("merely RENDERING the control saves no preference", () => {
-    render(<LangSwitch />);
-    // Visiting a page — or following a /ko link someone sent you — must not rewrite a preference.
+    // The server owns the write now; a JS-store write here is exactly what failed on device.
     expect(readSavedLocale(document.cookie)).toBeNull();
   });
 
-  it("a /ko pathname alone does not imply a Korean preference", () => {
-    pathname = "/ko/app";
-    render(<LangSwitch />);
-    expect(readSavedLocale(document.cookie)).toBeNull();
+  it("the component performs no cookie WRITE", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/components/LangSwitch.tsx", "utf8");
+    // The word appears in the comment recording WHY the write was removed; what must be absent is
+    // the assignment. Banning the substring would have forced deleting the explanation.
+    expect(src).not.toMatch(/document\.cookie\s*=/);
+    expect(src).not.toContain("saveLocalePreference");
   });
 });
 
 describe("R4-R4B-R1N-R1 · 7/9 · navigation is unchanged", () => {
-  it("7 — the links still swap only the path prefix and keep the query", () => {
+  /** The prefix swap and query preservation still happen — they now ride inside `next`. */
+  const nextOf = (testId: string) =>
+    decodeURIComponent(new URL(screen.getByTestId(testId).getAttribute("href")!, "https://x.dev").searchParams.get("next") ?? "");
+
+  it("7 — the destination still swaps only the path prefix and keeps the query", () => {
     pathname = "/en/app";
     search = "tab=me";
     render(<LangSwitch ensureParams={{ tab: "me" }} />);
-    expect(screen.getByTestId("lang-switch-ko").getAttribute("href")).toBe("/ko/app?tab=me");
-    expect(screen.getByTestId("lang-switch-en").getAttribute("href")).toBe("/en/app?tab=me");
+    expect(nextOf("lang-switch-ko")).toBe("/ko/app?tab=me");
+    expect(nextOf("lang-switch-en")).toBe("/en/app?tab=me");
   });
 
   it("ensureParams still merges over an empty query", () => {
     pathname = "/en/app";
     search = "";
     render(<LangSwitch ensureParams={{ tab: "me" }} />);
-    expect(screen.getByTestId("lang-switch-ko").getAttribute("href")).toBe("/ko/app?tab=me");
+    expect(nextOf("lang-switch-ko")).toBe("/ko/app?tab=me");
   });
 
   it("9 — the click does not preventDefault, so the navigation still happens", () => {
@@ -96,11 +105,13 @@ describe("R4-R4B-R1N-R1 · 7/9 · navigation is unchanged", () => {
 });
 
 describe("R4-R4B-R1N-R1 · 8 · auth cookies are untouched", () => {
-  it("an existing session cookie survives a language change", () => {
+  it("a language change touches no auth cookie in the client at all", () => {
     document.cookie = "sb-access-token=SESSIONVALUE; path=/";
     render(<LangSwitch />);
     fireEvent.click(screen.getByTestId("lang-switch-ko"));
+    // The component writes nothing now; the session cookie is untouched, and so is the preference
+    // (which the SERVER will set on the response to the link's own navigation).
     expect(document.cookie).toContain("sb-access-token=SESSIONVALUE");
-    expect(readSavedLocale(document.cookie)).toBe("ko");
+    expect(readSavedLocale(document.cookie)).toBeNull();
   });
 });

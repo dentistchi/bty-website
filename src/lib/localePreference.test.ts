@@ -4,7 +4,6 @@ import {
   LOCALE_COOKIE_MAX_AGE_SECONDS,
   isSavedLocale,
   readSavedLocale,
-  localeCookieAssignment,
 } from "./localePreference";
 
 /**
@@ -68,34 +67,14 @@ describe("R4-R4B-R1N-R1 · the reader finds it among real cookies", () => {
   });
 });
 
-describe("R4-R4B-R1N-R1 · 8/10 · the cookie is a preference, not a credential", () => {
-  it("carries the durable attributes and nothing else", () => {
-    const c = localeCookieAssignment("ko", true);
-    expect(c).toContain("NEXT_LOCALE=ko");
-    expect(c).toContain("path=/");
-    expect(c).toContain(`max-age=${LOCALE_COOKIE_MAX_AGE_SECONDS}`);
-    expect(c).toContain("samesite=lax");
-    expect(c).toContain("secure");
-  });
-
-  it("a year is the lifetime — a language choice outlives everything else", () => {
+/*
+  The cookie ATTRIBUTES are asserted against the live route in
+  `src/app/api/locale/set/route.test.ts` — the server is the only writer, so that is where the
+  shape is verified rather than against a client helper that no longer exists.
+*/
+describe("R4-R4B-R1N-R1-R1 · the lifetime constant is a year", () => {
+  it("a language choice outlives everything else in the app", () => {
     expect(LOCALE_COOKIE_MAX_AGE_SECONDS).toBe(60 * 60 * 24 * 365);
-  });
-
-  it("insecure origins omit Secure so local development still works", () => {
-    expect(localeCookieAssignment("en", false)).not.toContain("secure");
-  });
-
-  it("8/10 — it names no session, identity or domain, and cannot clear another cookie", () => {
-    for (const locale of ["en", "ko"] as const) {
-      for (const secure of [true, false]) {
-        const c = localeCookieAssignment(locale, secure);
-        for (const forbidden of ["httponly", "domain=", "expires=Thu, 01 Jan 1970", "sb-", "access_token"]) {
-          expect(c.toLowerCase()).not.toContain(forbidden.toLowerCase());
-        }
-        // Exactly one cookie is being set.
-        expect(c.split("=")[0]).toBe(LOCALE_COOKIE);
-      }
-    }
+    expect(LOCALE_COOKIE).toBe("NEXT_LOCALE");
   });
 });

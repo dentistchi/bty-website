@@ -30,8 +30,39 @@ beforeEach(() => {
   mockQuery = "";
 });
 
+/**
+ * The DESTINATION each language link carries.
+ *
+ * R4-R4B-R1N-R1-R1 moved the link target: it now points at `/api/locale/set`, which writes the
+ * language preference and redirects in ONE response — the only shape that survives a WKWebView
+ * being hard-killed, which is what made a chosen Korean revert to English on relaunch. The
+ * destination these tests exist to protect is unchanged; it simply rides in `next` now.
+ *
+ * Reading it back out keeps every assertion below about the thing it was always about: where the
+ * reader lands, and that they land on Me.
+ */
 const hrefs = (el: HTMLElement) =>
+  Array.from(el.querySelectorAll("a")).map((a) => {
+    const raw = a.getAttribute("href") ?? "";
+    if (!raw.startsWith("/api/locale/set")) return raw;
+    const next = new URL(raw, "https://x.dev").searchParams.get("next");
+    return next ? decodeURIComponent(next) : raw;
+  });
+
+/** The raw link target, for the assertions that are about the routing itself. */
+const rawHrefs = (el: HTMLElement) =>
   Array.from(el.querySelectorAll("a")).map((a) => a.getAttribute("href"));
+
+describe("[R4-R4B-R1N-R1-R1] the switch routes through the server writer", () => {
+  it("both links go to /api/locale/set, so the preference is written by the response that navigates", () => {
+    const { container } = render(<LangSwitch ensureParams={{ tab: "me" }} />);
+    const raw = rawHrefs(container);
+    expect(raw[0]).toContain("/api/locale/set?to=en&");
+    expect(raw[1]).toContain("/api/locale/set?to=ko&");
+    // A client-side cookie write before navigation is exactly what failed on device.
+    expect(raw.every((h) => (h ?? "").startsWith("/api/locale/set"))).toBe(true);
+  });
+});
 
 describe("[R4-R1B] the Me switch keeps the reader on Me", () => {
   it("adds tab=me when the shell has already scrubbed the query", () => {
