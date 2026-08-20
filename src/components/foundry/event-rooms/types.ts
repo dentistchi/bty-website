@@ -52,7 +52,14 @@ export type ManagerEvent = {
  * selected by the service that builds this.
  */
 export type ManagerOutcome = {
-  participation: { joined: number; completed: number; linkedCompletions: number; unclaimedCompletions: number };
+  participation: {
+    joined: number;
+    completed: number;
+    /** R4-R3B2 — completions a configured follow-up can actually reach (the obligation decides). */
+    followUpReachable: number;
+    /** Completions the configured follow-up has not reached. A count, never a diagnosis. */
+    followUpNotConnected: number;
+  };
   followUp: {
     /** R4-R3A-R1 — the ONLY thing that decides whether this training ends at completion. */
     configured: boolean;
@@ -66,7 +73,7 @@ export type ManagerOutcome = {
   decisionCount: number;
   reading:
     | "ends_at_completion"
-    | "awaiting_identity"
+    | "awaiting_connection"
     | "nothing_yet"
     | "unknown_yet"
     | "reported_only"

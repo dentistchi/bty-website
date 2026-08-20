@@ -20,7 +20,7 @@ function facts(over: Partial<TrainingOutcomeFacts> = {}): TrainingOutcomeFacts {
   return {
     joined: 0,
     completed: 0,
-    linkedCompletions: 0,
+    followUpReachableCompletions: 0,
     decisionCount: 0,
     followUps: [],
     observations: [],
@@ -32,10 +32,10 @@ function facts(over: Partial<TrainingOutcomeFacts> = {}): TrainingOutcomeFacts {
 
 describe("R4-R3A · 1 · participation counts", () => {
   it("joined and completed are reported as measured, not derived from each other", () => {
-    const s = summariseTrainingOutcome(facts({ joined: 18, completed: 12, linkedCompletions: 5 }), NOW, TZ);
+    const s = summariseTrainingOutcome(facts({ joined: 18, completed: 12, followUpReachableCompletions: 5 }), NOW, TZ);
     expect(s.participation.joined).toBe(18);
     expect(s.participation.completed).toBe(12);
-    expect(s.participation.linkedCompletions).toBe(5);
+    expect(s.participation.followUpReachable).toBe(5);
   });
 });
 
@@ -140,13 +140,18 @@ describe("R4-R3A · 7–9 · observation, and only OBSERVED confirms", () => {
   });
 });
 
-describe("R4-R3A · 10 · anonymous completions are counted honestly", () => {
-  it("unclaimed = completed minus linked, and never negative", () => {
-    const s = summariseTrainingOutcome(facts({ completed: 39, linkedCompletions: 12 }), NOW, TZ);
-    expect(s.participation.unclaimedCompletions).toBe(27);
+/*
+  R4-R3B2 renamed this concept. It counted `completed - linked`, which the audit disproved as an
+  authority for reachability; it now counts completions a configured follow-up has not reached.
+  The arithmetic guard — never negative — is the part worth keeping, and it is kept.
+*/
+describe("R4-R3B2 · 10 · unreached completions are counted honestly", () => {
+  it("notConnected = completed minus reachable, and never negative", () => {
+    const s = summariseTrainingOutcome(facts({ completed: 39, followUpReachableCompletions: 12 }), NOW, TZ);
+    expect(s.participation.followUpNotConnected).toBe(27);
 
-    const odd = summariseTrainingOutcome(facts({ completed: 2, linkedCompletions: 5 }), NOW, TZ);
-    expect(odd.participation.unclaimedCompletions).toBe(0);
+    const odd = summariseTrainingOutcome(facts({ completed: 2, followUpReachableCompletions: 5 }), NOW, TZ);
+    expect(odd.participation.followUpNotConnected).toBe(0);
   });
 });
 
@@ -177,7 +182,7 @@ describe("R4-R3A-R1 · 11 · only an absent checkpoint ends a training at comple
   for (const applicationJourney of ["none", "journey_no_decision", "action_decision"] as const) {
     it(`applicationJourney=${applicationJourney} does NOT decide the follow-up reading`, () => {
       const s = summariseTrainingOutcome(
-        facts({ joined: 9, completed: 7, linkedCompletions: 7, followUpDays: 7, applicationJourney }),
+        facts({ joined: 9, completed: 7, followUpReachableCompletions: 7, followUpDays: 7, applicationJourney }),
         NOW,
         TZ,
       );
@@ -193,7 +198,7 @@ describe("R4-R3A-R1 · 11 · only an absent checkpoint ends a training at comple
       facts({
         followUpDays: 7,
         applicationJourney: "none",
-        linkedCompletions: 1,
+        followUpReachableCompletions: 1,
         completed: 1,
         followUps: [{ status: "PENDING", outcome: null, dueAtIso: "2026-08-01T05:00:00Z" }],
       }),
@@ -240,7 +245,7 @@ describe("R4-R3A · the three levels are never merged", () => {
       facts({
         joined: 18,
         completed: 12,
-        linkedCompletions: 12,
+        followUpReachableCompletions: 12,
         followUps: [{ status: "RESPONDED", outcome: "APPLIED", dueAtIso: "2026-08-10T05:00:00Z" }],
         observations: [{ followUpId: "f1", outcome: "UNABLE_TO_TELL" }],
       }),
@@ -268,7 +273,7 @@ describe("R4-R3A · the three levels are never merged", () => {
       facts({
         joined: 2,
         completed: 1,
-        linkedCompletions: 1,
+        followUpReachableCompletions: 1,
         decisionCount: 1,
         followUps: [{ status: "PENDING", outcome: null, dueAtIso: "2026-08-22T05:00:00Z" }],
         observations: [{ followUpId: "f1", outcome: "UNABLE_TO_TELL" }],

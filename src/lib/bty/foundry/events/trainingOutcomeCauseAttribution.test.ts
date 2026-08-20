@@ -69,6 +69,10 @@ function admin(f: Fixture): SupabaseClient {
       in() {
         return this;
       },
+      /* R4-R3B2 — reachability filters `user_id_snapshot` NOT NULL on an id-only follow-up read. */
+      not() {
+        return this;
+      },
       maybeSingle() {
         return Promise.resolve({ data: (rows[table] ?? [])[0] ?? null, error: null });
       },
@@ -85,7 +89,19 @@ const NOW = new Date("2026-08-19T12:00:00Z");
 const TZ = "America/Los_Angeles";
 const read = (f: Fixture) => getTrainingOutcome(admin(f), OWNER, EVENT, NOW, TZ);
 
-const PENDING = (id = "f1") => ({ id, status: "PENDING", outcome: null, due_at: "2026-08-22T05:00:00Z" });
+/*
+  R4-R3B2 — an obligation BELONGS to a completion, and reachability is now read from that link, so
+  the fixture has to carry it. Defaults to the first completion (`pr0`), which is what a follow-up
+  materialized for a real learner looks like.
+*/
+const PENDING = (id = "f1", progressId: string | null = "pr0") => ({
+  id,
+  progress_id: progressId,
+  user_id_snapshot: "u0",
+  status: "PENDING",
+  outcome: null,
+  due_at: "2026-08-22T05:00:00Z",
+});
 
 describe("R4-R3A-R1 · 1 · an absent checkpoint is the ONLY true end-at-completion state", () => {
   it("no module row at all → not configured", async () => {
@@ -165,15 +181,15 @@ describe("R4-R3A-R1 · 7/8 · the Journey does not speak for the follow-up", () 
 });
 
 describe("R4-R3A-R1 · 4/5/6 · the three configured states are told apart", () => {
-  it("4 — configured, every completion anonymous, no obligation: the cause is identity", async () => {
+  it("4 — configured, every completion anonymous, no obligation: the shortfall is reported", async () => {
     const out = await read({
       snapshot: { followUpDays: 7 },
       completions: [{ linked: false }, { linked: false }],
       followUps: [],
     });
-    expect(out?.reading).toBe("awaiting_identity");
+    expect(out?.reading).toBe("awaiting_connection");
     expect(out?.followUp.days).toBe(7);
-    expect(out?.participation.unclaimedCompletions).toBe(2);
+    expect(out?.participation.followUpNotConnected).toBe(2);
     expect(out?.followUp.total).toBe(0);
   });
 
@@ -188,7 +204,7 @@ describe("R4-R3A-R1 · 4/5/6 · the three configured states are told apart", () 
     expect(out?.followUp.total).toBe(1);
   });
 
-  it("6 — mixed: the real obligation is reported AND the unclaimed completions remain visible", async () => {
+  it("6 — mixed: the real obligation is reported AND the unconnected completions remain visible", async () => {
     const out = await read({
       snapshot: { followUpDays: 7 },
       completions: [{ linked: true }, { linked: false }, { linked: false }],
@@ -198,18 +214,18 @@ describe("R4-R3A-R1 · 4/5/6 · the three configured states are told apart", () 
     expect(out?.followUp.total).toBe(1);
     expect(out?.reading).toBe("unknown_yet");
     // And the identity gap is still carried, for the panel to explain separately.
-    expect(out?.participation.unclaimedCompletions).toBe(2);
+    expect(out?.participation.followUpNotConnected).toBe(2);
   });
 
   it("configured, nobody has finished yet: nothing to report, and nobody is blamed", async () => {
     const out = await read({ snapshot: { followUpDays: 7 }, completions: [], joined: 4 });
     expect(out?.reading).toBe("nothing_yet");
-    expect(out?.participation.unclaimedCompletions).toBe(0);
+    expect(out?.participation.followUpNotConnected).toBe(0);
   });
 });
 
 describe("R4-R3A-R1 · D · the two Founder-tested trainings, as production holds them", () => {
-  it("Confirm Patient Understanding — followUpDays 7, no Journey, 2 unclaimed completions", async () => {
+  it("Confirm Patient Understanding — followUpDays 7, no Journey, 2 unconnected completions", async () => {
     const out = await read({
       snapshot: { followUpDays: 7 },
       joined: 3,
@@ -219,9 +235,9 @@ describe("R4-R3A-R1 · D · the two Founder-tested trainings, as production hold
     // The shipped defect: this training was told it had no follow-up configured. It has one.
     expect(out?.followUp.configured).toBe(true);
     expect(out?.followUp.days).toBe(7);
-    expect(out?.reading).toBe("awaiting_identity");
+    expect(out?.reading).toBe("awaiting_connection");
     expect(out?.applicationJourney).toBe("none");
-    expect(out?.participation).toEqual({ joined: 3, completed: 2, linkedCompletions: 0, unclaimedCompletions: 2 });
+    expect(out?.participation).toEqual({ joined: 3, completed: 2, followUpReachable: 0, followUpNotConnected: 2 });
   });
 
   it("Establishing Action Ownership in Huddles — evidence rendering is UNCHANGED", async () => {

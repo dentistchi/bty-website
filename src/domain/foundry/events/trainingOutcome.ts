@@ -68,8 +68,24 @@ export type ObservationFactLite = { readonly followUpId: string; readonly outcom
 export type TrainingOutcomeFacts = {
   readonly joined: number;
   readonly completed: number;
-  /** Completions carrying a durable BTY identity — the only ones that can go downstream. */
-  readonly linkedCompletions: number;
+  /**
+   * Completions for which a REACHABLE FOLLOW-UP OBLIGATION EXISTS (Slice R4-R3B2).
+   *
+   * This replaced `linkedCompletions`, and the replacement is the whole slice. The view used to
+   * count `progress.linked_user_id` and tell a Host "finished without signing in, so we can't
+   * follow up with them" — a claim about an ACCOUNT, derived from a column that is not the
+   * authority for accounts, describing a capability owned by a different table entirely.
+   *
+   * Production disproved it: three completions carry `linked_user_id = null` while a follow-up row
+   * for the same progress carries a `user_id_snapshot`. Those learners ARE reachable, and the Host
+   * was told they were not. `foundry_participant_followups` IS the obligation — it is what the
+   * learner's own surface reads and what `bty_foundry_submit_followup` settles — so its existence,
+   * and nothing else, decides whether a follow-up can reach someone.
+   *
+   * An apply window is NOT a substitute: a different obligation with a different gate, and
+   * counting it here would answer a question nobody asked.
+   */
+  readonly followUpReachableCompletions: number;
   readonly decisionCount: number;
   readonly followUps: readonly FollowUpFact[];
   readonly observations: readonly ObservationFactLite[];
@@ -86,12 +102,17 @@ export type TrainingOutcome = {
   participation: {
     joined: number;
     completed: number;
-    linkedCompletions: number;
+    /** Completions a configured follow-up can actually reach. */
+    followUpReachable: number;
     /**
-     * Completions with no durable identity. NOT a failure by the learner — it is why downstream
-     * evidence can be thin, and the Host is owed that explanation rather than a silent gap.
+     * Completions this training's configured follow-up has not reached.
+     *
+     * A COUNT, NOT A DIAGNOSIS. The product does not know why — it may be an account never
+     * connected, or a claim that wrote its obligations and did not finish; the audit behind this
+     * slice could not separate those from durable data. So the Host is given the fact and no
+     * cause. Zero when no checkpoint is configured: there is nothing to be connected to.
      */
-    unclaimedCompletions: number;
+    followUpNotConnected: number;
   };
   followUp: {
     /**
@@ -138,14 +159,17 @@ export type TrainingOutcome = {
    * The one-line reading of the above. `unknown_yet` is the honest default whenever answers are
    * still outstanding — it is a statement about our knowledge, never about the learners.
    *
-   * `ends_at_completion` replaces R4-R3A's `no_downstream` and is now reachable ONLY when no
-   * checkpoint was configured. `awaiting_identity` is the state that sentence used to swallow:
-   * the checkpoint EXISTS, and the people who finished cannot be reached because they never
-   * signed in. Naming the wrong cause is not a smaller error than saying nothing.
+   * `ends_at_completion` replaces R4-R3A's `no_downstream` and is reachable ONLY when no
+   * checkpoint was configured. `awaiting_connection` is the state that sentence used to swallow:
+   * the checkpoint EXISTS and has produced no obligation yet.
+   *
+   * R4-R3B2 renamed it from `awaiting_identity`, which asserted a cause the measurement could not
+   * support. Naming the wrong cause is not a smaller error than saying nothing — the same mistake
+   * R4-R3A-R1 already corrected once at this exact seam.
    */
   reading:
     | "ends_at_completion"
-    | "awaiting_identity"
+    | "awaiting_connection"
     | "nothing_yet"
     | "unknown_yet"
     | "reported_only"
@@ -202,7 +226,12 @@ export function summariseTrainingOutcome(
     independent OBSERVED — a learner's own report can never reach it.
   */
   const configured = facts.followUpDays !== null;
-  const unclaimed = Math.max(0, facts.completed - facts.linkedCompletions);
+  const reachable = Math.min(facts.followUpReachableCompletions, facts.completed);
+  /*
+    Only a CONFIGURED training can have unconnected completions. With no checkpoint there is no
+    obligation to connect to, and reporting a shortfall would invent one.
+  */
+  const notConnected = configured ? Math.max(0, facts.completed - reachable) : 0;
   const reading: TrainingOutcome["reading"] = !configured
     ? "ends_at_completion"
     : o.confirmed > 0
@@ -212,22 +241,21 @@ export function summariseTrainingOutcome(
         : answered > 0
           ? "reported_only"
           : /*
-              A checkpoint EXISTS and produced not one obligation, while people did finish without
-              signing in. That is the identity gap, and it is the reason — not an absent
-              configuration and not anything the learners did. Ordered AFTER the evidence branches
-              on purpose: a training with real follow-up rows reports its evidence, and the
-              unclaimed completions are explained separately alongside it.
+              A checkpoint EXISTS and has produced not one obligation, while people did finish.
+              Ordered AFTER the evidence branches on purpose: a training with real follow-up rows
+              reports its evidence, and any unconnected completions are noted beside it rather
+              than replacing it.
             */
-            facts.followUps.length === 0 && unclaimed > 0
-            ? "awaiting_identity"
+            facts.followUps.length === 0 && notConnected > 0
+            ? "awaiting_connection"
             : "nothing_yet";
 
   return {
     participation: {
       joined: facts.joined,
       completed: facts.completed,
-      linkedCompletions: facts.linkedCompletions,
-      unclaimedCompletions: Math.max(0, facts.completed - facts.linkedCompletions),
+      followUpReachable: reachable,
+      followUpNotConnected: notConnected,
     },
     followUp: {
       configured,

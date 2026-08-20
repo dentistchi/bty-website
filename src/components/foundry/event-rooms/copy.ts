@@ -133,12 +133,16 @@ export type EventRoomsCopy = {
    */
   outcomeEndsAtCompletion: string;
   /**
-   * The checkpoint EXISTS and produced nothing, because nobody who finished signed in. Names the
-   * configuration first so the Host is not read as having forgotten it.
+   * The checkpoint EXISTS and has produced no obligation yet (Slice R4-R3B2).
+   *
+   * It used to say the learners "finished without signing in, so we can't follow up with them" —
+   * a cause the product cannot prove and, for three measured production completions, one that was
+   * simply false: a follow-up existed for them. Names the configuration first so the Host is not
+   * read as having forgotten it, then states the shortfall as a fact and stops.
    */
-  outcomeAwaitingIdentity: (days: number, unclaimed: number) => string;
-  /** Why downstream evidence can be thin even when people finished. */
-  outcomeUnclaimedNote: (n: number) => string;
+  outcomeAwaitingConnection: (days: number, notConnected: number) => string;
+  /** How many completions the configured follow-up has not reached. No cause is asserted. */
+  outcomeNotConnectedNote: (n: number) => string;
   outcomeDecisionsToggle: (n: number) => string;
   closedNotice: string;
   qrError: string;
@@ -262,14 +266,14 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     outcomeReadingReportedOnly: "People told us what happened. No one else has confirmed it yet.",
     outcomeReadingConfirmed: "Someone else confirmed this happened at work.",
     outcomeEndsAtCompletion: "This training ends at completion. No follow-up was set up for it.",
-    outcomeAwaitingIdentity: (days, unclaimed) =>
-      unclaimed === 1
-        ? `Follow-up was set for ${days} days, but 1 person finished without signing in, so we can’t follow up with them.`
-        : `Follow-up was set for ${days} days, but ${unclaimed} people finished without signing in, so we can’t follow up with them.`,
-    outcomeUnclaimedNote: (n) =>
+    outcomeAwaitingConnection: (days, notConnected) =>
+      notConnected === 1
+        ? `Follow-up was set for ${days} days. 1 completion isn’t connected to a follow-up yet.`
+        : `Follow-up was set for ${days} days. ${notConnected} completions aren’t connected to a follow-up yet.`,
+    outcomeNotConnectedNote: (n) =>
       n === 1
-        ? "1 person finished without signing in, so we can’t follow up with them."
-        : `${n} people finished without signing in, so we can’t follow up with them.`,
+        ? "1 completion isn’t connected to a follow-up yet."
+        : `${n} completions aren’t connected to a follow-up yet.`,
     outcomeDecisionsToggle: (n) => `What people decided to do (${n})`,
     closedNotice: "This event is closed. New participants can no longer join.",
     qrError: "The QR could not be shown. Try Share link.",
@@ -387,9 +391,9 @@ export const EVENT_ROOMS_COPY: Record<Locale, EventRoomsCopy> = {
     outcomeReadingConfirmed: "다른 사람이 실제 업무에서 확인했습니다.",
     outcomeEndsAtCompletion: "이 훈련은 완료에서 끝납니다. 후속 확인이 설정되지 않았습니다.",
     /* 한국어는 수 구분이 필요 없어 단수/복수 분기가 없습니다. 설정을 먼저 말해, 호스트가 빠뜨린 것으로 읽히지 않게 합니다. */
-    outcomeAwaitingIdentity: (days, unclaimed) =>
-      `후속 확인은 ${days}일로 설정되어 있지만, ${unclaimed}명이 로그인하지 않고 완료해서 후속 확인을 할 수 없습니다.`,
-    outcomeUnclaimedNote: (n) => `${n}명이 로그인하지 않고 완료해서 후속 확인을 할 수 없습니다.`,
+    outcomeAwaitingConnection: (days, notConnected) =>
+      `후속 확인은 ${days}일로 설정되어 있습니다. 아직 ${notConnected}건의 완료가 후속 확인과 연결되지 않았습니다.`,
+    outcomeNotConnectedNote: (n) => `아직 ${n}건의 완료가 후속 확인과 연결되지 않았습니다.`,
     outcomeDecisionsToggle: (n) => `사람들이 하기로 한 것 (${n})`,
     closedNotice: "종료된 이벤트입니다. 더 이상 새로 입장할 수 없습니다.",
     qrError: "QR을 표시하지 못했습니다. 링크 공유를 사용하세요.",

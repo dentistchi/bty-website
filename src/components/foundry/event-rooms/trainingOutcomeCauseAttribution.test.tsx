@@ -35,7 +35,7 @@ const FU = {
 
 function outcome(over: Partial<ManagerOutcome> = {}): ManagerOutcome {
   return {
-    participation: { joined: 3, completed: 2, linkedCompletions: 2, unclaimedCompletions: 0 },
+    participation: { joined: 3, completed: 2, followUpReachable: 2, followUpNotConnected: 0 },
     followUp: { ...FU },
     observation: { confirmed: 0, notEstablished: 0, couldntTell: 0, total: 0 },
     applicationJourney: "action_decision",
@@ -79,7 +79,7 @@ describe("R4-R3A-R1 · 2/3/7/8 · a configured checkpoint never shows that sente
             outcome={outcome({
               followUp: { ...FU, days, waiting: 1, total: 1 },
               applicationJourney,
-              participation: { joined: 2, completed: 1, linkedCompletions: 1, unclaimedCompletions: 0 },
+              participation: { joined: 2, completed: 1, followUpReachable: 1, followUpNotConnected: 0 },
               reading: "unknown_yet",
             })}
             t={en}
@@ -92,25 +92,35 @@ describe("R4-R3A-R1 · 2/3/7/8 · a configured checkpoint never shows that sente
   }
 });
 
-describe("R4-R3A-R1 · 4 · configured + all anonymous names the identity cause", () => {
+/*
+  R4-R3B2 CORRECTED THIS BLOCK. It pinned "finished without signing in, so we can't follow up with
+  them" — a cause the product cannot observe, and one production disproved for three completions
+  that had a reachable follow-up. The shape of the check is kept: the configuration is named first,
+  the count second, and nobody is blamed. Only the false cause is gone.
+*/
+describe("R4-R3B2 · 4 · configured with nothing connected states the fact, not a cause", () => {
   const anon = outcome({
     followUp: { ...FU, days: 7 },
     applicationJourney: "none",
-    participation: { joined: 3, completed: 2, linkedCompletions: 0, unclaimedCompletions: 2 },
-    reading: "awaiting_identity",
+    participation: { joined: 3, completed: 2, followUpReachable: 0, followUpNotConnected: 2 },
+    reading: "awaiting_connection",
   });
 
   it("says the checkpoint EXISTS, then why it produced nothing", () => {
     render(<Body outcome={anon} t={en} />);
     expect(screen.getByTestId("outcome-reading").textContent).toBe(
-      "Follow-up was set for 7 days, but 2 people finished without signing in, so we can’t follow up with them.",
+      "Follow-up was set for 7 days. 2 completions aren’t connected to a follow-up yet.",
     );
   });
 
   it("blames nobody — not the Host for forgetting, not the learner for failing", () => {
     render(<Body outcome={anon} t={en} />);
     const body = (document.body.textContent ?? "").toLowerCase();
-    for (const bad of ["No follow-up was set up", "failed", "did not follow", "forgot", "missing journey"]) {
+    for (const bad of [
+      "No follow-up was set up", "failed", "did not follow", "forgot", "missing journey",
+      // R4-R3B2 — the cause this surface may no longer assert.
+      "without signing in", "can’t follow up", "unclaimed",
+    ]) {
       expect(body).not.toContain(bad.toLowerCase());
     }
   });
@@ -120,20 +130,20 @@ describe("R4-R3A-R1 · 4 · configured + all anonymous names the identity cause"
       <Body
         outcome={outcome({
           followUp: { ...FU, days: 30 },
-          participation: { joined: 2, completed: 1, linkedCompletions: 0, unclaimedCompletions: 1 },
-          reading: "awaiting_identity",
+          participation: { joined: 2, completed: 1, followUpReachable: 0, followUpNotConnected: 1 },
+          reading: "awaiting_connection",
         })}
         t={en}
       />,
     );
     expect(screen.getByTestId("outcome-reading").textContent).toBe(
-      "Follow-up was set for 30 days, but 1 person finished without signing in, so we can’t follow up with them.",
+      "Follow-up was set for 30 days. 1 completion isn’t connected to a follow-up yet.",
     );
   });
 
-  it("the generic unclaimed note is not repeated beneath it", () => {
+  it("the generic shortfall note is not repeated beneath it", () => {
     render(<Body outcome={anon} t={en} />);
-    expect(screen.queryByTestId("outcome-unclaimed")).toBeNull();
+    expect(screen.queryByTestId("outcome-not-connected")).toBeNull();
   });
 });
 
@@ -143,7 +153,7 @@ describe("R4-R3A-R1 · 5/6 · real follow-up rows are never hidden", () => {
       <Body
         outcome={outcome({
           followUp: { ...FU, waiting: 1, overdue: 2, total: 3 },
-          participation: { joined: 3, completed: 3, linkedCompletions: 3, unclaimedCompletions: 0 },
+          participation: { joined: 3, completed: 3, followUpReachable: 3, followUpNotConnected: 0 },
           reading: "unknown_yet",
         })}
         t={en}
@@ -155,12 +165,12 @@ describe("R4-R3A-R1 · 5/6 · real follow-up rows are never hidden", () => {
     expect(screen.getByTestId("outcome-observed")).toBeTruthy();
   });
 
-  it("6 — mixed: the evidence table AND the unclaimed explanation both render", () => {
+  it("6 — mixed: the evidence table AND the shortfall note both render", () => {
     render(
       <Body
         outcome={outcome({
           followUp: { ...FU, waiting: 1, total: 1 },
-          participation: { joined: 4, completed: 3, linkedCompletions: 1, unclaimedCompletions: 2 },
+          participation: { joined: 4, completed: 3, followUpReachable: 1, followUpNotConnected: 2 },
           reading: "unknown_yet",
         })}
         t={en}
@@ -168,8 +178,8 @@ describe("R4-R3A-R1 · 5/6 · real follow-up rows are never hidden", () => {
     );
     // Not suppressed merely because some completions were anonymous.
     expect(screen.getByTestId("outcome-after")).toBeTruthy();
-    expect(screen.getByTestId("outcome-unclaimed").textContent).toBe(
-      "2 people finished without signing in, so we can’t follow up with them.",
+    expect(screen.getByTestId("outcome-not-connected").textContent).toBe(
+      "2 completions aren’t connected to a follow-up yet.",
     );
     expect(screen.getByTestId("outcome-reading").textContent).toBe("We don’t know yet — 1 person hasn’t answered.");
   });
@@ -178,7 +188,7 @@ describe("R4-R3A-R1 · 5/6 · real follow-up rows are never hidden", () => {
     render(
       <Body
         outcome={outcome({
-          participation: { joined: 5, completed: 0, linkedCompletions: 0, unclaimedCompletions: 0 },
+          participation: { joined: 5, completed: 0, followUpReachable: 0, followUpNotConnected: 0 },
           reading: "nothing_yet",
         })}
         t={en}
@@ -195,15 +205,16 @@ describe("R4-R3A-R1 · 12 · EN / KO parity", () => {
       expect(ko, `ko is missing ${k}`).toHaveProperty(k);
       expect(typeof (ko as Record<string, unknown>)[k]).toBe(typeof (en as Record<string, unknown>)[k]);
     }
-    expect(ko.outcomeAwaitingIdentity(7, 2)).not.toBe(en.outcomeAwaitingIdentity(7, 2));
+    expect(ko.outcomeAwaitingConnection(7, 2)).not.toBe(en.outcomeAwaitingConnection(7, 2));
     expect(ko.outcomeEndsAtCompletion).not.toBe(en.outcomeEndsAtCompletion);
   });
 
-  it("the Korean identity sentence names the configured days AND the count", () => {
-    const s = ko.outcomeAwaitingIdentity(7, 2);
+  it("the Korean sentence names the configured days AND the count, and asserts no cause", () => {
+    const s = ko.outcomeAwaitingConnection(7, 2);
     expect(s).toContain("7");
     expect(s).toContain("2");
-    expect(s).toContain("로그인");
+    // R4-R3B2 — it must no longer reach for an account explanation.
+    expect(s).not.toContain("로그인");
   });
 
   it("KO renders the same three causes through the component", () => {
@@ -211,13 +222,13 @@ describe("R4-R3A-R1 · 12 · EN / KO parity", () => {
       <Body
         outcome={outcome({
           followUp: { ...FU, days: 7 },
-          participation: { joined: 3, completed: 2, linkedCompletions: 0, unclaimedCompletions: 2 },
-          reading: "awaiting_identity",
+          participation: { joined: 3, completed: 2, followUpReachable: 0, followUpNotConnected: 2 },
+          reading: "awaiting_connection",
         })}
         t={ko as unknown as typeof en}
       />,
     );
-    expect(screen.getByTestId("outcome-reading").textContent).toBe(ko.outcomeAwaitingIdentity(7, 2));
+    expect(screen.getByTestId("outcome-reading").textContent).toBe(ko.outcomeAwaitingConnection(7, 2));
 
     cleanup();
     render(

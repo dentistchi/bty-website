@@ -80,6 +80,10 @@ function makeAdmin(captures: Cap[]) {
       in() {
         return this;
       },
+      /* R4-R3B2 — reachability filters `user_id_snapshot` NOT NULL on an id-only follow-up read. */
+      not() {
+        return this;
+      },
       maybeSingle() {
         return Promise.resolve({ data: (rows[table] ?? [])[0] ?? null, error: null });
       },

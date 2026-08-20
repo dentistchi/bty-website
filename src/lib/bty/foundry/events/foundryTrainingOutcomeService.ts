@@ -31,7 +31,13 @@ import { isObservationOutcome } from "@/domain/foundry/observation/behaviorObser
  */
 
 /** Only what the Host is authorised to read. No private column is named anywhere. */
-const PROGRESS_COLS = "id, completed_at, linked_user_id, decision_response_text";
+/*
+  R4-R3B2 dropped `linked_user_id`. Nothing derives from it any more — reachability comes from the
+  obligation — and it is a learner account id that this payload has never carried. Keeping it in
+  the allow-list would leave the column one edit away from being treated as an authority again,
+  which is exactly the mistake this slice exists to undo.
+*/
+const PROGRESS_COLS = "id, completed_at, decision_response_text";
 
 export type TrainingOutcomeView = TrainingOutcome & {
   /**
@@ -117,15 +123,51 @@ export async function getTrainingOutcome(
     .from("foundry_event_training_progress")
     .select(PROGRESS_COLS)
     .eq("event_id", eventId)
-    .returns<{ id: string; completed_at: string | null; linked_user_id: string | null; decision_response_text: string | null }[]>();
+    .returns<{ id: string; completed_at: string | null; decision_response_text: string | null }[]>();
   const rows = progress ?? [];
   const completedRows = rows.filter((r) => r.completed_at);
 
+  /*
+    REACHABILITY IS READ FROM THE OBLIGATION, NOT FROM THE PROGRESS ROW (Slice R4-R3B2).
+
+    `progress_id` joins the obligation back to the completion it belongs to. `user_id_snapshot` is
+    NOT selected: it is the learner's account id, and this payload has never carried a learner
+    identifier. Instead it is applied as a FILTER on a second, id-only query, so the column is
+    never returned to this process at all and cannot leak into a response by accident. The schema
+    declares it `not null`, so today that filter removes nothing — it is a fail-closed contract
+    for a column that could later become nullable, not a live branch.
+  */
   const { data: followups } = await admin
     .from("foundry_participant_followups")
-    .select("id, status, outcome, due_at")
+    .select("id, progress_id, status, outcome, due_at")
     .eq("event_id", eventId)
-    .returns<{ id: string; status: string; outcome: string | null; due_at: string }[]>();
+    .returns<{ id: string; progress_id: string | null; status: string; outcome: string | null; due_at: string }[]>();
+
+  const { data: reachableRows } = await admin
+    .from("foundry_participant_followups")
+    .select("progress_id")
+    .eq("event_id", eventId)
+    .not("user_id_snapshot", "is", null)
+    .returns<{ progress_id: string | null }[]>();
+  /*
+    DE-DUPLICATION IS STRUCTURAL, NOT DEFENSIVE (Slice R4-R3B2, gate C9).
+    
+    Two independent guarantees, so no extra pass is needed and none was added:
+    
+      1. `foundry_followup_unique_progress_checkpoint unique (progress_id, follow_up_days)` caps a
+         progress at one obligation per checkpoint. A training freezes ONE `followUpDays`, so in
+         practice that is one row — measured live: 11 obligations over 11 distinct progress ids,
+         max 1 each. Even if both checkpoints ever existed for one progress, the two rows collapse
+         into a single Set entry.
+      2. The count runs over PROGRESS ROWS, not over obligations: `completedRows.filter(...)` asks
+         each completion once, so a progress id can contribute at most 1 whatever the table holds.
+    
+    Counting obligations instead would have been the same defect R4-R3A-R1 fixed for observations,
+    where rows were counted where people were meant.
+  */
+  const reachableProgressIds = new Set(
+    (reachableRows ?? []).map((r) => r.progress_id).filter((id): id is string => Boolean(id)),
+  );
 
   const followUps: FollowUpFact[] = (followups ?? []).map((f) => ({
     status: f.status === "RESPONDED" ? "RESPONDED" : "PENDING",
@@ -165,7 +207,13 @@ export async function getTrainingOutcome(
     {
       joined,
       completed: completedRows.length,
-      linkedCompletions: completedRows.filter((r) => r.linked_user_id).length,
+      /*
+        The count that used to be `linked_user_id`. Measured on production before this change: 3
+        completions had a reachable follow-up while that column was null, and the Host was told
+        those learners could not be followed up. An apply window is deliberately NOT consulted —
+        it is a different obligation and would answer a different question.
+      */
+      followUpReachableCompletions: completedRows.filter((r) => reachableProgressIds.has(r.id)).length,
       decisionCount: decisions.length,
       followUps,
       observations,

@@ -32,7 +32,7 @@ const BASE_FOLLOWUP = {
 
 function outcome(over: Partial<ManagerOutcome> = {}): ManagerOutcome {
   return {
-    participation: { joined: 18, completed: 12, linkedCompletions: 12, unclaimedCompletions: 0 },
+    participation: { joined: 18, completed: 12, followUpReachable: 12, followUpNotConnected: 0 },
     followUp: { ...BASE_FOLLOWUP },
     observation: { confirmed: 0, notEstablished: 0, couldntTell: 0, total: 0 },
     applicationJourney: "action_decision",
@@ -171,22 +171,23 @@ describe("R4-R3A · 6 · overdue is surfaced distinctly from waiting", () => {
   });
 });
 
-describe("R4-R3A · 10 · anonymous completions are explained, not hidden", () => {
-  it("says why follow-up is impossible for them, without blaming anyone", () => {
+/* R4-R3B2 — same intent, corrected fact: the count is reported, the cause is not asserted. */
+describe("R4-R3B2 · 10 · unreached completions are reported, not hidden", () => {
+  it("states how many are not connected yet, without blaming anyone", () => {
     render(
       <Body
-        outcome={outcome({ participation: { joined: 40, completed: 39, linkedCompletions: 12, unclaimedCompletions: 27 } })}
+        outcome={outcome({ participation: { joined: 40, completed: 39, followUpReachable: 12, followUpNotConnected: 27 } })}
         t={t}
       />,
     );
-    expect(screen.getByTestId("outcome-unclaimed").textContent).toBe(
-      "27 people finished without signing in, so we can’t follow up with them.",
+    expect(screen.getByTestId("outcome-not-connected").textContent).toBe(
+      "27 completions aren’t connected to a follow-up yet.",
     );
   });
 
   it("is absent when every completion is claimed", () => {
     render(<Body outcome={outcome()} t={t} />);
-    expect(screen.queryByTestId("outcome-unclaimed")).toBeNull();
+    expect(screen.queryByTestId("outcome-not-connected")).toBeNull();
   });
 });
 
@@ -252,7 +253,7 @@ describe("R4-R3A · 12 · decisions are secondary, collapsed and unattributed", 
 
 describe("R4-R3A · 16 · honest empty state", () => {
   it("a training with nothing yet says so rather than showing a hopeful zero", () => {
-    render(<Body outcome={outcome({ participation: { joined: 3, completed: 0, linkedCompletions: 0, unclaimedCompletions: 0 } })} t={t} />);
+    render(<Body outcome={outcome({ participation: { joined: 3, completed: 0, followUpReachable: 0, followUpNotConnected: 0 } })} t={t} />);
     expect(screen.getByTestId("outcome-completed").textContent).toBe("0 of 3");
     expect(screen.getByTestId("outcome-reading").textContent).toBe("Nothing to report yet.");
   });
@@ -290,12 +291,12 @@ describe("R4-R3A · 3 · singular and plural are grammatical", () => {
     expect(ko(5, 2)).toBe("아직 알 수 없습니다 — 7명이 답하지 않았고, 2명은 기한이 지났습니다.");
   });
 
-  it("the unclaimed note is also grammatical at 1", () => {
-    expect(EVENT_ROOMS_COPY.en.outcomeUnclaimedNote(1)).toBe(
-      "1 person finished without signing in, so we can’t follow up with them.",
+  it("the shortfall note is also grammatical at 1", () => {
+    expect(EVENT_ROOMS_COPY.en.outcomeNotConnectedNote(1)).toBe(
+      "1 completion isn’t connected to a follow-up yet.",
     );
-    expect(EVENT_ROOMS_COPY.en.outcomeUnclaimedNote(27)).toBe(
-      "27 people finished without signing in, so we can’t follow up with them.",
+    expect(EVENT_ROOMS_COPY.en.outcomeNotConnectedNote(27)).toBe(
+      "27 completions aren’t connected to a follow-up yet.",
     );
   });
 });
@@ -303,7 +304,7 @@ describe("R4-R3A · 3 · singular and plural are grammatical", () => {
 
 describe("R4-R3A · the panel fetches its own data and never blocks the room", () => {
   const aggregate: ManagerOutcome = {
-    participation: { joined: 2, completed: 1, linkedCompletions: 1, unclaimedCompletions: 0 },
+    participation: { joined: 2, completed: 1, followUpReachable: 1, followUpNotConnected: 0 },
     followUp: { configured: true, days: 7, applied: 0, partlyApplied: 0, notYet: 0, blocked: 0, waiting: 1, overdue: 0, total: 1, answered: 0 },
     observation: { confirmed: 0, notEstablished: 0, couldntTell: 1, total: 1 },
     applicationJourney: "action_decision",

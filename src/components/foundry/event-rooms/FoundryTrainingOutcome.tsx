@@ -105,20 +105,24 @@ export function TrainingOutcomeBody({
 
     R4-R3A asked the Journey and printed "no follow-up was set up for it". Measured against
     production, that sentence was wrong on 17 of the 31 events that have completions: every one of
-    them HAD a 7- or 30-day checkpoint, and the real reason no obligation existed was that the
-    people who finished never signed in. The Host was being told they had forgotten to configure
-    something they had configured, and the identity gap was invisible.
+    them HAD a 7- or 30-day checkpoint. The Host was being told they had forgotten to configure
+    something they had configured.
 
-    Three distinct states now, and only the first one ends the training:
+    R4-R3B2 then removed the second false statement at this seam. The panel used to explain a
+    missing obligation as "finished without signing in, so we can't follow up with them" — a cause
+    the product cannot prove, and one that was measurably false for three production completions
+    that DID have a reachable follow-up. It now reports the shortfall and asserts no cause.
+
+    Three distinct states, and only the first one ends the training:
 
       not configured        → "ends at completion" (the honest original sentence, correctly scoped)
-      configured, 0 rows    → the checkpoint exists; say why it produced nothing
+      configured, 0 rows    → the checkpoint exists; state what has not been connected yet
       configured, rows      → render the evidence, exactly as before
 
     The tables stay hidden whenever there are no obligations to show, because a table of zeros
     reads as learner failure and nobody failed. But they are NEVER hidden merely because some
-    completions were anonymous: real rows are rendered, and the unclaimed ones are explained
-    beside them.
+    completions have no obligation of their own: real rows are rendered, and the unconnected ones
+    are noted beside them.
   */
   const endsAtCompletion = !f.configured;
   const hasFollowUpEvidence = f.total > 0;
@@ -137,13 +141,13 @@ export function TrainingOutcomeBody({
             </span>
           </div>
           {/*
-            Said once, in the place that says it best. When the checkpoint produced nothing at all,
-            the sentence below names the configuration AND the count, so repeating the generic note
-            here would state the same fact twice in one panel.
+            Said once, in the place that says it best. When the checkpoint has produced nothing at
+            all, the sentence below names the configuration AND the count, so repeating the generic
+            note here would state the same fact twice in one panel.
           */}
-          {p.unclaimedCompletions > 0 && outcome.reading !== "awaiting_identity" && (
-            <p className="mt-1.5 text-xs leading-5 text-white/40" data-testid="outcome-unclaimed">
-              {t.outcomeUnclaimedNote(p.unclaimedCompletions)}
+          {p.followUpNotConnected > 0 && outcome.reading !== "awaiting_connection" && (
+            <p className="mt-1.5 text-xs leading-5 text-white/40" data-testid="outcome-not-connected">
+              {t.outcomeNotConnectedNote(p.followUpNotConnected)}
             </p>
           )}
         </div>
@@ -158,8 +162,8 @@ export function TrainingOutcomeBody({
             — which is the identity gap, named as such — or nobody has finished yet.
           */
           <p className="mt-4 border-t border-white/8 pt-4 text-xs leading-5 text-white/50" data-testid="outcome-reading">
-            {outcome.reading === "awaiting_identity" && f.days !== null
-              ? t.outcomeAwaitingIdentity(f.days, p.unclaimedCompletions)
+            {outcome.reading === "awaiting_connection" && f.days !== null
+              ? t.outcomeAwaitingConnection(f.days, p.followUpNotConnected)
               : t.outcomeReadingNothingYet}
           </p>
         ) : (
