@@ -1,5 +1,28 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**R4-R3A-R1 — OUTCOME CAUSE ATTRIBUTION · DEPLOYED · FOUNDER DEVICE GATES R1-1–R1-4 PASS · PASS / CLOSED (2026-08-20)**
+
+- **Release identity (re-verified at closure, no redeploy):** inner HEAD == `origin/inner-main` == `3ea3b90fb50e7c46e9b28eaf0547054718fb3a75`, 0 ahead / 0 behind, working tree clean; `/api/version` returned that SHA on independent uncached calls; Worker Version `0106eedb-5079-4345-b021-79f495800d72` @ **100%** (created 2026-08-20T03:12:30Z). No drift → **no redeploy performed**.
+- **A) Auth / cookies / session:** unchanged. The `/outcome` route keeps its existing `requireManager` Host gate and its non-disclosing null for a non-owner.
+- **B) Weekly reset:** untouched. No XP, ledger or award path in this slice.
+- **C) Leaderboard:** untouched.
+- **D) Data / migration safety:** **NO migration, NO schema change, NO new table or column, NO backfill, NO reinterpretation of historical rows.** Release diff `13c4495b..3ea3b90f` contains **0** files under `supabase/`. Core XP and Weekly XP storage untouched.
+- **E) API contract stability:** **NO route behavior change.** The `/outcome` response SHAPE changed by Founder decision — `downstream` removed, `followUp.configured` / `followUp.days` / `applicationJourney` added — and the only consumer is the Control Room panel shipped in the same commit. `resolveUserTzContext` and `FoundryFollowupStatus` remain untouched.
+- **F) Verification:**
+  - **THE DEFECT, MEASURED, NOT ASSUMED.** Of 31 production events with completions, **17** were shown "This training ends at completion. No follow-up was set up for it." while their frozen snapshot carried a 7- or 30-day checkpoint. The read asked the Journey; the writer asks `isFollowUpDays` on `followUpDays` and never opens the Journey.
+  - **THE READ NOW ASKS THE WRITER'S OWN PREDICATE.** `isFollowUpDays` is imported from the domain rather than re-expressed, so an out-of-domain value (e.g. 14) reports NOT configured exactly as the writer treats it.
+  - **NO EVIDENCE IS SUPPRESSED BY THE WRONG QUESTION.** Real follow-up rows render whether or not a Journey exists, and whether or not some completions were anonymous. Tables are hidden only when there are no obligations to show.
+  - **Tests:** 37 new (20 service + 17 render) covering all 12 required proofs including EN/KO parity; R4-R3A/R1 suites **104 passed**; full suite **17 failed / 11062 passed** vs pre-change baseline **17 failed / 11025 passed** — same 17 files, **zero new failures**. Privacy and observer-identity assertions re-proven independently in the new suite and unchanged in the untouched one.
+  - **`tsc --noEmit`: 0 errors. Terminology: 44 (baseline, unchanged).**
+  - **ESLint: BLOCKED / NOT EXECUTED.** `next lint` fails at startup with the pre-existing ajv `missingRefs` error before analysing any source file. **This is NOT a lint PASS.** The tooling was deliberately not repaired in this slice.
+  - **Live-bundle freshness by string literal (never identifier):** `Follow-up was set for ` ×1, `후속 확인은 ` ×1, `outcome-ends-at-completion` ×1, old `outcome-no-downstream` **×0**.
+  - **Deploy wrote nothing:** PRE `03:11:01Z` vs POST `03:13:33Z` fingerprints **byte-identical**, including all 9 follow-up rows' per-row status/outcome, `profilesWithTz 7/33` and `foundry_living_thread 0`.
+  - **Fresh read-only production truth at closure (2026-08-20):** *Confirm Patient Understanding* — `configured=true`, `days=7`, `applicationJourney=none`, completed 2 / linked 0 / unclaimed 2, follow-up rows 0, `reading=awaiting_identity`, **never `ends_at_completion`**. *Establishing Action Ownership in Huddles* — `configured=true`, `days=7`, `applicationJourney=action_decision`, Waiting 1, 1 observation target (couldn't tell), decisionCount 1, `reading=unknown_yet`, evidence intact.
+- **Release Gate Result: PASS.** No auth, reset, leaderboard, XP, migration or destructive surface touched. The only production-visible change is that one Host sentence now names the cause that was actually measured.
+- **Not in this slice:** identity implementation, claim redesign, cross-device recovery, Builder/Journey UI, schema, Memory. Identity Reachability is the measured next candidate and is NOT started.
+
+---
+
 **R4-R3A — TRAINING OUTCOME VIEW V1 · DEPLOYED · FOUNDER DEVICE GATES A1–A5 PASS · PASS / CLOSED (2026-08-19)**
 
 - **Release identity (re-verified at closure, no redeploy):** inner HEAD == `origin/inner-main` == `13c4495b787a84faa60a46e99047e9943d9cde84`, working tree clean (0 uncommitted, untracked included); `GET /api/version` returned that same SHA on two independent uncached calls; `wrangler deployments list` shows Worker Version `20c31906-5651-410d-88da-b9f7de35e01c` @ **100%**. No drift → **no redeploy performed**.
