@@ -5,7 +5,8 @@
  * and NEVER tears down the current session first (a cancelled switch leaves the old session intact;
  * a successful callback atomically replaces it via the existing /auth/callback exchange).
  *
- * Web: supabase.auth.signInWithOAuth (full-page redirect to Google, prompt=select_account).
+ * Web: supabase.auth.signInWithOAuth (full-page redirect to Google; the account chooser
+ * `prompt=select_account` is sent ONLY on an explicit switch — see `forceAccountSelection`).
  * Native (iOS): @capgo/capacitor-social-login → signInWithIdToken → POST /api/auth/session + Keychain,
  * then navigate to nextPath. Byte-identical to the login card's proven native path.
  *
@@ -115,8 +116,12 @@ export async function startGoogleOAuth({
       options: {
         redirectTo: buildOAuthRedirectTo(locale, nextPath),
         skipBrowserRedirect: isNative(),
-        // Force the IdP chooser so an active Google SSO session cannot silently re-authenticate.
-        queryParams: { prompt: "select_account" },
+        /*
+          R4-R4B-R2 — the chooser is for an EXPLICIT switch, not for signing in. Unconditional
+          here meant every returning user was sent through a full account chooser, and every one
+          of those produced another Google "you shared data" email. Scopes unchanged.
+        */
+        ...(forceAccountSelection ? { queryParams: { prompt: "select_account" } } : {}),
       },
     });
     if (oauthError) return { status: "error", detail: oauthError.message };

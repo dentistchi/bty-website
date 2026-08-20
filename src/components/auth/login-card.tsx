@@ -303,9 +303,19 @@ export default function LoginCard({ locale, nextPath, initialError, forceAccount
             // Native: keep the WebView put and open the authorize URL in the
             // system browser below. Web: false (unchanged) → in-page redirect.
             skipBrowserRedirect: isNative(),
-            // #20: force the IdP account chooser. Without this, an active Google/
-            // Microsoft SSO session re-authenticates silently right after logout.
-            queryParams: { prompt: "select_account" },
+            /*
+              THE CHOOSER IS FOR SWITCHING, NOT FOR SIGNING IN (Slice R4-R4B-R2).
+
+              This was unconditional. Its own note explains the reason as a LOGOUT concern — "an
+              active Google SSO session re-authenticates silently right after logout" — and then
+              applied it to every sign-in, so every returning user got a full interactive account
+              chooser and another "You shared some Google Account data with BTY" email.
+
+              `forceAccountSelection` already exists on this component, is already set from
+              `?switch=1`, and the NATIVE branch a few lines up already honours it. Only the web
+              branch ignored the prop it was handed. Scopes are untouched.
+            */
+            ...(forceAccountSelection ? { queryParams: { prompt: "select_account" } } : {}),
           },
         });
         if (oauthError) {

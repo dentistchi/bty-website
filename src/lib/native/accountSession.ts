@@ -9,7 +9,9 @@
  * `SocialLogin.logout()` is supported; `switch=1` on the login route both forces the
  * Google account chooser (`forceAccountSelection`) and suppresses the durable-session
  * auto-restore, so the previous account cannot silently return. Web reuses the existing
- * `prompt=select_account` OAuth path. No new login architecture.
+ * OAuth path with `forceAccountSelection`, which is what now sends `prompt=select_account`
+ * (R4-R4B-R2 made it conditional: normal sign-in no longer forces the chooser). No new login
+ * architecture.
  */
 
 import { isNative } from "./isNative";

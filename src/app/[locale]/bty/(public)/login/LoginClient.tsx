@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import LoginCard from "@/components/auth/login-card";
 import { isNative } from "@/lib/native/isNative";
 import { restoreNativeSession } from "@/lib/native/durableSession";
+import { restoreWebSession } from "@/lib/auth/webSessionRestore";
 import { userMessageForOAuthCallbackError } from "@/lib/auth/oauth-callback-error-messages";
 import { sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 
@@ -39,7 +40,7 @@ export default function LoginClient({
     return userMessageForOAuthCallbackError(decoded, locale);
   }, [oauthError, locale]);
 
-  // ── Native cold-reopen session restore ───────────────────────────────────────
+  // ── Cold-reopen session restore ──────────────────────────────────────────────
   // On the native shell a cold reopen requests /[locale]/app; middleware finds no
   // server cookie and 307s HERE before any client JS runs, and AuthContext skips all
   // session work on /bty/login — so the durable iOS-Keychain session (written at login
@@ -48,20 +49,27 @@ export default function LoginClient({
   // re-seats the httpOnly cookie (its POST /api/auth/session) and we return to `next`
   // (→ /[locale]/app → Orb Threshold Door), never showing the form. A dead / rotated /
   // absent Keychain session → restore returns false → the login form shows as before.
-  // Web is untouched: isNative() is false → the effect no-ops and the form renders.
+  //
+  // R4-R4B-R2 — WEB GETS THE SAME COURTESY. This effect used to return early on `!isNative()`,
+  // so a web visitor whose server cookie had lapsed fell straight through to the form and on to
+  // Google — even though the browser still held a live Supabase session (`persistSession` +
+  // `autoRefreshToken`). A MISSING SERVER COOKIE IS NOT NO SESSION, and every unnecessary trip
+  // produced another "You shared some Google Account data with BTY" email. `restoreWebSession`
+  // is the web twin: same existing `POST /api/auth/session` bridge, same outcome, no new store.
   const [nativeRestoring, setNativeRestoring] = useState(false);
   useEffect(() => {
-    // On a deliberate account switch, NEVER auto-restore the durable session — the user is
-    // here to pick a different account, and restoring would silently return the previous one.
+    // On a deliberate account switch, NEVER auto-restore — on EITHER platform. The whole meaning
+    // of `?switch=1` is "do not silently return me to the previous account", and a restore here
+    // would do exactly that before the chooser was ever shown.
     if (accountSwitch) return;
-    if (!isNative()) return;
     let cancelled = false;
     setNativeRestoring(true);
     void (async () => {
-      const ok = await restoreNativeSession();
+      // Native rebuilds from the iOS Keychain; web from the Supabase client's persisted session.
+      const ok = isNative() ? await restoreNativeSession() : await restoreWebSession();
       if (cancelled) return;
       if (ok) window.location.assign(next); // cookie re-seated → back to the app route
-      else setNativeRestoring(false); // no valid session → fall through to the login form
+      else setNativeRestoring(false); // no usable session → fall through to the login form
     })();
     return () => {
       cancelled = true;
