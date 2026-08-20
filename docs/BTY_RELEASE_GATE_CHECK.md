@@ -1,5 +1,27 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**R4-R4B — MANAGER DESKTOP RESPONSIVE FOUNDATION · DEPLOYED · FOUNDER DEVICE GATES 1–5 PASS · PASS / CLOSED (2026-08-20)**
+
+- **Release identity (read-only at closure, no redeploy):** R4-R4B implementation commit `1aa3d30784fa395a88f003c688379c15ea4e2183`. Live inner HEAD == `origin/inner-main` == `82762f4c7c0044977ec250bb3b7d696d9a71ae5b`, 0 ahead / 0 behind, clean tree; **`1aa3d307` is an ancestor of live HEAD**, and the single commit since it is **R4-R4B-R1 (auth boot resilience + callback diagnostics), a separate slice awaiting its own retest**. `/api/version` returned `82762f4c` on independent uncached calls; Worker Version `8a1a9ece-e4a7-492b-8b6b-4a5326d05ed9` @ **100%**. No drift → **no redeploy performed**.
+- **A) Auth / cookies / session:** **UNTOUCHED by R4-R4B.** Layout-only slice.
+- **B) Weekly reset · C) Leaderboard:** untouched.
+- **D) Data / migration safety:** **NO migration, NO schema change.** `supabase/` diff across `3f93bfd0..1aa3d307`: **0 files**.
+- **E) API contract stability:** **no route, payload or handler changed.** All seven changed files are under `src/components/foundry/event-rooms`.
+- **F) Verification:**
+  - **THE MEASURED PROBLEM, AND THE CORRECTION TO OUR OWN AUDIT.** 258 Tailwind breakpoints in the repo, **zero** in any Foundry Manager surface; the app shell's `<main>` has no max-width. The screens did not render as a narrow phone column — they **stretched to ~229 characters a line at 1920px**. R4-R4A had described them as a phone column; measurement corrected that before code was written.
+  - **ONE CONTAINER, THREE JOB-NAMED WIDTHS:** `measure` (34rem, no breakpoints — prose stops benefiting), `wide` (34→46→60rem), `workspace` (34→48→64→72rem).
+  - **REVIEW REVISED ON FOUNDER INSTRUCTION:** the eight answers now render two-up from `lg`, taking the answer measure **117ch → 58ch**; `md:` deliberately excluded (~40ch would be worse than one column). Narrative sections and Publish span both columns.
+  - **THE EVIDENCE LEVELS KEEP THEIR SEPARATION:** `Completed` full-width and outside the grid; the two reported levels side by side with `lg:border-l`; **no composite score renders anywhere** (asserted).
+  - **Tests:** 24 in the responsive suite covering all 12 required proofs plus 5 for the scan layout, including a layout-only wrapper assertion and an index walk proving no Review component was added, removed or reordered. Foundry event-room suites 60 files / 633 tests green. Full suite same-session: `17 failed / 11119 passed / 23 skipped` → `17 failed / 11143 passed / 23 skipped` — **+24, zero new failures**.
+  - **`tsc` 0 · terminology 44 (baseline — no user-facing string changed) · `cf:build` clean.**
+  - **ESLint: BLOCKED / NOT EXECUTED** — pre-existing `next lint` / ajv `missingRefs` startup failure before any source is read. **NOT a lint PASS.**
+  - **Deploy wrote nothing:** PRE/POST fingerprints byte-identical, including the per-progress `updated_at` + link-flag digest across all 51 rows.
+  - **Founder mobile sanity gate PASS** — the phone layout is unchanged by every desktop rule added.
+- **Release Gate Result: PASS.** No auth, reset, leaderboard, XP, migration, write-path or learner surface touched.
+- **Recorded, not implemented — Zero-Explanation observations:** Review still shows more than a first-time Manager needs · `Arena` remains unexplained Manager vocabulary · completion vs shared-understanding labels remain confusable · **Manager progress visibility is the next major product gap** (`last_seen_at` and `document_last_page` are computed then discarded at the projection) · long-training section/check evidence remains unbuilt (no section/checkpoint/quiz concept exists; a 100-page reading gate caps at 5 minutes ≈ 3s/page, establishing EXPOSURE only).
+
+---
+
 **R4-R3B2 — OUTCOME REACHABILITY TRUTH · DEPLOYED · FOUNDER DEVICE GATES B2-1–B2-3 PASS · PASS / CLOSED (2026-08-20)**
 
 - **Release identity (re-verified at closure, no redeploy):** inner HEAD == `origin/inner-main` == `3f93bfd0180798ab55f3934334a9f915dcbff585`, 0 ahead / 0 behind, clean tree; `/api/version` returned that SHA on independent uncached calls; Worker Version `3fb0fe38-1936-4fd9-94f9-9d66f17f17d6` @ **100%** (created 2026-08-20T17:35:03Z). No drift → **no redeploy performed**.
