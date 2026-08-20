@@ -52,6 +52,7 @@ type XpStatus = "awarded" | "claimable" | "owner_ineligible" | "daily_limit" | "
 
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { terminalIdentityCopy } from "./terminalIdentityCopy";
+import { mergeSnapshot } from "./snapshotMerge";
 
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
@@ -465,27 +466,34 @@ export default function FoundryJoinClient({ token }: { token: string }) {
     [token],
   );
 
+  /** What the room falls back to when an action lands before the first load resolves. */
+  const EMPTY_SNAPSHOT: Snapshot = {
+    event: null,
+    participant: null,
+    training: null,
+    journey: null,
+    reflection_required: false,
+    stage: "inactive",
+    xp_status: "none",
+  };
+
   const applyResult = useCallback((data: unknown) => {
     const d = data as
       | (Partial<Snapshot> & { ok?: boolean; stage?: Stage; assignmentClaim?: string })
       | null;
     if (d?.ok && d.stage) {
       /*
-        MERGE, NEVER REBUILD — the same defect R8A-R1 found on the document client (3.2R-R8B).
-        This rebuilt the snapshot field by field and never named `journey`, so any POST result
-        that came back through here silently deleted the published program from a YouTube
-        learner's screen. It was not reported, but it is the identical shape, and `journey` has
-        been in this type since 3.2C. A partial payload must never remove what is on screen.
+        MERGE, NEVER REBUILD — and now structurally, not key by key (Slice R4-R3B1-R1).
+
+        This named every field it kept, so anything added to the snapshot later was dropped on the
+        first action. It cost `journey` once (3.2R-R8A-R1) and `follow_up_days` again in R4-R3B1,
+        each time fixed by naming the one lost key — which left the next one exposed. The previous
+        snapshot is now the base and only SUPPLIED response fields overwrite it, so a field nobody
+        has written yet cannot be deleted here either. See `snapshotMerge.ts`.
       */
-      setSnapshot((prev) => ({
-        event: d.event ?? null,
-        participant: d.participant ?? null,
-        training: d.training ?? null,
-        journey: d.journey ?? prev?.journey ?? null,
-        reflection_required: d.reflection_required ?? prev?.reflection_required ?? false,
-        stage: d.stage!,
-        xp_status: d.xp_status ?? "none",
-      }));
+      setSnapshot((prev) =>
+        mergeSnapshot<Snapshot>(prev, d, EMPTY_SNAPSHOT, { stage: d.stage! }),
+      );
       // Slice 3.1B-3D: show the narrow connection message ONLY on a fresh claim of the
       // learner's OWN assignment. Every other outcome (no match / conflict) is silent — no
       // alarm, no disclosure of another assignee.

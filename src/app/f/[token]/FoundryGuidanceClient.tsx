@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy } from "./terminalIdentityCopy";
+import { mergeSnapshot } from "./snapshotMerge";
 
 /**
  * Foundry GUIDANCE room — participant experience for written guidance and live discussion
@@ -428,31 +429,44 @@ export default function FoundryGuidanceClient({
     [token],
   );
 
+  /** What the room falls back to when an action lands before the first load resolves. */
+  const EMPTY_SNAPSHOT: Snapshot = useMemo(
+    () => ({
+      content_type: contentType,
+      event: null,
+      participant: null,
+      guidance: null,
+      declared: false,
+      journey: null,
+      reflection_required: false,
+      stage: "inactive",
+      xp_status: "none",
+    }),
+    [contentType],
+  );
+
   /**
-   * MERGE, NEVER REBUILD — the same rule the PDF room learned the hard way (3.2R-R8A-R1): a
-   * field-by-field rebuild silently drops any key the response does not carry, and the learner
-   * watches the program vanish a second after it appears.
+   * MERGE, NEVER REBUILD — the rule this room stated and then broke (Slice R4-R3B1-R1).
+   *
+   * The header above already said a field-by-field rebuild drops any key the response does not
+   * carry. It then listed the keys anyway, so when `follow_up_days` was added to the snapshot it
+   * was dropped here: `load()` fetched 7, the learner declared, this rebuilt the object without
+   * it, and the terminal fell back to XP-only copy on a training that HAD a 7-day checkpoint.
+   * That was the Founder's screen. The rule is now enforced by shape rather than by memory —
+   * `prev` is the base, only SUPPLIED fields overwrite it. See `snapshotMerge.ts`.
    */
   const applyResult = useCallback(
     (data: unknown) => {
       const d = data as (Partial<Snapshot> & { ok?: boolean }) | null;
       if (d?.ok && d.stage) {
-        setSnapshot((prev) => ({
-          content_type: contentType,
-          event: d.event ?? prev?.event ?? null,
-          participant: d.participant ?? prev?.participant ?? null,
-          guidance: d.guidance ?? prev?.guidance ?? null,
-          declared: d.declared ?? prev?.declared ?? false,
-          journey: d.journey ?? prev?.journey ?? null,
-          reflection_required: d.reflection_required ?? prev?.reflection_required ?? false,
-          stage: d.stage!,
-          xp_status: d.xp_status ?? "none",
-        }));
+        setSnapshot((prev) =>
+          mergeSnapshot<Snapshot>(prev, d, EMPTY_SNAPSHOT, { content_type: contentType, stage: d.stage! }),
+        );
         return true;
       }
       return false;
     },
-    [contentType],
+    [contentType, EMPTY_SNAPSHOT],
   );
 
   const onJoin = useCallback(async () => {
@@ -588,7 +602,21 @@ export default function FoundryGuidanceClient({
         return;
       }
       if (r.status === 401) {
-        window.location.href = `/bty/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        /*
+          LOCALE-PREFIXED, LIKE ITS TWO SIBLINGS (Slice R4-R3B1-R1).
+
+          This sent the learner to `/bty/login?next=…`. The platform 307s an unprefixed path to
+          `/en/bty/login` and the redirect DROPS THE QUERY STRING, so login received no return
+          target and defaulted to `/en/bty` — the legacy Arena page. The Founder signed in, landed
+          there, and the claim endpoint was never reached: `linked_user_id`, `xp_awarded_at`, the
+          follow-up and the apply window were all still empty afterwards, with `updated_at`
+          unchanged since completion.
+
+          The two other learner rooms have always prefixed the locale. Ownership is untouched by
+          this: the participant cookie is host-only on an origin the learner never leaves, and the
+          claim still requires room token + matching session cookie + authenticated user.
+        */
+        window.location.href = `/${locale}/bty/login?next=${encodeURIComponent(`/f/${token}`)}`;
         return;
       }
       if (applyResult(r.data)) setClaimed(true);
@@ -597,7 +625,15 @@ export default function FoundryGuidanceClient({
       busyRef.current = false;
       setBusy(false);
     }
-  }, [post, applyResult, load]);
+    /*
+      `locale` and `token` BELONG HERE (Slice R4-R3B1-R1). Without them this callback closes over
+      the FIRST render's locale, which is always the "en" default because the device locale is
+      resolved in a mount effect. A Korean learner pressing this button would have been sent to
+      the English login and back into an English shell, silently. Join and Document have always
+      carried both; this room was the outlier. The KO regression drives the device path rather
+      than reading the template, which is why it caught this and a URL-shape assertion would not.
+    */
+  }, [post, applyResult, load, locale, token]);
 
   if (!loaded || !snapshot) {
     return (

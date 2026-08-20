@@ -5,6 +5,7 @@ import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy } from "./terminalIdentityCopy";
+import { mergeSnapshot } from "./snapshotMerge";
 
 /**
  * Foundry PDF Study Room — participant experience.
@@ -488,6 +489,18 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     [token],
   );
 
+  /** What the room falls back to when an action lands before the first load resolves. */
+  const EMPTY_SNAPSHOT: Snapshot = {
+    content_type: "document",
+    event: null,
+    participant: null,
+    document: null,
+    journey: null,
+    reflection_required: false,
+    stage: "inactive",
+    xp_status: "none",
+  };
+
   const applyResult = useCallback((data: unknown) => {
     const d = data as (Partial<Snapshot> & { ok?: boolean }) | null;
     if (d?.ok && d.stage) {
@@ -503,17 +516,15 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
         Now the previous value survives a response that does not carry the key, so a partial
         payload can never delete a field the learner is looking at. A field-by-field rebuild is
         the shape of this bug; preserving `prev` is the fix.
+
+        R4-R3B1-R1 — the per-key form of that fix was not enough. `follow_up_days` was added and
+        this literal dropped it exactly as it had dropped `journey`, because naming the keys is
+        itself the defect. The rule is now generic: base is `prev`, and only SUPPLIED response
+        fields overwrite it. See `snapshotMerge.ts`.
       */
-      setSnapshot((prev) => ({
-        content_type: "document",
-        event: d.event ?? null,
-        participant: d.participant ?? null,
-        document: d.document ?? null,
-        journey: d.journey ?? prev?.journey ?? null,
-        reflection_required: d.reflection_required ?? prev?.reflection_required ?? false,
-        stage: d.stage!,
-        xp_status: d.xp_status ?? "none",
-      }));
+      setSnapshot((prev) =>
+        mergeSnapshot<Snapshot>(prev, d, EMPTY_SNAPSHOT, { content_type: "document", stage: d.stage! }),
+      );
       return true;
     }
     return false;
