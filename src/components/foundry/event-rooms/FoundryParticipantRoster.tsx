@@ -41,7 +41,13 @@ export function FoundryParticipantRoster({
     return <p className="text-sm text-white/45">{t.rosterEmpty}</p>;
   }
   return (
-    <ul className="flex list-none flex-col gap-1.5 p-0" role="list">
+    /*
+      R4-R4B — the SAME rows, reflowed. A roster is the one Manager surface that grows with the
+      team, and on a laptop a single 1.5rem-gapped column pushed most of it below the fold. It
+      stays a one-column list on a phone; `md`/`lg` let the existing rows sit two and three up.
+      No column, badge or datum was added — this is a reflow, not a table.
+    */
+    <ul className="grid list-none grid-cols-1 gap-1.5 p-0 md:grid-cols-2 lg:grid-cols-3" role="list">
       {participants.map((p) => {
         const complete = p.training_status === "complete";
         return (

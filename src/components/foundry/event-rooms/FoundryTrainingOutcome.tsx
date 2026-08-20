@@ -168,7 +168,21 @@ export function TrainingOutcomeBody({
           </p>
         ) : (
           <>
-            <div className="mt-4 border-t border-white/8 pt-4" data-testid="outcome-after">
+            {/*
+              R4-R4B — THE TWO REPORTED LEVELS MAY SIT SIDE BY SIDE. THEY MAY NEVER MERGE.
+
+              "After the training" is what the LEARNER said; "Observed by someone else" is what an
+              INDEPENDENT person confirmed. On a laptop they fit beside each other and a Host can
+              read both without scrolling between them — which is the point of the width. What the
+              grid must never do is imply they add up: each keeps its own heading, its own counts
+              and a visible rule between them, and no branch anywhere combines them into a score.
+
+              `Completed` deliberately stays ABOVE and full-width. It is a different KIND of fact —
+              finishing a training is not doing the thing — and putting three columns in a row
+              would read as three parts of one number.
+            */}
+            <div className="mt-4 grid grid-cols-1 gap-0 border-t border-white/8 pt-4 lg:grid-cols-2 lg:gap-6" data-testid="outcome-evidence-grid">
+            <div data-testid="outcome-after">
               <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{t.outcomeAfterHeading}</h3>
               <div className="mt-2">
                 <Row label={t.outcomeApplied} value={f.applied} />
@@ -180,7 +194,7 @@ export function TrainingOutcomeBody({
               </div>
             </div>
 
-            <div className="mt-4 border-t border-white/8 pt-4" data-testid="outcome-observed">
+            <div className="mt-4 border-t border-white/8 pt-4 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0" data-testid="outcome-observed">
               <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-white/40">{t.outcomeObservedHeading}</h3>
               <div className="mt-2">
                 <Row label={t.outcomeConfirmed} value={o.confirmed} />
@@ -188,6 +202,7 @@ export function TrainingOutcomeBody({
                 <Row label={t.outcomeNotEstablished} value={o.notEstablished} tone="quiet" />
                 <Row label={t.outcomeCouldntTell} value={o.couldntTell} tone="quiet" />
               </div>
+            </div>
             </div>
 
             <p className="mt-4 text-xs leading-5 text-white/55" data-testid="outcome-reading">

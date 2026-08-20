@@ -8,6 +8,7 @@ import { useEventSnapshot } from "./useEventSnapshot";
 import { FoundryEventQr } from "./FoundryEventQr";
 import { FoundryParticipantRoster } from "./FoundryParticipantRoster";
 import { FoundryTrainingOutcome } from "./FoundryTrainingOutcome";
+import { ManagerCanvas } from "./ManagerCanvas";
 import FoundrySharedReview from "./FoundrySharedReview";
 import FoundryFollowupStatus from "./FoundryFollowupStatus";
 import { FoundryShareControls } from "./FoundryShareControls";
@@ -130,7 +131,8 @@ export function FoundryEventControlRoom({
   );
 
   return (
-    <div className="btyFadeIn flex flex-col gap-6">
+    /* R4-R4B — operational state earns the width; on a phone it is the same single column. */
+    <ManagerCanvas width="wide" className="btyFadeIn flex flex-col gap-6" testId="control-room">
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -299,6 +301,6 @@ export function FoundryEventControlRoom({
           {t.controlResolving}
         </div>
       )}
-    </div>
+    </ManagerCanvas>
   );
 }

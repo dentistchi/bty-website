@@ -27,6 +27,7 @@ import {
 import { reviewMissingSections, type ReviewSectionKey, type ReviewMissingSection } from "@/domain/foundry/module/module-publish";
 import { classifyFollowUpEvidencePlan } from "@/domain/foundry/followup/followUpObligation";
 import { JourneyPreview } from "./JourneyPreview";
+import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
@@ -820,7 +821,11 @@ export function ModuleBuilderShell({
   );
 
   return (
-    <div className="btyFadeIn flex flex-col gap-6 pb-24" data-testid="module-builder">
+    /*
+      R4-R4B — a question is prose and a Review is a work surface, so they take different widths.
+      On a phone both collapse to the same single column this screen has always rendered.
+    */
+    <ManagerCanvas width={isReview ? "wide" : "measure"} className="btyFadeIn flex flex-col gap-6 pb-24" testId="module-builder">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-[0.16em] text-[#C9A66B]/90">
           {isReview ? t.reviewEyebrow : t.stepOf(shownStep, BUILDER_STEP_MAX - 1)}
@@ -861,6 +866,19 @@ export function ModuleBuilderShell({
               experience, in the order they will experience it. The raw Builder answers
               remain reachable, but as a secondary detail section — Review is no longer a
               list of the fields the Host just filled in. */}
+          {/*
+            R4-R4B-R1 — a two-column SCAN layout at `lg`, not two columns of prose.
+
+            What pairs: the two compact choosers, which are decisions, not reading. What spans the
+            full width: the program the learner will experience, the learner preview, the details
+            section (which two-columns its own rows), and Publish. Setting narrative blocks beside
+            each other would create exactly the unreadable comparison this change exists to remove,
+            and splitting the CTA would stop it being singular.
+
+            `items-start` so a short card never stretches to match a tall neighbour.
+          */}
+          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6" data-testid="review-scan-grid">
+          <div className="lg:col-span-2">
           <ProgramAuthorship
             draftId={draftId}
             answers={answers}
@@ -882,6 +900,8 @@ export function ModuleBuilderShell({
             onPendingChange={setGenerationPending}
             onAdopted={() => setAdoptionHandoff((n) => n + 1)}
           />
+          </div>
+          <div className="lg:col-span-2">
           {journeyEnabled ? (
             <JourneyPreview
               answers={answers}
@@ -899,6 +919,7 @@ export function ModuleBuilderShell({
               {t.journeyStart} →
             </button>
           )}
+          </div>
           <MaterialReviewPanel
             draftId={draftId}
             assets={pdfAssets}
@@ -909,7 +930,9 @@ export function ModuleBuilderShell({
             }
             t={t}
           />
-          <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
+          <div className="lg:col-span-2">
+            <AllTrainingDetails answers={answers} assets={assets} missing={reviewMissing} onEdit={jumpTo} t={t} />
+          </div>
           <ParticipationModeChooser
             mode={participationMode}
             audienceType={typeof answers.audienceType === "string" ? answers.audienceType : null}
@@ -918,6 +941,7 @@ export function ModuleBuilderShell({
             onChange={setParticipationMode}
             t={t}
           />
+          <div className="lg:col-span-2">
           <PublishAction
             missing={reviewMissing}
             publishing={publishing}
@@ -939,6 +963,8 @@ export function ModuleBuilderShell({
             programSectionsMissing={missingProgramKinds(answers, journey).length}
             t={t}
           />
+          </div>
+          </div>
         </>
       ) : (
         <div className="min-h-[42vh]">{renderStep(shownStep, answers, patchAnswers, blocker, t, filesNode, copilotNode, moduleDraftNode, { completionPrompt: proposedCompletionPrompt, sharedQuestion: proposedSharedQuestion })}</div>
@@ -991,7 +1017,7 @@ export function ModuleBuilderShell({
           {t.docBusyBlocker}
         </p>
       ) : null}
-    </div>
+    </ManagerCanvas>
   );
 }
 
@@ -2067,7 +2093,17 @@ function ReviewBody({
         <p className="text-base leading-7 text-white/80">{t.reviewLead}</p>
         <MissingSummary missing={missing} onEdit={onEdit} t={t} />
       </div>
-      <section className="flex flex-col gap-2">
+      {/*
+        R4-R4B-R1 — THE EIGHT ANSWERS ARE THE THING REVIEW IS FOR.
+
+        In one column on a laptop these ran ~117 characters a line and pushed most of the training
+        below the fold, so a Host comparing "what should they do differently?" against "what would
+        show it?" had to scroll between them. Two columns at `lg` put each answer at a readable
+        measure AND both halves of a comparison on the same screen.
+
+        One column until `lg` — at `md` a second column would be ~40ch and worse than one.
+      */}
+      <section className="grid grid-cols-1 gap-2 lg:grid-cols-2 lg:gap-3" data-testid="review-answers">
         {rows.map((r, i) => {
           const isMissing = r.section !== undefined && missingSet.has(r.section);
           return (
@@ -2338,7 +2374,7 @@ function PublishConfirmation({
       >
         {t.pmDoneContinue}
       </button>
-    </div>
+      </div>
   );
 }
 

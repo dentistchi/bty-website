@@ -1,5 +1,6 @@
 "use client";
 
+import { ManagerCanvas } from "./ManagerCanvas";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ModuleBuilderCopy } from "./moduleBuilderCopy";
 import type { ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
@@ -147,7 +148,12 @@ export function FilesAndDocuments({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    /*
+      R4-R4B — document work gets the most room of any Manager surface. A 100-page PDF is real
+      work, and its attachment list, page count and preview controls were being managed inside a
+      column sized for a sentence.
+    */
+    <ManagerCanvas width="workspace" className="flex flex-col gap-3" testId="files-and-documents">
       <div className="flex flex-col gap-1">
         <span className="text-xs font-medium uppercase tracking-[0.14em] text-white/45">{t.filesHeader}</span>
         <p className="text-sm leading-6 text-white/55">{t.filesLead}</p>
@@ -156,7 +162,7 @@ export function FilesAndDocuments({
       <input ref={docInputRef} type="file" accept={DOC_ACCEPT} multiple aria-label={t.attachFiles} onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} className="sr-only" />
       <input ref={imgInputRef} type="file" accept={IMG_ACCEPT} multiple aria-label={t.addPhoto} onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} className="sr-only" />
 
-      <div className="flex flex-wrap gap-2.5">
+      <div className="flex flex-wrap gap-2.5 md:gap-3">
         <button type="button" onClick={() => docInputRef.current?.click()} className="rounded-xl border border-[#C9A66B]/50 bg-[#C9A66B]/10 px-4 py-2.5 text-sm font-semibold text-[#C9A66B]">
           {t.attachFiles}
         </button>
@@ -208,6 +214,6 @@ export function FilesAndDocuments({
           ))}
         </div>
       )}
-    </div>
+    </ManagerCanvas>
   );
 }
