@@ -1,5 +1,30 @@
 # BTY 배포 전 체크 결과 (bty-release-gate)
 
+**R4-R3B2 — OUTCOME REACHABILITY TRUTH · DEPLOYED · FOUNDER DEVICE GATES B2-1–B2-3 PASS · PASS / CLOSED (2026-08-20)**
+
+- **Release identity (re-verified at closure, no redeploy):** inner HEAD == `origin/inner-main` == `3f93bfd0180798ab55f3934334a9f915dcbff585`, 0 ahead / 0 behind, clean tree; `/api/version` returned that SHA on independent uncached calls; Worker Version `3fb0fe38-1936-4fd9-94f9-9d66f17f17d6` @ **100%** (created 2026-08-20T17:35:03Z). No drift → **no redeploy performed**.
+- **A) Auth / cookies / session:** **UNTOUCHED.** Reader-only slice. No learner client, no public route, no participant session, no claim path changed. The `/outcome` route keeps its existing `requireManager` gate; only its TEST file changed (to model one added read).
+- **B) Weekly reset · C) Leaderboard:** untouched.
+- **D) Data / migration safety:** **NO migration, NO schema change, NO backfill, NO historical-row repair.** `supabase/` diff across the release: **0 files**.
+- **E) API contract stability:** the `/outcome` payload shape changed by Founder decision — `participation.linkedCompletions`/`unclaimedCompletions` replaced by `followUpReachable`/`followUpNotConnected`, and `reading` value `awaiting_identity` renamed `awaiting_connection`. The only consumer is the Control Room panel shipped in the same commit. **`linked_user_id` was removed from the service's select list entirely.**
+- **F) Verification:**
+  - **THE DEFECT, MEASURED:** three production completions carry `linked_user_id = null` while a follow-up row for the same progress carries a `user_id_snapshot`. The view called them unreachable. The obligation row IS the reachability.
+  - **THE AUTHORITY IS NOW THE OBLIGATION**, and apply windows are never consulted — pinned by a test asserting the service does not query `foundry_participant_apply_windows` at all.
+  - **NO CAUSE IS ASSERTED.** `followUpNotConnected` is a count, not a diagnosis, and is never to be read as an identity state.
+  - **PRIVACY TIGHTENED:** `user_id_snapshot` used only as a server-side FILTER on an id-only query; `linked_user_id` dropped from `PROGRESS_COLS`. Zero private identifiers in any select list or payload.
+  - **C9 DE-DUPLICATION: structurally guaranteed, documented rather than coded around** — DB unique constraint plus counting over progress rows; live 11 obligations / 11 distinct progress ids, max 1.
+  - **Count 29 → 19**, decomposed: −10 no-checkpoint, −3 already reachable, +3 linked-but-no-obligation (previously hidden).
+  - **Fresh closure truth:** shortfall **19**; `f4e6ea32` / `1ca75ade` / `2ea834ab` all `reachable=YES` and excluded; *Establishing Action Ownership* 0, *배가 고파* 4, *Building Accountability* `442b5427` 0.
+  - **Tests:** 26 new; outcome suites 8 files / 124 green; `tsc` 0; terminology 44. Full suite same-session **before 18 failed / 11092 passed / 23 skipped → after 17 failed / 11119 passed / 23 skipped**: **same 8 pre-existing failing files both runs; one assertion in that set is FLAKY; no new failing file attributable to this slice**; +26 new tests; the extra pass came from the flaky assertion.
+  - **ESLint: BLOCKED / NOT EXECUTED** — pre-existing `next lint` / ajv `missingRefs` startup failure before any source is read. **NOT a lint PASS.**
+  - **Live bundle:** new EN/KO copy ×1 each, `outcome-not-connected` ×1; old cause-attribution literals **×0** on this path. Learner terminal copy lives in a separate bundle and is unchanged.
+  - **Deploy wrote nothing:** PRE `17:33:43Z` / POST `17:36:12Z` fingerprints byte-identical, including per-progress `updated_at` + link-flag and per-follow-up status/outcome digests.
+  - **Founder device correction accepted:** the pre-deploy Waiting=1 for *Establishing Action Ownership* was STALE; fresh truth is Waiting 2 (`followUpRows=2, pending=2`), the second obligation created during R4-R3B1-R1 device testing.
+- **Release Gate Result: PASS.** No auth, reset, leaderboard, XP, migration, write-path or learner-flow surface touched.
+- **Recorded, not implemented:** claim-path ordering weakness · discarded `linkLearnerIdentity` result · unresolved `f4e6ea32` mechanism · 8 historical `xp_awarded_at`/link mismatch rows · cross-device recovery deferred.
+
+---
+
 **R4-R3B1 + R4-R3B1-R1 — TERMINAL IDENTITY MEANING · DEPLOYED · FOUNDER DEVICE GATES B1-1–B1-4 + B1-R1-1/2 PASS · PASS / CLOSED (2026-08-20)**
 
 - **Release identity (re-verified at closure, no redeploy):** inner HEAD == `origin/inner-main` == `55ad8203eb7585fcc5c0da856b781c906185edb7`, 0 ahead / 0 behind, clean tree; `b57e5295…` is an ancestor; `/api/version` returned that SHA on independent uncached calls; Worker Version `e50c56c1-424e-4260-9217-ae61fd581bde` @ **100%** (created 2026-08-20T15:35:51Z). No drift → **no redeploy performed**.
