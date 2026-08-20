@@ -30,6 +30,38 @@ export class AuthReadTimeout extends Error {
   }
 }
 
+/**
+ * THE SAME MEANING, ARRIVING A DIFFERENT WAY.
+ *
+ * The bound above catches SILENCE. It does not catch a request that fails instantly, and that is
+ * the more common failure by far: airplane mode, no signal, DNS, a connection reset, a 502 from the
+ * edge. `fetchJson` CATCHES those and RESOLVES `{ ok: false, status: 0 }` — a value, not a
+ * rejection — so they slipped past `readWithBound` entirely and were read as "the server said there
+ * is no session".
+ *
+ * It said nothing. This subclass carries the identical "we do not know" meaning, so every caller
+ * that already handles an expired bound handles this too without a second branch to keep in step.
+ */
+export class AuthReadUnreachable extends AuthReadTimeout {
+  constructor(readonly status: number) {
+    super();
+    this.name = "AuthReadUnreachable";
+    this.message = `auth_read_unreachable_${status}`;
+  }
+}
+
+/**
+ * Statuses that are not an answer ABOUT THE SESSION.
+ *
+ * `0` is `fetchJson`'s own sentinel, set in its catch and nowhere else — the request never reached
+ * a server. `5xx` is the server failing rather than replying "no session". A `401`, and a `200`
+ * carrying `ok:false`, ARE answers and stay answers: they mean signed out, and this must never
+ * blur that, or a genuinely expired session would present as a network problem forever.
+ */
+export function isUnreachableStatus(status: number | undefined): boolean {
+  return status === 0 || (typeof status === "number" && status >= 500);
+}
+
 /** True when this error came from our bound expiring, rather than from any server reply. */
 export function isAuthReadTimeout(e: unknown): boolean {
   return (

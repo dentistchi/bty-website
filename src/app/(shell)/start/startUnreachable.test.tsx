@@ -44,6 +44,39 @@ describe("R4-R4B-R1 · 5/8 · an expired bound produces something to press", () 
     expect(onRetry).not.toHaveBeenCalled();
   });
 
+  /*
+    THE COPY RULE, AS A TEST. A first-time reader must be able to answer three questions without
+    anyone explaining the app to them: what happened, what do I do, and is my account still there.
+    The surface answered the first two and left the third to fear — which is what sends a person
+    to sign in again on their own.
+  */
+  it("it answers all three questions a person actually has", () => {
+    render(<StartUnreachableSurface locale="en" onRetry={() => {}} />);
+    expect(screen.getByText("Couldn’t reach BTY.")).toBeTruthy(); // what happened
+    expect(screen.getByText("Your account is safe. Check your connection.")).toBeTruthy(); // safe + what to do
+    expect(screen.getByTestId("start-unreachable-retry").textContent).toBe("Retry"); // what happens next
+  });
+
+  it("it speaks plainly — no engineering vocabulary reaches the person", () => {
+    render(<StartUnreachableSurface locale="en" onRetry={() => {}} />);
+    const body = (document.body.textContent ?? "").toLowerCase();
+    for (const jargon of [
+      "javascript",
+      "webview",
+      "hydrat",
+      "runtime",
+      "oauth",
+      "callback",
+      "token",
+      "timeout",
+      "timed out",
+      "error",
+      "network request",
+    ]) {
+      expect(body, `must not say "${jargon}"`).not.toContain(jargon);
+    }
+  });
+
   it("4 — it never claims the person is signed out or asks them to log in", () => {
     render(<StartUnreachableSurface locale="en" onRetry={() => {}} />);
     const body = (document.body.textContent ?? "").toLowerCase();
@@ -65,6 +98,7 @@ describe("R4-R4B-R1 · 9 · EN / KO", () => {
     render(<StartUnreachableSurface locale="ko" onRetry={() => {}} />);
     expect(screen.getByText("BTY에 연결하지 못했습니다.")).toBeTruthy();
     expect(screen.getByTestId("start-unreachable-retry").textContent).toBe("다시 시도");
+    expect(screen.getByText("계정은 그대로 있습니다. 연결 상태를 확인해 주세요.")).toBeTruthy();
     expect(document.body.textContent).not.toContain("로그인");
   });
 

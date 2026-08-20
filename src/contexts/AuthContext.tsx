@@ -3,7 +3,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
-import { isAuthReadTimeout, readWithBound } from "@/lib/auth/boundedSessionRead";
+import {
+  AuthReadUnreachable,
+  isAuthReadTimeout,
+  isUnreachableStatus,
+  readWithBound,
+} from "@/lib/auth/boundedSessionRead";
 import { sanitizeNext } from "@/lib/sanitize-next";
 import { clearAllCachedProposals } from "@/components/foundry/event-rooms/proposalContinuity";
 import { isNative } from "@/lib/native/isNative";
@@ -81,6 +86,16 @@ async function fetchSessionOnce(): Promise<SessionResp | null> {
       if (!r.ok) {
         // 401(로그인 전)은 정상 흐름 → 에러로 취급하지 않고 비로그인 상태로 둠 (콘솔/UI 노이즈 제거)
         if (r.status === 401) return { ok: false as const };
+        /*
+          WE NEVER GOT AN ANSWER (Slice R4-R4B-R1).
+
+          The bound above only ever caught silence. A request that fails INSTANTLY — airplane mode,
+          no signal, a reset connection, a 502 from the edge — comes back through `fetchJson`'s
+          catch as a resolved `{ ok: false, status: 0 }`, so it reached this line as an ordinary
+          error and the caller set `user = null`. The launch then told a signed-in person they had
+          no session and sent them to log in again, because their network dropped.
+        */
+        if (isUnreachableStatus(r.status)) throw new AuthReadUnreachable(r.status ?? 0);
         throw new Error(r.raw ?? "Session request failed");
       }
       // 200 + body.ok:false(세션 없음)도 그대로 반환, throw 안 함

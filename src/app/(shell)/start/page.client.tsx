@@ -101,10 +101,20 @@ export default function StartShellClient() {
   }, []);
 
   // Client auth gate — redirect to the REAL login.
+  /*
+    A REDIRECT NEEDS AN ANSWER, NOT MERELY THE ABSENCE OF ONE (Slice R4-R4B-R1).
+
+    This effect fired on `!loading && !user`, and an expired bound produces exactly that pair — a
+    timeout deliberately leaves `user` as it was, which on a cold launch is null, and clears
+    `loading` in its `finally`. So the recovery surface R4-R4B-R1 built rendered and was
+    immediately navigated away from: the person was sent to sign in BECAUSE we could not reach the
+    server. `unreachable` is the one state that means we were never told anything, and nothing may
+    be decided from it. `!user` on its own still redirects, because there the server ANSWERED.
+  */
   React.useEffect(() => {
-    if (loading || user) return;
+    if (loading || user || unreachable) return;
     router.replace(`/${currentLocale()}/bty/login?next=${encodeURIComponent("/start")}`);
-  }, [loading, user, router]);
+  }, [loading, user, unreachable, router]);
 
   // splash(0.5s) → orb  (only once authenticated)
   React.useEffect(() => {

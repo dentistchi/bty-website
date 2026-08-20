@@ -51,6 +51,18 @@ export function StartUnreachableSurface({
       <p className="text-center text-[0.95rem] leading-6 text-white/70">
         {ko ? "BTY에 연결하지 못했습니다." : "Couldn’t reach BTY."}
       </p>
+      {/*
+        THE QUESTION A PERSON ACTUALLY HAS HERE (Slice R4-R4B-R1).
+
+        "Couldn't reach BTY" says what happened and the button says what to do, but it left the
+        third question unanswered — and it is the one that frightens people: is my account still
+        there? Silence invited them to assume the worst and sign in again, which is the outcome
+        this whole surface exists to avoid. It is also a claim we can honestly make: nothing on
+        this path clears a cookie, a session or a stored credential.
+      */}
+      <p className="text-center text-[0.95rem] leading-6 text-white/55">
+        {ko ? "계정은 그대로 있습니다. 연결 상태를 확인해 주세요." : "Your account is safe. Check your connection."}
+      </p>
       <button
         type="button"
         onClick={onRetry}
