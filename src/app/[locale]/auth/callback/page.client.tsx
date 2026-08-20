@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { inferLocaleFromNextParam, sanitizeNextForRedirect } from "@/lib/auth/sanitize-next-for-redirect";
 import { supabase } from "@/lib/supabase";
 import { isNative } from "@/lib/native/isNative";
+import { authCallbackSupportLine, type AuthCallbackReason } from "@/lib/auth/authCallbackReason";
 import { clearAccountScopedStorage } from "@/lib/native/accountScopedStorage";
 
 function parseHashParams(hash: string): Record<string, string> {
@@ -45,6 +46,17 @@ function AuthCallbackForm() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "error">("loading");
   const [message, setMessage] = useState<string>("");
+  /*
+    WHICH BRANCH ACTUALLY FIRED (Slice R4-R4B-R1).
+
+    Three different failures rendered one identical sentence, so a Founder report could not say
+    which one happened and the audit could only list hypotheses. This records the branch and
+    NOTHING ELSE — no auth code, no token, no user id, no email, no provider detail. It is the
+    difference between "the callback arrived with nothing to exchange" (a redirect/allow-list
+    question) and "the exchange itself was refused" (a token/PKCE question), which are repaired in
+    completely different places.
+  */
+  const [reason, setReason] = useState<AuthCallbackReason | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -93,6 +105,7 @@ function AuthCallbackForm() {
             return;
           }
           setStatus("error");
+          setReason("exchange_failed");
           setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
           return;
         }
@@ -130,6 +143,7 @@ function AuthCallbackForm() {
             return;
           }
           setStatus("error");
+          setReason("set_session_failed");
           setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
           return;
         }
@@ -153,7 +167,13 @@ function AuthCallbackForm() {
         return;
       }
 
+      /*
+        Nothing arrived: no `code`, no token pair, and no session already in the client. On the
+        measured hypotheses this is the one that points AWAY from our code — a callback reached
+        without parameters is what a rejected `redirect_to` looks like from this side.
+      */
       setStatus("error");
+      setReason("no_code");
       setMessage("인증 처리에 실패했습니다. 다시 시도해주세요.");
     }
 
@@ -180,6 +200,15 @@ function AuthCallbackForm() {
   return (
     <div className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <p className="text-red-600 text-center">{message}</p>
+      {/*
+        R4-R4B-R1 — the branch, and only the branch. Quiet and secondary: the primary sentence is
+        unchanged product copy, and this exists so one report can be acted on instead of guessed at.
+      */}
+      {reason ? (
+        <p className="mt-2 text-center text-xs text-neutral-500" data-testid="auth-callback-reason">
+          {authCallbackSupportLine(reason)}
+        </p>
+      ) : null}
       <Link
         href={target}
         className="mt-4 text-sm text-neutral-600 hover:text-neutral-900 underline"

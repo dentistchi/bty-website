@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
 import { isNative } from "@/lib/native/isNative";
-import { StartNavySurface } from "./StartNavySurface";
+import { StartNavySurface, StartUnreachableSurface } from "./StartNavySurface";
 
 /**
  * App Shell v0 — Threshold Door (Scope Lock §4 / spec §G). App Launch → Splash(0.5s) →
@@ -45,7 +45,10 @@ function logOrbLatency(phase: string): void {
 }
 
 export default function StartShellClient() {
-  const { user, loading } = useAuth();
+  const { user, loading, unreachable, refresh } = useAuth();
+  /* The launch door is device-locale, exactly like every other pre-auth surface. */
+  const startLocale: "en" | "ko" =
+    typeof navigator !== "undefined" && navigator.language?.toLowerCase().startsWith("ko") ? "ko" : "en";
   const router = useRouter();
   const [phase, setPhase] = React.useState<Phase>("splash");
   const navigatedRef = React.useRef(false);
@@ -126,6 +129,23 @@ export default function StartShellClient() {
   // PageLoadingFallback), so the launch stays continuous navy → Orb. Auth timing is UNCHANGED —
   // this only swaps the visual of the loading/pre-redirect frames. The redirect itself is still
   // driven by the effect above; `!user` renders navy only until that replace() lands.
+  /*
+    R4-R4B-R1 — the launch can now END. `unreachable` is set only when our own bound expired, so
+    this is the one state that means "the server never answered" — distinct from `!user`, which is
+    the server telling us there is no session and correctly still shows the quiet navy frame while
+    the redirect lands.
+  */
+  if (unreachable) {
+    return (
+      <StartUnreachableSurface
+        locale={startLocale}
+        retrying={loading}
+        onRetry={() => {
+          void refresh();
+        }}
+      />
+    );
+  }
   if (loading) return <StartNavySurface />;
   if (!user) return <StartNavySurface />;
 

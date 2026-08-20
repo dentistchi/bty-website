@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { fetchJson } from "@/lib/read-json";
+import { isAuthReadTimeout, readWithBound } from "@/lib/auth/boundedSessionRead";
 import { sanitizeNext } from "@/lib/sanitize-next";
 import { clearAllCachedProposals } from "@/components/foundry/event-rooms/proposalContinuity";
 import { isNative } from "@/lib/native/isNative";
@@ -29,6 +30,8 @@ type RegisterResp =
 type Ctx = {
   user: AuthUser;
   loading: boolean;
+  /** R4-R4B-R1 — the session read did not come back in time. NOT "signed out". */
+  unreachable: boolean;
   error: string | null;
   clearError: () => void;
   refresh: () => Promise<void>;
@@ -66,7 +69,15 @@ let sessionInflight: Promise<SessionResp | null> | null = null;
 async function fetchSessionOnce(): Promise<SessionResp | null> {
   if (!sessionInflight) {
     sessionInflight = (async () => {
-      const r = await fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`);
+      /*
+        BOUNDED (Slice R4-R4B-R1). This was a bare `fetch` with no signal, and it is the request
+        the whole app boot waits on. A stall left `loading` true forever and `/start` on its navy
+        surface with nothing to press. The bound does not change what a REPLY means — only that
+        silence eventually becomes an answer the caller can act on.
+      */
+      const r = await readWithBound((signal) =>
+        fetchJson<SessionResp>(`/api/auth/session?_t=${Date.now()}`, { signal }),
+      );
       if (!r.ok) {
         // 401(로그인 전)은 정상 흐름 → 에러로 취급하지 않고 비로그인 상태로 둠 (콘솔/UI 노이즈 제거)
         if (r.status === 401) return { ok: false as const };
@@ -118,6 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(!isPublicFirstPaint);
   const [error, setError] = useState<string | null>(null);
+  /*
+    R4-R4B-R1 — WE COULD NOT REACH BTY. Deliberately NOT the same thing as `user === null`.
+    `null` means the server told us there is no session; this means the server never told us
+    anything. The boot surface renders an actionable retry from this, and NOTHING acts on it by
+    signing anyone out, clearing a cookie or redirecting to login.
+  */
+  const [unreachable, setUnreachable] = useState(false);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -130,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     setError(null);
+    setUnreachable(false);
     setLoading(true);
     try {
       let j = await fetchSessionOnce();
@@ -157,6 +176,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authed && isNative()) void syncNativeSessionFromClient();
     } catch (e: any) {
       if (!mounted.current) return;
+      /*
+        A TIMEOUT IS NOT A "NO" (Slice R4-R4B-R1).
+
+        The old branch set `user = null` for every failure, which for an expired bound would state
+        that a legitimately signed-in person has no session — on the evidence that we failed to
+        ask. Whatever we last knew is left standing, and the surface is told we could not reach
+        BTY so it can offer a retry instead of a dead screen.
+      */
+      if (isAuthReadTimeout(e)) {
+        setUnreachable(true);
+        return;
+      }
       setUser(null);
       setError(e?.message ?? String(e));
     } finally {
@@ -314,8 +345,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<Ctx>(
-    () => ({ user, loading, error, clearError, refresh, login, register, logout }),
-    [user, loading, error, clearError, refresh, login, register, logout]
+    () => ({ user, loading, error, unreachable, clearError, refresh, login, register, logout }),
+    [user, loading, error, unreachable, clearError, refresh, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -20,3 +20,46 @@ export function StartNavySurface() {
     </main>
   );
 }
+
+/**
+ * WE COULD NOT REACH BTY (Slice R4-R4B-R1).
+ *
+ * The same navy surface, but with something to press. Before this, a boot request that never
+ * settled left the launch on the quiet brand frame indefinitely — no error, no control, and no way
+ * to tell a slow network from a broken app.
+ *
+ * IT DOES NOT SAY "SIGNED OUT", because we do not know that. The bound expiring means the server
+ * never answered; it is not a reply. Retrying re-runs the same session resolution the launch
+ * already uses — nothing here clears a cookie, drops a session or routes to login.
+ */
+export function StartUnreachableSurface({
+  locale,
+  onRetry,
+  retrying = false,
+}: {
+  locale: "en" | "ko";
+  onRetry: () => void;
+  retrying?: boolean;
+}) {
+  const ko = locale === "ko";
+  return (
+    <main
+      data-testid="start-unreachable"
+      className="relative flex min-h-screen flex-col items-center justify-center gap-5 bg-bty-navy px-6 text-white"
+    >
+      <p className="text-xs uppercase tracking-[0.32em] text-white/55">Better Than Yesterday</p>
+      <p className="text-center text-[0.95rem] leading-6 text-white/70">
+        {ko ? "BTY에 연결하지 못했습니다." : "Couldn’t reach BTY."}
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        data-testid="start-unreachable-retry"
+        className="min-h-[44px] rounded-xl bg-[#C9A66B] px-6 py-3 text-sm font-semibold text-[#0B1F3A] transition-opacity disabled:opacity-60"
+      >
+        {retrying ? (ko ? "다시 시도하는 중…" : "Retrying…") : ko ? "다시 시도" : "Retry"}
+      </button>
+    </main>
+  );
+}

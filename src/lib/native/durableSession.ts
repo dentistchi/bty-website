@@ -32,6 +32,7 @@
 import { isNative } from "@/lib/native/isNative";
 import { getSupabase } from "@/lib/supabase";
 
+import { readWithBound } from "@/lib/auth/boundedSessionRead";
 /** BTY-scoped, versioned Keychain key. Bump the suffix on any payload-shape change. */
 const STORAGE_KEY = "bty.session.v1";
 
@@ -159,15 +160,24 @@ export async function restoreNativeSession(): Promise<boolean> {
       expires_at: data.session.expires_at ?? null,
     });
 
-    // Re-establish the httpOnly cookie (server route unchanged).
-    const res = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
+    /*
+      Re-establish the httpOnly cookie (server route unchanged). BOUNDED in R4-R4B-R1: this is the
+      SECOND unbounded request on the app's boot path, and it runs precisely when the first already
+      reported no session — so a stall here held the launch open a second time. The function's
+      existing contract already treats every failure as `false` ("could not restore"), which is the
+      right answer for a timeout too: it never asserts the session is gone, and the caller re-reads
+      the gate rather than acting on it.
+    */
+    // Captured before the closure so the narrowing above survives into it.
+    const fresh = { access_token: data.session.access_token, refresh_token: data.session.refresh_token };
+    const res = await readWithBound((signal) =>
+      fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(fresh),
+        signal,
       }),
-    });
+    );
     if (!res.ok) return false;
     const body = (await res.json().catch(() => null)) as { ok?: boolean } | null;
     return body?.ok === true;
