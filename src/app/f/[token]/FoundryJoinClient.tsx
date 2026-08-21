@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { YouTubePlayer } from "./YouTubePlayer";
 import type { CompletionState } from "@/domain/foundry/watch-integrity";
 import type { LivingReflection } from "@/domain/foundry/living-reflection";
@@ -56,7 +57,9 @@ import { mergeSnapshot } from "./snapshotMerge";
 
 type Snapshot = {
   event: { title: string; status: "open" | "closed" } | null;
-  participant: { display_name: string } | null;
+  /** R4-R5C4A — opaque per-participant namespace for the DEVICE-LOCAL draft. Optional:
+   *  a server that does not send it simply yields no draft, never an error. */
+  participant: { display_name: string; draft_ns?: string } | null;
   training: { youtube_video_id: string; completion_prompt: string | null; shared_question: string | null } | null;
   stage: Stage;
   xp_status: XpStatus;
@@ -387,6 +390,31 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [decisionResponse, setDecisionResponse] = useState("");
   // The REFLECT answer (Slice 3.2R-R8B) — a different question, a different column, its own state.
   const [reflectResponse, setReflectResponse] = useState("");
+
+  /*
+    DEVICE-LOCAL DRAFT (Slice R4-R5C4A). The four answers above live only in this component until
+    Complete; before this slice, a refresh threw them away in silence. `useRoomDraft` restores
+    them once — before `draftReady`, so it can never land on top of live typing — persists them
+    debounced to THIS device, and deletes them only when the SERVER says the training finished.
+    It writes nothing to any database and adds nothing to the completion payload.
+  */
+  const draftFields: DraftFields = useMemo(
+    () => ({ response, sharedResponse, decisionResponse, reflectResponse }),
+    [response, sharedResponse, decisionResponse, reflectResponse],
+  );
+  const restoreDraft = useCallback((d: DraftFields) => {
+    setResponse(d.response);
+    setSharedResponse(d.sharedResponse);
+    setDecisionResponse(d.decisionResponse);
+    setReflectResponse(d.reflectResponse);
+  }, []);
+  const { ready: draftReady } = useRoomDraft(
+    snapshot?.participant?.draft_ns ?? null,
+    draftFields,
+    restoreDraft,
+    isCompletedStage(snapshot),
+  );
+
   const [reflectError, setReflectError] = useState(false);
   const [decisionError, setDecisionError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1138,6 +1166,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
                 reflectRequired
                   ? {
                       value: reflectResponse,
+                      disabled: !draftReady,
                       onChange: (v) => {
                         setReflectResponse(v);
                         setReflectError(false);
@@ -1231,6 +1260,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             rows={4}
             maxLength={1000}
             value={response}
+            disabled={!draftReady}
             onChange={(e) => {
               setResponse(e.target.value);
               if (responseError) setResponseError(false);
@@ -1259,6 +1289,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
                 rows={3}
                 maxLength={1000}
                 value={decisionResponse}
+            disabled={!draftReady}
                 onChange={(e) => {
                   setDecisionResponse(e.target.value);
                   if (decisionError) setDecisionError(false);
@@ -1284,6 +1315,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
                 rows={3}
                 maxLength={1000}
                 value={sharedResponse}
+            disabled={!draftReady}
                 onChange={(e) => {
                   setSharedResponse(e.target.value);
                   if (sharedError) setSharedError(false);

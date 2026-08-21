@@ -35,6 +35,7 @@ import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./fou
 import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow } from "./foundryApplyWindowService";
 import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
+import { participantDraftNamespace } from "./participant-draft-namespace";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
 /**
@@ -280,7 +281,13 @@ export async function getOwnerGuidanceSnapshot(
 export type PublicGuidanceSnapshot = {
   content_type: GuidanceContentType;
   event: { title: string; status: FoundryEventStatus } | null;
-  participant: { display_name: string } | null;
+  /**
+   * R4-R5C4A — an opaque, non-authenticating namespace for this participant's DEVICE-LOCAL
+   * draft. It names a localStorage slot and nothing else: no route reads it, no route accepts
+   * it, and it reveals neither the session token nor the account. See
+   * `participant-draft-namespace.ts` for why the browser needed one at all.
+   */
+  participant: { display_name: string; draft_ns: string } | null;
   /**
    * The Host's own text plus the questions the learner owes — visible only once joined, and the
    * prompts only once the exposure declaration has been made (the same unlock shape the video
@@ -367,7 +374,9 @@ function buildGuidanceSnapshot(
   return {
     content_type: contentType,
     event: { title: event.title, status: event.status },
-    participant: participant ? { display_name: participant.display_name } : null,
+    participant: participant
+      ? { display_name: participant.display_name, draft_ns: participantDraftNamespace(participant.event_id, participant.id) }
+      : null,
     guidance,
     declared,
     stage,

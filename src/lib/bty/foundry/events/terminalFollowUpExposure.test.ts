@@ -149,7 +149,16 @@ describe("R4-R3B1 · F · the public snapshot carries it, no earlier than the Jo
   it("a joined participant receives the frozen checkpoint", async () => {
     const snap = await getPublicTrainingSnapshot(makeAdmin({ snapshot: { followUpDays: 30 } }), token(), SESSION);
     expect(snap.follow_up_days).toBe(30);
-    expect(snap.participant).toEqual({ display_name: "Hojin" });
+    /*
+      R4-R5C4A widened this projection by exactly ONE field, and the assertion stays EXACT rather
+      than becoming a `toMatchObject` — the point of pinning it was to notice a new field, and it
+      did. `draft_ns` is an opaque per-participant namespace for the learner's own device-local
+      draft: it authorises nothing, no route reads it, and it reveals neither the session token
+      nor the account. Keeping the exact shape means the NEXT addition is noticed too.
+    */
+    expect(Object.keys(snap.participant ?? {}).sort()).toEqual(["display_name", "draft_ns"]);
+    expect(snap.participant?.display_name).toBe("Hojin");
+    expect(snap.participant?.draft_ns).toMatch(/^[A-Za-z0-9_-]{22}$/);
   });
 
   it("a training with no checkpoint carries null, so the screen promises nothing", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
 import { terminalIdentityCopy } from "./terminalIdentityCopy";
@@ -57,7 +58,9 @@ type GuidanceInfo = {
 type Snapshot = {
   content_type: GuidanceType;
   event: { title: string; status: "open" | "closed" } | null;
-  participant: { display_name: string } | null;
+  /** R4-R5C4A — opaque per-participant namespace for the DEVICE-LOCAL draft. Optional:
+   *  a server that does not send it simply yields no draft, never an error. */
+  participant: { display_name: string; draft_ns?: string } | null;
   guidance: GuidanceInfo | null;
   declared: boolean;
   journey?: Journey;
@@ -386,6 +389,31 @@ export default function FoundryGuidanceClient({
   const [decisionResponse, setDecisionResponse] = useState("");
   const [decisionError, setDecisionError] = useState(false);
   const [reflectResponse, setReflectResponse] = useState("");
+
+  /*
+    DEVICE-LOCAL DRAFT (Slice R4-R5C4A). The four answers above live only in this component until
+    Complete; before this slice, a refresh threw them away in silence. `useRoomDraft` restores
+    them once — before `draftReady`, so it can never land on top of live typing — persists them
+    debounced to THIS device, and deletes them only when the SERVER says the training finished.
+    It writes nothing to any database and adds nothing to the completion payload.
+  */
+  const draftFields: DraftFields = useMemo(
+    () => ({ response, sharedResponse, decisionResponse, reflectResponse }),
+    [response, sharedResponse, decisionResponse, reflectResponse],
+  );
+  const restoreDraft = useCallback((d: DraftFields) => {
+    setResponse(d.response);
+    setSharedResponse(d.sharedResponse);
+    setDecisionResponse(d.decisionResponse);
+    setReflectResponse(d.reflectResponse);
+  }, []);
+  const { ready: draftReady } = useRoomDraft(
+    snapshot?.participant?.draft_ns ?? null,
+    draftFields,
+    restoreDraft,
+    isCompletedStage(snapshot),
+  );
+
   const [reflectError, setReflectError] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -885,7 +913,7 @@ export default function FoundryGuidanceClient({
                   error: reflectError,
                   placeholder: t.reflectPlaceholder,
                   errorText: t.reflectError,
-                  disabled: busy,
+                  disabled: busy || !draftReady,
                 }
               : null
           }
@@ -954,6 +982,7 @@ export default function FoundryGuidanceClient({
           >
             <textarea
               value={response}
+            disabled={!draftReady}
               onChange={(e) => {
                 setResponse(e.target.value);
                 setResponseError(false);
@@ -978,6 +1007,7 @@ export default function FoundryGuidanceClient({
                   rows={3}
                   maxLength={1000}
                   value={decisionResponse}
+            disabled={!draftReady}
                   onChange={(e) => {
                     setDecisionResponse(e.target.value);
                     if (decisionError) setDecisionError(false);
@@ -999,6 +1029,7 @@ export default function FoundryGuidanceClient({
                 <p className="mt-1 text-xs text-[#C9A66B]/90">{t.sharedDisclosure}</p>
                 <textarea
                   value={sharedResponse}
+            disabled={!draftReady}
                   onChange={(e) => {
                     setSharedResponse(e.target.value);
                     setSharedError(false);

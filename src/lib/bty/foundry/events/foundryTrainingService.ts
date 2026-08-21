@@ -32,6 +32,7 @@ import { publishedPracticeForEvent } from "@/lib/bty/foundry/arena/foundryArenaP
 import { resolveUserTzContext } from "@/lib/bty/daily/userDay";
 import { isFollowUpDays, type FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { userDayStartInstant } from "@/domain/daily/userDayStartInstant";
+import { participantDraftNamespace } from "./participant-draft-namespace";
 import {
   getOwnerEventSnapshot,
   resolveEventByToken,
@@ -273,7 +274,13 @@ export type PublicXpStatus = "awarded" | "claimable" | "owner_ineligible" | "dai
 
 export type PublicTrainingSnapshot = {
   event: { title: string; status: FoundryEventStatus } | null;
-  participant: { display_name: string } | null;
+  /**
+   * R4-R5C4A — an opaque, non-authenticating namespace for this participant's DEVICE-LOCAL
+   * draft. It names a localStorage slot and nothing else: no route reads it, no route accepts
+   * it, and it reveals neither the session token nor the account. See
+   * `participant-draft-namespace.ts` for why the browser needed one at all.
+   */
+  participant: { display_name: string; draft_ns: string } | null;
   training: {
     youtube_video_id: string;
     completion_prompt: string | null;
@@ -456,7 +463,9 @@ function buildPublicSnapshot(
 
   return {
     event: { title: event.title, status: event.status },
-    participant: participant ? { display_name: participant.display_name } : null,
+    participant: participant
+      ? { display_name: participant.display_name, draft_ns: participantDraftNamespace(participant.event_id, participant.id) }
+      : null,
     training,
     stage,
     xp_status,

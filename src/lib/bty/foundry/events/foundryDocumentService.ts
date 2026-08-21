@@ -50,6 +50,7 @@ import { materializeFollowupObligation } from "./foundryFollowupService";
 import { materializeApplyWindow } from "./foundryApplyWindowService";
 import { linkLearnerIdentity, readEventJourney, readEventFollowUpDays } from "./foundryTrainingService";
 import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
+import { participantDraftNamespace } from "./participant-draft-namespace";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
 
 /**
@@ -450,7 +451,13 @@ export async function getOwnerDocumentSnapshot(
 export type PublicDocumentSnapshot = {
   content_type: "document";
   event: { title: string; status: FoundryEventStatus } | null;
-  participant: { display_name: string } | null;
+  /**
+   * R4-R5C4A — an opaque, non-authenticating namespace for this participant's DEVICE-LOCAL
+   * draft. It names a localStorage slot and nothing else: no route reads it, no route accepts
+   * it, and it reveals neither the session token nor the account. See
+   * `participant-draft-namespace.ts` for why the browser needed one at all.
+   */
+  participant: { display_name: string; draft_ns: string } | null;
   document: {
     page_count: number;
     min_read_seconds: number;
@@ -544,7 +551,9 @@ function buildDocumentSnapshot(
   return {
     content_type: "document",
     event: { title: event.title, status: event.status },
-    participant: participant ? { display_name: participant.display_name } : null,
+    participant: participant
+      ? { display_name: participant.display_name, draft_ns: participantDraftNamespace(participant.event_id, participant.id) }
+      : null,
     document,
     /*
       Delivered ONLY from the frozen event module snapshot (Slice 3.2R-R8A) — never from the
