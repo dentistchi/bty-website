@@ -16,6 +16,7 @@ vi.mock("./youtubeEmbed", async (importOriginal) => {
 
 import { applyDirectCoreXp } from "@/lib/bty/arena/applyCoreXp";
 import { createEvent, joinEvent } from "./foundryEventService";
+import { simulateClaimAssignment, seedAssignment, readAssignment } from "./__fixtures__/assignmentClaimSim";
 import {
   createTrainingEvent,
   getOwnerTrainingSnapshot,
@@ -207,7 +208,7 @@ function makeFakeAdmin() {
       // XP-already-awarded early-return path (Slice 3.1B-3D fix).
       tables.__claim_calls = tables.__claim_calls ?? [];
       (tables.__claim_calls as Array<Record<string, unknown>>).push(p);
-      return Promise.resolve({ data: [{ result: "claimed", assignment_id: "a1" }], error: null });
+      return Promise.resolve(simulateClaimAssignment(tables, p));
     }
     if (name === "bty_foundry_resolve_or_create_program") {
       return Promise.resolve(programRpcState.result);
@@ -759,3 +760,144 @@ async function getFirstEventId(admin: SupabaseClient): Promise<string> {
   const { data } = await admin.from("foundry_events").select("id").maybeSingle();
   return (data as { id: string }).id;
 }
+
+/**
+ * R4-R5B1 — ASSIGNMENT COMPLETION TRUTH (video room).
+ *
+ * Measured before this slice: an authenticated assigned learner received every durable consequence
+ * of completion — `linked_user_id`, Core XP, the follow-up obligation, the apply window — while
+ * `foundry_event_assignments.status` stayed `assigned`, because the claim ran only inside `claimXp`
+ * and a signed-in learner never reaches it (completion awards XP inline, the stage is
+ * `completed_awarded`, and the claim control renders only at `completed_claimable`).
+ *
+ * These assert the TRANSITION, not the invocation: the RPC is simulated faithfully from the shipped
+ * SQL, so the assertions read the assignment row the way the learner's Required Learning card does.
+ */
+describe("R4-R5B1 · assignment completion truth — video", () => {
+  const participantId = (tables: Record<string, Array<Record<string, unknown>>>) =>
+    String(tables.foundry_event_participants[0]!.id);
+  const claimCalls = (tables: Record<string, Array<Record<string, unknown>>>) =>
+    (tables.__claim_calls as Array<Record<string, unknown>> | undefined) ?? [];
+
+  async function reachResponse(admin: SupabaseClient, token: string, session: string) {
+    await startVideo(admin, token, session);
+    await completeVideo(admin, token, session);
+  }
+
+  it("T1 — an authenticated assigned completion drives the assignment to completed, server-side", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH);
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("assigned");
+
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "I will pause before replying.", AUTH);
+
+    expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
+    // THE INVARIANT: no second button, no revisit, no refresh, no React effect.
+    const a = readAssignment(tables, eventId, AUTH)!;
+    expect(a.status).toBe("completed");
+    expect(a.participant_id).toBe(participantId(tables));
+    expect(a.completed_at).not.toBeNull();
+    // …and the match keys were the server-derived pair, never anything from a browser.
+    expect(claimCalls(tables)).toHaveLength(1);
+    expect(claimCalls(tables)[0]).toMatchObject({ p_event_id: eventId, p_auth_user_id: AUTH });
+    // Existing behaviour untouched: XP awarded exactly once, progress linked.
+    expect(awardSpy).toHaveBeenCalledTimes(1);
+    expect(tables.foundry_event_training_progress[0]!.linked_user_id).toBe(AUTH);
+    expect(tables.foundry_event_training_progress[0]!.completed_at).not.toBeNull();
+  });
+
+  it("T4 — an anonymous completion runs NO assignment claim and leaves the assignment alone", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH);
+
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "Anonymous answer.", null);
+
+    expect(done.ok && done.snapshot.stage).toBe("completed_claimable");
+    expect(claimCalls(tables)).toHaveLength(0); // no trusted identity to match on
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("assigned");
+    expect(awardSpy).not.toHaveBeenCalled();
+    // The existing claim path still connects it later, unchanged.
+    await claimXp(admin, token, session, AUTH);
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("completed");
+  });
+
+  it("T5 — a signed-in OPEN-LINK completion answers not_applicable and fabricates no assignment", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    // No assignment, no participation-mode row — an ordinary open-link room.
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "Open-link answer.", AUTH);
+
+    expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
+    expect(tables.foundry_event_assignments ?? []).toHaveLength(0); // nothing fabricated
+    expect(claimCalls(tables)[0]).toMatchObject({ p_event_id: eventId, p_auth_user_id: AUTH });
+    expect(awardSpy).toHaveBeenCalledTimes(1); // XP behaviour unchanged
+  });
+
+  it("T6 — a repeat completion neither re-awards XP nor re-transitions the assignment", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH);
+    await reachResponse(admin, token, session);
+    await completeTraining(admin, token, session, "First answer.", AUTH);
+    const firstClaimedAt = readAssignment(tables, eventId, AUTH)!.claimed_at;
+
+    const again = await completeTraining(admin, token, session, "Changed answer.", AUTH);
+
+    expect(again.ok).toBe(true);
+    expect(awardSpy).toHaveBeenCalledTimes(1); // no duplicate XP
+    expect(claimCalls(tables)).toHaveLength(1); // idempotent early-return never re-runs it
+    const a = readAssignment(tables, eventId, AUTH)!;
+    expect(a.status).toBe("completed");
+    expect(a.claimed_at).toBe(firstClaimedAt); // not re-stamped
+    expect(tables.foundry_event_training_progress[0]!.response_text).toBe("First answer.");
+  });
+
+  it("T7 — a reconciliation ERROR cannot fail a truthful completion, and claims no transition", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH);
+    tables.__claim_fault = [{ mode: "error" }];
+
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "Answer despite the fault.", AUTH);
+
+    expect(done.ok).toBe(true); // the completion the learner earned still stands
+    expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
+    expect(awardSpy).toHaveBeenCalledTimes(1);
+    expect(tables.foundry_event_training_progress[0]!.completed_at).not.toBeNull();
+    // …and nothing anywhere claims a transition that did not happen.
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("assigned");
+    expect(Object.keys(done.ok ? done.snapshot : {})).not.toContain("assignmentClaim");
+  });
+
+  it("T7b — a THROWN reconciliation failure is contained too (the completion still stands)", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH);
+    tables.__claim_fault = [{ mode: "throw" }];
+
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "Answer despite the throw.", AUTH);
+
+    expect(done.ok).toBe(true);
+    expect(tables.foundry_event_training_progress[0]!.completed_at).not.toBeNull();
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("assigned");
+  });
+
+  it("conflict — an assignment already claimed by ANOTHER participant is never overwritten", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined();
+    seedAssignment(tables, eventId, AUTH, {
+      participant_id: "someone-elses-participant",
+      status: "completed",
+      claimed_at: "2026-01-01T00:00:00.000Z",
+      completed_at: "2026-01-01T00:00:00.000Z",
+    });
+
+    await reachResponse(admin, token, session);
+    const done = await completeTraining(admin, token, session, "Second device.", AUTH);
+
+    expect(done.ok).toBe(true); // truthful progress completion is never broken by a conflict
+    const a = readAssignment(tables, eventId, AUTH)!;
+    expect(a.participant_id).toBe("someone-elses-participant"); // preserved, not stolen
+    expect(a.claimed_at).toBe("2026-01-01T00:00:00.000Z");
+  });
+});

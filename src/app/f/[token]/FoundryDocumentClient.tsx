@@ -771,15 +771,31 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
     [post, applyResult, load, token, locale],
   );
 
-  // One silent claim-xp on EITHER terminal completion stage so the assignment connects
-  // (claim-xp is the SOLE surface that runs claimAssignmentForParticipant). completed_claimable
-  // = XP still to award (anonymous-then-auth); completed_awarded = an authenticated
-  // completeDocumentTraining already awarded XP inline (Slice 3.1B-3F). WITHOUT covering the
-  // awarded stage, an authenticated PDF learner's assignment is never connected and the Required
-  // Learning card never moves to Completed — the video client already reconciles on
-  // completed_awarded (FoundryJoinClient); this brings the document path to parity. Idempotent:
-  // autoClaimedRef fires once per mount, the server claim is already_claimed-safe, and the
-  // awarded early-return still connects the assignment with NO second XP award.
+  /*
+    ONE SILENT claim-xp ON EITHER TERMINAL STAGE. Retained, with its reason corrected (R4-R5B1).
+
+    WHAT THIS COMMENT USED TO SAY, AND WHY IT WAS WRONG. It claimed "claim-xp is the SOLE surface
+    that runs claimAssignmentForParticipant" and that "the video client already reconciles on
+    completed_awarded (FoundryJoinClient)". The second half was false: that client's effect opens
+    `if (snapshot?.stage !== "completed_claimable" ... ) return;` and is itself labelled "3.1B-3D
+    fix: do NOT auto-claim" — it loads the account, it does not claim. So this room was not reaching
+    parity with the video room; it was the only room that worked, and the comment made the gap look
+    closed. A false precedent in a comment is how the defect survived.
+
+    The first half is no longer true either: `completeDocumentTraining` now runs the assignment claim
+    server-side for an authenticated learner, in the same authenticated block as follow-up and apply.
+    Assignment truth is owned by the completion service, not by this effect.
+
+    SO WHY KEEP IT. Two branches, and only one became redundant:
+      · completed_claimable — REQUIRED, and unrelated to assignments. This is the anonymous-then-
+        authenticated path: completion happened with no session, so XP is still unawarded and only
+        claim-xp can award it. Removing this would break XP claiming for open-link learners. The
+        silent path deliberately takes no interaction lock and, on 401, does nothing at all.
+      · completed_awarded — now redundant for NEW completions, and deliberately retained as
+        reconciliation for rows completed BEFORE this slice, whose assignments were never claimed.
+    Both stay idempotent: autoClaimedRef fires once per mount, the RPC answers already_claimed, and
+    the awarded early-return connects the assignment with NO second XP award.
+  */
   useEffect(() => {
     if (
       (snapshot?.stage === "completed_claimable" || snapshot?.stage === "completed_awarded") &&

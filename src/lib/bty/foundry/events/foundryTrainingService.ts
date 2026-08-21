@@ -839,6 +839,40 @@ export async function completeTraining(
       completedAtIso: now,
       deviceTz,
     });
+
+    /*
+      ASSIGNMENT TRUTH IS A CONSEQUENCE OF COMPLETION (Slice R4-R5B1).
+
+      Measured before this line existed: an authenticated assigned learner could finish a training
+      and receive EVERY other durable consequence — `linked_user_id`, Core XP, the follow-up
+      obligation, the apply window — while `foundry_event_assignments.status` stayed `assigned`.
+      `bty_foundry_list_my_assignments` reads `a.status` directly with no progress fallback, so
+      Required Learning kept offering `Start learning` for training the learner had completed.
+
+      The claim ran ONLY inside the three `claim*Xp` functions, and a signed-in learner never
+      reaches them: completion awards XP inline, the terminal stage is `completed_awarded`, and the
+      claim control only renders at `completed_claimable`. So which room the Host happened to author
+      decided whether the learner's assignment ever became true — the document client compensated
+      with a browser effect, the video and guidance rooms did not.
+
+      NOTHING NEW IS INVENTED HERE. `bty_foundry_claim_assignment` already row-locks, is idempotent
+      (`already_claimed`), is conflict-safe against another participant (`claim_conflict`), writes
+      its own audit row, and matches ONLY on `(event_id, user_id_snapshot)` — the participant id is
+      recorded, never used to identify. Both match keys are already in scope and both are
+      server-derived: `authUserId` from the session, `r.event.id` from the verified join token. The
+      browser supplies neither.
+
+      PLACED LAST, AND ONLY HERE. Inside `if (authUserId)` because an anonymous completion has no
+      trusted identity to match on — it keeps its existing claim-time path unchanged. After the
+      materializers because it is the same class of durable consequence and must not reorder them.
+      An open-link event has no participation-mode row, so the RPC answers `not_applicable` and
+      writes nothing; the return value is deliberately NOT surfaced — the completion result contract
+      is unchanged, so this can never falsely report a transition that did not happen.
+
+      It cannot fail the completion: the helper is fail-soft on an error answer AND, since this
+      slice, on a rejection — the same posture the two materializers above it already state.
+    */
+    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
   }
 
   return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride) };

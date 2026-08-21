@@ -835,6 +835,16 @@ export async function completeDocumentTraining(
       completedAtIso: now,
       deviceTz,
     });
+
+    /*
+      ASSIGNMENT TRUTH IS A CONSEQUENCE OF COMPLETION (Slice R4-R5B1) — see the full note in
+      `foundryTrainingService.completeTraining`. Same call, same position, same guarantees: the
+      match keys are server-derived (`authUserId` + the token-verified event), the RPC is idempotent
+      and conflict-safe, an open-link event answers `not_applicable` and writes nothing, the result
+      is not surfaced so the completion contract is unchanged, and the helper cannot throw into this
+      path. Room family must not decide whether a learner's assignment becomes true.
+    */
+    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
   }
 
   return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride) };

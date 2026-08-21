@@ -600,6 +600,17 @@ export async function completeGuidanceTraining(
       completedAtIso: now,
       deviceTz,
     });
+
+    /*
+      ASSIGNMENT TRUTH IS A CONSEQUENCE OF COMPLETION (Slice R4-R5B1) — see the full note in
+      `foundryTrainingService.completeTraining`. This room family had NO compensation of any kind:
+      the guidance client carries no auto-claim effect, and a signed-in learner never sees the claim
+      control, so a completed written-guidance or live-discussion assignment stayed `assigned`
+      indefinitely. Same call, same position, same guarantees: server-derived match keys, idempotent
+      and conflict-safe RPC, `not_applicable` (no write) for an open-link event, result deliberately
+      not surfaced, and no way to throw into this path.
+    */
+    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
   }
 
   return { ok: true, snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, xpOverride) };

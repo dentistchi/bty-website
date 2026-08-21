@@ -138,11 +138,35 @@ export async function claimAssignmentForParticipant(
   participantId: string,
   authUserId: string,
 ): Promise<AssignmentClaimResult> {
-  const { data, error } = await admin.rpc("bty_foundry_claim_assignment", {
-    p_event_id: eventId,
-    p_participant_id: participantId,
-    p_auth_user_id: authUserId,
-  });
+  /*
+    THIS MUST NEVER THROW INTO THE COMPLETION PATH (Slice R4-R5B1).
+
+    Since R4-R5B1 this helper is also called from the three `complete*Training` services, where a
+    rejection would fail a TRUTHFUL training completion the learner has already earned. The
+    `{ error }` branch below has always covered an RPC that ANSWERS with an error; it does not
+    cover one that never answers — a transport failure, an abort, a client that rejects.
+
+    Its two siblings in the same authenticated block already state this contract explicitly:
+    `materializeFollowupObligation` ends `catch { return "error"; // materialization must NEVER
+    throw into the completion/claim path }`, and `materializeApplyWindow` does the same. This
+    brings the assignment claim to that same posture.
+
+    Degrading to `not_applicable` is the function's OWN documented degradation for "any error",
+    and it is the silent outcome — so a transport failure reports nothing to the participant and,
+    critically, never falsely reports an assignment transition that did not happen. Nothing is
+    written on this path, so silence is the truthful answer.
+  */
+  let data: unknown;
+  let error: unknown;
+  try {
+    ({ data, error } = await admin.rpc("bty_foundry_claim_assignment", {
+      p_event_id: eventId,
+      p_participant_id: participantId,
+      p_auth_user_id: authUserId,
+    }));
+  } catch {
+    return "not_applicable";
+  }
   // Assignment-claim failure must not disturb the canonical XP result: treat any error as
   // "no matching assignment" for the participant-facing outcome (nothing was written).
   // A claim failure must never disturb the canonical XP result; degrade to the SILENT

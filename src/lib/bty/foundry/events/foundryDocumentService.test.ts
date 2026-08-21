@@ -18,6 +18,7 @@ import {
   resolveDocumentForRead,
 } from "./foundryDocumentService";
 import { uploadFoundryDocument } from "./documentStorage";
+import { simulateClaimAssignment, seedAssignment, readAssignment } from "./__fixtures__/assignmentClaimSim";
 
 beforeAll(() => {
   process.env.FOUNDRY_ROOM_QR_SECRET = "test-foundry-document-secret-0123456789";
@@ -173,6 +174,13 @@ function makeFakeAdmin() {
 
   function rpc(name: string, p: Record<string, unknown>) {
     if (name === "bty_foundry_resolve_or_create_program") return Promise.resolve({ data: [{ program_id: "prog-test" }], error: null });
+    if (name === "bty_foundry_claim_assignment") {
+      // R4-R5B1: faithful simulation (see __fixtures__/assignmentClaimSim) so the tests
+      // assert the real status transition, not merely that the helper was invoked.
+      tables.__claim_calls = tables.__claim_calls ?? [];
+      (tables.__claim_calls as Array<Record<string, unknown>>).push(p);
+      return Promise.resolve(simulateClaimAssignment(tables, p));
+    }
     if (name !== "bty_foundry_award_daily_capped") return Promise.resolve({ data: null, error: { message: "unknown rpc" } });
     const led = tables.core_xp_ledger;
     const SRC = "foundry_training_completion";
@@ -739,6 +747,87 @@ describe("participant isolation + close + privacy", () => {
       expect(owner.participants[0].training_status).toBe("complete");
       const json = JSON.stringify(owner);
       expect(json).not.toContain("A private reflection.");
+    }
+  });
+});
+
+/**
+ * R4-R5B1 — ASSIGNMENT COMPLETION TRUTH (document room).
+ *
+ * The document family was the ONLY one that reached assignment completion before this slice, and it
+ * did so from the BROWSER: `FoundryDocumentClient` fires a silent `claim-xp` on either terminal
+ * stage. That made assignment truth depend on a React effect mounting, and on a comment which
+ * wrongly asserted the video client did the same.
+ *
+ * These prove the document path is now server-side native — the transition happens inside
+ * `completeDocumentTraining`, with no client involvement of any kind.
+ */
+describe("R4-R5B1 · assignment completion truth — document", () => {
+  const claimCalls = (tables: Record<string, Array<Record<string, unknown>>>) =>
+    (tables.__claim_calls as Array<Record<string, unknown>> | undefined) ?? [];
+
+  it("T3 — an authenticated assigned completion drives the assignment to completed IN THE SERVICE", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined(2);
+    seedAssignment(tables, eventId, AUTH);
+    await meetReadingGate(admin, token, session, 2);
+
+    const done = await completeDocumentTraining(admin, token, session, "I'll apply the checklist.", AUTH);
+
+    expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
+    const a = readAssignment(tables, eventId, AUTH)!;
+    expect(a.status).toBe("completed");
+    expect(a.participant_id).toBe(String(tables.foundry_event_participants[0]!.id));
+    // T8 — server-side parity: exactly ONE claim, and it came from the completion service. No
+    // browser effect ran in this test, so the transition cannot be attributed to one.
+    expect(claimCalls(tables)).toHaveLength(1);
+    expect(claimCalls(tables)[0]).toMatchObject({ p_event_id: eventId, p_auth_user_id: AUTH });
+    expect(awardSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("T8 — the client's compensating claim remains SAFE on top: idempotent, no second XP", async () => {
+    const { admin, tables, eventId, token, session } = await setupJoined(2);
+    seedAssignment(tables, eventId, AUTH);
+    await meetReadingGate(admin, token, session, 2);
+    await completeDocumentTraining(admin, token, session, "Answer.", AUTH);
+    const claimedAt = readAssignment(tables, eventId, AUTH)!.claimed_at;
+
+    // Exactly what the retained auto-claim effect does on `completed_awarded`.
+    const replay = await claimDocumentXp(admin, token, session, AUTH);
+
+    expect(replay.ok).toBe(true);
+    expect(awardSpy).toHaveBeenCalledTimes(1); // no duplicate XP
+    const a = readAssignment(tables, eventId, AUTH)!;
+    expect(a.status).toBe("completed");
+    expect(a.claimed_at).toBe(claimedAt); // already_claimed → no re-stamp
+  });
+
+  it("T4/T5 — anonymous claims nothing; signed-in open-link fabricates nothing", async () => {
+    const anon = await setupJoined(2);
+    seedAssignment(anon.tables, anon.eventId, AUTH);
+    await meetReadingGate(anon.admin, anon.token, anon.session, 2);
+    await completeDocumentTraining(anon.admin, anon.token, anon.session, "Anonymous.", null);
+    expect(claimCalls(anon.tables)).toHaveLength(0);
+    expect(readAssignment(anon.tables, anon.eventId, AUTH)!.status).toBe("assigned");
+
+    const open = await setupJoined(2);
+    await meetReadingGate(open.admin, open.token, open.session, 2);
+    const done = await completeDocumentTraining(open.admin, open.token, open.session, "Open link.", AUTH);
+    expect(done.ok).toBe(true);
+    expect(open.tables.foundry_event_assignments ?? []).toHaveLength(0);
+  });
+
+  it("T7 — a reconciliation fault cannot fail a truthful completion", async () => {
+    for (const mode of ["error", "throw"]) {
+      const { admin, tables, eventId, token, session } = await setupJoined(2);
+      seedAssignment(tables, eventId, AUTH);
+      tables.__claim_fault = [{ mode }];
+      await meetReadingGate(admin, token, session, 2);
+
+      const done = await completeDocumentTraining(admin, token, session, `Answer (${mode}).`, AUTH);
+
+      expect(done.ok, mode).toBe(true);
+      expect(tables.foundry_event_training_progress[0]!.completed_at).not.toBeNull();
+      expect(readAssignment(tables, eventId, AUTH)!.status, mode).toBe("assigned");
     }
   });
 });

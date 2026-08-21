@@ -55,6 +55,7 @@ vi.mock("./foundryDocumentService", () => ({
 
 import { declareGuidanceExposure, completeGuidanceTraining, readGuidanceContent } from "./foundryGuidanceService";
 import { publishDraft } from "./foundryPublishService";
+import { simulateClaimAssignment, seedAssignment, readAssignment } from "./__fixtures__/assignmentClaimSim";
 
 type Row = Record<string, unknown>;
 type Tables = Record<string, Row[]>;
@@ -430,4 +431,127 @@ describe("R4-R2G · completion is reachable and gated (D3, F5, F10)", () => {
     expect(tables.foundry_event_training_progress[0].response_text).toBe("first");
     expect(awardTrainingCoreXp).not.toHaveBeenCalled();
   });
+});
+
+/**
+ * R4-R5B1 — ASSIGNMENT COMPLETION TRUTH (written guidance / live discussion).
+ *
+ * This family had NO compensation of any kind. `completeGuidanceTraining` linked identity, awarded
+ * XP, materialized the follow-up and the apply window — and the assignment stayed `assigned`
+ * forever, because the claim lived only in `claimGuidanceXp` and a signed-in learner never sees the
+ * claim control (the terminal stage is `completed_awarded`, and the control renders only at
+ * `completed_claimable`). Required Learning kept offering `Start learning` for finished training.
+ *
+ * The module-level `claimAssignmentForParticipant` mock is delegated to the faithful RPC simulation
+ * here, so these assert the real `assigned -> completed` transition on the real arguments rather
+ * than merely that a spy was called.
+ */
+describe("R4-R5B1 · assignment completion truth — guidance / discussion", () => {
+  const AUTH = "user-1";
+
+  function guidanceRoom(contentType: "written_guidance" | "live_discussion"): Tables {
+    return {
+      foundry_event_module: [
+        {
+          event_id: "ev-1",
+          module_snapshot: {
+            publishedGuidanceV1: {
+              version: 1,
+              contentType,
+              materialText: "The material.",
+              completionPrompt: "What will you do?",
+              sharedQuestion: null,
+            },
+          },
+        },
+      ],
+      foundry_event_training_progress: [
+        {
+          id: "pr-1",
+          event_id: "ev-1",
+          participant_id: "pt-1",
+          completed_at: null,
+          written_guidance_read_at: "2026-01-01T00:00:00.000Z",
+          discussion_self_reported_at: "2026-01-01T00:00:00.000Z",
+          xp_awarded_at: null,
+        },
+      ],
+    };
+  }
+
+  /** Route the mocked helper through the faithful simulator against this room's tables. */
+  function wireFaithfulClaim(tables: Tables) {
+    claimAssignmentForParticipant.mockImplementation(
+      async (_admin: unknown, eventId: string, participantId: string, authUserId: string) => {
+        const res = simulateClaimAssignment(tables as unknown as Record<string, Array<Record<string, unknown>>>, {
+          p_event_id: eventId,
+          p_participant_id: participantId,
+          p_auth_user_id: authUserId,
+        });
+        return res.error ? "not_applicable" : (res.data?.[0]?.result ?? "not_applicable");
+      },
+    );
+  }
+
+  for (const contentType of ["written_guidance", "live_discussion"] as const) {
+    it(`T2 — an authenticated assigned ${contentType} completion drives the assignment to completed`, async () => {
+      const tables = guidanceRoom(contentType);
+      seedAssignment(tables as unknown as Record<string, Array<Record<string, unknown>>>, "ev-1", AUTH);
+      wireFaithfulClaim(tables);
+      const admin = makeFakeAdmin(tables);
+
+      const r = await completeGuidanceTraining(admin, "tok", "sess", contentType, "I will ask one question.", AUTH);
+
+      expect(r.ok).toBe(true);
+      // The helper received the SERVER-derived pair — never anything from a browser.
+      expect(claimAssignmentForParticipant).toHaveBeenCalledTimes(1);
+      expect(claimAssignmentForParticipant).toHaveBeenCalledWith(admin, "ev-1", "pt-1", AUTH);
+      const a = readAssignment(tables as unknown as Record<string, Array<Record<string, unknown>>>, "ev-1", AUTH)!;
+      expect(a.status).toBe("completed");
+      expect(a.participant_id).toBe("pt-1");
+      // Existing behaviour untouched.
+      expect(awardTrainingCoreXp).toHaveBeenCalledTimes(1);
+      expect(materializeFollowupObligation).toHaveBeenCalledTimes(1);
+      expect(materializeApplyWindow).toHaveBeenCalledTimes(1);
+      expect(linkLearnerIdentity).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it("T4 — an anonymous guidance completion runs no assignment claim", async () => {
+    const tables = guidanceRoom("written_guidance");
+    seedAssignment(tables as unknown as Record<string, Array<Record<string, unknown>>>, "ev-1", AUTH);
+    wireFaithfulClaim(tables);
+    const admin = makeFakeAdmin(tables);
+
+    const r = await completeGuidanceTraining(admin, "tok", "sess", "written_guidance", "Anonymous.", null);
+
+    expect(r.ok).toBe(true);
+    expect(claimAssignmentForParticipant).not.toHaveBeenCalled();
+    expect(awardTrainingCoreXp).not.toHaveBeenCalled();
+    expect(readAssignment(tables as unknown as Record<string, Array<Record<string, unknown>>>, "ev-1", AUTH)!.status).toBe("assigned");
+  });
+
+  it("T5 — a signed-in OPEN-LINK guidance completion answers not_applicable and writes no assignment", async () => {
+    const tables = guidanceRoom("written_guidance"); // no assignment, no participation-mode row
+    wireFaithfulClaim(tables);
+    const admin = makeFakeAdmin(tables);
+
+    const r = await completeGuidanceTraining(admin, "tok", "sess", "written_guidance", "Open link.", AUTH);
+
+    expect(r.ok).toBe(true);
+    await expect(claimAssignmentForParticipant.mock.results[0]!.value).resolves.toBe("not_applicable");
+    expect(tables.foundry_event_assignments ?? []).toHaveLength(0);
+    expect(awardTrainingCoreXp).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+    T7 IS NOT TESTED HERE, DELIBERATELY. This file mocks `claimAssignmentForParticipant` at the
+    module boundary, so the real helper — which is where the never-throw guarantee lives — is not
+    executing. Faulting the mock would only prove that an unguarded rejection propagates, which is
+    true of any un-caught call and says nothing about the shipped behaviour.
+
+    The containment is family-agnostic (all three services call the SAME helper) and is proven
+    against the real helper in `assignmentClaimContainment.test.ts`, and end-to-end through a
+    faulting RPC in the video and document service suites.
+  */
 });

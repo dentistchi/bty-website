@@ -267,7 +267,30 @@ describe("R4-R4B · 8/9/10 · nothing else moved", () => {
       it was testing prose. The honest question is whether any learner client CHANGED, and git is
       the only thing that can answer it.
     */
-    const changed = execSync("git diff --name-only HEAD -- 'src/app/f'", { encoding: "utf8" }).trim();
+    /*
+      RE-ANCHORED TO THE SLICE'S OWN COMMIT (R4-R5B1).
+
+      This read `git diff --name-only HEAD` — the UNCOMMITTED working tree — which gives the
+      assertion two failure modes it should never have had:
+
+        · On a clean tree it returns the empty string and passes VACUOUSLY. At the moment R4-R4B
+          closed, this proved nothing at all.
+        · On any later branch it returns THAT branch's work in progress, so an unrelated future
+          slice legitimately touching a learner room fails a test about Manager layout. R4-R5B1
+          (assignment completion truth) is the first slice to hit it.
+
+      `1aa3d307` IS R4-R4B, the slice this file is named for. Its diff is seven files, all under
+      `src/components/foundry/event-rooms/`, so the assertion below now iterates a real, non-empty
+      list and genuinely proves what it claims. This is the same repair R4-R5A applied to
+      `legacyPortalContainment.test.ts` T6/T6b for the identical reason.
+    */
+    const SLICE_COMMIT = "1aa3d30784fa395a88f003c688379c15ea4e2183";
+    const all = execSync(`git show --pretty=format: --name-only ${SLICE_COMMIT}`, { encoding: "utf8" })
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    expect(all.length, "the slice commit's diff must be non-empty, or this proves nothing").toBeGreaterThan(0);
+    const changed = all.filter((f) => f.startsWith("src/app/f")).join("\n");
     expect(changed, `learner rooms modified:\n${changed}`).toBe("");
   });
 });
