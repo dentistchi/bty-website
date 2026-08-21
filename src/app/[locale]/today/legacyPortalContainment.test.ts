@@ -111,10 +111,37 @@ describe("T4/T5 · the canonical entry is unchanged and nothing can loop", () =>
 });
 
 describe("T6/T7 · contained, not migrated", () => {
+  /*
+    THE CLAIM IS ABOUT A COMMIT, SO IT IS MEASURED AGAINST THAT COMMIT (re-anchored in R4-R5A).
+
+    T6/T6b read `git diff --name-only HEAD` — the UNCOMMITTED working tree. That is not where the
+    containment slice's diff lives, and it produced the two failure modes a point-in-time proof
+    should never have:
+
+      · On a clean tree it returns ZERO files, so the loops below never execute and the tests pass
+        vacuously. Measured at HEAD == ab8177e8 with a clean tree: 0 files iterated, 0 assertions.
+        The proof this file is named for was not actually being made.
+      · On ANY later branch it returns that branch's work-in-progress, so an unrelated future slice
+        legitimately editing `src/components/app-shell/` fails a test about `/{locale}/today`.
+        R4-R5A (Today first-paint truth + Practice readability) is the first slice to hit it.
+
+    `ab8177e8` IS the containment commit ("the last door into the old product generation closes").
+    Its diff is two files — this test and `src/app/[locale]/today/page.tsx` — so the assertions
+    below now iterate a real, non-empty list and genuinely prove what they say: the door was closed
+    without touching the current shell or migrating a legacy sibling. The pin is deliberate; a
+    statement about one commit cannot be verified against a moving tree.
+  */
+  const CONTAINMENT_COMMIT = "ab8177e8e001c34b0da4c062b9773f025c7ccab5";
   const changed = () =>
-    execFileSync("git", ["diff", "--name-only", "HEAD"], { encoding: "utf8" })
+    execFileSync("git", ["show", "--pretty=format:", "--name-only", CONTAINMENT_COMMIT], {
+      encoding: "utf8",
+    })
       .split("\n")
       .filter(Boolean);
+
+  it("the containment commit's diff is non-empty, so T6/T6b cannot pass vacuously", () => {
+    expect(changed().length).toBeGreaterThan(0);
+  });
 
   it("T6 — no current /app route or shell file was touched", () => {
     for (const f of changed()) {

@@ -242,14 +242,44 @@ export function ArenaRoom({
         ) : completeStatus === "saving" ? (
           <p className="mb-3 text-center text-xs text-white/40">{t.completeSaving}</p>
         ) : null}
-        <ArenaPracticePlayer
-          scenario={view.practice.scenario}
-          locale={loc}
-          mode="play"
-          sourceTrainingTitle={view.practice.source_training_title}
-          onExit={() => void handleExit()}
-          onComplete={handleComplete}
-        />
+        {/*
+          THE PLAYER BRINGS ITS OWN PAGE (Slice R4-R5A).
+
+          `ArenaPracticePlayer` is a LIGHT-SURFACE component: it paints its prose with
+          `text-bty-navy` (= `--bty-brand-navy` = #0B1F3A) and its choice cards with `bg-white`,
+          because it was written for — and still serves — the cream `/bty-arena` page. This shell's
+          root is `bg-[#0B1F3A]`. Mounting it bare put the SAME colour on the SAME colour: the
+          scenario title, the section headings, the escalation narrative, the decision question, the
+          completion screen and the source-training line all rendered at 1.00:1, while the white
+          choice cards stayed perfectly readable. The learner saw answers with no question.
+
+          THE HOST MOUNT ALREADY KNEW THIS — `ArenaPracticeFlow` wraps the identical component in
+          `bg-bty-soft/40` for the Host draft preview. This is the same fix, the same token, one
+          difference: NO ALPHA. Measured against this shell, 40% of #f1eee6 composites to
+          rgb(103,114,127), and the player's own dimmed tokens land at
+
+            text-bty-navy/60 (section headings)  2.15:1
+            text-bty-navy/50 (From: <training>)  1.88:1
+            text-bty-navy/70 (completion body)   2.43:1
+            text-bty-navy/90 (escalation text)   3.07:1
+
+          — four of the six surfaces still failing. Opaque, the same token gives 4.22 / 3.15 / 5.78 /
+          10.91 and the title 14.25:1, which is exactly the contrast these components have always had
+          on their own cream page. So this restores the player's designed legibility rather than
+          improving on it, and NOT ONE TOKEN INSIDE THE PLAYER IS TOUCHED — no phase logic, no choice
+          behaviour, no state machine, no shell theme. The completion error/saving banners above stay
+          OUTSIDE this surface: they are shell-owned, already white-on-navy, and already readable.
+        */}
+        <div className="btyFadeIn min-h-[60vh] rounded-2xl bg-bty-soft p-3" data-testid="practice-player-surface">
+          <ArenaPracticePlayer
+            scenario={view.practice.scenario}
+            locale={loc}
+            mode="play"
+            sourceTrainingTitle={view.practice.source_training_title}
+            onExit={() => void handleExit()}
+            onComplete={handleComplete}
+          />
+        </div>
       </div>
     );
   }

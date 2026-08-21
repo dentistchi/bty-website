@@ -189,7 +189,26 @@ export default function TodayHome({
 }) {
   const loc: Locale = locale === "ko" ? "ko" : "en";
   const t = COPY[loc];
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  /*
+    UNKNOWN IS NOT EMPTY (Slice R4-R5A).
+
+    `reminders` initialised to `[]` meant the very first paint of every cold open took the empty
+    branch and asserted "You're all caught up for today." — with a CTA leading AWAY from the
+    required learning that was still in flight. Measured: the first synchronous render of this
+    component with one REQUIRED_LEARNING reminder pending read
+
+      "Yesterday was quiet. Begin with one small step today. … You're all caught up for today."
+
+    and then replaced itself with the training. Two factual claims made before the data that
+    supports them existed.
+
+    `null` is the third state the component always needed: NOT YET KNOWN. It is the same sentinel
+    `FoundryRequiredLearning` already uses (`assignments === null` → render nothing), and it also
+    carries the read FAILURE honestly — `setReminders` is only called on `res.ok && d.ok`, so a
+    failed brief now stays unknown and says nothing, instead of claiming emptiness it never
+    measured. Fetch and error semantics are otherwise unchanged; no new error surface, no spinner.
+  */
+  const [reminders, setReminders] = useState<Reminder[] | null>(null);
   const [hostAttention, setHostAttention] = useState<HostAttention[]>([]);
   const [hostActionReviews, setHostActionReviews] = useState<HostActionReview[]>([]);
   const [yesterdayReturned, setYesterdayReturned] = useState<boolean | null>(null);
@@ -280,7 +299,7 @@ export default function TodayHome({
   const primary: PrimaryActionResult = useMemo(
     () =>
       selectPrimaryAction(
-        reminders.map((r) => ({
+        (reminders ?? []).map((r) => ({
           stableId: r.stableId,
           category: r.category,
           state: r.state,
@@ -303,7 +322,7 @@ export default function TodayHome({
     fetched-but-narrowed shape that lost the FOLLOW_UP rows in 3.2G.
   */
   const todayItems = normalizeTodayItems(
-    reminders.map((r) => ({
+    (reminders ?? []).map((r) => ({
       stableId: r.stableId,
       category: r.category,
       state: r.state,
@@ -322,6 +341,20 @@ export default function TodayHome({
       h.category === "FOLLOW_UP_OVERDUE" || h.category === "FOLLOW_UP_NEEDED",
   );
   const followUpVisible = showAllHost ? followUpItems : followUpItems.slice(0, HOST_PREVIEW);
+
+  /*
+    THE TWO RESOLUTION PREDICATES (Slice R4-R5A). Nothing below states a fact about the learner's
+    day until the read behind that fact has come back.
+
+    `yesterdayKnown` — the fallback line reads `yesterdayReturned === true ? returned : quiet`, and
+    the initial value of `yesterdayReturned` is `null`. That collapsed UNKNOWN into "quiet", so a
+    learner who was here yesterday was told they were not, every single morning, until
+    /api/me/daily-trace answered. Both yesterday sources have their own `null`-means-unknown
+    sentinel already; this only stops treating that null as a measurement. When BOTH reads fail the
+    block stays absent — silence, which is what we actually know.
+  */
+  const remindersResolved = reminders !== null;
+  const yesterdayKnown = yesterdayCounts !== null || yesterdayReturned !== null;
 
   // Yesterday = canonical counts sentence; falls back to the measured self-return line
   // only when the counts source is unavailable (never fabricated).
@@ -347,16 +380,24 @@ export default function TodayHome({
         {t.eyebrow}
       </span>
 
-      {/* B — YESTERDAY: one truthful sentence (canonical counts) + optional compact line */}
-      <div className="flex flex-col gap-0.5" data-testid="today-yesterday">
-        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.yesterday}</span>
-        <p className="text-sm leading-6 text-white/80" data-testid="today-yesterday-sentence">{yesterdaySummary.sentence}</p>
-        {yesterdaySummary.compact ? (
-          <span className="text-[0.72rem] text-white/45" data-testid="today-yesterday-compact">{yesterdaySummary.compact}</span>
-        ) : null}
-      </div>
+      {/* B — YESTERDAY: one truthful sentence (canonical counts) + optional compact line.
+          Rendered only once one of the two yesterday reads has answered (R4-R5A) — the LABEL goes
+          with the sentence, because a heading over nothing reads as a surface that failed. */}
+      {yesterdayKnown ? (
+        <div className="flex flex-col gap-0.5" data-testid="today-yesterday">
+          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.yesterday}</span>
+          <p className="text-sm leading-6 text-white/80" data-testid="today-yesterday-sentence">{yesterdaySummary.sentence}</p>
+          {yesterdaySummary.compact ? (
+            <span className="text-[0.72rem] text-white/45" data-testid="today-yesterday-compact">{yesterdaySummary.compact}</span>
+          ) : null}
+        </div>
+      ) : null}
 
-      {/* TODAY: one canonical action list (top-3, Show more/less). No "Show everything". */}
+      {/* TODAY: one canonical action list (top-3, Show more/less). No "Show everything".
+          Held whole until the brief resolves (R4-R5A): the empty card is a CLAIM ("you're all
+          caught up") and the header is its frame, so neither may precede the read. No spinner and
+          no placeholder — the greeting already owns the first paint, and this fills in beneath it. */}
+      {remindersResolved ? (
       <div className="flex flex-col gap-2" data-testid="today-list">
         <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/40">{t.todayHeader}</span>
         {todayItems.length === 0 ? (
@@ -436,6 +477,7 @@ export default function TodayHome({
           </>
         )}
       </div>
+      ) : null}
 
       {/* Host leadership attention (creator's obligations) — one calm section under a single header:
           the leader's overdue/needed FOLLOW-UP rows (deep-linked to the control room, 3.2G) plus the
