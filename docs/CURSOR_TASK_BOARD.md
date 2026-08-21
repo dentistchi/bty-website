@@ -2081,3 +2081,4 @@ D-9 chain complete. Launch posture: strong.
 > “화면을 만드는 것”이 아니라  
 > **행동 엔진을 연결하는 것**이다.
 | R4-R5C3A2 | Truthful Continue Learning projection | [x] | 코드 배포·검증 완료 (`e1e56eb2` / Worker `dc9aab38`). RPC 마이그레이션 `20260826000000` Founder 적용 대기. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline 동일) / terminology 44 / cf:build 0 / 실 PostgreSQL 18-18. |
+| R4-R5C4A | Device-local draft containment | [x] | 배포·검증 완료 (`08c1bb37`). 서버 드래프트/마이그레이션/API 전무. Step 0=B → opaque `draft_ns` 스냅샷 1필드. 신규 테스트 53, 기존 baseline 유지. Founder 기기 게이트(F1/F2) 대기. |

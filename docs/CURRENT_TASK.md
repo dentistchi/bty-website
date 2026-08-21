@@ -1,3 +1,5 @@
+**R4-R5C4A (Device-Local Draft Containment)**: [x] **배포 완료 (2026-08-21).** 트레이닝룸에서 작성 중이던 답변이 새로고침·이탈·앱 종료 후에도 복원됨 — 기기 로컬 전용(서버 저장 없음, 마이그레이션 0, API 0, DB 컬럼 0). Step 0 판정 **B**: 브라우저에 참가자 식별자가 전무하여 스냅샷에 비인증 opaque `draft_ns` 1개 추가(권한 없음, 어떤 라우트도 읽지 않음). 복원은 편집 가능 이전 1회, 삭제는 **서버 완료 확정 시에만**. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline) / terminology 44 / cf:build 0 / 신규 테스트 53. Worker `08c1bb37`. **Founder 기기 검증 대기.**
+
 **R4-R5C3A2 (Truthful Continue Learning Projection)**: [x] **코드 배포 완료 (2026-08-21).** 시작한 교육이 더 이상 `Start learning`을 표시하지 않음 — `in_progress`를 읽기 시점에 파생(영속화 없음). 실제 PostgreSQL 실행 게이트 18/18 통과, pre-fix differential 6건 재현. **RPC 마이그레이션 `20260826000000` Founder 적용 대기 → 적용 전까지 동작 무변화(무해).** Worker `dc9aab38` / commit `e1e56eb2`.
 
 **[R4-R5B2]**: [x] **PASS / CLOSED — 트레이닝룸 진입·이탈 봉쇄 · TRAINING ROOM ENTRY / EXIT CONTAINMENT 완결** (2026-08-21; inner `e71b3c84`; 라이브 Worker `9e5fcbfb-b7a3-4bc1-8dcf-d4d2e37565dc` @ 100% 서빙 `e71b3c84`; **프로덕션 4파일 — 문구·내비게이션 전용**; **스키마·마이그레이션·RPC·API 라우트·인증·참가자 계약·토큰 변경 전무**).
