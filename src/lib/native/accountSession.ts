@@ -16,6 +16,7 @@
 
 import { isNative } from "./isNative";
 import { clearNativeSession } from "./durableSession";
+import { clearAllDeviceDrafts } from "@/lib/bty/foundry/device-draft-store";
 
 /** iOS Google client id — identical to login-card's native init (same single value). */
 const IOS_GOOGLE_CLIENT_ID =
@@ -108,6 +109,18 @@ export async function switchAccount({
 }
 
 /**
+ * Sign out ALSO ENDS DEVICE-LOCAL DRAFTS (Slice R4-R5C4A-R1). The participant cookie is
+ * HttpOnly and survives sign-out, and a participant with no auth session is compatible by
+ * design, so a signed-out browser could otherwise resolve the previous learner and restore
+ * their unfinished private text. Signing out is a request to end access on this device, and
+ * that must include the words they had not finished writing.
+ *
+ * PURGED AFTER THE SERVER LAYER SUCCEEDS, not before. A sign-out that fails does not navigate
+ * and leaves the learner signed in — destroying their drafts at that point would be data loss
+ * with none of the privacy benefit. Once the server session is actually gone, they go too.
+ *
+ * The purge is best-effort and can never block the sign-out it belongs to.
+ *
  * Sign out: same teardown, then land on the login screen IMMEDIATELY. `switch=1` suppresses
  * the native durable-session auto-restore (so the previous Google account is never silently
  * restored — the login form shows) and, after a manual sign-in, `next` returns the user to
@@ -121,6 +134,8 @@ export async function signOutAccount({
 }): Promise<AccountActionResult> {
   const failed = await tearDownAccountSession();
   if (failed.includes("server")) return { ok: false, failed };
+
+  clearAllDeviceDrafts();
 
   const loc = normalizeLocale(locale);
   const next = `/${loc}/app?tab=me`;

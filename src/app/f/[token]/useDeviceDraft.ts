@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DEVICE_DRAFT_KEY_PREFIX } from "@/lib/bty/foundry/device-draft-store";
 
 /**
  * DEVICE-LOCAL DRAFT CONTAINMENT — Slice R4-R5C4A.
@@ -44,8 +45,12 @@ type StoredDraft = DraftFields & { version: number; savedAt: number };
 
 const EMPTY: DraftFields = { response: "", sharedResponse: "", decisionResponse: "", reflectResponse: "" };
 
+/*
+  The prefix is OWNED by `device-draft-store`, not restated here. The sign-out purge sweeps that
+  prefix, and a second copy of the string is how a rename quietly leaves private text behind.
+*/
 export function draftKey(ns: string): string {
-  return `bty.fr.draft.v1:${ns}`;
+  return `${DEVICE_DRAFT_KEY_PREFIX}${ns}`;
 }
 
 /**
