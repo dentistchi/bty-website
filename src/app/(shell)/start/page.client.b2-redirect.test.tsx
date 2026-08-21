@@ -1,9 +1,19 @@
 /** @vitest-environment jsdom */
 /**
- * B2 native redirect — after the Orb hold, the native shell lands on /{locale}/app
- * while web stays on /{locale}/today. Locale is read from document.documentElement.lang
- * (the same currentLocale() the web push uses). OrbLiving is stubbed to a button that
- * fires onCommit, so the test isolates the destination branch from the canvas/hold loop.
+ * B2 launch destination — after the Orb hold, the door lands on /{locale}/app. Locale is read
+ * from document.documentElement.lang (the same currentLocale() the push uses). OrbLiving is
+ * stubbed to a button that fires onCommit, so the test isolates the destination from the
+ * canvas/hold loop.
+ *
+ * THE WEB ASSERTION WAS INVERTED, DELIBERATELY (Slice R4-R4B-R1, found at the Founder gate).
+ *
+ * It used to require `/en/today` for web, pinning B2's platform split as contract. Two weeks
+ * after B2, Slice 3.1B-3E.3 moved the canonical entry to the app shell — "canonical root +
+ * bare-locale enter app shell, not legacy portal" — and this branch was never updated with it.
+ * `/{locale}/today` is the legacy portal: the one call site in the repository that passes
+ * `surface="navy"` to `ScreenShell`, wearing the 5-tab `BottomNav` whose other tabs cross into
+ * that same shell's beige default. The old expectation was pinning the defect in place, so it
+ * now states the rule instead: one door, one product. The platform branch is gone entirely.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -50,7 +60,7 @@ async function holdDoor() {
   fireEvent.click(door);
 }
 
-describe("B2 native redirect on /start", () => {
+describe("B2 launch destination on /start", () => {
   it("native (BTYNative) → /{locale}/app", async () => {
     nativeState.value = true;
     await holdDoor();
@@ -58,10 +68,11 @@ describe("B2 native redirect on /start", () => {
     expect(pushMock).toHaveBeenCalledWith("/en/app");
   });
 
-  it("web (no BTYNative) → /{locale}/today", async () => {
+  it("web (no BTYNative) → /{locale}/app — the SAME product, never the legacy portal", async () => {
     nativeState.value = false;
     await holdDoor();
-    expect(pushMock).toHaveBeenCalledWith("/en/today");
+    expect(pushMock).toHaveBeenCalledWith("/en/app");
+    expect(pushMock).not.toHaveBeenCalledWith("/en/today");
   });
 
   it("reuses currentLocale() (document.lang) for interpolation", async () => {

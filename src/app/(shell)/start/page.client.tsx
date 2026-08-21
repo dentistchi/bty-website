@@ -4,7 +4,6 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import OrbLiving from "@/components/orb/OrbLiving";
-import { isNative } from "@/lib/native/isNative";
 import { StartNavySurface, StartUnreachableSurface } from "./StartNavySurface";
 import { currentSavedLocale } from "@/lib/localePreference";
 
@@ -123,17 +122,32 @@ export default function StartShellClient() {
     return () => clearTimeout(t);
   }, [loading, user, phase]);
 
-  // Door → the day. Navigate-once guard (commit latches once per press). B2: the native
-  // shell lands on its own app surface /{locale}/app (BtyDailyAppShell); web stays on
-  // /{locale}/today. isNative() reads the existing BTYNative UA / Capacitor bridge signal
-  // (no new UA detection). Locale comes from the SAME currentLocale() the web push uses —
-  // zero change to locale resolution (guards the 4224599 locale regression). Never bare "/app".
+  // Door → the day. Navigate-once guard (commit latches once per press). Locale comes from the
+  // SAME currentLocale() everything else here uses — zero change to locale resolution (guards the
+  // 4224599 locale regression). Never bare "/app".
+  /*
+    ONE DOOR, ONE PRODUCT.
+
+    B2 split this by platform: native to `/{locale}/app`, web to `/{locale}/today`. Two weeks later
+    Slice 3.1B-3E.3 moved the canonical entry — "canonical root + bare-locale enter app shell, not
+    legacy portal" — and `/` has redirected to `/{locale}/app` ever since. This branch was not
+    updated with it, so the launch door kept handing web visitors to the legacy portal.
+
+    That portal is not merely an older page. `/{locale}/today` is the ONE place in the repository
+    that passes `surface="navy"` to `ScreenShell`, so it looks correct on arrival — and it wears
+    the fixed 5-tab `BottomNav`, whose every OTHER tab crosses into a route where the same
+    `ScreenShell` takes its beige default. The person gets the new shell over old content, on every
+    tab but the one they landed on.
+
+    `isNative()` still exists and is still read elsewhere; it is simply not what decides which
+    PRODUCT someone opens. There is only one.
+  */
   const openDay = React.useCallback(() => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
     logOrbLatency("openDay-enter");
     const locale = currentLocale();
-    const dest = isNative() ? `/${locale}/app` : `/${locale}/today`;
+    const dest = `/${locale}/app`;
     logOrbLatency("navigation-requested"); // milestone only — the destination path is NOT logged
     router.push(dest);
   }, [router]);
