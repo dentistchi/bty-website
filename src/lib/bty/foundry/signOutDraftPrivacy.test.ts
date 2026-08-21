@@ -135,6 +135,14 @@ describe("T4/T7 — the sign-out path and its containment", () => {
     expect(hook).not.toMatch(/"bty\.fr\.draft\.v1:"/); // prefix is owned in ONE place
   });
 
+  it("the OTHER JS-reachable sign-out purges too", () => {
+    const btn = readFileSync(join(process.cwd(), "src/components/auth/LogoutButton.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(btn).toContain("clearAllDeviceDrafts()");
+    // …before it hands the browser to the login page.
+    expect(btn.indexOf("clearAllDeviceDrafts()")).toBeLessThan(btn.indexOf("window.location.assign"));
+  });
+
   it("T5 — nothing else calls the purge, so ordinary room use never triggers it", () => {
     const hook = readFileSync(join(process.cwd(), "src/app/f/[token]/useDeviceDraft.ts"), "utf8");
     expect(hook).not.toContain("clearAllDeviceDrafts");

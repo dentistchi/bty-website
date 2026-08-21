@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { getMessages } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
 import { clearNativeSession } from "@/lib/native/durableSession";
+import { clearAllDeviceDrafts } from "@/lib/bty/foundry/device-draft-store";
 
 export function LogoutButton() {
   const pathname = usePathname() ?? "";
@@ -24,6 +25,14 @@ export function LogoutButton() {
       // Network failure: still navigate to the login page (cookies may persist;
       // surfaced to the user as a logged-out screen rather than a hang).
     }
+    /*
+      R4-R5C4A-R1 — the second JS-reachable sign-out. `signOutAccount` (the Me tab) purges
+      device-local drafts; this button tears the session down its own way and would otherwise
+      leave the previous learner's unfinished private text readable on the device. Best-effort
+      and unconditional here: unlike `signOutAccount` this path navigates even when the server
+      call failed, so it always ends as a sign-out from the person's point of view.
+    */
+    clearAllDeviceDrafts();
     window.location.assign(`/${locale}/bty/login`);
   }, [locale]);
 
