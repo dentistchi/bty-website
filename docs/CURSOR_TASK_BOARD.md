@@ -1,3 +1,34 @@
+**[x] SLICE NATIVE KO OFFLINE FALLBACK — **PASS / CLOSED** (2026-08-21; native `4e0ec0e` then `db082b8` on `62fd918`; build **1.0 (2), not incremented**; **NO web code, NO Supabase, NO migration, NO signing change** — 7 files, all under `ios/`).
+
+**THE SURFACE ASKED THE PHONE INSTEAD OF THE PRODUCT.** The native pre-JS recovery screen chose its language from `Locale.preferredLanguages` alone, and there was not one cookie read anywhere in the native source. So a learner whose BTY is Korean, on an English phone, was told in English that their Korean app could not open. The web had already settled this distinction — `middleware.ts` calls itself the single entry resolver and states it as `NEXT_LOCALE` → Accept-Language → English — and this surface was the one place still skipping the first step.
+
+**THE FIRST REPAIR FAILED ON THE FOUNDER'S DEVICE, AND THE REASON IS THE MORE INTERESTING ONE.** Reproduced on the simulator with an unreachable host and the cookie already on disk:
+
+    t0      getAllCookies → EMPTY, in 1ms
+    +70ms   "no saved locale" latched — from that empty reply
+    +206ms  NEXT_LOCALE=ko becomes visible
+    +380ms  the surface renders, in English
+
+**WebKit answers immediately and with nothing until it has loaded the cookie file from disk.** The repair had bounded SILENCE and then accepted a fast wrong answer — the read did not time out, it completed incorrectly, and no bound can protect against that. It is the same family of mistake this whole R4-R4B-R1 arc exists to correct, one level down: **an empty store at launch is not "nothing is saved", it is "we have not been told yet."**
+
+**A FOUNDER CORRECTION MADE THE FIX NARROWER AND RIGHTER.** The proposed readiness signal had been "the store returned some cookies, so it must be loaded". That is a different fact from the one needed and could be true while `NEXT_LOCALE` is still missing — another cookie appearing first would settle us on the wrong answer with total confidence. **The only positive signal is a valid `NEXT_LOCALE` itself**; everything else waits. There is now a test named for the rejected design.
+
+**ONE WINDOW, ANCHORED AT LAUNCH — NOT AT THE FAILURE.** 50ms poll, 1.5s deadline: roughly 7× the measured 160–206ms hydration window, and the surface was not needed until 380ms, so the answer is normally in hand before it is asked for. A boot failure **starts no timer of its own** — asserted, so ten failure callbacks set one boolean ten times rather than arming ten loops. One `savedLocaleResolved = true` exists in the file. A completed navigation settles the question with one last read instead of running the deadline out behind a page that is already open, because a load that finished fetched its document with cookies from that very store.
+
+**THE EXACT REPRODUCTION THAT PRODUCED ENGLISH NOW PRODUCES KOREAN.** After: `+202ms saved BTY language resolved: ko (cookie)` · `+619ms surface presented`, screenshot-confirmed Korean on an **English-language** simulator. Fresh install with no cookie ever: `none (deadline)` at `+1505ms`, surface immediately after, device language — bounded, deterministic, no hang. That fresh-install wait is accepted deliberately: it costs the deadline only on a launch that has already failed, and distinguishing it from an unhydrated store would require a second persisted flag we refused to invent.
+
+**REUSED, NOT REPLACED.** `NEXT_LOCALE` stays the durable truth: set by `/api/locale/set` as a persistent one-year host-only `Set-Cookie`, living in the SAME store native reads (Capacitor builds a plain `WKWebViewConfiguration()` and never assigns `websiteDataStore` — measured, not assumed). **No second locale store was created** — no UserDefaults, no Capacitor Preferences, no Keychain locale. Only `en` and `ko` are accepted, as strict as the web's `isSavedLocale`. Native cookie access is **read-only**: two `getAllCookies`, both reads, **zero writes**.
+
+**COPY.** Aligned to the Founder-approved web wording, which adds the question this surface had been leaving to fear — whether the account is still there. EN `Couldn't reach BTY.` / `Your account is safe. Check your connection.` / `Retry`. KO `BTY에 연결하지 못했습니다.` / `계정은 그대로 있습니다. 연결 상태를 확인해 주세요.` / `다시 시도`.
+
+**VERIFICATION.** **55/55 tests PASS** across five suites (24 before this slice, **+31**), covering T1–T10. Simulator build and **signed device build both SUCCEEDED**; no TestFlight work created. Three obsolete assertions were **retargeted, not deleted**, each with its reason in-file. All temporary diagnostics — the probe build and the unreachable-host config — were reverted to zero diff and verified before commit.
+
+**FOUNDER DEVICE GATES G1–G3 — ALL PASS.** G1 iPhone English + BTY Korean + Airplane Mode cold launch → Korean surface, **no English-first flash**. G2 connectivity restored + `다시 시도` → BTY reopened in Korean, signed-in session preserved, **no Google screen, no OAuth loop**. G3 iPhone Korean + BTY English + Airplane Mode cold launch → English surface. **DEVICE LANGUAGE != BTY PRODUCT LANGUAGE was proven in both directions on a real iPhone.**
+
+**FINAL VERIFIED PRECEDENCE:** `NEXT_LOCALE` → device preferred language → English.
+
+**RECORDED, NOT STARTED — SEPARATE BACKLOG.** Direct entry to `/{locale}/today` can still expose the legacy portal family. Not a blocker for this slice, and deliberately untouched.
+
 **[x] SLICE R4-R4B-R1 — POST-JS UNREACHABLE RECOVERY + CANONICAL LAUNCH DESTINATION — **PASS / CLOSED** (2026-08-21; inner `4780503ae95a636aa277725cdbffd6fede990b1c` then `de1c80f884f8a81c33e10d7c98b7ed0daa1605f6`; local HEAD == `origin/inner-main` == `de1c80f8`, clean tree; live Worker `f6371b34-3f39-4e4d-93bc-b2014d75bdf8` @ 100% serving `de1c80f8` — **exact parity, no redeploy at closure**; **NO schema, NO migration, NO server code, NO write path, NO auth semantics**).
 
 **A BOUND THAT EXPIRES MEANS WE DON'T KNOW — BUT THE APP WAS STILL ACTING ON IT AS A NO.** R4-R4B-R1 had already bounded the boot read and built `StartUnreachableSurface`. Two things kept a person from ever usefully reaching it. `/start`'s auth gate fires on `!loading && !user`, and an expired bound produces exactly that pair — a timeout deliberately leaves `user` as it was (null on a cold launch) and clears `loading` in its `finally` — so the recovery surface rendered and was **immediately replaced by the login page**. The earlier test passed because it read the source text of the render branch; the redirect is an effect ABOVE that branch. **A test that reads the branch it expects to be wrong cannot see a defect that lives somewhere else.**
