@@ -42,7 +42,13 @@ afterEach(() => {
 });
 beforeEach(() => setUrl(""));
 
-describe("FoundryDocumentClient — Back to Foundry return control (Slice 3.1B-3F.1)", () => {
+/*
+  RETARGETED, NOT REWRITTEN (Slice R4-R5B2). The control, its testid, its href and every gate below
+  are unchanged — only the learner-visible LABEL moved from the internal system name to the tab it
+  actually returns to. The filename keeps its original slice name; renaming it would churn history
+  for no reader benefit, and `Foundry` remains correct as an internal identifier.
+*/
+describe("FoundryDocumentClient — return control to Learn (Slice 3.1B-3F.1, relabelled R4-R5B2)", () => {
   it("renders the EN control to the sanitized app-shell target when ?return is present", async () => {
     // @ts-expect-error test shim
     global.fetch = mockFetch(() => {});
@@ -50,7 +56,8 @@ describe("FoundryDocumentClient — Back to Foundry return control (Slice 3.1B-3
     render(<FoundryDocumentClient token="tok" />);
     const back = await screen.findByTestId("room-back-to-foundry");
     expect(back.getAttribute("href")).toBe("/en/app?tab=foundry");
-    expect(back.textContent).toMatch(/Back to Foundry/i);
+    expect(back.textContent).toMatch(/Back to Learn/i);
+    expect(back.textContent).not.toMatch(/Foundry/i);
   });
 
   it("renders the KO label for a /ko/ return target", async () => {
@@ -60,7 +67,8 @@ describe("FoundryDocumentClient — Back to Foundry return control (Slice 3.1B-3
     render(<FoundryDocumentClient token="tok" />);
     const back = await screen.findByTestId("room-back-to-foundry");
     expect(back.getAttribute("href")).toBe("/ko/app?tab=foundry");
-    expect(back.textContent).toContain("파운드리로 돌아가기");
+    expect(back.textContent).toContain("학습으로 돌아가기");
+    expect(back.textContent).not.toContain("파운드리");
   });
 
   it("does NOT render the control for an open-link scan (no ?return)", async () => {

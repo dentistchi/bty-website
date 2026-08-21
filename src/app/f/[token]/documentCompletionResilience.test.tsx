@@ -328,7 +328,7 @@ describe("R4-R2H · 10 · join failure clears busy and can be retried", () => {
       fireEvent.change(nameField, { target: { value: "테스터223" } });
     });
     await act(async () => {
-      fireEvent.click(screen.getByText("Join"));
+      fireEvent.click(screen.getByText("Continue"));
     });
 
     await act(async () => {
@@ -336,6 +336,6 @@ describe("R4-R2H · 10 · join failure clears busy and can be retried", () => {
     });
 
     await waitFor(() => expect(screen.getByTestId("doc-join-error")).toBeTruthy());
-    expect((screen.getByText("Join") as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByText("Continue") as HTMLButtonElement).disabled).toBe(false);
   });
 });

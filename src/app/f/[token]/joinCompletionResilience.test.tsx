@@ -168,7 +168,7 @@ describe("R4-R2I · J1–J2 · join", () => {
       fireEvent.change(nameField, { target: { value: "테스터77" } });
     });
     await act(async () => {
-      fireEvent.click(screen.getByText("Join training"));
+      fireEvent.click(screen.getByText("Continue"));
     });
 
     await waitFor(() => expect(screen.queryByTestId("join-error")).toBeNull());
@@ -202,19 +202,19 @@ describe("R4-R2I · J1–J2 · join", () => {
       fireEvent.change(nameField, { target: { value: "테스터77" } });
     });
     await act(async () => {
-      fireEvent.click(screen.getByText("Join training"));
+      fireEvent.click(screen.getByText("Continue"));
     });
     await act(async () => {
       vi.advanceTimersByTime(REQUEST_TIMEOUT_MS + 100);
     });
 
     await waitFor(() => expect(screen.getByTestId("join-error")).toBeTruthy());
-    expect((screen.getByText("Join training") as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByText("Continue") as HTMLButtonElement).disabled).toBe(false);
 
     // The retry succeeds and the error goes away.
     joinBehaviour = "ok";
     await act(async () => {
-      fireEvent.click(screen.getByText("Join training"));
+      fireEvent.click(screen.getByText("Continue"));
     });
     await waitFor(() => expect(screen.queryByTestId("join-error")).toBeNull());
   });

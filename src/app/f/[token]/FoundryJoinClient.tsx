@@ -119,6 +119,8 @@ type Copy = {
   */
   savedBody: string;
   continueToBty: string;
+  /** Slice R4-R5B2 — the assigned learner's primary exit; names the Learn tab it returns to. */
+  backToLearn: string;
   signedInAs: string;
   practiceHeading: string;
   practiceBody: string;
@@ -164,11 +166,11 @@ type Copy = {
 
 const COPY: Record<Locale, Copy> = {
   en: {
-    eyebrow: "FOUNDRY",
-    enterName: "Enter your name to join.",
+    eyebrow: "TRAINING",
+    enterName: "What's your name?",
     namePlaceholder: "Your name",
-    join: "Join training",
-    joining: "Joining…",
+    join: "Continue",
+    joining: "Opening…",
     todaysTraining: "TODAY’S TRAINING",
     finishVideo: "Finish the video to continue.",
     playerErrorTitle: "THIS VIDEO CAN’T PLAY HERE",
@@ -195,6 +197,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "Saved to your BTY",
     savedBody: "Your training is saved in My Learning.",
     continueToBty: "Continue to BTY",
+    backToLearn: "Back to Learn",
     signedInAs: "Signed in as",
     practiceHeading: "Now try it",
     practiceBody: "Practice this in a situation before it happens for real.",
@@ -234,11 +237,11 @@ const COPY: Record<Locale, Copy> = {
     secNextInvitation: "Your next invitation",
   },
   ko: {
-    eyebrow: "FOUNDRY",
-    enterName: "이름을 입력하고 입장하세요.",
+    eyebrow: "학습",
+    enterName: "이름을 입력해 주세요.",
     namePlaceholder: "이름",
-    join: "훈련 입장",
-    joining: "입장 중…",
+    join: "계속하기",
+    joining: "여는 중…",
     todaysTraining: "오늘의 훈련",
     finishVideo: "영상을 끝까지 보면 계속됩니다.",
     playerErrorTitle: "이 영상은 여기서 재생할 수 없습니다",
@@ -265,6 +268,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "BTY에 저장되었습니다",
     savedBody: "이 교육은 내 학습에 저장되었습니다.",
     continueToBty: "BTY로 계속하기",
+    backToLearn: "학습으로 돌아가기",
     signedInAs: "로그인 계정:",
     practiceHeading: "이제 연습해 보세요",
     practiceBody: "실제로 마주하기 전에, 상황 속에서 연습해 봅니다.",
@@ -312,14 +316,24 @@ function resolveLocale(): Locale {
 
 function Frame({ children }: { children: React.ReactNode }) {
   // Slice 3.1B-3E.1 (contract C): when the Room was opened from a Required assignment it
-  // carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back to Foundry"
+  // carries a sanitized same-origin `?return=/{locale}/app…`. Show a visible "Back to Learn"
   // on EVERY state, not dependent on browser history. Unsafe/external returns → no control.
   const [returnTarget] = useState<string | null>(() =>
     typeof window !== "undefined"
       ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
       : null,
   );
-  const backLabel = returnTarget?.startsWith("/ko/") ? "← 파운드리로 돌아가기" : "← Back to Foundry";
+  /*
+    THE CONTROL IS NAMED FOR WHERE IT GOES (Slice R4-R5B2).
+
+    `Foundry` is the internal system name; the tab this returns to is called **Learn**. Measured
+    before renaming: `sanitizeRoomReturn` admits only `/{en|ko}/app…`, and the repository has
+    exactly ONE producer of a room `?return=` — `FoundryRequiredLearning`, which always emits
+    `/{loc}/app?tab=foundry`, and `resolveInitialAppTab` aliases `foundry → learn`. So this control
+    truthfully lands on Learn and the label is accurate, not merely Foundry-free. A test pins that
+    sole producer, so a future second producer aiming elsewhere fails rather than silently lying.
+  */
+  const backLabel = returnTarget?.startsWith("/ko/") ? "← 학습으로 돌아가기" : "← Back to Learn";
   return (
     <main
       className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
@@ -389,7 +403,7 @@ export default function FoundryJoinClient({ token }: { token: string }) {
   const [assignmentNoMatch, setAssignmentNoMatch] = useState(false);
   const [account, setAccount] = useState<{ email: string | null } | null | "loading">("loading");
   // Open-link vs assigned entry (Slice 3.1B-3H): an assigned learner arrives with a sanitized
-  // `?return=/{locale}/app…` (→ "Back to Foundry"); an open-link web learner has none, so after a
+  // `?return=/{locale}/app…` (→ "Back to Learn"); an open-link web learner has none, so after a
   // successful authenticated claim we show the "Saved to your BTY" handoff into the app shell.
   const [roomReturn] = useState<string | null>(() =>
     typeof window !== "undefined"
@@ -916,6 +930,28 @@ export default function FoundryJoinClient({ token }: { token: string }) {
             <>
               <p className="text-3xl font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
               <p className="text-sm leading-6 text-white/60">{t.carryOne}</p>
+              {/*
+                THE SAME TRUTH, TOLD TO THE PERSON IT APPLIES TO (Slice R4-R5B2, Repair E).
+
+                `identity` is already built here from the FROZEN `follow_up_days` — this path simply
+                never rendered any of it. The result was that an anonymous stranger was told "This
+                training includes a 7-day follow-up." while the assigned employee, whose follow-up
+                obligation had ALREADY been materialized by the completion they just finished, was
+                told nothing.
+
+                ONLY `meaning` IS REUSED, and deliberately. `signInReason` and `xpSecondary` are
+                both about signing in to secure something — untrue for someone already signed in
+                whose XP is already awarded. `completionSaved` would repeat the +10 above it. So
+                this renders the one sentence that stays true on this path: a PROPERTY OF THE
+                TRAINING. No countdown, no due date, no reminder promise, no overdue language —
+                `terminalIdentityCopy` refuses to build any of that, and this adds no parallel copy.
+                A training with no checkpoint yields `followUp: null` and says nothing at all.
+              */}
+              {identity.followUp ? (
+                <p className="text-sm leading-6 text-white/80" data-testid="awarded-followup">
+                  {identity.followUp.meaning}
+                </p>
+              ) : null}
             </>
           ) : xp === "claimable" ? (
             <>
@@ -989,7 +1025,8 @@ export default function FoundryJoinClient({ token }: { token: string }) {
           {/* Open-link → BTY handoff (Slice 3.1B-3H): shown ONLY after a successful authenticated
               claim (ownership reconciled: xp awarded to this account) and ONLY for an open-link
               entry (no assigned `?return`). Navigation is non-mutating — it never re-runs completion
-              or claim. Assigned learners keep the Frame's "Back to Foundry". */}
+              or claim. Assigned learners ALSO get a primary exit to that same sanitized target
+              (R4-R5B2, `assigned-return`); this open-link panel stays open-link only. */}
           {/*
             NOW TRY IT (Slice 3.2M-2). The training and its practice were already bound in
             data by `source_event_id`; they were never connected in anyone's journey. Shown
@@ -1026,6 +1063,34 @@ export default function FoundryJoinClient({ token }: { token: string }) {
                 {t.continueToBty}
               </a>
             </div>
+          ) : null}
+
+          {/*
+            THE ASSIGNED LEARNER'S WAY OUT (Slice R4-R5B2, Repair C).
+
+            `roomReturn` is the proof that this room was opened from inside the BTY app — and it was
+            being used to REMOVE navigation help rather than provide it. The open-link visitor got a
+            prominent handoff; the employee who was assigned the training got a small grey link at
+            the top of the page and nothing else. The marker of belonging produced the poorer ending.
+
+            The href is the ALREADY-SANITIZED `roomReturn`, used verbatim. Nothing is reconstructed,
+            no locale or tab is re-derived, and `sanitizeRoomReturn` is untouched — it still admits
+            only `/{en|ko}/app…`, so this anchor cannot become an open redirect. The label names the
+            destination: the repository's ONE producer of this parameter is Required Learning, which
+            always returns to the Learn tab.
+
+            Open-link is unchanged and stays its own branch (Repair D): a different origin earns a
+            different destination, and collapsing them would send open-link visitors somewhere they
+            never came from.
+          */}
+          {roomReturn && xp === "awarded" ? (
+            <a
+              href={roomReturn}
+              data-testid="assigned-return"
+              className="mt-2 inline-block rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
+            >
+              {t.backToLearn}
+            </a>
           ) : null}
           </div>
         </div>

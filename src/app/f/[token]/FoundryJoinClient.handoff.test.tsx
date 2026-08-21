@@ -64,12 +64,29 @@ describe("FoundryJoinClient — open-link → BTY handoff", () => {
     expect(claimPosts).toBeLessThanOrEqual(1);
   });
 
-  it("ASSIGNED entry (with ?return=/en/app?tab=foundry) shows Back to Foundry and NO handoff", async () => {
-    window.history.replaceState({}, "", "/f/tok?return=" + encodeURIComponent("/en/app?tab=foundry"));
+  /*
+    THIS EXPECTATION WAS DELIBERATELY REVERSED (Slice R4-R5B2, Repair C).
+
+    It used to assert that an ASSIGNED learner gets "NO handoff" — which was the measured defect,
+    not a property worth protecting: the marker proving the learner came from inside BTY was being
+    used to REMOVE their way out, leaving a small grey top-left link as the entire ending while an
+    open-link stranger got a prominent one. What survives unchanged is the part that was always
+    right: the assigned ending is NOT the open-link handoff panel, because the two came from
+    different places and go to different destinations.
+  */
+  it("ASSIGNED entry (with ?return=…) shows the return control AND a primary exit to the sanitized target", async () => {
+    const RETURN = "/en/app?tab=foundry";
+    window.history.replaceState({}, "", "/f/tok?return=" + encodeURIComponent(RETURN));
     // @ts-expect-error test shim
     global.fetch = mockAwarded();
     render(<FoundryJoinClient token="tok" />);
     await waitFor(() => expect(screen.getByTestId("room-back-to-foundry")).toBeTruthy());
+    const primary = screen.getByTestId("assigned-return") as HTMLAnchorElement;
+    expect(primary.tagName).toBe("A");
+    expect(primary.getAttribute("href")).toBe(RETURN); // the sanitized value verbatim
+    expect(primary.textContent).toBe("Back to Learn");
+    // The open-link panel stays open-link only — different origin, different destination.
     expect(screen.queryByTestId("saved-to-bty")).toBeNull();
+    expect(screen.queryByTestId("continue-to-bty")).toBeNull();
   });
 });

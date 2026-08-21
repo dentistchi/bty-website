@@ -125,6 +125,8 @@ type Copy = {
   savedTitle: string;
   savedBody: string;
   continueToBty: string;
+  /** Slice R4-R5B2 — the assigned learner's primary exit; names the Learn tab it returns to. */
+  backToLearn: string;
   xpDailyLimit: string;
   xpOwner: string;
   closedTitle: string;
@@ -187,6 +189,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "Saved",
     savedBody: "This training is now in My Learning.",
     continueToBty: "Continue to BTY",
+    backToLearn: "Back to Learn",
     xpDailyLimit: "You’ve reached today’s Core XP limit — the training is still complete.",
     xpOwner: "You created this training, so no Core XP is added.",
     closedTitle: "This training is closed",
@@ -237,6 +240,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "저장됨",
     savedBody: "이 훈련은 이제 내 학습에 있습니다.",
     continueToBty: "BTY로 이동",
+    backToLearn: "학습으로 돌아가기",
     xpDailyLimit: "오늘의 코어 XP 한도에 도달했습니다. 훈련은 완료되었습니다.",
     xpOwner: "직접 만든 훈련이라 코어 XP는 적립되지 않습니다.",
     closedTitle: "종료된 훈련입니다",
@@ -260,7 +264,17 @@ function Frame({ children }: { children: React.ReactNode }) {
       ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
       : null,
   );
-  const backLabel = returnTarget?.startsWith("/ko/") ? "← 파운드리로 돌아가기" : "← Back to Foundry";
+  /*
+    THE CONTROL IS NAMED FOR WHERE IT GOES (Slice R4-R5B2).
+
+    `Foundry` is the internal system name; the tab this returns to is called **Learn**. Measured
+    before renaming: `sanitizeRoomReturn` admits only `/{en|ko}/app…`, and the repository has
+    exactly ONE producer of a room `?return=` — `FoundryRequiredLearning`, which always emits
+    `/{loc}/app?tab=foundry`, and `resolveInitialAppTab` aliases `foundry → learn`. So this control
+    truthfully lands on Learn and the label is accurate, not merely Foundry-free. A test pins that
+    sole producer, so a future second producer aiming elsewhere fails rather than silently lying.
+  */
+  const backLabel = returnTarget?.startsWith("/ko/") ? "← 학습으로 돌아가기" : "← Back to Learn";
   return (
     <main
       className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
@@ -347,6 +361,19 @@ export default function FoundryGuidanceClient({
   contentType: GuidanceType;
 }) {
   const [locale, setLocale] = useState<Locale>("en");
+  /*
+    THE CANONICAL RETURN, READ WHERE THE ENDING IS DECIDED (Slice R4-R5B2).
+
+    `Frame` has always read this to draw the small back link; the terminal state never had it, which
+    is why this room's finish button went to `/` — the site root — even for a learner who arrived
+    from inside the app. Same helper, same mount-time read, same strict allow-list: this is the read
+    the video and document rooms have both had all along, not a new mechanism.
+  */
+  const [roomReturn] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
+      : null,
+  );
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
@@ -741,7 +768,19 @@ export default function FoundryGuidanceClient({
             {claimed ? (
               <p className="mt-2 text-sm text-white/70">{t.savedBody}</p>
             ) : xp === "awarded" ? (
-              <p className="mt-2 text-sm text-emerald-300/90">{t.xpAwarded}</p>
+              <>
+                <p className="mt-2 text-sm text-emerald-300/90">{t.xpAwarded}</p>
+                {/*
+                  Repair E (R4-R5B2) — see the full note in FoundryJoinClient. Only `meaning` is
+                  reused: it is the one sentence that stays true for a learner already signed in
+                  whose XP is already awarded. No checkpoint → nothing said.
+                */}
+                {identity.followUp ? (
+                  <p className="mt-2 text-sm leading-6 text-white/80" data-testid="awarded-followup">
+                    {identity.followUp.meaning}
+                  </p>
+                ) : null}
+              </>
             ) : xp === "daily_limit" ? (
               <p className="mt-2 text-sm text-white/70">{t.xpDailyLimit}</p>
             ) : xp === "owner_ineligible" ? (
@@ -778,12 +817,25 @@ export default function FoundryGuidanceClient({
                 </button>
               </>
             )}
+            {/*
+              THE CANONICAL RETURN WINS OVER THE SITE ROOT (Slice R4-R5B2).
+
+              This was `href="/"` unconditionally — the root, which then resolves through locale
+              routing to wherever the app happens to send a fresh visit. For a learner who arrived
+              from Required Learning that is strictly worse than the place they came from, and it
+              discarded a validated destination the room was already holding.
+
+              With a `roomReturn` the anchor uses it VERBATIM and the label names it. Without one —
+              every open-link and QR visitor — the previous behaviour is untouched, deliberately:
+              a visitor who never came from the app has no app context to be returned to.
+            */}
             {(claimed || xp === "awarded") && (
               <a
-                href="/"
+                href={roomReturn ?? "/"}
+                data-testid={roomReturn ? "assigned-return" : "continue-to-bty"}
                 className="mt-4 inline-block rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
               >
-                {t.continueToBty}
+                {roomReturn ? t.backToLearn : t.continueToBty}
               </a>
             )}
           </div>

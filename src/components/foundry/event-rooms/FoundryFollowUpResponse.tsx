@@ -65,7 +65,7 @@ const COPY: Record<Locale, {
   earlierLabel: string;
 }> = {
   en: {
-    back: "← Back to Foundry",
+    back: "← Back to Learn",
     checkpoint: (n) => `${n}-day follow-up`,
     dueToday: "Due today",
     overdue: "Overdue",
@@ -91,7 +91,7 @@ const COPY: Record<Locale, {
     earlierLabel: "You reported earlier",
   },
   ko: {
-    back: "← 파운드리로 돌아가기",
+    back: "← 학습으로 돌아가기",
     checkpoint: (n) => `${n}일 후 확인`,
     dueToday: "오늘 확인",
     overdue: "기한 지남",

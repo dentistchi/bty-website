@@ -114,6 +114,8 @@ type Copy = {
   */
   savedBody: string;
   continueToBty: string;
+  /** Slice R4-R5B2 — the assigned learner's primary exit; names the Learn tab it returns to. */
+  backToLearn: string;
   saving: string;
   xpDailyLimit: string;
   xpOwner: string;
@@ -146,11 +148,11 @@ type Copy = {
 
 const COPY: Record<Locale, Copy> = {
   en: {
-    eyebrow: "FOUNDRY",
-    enterName: "Enter your name to join.",
+    eyebrow: "TRAINING",
+    enterName: "What's your name?",
     namePlaceholder: "Your name",
-    join: "Join",
-    joining: "Joining…",
+    join: "Continue",
+    joining: "Opening…",
     readThis: "Read the document",
     progressSaved: "Your place is saved.",
     pagesProgress: (v, t) => `${v} of ${t} pages read`,
@@ -178,6 +180,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "Saved to your BTY",
     savedBody: "Your training is saved in My Learning.",
     continueToBty: "Continue to BTY",
+    backToLearn: "Back to Learn",
     saving: "Saving…",
     xpDailyLimit: "Today’s Core XP is already saved. Come back tomorrow.",
     xpOwner: "Thanks for hosting this training.",
@@ -203,11 +206,11 @@ const COPY: Record<Locale, Copy> = {
     docLoadError: "This document is not available. Ask the host to check the event.",
   },
   ko: {
-    eyebrow: "FOUNDRY",
-    enterName: "이름을 입력하고 입장하세요.",
+    eyebrow: "학습",
+    enterName: "이름을 입력해 주세요.",
     namePlaceholder: "이름",
-    join: "입장",
-    joining: "입장 중…",
+    join: "계속하기",
+    joining: "여는 중…",
     readThis: "문서를 읽어 주세요",
     progressSaved: "읽던 위치가 저장됩니다.",
     pagesProgress: (v, t) => `${t}쪽 중 ${v}쪽 읽음`,
@@ -235,6 +238,7 @@ const COPY: Record<Locale, Copy> = {
     savedTitle: "BTY에 저장되었습니다",
     savedBody: "이 교육은 내 학습에 저장되었습니다.",
     continueToBty: "BTY로 계속하기",
+    backToLearn: "학습으로 돌아가기",
     saving: "저장 중…",
     xpDailyLimit: "오늘의 Core XP는 이미 저장되었습니다. 내일 다시 오세요.",
     xpOwner: "이 훈련을 열어 주셔서 감사합니다.",
@@ -277,7 +281,17 @@ function Frame({ children }: { children: React.ReactNode }) {
       ? sanitizeRoomReturn(new URLSearchParams(window.location.search).get("return"))
       : null,
   );
-  const backLabel = returnTarget?.startsWith("/ko/") ? "← 파운드리로 돌아가기" : "← Back to Foundry";
+  /*
+    THE CONTROL IS NAMED FOR WHERE IT GOES (Slice R4-R5B2).
+
+    `Foundry` is the internal system name; the tab this returns to is called **Learn**. Measured
+    before renaming: `sanitizeRoomReturn` admits only `/{en|ko}/app…`, and the repository has
+    exactly ONE producer of a room `?return=` — `FoundryRequiredLearning`, which always emits
+    `/{loc}/app?tab=foundry`, and `resolveInitialAppTab` aliases `foundry → learn`. So this control
+    truthfully lands on Learn and the label is accurate, not merely Foundry-free. A test pins that
+    sole producer, so a future second producer aiming elsewhere fails rather than silently lying.
+  */
+  const backLabel = returnTarget?.startsWith("/ko/") ? "← 학습으로 돌아가기" : "← Back to Learn";
   return (
     <main
       className="flex min-h-[100dvh] flex-col bg-[#0B1F3A] text-white antialiased"
@@ -905,7 +919,21 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
           <h1 className="mt-3 text-xl font-semibold">{snapshot.event?.title}</h1>
           <div className="mt-8 w-full">
             {xp === "awarded" && (
-              <p className="text-lg font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
+              <>
+                <p className="text-lg font-semibold text-[#C9A66B]">{t.xpAwarded}</p>
+                {/*
+                  THE SAME TRUTH, TOLD TO THE PERSON IT APPLIES TO (Slice R4-R5B2, Repair E). See the
+                  full note in FoundryJoinClient. `identity` is already built here from the frozen
+                  `follow_up_days`; only `meaning` is reused, because it is the one sentence still
+                  true for someone already signed in whose XP is already awarded. No checkpoint →
+                  `followUp` is null → nothing is said.
+                */}
+                {identity.followUp ? (
+                  <p className="mt-2 text-sm leading-6 text-white/80" data-testid="awarded-followup">
+                    {identity.followUp.meaning}
+                  </p>
+                ) : null}
+              </>
             )}
             {xp === "claimable" && (
               <>
@@ -958,6 +986,22 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
                   {t.continueToBty}
                 </a>
               </div>
+            ) : null}
+
+            {/*
+              THE ASSIGNED LEARNER'S WAY OUT (Slice R4-R5B2, Repair C) — see the full note in
+              FoundryJoinClient. href is the ALREADY-SANITIZED `roomReturn`, verbatim; nothing is
+              reconstructed and `sanitizeRoomReturn` is untouched. Open-link keeps its own branch
+              and its own destination above.
+            */}
+            {roomReturn && xp === "awarded" ? (
+              <a
+                href={roomReturn}
+                data-testid="assigned-return"
+                className="mt-6 inline-block rounded-xl bg-[#C9A66B] px-5 py-3 text-base font-semibold text-[#0B1F3A]"
+              >
+                {t.backToLearn}
+              </a>
             ) : null}
           </div>
         </Centered>
