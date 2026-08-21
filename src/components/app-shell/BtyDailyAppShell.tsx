@@ -6,6 +6,7 @@ import { LangSwitch } from "@/components/LangSwitch";
 import AccountBlock from "@/components/app-shell/AccountBlock";
 import { resolveInitialAppTab } from "@/components/app-shell/initialTab";
 import { narrowDraftDeepLink, parseDraftDeepLink, parseHostDeepLink, type HostFocusSection, type HostReturnTab } from "@/components/app-shell/hostDeepLink";
+import { parseTodayDeepLink, type TodayTarget } from "@/components/app-shell/todayDeepLink";
 import FoundryEventRooms from "@/components/foundry/event-rooms/FoundryEventRooms";
 import FoundryCompletionReview from "@/components/foundry/event-rooms/FoundryCompletionReview";
 import FoundryMyLearning from "@/components/foundry/event-rooms/FoundryMyLearning";
@@ -1267,6 +1268,14 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
   // deep-links a specific reflection on that same first screen (?tab=center&entry=<progressId>);
   // legacy ?view=reflections links normalize to the feed. The server still owner-scopes every read.
   const [centerFocusEntry, setCenterFocusEntry] = useState<string | null>(null);
+  /*
+    TODAY INTENT FIDELITY (Slice R4-R5C1). Two focus ids, carried the same way `centerFocusEntry`
+    already is: set from a cold deep link or an in-shell Today tap, handed to the surface that owns
+    the list, and consumed there. Neither changes business state, and neither is required for the
+    destination to be correct — a stale id simply focuses nothing.
+  */
+  const [learnAssignmentFocus, setLearnAssignmentFocus] = useState<string | null>(null);
+  const [myLearningFocus, setMyLearningFocus] = useState<string | null>(null);
   // Me sub-view (App Shell + Today Simplification V1): Center folds into Me. "home" = the Me landing
   // (account + mirror + entries); "center" = the voluntary Center/Recovery surface (CenterRealityFeed);
   // "my-learning" = the learner's own private reflection history. The deterministic forced-reset
@@ -1316,6 +1325,70 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     } catch {
       /* history unavailable — the view is still correct; only the address lags */
     }
+  }, []);
+
+  /*
+    ONE TODAY TAP, HANDLED INSIDE THE SHELL (Slice R4-R5C1).
+
+    Today's cards carry a server-authored `canonicalDeepLink` and were rendered as raw anchors, so
+    every tap was a full document navigation — inside the installed app, a visible reboot ("Opening
+    BTY…" → Today → jump) for a move this component can make in state.
+
+    The card stays an `<a href>` on purpose: the address is real, copy-paste works, and a long-press
+    or middle-click behaves like a link. This handler intercepts it ONLY when the target parses,
+    which is why an unrecognised shape keeps exactly today's behaviour instead of dead-ending.
+
+    THE ADDRESS IS UPDATED, NOT PUSHED. `replaceState` keeps the URL describing the surface (so a
+    reload restores the same destination and focus, resolved by the same effect a cold link uses)
+    without inventing a history entry the shell has no `popstate` handler to honour. Back therefore
+    behaves exactly as it did before this slice.
+  */
+  const openTodayTarget = useCallback((href: string): boolean => {
+    const target: TodayTarget | null = parseTodayDeepLink(href);
+    if (!target) return false; // let the anchor navigate — unknown shape, unchanged behaviour
+
+    switch (target.kind) {
+      case "learn-assignment":
+        setTab("learn");
+        setFoundryView("rooms");
+        setReviewId(null);
+        setFollowupId(null);
+        setLearnAssignmentFocus(target.assignmentId);
+        break;
+      case "learn-my-learning":
+        setTab("learn");
+        setFoundryView("my-learning");
+        setFollowupId(null);
+        setMyLearningFocus(target.entryId);
+        break;
+      case "learn-followup":
+        setTab("learn");
+        setFollowupId(target.followupId);
+        break;
+      case "practice-field-action":
+        setTab("practice");
+        setPracticeFieldActionId(target.contractId);
+        break;
+      case "today-field-action-contract":
+        setTab("today");
+        setFieldActionContractId(target.contractId);
+        break;
+      case "today-action-review":
+        setTab("today");
+        setActionReviewId(target.actionReviewId);
+        break;
+      case "tab":
+        // An honest container: this item has no focused destination in the product yet.
+        setTab(target.tab);
+        break;
+    }
+
+    try {
+      window.history.replaceState(null, "", href);
+    } catch {
+      /* history unavailable — the surface is still correct; only the address lags */
+    }
+    return true;
   }, []);
   /*
     Leaving Learn leaves the draft: the address stops describing the page, so it is narrowed away
@@ -1403,6 +1476,16 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
     const wantsMyLearning = viewParam === "my-learning";
     const wantsReflections = viewParam === "reflections";
     const validEntry = entryParam && /^[0-9a-fA-F-]{16,}$/.test(entryParam) ? entryParam : null;
+    // R4-R5C1 — the assignment a Today Required Learning card named. Same UUID-ish gate as its
+    // siblings; a malformed or stale value focuses nothing and Learn opens normally.
+    let assignmentParam: string | null = null;
+    try {
+      assignmentParam = new URLSearchParams(search).get("assignment");
+    } catch {
+      assignmentParam = null;
+    }
+    const validAssignment =
+      assignmentParam && /^[0-9a-fA-F-]{16,}$/.test(assignmentParam) ? assignmentParam : null;
     const validFollowup = followupParam && /^[0-9a-fA-F-]{16,}$/.test(followupParam) ? followupParam : null;
     const validActionReview =
       actionReviewParam && /^[0-9a-fA-F-]{16,}$/.test(actionReviewParam) ? actionReviewParam : null;
@@ -1427,7 +1510,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       !validFieldActionContract &&
       !validFieldAction &&
       !hostLink &&
-      !draftLink
+      !draftLink &&
+      !validAssignment
     )
       return;
     if (validFieldAction) {
@@ -1469,8 +1553,18 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       setTab("learn");
       setReviewId(validReview);
     } else if (wantsMyLearning) {
+      // R4-R5C1: `entry` was parsed and validated here all along and then dropped on the floor for
+      // this branch, so an Apply card opened an unfocused list. My Learning keys its rows on the
+      // same `foundry_event_training_progress.id` this carries.
       setTab("learn");
       setFoundryView("my-learning");
+      setMyLearningFocus(validEntry);
+    } else if (validAssignment) {
+      // R4-R5C1: Learn, with the named assignment card brought into view. Required Learning is the
+      // Learn ROOT surface, so `foundryView` stays "rooms".
+      setTab("learn");
+      setFoundryView("rooms");
+      setLearnAssignmentFocus(validAssignment);
     } else if (wantsReflections) {
       // Legacy ?view=reflections normalizes to the single Center feed — now inside Me (Center folded in).
       setTab("me");
@@ -1500,6 +1594,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
       params.delete("review");
       params.delete("view");
       params.delete("entry");
+      params.delete("assignment");
       params.delete("followup");
       params.delete("actionReview");
       params.delete("fieldActionAssignment");
@@ -1740,6 +1835,7 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 <TodayHome
                   locale={locale}
                   onNavigate={(dest) => setTab(dest)}
+                  onOpenItem={openTodayTarget}
                   onOpenLeadershipFollowUp={(target) => {
                     // 3.2G-R2: in-shell entry — set the canonical control-room state + Today return
                     // origin directly (the SAME state a direct URL would set), and switch to Learn
@@ -1796,7 +1892,11 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
           ) : foundryView === "my-learning" ? (
             <FoundryMyLearning
               locale={locale}
-              onBack={() => setFoundryView("rooms")}
+              focusEntryId={myLearningFocus}
+              onBack={() => {
+                setMyLearningFocus(null);
+                setFoundryView("rooms");
+              }}
               /* Learn origin: `foundryView` stays "my-learning" underneath, so clearing the
                  follow-up id alone returns here. No origin token needed. */
               onOpenFollowUp={(id) => setFollowupId(id)}
@@ -1842,6 +1942,8 @@ export default function BtyDailyAppShell({ locale }: { locale: Locale }) {
                 initialEventId={hostEventId}
                 initialDraftId={hostDraftId}
                 initialDraftView={hostDraftView}
+                focusAssignmentId={learnAssignmentFocus}
+                onAssignmentFocusConsumed={() => setLearnAssignmentFocus(null)}
                 initialFocusSection={hostSection}
                 initialFocusId={hostFocusId}
                 initialReturnTab={hostReturnTab}

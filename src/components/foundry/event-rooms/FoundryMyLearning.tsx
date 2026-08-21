@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { readContentType, type FoundryContentType } from "@/domain/foundry/events/content-type";
 import { contentTypeLabel } from "./contentTypeLabel";
 import type { EvidenceLevel } from "@/domain/foundry/module/program-authorship";
@@ -197,6 +197,7 @@ export default function FoundryMyLearning({
   locale,
   onBack,
   backLabel,
+  focusEntryId = null,
   onOpenFollowUp,
 }: {
   locale: string;
@@ -204,6 +205,14 @@ export default function FoundryMyLearning({
   /** Origin-aware parent name (B3A.2D-R1). Me-origin passes "Me"; Learn-origin omits it → the
    *  measured "Required learning" default. Explicit per call — never inferred from tab/history. */
   backLabel?: string;
+  /**
+   * THE RECORD TODAY POINTED AT (Slice R4-R5C1). An Apply this week card names the learner's own
+   * commitment sentence; this is the `foundry_event_training_progress.id` behind it, which is the
+   * same id these rows key on (`entryId`). Brought into view and outlined so the learner lands on
+   * their sentence instead of a list. Presentation only — no state, no write — and an unknown or
+   * stale id focuses nothing. Same prop shape as `CenterRealityFeed`'s `focusEntryId`.
+   */
+  focusEntryId?: string | null;
   /**
    * Slice 3.2R-R3-R1 — open THIS follow-up's response surface IN-SHELL. A button + callback, never
    * an `<a href>`: a row already inside the app is an app-shell command, and the raw-href form is
@@ -216,6 +225,18 @@ export default function FoundryMyLearning({
   const t = COPY[loc];
   const backText = `← ${backLabel ?? t.backDefault}`;
   const [items, setItems] = useState<MyLearningItem[] | null>(null);
+  const focusRef = useRef<HTMLLIElement | null>(null);
+
+  /*
+    Bring the named record into view once the list exists — `block: "center"`, no smooth behaviour,
+    matching `CenterRealityFeed`. A stale id matches no row, so `focusRef` stays null and nothing
+    scrolls; the list is still perfectly usable.
+  */
+  useEffect(() => {
+    if (!focusEntryId || !items) return;
+    const el = focusRef.current;
+    if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center" });
+  }, [focusEntryId, items]);
   const [reviewedPlans, setReviewedPlans] = useState<ReviewedPlanCard[]>([]);
   // entryId → established rungs. Absent = not loaded / unavailable → the strip simply does not
   // render for that row. Evidence is secondary; its absence must never blank a completion.
@@ -391,11 +412,19 @@ export default function FoundryMyLearning({
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {items.map((it) => (
+          {items.map((it) => {
+            const focused = !!focusEntryId && it.entryId === focusEntryId;
+            return (
             <li
               key={it.entryId}
+              ref={focused ? (el) => { focusRef.current = el; } : undefined}
               data-testid="my-learning-item"
-              className="flex flex-col gap-2 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3"
+              data-entry-id={it.entryId}
+              data-focused={focused ? "1" : undefined}
+              className={
+                "flex flex-col gap-2 rounded-2xl border bg-white/[0.03] px-4 py-3 " +
+                (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-white/8")
+              }
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-[0.95rem] font-medium text-white/90">{it.eventTitle}</span>
@@ -544,7 +573,8 @@ export default function FoundryMyLearning({
                 {t.viewInCenter} →
               </a>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

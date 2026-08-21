@@ -47,7 +47,13 @@ describe("buildTodayReminders", () => {
     const req = out.find((r) => r.stableId === "req:a1")!;
     expect(req.state).toBe("incomplete_required");
     expect(req.sourceTimestamp).toBeNull(); // NEVER a fabricated deadline
-    expect(req.canonicalDeepLink).toBe("/en/app?tab=foundry");
+    /*
+      RETARGETED (Slice R4-R5C1). This pinned the Learn ROOT — which was the defect, not a contract:
+      Today named a specific training and the link handed over a list the learner then had to search.
+      The id comes from the same RPC row the reminder is built from, never parsed out of `stableId`
+      and never inferred from the title, so the link now names what the card names.
+    */
+    expect(req.canonicalDeepLink).toBe("/en/app?tab=foundry&assignment=a1");
   });
 
   it("orders overdue first (priority) and every reminder has a canonical deep link", async () => {

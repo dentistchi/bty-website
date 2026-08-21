@@ -57,7 +57,20 @@ async function requiredLearning(admin: SupabaseClient, userId: string, locale: s
         state: "incomplete_required", // honest: no due-date column exists — never a fake deadline
         sourceTimestamp: null,
         roleContext: "learner",
-        canonicalDeepLink: `/${locale}/app?tab=foundry`,
+        /*
+          TODAY NAMED A TRAINING, SO THE LINK OPENS THAT TRAINING (Slice R4-R5C1).
+
+          This was `?tab=foundry` — the Learn ROOT. Today would name "Handling an angry customer",
+          the learner tapped it, the shell rebooted, and they landed on a list where they had to
+          find the same card again and press Start learning. The most common item on the canonical
+          path delivered a container instead of the thing it had just named.
+
+          `assignment_id` comes straight off the RPC row here — it is a real identifier, read
+          server-side, never parsed out of `stableId` and never inferred from the title. The shell
+          validates its shape and Required Learning brings the matching card into view; the learner
+          still chooses Start learning from that card, and nothing auto-opens.
+        */
+        canonicalDeepLink: `/${locale}/app?tab=foundry&assignment=${encodeURIComponent(r.assignment_id)}`,
       }));
   } catch {
     return [];
@@ -391,8 +404,23 @@ async function applyDue(
         state: w.state, // active | due_today | overdue — never invented, always day-granular
         sourceTimestamp: w.dueAtIso,
         roleContext: "learner",
-        // Back to the learner's own record of the decision, in-shell. Never Arena.
-        canonicalDeepLink: `/${locale}/app?tab=me&view=my-learning&entry=${encodeURIComponent(pid ?? "")}`,
+        /*
+          THE CANONICAL OWNER OF MY LEARNING IS LEARN (Slice R4-R5C1).
+
+          This asked for `tab=me`, and it was the ONLY link in the repository that did. Measured:
+          every other durable destination — both room clients' post-claim handoff and
+          `FieldActionForm` — uses `?tab=foundry&view=my-learning`, and the shell's `view=my-learning`
+          branch resolves to Learn. So the shell was not ignoring a valid request; this producer was
+          asking for a tab the deep-link contract has never owned. `entry` was then dropped too, so
+          the learner tapped their own sentence and got an unfocused list whose Back button read
+          "Required learning" — a screen they had never visited.
+
+          Fixed at the producer, which is where the disagreement was. My Learning is NOT relocated:
+          the Me tab keeps its own in-shell row into the same component with its own "Me" back label.
+          `pid` is `foundry_event_training_progress.id`, which is exactly what My Learning keys its
+          rows on (`entryId`), so the id was always right — only the tab and the consumption were wrong.
+        */
+        canonicalDeepLink: `/${locale}/app?tab=foundry&view=my-learning&entry=${encodeURIComponent(pid ?? "")}`,
         note: w.sourceTrainingTitle,
       });
     }

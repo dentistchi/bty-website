@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Foundry REQUIRED LEARNING — the installed-app learner surface (Slice 3.1B-3E).
@@ -96,8 +96,20 @@ function fmtDate(iso: string | null, locale: Locale): string {
 export default function FoundryRequiredLearning({
   locale,
   onOpenReview = () => {},
+  focusAssignmentId = null,
+  onFocusConsumed,
 }: {
   locale: string;
+  /**
+   * TODAY NAMED THIS ONE (Slice R4-R5C1). The assignment a Today Required Learning card pointed
+   * at: brought into view and outlined so the learner recognises it without reading the list. It
+   * changes NO state — not completion, not status, not the card's own controls — and a stale or
+   * unknown id simply focuses nothing. Reuses the `focusEntryId` pattern already shipped in
+   * `CenterRealityFeed`: prop → ref → `scrollIntoView` → a `focused` flag on the card.
+   */
+  focusAssignmentId?: string | null;
+  /** Told once the focus has been shown, so a later Back does not re-focus a card. */
+  onFocusConsumed?: () => void;
   /** Open the learner's own My Learning / private reflection history (Slice 3.1B-3H). */
   /** Open the authenticated read-only review for a COMPLETED assignment (never the Room). */
   onOpenReview?: (assignmentId: string) => void;
@@ -110,6 +122,7 @@ export default function FoundryRequiredLearning({
   // (initially null -> the surface simply stays absent) rather than asserting a false
   // "nothing required".
   const [assignments, setAssignments] = useState<Assignment[] | null>(null);
+  const focusRef = useRef<HTMLDivElement | null>(null);
   // Completed history is collapsed by default (B3A.2C) so it never dominates the
   // Learn screen; returning to Learn root resets to collapsed (fresh mount).
   const [showCompleted, setShowCompleted] = useState(false);
@@ -144,6 +157,19 @@ export default function FoundryRequiredLearning({
     };
   }, [load]);
 
+  /*
+    Bring the named card into view once the list exists. `block: "center"` and no smooth behaviour,
+    matching `CenterRealityFeed` — a stable initial position rather than an animation, so nothing
+    moves under a learner who is already reading. Guarded on the id actually matching a row, so a
+    stale link scrolls nothing.
+  */
+  useEffect(() => {
+    if (!focusAssignmentId || !assignments) return;
+    const el = focusRef.current;
+    if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "center" });
+    onFocusConsumed?.();
+  }, [focusAssignmentId, assignments, onFocusConsumed]);
+
   // Pre-first-response hold: render nothing (bounded — the fetch resolves fast). The
   // host room below is unaffected.
   if (assignments === null) return null;
@@ -168,9 +194,19 @@ export default function FoundryRequiredLearning({
 
         {required.length > 0 ? (
           <div className="flex flex-col gap-2.5">
-            {required.map((a) => (
-              <RequiredCard key={a.assignmentId} a={a} t={t} loc={loc} />
-            ))}
+            {required.map((a) => {
+              const focused = !!focusAssignmentId && a.assignmentId === focusAssignmentId;
+              return (
+                <RequiredCard
+                  key={a.assignmentId}
+                  a={a}
+                  t={t}
+                  loc={loc}
+                  focused={focused}
+                  refCb={focused ? (el) => { focusRef.current = el; } : undefined}
+                />
+              );
+            })}
           </div>
         ) : (
           <div
@@ -213,16 +249,38 @@ export default function FoundryRequiredLearning({
   );
 }
 
-function RequiredCard({ a, t, loc }: { a: Assignment; t: Copy; loc: Locale }) {
+function RequiredCard({
+  a,
+  t,
+  loc,
+  focused = false,
+  refCb,
+}: {
+  a: Assignment;
+  t: Copy;
+  loc: Locale;
+  /** Outlined because Today named this exact training. Presentation only — no state, no write. */
+  focused?: boolean;
+  refCb?: (el: HTMLDivElement | null) => void;
+}) {
   const date = fmtDate(a.assignedAt, loc);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-3.5">
+    <div
+      ref={refCb}
+      data-testid="required-card"
+      data-assignment-id={a.assignmentId}
+      data-focused={focused ? "1" : undefined}
+      className={
+        "flex items-center justify-between gap-3 rounded-xl border bg-[#C9A66B]/[0.05] px-4 py-3.5 " +
+        (focused ? "border-[#C9A66B]/60 ring-1 ring-[#C9A66B]/40" : "border-[#C9A66B]/30")
+      }
+    >
       <div className="flex min-w-0 flex-col">
         <span className="min-w-0 truncate text-[0.98rem] font-medium text-white/90">{a.title}</span>
         {date ? <span className="text-xs text-white/40">{t.assignedOn(date)}</span> : null}
       </div>
       {/* Same-origin anchor: navigates the WebView to the live Room (session preserved), and
-          carries a sanitized return target so the Room can offer "Back to Foundry". No
+          carries a sanitized return target so the Room can offer "Back to Learn" (R4-R5B2). No
           target=_blank — a new WKWebView context would not share the auth cookie. */}
       <a
         href={`${a.roomUrl}?return=${encodeURIComponent(`/${loc}/app?tab=foundry`)}`}

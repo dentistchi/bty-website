@@ -176,11 +176,23 @@ function deviceTz(): string | null {
 export default function TodayHome({
   locale,
   onNavigate,
+  onOpenItem,
   onOpenLeadershipFollowUp,
 }: {
   locale: string;
   /** In-shell tab navigation for the deterministic fallback CTAs (no route reload). */
   onNavigate?: (tab: "learn" | "practice") => void;
+  /**
+   * OPEN A TODAY ITEM INSIDE THE SHELL (Slice R4-R5C1). Given the item's SERVER-AUTHORED canonical
+   * deep link, the shell applies the destination in state and returns true. Returning FALSE means
+   * it could not resolve the link, and the card's anchor is then allowed to navigate natively — so
+   * an unrecognised shape degrades to the previous behaviour rather than to a dead control.
+   *
+   * The card stays an `<a href>` either way: the address is real, copy-paste and long-press work,
+   * and the durable URL is what a reload resolves. This only removes the document reload — and with
+   * it the "Opening BTY…" shell reboot — for links the shell already understands.
+   */
+  onOpenItem?: (href: string) => boolean;
   /** 3.2G-R2: open a leadership follow-up's control room IN-SHELL (no href, no document reload). The
    *  shell sets the canonical Event/section/focus state + Today return origin directly. The structured
    *  target is derived from the SERVER's canonical deepLink via the shared sanitizer — never from
@@ -442,6 +454,23 @@ export default function TodayHome({
                   href={it.deepLink}
                   data-testid="today-item"
                   data-category={it.category}
+                  /*
+                    STILL AN ANCHOR, NO LONGER A RELOAD (Slice R4-R5C1).
+
+                    The href stays real — the address is copyable, long-press and middle-click keep
+                    working, and it is what a cold load resolves. What changes is the ordinary tap:
+                    the shell resolves the server-authored link into a destination it can render in
+                    state, so the learner no longer watches "Opening BTY…" and a bounce through
+                    Today to reach a surface one tab away.
+
+                    `preventDefault` happens ONLY when the shell reports it handled the link. An
+                    unrecognised shape returns false and the browser follows the href exactly as it
+                    did before, so no card can become inert.
+                  */
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                    if (onOpenItem?.(it.deepLink)) e.preventDefault();
+                  }}
                   className="flex flex-col gap-0.5 rounded-2xl border border-[#C9A66B]/25 bg-[#C9A66B]/[0.05] px-4 py-3"
                 >
                   <span className="text-[0.62rem] uppercase tracking-[0.12em] text-white/40">

@@ -81,6 +81,8 @@ export function computeInitialFoundryView(
 export default function FoundryEventRooms({
   locale,
   onOpenReview = () => {},
+  focusAssignmentId = null,
+  onAssignmentFocusConsumed,
   onOpenMyLearning = () => {},
   onOpenEvent,
   onOpenMyEvents,
@@ -98,6 +100,9 @@ export default function FoundryEventRooms({
   locale: string;
   /** Open the authenticated completion review for a completed assignment (in-shell). */
   onOpenReview?: (assignmentId: string) => void;
+  /** R4-R5C1 — the assignment a Today card named; handed straight to Required Learning. */
+  focusAssignmentId?: string | null;
+  onAssignmentFocusConsumed?: () => void;
   /** Open the learner's own My Learning / private reflection history (in-shell, Slice 3.1B-3H). */
   onOpenMyLearning?: () => void;
   /** Open the in-shell Reality Event create view (Slice 3.2D-EVENT-R1). */
@@ -331,7 +336,12 @@ export default function FoundryEventRooms({
       {/* No `onOpenMyLearning` here: B3A.2C removed this child's My-Learning pill and the prop
           has been unused since. Passing it advertised a second plausible owner of the entry,
           which is how the door above kept a stale handler through that refactor. */}
-      <FoundryRequiredLearning locale={loc} onOpenReview={onOpenReview} />
+      <FoundryRequiredLearning
+        locale={loc}
+        onOpenReview={onOpenReview}
+        focusAssignmentId={focusAssignmentId}
+        onFocusConsumed={onAssignmentFocusConsumed}
+      />
     </div>
   );
 

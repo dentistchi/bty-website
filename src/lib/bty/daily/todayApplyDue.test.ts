@@ -116,11 +116,22 @@ describe("APPLY_DUE — visible from day one", () => {
     expect(r.filter((x) => x.category === "APPLY_DUE")).toHaveLength(0);
   });
 
-  it("deep-links back to the learner's own record, never to Arena", async () => {
+  /*
+    RETARGETED (Slice R4-R5C1). `tab=me` was measured to be wrong at the PRODUCER, not ignored by
+    the shell: every other durable link to My Learning — both room clients' post-claim handoff and
+    `FieldActionForm` — uses `?tab=foundry&view=my-learning`, and the shell's `view=my-learning`
+    branch has always resolved to Learn. This link was the only one in the repository asking for a
+    tab the deep-link contract never owned, so the learner landed on Learn with `entry` discarded
+    and a Back button reading "Required learning". The INTENT this test protects is unchanged and
+    is now asserted more strictly: the learner's own record, focused, never Arena.
+  */
+  it("deep-links to the learner's own FOCUSED record on the canonical tab, never to Arena", async () => {
     const r = await build(progressTables(), [WINDOW], "2026-08-14T20:00:00Z");
     const a = r.find((x) => x.category === "APPLY_DUE")!;
-    expect(a.canonicalDeepLink).toContain("tab=me");
-    expect(a.canonicalDeepLink).toContain("my-learning");
+    expect(a.canonicalDeepLink).toContain("tab=foundry"); // the canonical owner of My Learning
+    expect(a.canonicalDeepLink).not.toContain("tab=me");
+    expect(a.canonicalDeepLink).toContain("view=my-learning");
+    expect(a.canonicalDeepLink).toContain("entry=prog-1"); // the exact record, not a list
     expect(a.canonicalDeepLink).not.toContain("arena");
   });
 
