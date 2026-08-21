@@ -234,6 +234,113 @@ describe("G6 — practice behaviour is unchanged; only the surface moved", () =>
   });
 });
 
+/**
+ * R4-R5A-R1 — THE TEXT ON THE SURFACE, NOT JUST THE SURFACE.
+ *
+ * The block above proves every completion string is a DESCENDANT of the cream container, and it
+ * passed while the Founder was looking at white text on cream. Containment was never the whole
+ * property: an element inside a light box still needs a colour that will actually be painted.
+ *
+ * The root cause is one line of `tailwind.config.ts` — `navy: "var(--bty-brand-navy)"`, a bare
+ * `var()` with no `<alpha-value>` placeholder. Tailwind v3 cannot apply an opacity modifier to it,
+ * so it emits NO RULE for `text-bty-navy/NN`; the element then INHERITS, and the app-shell root is
+ * `text-white`. On the legacy `/bty-arena` page the same class inherited `--arena-text` (#2D2A36)
+ * and looked correct, which is why this survived until the player was mounted on the dark shell.
+ *
+ * So these tests assert the CLASSES, and the first one is conditional on the config: if the token
+ * is ever made alpha-capable, the prohibition relaxes on its own instead of becoming a lie.
+ */
+describe("R4-R5A-R1 — completion-state text is painted, not inherited", () => {
+  const config = readFileSync(join(process.cwd(), "src/components/../../tailwind.config.ts"), "utf8");
+  const navyToken = config.match(/navy:\s*"([^"]+)"/)?.[1] ?? "";
+  /** True while the token cannot carry an alpha — i.e. while `text-bty-navy/NN` compiles to nothing. */
+  const alphaIsUncompilable = navyToken.includes("var(") && !navyToken.includes("<alpha-value>");
+
+  const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+  const NAVY_HEX = css.match(/--bty-brand-navy:\s*(#[0-9a-fA-F]{6})/)?.[1]?.toLowerCase() ?? "";
+
+  /** Every element inside the cream surface, with its class list. */
+  const inSurface = () => Array.from(surfaceEl().querySelectorAll<HTMLElement>("*"));
+  /** The single element inside the surface whose own text is `needle`. */
+  const owning = (needle: string) =>
+    inSurface().filter((n) => (n.textContent ?? "").includes(needle)).pop()!;
+
+  async function reachCompletion() {
+    await enterPlayer();
+    fireEvent.click(screen.getByText("Begin"));
+    fireEvent.click(screen.getByText("Pause and confirm the critical details"));
+    fireEvent.click(screen.getByText("Escalate to the lead"));
+    fireEvent.click(screen.getByText("Record the owner and next check time"));
+    await waitFor(() => expect(surfaceEl().textContent).toContain("Practice complete"));
+  }
+
+  it("the config still cannot carry an alpha on this token (the premise of the test below)", () => {
+    expect(navyToken).toBe("var(--bty-brand-navy)");
+    expect(alphaIsUncompilable).toBe(true);
+    expect(NAVY_HEX).toBe("#0b1f3a");
+  });
+
+  it("NO element on the learner surface uses an alpha modifier on a var()-backed bty colour", async () => {
+    await reachCompletion();
+    if (!alphaIsUncompilable) return; // token gained <alpha-value>; the prohibition no longer applies
+    const offenders = inSurface()
+      .map((n) => n.getAttribute("class") ?? "")
+      .filter((c) => /\btext-bty-[a-z]+\/\d+/.test(c));
+    expect(offenders).toEqual([]);
+  });
+
+  it("the completion BODY carries a paintable dimmed navy (the Founder's white-on-cream line)", async () => {
+    await reachCompletion();
+    const body = owning("You worked through the full decision.");
+    const cls = body.getAttribute("class") ?? "";
+    expect(cls).not.toMatch(/text-bty-navy\/\d+/); // the class that emitted nothing
+    expect(cls).toMatch(/text-\[#0B1F3A\]\/\d+/i);
+    expect(cls.toLowerCase()).toContain(NAVY_HEX); // the hex IS the token; it cannot drift
+  });
+
+  it("the FROM line carries a paintable dimmed navy (the Founder's other white-on-cream line)", async () => {
+    await reachCompletion();
+    const from = owning(`From: ${TRAINING}`);
+    const cls = from.getAttribute("class") ?? "";
+    expect(cls).not.toMatch(/text-bty-navy\/\d+/);
+    expect(cls).toMatch(/text-\[#0B1F3A\]\/\d+/i);
+  });
+
+  it("'Practice complete' and 'Done' keep the OPAQUE tokens that always compiled — unchanged", async () => {
+    await reachCompletion();
+    // These two were readable on device precisely because `text-bty-navy` / `bg-bty-navy` emit rules.
+    expect(screen.getByText("Practice complete").getAttribute("class")).toContain("text-bty-navy");
+    expect(screen.getByText("Practice complete").getAttribute("class")).not.toMatch(/text-bty-navy\/\d/);
+    const done = screen.getByText("Done");
+    expect(done.getAttribute("class")).toContain("bg-bty-navy");
+    expect(done.getAttribute("class")).toContain("text-white");
+  });
+
+  it("every dimmed alpha on the surface clears AA (4.5:1) against the cream it sits on", async () => {
+    await reachCompletion();
+    const cream = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8")
+      .match(/--bty-surface-soft:\s*(#[0-9a-fA-F]{6})/)![1]!;
+    const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const lin = (c: number) => {
+      const v = c / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    const lum = (c: number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
+    const over = (f: number[], a: number, b: number[]) => f.map((c, i) => Math.round(a * c + (1 - a) * b[i]!));
+    const BG = rgb(cream);
+    const FG = rgb(NAVY_HEX);
+    const alphas = inSurface()
+      .flatMap((n) => Array.from((n.getAttribute("class") ?? "").matchAll(/text-\[#0B1F3A\]\/(\d+)/gi)))
+      .map((m) => Number(m[1]) / 100);
+    expect(alphas.length).toBeGreaterThan(0);
+    for (const a of alphas) {
+      const fg = over(FG, a, BG);
+      const [hi, lo] = [lum(fg), lum(BG)].sort((x, y) => y - x) as [number, number];
+      expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
 describe("the contrast the surface exists to produce", () => {
   /**
    * jsdom cannot compute rendered colour, but the two ends of the calculation are FACTS in the

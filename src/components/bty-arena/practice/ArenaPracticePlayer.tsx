@@ -84,8 +84,35 @@ function ChoiceCard({
   );
 }
 
+/*
+  WHY THE DIMMED NAVY IS WRITTEN AS A HEX AND NOT THE TOKEN (Slice R4-R5A-R1).
+
+  `text-bty-navy/NN` COMPILES TO NOTHING. The Tailwind token is `navy: "var(--bty-brand-navy)"`
+  (tailwind.config.ts) — a bare `var()` with no `<alpha-value>` placeholder — so Tailwind v3 cannot
+  apply an opacity modifier and DROPS THE UTILITY ENTIRELY. Measured in the shipped stylesheet: the
+  only rule that exists is `.text-bty-navy{color:var(--bty-brand-navy)}`; `/50`, `/60`, `/65`, `/70`
+  and `/90` produce ZERO rules.
+
+  An element with no `color` declaration inherits one, and that is why this was invisible for a year
+  and then appeared overnight. On the legacy `/bty-arena` page `.bty-arena-area` sets
+  `color: var(--arena-text)` = #2D2A36, so the text inherited DARK and looked correct. Inside
+  `BtyDailyAppShell` the root is `bg-[#0B1F3A] text-white`, so the very same class inherited WHITE —
+  white prose on the cream practice surface. The Founder found it on the completion screen; the
+  measurement then found it on three more elements with the identical cause.
+
+  It is also why R4-R5A's contrast table was wrong about these four: it computed navy-at-alpha
+  against cream, and no navy was ever being painted. The opaque tokens next door
+  (`text-bty-navy` on the title and choices, `bg-bty-navy` on Done) always compiled, which is
+  exactly the set the Founder reported as already readable.
+
+  The hex IS `--bty-brand-navy`, asserted against globals.css in the regression test so it cannot
+  drift, and arbitrary-hex-with-alpha is the established idiom on this shell (`text-[#E5B769]`,
+  `bg-[#C9A66B]`). Alphas are preserved where they already cleared AA on cream and raised to the
+  measured minimum (/65 = 4.95:1) where they did not — /50 was 3.15:1 and /60 was 4.22:1.
+  Styling only: no phase logic, no copy, no layout, no state.
+*/
 function SectionHeading({ children }: { children: string }) {
-  return <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-bty-navy/60">{children}</h3>;
+  return <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0B1F3A]/65">{children}</h3>;
 }
 
 /**
@@ -199,7 +226,7 @@ export function ArenaPracticePlayer({
         </p>
       ) : null}
       {sourceTrainingTitle ? (
-        <p className="text-xs text-bty-navy/50">
+        <p className="text-xs text-[#0B1F3A]/65">
           {t.from}: {sourceTrainingTitle}
         </p>
       ) : null}
@@ -230,7 +257,7 @@ export function ArenaPracticePlayer({
       {phase === "tradeoff" ? (
         <div className="flex flex-col gap-3">
           <SectionHeading>{t.itGetsHarder}</SectionHeading>
-          <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-bty-navy/90">
+          <p className="whitespace-pre-wrap text-[0.98rem] leading-7 text-[#0B1F3A]/90">
             {active.escalationText}
           </p>
           <div className="mt-1 flex flex-col gap-2.5">
@@ -256,7 +283,7 @@ export function ArenaPracticePlayer({
       {phase === "complete" ? (
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <h2 className="text-xl font-semibold text-bty-navy">{t.completeTitle}</h2>
-          <p className="max-w-sm text-sm leading-6 text-bty-navy/70">{t.completeBody}</p>
+          <p className="max-w-sm text-sm leading-6 text-[#0B1F3A]/70">{t.completeBody}</p>
           <button
             type="button"
             onClick={onExit}
