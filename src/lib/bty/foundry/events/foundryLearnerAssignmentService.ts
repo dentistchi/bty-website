@@ -19,7 +19,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { mintJoinToken } from "./foundryEventService";
 
-export type LearnerAssignmentStatus = "assigned" | "completed";
+/**
+ * The learner-facing projection of an assignment (Slice R4-R5C3A2).
+ *
+ * `in_progress` is DERIVED at read time by `bty_foundry_list_my_assignments`; it is never
+ * persisted. The assignment row still stores only `assigned` / `completed`, and `a.status`
+ * remains the sole authority for completion. It means exactly one thing — THIS account has a
+ * joined participant on this event with unfinished progress carrying a real material-progress
+ * marker — and in particular it does NOT promise that any device can restore an exact position.
+ */
+export type LearnerAssignmentStatus = "assigned" | "in_progress" | "completed";
 
 /**
  * Service-shaped learner assignment. `joinToken` is the freshly minted Room
@@ -65,7 +74,13 @@ export async function listMyAssignments(
 
   const rows = (Array.isArray(data) ? data : []) as AssignmentRow[];
   return rows
-    .filter((r) => r.status === "assigned" || r.status === "completed")
+    /*
+      ADMITTING THE THIRD VALUE IS NOT OPTIONAL (R4-R5C3A2). This filter is an ALLOW-LIST, so
+      before this change an `in_progress` row would have been dropped on the floor and the
+      assignment would have DISAPPEARED from Required Learning entirely — worse than the wrong
+      label it replaces. That is also why the client deploys before the RPC does.
+    */
+    .filter((r) => r.status === "assigned" || r.status === "in_progress" || r.status === "completed")
     .map((r) => ({
       assignmentId: r.assignment_id,
       eventId: r.event_id,

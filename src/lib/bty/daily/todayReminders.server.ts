@@ -49,7 +49,14 @@ async function requiredLearning(admin: SupabaseClient, userId: string, locale: s
   try {
     const { data } = await admin.rpc("bty_foundry_list_my_assignments", { p_auth_user_id: userId });
     return (data ?? [])
-      .filter((r: { status?: string }) => r.status === "assigned")
+      /*
+        TODAY READS THE SAME RPC (R4-R5C3A2). This filter names the statuses that are still
+        OUTSTANDING work. `in_progress` is outstanding — it is the same required training, now
+        known to have been started — so omitting it here would have silently removed the item
+        from Today the moment the RPC learned the third value. Today's copy, ordering, routing
+        and R4-R5C1 focus are all unchanged; only the set of rows that qualify is corrected.
+      */
+      .filter((r: { status?: string }) => r.status === "assigned" || r.status === "in_progress")
       .map((r: { assignment_id: string; title: string | null }): TodayReminder => ({
         stableId: `req:${r.assignment_id}`,
         category: "REQUIRED_LEARNING",

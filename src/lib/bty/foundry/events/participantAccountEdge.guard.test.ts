@@ -116,31 +116,88 @@ describe("T11 — the join token stays identity-free", () => {
   });
 });
 
-describe("T12 — Phase 1 does not expose Continue learning", () => {
-  it("the assignment status union is still the shipped two states", () => {
+/*
+  PHASE FENCE, RETIRED ON SCHEDULE (R4-R5C3A2).
+
+  This block asserted "Phase 1 does not expose Continue learning" — the union is two states, the
+  RPC projects `a.status` verbatim, the card says only Start. That fence did its job: when C3A2
+  landed it failed three times, once for each half of the change, which is the pre-fix proof that
+  the change is real and observable rather than a no-op.
+
+  Phase 2 is now authorized, so the fence is REPLACED, not deleted and not weakened. What follows
+  guards the properties that must survive Phase 2 — the ones C3A1 actually bought.
+*/
+describe("T12 — Phase 2 derives the third state without persisting it", () => {
+  it("the union is three states, and in_progress is documented as DERIVED", () => {
     const svc = readFileSync(join(EVENTS_DIR, "foundryLearnerAssignmentService.ts"), "utf8");
-    expect(svc).toContain('export type LearnerAssignmentStatus = "assigned" | "completed";');
-    expect(svc).not.toMatch(/in_progress|Continue/);
+    expect(svc).toContain('export type LearnerAssignmentStatus = "assigned" | "in_progress" | "completed";');
+    expect(svc).toMatch(/DERIVED at read time/);
   });
 
-  it("the assignment-list RPC still projects a.status directly, with no progress join", () => {
-    const migs = readdirSync(join(process.cwd(), "supabase/migrations"))
-      .filter((f) => f.includes("list_my_assignments"));
-    expect(migs.length).toBeGreaterThan(0);
-    for (const f of migs) {
-      const sql = readFileSync(join(process.cwd(), "supabase/migrations", f), "utf8");
-      expect(sql).toContain("a.status as status");
-      expect(sql, "Phase 1 must not join progress").not.toContain("foundry_event_training_progress");
+  it("nothing writes in_progress to the assignment row", () => {
+    // The projection is a read. If a migration ever STORES this value, the assignment table stops
+    // being the record of what was assigned and completed, and completion loses its single author.
+    for (const f of readdirSync(join(process.cwd(), "supabase/migrations"))) {
+      const sql = readFileSync(join(process.cwd(), "supabase/migrations", f), "utf8")
+        .replace(/^--.*$/gm, "");
+      expect(sql, `${f} must not persist in_progress`).not.toMatch(
+        /(insert into|update)\s+[^;]*foundry_event_assignments[^;]*'in_progress'/i,
+      );
     }
   });
 
-  it("the Required Learning card copy is untouched", () => {
+  it("completion is still decided by a.status alone, and tested FIRST", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260826000000_foundry_list_my_assignments_v2_in_progress.sql"),
+      "utf8",
+    ).replace(/^--.*$/gm, "");
+    // `completed` is the first branch of the case, so no participant state can downgrade it.
+    expect(sql.indexOf("when a.status = 'completed' then 'completed'")).toBeLessThan(
+      sql.indexOf("then 'in_progress'"),
+    );
+    // The rows the function considers are unchanged: still only the caller's own two real states.
+    expect(sql).toContain("a.status in ('assigned', 'completed')");
+    // Ordering still reads the PERSISTED column, so sort order cannot drift with the projection.
+    expect(sql).toContain("case when a.status = 'assigned' then 0 else 1 end");
+  });
+
+  it("the derivation depends on the C3A1 account edge — the whole reason it is allowed to exist", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260826000000_foundry_list_my_assignments_v2_in_progress.sql"),
+      "utf8",
+    ).replace(/^--.*$/gm, "");
+    expect(sql).toContain("p.user_id = p_auth_user_id");
+    expect(sql).toContain("p.status = 'joined'");
+    expect(sql).toContain("g.completed_at is null");
+    // No display_name, email or session-token matching ever substitutes for the edge.
+    expect(sql).not.toMatch(/display_name|email|participant_session_token_hash/i);
+  });
+
+  it("joining is still not starting — a real material marker is required", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "supabase/migrations/20260826000000_foundry_list_my_assignments_v2_in_progress.sql"),
+      "utf8",
+    ).replace(/^--.*$/gm, "");
+    for (const marker of [
+      "g.video_started_at is not null",
+      "g.document_last_page is not null",
+      "coalesce(g.document_active_read_ms, 0) > 0",
+      "g.written_guidance_read_at is not null",
+      "g.discussion_self_reported_at is not null",
+    ]) {
+      expect(sql, marker).toContain(marker);
+    }
+    // The NOT NULL DEFAULT 0 column must never be tested for presence — every row would qualify.
+    expect(sql).not.toMatch(/document_active_read_ms\s+is not null/i);
+  });
+
+  it("the card offers Continue only for the derived state", () => {
     const card = readFileSync(
       join(process.cwd(), "src/components/foundry/event-rooms/FoundryRequiredLearning.tsx"),
       "utf8",
     );
     expect(card).toContain('startCta: "Start learning"');
-    expect(card).not.toMatch(/Continue learning|이어서 학습/);
+    expect(card).toContain('a.status === "in_progress" ? t.continueCta : t.startCta');
   });
 });
 

@@ -24,7 +24,12 @@ type Locale = "en" | "ko";
 type Assignment = {
   assignmentId: string;
   eventId: string;
-  status: "assigned" | "completed";
+  /**
+   * R4-R5C3A2 — `in_progress` is a DERIVED read-time projection, never a stored assignment
+   * state. It means only: this account has already started this training. It is still REQUIRED
+   * learning, so it groups with `assigned`; only the button label differs.
+   */
+  status: "assigned" | "in_progress" | "completed";
   title: string;
   assignedAt: string;
   completedAt: string | null;
@@ -42,6 +47,8 @@ type Copy = {
   completedHeader: string;
   completedSub: string;
   startCta: string;
+  /** R4-R5C3A2 — shown when this account has truthfully started this training. */
+  continueCta: string;
   reviewCta: string;
   completedTag: string;
   assignedOn: (d: string) => string;
@@ -59,6 +66,18 @@ const COPY: Record<Locale, Copy> = {
     completedHeader: "Completed",
     completedSub: "Learning you have finished and connected to your account.",
     startCta: "Start learning",
+    /*
+      THE ESTABLISHED PAIR, NOT A NEW ONE (R4-R5C3A2). `TodayHome` already ships exactly
+      "Continue learning" / "학습 계속하기" for its continue-a-program fallback, so this reuses
+      the product's own vocabulary rather than introducing a second phrasing for one idea.
+
+      WHAT IT DELIBERATELY DOES NOT SAY. No "Resume", no "Your progress is saved", no "Continue
+      where you left off", no "Your answers are saved". This slice proves ONE thing — that this
+      account started this training — and cross-device position restore is not among the things
+      it can honestly promise: a second device still creates its own participant, typed answers
+      are still written only at completion, and video position is still per-tab sessionStorage.
+    */
+    continueCta: "Continue learning",
     reviewCta: "Review learning",
     completedTag: "Completed",
     assignedOn: (d) => `Assigned ${d}`,
@@ -74,6 +93,7 @@ const COPY: Record<Locale, Copy> = {
     completedHeader: "완료한 학습",
     completedSub: "완료 후 내 계정과 연결된 학습입니다.",
     startCta: "학습 시작",
+    continueCta: "학습 계속하기",
     reviewCta: "학습 다시 보기",
     completedTag: "완료",
     assignedOn: (d) => `배정일 ${d}`,
@@ -174,7 +194,13 @@ export default function FoundryRequiredLearning({
   // host room below is unaffected.
   if (assignments === null) return null;
 
-  const required = assignments.filter((a) => a.status === "assigned");
+  /*
+    `in_progress` GROUPS WITH REQUIRED, not with completed (R4-R5C3A2). It is the same
+    outstanding obligation; only the label on its button changes. Filtering it out here would
+    make a started training vanish from the learner's list — the failure this slice exists to
+    prevent, not cause.
+  */
+  const required = assignments.filter((a) => a.status === "assigned" || a.status === "in_progress");
   const completed = assignments.filter((a) => a.status === "completed");
 
   return (
@@ -282,11 +308,18 @@ function RequiredCard({
       {/* Same-origin anchor: navigates the WebView to the live Room (session preserved), and
           carries a sanitized return target so the Room can offer "Back to Learn" (R4-R5B2). No
           target=_blank — a new WKWebView context would not share the auth cookie. */}
+      {/*
+        THE SAME ROOM URL EITHER WAY (R4-R5C3A2). Continue carries no participant id, user id,
+        resume token or progress id — the public capability model is untouched. Once inside, the
+        device's own participant session decides what can actually be restored; the label only
+        tells the learner what BTY already knows.
+      */}
       <a
         href={`${a.roomUrl}?return=${encodeURIComponent(`/${loc}/app?tab=foundry`)}`}
+        data-status={a.status}
         className="shrink-0 rounded-lg bg-[#C9A66B] px-4 py-2 text-sm font-semibold text-[#0B1F3A]"
       >
-        {t.startCta}
+        {a.status === "in_progress" ? t.continueCta : t.startCta}
       </a>
     </div>
   );
