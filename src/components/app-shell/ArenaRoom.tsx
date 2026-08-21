@@ -253,22 +253,27 @@ export function ArenaRoom({
           completion screen and the source-training line all rendered at 1.00:1, while the white
           choice cards stayed perfectly readable. The learner saw answers with no question.
 
-          THE HOST MOUNT ALREADY KNEW THIS — `ArenaPracticeFlow` wraps the identical component in
-          `bg-bty-soft/40` for the Host draft preview. This is the same fix, the same token, one
-          difference: NO ALPHA. Measured against this shell, 40% of #f1eee6 composites to
-          rgb(103,114,127), and the player's own dimmed tokens land at
+          CORRECTED AT CLOSURE (R4-R5A-R1). This comment originally cited `ArenaPracticeFlow`'s
+          `bg-bty-soft/40` wrapper as a working precedent this mount was copying. IT IS NOT ONE.
+          That utility emits NO CSS RULE: `soft` and `navy` are declared in tailwind.config.ts as
+          bare `var(...)` values with no `<alpha-value>` placeholder, so Tailwind v3 cannot compute
+          an alpha and drops the class. The shipped stylesheet carries `.bg-bty-soft` and nothing
+          for `/40` — meaning the Host draft preview paints no background either. The class was
+          written with the right intention and has never taken effect.
 
-            text-bty-navy/60 (section headings)  2.15:1
-            text-bty-navy/50 (From: <training>)  1.88:1
-            text-bty-navy/70 (completion body)   2.43:1
-            text-bty-navy/90 (escalation text)   3.07:1
+          So the opacity here is not a refinement of that precedent; it is the only form of it that
+          renders at all. The same defect is why the ORIGINAL contrast table in this comment was
+          wrong and has been removed: it computed dimmed navy over cream for text that was never
+          being painted navy. `text-bty-navy/NN` also emits nothing, so those elements inherited —
+          `--arena-text` (#2D2A36) on the legacy page, `text-white` from this shell — which is how
+          the Founder found white prose on the cream surface after R4-R5A shipped. The full
+          root-cause note and the four repaired call sites live in ArenaPracticePlayer.tsx.
 
-          — four of the six surfaces still failing. Opaque, the same token gives 4.22 / 3.15 / 5.78 /
-          10.91 and the title 14.25:1, which is exactly the contrast these components have always had
-          on their own cream page. So this restores the player's designed legibility rather than
-          improving on it, and NOT ONE TOKEN INSIDE THE PLAYER IS TOUCHED — no phase logic, no choice
-          behaviour, no state machine, no shell theme. The completion error/saving banners above stay
-          OUTSIDE this surface: they are shell-owned, already white-on-navy, and already readable.
+          What remains true: this wrapper is layout-only, and R4-R5A changed nothing inside the
+          player — no phase logic, no choice behaviour, no state machine, no shell theme. (R4-R5A-R1
+          then changed four text COLOUR classes there, and nothing else.) The completion
+          error/saving banners above stay OUTSIDE this surface: they are shell-owned, already
+          white-on-navy, and already readable.
         */}
         <div className="btyFadeIn min-h-[60vh] rounded-2xl bg-bty-soft p-3" data-testid="practice-player-surface">
           <ArenaPracticePlayer
