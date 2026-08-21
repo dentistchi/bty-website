@@ -1,3 +1,5 @@
+**R4-R5C3A2 (Truthful Continue Learning Projection)**: [x] **코드 배포 완료 (2026-08-21).** 시작한 교육이 더 이상 `Start learning`을 표시하지 않음 — `in_progress`를 읽기 시점에 파생(영속화 없음). 실제 PostgreSQL 실행 게이트 18/18 통과, pre-fix differential 6건 재현. **RPC 마이그레이션 `20260826000000` Founder 적용 대기 → 적용 전까지 동작 무변화(무해).** Worker `dc9aab38` / commit `e1e56eb2`.
+
 **[R4-R5B2]**: [x] **PASS / CLOSED — 트레이닝룸 진입·이탈 봉쇄 · TRAINING ROOM ENTRY / EXIT CONTAINMENT 완결** (2026-08-21; inner `e71b3c84`; 라이브 Worker `9e5fcbfb-b7a3-4bc1-8dcf-d4d2e37565dc` @ 100% 서빙 `e71b3c84`; **프로덕션 4파일 — 문구·내비게이션 전용**; **스키마·마이그레이션·RPC·API 라우트·인증·참가자 계약·토큰 변경 전무**).
 
 - **방이 자기 아키텍처의 이름을 말한 뒤, 학습자 뒤로 문을 잠갔다**: BTY 안에서 `Start learning` 을 누른 학습자가 화면 첫 단어로 `FOUNDRY` 를 보았고, 이어서 `Join training`/`훈련 입장` — 들어본 적 없는 시스템에 가입하라는 말이었다. 반대편에서는 `roomReturn`(학습자가 **앱 내부에서** 왔음을 증명하는 유일한 표식)이 `!roomReturn` 으로 읽혀 유일한 주요 완료 CTA 를 막고 있었다. **소속의 표식이 더 나쁜 결말을 만들었다** — 배정된 직원은 좌상단 작은 회색 링크로 끝나고, 오픈링크 방문자는 주요 버튼을 받았다. 후속 확인 문장도 같은 반전을 따라, 완료가 **이미 의무를 생성해 둔** 직원은 아무 말도 듣지 못하는데 낯선 방문자는 *"이 훈련에는 7일 후속 확인이 있습니다"* 를 들었다.
@@ -1360,6 +1362,7 @@ would the user still come back tomorrow?"
 A-track reached its first real alive-gate PASS on device: native Google sign-in → signInWithIdToken → session → /start with no bounce → Orb → Haptics.impact ×3. This was the first morning the system did not merely load; the body felt it. Inner-main locked the verified path in four atomic commits on top of 6dec1cc2: b6a5f46b auth native Google sign-in, 5992c569 shell start-to-Orb route, 6a6c14eb native haptic impact, 8df7e65c obsolete auth bridge removal. Held/excluded residue remains intentional: auth callback held, cookie-utils deferred to Step5 residency cleanup, docs/video excluded. Inner and outer remain unpushed until this ledger lands, then push separately.
 
 ## 2026-06-29 — Orb Begin Today · hold-to-commit Entry (Contract v1)
+
 PASS: Orb가 장식이 아니라 BTY 첫 의식이 됨 — 만짐이 아니라 머무름이 하루를 연다.
   계약: Touch=attention · Hold=intention · Commit=point of no return.
   Release before commit = nothing begun · Release after = day already open.
