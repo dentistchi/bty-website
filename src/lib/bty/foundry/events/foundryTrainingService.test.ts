@@ -901,3 +901,162 @@ describe("R4-R5B1 · assignment completion truth — video", () => {
     expect(a.claimed_at).toBe("2026-01-01T00:00:00.000Z");
   });
 });
+
+/**
+ * R4-R5C3A1 — PARTICIPANT ↔ ACCOUNT EDGE, PHASE 1.
+ *
+ * The participant cookie outlives the auth session (signing out never clears `bty_fr_ps_*`), so
+ * one browser can present a participant created by a DIFFERENT account. Before this slice nothing
+ * noticed: completion wrote `progress.linked_user_id = B` onto user A's participant, and the
+ * assignment claim could bind A's participant to B's assignment.
+ *
+ * Phase 1 establishes the edge on NEW authenticated participants and refuses that one conflict.
+ * It must be a USER-VISIBLE NO-OP for every normal flow, which is why most of these assert that
+ * nothing changed.
+ */
+describe("R4-R5C3A1 · participant account edge", () => {
+  const A = "auth-user-A";
+  const B = "auth-user-B";
+  const parts = (t: Record<string, Array<Record<string, unknown>>>) => t.foundry_event_participants ?? [];
+
+  async function newEvent() {
+    const { admin, tables } = makeFakeAdmin();
+    const created = await createTrainingEvent(admin, OWNER, { title: "T", youtube_url: YT, completion_prompt: "p" });
+    if (!created.ok) throw new Error("setup failed");
+    return { admin, tables, eventId: created.value.event.id, token: created.value.event.join_token };
+  }
+
+  it("T1 — an authenticated join records the SERVER-DERIVED account on the participant", async () => {
+    const { admin, tables, token } = await newEvent();
+    const j = await joinEvent(admin, token, "Ari", null, A);
+    expect(j.ok).toBe(true);
+    expect(parts(tables)).toHaveLength(1);
+    expect(parts(tables)[0]!.user_id).toBe(A);
+    // The snapshot the browser receives still carries only what it always did.
+    expect(Object.keys((j as { snapshot: { participant: object } }).snapshot.participant!)).toEqual([
+      "display_name",
+      "joined_at",
+    ]);
+  });
+
+  it("T2 — an anonymous join is unchanged and records NULL", async () => {
+    const { admin, tables, token } = await newEvent();
+    const j = await joinEvent(admin, token, "Ari", null);
+    expect(j.ok).toBe(true);
+    expect(parts(tables)[0]!.user_id).toBeNull();
+  });
+
+  it("T3 — same-account cookie restores the existing participant; no second row", async () => {
+    const { admin, tables, token } = await newEvent();
+    const first = await joinEvent(admin, token, "Ari", null, A);
+    const again = await joinEvent(admin, token, "Ari", (first as { sessionToken: string }).sessionToken, A);
+    expect(again.ok && (again as { reused: boolean }).reused).toBe(true);
+    expect(parts(tables)).toHaveLength(1);
+  });
+
+  it("T4 — a DIFFERENT account cannot use that cookie: a new participant is created, P is untouched", async () => {
+    const { admin, tables, token } = await newEvent();
+    const first = await joinEvent(admin, token, "Ari", null, A);
+    const sess = (first as { sessionToken: string }).sessionToken;
+    const pBefore = { ...parts(tables)[0]! };
+
+    const second = await joinEvent(admin, token, "Bo", sess, B);
+
+    expect(second.ok).toBe(true);
+    expect((second as { reused: boolean }).reused, "B must NOT reuse A's participant").toBe(false);
+    expect(parts(tables)).toHaveLength(2);
+    const q = parts(tables).find((p) => p.user_id === B)!;
+    expect(q.id).not.toBe(pBefore.id);
+    // P is not mutated, not re-linked, not invalidated.
+    const pAfter = parts(tables).find((p) => p.id === pBefore.id)!;
+    expect(pAfter.user_id).toBe(A);
+    expect(pAfter.participant_session_token_hash).toBe(pBefore.participant_session_token_hash);
+    expect(pAfter.status).toBe("joined");
+  });
+
+  it("T5 — a signed-OUT caller keeps the existing cookie behaviour (no forced auth)", async () => {
+    const { admin, tables, token } = await newEvent();
+    const first = await joinEvent(admin, token, "Ari", null, A);
+    const again = await joinEvent(admin, token, "Ari", (first as { sessionToken: string }).sessionToken, null);
+    expect(again.ok && (again as { reused: boolean }).reused).toBe(true);
+    expect(parts(tables)).toHaveLength(1);
+  });
+
+  it("T6 — a NULL participant is NOT a mismatch: the anonymous learner who signs in later is unaffected", async () => {
+    const { admin, tables, token } = await newEvent();
+    const anon = await joinEvent(admin, token, "Ari", null);
+    const later = await joinEvent(admin, token, "Ari", (anon as { sessionToken: string }).sessionToken, B);
+    expect(later.ok && (later as { reused: boolean }).reused, "must reuse, or the claim flow breaks").toBe(true);
+    expect(parts(tables)).toHaveLength(1);
+    // Phase 1 does NOT retro-bind on later sign-in.
+    expect(parts(tables)[0]!.user_id).toBeNull();
+  });
+
+  it("T9 — two devices on one account are BOTH valid; no uniqueness, no session overwrite", async () => {
+    const { admin, tables, token } = await newEvent();
+    const d1 = await joinEvent(admin, token, "Ari", null, A);
+    const d2 = await joinEvent(admin, token, "Ari", null, A); // second device: no cookie
+    expect(d1.ok && d2.ok).toBe(true);
+    expect(parts(tables)).toHaveLength(2);
+    expect(parts(tables).every((p) => p.user_id === A)).toBe(true);
+    const hashes = parts(tables).map((p) => p.participant_session_token_hash);
+    expect(new Set(hashes).size, "each device keeps its own live session").toBe(2);
+    expect((d1 as { sessionToken: string }).sessionToken).not.toBe((d2 as { sessionToken: string }).sessionToken);
+  });
+
+  it("T8 — same-account completion keeps EVERY R4-R5B1 behaviour", async () => {
+    const { admin, tables, token } = await newEvent();
+    const j = await joinEvent(admin, token, "Ari", null, AUTH);
+    const session = (j as { sessionToken: string }).sessionToken;
+    const eventId = parts(tables)[0]!.event_id as string;
+    seedAssignment(tables, eventId, AUTH);
+    await startVideo(admin, token, session);
+    await completeVideo(admin, token, session);
+
+    const done = await completeTraining(admin, token, session, "answer", AUTH);
+
+    expect(done.ok && done.snapshot.stage).toBe("completed_awarded");
+    expect(tables.foundry_event_training_progress[0]!.linked_user_id).toBe(AUTH);
+    expect(awardSpy).toHaveBeenCalledTimes(1);
+    expect(readAssignment(tables, eventId, AUTH)!.status).toBe("completed");
+  });
+
+  it("T7 — completion by a MISMATCHED account creates no account linkage at all", async () => {
+    const { admin, tables, token } = await newEvent();
+    const j = await joinEvent(admin, token, "Ari", null, A); // participant belongs to A
+    const session = (j as { sessionToken: string }).sessionToken;
+    const eventId = parts(tables)[0]!.event_id as string;
+    seedAssignment(tables, eventId, B); // B has the assignment
+    await startVideo(admin, token, session);
+    await completeVideo(admin, token, session);
+
+    // Reaching here at all means §5 containment was bypassed; the belt is the last line.
+    const done = await completeTraining(admin, token, session, "answer", B);
+
+    // The person really did finish: participant-level truth stands.
+    expect(done.ok).toBe(true);
+    expect(tables.foundry_event_training_progress[0]!.completed_at).not.toBeNull();
+    expect(tables.foundry_event_training_progress[0]!.response_text).toBe("answer");
+    // …but NOTHING is attributed to B.
+    expect(tables.foundry_event_training_progress[0]!.linked_user_id).toBeNull();
+    expect(awardSpy).not.toHaveBeenCalled();
+    expect(readAssignment(tables, eventId, B)!.status).toBe("assigned");
+    expect((tables.__claim_calls ?? [])).toHaveLength(0);
+    // And A's participant is never rewritten to B.
+    expect(parts(tables)[0]!.user_id).toBe(A);
+  });
+
+  it("T7b — the claim path refuses the same mismatch", async () => {
+    const { admin, tables, token } = await newEvent();
+    const j = await joinEvent(admin, token, "Ari", null, A);
+    const session = (j as { sessionToken: string }).sessionToken;
+    await startVideo(admin, token, session);
+    await completeVideo(admin, token, session);
+    await completeTraining(admin, token, session, "answer", null); // anonymous completion
+
+    const claimed = await claimXp(admin, token, session, B);
+
+    expect(claimed.ok).toBe(false);
+    expect(tables.foundry_event_training_progress[0]!.linked_user_id).toBeNull();
+  });
+});

@@ -371,7 +371,20 @@ describe("T11 — this slice changed copy and navigation only", () => {
     `managerResponsiveLayout` test 11, re-anchored in R4-R5B1). This compares against the parent of
     the working tree instead, so it measures real changed files and cannot pass on an empty diff.
   */
-  const changed = execSync("git diff --name-only HEAD~1 -- . 2>/dev/null || git diff --name-only HEAD", { encoding: "utf8" })
+  /*
+    RE-ANCHORED TO THIS SLICE'S OWN COMMIT (R4-R5C3A1).
+
+    R4-R5B2 wrote this as `git diff HEAD~1` — better than the two `git diff HEAD` guards it was
+    reacting to, but still MOVING: `HEAD~1` means "the previous commit", so the very next slice
+    makes this test measure someone else's diff. R4-R5C3A1 (which legitimately adds a migration
+    and touches API routes) is that next slice, and it tripped here.
+
+    `e71b3c84` IS R4-R5B2. Pinning it makes the assertion measure the diff it is named for, the
+    same repair applied to `legacyPortalContainment` T6/T6b and `managerResponsiveLayout` test 11.
+    Third time: a scope guard must name a commit, never a relative ref.
+  */
+  const SLICE_COMMIT = "e71b3c84";
+  const changed = execSync(`git show --pretty=format: --name-only ${SLICE_COMMIT}`, { encoding: "utf8" })
     .split("\n").map((s) => s.trim()).filter(Boolean);
 
   it("the comparison is non-vacuous", () => {

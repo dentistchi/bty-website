@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isParticipantAccountCompatible, mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
 import {
   validateCompletionPrompt,
@@ -515,13 +516,26 @@ export async function getPublicTrainingSnapshot(
   admin: SupabaseClient,
   token: string,
   sessionToken: string | null | undefined,
+  /** R4-R5C3A1 — server-derived caller, or null when anonymous. Optional: omitting it preserves today's behaviour exactly. */
+  authUserId?: string | null,
 ): Promise<PublicTrainingSnapshot> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) {
     return { event: null, participant: null, training: null, stage: "inactive", xp_status: "none" };
   }
   const { event, tokenVersion } = resolved;
-  const participant = await findParticipantBySession(admin, event.id, sessionToken);
+  const resolvedParticipant = await findParticipantBySession(admin, event.id, sessionToken);
+  /*
+    ACCOUNT-SWITCH CONTAINMENT (R4-R5C3A1 §5). A participant bound to a DIFFERENT account is
+    treated as ABSENT for this authenticated caller — the snapshot then reports the ordinary
+    pre-join state and the learner joins as themselves. Nothing about P is mutated, deleted,
+    re-linked or invalidated; it simply is not this caller's session. `authUserId` is optional,
+    so every anonymous request and every existing caller behaves exactly as before, and a NULL
+    participant is never a mismatch (that is the anonymous learner who signed in later).
+  */
+  const participant = isParticipantAccountCompatible(resolvedParticipant?.user_id, authUserId)
+    ? resolvedParticipant
+    : null;
   const progress = participant ? await getProgress(admin, event.id, participant.id) : null;
   const content = participant ? await getContent(admin, event.id) : null;
 
@@ -795,16 +809,37 @@ export async function completeTraining(
   const progressId = updated?.id ?? prog.id;
 
   // Identity FIRST, and independent of what the reward turns out to be (Slice 3.2M-2R1).
-  await linkLearnerIdentity(admin, progressId, authUserId);
+  /*
+    COMPLETION SAFETY BELT (Slice R4-R5C3A1 §7) — defence in depth.
+
+    §5's containment means an incompatible participant should never reach a completion at all:
+    the snapshot reports pre-join and the learner joins as themselves. This guard exists for the
+    case that containment is bypassed — a direct API call, a race across a sign-out, a future
+    caller that forgets to pass `authUserId`.
+
+    It refuses ONE thing: attributing account-level consequences to an account that does not own
+    this participant. It never refuses the completion itself. The learner's own row still gets
+    `completed_at` and their answers — participant-level truth is always honoured, because the
+    person really did finish the training.
+
+    What is withheld when it fires: `linked_user_id`, Core XP, the follow-up obligation, the
+    apply window, and the assignment claim — exactly the set that would otherwise create
+    `participant.user_id = A` alongside `progress.linked_user_id = B`, or bind user B's
+    assignment to user A's participant. The completion RESULT CONTRACT is unchanged, so no UI
+    and no copy has to represent this state.
+  */
+  const accountLinkable = mayAttributeToAccount(r.participant.user_id, authUserId);
+  const linkableUserId = accountLinkable ? authUserId : null;
+  await linkLearnerIdentity(admin, progressId, linkableUserId);
 
   // Immediate award for an authenticated participant (owner excluded, capped).
   let xpOverride: PublicXpStatus | undefined;
-  if (authUserId) {
-    const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, progressId);
+  if (linkableUserId) {
+    const outcome = await awardTrainingCoreXp(admin, linkableUserId, r.event.id, r.event.owner_user_id, progressId);
     if (outcome === "awarded") {
       await admin
         .from("foundry_event_training_progress")
-        .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
+        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
         .eq("id", progressId)
         .is("xp_awarded_at", null);
     }
@@ -815,11 +850,11 @@ export async function completeTraining(
   // identity (authUserId) — materialize the obligation ONCE, regardless of the XP outcome (capped /
   // owner / already-awarded still get one). Anonymous completion (authUserId null) materializes
   // nothing here — it is created later at the authenticated claim. Fail-soft: never blocks completion.
-  if (authUserId) {
+  if (linkableUserId) {
     await materializeFollowupObligation(admin, {
       eventId: r.event.id,
       progressId,
-      authUserId,
+      authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
     });
@@ -835,7 +870,7 @@ export async function completeTraining(
     await materializeApplyWindow(admin, {
       eventId: r.event.id,
       progressId,
-      authUserId,
+      authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
     });
@@ -872,7 +907,7 @@ export async function completeTraining(
       It cannot fail the completion: the helper is fail-soft on an error answer AND, since this
       slice, on a rejection — the same posture the two materializers above it already state.
     */
-    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, linkableUserId);
   }
 
   return { ok: true, snapshot: await snapshotFor(admin, r.event, r.participant, xpOverride) };
@@ -893,6 +928,15 @@ export async function claimXp(
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
 
+  /*
+    SAFETY BELT ON THE CLAIM PATH TOO (R4-R5C3A1 §7). The same conflict is reachable here: a
+    browser holding user A's participant cookie while user B is signed in. The canonical
+    anonymous claim is untouched — an anonymous participant has `user_id` NULL, which is always
+    compatible — so this refuses only a proven cross-account attribution.
+  */
+  if (!mayAttributeToAccount(r.participant.user_id, authUserId)) {
+    return { ok: false, reason: "no_session" };
+  }
   const prog = await getProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
 

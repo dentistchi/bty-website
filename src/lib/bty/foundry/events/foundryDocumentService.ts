@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isParticipantAccountCompatible, mayAttributeToAccount } from "@/domain/foundry/events/participant-account";
 import { readContentType, isGuidanceContentType } from "@/domain/foundry/events/content-type";
 import { getOwnerGuidanceSnapshot, type ManagerGuidanceSnapshot } from "./foundryGuidanceService";
 import { validateEventTitle, type FoundryEventStatus } from "@/domain/foundry/events/foundry-event";
@@ -589,13 +590,26 @@ export async function getPublicDocumentSnapshot(
   admin: SupabaseClient,
   token: string,
   sessionToken: string | null | undefined,
+  /** R4-R5C3A1 — server-derived caller, or null when anonymous. Optional: omitting it preserves today's behaviour exactly. */
+  authUserId?: string | null,
 ): Promise<PublicDocumentSnapshot> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) {
     return { content_type: "document", event: null, participant: null, document: null, stage: "inactive", xp_status: "none" };
   }
   const { event, tokenVersion } = resolved;
-  const participant = await findParticipantBySession(admin, event.id, sessionToken);
+  const resolvedParticipant = await findParticipantBySession(admin, event.id, sessionToken);
+  /*
+    ACCOUNT-SWITCH CONTAINMENT (R4-R5C3A1 §5). A participant bound to a DIFFERENT account is
+    treated as ABSENT for this authenticated caller — the snapshot then reports the ordinary
+    pre-join state and the learner joins as themselves. Nothing about P is mutated, deleted,
+    re-linked or invalidated; it simply is not this caller's session. `authUserId` is optional,
+    so every anonymous request and every existing caller behaves exactly as before, and a NULL
+    participant is never a mismatch (that is the anonymous learner who signed in later).
+  */
+  const participant = isParticipantAccountCompatible(resolvedParticipant?.user_id, authUserId)
+    ? resolvedParticipant
+    : null;
   const progress = participant ? await getDocProgress(admin, event.id, participant.id) : null;
   const content = participant ? await getDocContent(admin, event.id) : null;
 
@@ -794,15 +808,23 @@ export async function completeDocumentTraining(
   const progressId = updated?.id ?? prog.id;
 
   // Identity FIRST, independent of the reward (Slice 3.2M-2R1) — same rule as the video path.
-  await linkLearnerIdentity(admin, progressId, authUserId);
+  /*
+    COMPLETION SAFETY BELT (Slice R4-R5C3A1 §7) — see the full note in
+    `foundryTrainingService.completeTraining`. Same predicate, same refusal: participant-level
+    completion always stands; only account attribution is withheld when the participant belongs
+    to a different account. The result contract is unchanged.
+  */
+  const accountLinkable = mayAttributeToAccount(r.participant.user_id, authUserId);
+  const linkableUserId = accountLinkable ? authUserId : null;
+  await linkLearnerIdentity(admin, progressId, linkableUserId);
 
   let xpOverride: PublicXpStatus | undefined;
-  if (authUserId) {
-    const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, progressId);
+  if (linkableUserId) {
+    const outcome = await awardTrainingCoreXp(admin, linkableUserId, r.event.id, r.event.owner_user_id, progressId);
     if (outcome === "awarded") {
       await admin
         .from("foundry_event_training_progress")
-        .update({ linked_user_id: authUserId, xp_awarded_at: new Date().toISOString() })
+        .update({ linked_user_id: linkableUserId, xp_awarded_at: new Date().toISOString() })
         .eq("id", progressId)
         .is("xp_awarded_at", null);
     }
@@ -811,11 +833,11 @@ export async function completeDocumentTraining(
 
   // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE on an AUTHENTICATED document completion
   // (mirrors the YouTube path), regardless of XP outcome. Anonymous completion → nothing here.
-  if (authUserId) {
+  if (linkableUserId) {
     await materializeFollowupObligation(admin, {
       eventId: r.event.id,
       progressId,
-      authUserId,
+      authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
     });
@@ -831,7 +853,7 @@ export async function completeDocumentTraining(
     await materializeApplyWindow(admin, {
       eventId: r.event.id,
       progressId,
-      authUserId,
+      authUserId: linkableUserId,
       completedAtIso: now,
       deviceTz,
     });
@@ -844,7 +866,7 @@ export async function completeDocumentTraining(
       is not surfaced so the completion contract is unchanged, and the helper cannot throw into this
       path. Room family must not decide whether a learner's assignment becomes true.
     */
-    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
+    await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, linkableUserId);
   }
 
   return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride) };
@@ -861,6 +883,15 @@ export async function claimDocumentXp(
   const r = await resolvePublic(admin, token, sessionToken);
   if (!r.ok) return { ok: false, reason: r.reason };
 
+  /*
+    SAFETY BELT ON THE CLAIM PATH TOO (R4-R5C3A1 §7). The same conflict is reachable here: a
+    browser holding user A's participant cookie while user B is signed in. The canonical
+    anonymous claim is untouched — an anonymous participant has `user_id` NULL, which is always
+    compatible — so this refuses only a proven cross-account attribution.
+  */
+  if (!mayAttributeToAccount(r.participant.user_id, authUserId)) {
+    return { ok: false, reason: "no_session" };
+  }
   const prog = await getDocProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
 

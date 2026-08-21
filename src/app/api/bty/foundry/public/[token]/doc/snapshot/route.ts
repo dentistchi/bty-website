@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getPublicDocumentSnapshot } from "@/lib/bty/foundry/events/foundryDocumentService";
 import { jsonNoStore, readParticipantSession } from "@/lib/bty/foundry/events/publicRoute";
 
@@ -19,6 +20,23 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
 
   const { token } = await ctx.params;
   const session = readParticipantSession(req, token);
-  const snapshot = await getPublicDocumentSnapshot(admin, token, session);
+  /*
+    OPTIONAL AUTH — the same read the three completion routes already ship (R4-R5C3A1).
+    This route stays PUBLIC: no 401 gate, an anonymous caller resolves to null, and any failure
+    degrades to null. It exists so the server can tell whether this browser's participant belongs
+    to the account that is actually signed in (account-switch containment).
+  */
+  let authUserId: string | null = null;
+  try {
+    const supa = await getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supa.auth.getUser();
+    authUserId = user?.id ?? null;
+  } catch {
+    authUserId = null;
+  }
+
+  const snapshot = await getPublicDocumentSnapshot(admin, token, session, authUserId);
   return jsonNoStore(snapshot);
 }

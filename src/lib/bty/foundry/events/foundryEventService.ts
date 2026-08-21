@@ -12,6 +12,7 @@ import {
   signFoundryRoomToken,
   verifyFoundryRoomToken,
 } from "./foundry-room-token";
+import { isParticipantAccountCompatible } from "@/domain/foundry/events/participant-account";
 import {
   generateParticipantSessionToken,
   hashParticipantSessionToken,
@@ -53,6 +54,13 @@ export type ParticipantRow = {
   status: FoundryParticipantStatus;
   joined_at: string;
   last_seen_at: string;
+  /**
+   * R4-R5C3A1 — the nullable account edge. Written ONCE at creation from a server-derived
+   * session; NULL for anonymous participants and for every row predating the migration. This
+   * type is internal to the service layer: no Host, learner or public DTO carries it, and a
+   * repository guard test keeps it that way.
+   */
+  user_id: string | null;
 };
 
 export type ManagerEventSummary = {
@@ -337,7 +345,7 @@ export async function findParticipantBySession(
   const hash = hashParticipantSessionToken(rawSessionToken);
   const { data } = await admin
     .from("foundry_event_participants")
-    .select("id, event_id, display_name, status, joined_at, last_seen_at")
+    .select("id, event_id, display_name, status, joined_at, last_seen_at, user_id")
     .eq("event_id", eventId)
     .eq("participant_session_token_hash", hash)
     .maybeSingle<ParticipantRow>();
@@ -355,6 +363,8 @@ export async function getPublicSnapshot(
   admin: SupabaseClient,
   token: string,
   rawSessionToken: string | null | undefined,
+  /** R4-R5C3A1 — server-derived caller, or null when anonymous. Optional: omitting it preserves today's behaviour exactly. */
+  authUserId?: string | null,
 ): Promise<PublicSnapshot> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) {
@@ -362,7 +372,18 @@ export async function getPublicSnapshot(
   }
   const { event, tokenVersion } = resolved;
 
-  const participant = await findParticipantBySession(admin, event.id, rawSessionToken);
+  const resolvedParticipant = await findParticipantBySession(admin, event.id, rawSessionToken);
+  /*
+    ACCOUNT-SWITCH CONTAINMENT (R4-R5C3A1 §5). A participant bound to a DIFFERENT account is
+    treated as ABSENT for this authenticated caller — the snapshot then reports the ordinary
+    pre-join state and the learner joins as themselves. Nothing about P is mutated, deleted,
+    re-linked or invalidated; it simply is not this caller's session. `authUserId` is optional,
+    so every anonymous request and every existing caller behaves exactly as before, and a NULL
+    participant is never a mismatch (that is the anonymous learner who signed in later).
+  */
+  const participant = isParticipantAccountCompatible(resolvedParticipant?.user_id, authUserId)
+    ? resolvedParticipant
+    : null;
 
   // Returning participant path (session-gated; join_version not required).
   if (participant) {
@@ -409,14 +430,37 @@ export async function joinEvent(
   token: string,
   rawName: unknown,
   existingSessionToken: string | null | undefined,
+  /**
+   * R4-R5C3A1 — the SERVER-DERIVED caller, or null/undefined when the request is anonymous.
+   * Optional so every existing caller and the whole anonymous path are unchanged. The browser
+   * never supplies this: the route reads it from the session cookie with the same optional
+   * `auth.getUser()` pattern the three completion routes already ship.
+   */
+  authUserId?: string | null,
 ): Promise<JoinResult> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) return { ok: false, reason: "inactive" };
   const { event, tokenVersion } = resolved;
 
-  // Idempotency / re-entry: a still-joined session just restores (no new row).
+  /*
+    ACCOUNT-SWITCH CONTAINMENT (R4-R5C3A1 §4/§5).
+
+    The participant cookie outlives the auth session — signing out never clears it — so this
+    browser can present a participant created by a DIFFERENT account. Reusing it would bind
+    user B's completion, XP, follow-up and assignment claim to user A's participant.
+
+    So the reuse branch now requires account compatibility. Incompatible does NOT mutate,
+    delete, re-link or invalidate P: it simply stops being usable HERE, the join falls through
+    to the ordinary new-participant path, and issuing the new cookie replaces the stale browser
+    association. P keeps its row, its progress and its session on any other device.
+
+    A NULL participant is never a mismatch — that is the anonymous learner who signed in later,
+    and the claim flow depends on it.
+  */
   const existing = await findParticipantBySession(admin, event.id, existingSessionToken);
-  if (existing && existing.status === "joined") {
+  const existingUsable =
+    existing && existing.status === "joined" && isParticipantAccountCompatible(existing.user_id, authUserId);
+  if (existing && existingUsable) {
     return {
       ok: true,
       reused: true,
@@ -446,8 +490,10 @@ export async function joinEvent(
       event_id: event.id,
       display_name: name.value,
       participant_session_token_hash: hash,
+      // Server truth only. `undefined` and `null` both persist as NULL (anonymous).
+      user_id: authUserId ?? null,
     })
-    .select("id, event_id, display_name, status, joined_at, last_seen_at")
+    .select("id, event_id, display_name, status, joined_at, last_seen_at, user_id")
     .single<ParticipantRow>();
 
   if (error || !data) return { ok: false, reason: "join_failed" };

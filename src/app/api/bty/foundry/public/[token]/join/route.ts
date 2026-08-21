@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { joinEvent } from "@/lib/bty/foundry/events/foundryEventService";
 import { verifyFoundryRoomToken } from "@/lib/bty/foundry/events/foundry-room-token";
 import {
@@ -63,7 +64,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   }
 
   const body = await req.json().catch(() => ({}));
-  const result = await joinEvent(admin, token, body?.display_name, existingSession);
+  /*
+    OPTIONAL AUTH — the same read the three completion routes already ship (R4-R5C3A1).
+    This route stays PUBLIC: no 401 gate, an anonymous caller resolves to null, and any failure
+    degrades to null. It exists so the server can tell whether this browser's participant belongs
+    to the account that is actually signed in (account-switch containment).
+  */
+  let authUserId: string | null = null;
+  try {
+    const supa = await getSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supa.auth.getUser();
+    authUserId = user?.id ?? null;
+  } catch {
+    authUserId = null;
+  }
+
+  const result = await joinEvent(admin, token, body?.display_name, existingSession, authUserId);
 
   if (!result.ok) {
     return jsonNoStore({ ok: false, error: result.reason }, REASON_STATUS[result.reason] ?? 400);
