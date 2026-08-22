@@ -1,3 +1,5 @@
+**R4-R5C (Learner Canonical Journey)**: [x] **IMPLEMENTATION COMPLETE / LEARNER DEVICE VERIFICATION DEFERRED (2026-08-21).** 측정된 학습자 결함이 전부 수리·배포·검증 완료 — **C3A2** Continue Learning 투영(라이브 RPC v2 검증) · **C4A(+R1/+R2)** 기기-로컬 미완성 초안 + 로그아웃 프라이버시(도달 가능한 명시적 로그아웃 경로 전부) · **C6** Learn 현재-작업 우선 위계 · **C7A** 로그인 이름 prefill(제출되는 `display_name` 권위는 학습자 유지) · **C8** NO BUILD(완료 터미널 위계 수용) · **C9A** 완료 → Reality narration(액션 소유자는 Today 유지). **남은 material 학습자 결함 없음: P0 = 0, P1 = 0, P2 = 0.** P3 polish(연습 존재 시 gold 2개·도어/화면 제목 불일치·조용한 빈 상태)는 **명시적 defer** — 신규 태스크로 만들지 않음. 보안/프라이버시 seam 7종 clean(계정 간 노출 0, Host 가시 초안 0, 서버 초안 저장 0, 토큰/URL 누출 0), 완료·데이터 무결성 보존(`completed_at` CAS 권위, 원자적 답변 1회 write, XP 순서, assignment/apply/follow-up materialization, 익명 완료, 멱등 reconcile). 감사 시점 HEAD == live `7db828c4`. **구현은 완료이며, 기기 검증만 유예된다** — 자연 발생한 안전한 학습자 fixture가 존재하지 않기 때문이며, **검증 통과 목적의 fixture 생성은 금지**. 이는 **FAIL이 아니다.** 통합 게이트는 문서 하단 **DEFERRED LEARNER DEVICE VERIFICATION — R4-R5C** 한 곳으로 일원화(V1–V7). **R4-R5C는 아직 PASS/CLOSED가 아니다.**
+
 **R4-R5C9A (Completion → Reality Narration)**: [x] **배포 완료 (2026-08-21).** 완료 터미널이 **서버가 Apply 윈도우를 실제로 연 경우에만** 한 문장을 narration — `materializeApplyWindow`가 이미 계산해 **버리던** 결과(`created|exists`)를 6개 호출부에서 보존해 6개 라우트로 전달. EN `Use what you decided in real work this week. You'll see it again in Today.` / KO `이번 주에 정한 것을 실제 업무에서 해보세요. 오늘 탭에서 다시 볼 수 있어요.` (KO는 제품 자체 탭 라벨 **오늘** 사용, 영문 Today 아님). **narrate-not-navigate**: CTA 0, 기한/카운트다운 0, 학습자 결정 문장 복사 0 — 액션 소유자는 여전히 Today. `skipped|error`는 아무것도 표시하지 않음(무결정·anonymous·action_decision 없음·실패 = 정상 다수 케이스). Apply(고정 7일)와 follow-up(Host 7/30)은 **독립 guard**로 시계 분리 유지. 마이그레이션 0 / Today projection 0 / 복귀 경로 0 / Practice 0 (C8 NO BUILD 유지). pre-fix differential 14건 실패→30건 통과. 기존 테스트 2건(export guard, guidance mock) 의도 보존하며 갱신. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline) / terminology 44 / cf:build 0. Worker `7db828c4`. **학습자 기기 검증 = LEARNER DEVICE VERIFICATION BLOCKED — NO SAFE LEARNER FIXTURE (FAIL 아님).**
 
 **R4-R5C7A (Signed-In Name Prefill + Purposeful Join)**: [x] **배포 완료 (2026-08-21).** 로그인한 학습자의 트레이닝룸 첫 진입에서 이름 칸이 **미리 채워짐** — 서버가 이미 읽고 있던 optional auth의 `user_metadata.full_name → name → null`만 사용(이메일·Arena 프로필 전부 배제). **PREFILL ≠ SUBMISSION**: Host·관찰자에게 보이는 `display_name`은 여전히 학습자가 제출하는 값이 권위(공개 결정권 보존). 문구도 목적 중심으로: `What's your name?` → **`Name shown for this training`** / `이 학습에 표시할 이름` (CTA는 R4-R5B2의 Continue/계속하기 재사용). seed는 마운트당 1회·입력 중 덮어쓰기 금지·비운 칸 재채움 금지. `suggested_name`은 **participant가 null일 때만** 스냅샷에 포함(액션 응답·Host DTO·토큰·URL·스토리지 전무). 마이그레이션 0 / 프로필 테이블 0 / Arena 의존 0. pre-fix differential 7건 실패→30건 통과. R4-R5B2 고정 테스트 6건은 의도 보존하며 갱신. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline) / terminology 44 / cf:build 0. Worker `2a29d0a9`. **커버리지 실측: 35계정 중 27(Google 26/26, email 1/9) — 나머지 23%는 계속 직접 입력(설계상).** **학습자 기기 검증 = LEARNER DEVICE VERIFICATION BLOCKED — NO SAFE LEARNER FIXTURE (FAIL 아님).**
@@ -3478,27 +3480,46 @@ BTY 시스템은 다음 단계로 전환됨:
   - UI recall banner verification on a non-beginner account
 ---
 
-## DEFERRED LEARNER DEVICE VERIFICATION — R4-R5C4A (+R1, +R2)
+## DEFERRED LEARNER DEVICE VERIFICATION — R4-R5C
 
 **Status: DEVICE VERIFICATION BLOCKED — NO SAFE LEARNER FIXTURE.** Not a FAIL.
 
-C4A is Learner Training Room behaviour. The Founder account has no naturally
-accessible training to enter, and no assignment, participant, training or test
-product data may be created to clear this gate.
+This is the SINGLE deferred gate for the whole R4-R5C series. It replaces the
+per-slice blocked gates (C3A2, C4A/+R1/+R2, C6, C7A, C9A) so the same one
+environmental fact is not recorded five times. Those slices remain deployed and
+source/test verified; only their observation is pooled here.
 
-Run the three checks below **only** when a real learner naturally has an
-accessible unfinished Training Room:
+*(The earlier C4A entries above refer to "V1/V2/V3" in the older, C4A-only
+numbering — those are V2, V3 and V4 in the consolidated list below.)*
 
-- **V1 — draft restores.** Type a harmless draft → leave without Complete →
-  reopen the same room → the draft is restored.
-- **V2 — completion clears it.** Complete normally → the stale unfinished draft
-  does not return.
-- **V3 — sign-out ends it.** Type a draft → explicit Sign out → sign back in →
-  the old draft does not restore.
+Run **only** when a real learner naturally has an assigned training — preferably
+one whose published journey contains an action-decision, which makes almost the
+whole bundle observable in a single journey.
 
-Until then the automated evidence stands on its own: 53 C4A draft tests, the R1
-sign-out privacy tests, the R2 parity tests, the pre-fix differentials, tsc 0,
-the unchanged full-suite baseline, cf:build pass, live source parity, and no
-migration / DB / server-side draft storage.
+- **V1 — Continue Learning.** Start an assigned training, leave it unfinished,
+  return to Learn → the card reads **Continue learning**, not Start.
+- **V2 — Draft restore.** Type an unfinished answer → leave → reopen the same
+  room → what was typed is still there.
+- **V3 — Completion cleanup.** Complete normally → the stale unfinished draft
+  does not come back.
+- **V4 — Sign-out privacy.** Type an unfinished draft → explicit Sign out →
+  sign back in → the old draft does not restore.
+- **V5 — Learn hierarchy.** Required/current learning appears **before**
+  Learning history.
+- **V6 — Name prefill.** A signed-in learner with a provider metadata name
+  enters a room for the first time → the field is already filled → they may edit
+  it before Continue.
+- **V7 — Reality narration.** An eligible completion materializes an Apply
+  window → the terminal says to use the decision in real work this week → Today
+  remains the actionable owner.
 
-**R4-R5C4A is not PASS/CLOSED on the strength of this deferral.**
+**Do not create an assignment, participant, training, completion, decision or
+apply window to clear this gate.**
+
+Until a natural fixture appears, the evidence stands on its own: per-slice
+pre-fix differentials (including 18/18 against real PostgreSQL for C3A2), the
+focused suites, an unchanged full-suite baseline (8 pre-existing failing files,
+0 new) across every slice, terminology 44, cf:build clean, and live source
+parity verified on each deploy.
+
+**R4-R5C is IMPLEMENTATION COMPLETE, and is NOT PASS/CLOSED.**
