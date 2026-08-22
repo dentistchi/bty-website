@@ -98,7 +98,13 @@ describe("the shared link purges without taking over navigation", () => {
 });
 
 describe("T1/T2 — exactly the two residual surfaces were repaired", () => {
-  it("T1 — BtyTopNav signs out through the shared link, on the same href", () => {
+  /*
+    MEASURED WHILE REPAIRING IT: `BtyTopNav` has NO importer anywhere — static or dynamic — so
+    it renders nowhere. The live desktop nav is `HubTopNav`, whose trailing slot holds
+    `LogoutButton`, which R1 already covers. The repair is kept so the component is correct if
+    it is ever revived, but it closes no reachable gap; `/my-page/account` was the only one.
+  */
+  it("T1 — BtyTopNav signs out through the shared link, on the same href (component is unrendered)", () => {
     const c = strip(read("src/components/bty/BtyTopNav.tsx"));
     expect(c).toContain("<PrivacyAwareLogoutLink href={logout}");
     expect(c).toContain("const logout = `/${locale}/bty/logout?next=/${locale}/bty/login`;");
