@@ -47,7 +47,7 @@ import {
 import { deleteFoundryDocument } from "./documentStorage";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
-import { materializeApplyWindow } from "./foundryApplyWindowService";
+import { materializeApplyWindow, applyNarration, type MaterializeApplyResult } from "./foundryApplyWindowService";
 import { linkLearnerIdentity, readEventJourney, readEventFollowUpDays } from "./foundryTrainingService";
 import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { participantDraftNamespace } from "./participant-draft-namespace";
@@ -678,7 +678,19 @@ export type ReadingProgressInput = {
 };
 
 export type DocumentProgressResult =
-  | { ok: true; snapshot: PublicDocumentSnapshot; assignmentClaim?: AssignmentClaimResult }
+  | {
+      ok: true;
+      snapshot: PublicDocumentSnapshot;
+      assignmentClaim?: AssignmentClaimResult;
+      /**
+       * R4-R5C9A — the authoritative outcome of `materializeApplyWindow`, kept rather than discarded.
+       *
+       * `created` and `exists` are the SAME learner truth: a Reality step is live for this training.
+       * `skipped` and `error` never reach the client, so the terminal can only narrate what the
+       * server actually did. The terminal NARRATES; Today still owns the action.
+       */
+      applyWindow?: "created" | "exists";
+    }
   | { ok: false; reason: string };
 
 /**
@@ -861,6 +873,12 @@ export async function completeDocumentTraining(
 
   // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE on an AUTHENTICATED document completion
   // (mirrors the YouTube path), regardless of XP outcome. Anonymous completion → nothing here.
+  /*
+    R4-R5C9A — declared at function scope so the outcome survives the block it is produced in.
+    Defaults to "skipped": when the authenticated branch never runs (an anonymous completion),
+    there is genuinely nothing to narrate, and that is the honest default rather than an absent value.
+  */
+  let applyWindowResult: MaterializeApplyResult = "skipped";
   if (linkableUserId) {
     await materializeFollowupObligation(admin, {
       eventId: r.event.id,
@@ -878,7 +896,7 @@ export async function completeDocumentTraining(
       training on staging today), and can never block a truthful completion. Creating this row
       establishes DECIDED-adjacent context only — never APPLIED.
     */
-    await materializeApplyWindow(admin, {
+    applyWindowResult = await materializeApplyWindow(admin, {
       eventId: r.event.id,
       progressId,
       authUserId: linkableUserId,
@@ -897,7 +915,7 @@ export async function completeDocumentTraining(
     await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, linkableUserId);
   }
 
-  return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride) };
+  return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, xpOverride), ...applyNarration(applyWindowResult) };
 }
 
 /** Claim XP after an anonymous document completion, once the participant authenticates. */
@@ -925,6 +943,12 @@ export async function claimDocumentXp(
 
   // Slice 3.1B-3D (fix): connect the assignment on EVERY completed claim call, idempotently,
   // BEFORE the XP early-return — so a previously-awarded session still gets connected.
+  /*
+    R4-R5C9A — declared at function scope so the outcome survives the block it is produced in.
+    Defaults to "skipped": when the authenticated branch never runs (an anonymous completion),
+    there is genuinely nothing to narrate, and that is the honest default rather than an absent value.
+  */
+  let applyWindowResult: MaterializeApplyResult = "skipped";
   const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
 
   // Follow-up Obligation (Slice 3.1B-3K): materialize ONCE at the authenticated claim (mirrors the
@@ -943,7 +967,7 @@ export async function claimDocumentXp(
     claim instant. A learner who claims a week late gets the window they earned on the day they
     decided, not a fresh seven days. Idempotent (unique progress_id), so a repeated claim is a no-op.
   */
-  await materializeApplyWindow(admin, {
+  applyWindowResult = await materializeApplyWindow(admin, {
     eventId: r.event.id,
     progressId: prog.id,
     authUserId,
@@ -955,7 +979,7 @@ export async function claimDocumentXp(
   await linkLearnerIdentity(admin, prog.id, authUserId);
 
   if (prog.xp_awarded_at) {
-    return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim };
+    return { ok: true, snapshot: await docSnapshotFor(admin, r.event, r.participant, "awarded"), assignmentClaim, ...applyNarration(applyWindowResult) };
   }
 
   const outcome = await awardTrainingCoreXp(admin, authUserId, r.event.id, r.event.owner_user_id, prog.id);

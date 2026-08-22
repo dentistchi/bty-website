@@ -30,6 +30,21 @@ const APPLY_WINDOWS = "foundry_participant_apply_windows";
 
 export type MaterializeApplyResult = "created" | "exists" | "skipped" | "error";
 
+/**
+ * The ONLY place a materialization outcome becomes a client-visible signal (Slice R4-R5C9A).
+ *
+ * `created` and `exists` are one learner truth — a Reality step is live for this training — so
+ * the terminal must not distinguish them; it describes state, not mutation history. `skipped` and
+ * `error` produce NOTHING, which is what keeps the narration from ever becoming an optimistic
+ * promise: completion without an Apply window is routine, not a failure.
+ */
+export function applyNarration(
+  result: MaterializeApplyResult,
+): { applyWindow?: "created" | "exists" } {
+  return result === "created" || result === "exists" ? { applyWindow: result } : {};
+}
+
+
 type ProgressRow = {
   event_id: string | null;
   completed_at: string | null;

@@ -33,7 +33,7 @@ import {
 } from "./foundryTrainingService";
 import { claimAssignmentForParticipant, type AssignmentClaimResult } from "./foundryAssignmentPublishService";
 import { materializeFollowupObligation } from "./foundryFollowupService";
-import { materializeApplyWindow } from "./foundryApplyWindowService";
+import { materializeApplyWindow, applyNarration, type MaterializeApplyResult } from "./foundryApplyWindowService";
 import type { FollowUpDays } from "@/domain/foundry/followup/followUpObligation";
 import { participantDraftNamespace } from "./participant-draft-namespace";
 import { journeyActionDecision, journeyReflection, toPublicJourney, type PublicJourney } from "@/domain/foundry/module/journey";
@@ -467,7 +467,19 @@ export async function getPublicGuidanceSnapshot(
 }
 
 export type GuidanceResult =
-  | { ok: true; snapshot: PublicGuidanceSnapshot; assignmentClaim?: AssignmentClaimResult }
+  | {
+      ok: true;
+      snapshot: PublicGuidanceSnapshot;
+      assignmentClaim?: AssignmentClaimResult;
+      /**
+       * R4-R5C9A — the authoritative outcome of `materializeApplyWindow`, kept rather than discarded.
+       *
+       * `created` and `exists` are the SAME learner truth: a Reality step is live for this training.
+       * `skipped` and `error` never reach the client, so the terminal can only narrate what the
+       * server actually did. The terminal NARRATES; Today still owns the action.
+       */
+      applyWindow?: "created" | "exists";
+    }
   | { ok: false; reason: string };
 
 /**
@@ -633,6 +645,12 @@ export async function completeGuidanceTraining(
     xpOverride = outcomeToXpStatus(outcome);
   }
 
+  /*
+    R4-R5C9A — declared at function scope so the outcome survives the block it is produced in.
+    Defaults to "skipped": when the authenticated branch never runs (an anonymous completion),
+    there is genuinely nothing to narrate, and that is the honest default rather than an absent value.
+  */
+  let applyWindowResult: MaterializeApplyResult = "skipped";
   if (linkableUserId) {
     await materializeFollowupObligation(admin, {
       eventId: r.event.id,
@@ -641,7 +659,7 @@ export async function completeGuidanceTraining(
       completedAtIso: now,
       deviceTz,
     });
-    await materializeApplyWindow(admin, {
+    applyWindowResult = await materializeApplyWindow(admin, {
       eventId: r.event.id,
       progressId,
       authUserId: linkableUserId,
@@ -661,7 +679,7 @@ export async function completeGuidanceTraining(
     await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, linkableUserId);
   }
 
-  return { ok: true, snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, xpOverride) };
+  return { ok: true, snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, xpOverride), ...applyNarration(applyWindowResult) };
 }
 
 /** Claim XP after an anonymous guidance completion, once the participant authenticates. */
@@ -688,6 +706,12 @@ export async function claimGuidanceXp(
   const prog = await getGuidanceProgress(admin, r.event.id, r.participant.id);
   if (!prog || !prog.completed_at) return { ok: false, reason: "not_completed" };
 
+  /*
+    R4-R5C9A — declared at function scope so the outcome survives the block it is produced in.
+    Defaults to "skipped": when the authenticated branch never runs (an anonymous completion),
+    there is genuinely nothing to narrate, and that is the honest default rather than an absent value.
+  */
+  let applyWindowResult: MaterializeApplyResult = "skipped";
   const assignmentClaim = await claimAssignmentForParticipant(admin, r.event.id, r.participant.id, authUserId);
 
   await materializeFollowupObligation(admin, {
@@ -697,7 +721,7 @@ export async function claimGuidanceXp(
     completedAtIso: prog.completed_at,
     deviceTz,
   });
-  await materializeApplyWindow(admin, {
+  applyWindowResult = await materializeApplyWindow(admin, {
     eventId: r.event.id,
     progressId: prog.id,
     authUserId,
@@ -712,6 +736,7 @@ export async function claimGuidanceXp(
       ok: true,
       snapshot: await guidanceSnapshotFor(admin, r.event, contentType, r.participant, "awarded"),
       assignmentClaim,
+      ...applyNarration(applyWindowResult),
     };
   }
 

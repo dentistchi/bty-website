@@ -35,5 +35,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   const body = await req.json().catch(() => ({}));
   const r = await claimGuidanceXp(admin, token, session, contentType, authUserId, body?.tz);
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
-  return jsonNoStore({ ok: true, ...r.snapshot, assignment_claim: r.assignmentClaim ?? null });
+  /*
+    R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
+    NOTE: this route serializes `assignment_claim` (snake) where its five siblings use
+    `assignmentClaim` (camel). Pre-existing, out of scope, and deliberately left alone — the new
+    field follows the SIBLINGS so the three clients can read one name.
+  */
+  return jsonNoStore({ ok: true, ...r.snapshot, assignment_claim: r.assignmentClaim ?? null, applyWindow: r.applyWindow });
 }

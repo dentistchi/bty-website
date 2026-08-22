@@ -42,6 +42,12 @@ vi.mock("./foundryFollowupService", () => ({
 }));
 vi.mock("./foundryApplyWindowService", () => ({
   materializeApplyWindow: (...a: unknown[]) => materializeApplyWindow(...a),
+  /*
+    R4-R5C9A — the REAL mapper, not a stub. `applyNarration` is pure (outcome in, small object
+    out), so mocking it would only let these tests agree with a fiction; using the shipped rule
+    means the spy above still controls the OUTCOME while the mapping stays honest.
+  */
+  applyNarration: (r: string) => (r === "created" || r === "exists" ? { applyWindow: r } : {}),
 }));
 vi.mock("./foundryAssignmentPublishService", () => ({
   claimAssignmentForParticipant: (...a: unknown[]) => claimAssignmentForParticipant(...a),

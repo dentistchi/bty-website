@@ -191,6 +191,12 @@ describe("R2 evidence regression — the window never establishes APPLIED", () =
       by convention. If one is ever added, this assertion is where the conversation starts.
     */
     const mod = await import("./foundryApplyWindowService");
-    expect(Object.keys(mod).sort()).toEqual(["listMyApplyWindows", "materializeApplyWindow"]);
+    /*
+      R4-R5C9A added `applyNarration` — a PURE MAPPER from the materialization outcome to a
+      client-visible signal. It reads nothing, writes nothing, and touches no database; the
+      property this test defends (no completion/status writer) is untouched. The list stays
+      EXACT rather than becoming a subset check, because noticing the next export is the point.
+    */
+    expect(Object.keys(mod).sort()).toEqual(["applyNarration", "listMyApplyWindows", "materializeApplyWindow"]);
   });
 });

@@ -51,5 +51,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     body?.reflection_response,
   );
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
-  return jsonNoStore({ ok: true, ...r.snapshot });
+    // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
+return jsonNoStore({ ok: true, ...r.snapshot, applyWindow: r.applyWindow });
 }

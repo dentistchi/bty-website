@@ -32,5 +32,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
   if (!r.ok) return jsonNoStore({ ok: false, error: r.reason }, PUBLIC_REASON_STATUS[r.reason] ?? 400);
   // assignmentClaim (3.1B-3D) is a NEUTRAL, non-disclosing field: 'claimed' connects the
   // learner's own assignment; anything else (incl. no_matching_assignment) is silent.
-  return jsonNoStore({ ok: true, ...r.snapshot, assignmentClaim: r.assignmentClaim });
+    // R4-R5C9A — the server's own materialization outcome; absent unless a Reality step is live.
+return jsonNoStore({ ok: true, ...r.snapshot, assignmentClaim: r.assignmentClaim, applyWindow: r.applyWindow });
 }

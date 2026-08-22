@@ -91,6 +91,16 @@ type Copy = {
     Deliberately NOT "account name", "Google name", "profile name" or "verified name" — the
     learner does not need BTY's auth architecture explained to fill in one field.
   */
+  /**
+   * R4-R5C9A — shown ONLY when the server reports a live Apply window (`created`/`exists`).
+   *
+   * The terminal's only other forward-looking sentence describes a follow-up — something BTY will
+   * do to the learner — which reads as WAIT. The product expects them to ACT during those days.
+   * This says act, when, and where it comes back; Today still owns the action itself.
+   *
+   * KO uses the product's OWN tab label 오늘, not the English word "Today".
+   */
+  applyNarration: string;
   enterName: string;
   namePlaceholder: string;
   join: string;
@@ -159,6 +169,7 @@ type Copy = {
 const COPY: Record<Locale, Copy> = {
   en: {
     eyebrow: (t) => (t === "written_guidance" ? "Guidance" : "Team discussion"),
+    applyNarration: "Use what you decided in real work this week. You'll see it again in Today.",
     enterName: "Name shown for this training",
     namePlaceholder: "Your name",
     join: "Continue",
@@ -220,6 +231,7 @@ const COPY: Record<Locale, Copy> = {
   },
   ko: {
     eyebrow: (t) => (t === "written_guidance" ? "가이드" : "팀 논의"),
+    applyNarration: "이번 주에 정한 것을 실제 업무에서 해보세요. 오늘 탭에서 다시 볼 수 있어요.",
     enterName: "이 학습에 표시할 이름",
     namePlaceholder: "이름",
     join: "계속하기",
@@ -394,6 +406,12 @@ export default function FoundryGuidanceClient({
   );
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
+  /*
+    R4-R5C9A — the server's Apply outcome, captured from the completion/claim response and held
+    for the terminal. Sticky by design: it is set only when the server reports created/exists, and
+    a later action response that carries nothing must not silently retract a true statement.
+  */
+  const [applyWindow, setApplyWindow] = useState<"created" | "exists" | null>(null);
   const [name, setName] = useState("");
   /*
     R4-R5C7A — when the account already carries a name, the field arrives filled in. The learner
@@ -533,8 +551,13 @@ export default function FoundryGuidanceClient({
    */
   const applyResult = useCallback(
     (data: unknown) => {
-      const d = data as (Partial<Snapshot> & { ok?: boolean }) | null;
+      const d = data as (Partial<Snapshot> & { ok?: boolean; applyWindow?: string }) | null;
       if (d?.ok && d.stage) {
+        /*
+          R4-R5C9A — capture the server's Apply outcome. STICKY: only a positive outcome writes, so a
+          later action response that carries no field cannot retract a true statement.
+        */
+        if (d.applyWindow === "created" || d.applyWindow === "exists") setApplyWindow(d.applyWindow);
         setSnapshot((prev) =>
           mergeSnapshot<Snapshot>(prev, d, EMPTY_SNAPSHOT, { content_type: contentType, stage: d.stage! }),
         );
@@ -825,6 +848,23 @@ export default function FoundryGuidanceClient({
                   reused: it is the one sentence that stays true for a learner already signed in
                   whose XP is already awarded. No checkpoint → nothing said.
                 */}
+                {/*
+                  REALITY NARRATION (Slice R4-R5C9A) — narrate, never navigate.
+
+                  Rendered from `applyWindow`, the server's own materialization outcome, and from nothing else:
+                  not the decision text, not auth, not follow-up days, not the room type. `created` and `exists`
+                  are one truth; `skipped`/`error` say nothing, which is what keeps this from promising a Reality
+                  step to the many completions that correctly have none.
+
+                  It sits BEFORE the follow-up sentence on purpose, so the sequence reads: finished -> act this
+                  week -> we will check back. Quiet body text, NO CTA: Today owns the action, holds the learner's
+                  own sentence, and applies the suppression rules.
+                */}
+                {applyWindow ? (
+                  <p className="text-sm leading-6 text-white/80" data-testid="apply-narration">
+                    {t.applyNarration}
+                  </p>
+                ) : null}
                 {identity.followUp ? (
                   <p className="mt-2 text-sm leading-6 text-white/80" data-testid="awarded-followup">
                     {identity.followUp.meaning}
