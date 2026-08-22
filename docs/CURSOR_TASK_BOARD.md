@@ -2081,8 +2081,9 @@ D-9 chain complete. Launch posture: strong.
 > “화면을 만드는 것”이 아니라  
 > **행동 엔진을 연결하는 것**이다.
 | R4-R5C | Learner canonical journey (C3A2·C4A+R1/R2·C6·C7A·C8·C9A) | [x] | **IMPLEMENTATION COMPLETE / DEVICE VERIFICATION DEFERRED.** 배포·테스트·라이브 소스 패리티 증거 완비, material 학습자 결함 0 (P0/P1/P2 = 0, P3만 defer), 보안 seam·완료 무결성 보존. HEAD == live `7db828c4`. 잔여는 통합 학습자 기기 게이트 **V1–V7 단 1건**이며 safe fixture 부재로만 보류 — **합성 제품 데이터 생성 금지**. 신규 material 결함이 관측되거나 자연 검증이 실패를 드러내지 않는 한 추가 구현 슬라이스는 없음. **PASS/CLOSED 아님.** |
-| R4-R7A-R2 | Reality repair CTA reachability | [x] | 배포·검증 완료 (`12e5021c`). Founder 기기 결함(탭 무반응) 수정 — span→button + 기존 authoring 섹션 scrollIntoView. 규칙·문구 무변경. Founder F1 재검증 + F4 대기. |
-| R4-R7A | Reality intent publish truth | [x] | 배포·검증 완료 (`80699ea3`). Journey 없는 초안의 침묵 우회 차단, 단 선언된 행동 의도가 있을 때만. 지식 전용 학습 무영향. Review/Publish 단일 분류기. 마이그레이션·학습자 런타임 변경 0. Founder Builder 게이트 F1–F4 대기. |
+| R4-R7A | Reality intent publish truth (+R1 wording, +R2 CTA reachability) | [x] | **PASS / CLOSED** — Founder F1–F5 전원 PASS (`12e5021c`, 마이그레이션 없음). Journey 없는 초안의 침묵 우회 차단(단, 선언된 행동 의도가 있을 때만) · Review/Publish 단일 분류기 · 지식 전용 학습 무영향 · 기발행 학습 계속 서빙 · 학습자 런타임/Today/Apply/follow-up 무변경. R1=문구 정정, R2=CTA 실제 동작 수리. Journey 도입률은 성공 지표가 아님. |
+| R4-R7A-R2 | Reality repair CTA reachability | [x] | span→button + 기존 authoring 섹션 scrollIntoView (`12e5021c`). **상위 R4-R7A 종결 항목에 통합 — 별도 대기 게이트 없음.** |
+| R4-R7A (deploy) | Reality intent publish truth — 최초 배포 | [x] | `80699ea3` 배포. **상위 R4-R7A 종결 항목으로 대체 — Founder 게이트 대기 상태 아님.** |
 | R4-R5C3A2 | Truthful Continue Learning projection | [x] | 코드 배포·검증 완료 (`e1e56eb2` / Worker `dc9aab38`). RPC 마이그레이션 `20260826000000` Founder 적용 대기. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline 동일) / terminology 44 / cf:build 0 / 실 PostgreSQL 18-18. |
 | R4-R5C9A | Completion → Reality narration | [x] | 배포·검증 완료 (`7db828c4`). 서버 outcome 기반 조건부 1문장, CTA 0, Today가 액션 소유자 유지. 마이그레이션/Today/복귀/Practice 변경 0. 학습자 기기 검증 fixture 부재로 보류. |
 | R4-R5C7A | Signed-in name prefill + purposeful join | [x] | 배포·검증 완료 (`2a29d0a9`). metadata 기반 prefill, 제출 권위는 학습자 유지, 문구 목적화. 마이그레이션/프로필 테이블/Arena 의존 0. 학습자 기기 검증 fixture 부재로 보류. |
