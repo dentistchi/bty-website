@@ -75,8 +75,26 @@ CREATE TABLE public.karaoke_release_clients_hourly (
 ```
 
 Three columns. No account, room, event, session, token, IP, user agent, device id or fingerprint.
-Currently **0 rows** — the counter fires only after an authenticated hosted-room action, and no
-such traffic has occurred since deploy.
+
+**LIVE READING, ~1 hour after deploy:**
+
+```
+hour_utc                     bucket          requests
+2026-08-22T18:00:00+00:00    UNIDENTIFIED          79
+```
+
+79 real, **authenticated** hosted-room requests (the counter fires inside `resolveRelease`, which
+runs only after `authorizeDj` passes) arrived carrying no `x-bty-client` header — i.e. the shipped
+build 109 and/or the web console. They were served the legacy contract. `NATIVE_PREMIUM`, `WEB`
+and `NATIVE_LEGACY` are all absent, which is consistent: build 110 is not distributed.
+
+**And nothing was consumed.** Across those 79 requests the grant table is unchanged from the
+preflight census — 56 rows, `{AVAILABLE:24, REVOKED:8, ACTIVE:2, EXPIRED:22}` — and
+`timed_access_pass_audit` still holds exactly 156 rows with its newest entry dated 2026-08-14.
+**No `ACTIVATED` and no `EXPIRED` audit row was written after deploy.** That is the legacy
+contract's central guarantee, observed on real production traffic rather than inferred, and it is
+direct server-side evidence for gate F7. The two stale ACTIVE rows remain untouched per Founder
+decision B.
 
 **`UNIDENTIFIED` is a ceiling, not a count.** Build 109 sends no header, so it lands there
 together with scripts and curl. It bounds remaining build-109 traffic from above; it does not
