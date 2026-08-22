@@ -2081,6 +2081,10 @@ D-9 chain complete. Launch posture: strong.
 > “화면을 만드는 것”이 아니라  
 > **행동 엔진을 연결하는 것**이다.
 | R4-R5C | Learner canonical journey (C3A2·C4A+R1/R2·C6·C7A·C8·C9A) | [x] | **IMPLEMENTATION COMPLETE / DEVICE VERIFICATION DEFERRED.** 배포·테스트·라이브 소스 패리티 증거 완비, material 학습자 결함 0 (P0/P1/P2 = 0, P3만 defer), 보안 seam·완료 무결성 보존. HEAD == live `7db828c4`. 잔여는 통합 학습자 기기 게이트 **V1–V7 단 1건**이며 safe fixture 부재로만 보류 — **합성 제품 데이터 생성 금지**. 신규 material 결함이 관측되거나 자연 검증이 실패를 드러내지 않는 한 추가 구현 슬라이스는 없음. **PASS/CLOSED 아님.** |
+| R4 GAP INVENTORY | R4-R3A 5-gap 정산 | [x] | **소진 — 열린 제품 공백 없음.** (1) 미청구 신원 → R4-R6 NO BUILD · (2) Journey 채택 → R4-R7A **PASS/CLOSED**(실제 결함은 Publish-Truth였음) · (3) Applied+Observed → R4-R8 NO BUILD(시기상조) · (4) 조직 Memory → R4-R9 NO BUILD(반복 데이터 부족) · (5) Cloudflare observability → **DEFERRED OPS/진단 전용**. |
+| R4-R9 | Organisational learning memory | — | **측정 · NO BUILD.** 반복 실데이터 부족(>1버전 Program 2 · 후속 결과 2 · positive 관찰 0 · 식별 학습자 2). Program+module_version이 미래 spine, **행동 정체성은 개정 간 미해결로 유지**. Memory UI/집계 미승인. 활성 태스크 아님. |
+| R4-R8 | Applied + Observed convergence | — | **측정 · NO BUILD.** 두 증거는 출처-표기된 채 독립 유지. 라이브 positive OBSERVED 0 · 수렴 0. **`verified` 상태 미승인.** 활성 태스크 아님. |
+| R4-R6 | Unclaimed completion reachability | — | **측정 · NO BUILD.** 역사적 익명 코호트는 의도된 의미와 정합, 안전한 자동 연결 불가, assigned-origin은 C3A1이 전방 봉쇄. 복구/백필 미승인. 활성 태스크 아님. |
 | R4-R7A | Reality intent publish truth (+R1 wording, +R2 CTA reachability) | [x] | **PASS / CLOSED** — Founder F1–F5 전원 PASS (`12e5021c`, 마이그레이션 없음). Journey 없는 초안의 침묵 우회 차단(단, 선언된 행동 의도가 있을 때만) · Review/Publish 단일 분류기 · 지식 전용 학습 무영향 · 기발행 학습 계속 서빙 · 학습자 런타임/Today/Apply/follow-up 무변경. R1=문구 정정, R2=CTA 실제 동작 수리. Journey 도입률은 성공 지표가 아님. |
 | R4-R7A-R2 | Reality repair CTA reachability | [x] | span→button + 기존 authoring 섹션 scrollIntoView (`12e5021c`). **상위 R4-R7A 종결 항목에 통합 — 별도 대기 게이트 없음.** |
 | R4-R7A (deploy) | Reality intent publish truth — 최초 배포 | [x] | `80699ea3` 배포. **상위 R4-R7A 종결 항목으로 대체 — Founder 게이트 대기 상태 아님.** |
