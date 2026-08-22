@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PrivacyAwareLogoutLink from "@/components/auth/PrivacyAwareLogoutLink";
 import { useEffect, useState } from "react";
 
 type Labels = {
@@ -94,12 +95,13 @@ export default function AccountPageClient({ locale, labels }: Props) {
 
       {/* Sign out */}
       <div className="pt-2 text-center">
-        <Link
+        {/* Same href, same class, same label — plus the device-draft purge (R4-R5C4A-R2). */}
+        <PrivacyAwareLogoutLink
           href={`/${locale}/bty/logout`}
           className="text-sm text-[#98A2B3] underline-offset-2 hover:text-[#667085] hover:underline"
         >
           {labels.signOut}
-        </Link>
+        </PrivacyAwareLogoutLink>
       </div>
     </div>
   );

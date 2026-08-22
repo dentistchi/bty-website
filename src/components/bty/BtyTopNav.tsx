@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import PrivacyAwareLogoutLink from "@/components/auth/PrivacyAwareLogoutLink";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { pathnameMatchesArenaEntryHref } from "@/components/bty/navigation/nav-items";
@@ -104,7 +105,18 @@ export default function BtyTopNav({ showLogout = true }: Props) {
       {link(main, mainLabel)}
       {link(dash, "Dashboard")}
       {link(lb, "Leaderboard")}
-      {showLogout && link(logout, logoutLabel)}
+      {/*
+        Sign out renders through PrivacyAwareLogoutLink so this device's unfinished learner
+        drafts go with the session (R4-R5C4A-R2). The shared `link()` helper is deliberately
+        untouched — it still serves Arena / Main / Dashboard / Leaderboard, which must not
+        acquire a logout side effect. Same href, same label, same style: `active` is hard-coded
+        false for logout, so nothing about its appearance changes.
+      */}
+      {showLogout && (
+        <PrivacyAwareLogoutLink href={logout} style={navStyle.link} className="bty-nav-link">
+          {logoutLabel}
+        </PrivacyAwareLogoutLink>
+      )}
     </nav>
   );
 }
