@@ -2081,6 +2081,7 @@ D-9 chain complete. Launch posture: strong.
 > “화면을 만드는 것”이 아니라  
 > **행동 엔진을 연결하는 것**이다.
 | R4-R5C3A2 | Truthful Continue Learning projection | [x] | 코드 배포·검증 완료 (`e1e56eb2` / Worker `dc9aab38`). RPC 마이그레이션 `20260826000000` Founder 적용 대기. tsc 0 / 전체 스위트 신규 실패 0 (기존 8파일 baseline 동일) / terminology 44 / cf:build 0 / 실 PostgreSQL 18-18. |
+| R4-R5C9A | Completion → Reality narration | [x] | 배포·검증 완료 (`7db828c4`). 서버 outcome 기반 조건부 1문장, CTA 0, Today가 액션 소유자 유지. 마이그레이션/Today/복귀/Practice 변경 0. 학습자 기기 검증 fixture 부재로 보류. |
 | R4-R5C7A | Signed-in name prefill + purposeful join | [x] | 배포·검증 완료 (`2a29d0a9`). metadata 기반 prefill, 제출 권위는 학습자 유지, 문구 목적화. 마이그레이션/프로필 테이블/Arena 의존 0. 학습자 기기 검증 fixture 부재로 보류. |
 | R4-R5C6 | Learn surface single front door | [x] | 배포·검증 완료 (`57aa095b`). 학습자 분기만 Required Learning 우선, 도어=Learning history로 정직화, Host 무변경. 라우팅/DB/auth 변경 0. 학습자 기기 검증은 fixture 부재로 보류. |
 | R4-R5C4A-R2 | Explicit sign-out draft privacy parity | [x] | 배포·검증 완료 (`5ea19622`). 공유 로그아웃 링크로 앵커 2곳 커버, 네비게이션 semantics 무변경. BtyTopNav=미렌더(측정 정정). middleware/auth diff 0. Founder 기기 게이트 BLOCKED — NO SAFE LEARNER FIXTURE (deferred V1/V2/V3). |
