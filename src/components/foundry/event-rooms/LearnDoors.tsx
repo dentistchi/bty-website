@@ -14,6 +14,21 @@ import type { Locale } from "./copy";
  * surface here.
  */
 
+/*
+  THE DOOR NAMES WHAT IS BEHIND IT (Slice R4-R5C6).
+
+  This card used to read "My learning — Open required training or continue where you left off",
+  which is a description of the REQUIRED LEARNING section, not of this destination. Rendered
+  above that section and styled larger, it gave a learner with assigned work two plausible taps
+  and made the wrong one the obvious one.
+
+  MEASURED before rewriting: `onOpenLearning` opens `FoundryMyLearning`, which fetches
+  `/api/bty/foundry/history`, labels every row "Completed · <date>", and shows "No completed
+  trainings yet." when there is none. It is history, so the card now says so.
+
+  The words "required", "continue", "start" and "assigned" are deliberately absent here — those
+  belong to the section that actually offers the work, and a guard test keeps them out.
+*/
 const COPY: Record<
   Locale,
   {
@@ -30,9 +45,9 @@ const COPY: Record<
   }
 > = {
   en: {
-    learnTitle: "My learning",
-    learnBody: "Open required training or continue where you left off.",
-    learnCta: "Open my learning",
+    learnTitle: "Learning history",
+    learnBody: "See what you've completed and learned.",
+    learnCta: "View history",
     createTitle: "Create training",
     createBody: "Turn a real workplace issue into clear training for your team.",
     createCta: "Create training",
@@ -42,9 +57,9 @@ const COPY: Record<
     myEventsBody: "See participation in the Reality Events you opened.",
   },
   ko: {
-    learnTitle: "나의 학습",
-    learnBody: "배정된 트레이닝을 열거나 이어서 진행하세요.",
-    learnCta: "나의 학습 열기",
+    learnTitle: "학습 기록",
+    learnBody: "완료한 학습과 배운 내용을 확인하세요.",
+    learnCta: "기록 보기",
     createTitle: "트레이닝 만들기",
     createBody: "현장의 실제 문제를 팀을 위한 명확한 트레이닝으로 만드세요.",
     createCta: "트레이닝 만들기",
@@ -82,7 +97,16 @@ export function LearnDoors({
         data-testid="door-my-learning"
         className="flex flex-col items-start gap-1 rounded-2xl border border-white/12 bg-white/[0.03] px-5 py-4 text-left transition-colors hover:bg-white/[0.06]"
       >
-        <span className="text-lg font-semibold text-white">{t.learnTitle}</span>
+        {/*
+          SECONDARY BY WEIGHT, NOT BY A NEW SYSTEM (R4-R5C6 §8). Measured: the assigned training
+          card's own title is `text-[0.98rem] font-medium text-white/90`, so a `text-lg
+          font-semibold text-white` history title stayed the heaviest text on the learner's Learn
+          surface even after the reorder — current work would have been first but still quieter
+          than the archive. This drops to the SAME scale the card above already uses. No new
+          colour, no new primitive, and the CTA below is unchanged: it was already gold TEXT,
+          never a filled gold button like Start/Continue learning.
+        */}
+        <span className="text-[0.98rem] font-medium text-white/90">{t.learnTitle}</span>
         <span className="text-sm leading-6 text-white/60">{t.learnBody}</span>
         <span className="mt-1 text-sm font-semibold text-[#C9A66B]">{t.learnCta} →</span>
       </button>

@@ -78,7 +78,7 @@ describe("3.2G-R2 — first-tap in-shell follow-up entry (shell composition)", (
     await waitFor(() => expect(screen.getByText(/←/)).toBeTruthy());
     // R4: the control room resolves to real content — never an empty Learn body / Foundry home.
     await waitFor(() => expect(screen.getByText("배가 고파")).toBeTruthy());
-    expect(screen.queryByText(/Required learning|My learning/i)).toBeNull();
+    expect(screen.queryByText(/Required learning|Learning history/i)).toBeNull();
     // No URL was used as transport: no deep-link query serialized to the address bar.
     expect(window.location.search).toBe("");
     expect(window.location.pathname).toBe("/");
@@ -99,6 +99,6 @@ describe("3.2G-R2 — first-tap in-shell follow-up entry (shell composition)", (
       const content = screen.queryByText("배가 고파");
       expect(Boolean(resolving) || Boolean(content)).toBe(true);
     });
-    expect(screen.queryByText(/Required learning|My learning/i)).toBeNull();
+    expect(screen.queryByText(/Required learning|Learning history/i)).toBeNull();
   });
 });

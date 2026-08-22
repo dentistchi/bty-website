@@ -55,7 +55,7 @@ describe("FoundryEventControlRoom — 3.2G-R4 control-bound resolving surface", 
     expect(resolving.getAttribute("aria-live")).toBe("polite");
     // never the retired Foundry-home / learning content, never the unavailable surface yet
     expect(screen.queryByTestId("control-room-unavailable")).toBeNull();
-    expect(screen.queryByText(/Required learning|My learning/i)).toBeNull();
+    expect(screen.queryByText(/Required learning|Learning history/i)).toBeNull();
     // Back is available even while resolving
     expect(screen.getByText(/←/)).toBeTruthy();
   });

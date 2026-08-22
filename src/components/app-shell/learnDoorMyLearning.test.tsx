@@ -45,7 +45,9 @@ describe("[3.2R-R8D-R2] A/B — Learn → Open my learning", () => {
     const door = await screen.findByTestId("door-my-learning");
     expect(door.tagName, "K — a real, tappable control").toBe("BUTTON");
     expect((door as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByText("Open my learning →")).toBeTruthy();
+    // The CTA text changed with R4-R5C6 ("View history"); this test is about the door REACHING
+    // the shell's My-Learning authority on a real device, not about its wording.
+    expect(screen.getByText("View history →")).toBeTruthy();
 
     fireEvent.click(door);
     expect(onOpenMyLearning, "the click must reach the destination authority").toHaveBeenCalledTimes(1);

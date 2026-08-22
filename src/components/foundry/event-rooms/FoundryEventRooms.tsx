@@ -409,9 +409,19 @@ export default function FoundryEventRooms({
       // required learning. The "FOUNDRY / Training rooms are opened by authorized
       // hosts / Scan an invitation QR" host-pointer block is removed (it explained
       // authorization instead of offering a useful action). QR deep links are unchanged.
+      /*
+        CURRENT WORK FIRST (Slice R4-R5C6). This branch — and ONLY this branch — is the learner's
+        Learn surface, so the order change is contained to it and the Host compositions below keep
+        their own hierarchy, where Create training is deliberately near the top.
+
+        The doors used to come first, which meant the biggest, earliest control on Learn was a
+        history entry whose body advertised "Open required training or continue where you left
+        off" — the job the section beneath it actually performs. A learner with an assigned
+        training had two plausible taps and the wrong one was larger and sooner.
+      */
       <div className="btyFadeIn flex flex-col gap-8">
-        {learnDoors}
         {requiredLearning}
+        {learnDoors}
       </div>
     );
   }

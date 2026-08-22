@@ -10,7 +10,10 @@ describe("LearnDoors — two-door first-time entry (B3A.1)", () => {
     const { rerender } = render(
       <LearnDoors locale="en" canCreate={false} onOpenLearning={() => {}} onCreate={() => {}} />,
     );
-    expect(screen.getByTestId("door-my-learning").textContent).toContain("My learning");
+    // R4-R5C6 renamed this door to what it actually opens (completed learning), so the
+    // duplicate "start/continue" promise stopped competing with Required Learning. The door's
+    // IDENTITY (always present, capability-gated siblings) is what this test guards.
+    expect(screen.getByTestId("door-my-learning").textContent).toContain("Learning history");
     expect(screen.queryByTestId("door-create-training")).toBeNull(); // no capability → no create door
 
     rerender(<LearnDoors locale="en" canCreate onOpenLearning={() => {}} onCreate={() => {}} />);
