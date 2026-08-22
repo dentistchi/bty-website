@@ -192,7 +192,9 @@ function guidanceDraft(intent: "written" | "live_discussion", over: Row = {}): R
       learningNeeds: ["know"],
       materialIntent: intent,
       materialText: intent === "written" ? "Ask one question before you act." : "Where did we act on half a handover?",
-      followUpDays: 7,
+      // R4-R7A: no behaviour intent declared, so this fixture tests what it claims — publish
+      // mechanics / legacy content — rather than a draft whose Host scheduled a follow-up.
+      followUpDays: 0,
       completionPrompt: "What will you ask next time?",
       sharedQuestion: null,
     },

@@ -103,7 +103,9 @@ function draft(over: Row = {}): Row {
       observableBehavior: "The charge nurse reads back the dosage before sign-off.",
       successEvidence: "Sign-offs include a witnessed read-back.", evidenceType: "seen",
       learningNeeds: ["practice"], materialIntent: "youtube",
-      materialText: "https://youtu.be/dQw4w9WgXcQ", followUpDays: 7,
+      // R4-R7A: no behaviour intent declared, so this fixture tests what it claims — publish
+      // mechanics / legacy content — rather than a draft whose Host scheduled a follow-up.
+      materialText: "https://youtu.be/dQw4w9WgXcQ", followUpDays: 0,
       completionPrompt: "What read-back will you commit to?",
     },
     ...over,

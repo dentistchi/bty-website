@@ -83,7 +83,20 @@ const HOST_ANSWERS = {
   problem: "During morning huddles, team members report problems but leave without naming who will act.",
   audienceType: "leaders",
   evidenceType: "confirmed",
-  followUpDays: 7,
+  /*
+    R4-R7A NARROWS 3.2P-R2.1, and this fixture is where the two meet.
+
+    3.2P-R2.1 established that a draft with NO journey publishes under existing semantics —
+    correct, and preserved. What it did not separate is that this fixture ALSO declared
+    `followUpDays: 7`, so it was not only "legacy content without a journey", it was a Host
+    asking BTY to check back. R4-R7A refuses that combination, because the Host was promised
+    something the training cannot deliver and the repair is one control away.
+
+    So the invariant is now stated precisely: no journey AND no declared behaviour intent →
+    publish unchanged. The fixture declares no follow-up, which is what "legacy content"
+    actually means here.
+  */
+  followUpDays: 0,
   learningNeeds: ["shared_standard", "practice"],
   materialIntent: "youtube",
   materialText: "https://youtu.be/dQw4w9WgXcQ",

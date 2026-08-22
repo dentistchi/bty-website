@@ -31,6 +31,7 @@ import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
+import { classifyRealityIntentReadiness, type RealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
 import {
@@ -762,6 +763,11 @@ export function ModuleBuilderShell({
     answers.materialIntent === "pdf" &&
     pdfAssets.length === 1 &&
     answers.materialReviewV1?.contentHash !== pdfAssets[0]?.content_hash;
+  /*
+    R4-R7A — the SAME classifier the publish gate uses, so Review and Publish can never disagree
+    about whether this training delivers what its Host asked for. No condition is restated here.
+  */
+  const realityIntent = classifyRealityIntentReadiness(answers, journey);
   const reviewMissing = reviewMissingSections(answers, [
     ...(pdfMissing ? ["material_pdf_required"] : []),
     ...(materialReviewNeeded ? ["material_review_required"] : []),
@@ -961,6 +967,7 @@ export function ModuleBuilderShell({
             journeyBlockers={journeyEnabled ? journeyBlockers : []}
             generationPending={generationPending}
             programSectionsMissing={missingProgramKinds(answers, journey).length}
+            realityIntent={realityIntent}
             t={t}
           />
           </div>
@@ -1795,6 +1802,14 @@ function publishErrorMessage(reason: string, t: ModuleBuilderCopy): string {
       return t.s6LiveDiscussionBlocker;
     case "material_guidance_content_required":
       return t.s6WrittenBlocker;
+    /*
+      R4-R7A — the publish refusal says the SAME sentence Review already showed. A Host who was
+      told what is missing must not then meet a different, vaguer message when they press Publish.
+    */
+    case "field_action_missing":
+      return t.realityMissingFieldAction;
+    case "decision_missing":
+      return t.realityMissingDecision;
     case "not_a_host":
       return t.publishErrNotHost;
     case "assignment_write_failed":
@@ -1830,6 +1845,7 @@ function PublishAction({
   journeyBlockers,
   generationPending,
   programSectionsMissing,
+  realityIntent,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1843,6 +1859,8 @@ function PublishAction({
   generationPending: boolean;
   /** Required program sections this training does NOT have. Does not block — it explains. */
   programSectionsMissing: number;
+  /** R4-R7A — declared Host intent vs delivered capability. Facts only; the copy lives here. */
+  realityIntent: RealityIntentReadiness;
   t: ModuleBuilderCopy;
 }) {
   // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
@@ -1851,6 +1869,39 @@ function PublishAction({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm leading-6 text-white/55">{t.publishTrust}</p>
+
+      {/*
+        REALITY INTENT TRUTH (Slice R4-R7A).
+
+        Shown ONLY when the Host asked for something this training cannot yet deliver — a
+        scheduled follow-up with no real-work action, or a requested decision with none defined.
+        A training whose intent is knowledge or a shared standard reaches none of this and sees
+        nothing, which is 24 of the 32 live trainings and must stay silent.
+
+        The words the Host reads are ordinary: no Journey, no grounded, no field_application.
+        Both gaps are repairable in this same Builder, so the message names the fix rather than
+        merely reporting a fault.
+      */}
+      {realityIntent.missing.length > 0 ? (
+        <div
+          className="flex flex-col gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3"
+          data-testid="reality-intent-gap"
+        >
+          {realityIntent.missing.includes("field_action") ? (
+            <p className="text-sm leading-6 text-amber-100/90" data-testid="reality-gap-field-action">
+              {t.realityMissingFieldAction}
+            </p>
+          ) : null}
+          {realityIntent.missing.includes("decision") ? (
+            <p className="text-sm leading-6 text-amber-100/90" data-testid="reality-gap-decision">
+              {t.realityMissingDecision}
+            </p>
+          ) : null}
+          <span className="text-sm font-medium text-amber-200/90" data-testid="reality-gap-fix">
+            {t.realityFixCta}
+          </span>
+        </div>
+      ) : null}
       <MissingSummary missing={missing} onEdit={onEdit} t={t} />
       {generationPending ? (
         <div className="rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3" data-testid="publish-blocked-generation">

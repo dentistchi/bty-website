@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { draftTitleFrom, type BuilderAnswers } from "@/domain/foundry/module/module-builder";
 import { isJourneyApprovable, journeyCompletionCheck } from "@/domain/foundry/module/journey";
 import { missingProgramKinds } from "@/domain/foundry/module/program-authorship";
+import { classifyRealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
 import {
   deriveEventMaterial,
   buildModuleSnapshot,
@@ -409,6 +410,36 @@ export async function publishDraft(
   if (journeyEnabled) {
     const missingKinds = missingProgramKinds(answers, journey);
     if (missingKinds.length > 0) return { ok: false, reason: "program_sections_missing" };
+  }
+
+  /*
+    REALITY INTENT — THE NO-JOURNEY BYPASS (Slice R4-R7A).
+
+    Every check above is inside `if (journeyEnabled)`, and `journeyEnabled` is
+    `journey !== undefined`. So a draft with NO journey skipped all of them — including the
+    Host's own declared intent. Measured on production: 30 of 32 module-bearing trainings set
+    `followUpDays > 0`, only 4 carry a grounded `field_application`, and none of the other 26
+    was ever told. BTY scheduled a follow-up with nothing to ask about.
+
+    THIS DOES NOT REQUIRE A JOURNEY. It asks only whether a capability the HOST REQUESTED can
+    actually be delivered, so a `know`-only or `shared_standard`-only training still publishes
+    with no journey at all — which is 24 of the 32 and must stay that way. Journey adoption is
+    not the goal; agreement between declared intent and delivered capability is.
+
+    BLOCKING IS SAFE HERE because both gaps are repairable in the Builder as it stands today:
+    `journey-start` seeds the journey from the answers, and `ProgramAuthorship` generates and
+    applies exactly `requiredProgramKinds(answers)` — which already includes `field_application`
+    when a follow-up is scheduled and `action_decision` when `decide` is declared. A gate whose
+    repair path did not exist would be a dead end, and would not have been written.
+
+    Legacy is untouched: this runs at PUBLISH, so an already-published training keeps serving.
+  */
+  const realityIntent = classifyRealityIntentReadiness(answers, journey);
+  if (realityIntent.missing.includes("field_action")) {
+    return { ok: false, reason: "field_action_missing" };
+  }
+  if (realityIntent.missing.includes("decision")) {
+    return { ok: false, reason: "decision_missing" };
   }
 
   const title = journeyEnabled
