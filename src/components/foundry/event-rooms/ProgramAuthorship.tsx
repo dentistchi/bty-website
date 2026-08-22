@@ -84,6 +84,7 @@ export type ProgramGenerateOutcome =
   | { ok: false; code: string; refusal?: string | null };
 
 export function ProgramAuthorship({
+  sectionRef,
   draftId,
   answers,
   journey,
@@ -97,6 +98,12 @@ export function ProgramAuthorship({
   onPendingChange,
   onAdopted,
 }: {
+  /**
+   * R4-R7A-R2 — so Review's repair CTA can bring this surface into view on a phone. The
+   * ref lives on THIS section, not on the two-column layout wrappers, which
+   * `managerResponsiveLayout` pins as layout-only — a guard that caught the first attempt.
+   */
+  sectionRef?: React.Ref<HTMLElement>;
   /** The exact loaded draft this surface is bound to. */
   draftId: string;
   answers: BuilderAnswers;
@@ -536,7 +543,7 @@ export function ProgramAuthorship({
 
   // ---- entry -------------------------------------------------------------
   const entrySurface = (
-      <section className="flex flex-col gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-4" data-testid="program-authorship-entry">
+      <section ref={sectionRef} className="flex flex-col gap-3 rounded-xl border border-[#C9A66B]/30 bg-[#C9A66B]/[0.05] px-4 py-4" data-testid="program-authorship-entry">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-[#C9A66B]">Let BTY draft this training for you</h3>
           <p className="text-sm leading-6 text-white/60">

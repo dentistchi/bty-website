@@ -710,6 +710,29 @@ export function ModuleBuilderShell({
 
   useEffect(() => () => cancelDebounce(), [cancelDebounce]);
 
+  /*
+    R4-R7A-R2 — MAKE THE REPAIR REACHABLE.
+
+    The Founder tapped "Complete this part" and nothing happened, because it shipped as a styled
+    `<span>`: a label that looked like an action. There was no handler to fail — there was no
+    control at all.
+
+    The repair surface is NOT another screen. `ProgramAuthorship` already renders on Review
+    ("PROGRAM FIRST", Slice 3.2L), above the publish panel — so on a phone it sits far off the top
+    of the viewport, which is why even a working state change would have looked inert. The fix
+    reveals the surface that already exists rather than opening a new one, and both gaps are
+    authored there, so one CTA has one deterministic target.
+
+    DECLARED HERE, ABOVE THE EARLY RETURNS, not beside the classifier that produces the warning:
+    that reads better but sits after `if (restore === "gone") return …`, which makes the hooks
+    conditional. React threw "Rendered more hooks than during the previous render" and the
+    Builder's own draft-identity suite caught it.
+  */
+  const programAuthoringRef = useRef<HTMLElement | null>(null);
+  const revealProgramAuthoring = useCallback(() => {
+    programAuthoringRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, []);
+
   if (restore === "loading") {
     return (
       <div className="btyFadeIn flex min-h-[45vh] items-center justify-center">
@@ -886,6 +909,7 @@ export function ModuleBuilderShell({
           <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-6" data-testid="review-scan-grid">
           <div className="lg:col-span-2">
           <ProgramAuthorship
+            sectionRef={programAuthoringRef}
             draftId={draftId}
             answers={answers}
             journey={answers.realityGroundedJourneyV1}
@@ -968,6 +992,7 @@ export function ModuleBuilderShell({
             generationPending={generationPending}
             programSectionsMissing={missingProgramKinds(answers, journey).length}
             realityIntent={realityIntent}
+            onRepairReality={revealProgramAuthoring}
             t={t}
           />
           </div>
@@ -1846,6 +1871,7 @@ function PublishAction({
   generationPending,
   programSectionsMissing,
   realityIntent,
+  onRepairReality,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1861,6 +1887,8 @@ function PublishAction({
   programSectionsMissing: number;
   /** R4-R7A — declared Host intent vs delivered capability. Facts only; the copy lives here. */
   realityIntent: RealityIntentReadiness;
+  /** R4-R7A-R2 — reveal the authoring surface already on this screen. Never disabled. */
+  onRepairReality: () => void;
   t: ModuleBuilderCopy;
 }) {
   // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
@@ -1897,9 +1925,20 @@ function PublishAction({
               {t.realityMissingDecision}
             </p>
           ) : null}
-          <span className="text-sm font-medium text-amber-200/90" data-testid="reality-gap-fix">
-            {t.realityFixCta}
-          </span>
+          {/*
+            A BUTTON, not a label (R4-R7A-R2). Deliberately carries no `disabled`: a Host reaches
+            this precisely because the draft is incomplete, so the other blockers Review lists —
+            a missing title, missing sections, a disabled Publish — must never disable the control
+            that exists to resolve incompleteness.
+          */}
+          <button
+            type="button"
+            onClick={onRepairReality}
+            data-testid="reality-gap-fix"
+            className="self-start rounded-lg py-1 text-sm font-semibold text-amber-200/90 underline underline-offset-4 transition-colors hover:text-amber-100"
+          >
+            {t.realityFixCta} →
+          </button>
         </div>
       ) : null}
       <MissingSummary missing={missing} onEdit={onEdit} t={t} />
