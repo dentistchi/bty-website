@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { resolveSuggestedTrainingName } from "@/domain/foundry/events/suggested-training-name";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServerClient } from "@/lib/bty/arena/supabaseServer";
 import { getPublicGuidanceSnapshot, resolveGuidanceType } from "@/lib/bty/foundry/events/foundryGuidanceService";
@@ -29,6 +30,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     degrades to null. It exists so the server can tell whether this browser's participant belongs
     to the account that is actually signed in (account-switch containment).
   */
+  /*
+    R4-R5C7A — the PREFILL suggestion, derived here and only here. The same optional-auth read
+    already in place; we now also look at the metadata it returns. Nothing is sent by the browser
+    to obtain it, and it authorises nothing.
+  */
+  let suggestedName: string | null = null;
   let authUserId: string | null = null;
   try {
     const supa = await getSupabaseServerClient();
@@ -36,10 +43,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
       data: { user },
     } = await supa.auth.getUser();
     authUserId = user?.id ?? null;
+    suggestedName = resolveSuggestedTrainingName(user?.user_metadata as Record<string, unknown> | null | undefined);
   } catch {
     authUserId = null;
+    suggestedName = null;
   }
 
-  const snapshot = await getPublicGuidanceSnapshot(admin, token, session, contentType, authUserId);
+  const snapshot = await getPublicGuidanceSnapshot(admin, token, session, contentType, authUserId, suggestedName);
   return jsonNoStore(snapshot);
 }

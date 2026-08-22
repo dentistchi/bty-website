@@ -458,6 +458,13 @@ export type PublicDocumentSnapshot = {
    * `participant-draft-namespace.ts` for why the browser needed one at all.
    */
   participant: { display_name: string; draft_ns: string } | null;
+  /**
+   * R4-R5C7A — a name to PREFILL the join field with, for the signed-in learner looking at their
+   * OWN pre-join screen. Present only while `participant` is null: once someone has joined there
+   * is nothing to prefill, and the account name has no business being on the wire. It is a
+   * suggestion, never identity — the learner's submitted value stays the authority.
+   */
+  suggested_name?: string | null;
   document: {
     page_count: number;
     min_read_seconds: number;
@@ -601,6 +608,11 @@ export async function getPublicDocumentSnapshot(
   sessionToken: string | null | undefined,
   /** R4-R5C3A1 — server-derived caller, or null when anonymous. Optional: omitting it preserves today's behaviour exactly. */
   authUserId?: string | null,
+  /**
+   * R4-R5C7A — resolved by the ROUTE from the optional auth session (never sent by the browser).
+   * Passed through to the pre-join snapshot only; see the field's note on the snapshot type.
+   */
+  suggestedName?: string | null,
 ): Promise<PublicDocumentSnapshot> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) {
@@ -636,7 +648,14 @@ export async function getPublicDocumentSnapshot(
   */
   const journey = participant ? toPublicJourney(await readEventJourney(admin, event.id)) : null;
   const followUpDays = participant ? await readEventFollowUpDays(admin, event.id) : null;
-  return buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, followUpDays);
+  /*
+    PRE-JOIN ONLY (R4-R5C7A). Attached HERE, at the public read path, rather than inside the
+    shared builder — `snapshotFor`/action responses run through that same builder, and an account
+    name has no reason to travel on a request that is not showing the join field. Once someone has
+    joined there is nothing to prefill, so a snapshot WITH a participant never carries it.
+  */
+  const snap = buildDocumentSnapshot(event, participant, progress, content, tokenVersion === event.join_version, undefined, journey, followUpDays);
+  return snap.participant ? snap : { ...snap, suggested_name: suggestedName ?? null };
 }
 
 /** Resolve + verify the caller is a joined participant, then mint a signed read url. */

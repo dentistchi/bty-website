@@ -289,6 +289,13 @@ export type PublicGuidanceSnapshot = {
    */
   participant: { display_name: string; draft_ns: string } | null;
   /**
+   * R4-R5C7A — a name to PREFILL the join field with, for the signed-in learner looking at their
+   * OWN pre-join screen. Present only while `participant` is null: once someone has joined there
+   * is nothing to prefill, and the account name has no business being on the wire. It is a
+   * suggestion, never identity — the learner's submitted value stays the authority.
+   */
+  suggested_name?: string | null;
+  /**
    * The Host's own text plus the questions the learner owes — visible only once joined, and the
    * prompts only once the exposure declaration has been made (the same unlock shape the video
    * and document rooms use).
@@ -416,6 +423,11 @@ export async function getPublicGuidanceSnapshot(
   contentType: GuidanceContentType,
   /** R4-R5C3A1 — server-derived caller, or null when anonymous. Optional: omitting it preserves today's behaviour exactly. */
   authUserId?: string | null,
+  /**
+   * R4-R5C7A — resolved by the ROUTE from the optional auth session (never sent by the browser).
+   * Passed through to the pre-join snapshot only; see the field's note on the snapshot type.
+   */
+  suggestedName?: string | null,
 ): Promise<PublicGuidanceSnapshot> {
   const resolved = await resolveEventByToken(admin, token);
   if (!resolved.ok) return UNAVAILABLE(contentType);
@@ -436,7 +448,11 @@ export async function getPublicGuidanceSnapshot(
   const progress = participant ? await getGuidanceProgress(admin, event.id, participant.id) : null;
   const content = await readGuidanceContent(admin, event.id);
   const journey = participant ? toPublicJourney(await readEventJourney(admin, event.id)) : null;
-  return buildGuidanceSnapshot(
+  /*
+    PRE-JOIN ONLY (R4-R5C7A) — same rule as the video and document rooms: attached at the public
+    read path, never inside the shared builder that action responses also use.
+  */
+  const snap = buildGuidanceSnapshot(
     event,
     contentType,
     participant,
@@ -447,6 +463,7 @@ export async function getPublicGuidanceSnapshot(
     journey,
     participant ? await readEventFollowUpDays(admin, event.id) : null,
   );
+  return snap.participant ? snap : { ...snap, suggested_name: suggestedName ?? null };
 }
 
 export type GuidanceResult =

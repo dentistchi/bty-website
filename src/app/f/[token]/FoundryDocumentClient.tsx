@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRoomDraft, type DraftFields } from "./useDeviceDraft";
+import { useSuggestedName } from "./useSuggestedName";
 import { PdfReader, type ReadingHeartbeat } from "./PdfReader";
 import { JourneyReading, type Journey } from "./JourneyReading";
 import { sanitizeRoomReturn } from "@/lib/bty/foundry/roomReturn";
@@ -51,6 +52,8 @@ type Snapshot = {
   /** R4-R5C4A — opaque per-participant namespace for the DEVICE-LOCAL draft. Optional:
    *  a server that does not send it simply yields no draft, never an error. */
   participant: { display_name: string; draft_ns?: string } | null;
+  /** R4-R5C7A — prefill for the join field; present only pre-join. Optional: absent means no suggestion. */
+  suggested_name?: string | null;
   document: DocInfo | null;
   /** The published program, from the frozen event snapshot (Slice 3.2R-R8A). */
   journey?: Journey;
@@ -67,6 +70,18 @@ type Snapshot = {
 
 type Copy = {
   eyebrow: string;
+  /*
+    THE FIELD SAYS WHAT IT IS FOR (Slice R4-R5C7A).
+
+    "What's your name?" reads as an identity challenge to someone who signed in moments earlier —
+    the measured trust break was "I already signed in, why doesn't BTY know me?". The field's real
+    job is narrower and answerable: this is the name a Host and an observing colleague will see
+    next to this training. Saying so makes it purposeful even for the ~23% of accounts that carry
+    no provider name and must still type one.
+
+    Deliberately NOT "account name", "Google name", "profile name" or "verified name" — the
+    learner does not need BTY's auth architecture explained to fill in one field.
+  */
   enterName: string;
   namePlaceholder: string;
   join: string;
@@ -152,7 +167,7 @@ type Copy = {
 const COPY: Record<Locale, Copy> = {
   en: {
     eyebrow: "TRAINING",
-    enterName: "What's your name?",
+    enterName: "Name shown for this training",
     namePlaceholder: "Your name",
     join: "Continue",
     joining: "Opening…",
@@ -210,7 +225,7 @@ const COPY: Record<Locale, Copy> = {
   },
   ko: {
     eyebrow: "학습",
-    enterName: "이름을 입력해 주세요.",
+    enterName: "이 학습에 표시할 이름",
     namePlaceholder: "이름",
     join: "계속하기",
     joining: "여는 중…",
@@ -372,6 +387,12 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
+  /*
+    R4-R5C7A — when the account already carries a name, the field arrives filled in. The learner
+    still decides what is submitted: this seeds once, never over typing, and never re-applies.
+  */
+  const nameTouched = useRef(false);
+  useSuggestedName(snapshot?.suggested_name, name, setName, nameTouched);
   const [response, setResponse] = useState("");
   // Shared Understanding answer (Slice 3.1B-3G) — SEPARATE state from the private `response`.
   const [sharedResponse, setSharedResponse] = useState("");
@@ -911,6 +932,7 @@ export default function FoundryDocumentClient({ token }: { token: string }) {
           <input
             value={name}
             onChange={(e) => {
+              nameTouched.current = true;
               setName(e.target.value);
               setNameError(false);
             }}

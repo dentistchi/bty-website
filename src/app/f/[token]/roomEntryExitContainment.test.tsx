@@ -112,7 +112,7 @@ describe("T1/T2 — video and PDF entry speak ordinary language", () => {
     ["video", FoundryJoinClient, preJoinVideo()],
     ["document", FoundryDocumentClient, preJoinDoc()],
   ] as const) {
-    it(`${label} — no FOUNDRY, no join-a-system wording; TRAINING / What's your name? / Continue`, async () => {
+    it(`${label} — no FOUNDRY, no join-a-system wording; TRAINING / purposeful name field / Continue`, async () => {
       mock(snap);
       render(<Client token="btyroom.a.b" />);
       await waitFor(() => expect(screen.getByText("Close the Loop")).toBeTruthy());
@@ -122,39 +122,45 @@ describe("T1/T2 — video and PDF entry speak ordinary language", () => {
       expect(text).not.toContain("Join training");
       expect(text).not.toContain("Enter your name to join.");
       expect(screen.getByText("TRAINING")).toBeTruthy();
-      expect(screen.getByText("What's your name?")).toBeTruthy();
+      expect(screen.getByText("Name shown for this training")).toBeTruthy();
       expect(screen.getByText("Continue")).toBeTruthy();
     });
 
-    it(`${label} — KO parity: 학습 / 이름을 입력해 주세요. / 계속하기, and no 파운드리 or 입장`, () => {
+    it(`${label} — KO parity: 학습 / 이 학습에 표시할 이름 / 계속하기, and no 파운드리 or 입장`, () => {
       const src = readFileSync(join(process.cwd(), `src/app/f/[token]/${label === "video" ? "FoundryJoinClient" : "FoundryDocumentClient"}.tsx`), "utf8");
       // The KO dictionary is asserted at source: these clients pick locale from `navigator.language`
       // in a mount effect, so a rendered KO assertion would be testing the shim, not the copy.
       const ko = src.slice(src.indexOf("  ko: {"));
       expect(ko).toContain('eyebrow: "학습"');
-      expect(ko).toContain('enterName: "이름을 입력해 주세요."');
+      expect(ko).toContain('enterName: "이 학습에 표시할 이름"');
       expect(ko).toContain('join: "계속하기"');
       expect(ko).not.toContain('join: "입장"');
       expect(ko).not.toContain('join: "훈련 입장"');
     });
   }
 
-  it("the name field still exists — this slice contains the seam, it does not pretend to solve it", async () => {
+  /*
+    R4-R5B2 wrote this as "the name field still exists — this slice contains the seam, it does not
+    pretend to solve it". R4-R5C7A is the slice that addressed the seam, and it did so by making
+    the field PURPOSEFUL and prefilled — not by removing it. The field must still exist: 23% of
+    accounts carry no provider name, and the learner remains the author of what their Host sees.
+  */
+  it("the name field still exists, now saying what it is for", async () => {
     mock(preJoinDoc());
     render(<FoundryDocumentClient token="btyroom.a.b" />);
-    await waitFor(() => expect(screen.getByText("What's your name?")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Name shown for this training")).toBeTruthy());
     expect(document.querySelector("input")).toBeTruthy();
   });
 });
 
 // ── T3 — guidance must not be degraded ──────────────────────────────────────────────────────────
 describe("T3 — guidance entry stays exactly as it already was", () => {
-  it("Guidance / What's your name? / Continue are intact", async () => {
+  it("Guidance / purposeful name field / Continue are intact", async () => {
     mock(preJoinGuidance());
     render(<FoundryGuidanceClient token="btyroom.a.b" contentType="written_guidance" />);
     await waitFor(() => expect(screen.getByText("Confirm Understanding")).toBeTruthy());
     expect(screen.getByText("Guidance")).toBeTruthy();
-    expect(screen.getByText("What's your name?")).toBeTruthy();
+    expect(screen.getByText("Name shown for this training")).toBeTruthy();
     expect(screen.getByText("Continue")).toBeTruthy();
     expect(body()).not.toContain("FOUNDRY");
   });
