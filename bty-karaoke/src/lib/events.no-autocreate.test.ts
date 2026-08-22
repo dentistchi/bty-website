@@ -32,7 +32,42 @@ function liveFor(roomId: string): Ev | undefined {
 
 vi.mock('@/lib/supabase.server', () => ({
   karaokeDb: () => ({
-    rpc: () => Promise.resolve({ data: null, error: { message: 'no rpc in this fake' } }),
+    // BUILD 26U-R1 — creation moved into karaoke_start_premium_room_session. This emulation
+    // keeps `db.inserts` as the file's central instrument: it counts EVERY Event row this fake
+    // creates, by whatever path, so "(1)-(5) a read never writes" still means exactly what it
+    // meant before, and the double-tap fast path is still observable as "no new insert".
+    rpc(name: string, params: Record<string, unknown>) {
+      if (name !== 'karaoke_start_premium_room_session') {
+        return Promise.resolve({ data: null, error: { message: 'no rpc in this fake' } });
+      }
+      const roomId = String(params.p_room_id);
+      const live = liveFor(roomId);
+      if (live) {
+        return Promise.resolve({
+          data: { outcome: 'already_live', eventId: live.id, activated: false },
+          error: null,
+        });
+      }
+      db.inserts += 1;
+      const ev: Ev = {
+        id: `evt-${++db.seq}`,
+        room_id: roomId,
+        name: String(params.p_name),
+        public_code: String(params.p_public_code),
+        guest_slug: String(params.p_guest_slug),
+        status: 'active',
+        starts_at: '2026-07-15T00:00:00Z',
+        ended_at: null,
+        created_by: String(params.p_created_by ?? 'admin-hub'),
+        created_at: '2026-07-15T00:00:00Z',
+        updated_at: '2026-07-15T00:00:00Z',
+      };
+      db.events.push(ev);
+      return Promise.resolve({
+        data: { outcome: 'ok', eventId: ev.id, activated: true, source: 'ACTIVATED_PASS', expiresAt: null },
+        error: null,
+      });
+    },
     from(table: string) {
       const filters: Array<[string, unknown]> = [];
       let inFilter: { col: string; vals: unknown[] } | null = null;
@@ -131,7 +166,14 @@ vi.mock('@/lib/supabase.server', () => ({
 }));
 
 import * as events from './events.server';
-const { getCanonicalEvent, getLatestEndedEvent, resolveEventAccess, startNewEvent } = events;
+const { getCanonicalEvent, getLatestEndedEvent, resolveEventAccess } = events;
+
+/** Unwrap the gated session start; every case in this file is expected to succeed. */
+async function startNewEvent(roomId: string, name: string) {
+  const r = await events.startHostedRoomSession(roomId, name);
+  if (!r.ok) throw new Error(`expected a started session, got ${r.code}`);
+  return r.event;
+}
 
 beforeEach(() => {
   db.events = [];

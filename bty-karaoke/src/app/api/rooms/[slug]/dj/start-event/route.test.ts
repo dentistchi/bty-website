@@ -31,16 +31,30 @@ const authorizeDjSpy = vi.fn(async (slug: string, bearer: string) => {
 /** Idempotent live-event store mirroring the one-live-per-room invariant. */
 const live: Record<string, { id: string; status: string; name: string }> = {};
 let createCount = 0;
-const startNewEventSpy = vi.fn(async (roomId: string, name: string) => {
-  if (live[roomId]) return live[roomId]; // a live Event is returned unchanged
+// BUILD 26U-R1 — the route now calls the entitlement-GATED session-start authority, which
+// returns a discriminated result instead of a bare Event. The fake keeps the same idempotent
+// store and returns the `ok` arm, because this file's subject is the DEVICE-TOKEN AUTHORIZATION
+// boundary; the entitlement refusal has its own dedicated test below.
+let entitled = true;
+const startHostedRoomSessionSpy = vi.fn(async (roomId: string, name: string) => {
+  if (!entitled) return { ok: false as const, code: 'PREMIUM_ROOM_REQUIRED' as const };
+  if (live[roomId]) {
+    return { ok: true as const, event: live[roomId], activated: false, expiresAt: null, source: 'ALREADY_LIVE' };
+  }
   createCount += 1;
   live[roomId] = { id: `evt-${roomId}-${createCount}`, status: 'active', name };
-  return live[roomId];
+  return {
+    ok: true as const,
+    event: live[roomId],
+    activated: true,
+    expiresAt: '2026-08-22T18:00:00Z',
+    source: 'ACTIVATED_PASS',
+  };
 });
 
 vi.mock('@/lib/rooms.server', () => ({ authorizeDj: (s: string, b: string) => authorizeDjSpy(s, b) }));
 vi.mock('@/lib/events.server', () => ({
-  startNewEvent: (r: string, n: string) => startNewEventSpy(r, n),
+  startHostedRoomSession: (r: string, n: string) => startHostedRoomSessionSpy(r, n),
   publicEvent: (e: { id: string; status: string }) => ({ id: e.id, status: e.status }),
 }));
 vi.mock('@/lib/sessions.server', () => ({ startSession: vi.fn(async () => ({ id: 'sess-1' })) }));
@@ -57,35 +71,36 @@ const ctx = (slug: string) => ({ params: Promise.resolve({ slug }) });
 beforeEach(() => {
   for (const k of Object.keys(live)) delete live[k];
   createCount = 0;
+  entitled = true;
   authorizeDjSpy.mockClear();
-  startNewEventSpy.mockClear();
+  startHostedRoomSessionSpy.mockClear();
 });
 
 describe('POST /api/rooms/[slug]/dj/start-event — authorization boundary', () => {
   it('(1) a MISSING token is rejected (401) and never reaches the service', async () => {
     const res = await POST(makeReq(undefined), ctx('room-a'));
     expect(res.status).toBe(401);
-    expect(startNewEventSpy).not.toHaveBeenCalled();
+    expect(startHostedRoomSessionSpy).not.toHaveBeenCalled();
   });
 
   it('(2) an INVALID/unknown token is rejected (401), no Event created', async () => {
     const res = await POST(makeReq('Bearer not-a-real-token'), ctx('room-a'));
     expect(res.status).toBe(401);
-    expect(startNewEventSpy).not.toHaveBeenCalled();
+    expect(startHostedRoomSessionSpy).not.toHaveBeenCalled();
     expect(createCount).toBe(0);
   });
 
   it('(3) a REVOKED/expired device token is rejected (401), no Event created', async () => {
     const res = await POST(makeReq('Bearer tok-revoked'), ctx('room-a'));
     expect(res.status).toBe(401);
-    expect(startNewEventSpy).not.toHaveBeenCalled();
+    expect(startHostedRoomSessionSpy).not.toHaveBeenCalled();
     expect(createCount).toBe(0);
   });
 
   it('(4) a Room A token CANNOT start Room B (401) — cross-room is refused', async () => {
     const res = await POST(makeReq('Bearer tok-roomA'), ctx('room-b'));
     expect(res.status).toBe(401);
-    expect(startNewEventSpy).not.toHaveBeenCalled();
+    expect(startHostedRoomSessionSpy).not.toHaveBeenCalled();
     expect(live['room-B']).toBeUndefined();
   });
 
@@ -95,7 +110,7 @@ describe('POST /api/rooms/[slug]/dj/start-event — authorization boundary', () 
     // The route hands the URL slug to the authorizer — that is what scopes authority.
     expect(authorizeDjSpy).toHaveBeenCalledWith('room-a', 'tok-roomA');
     // And creates the Event on the AUTHORIZED room's id, never a caller-supplied one.
-    expect(startNewEventSpy).toHaveBeenCalledWith('room-A', expect.any(String));
+    expect(startHostedRoomSessionSpy).toHaveBeenCalledWith('room-A', expect.any(String));
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(data.event.status).toBe('active');

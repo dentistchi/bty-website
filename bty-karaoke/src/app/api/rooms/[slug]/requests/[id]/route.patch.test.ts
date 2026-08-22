@@ -15,6 +15,13 @@ const state = {
     | { outcome: 'invalid'; from: string },
 };
 
+// BUILD 26U-R1 — the Premium Room guard now sits in front of this route. It is stubbed as
+// ENTITLED here because this file's subject is what the route does once the session is
+// authorized; the guard's own refusal and expiry behaviour are proven in
+// src/lib/premium-room-guard.server.test.ts.
+vi.mock('@/lib/premium-room-guard.server', () => ({
+  assertPremiumRoomSession: vi.fn(async () => ({ ok: true, entitlement: { entitled: true } })),
+}));
 vi.mock('@/lib/rooms.server', () => ({
   authorizeDj: vi.fn(async () => state.auth),
   getGuestQueueStatus: vi.fn(),

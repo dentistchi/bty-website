@@ -115,6 +115,32 @@ vi.mock('@/lib/supabase.server', () => ({
       if (name === 'end_karaoke_event') {
         return Promise.resolve(fakeEndEventRpc(String(params.p_event_id)));
       }
+      // BUILD 26U-R1 — the create path is now an RPC. The emulation preserves the two
+      // properties this describe-block proves: a fresh identity after an ended round, and
+      // double-tap safety (an incumbent live Event is returned, never a second one).
+      if (name === 'karaoke_start_premium_room_session') {
+        const roomId = String(params.p_room_id);
+        const live = db.events.find(
+          (e) => e.room_id === roomId && (e.status === 'draft' || e.status === 'active'),
+        );
+        if (live) {
+          return Promise.resolve({
+            data: { outcome: 'already_live', eventId: live.id, activated: false },
+            error: null,
+          });
+        }
+        const ev = seedEvent({
+          room_id: roomId,
+          name: String(params.p_name),
+          public_code: String(params.p_public_code),
+          guest_slug: String(params.p_guest_slug),
+          status: 'active',
+        });
+        return Promise.resolve({
+          data: { outcome: 'ok', eventId: ev.id, activated: true, source: 'ACTIVATED_PASS', expiresAt: null },
+          error: null,
+        });
+      }
       return Promise.resolve({ data: null, error: { message: `unknown rpc ${name}` } });
     },
     from(table: string) {
@@ -242,12 +268,19 @@ vi.mock('@/lib/supabase.server', () => ({
 // endEvent also ends the active session in-line (no sessions.server import); the
 // fake above handles the karaoke_sessions update path.
 import {
-  startNewEvent,
+  startHostedRoomSession,
   endEvent,
   getCanonicalEvent,
   getLatestEndedEvent,
   eventStatsById,
 } from './events.server';
+
+/** Unwrap the gated session start; every case in this file is expected to succeed. */
+async function startNewEvent(roomId: string, name: string) {
+  const r = await startHostedRoomSession(roomId, name);
+  if (!r.ok) throw new Error(`expected a started session, got ${r.code}`);
+  return r.event;
+}
 
 function seedEvent(partial: Partial<Ev>): Ev {
   const ev: Ev = {
@@ -288,7 +321,7 @@ describe('a read NEVER creates an Event (Event Lifecycle V1 — bootstrap remove
   });
 });
 
-describe('startNewEvent — explicit rotation, fresh identity, double-tap safe (V7 PART D)', () => {
+describe('startHostedRoomSession — explicit rotation, fresh identity, double-tap safe (V7 PART D)', () => {
   it('mints a fresh live Event with a NEW guest_slug after the previous ended', async () => {
     const old = seedEvent({ status: 'ended', guest_slug: 'old-slug', ended_at: 'x' });
     const fresh = await startNewEvent('room-A', 'BTY Home');

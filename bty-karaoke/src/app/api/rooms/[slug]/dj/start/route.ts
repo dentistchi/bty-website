@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj, ensurePlaying } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
+import { assertPremiumRoomSession } from '@/lib/premium-room-guard.server';
+import { resolveRelease } from '@/lib/release-contract.server';
+import { CLIENT_UPDATE_REQUIRED_CODE, CLIENT_UPDATE_REQUIRED_KO } from '@/domain/release-contract';
+import { premiumRoomRefusalCopy } from '@/domain/premium-room-copy';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
 import { projectEntitlement } from '@/domain/usage';
 import {
@@ -39,6 +43,34 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const auth = await authorizeDj(slug, cred);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
+
+
+  // BUILD 26U-R1 (R1-E / R1-F) — THE premium boundary for this operation. One call, one
+  // authority; this route decides nothing about entitlement itself.
+  //
+  // When the session's time has run out the guard ends the hosted Event through the proven
+  // `end_karaoke_event` — WAITING -> removed, PLAYING -> skipped, event -> ended, the room is
+  // NOT closed and **current media is NOT stopped**. So BTY coordination stops here while the
+  // YouTube video a singer is watching keeps playing, and nothing about this refusal reaches a
+  // playback path: the free Search -> Open on YouTube route never calls this route at all.
+  // BUILD 26U-R2 — resolve the RELEASE CONTRACT before the entitlement question is asked.
+  // A client that cannot be updated (public v1.0 build 109) keeps the pre-R1 behaviour it was
+  // approved with; a v1.1 client gets Premium Room. The mode is server-side and the header is
+  // client-asserted — see `@/domain/release-contract` for exactly what a caller can influence.
+  const release = await resolveRelease(req);
+  if (release.contract === 'unsupported') {
+    return NextResponse.json(
+      { error: CLIENT_UPDATE_REQUIRED_KO, code: CLIENT_UPDATE_REQUIRED_CODE },
+      { status: 409, headers: NO_STORE },
+    );
+  }
+  const premium = await assertPremiumRoomSession(auth.room, release.contract);
+  if (!premium.ok) {
+    return NextResponse.json(
+      { error: premiumRoomRefusalCopy(premium.code), code: premium.code },
+      { status: 402, headers: NO_STORE },
+    );
+  }
 
   // Event-gated: an ended event returns a precise "이 이벤트가 종료되었습니다." message.
   const access = await resolveEventAccess(auth.room);

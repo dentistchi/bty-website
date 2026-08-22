@@ -15,7 +15,6 @@ import {
 import { isNativeHost, nativeOpenYouTube } from '@/lib/native-bridge';
 import { PRODUCT_NAME } from '@/lib/brand';
 import DjBoard from './DjBoard';
-import UsageBanner from './UsageBanner';
 import { adminAuthHeader, isCookieCred } from '@/domain/admin-auth';
 import type { UsageProjection } from '@/domain/usage';
 import { upgradeRequiredCopy } from '@/domain/admission-copy';
@@ -941,10 +940,15 @@ export default function DjConsole({ slug, displayName, dev = false, sessionCred 
 
   return (
     <>
-      {/* B2 — FREE daily-minutes banner. Server-truth only (polled + refreshed on block);
-          hidden for PRO and while enforcement is disabled. Survives refresh/relaunch
-          because it is reconstructed from /dj/usage, never from local countdown state. */}
-      <UsageBanner usage={usage} />
+      {/* BUILD 26U-R1 (R1-D / R1-G) — THE FREE DAILY-MINUTES BANNER IS REMOVED.
+          It reported a video-second allowance that no longer authorizes or refuses anything:
+          BUILD 26T-R1B-R6-R1A (E1) stopped metering playback, and Founder decision O-3 retired
+          the allowance outright. Its zero states therefore made two claims that had become
+          FALSE — "다음 곡은 시작할 수 없어요" and "PRO로 업그레이드하면 다음 곡을 지금 시작할
+          수 있어요" — the second of which is exactly the upgrade-to-play-a-video meaning R1-G
+          orders eliminated. A banner that counts down a number governing nothing is worse than
+          no banner. What the Host actually needs to watch — BTY Room time — is on the pass card.
+          The projection itself (`domain/usage`, /dj/usage) is untouched and dormant. */}
       {/* BUILD 21 — the fail-closed admission block. Rendered from its OWN request-keyed state
           (never `error`, which every next action clears), so the explanation stays on screen
           while the Host decides what to do. It disappears on 확인, on a successful start of the

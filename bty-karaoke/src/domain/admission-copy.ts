@@ -10,6 +10,12 @@
 // PURE — no DB, no network, no clock, no framework. Everything below is a total function of its
 // arguments, so every branch is directly unit-testable.
 //
+// BUILD 26U-R1 — the two retired ENTITLEMENT sentences (pass-cannot-cover-this-song, and the
+// FREE video-second shortfall) now resolve to the ONE Premium Room sentence, which lives in
+// `premium-room-copy` so the routes and this module cannot drift apart. The DURATION-block
+// wording below is a separate concern and is untouched: it explains a technical failure to read
+// a video's length, and sells nothing.
+//
 // The wording is BUILD 21's, moved VERBATIM. Two rules survive the move unchanged:
 //   1. `too_long` may only ever be selected for a duration that was positively established as
 //      finite and genuinely over the bound. A missing/malformed/zero/negative duration is not
@@ -17,6 +23,8 @@
 //      (`classifyDurationSeconds`) already guarantees this, and nothing here may widen it.
 //   2. An absent or unrecognized reason renders the exact sentence that shipped before BUILD 21,
 //      so an older or unclassified payload is never worse off than it was.
+
+import { PREMIUM_ROOM_EXPIRED_KO } from './premium-room-copy';
 
 /**
  * The generic, retryable sentence. This is the ONLY case where "try again in a moment" is true,
@@ -50,77 +58,49 @@ export function durationBlockCopy(reason: string | undefined | null): string {
 }
 
 /**
- * The timed pass cannot cover the WHOLE next song. Deliberately distinct from every
- * "could not check the length" sentence: the operator's next action differs (buy/extend time vs.
- * pick a different song), and conflating them was the original BUILD 21 complaint one level up.
+ * BUILD 26U-R1 (R1-G) — RETIRED SENTENCE, REPLACED IN PLACE.
+ *
+ * This used to read "남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요" — a pass remainder
+ * priced against one video's length. Both halves of that meaning are gone: the gate that produced
+ * it was removed from `karaoke_begin_song_v2` by E1 (20260817120000), and BTY no longer sells
+ * permission to play a particular video at all.
+ *
+ * The CONSTANT survives because three routes still reference it on branches the server can no
+ * longer reach; collapsing the VALUE removes the meaning from all of them at once, which is
+ * safer than deleting the name and editing four files to match.
  */
-export const PASS_INSUFFICIENT_COPY = '남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.';
+export const PASS_INSUFFICIENT_COPY = PREMIUM_ROOM_EXPIRED_KO;
 
-// ── BUILD 24-G1 — `upgrade_required` is TWO different facts, and it said only one ────────────
+// ── BUILD 26U-R1 (R1-D / R1-G) — THE FREE VIDEO-SECOND METER IS RETIRED ──────────────────────
 //
-// FOUNDER-OBSERVED FAILURE. With 1:50 of FREE time left and a 4:41 next song, Host Web showed
-// BOTH of these on one screen:
+// BUILD 24-G1 lived here: `upgrade_required` was TWO facts ("you have none left" vs "you have
+// some, but not enough for THIS song") and the copy said only one. It was a real defect and the
+// fix was correct — for a product that metered YouTube by the second.
 //
-//     "무료 이용 시간이 1:50 남았어요"          (the banner, correct)
-//     "오늘의 무료 이용 시간을 모두 사용했어요"   (the block, FALSE)
+// Founder decision O-3 retired that meter, and E1 (20260817120000) had already removed its
+// enforcement from the admission RPC. So there is no balance to quote, no required charge to
+// lead with, and no upgrade to offer as a way to start a video. Both sentences, and the
+// batchim-selected itemised variants they fed, are gone.
 //
-// The server was right to refuse — the shortfall was 2:51, far past the 90s Final Song Grace
-// bound — but the balance was NOT exhausted. Three call sites hard-coded "all time used" as the
-// wording for `upgrade_required`, when the RPC raises that outcome for the whole predicate
-// `v_charge > v_remaining`. "Exhausted" is only the special case where `v_remaining` is 0.
-//
-// The two facts need different sentences because the operator's next action differs: at zero the
-// only options are wait for the reset or upgrade; with time left, picking a shorter song works
-// right now. Telling a Host with 1:50 left that they have nothing left sends them to the wrong
-// remedy, and is simply untrue.
-//
-// PRESENTATION ONLY. This decides no admission — the server already refused. It selects wording
-// from values the authority published, and computes no eligibility of its own.
+// What is left is the single true statement, and `upgradeRequiredCopy` keeps its signature so
+// the three routes that call it need no change: it now ignores the detail entirely, which is
+// precisely the guarantee — no number about a video can re-enter this copy.
 
-/** A: the FREE allowance really is used up. Reachable only when remaining is 0. */
-export const UPGRADE_REQUIRED_EXHAUSTED =
-  '오늘의 무료 이용 시간을 모두 사용했어요. PRO로 업그레이드하면 다음 곡을 지금 시작할 수 있어요.';
-
-/** B: time remains, but not enough for THIS song. The remedy is a shorter song, not an upgrade. */
-export const UPGRADE_REQUIRED_TOO_LONG =
-  '남은 무료 이용 시간보다 이 곡이 길어서 시작할 수 없어요.\n더 짧은 곡을 선택하거나, PRO로 업그레이드해 주세요.';
-
-/** mm:ss for a non-negative second count. Local so this module stays dependency-free. */
-function clock(totalSeconds: number): string {
-  const s = Math.max(0, Math.floor(totalSeconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
+/** The one neutral refusal. Named for continuity with the shipped constant. */
+export const UPGRADE_REQUIRED_EXHAUSTED = PREMIUM_ROOM_EXPIRED_KO;
 
 /**
- * Wording for a server `upgrade_required` refusal.
+ * Wording for a server entitlement refusal on a start path.
  *
- * `remainingSeconds` is the ONLY discriminator, and it comes from the authority — either the
- * published admission detail or the usage projection returned with the refusal. When it is
- * absent the exhausted sentence is used, which is the wording that shipped before BUILD 24 and
- * is the safe fallback: it never claims the Host has time they do not have.
- *
- * The concrete second line is added only when the authority supplied BOTH numbers. It leads with
- * the REQUIRED time (the union charge actually compared), not the raw song length, because an
- * active lease can make them differ — quoting the song length as "needed" would overstate it.
+ * Takes the admission detail so every existing call site compiles unchanged, and deliberately
+ * consults NONE of it. A permanent test (UX-1) asserts the result contains no quantity.
  */
-export function upgradeRequiredCopy(d: {
+export function upgradeRequiredCopy(_d: {
   remainingSeconds?: number | null;
   requiredChargeSeconds?: number | null;
   durationSeconds?: number | null;
 } | null | undefined): string {
-  const remaining = typeof d?.remainingSeconds === 'number' ? d.remainingSeconds : null;
-  if (remaining === null || remaining <= 0) return UPGRADE_REQUIRED_EXHAUSTED;
-
-  const charge = typeof d?.requiredChargeSeconds === 'number' ? d.requiredChargeSeconds : null;
-  if (charge === null) return UPGRADE_REQUIRED_TOO_LONG;
-
-  const duration = typeof d?.durationSeconds === 'number' ? d.durationSeconds : null;
-  // The song length is named only when it genuinely differs from the required time.
-  const lengthNote = duration !== null && duration !== charge ? ` (곡 길이 ${clock(duration)})` : '';
-  return (
-    `${UPGRADE_REQUIRED_TOO_LONG}\n` +
-    `이번 재생에 필요한 시간은 ${clock(charge)}인데, 남은 무료 시간은 ${clock(remaining)}이에요.${lengthNote}`
-  );
+  return PREMIUM_ROOM_EXPIRED_KO;
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { badgeForVideo } from '@/domain/video-kind';
+import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import DevelopedWithYouTube from '@/components/youtube/DevelopedWithYouTube';
 
 interface Props {
@@ -184,6 +185,10 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
           )}
           {results.map((item) => {
             const badge = badgeForVideo(item.title, item.channelTitle);
+            // BUILD 26U-R1 (R1-A) — the same unconditional free open the Guest card carries.
+            // R1-A requires it "wherever search results are rendered", and this Host-side sheet
+            // runs its own /api/youtube/search call, so it is one of those places.
+            const watchUrl = safeYoutubeWatchUrl(item.videoId);
             return (
               <div className="dj-add-row" key={item.videoId}>
                 {item.thumbnailUrl ? (
@@ -201,6 +206,17 @@ export default function DjAddSongSheet({ onAddSong, onClose }: Props) {
                     </span>
                   )}
                 </div>
+                {watchUrl && (
+                  <a
+                    className="open-yt-link"
+                    href={watchUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${item.title} on YouTube`}
+                  >
+                    YouTube에서 열기 ↗
+                  </a>
+                )}
                 <button
                   type="button"
                   className="primary"

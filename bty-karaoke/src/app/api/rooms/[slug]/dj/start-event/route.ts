@@ -15,7 +15,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj } from '@/lib/rooms.server';
-import { startNewEvent, publicEvent } from '@/lib/events.server';
+import { startHostedRoomSession, publicEvent } from '@/lib/events.server';
+import { premiumRoomRefusalCopy, premiumRoomRefusalStatus } from '@/domain/premium-room-copy';
+import { resolveRelease } from '@/lib/release-contract.server';
+import { CLIENT_UPDATE_REQUIRED_CODE, CLIENT_UPDATE_REQUIRED_KO } from '@/domain/release-contract';
 import { startSession } from '@/lib/sessions.server';
 
 export const dynamic = 'force-dynamic';
@@ -29,11 +32,43 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   const auth = await authorizeDj(slug, bearer);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Idempotent: a live Event is returned unchanged (one-live-per-room preserved),
-  // otherwise a brand-new Event (new id + new guest_slug → new Guest QR) is created.
-  const event = await startNewEvent(auth.room.id, auth.room.display_name);
+  // BUILD 26U-R1 — starting a hosted session IS the paid act, so this is the one
+  // entitlement decision on this route. Idempotent as before: a live Event is returned
+  // unchanged (one-live-per-room preserved) and NOTHING is activated, so a double-tap can
+  // never spend a second pass. Otherwise a brand-new Event (new id + new guest_slug → new
+  // Guest QR) is created inside the SAME transaction that starts the pass clock.
+  // BUILD 26U-R2 — the release contract decides WHICH contract this start runs under, and is
+  // threaded into the RPC so the decision and the Event write share one transaction. It can
+  // never grant entitlement: on 'legacy' the RPC skips the entitlement read AND the activation.
+  const release = await resolveRelease(req);
+  if (release.contract === 'unsupported') {
+    return NextResponse.json(
+      { error: CLIENT_UPDATE_REQUIRED_KO, code: CLIENT_UPDATE_REQUIRED_CODE },
+      { status: 409 },
+    );
+  }
+  const started = await startHostedRoomSession(
+    auth.room.id, auth.room.display_name, 'dj-device', release.contract,
+  );
+  if (!started.ok) {
+    return NextResponse.json(
+      { error: premiumRoomRefusalCopy(started.code), code: started.code },
+      { status: premiumRoomRefusalStatus(started.code) },
+    );
+  }
   // A fresh night so guest requests are accepted again for the new Event.
   const session = await startSession(auth.room.id);
 
-  return NextResponse.json({ ok: true, event: publicEvent(event), session }, { status: 201 });
+  return NextResponse.json(
+    {
+      ok: true,
+      event: publicEvent(started.event),
+      session,
+      // The Host is told what their session is worth the moment it opens, from the
+      // authority's own numbers. `activated` distinguishes "your pass just started" from
+      // "you rejoined a session that was already running".
+      premiumRoom: { activated: started.activated, expiresAt: started.expiresAt, source: started.source },
+    },
+    { status: 201 },
+  );
 }

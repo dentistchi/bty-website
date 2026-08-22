@@ -95,30 +95,40 @@ describe('NowSingingClock', () => {
     expect(screen.getByRole('timer').textContent).not.toMatch(/-\d/);
   });
 
-  describe('external-playback lease note', () => {
+  // BUILD 26U-R1 (R1-G) — THE LEASE NOTE IS GONE, AND THAT IS WHAT IS ASSERTED NOW.
+  //
+  // These three cases used to require the component to render "⏱ 외부 재생 시간 N 남음 ·
+  // YouTube에 허용된 재생 시간이에요" — a countdown of purchased YouTube playback time. That is
+  // the meaning the Premium Room boundary retires, so the contract inverts: the component must
+  // be INCAPABLE of rendering it, even when handed an open lease window.
+  //
+  // The fourth case ("disappears once elapsed") is preserved in substance below: with an
+  // elapsed lease AND nothing on stage the component still renders nothing at all.
+  describe('the retired external-playback lease note (UX-1)', () => {
     const leased = () => anchor({ leaseEndsAt: '2026-08-02T11:33:00.000Z' });
 
-    it('counts down the authorized window while a song plays', () => {
+    it('renders NO lease element even while a lease window is open', () => {
       const { container } = renderAt(leased(), true, 15_000);
-      expect(container.querySelector('.now-clock-lease')!.textContent).toContain('2:45');
+      expect(container.querySelector('.now-clock-lease')).toBeNull();
     });
 
-    it('survives Finish — a lease is non-shrinkable, so it shows with nothing on stage', () => {
+    it('renders nothing at all when a lease is open but no song is on stage', () => {
+      // Previously this was the lease note's showcase — it survived Finish and kept counting.
+      // Now an idle stage means an empty component, because there is no metered time to report.
       const { container } = renderAt(leased(), false, 10_000);
-      expect(container.querySelector('[role="timer"]')).toBeNull();
-      expect(container.querySelector('.now-clock-lease')!.textContent).toContain('2:50');
+      expect(container.firstChild).toBeNull();
     });
 
-    it('disappears once the authorized window has elapsed', () => {
+    it('still renders nothing once the window has elapsed', () => {
       const { container } = renderAt(leased(), false, 200_000);
       expect(container.firstChild).toBeNull();
     });
 
-    it('never claims YouTube is definitely still playing — only that time is authorized', () => {
+    it('never states that playback time is authorized on YouTube', () => {
       const { container } = renderAt(leased(), true, 0);
-      const text = container.textContent!;
-      expect(text).toContain('YouTube에 허용된 재생 시간');
-      expect(text).not.toContain('재생 중입니다');
+      const text = container.textContent ?? '';
+      expect(text).not.toContain('YouTube에 허용된 재생 시간');
+      expect(text).not.toContain('외부 재생 시간');
     });
   });
 

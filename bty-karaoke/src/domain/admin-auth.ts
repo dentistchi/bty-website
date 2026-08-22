@@ -22,14 +22,42 @@ export function isCookieCred(cred: string | null | undefined): boolean {
 }
 
 /**
- * The Authorization headers for an admin/DJ request.
- *  - cookie mode  -> {} (no header; the browser sends `bty_room` same-origin)
+ * The headers for an admin/DJ request.
+ *  - cookie mode  -> no Authorization (the browser sends `bty_room` same-origin)
  *  - bearer mode  -> { authorization: 'Bearer <token>' }
- *  - null/empty   -> {} (unauthenticated probe)
+ *  - null/empty   -> no Authorization (unauthenticated probe)
+ *
+ * BUILD 26U-R2 — every one of these carries the release-client discriminator too. This is the
+ * ONE place the web Host console builds request headers, which is why the header is added here
+ * rather than at each fetch: a call site cannot forget what it never writes.
+ *
+ * WHY WEB IDENTIFIES ITSELF AT ALL, given it has no old-binary problem: the server's DUAL
+ * matrix treats an UNIDENTIFIED caller as legacy, because the immutable public app is
+ * unidentified. If web stayed silent it would inherit that exception and become a permanent
+ * free path around Premium Room — precisely the "native pays / web stays free" bypass R2 §9
+ * forbids. Announcing itself is how web opts IN to the new contract.
+ *
+ * The build id is the same `NEXT_PUBLIC_KARAOKE_BUILD` the freshness guard already uses, so
+ * server telemetry and the stale-tab guard name the same deploy.
  */
 export function adminAuthHeader(cred: string | null | undefined): Record<string, string> {
-  if (!cred || cred === COOKIE_CRED) return {};
-  return { authorization: `Bearer ${cred}` };
+  const client = { 'x-bty-client': webReleaseClient() };
+  if (!cred || cred === COOKIE_CRED) return client;
+  return { ...client, authorization: `Bearer ${cred}` };
+}
+
+/**
+ * `web/<buildId>` for the running bundle. Falls back to `web/unknown` — still a WEB
+ * classification, because the platform is what selects the contract and it is known for
+ * certain here; only the deploy id is in doubt.
+ */
+export function webReleaseClient(): string {
+  const raw = process.env.NEXT_PUBLIC_KARAOKE_BUILD;
+  const id = typeof raw === 'string' ? raw.trim() : '';
+  // The server accepts [A-Za-z0-9._-]{1,64}; anything else would be parsed as unidentified,
+  // so an odd build id degrades to the literal rather than to silence.
+  const safe = id.length > 0 && id.length <= 64 && /^[A-Za-z0-9._-]+$/.test(id) ? id : 'unknown';
+  return `web/${safe}`;
 }
 
 export type AdminAuthPhase = 'authed' | 'need-auth' | 'retry';

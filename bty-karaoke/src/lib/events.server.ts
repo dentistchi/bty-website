@@ -9,6 +9,9 @@ import { karaokeDb } from './supabase.server';
 import { sha256Hex, randomToken } from './dj-auth.server';
 import { mintPairingToken } from './pairing.server';
 import { listActiveRequests, type KaraokeRequest } from './rooms.server';
+// BUILD 26U-R1 — the atomic Premium Room session-start RPC. Imported from the dependency-free
+// RPC layer (never from premium-room-guard.server.ts, which imports THIS module back).
+import { startPremiumRoomSessionOnce } from './premium-room.server';
 import {
   publicCodeFromBytes,
   buildGuestSlug,
@@ -283,11 +286,81 @@ export async function getLatestEndedEvent(roomId: string): Promise<KaraokeEvent 
  * one-live-per-room invariant is never violated); otherwise a brand-new Event with
  * a NEW id + NEW guest_slug (a NEW Guest QR) is created. The previous ended Event
  * is preserved as history and its Guest QR can never join this new Event.
+ *
+ * BUILD 26U-R1 — THIS IS NOW THE PREMIUM ROOM SESSION-START AUTHORITY, and the only
+ * place a Timed Access Pass can start its clock.
+ *
+ * The unconditional `startNewEvent` it replaces is deliberately GONE rather than kept
+ * alongside: an ungated way to open a hosted session would be an ungated way to obtain
+ * the paid product, and leaving one in the module would make the boundary a convention
+ * instead of a fact. Both callers (`/dj/start-event`, `/admin/start-event`) go through
+ * here, and their auth boundaries are unchanged.
+ *
+ * WHY THE CODE IS GENERATED HERE AND THE DECISION IS MADE IN THE DATABASE. Entitlement
+ * resolution, pass activation and the Event INSERT must share ONE transaction — otherwise
+ * a crash between them either opens a session whose clock never started or spends a pass
+ * on a session that never opened. But the public code and guest slug are pure client-side
+ * derivations with a retry loop that predates all of this. So the loop stays here and the
+ * candidate code is passed IN; the RPC does the atomic part and reports `code_conflict`
+ * for a collision, having activated nothing.
  */
-export async function startNewEvent(roomId: string, name: string): Promise<KaraokeEvent> {
-  const live = await getCanonicalEvent(roomId);
-  if (live) return live;
-  return createLiveEvent(roomId, name);
+export type StartHostedSessionResult =
+  | { ok: true; event: KaraokeEvent; activated: boolean; expiresAt: string | null; source: string }
+  | { ok: false; code: 'PREMIUM_ROOM_REQUIRED' | 'ROOM_RETIRED' | 'ROOM_NOT_FOUND' | 'OWNERSHIP_STATE_INVALID' | 'START_FAILED' };
+
+export async function startHostedRoomSession(
+  roomId: string,
+  name: string,
+  createdBy = 'admin-hub',
+  // BUILD 26U-R2 — which release contract the SERVER decided to project for this caller
+  // (`@/lib/release-contract.server`). It is threaded through to the RPC rather than acted on
+  // here, so the entitlement decision and the Event write stay in ONE transaction. Defaulting
+  // to 'premium' means a caller that forgets to pass it gets the GATED behaviour, never the
+  // free one — the safe direction for an omission.
+  contract: 'legacy' | 'premium' = 'premium',
+): Promise<StartHostedSessionResult> {
+  const eventName = name.trim().slice(0, 80) || 'btyNorebang';
+  for (let attempt = 0; attempt < CODE_RETRY; attempt++) {
+    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    const publicCode = publicCodeFromBytes(bytes);
+    const guestSlug = buildGuestSlug(eventName, publicCode);
+    const res = await startPremiumRoomSessionOnce({
+      roomId,
+      name: eventName,
+      publicCode,
+      guestSlug,
+      createdBy,
+      contract,
+    });
+    switch (res.outcome) {
+      case 'ok': {
+        const event = await getEventById(res.eventId);
+        if (!event) return { ok: false, code: 'START_FAILED' };
+        return { ok: true, event, activated: res.activated, expiresAt: res.expiresAt, source: res.source };
+      }
+      case 'already_live': {
+        // Idempotent double-tap: the incumbent session is returned and NOTHING was
+        // activated, so a second tap can never spend a second pass.
+        const event = await getEventById(res.eventId);
+        if (!event) return { ok: false, code: 'START_FAILED' };
+        return { ok: true, event, activated: false, expiresAt: null, source: 'ALREADY_LIVE' };
+      }
+      case 'code_conflict':
+        continue; // fresh code, retry — no grant was touched
+      case 'premium_room_required':
+        return { ok: false, code: 'PREMIUM_ROOM_REQUIRED' };
+      case 'room_retired':
+        return { ok: false, code: 'ROOM_RETIRED' };
+      case 'room_not_found':
+        return { ok: false, code: 'ROOM_NOT_FOUND' };
+      case 'ownership_state_invalid':
+        return { ok: false, code: 'OWNERSHIP_STATE_INVALID' };
+    }
+  }
+  // Exhausted the code retries. A live event may have appeared meanwhile.
+  const winner = await getCanonicalEvent(roomId);
+  if (winner) return { ok: true, event: winner, activated: false, expiresAt: null, source: 'ALREADY_LIVE' };
+  return { ok: false, code: 'START_FAILED' };
 }
 
 export type EventAccess =

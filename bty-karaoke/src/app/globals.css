@@ -4045,12 +4045,44 @@ main[data-theme='warm_stage'] {
    (WEB7's saved-song library and every bookmark control were removed here.)
    ══════════════════════════════════════════════════════════════ */
 
-/* Search-result card action column. Since WEB8 it holds the request button alone. */
+/* Search-result card action column. BUILD 26U-R1 restores a second action beside the
+   request button: the free "YouTube에서 열기" link. Stacked rather than side-by-side so the
+   two never compete for width on a phone, and so the paid-side action (request) keeps its
+   visual weight while the free action reads as the plain link it is. */
 .req-card-actions {
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* BUILD 26U-R1 (R1-A) — the free Open-on-YouTube action. Deliberately understated: it is
+   always available and never gated, so it needs no emphasis, no badge and no CTA styling.
+   Sized for a comfortable touch target even though it renders as a link. */
+.open-yt-link {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.85;
+}
+.open-yt-link:hover,
+.open-yt-link:focus-visible {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.34);
+}
+.dj-add-row .open-yt-link {
+  margin-right: 8px;
 }
 
 /* ── Collapsible section (방금 부른 노래) ──

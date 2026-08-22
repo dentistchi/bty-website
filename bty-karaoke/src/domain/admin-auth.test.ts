@@ -1,16 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { adminAuthHeader, finalizeAdminAuth, isCookieCred, COOKIE_CRED } from './admin-auth';
+import {
+  adminAuthHeader,
+  finalizeAdminAuth,
+  isCookieCred,
+  webReleaseClient,
+  COOKIE_CRED,
+} from './admin-auth';
 
 describe('adminAuthHeader — provider-neutral, mode-aware', () => {
+  // BUILD 26U-R2 — every request now also announces the web release client. The AUTHORIZATION
+  // contract these cases exist to protect is unchanged and is still asserted exactly: cookie
+  // mode and a missing credential still send NO Authorization header, and a real token still
+  // sends exactly `Bearer <token>`. What is added is orthogonal, and is proved to be a WEB
+  // classification (never native, never a credential).
+  const CLIENT = 'x-bty-client';
+
   it('sends a Bearer header for a real token', () => {
-    expect(adminAuthHeader('dev-tok')).toEqual({ authorization: 'Bearer dev-tok' });
+    const h = adminAuthHeader('dev-tok');
+    expect(h.authorization).toBe('Bearer dev-tok');
+    expect(Object.keys(h).sort()).toEqual(['authorization', CLIENT]);
   });
-  it('(15) sends NO header for cookie mode (browser attaches bty_room); no provider in the header', () => {
-    expect(adminAuthHeader(COOKIE_CRED)).toEqual({});
+  it('(15) sends NO Authorization for cookie mode (browser attaches bty_room); no provider in it', () => {
+    const h = adminAuthHeader(COOKIE_CRED);
+    expect(h.authorization).toBeUndefined();
+    expect(Object.keys(h)).toEqual([CLIENT]);
   });
-  it('sends no header for a missing credential', () => {
-    expect(adminAuthHeader(null)).toEqual({});
-    expect(adminAuthHeader('')).toEqual({});
+  it('sends no Authorization for a missing credential', () => {
+    for (const cred of [null, '']) {
+      const h = adminAuthHeader(cred);
+      expect(h.authorization).toBeUndefined();
+      expect(Object.keys(h)).toEqual([CLIENT]);
+    }
+  });
+  it('the release client is always WEB, and carries no credential', () => {
+    for (const cred of ['dev-tok', COOKIE_CRED, null, '']) {
+      const v = adminAuthHeader(cred)[CLIENT];
+      expect(v.startsWith('web/')).toBe(true);
+      expect(v).not.toContain('native');
+      expect(v).not.toContain('dev-tok');
+    }
+  });
+  it('an absent or unusable build id still classifies as web', () => {
+    expect(webReleaseClient()).toMatch(/^web\/[A-Za-z0-9._-]{1,64}$/);
   });
   it('the cookie sentinel is non-empty so `if (!cred)` guards still pass', () => {
     expect(Boolean(COOKIE_CRED)).toBe(true);

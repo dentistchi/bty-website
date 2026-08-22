@@ -4,6 +4,7 @@ import type { YoutubeSearchItem } from '@/domain/youtube-search';
 import { badgeForVideo } from '@/domain/video-kind';
 import { songDisplay } from '@/domain/song-title';
 import { formatDurationLabel } from '@/domain/duration-admission';
+import { safeYoutubeWatchUrl } from '@/domain/youtube';
 import SwipeableCard from './SwipeableCard';
 import { useGuestT } from '@/components/guest/GuestLocaleProvider';
 
@@ -52,6 +53,16 @@ export default function RequestResultCard({
   // what a request/save still stores. The provider name never eats the title line.
   const disp = songDisplay(item.title, item.channelTitle);
   const badge = badgeForVideo(item.title, item.channelTitle);
+  // BUILD 26U-R1 (R1-A) — THE FREE OPEN. A plain https link to the canonical watch URL,
+  // built by the same validated `safeYoutubeWatchUrl` every other open path uses (an
+  // invalid/absent id yields null and the link simply is not rendered).
+  //
+  // IT IS DELIBERATELY UNCONDITIONAL. It does not consult `blocked`, `pending`, `requested`,
+  // a room, an Event, a pass, an entitlement, a usage projection or any StoreKit state — and
+  // it never can, because none of those values are in this component's scope. A card the
+  // Guest may not REQUEST is still a video they may WATCH, which is exactly the distinction
+  // the whole boundary rests on.
+  const watchUrl = safeYoutubeWatchUrl(item.videoId);
   return (
     <SwipeableCard
       direction="right"
@@ -98,6 +109,20 @@ export default function RequestResultCard({
           )}
         </div>
         <div className="req-card-actions">
+          {watchUrl && (
+            <a
+              className="open-yt-link"
+              href={watchUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t('guest.result.open_youtube.a11y', { title: item.title })}
+              // Opening YouTube must never also request the song: the swipe surface wraps this
+              // whole card, so the click is stopped here before it can commit a gesture.
+              onClick={(e) => e.stopPropagation()}
+            >
+              {t('guest.result.open_youtube')}
+            </a>
+          )}
           <button
             type="button"
             className={`req-btn${requested ? ' done' : ''}${blocked ? ' blocked' : ''}`}

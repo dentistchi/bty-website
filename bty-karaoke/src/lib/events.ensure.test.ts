@@ -1,4 +1,4 @@
-// startNewEvent behavior against a fake Supabase that enforces the
+// startHostedRoomSession behavior against a fake Supabase that enforces the
 // one-live-Event-per-room invariant on insert (mirroring the partial unique
 // index). Proves: idempotency, no new room, ended events coexist (not
 // reactivated), and the concurrency race resolves to a single live event.
@@ -32,9 +32,53 @@ function liveFor(roomId: string): Ev | undefined {
 
 vi.mock('@/lib/supabase.server', () => ({
   karaokeDb: () => ({
+    // BUILD 26U-R1 — the create path moved INSIDE karaoke_start_premium_room_session, so the
+    // fake emulates that RPC's contract rather than a bare insert. The emulation keeps exactly
+    // the properties this file exists to prove: the one-live-per-room invariant is enforced on
+    // insert, an incumbent live Event is returned instead of a second one, and no karaoke_rooms
+    // row is ever touched. Entitlement is granted here on purpose — this file is about Event
+    // lifecycle, and the entitlement gate has its own dedicated tests.
+    rpc(name: string, params: Record<string, unknown>) {
+      if (name !== 'karaoke_start_premium_room_session') {
+        return Promise.resolve({ data: null, error: { message: `unknown rpc ${name}` } });
+      }
+      const roomId = String(params.p_room_id);
+      const live = liveFor(roomId);
+      if (live) {
+        return Promise.resolve({
+          data: { outcome: 'already_live', eventId: live.id, activated: false },
+          error: null,
+        });
+      }
+      if (db.raceOnNextInsert) {
+        db.raceOnNextInsert = false;
+        const winner = mkEvent({ room_id: roomId, name: params.p_name }, 'active');
+        db.store.push(winner);
+        return Promise.resolve({
+          data: { outcome: 'already_live', eventId: winner.id, activated: false },
+          error: null,
+        });
+      }
+      const ev = mkEvent(
+        {
+          room_id: roomId,
+          name: params.p_name,
+          public_code: params.p_public_code,
+          guest_slug: params.p_guest_slug,
+          created_by: params.p_created_by,
+        },
+        'active',
+      );
+      db.store.push(ev);
+      return Promise.resolve({
+        data: { outcome: 'ok', eventId: ev.id, activated: true, source: 'ACTIVATED_PASS', expiresAt: null },
+        error: null,
+      });
+    },
     from(table: string) {
       const b: Record<string, unknown> = {};
       let roomId: string | null = null;
+      let byId: string | null = null;
       let insertRow: Record<string, unknown> | null = null;
       Object.assign(b, {
         select: () => b,
@@ -43,13 +87,18 @@ vi.mock('@/lib/supabase.server', () => ({
           insertRow = row;
           return b;
         },
-        eq: (_c: string, v: string) => {
-          roomId = v;
+        eq: (c: string, v: string) => {
+          // getEventById reads by id; getCanonicalEvent reads by room_id. One capture each so
+          // the RPC's returned eventId can be resolved back to a row.
+          if (c === 'id') byId = v;
+          else roomId = v;
           return b;
         },
         in: () => b,
         maybeSingle: async () => ({
-          data: liveFor(roomId ?? String(insertRow?.room_id ?? '')) ?? null,
+          data: byId
+            ? (db.store.find((e) => e.id === byId) ?? null)
+            : (liveFor(roomId ?? String(insertRow?.room_id ?? '')) ?? null),
           error: null,
         }),
         single: async () => {
@@ -90,7 +139,14 @@ function mkEvent(row: Record<string, unknown>, status: string): Ev {
   };
 }
 
-import { startNewEvent, getCanonicalEvent } from './events.server';
+import { startHostedRoomSession, getCanonicalEvent } from './events.server';
+
+/** Unwrap the gated result; every case in this file is expected to succeed. */
+async function start(roomId: string, name: string) {
+  const r = await startHostedRoomSession(roomId, name);
+  if (!r.ok) throw new Error(`expected a started session, got ${r.code}`);
+  return r.event;
+}
 
 beforeEach(() => {
   db.store = [];
@@ -99,9 +155,9 @@ beforeEach(() => {
   db.roomsTouched = new Set();
 });
 
-describe('startNewEvent — the ONLY create path (explicit Host Start)', () => {
+describe('startHostedRoomSession — the ONLY create path (explicit Host Start)', () => {
   it('creates exactly one live event for an existing room — and NO new room', async () => {
-    const ev = await startNewEvent('room-A', 'BTY Home');
+    const ev = await start('room-A', 'BTY Home');
     expect(ev.room_id).toBe('room-A');
     expect(ev.status).toBe('active');
     expect(db.store).toHaveLength(1);
@@ -109,15 +165,15 @@ describe('startNewEvent — the ONLY create path (explicit Host Start)', () => {
   });
 
   it('is idempotent — a second explicit Start returns the SAME event, no new insert', async () => {
-    const first = await startNewEvent('room-A', 'BTY Home');
-    const second = await startNewEvent('room-A', 'BTY Home');
+    const first = await start('room-A', 'BTY Home');
+    const second = await start('room-A', 'BTY Home');
     expect(second.id).toBe(first.id);
     expect(db.store).toHaveLength(1);
   });
 
   it('does not reactivate an ended event — it creates a fresh live one alongside history', async () => {
     db.store.push(mkEvent({ room_id: 'room-A', name: 'Old Night' }, 'ended'));
-    const ev = await startNewEvent('room-A', 'BTY Home');
+    const ev = await start('room-A', 'BTY Home');
     expect(ev.status).toBe('active');
     expect(db.store.filter((e) => e.room_id === 'room-A' && e.status === 'ended')).toHaveLength(1);
     expect(db.store.filter((e) => e.room_id === 'room-A' && e.status === 'active')).toHaveLength(1);
@@ -125,7 +181,7 @@ describe('startNewEvent — the ONLY create path (explicit Host Start)', () => {
 
   it('concurrency: a 23505 from a racing winner resolves to that single live event', async () => {
     db.raceOnNextInsert = true; // our insert loses the one-live-per-room race
-    const ev = await startNewEvent('room-A', 'BTY Home');
+    const ev = await start('room-A', 'BTY Home');
     expect(ev.room_id).toBe('room-A');
     expect(ev.status).toBe('active');
     // Exactly one live event exists for the room (the winner), never two.
@@ -134,7 +190,7 @@ describe('startNewEvent — the ONLY create path (explicit Host Start)', () => {
 
   it('getCanonicalEvent returns the live event, or null when none', async () => {
     expect(await getCanonicalEvent('room-Z')).toBeNull();
-    await startNewEvent('room-Z', 'Z');
+    await start('room-Z', 'Z');
     expect((await getCanonicalEvent('room-Z'))?.room_id).toBe('room-Z');
   });
 });

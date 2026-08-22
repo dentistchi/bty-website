@@ -55,9 +55,13 @@ describe('PART A — no auto-create, ever (Event Lifecycle V1)', () => {
 });
 
 describe('PART D — Start New Event route (admin-only rotation)', () => {
-  it('authorizes as Admin (not merely DJ) and calls startNewEvent + a fresh session', () => {
+  it('authorizes as Admin (not merely DJ) and calls the GATED session start + a fresh session', () => {
     expect(startEvent).toContain('authorizeAdmin');
-    expect(startEvent).toContain('startNewEvent');
+    // BUILD 26U-R1 — the unconditional `startNewEvent` is gone; opening a hosted session now
+    // goes through the entitlement-gated authority, and this scan pins that so a future edit
+    // cannot quietly restore an ungated create path on the Admin route.
+    expect(startEvent).toContain('startHostedRoomSession');
+    expect(startEvent).not.toContain('startNewEvent');
     expect(startEvent).toContain('startSession');
   });
   it('the Admin console wires a Start New Event action to this route', () => {

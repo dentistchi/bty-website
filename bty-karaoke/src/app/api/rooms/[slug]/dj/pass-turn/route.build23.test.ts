@@ -14,6 +14,7 @@
 // future field added anywhere upstream cannot ride out to a room-scoped DJ credential unnoticed.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { PREMIUM_ROOM_EXPIRED_KO } from '@/domain/premium-room-copy';
 
 const state = {
   auth: { room: { id: 'room-1' } } as null | { room: { id: string } },
@@ -21,6 +22,13 @@ const state = {
   result: {} as Record<string, unknown>,
 };
 
+// BUILD 26U-R1 — the Premium Room guard now sits in front of this route. It is stubbed as
+// ENTITLED here because this file's subject is what the route does once the session is
+// authorized; the guard's own refusal and expiry behaviour are proven in
+// src/lib/premium-room-guard.server.test.ts.
+vi.mock('@/lib/premium-room-guard.server', () => ({
+  assertPremiumRoomSession: vi.fn(async () => ({ ok: true, entitlement: { entitled: true } })),
+}));
 vi.mock('@/lib/dj-auth.server', () => ({ roomCredentialFromRequest: vi.fn(() => 'cred') }));
 vi.mock('@/lib/rooms.server', () => ({
   authorizeDj: vi.fn(async () => state.auth),
@@ -145,7 +153,11 @@ describe('BUILD 23 — pass_insufficient', () => {
 
   it('uses the pass wording, never a duration sentence', async () => {
     const d = await (await post()).json();
-    expect(d.message).toBe('남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.');
+    // BUILD 26U-R1 (R1-G) — the pass wording no longer prices a video. The route still
+    // publishes a distinct, non-duration message for this (now unreachable) reason; what it
+    // says is the neutral BTY Room sentence.
+    expect(d.message).toBe(PREMIUM_ROOM_EXPIRED_KO);
+    expect(d.message).not.toContain('곡');
     expect('durationFailureReason' in d).toBe(false);
   });
 
@@ -154,7 +166,11 @@ describe('BUILD 23 — pass_insufficient', () => {
     const d = await (await post()).json();
     expect('passExpiresAt' in d).toBe(false);
     expect('durationSeconds' in d).toBe(false);
-    expect(d.message).toBe('남은 이용권 시간으로는 이 곡 전체를 재생할 수 없어요.');
+    // BUILD 26U-R1 (R1-G) — the pass wording no longer prices a video. The route still
+    // publishes a distinct, non-duration message for this (now unreachable) reason; what it
+    // says is the neutral BTY Room sentence.
+    expect(d.message).toBe(PREMIUM_ROOM_EXPIRED_KO);
+    expect(d.message).not.toContain('곡');
   });
 });
 

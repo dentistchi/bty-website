@@ -124,6 +124,15 @@ export const GUEST_MESSAGES = {
     ko: '결과가 없어요. 다른 단어로 검색하거나 아래에 링크를 붙여넣어 주세요.',
   },
   'guest.search.open_youtube': { en: 'Open on YouTube ↗', ko: 'YouTube에서 열기 ↗' },
+  // BUILD 26U-R1 (R1-A) — the per-result free open. Distinct key from the search-level
+  // `open_youtube` fallback above because this one is UNCONDITIONAL and per video: it is the
+  // free path itself, not a degraded-search consolation. The wording is a plain user action
+  // and makes no commercial claim of any kind.
+  'guest.result.open_youtube': { en: 'Open on YouTube ↗', ko: 'YouTube에서 열기 ↗' },
+  'guest.result.open_youtube.a11y': {
+    en: 'Open {title} on YouTube',
+    ko: 'YouTube에서 {title} 열기',
+  },
   'guest.search.mr_fallback': {
     en: "We couldn't find an exact MR track, so close karaoke and original results are shown too.",
     ko: '정확한 MR 영상을 찾지 못했어요. 가까운 노래방·원곡 결과도 함께 보여드려요.',

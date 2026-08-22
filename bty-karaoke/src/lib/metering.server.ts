@@ -26,10 +26,21 @@ export type BeginOutcome =
   | 'not_next'
   | 'not_ready'
   | 'request_state_changed'
+  // ── BUILD 26U-R1: THE THREE RETIRED ADMISSION OUTCOMES ─────────────────────────────────
+  //
+  // All three are UNREACHABLE BY CONSTRUCTION and are retained only so the shipped clients
+  // that still decode them keep compiling and keep their branches type-checked. None can be
+  // produced any more:
+  //
+  //   upgrade_required     removed from karaoke_begin_song_v2 by E1 (20260817120000). The
+  //                        FREE 900-second meter no longer authorizes or refuses a start.
+  //   pass_insufficient    removed by the same migration. A pass no longer inspects a video's
+  //                        length, so "the whole song must fit inside the pass" cannot arise.
+  //   duration_unavailable removed from `beginSong` by 26U-R1 (below). Duration resolution is
+  //                        best-effort and feeds the clock only.
+  //
+  // A permanent test (YT-4) asserts no served path can emit them. Do not reintroduce one.
   | 'upgrade_required'
-  // BUILD 20M (v2 lease path only): the video's playback duration could not be resolved
-  // (fail closed — no lifecycle mutation, no lease, no handoff); or a timed pass cannot
-  // cover the WHOLE video (proposed end past pass expiry).
   | 'duration_unavailable'
   | 'pass_insufficient'
   | 'shadow_metering_error';
@@ -124,13 +135,28 @@ export async function beginSong(
   const account = await roomOwnerAccountId(roomId);
   if (account && (await leaseWriteEnabled(account))) {
     const videoId = await requestVideoId(roomId, requestId);
-    // BUILD 21 — the resolution now says WHY. The fail-closed rule is unchanged: anything other
-    // than a trusted duration blocks the start before the RPC, so no lifecycle row, no segment,
-    // and no lease can be written. Only the diagnosis travels onward.
-    const dur = videoId
-      ? await resolveVideoDuration(videoId)
-      : ({ ok: false, reason: 'lookup_failed' } as const); // no canonical videoId to resolve
-    if (!dur.ok) return { outcome: 'duration_unavailable', durationFailureReason: dur.reason };
+    // BUILD 26U-R1 (R1-C / R1-D) — THE DURATION REFUSAL IS RETIRED HERE.
+    //
+    // BUILD 26T-R1B-R6-R1A (E1) removed every duration-caused refusal from
+    // `karaoke_begin_song_v2`, including the 900-second ceiling, because a video's length must
+    // never decide whether it may be watched. But E1 was a migration, and THIS pre-check lives
+    // above the RPC — so the other half of the same gate survived the cutover. A video over
+    // 15:00, or one whose length simply could not be resolved, still could not be started, and
+    // therefore still could not be opened. That is a duration-caused refusal to view a YouTube
+    // video, which is precisely what E1 set out to remove.
+    //
+    // The resolution itself is KEPT, because the length is still worth knowing — the live song
+    // clock renders from it. It is now BEST EFFORT: a miss, a quota exhaustion, an over-length
+    // video or an outright failure all leave the cache without a row, the RPC reads null, and
+    // the clock honestly shows an unknown duration (`playback.clock.unknown_duration`). None of
+    // them stops the song, and none of them stops YouTube.
+    if (videoId) {
+      try {
+        await resolveVideoDuration(videoId);
+      } catch {
+        /* the clock degrades to unknown; admission is not this call's business */
+      }
+    }
     return beginSongV2(roomId, requestId, mode);
   }
   const { data, error } = await karaokeDb().rpc('karaoke_begin_song', {
