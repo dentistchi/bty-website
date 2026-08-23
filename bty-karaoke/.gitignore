@@ -27,3 +27,4 @@ supabase/.temp/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.r4b-baseline.json
