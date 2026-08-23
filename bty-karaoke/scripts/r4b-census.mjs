@@ -25,7 +25,14 @@ const count = async (t) => {
   const cr = r.headers.get('content-range');
   return cr ? Number(cr.split('/')[1]) : `UNREADABLE(${r.status})`;   // never silently 0
 };
+// Apple transaction ids are SECRETS: hashed, never printed, at any length.
 const fp = (s) => (s ? createHash('sha256').update(String(s)).digest('hex').slice(0, 12) : '—');
+// Grant ids are NOT secrets — they are opaque internal row ids that address nothing on their own,
+// and the Founder must be able to match a row here against the label on a card. So they are
+// truncated, not hashed, and truncated at the SAME END and LENGTH as the device's
+// `GateFVLog.grantFingerprint` (first 8). Hashing here and truncating there would have produced
+// two fingerprints for one grant that can never be matched — which is what this script did first.
+const gfp = (s) => (s ? String(s).slice(0, 8) : '—');
 
 const ACCT = '1a0be5e8-90e6-40b3-a26c-7b41be0a9a8c';
 const ROOM = 'b28fc301-75e8-4f23-910f-37f6013f5b80';
@@ -47,12 +54,12 @@ console.log(`    controlled account grants   ${mine.length}  by status ${JSON.st
 for (const g of mine.filter((g) => ['AVAILABLE', 'SELECTED', 'ACTIVE'].includes(g.status)))
   console.log(`      ${g.status.padEnd(9)} ${g.pass_type} ${g.duration_seconds}s paid=${g.is_paid} src=${g.source_type}`
     + ` sel=${g.selected_at ?? 'NULL'} act=${g.activated_at ?? 'NULL'} exp=${g.expires_at ?? 'NULL'}`
-    + ` carryover=${g.carryover_seconds ?? 0} grant#${fp(g.id)}`);
+    + ` carryover=${g.carryover_seconds ?? 0} created=${g.created_at} grant#${gfp(g.id)}`);
 
 console.log('\n  APPLE PURCHASES');
 for (const p of await get('karaoke_apple_purchases?select=*&order=created_at.desc'))
   console.log(`    env=${p.environment} ${p.product_code} verify=${p.verification_status} grant=${p.grant_status}`
-    + ` secs=${p.granted_seconds ?? '—'} txn#${fp(p.apple_transaction_id)} grantRef#${fp(p.pass_grant_id)} ${p.created_at}`);
+    + ` secs=${p.granted_seconds ?? '—'} txn#${fp(p.apple_transaction_id)} grantRef#${gfp(p.pass_grant_id)} ${p.created_at}`);
 
 console.log('\n  AUDIT — most recent 5');
 for (const a of await get('timed_access_pass_audit?select=*&order=created_at.desc&limit=5'))

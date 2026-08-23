@@ -183,3 +183,56 @@ describe('release telemetry buckets', () => {
     expect(releaseClientBucket({ kind: 'native', build: 110 })).toBe('NATIVE_PREMIUM');
   });
 });
+
+// BUILD 26U-R4B-R0 — the controlled client moved 110 -> 111.
+//
+// It moved because R4B-R0 changed the binary materially (the rewritten Premium Room guide and a
+// DEBUG-only grant fingerprint), and re-signing a different app under the same build number would
+// have made every 110-labelled gate ambiguous about which binary it measured.
+//
+// Nothing on the server changed, and these tests exist to prove that claim rather than assert it:
+// the boundary is `build >= FIRST_PREMIUM_NATIVE_BUILD`, so 111 is premium-capable for the same
+// reason 110 was. A contract written as `build === 110` would have passed every existing test and
+// silently demoted the new build to legacy — which is exactly the failure this pins.
+describe('BUILD 26U-R4B-R0 — the premium boundary is >=, not ==', () => {
+  const N = (build: number): ClientRelease => ({ kind: 'native', build });
+
+  it('build 111 is premium-capable everywhere build 110 is', () => {
+    for (const mode of ['legacy_free', 'dual_allowlist', 'dual', 'premium_all'] as const) {
+      for (const inRollout of [true, false]) {
+        expect(resolveReleaseContract(mode, N(111), inRollout))
+          .toBe(resolveReleaseContract(mode, N(110), inRollout));
+      }
+    }
+  });
+
+  it('…and so is every later build — the boundary does not have to be edited again', () => {
+    for (const build of [111, 112, 150, 999, 1_000_000]) {
+      expect(resolveReleaseContract('dual_allowlist', N(build), true)).toBe('premium');
+      expect(resolveReleaseContract('dual_allowlist', N(build), false)).toBe('legacy');
+    }
+  });
+
+  it('the public build 109 boundary is UNCHANGED by the move', () => {
+    expect(resolveReleaseContract('dual_allowlist', N(109), true)).toBe('legacy');
+    expect(resolveReleaseContract('dual_allowlist', N(109), false)).toBe('legacy');
+    expect(resolveReleaseContract('dual', N(109), true)).toBe('legacy');
+    expect(resolveReleaseContract('premium_all', N(109), true)).toBe('unsupported');
+    // The one below it, too: raising the controlled build must not lower the public floor.
+    expect(resolveReleaseContract('dual_allowlist', N(108), true)).toBe('legacy');
+  });
+
+  it('the constant itself still names 110 — 111 is a CLIENT fact, not a server one', () => {
+    // If a future slice moves this constant, it changes which builds are premium-capable. R4B-R0
+    // deliberately did not, so the server is untouched and no redeploy was required.
+    expect(FIRST_PREMIUM_NATIVE_BUILD).toBe(110);
+    expect(resolveReleaseContract('dual_allowlist', N(FIRST_PREMIUM_NATIVE_BUILD - 1), true)).toBe('legacy');
+    expect(resolveReleaseContract('dual_allowlist', N(FIRST_PREMIUM_NATIVE_BUILD), true)).toBe('premium');
+  });
+
+  it('native/111 parses and telemetry buckets it as NATIVE_PREMIUM', () => {
+    expect(parseClientRelease('native/111')).toEqual({ kind: 'native', build: 111 });
+    expect(releaseClientBucket(parseClientRelease('native/111'))).toBe('NATIVE_PREMIUM');
+    expect(releaseClientBucket(parseClientRelease('native/109'))).toBe('NATIVE_LEGACY');
+  });
+});
