@@ -827,24 +827,21 @@ export function renderCompletionEvidence(c: CompletionAuthority, lead = "Complet
 }
 
 /**
- * ONE CRITERION, NOT ONE SENTENCE REPEATED FOUR TIMES.
+ * ONE CRITERION, IN ONE PLACE (Slice R4-R5C11).
  *
- * Caught by the R3.4-R1 corpus render audit, not by a test: with a single fixed lead-in, THE
- * STANDARD, IN CONTEXT, APPLY IT and WHY THIS MATTERS all closed on the same words verbatim,
- * and a participant reads all four in one sitting. The old two-field renderer varied its
- * framing by accident ("It is complete when …", "You will know it happened when …", "and it
- * counts as done when …"); losing that would have been a quiet regression in how the program
- * reads.
+ * THE ASSUMPTION THIS REPLACES, and why it was wrong. R3.4-R1 found the same criterion closing
+ * THE STANDARD, IN CONTEXT, APPLY IT and WHY THIS MATTERS verbatim, and treated the defect as
+ * SAMENESS OF WORDING — so it gave each section its own lead-in and kept all four copies. A
+ * real learner then read one of those programs and reported being shown the answer repeatedly
+ * and asked to type it back. Varying the four words in front of a repeated sentence does not
+ * make it a second thing to think about; the participant was reading the criterion four times
+ * either way.
  *
- * The criterion itself is never touched — only the words BTY puts in front of it. THE STANDARD
- * and IN CONTEXT deliberately share one lead, because IN CONTEXT is the same standard restated
- * under pressure and pretending otherwise would imply a second rule.
+ * So the copies are gone rather than relabelled. The criterion is rendered by THE STANDARD,
+ * whose behaviour contract it is a field of, and it is the Host's own subject in WHAT SUCCESS
+ * LOOKS LIKE. No other section states it. The criterion itself is still never touched.
  */
-const COMPLETION_LEAD = {
-  standard: "Completion evidence",
-  application: "You will know it happened by this",
-  rationale: "What shows it happened",
-} as const;
+const COMPLETION_LEAD = { standard: "Completion evidence" } as const;
 
 /** A moment that already begins with its own time preposition needs nothing added. */
 const LEADING_DETERMINER = /^(?:the|a|an|my|your|our|their|his|her|its|each|every|this|that)\b/i;
@@ -1344,8 +1341,6 @@ export function validateScenarioContract(
  * completion signal; the model contributes only the difficulty and the setting.
  */
 export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract): string {
-  const actor = stripTrailingStop(b.actor.trim());
-  const action = baseActionPhrase(b.observableAction);
   /*
     SERVER-WRITTEN PRESSURE (Slice 3.2P-A7-R2). The clause comes from `PRESSURE_FRAMES`, not
     from the response, so the sentence between the Host's moment and the Host's action is now
@@ -1365,11 +1360,17 @@ export function renderScenarioSentence(b: BehaviorContract, s: ScenarioContract)
     a time word — so a Korean moment rendered as "At the 아침 허들 때마다". Nothing here needs to
     grammar-check the host's own words; it needs to repeat them.
   */
-  return (
-    `${upperFirst(stripTrailingStop(b.trigger.trim()))}, even when ${condition}, ` +
-    `${lowerFirst(actor)} must ${action}. ` +
-    renderCompletionEvidence(b.completion, COMPLETION_LEAD.standard)
-  ).trimEnd();
+  /*
+    A SITUATION, NOT THE INSTRUCTION AGAIN (Slice R4-R5C11). This rendered
+    "<trigger>, even when <pressure>, <actor> must <action>. Completion evidence: <criterion>."
+    — measured at 85% of THE STANDARD as one contiguous token run, which is the standard with
+    a difficulty clause wedged into it, not a second thing to think about.
+
+    IN CONTEXT now carries only what THE STANDARD cannot: the moment, the pressure, and why
+    the behaviour is easy to lose there. It points at the standard with "this" rather than
+    repeating it, and it no longer restates the Host's criterion.
+  */
+  return `${upperFirst(stripTrailingStop(b.trigger.trim()))}, when ${condition}, this is easiest to skip.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -2062,17 +2063,22 @@ function reduceInflection(lower: string): string {
 }
 
 export function renderDecisionSentence(b: BehaviorContract, a: ApplicationContract): string {
-  const action = baseActionPhrase(b.observableAction);
   /*
-    First person, same pointer — the commitment is to the next occurrence, not to a rewritten
-    version of the host's phrase (Slice 3.2P-R3.7).
+    THE LEARNER MAKES THE DECISION (Slice R4-R5C11).
 
-    NEXT_OCCURRENCE is used AS WRITTEN (Slice 3.2R-R2.3). It was passed through `lowerFirst`,
-    which is right for a phrase that follows something and wrong for one that opens a sentence —
-    the first live decide-program showed a learner "the next time this happens, I will …".
-    Every sibling renderer already interpolates the constant directly.
+    This rendered "The next time this happens, I will <action>." — THE STANDARD in the first
+    person, written by BTY, under a heading that says YOUR DECISION. Nothing about it was the
+    learner's and no decision was taken: the commitment was complete before they arrived, and
+    the section immediately after asked them to produce it.
+
+    NEXT_OCCURRENCE is kept, because the pointer is the part that was right — the decision is
+    about the next real occurrence, and it needs no grammar of the Host's phrase to say so
+    (Slice 3.2P-R3.7). What is removed is the answer.
+
+    The learner's own `decision_response_text` remains the decision authority; this section now
+    asks for it instead of supplying it.
   */
-  return `${NEXT_OCCURRENCE}, I will ${action}.`;
+  return `${NEXT_OCCURRENCE}, what will you do differently?`;
 }
 
 /**
@@ -2095,14 +2101,21 @@ export function renderApplicationSentence(
   a: ApplicationContract,
   construct: OperationalConstruct | null,
 ): string {
-  const actor = stripTrailingStop(b.actor.trim());
-  const action = baseActionPhrase(b.observableAction);
   const named = construct ? ` This is ${constructPhrase(construct)} in practice.` : "";
-  // ONE completion authority. v5 let the model author a second, different answer to "how
-  // will we know it happened" here, and the live proposal gave two. v11 goes further: there
-  // is nothing to author — this is the Host's evidence sentence, the same one THE STANDARD
-  // carries.
-  return `${NEXT_OCCURRENCE}, ${lowerFirst(actor)} must ${action}.${named} ${renderCompletionEvidence(b.completion, COMPLETION_LEAD.application)}`.trimEnd();
+  /*
+    THE OCCASION, NOT THE INSTRUCTION (Slice R4-R5C11).
+
+    This rendered "The next time this happens, <actor> must <action>. You will know it happened
+    by this: <criterion>." — 56% of THE STANDARD as one contiguous run, plus the criterion for
+    the third time. Against its own brief ("who does what, and when") it supplied no trigger,
+    no timing and no occasion the learner did not already have; "the next time this happens" is
+    a pointer, and the pointer was the only part that was not a repeat.
+
+    So APPLY IT keeps the pointer, hands the attempt back to the learner, and states neither
+    the behaviour nor the evidence. The construct clause stays: it names what the program is
+    about without restating what to do.
+  */
+  return `${NEXT_OCCURRENCE} is the first real chance to try it for yourself.${named}`;
 }
 
 /**
@@ -2120,9 +2133,14 @@ export function renderApplicationSentence(
  * decided it cannot name.
  */
 export function renderCompletionQuestion(b: BehaviorContract, c: CompletionContract): string | null {
-  const action = baseActionPhrase(b.observableAction);
   const target: Record<VerificationTarget, string> = {
-    the_behaviour: `you ${action}`,
+    /*
+      NO ANSWER LEAKAGE (Slice R4-R5C11). This was `you ${action}` — so the closing question
+      quoted THE STANDARD back at a learner who had just read it, and the honest answer was to
+      copy the sentence above. It names the SITUATION instead; the behaviour is established two
+      sections up and needs no repeating to be pointed at.
+    */
+    the_behaviour: `you are in that situation`,
     /*
       "put this into practice" reads as an idiom and parses as a definite construct
       reference — "practice" is one of the nouns the dependency graph gates, so the phrase
@@ -2195,22 +2213,23 @@ export function renderRationaleSentence(
   construct: OperationalConstruct | null,
 ): string {
   const problem = stripTrailingStop(problemStatement.trim());
-  const action = baseActionPhrase(b.observableAction);
-  const actor = lowerFirst(stripTrailingStop(b.actor.trim()));
   /*
-    A proposed construct is named as what the program INTRODUCES, never as something that
-    exists or works. Without one the sentence simply describes the behaviour.
+    CONSEQUENCE ONLY (Slice R4-R5C11). This closed on `${actor} ${action}` and then on the
+    Host's completion criterion, so WHY THIS MATTERS restated THE STANDARD and the evidence
+    before the participant had met either as its own section.
+
+    MEASURED ON A REAL LEARNER, not inferred: across one published training the behaviour
+    clause reached them SEVEN times and the criterion FOUR, and they described being shown the
+    answer repeatedly and then asked to type it back. Six of those repetitions were written by
+    these renderers, not by the model — the model's prose for this kind is discarded.
+
+    So this section renders neither the behaviour nor the evidence. It states the Host's
+    problem and says the program answers it, which is the one job the sequence gives it and
+    the only claim these inputs support. `b` stays in the signature: the family shares it, and
+    the ban on USING it here is asserted by the composition guard, not by the type.
   */
   const introduces = construct ? `one shared ${construct.noun}` : "one visible way of working";
-  /*
-    The Host's evidence closes the sentence as its own sentence (Slice 3.2P-R3.4-R1), for the
-    same reason it does everywhere else: no "…counts as done when X" frame survives every
-    shape a real evidence answer takes.
-  */
-  return (
-    `${upperFirst(problem)}. This program introduces ${introduces}: ${actor} ${action}. ` +
-    renderCompletionEvidence(b.completion, COMPLETION_LEAD.rationale)
-  ).trimEnd();
+  return `${upperFirst(problem)}. This program introduces ${introduces} for exactly that.`;
 }
 
 /**
@@ -2229,26 +2248,26 @@ export function renderRationaleSentence(
  * observing anything, and nothing here says it is.
  */
 export function renderFollowUpSentence(b: BehaviorContract, f: FollowUpContract, followUpDays: number): string {
-  const action = baseActionPhrase(b.observableAction);
   /**
-   * TENSE-SAFE. "what you actually said when you say it blunt" mixed a retrospective
-   * question with a present-tense action. "when you were expected to …" keeps the whole
-   * sentence in the past and works with any base action, colloquial ones included.
+   * TENSE-SAFE, AND NO LONGER A SEVENTH COPY (Slice R4-R5C11).
+   *
+   * Two of the three focuses closed on "…when you were expected to <action>", which put the
+   * whole behaviour clause into a sentence whose job is to say WHEN BTY will ask and WHAT KIND
+   * of answer it is. The past tense was the part worth keeping; the instruction was not. Each
+   * focus now points at the attempt the learner actually made.
+   *
+   * The Host's criterion is gone from here too. It belongs to THE STANDARD, which renders the
+   * behaviour contract it is a field of, and to WHAT SUCCESS LOOKS LIKE, which is the Host's
+   * own evidence section. A follow-up question is neither.
    */
   const focus: Record<ReviewFocus, string> = {
-    what_you_said: `what you actually said when you were expected to ${action}`,
-    what_happened_next: `what happened after you were expected to ${action}`,
+    what_you_said: `what you actually said at that moment`,
+    what_happened_next: `what happened when you tried it`,
     the_confirmation: `whether it was completed`,
   };
-  /*
-    The criterion is stated only for the focus that is ABOUT completion. Repeating it under
-    "what you actually said" would attach the Host's evidence to a question that is not asking
-    for it.
-  */
-  const evidence = f.reviewFocus === "the_confirmation" ? ` ${renderCompletionEvidence(b.completion)}` : "";
   const by: Record<Confirmer, string> = {
     self_report: "That is your own account of it, not an observation.",
     the_host: "Your host will read it with you.",
   };
-  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}.${evidence} ${by[f.confirmer]}`.replace(/\s+/g, " ").trim();
+  return `In ${followUpDays} days you will be asked ${focus[f.reviewFocus]}. ${by[f.confirmer]}`.replace(/\s+/g, " ").trim();
 }

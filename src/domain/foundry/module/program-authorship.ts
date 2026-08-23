@@ -305,8 +305,17 @@ import {
  *
  * The WIRE contract is untouched, so `PROGRAM_SCHEMA_NAME` stays at v12 — the same split the R7
  * bump used, and the whole reason the two names are separate.
+ *
+ * v23 -> v24 (Slice R4-R5C11): the deterministic COMPOSITION changed. Seven of the nine kinds
+ * are rendered by BTY, and six of them restated THE STANDARD's behaviour clause or the Host's
+ * completion criterion — measured on a real learner as seven and four occurrences in one
+ * training. WHY, IN CONTEXT, YOUR DECISION, APPLY IT, the derived completion question and WHAT
+ * HAPPENS NEXT now each carry a different job, and two per-element gates were scoped to model
+ * prose because they had begun grading BTY's own renderer. The programs a Host generates from
+ * here say different things, so the version moves. Historical attempts stay truthful at their
+ * own version; nothing is backfilled and no published snapshot is rewritten.
  */
-export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v23";
+export const PROGRAM_AUTHORSHIP_VERSION = "program_authorship_v24";
 
 // ---------------------------------------------------------------------------
 // Provenance — who authored each participant-facing sentence
@@ -1098,8 +1107,18 @@ function cleanList(v: unknown, max: number, code: ProgramRejectCode): { ok: true
   return { ok: true, value: out };
 }
 
-/** Overlap ratio of significant words — used for complaint replay and contradiction. */
-function overlapRatio(a: string, b: string): number {
+/**
+ * Overlap ratio of significant words — used for complaint replay and contradiction, and by the
+ * deterministic composition guard (Slice R4-R5C11).
+ *
+ * EXPORTED, NOT DUPLICATED. The composition guard needs to ask "does this section restate that
+ * one" and the answer must come from the measure this file already trusts — a second similarity
+ * implementation would drift from this one and the two would disagree about the same program.
+ * Set-based, so it is insensitive to word ORDER: "Before ending a handoff, ask X" and "ask X
+ * before the handoff ends" score the same, which is exactly the reordering a substring test
+ * misses.
+ */
+export function overlapRatio(a: string, b: string): number {
   const words = (s: string) =>
     new Set(
       norm(s)
@@ -2157,6 +2176,21 @@ export function validateProgramProposal(
   };
 
   const seen = new Set<JourneyElementKind>();
+  /**
+   * WHICH SECTIONS BTY WROTE ITSELF (Slice R4-R5C11).
+   *
+   * `deriveContent` replaces the model's sentence for seven of the nine kinds, so the per-kind
+   * meaning gates below were, for those kinds, grading BTY's own renderer output. That is the
+   * failure this file already records twice from the other direction — BTY's graph refusing
+   * BTY's own sentence and the model being blamed for a line it never wrote. `complaint_replay`
+   * already guarded itself with `c === content.value`; the rest did not, and one of them
+   * (`section_contradiction`) would have refused every program the moment YOUR DECISION stopped
+   * repeating THE STANDARD's vocabulary.
+   *
+   * A derived section is not ungraded — it is graded by the deterministic composition guard,
+   * which can assert properties of BTY's own output that a per-element model gate cannot.
+   */
+  const derivedKinds = new Set<JourneyElementKind>();
   const elements: ProposedElement[] = [];
 
   for (let i = 0; i < p.elements.length; i++) {
@@ -2248,10 +2282,12 @@ export function validateProgramProposal(
     // `observable_standard` needs no per-kind text gate: its content IS the validated
     // contract, rendered. The word-count check this replaces measured nothing about
     // observability — the live meta-standard cleared it by twelve words.
-    if (kind === "action_decision") {
+    // MODEL PROSE ONLY, like `complaint_replay` above: BTY derives both of these kinds for
+    // every program, and a gate on its own renderer is a permanent refusal waiting to happen.
+    if (kind === "action_decision" && c === content.value) {
       if (ONLY_REFLECTION.test(c) || !DECISION_COMMITMENT.test(c)) return REJECT("decision_is_only_reflection", kind);
     }
-    if (kind === "field_application") {
+    if (kind === "field_application" && c === content.value) {
       if (!APPLICATION_ACTOR.test(c)) return REJECT("application_without_actor", kind);
     }
     /**
@@ -2266,6 +2302,7 @@ export function validateProgramProposal(
       if (!WH_WORD.test(c) || GENERIC_COMPLETION.some((re) => re.test(c))) return REJECT("generic_completion", kind);
     }
 
+    if (c !== content.value) derivedKinds.add(kind);
     elements.push({ kind, content: c, rationale: rationale.value });
   }
 
@@ -2280,8 +2317,15 @@ export function validateProgramProposal(
   }
   const standard = elements.find((e) => e.kind === "observable_standard");
   const decision = elements.find((e) => e.kind === "action_decision");
-  if (standard && decision && overlapRatio(standard.content, decision.content) < 0.05) {
-    // A decision that shares no vocabulary with the standard is about something else.
+  /*
+    SHARED VOCABULARY IS EVIDENCE ABOUT A MODEL, NOT ABOUT BTY (Slice R4-R5C11). "A decision
+    that shares no vocabulary with the standard is about something else" is a sound test of
+    prose someone else wrote. Applied to a DERIVED decision it inverts: BTY's decision section
+    deliberately shares almost nothing with THE STANDARD now, because repeating it is what made
+    a real learner feel they were copying an answer back. Left unscoped this line would refuse
+    every generated program.
+  */
+  if (standard && decision && !derivedKinds.has("action_decision") && overlapRatio(standard.content, decision.content) < 0.05) {
     return REJECT("section_contradiction", "action_decision");
   }
 

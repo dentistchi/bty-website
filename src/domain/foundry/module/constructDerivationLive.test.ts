@@ -64,9 +64,13 @@ describe("a stale stored construct can no longer reach the Host", () => {
     expect(apply).not.toBeNull();
     expect(apply!).not.toContain("sometimes end with agreement");
     expect(apply!).not.toContain("in practice.");
-    // The truthful target shape: the behaviour, then the evidence. Nothing invented between them.
-    expect(apply!).toContain("The next time this happens, the facilitator must name one owner and one deadline");
-    expect(apply!).toContain("You will know it happened by this:");
+    /*
+      A — the property under test is unchanged: a STALE stored construct never reaches the Host,
+      and APPLY IT renders grammatically without it (Slice R4-R5C11). The target shape moved: the
+      section no longer restates the behaviour or the Host's criterion, so the sentence it must
+      render is the occasion alone.
+    */
+    expect(apply!).toBe("The next time this happens is the first real chance to try it for yourself.");
   });
 
   it("WITHOUT the answers it still replays the stored construct — so the caller must pass them", () => {
@@ -142,10 +146,9 @@ describe("PART 6 — construct extraction regression matrix", () => {
     } as never);
     expect(construct).toBeNull();
     const s = renderApplicationSentence(BEHAVIOR as never, { applicationMoment: "The next time this happens" } as never, construct);
-    expect(s).toBe(
-      "The next time this happens, the facilitator must name one owner and one deadline for each open action item. " +
-        "You will know it happened by this: The huddle notes or action tracker show a named owner and deadline for the next action before the meeting ends.",
-    );
+    // A — same retarget (Slice R4-R5C11): grammatical, construct-free, and no longer a second
+    // reading of THE STANDARD and the Host's evidence.
+    expect(s).toBe("The next time this happens is the first real chance to try it for yourself.");
   });
 
   it("no derived construct label ever contains a function word", () => {

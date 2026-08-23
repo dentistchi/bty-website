@@ -261,7 +261,17 @@ describe("[3.2L] the validator fails closed", () => {
     expect(r.ok, r.ok ? "" : r.code).toBe(true);
     if (r.ok) {
       const decision = r.value.proposal.elements.find((e) => e.kind === "action_decision")!;
-      expect(decision.content).toContain("I will ");
+      /*
+        A — "whatever the model wrote" is the property under test and it is unchanged; "always
+        commits" is not (Slice R4-R5C11). BTY's commitment WAS the defect: "I will <action>" is
+        THE STANDARD in the first person, written under a heading that says YOUR DECISION, and a
+        real learner met it after reading the same clause four times.
+
+        The model's prose is still discarded — asserted below — and the section now asks for the
+        learner's commitment instead of supplying one.
+      */
+      expect(decision.content).not.toContain("I will ");
+      expect(decision.content).toMatch(/\?$/);
       expect(decision.content).not.toContain("Think about");
     }
   });
@@ -312,13 +322,14 @@ describe("[3.2L] the validator fails closed", () => {
     expect(r.ok, r.ok ? "" : r.code).toBe(true);
     if (r.ok) {
       const apply = r.value.proposal.elements.find((e) => e.kind === "field_application")!;
-      // 3.2P-R3.2-R1: the subject is server-written in the second person, so the actor the
-      // model supplied is never displayed. The assertion's intent — the application names WHO
-      // and WHEN — is unchanged.
-      expect(apply.content).toContain("you must");
-      // 3.2P-R3.7: the application points at the next occurrence; the host's moment is stated
-      // verbatim in THE STANDARD above rather than folded into a noun phrase here.
-      expect(apply.content).toContain("The next time this happens, you must");
+      /*
+        A — the model's prose is still discarded, which is what this test is for; the shape it
+        is replaced by moved (Slice R4-R5C11). "Names the actor and the moment" required the
+        section to restate THE STANDARD's subject and action, and it supplied no trigger or
+        timing the learner did not already have. It names the OCCASION now, and nothing else.
+      */
+      expect(apply.content).toContain("The next time this happens");
+      expect(apply.content).not.toContain("you must");
       expect(apply.content).not.toContain("Handoffs. Standards.");
     }
   });

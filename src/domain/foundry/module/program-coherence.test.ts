@@ -439,10 +439,23 @@ describe("[3.2L-R5] G1 — the exact live false negative cannot recur", () => {
     for (const token of ["handoff", "handoffs", "standard", "create", "shared", "inconsistent"]) {
       expect(derived.toLowerCase()).not.toContain(token);
     }
-    // And yet it is unambiguously about the trained behaviour, because it was BUILT from it.
-    expect(derived).toContain(GOOD.actor);
-    expect(derived).toContain("out loud to the person taking over");
-    expect(true).toBe(true); // completion is asserted via the shared clause below
+    /*
+      A — SUPERSEDED BY REAL LEARNER EVIDENCE (Slice R4-R5C11). This asserted that the scenario
+      CONTAINS the actor and the action, on the reasoning that a section built from the contract
+      proves relevance by carrying the contract's words. It did carry them: measured at 85% of
+      THE STANDARD as one contiguous token run, which is the standard with a difficulty clause
+      wedged in, not a situation to recognise. A real learner read one of these and reported
+      being shown the same answer over and over.
+
+      Relevance is still STRUCTURAL, which was the point of this test — it is just proved by the
+      grounding that remains. IN CONTEXT is built from the Host's own trigger and a server-chosen
+      pressure frame, so it cannot be about a different moment; and it now must NOT restate the
+      action, which is the property that replaced the one below.
+    */
+    expect(derived.toLowerCase()).toContain(GOOD.trigger.toLowerCase().replace(/^at\s+/, ""));
+    expect(derived).toContain(renderPressureFrame(GOOD_SCENARIO.frame));
+    expect(derived).not.toContain(baseActionPhrase(GOOD.observableAction));
+    expect(derived).not.toContain(GOOD.completion.criterion);
   });
 
   it("relevance is structural, so an unrelated word choice cannot make it irrelevant", () => {
@@ -485,13 +498,25 @@ describe("[3.2L-R5] G4 — the displayed scenario cannot drift from its groundin
     expect(derived).toContain(renderPressureFrame(GOOD_SCENARIO.frame));
     // The MOMENT is the trigger's, never the scenario's (Slice 3.2L-R8.1).
     expect(derived.toLowerCase()).toContain(GOOD.trigger.toLowerCase().replace(/^at\s+/, ""));
-    expect(derived).toContain(GOOD.completion.criterion);
+    /*
+      A — the criterion assertion is superseded (Slice R4-R5C11). "Every clause comes from one of
+      the two contracts" is unchanged and still asserted above; what changed is WHICH clauses this
+      section is entitled to. The Host's completion criterion belongs to THE STANDARD, which
+      renders the contract it is a field of, and to WHAT SUCCESS LOOKS LIKE. Repeating it here was
+      one of the four occurrences a real learner counted.
+    */
+    expect(derived).not.toContain(GOOD.completion.criterion);
     expect(derived.length).toBeLessThanOrEqual(700);
   });
 
   it("changing the behaviour contract changes the scenario", () => {
-    const other: BehaviorContract = { ...GOOD, actor: "the incoming supervisor" };
-    expect(renderScenarioSentence(other, GOOD_SCENARIO)).toContain("the incoming supervisor");
+    /*
+      A — RETARGETED, not weakened (Slice R4-R5C11). The drift contract is intact: the displayed
+      scenario must still move when its grounding moves. It is the TRIGGER it is grounded in now,
+      because the actor and the action left with the restatement.
+    */
+    const other: BehaviorContract = { ...GOOD, trigger: "before the incoming supervisor arrives" };
+    expect(renderScenarioSentence(other, GOOD_SCENARIO)).toContain("Before the incoming supervisor arrives");
     expect(renderScenarioSentence(other, GOOD_SCENARIO)).not.toBe(renderScenarioSentence(GOOD, GOOD_SCENARIO));
   });
 
@@ -667,10 +692,18 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
 
   it("G6: a decision commits to the DEFINED behaviour, not to creating a construct", () => {
     const d = renderDecisionSentence(GOOD, APP);
-    // R6.2: the moment leads, in FIRST-PERSON possessive, and the action follows the modal
-    // in base form — "I will states" and "…at your next shift change" are both impossible.
-    expect(d).toContain("I will state each unfinished task");
-    expect(d).not.toContain("I will states");
+    /*
+      A — THE DECISION IS NO LONGER BTY'S TO COMMIT (Slice R4-R5C11). This asserted the rendered
+      sentence CONTAINS "I will <action>" — THE STANDARD in the first person, written by BTY,
+      under a heading that says YOUR DECISION. A real learner met that section after reading the
+      same clause four times and was then asked to type it back.
+
+      What the test protected is still protected and now stated directly: the section may not
+      contain the behaviour, and it may not commit on the learner's behalf.
+    */
+    expect(d).not.toContain(baseActionPhrase(GOOD.observableAction));
+    expect(d).not.toMatch(/\bI will\b/);
+    expect(d).toMatch(/\?$/);
     /*
       THE MOMENT NO LONGER LEADS THESE TWO SECTIONS (Slice 3.2P-R3.7). They used to open on a
       folded version of the host's phrase — "At my next shift change" / "At the next shift
@@ -681,19 +714,25 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
     */
     // Slice 3.2R-R2.3 — capitalized, like every sibling renderer. G7 below already expected the
     // capitalized form for APPLY IT; YOUR DECISION was the lone outlier.
-    expect(d.startsWith("The next time this happens, I will ")).toBe(true);
+    expect(d.startsWith("The next time this happens, ")).toBe(true);
     expect(d).not.toContain("your");
     // The exact old live sentence is not expressible: creation is not a rendered option.
     expect(d).not.toMatch(/contribute to creating|implementing a shared/i);
   });
 
-  it("G7: an application names the moment, the inherited actor and the confirmation", () => {
+  it("G7: an application names the next occasion and hands the attempt to the learner", () => {
     const a = renderApplicationSentence(GOOD, APP, null);
-    expect(a).toContain(GOOD.actor);
-    expect(a.startsWith("The next time this happens, ")).toBe(true);
-    expect(a).toContain("must state each unfinished task");
-    // Same criterion, different lead-in — one authority, four surfaces that do not read alike.
-    expect(a).toContain(`You will know it happened by this: ${SERVER.criterion}.`);
+    /*
+      A — SUPERSEDED (Slice R4-R5C11). The old title said APPLY IT "names the moment, the
+      inherited actor and the confirmation", and the third of those was the defect: the section
+      restated the behaviour (56% of THE STANDARD as one run) and repeated the Host's criterion
+      for the third time, while supplying no actor, trigger or timing the learner did not already
+      have. "The next time this happens" was always the only part that was not a repeat, so it is
+      the part that stays.
+    */
+    expect(a.startsWith("The next time this happens")).toBe(true);
+    expect(a).not.toContain(baseActionPhrase(GOOD.observableAction));
+    expect(a).not.toContain(SERVER.criterion);
   });
 
   it("G8: a completion check verifies; it cannot ask what the construct contains", () => {
@@ -714,23 +753,41 @@ describe("[3.2L-R6] derived instructional renderers share one authority", () => 
   it("G9: a follow-up uses the canonical window and introduces no new action", () => {
     const f = renderFollowUpSentence(GOOD, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7);
     expect(f).toContain("In 7 days");
-    // Tense-safe: past question, base-form action, never "said when you states".
-    expect(f).toContain("what you actually said when you were expected to state each unfinished task");
+    /*
+      A — the window, the tense and the self-report clause are unchanged; the seventh copy of the
+      behaviour is gone (Slice R4-R5C11). "introduces no new action" is now literal: it introduces
+      no action at all, and points at the attempt the learner made.
+    */
+    expect(f).toContain("what you actually said at that moment");
+    expect(f).not.toContain(baseActionPhrase(GOOD.observableAction));
     expect(f).toContain("your own account");
   });
 
-  it("G10: changing ONE contract field changes every dependent section", () => {
+  it("G10: the action reaches EXACTLY ONE section — the six-views assumption is retired", () => {
+    /*
+      A — THIS IS THE ASSUMPTION THE LEARNER DISPROVED (Slice R4-R5C11).
+
+      "Changing ONE contract field changes every dependent section" was the strongest statement of
+      ONE BEHAVIOURAL AUTHORITY, SIX VIEWS, and it could only pass while all six sections carried
+      the action. It was designed to catch drift — six sentences quietly disagreeing — and it did
+      that job honestly. What it could not see is that six agreeing sentences are still six
+      readings of one sentence, which is what a real learner met and named.
+
+      Drift is now impossible for a stronger reason than agreement: there is only one sentence.
+      So the invariant is inverted. The action reaches THE STANDARD and nowhere else.
+    */
     const other: BehaviorContract = { ...GOOD, observableAction: "writes the unfinished items on the shared board" };
-    for (const render of [
-      (b: BehaviorContract) => renderStandardSentence(b),
-      (b: BehaviorContract) => renderScenarioSentence(b, GOOD_SCENARIO),
-      (b: BehaviorContract) => renderDecisionSentence(b, APP),
-      (b: BehaviorContract) => renderApplicationSentence(b, APP, null),
-      (b: BehaviorContract) => renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" }),
-      (b: BehaviorContract) => renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7),
-    ]) {
-      expect(render(other)).not.toBe(render(GOOD));
-      expect(render(other)).toContain("shared board");
+    expect(renderStandardSentence(other)).toContain("shared board");
+    expect(renderStandardSentence(other)).not.toBe(renderStandardSentence(GOOD));
+    for (const [name, render] of [
+      ["scenario", (b: BehaviorContract) => renderScenarioSentence(b, GOOD_SCENARIO)],
+      ["decision", (b: BehaviorContract) => renderDecisionSentence(b, APP)],
+      ["application", (b: BehaviorContract) => renderApplicationSentence(b, APP, null)],
+      ["completion", (b: BehaviorContract) => renderCompletionQuestion(b, { verificationTarget: "the_behaviour", responseMode: "state_what_you_will_say" })],
+      ["follow_up", (b: BehaviorContract) => renderFollowUpSentence(b, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7)],
+    ] as const) {
+      expect(render(other) ?? "", name).not.toContain("shared board");
+      expect(render(other) ?? "", name).not.toContain(baseActionPhrase(GOOD.observableAction));
     }
   });
 
@@ -770,9 +827,13 @@ describe("[3.2L-R6.2] no rendered sentence guesses the actor's number", () => {
       expect(s.toLowerCase()).not.toContain("doctors faces");
       expect(s.toLowerCase()).not.toContain("doctors states");
     }
+    /*
+      A — RETARGETED (Slice R4-R5C11). The number-guessing contract is unchanged and still the
+      point of this test: no renderer may inflect a verb for the actor. It is asserted on the one
+      section that still states the actor and the action, because IN CONTEXT and APPLY IT stopped
+      restating THE STANDARD. The `not.toContain` sweep above already covers every section.
+    */
     expect(sections[0]).toContain("doctors must state each unfinished task");
-    expect(sections[1]).toContain("doctors must state each unfinished task");
-    expect(sections[3]).toContain("doctors must state each unfinished task");
   });
 
   it("G2: a SINGULAR actor reads naturally from the same authority", () => {
@@ -799,10 +860,15 @@ describe("[3.2L-R6.2] no rendered sentence guesses the actor's number", () => {
 describe("[3.2L-R6.2] perspective never collides", () => {
   const APP2 = { applicationMoment: "at your next shift change", evidenceOrConfirmation: "the person taking over repeats it back" };
 
-  it("G4: a first-person decision never carries a second-person possessive", () => {
+  it("G4: the decision section carries neither perspective's possessive, and no prewritten answer", () => {
     const d = renderDecisionSentence(GOOD, APP2);
-    expect(d).toContain("I will state");
-    // The exact live collision: "I will … starting at your next shift change."
+    /*
+      A — the perspective-collision contract is intact; the first-person COMMITMENT is not
+      (Slice R4-R5C11). "I will <action>" was BTY answering under a heading that says YOUR
+      DECISION. The collision this test exists to prevent — the host's "your" leaking into a
+      first-person sentence — cannot occur in a sentence that is neither.
+    */
+    expect(d).not.toMatch(/\bI will\b/);
     expect(d).not.toMatch(/\byour\b/);
   });
 
@@ -820,7 +886,7 @@ describe("[3.2L-R6.2] perspective never collides", () => {
     */
     for (const moment of ["during the Monday huddle", "before closing the case", "next shift change", "아침 허들 때마다"]) {
       const d = renderDecisionSentence(GOOD, { ...APP2, applicationMoment: moment });
-      expect(d.startsWith("The next time this happens, I will "), `${moment} → ${d}`).toBe(true);
+      expect(d.startsWith("The next time this happens, "), `${moment} → ${d}`).toBe(true);
       expect(d, "the host's phrase is not echoed, edited or re-cased here").not.toContain(moment);
     }
   });
@@ -838,11 +904,15 @@ describe("[3.2L-R6.2] follow-up tense and Host phrasing", () => {
     const blunt = { ...GOOD, observableAction: "Say it blunt" };
     const standard = renderStandardSentence(blunt);
     const followUp = renderFollowUpSentence(blunt, { reviewFocus: "what_you_said", confirmer: "self_report" }, 7);
-    // Meaning preserved — not rewritten into BTY's preferred style.
+    /*
+      A — the meaning-preservation contract is unchanged and asserted where the Host's phrase is
+      rendered (Slice R4-R5C11). WHAT HAPPENS NEXT no longer restates the action, so the
+      retrospective/present collision this guarded against is unreachable there rather than
+      merely avoided — asserted as an absence below.
+    */
     expect(standard).toContain("say it blunt");
-    expect(followUp).toContain("were expected to say it blunt");
-    // …and the surrounding grammar is valid.
     expect(standard).toContain("must say it blunt");
+    expect(followUp).not.toContain("say it blunt");
     expect(followUp).not.toMatch(/said when you say it blunt/);
   });
 
@@ -889,39 +959,49 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
     };
   };
 
-  it("G1: the exact physical failure — no capitalised action after 'expected to'", () => {
+  it("G1: the exact physical failure — no capitalised action anywhere it is rendered", () => {
+    /*
+      A — RETARGETED (Slice R4-R5C11). The physical defect was a raw Host capital surviving into
+      participant text after "expected to". WHAT HAPPENS NEXT no longer states the action at all,
+      so the casing contract is asserted where the action is actually rendered — and the follow-up
+      is additionally held to carrying none of it.
+    */
     const c = contexts("Say it blunt");
-    expect(c.followUp).toContain("expected to say it blunt");
-    expect(c.followUp).not.toContain("expected to Say it blunt");
+    expect(c.standard).toContain("must say it blunt");
+    expect(c.standard).not.toContain("Say it blunt");
+    expect(c.followUp).not.toContain("say it blunt");
   });
 
-  it("G2: every action-bearing section uses the SAME canonical phrase", () => {
+  it("G2: exactly ONE section bears the action, and it uses the canonical phrase", () => {
+    /*
+      A — the canonical-phrase contract is unchanged; the census it ran is inverted
+      (Slice R4-R5C11). This asserted that EVERY section contains the canonical phrase, which was
+      the six-views assumption stated as a loop. A real learner read a program built that way and
+      counted the same clause seven times. One phrase, one section: the canonicalisation still has
+      to be right, and now there is exactly one place it can be wrong.
+    */
     const canonical = baseActionPhrase("Say it blunt");
     expect(canonical).toBe("say it blunt");
     const c = contexts("Say it blunt");
-    for (const [name, sentence] of Object.entries(c)) {
-      expect(sentence, name).toContain(canonical);
-      // The raw Host casing must never survive into participant text.
-      expect(sentence, name).not.toContain("Say it blunt");
+    expect(c.standard).toContain(`must ${canonical}`);
+    // The raw Host casing must never survive into participant text, in any section.
+    for (const [name, sentence] of Object.entries(c)) expect(sentence ?? "", name).not.toContain("Say it blunt");
+    for (const name of ["scenario", "decision", "application", "completion", "followUp"] as const) {
+      expect(c[name] ?? "", name).not.toContain(canonical);
     }
-    expect(c.standard).toContain("must say it blunt");
-    expect(c.decision).toContain("I will say it blunt");
-    expect(c.application).toContain("must say it blunt");
-    expect(c.completion).toContain("you say it blunt");
   });
 
   it("G3: an acronym is preserved wherever it sits in the phrase", () => {
     // After the head verb…
+    // A — asserted on the one section that renders the action now (Slice R4-R5C11); the
+    // preservation rule itself is untouched, and `baseActionPhrase` is still checked directly.
     const after = contexts("Use SBAR for the handoff");
-    for (const [name, s] of Object.entries(after)) {
-      expect(s, name).toContain("use SBAR for the handoff");
-      // Checked on the ORIGINAL string: lowercasing it first would make this vacuous.
-      expect(s, name).not.toContain("use sbar");
-    }
+    expect(after.standard).toContain("use SBAR for the handoff");
+    // Checked on the ORIGINAL string: lowercasing it first would make this vacuous.
+    for (const [name, s] of Object.entries(after)) expect(s ?? "", name).not.toContain("use sbar");
     // …and AS the head verb, where a naive lowercase would have destroyed it.
-    const asHead = contexts("SBAR the handoff");
     expect(baseActionPhrase("SBAR the handoff")).toBe("SBAR the handoff");
-    for (const [name, s] of Object.entries(asHead)) expect(s, name).toContain("SBAR the handoff");
+    expect(contexts("SBAR the handoff").standard).toContain("SBAR the handoff");
   });
 
   it("G3: an acronym is never de-inflected into nonsense", () => {
@@ -931,11 +1011,11 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
   });
 
   it("G4: a proper name keeps its capitals", () => {
+    // A — same retarget as G3 (Slice R4-R5C11): capitals are preserved where the action renders,
+    // and no section may lower-case them.
     const c = contexts("Call Dr. Lee");
-    for (const [name, s] of Object.entries(c)) {
-      expect(s, name).toContain("call Dr. Lee");
-      expect(s, name).not.toContain("dr. lee");
-    }
+    expect(c.standard).toContain("call Dr. Lee");
+    for (const [name, s] of Object.entries(c)) expect(s ?? "", name).not.toContain("dr. lee");
   });
 
   it("only the head verb is ever touched — the rest of the phrase is the Host's", () => {
@@ -958,12 +1038,16 @@ describe("[3.2L-R6.3] one canonical action phrase reaches every grammatical cont
 
   it("G6: perspective stays separated", () => {
     const c = contexts("Say it blunt");
-    // Slice 3.2R-R2.3 — sentence-initial, so capitalized. The perspective split below is the
-    // property this test protects and is unchanged.
-    expect(c.decision).toBe("The next time this happens, I will say it blunt.");
-    expect(c.application.startsWith("The next time this happens, doctors must say it blunt.")).toBe(true);
+    /*
+      A — the perspective SPLIT is the property this test protects and it is unchanged; the two
+      sentences it pinned are not (Slice R4-R5C11). Both restated the action, one in the first
+      person as a commitment BTY had already made. Neither may borrow the other's possessive, and
+      neither states the behaviour.
+    */
     expect(c.decision).not.toMatch(/\byour\b/);
     expect(c.application).not.toMatch(/\bmy\b/);
+    expect(c.decision).not.toContain("say it blunt");
+    expect(c.application).not.toContain("say it blunt");
   });
 
   it("G7: the follow-up tense repair still holds", () => {
@@ -1030,9 +1114,12 @@ describe("[3.2L-R6.4] a shouted verb is normalised; a shouted acronym is not", (
   });
 
   it("G5: the exact physical case still holds", () => {
-    const f = sections("Say it blunt")[5];
-    expect(f).toContain("expected to say it blunt");
-    expect(f).not.toContain("expected to Say it blunt");
+    // A — retargeted to THE STANDARD, which is where the action renders now (Slice R4-R5C11);
+    // the follow-up is held to carrying no casing at all because it carries no action.
+    const std = sections("Say it blunt")[0];
+    expect(std).toContain("must say it blunt");
+    expect(std).not.toContain("Say it blunt");
+    expect(sections("Say it blunt")[5]).not.toContain("say it blunt");
   });
 
   it("G6: known-malformed output is now impossible", () => {
@@ -1083,23 +1170,30 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
   });
 
   it("G3/G4: ONE completion authority reaches every section", () => {
+    /*
+      A — ONE AUTHORITY, ONE PLACE (Slice R4-R5C11). This asserted the criterion reaches FOUR
+      sections and moves in all of them together. Single authority was right; four surfaces was
+      the defect — a real learner read the same evidence sentence four times in one sitting, and
+      the earlier repair only varied the four words in front of it.
+
+      The criterion is still rendered from one authority and still moves with it. It reaches THE
+      STANDARD, whose behaviour contract it is a field of, and nowhere else BTY writes.
+    */
     const b = { ...GOOD, completion: { criterion: "The handover log shows the next owner for every open item" } };
     const criterion = "The handover log shows the next owner for every open item";
-    for (const s of [
-      renderStandardSentence(b),
-      renderScenarioSentence(b, GOOD_SCENARIO),
-      renderApplicationSentence(b, APP8, null),
-      renderFollowUpSentence(b, { reviewFocus: "the_confirmation", confirmer: "self_report" }, 7),
-    ]) {
-      expect(s).toContain(criterion);
+    expect(renderStandardSentence(b)).toContain(criterion);
+    for (const [name, s] of [
+      ["scenario", renderScenarioSentence(b, GOOD_SCENARIO)],
+      ["application", renderApplicationSentence(b, APP8, null)],
+      ["follow_up", renderFollowUpSentence(b, { reviewFocus: "the_confirmation", confirmer: "self_report" }, 7)],
+    ] as const) {
+      expect(s, name).not.toContain(criterion);
     }
 
-    // Changing it moves all of them together.
+    // Changing it still moves the one section that states it.
     const other = { ...b, completion: { criterion: "The duty lead signs the handover" } };
-    for (const s of [renderStandardSentence(other), renderScenarioSentence(other, GOOD_SCENARIO), renderApplicationSentence(other, APP8, null)]) {
-      expect(s).toContain("The duty lead signs the handover");
-      expect(s).not.toContain(criterion);
-    }
+    expect(renderStandardSentence(other)).toContain("The duty lead signs the handover");
+    expect(renderStandardSentence(other)).not.toContain(criterion);
   });
 
   it("G4: APPLY IT can no longer state a second, different completion", () => {
@@ -1107,7 +1201,14 @@ describe("[3.2L-R8] the live v5 program's defects cannot recur", () => {
     // put a competing answer to "how will we know it happened".
     expect(Object.keys(APP8)).toEqual(["applicationMoment"]);
     const a = renderApplicationSentence(GOOD, APP8, null);
-    expect(a).toContain("You will know it happened by this:");
+    /*
+      A — STRENGTHENED (Slice R4-R5C11). v5's application contract carried its own evidence field
+      and the live proposal gave two different answers to "how will we know it happened". v11
+      removed the field; this section now states no completion at all, which is a stricter form of
+      the same guarantee — there is no second answer because there is no answer here.
+    */
+    expect(a).not.toContain("You will know it happened by this:");
+    expect(a).not.toContain(GOOD.completion.criterion);
   });
 
   it("G5/G6: a context fragment never receives a doubled preposition", () => {

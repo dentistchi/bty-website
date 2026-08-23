@@ -55,7 +55,9 @@ const claim = (over: Record<string, unknown> = {}) => ({
 
 describe("an attempt generated under an older derivation contract cannot be applied", () => {
   it("the authority version moved, because three required sections render different bytes", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     // The WIRE shape did not move — that split is why the two names exist.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });

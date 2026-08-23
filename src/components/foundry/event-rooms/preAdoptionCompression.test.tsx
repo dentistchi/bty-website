@@ -127,7 +127,13 @@ describe("[R4-R2E-R4] Review opens as a summary, not a document", () => {
     await screen.findByTestId("program-review");
     // A KEEP row previews the HOST's sentence, not BTY's — the preview must not contradict the state.
     expect(screen.getByTestId("program-section-preview-why_it_matters").textContent).toContain("No confirmation calls made today");
-    expect(screen.getByTestId("program-section-preview-action_decision").textContent).toContain("I will make a confirmation call");
+    /*
+      A — the preview must still show the sentence that will ACTUALLY be applied, which is the
+      property this test exists for (Slice R4-R5C11). YOUR DECISION no longer supplies the
+      learner's commitment, so what is applied — and previewed — is the question that asks for it.
+    */
+    expect(screen.getByTestId("program-section-preview-action_decision").textContent)
+      .toContain("The next time this happens, what will you do differently?");
   });
 
   it("nothing was removed — the full comparison is one tap away", async () => {

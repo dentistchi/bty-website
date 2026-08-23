@@ -152,7 +152,9 @@ describe("[3.2P-A5-R2] what did NOT change", () => {
       changed? Observability cannot change it, and moving the version would strand valid
       cached work for nothing. Deploy identity is the commit sha; that moves, and this does not.
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 

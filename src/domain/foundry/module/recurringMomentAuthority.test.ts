@@ -289,7 +289,9 @@ describe("[3.2P-R3.6-R1] S/V/W/X — versions, history and the step graph", () =
   });
 
   it("both authorities moved, because both acceptance AND the wire shape changed", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 

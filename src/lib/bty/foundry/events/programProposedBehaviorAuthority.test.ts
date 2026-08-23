@@ -291,6 +291,8 @@ describe("[3.2L-R7] G3/G7 — the canonical input can now reach an accepted cont
     expect(arg.response_format.type).toBe("json_schema");
     expect(arg.response_format.json_schema.strict).toBe(true);
     expect(arg.response_format.json_schema.name).toBe("bty_guided_program_v12");
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
   });
 });

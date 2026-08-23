@@ -109,8 +109,14 @@ const rendered = (c: Record<string, unknown>) => {
 describe("[R3.2-R1] A/B/F — the learner population cannot be redefined by the model", () => {
   it("A — the W3 actor never reaches a participant: the subject is server-written", () => {
     const out = rendered(DRIFTED);
+    /*
+      A — RETARGETED (Slice R4-R5C11). The authority under test is unchanged: the participant's
+      subject is server-written and the model's actor label never reaches them. It is asserted on
+      the one section that still names a subject, because IN CONTEXT and APPLY IT stopped
+      restating THE STANDARD. The model's label is still forbidden in ALL of them.
+    */
+    expect(out.observable_standard).toContain(`, ${CANONICAL_ACTOR} must `);
     for (const kind of ["observable_standard", "scenario", "field_application"]) {
-      expect(out[kind], kind).toContain(`, ${CANONICAL_ACTOR} must `);
       expect(out[kind].toLowerCase(), kind).not.toContain("a team member must");
     }
   });

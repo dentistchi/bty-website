@@ -137,7 +137,10 @@ describe("[3.2P-A7-R2] §16 — the server's own product language", () => {
       for (const frame of pressureFrameIds()) {
         const sentence = renderScenarioSentence(behavior(host, ACTIONS[0]), { frame });
         expect(sentence.startsWith(host), `${host} / ${frame}`).toBe(true);
-        expect(sentence).toContain(`even when ${renderPressureFrame(frame)},`);
+        // A — the concessive "even when" became "when" (Slice R4-R5C11): the sentence no longer
+        // carries the instruction it was conceding to, and its job is now to make the situation
+        // recognisable rather than to restate THE STANDARD under pressure.
+        expect(sentence).toContain(`when ${renderPressureFrame(frame)},`);
       }
     }
     // Read, not merely asserted — one full rendering per Host moment, and one per action.
@@ -230,7 +233,9 @@ describe("[3.2P-A7-R2] §11/§12 — what became historical", () => {
   });
 
   it("the wire moved with the contract", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 });

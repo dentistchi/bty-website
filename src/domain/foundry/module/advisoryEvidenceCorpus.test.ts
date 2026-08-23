@@ -187,7 +187,9 @@ describe("[3.2P-A4-R2] one policy, three consumers — validator, brief, repair"
   });
 
   it("I — the semantic contract moved; the wire and repair shapes did not", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
     expect(repairPatchContract(repairLicenseFor("scenario_without_pressure", "scenario"))!.name)
       .toBe("bty_guided_program_repair_scenario_pressure_v1");

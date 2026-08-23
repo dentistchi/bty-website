@@ -237,6 +237,8 @@ describe("[3.2P-A1-R3] the initial wire contract did NOT change", () => {
       not. The INITIAL wire shape is untouched, so its name stays — pretending it changed would
       be less truthful than giving the repair schemas their own names, which is what they have.
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
   });
 });

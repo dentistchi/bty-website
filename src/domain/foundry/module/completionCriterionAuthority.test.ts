@@ -132,19 +132,38 @@ describe("[3.2P-R3.4-R1] D–H — every real evidence shape works without extra
       const { contract, sections } = forEvidence(evidence);
       // Carried whole: no person, role, artifact or system is extracted from it.
       expect(contract.completion.criterion).toBe(evidence);
-      // …and it reaches the participant intact, minus only the terminal stop BTY re-adds.
+      /*
+        A — "reaches the participant intact" is unchanged; "in three sections" is not
+        (Slice R4-R5C11). The property under test is that a real Host evidence answer is CARRIED
+        WHOLE rather than decomposed into a person, an artifact or a system — and that is what is
+        asserted, on the section that renders the behaviour contract the criterion is a field of.
+        The other two carried copies, not authority.
+      */
       const core = evidence.replace(/\.$/, "");
-      for (const kind of ["observable_standard", "field_application", "why_it_matters"] as const) {
-        expect(sections[kind], `${label} / ${kind}`).toContain(core);
+      expect(sections.observable_standard, `${label} / observable_standard`).toContain(core);
+      for (const kind of ["field_application", "why_it_matters"] as const) {
+        expect(sections[kind], `${label} / ${kind}`).not.toContain(core);
       }
     });
   }
 
-  it("and each surface leads with different words, so a program does not repeat itself", () => {
+  it("and the criterion reaches ONE surface, because varying the lead-in did not stop the repetition", () => {
+    /*
+      A — THE ASSUMPTION A REAL LEARNER DISPROVED (Slice R4-R5C11).
+
+      This test asserted three different lead-ins and concluded "so a program does not repeat
+      itself". The three lead-ins were real and they were the whole repair: R3.4-R1 had found the
+      same criterion closing four sections verbatim and treated the defect as SAMENESS OF WORDING.
+
+      A learner then read one of these programs and reported being shown the answer repeatedly and
+      asked to type it back. Four words in front of a repeated sentence do not make it a second
+      thing to think about. So the copies are gone rather than relabelled, and the surviving lead
+      belongs to the section that renders the contract.
+    */
     const { sections } = forEvidence(PILOT.successEvidence!);
     expect(sections.observable_standard).toContain("Completion evidence:");
-    expect(sections.field_application).toContain("You will know it happened by this:");
-    expect(sections.why_it_matters).toContain("What shows it happened:");
+    expect(sections.field_application).not.toContain("You will know it happened by this:");
+    expect(sections.why_it_matters).not.toContain("What shows it happened:");
   });
 });
 
@@ -243,7 +262,9 @@ describe("[3.2P-R3.4-R1] R/S/T — history stays readable, stale proposals stay 
   });
 
   it("the version moved because the accepted SHAPE moved, not because a deploy happened", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_AUTHORSHIP_VERSION).not.toMatch(/^[0-9a-f]{40}$/);
     // …and the WIRE contract did NOT move: R3.5 changed acceptance, not the response shape.
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");

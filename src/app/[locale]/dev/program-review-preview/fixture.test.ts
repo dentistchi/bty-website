@@ -125,11 +125,19 @@ describe("[3.2L-R9] G2 — synonym substitution does not reopen the defect", () 
 describe("[3.2L-R9] G3/G4 — the derived rationale is grounded and claims nothing", () => {
   const shown = () => derived("why_it_matters")!;
 
-  it("names the Host's problem and the one visible action", () => {
+  it("names the Host's problem, and nothing THE STANDARD already says", () => {
+    /*
+      A — grounding unchanged, contents narrowed (Slice R4-R5C11). WHY THIS MATTERS used to close
+      on the behaviour and then on the Host's criterion, so it was a second reading of THE
+      STANDARD before the participant had met THE STANDARD. A real learner counted the behaviour
+      clause seven times and the criterion four across one published training.
+
+      What this test protects — the section is grounded in the Host's own problem and invents
+      nothing — is unchanged, and asserted alongside the two absences that replaced the copies.
+    */
     expect(shown()).toContain("Our handoffs are inconsistent");
-    expect(shown()).toContain("state each unfinished item and identify its next owner");
-    // v11: WHY THIS MATTERS closes on the Host's own evidence, in their words.
-    expect(shown()).toContain("What shows it happened: Handoff record.");
+    expect(shown()).not.toContain("state each unfinished item and identify its next owner");
+    expect(shown()).not.toContain("Handoff record");
   });
 
   it("claims no outcome of any kind", () => {
@@ -255,38 +263,39 @@ describe("[3.2L-R9] G13 — the usable v7 instructional core is unchanged", () =
       "At each handoff point, team members must state each unfinished item and identify its next owner. " +
         "Completion evidence: Handoff record.",
     );
+    /*
+      A — THE STANDARD above is byte-for-byte what the phone displayed and is untouched; the three
+      sections below are not (Slice R4-R5C11). Each was a restatement of it — IN CONTEXT at 85% of
+      it as one contiguous token run, YOUR DECISION as the same clause in the first person, APPLY
+      IT as the same clause plus the criterion again. This fixture is the preview surface, so it
+      pins exactly what a Host will now read.
+    */
     expect(derived("scenario")).toBe(
-      "At each handoff point, even when time is running short, " +
-        "team members must state each unfinished item and identify its next owner. " +
-        "Completion evidence: Handoff record.",
+      "At each handoff point, when time is running short, this is easiest to skip.",
     );
-    // 3.2P-R3.7: this line used to read "At my next handoff point". The fold that produced it
-    // shipped "During the next morning huddles" in W6, so the commitment now points at the next
-    // occurrence and the host's moment stays where it renders correctly, two sections above.
-    expect(derived("action_decision")).toBe(
-      "The next time this happens, I will state each unfinished item and identify its next owner.",
-    );
-    expect(derived("field_application")).toContain(
-      "The next time this happens, team members must state each unfinished item and identify its next owner.",
+    expect(derived("action_decision")).toBe("The next time this happens, what will you do differently?");
+    expect(derived("field_application")).toBe(
+      "The next time this happens is the first real chance to try it for yourself.",
     );
   });
 
   it("one trigger, one completion authority, aligned application", () => {
     /*
-      B (Slice 3.2P-R3.4-R1): ONE criterion, from the Host, in all three — with a different
-      lead-in in APPLY IT, because four sections closing on identical words is what the R3.4-R1
-      corpus render audit caught.
+      A — ONE criterion, from the Host, in ONE section (Slice R4-R5C11). R3.4-R1 saw four sections
+      closing on identical words and answered it by varying the lead-ins, keeping all four copies.
+      The learner who read the result reported being shown the answer and then asked to type it
+      back, so the copies are gone rather than relabelled.
     */
-    for (const kind of ["observable_standard", "scenario", "field_application"] as const) {
-      expect(derived(kind), kind).toContain(PREVIEW_ANSWERS.successEvidence!);
+    expect(derived("observable_standard")).toContain(PREVIEW_ANSWERS.successEvidence!);
+    for (const kind of ["scenario", "field_application"] as const) {
+      expect(derived(kind), kind).not.toContain(PREVIEW_ANSWERS.successEvidence!);
     }
-    expect(derived("field_application")).toContain("You will know it happened by this: Handoff record.");
     // v12: the pressure clause is server-written from the frame, so there is no field to check.
     expect(namesIndependentMoment(renderPressureFrame(PREVIEW_CONTRACTS.scenario!.frame))).toBe(false);
     // v9: the first instance is DERIVED from the trigger, so alignment is not checked — it
     // is guaranteed by construction (Slice 3.2L-R10-A).
     expect(deriveFirstApplicationMoment(PREVIEW_CONTRACTS.behavior.trigger)).toEqual({ ok: true, value: "Next handoff point" });
-    expect(derived("scenario")!.startsWith("At each handoff point, even when")).toBe(true);
+    expect(derived("scenario")!.startsWith("At each handoff point, when")).toBe(true);
   });
 
   it("a second moment can no longer be smuggled in — but its refusal copy stays readable", () => {
@@ -350,7 +359,9 @@ describe("[3.2L-R9] G16/G17 — fixture identity and authority version", () => {
       v11 removes `behavior_contract.completion` from the response, so — like v9 before it —
       this is a real WIRE change and both names increment (Slice 3.2P-R3.4-R1).
     */
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 
@@ -479,8 +490,10 @@ describe("[3.2L-R10-A] one required moment, one derived first instance", () => {
       "아침 허들 때마다",
     ]) {
       const c = withTrigger(trigger);
-      expect(derived("action_decision", c)?.startsWith("The next time this happens, I will "), trigger).toBe(true);
-      expect(derived("field_application", c)?.startsWith("The next time this happens, "), trigger).toBe(true);
+      // A — the POINTER is what this test is about and it is unchanged; the answer that used to
+      // follow it is gone (Slice R4-R5C11).
+      expect(derived("action_decision", c)?.startsWith("The next time this happens, "), trigger).toBe(true);
+      expect(derived("field_application", c)?.startsWith("The next time this happens"), trigger).toBe(true);
       for (const bad of ["the the", "next next", "At at", "In during", "the a "]) {
         expect(derived("field_application", c), `${trigger}: ${bad}`).not.toContain(bad);
       }
@@ -829,8 +842,10 @@ describe("[3.2L-R11] the Apply merge preserves what it does not own", () => {
     expect(text("action_decision")).toContain("The next time this happens");
     expect(text("field_application")).toContain("The next time this happens");
     expect(text("completion_check")).toContain("The next time this happens");
-    for (const k of ["observable_standard", "scenario", "field_application"]) {
-      expect(text(k), k).toContain(PREVIEW_ANSWERS.successEvidence!);
+    // A — one criterion, one section (Slice R4-R5C11); see the R3.4-R1 note above.
+    expect(text("observable_standard")).toContain(PREVIEW_ANSWERS.successEvidence!);
+    for (const k of ["scenario", "field_application"]) {
+      expect(text(k), k).not.toContain(PREVIEW_ANSWERS.successEvidence!);
     }
     expect(text("follow_up")).toContain("That is your own account of it, not an observation.");
     expect(text("why_it_matters")).toContain("Our handoffs are inconsistent");

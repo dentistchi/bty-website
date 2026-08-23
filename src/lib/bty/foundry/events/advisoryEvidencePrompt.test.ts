@@ -119,7 +119,9 @@ describe("[3.2P-A4-R2] the advisory commission asks for a condition, not a cure"
 
 describe("[3.2P-A4-R2] what did NOT change", () => {
   it("I — the semantic contract moved; the wire shape did not", () => {
-    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v23");
+    // v24 (Slice R4-R5C11): the deterministic COMPOSITION moved — six derived sections stopped
+    // restating THE STANDARD and the Host criterion, so accepted programs render different bytes.
+    expect(PROGRAM_AUTHORSHIP_VERSION).toBe("program_authorship_v24");
     expect(PROGRAM_SCHEMA_NAME).toBe("bty_guided_program_v12");
   });
 

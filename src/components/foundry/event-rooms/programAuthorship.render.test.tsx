@@ -238,7 +238,7 @@ describe("[3.2L] apply is explicit and atomic", () => {
     expect(screen.getByTestId("program-edit-evidence")).toBeTruthy();
   });
 
-  it("G1: changing the ACTION updates EVERY dependent section at once", async () => {
+  it("G1: changing the ACTION updates THE STANDARD live, and only THE STANDARD", async () => {
     setup(ok);
     await generate();
     const before = {
@@ -251,12 +251,16 @@ describe("[3.2L] apply is explicit and atomic", () => {
     // carries the de-inflected phrase, which is the point of `baseActionPhrase`.
     expect(screen.getByTestId("program-derived-observable_standard").textContent).toContain("read the open items aloud from the board");
     expect(screen.getByTestId("program-derived-observable_standard").textContent).not.toBe(before.standard);
-    // YOUR DECISION is first person, so it carries the ACTION rather than the actor —
-    // changing the action is what must move it.
+    /*
+      A — "EVERY dependent section at once" was the six-views assumption, and a real learner
+      disproved it (Slice R4-R5C11). The Host edit still has to reach the participant live, which
+      is what this test is for; it reaches THE STANDARD, asserted above, because that is now the
+      one section the action is rendered into. YOUR DECISION is held to the opposite property:
+      editing the action must NOT put it back into the learner's decision.
+    */
     await setField("action", "reads the open items aloud from the board");
-    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toBe(before.decision);
-    // …and the verb agrees: "I will read", never "I will reads".
-    expect(screen.getByTestId("program-derived-action_decision").textContent).toContain("I will read the open items");
+    expect(screen.getByTestId("program-derived-action_decision").textContent).toBe(before.decision);
+    expect(screen.getByTestId("program-derived-action_decision").textContent).not.toContain("read the open items");
   });
 
   it("G2: the moment is no longer editable here — it belongs to the Host's own question", async () => {
