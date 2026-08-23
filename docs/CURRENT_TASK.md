@@ -3504,6 +3504,8 @@ BTY 시스템은 다음 단계로 전환됨:
 ## DEFERRED LEARNER DEVICE VERIFICATION — R4-R5C
 
 **Status: DEVICE VERIFICATION BLOCKED — NO SAFE LEARNER FIXTURE.** Not a FAIL.
+**Scope extended 2026-08-23 to V1-V13** — the identity/resume bundle plus the
+content-quality questions that R4-R5C11 and R4-R5C12A can only be closed by.
 
 This is the SINGLE deferred gate for the whole R4-R5C series. It replaces the
 per-slice blocked gates (C3A2, C4A/+R1/+R2, C6, C7A, C9A) so the same one
@@ -3546,4 +3548,59 @@ focused suites, an unchanged full-suite baseline (8 pre-existing failing files,
 0 new) across every slice, terminology 44, cf:build clean, and live source
 parity verified on each deploy.
 
-**R4-R5C is IMPLEMENTATION COMPLETE, and is NOT PASS/CLOSED.**
+### CONTENT-QUALITY GATES — V9-V13 (added 2026-08-23, runtime `5d241bfb`)
+
+Added when R4-R5C11 (repetition containment) and R4-R5C12A (question-role truth)
+were Founder-verified. These are the questions a real learner answers; none of
+them can be answered by a fixture, and none of them may be answered by the
+Founder on the learner's behalf.
+
+- **V9 - REFLECT cognitive job.** Ask afterwards: *"Did REFLECT make you think
+  about what you actually do today?"* PASS = they describe their own current
+  practice, not the Standard they had just read.
+- **V10 - learner-owned decision.** The completion question required them to
+  decide something in their own words. FAIL if the obvious answer was already
+  written above it.
+- **V11 - copy resistance.** Ask: *"Could you have answered by copying or
+  slightly rewording something already on the screen?"* PASS = no, not for the
+  meaningful questions.
+- **V12 - REFLECT vs Shared Understanding.** Where both appear, they read as two
+  different jobs: REFLECT = my current reality, privately; Shared Understanding
+  = the answer deliberately shared with the Host. FAIL = the same question, or
+  the same mental task, twice.
+- **V13 - repetition / quiz feeling.** Ask: *"Did this feel repetitive, or like
+  BTY kept asking you to repeat the lesson back?"* PASS = no material
+  repetition, no quiz-on-the-Standard feeling.
+
+**A PRECONDITION V9-V13 CANNOT BE RUN WITHOUT, measured 2026-08-23.** The
+question repair does not reach any training that already exists. Of 46 published
+content rows, **0 carry the new shared question and 0 carry the new completion
+prompt** - C12A changes what BTY SUGGESTS to a Host, and it deliberately does not
+backfill. So V9, V10, V11 and V13 asked of a learner today would be answered
+against pre-repair content and would measure nothing about the repair.
+
+**V9-V13 therefore require, in order:** a Host publishes a NEW training that
+carries the new defaults (or a question of their own that passes them) -> a real
+learner is naturally assigned it -> they complete it -> they are asked. V12
+additionally requires that training to have BOTH a journey REFLECT section and a
+shared question. For reference, 4 of the 32 published snapshots have both today
+and **1 of those 4 shows the identical sentence in both places** - the measured
+double-render, preserved as history.
+
+**No learner has met either repair yet.** Latest completion anywhere:
+2026-08-22 22:09 PDT, which is before the C11 source-identity redeploy
+(2026-08-23 08:34 PDT) and before the C12A deploy (09:38 PDT). Completions since
+either: **0**.
+
+*V8 standing measurement (2026-08-23):* 44 completions, 14 with `linked_user_id`,
+30 without - the 30 are the documented anonymous/open-link class from R4-R6
+(24 open-link anonymous, 4 permanently undeterminable, 1 legacy assigned-origin),
+not a linkage failure. V8 still needs one fresh signed-in completion on this
+runtime to be exercised.
+
+**R4-R5C is IMPLEMENTATION COMPLETE, and is NOT PASS/CLOSED.** Every applicable
+gate V1-V13 is deferred on the same environmental fact and no other: no real
+learner has run a real training on this runtime, and the content repair has not
+yet reached a published training. Nothing here is a FAIL, and nothing here may be
+cleared by manufacturing a training, assignment, participant, completion,
+decision or apply window.
