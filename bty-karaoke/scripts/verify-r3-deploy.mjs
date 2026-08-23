@@ -45,14 +45,30 @@ const check = (id, ok, detail) => {
 
 console.log('\nBUILD 26U-R3 — production deployment-state gate (read-only)\n');
 
-// ── DEPLOY-1 — the rollout switch is installed and OFF ────────────────────────
+// ── DEPLOY-1 — the rollout switch is installed, and in the EXPECTED state ─────
+//
+// The expected value is a parameter, not a constant, because BUILD 26U-R4A runs a controlled
+// validation under `dual_allowlist` before restoring `legacy_free`. Pass it explicitly so the
+// gate keeps meaning something during that window instead of being commented out:
+//     BTY_EXPECT_MODE=dual_allowlist node scripts/verify-r3-deploy.mjs
+const EXPECT_MODE = process.env.BTY_EXPECT_MODE ?? 'legacy_free';
 const policy = (await get('karaoke_usage_policy?select=*'))[0];
 const mode = await rpc('karaoke_premium_room_mode');
 check(
   'DEPLOY-1',
-  policy?.premium_room_mode === 'legacy_free' && mode === 'legacy_free',
-  `premium_room_mode column=${JSON.stringify(policy?.premium_room_mode)} rpc=${JSON.stringify(mode)} (both must be "legacy_free")`,
+  policy?.premium_room_mode === EXPECT_MODE && mode === EXPECT_MODE,
+  `premium_room_mode column=${JSON.stringify(policy?.premium_room_mode)} rpc=${JSON.stringify(mode)} (both must be ${JSON.stringify(EXPECT_MODE)})`,
 );
+
+// ── DEPLOY-1b — under dual_allowlist the boundary must hold to exactly one pair ──
+if (EXPECT_MODE === 'dual_allowlist') {
+  const rows = await get('karaoke_premium_room_rollout?select=account_id,room_id');
+  check(
+    'DEPLOY-1b',
+    Array.isArray(rows) && rows.length === 1,
+    `allowlist holds ${rows.length} pair(s) — a controlled validation must be exactly 1`,
+  );
+}
 
 // ── DEPLOY-2 — commerce is still off ─────────────────────────────────────────
 const catalog = await get('karaoke_product_catalog?select=product_code,is_active&order=display_order');
@@ -74,14 +90,16 @@ const { resolveReleaseContract, parseClientRelease, normalizeRolloutMode } = awa
 
 if (typeof resolveReleaseContract === 'function') {
   const live = normalizeRolloutMode(mode);
-  const b109 = resolveReleaseContract(live, parseClientRelease(null));
-  const b110 = resolveReleaseContract(live, parseClientRelease('native/110'));
-  const web = resolveReleaseContract(live, parseClientRelease('web/abc'));
+  // Outside the controlled boundary (inRollout = false) — which is where every live production
+  // room sits during R4A, and where everything sits in every other mode.
+  const b109 = resolveReleaseContract(live, parseClientRelease(null), false);
+  const b110 = resolveReleaseContract(live, parseClientRelease('native/110'), false);
+  const web = resolveReleaseContract(live, parseClientRelease('web/abc'), false);
   check('DEPLOY-3', b109 === 'legacy', `build-109-shaped (no header) under live mode "${live}" → ${b109}`);
   check(
     'DEPLOY-4',
     b110 === 'legacy' && web === 'legacy',
-    `build-110-shaped → ${b110}, web → ${web} (identity must NOT change behaviour under legacy_free)`,
+    `build-110-shaped → ${b110}, web → ${web} (outside the rollout boundary, identity must not change behaviour)`,
   );
 } else {
   check('DEPLOY-3', false, 'could not load the release-contract matrix (run with a TS-aware loader)');
