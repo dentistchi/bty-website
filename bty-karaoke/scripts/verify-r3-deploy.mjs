@@ -70,12 +70,22 @@ if (EXPECT_MODE === 'dual_allowlist') {
   );
 }
 
-// ── DEPLOY-2 — commerce is still off ─────────────────────────────────────────
+// ── DEPLOY-2 — commerce is active for EXACTLY the authorized set ───────────
+//
+// Like DEPLOY-1, the expectation is a parameter rather than a constant. BUILD 26U-R4B activates
+// PASS_1H alone for a controlled Sandbox validation, so "nothing is active" stopped being the
+// correct assertion — but "whatever is active is exactly what was authorized" never does:
+//     BTY_EXPECT_ACTIVE=PASS_1H node scripts/verify-r3-deploy.mjs
+// An empty value keeps the original meaning (no product may be active).
+const EXPECT_ACTIVE = (process.env.BTY_EXPECT_ACTIVE ?? '')
+  .split(',').map((s) => s.trim()).filter(Boolean).sort();
 const catalog = await get('karaoke_product_catalog?select=product_code,is_active&order=display_order');
+const active = Array.isArray(catalog) ? catalog.filter((r) => r.is_active).map((r) => r.product_code).sort() : [];
 check(
   'DEPLOY-2',
-  Array.isArray(catalog) && catalog.length === 3 && catalog.every((r) => r.is_active === false),
-  `${catalog.length} rows, active=${catalog.filter((r) => r.is_active).length} — ${catalog.map((r) => `${r.product_code}:${r.is_active}`).join(' ')}`,
+  Array.isArray(catalog) && catalog.length === 3 &&
+    active.length === EXPECT_ACTIVE.length && active.every((c, i) => c === EXPECT_ACTIVE[i]),
+  `${catalog.length} rows, active=[${active.join(',')}] expected=[${EXPECT_ACTIVE.join(',')}] — ${catalog.map((r) => `${r.product_code}:${r.is_active}`).join(' ')}`,
 );
 
 // ── DEPLOY-3 / DEPLOY-4 — client identity cannot change behaviour under legacy_free ──
