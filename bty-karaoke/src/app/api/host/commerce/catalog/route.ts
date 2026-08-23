@@ -26,6 +26,7 @@ import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeHost } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { readActiveCommerceCatalog } from '@/lib/commerce-catalog.server';
+import { resolveRelease } from '@/lib/release-contract.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +37,36 @@ export async function GET(req: NextRequest) {
   const token = bearerFromHeader(req.headers.get('authorization')) ?? hostTokenFromRequest(req);
   const acct = await authorizeHost(token);
   if (!acct) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: NO_STORE });
+
+  // ── BUILD 26U-R4 §0 — RELEASE-CONTRACT PROJECTION ────────────────────────────────────────
+  //
+  // THE HAZARD THIS CLOSES. The public v1.0 binary (build 109) already ships a dormant commerce
+  // surface. Activating a catalog row for the v1.1 validation would otherwise make that surface
+  // populate on a binary that was approved as FREE, has no Premium Room concept, and cannot
+  // explain what the customer would be buying.
+  //
+  // So a client on the LEGACY contract is told what is true FOR IT: nothing is on sale. The empty
+  // list is the same fail-closed shape the route already used when no product was active, so
+  // every shipped client — including build 109 — already renders it correctly with no new code.
+  //
+  // THIS IS A PROJECTION, NOT FINANCIAL AUTHORITY, and the distinction is load-bearing:
+  //   * it decides only what a client is SHOWN;
+  //   * it can never create entitlement — the chain is still StoreKit offer × server-active
+  //     product × verified Apple purchase → fulfilment → grant;
+  //   * `/verify` and `/fulfil` are deliberately NOT touched. A purchase a customer legitimately
+  //     made must settle even if this projection later hides the product from them — their money
+  //     moved, and a display rule must never be able to strand it (COMMERCE-COMPAT-4).
+  //
+  // Defence in depth, not the only defence: BUILD 26T-R1B-R6's `paidPurchaseCompiledIn` already
+  // makes a remote activation inert for any Release build, because the purchase call is not
+  // compiled in. This closes the display half for future builds that do compile it in.
+  const release = await resolveRelease(req);
+  if (release.contract !== 'premium') {
+    return NextResponse.json(
+      { ok: true, products: [], activeCount: 0 },
+      { headers: NO_STORE },
+    );
+  }
 
   const products = await readActiveCommerceCatalog();
 

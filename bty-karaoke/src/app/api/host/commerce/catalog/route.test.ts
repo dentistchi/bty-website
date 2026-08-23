@@ -22,6 +22,19 @@ vi.mock('@/lib/commerce-catalog.server', () => ({
   readActiveCommerceCatalog: () => readActiveCommerceCatalog(),
 }));
 
+// BUILD 26U-R4 §0 — the route now projects through the release contract before reading the DB.
+// This file's subject is the CONTRACT SHAPE of the response for a client that may see commerce,
+// so the mode is DUAL and the requests below identify as a premium-capable client. The legacy
+// projection has its own file (route.compat.test.ts), where an ACTIVE product must stay hidden.
+vi.mock('@/lib/supabase.server', () => ({
+  karaokeDb: () => ({
+    rpc: (name: string) =>
+      name === 'karaoke_premium_room_mode'
+        ? Promise.resolve({ data: 'dual', error: null })
+        : Promise.resolve({ data: null, error: null }),
+  }),
+}));
+
 import { GET } from './route';
 
 const PASS_1H = {
@@ -31,7 +44,13 @@ const PASS_1H = {
   durationSeconds: 3600,
 };
 
-const req = () => new NextRequest('https://x/api/host/commerce/catalog');
+// Identifies as a premium-capable client (build 110), so this file measures the response shape
+// a client that MAY see commerce receives. A caller with no identity is a legacy caller and is
+// covered by route.compat.test.ts.
+const req = () =>
+  new NextRequest('https://x/api/host/commerce/catalog', {
+    headers: { 'x-bty-client': 'native/110' },
+  });
 
 beforeEach(() => {
   state.account = { id: 'acct-1' };

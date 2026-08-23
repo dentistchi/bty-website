@@ -78,9 +78,13 @@ describe('ROLL-1 — the rollout decision is centralized, not scattered', () => 
     expect(deciders).toEqual(['src/domain/release-contract.ts']);
   });
 
-  it('only the five premium-gated routes consume the resolution', () => {
+  it('only the premium-gated routes and the commerce PROJECTION consume the resolution', () => {
     const consumers = [...SOURCES].filter(([, src]) => src.includes('resolveRelease(')).map(([f]) => f).sort();
     expect(consumers).toEqual([
+      // BUILD 26U-R4 §0 — the commerce catalog is a READ projection, not an entitlement gate:
+      // it decides only what a client is SHOWN. `/verify` and `/fulfil` are deliberately absent
+      // from this list, and COMMERCE-COMPAT-4 asserts they stay absent.
+      'src/app/api/host/commerce/catalog/route.ts',
       'src/app/api/rooms/[slug]/admin/start-event/route.ts',
       'src/app/api/rooms/[slug]/dj/pass-turn/route.ts',
       'src/app/api/rooms/[slug]/dj/start-event/route.ts',
