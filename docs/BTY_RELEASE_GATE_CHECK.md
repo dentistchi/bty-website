@@ -1,3 +1,16 @@
+**R4-R5C11 — DETERMINISTIC JOURNEY COMPOSITION REPAIR — DEPLOYED · FOUNDER GENERATION VERIFICATION PENDING (2026-08-22)**
+
+- **Release identity:** inner `21524874`. Live Worker `df3277c0-92aa-49e6-92c6-a0be8ff7bd04` @ 100% (`wrangler deployments list`, active). `/api/version` returns build-time env constants only, so freshness was proved on **string literals in the deployed bundle** instead — the six new sentences present, `You will know it happened by this` / `What shows it happened` / `were expected to` gone. **No migration.**
+- **A) Auth / cookies / session:** **UNTOUCHED.** Zero diff under `src/lib/auth`, `src/components/auth`, `src/middleware.ts`, `src/lib/native`, participant session or room token. This is a Host-Builder content-composition repair.
+- **B) Weekly reset · C) Leaderboard / XP:** untouched. No XP award, ledger, weekly, league or season path involved.
+- **D) Data / migration:** **NO migration, NO schema change, NO RPC, NO backfill.** Two production files changed, both pure domain: `program-coherence.ts` (six renderers) and `program-authorship.ts` (two gate scopings + `derivedKinds` + version bump + `overlapRatio` export). **Published module snapshots are frozen and were not written to** — asserted by test (no migration may `update … foundry_event_module … module_snapshot`) and confirmed by a read-only re-run of the historical probe after deploy, which returned byte-identical findings. "Close the Loop — Team Handoff" is unchanged.
+- **E) API contract stability:** **no route, request or response shape changed.** `programAuthorshipService.ts` has **zero diff**: `MAX_ATTEMPTS = 2` (one bounded retry) holds, no provider call site added, no spend multiplication. Learner runtime is unchanged except indirectly, for content generated from here on.
+- **F) Verification:** `tsc` **0**. Full suite `17 failed / 11694 passed` — identical 8-file pre-existing baseline, **zero new failures**; new acceptance suite **19**. terminology **44 = unchanged baseline, 0 findings in touched files**. `cf:build` clean. **ESLint BLOCKED / NOT EXECUTED** — pre-existing ajv `missingRefs` startup crash; **this is not a lint PASS.**
+- **Rollback:** revert `21524874` and redeploy. Nothing to undo in data — no row was written by this slice.
+- **Outstanding:** Founder generation gates **F1–F7** on a disposable Host draft (generate one program, do not publish). **The learner-content defect is not PASS/CLOSED.** Two named open questions: whether YOUR DECISION is now cognitively real, and the completion question's remaining answer-leakage when a **Host authors their own prompt**, which still outranks the derivation by prior decision.
+
+---
+
 **R4-R7A — REALITY INTENT PUBLISH TRUTH — DEPLOYED · FOUNDER DEVICE GATES F1–F5 PASS · PASS / CLOSED (2026-08-22)**
 
 - **Release identity:** inner `12e5021c` (R4-R7A `80699ea3` + R4-R7A-R2 repair). Live Worker verified against source on deploy; `/api/version` confirmed `12e5021c` on a cache-busted read. **No migration.**
