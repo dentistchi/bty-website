@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, act, cleanup, waitFor } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
 import { programContext, programContextFingerprint, requiredProgramKinds } from "@/domain/foundry/module/program-authorship";
+import { suggestSharedQuestion } from "./moduleBuilderCopy";
 import type { BuilderAnswers } from "@/domain/foundry/module/module-builder";
 
 /**
@@ -65,14 +66,16 @@ describe("[3.2L-R11.4B] traversing a step never authors content", () => {
     mountAt(7);
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     const shown = Array.from(document.querySelectorAll("textarea")).map((t) => (t as HTMLTextAreaElement).value);
-    expect(shown.some((v) => v.includes("In your own words")), shown.join(" | ")).toBe(true);
+    // Asserted against the suggestion itself, not a phrase copied out of it (Slice R4-R5C12A):
+    // the wording changed and this test kept passing on a substring of the old sentence.
+    expect(shown.some((v) => v === suggestSharedQuestion("en")), shown.join(" | ")).toBe(true);
   });
 
   it("editing the field IS authoring, and persists", async () => {
     const saved = mountAt(7);
     await act(async () => { await new Promise((r) => setTimeout(r, 300)); });
     const areas = Array.from(document.querySelectorAll("textarea")) as HTMLTextAreaElement[];
-    const target = areas.find((t) => t.value.includes("In your own words"));
+    const target = areas.find((t) => t.value === suggestSharedQuestion("en"));
     expect(target).toBeTruthy();
     await act(async () => {
       fireEvent.change(target!, { target: { value: "What standard mattered most to you?" } });
@@ -93,11 +96,27 @@ describe("[3.2L-R11.4B] generation-context purity", () => {
     expect(requiredProgramKinds(CANONICAL)).not.toContain("reflection");
   });
 
-  it("the incident's exact mutation is what moved 7 sections to 8", () => {
-    const withShared = { ...CANONICAL, sharedQuestion: "In your own words, what is the most important standard from this training?" };
-    expect(fp(withShared)).not.toBe(fp(CANONICAL));
-    expect(requiredProgramKinds(withShared)).toHaveLength(8);
-    expect(requiredProgramKinds(withShared)).toContain("reflection");
+  it("the incident's exact mutation still moves the generation context", () => {
+    /*
+      THE INCIDENT, AND WHAT R4-R5C12A CHANGED ABOUT IT.
+
+      3.2L-R11.4B found that traversing to the material step patched BTY's suggested shared
+      question into the draft, which moved a 7-section program to 8 by adding REFLECT. That fix
+      stopped the write. C12A closes the other half: even when the value IS stored — 15 live
+      drafts still carry it from before the fix — BTY's own prefill no longer requires a REFLECT
+      section, because nobody asked for one. It still moves the FINGERPRINT, which is right: the
+      stored context genuinely differs, and a program written from it must not be reused.
+    */
+    const btyPrefill = { ...CANONICAL, sharedQuestion: suggestSharedQuestion("en") };
+    expect(fp(btyPrefill)).not.toBe(fp(CANONICAL));
+    expect(requiredProgramKinds(btyPrefill)).toHaveLength(7);
+    expect(requiredProgramKinds(btyPrefill)).not.toContain("reflection");
+
+    // A question the HOST wrote is what asks for the section, and always did.
+    const hostOwn = { ...CANONICAL, sharedQuestion: "What usually happens at the huddle when nobody is named?" };
+    expect(fp(hostOwn)).not.toBe(fp(CANONICAL));
+    expect(requiredProgramKinds(hostOwn)).toHaveLength(8);
+    expect(requiredProgramKinds(hostOwn)).toContain("reflection");
   });
 
   it("an intentional Host edit still moves the context, as it must", () => {

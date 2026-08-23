@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { ModuleBuilderShell } from "./ModuleBuilderShell";
+import { suggestCompletionPrompt } from "./moduleBuilderCopy";
+import { copyLikeLearnerQuestions } from "@/domain/foundry/module/learnerQuestionRole";
 
 /**
  * Wait for the Review surface, then make the raw Builder details visible.
@@ -459,14 +461,23 @@ describe("ModuleBuilderShell — publish (Slice 2.3A)", () => {
     completionPrompt: "What read-back will you commit to?",
   };
 
-  it("prefills an editable Completion question on the material step", async () => {
+  it("prefills an editable Completion question that does NOT quote the behaviour", async () => {
+    /*
+      IT USED TO QUOTE IT (Slice R4-R5C12A). The suggestion read
+      `Thinking about "<observableBehavior>", what is one thing you will apply this week?`, and
+      this test asserted the interpolation as the feature. Measured across 37 live completion
+      questions, 22 carried the standard's own vocabulary and 8 carried effectively all of it —
+      a learner met the answer and the question in the same breath. The prefill still exists and
+      is still editable; it now asks for something only the learner can supply.
+    */
     mockDraftServer({ current_step: 7, answers: { materialIntent: "youtube", observableBehavior: "reads back the dosage", materialText: "x" } });
     render(<ModuleBuilderShell draftId="d-1" locale="en" onExit={() => {}} />);
     expect(await screen.findByText("Completion question")).toBeTruthy();
     const ta = screen.getByLabelText("Completion question") as HTMLTextAreaElement;
-    // seeded from the deterministic suggestion (references the behavior, editable)
     await waitFor(() => expect(ta.value.length).toBeGreaterThan(0));
-    expect(ta.value.toLowerCase()).toContain("reads back the dosage");
+    expect(ta.value).toBe(suggestCompletionPrompt(undefined, "en"));
+    expect(ta.value.toLowerCase()).not.toContain("reads back the dosage");
+    expect(copyLikeLearnerQuestions({ observableBehavior: "reads back the dosage", completionPrompt: ta.value })).toEqual([]);
   });
 
   it("review → Approve & create session publishes, confirms, then hands off the new event id", async () => {

@@ -13,6 +13,7 @@ import {
   stepBlockers,
   persistableStep,
   draftIdentityStatement,
+  BUILDER_QUESTION_STEP,
   BUILDER_STEP_MAX,
   CAPABILITY_CANDIDATE_MAX,
   TITLE_MAX,
@@ -31,6 +32,7 @@ import { ManagerCanvas } from "./ManagerCanvas";
 import { mapAnswersToJourney, type RealityGroundedJourneyV1 } from "@/domain/foundry/module/journey";
 import { ProgramAuthorship, KIND_LABEL, type ProgramApplyOutcome, type ProgramGenerateOutcome } from "./ProgramAuthorship";
 import { missingProgramKinds, programContext, programContextFingerprint, programSourceBlocker, programSourceMissing } from "@/domain/foundry/module/program-authorship";
+import { copyLikeLearnerQuestions, type LearnerQuestionField } from "@/domain/foundry/module/learnerQuestionRole";
 import { classifyRealityIntentReadiness, type RealityIntentReadiness } from "@/domain/foundry/module/reality-intent";
 import type { ClientDraft, ClientAsset } from "@/lib/bty/foundry/events/moduleClient";
 import { FilesAndDocuments } from "./FilesAndDocuments";
@@ -791,6 +793,17 @@ export function ModuleBuilderShell({
     about whether this training delivers what its Host asked for. No condition is restated here.
   */
   const realityIntent = classifyRealityIntentReadiness(answers, journey);
+  /*
+    R4-R5C12A — a learner question the learner can answer by scrolling up.
+
+    Advisory, and deliberately NOT part of `reviewMissing` or `notReady`: the Host is
+    authoritative about their own question, and R4-R7A settled the shape this follows — intent
+    stays theirs, BTY says what the result will actually do. Nothing is rewritten, nothing is
+    blocked, and a Host who means the question exactly as written simply publishes it.
+
+    Both questions live on the same Builder step, so one action reaches either.
+  */
+  const copyLikeQuestions = copyLikeLearnerQuestions(answers);
   const reviewMissing = reviewMissingSections(answers, [
     ...(pdfMissing ? ["material_pdf_required"] : []),
     ...(materialReviewNeeded ? ["material_review_required"] : []),
@@ -993,6 +1006,7 @@ export function ModuleBuilderShell({
             programSectionsMissing={missingProgramKinds(answers, journey).length}
             realityIntent={realityIntent}
             onRepairReality={revealProgramAuthoring}
+            copyLikeQuestions={copyLikeQuestions}
             t={t}
           />
           </div>
@@ -1872,6 +1886,7 @@ function PublishAction({
   programSectionsMissing,
   realityIntent,
   onRepairReality,
+  copyLikeQuestions,
   t,
 }: {
   missing: ReviewMissingSection[];
@@ -1889,6 +1904,8 @@ function PublishAction({
   realityIntent: RealityIntentReadiness;
   /** R4-R7A-R2 — reveal the authoring surface already on this screen. Never disabled. */
   onRepairReality: () => void;
+  /** R4-R5C12A — learner questions answerable by repeating the material. Advisory; never blocks. */
+  copyLikeQuestions: LearnerQuestionField[];
   t: ModuleBuilderCopy;
 }) {
   // The CTA is never REMOVED. Hiding the primary action reads as a broken screen; a
@@ -1938,6 +1955,33 @@ function PublishAction({
             className="self-start rounded-lg py-1 text-sm font-semibold text-amber-200/90 underline underline-offset-4 transition-colors hover:text-amber-100"
           >
             {t.realityFixCta} →
+          </button>
+        </div>
+      ) : null}
+      {/*
+        LEARNER QUESTION TRUTH (Slice R4-R5C12A).
+
+        Measured across the live corpus: 22 of 37 completion questions carry the standard's own
+        vocabulary at 0.50 or more, and 15 of 16 shared questions were one recall sentence BTY
+        itself prefilled. This says so in ordinary words and offers the one action that helps —
+        the Host's existing field, on the step it already lives on. It never edits anything.
+
+        `onEdit` is `jumpTo`, the same review-edit navigation every other Review row uses, so
+        Next returns here rather than walking the Host forward through the Builder.
+      */}
+      {copyLikeQuestions.length > 0 ? (
+        <div
+          className="flex flex-col gap-1.5 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-3.5 py-3"
+          data-testid="question-copy-advisory"
+        >
+          <p className="text-sm leading-6 text-amber-100/90">{t.questionCopyLike}</p>
+          <button
+            type="button"
+            onClick={() => onEdit(BUILDER_QUESTION_STEP)}
+            data-testid="question-copy-advisory-edit"
+            className="self-start rounded-lg py-1 text-sm font-semibold text-amber-200/90 underline underline-offset-4 transition-colors hover:text-amber-100"
+          >
+            {t.questionCopyLikeCta} →
           </button>
         </div>
       ) : null}

@@ -54,6 +54,15 @@ export const BUILDER_STEP_MIN = 1;
  */
 export const BUILDER_STEP_MAX = 9;
 /**
+ * Where the two learner questions are authored — the material step (Slice R4-R5C12A).
+ *
+ * Named because more than one surface now sends a Host here: the Review row for the completion
+ * question already did, and the copy-like advisory joins it. A literal 7 in two places is a
+ * literal 7 that will disagree with itself the next time a step is inserted, which is exactly
+ * what happened to the whole graph in 3.2P-R3.6-R1.
+ */
+export const BUILDER_QUESTION_STEP = 7;
+/**
  * The step count BEFORE the recurring-moment question existed. A `current_step` stored under
  * that graph is a bookmark against a different sequence: 8 meant Review, and now means the
  * follow-up screen. Kept as a named constant because the one-time reconciliation and its test

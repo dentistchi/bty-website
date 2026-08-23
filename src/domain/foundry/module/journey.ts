@@ -19,6 +19,7 @@
 
 import type { BuilderAnswers } from "./module-builder";
 import { isObservableStandardShape } from "./observableStandardShape";
+import { isBtySuggestedSharedQuestion } from "./btyQuestionDefaults";
 
 export type JourneyElementKind =
   | "why_it_matters"
@@ -122,6 +123,35 @@ export function mapAnswersToJourney(answers: BuilderAnswers | undefined): Realit
     const content = asText(a[field]);
     const required = REQUIRED_JOURNEY_KINDS.includes(kind);
     if (!content && !required) continue; // optional + empty → omit
+    /*
+      BTY'S OWN PREFILL IS NOT THE HOST'S REFLECTION (Slice R4-R5C12A).
+
+      `sharedQuestion` arrives in the Builder ALREADY FILLED IN with a sentence BTY wrote, and
+      this mapper stamped whatever was in the field as `host_statement`. Three consequences,
+      all measured on live drafts rather than reasoned about:
+
+        1. The learner preview said "From your: Shared question" over a sentence the Host never
+           typed — the exact dishonesty `program-authorship.ts` records this provenance type to
+           prevent. 15 of the 16 live shared questions are BTY's default, byte for byte.
+        2. `isPreservableHostSection` reads `host_statement`, so the authorship review opened
+           REFLECT on `keep` and silently discarded the generator's own REFLECT question — the
+           one written under the honest-question contract of Slice 3.2P-A2-R2. Whichever surface
+           the Host opened first decided which question the learner got.
+        3. The same sentence then reached the learner TWICE: once as REFLECT in the journey and
+           once as the Shared Understanding question, which is published from this same field.
+           Three live drafts do exactly that today.
+
+      So an UNTOUCHED BTY suggestion grounds nothing. It is not relabelled to a different
+      provenance, because there is no honest label for "the Host's reflection" here — there is no
+      Host reflection yet. The field keeps its own separate job (Shared Understanding publishes
+      from `answers.sharedQuestion`, untouched by this), and REFLECT stays open for the generator
+      or for the Host's own words the moment they write any.
+
+      A Host who EDITS the question owns it, exactly as before: any sentence that is not one of
+      BTY's published defaults falls straight through to `host_statement`. This never downgrades
+      Host prose — see the limitation note in `btyQuestionDefaults.ts`.
+    */
+    if (kind === "reflection" && isBtySuggestedSharedQuestion(content)) continue;
     elements.push({
       id: journeyElementId(kind),
       kind,

@@ -29,7 +29,14 @@ const HOST = {
   recurringMoment: "During morning huddles",
   observableBehavior: "Confirm the owner, action, and deadline for every agreed item.",
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
-  sharedQuestion: "In your own words, what is the most important standard from this training?",
+  /*
+    A HOST-AUTHORED question, not BTY's prefill (Slice R4-R5C12A). This fixture carried
+    "In your own words, what is the most important standard from this training?" — BTY's own
+    suggested sentence, which no longer requires or grounds a REFLECT section precisely because
+    nobody wrote it. The fixture means "this Host asked for a reflection", so it now says so in a
+    sentence a Host could have written.
+  */
+  sharedQuestion: "What usually happens at the huddle when nobody is named?",
   completionPrompt: "What specific phrases will you use in the next huddle?",
 } as unknown as BuilderAnswers;
 

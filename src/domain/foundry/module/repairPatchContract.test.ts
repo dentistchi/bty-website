@@ -27,7 +27,14 @@ const HOST = {
   observableBehavior: "At the next huddle, what exact words will you use to confirm the owner, action, and deadline?",
   problem: "During morning huddles, team members report problems but leave without naming who will act or when the next step will happen.",
   recurringMoment: "During morning huddles",
-  sharedQuestion: "In your own words, what is the most important standard from this training?",
+  /*
+    A HOST-AUTHORED question, not BTY's prefill (Slice R4-R5C12A). This fixture carried
+    "In your own words, what is the most important standard from this training?" — BTY's own
+    suggested sentence, which no longer requires or grounds a REFLECT section precisely because
+    nobody wrote it. The fixture means "this Host asked for a reflection", so it now says so in a
+    sentence a Host could have written.
+  */
+  sharedQuestion: "What usually happens at the huddle when nobody is named?",
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
 } as unknown as BuilderAnswers;
 const KINDS = requiredProgramKinds(HOST);
@@ -35,7 +42,7 @@ const CONTENT: Record<string, string> = {
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem stays where it was.",
   observable_standard: "Name one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
-  reflection: "In your own words, what is the most important standard from this training?",
+  reflection: "What usually happens at the huddle when nobody is named?",
   field_application: "Name one owner and one deadline for every agreed action and write them in the huddle note.",
   completion_check: "What exactly will you say to name the owner and the deadline?",
   follow_up: "You will be asked what you actually said at the huddle.",

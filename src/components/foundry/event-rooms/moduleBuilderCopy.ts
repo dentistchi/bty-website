@@ -3,6 +3,10 @@
  *  "evidence ladder", "learning objective", etc. */
 
 import type { Locale } from "./copy";
+import {
+  BTY_SUGGESTED_COMPLETION_PROMPTS,
+  BTY_SUGGESTED_SHARED_QUESTIONS,
+} from "@/domain/foundry/module/learnerQuestionRole";
 
 /** Direction Copilot (Slice 2.4A) — product-tone copy for the assistive suggestion
  *  flow on the problem step. Neutral product language, NOT the Dr. Chi mentor voice. */
@@ -382,6 +386,9 @@ export type ModuleBuilderCopy = {
   s6SharedQ: string;
   s6SharedHelp: string;
   s6SharedPlaceholder: string;
+  /** R4-R5C12A — Review advisory when a learner question can be answered by repeating the material. */
+  questionCopyLike: string;
+  questionCopyLikeCta: string;
   // step 8 review — completion-question row + publish action
   reviewCompletion: string;
   publishCta: string;
@@ -630,11 +637,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     gPdfMissing: "PDF file not added yet",
     gYtMissing: "Link not added yet",
     s6CompletionQ: "Completion question",
-    s6CompletionHelp: "The question each participant answers after the material. Edit it freely.",
-    s6CompletionPlaceholder: "What is one thing you will apply this week?",
+    s6CompletionHelp: "Ask for one concrete decision or next action in the learner's own words. If they can answer it by repeating the material, it is not asking them for anything.",
+    s6CompletionPlaceholder: "What is one thing you will do differently the next time this happens?",
     s6SharedQ: "Shared understanding question",
-    s6SharedHelp: "The learner is told this answer is shared with you. Proposed by default for judgment, practice, and shared-standard training — edit it, or clear it to remove.",
-    s6SharedPlaceholder: "In your own words, what is the most important standard from this training?",
+    s6SharedHelp: "Ask what happens in their work today, before this training changes anything. The learner is told this answer is shared with you. Proposed by default for judgment, practice, and shared-standard training \u2014 edit it, or clear it to remove.",
+    s6SharedPlaceholder: "What usually happens when you are in this situation today?",
+    questionCopyLike:
+      "This question can be answered by repeating the training above. Ask for the learner\u2019s own experience or next decision instead.",
+    questionCopyLikeCta: "Edit question",
     reviewCompletion: "COMPLETION QUESTION",
     publishCta: "Approve & create session",
     publishTrust: "This creates a live training session with its own join QR. Participants will be able to join and complete it.",
@@ -956,11 +966,14 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
     gPdfMissing: "PDF 파일이 아직 없습니다",
     gYtMissing: "링크가 아직 없습니다",
     s6CompletionQ: "완료 질문",
-    s6CompletionHelp: "자료를 본 뒤 참가자가 답하는 질문입니다. 자유롭게 수정하세요.",
-    s6CompletionPlaceholder: "이번 주에 적용할 한 가지는 무엇인가요?",
+    s6CompletionHelp: "학습자가 스스로 정한 구체적인 결정이나 다음 행동 한 가지를 묻습니다. 자료를 그대로 반복해서 답할 수 있다면 아무것도 묻지 않은 것입니다.",
+    s6CompletionPlaceholder: "다음에 이런 상황이 생기면 한 가지 무엇을 다르게 해보겠습니까?",
     s6SharedQ: "공유 이해 질문",
-    s6SharedHelp: "이 답변이 담당자에게 공유된다고 학습자에게 안내됩니다. 판단·연습·공통 기준 교육에는 기본 제안됩니다 — 수정하거나 비워서 제거할 수 있습니다.",
-    s6SharedPlaceholder: "이 교육에서 가장 중요한 행동 기준을 자신의 말로 설명해 주세요.",
+    s6SharedHelp: "이 교육으로 무엇이 바뀌기 전에, 지금 실제 업무에서 어떤 일이 일어나는지 묻습니다. 이 답변이 담당자에게 공유된다고 학습자에게 안내됩니다. 판단·연습·공통 기준 교육에는 기본 제안됩니다 — 수정하거나 비워서 제거할 수 있습니다.",
+    s6SharedPlaceholder: "지금은 이런 상황에서 보통 어떻게 하고 있나요?",
+    questionCopyLike:
+      "이 질문은 위 내용을 그대로 반복해서 답할 수 있습니다. 학습자의 실제 경험이나 다음 결정을 묻는 질문이 더 좋습니다.",
+    questionCopyLikeCta: "질문 수정",
     reviewCompletion: "완료 질문",
     publishCta: "승인하고 세션 만들기",
     publishTrust: "참여용 QR이 있는 실제 훈련 세션을 만듭니다. 참가자가 입장하고 완료할 수 있게 됩니다.",
@@ -1065,30 +1078,46 @@ export const MODULE_BUILDER_COPY: Record<Locale, ModuleBuilderCopy> = {
 export { arenaFollowLabel };
 
 /**
- * A deterministic, localized completion-question suggestion derived from the
- * module design (observable behavior, else the problem). Shown PREFILLED in the
- * editable field — never an AI-generated prompt applied silently at publish. The
- * host reviews and edits it; a blank field falls back to the service default.
+ * BTY's suggested completion question — the same sentence for every training (Slice R4-R5C12A).
+ *
+ * WHAT THIS REPLACES, and why it was wrong. The old template read
+ * `Thinking about "<observableBehavior>", what is one thing you will apply this week?` — it put
+ * the Host's own standard INSIDE the question, so the learner met the answer and the question in
+ * one breath. Measured across the live corpus: 10 of 37 completion questions came out of that
+ * template, 8 carry effectively the standard's whole vocabulary, and 22 overlap it at 0.50 or
+ * more. Not one of the 37 asked the learner for something only they could supply.
+ *
+ * So it quotes nothing. "The next time this happens" is a pointer to the learner's own next real
+ * occasion — the same pointer APPLY IT has used since R4-R5C11 — and "one thing you will do
+ * differently" is answerable only from their own judgment. The Host's answers are no longer read;
+ * the parameter stays so every call site and its tests are untouched, and so a later suggestion
+ * that legitimately needs context still has somewhere to read it from.
  */
 export function suggestCompletionPrompt(
-  answers: { observableBehavior?: string; problem?: string } | undefined,
+  _answers: { observableBehavior?: string; problem?: string } | undefined,
   loc: Locale,
 ): string {
-  const raw = (answers?.observableBehavior ?? answers?.problem ?? "").replace(/\s+/g, " ").trim();
-  if (!raw) return loc === "ko" ? "이번 주에 적용할 한 가지는 무엇인가요?" : "What is one thing you will apply this week?";
-  const anchor = raw.length > 160 ? `${raw.slice(0, 160).trimEnd()}…` : raw;
-  return loc === "ko"
-    ? `"${anchor}" — 이번 주에 적용할 한 가지는 무엇인가요?`
-    : `Thinking about "${anchor}", what is one thing you will apply this week?`;
+  return loc === "ko" ? BTY_SUGGESTED_COMPLETION_PROMPTS[1] : BTY_SUGGESTED_COMPLETION_PROMPTS[0];
 }
 
 /**
- * Deterministic default Shared Understanding question (Slice 3.1B-3G). The learner is told this
- * answer is shared with the Host; it tests articulation of the standard (never "how do you feel").
+ * BTY's suggested Shared Understanding question (Slice 3.1B-3G; rewritten in R4-R5C12A).
+ *
+ * WHAT THIS REPLACES. It read "In your own words, what is the most important standard from this
+ * training?" — and 15 of the 16 shared questions in the live corpus are that sentence, byte for
+ * byte. Its documented job was articulation of the standard, which is exactly what a learner can
+ * do by scrolling up; zero questions in the corpus asked what actually happens in their work
+ * today.
+ *
+ * The new question is answerable ONLY from the learner's own week, and it stays truthfully
+ * answerable by someone who does not do the trained behaviour at all — the property the
+ * generator's REFLECT contract has required since Slice 3.2P-A2-R2, now required of BTY's own
+ * prefill too. It follows the wording the learner room already uses beneath this question
+ * ("Write what usually happens…" / "평소 어떤 일이 일어나는지 적어 주세요…") rather than inventing a
+ * second dialect for the same act.
+ *
  * The caller decides WHETHER to propose it (shouldProposeSharedQuestion by need). Non-AI.
  */
 export function suggestSharedQuestion(loc: Locale): string {
-  return loc === "ko"
-    ? "이 교육에서 가장 중요한 행동 기준을 자신의 말로 설명해 주세요."
-    : "In your own words, what is the most important standard from this training?";
+  return loc === "ko" ? BTY_SUGGESTED_SHARED_QUESTIONS[1] : BTY_SUGGESTED_SHARED_QUESTIONS[0];
 }

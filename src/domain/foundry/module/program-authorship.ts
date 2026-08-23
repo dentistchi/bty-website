@@ -19,6 +19,7 @@
 
 import { SUPPORTED_EXTENSIONS } from "./draft-asset";
 import { audienceAuthorityFor } from "./audience-authority";
+import { isBtySuggestedSharedQuestion } from "./btyQuestionDefaults";
 import {
   JOURNEY_KIND_ORDER,
   journeyElementId,
@@ -388,7 +389,22 @@ export function requiredProgramKinds(answers: BuilderAnswers | undefined): Journ
     required.add("field_application");
     required.add("follow_up");
   }
-  if ((a.sharedQuestion ?? "").trim().length > 0) required.add("reflection");
+  /*
+    REFLECT IS REQUIRED BY THE HOST'S QUESTION, NOT BY BTY'S PREFILL (Slice R4-R5C12A).
+
+    `sharedQuestion` renders pre-filled with a sentence BTY wrote, so a stored value is not by
+    itself evidence that the Host asked for a reflection section. Slice 3.2L-R11.4B already found
+    this from the other end — traversing to the question step used to patch the suggestion in, and
+    "silently moved the training from a 7-section program to an 8-section one including REFLECT".
+    That fix stopped new drafts storing it; 15 live drafts still carry the value from before it.
+
+    Paired with the mapper, which no longer grounds a journey reflection on BTY's own prefill:
+    without this line the two would disagree, `missingProgramKinds` would report REFLECT missing,
+    and publish would newly refuse two live unpublished drafts over a sentence their Host never
+    wrote. A Host who edits the question owns it, and REFLECT becomes required again immediately.
+  */
+  const sharedQuestion = (a.sharedQuestion ?? "").trim();
+  if (sharedQuestion.length > 0 && !isBtySuggestedSharedQuestion(sharedQuestion)) required.add("reflection");
 
   // Canonical render order, never insertion order.
   return JOURNEY_KIND_ORDER.filter((k) => required.has(k));

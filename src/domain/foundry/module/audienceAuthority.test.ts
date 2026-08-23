@@ -36,7 +36,14 @@ const PILOT = {
   followUpDays: 7,
   learningNeeds: ["shared_standard", "practice"],
   materialIntent: "pdf",
-  sharedQuestion: "In your own words, what is the most important standard from this training?",
+  /*
+    A HOST-AUTHORED question, not BTY's prefill (Slice R4-R5C12A). This fixture carried
+    "In your own words, what is the most important standard from this training?" — BTY's own
+    suggested sentence, which no longer requires or grounds a REFLECT section precisely because
+    nobody wrote it. The fixture means "this Host asked for a reflection", so it now says so in a
+    sentence a Host could have written.
+  */
+  sharedQuestion: "What usually happens at the huddle when nobody is named?",
   successEvidence: "The huddle note records one owner and one deadline for every agreed action.",
   arenaRecommended: true,
   completionPrompt: "What specific phrases will you use in the next huddle to confirm the action owner and deadline for each reported issue?",
@@ -53,7 +60,7 @@ const CONTENT: Record<string, string> = {
   why_it_matters: "When a huddle ends without a named owner and a deadline, the problem that was raised stays exactly where it was.",
   observable_standard: "The huddle leader names one owner and one deadline for every agreed action before the group leaves.",
   scenario: "The huddle is running late and people are already standing to leave.",
-  reflection: "In your own words, what is the most important standard from this training?",
+  reflection: "What usually happens at the huddle when nobody is named?",
   field_application: "At the next morning huddle, name one owner and one deadline for every agreed action and write them in the huddle note.",
   completion_check: "What exactly will you say at the next morning huddle to name the owner and the deadline?",
   follow_up: "In seven days you will be asked what you actually said at the huddle.",
