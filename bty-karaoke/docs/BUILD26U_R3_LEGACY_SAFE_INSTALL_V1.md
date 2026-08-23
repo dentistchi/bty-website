@@ -288,3 +288,37 @@ and the startup client identity — it does **not** cover `/dj/start`. So the co
 answer whether the Start tap reached the server, and the server had to. If a future slice needs
 the Start path observable on-device, that is the gap to close first.
 
+
+---
+
+## 11. BUILD 26U-R4A — PASS / CLOSED (2026-08-23)
+
+The R4 blocker — a global `dual` would have exposed 14 live production Events (12 NOT entitled)
+to a guard that ends a session when entitlement is absent — was contained rather than accepted.
+
+**Containment:** `premium_room_mode` gained a `dual_allowlist` arm, scoped by the **pair**
+`(account_id, room_id)` rather than by account. That tightening mattered: the account running the
+validation also owns `bty-home`, a live room in daily use, so an account-scoped allowlist would
+have swept it in.
+
+**Founder device evidence — both PASS:**
+
+* **Premium refusal**, in the allowlisted R4 room:
+  *"You need BTY Room time to host a room. Searching songs and opening them on YouTube stay free."*
+  No YouTube, playback-time, video-time or per-song payment language.
+* **Free YouTube open**, signed out: Search songs → result → **YouTube opened**, with no login,
+  no Premium, no pass and no purchase requirement.
+
+**Corroborated by the server, unprompted.** At `2026-08-23T15:17:06Z` the rollout telemetry
+recorded `NATIVE_PREMIUM = 1` for that hour, and `timed_access_pass_audit` gained exactly one row:
+`SYSTEM · EXPIRED · ACTIVE→EXPIRED` for the controlled account. That is the lazy sweep inside
+`karaoke_start_premium_room_session`, which runs under the account lock *before* the entitlement
+resolution — it recorded a lapse dated 2026-08-13 that had already happened, and then the start
+was refused. So the refusal the Founder read came from the real authority, its only write was
+truthful, and the R4 room still holds **0 Events**. The second stale `ACTIVE` row belongs to a
+different account and was untouched, which is the sweep being correctly account-scoped.
+
+**State at R4A closure:** `premium_room_mode = dual_allowlist` · allowlist = exactly one pair ·
+all 14 unrelated live rooms resolve **legacy** (incl. `bty-home`, same owner) · catalog
+3 × `is_active=false` · commerce **OFF** · build 109 and unidentified callers resolve **legacy**
+even inside the allowlisted room.
