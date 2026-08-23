@@ -53,6 +53,22 @@ describe('ROLL-1 — the rollout decision is centralized, not scattered', () => 
     expect(readers).toEqual(['src/lib/release-contract.server.ts']);
   });
 
+  it('the ROOM authority and the CATALOG projection use different scopes, on purpose', () => {
+    // BUILD 26U-R4A §6 — enforcement is exact (account, room); visibility is account-level.
+    // Conflating them would let allowlisting one room make every room of that account premium.
+    const svc = SOURCES.get('src/lib/release-contract.server.ts')!;
+    expect(svc).toContain('karaoke_room_in_premium_rollout');
+    expect(svc).toContain('karaoke_account_in_premium_rollout');
+    for (const f of ['src/app/api/rooms/[slug]/dj/start/route.ts',
+                     'src/app/api/rooms/[slug]/dj/start-event/route.ts']) {
+      expect(SOURCES.get(f)!, `${f} must use the ROOM scope`).toContain('resolveRoomRelease(req, auth.room.id)');
+      expect(SOURCES.get(f)!, `${f} must NOT use the account scope`).not.toContain('resolveAccountRelease');
+    }
+    const cat = SOURCES.get('src/app/api/host/commerce/catalog/route.ts')!;
+    expect(cat).toContain('resolveAccountRelease(req, acct.id)');
+    expect(cat).not.toContain('resolveRoomRelease');
+  });
+
   it('the header is DEFINED in one place and READ in one place', () => {
     const holders = [...SOURCES]
       .filter(([, src]) => src.includes('CLIENT_HEADER'))
@@ -79,7 +95,10 @@ describe('ROLL-1 — the rollout decision is centralized, not scattered', () => 
   });
 
   it('only the premium-gated routes and the commerce PROJECTION consume the resolution', () => {
-    const consumers = [...SOURCES].filter(([, src]) => src.includes('resolveRelease(')).map(([f]) => f).sort();
+    const consumers = [...SOURCES]
+      .filter(([, src]) => /resolve(Room|Account)?Release\(/.test(src))
+      .map(([f]) => f)
+      .sort();
     expect(consumers).toEqual([
       // BUILD 26U-R4 §0 — the commerce catalog is a READ projection, not an entitlement gate:
       // it decides only what a client is SHOWN. `/verify` and `/fulfil` are deliberately absent

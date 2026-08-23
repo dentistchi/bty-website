@@ -17,7 +17,7 @@ import { roomCredentialFromRequest } from '@/lib/dj-auth.server';
 import { authorizeDj } from '@/lib/rooms.server';
 import { startHostedRoomSession, publicEvent } from '@/lib/events.server';
 import { premiumRoomRefusalCopy, premiumRoomRefusalStatus } from '@/domain/premium-room-copy';
-import { resolveRelease } from '@/lib/release-contract.server';
+import { resolveRoomRelease } from '@/lib/release-contract.server';
 import { CLIENT_UPDATE_REQUIRED_CODE, CLIENT_UPDATE_REQUIRED_KO } from '@/domain/release-contract';
 import { startSession } from '@/lib/sessions.server';
 
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   // BUILD 26U-R2 — the release contract decides WHICH contract this start runs under, and is
   // threaded into the RPC so the decision and the Event write share one transaction. It can
   // never grant entitlement: on 'legacy' the RPC skips the entitlement read AND the activation.
-  const release = await resolveRelease(req);
+  const release = await resolveRoomRelease(req, auth.room.id);
   if (release.contract === 'unsupported') {
     return NextResponse.json(
       { error: CLIENT_UPDATE_REQUIRED_KO, code: CLIENT_UPDATE_REQUIRED_CODE },

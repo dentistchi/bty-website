@@ -73,18 +73,23 @@ describe('normalizeRolloutMode — unknown values are never premium', () => {
 });
 
 describe('ROLL-1 — the matrix is total, exclusive, and stated', () => {
+  // BUILD 26U-R4A — `dual_allowlist` is measured here with inRollout = TRUE, i.e. inside the
+  // controlled boundary, so this table stays "what each client generation gets". The
+  // outside-the-boundary behaviour is the ALLOW-* suite's subject.
   const MATRIX: Record<RolloutMode, Record<string, string>> = {
     legacy_free: { native109: 'legacy', native110: 'legacy', web: 'legacy', unknown: 'legacy' },
+    dual_allowlist: { native109: 'legacy', native110: 'premium', web: 'premium', unknown: 'legacy' },
     dual: { native109: 'legacy', native110: 'premium', web: 'premium', unknown: 'legacy' },
     premium_all: { native109: 'unsupported', native110: 'premium', web: 'premium', unknown: 'unsupported' },
   };
 
   for (const mode of ROLLOUT_MODES) {
     it(`${mode} resolves every client exactly as documented`, () => {
-      expect(resolveReleaseContract(mode, NATIVE_109)).toBe(MATRIX[mode].native109);
-      expect(resolveReleaseContract(mode, NATIVE_110)).toBe(MATRIX[mode].native110);
-      expect(resolveReleaseContract(mode, WEB)).toBe(MATRIX[mode].web);
-      expect(resolveReleaseContract(mode, UNKNOWN)).toBe(MATRIX[mode].unknown);
+      const IN = mode === 'dual_allowlist'; // inside the controlled boundary
+      expect(resolveReleaseContract(mode, NATIVE_109, IN)).toBe(MATRIX[mode].native109);
+      expect(resolveReleaseContract(mode, NATIVE_110, IN)).toBe(MATRIX[mode].native110);
+      expect(resolveReleaseContract(mode, WEB, IN)).toBe(MATRIX[mode].web);
+      expect(resolveReleaseContract(mode, UNKNOWN, IN)).toBe(MATRIX[mode].unknown);
     });
   }
 
@@ -114,8 +119,8 @@ describe('ROLL-1 — the matrix is total, exclusive, and stated', () => {
   it('the modes are mutually exclusive — one input never yields two contracts', () => {
     for (const mode of ROLLOUT_MODES) {
       for (const c of [NATIVE_109, NATIVE_110, WEB, UNKNOWN]) {
-        const a = resolveReleaseContract(mode, c);
-        const b = resolveReleaseContract(mode, c);
+        const a = resolveReleaseContract(mode, c, true);
+        const b = resolveReleaseContract(mode, c, true);
         expect(a).toBe(b); // total and deterministic
         expect(['legacy', 'premium', 'unsupported']).toContain(a);
       }
@@ -146,7 +151,9 @@ describe('COMPAT-5 — a rollout mode can never create an entitlement', () => {
   it('the resolver returns a CONTRACT, and the contract vocabulary contains no grant', () => {
     const outcomes = new Set(
       ROLLOUT_MODES.flatMap((m) =>
-        [NATIVE_109, NATIVE_110, WEB, UNKNOWN].map((c) => resolveReleaseContract(m, c)),
+        [NATIVE_109, NATIVE_110, WEB, UNKNOWN].flatMap((c) =>
+          [true, false].map((inRollout) => resolveReleaseContract(m, c, inRollout)),
+        ),
       ),
     );
     expect([...outcomes].sort()).toEqual(['legacy', 'premium', 'unsupported']);

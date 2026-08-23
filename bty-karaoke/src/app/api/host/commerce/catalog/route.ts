@@ -26,7 +26,7 @@ import { bearerFromHeader } from '@/lib/dj-auth.server';
 import { authorizeHost } from '@/lib/host-auth.server';
 import { hostTokenFromRequest } from '@/lib/host-web-session.server';
 import { readActiveCommerceCatalog } from '@/lib/commerce-catalog.server';
-import { resolveRelease } from '@/lib/release-contract.server';
+import { resolveAccountRelease } from '@/lib/release-contract.server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,7 +60,11 @@ export async function GET(req: NextRequest) {
   // Defence in depth, not the only defence: BUILD 26T-R1B-R6's `paidPurchaseCompiledIn` already
   // makes a remote activation inert for any Release build, because the purchase call is not
   // compiled in. This closes the display half for future builds that do compile it in.
-  const release = await resolveRelease(req);
+  // ACCOUNT-scoped on purpose (BUILD 26U-R4A §6): BTY Room time is bought FOR AN ACCOUNT, so
+  // an account inside the controlled rollout may be shown the store. WHERE that time may be
+  // spent stays exact (account, room) scoped by `resolveRoomRelease` — the Founder's other
+  // rooms, including bty-home, remain legacy while the test room is allowlisted.
+  const release = await resolveAccountRelease(req, acct.id);
   if (release.contract !== 'premium') {
     return NextResponse.json(
       { ok: true, products: [], activeCount: 0 },

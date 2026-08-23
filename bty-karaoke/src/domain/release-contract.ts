@@ -32,7 +32,7 @@
 //   * every classification is counted, so the window can be closed on evidence.
 
 /** The rollout state. Exactly one is in force at a time, server-wide. */
-export const ROLLOUT_MODES = ['legacy_free', 'dual', 'premium_all'] as const;
+export const ROLLOUT_MODES = ['legacy_free', 'dual_allowlist', 'dual', 'premium_all'] as const;
 export type RolloutMode = (typeof ROLLOUT_MODES)[number];
 
 /** The safe default whenever the mode cannot be read: behave exactly like the live v1.0 system. */
@@ -112,8 +112,11 @@ export function normalizeRolloutMode(v: unknown): RolloutMode {
  *                     | native >= 110 | native < 110 | web      | unidentified
  *   ------------------+---------------+--------------+----------+--------------
  *   legacy_free       | legacy        | legacy       | legacy   | legacy
+ *   dual_allowlist    | premium *     | legacy       | premium *| legacy
  *   dual              | premium       | legacy       | premium  | legacy
  *   premium_all       | premium       | unsupported  | premium  | unsupported
+ *
+ *   * only when `inRollout` is true — see below.
  *
  * WHY `legacy_free` IS TOTAL. It is the deploy-safe state: with the mode at `legacy_free`, the
  * R1 + R2 server can be deployed and NOTHING changes for anybody, on any client. The rollout is
@@ -128,16 +131,46 @@ export function normalizeRolloutMode(v: unknown): RolloutMode {
  * so under DUAL an absent header MUST mean legacy or the public app breaks. The cost is stated
  * at the top of this file: it is spoofable, it yields no financial value, and it ends at
  * PREMIUM_ALL.
+ *
+ * ── `dual_allowlist`, and the ORDER that makes it safe (BUILD 26U-R4A §7) ──────────────────
+ *
+ * BUILD 26U-R4 measured that a global `dual` would expose 14 live production Events — 12 of them
+ * NOT entitled — to a guard that ends a session when entitlement is absent. `dual_allowlist`
+ * exists so a controlled validation can run against ONE room without touching the other
+ * thirteen.
+ *
+ * `inRollout` is supplied by the caller and its MEANING depends on the caller's scope, which is
+ * the product's distinction, not a shortcut:
+ *   * ROOM ENFORCEMENT passes the exact (owner account, room) pair — where time may be spent;
+ *   * CATALOG VISIBILITY passes "this account takes part at all" — BTY Room time is bought for
+ *     an account, so the store may be shown to it.
+ * A caller that supplies nothing gets `false`, which is the containing direction.
+ *
+ * CLIENT COMPATIBILITY IS CHECKED FIRST, ALWAYS. `isPremiumCapable && inRollout` means an
+ * allowlisted room can NEVER promote an old or unidentified client — build 109 stays legacy
+ * inside the test room exactly as it does outside it. The inverse order would have let a
+ * database row change the behaviour of a binary that cannot cope with it.
  */
-export function resolveReleaseContract(mode: RolloutMode, client: ClientRelease): ReleaseContract {
+export function resolveReleaseContract(
+  mode: RolloutMode,
+  client: ClientRelease,
+  inRollout = false,
+): ReleaseContract {
   if (mode === 'legacy_free') return 'legacy';
 
   const isPremiumCapable =
     client.kind === 'web' || (client.kind === 'native' && client.build >= FIRST_PREMIUM_NATIVE_BUILD);
 
-  if (isPremiumCapable) return 'premium';
-  // Not premium-capable: an old native build, or a caller we cannot identify.
-  return mode === 'dual' ? 'legacy' : 'unsupported';
+  // Client compatibility FIRST — an allowlist can never override client generation.
+  if (!isPremiumCapable) {
+    // `dual_allowlist` never refuses an old client: the whole point is that everyone outside the
+    // controlled boundary keeps behaving exactly as they did before.
+    return mode === 'premium_all' ? 'unsupported' : 'legacy';
+  }
+
+  // Premium-capable. Under the controlled arm it still takes part only inside the boundary.
+  if (mode === 'dual_allowlist') return inRollout ? 'premium' : 'legacy';
+  return 'premium';
 }
 
 /**

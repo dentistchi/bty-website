@@ -207,7 +207,9 @@ describe('ROOM-7 — expiry does not gate the free YouTube open', () => {
 describe('ROOM-8 — a legacy build cannot see active commerce', () => {
   it('the catalog route projects through the release contract before reading the DB', () => {
     const src = read('../app/api/host/commerce/catalog/route.ts');
-    const r = src.indexOf('resolveRelease(req)');
+    // BUILD 26U-R4A — ACCOUNT-scoped: the store may be shown to an account inside the controlled
+    // rollout, while WHERE its time may be spent stays exact (account, room) scoped elsewhere.
+    const r = src.indexOf('resolveAccountRelease(req, acct.id)');
     const d = src.indexOf('readActiveCommerceCatalog()');
     expect(r).toBeGreaterThan(-1);
     expect(d).toBeGreaterThan(r); // the DB is not even consulted for a legacy caller
@@ -219,6 +221,7 @@ describe('ROOM-8 — a legacy build cannot see active commerce', () => {
                      '../app/api/host/purchases/apple/fulfil/route.ts']) {
       const src = read(f);
       expect(src, `${f} must not consult the release contract`).not.toContain('resolveRelease');
+      expect(src, `${f} must not consult the rollout allowlist`).not.toContain('PremiumRollout');
     }
   });
 });

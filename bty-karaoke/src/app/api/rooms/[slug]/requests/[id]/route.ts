@@ -14,7 +14,7 @@ import {
 } from '@/lib/rooms.server';
 import { getCanonicalEvent, resolveEventAccess } from '@/lib/events.server';
 import { assertPremiumRoomSession } from '@/lib/premium-room-guard.server';
-import { resolveRelease } from '@/lib/release-contract.server';
+import { resolveRoomRelease } from '@/lib/release-contract.server';
 import { CLIENT_UPDATE_REQUIRED_CODE, CLIENT_UPDATE_REQUIRED_KO } from '@/domain/release-contract';
 import { premiumRoomRefusalCopy } from '@/domain/premium-room-copy';
 import { scheduleLyricsResolve } from '@/lib/lyrics-resolver.server';
@@ -84,7 +84,7 @@ export async function PATCH(
   // A client that cannot be updated (public v1.0 build 109) keeps the pre-R1 behaviour it was
   // approved with; a v1.1 client gets Premium Room. The mode is server-side and the header is
   // client-asserted — see `@/domain/release-contract` for exactly what a caller can influence.
-  const release = await resolveRelease(req);
+  const release = await resolveRoomRelease(req, auth.room.id);
   if (release.contract === 'unsupported') {
     return NextResponse.json(
       { error: CLIENT_UPDATE_REQUIRED_KO, code: CLIENT_UPDATE_REQUIRED_CODE },

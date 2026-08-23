@@ -10,10 +10,13 @@ const raw = readFileSync(`${DIR}${NAME}`, 'utf8');
 const sql = raw.replace(/^\s*--.*$/gm, '');
 
 describe('ordering, additivity and copy-friendliness', () => {
-  it('sorts last, immediately after the R1 entitlement migration', () => {
+  it('sorts immediately after the R1 entitlement migration', () => {
+    // BUILD 26U-R4A added a later migration (dual_allowlist), so "last" is no longer the
+    // invariant — ADJACENCY to R1 is, because this file drops and recreates R1's function.
     const all = readdirSync(DIR).filter((f) => f.endsWith('.sql')).sort();
-    expect(all[all.length - 1]).toBe(NAME);
-    expect(all[all.length - 2]).toBe('20260822120000_karaoke_premium_room_session_entitlement_v1.sql');
+    const i = all.indexOf(NAME);
+    expect(i).toBeGreaterThan(0);
+    expect(all[i - 1]).toBe('20260822120000_karaoke_premium_room_session_entitlement_v1.sql');
   });
 
   it('carries the copy-friendly header and has no trailing whitespace', () => {
