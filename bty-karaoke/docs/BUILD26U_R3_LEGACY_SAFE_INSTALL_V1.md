@@ -1,7 +1,7 @@
 # BUILD 26U-R3 — LEGACY-SAFE PRODUCTION INSTALL + BUILD 110 READINESS
 
-**Status:** SERVER INSTALLED + BUILD 110 MINTED. **FOUNDER DEVICE VERIFICATION PENDING.**
-Rollout mode `legacy_free`. Commerce OFF. Nothing submitted, nothing uploaded.
+**Status: PASS / CLOSED — 2026-08-23.** All Founder device gates observed and corroborated by
+production. Rollout mode `legacy_free`. Commerce OFF. Nothing submitted, nothing uploaded.
 
 ---
 
@@ -204,3 +204,87 @@ only.
 
 **Copy review** — EN and KO surfaces show no retired playback-time language and use the BTY
 Premium Room vocabulary where surfaced, with no active purchase CTA.
+
+---
+
+## 10. FOUNDER DEVICE VERIFICATION — COMPLETE (2026-08-23)
+
+### Build 109 (public App Store binary) — F1–F7 PASS
+
+F1–F6 observed by the Founder: launch, sign-in, hosted room started, Guest joined by QR, Guest
+submitted a <15-minute song, Host started it. No Premium Room message, no purchase message, no
+error. F7 verified server-side: all eight tripwires held.
+
+Corroborated independently: a request created 19:15:22Z and **started 19:15:31Z**, and a
+`UNIDENTIFIED = 2` telemetry row in the 19:00 hour — build 109 sends no header, so that is
+exactly where its authenticated hosted-room calls must land.
+
+### Build 110 — N1–N8 and H1–H7 PASS
+
+Installed to the physical device and read back **from the device**:
+`BTY Norebang · com.bty.BTYNorebangAdmin · 1.0 · 110`.
+
+### THE ON-WIRE PROOF (R3 §K's evidence substitution, now closed)
+
+```
+2026-08-23T04:00:00+00:00   NATIVE_PREMIUM   requests = 1
+2026-08-22T19:00:00+00:00   UNIDENTIFIED     requests = 2
+2026-08-22T18:00:00+00:00   UNIDENTIFIED     requests = 79
+```
+
+`NATIVE_PREMIUM` was **0 rows** immediately before the device action. The server assigns that
+bucket **only** when the received `x-bty-client` header parses as `native/<build>` with build
+≥ 110. Its appearance is therefore production's own proof that the physical device put
+`native/110` on the wire. No local Info.plist inference is involved.
+
+### The start, and what it did NOT do
+
+```
+request pos 189  status=playing  started_at=2026-08-23T04:48:48.19154Z
+segment          started_at=2026-08-23T04:48:48.19154Z
+                 metered=false · pass_grant_id=NULL · metering_paused_by_pass=false
+                 duration_seconds / lease_ends_at / lease_seconds /
+                 charged_window_start / charged_window_end  ALL NULL
+```
+
+All five lease/meter columns NULL together is the E1 unmetered arm, and `pass_grant_id = NULL`
+is the legacy contract's signature: **a premium-capable client (`native/110`) was served the
+`legacy` contract because the mode is `legacy_free`, and no entitlement was activated or
+consumed.** That is R3-FV checks 10 and 11, observed rather than argued.
+
+### Invariants after the full device session
+
+| | Baseline | After | |
+|---|---|---|---|
+| `premium_room_mode` | legacy_free | **legacy_free** | ✅ |
+| grants | 56 | **56** | ✅ |
+| audit rows | 156 | **156** | ✅ |
+| latest `ACTIVATED` | 2026-08-13T02:00:05Z | **2026-08-13T02:00:05Z** | ✅ |
+| catalog | 3 × false | **3 × false** | ✅ |
+| PAID grants | 1 (26S-R1) | **1** | ✅ |
+
+### The visual policy-boundary evidence
+
+On an **18:04** search result, build 110 showed simultaneously:
+
+* **"Open on YouTube ↗" — AVAILABLE**
+* **"Can't request" — DISABLED**, with *"Over 15 minutes, so it can't be requested · pick a
+  shorter version"*
+
+This is the separation the entire 26U build exists to establish, observed on a device:
+**YouTube access is open; BTY shared-queue admission is independently constrained.** The
+15-minute rule is confirmed a queue-quality rule, not a paywall and not a YouTube gate.
+
+### Copy — PASS
+
+Founder visual review found no production copy stating or implying YouTube playback time for
+sale, external playback time, "pass cannot cover this song", "upgrade to play this video",
+first-song timer start, or payment required to keep watching. No active purchase CTA appeared.
+
+### Instrumentation note, recorded honestly
+
+The `[GATE-FV]` console instrumentation covers `/dj/start-event`, the free-path YouTube open,
+and the startup client identity — it does **not** cover `/dj/start`. So the console could not
+answer whether the Start tap reached the server, and the server had to. If a future slice needs
+the Start path observable on-device, that is the gap to close first.
+
