@@ -2499,7 +2499,14 @@ export function initialSectionDecisions(
 export type SectionChoice = {
   kind: JourneyElementKind;
   decision: SectionDecision;
-  /** Present only for `edit` — the Host's rewritten content. */
+  /**
+   * THE SENTENCE THE HOST ACTUALLY READ (Slice R4-R5C13-R1).
+   *
+   * It used to be documented as "present only for `edit`", and `use` ignored it in favour of the
+   * proposal payload. The review surface has passed it for BOTH decisions since 3.2L-R6.1 — its
+   * own comment reads "Apply always takes the CURRENTLY RENDERED sentence, never a stale one" —
+   * so the value was computed, sent, and then discarded for every unedited section.
+   */
   editedContent?: string;
 };
 
@@ -2532,7 +2539,35 @@ export function applyProgramProposal(
       content = (choice.editedContent ?? "").trim();
       provenance = provenanceAfterHostEdit(readProvenance(existing) ?? "ai_proposed");
     } else if (choice?.decision === "use" && proposed) {
-      content = proposed.content;
+      /*
+        WHAT THE HOST REVIEWED IS WHAT GETS ADOPTED (Slice R4-R5C13-R1).
+
+        FOUNDER-OBSERVED, on a real Korean training. Every section of a fresh proposal read
+        Korean in the review, the Host pressed Add, and the adopted Journey came back with YOUR
+        DECISION, APPLY IT, BEFORE YOU FINISH and WHAT HAPPENS NEXT in English. Nothing had been
+        edited; nothing was stale by the fingerprint's reckoning.
+
+        The cause was here. Seven of the nine sections are RENDERED, not authored — the review
+        surface derives them through `deriveInstructionalContent`, and `proposed.content` is
+        whatever the SERVER composed when the attempt ran. This branch took the server's copy.
+        The two agree only while both sides compose identically, so any skew between generation
+        and adoption silently ships the older one: the measured case was a proposal generated
+        minutes before the locale repair deployed and adopted minutes after it, but a renderer
+        change, a slow review or a reload would do the same.
+
+        This file already records the identical shape one screen down, for the operational
+        construct: "a construct extracted by an older code version outlived the fix to that
+        version" (3.2R-R2.3-R2). The answer there was to re-derive rather than replay, and it is
+        the answer here — with the difference that the re-derivation has already happened, on the
+        Host's screen, and its result is in `editedContent`.
+
+        PROVENANCE IS UNCHANGED. `ai_proposed` is still exactly right: BTY wrote the sentence and
+        the Host did not touch it. What changes is WHICH of BTY's renderings is frozen — the one
+        they were shown. The payload remains the fallback for any caller that sends no reviewed
+        text, so nothing that omits it changes behaviour.
+      */
+      const reviewed = (choice.editedContent ?? "").trim();
+      content = reviewed.length > 0 ? reviewed : proposed.content;
       provenance = "ai_proposed";
     } else if (existing && (existing.content ?? "").trim().length > 0) {
       content = existing.content.trim();

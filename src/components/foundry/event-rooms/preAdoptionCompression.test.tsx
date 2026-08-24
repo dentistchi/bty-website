@@ -195,8 +195,14 @@ describe("[R4-R2E-R4] Review opens as a summary, not a document", () => {
     // The Host's own two sections were preserved…
     expect(by.get("why_it_matters")!.content).toBe("No confirmation calls made today");
     expect(by.get("completion_check")!.content).toBe("Describe how you will use the checklist.");
-    // …and BTY filled the rest.
-    expect(by.get("action_decision")!.content).toContain("I will make a confirmation call");
+    /*
+      …and BTY filled the rest — with the sentence the Host READ (Slice R4-R5C13-R1).
+
+      `action_decision` is derived, so the review surface showed R4-R5C11's question and never
+      this fixture's payload prose. Adoption used to persist the payload anyway, which is the
+      defect a Korean Host found: Korean on screen, English in the adopted training.
+    */
+    expect(by.get("action_decision")!.content).toBe("The next time this happens, what will you do differently?");
     // The declarations sent alongside match, so R2's authority sees the same decisions.
     const decisions = (onApply.mock.calls[0] as unknown[])[3] as Record<string, string>;
     expect(decisions.why_it_matters).toBe("keep");

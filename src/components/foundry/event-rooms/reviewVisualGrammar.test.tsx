@@ -238,9 +238,18 @@ describe("[R4-R2E] B — adopting BTY's draft leads to where it can be edited", 
     expect(document.activeElement).toBe(section);
     expect(section.getAttribute("tabindex")).toBe("-1");
 
-    // The adopted sentence is IN the editable control — not merely somewhere on the page.
+    /*
+      The adopted sentence is IN the editable control — not merely somewhere on the page.
+
+      IT IS THE SENTENCE THE HOST WAS SHOWN (Slice R4-R5C13-R1). THE STANDARD is one of the seven
+      RENDERED kinds, so the review surface never displayed the proposal's own prose for it; this
+      used to assert that prose because adoption persisted the payload rather than the rendering.
+      Asserting the rendered sentence is the stronger check, and it is what a Host who pressed Add
+      without editing anything actually gets.
+    */
     const field = (await screen.findByTestId("journey-edit-observable_standard")) as HTMLTextAreaElement;
-    expect(field.value).toContain("names one owner and one deadline");
+    expect(field.value).toContain("the facilitator must name one owner and one deadline");
+    expect(field.value).toContain("Completion evidence:");
   });
 
   it("a destination already in view is emphasised but NOT scrolled", async () => {
